@@ -17,7 +17,7 @@
 
 #define SCN_LOCALE_CPP
 
-#include "scn/locale.h"
+#include "scn/scn/locale.h"
 
 #include <locale>
 

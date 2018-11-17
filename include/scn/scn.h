@@ -26,11 +26,11 @@
 #ifndef SCN_SCN_H
 #define SCN_SCN_H
 
-#include "args.h"
-#include "core.h"
-#include "locale.h"
-#include "stream.h"
-#include "types.h"
+#include "scn/args.h"
+#include "scn/core.h"
+#include "scn/locale.h"
+#include "scn/stream.h"
+#include "scn/types.h"
 
 namespace scn {
     template <typename Stream, typename Context>

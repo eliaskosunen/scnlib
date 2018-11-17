@@ -18,6 +18,9 @@
 #ifndef SCN_ISTREAM_H
 #define SCN_ISTREAM_H
 
+#include "scn/core.h"
+#include "scn/stream.h"
+
 #include <istream>
 
 namespace scn {

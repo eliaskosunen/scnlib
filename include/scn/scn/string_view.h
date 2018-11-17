@@ -26,7 +26,7 @@
 #elif SCN_HAS_EXP_STRING_VIEW
 #include <experimental/string_view>
 #else
-#include "span-lite/span.h"
+#include "../span-lite/span.h"
 #endif
 
 namespace scn {
