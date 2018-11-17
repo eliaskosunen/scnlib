@@ -35,6 +35,7 @@ namespace scn {
         }
 
         bool is_space(char_type) const;
+        bool is_digit(char_type) const;
 
         char_type decimal_point() const;
         char_type thousands_separator() const;

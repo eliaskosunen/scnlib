@@ -13,8 +13,6 @@ Copyright (c) 2012-2018 Victor Zverovich
 
 ## License
 
-Copyright (c) Elias Kosunen 2017-2018
-
-Apache License 2.0
-
+Copyright (c) Elias Kosunen 2017-2018  
+Apache License 2.0  
 See LICENSE for further details

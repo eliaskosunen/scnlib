@@ -160,4 +160,10 @@
 #define SCN_NODISCARD /*nodiscard*/
 #endif
 
+#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY
+#define SCN_FUNC inline
+#else
+#define SCN_FUNC
+#endif
+
 #endif  // SCN_CONFIG_H

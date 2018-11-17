@@ -23,7 +23,9 @@
 #include "locale.h"
 
 #include <array>
+#include <cassert>
 #include <cctype>
+#include <cwctype>
 #include <limits>
 #include <type_traits>
 
@@ -36,29 +38,25 @@ namespace scn {
 
             int digits = 0;
             while (i) {
-                i /= 10;
+                i /= 2;  // 2 to accommondate for binary numbers as well
                 digits++;
             }
 
             return digits + (std::is_signed<Integral>::value ? 1 : 0);
         }
 
-        template <typename CharT>
-        SCN_CONSTEXPR14 bool is_digit(CharT c, int base = 10)
-        {
-            assert(base >= 2 && base <= 36);
-            if (base <= 10) {
-                return c >= '0' && c <= '0' + (base - 1);
-            }
-            return is_digit(c, 10) || (c >= 'a' && c <= 'a' + (base - 1)) ||
-                   (c >= 'A' && c <= 'A' + (base - 1));
-        }
+        bool is_digit(basic_locale_ref<char> loc, char c, int base = 0);
+        bool is_digit(basic_locale_ref<wchar_t> loc, wchar_t c, int base = 0);
 
         template <typename IntT, typename CharT>
         SCN_CONSTEXPR14 IntT char_to_int(CharT c, int base)
         {
+            if (base == 0) {
+                // TODO: Localized 0-base conversion
+                base = 10;
+            }
+
             assert(base >= 2 && base <= 36);
-            assert(is_digit(c, base));
             if (base <= 10) {
                 assert(c <= '0' + (base - 1));
                 return static_cast<IntT>(c - '0');
@@ -343,5 +341,9 @@ namespace scn {
         }
     }  // namespace detail
 }  // namespace scn
+
+#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_UTIL_CPP)
+#include "util.cpp"
+#endif
 
 #endif  // SCN_UTIL_H

@@ -15,35 +15,5 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest.h>
 #include <scn/scn.h>
-
-TEST_CASE("general")
-{
-    std::string data{"42 3.14 foobar true"};
-    std::string copy = data;
-
-    int i{0};
-    double d{};
-    std::string s(6, '\0');
-    auto span = scn::make_span(&s[0], &s[0] + s.size());
-    bool b{};
-    auto ret = scn::scan(scn::make_stream(data.begin(), data.end()),
-                         "{} {} {} {}", i, d, span, b);
-
-    CHECK(data == copy);
-    CHECK(i == 42);
-    CHECK(d == doctest::Approx(3.14));
-    CHECK(s == "foobar");
-    CHECK(b);
-    CHECK(ret);
-
-#if 0
-    int j{};
-    ret = scn::input("{}", j);
-    
-    std::cout << j << '\n';
-    CHECK(ret);
-#endif
-}

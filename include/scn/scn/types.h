@@ -164,17 +164,20 @@ namespace scn {
         {
             ctx.parse_context().advance();
             const auto ch = *ctx.parse_context().begin();
-            if (ch == CharT('d') || ch == CharT('}')) {
+            if (ch == CharT('}')) {
+                base = 0;
+            }
+            else if (ch == CharT('d')) {
                 base = 10;
             }
             else if (ch == CharT('x')) {
                 base = 16;
             }
-            else if (ch == CharT('o')) {
-                base = 8;
-            }
             else if (ch == CharT('b')) {
                 base = 2;
+            }
+            else if (ch == CharT('o')) {
+                base = 8;
             }
             else {
                 return make_unexpected(error::invalid_format_string);
@@ -232,8 +235,8 @@ namespace scn {
                 if (*it == CharT('+')) {
                     return true;
                 }
-                if (detail::is_digit(*it, base)) {
-                    tmp = tmp * static_cast<T>(base) -
+                if (detail::is_digit(ctx.locale(), *it, base)) {
+                    tmp = tmp * static_cast<T>(base == 0 ? 10 : base) -
                           detail::char_to_int<T>(*it, base);
                     return true;
                 }
@@ -246,8 +249,8 @@ namespace scn {
             ++it;
 
             for (; it != buf.end(); ++it) {
-                if (detail::is_digit(*it, base)) {
-                    tmp = tmp * static_cast<T>(base) -
+                if (detail::is_digit(ctx.locale(), *it, base)) {
+                    tmp = tmp * static_cast<T>(base == 0 ? 10 : base) -
                           detail::char_to_int<T>(*it, base);
                 }
                 else {
@@ -263,7 +266,7 @@ namespace scn {
             return {};
         }
 
-        int base{10};
+        int base{0};
     };
 
     template <typename CharT, typename T>
@@ -302,7 +305,7 @@ namespace scn {
                     *it = tmp.value();
                     continue;
                 }
-                if (!detail::is_digit(tmp.value())) {
+                if (!detail::is_digit(ctx.locale(), tmp.value())) {
                     auto pb = ctx.stream().putback(tmp.value());
                     if (!pb) {
                         return pb;

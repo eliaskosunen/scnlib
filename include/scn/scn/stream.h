@@ -325,7 +325,7 @@ namespace scn {
 
     private:
         FILE* m_file;
-        size_t m_read{0};
+        long m_read{0};
     };
     template <>
     struct basic_cstdio_stream<wchar_t> {
@@ -374,7 +374,7 @@ namespace scn {
 
     private:
         FILE* m_file;
-        int64_t m_read{-1};
+        long m_read{0};
     };
 
     template <typename CharT = char>

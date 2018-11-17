@@ -106,7 +106,7 @@ namespace scn {
 
     private:
         source_type* m_is;
-        size_t m_read{0};
+        long m_read{0};
     };
 }  // namespace scn
 

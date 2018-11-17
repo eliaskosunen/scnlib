@@ -17,7 +17,7 @@
 
 #define SCN_LOCALE_CPP
 
-#include "scn/scn/locale.h"
+#include <scn/scn/locale.h>
 
 #include <locale>
 
@@ -37,6 +37,11 @@ namespace scn {
     bool basic_locale_ref<CharT>::is_space(CharT ch) const
     {
         return std::isspace(ch, detail::get_locale(*this));
+    }
+    template <typename CharT>
+    bool basic_locale_ref<CharT>::is_digit(CharT ch) const
+    {
+        return std::isdigit(ch, detail::get_locale(*this));
     }
     template <typename CharT>
     CharT basic_locale_ref<CharT>::decimal_point() const

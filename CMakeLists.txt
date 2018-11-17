@@ -19,7 +19,8 @@ if (SCN_HEADER_ONLY)
     target_compile_definitions(scn INTERFACE
         -DSCN_HEADER_ONLY=1)
 else ()
-    add_library(scn src/locale.cpp)
+    add_library(scn
+        src/locale.cpp src/util.cpp)
     target_include_directories(scn PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
