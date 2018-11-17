@@ -22,13 +22,13 @@
 
 namespace scn {
     template <typename CharT>
-    class locale_ref {
+    class basic_locale_ref {
     public:
         using char_type = CharT;
         using string_view_type = basic_string_view<char_type>;
 
-        locale_ref() = default;
-        locale_ref(const void* loc) : m_locale(loc) {}
+        basic_locale_ref() = default;
+        basic_locale_ref(const void* loc) : m_locale(loc) {}
 
         const void* get_ptr() const {
             return m_locale;

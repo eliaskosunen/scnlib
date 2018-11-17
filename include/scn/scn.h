@@ -61,7 +61,7 @@ namespace scn {
         using args_type = basic_arg<context_type>;
 
         auto args = make_args<context_type>(a...);
-        auto locale = locale_ref<typename Stream::char_type>(
+        auto locale = basic_locale_ref<typename Stream::char_type>(
             static_cast<const void*>(std::addressof(loc)));
         auto ctx = context_type(s, f);
         return vscan<Stream, context_type>(s, ctx, args);

@@ -4,3 +4,6 @@
 [submodule "include/scn/span-lite/span-lite"]
 	path = include/scn/span-lite/span-lite
 	url = https://github.com/martinmoene/span-lite
+[submodule "test/doctest"]
+	path = test/doctest
+	url = https://github.com/onqtam/doctest

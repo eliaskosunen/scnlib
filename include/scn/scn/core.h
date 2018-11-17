@@ -18,8 +18,8 @@
 #ifndef SCN_CORE_H
 #define SCN_CORE_H
 
-#include "expected-lite/expected.h"
-#include "span-lite/span.h"
+#include "../expected-lite/expected.h"
+#include "../span-lite/span.h"
 
 #include "locale.h"
 
@@ -32,7 +32,15 @@ namespace scn {
         unrecoverable_stream_error,
         stream_source_error,
         unrecoverable_stream_source_error,
+        putback_all_not_available
     };
+
+    inline bool is_recoverable_error(error e)
+    {
+        return e == error::unrecoverable_stream_error ||
+               e == error::unrecoverable_stream_source_error ||
+               e == error::putback_all_not_available;
+    }
 
     namespace detail {
         template <typename Context>
@@ -122,7 +130,7 @@ namespace scn {
         using stream_type = Stream;
         using char_type = typename stream_type::char_type;
         using parse_context_type = basic_parse_context<char_type>;
-        using locale_type = locale_ref<char_type>;
+        using locale_type = basic_locale_ref<char_type>;
 
         template <typename T>
         using value_scanner_type = basic_value_scanner<char_type, T>;

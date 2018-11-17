@@ -24,7 +24,7 @@
 namespace scn {
     namespace detail {
         template <typename CharT>
-        std::locale get_locale(locale_ref<CharT> ref)
+        std::locale get_locale(basic_locale_ref<CharT> ref)
         {
             if (ref.get_ptr()) {
                 return *static_cast<const std::locale*>(ref.get_ptr());
@@ -34,25 +34,25 @@ namespace scn {
     }  // namespace detail
 
     template <typename CharT>
-    bool locale_ref<CharT>::is_space(CharT ch) const
+    bool basic_locale_ref<CharT>::is_space(CharT ch) const
     {
         return std::isspace(ch, detail::get_locale(*this));
     }
     template <typename CharT>
-    CharT locale_ref<CharT>::decimal_point() const
+    CharT basic_locale_ref<CharT>::decimal_point() const
     {
         return std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
             .decimal_point();
     }
     template <typename CharT>
-    CharT locale_ref<CharT>::thousands_separator() const
+    CharT basic_locale_ref<CharT>::thousands_separator() const
     {
         return std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
             .thousands_sep();
     }
     template <typename CharT>
-    typename locale_ref<CharT>::string_view_type locale_ref<CharT>::truename()
-        const
+    typename basic_locale_ref<CharT>::string_view_type
+    basic_locale_ref<CharT>::truename() const
     {
         static auto str =
             std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
@@ -60,8 +60,8 @@ namespace scn {
         return string_view_type(str.data(), str.size());
     }
     template <typename CharT>
-    typename locale_ref<CharT>::string_view_type locale_ref<CharT>::falsename()
-        const
+    typename basic_locale_ref<CharT>::string_view_type
+    basic_locale_ref<CharT>::falsename() const
     {
         static auto str =
             std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
@@ -69,6 +69,6 @@ namespace scn {
         return string_view_type(str.data(), str.size());
     }
 
-    template class locale_ref<char>;
-    template class locale_ref<wchar_t>;
+    template class basic_locale_ref<char>;
+    template class basic_locale_ref<wchar_t>;
 }  // namespace scn

@@ -160,38 +160,115 @@ namespace scn {
     private:
         Iterator m_begin, m_end, m_next;
     };
+    template <typename Iterator>
+    struct basic_forward_iterator_stream {
+        using char_type = typename std::iterator_traits<Iterator>::value_type;
+
+        basic_forward_iterator_stream(Iterator begin, Iterator end)
+            : m_begin(begin), m_end(end)
+        {
+        }
+
+        expected<char_type, error> read_char()
+        {
+            if (m_last != -1) {
+                auto ch = static_cast<char_type>(m_last);
+                m_last = -1;
+                return ch;
+            }
+            if (m_begin == m_end) {
+                return make_unexpected(error::end_of_stream);
+            }
+            auto ch = *m_begin;
+            ++m_begin;
+            return ch;
+        }
+        expected<void, error> putback(char_type ch)
+        {
+            m_last = static_cast<int64_t>(ch);
+            // TODO: Check if a char has already been put back
+            return {};
+        }
+        expected<void, error> putback_all()
+        {
+            return make_unexpected(error::putback_all_not_available);
+        }
+
+    private:
+        Iterator m_begin, m_end;
+        int64_t m_last{-1};
+    };
 
     template <typename CharT>
-    scn::basic_static_container_stream<CharT, span<const CharT>> make_stream(
+    basic_static_container_stream<CharT, span<const CharT>> make_stream(
         span<const CharT> s)
     {
         return s;
     }
     template <typename CharT>
-    scn::basic_static_container_stream<CharT, std::basic_string<CharT>>
-    make_stream(const std::basic_string<CharT>& s)
+    basic_static_container_stream<CharT, std::basic_string<CharT>> make_stream(
+        const std::basic_string<CharT>& s)
     {
         return s;
     }
     template <typename CharT>
-    scn::basic_static_container_stream<CharT, std::vector<CharT>> make_stream(
+    basic_static_container_stream<CharT, std::vector<CharT>> make_stream(
         const std::vector<CharT>& s)
     {
         return s;
     }
     template <typename CharT, size_t N>
-    scn::basic_static_container_stream<CharT, std::array<CharT, N>> make_stream(
+    basic_static_container_stream<CharT, std::array<CharT, N>> make_stream(
         const std::array<CharT, N>& s)
     {
         return s;
     }
 
-    template <typename Iterator>
-    scn::basic_bidirectional_iterator_stream<Iterator> make_stream(
-        Iterator begin,
-        Iterator end)
+    namespace detail {
+        template <typename Iterator>
+        struct bidir_iterator_stream {
+            using iterator = Iterator;
+            using type = basic_bidirectional_iterator_stream<iterator>;
+
+            static type make_stream(iterator b, iterator e)
+            {
+                return {b, e};
+            }
+        };
+        template <typename Iterator>
+        struct fwd_iterator_stream {
+            using iterator = Iterator;
+            using type = basic_forward_iterator_stream<iterator>;
+
+            static type make_stream(iterator b, iterator e)
+            {
+                return {b, e};
+            }
+        };
+
+        template <typename Iterator, typename Tag>
+        struct iterator_stream;
+        template <typename Iterator>
+        struct iterator_stream<Iterator, std::forward_iterator_tag>
+            : public fwd_iterator_stream<Iterator> {
+        };
+        template <typename Iterator>
+        struct iterator_stream<Iterator, std::bidirectional_iterator_tag>
+            : public bidir_iterator_stream<Iterator> {
+        };
+        template <typename Iterator>
+        struct iterator_stream<Iterator, std::random_access_iterator_tag>
+            : public bidir_iterator_stream<Iterator> {
+        };
+    }  // namespace detail
+
+    template <typename Iterator,
+              typename StreamHelper = detail::iterator_stream<
+                  Iterator,
+                  typename std::iterator_traits<Iterator>::iterator_category>>
+    typename StreamHelper::type make_stream(Iterator begin, Iterator end)
     {
-        return {begin, end};
+        return StreamHelper::make_stream(begin, end);
     }
 }  // namespace scn
 

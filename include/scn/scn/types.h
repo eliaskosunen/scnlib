@@ -188,7 +188,8 @@ namespace scn {
         template <typename Context>
         expected<void, error> scan(T& val, Context& ctx)
         {
-            std::vector<CharT> buf(static_cast<size_t>(max_digits<T>()) + 1);
+            std::vector<CharT> buf(
+                static_cast<size_t>(detail::max_digits<T>()) + 1);
 
             // Copied from span<CharT>
             for (auto it = buf.begin(); it != buf.end(); ++it) {
@@ -231,9 +232,9 @@ namespace scn {
                 if (*it == CharT('+')) {
                     return true;
                 }
-                if (is_digit(*it, base)) {
-                    tmp =
-                        tmp * static_cast<T>(base) - char_to_int<T>(*it, base);
+                if (detail::is_digit(*it, base)) {
+                    tmp = tmp * static_cast<T>(base) -
+                          detail::char_to_int<T>(*it, base);
                     return true;
                 }
                 return make_unexpected(error::invalid_scanned_value);
@@ -245,9 +246,9 @@ namespace scn {
             ++it;
 
             for (; it != buf.end(); ++it) {
-                if (is_digit(*it, base)) {
-                    tmp =
-                        tmp * static_cast<T>(base) - char_to_int<T>(*it, base);
+                if (detail::is_digit(*it, base)) {
+                    tmp = tmp * static_cast<T>(base) -
+                          detail::char_to_int<T>(*it, base);
                 }
                 else {
                     break;
@@ -301,7 +302,7 @@ namespace scn {
                     *it = tmp.value();
                     continue;
                 }
-                if (!is_digit(tmp.value())) {
+                if (!detail::is_digit(tmp.value())) {
                     auto pb = ctx.stream().putback(tmp.value());
                     if (!pb) {
                         return pb;
@@ -316,7 +317,8 @@ namespace scn {
             }
 
             CharT* end = buf.data();
-            T tmp = str_to_floating<T, CharT>(buf.data(), &end, ctx.locale());
+            T tmp = detail::str_to_floating<T, CharT>(buf.data(), &end,
+                                                      ctx.locale());
             if (&*std::find(buf.begin(), buf.end(), 0) != end) {
                 return make_unexpected(error::invalid_scanned_value);
             }

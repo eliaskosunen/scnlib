@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2.3)
+cmake_minimum_required(VERSION 3.4)
 
 project(scn)
 
@@ -34,5 +34,4 @@ else ()
         -DSCN_HEADER_ONLY=0)
 endif ()
 
-add_executable(scn_test main.cpp)
-target_link_libraries(scn_test PUBLIC scn)
+add_subdirectory(test)
