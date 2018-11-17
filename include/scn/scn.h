@@ -19,7 +19,7 @@
 // derivative works:
 //     https://github.com/fmtlib/fmt
 //     https://fmtlib.net
-//     https://wg21.link/p6045
+//     https://wg21.link/p0645
 // fmtlib is licensed under the BSD 2-clause license.
 // Copyright (c) 2012-2018 Victor Zverovich
 
@@ -29,6 +29,7 @@
 #include "args.h"
 #include "core.h"
 #include "locale.h"
+#include "stream.h"
 #include "types.h"
 
 namespace scn {
@@ -65,6 +66,27 @@ namespace scn {
         auto ctx = context_type(s, f);
         return vscan<Stream, context_type>(s, ctx, args);
     }
+
+#if 0
+    template <typename Source,
+              typename CharT =
+                  decltype(make_stream(std::declval<const Source&>()), void()),
+              typename... Args>
+    expected<void, error> sscan(const Source& s,
+                                basic_string_view<CharT> f,
+                                Args&... a)
+    {
+        auto stream = make_stream(s);
+
+        using stream_type = decltype(stream);
+        using context_type = basic_context<stream_type>;
+        using args_type = basic_arg<context_type>;
+
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(s, f);
+        return vscan<stream_type, context_type>(s, ctx, args);
+    }
+#endif
 }  // namespace scn
 
 #endif  // SCN_SCN_H

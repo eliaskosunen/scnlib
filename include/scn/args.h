@@ -98,7 +98,10 @@ namespace scn {
             for (auto& a : m_args) {
                 auto ret = a.visit(ctx);
                 if (!ret) {
-                    ctx.stream().putback_all();
+                    auto pb = ctx.stream().putback_all();
+                    if (!pb) {
+                        return pb;
+                    }
                     return ret;
                 }
                 ctx.parse_context().advance();

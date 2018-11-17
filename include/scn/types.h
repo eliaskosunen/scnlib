@@ -70,7 +70,10 @@ namespace scn {
                 auto ch = ctx.stream().read_char();
                 if (!ch) {
                     for (auto i = buf.begin(); i != it - 1; ++i) {
-                        ctx.stream().putback(*i);
+                        auto pb = ctx.stream().putback(*i);
+                        if (!pb) {
+                            return pb;
+                        }
                     }
                     return make_unexpected(ch.error());
                 }
@@ -103,7 +106,12 @@ namespace scn {
                 val = true;
                 return {};
             }
-            ctx.stream().putback(tmp.value());
+            {
+                auto pb = ctx.stream().putback(tmp.value());
+                if (!pb) {
+                    return pb;
+                }
+            }
 
             const auto max_len = std::max(ctx.locale().truename().size(),
                                           ctx.locale().falsename().size());
@@ -119,7 +127,10 @@ namespace scn {
                         break;
                     }
                     for (auto i = buf.begin(); i != it - 1; ++i) {
-                        ctx.stream().putback(*i);
+                        auto pb = ctx.stream().putback(*i);
+                        if (!pb) {
+                            return pb;
+                        }
                     }
                     return make_unexpected(ch.error());
                 }
@@ -187,7 +198,10 @@ namespace scn {
                         break;
                     }
                     for (auto i = buf.begin(); i != it - 1; ++i) {
-                        ctx.stream().putback(*i);
+                        auto pb = ctx.stream().putback(*i);
+                        if (!pb) {
+                            return pb;
+                        }
                     }
                     return make_unexpected(ch.error());
                 }
@@ -268,13 +282,19 @@ namespace scn {
                 auto tmp = ctx.stream().read_char();
                 if (!tmp) {
                     for (auto i = buf.begin(); i != it - 1; ++i) {
-                        ctx.stream().putback(*i);
+                        auto pb = ctx.stream().putback(*i);
+                        if (!pb) {
+                            return pb;
+                        }
                     }
                     return make_unexpected(tmp.error());
                 }
                 if (tmp.value() == CharT('.')) {
                     if (point) {
-                        ctx.stream().putback(tmp.value());
+                        auto pb = ctx.stream().putback(tmp.value());
+                        if (!pb) {
+                            return pb;
+                        }
                         break;
                     }
                     point = true;
@@ -282,7 +302,10 @@ namespace scn {
                     continue;
                 }
                 if (!is_digit(tmp.value())) {
-                    ctx.stream().putback(tmp.value());
+                    auto pb = ctx.stream().putback(tmp.value());
+                    if (!pb) {
+                        return pb;
+                    }
                     break;
                 }
                 *it = tmp.value();

@@ -25,9 +25,13 @@
 
 namespace scn {
     enum class error {
-        end_of_stream = 1,
+        good,
+        end_of_stream,
         invalid_format_string,
-        invalid_scanned_value
+        invalid_scanned_value,
+        unrecoverable_stream_error,
+        stream_source_error,
+        unrecoverable_stream_source_error,
     };
 
     namespace detail {
@@ -49,7 +53,10 @@ namespace scn {
                 return make_unexpected(ch.error());
             }
             if (!ctx.locale().is_space(ch.value())) {
-                ctx.stream().putback(ch.value());
+                auto pb = ctx.stream().putback(ch.value());
+                if (!pb) {
+                    return pb;
+                }
                 break;
             }
         }
@@ -104,105 +111,6 @@ namespace scn {
 
     private:
         basic_string_view<char_type> m_str;
-    };
-
-    template <typename Char, typename Source, typename Enable = void>
-    class basic_stream;
-
-    template <typename Char, typename Container>
-    class basic_stream<Char, Container> {
-    public:
-        using char_type = Char;
-        using source_type = Container;
-        using iterator = typename source_type::const_iterator;
-
-        basic_stream(const source_type& s)
-            : m_source(std::addressof(s)), m_next(begin())
-        {
-        }
-
-        expected<char_type, error> read_char()
-        {
-            if (m_next == end()) {
-                return make_unexpected(error::end_of_stream);
-            }
-            auto ch = *m_next;
-            ++m_next;
-            return ch;
-        }
-        bool putback(char_type)
-        {
-            --m_next;
-            // TODO: Check underflow
-            // TODO: Check if given char is correct
-            return true;
-        }
-        bool putback_all()
-        {
-            m_next = begin();
-            return true;
-        }
-
-    private:
-        iterator begin() const
-        {
-            using std::begin;
-            return begin(*m_source);
-        }
-        iterator end() const
-        {
-            using std::end;
-            return end(*m_source);
-        }
-
-        const source_type* m_source;
-        iterator m_next{};
-    };
-    template <typename Char>
-    class basic_stream<Char, span<const Char>> {
-    public:
-        using char_type = Char;
-        using source_type = span<const Char>;
-        using iterator = typename source_type::const_iterator;
-
-        basic_stream(source_type s) : m_source(s), m_next(begin()) {}
-
-        expected<char_type, error> read_char()
-        {
-            if (m_next == end()) {
-                return make_unexpected(error::end_of_stream);
-            }
-            auto ch = *m_next;
-            ++m_next;
-            return ch;
-        }
-        bool putback(char_type)
-        {
-            --m_next;
-            // TODO: Check underflow
-            // TODO: Check if given char is correct
-            return true;
-        }
-        bool putback_all()
-        {
-            m_next = begin();
-            return true;
-        }
-
-    private:
-        iterator begin()
-        {
-            using std::begin;
-            return begin(m_source);
-        }
-        iterator end()
-        {
-            using std::end;
-            return end(m_source);
-        }
-
-        source_type m_source;
-        iterator m_next{};
     };
 
     template <typename CharT, typename T, typename Enable = void>
