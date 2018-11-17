@@ -67,6 +67,31 @@ namespace scn {
         return vscan<Stream, context_type>(s, ctx, args);
     }
 
+    template <typename... Args>
+    expected<void, error> input(string_view f, Args&... a)
+    {
+        using stream_type = basic_cstdio_stream<char>;
+        using context_type = basic_context<stream_type>;
+        using args_type = basic_arg<context_type>;
+
+        auto s = stream_type(stdin);
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(s, f);
+        return vscan<stream_type, context_type>(s, ctx, args);
+    }
+    template <typename... Args>
+    expected<void, error> winput(wstring_view f, Args&... a)
+    {
+        using stream_type = basic_cstdio_stream<wchar_t>;
+        using context_type = basic_context<stream_type>;
+        using args_type = basic_arg<context_type>;
+
+        auto s = stream_type(stdin);
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(s, f);
+        return vscan<stream_type, context_type>(s, ctx, args);
+    }
+
 #if 0
     template <typename Source,
               typename CharT =

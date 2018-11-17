@@ -4,11 +4,11 @@
 
 The contents of this library are heavily influenced by fmtlib and its derivative works.
 
-https://github.com/fmtlib/fmt
-https://fmtlib.net
+https://github.com/fmtlib/fmt  
+https://fmtlib.net  
 https://wg21.link/p0645
 
-fmtlib is licensed under the BSD 2-clause license.
+fmtlib is licensed under the BSD 2-clause license.  
 Copyright (c) 2012-2018 Victor Zverovich
 
 ## License

@@ -21,6 +21,7 @@
 #include "string_view.h"
 
 #include <array>
+#include <cstdio>
 #include <vector>
 
 namespace scn {
@@ -76,6 +77,26 @@ namespace scn {
         const source_type* m_source;
         iterator m_next{};
     };
+
+    template <typename CharT>
+    basic_static_container_stream<CharT, std::basic_string<CharT>> make_stream(
+        const std::basic_string<CharT>& s)
+    {
+        return s;
+    }
+    template <typename CharT>
+    basic_static_container_stream<CharT, std::vector<CharT>> make_stream(
+        const std::vector<CharT>& s)
+    {
+        return s;
+    }
+    template <typename CharT, size_t N>
+    basic_static_container_stream<CharT, std::array<CharT, N>> make_stream(
+        const std::array<CharT, N>& s)
+    {
+        return s;
+    }
+
     template <typename Char>
     class basic_static_container_stream<Char, span<const Char>> {
     public:
@@ -125,6 +146,13 @@ namespace scn {
         source_type m_source;
         iterator m_next{};
     };
+
+    template <typename CharT>
+    basic_static_container_stream<CharT, span<const CharT>> make_stream(
+        span<const CharT> s)
+    {
+        return s;
+    }
 
     template <typename Iterator>
     struct basic_bidirectional_iterator_stream {
@@ -199,31 +227,6 @@ namespace scn {
         int64_t m_last{-1};
     };
 
-    template <typename CharT>
-    basic_static_container_stream<CharT, span<const CharT>> make_stream(
-        span<const CharT> s)
-    {
-        return s;
-    }
-    template <typename CharT>
-    basic_static_container_stream<CharT, std::basic_string<CharT>> make_stream(
-        const std::basic_string<CharT>& s)
-    {
-        return s;
-    }
-    template <typename CharT>
-    basic_static_container_stream<CharT, std::vector<CharT>> make_stream(
-        const std::vector<CharT>& s)
-    {
-        return s;
-    }
-    template <typename CharT, size_t N>
-    basic_static_container_stream<CharT, std::array<CharT, N>> make_stream(
-        const std::array<CharT, N>& s)
-    {
-        return s;
-    }
-
     namespace detail {
         template <typename Iterator>
         struct bidir_iterator_stream {
@@ -269,6 +272,123 @@ namespace scn {
     typename StreamHelper::type make_stream(Iterator begin, Iterator end)
     {
         return StreamHelper::make_stream(begin, end);
+    }
+
+    template <typename CharT>
+    struct basic_cstdio_stream;
+
+    template <>
+    struct basic_cstdio_stream<char> {
+        using char_type = char;
+
+        basic_cstdio_stream(FILE* f) : m_file(f) {}
+
+        expected<char_type, error> read_char()
+        {
+            auto ret = std::fgetc(m_file);
+            if (ret == EOF) {
+                if (std::ferror(m_file) != 0) {
+                    return make_unexpected(error::stream_source_error);
+                }
+                if (std::feof(m_file) != 0) {
+                    return make_unexpected(error::end_of_stream);
+                }
+                return make_unexpected(
+                    error::unrecoverable_stream_source_error);
+            }
+            ++m_read;
+            return static_cast<char_type>(ret);
+        }
+        expected<void, error> putback(char_type ch)
+        {
+            assert(m_read > 0);
+            if (std::ungetc(ch, m_file) == EOF) {
+                return make_unexpected(
+                    error::unrecoverable_stream_source_error);
+            }
+            --m_read;
+            return {};
+        }
+        expected<void, error> putback_all()
+        {
+            assert(m_read >= 0);
+            if (m_read == 0) {
+                return {};
+            }
+            if (std::fseek(m_file, -m_read, SEEK_CUR) != 0) {
+                return make_unexpected(
+                    error::unrecoverable_stream_source_error);
+            }
+            m_read = 0;
+            return {};
+        }
+
+    private:
+        FILE* m_file;
+        size_t m_read{0};
+    };
+    template <>
+    struct basic_cstdio_stream<wchar_t> {
+        using char_type = wchar_t;
+
+        basic_cstdio_stream(FILE* f) : m_file(f) {}
+
+        expected<char_type, error> read_char()
+        {
+            auto ret = std::fgetwc(m_file);
+            if (ret == WEOF) {
+                if (std::ferror(m_file) != 0) {
+                    return make_unexpected(error::stream_source_error);
+                }
+                if (std::feof(m_file) != 0) {
+                    return make_unexpected(error::end_of_stream);
+                }
+                return make_unexpected(
+                    error::unrecoverable_stream_source_error);
+            }
+            ++m_read;
+            return static_cast<char_type>(ret);
+        }
+        expected<void, error> putback(char_type ch)
+        {
+            assert(m_read > 0);
+            if (std::ungetwc(ch, m_file) == WEOF) {
+                return make_unexpected(
+                    error::unrecoverable_stream_source_error);
+            }
+            --m_read;
+            return {};
+        }
+        expected<void, error> putback_all()
+        {
+            assert(m_read >= 0);
+            if (m_read == 0) {
+                return {};
+            }
+            if (std::fseek(m_file, -m_read, SEEK_CUR) != 0) {
+                return make_unexpected(
+                    error::unrecoverable_stream_source_error);
+            }
+            return {};
+        }
+
+    private:
+        FILE* m_file;
+        int64_t m_read{-1};
+    };
+
+    template <typename CharT = char>
+    basic_cstdio_stream<CharT> make_stream(FILE* s)
+    {
+        return s;
+    }
+    inline basic_cstdio_stream<char> make_narrow_stream(FILE* s)
+    {
+        return s;
+    }
+    inline basic_cstdio_stream<wchar_t> make_wide_stream(FILE* s)
+    {
+        return s;
     }
 }  // namespace scn
 

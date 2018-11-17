@@ -62,24 +62,19 @@ namespace scn {
         }
         expected<void, error> putback(char_type ch)
         {
+            assert(m_read > 0);
             try {
                 m_is->putback(ch);
-                if (m_is->bad()) {
+                if (m_is->fail()) {
                     return make_unexpected(
                         error::unrecoverable_stream_source_error);
-                }
-                if (m_is->fail()) {
-                    return make_unexpected(error::stream_source_error);
                 }
                 --m_read;
                 return {};
             }
             catch (const std::ios_base::failure& e) {
-                if (m_is->bad()) {
                     return make_unexpected(
                         error::unrecoverable_stream_source_error);
-                }
-                return make_unexpected(error::stream_source_error);
             }
         }
         expected<void, error> putback_all()
@@ -97,6 +92,7 @@ namespace scn {
                 if (m_is->fail()) {
                     return make_unexpected(error::stream_source_error);
                 }
+                m_read = 0;
                 return {};
             }
             catch (const std::ios_base::failure& e) {
