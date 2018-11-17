@@ -45,7 +45,7 @@ namespace scn {
             if (!err) {
                 return err;
             }
-            err = parse_whitespace(ctx);
+            err = skip_stream_whitespace(ctx);
             if (!err) {
                 return err;
             }
@@ -102,6 +102,7 @@ namespace scn {
                     return ret;
                 }
                 ctx.parse_context().advance();
+                parse_whitespace(ctx);
             }
             return {};
         }

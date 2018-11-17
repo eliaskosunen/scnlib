@@ -74,7 +74,7 @@ namespace scn {
                     }
                     return make_unexpected(ch.error());
                 }
-                if (detail::contains(ch.value(), ctx.locale().space)) {
+                if (ctx.locale().is_space(ch.value())) {
                     break;
                 }
                 *it = ch.value();
@@ -105,8 +105,8 @@ namespace scn {
             }
             ctx.stream().putback(tmp.value());
 
-            const auto max_len = std::max(ctx.locale().true_str.size(),
-                                          ctx.locale().false_str.size());
+            const auto max_len = std::max(ctx.locale().truename().size(),
+                                          ctx.locale().falsename().size());
             if (max_len < 1) {
                 return make_unexpected(error::invalid_scanned_value);
             }
@@ -126,12 +126,12 @@ namespace scn {
                 *it = ch.value();
 
                 if (std::equal(buf.begin(), it + 1,
-                               ctx.locale().false_str.begin())) {
+                               ctx.locale().falsename().begin())) {
                     val = false;
                     return {};
                 }
                 if (std::equal(buf.begin(), it + 1,
-                               ctx.locale().true_str.begin())) {
+                               ctx.locale().truename().begin())) {
                     val = true;
                     return {};
                 }
@@ -180,9 +180,6 @@ namespace scn {
             std::vector<CharT> buf(static_cast<size_t>(max_digits<T>()) + 1);
 
             // Copied from span<CharT>
-            auto in_span = [](CharT ch, span<const CharT> s) {
-                return std::find(s.begin(), s.end(), ch) != s.end();
-            };
             for (auto it = buf.begin(); it != buf.end(); ++it) {
                 auto ch = ctx.stream().read_char();
                 if (!ch) {
@@ -194,8 +191,11 @@ namespace scn {
                     }
                     return make_unexpected(ch.error());
                 }
-                if (in_span(ch.value(), ctx.locale().space)) {
+                if (ctx.locale().is_space(ch.value())) {
                     break;
+                }
+                if (ctx.locale().thousands_separator() == ch.value()) {
+                    continue;
                 }
                 *it = ch.value();
             }
@@ -293,7 +293,7 @@ namespace scn {
             }
 
             CharT* end = buf.data();
-            T tmp = str_to_floating<T, CharT>(buf.data(), &end);
+            T tmp = str_to_floating<T, CharT>(buf.data(), &end, ctx.locale());
             if (&*std::find(buf.begin(), buf.end(), 0) != end) {
                 return make_unexpected(error::invalid_scanned_value);
             }

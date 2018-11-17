@@ -20,7 +20,10 @@
 
 #include "config.h"
 
+#include "locale.h"
+
 #include <array>
+#include <cctype>
 #include <limits>
 #include <type_traits>
 
@@ -153,7 +156,7 @@ namespace scn {
      * express or implied warranty.
      */
     template <typename FloatingT, typename CharT>
-    FloatingT str_to_floating(const CharT* str, CharT** end)
+    FloatingT str_to_floating(const CharT* str, CharT** end, locale_ref<CharT> loc)
     {
         static int maxExponent = detail::max_exponent<FloatingT>();
         static auto powersOf10 = detail::powers_of_10<FloatingT>();
@@ -184,7 +187,7 @@ namespace scn {
          */
 
         p = str;
-        while (std::isspace(*p)) {
+        while (loc.is_space(*p)) {
             p += 1;
         }
         if (*p == '-') {

@@ -22,30 +22,35 @@
 
 namespace scn {
     template <typename CharT>
-    struct basic_locale {
-        basic_string_view<CharT> space;
-        basic_string_view<CharT> thousand_sep;
-        basic_string_view<CharT> decimal_sep;
-        basic_string_view<CharT> true_str;
-        basic_string_view<CharT> false_str;
-    };
+    class locale_ref {
+    public:
+        using char_type = CharT;
+        using string_view_type = basic_string_view<char_type>;
 
-    template <typename CharT>
-    basic_locale<CharT> classic_locale();
-    template <>
-    inline basic_locale<char> classic_locale()
-    {
-        static basic_locale<char> locale{" \r\n\t\v", " ,", ".", "true",
-                                         "false"};
-        return locale;
-    }
-    template <>
-    inline basic_locale<wchar_t> classic_locale()
-    {
-        static basic_locale<wchar_t> locale{L" \r\n\t\v", L" ,", L".", L"true",
-                                            L"false"};
-        return locale;
-    }
+        locale_ref() = default;
+        locale_ref(const void* loc) : m_locale(loc) {}
+
+        const void* get_ptr() const {
+            return m_locale;
+        }
+
+        bool is_space(char_type) const;
+
+        char_type decimal_point() const;
+        char_type thousands_separator() const;
+
+        string_view_type truename() const;
+        string_view_type falsename() const;
+
+    private:
+        const void* m_locale{nullptr};
+
+        friend class locale;
+    };
 }  // namespace scn
+
+#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_LOCALE_CPP)
+#include "locale.cpp"
+#endif
 
 #endif  // SCN_LOCALE_H

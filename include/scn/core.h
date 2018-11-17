@@ -41,19 +41,29 @@ namespace scn {
     }  // namespace detail
 
     template <typename Context>
+    expected<void, error> skip_stream_whitespace(Context& ctx)
+    {
+        while (true) {
+            auto ch = ctx.stream().read_char();
+            if (!ch) {
+                return make_unexpected(ch.error());
+            }
+            if (!ctx.locale().is_space(ch.value())) {
+                ctx.stream().putback(ch.value());
+                break;
+            }
+        }
+        return {};
+    }
+    template <typename Context>
     expected<void, error> parse_whitespace(Context& ctx)
     {
         bool found = false;
-        while (detail::contains(*ctx.parse_context().begin(),
-                                ctx.locale().space)) {
+        while (ctx.locale().is_space(*ctx.parse_context().begin())) {
             if (!found) {
-                auto next = ctx.stream().read_char();
-                if (!next) {
-                    return make_unexpected(next.error());
-                }
-                if (detail::contains(next.value(), ctx.locale().space)) {
-                    ctx.stream().putback(next.value());
-                    found = true;
+                auto ret = skip_stream_whitespace(ctx);
+                if (!ret) {
+                    return ret;
                 }
             }
             ctx.parse_context().advance();
@@ -204,17 +214,17 @@ namespace scn {
         using stream_type = Stream;
         using char_type = typename stream_type::char_type;
         using parse_context_type = basic_parse_context<char_type>;
-        using locale_type = basic_locale<char_type>;
+        using locale_type = locale_ref<char_type>;
 
         template <typename T>
         using value_scanner_type = basic_value_scanner<char_type, T>;
 
         basic_context(stream_type s,
                       basic_string_view<char_type> f,
-                      locale_type locale)
+                      locale_type locale = locale_type())
             : m_stream(std::move(s)),
               m_parse_ctx(std::move(f)),
-              m_locale(std::move(locale))
+              m_locale(locale)
         {
         }
 
@@ -226,7 +236,7 @@ namespace scn {
         {
             return m_stream;
         }
-        const locale_type& locale() const
+        locale_type locale() const
         {
             return m_locale;
         }

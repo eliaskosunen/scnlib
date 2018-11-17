@@ -33,13 +33,11 @@
 
 namespace scn {
     template <typename Stream, typename Context>
-    expected<void, error> vscan(Stream s,
-                                basic_string_view<typename Stream::char_type> f,
-                                basic_args<Context> a)
+    expected<void, error> vscan(Stream s, Context ctx, basic_args<Context> a)
     {
-        auto ctx = Context(s, f, classic_locale<typename Stream::char_type>());
         return a.visit(ctx);
     }
+
     template <typename Stream, typename... Args>
     expected<void, error> scan(Stream s,
                                basic_string_view<typename Stream::char_type> f,
@@ -48,7 +46,24 @@ namespace scn {
         using context_type = basic_context<Stream>;
         using args_type = basic_arg<context_type>;
 
-        return vscan<Stream, context_type>(s, f, make_args<context_type>(a...));
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(s, f);
+        return vscan<Stream, context_type>(s, ctx, args);
+    }
+    template <typename Locale, typename Stream, typename... Args>
+    expected<void, error> scan(const Locale& loc,
+                               Stream s,
+                               basic_string_view<typename Stream::char_type> f,
+                               Args&... a)
+    {
+        using context_type = basic_context<Stream>;
+        using args_type = basic_arg<context_type>;
+
+        auto args = make_args<context_type>(a...);
+        auto locale = locale_ref<typename Stream::char_type>(
+            static_cast<const void*>(std::addressof(loc)));
+        auto ctx = context_type(s, f);
+        return vscan<Stream, context_type>(s, ctx, args);
     }
 }  // namespace scn
 
