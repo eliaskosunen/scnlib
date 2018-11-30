@@ -21,13 +21,17 @@
 
 namespace scn {
     namespace detail {
-        SCN_FUNC bool is_digit(basic_locale_ref<char> loc, char c, int base)
+        SCN_FUNC bool is_digit(basic_locale_ref<char> loc,
+                               char c,
+                               int base,
+                               bool localized)
         {
             switch (base) {
-                case 0:
-                    return loc.is_digit(c);
                 case 10:
-                    return std::isdigit(static_cast<unsigned char>(c)) != 0;
+                    return localized
+                               ? loc.is_digit(c)
+                               : std::isdigit(static_cast<unsigned char>(c)) !=
+                                     0;
                 case 16:
                     return std::isxdigit(static_cast<unsigned char>(c)) != 0;
                 case 2:
@@ -41,13 +45,12 @@ namespace scn {
         }
         SCN_FUNC bool is_digit(basic_locale_ref<wchar_t> loc,
                                wchar_t c,
-                               int base)
+                               int base,
+                               bool localized)
         {
             switch (base) {
-                case 0:
-                    return loc.is_digit(c);
                 case 10:
-                    return std::iswdigit(c) != 0;
+                    return localized ? loc.is_digit(c) : std::iswdigit(c) != 0;
                 case 16:
                     return std::iswxdigit(c) != 0;
                 case 2:

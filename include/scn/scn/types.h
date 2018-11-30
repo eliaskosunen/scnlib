@@ -165,7 +165,8 @@ namespace scn {
             ctx.parse_context().advance();
             const auto ch = *ctx.parse_context().begin();
             if (ch == CharT('}')) {
-                base = 0;
+                base = 10;
+                localized = true;
             }
             else if (ch == CharT('d')) {
                 base = 10;
@@ -235,9 +236,9 @@ namespace scn {
                 if (*it == CharT('+')) {
                     return true;
                 }
-                if (detail::is_digit(ctx.locale(), *it, base)) {
-                    tmp = tmp * static_cast<T>(base == 0 ? 10 : base) -
-                          detail::char_to_int<T>(*it, base);
+                if (detail::is_digit(ctx.locale(), *it, base, localized)) {
+                    tmp = tmp * static_cast<T>(base) -
+                          detail::char_to_int<T>(*it, base, localized);
                     return true;
                 }
                 return make_unexpected(error::invalid_scanned_value);
@@ -249,9 +250,9 @@ namespace scn {
             ++it;
 
             for (; it != buf.end(); ++it) {
-                if (detail::is_digit(ctx.locale(), *it, base)) {
-                    tmp = tmp * static_cast<T>(base == 0 ? 10 : base) -
-                          detail::char_to_int<T>(*it, base);
+                if (detail::is_digit(ctx.locale(), *it, base, localized)) {
+                    tmp = tmp * static_cast<T>(base) -
+                          detail::char_to_int<T>(*it, base, localized);
                 }
                 else {
                     break;
@@ -259,14 +260,22 @@ namespace scn {
             }
 
             if (sign) {
+#if SCN_MSVC
+#pragma warning(push)
+#pragma warning(disable : 4146)
+#endif
                 tmp = -tmp;
+#if SCN_MSVC
+#pragma warning(pop)
+#endif
             }
 
             val = tmp;
             return {};
         }
 
-        int base{0};
+        int base{10};
+        bool localized{false};
     };
 
     template <typename CharT, typename T>
@@ -305,7 +314,7 @@ namespace scn {
                     *it = tmp.value();
                     continue;
                 }
-                if (!detail::is_digit(ctx.locale(), tmp.value())) {
+                if (!detail::is_digit(ctx.locale(), tmp.value(), 10, false)) {
                     auto pb = ctx.stream().putback(tmp.value());
                     if (!pb) {
                         return pb;

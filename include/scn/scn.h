@@ -33,14 +33,14 @@
 #include "scn/types.h"
 
 namespace scn {
-    template <typename Stream, typename Context>
-    expected<void, error> vscan(Stream s, Context ctx, basic_args<Context> a)
+    template <typename Context>
+    expected<void, error> vscan(Context ctx, basic_args<Context> a)
     {
         return a.visit(ctx);
     }
 
     template <typename Stream, typename... Args>
-    expected<void, error> scan(Stream s,
+    expected<void, error> scan(Stream& s,
                                basic_string_view<typename Stream::char_type> f,
                                Args&... a)
     {
@@ -49,11 +49,11 @@ namespace scn {
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, f);
-        return vscan<Stream, context_type>(s, ctx, args);
+        return vscan<context_type>(ctx, args);
     }
     template <typename Locale, typename Stream, typename... Args>
     expected<void, error> scan(const Locale& loc,
-                               Stream s,
+                               Stream& s,
                                basic_string_view<typename Stream::char_type> f,
                                Args&... a)
     {
@@ -64,7 +64,7 @@ namespace scn {
         auto locale = basic_locale_ref<typename Stream::char_type>(
             static_cast<const void*>(std::addressof(loc)));
         auto ctx = context_type(s, f);
-        return vscan<Stream, context_type>(s, ctx, args);
+        return vscan<context_type>(ctx, args);
     }
 
     template <typename... Args>

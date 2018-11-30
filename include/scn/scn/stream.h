@@ -36,7 +36,9 @@ namespace scn {
         using iterator = typename source_type::const_iterator;
 
         basic_static_container_stream(const source_type& s)
-            : m_source(std::addressof(s)), m_next(begin())
+            : m_source(std::addressof(s)),
+              m_begin(m_source->begin()),
+              m_next(begin())
         {
         }
 
@@ -56,7 +58,13 @@ namespace scn {
             // TODO: Check if given char is correct
             return {};
         }
-        expected<void, error> putback_all()
+
+        expected<void, error> set_roll_back()
+        {
+            m_begin = m_next;
+            return {};
+        }
+        expected<void, error> roll_back()
         {
             m_next = begin();
             return {};
@@ -65,8 +73,7 @@ namespace scn {
     private:
         iterator begin() const
         {
-            using std::begin;
-            return begin(*m_source);
+            return m_begin;
         }
         iterator end() const
         {
@@ -75,7 +82,7 @@ namespace scn {
         }
 
         const source_type* m_source;
-        iterator m_next{};
+        iterator m_begin, m_next{};
     };
 
     template <typename CharT>
@@ -105,7 +112,7 @@ namespace scn {
         using iterator = typename source_type::const_iterator;
 
         basic_static_container_stream(source_type s)
-            : m_source(s), m_next(begin())
+            : m_source(s), m_begin(m_source.begin()), m_next(begin())
         {
         }
 
@@ -125,7 +132,13 @@ namespace scn {
             // TODO: Check if given char is correct
             return {};
         }
-        expected<void, error> putback_all()
+
+        expected<void, error> set_roll_back()
+        {
+            m_begin = m_next;
+            return {};
+        }
+        expected<void, error> roll_back()
         {
             m_next = begin();
             return {};
@@ -134,8 +147,7 @@ namespace scn {
     private:
         iterator begin()
         {
-            using std::begin;
-            return begin(m_source);
+            return m_begin;
         }
         iterator end()
         {
@@ -144,7 +156,7 @@ namespace scn {
         }
 
         source_type m_source;
-        iterator m_next{};
+        iterator m_begin{}, m_next{};
     };
 
     template <typename CharT>
@@ -179,7 +191,13 @@ namespace scn {
             // TODO: Check if given char is correct
             return {};
         }
-        expected<void, error> putback_all()
+
+        expected<void, error> set_roll_back()
+        {
+            m_begin = m_next;
+            return {};
+        }
+        expected<void, error> roll_back()
         {
             m_next = m_begin;
             return {};
@@ -199,10 +217,10 @@ namespace scn {
 
         expected<char_type, error> read_char()
         {
-            if (m_last != -1) {
-                auto ch = static_cast<char_type>(m_last);
-                m_last = -1;
-                return ch;
+            if (m_rollback.size() > 0) {
+                auto top = m_rollback.back();
+                m_rollback.pop_back();
+                return top;
             }
             if (m_begin == m_end) {
                 return make_unexpected(error::end_of_stream);
@@ -213,18 +231,24 @@ namespace scn {
         }
         expected<void, error> putback(char_type ch)
         {
-            m_last = static_cast<int64_t>(ch);
-            // TODO: Check if a char has already been put back
+            m_rollback.push_back(ch);
             return {};
         }
-        expected<void, error> putback_all()
+
+        expected<void, error> set_roll_back()
         {
-            return make_unexpected(error::putback_all_not_available);
+            m_rollback.clear();
+            return {};
+        }
+        expected<void, error> roll_back()
+        {
+            return {};
         }
 
     private:
         Iterator m_begin, m_end;
-        int64_t m_last{-1};
+        // string for SSO
+        std::basic_string<char_type> m_rollback;
     };
 
     namespace detail {
@@ -309,7 +333,13 @@ namespace scn {
             --m_read;
             return {};
         }
-        expected<void, error> putback_all()
+
+        expected<void, error> set_roll_back()
+        {
+            m_read = 0;
+            return {};
+        }
+        expected<void, error> roll_back()
         {
             assert(m_read >= 0);
             if (m_read == 0) {
@@ -359,7 +389,13 @@ namespace scn {
             --m_read;
             return {};
         }
-        expected<void, error> putback_all()
+
+        expected<void, error> set_roll_back()
+        {
+            m_read = 0;
+            return {};
+        }
+        expected<void, error> roll_back()
         {
             assert(m_read >= 0);
             if (m_read == 0) {

@@ -45,17 +45,19 @@ namespace scn {
             return digits + (std::is_signed<Integral>::value ? 1 : 0);
         }
 
-        bool is_digit(basic_locale_ref<char> loc, char c, int base = 0);
-        bool is_digit(basic_locale_ref<wchar_t> loc, wchar_t c, int base = 0);
+        bool is_digit(basic_locale_ref<char> loc,
+                      char c,
+                      int base,
+                      bool localized);
+        bool is_digit(basic_locale_ref<wchar_t> loc,
+                      wchar_t c,
+                      int base,
+                      bool localized);
 
         template <typename IntT, typename CharT>
-        SCN_CONSTEXPR14 IntT char_to_int(CharT c, int base)
+        SCN_CONSTEXPR14 IntT char_to_int(CharT c, int base, bool localized)
         {
-            if (base == 0) {
-                // TODO: Localized 0-base conversion
-                base = 10;
-            }
-
+            // bool handle localized digits
             assert(base >= 2 && base <= 36);
             if (base <= 10) {
                 assert(c <= '0' + (base - 1));
@@ -67,8 +69,7 @@ namespace scn {
             if (c >= 'a' && c <= 'z') {
                 return 10 + static_cast<IntT>(c - 'a');
             }
-            auto ret = 10 + static_cast<IntT>(c - 'A');
-            return ret;
+            return 10 + static_cast<IntT>(c - 'A');
         }
 
         template <typename T>

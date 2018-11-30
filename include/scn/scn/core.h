@@ -31,15 +31,13 @@ namespace scn {
         invalid_scanned_value,
         unrecoverable_stream_error,
         stream_source_error,
-        unrecoverable_stream_source_error,
-        putback_all_not_available
+        unrecoverable_stream_source_error
     };
 
     inline bool is_recoverable_error(error e)
     {
         return e == error::unrecoverable_stream_error ||
-               e == error::unrecoverable_stream_source_error ||
-               e == error::putback_all_not_available;
+               e == error::unrecoverable_stream_source_error;
     }
 
     namespace detail {
@@ -135,10 +133,10 @@ namespace scn {
         template <typename T>
         using value_scanner_type = basic_value_scanner<char_type, T>;
 
-        basic_context(stream_type s,
+        basic_context(stream_type& s,
                       basic_string_view<char_type> f,
                       locale_type locale = locale_type())
-            : m_stream(std::move(s)),
+            : m_stream(std::addressof(s)),
               m_parse_ctx(std::move(f)),
               m_locale(locale)
         {
@@ -150,7 +148,7 @@ namespace scn {
         }
         stream_type& stream()
         {
-            return m_stream;
+            return *m_stream;
         }
         locale_type locale() const
         {
@@ -158,7 +156,7 @@ namespace scn {
         }
 
     private:
-        stream_type m_stream;
+        stream_type* m_stream;
         parse_context_type m_parse_ctx;
         locale_type m_locale;
     };

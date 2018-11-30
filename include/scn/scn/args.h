@@ -98,14 +98,18 @@ namespace scn {
             for (auto& a : m_args) {
                 auto ret = a.visit(ctx);
                 if (!ret) {
-                    auto pb = ctx.stream().putback_all();
-                    if (!pb) {
-                        return pb;
+                    auto rb = ctx.stream().roll_back();
+                    if (!rb) {
+                        return rb;
                     }
                     return ret;
                 }
                 ctx.parse_context().advance();
                 parse_whitespace(ctx);
+            }
+            auto srb = ctx.stream().set_roll_back();
+            if (!srb) {
+                return srb;
             }
             return {};
         }

@@ -73,11 +73,17 @@ namespace scn {
                 return {};
             }
             catch (const std::ios_base::failure& e) {
-                    return make_unexpected(
-                        error::unrecoverable_stream_source_error);
+                return make_unexpected(
+                    error::unrecoverable_stream_source_error);
             }
         }
-        expected<void, error> putback_all()
+
+        expected<void, error> set_roll_back()
+        {
+            m_read = 0;
+            return {};
+        }
+        expected<void, error> roll_back()
         {
             assert(m_read >= 0);
             if (m_read == 0) {

@@ -29,8 +29,8 @@ TEST_CASE("general")
     std::string s(6, '\0');
     auto span = scn::make_span(&s[0], &s[0] + s.size());
     bool b{};
-    auto ret = scn::scan(scn::make_stream(data.begin(), data.end()),
-                         "{} {} {} {}", i, d, span, b);
+    auto stream = scn::make_stream(data.begin(), data.end());
+    auto ret = scn::scan(stream, "{} {} {} {}", i, d, span, b);
 
     CHECK(data == copy);
     CHECK(i == 42);
@@ -46,4 +46,66 @@ TEST_CASE("general")
     std::cout << j << '\n';
     CHECK(ret);
 #endif
+}
+
+TEST_CASE("integer")
+{
+    std::string data{
+        "0 1 -1 -1 2147483648 2147483648"
+        "1011 1012 400 400 408 bad1dea 100 100 10g"};
+
+    int i{};
+    unsigned u{};
+    char c{};
+    int64_t l{};
+    auto stream = scn::make_stream(data);
+
+    {
+        // 0 to int
+        auto ret = scn::scan(stream, "{}", i);
+        CHECK(i == 0);
+        CHECK(ret);
+        i = 0;
+    }
+    {
+        // 1 to uint
+        auto ret = scn::scan(stream, "{}", u);
+        CHECK(u == 1);
+        CHECK(ret);
+        u = 0;
+    }
+    {
+        // -1 to int
+        auto ret = scn::scan(stream, "{}", i);
+        CHECK(i == -1);
+        CHECK(ret);
+        i = 0;
+    }
+    {
+        // -1 to uint
+        // should fail
+        auto ret = scn::scan(stream, "{}", u);
+        // shouldn't modify input
+        CHECK(u == 0);
+        CHECK(!ret);
+        if (!ret)
+            CHECK(ret.error() == scn::error::invalid_scanned_value);
+    }
+    {
+        // 2^31 to int
+        // should fail (overflow)
+        // max value for 32-bit signed 2's complement is 2^31 - 1
+        auto ret = scn::scan(stream, "{}", i);
+        CHECK(i == 0);
+        CHECK(!ret);
+        if (!ret)
+            CHECK(ret.error() == scn::error::invalid_scanned_value);
+    }
+    {
+        // 2^31 to int64
+        auto ret = scn::scan(stream, "{}", l);
+        CHECK(l == 2147483648);
+        CHECK(ret);
+        l = 0;
+    }
 }
