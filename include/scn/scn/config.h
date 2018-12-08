@@ -166,4 +166,11 @@
 #define SCN_FUNC
 #endif
 
+// Detect <charconv>
+#if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606
+#define SCN_HAS_CHARCONV 1
+#else
+#define SCN_HAS_CHARCONV 0
+#endif
+
 #endif  // SCN_CONFIG_H

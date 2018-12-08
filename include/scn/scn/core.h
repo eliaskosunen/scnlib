@@ -29,6 +29,7 @@ namespace scn {
         end_of_stream,
         invalid_format_string,
         invalid_scanned_value,
+        value_out_of_range,
         unrecoverable_stream_error,
         stream_source_error,
         unrecoverable_stream_source_error

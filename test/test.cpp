@@ -39,6 +39,10 @@ TEST_CASE("general")
     CHECK(b);
     CHECK(ret);
 
+    if (!ret) {
+        std::cout << __LINE__ << ": " << static_cast<int>(ret.error()) << '\n';
+    }
+
 #if 0
     int j{};
     ret = scn::input("{}", j);
@@ -51,7 +55,7 @@ TEST_CASE("general")
 TEST_CASE("integer")
 {
     std::string data{
-        "0 1 -1 -1 2147483648 2147483648"
+        "0 1 -1 2147483648\n"
         "1011 1012 400 400 408 bad1dea 100 100 10g"};
 
     int i{};
@@ -75,21 +79,23 @@ TEST_CASE("integer")
         u = 0;
     }
     {
-        // -1 to int
-        auto ret = scn::scan(stream, "{}", i);
-        CHECK(i == -1);
-        CHECK(ret);
-        i = 0;
-    }
-    {
         // -1 to uint
         // should fail
         auto ret = scn::scan(stream, "{}", u);
         // shouldn't modify input
         CHECK(u == 0);
         CHECK(!ret);
-        if (!ret)
-            CHECK(ret.error() == scn::error::invalid_scanned_value);
+        if (!ret) {
+            CHECK(ret.error() == scn::error::value_out_of_range);
+        }
+        u = 0;
+    }
+    {
+        // -1 to int
+        auto ret = scn::scan(stream, "{}", i);
+        CHECK(i == -1);
+        CHECK(ret);
+        i = 0;
     }
     {
         // 2^31 to int
@@ -98,8 +104,10 @@ TEST_CASE("integer")
         auto ret = scn::scan(stream, "{}", i);
         CHECK(i == 0);
         CHECK(!ret);
-        if (!ret)
-            CHECK(ret.error() == scn::error::invalid_scanned_value);
+        if (!ret) {
+            CHECK(ret.error() == scn::error::value_out_of_range);
+        }
+        i = 0;
     }
     {
         // 2^31 to int64

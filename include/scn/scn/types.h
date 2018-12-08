@@ -23,6 +23,10 @@
 
 #include <vector>
 
+#if SCN_HAS_CHARCONV
+#include <charconv>
+#endif
+
 namespace scn {
     namespace detail {
         template <typename CharT>
@@ -192,14 +196,15 @@ namespace scn {
         template <typename Context>
         expected<void, error> scan(T& val, Context& ctx)
         {
-            std::vector<CharT> buf(
-                static_cast<size_t>(detail::max_digits<T>()) + 1);
+            std::basic_string<CharT> buf(
+                static_cast<size_t>(detail::max_digits<T>()) + 1, 0);
 
             // Copied from span<CharT>
             for (auto it = buf.begin(); it != buf.end(); ++it) {
                 auto ch = ctx.stream().read_char();
                 if (!ch) {
                     if (ch.error() == error::end_of_stream) {
+                        buf.erase(it, buf.end());
                         break;
                     }
                     for (auto i = buf.begin(); i != it - 1; ++i) {
@@ -211,6 +216,7 @@ namespace scn {
                     return make_unexpected(ch.error());
                 }
                 if (ctx.locale().is_space(ch.value())) {
+                    buf.erase(it, buf.end());
                     break;
                 }
                 if (ctx.locale().thousands_separator() == ch.value()) {
@@ -220,58 +226,92 @@ namespace scn {
             }
 
             T tmp = 0;
-            auto it = buf.begin();
-            auto sign_tmp = [&]() -> expected<bool, error> {
-                if (std::is_unsigned<T>::value) {
-                    if (*it == CharT('-')) {
-                        return make_unexpected(error::invalid_scanned_value);
+#if SCN_HAS_CHARCONV
+            {
+                auto begin = buf.data();
+                auto end = begin + buf.size();
+                auto result = std::from_chars(begin, end, tmp, base);
+                if (result.ec == std::errc::result_out_of_range) {
+                    return make_unexpected(error::value_out_of_range);
+                }
+                if (result.ec == std::errc::invalid_argument) {
+                    return make_unexpected(error::invalid_scanned_value);
+                }
+
+                for (auto it = buf.rbegin(); it != result.ptr; ++it) {
+                    auto ret = ctx.stream().putback(*it);
+                    if (!ret) {
+                        return ret;
                     }
                 }
-                else {
-                    if (*it == CharT('-')) {
-                        return false;
-                    }
-                }
-
-                if (*it == CharT('+')) {
-                    return true;
-                }
-                if (detail::is_digit(ctx.locale(), *it, base, localized)) {
-                    tmp = tmp * static_cast<T>(base) -
-                          detail::char_to_int<T>(*it, base, localized);
-                    return true;
-                }
-                return make_unexpected(error::invalid_scanned_value);
-            }();
-            if (!sign_tmp) {
-                return make_unexpected(sign_tmp.error());
+                val = tmp;
             }
-            const bool sign = sign_tmp.value();
-            ++it;
-
-            for (; it != buf.end(); ++it) {
-                if (detail::is_digit(ctx.locale(), *it, base, localized)) {
-                    tmp = tmp * static_cast<T>(base) -
-                          detail::char_to_int<T>(*it, base, localized);
-                }
-                else {
-                    break;
-                }
-            }
-
-            if (sign) {
+#else
+            size_t chars = 0;
+            try {
 #if SCN_MSVC
 #pragma warning(push)
-#pragma warning(disable : 4146)
+#pragma warning(disable : 4244)
 #endif
-                tmp = -tmp;
+                if (std::is_unsigned<T>::value) {
+                    if (buf.front() == CharT('-')) {
+                        return make_unexpected(error::value_out_of_range);
+					}
+                    if (sizeof(T) == sizeof(unsigned long long)) {
+                        tmp = std::stoull(buf, &chars, base);
+                    }
+                    else {
+                        auto i = std::stoul(buf, &chars, base);
+                        if (i > static_cast<unsigned long>(
+                                    std::numeric_limits<T>::max())) {
+                            return make_unexpected(error::value_out_of_range);
+                        }
+                        tmp = static_cast<T>(i);
+                    }
+                }
+                else {
+                    if (sizeof(T) == sizeof(long long)) {
+                        tmp = std::stoll(buf, &chars, base);
+                    }
+                    else if (sizeof(T) == sizeof(long)) {
+                        tmp = std::stol(buf, &chars, base);
+                    }
+                    else {
+                        auto i = std::stoi(buf, &chars, base);
+                        if (i >
+                            static_cast<int>(std::numeric_limits<T>::max())) {
+                            return make_unexpected(error::value_out_of_range);
+                        }
+                        if (i <
+                            static_cast<int>(std::numeric_limits<T>::min())) {
+                            return make_unexpected(error::value_out_of_range);
+                        }
+                        tmp = static_cast<T>(i);
+                    }
+                }
 #if SCN_MSVC
 #pragma warning(pop)
 #endif
             }
+            catch (const std::invalid_argument&) {
+                return make_unexpected(error::invalid_scanned_value);
+            }
+            catch (const std::out_of_range&) {
+                return make_unexpected(error::value_out_of_range);
+            }
 
+            // for (auto it = buf.rbegin();
+            // it != buf.rend() - (buf.size() - chars); ++it) {
+            for (auto it = buf.rbegin(); it != buf.rend() - chars; ++it) {
+                auto ret = ctx.stream().putback(*it);
+                if (!ret) {
+                    return ret;
+                }
+            }
             val = tmp;
+#endif
             return {};
+
         }
 
         int base{10};
