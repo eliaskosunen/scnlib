@@ -25,12 +25,15 @@ namespace scn {
     class basic_locale_ref {
     public:
         using char_type = CharT;
+        using string_type = std::basic_string<char_type>;
         using string_view_type = basic_string_view<char_type>;
+        using iterator = typename string_view_type::iterator;
 
-        basic_locale_ref() = default;
-        basic_locale_ref(const void* loc) : m_locale(loc) {}
+        basic_locale_ref();
+        basic_locale_ref(const void* loc);
 
-        const void* get_ptr() const {
+        const void* get_ptr() const
+        {
             return m_locale;
         }
 
@@ -45,6 +48,8 @@ namespace scn {
 
     private:
         const void* m_locale{nullptr};
+        string_type m_truename;
+        string_type m_falsename;
 
         friend class locale;
     };

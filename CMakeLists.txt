@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.4)
 
 project(scn)
 
+if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    option(SCN_TESTS "Build scnlib tests" ON)
+else ()
+    option(SCN_TESTS "Build scnlib tests" OFF)
+endif ()
+
 option(SCN_HEADER_ONLY "Build scnlib as a header-only library" OFF)
 
 add_subdirectory(include/scn/expected-lite/expected-lite)
@@ -20,7 +26,7 @@ if (SCN_HEADER_ONLY)
         -DSCN_HEADER_ONLY=1)
 else ()
     add_library(scn
-        src/locale.cpp src/util.cpp)
+        src/locale.cpp)
     target_include_directories(scn PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
@@ -35,4 +41,6 @@ else ()
         -DSCN_HEADER_ONLY=0)
 endif ()
 
-add_subdirectory(test)
+if (SCN_TESTS)
+    add_subdirectory(test)
+endif ()

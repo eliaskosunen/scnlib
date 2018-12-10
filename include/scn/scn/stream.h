@@ -382,7 +382,8 @@ namespace scn {
         expected<void, error> putback(char_type ch)
         {
             assert(m_read > 0);
-            if (std::ungetwc(ch, m_file) == WEOF) {
+            if (std::ungetwc(std::char_traits<char_type>::to_int_type(ch),
+                             m_file) == WEOF) {
                 return make_unexpected(
                     error::unrecoverable_stream_source_error);
             }

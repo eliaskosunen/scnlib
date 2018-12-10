@@ -20,8 +20,7 @@
 
 #include "../expected-lite/expected.h"
 #include "../span-lite/span.h"
-
-#include "locale.h"
+#include "string_view.h"
 
 namespace scn {
     enum class error {
@@ -59,6 +58,10 @@ namespace scn {
             if (!ch) {
                 return make_unexpected(ch.error());
             }
+#if SCN_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundefined-func-template"
+#endif
             if (!ctx.locale().is_space(ch.value())) {
                 auto pb = ctx.stream().putback(ch.value());
                 if (!pb) {
@@ -66,6 +69,9 @@ namespace scn {
                 }
                 break;
             }
+#if SCN_CLANG
+#pragma clang diagnostic pop
+#endif
         }
         return {};
     }
@@ -122,45 +128,6 @@ namespace scn {
 
     template <typename CharT, typename T, typename Enable = void>
     struct basic_value_scanner;
-
-    template <typename Stream>
-    class basic_context {
-    public:
-        using stream_type = Stream;
-        using char_type = typename stream_type::char_type;
-        using parse_context_type = basic_parse_context<char_type>;
-        using locale_type = basic_locale_ref<char_type>;
-
-        template <typename T>
-        using value_scanner_type = basic_value_scanner<char_type, T>;
-
-        basic_context(stream_type& s,
-                      basic_string_view<char_type> f,
-                      locale_type locale = locale_type())
-            : m_stream(std::addressof(s)),
-              m_parse_ctx(std::move(f)),
-              m_locale(locale)
-        {
-        }
-
-        parse_context_type& parse_context()
-        {
-            return m_parse_ctx;
-        }
-        stream_type& stream()
-        {
-            return *m_stream;
-        }
-        locale_type locale() const
-        {
-            return m_locale;
-        }
-
-    private:
-        stream_type* m_stream;
-        parse_context_type m_parse_ctx;
-        locale_type m_locale;
-    };
 }  // namespace scn
 
 #endif  // SCN_CORE_H

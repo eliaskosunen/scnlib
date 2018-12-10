@@ -30,7 +30,7 @@ TEST_CASE("general")
     auto span = scn::make_span(&s[0], &s[0] + s.size());
     bool b{};
     auto stream = scn::make_stream(data.begin(), data.end());
-    auto ret = scn::scan(stream, "{} {} {} {}", i, d, span, b);
+    auto ret = scn::scan(stream, "{} {} {} {a}", i, d, span, b);
 
     CHECK(data == copy);
     CHECK(i == 42);
@@ -60,7 +60,7 @@ TEST_CASE("integer")
 
     int i{};
     unsigned u{};
-    char c{};
+    //char c{};
     int64_t l{};
     auto stream = scn::make_stream(data);
 

@@ -27,6 +27,7 @@
 #define SCN_SCN_H
 
 #include "scn/args.h"
+#include "scn/context.h"
 #include "scn/core.h"
 #include "scn/locale.h"
 #include "scn/stream.h"
@@ -45,7 +46,6 @@ namespace scn {
                                Args&... a)
     {
         using context_type = basic_context<Stream>;
-        using args_type = basic_arg<context_type>;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, f);
@@ -58,7 +58,6 @@ namespace scn {
                                Args&... a)
     {
         using context_type = basic_context<Stream>;
-        using args_type = basic_arg<context_type>;
 
         auto args = make_args<context_type>(a...);
         auto locale = basic_locale_ref<typename Stream::char_type>(
@@ -72,7 +71,6 @@ namespace scn {
     {
         using stream_type = basic_cstdio_stream<char>;
         using context_type = basic_context<stream_type>;
-        using args_type = basic_arg<context_type>;
 
         auto s = stream_type(stdin);
         auto args = make_args<context_type>(a...);
@@ -84,7 +82,6 @@ namespace scn {
     {
         using stream_type = basic_cstdio_stream<wchar_t>;
         using context_type = basic_context<stream_type>;
-        using args_type = basic_arg<context_type>;
 
         auto s = stream_type(stdin);
         auto args = make_args<context_type>(a...);

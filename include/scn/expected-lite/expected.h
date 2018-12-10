@@ -18,7 +18,20 @@
 #ifndef SCN_EXPECTED_H
 #define SCN_EXPECTED_H
 
+#include "../scn/config.h"
+
+#if SCN_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+#pragma clang diagnostic ignored "-Wpadded"
+#pragma clang diagnostic ignored "-Wweak-vtables"
+#endif
+
 #include "nonstd/expected.hpp"
+
+#if SCN_CLANG
+#pragma clang diagnostic pop
+#endif
 
 namespace scn {
     using nonstd::expected;

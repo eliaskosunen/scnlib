@@ -17,6 +17,8 @@
 
 #define SCN_LOCALE_CPP
 
+#include <scn/expected-lite/expected.h>
+#include <scn/scn/core.h>
 #include <scn/scn/locale.h>
 
 #include <locale>
@@ -32,6 +34,28 @@ namespace scn {
             return std::locale();
         }
     }  // namespace detail
+
+    template <>
+    basic_locale_ref<char>::basic_locale_ref()
+        : m_locale(nullptr), m_truename("true"), m_falsename("false")
+    {
+    }
+    template <>
+    basic_locale_ref<wchar_t>::basic_locale_ref()
+        : m_locale(nullptr), m_truename(L"true"), m_falsename(L"false")
+    {
+    }
+    template <typename CharT>
+    basic_locale_ref<CharT>::basic_locale_ref(const void* loc)
+        : m_locale(loc),
+          m_truename(
+              std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
+                  .truename()),
+          m_falsename(
+              std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
+                  .falsename())
+    {
+    }
 
     template <typename CharT>
     bool basic_locale_ref<CharT>::is_space(CharT ch) const
@@ -59,19 +83,13 @@ namespace scn {
     typename basic_locale_ref<CharT>::string_view_type
     basic_locale_ref<CharT>::truename() const
     {
-        static auto str =
-            std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
-                .truename();
-        return string_view_type(str.data(), str.size());
+        return string_view_type(m_truename.data(), m_truename.size());
     }
     template <typename CharT>
     typename basic_locale_ref<CharT>::string_view_type
     basic_locale_ref<CharT>::falsename() const
     {
-        static auto str =
-            std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
-                .falsename();
-        return string_view_type(str.data(), str.size());
+        return string_view_type(m_falsename.data(), m_falsename.size());
     }
 
     template class basic_locale_ref<char>;

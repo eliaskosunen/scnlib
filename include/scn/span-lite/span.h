@@ -18,8 +18,19 @@
 #ifndef SCN_SPAN_LITE_H
 #define SCN_SPAN_LITE_H
 
+#include "../scn/config.h"
+
+#if SCN_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+#endif
+
 #define span_FEATURE_MAKE_SPAN_TO_STD 99
 #include "nonstd/span.hpp"
+
+#if SCN_CLANG
+#pragma clang diagnostic pop
+#endif
 
 namespace scn {
     using nonstd::make_span;
