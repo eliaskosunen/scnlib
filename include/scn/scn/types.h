@@ -73,12 +73,6 @@ namespace scn {
             for (; it != buf.end(); ++it) {
                 auto ch = ctx.stream().read_char();
                 if (!ch) {
-                    for (auto i = buf.begin(); i != it - 1; ++i) {
-                        auto pb = ctx.stream().putback(*i);
-                        if (!pb) {
-                            return pb;
-                        }
-                    }
                     return make_unexpected(ch.error());
                 }
                 if (ctx.locale().is_space(ch.value())) {
@@ -103,8 +97,8 @@ namespace scn {
             ctx.parse_context().advance();
             auto ch = *ctx.parse_context().begin();
 
-            for (; (ch = *ctx.parse_context().begin());
-                 ctx.parse_context().advance()) {
+            for (; ch; ctx.parse_context().advance(),
+                       ch = *ctx.parse_context().begin()) {
                 if (ch == CharT('}')) {
                     break;
                 }
@@ -270,27 +264,19 @@ namespace scn {
         template <typename Context>
         expected<void, error> scan(T& val, Context& ctx)
         {
-            std::basic_string<CharT> buf(
-                static_cast<size_t>(detail::max_digits<T>()) + 1, 0);
+            std::basic_string<CharT> buf{};
+            buf.reserve(static_cast<size_t>(
+                detail::max_digits<T>(base == 0 ? 8 : base)));
 
-            // Copied from span<CharT>
-            for (auto it = buf.begin(); it != buf.end(); ++it) {
+            while (true) {
                 auto ch = ctx.stream().read_char();
                 if (!ch) {
                     if (ch.error() == error::end_of_stream) {
-                        buf.erase(it, buf.end());
                         break;
-                    }
-                    for (auto i = buf.begin(); i != it - 1; ++i) {
-                        auto pb = ctx.stream().putback(*i);
-                        if (!pb) {
-                            return pb;
-                        }
                     }
                     return make_unexpected(ch.error());
                 }
                 if (ctx.locale().is_space(ch.value())) {
-                    buf.erase(it, buf.end());
                     break;
                 }
 #if SCN_CLANG
@@ -303,38 +289,57 @@ namespace scn {
 #if SCN_CLANG
 #pragma clang diagnostic pop
 #endif
-                *it = ch.value();
+                buf.push_back(ch.value());
             }
 
             T tmp = 0;
+            size_t chars = 0;
 
-            if (localized != 0) {
-                // TODO
-            }
-
-            // Non-localized
-#if SCN_HAS_CHARCONV
-            {
-                auto begin = buf.data();
-                auto end = begin + buf.size();
-                auto result = std::from_chars(begin, end, tmp, base);
-                if (result.ec == std::errc::result_out_of_range) {
-                    return make_unexpected(error::value_out_of_range);
-                }
-                if (result.ec == std::errc::invalid_argument) {
-                    return make_unexpected(error::invalid_scanned_value);
-                }
-
-                for (auto it = buf.rbegin(); it != result.ptr; ++it) {
+            auto putback = [&]() -> expected<void, error> {
+                for (auto it = buf.rbegin();
+                     it !=
+                     buf.rend() - static_cast<typename std::iterator_traits<
+                                      decltype(it)>::difference_type>(chars);
+                     ++it) {
                     auto ret = ctx.stream().putback(*it);
                     if (!ret) {
                         return ret;
                     }
                 }
+                return {};
+            };
+
+            if ((localized & digits) != 0) {
+                auto ret = ctx.locale().read_num(tmp, buf);
+                if (!ret) {
+                    return make_unexpected(ret.error());
+                }
+                chars = ret.value();
+                auto pb = putback();
+                if (!pb) {
+                    return pb;
+                }
                 val = tmp;
             }
+#if SCN_HAS_CHARCONV
+            auto begin = buf.data();
+            auto end = begin + buf.size();
+            auto result = std::from_chars(begin, end, tmp, base);
+            if (result.ec == std::errc::result_out_of_range) {
+                return make_unexpected(error::value_out_of_range);
+            }
+            if (result.ec == std::errc::invalid_argument) {
+                return make_unexpected(error::invalid_scanned_value);
+            }
+
+            for (auto it = buf.rbegin(); it != result.ptr; ++it) {
+                auto ret = ctx.stream().putback(*it);
+                if (!ret) {
+                    return ret;
+                }
+            }
+            val = tmp;
 #else
-            size_t chars = 0;
             try {
 #if SCN_CLANG
 #pragma clang diagnostic push
@@ -344,12 +349,13 @@ namespace scn {
 #if SCN_MSVC
 #pragma warning(push)
 #pragma warning(disable : 4244)
+#pragma warning(disable : 4127)  // conditional expression is constant
 #endif
                 if (std::is_unsigned<T>::value) {
                     if (buf.front() == CharT('-')) {
                         return make_unexpected(error::value_out_of_range);
                     }
-                    if (sizeof(T) == sizeof(unsigned long long)) {
+                    if (std::is_same<T, unsigned long long>::value) {
                         tmp = std::stoull(buf, &chars, base);
                     }
                     else {
@@ -362,10 +368,10 @@ namespace scn {
                     }
                 }
                 else {
-                    if (sizeof(T) == sizeof(long long)) {
+                    if (std::is_same<T, long long>::value) {
                         tmp = std::stoll(buf, &chars, base);
                     }
-                    else if (sizeof(T) == sizeof(long)) {
+                    else if (std::is_same<T, long>::value) {
                         tmp = std::stol(buf, &chars, base);
                     }
                     else {
@@ -395,14 +401,9 @@ namespace scn {
                 return make_unexpected(error::value_out_of_range);
             }
 
-            for (auto it = buf.rbegin();
-                 it != buf.rend() - static_cast<typename std::iterator_traits<
-                                        decltype(it)>::difference_type>(chars);
-                 ++it) {
-                auto ret = ctx.stream().putback(*it);
-                if (!ret) {
-                    return ret;
-                }
+            auto pb = putback();
+            if (!pb) {
+                return pb;
             }
             val = tmp;
 #endif
@@ -423,76 +424,115 @@ namespace scn {
     struct basic_value_scanner<
         CharT,
         T,
-        typename std::enable_if<std::is_floating_point<T>::value>::type>
-        : public detail::empty_parser<CharT> {
+        typename std::enable_if<std::is_floating_point<T>::value>::type> {
+        template <typename Context>
+        expected<void, error> parse(Context& ctx)
+        {
+            // {}: not localized
+            // l: localized
+            ctx.parse_context().advance();
+            auto ch = *ctx.parse_context().begin();
+
+            if (ch == CharT('}')) {
+                return {};
+            }
+
+            if (ch == CharT('l')) {
+                localized = true;
+                ctx.parse_context().advance();
+                ch = *ctx.parse_context().begin();
+            }
+            return make_unexpected(error::invalid_format_string);
+        }
         template <typename Context>
         expected<void, error> scan(T& val, Context& ctx)
         {
-            std::basic_string<CharT> buf(21, 0);
+            std::basic_string<CharT> buf{};
+            buf.reserve(21);
 
             bool point = false;
-            for (auto it = buf.begin(); it != buf.end(); ++it) {
+            while (true) {
                 auto tmp = ctx.stream().read_char();
                 if (!tmp) {
-                    return make_unexpected(tmp.error());
-                }
-                if (tmp.value() == CharT('.')) {
-                    if (point) {
-                        auto pb = ctx.stream().putback(tmp.value());
-                        if (!pb) {
-                            return pb;
-                        }
-                        buf.erase(it, buf.end());
+                    if (tmp.error() == error::end_of_stream) {
                         break;
                     }
-                    point = true;
-                    *it = tmp.value();
-                    continue;
+                    return make_unexpected(tmp.error());
                 }
-                if (!std::isdigit(tmp.value())) {
-                    auto pb = ctx.stream().putback(tmp.value());
-                    if (!pb) {
-                        return pb;
-                    }
-                    buf.erase(it, buf.end());
+                if (ctx.locale().is_space(tmp.value())) {
                     break;
                 }
-                *it = tmp.value();
-            }
-
-            if (buf[0] == CharT(0)) {
-                return make_unexpected(error::invalid_scanned_value);
+                if (tmp.value() == ctx.locale().thousands_separator()) {
+                    continue;
+                }
+                if (tmp.value() == ctx.locale().decimal_point()) {
+                    if (point) {
+                        return make_unexpected(error::invalid_scanned_value);
+                    }
+                    point = true;
+                    buf.push_back(tmp.value());
+                    continue;
+                }
+                buf.push_back(tmp.value());
             }
 
             T tmp{};
+            size_t chars = 0;
 
-#if SCN_HAS_CHARCONV
-            {
-                auto begin = buf.data();
-                auto end = begin + buf.size();
-                auto result = std::from_chars(begin, end, tmp);
-                if (result.ec == std::errc::result_out_of_range) {
-                    return make_unexpected(error::value_out_of_range);
-                }
-                if (result.ec == std::errc::invalid_argument) {
-                    return make_unexpected(error::invalid_scanned_value);
-                }
-
-                for (auto it = buf.rbegin(); it != result.ptr; ++it) {
+            auto putback = [&]() -> expected<void, error> {
+                for (auto it = buf.rbegin();
+                     it !=
+                     buf.rend() - static_cast<typename std::iterator_traits<
+                                      decltype(it)>::difference_type>(chars);
+                     ++it) {
                     auto ret = ctx.stream().putback(*it);
                     if (!ret) {
                         return ret;
                     }
                 }
+                return {};
+            };
+
+            if (localized) {
+                auto ret = ctx.locale().read_num(tmp, buf);
+                if (!ret) {
+                    return make_unexpected(ret.error());
+                }
+                chars = ret.value();
+                auto pb = putback();
+                if (!pb) {
+                    return pb;
+                }
                 val = tmp;
             }
+#if SCN_HAS_CHARCONV
+            auto begin = buf.data();
+            auto end = begin + buf.size();
+            auto result = std::from_chars(begin, end, tmp);
+            if (result.ec == std::errc::result_out_of_range) {
+                return make_unexpected(error::value_out_of_range);
+            }
+            if (result.ec == std::errc::invalid_argument) {
+                return make_unexpected(error::invalid_scanned_value);
+            }
+
+            for (auto it = buf.rbegin(); it != result.ptr; ++it) {
+                auto ret = ctx.stream().putback(*it);
+                if (!ret) {
+                    return ret;
+                }
+            }
+            val = tmp;
 #else
-            size_t chars = 0;
             try {
 #if SCN_CLANG
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wconversion"
 #pragma clang diagnostic ignored "-Wdouble-promotion"
+#endif
+#if SCN_MSVC
+#pragma warning(push)
+#pragma warning(disable : 4244)  // narrowing conversion
 #endif
                 if (std::is_same<T, float>::value) {
                     tmp = std::stof(buf, &chars);
@@ -503,6 +543,9 @@ namespace scn {
                 else {
                     tmp = std::stold(buf, &chars);
                 }
+#if SCN_MSVC
+#pragma warning(pop)
+#endif
 #if SCN_CLANG
 #pragma clang diagnostic pop
 #endif
@@ -514,20 +557,17 @@ namespace scn {
                 return make_unexpected(error::value_out_of_range);
             }
 
-            for (auto it = buf.rbegin();
-                 it != buf.rend() - static_cast<typename std::iterator_traits<
-                                        decltype(it)>::difference_type>(chars);
-                 ++it) {
-                auto ret = ctx.stream().putback(*it);
-                if (!ret) {
-                    return ret;
-                }
+            auto pb = putback();
+            if (!pb) {
+                return pb;
             }
             val = tmp;
 #endif
 
             return {};
         }
+
+        bool localized{false};
     };
 }  // namespace scn
 

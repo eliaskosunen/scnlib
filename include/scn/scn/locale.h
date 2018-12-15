@@ -21,6 +21,10 @@
 #include "string_view.h"
 
 namespace scn {
+#if SCN_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winline"
+#endif
     template <typename CharT>
     class basic_locale_ref {
     public:
@@ -46,13 +50,27 @@ namespace scn {
         string_view_type truename() const;
         string_view_type falsename() const;
 
+        template <typename T>
+        expected<size_t, error> read_num(T& val, string_type buf);
+
+        bool is_default() const
+        {
+            return m_locale == nullptr;
+        }
+
     private:
         const void* m_locale{nullptr};
         string_type m_truename;
         string_type m_falsename;
+        char_type m_decimal_point;
+        char_type m_thousands_separator;
 
         friend class locale;
     };
+
+#if SCN_GCC
+#pragma GCC diagnostic pop
+#endif
 }  // namespace scn
 
 #if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_LOCALE_CPP)

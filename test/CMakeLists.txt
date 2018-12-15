@@ -3,7 +3,7 @@ set(DOCTEST_NO_INSTALL ON)
 add_subdirectory(doctest EXCLUDE_FROM_ALL)
 
 add_executable(tests test.cpp empty.cpp)
-target_link_libraries(tests PUBLIC scn doctest)
+target_link_libraries(tests PRIVATE scn doctest)
 target_compile_options(tests PRIVATE 
     $<$<CXX_COMPILER_ID:Clang>:
         -Weverything -Werror
@@ -27,7 +27,7 @@ target_compile_options(tests PRIVATE
         -Wmissing-include-dirs -Wcast-align
         -Wswitch-enum -Wnon-virtual-dtor
         -Wctor-dtor-privacy -Wdisabled-optimization
-        -Winline -Winvalid-pch -Wnoexcept
+        -Winvalid-pch -Wnoexcept
         -Wmissing-declarations -Woverloaded-virtual
         $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,5.0>>:
         -Wdouble-promotion -Wtrampolines

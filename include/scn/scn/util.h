@@ -26,13 +26,13 @@
 namespace scn {
     namespace detail {
         template <typename Integral>
-        SCN_CONSTEXPR14 int max_digits() noexcept
+        int max_digits(int base) noexcept
         {
             auto i = std::numeric_limits<Integral>::max();
 
             int digits = 0;
             while (i) {
-                i /= 2;  // 2 to accommondate for binary numbers as well
+                i /= static_cast<Integral>(base);
                 digits++;
             }
 
@@ -40,9 +40,5 @@ namespace scn {
         }
     }  // namespace detail
 }  // namespace scn
-
-#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_UTIL_CPP)
-#include "util.cpp"
-#endif
 
 #endif  // SCN_UTIL_H

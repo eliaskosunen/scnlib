@@ -20,6 +20,10 @@
 
 #include "../scn/config.h"
 
+#if SCN_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-overflow"
+#endif
 #if SCN_CLANG
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
@@ -30,6 +34,9 @@
 
 #if SCN_CLANG
 #pragma clang diagnostic pop
+#endif
+#if SCN_GCC
+#pragma GCC diagnostic pop
 #endif
 
 namespace scn {

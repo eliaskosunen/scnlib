@@ -43,4 +43,5 @@ endif ()
 
 if (SCN_TESTS)
     add_subdirectory(test)
+    add_subdirectory(benchmark)
 endif ()

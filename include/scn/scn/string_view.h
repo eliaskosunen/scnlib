@@ -53,16 +53,17 @@ namespace scn {
         using const_reverse_iterator = reverse_iterator;
         using size_type = std::size_t;
         using difference_type = std::ptrdiff_t;
+        using span_index_type = typename span_type::index_type;
 
         static SCN_CONSTEXPR_DECL const size_type npos = size_type(-1);
 
         SCN_CONSTEXPR basic_string_view() noexcept = default;
         SCN_CONSTEXPR basic_string_view(const_pointer s, size_type c)
-            : m_data(s, c)
+            : m_data(s, static_cast<span_index_type>(c))
         {
         }
         SCN_CONSTEXPR basic_string_view(const_pointer s)
-            : m_data(s, static_cast<std::ptrdiff_t>(Traits::length(s)))
+            : m_data(s, static_cast<span_index_type>(Traits::length(s)))
         {
         }
 

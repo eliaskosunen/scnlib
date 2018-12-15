@@ -22,27 +22,34 @@
 #include <scn/scn/locale.h>
 
 #include <locale>
+#include <sstream>
 
 namespace scn {
     namespace detail {
         template <typename CharT>
         std::locale get_locale(basic_locale_ref<CharT> ref)
         {
-            if (ref.get_ptr()) {
-                return *static_cast<const std::locale*>(ref.get_ptr());
-            }
-            return std::locale();
+            assert(ref.get_ptr());
+            return *static_cast<const std::locale*>(ref.get_ptr());
         }
     }  // namespace detail
 
     template <>
-    basic_locale_ref<char>::basic_locale_ref()
-        : m_locale(nullptr), m_truename("true"), m_falsename("false")
+    inline basic_locale_ref<char>::basic_locale_ref()
+        : m_locale(nullptr),
+          m_truename("true"),
+          m_falsename("false"),
+          m_decimal_point('.'),
+          m_thousands_separator(',')
     {
     }
     template <>
-    basic_locale_ref<wchar_t>::basic_locale_ref()
-        : m_locale(nullptr), m_truename(L"true"), m_falsename(L"false")
+    inline basic_locale_ref<wchar_t>::basic_locale_ref()
+        : m_locale(nullptr),
+          m_truename(L"true"),
+          m_falsename(L"false"),
+          m_decimal_point(L'.'),
+          m_thousands_separator(L',')
     {
     }
     template <typename CharT>
@@ -53,45 +60,211 @@ namespace scn {
                   .truename()),
           m_falsename(
               std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
-                  .falsename())
+                  .falsename()),
+          m_decimal_point(
+              std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
+                  .decimal_point()),
+          m_thousands_separator(
+              std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
+                  .thousands_sep())
     {
     }
 
     template <typename CharT>
     bool basic_locale_ref<CharT>::is_space(CharT ch) const
     {
+        if (is_default()) {
+            return std::isspace(ch);
+        }
         return std::isspace(ch, detail::get_locale(*this));
     }
     template <typename CharT>
     bool basic_locale_ref<CharT>::is_digit(CharT ch) const
     {
+        if (is_default()) {
+            return std::isdigit(ch);
+        }
         return std::isdigit(ch, detail::get_locale(*this));
     }
     template <typename CharT>
     CharT basic_locale_ref<CharT>::decimal_point() const
     {
-        return std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
-            .decimal_point();
+        return m_decimal_point;
     }
     template <typename CharT>
     CharT basic_locale_ref<CharT>::thousands_separator() const
     {
-        return std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
-            .thousands_sep();
+        return m_thousands_separator;
     }
     template <typename CharT>
-    typename basic_locale_ref<CharT>::string_view_type
-    basic_locale_ref<CharT>::truename() const
+    auto basic_locale_ref<CharT>::truename() const -> string_view_type
     {
         return string_view_type(m_truename.data(), m_truename.size());
     }
     template <typename CharT>
-    typename basic_locale_ref<CharT>::string_view_type
-    basic_locale_ref<CharT>::falsename() const
+    auto basic_locale_ref<CharT>::falsename() const -> string_view_type
     {
         return string_view_type(m_falsename.data(), m_falsename.size());
     }
 
+    namespace detail {
+        template <typename T, typename CharT>
+        expected<size_t, error> read_num_impl(T& val,
+                                              const std::locale& loc,
+                                              std::basic_string<CharT> buf)
+        {
+            std::basic_istringstream<CharT> ss(buf);
+            ss.imbue(loc);
+            std::ios_base::iostate err = std::ios_base::goodbit;
+
+            try {
+                typename decltype(ss)::sentry s(ss);
+                if (s) {
+                    std::use_facet<std::num_get<CharT>>(ss.getloc())
+                        .get(ss, {}, ss, err, val);
+                }
+            }
+            catch (const std::ios_base::failure&) {
+                return make_unexpected(error::invalid_scanned_value);
+            }
+            return static_cast<size_t>(ss.gcount());
+        }
+
+        template <typename T, typename CharT>
+        struct read_num {
+            static expected<size_t, error> read(T& val,
+                                                const std::locale& loc,
+                                                std::basic_string<CharT> buf)
+            {
+                return read_num_impl(val, loc, buf);
+            }
+        };
+        template <typename CharT>
+        struct read_num<short, CharT> {
+            static expected<size_t, error> read(short& val,
+                                                const std::locale& loc,
+                                                std::basic_string<CharT> buf)
+            {
+                long long tmp{};
+                auto ret = read_num_impl(tmp, loc, buf);
+                if (!ret) {
+                    return ret;
+                }
+                if (tmp >
+                    static_cast<long long>(std::numeric_limits<short>::max())) {
+                    return make_unexpected(error::value_out_of_range);
+                }
+                if (tmp <
+                    static_cast<long long>(std::numeric_limits<short>::min())) {
+                    return make_unexpected(error::value_out_of_range);
+                }
+                val = static_cast<short>(tmp);
+                return ret;
+            }
+        };
+        template <typename CharT>
+        struct read_num<int, CharT> {
+            static expected<size_t, error> read(int& val,
+                                                const std::locale& loc,
+                                                std::basic_string<CharT> buf)
+            {
+                long long tmp{};
+                auto ret = read_num_impl(tmp, loc, buf);
+                if (!ret) {
+                    return ret;
+                }
+                if (tmp >
+                    static_cast<long long>(std::numeric_limits<int>::max())) {
+                    return make_unexpected(error::value_out_of_range);
+                }
+                if (tmp <
+                    static_cast<long long>(std::numeric_limits<int>::min())) {
+                    return make_unexpected(error::value_out_of_range);
+                }
+                val = static_cast<int>(tmp);
+                return ret;
+            }
+        };
+    }  // namespace detail
+
+    template <typename CharT>
+    template <typename T>
+    expected<size_t, error> basic_locale_ref<CharT>::read_num(T& val,
+                                                              string_type buf)
+    {
+        return detail::read_num<T, CharT>::read(val, detail::get_locale(*this),
+                                                buf);
+    }
+
+#if SCN_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#endif
     template class basic_locale_ref<char>;
     template class basic_locale_ref<wchar_t>;
+#if SCN_CLANG
+#pragma clang diagnostic pop
+#endif
+
+    template expected<size_t, error> basic_locale_ref<char>::read_num<short>(
+        short&,
+        string_type);
+    template expected<size_t, error> basic_locale_ref<char>::read_num<int>(
+        int&,
+        string_type);
+    template expected<size_t, error> basic_locale_ref<char>::read_num<long>(
+        long&,
+        string_type);
+    template expected<size_t, error>
+    basic_locale_ref<char>::read_num<long long>(long long&, string_type);
+    template expected<size_t, error>
+    basic_locale_ref<char>::read_num<unsigned short>(unsigned short&,
+                                                     string_type);
+    template expected<size_t, error>
+    basic_locale_ref<char>::read_num<unsigned int>(unsigned int&, string_type);
+    template expected<size_t, error>
+    basic_locale_ref<char>::read_num<unsigned long>(unsigned long&,
+                                                    string_type);
+    template expected<size_t, error>
+    basic_locale_ref<char>::read_num<unsigned long long>(unsigned long long&,
+                                                         string_type);
+    template expected<size_t, error> basic_locale_ref<char>::read_num<float>(
+        float&,
+        string_type);
+    template expected<size_t, error> basic_locale_ref<char>::read_num<double>(
+        double&,
+        string_type);
+    template expected<size_t, error>
+    basic_locale_ref<char>::read_num<long double>(long double&, string_type);
+
+    template expected<size_t, error> basic_locale_ref<wchar_t>::read_num<short>(
+        short&,
+        string_type);
+    template expected<size_t, error> basic_locale_ref<wchar_t>::read_num<int>(
+        int&,
+        string_type);
+    template expected<size_t, error> basic_locale_ref<wchar_t>::read_num<long>(
+        long&,
+        string_type);
+    template expected<size_t, error>
+    basic_locale_ref<wchar_t>::read_num<long long>(long long&, string_type);
+    template expected<size_t, error>
+    basic_locale_ref<wchar_t>::read_num<unsigned short>(unsigned short&,
+                                                        string_type);
+    template expected<size_t, error>
+    basic_locale_ref<wchar_t>::read_num<unsigned int>(unsigned int&,
+                                                      string_type);
+    template expected<size_t, error>
+    basic_locale_ref<wchar_t>::read_num<unsigned long>(unsigned long&,
+                                                       string_type);
+    template expected<size_t, error>
+    basic_locale_ref<wchar_t>::read_num<unsigned long long>(unsigned long long&,
+                                                            string_type);
+    template expected<size_t, error> basic_locale_ref<wchar_t>::read_num<float>(
+        float&,
+        string_type);
+    template expected<size_t, error>
+    basic_locale_ref<wchar_t>::read_num<double>(double&, string_type);
+    template expected<size_t, error>
+    basic_locale_ref<wchar_t>::read_num<long double>(long double&, string_type);
 }  // namespace scn
