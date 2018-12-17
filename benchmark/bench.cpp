@@ -18,6 +18,7 @@
 #include <benchmark/benchmark.h>
 #include <scn/scn.h>
 #include <cctype>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <limits>
@@ -43,7 +44,7 @@ static std::string generate_data(size_t len)
     }
     return data;
 }
-template <typename Int = int>
+template <typename Int>
 static std::string generate_int_data(size_t n)
 {
     std::default_random_engine rng(std::random_device{}());
@@ -56,13 +57,43 @@ static std::string generate_int_data(size_t n)
     }
     return oss.str();
 }
+namespace detail {
+    template <typename Float>
+    struct integer_type_for_float;
+    template <>
+    struct integer_type_for_float<float> {
+        using type = uint32_t;
+    };
+    template <>
+    struct integer_type_for_float<double> {
+        using type = uint64_t;
+    };
+}  // namespace detail
+template <typename Float>
+static std::string generate_float_data(size_t n)
+{
+    using int_type = typename detail::integer_type_for_float<Float>::type;
+
+    std::default_random_engine rng(std::random_device{}());
+    std::uniform_int_distribution<int_type> dist(
+        0, std::numeric_limits<int_type>::max());
+
+    std::ostringstream oss;
+    for (size_t i = 0; i < n; ++i) {
+        auto tmp = dist(rng);
+        Float f{};
+        std::memcpy(&f, &tmp, sizeof(int_type));
+        oss << f << ' ';
+    }
+    return oss.str();
+}
 
 template <typename Int>
 static void scanint_scn(benchmark::State& state)
 {
-    auto data = generate_int_data(static_cast<size_t>(state.range(0)));
+    auto data = generate_int_data<Int>(static_cast<size_t>(state.range(0)));
     auto stream = scn::make_stream(data);
-    int i{};
+    Int i{};
     for (auto _ : state) {
         auto e = scn::scan(stream, "{}", i);
 
@@ -70,7 +101,8 @@ static void scanint_scn(benchmark::State& state)
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
-                data = generate_int_data(static_cast<size_t>(state.range(0)));
+                data =
+                    generate_int_data<Int>(static_cast<size_t>(state.range(0)));
                 stream = scn::make_stream(data);
                 state.ResumeTiming();
             }
@@ -81,7 +113,7 @@ static void scanint_scn(benchmark::State& state)
         }
     }
     state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(int)));
+        static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scanint_scn, int)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanint_scn, long long)->Arg(2 << 15);
@@ -90,16 +122,16 @@ BENCHMARK_TEMPLATE(scanint_scn, unsigned)->Arg(2 << 15);
 template <typename Int>
 static void scanint_sstream(benchmark::State& state)
 {
-    auto data = generate_int_data(static_cast<size_t>(state.range(0)));
+    auto data = generate_int_data<Int>(static_cast<size_t>(state.range(0)));
     auto stream = std::istringstream(data);
-    int i{};
+    Int i{};
     for (auto _ : state) {
         stream >> i;
 
         benchmark::DoNotOptimize(i);
         if (stream.eof()) {
             state.PauseTiming();
-            data = generate_int_data(static_cast<size_t>(state.range(0)));
+            data = generate_int_data<Int>(static_cast<size_t>(state.range(0)));
             stream = std::istringstream(data);
             state.ResumeTiming();
             continue;
@@ -110,10 +142,70 @@ static void scanint_sstream(benchmark::State& state)
         }
     }
     state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(int)));
+        static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scanint_sstream, int)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanint_sstream, long long)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanint_sstream, unsigned)->Arg(2 << 15);
+
+template <typename Float>
+static void scanfloat_scn(benchmark::State& state)
+{
+    auto data = generate_float_data<Float>(static_cast<size_t>(state.range(0)));
+    auto stream = scn::make_stream(data);
+    Float f{};
+    for (auto _ : state) {
+        auto e = scn::scan(stream, "{}", f);
+
+        benchmark::DoNotOptimize(f);
+        if (!e) {
+            if (e.error() == scn::error::end_of_stream) {
+                state.PauseTiming();
+                data = generate_float_data<Float>(
+                    static_cast<size_t>(state.range(0)));
+                stream = scn::make_stream(data);
+                state.ResumeTiming();
+            }
+            else {
+                state.SkipWithError("Benchmark errored");
+                break;
+            }
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+}
+// BENCHMARK_TEMPLATE(scanfloat_scn, float)->Arg(2 << 15);
+// BENCHMARK_TEMPLATE(scanfloat_scn, double)->Arg(2 << 15);
+
+template <typename Float>
+static void scanfloat_sstream(benchmark::State& state)
+{
+    auto data = generate_float_data<Float>(static_cast<size_t>(state.range(0)));
+    auto stream = std::istringstream(data);
+    stream.exceptions(std::ios_base::failbit | std::ios_base::badbit);
+    Float f{};
+    for (auto _ : state) {
+        stream >> f;
+
+        benchmark::DoNotOptimize(f);
+        if (stream.eof()) {
+            state.PauseTiming();
+            data =
+                generate_float_data<Float>(static_cast<size_t>(state.range(0)));
+            stream = std::istringstream(data);
+            state.ResumeTiming();
+            continue;
+        }
+        if (stream.fail()) {
+            state.SkipWithError("Benchmark errored");
+            break;
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+}
+// BENCHMARK_TEMPLATE(scanfloat_sstream, float)->Arg(2 << 15);
+// BENCHMARK_TEMPLATE(scanfloat_sstream, double)->Arg(2 << 15);
 
 BENCHMARK_MAIN();

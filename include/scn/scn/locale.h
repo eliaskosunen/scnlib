@@ -25,6 +25,10 @@ namespace scn {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Winline"
 #endif
+#if SCN_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#endif
     template <typename CharT>
     class basic_locale_ref {
     public:
@@ -50,6 +54,9 @@ namespace scn {
         string_view_type truename() const;
         string_view_type falsename() const;
 
+        CharT widen(char ch) const;
+        char narrow(CharT ch, char def) const;
+
         template <typename T>
         expected<size_t, error> read_num(T& val, string_type buf);
 
@@ -64,10 +71,11 @@ namespace scn {
         string_type m_falsename;
         char_type m_decimal_point;
         char_type m_thousands_separator;
-
-        friend class locale;
     };
 
+#if SCN_CLANG
+#pragma clang diagnostic pop
+#endif
 #if SCN_GCC
 #pragma GCC diagnostic pop
 #endif

@@ -2,8 +2,8 @@ set(DOCTEST_WITH_TESTS OFF)
 set(DOCTEST_NO_INSTALL ON)
 add_subdirectory(doctest EXCLUDE_FROM_ALL)
 
-add_executable(tests test.cpp empty.cpp)
-target_link_libraries(tests PRIVATE scn doctest)
+add_executable(tests test.cpp empty.cpp string_view.cpp)
+target_link_libraries(tests scn doctest)
 target_compile_options(tests PRIVATE 
     $<$<CXX_COMPILER_ID:Clang>:
         -Weverything -Werror

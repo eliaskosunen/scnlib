@@ -21,21 +21,9 @@
 #include "config.h"
 
 #include <string>
-#if SCN_HAS_STD_STRING_VIEW
-#include <string_view>
-#elif SCN_HAS_EXP_STRING_VIEW
-#include <experimental/string_view>
-#else
 #include "../span-lite/span.h"
-#endif
 
 namespace scn {
-
-#if SCN_HAS_STD_STRING_VIEW
-    using std::basic_string_view;
-#elif SCN_HAS_EXP_STRING_VIEW
-    using std::experimental::basic_string_view;
-#else
     template <typename CharT, typename Traits = std::char_traits<CharT>>
     class basic_string_view {
     public:
@@ -212,7 +200,6 @@ namespace scn {
     private:
         span_type m_data{};
     };
-#endif
 
     using string_view = basic_string_view<char>;
     using wstring_view = basic_string_view<wchar_t>;

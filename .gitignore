@@ -2,4 +2,3 @@
 build*/
 doc/
 .vs/
-CMakeSettings.json

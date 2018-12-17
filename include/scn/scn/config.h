@@ -89,35 +89,6 @@
 #define SCN_HAS_BUILTIN(x) 0
 #endif
 
-// Detect string_view
-#if (defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201606) || \
-    (SCN_HAS_INCLUDE(<string_view>) && __cplusplus >= SCN_STD_17) ||       \
-    ((SCN_GCC >= SCN_COMPILER(7, 0, 0) ||                                  \
-      SCN_CLANG >= SCN_COMPILER(4, 0, 0)) &&                               \
-     __cplusplus >= SCN_STD_17) ||                                         \
-    (SCN_MSVC >= SCN_COMPILER(19, 10, 0) && SCN_MSVC_LANG >= SCN_STD_17)
-#define SCN_HAS_STD_STRING_VIEW 1
-#endif
-// clang-format off
-#if (defined(__cpp_lib_experimental_string_view) &&    \
-     __cpp_lib_experimental_string_view >= 201411) ||  \
-    (SCN_HAS_INCLUDE(<experimental/string_view>) && \
-     __cplusplus >= SCN_STD_14)
-#define SCN_HAS_EXP_STRING_VIEW 1
-#endif
-// clang-format on
-
-#ifndef SCN_HAS_STD_STRING_VIEW
-#define SCN_HAS_STD_STRING_VIEW 0
-#endif
-#ifndef SCN_HAS_EXP_STRING_VIEW
-#define SCN_HAS_EXP_STRING_VIEW 0
-#endif
-
-// Detect span
-#define SCN_HAS_STD_SPAN \
-    (SCN_CLANG >= SCN_COMPILER(7, 0, 0) && __cplusplus >= SCN_STD_17)
-
 // Detect constexpr
 #if defined(__cpp_constexpr)
 #if __cpp_constexpr >= 201304

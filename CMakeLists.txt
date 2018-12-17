@@ -13,8 +13,17 @@ option(SCN_HEADER_ONLY "Build scnlib as a header-only library" OFF)
 add_subdirectory(include/scn/expected-lite/expected-lite)
 add_subdirectory(include/scn/span-lite/span-lite)
 
+set(SCN_HEADERS
+	include/scn/istream.h include/scn/scn.h
+	include/scn/scn/args.h include/scn/scn/config.h
+	include/scn/scn/context.h include/scn/scn/core.h
+	include/scn/scn/locale.h include/scn/scn/stream.h
+	include/scn/scn/string_view.h include/scn/scn/types.h
+	include/scn/scn/util.h include/scn/expected-lite/expected.h
+	include/scn/span-lite/span.h)
+
 if (SCN_HEADER_ONLY)
-    add_library(scn INTERFACE)
+    add_library(scn INTERFACE ${SCN_HEADERS})
     target_include_directories(scn INTERFACE
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${PROJECT_SOURCE_DIR}/src>"
         "$<INSTALL_INTERFACE:include;src>")
@@ -25,7 +34,7 @@ if (SCN_HEADER_ONLY)
     target_compile_definitions(scn INTERFACE
         -DSCN_HEADER_ONLY=1)
 else ()
-    add_library(scn
+    add_library(scn ${SCN_HEADERS}
         src/locale.cpp)
     target_include_directories(scn PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>

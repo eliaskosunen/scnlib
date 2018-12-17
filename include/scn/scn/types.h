@@ -27,14 +27,123 @@
 #include <charconv>
 #endif
 
+#if SCN_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundefined-func-template"
+#endif
+
 namespace scn {
+    enum class scan_status { keep, skip, end };
+
+    namespace predicates {
+        template <typename Context>
+        struct propagate {
+            expected<scan_status, error> operator()(typename Context::char_type)
+            {
+                return scan_status::keep;
+            }
+        };
+        template <typename Context>
+        struct until_space {
+            expected<scan_status, error> operator()(
+                typename Context::char_type ch)
+            {
+                if (ctx.locale().is_space(ch)) {
+                    return scan_status::end;
+                }
+                return scan_status::keep;
+            }
+
+            Context& ctx;
+        };
+        template <typename Context>
+        struct until_space_and_skip_chars {
+            expected<scan_status, error> operator()(
+                typename Context::char_type ch)
+            {
+                if (ctx.locale().is_space(ch)) {
+                    return scan_status::end;
+                }
+                if (std::find(skip.begin(), skip.end(), ch) != skip.end()) {
+                    return scan_status::skip;
+                }
+                return scan_status::keep;
+            }
+
+            Context& ctx;
+            span<typename Context::char_type> skip;
+        };
+    }  // namespace predicates
+
+    template <typename Context, typename Iterator, typename Predicate>
+    expected<Iterator, error> scan_chars(Context& ctx,
+                                         Iterator begin,
+                                         Predicate&& p)
+    {
+        while (true) {
+            auto ret = ctx.stream().read_char();
+            if (!ret) {
+                if (ret.error() == error::end_of_stream) {
+                    return begin;
+                }
+                return make_unexpected(ret.error());
+            }
+
+            auto r = p(ret.value());
+            if (!r) {
+                return make_unexpected(r.error());
+            }
+            if (r.value() == scan_status::skip) {
+                continue;
+            }
+            if (r.value() == scan_status::end) {
+                break;
+            }
+            *begin = ret.value();
+            ++begin;
+        }
+        return begin;
+    }
+    template <typename Context,
+              typename Iterator,
+              typename EndIterator,
+              typename Predicate>
+    expected<Iterator, error> scan_chars_until(Context& ctx,
+                                               Iterator begin,
+                                               EndIterator end,
+                                               Predicate&& p)
+    {
+        while (begin != end) {
+            auto ret = ctx.stream().read_char();
+            if (!ret) {
+                if (ret.error() == error::end_of_stream) {
+                    return begin;
+                }
+                return make_unexpected(ret.error());
+            }
+
+            auto r = p(ret.value());
+            if (!r) {
+                return make_unexpected(r.error());
+            }
+            if (r.value() == scan_status::skip) {
+                continue;
+            }
+            if (r.value() == scan_status::end) {
+                break;
+            }
+            *begin = ret.value();
+            ++begin;
+        }
+        return begin;
+    }
     namespace detail {
         template <typename CharT>
         struct empty_parser {
             template <typename Context>
             expected<void, error> parse(Context& ctx)
             {
-                if (*ctx.parse_context().begin() != CharT('{')) {
+                if (*ctx.parse_context().begin() != ctx.locale().widen('{')) {
                     return make_unexpected(error::invalid_format_string);
                 }
                 ctx.parse_context().advance();
@@ -69,18 +178,12 @@ namespace scn {
             }
 
             std::vector<CharT> buf(static_cast<size_t>(val.size()));
-            auto it = buf.begin();
-            for (; it != buf.end(); ++it) {
-                auto ch = ctx.stream().read_char();
-                if (!ch) {
-                    return make_unexpected(ch.error());
-                }
-                if (ctx.locale().is_space(ch.value())) {
-                    break;
-                }
-                *it = ch.value();
+            auto s = scan_chars_until(ctx, buf.begin(), buf.end(),
+                                      predicates::propagate<Context>{});
+            if (!s) {
+                return make_unexpected(s.error());
             }
-            std::copy(buf.begin(), buf.end(), val.begin());
+            std::copy(buf.begin(), s.value(), val.begin());
 
             return {};
         }
@@ -99,13 +202,13 @@ namespace scn {
 
             for (; ch; ctx.parse_context().advance(),
                        ch = *ctx.parse_context().begin()) {
-                if (ch == CharT('}')) {
+                if (ch == ctx.locale().widen('}')) {
                     break;
                 }
-                else if (ch == CharT('l')) {
+                else if (ch == ctx.locale().widen('l')) {
                     localized = true;
                 }
-                else if (ch == CharT('a')) {
+                else if (ch == ctx.locale().widen('a')) {
                     boolalpha = true;
                 }
                 else {
@@ -116,7 +219,7 @@ namespace scn {
             if (localized && !boolalpha) {
                 return make_unexpected(error::invalid_format_string);
             }
-            if (ch != CharT('}')) {
+            if (ch != ctx.locale().widen('}')) {
                 return make_unexpected(error::invalid_format_string);
             }
             return {};
@@ -126,38 +229,51 @@ namespace scn {
         expected<void, error> scan(bool& val, Context& ctx)
         {
             if (boolalpha) {
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif
-                auto truename = ctx.locale().truename();
-                auto falsename = ctx.locale().falsename();
+                const auto truename = ctx.locale().truename();
+                const auto falsename = ctx.locale().falsename();
                 const auto max_len =
                     std::max(truename.size(), falsename.size());
                 std::basic_string<CharT> buf(max_len, 0);
-#if SCN_CLANG
-#pragma clang diagnostic pop
-#endif
 
-                auto it = buf.begin();
-                for (; it != buf.end(); ++it) {
-                    auto ch = ctx.stream().read_char();
-                    if (!ch) {
-                        if (ch.error() == error::end_of_stream) {
-                            break;
-                        }
-                        return make_unexpected(ch.error());
-                    }
-                    *it = ch.value();
+                auto it =
+                    scan_chars_until(ctx, buf.begin(), buf.end(),
+                                     predicates::until_space<Context>{ctx});
+                if (!it) {
+                    return make_unexpected(it.error());
+                }
+                buf.erase(it.value());
 
-                    if (std::equal(buf.begin(), it + 1, falsename.begin())) {
+                bool found = false;
+                size_t chars = 0;
+
+                if (buf.size() >= falsename.size()) {
+                    if (std::equal(falsename.begin(), falsename.end(),
+                                   buf.begin())) {
                         val = false;
-                        return {};
+                        found = true;
+                        chars = falsename.size();
                     }
-                    if (std::equal(buf.begin(), it + 1, truename.begin())) {
+                }
+                if (!found && buf.size() >= truename.size()) {
+                    if (std::equal(truename.begin(), truename.end(),
+                                   buf.begin())) {
                         val = true;
-                        return {};
+                        found = true;
+                        chars = truename.size();
                     }
+                }
+                if (found) {
+                    for (auto i = buf.rbegin();
+                         i !=
+                         buf.rend() - static_cast<typename std::iterator_traits<
+                                          decltype(i)>::difference_type>(chars);
+                         ++i) {
+                        auto ret = ctx.stream().putback(*i);
+                        if (!ret) {
+                            return ret;
+                        }
+                    }
+                    return {};
                 }
             }
             else {
@@ -165,11 +281,11 @@ namespace scn {
                 if (!tmp) {
                     return make_unexpected(tmp.error());
                 }
-                if (tmp == CharT('0')) {
+                if (tmp == ctx.locale().widen('0')) {
                     val = false;
                     return {};
                 }
-                if (tmp == CharT('1')) {
+                if (tmp == ctx.locale().widen('1')) {
                     val = true;
                     return {};
                 }
@@ -181,6 +297,94 @@ namespace scn {
         bool localized{false};
         bool boolalpha{false};
     };
+
+    namespace detail {
+        template <typename CharT, typename T>
+        struct str_to_int;
+
+        template <typename CharT>
+        struct str_to_int<CharT, long long> {
+            static expected<long long, error>
+            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            {
+                return std::stoll(str, &chars, base);
+            }
+        };
+        template <typename CharT>
+        struct str_to_int<CharT, long> {
+            static expected<long, error>
+            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            {
+                return std::stol(str, &chars, base);
+            }
+        };
+        template <typename CharT>
+        struct str_to_int<CharT, int> {
+            static expected<int, error> get(const std::basic_string<CharT>& str,
+                                            size_t& chars,
+                                            int base)
+            {
+                return std::stoi(str, &chars, base);
+            }
+        };
+        template <typename CharT>
+        struct str_to_int<CharT, short> {
+            static expected<short, error>
+            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            {
+                auto i = std::stoi(str, &chars, base);
+                if (i > static_cast<int>(std::numeric_limits<short>::max())) {
+                    return make_unexpected(error::value_out_of_range);
+                }
+                if (i < static_cast<int>(std::numeric_limits<short>::min())) {
+                    return make_unexpected(error::value_out_of_range);
+                }
+                return static_cast<short>(i);
+            }
+        };
+        template <typename CharT>
+        struct str_to_int<CharT, unsigned long long> {
+            static expected<unsigned long long, error>
+            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            {
+                return std::stoull(str, &chars, base);
+            }
+        };
+        template <typename CharT>
+        struct str_to_int<CharT, unsigned long> {
+            static expected<unsigned long, error>
+            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            {
+                return std::stoul(str, &chars, base);
+            }
+        };
+        template <typename CharT>
+        struct str_to_int<CharT, unsigned int> {
+            static expected<unsigned int, error>
+            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            {
+                auto i = std::stoul(str, &chars, base);
+                if (i > static_cast<unsigned long>(
+                            std::numeric_limits<unsigned int>::max())) {
+                    return make_unexpected(error::value_out_of_range);
+                }
+                return static_cast<unsigned int>(i);
+            }
+        };
+        template <typename CharT>
+        struct str_to_int<CharT, unsigned short> {
+            static expected<unsigned short, error>
+            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            {
+                auto i = std::stoul(str, &chars, base);
+                if (i > static_cast<unsigned long>(
+                            std::numeric_limits<unsigned short>::max())) {
+                    return make_unexpected(error::value_out_of_range);
+                }
+                return static_cast<unsigned short>(i);
+            }
+        };
+    }  // namespace detail
 
     template <typename CharT, typename T>
     struct basic_value_scanner<
@@ -199,53 +403,55 @@ namespace scn {
             ctx.parse_context().advance();
             auto ch = *ctx.parse_context().begin();
 
-            if (ch == CharT('}')) {
+            if (ch == ctx.locale().widen('}')) {
                 return {};
             }
 
-            if (ch == CharT('l')) {
+            if (ch == ctx.locale().widen('l')) {
                 localized = thousands_separator | decimal | digits;
                 ctx.parse_context().advance();
             }
-            else if (ch == CharT('n')) {
+            else if (ch == ctx.locale().widen('n')) {
                 localized = thousands_separator | decimal;
                 ctx.parse_context().advance();
             }
             ch = *ctx.parse_context().begin();
-            if (ch == CharT('}')) {
+            if (ch == ctx.locale().widen('}')) {
                 return {};
             }
 
-            if (ch == CharT('d')) {
+            if (ch == ctx.locale().widen('d')) {
                 base = 10;
             }
-            else if (ch == CharT('x')) {
+            else if (ch == ctx.locale().widen('x')) {
                 base = 16;
             }
-            else if (ch == CharT('o')) {
+            else if (ch == ctx.locale().widen('o')) {
                 base = 8;
             }
-            else if (ch == CharT('b')) {
+            else if (ch == ctx.locale().widen('b')) {
                 ctx.parse_context().advance();
                 ch = *ctx.parse_context().begin();
 
                 int tmp = 0;
-                if (ch < CharT('0') || ch > CharT('9')) {
+                if (ch < ctx.locale().widen('0') ||
+                    ch > ctx.locale().widen('9')) {
                     return make_unexpected(error::invalid_format_string);
                 }
-                tmp = ch - CharT('0');
+                tmp = ch - ctx.locale().widen('0');
                 ctx.parse_context().advance();
                 ch = *ctx.parse_context().begin();
 
-                if (ch == CharT('}')) {
+                if (ch == ctx.locale().widen('}')) {
                     base = tmp;
                     return {};
                 }
-                if (ch < CharT('0') || ch > CharT('9')) {
+                if (ch < ctx.locale().widen('0') ||
+                    ch > ctx.locale().widen('9')) {
                     return make_unexpected(error::invalid_format_string);
                 }
                 tmp *= 10;
-                tmp += ch - CharT('0');
+                tmp += ch - ctx.locale().widen('0');
                 if (tmp < 1 || tmp > 36) {
                     return make_unexpected(error::invalid_format_string);
                 }
@@ -268,34 +474,26 @@ namespace scn {
             buf.reserve(static_cast<size_t>(
                 detail::max_digits<T>(base == 0 ? 8 : base)));
 
-            while (true) {
-                auto ch = ctx.stream().read_char();
-                if (!ch) {
-                    if (ch.error() == error::end_of_stream) {
-                        break;
-                    }
-                    return make_unexpected(ch.error());
-                }
-                if (ctx.locale().is_space(ch.value())) {
-                    break;
-                }
 #if SCN_CLANG
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundefined-func-template"
 #endif
-                if (ctx.locale().thousands_separator() == ch.value()) {
-                    continue;
-                }
+            auto thousands_sep = ctx.locale().thousands_separator();
 #if SCN_CLANG
 #pragma clang diagnostic pop
 #endif
-                buf.push_back(ch.value());
+            auto thsep_span = span<CharT>(&thousands_sep, 1);
+            auto r = scan_chars(ctx, std::back_inserter(buf),
+                                predicates::until_space_and_skip_chars<Context>{
+                                    ctx, thsep_span});
+            if (!r) {
+                return make_unexpected(r.error());
             }
 
             T tmp = 0;
             size_t chars = 0;
 
-            auto putback = [&]() -> expected<void, error> {
+            auto putback = [&chars, &ctx, &buf]() -> expected<void, error> {
                 for (auto it = buf.rbegin();
                      it !=
                      buf.rend() - static_cast<typename std::iterator_traits<
@@ -341,57 +539,23 @@ namespace scn {
             val = tmp;
 #else
             try {
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wconversion"
-#pragma clang diagnostic ignored "-Wshorten-64-to-32"
-#endif
 #if SCN_MSVC
 #pragma warning(push)
 #pragma warning(disable : 4244)
 #pragma warning(disable : 4127)  // conditional expression is constant
 #endif
                 if (std::is_unsigned<T>::value) {
-                    if (buf.front() == CharT('-')) {
+                    if (buf.front() == ctx.locale().widen('-')) {
                         return make_unexpected(error::value_out_of_range);
                     }
-                    if (std::is_same<T, unsigned long long>::value) {
-                        tmp = std::stoull(buf, &chars, base);
-                    }
-                    else {
-                        auto i = std::stoul(buf, &chars, base);
-                        if (i > static_cast<unsigned long>(
-                                    std::numeric_limits<T>::max())) {
-                            return make_unexpected(error::value_out_of_range);
-                        }
-                        tmp = static_cast<T>(i);
-                    }
                 }
-                else {
-                    if (std::is_same<T, long long>::value) {
-                        tmp = std::stoll(buf, &chars, base);
-                    }
-                    else if (std::is_same<T, long>::value) {
-                        tmp = std::stol(buf, &chars, base);
-                    }
-                    else {
-                        auto i = std::stoi(buf, &chars, base);
-                        if (i >
-                            static_cast<int>(std::numeric_limits<T>::max())) {
-                            return make_unexpected(error::value_out_of_range);
-                        }
-                        if (i <
-                            static_cast<int>(std::numeric_limits<T>::min())) {
-                            return make_unexpected(error::value_out_of_range);
-                        }
-                        tmp = static_cast<T>(i);
-                    }
+                auto ret = detail::str_to_int<CharT, T>::get(buf, chars, base);
+                if (!ret) {
+                    return make_unexpected(ret.error());
                 }
+                tmp = ret.value();
 #if SCN_MSVC
 #pragma warning(pop)
-#endif
-#if SCN_CLANG
-#pragma clang diagnostic pop
 #endif
             }
             catch (const std::invalid_argument&) {
@@ -433,11 +597,11 @@ namespace scn {
             ctx.parse_context().advance();
             auto ch = *ctx.parse_context().begin();
 
-            if (ch == CharT('}')) {
+            if (ch == ctx.locale().widen('}')) {
                 return {};
             }
 
-            if (ch == CharT('l')) {
+            if (ch == ctx.locale().widen('l')) {
                 localized = true;
                 ctx.parse_context().advance();
                 ch = *ctx.parse_context().begin();
@@ -451,35 +615,32 @@ namespace scn {
             buf.reserve(21);
 
             bool point = false;
-            while (true) {
-                auto tmp = ctx.stream().read_char();
-                if (!tmp) {
-                    if (tmp.error() == error::end_of_stream) {
-                        break;
+            auto r = scan_chars(
+                ctx, std::back_inserter(buf),
+                [&ctx, &point](CharT ch) -> expected<scan_status, error> {
+                    if (ctx.locale().is_space(ch)) {
+                        return scan_status::end;
                     }
-                    return make_unexpected(tmp.error());
-                }
-                if (ctx.locale().is_space(tmp.value())) {
-                    break;
-                }
-                if (tmp.value() == ctx.locale().thousands_separator()) {
-                    continue;
-                }
-                if (tmp.value() == ctx.locale().decimal_point()) {
-                    if (point) {
-                        return make_unexpected(error::invalid_scanned_value);
+                    if (ch == ctx.locale().thousands_separator()) {
+                        return scan_status::skip;
                     }
-                    point = true;
-                    buf.push_back(tmp.value());
-                    continue;
-                }
-                buf.push_back(tmp.value());
+                    if (ch == ctx.locale().decimal_point()) {
+                        if (point) {
+                            return make_unexpected(
+                                error::invalid_scanned_value);
+                        }
+                        point = true;
+                    }
+                    return scan_status::keep;
+                });
+            if (!r) {
+                return make_unexpected(r.error());
             }
 
             T tmp{};
             size_t chars = 0;
 
-            auto putback = [&]() -> expected<void, error> {
+            auto putback = [&chars, &buf, &ctx]() -> expected<void, error> {
                 for (auto it = buf.rbegin();
                      it !=
                      buf.rend() - static_cast<typename std::iterator_traits<
@@ -570,5 +731,10 @@ namespace scn {
         bool localized{false};
     };
 }  // namespace scn
+
+#if SCN_CLANG
+// -Wundefined-func-template
+#pragma clang diagnostic pop
+#endif
 
 #endif  // SCN_TYPES_H

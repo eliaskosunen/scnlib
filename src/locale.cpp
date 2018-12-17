@@ -21,6 +21,8 @@
 #include <scn/scn/core.h>
 #include <scn/scn/locale.h>
 
+#include <cctype>
+#include <cwchar>
 #include <locale>
 #include <sstream>
 
@@ -29,13 +31,15 @@ namespace scn {
         template <typename CharT>
         std::locale get_locale(basic_locale_ref<CharT> ref)
         {
-            assert(ref.get_ptr());
+            if (ref.is_default()) {
+                return std::locale();
+            }
             return *static_cast<const std::locale*>(ref.get_ptr());
         }
     }  // namespace detail
 
     template <>
-    inline basic_locale_ref<char>::basic_locale_ref()
+    SCN_FUNC basic_locale_ref<char>::basic_locale_ref()
         : m_locale(nullptr),
           m_truename("true"),
           m_falsename("false"),
@@ -44,7 +48,7 @@ namespace scn {
     {
     }
     template <>
-    inline basic_locale_ref<wchar_t>::basic_locale_ref()
+    SCN_FUNC basic_locale_ref<wchar_t>::basic_locale_ref()
         : m_locale(nullptr),
           m_truename(L"true"),
           m_falsename(L"false"),
@@ -105,6 +109,72 @@ namespace scn {
     auto basic_locale_ref<CharT>::falsename() const -> string_view_type
     {
         return string_view_type(m_falsename.data(), m_falsename.size());
+    }
+
+    namespace detail {
+        template <typename CharT>
+        struct default_widen;
+        template <>
+        struct default_widen<char> {
+            static char widen(char ch)
+            {
+                return ch;
+            }
+        };
+        template <>
+        struct default_widen<wchar_t> {
+            static wchar_t widen(char ch)
+            {
+                auto ret = std::btowc(static_cast<int>(ch));
+                if (ret == WEOF) {
+                    return static_cast<wchar_t>(-1);
+                }
+                return static_cast<wchar_t>(ret);
+            }
+        };
+    }  // namespace detail
+
+    template <typename CharT>
+    CharT basic_locale_ref<CharT>::widen(char ch) const
+    {
+        if (is_default()) {
+            return detail::default_widen<CharT>::widen(ch);
+        }
+        return std::use_facet<std::ctype<CharT>>(detail::get_locale(*this))
+            .widen(ch);
+    }
+
+    namespace detail {
+        template <typename CharT>
+        struct default_narrow;
+        template <>
+        struct default_narrow<char> {
+            static char narrow(char ch, char)
+            {
+                return ch;
+            }
+        };
+        template <>
+        struct default_narrow<wchar_t> {
+            static char narrow(wchar_t ch, char def)
+            {
+                auto ret = std::wctob(static_cast<wint_t>(ch));
+                if (ret == EOF) {
+                    return def;
+                }
+                return static_cast<char>(ret);
+            }
+        };
+    }  // namespace detail
+
+    template <typename CharT>
+    char basic_locale_ref<CharT>::narrow(char_type ch, char def) const
+    {
+        if (is_default()) {
+            return detail::default_narrow<CharT>::narrow(ch, def);
+        }
+        return std::use_facet<std::ctype<CharT>>(detail::get_locale(*this))
+            .narrow(ch, def);
     }
 
     namespace detail {
