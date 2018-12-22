@@ -38,14 +38,44 @@ namespace scn {
     namespace predicates {
         template <typename Context>
         struct propagate {
-            expected<scan_status, error> operator()(typename Context::char_type)
+            expected<scan_status, error> operator()(Context&,
+                                                    typename Context::char_type)
             {
                 return scan_status::keep;
             }
         };
         template <typename Context>
+        struct until {
+            expected<scan_status, error> operator()(
+                Context&,
+                typename Context::char_type ch)
+            {
+                if (ch == until_ch) {
+                    return scan_status::end;
+                }
+                return scan_status::keep;
+            }
+
+            typename Context::char_type until_ch;
+        };
+        template <typename Context>
+        struct until_one_of {
+            expected<scan_status, error> operator()(
+                Context&,
+                typename Context::char_type ch)
+            {
+                if (std::find(until.begin(), until.end(), ch) != until.end()) {
+                    return scan_status::end;
+                }
+                return scan_status::keep;
+            }
+
+            span<typename Context::char_type> until;
+        };
+        template <typename Context>
         struct until_space {
             expected<scan_status, error> operator()(
+                Context& ctx,
                 typename Context::char_type ch)
             {
                 if (ctx.locale().is_space(ch)) {
@@ -53,12 +83,48 @@ namespace scn {
                 }
                 return scan_status::keep;
             }
+        };
 
-            Context& ctx;
+        template <typename Context>
+        struct until_and_skip_chars {
+            expected<scan_status, error> operator()(
+                Context&,
+                typename Context::char_type ch)
+            {
+                if (ch == until) {
+                    return scan_status::end;
+                }
+                if (std::find(skip.begin(), skip.end(), ch) != skip.end()) {
+                    return scan_status::skip;
+                }
+                return scan_status::keep;
+            }
+
+            typename Context::char_type until;
+            span<typename Context::char_type> skip;
+        };
+        template <typename Context>
+        struct until_one_of_and_skip_chars {
+            expected<scan_status, error> operator()(
+                Context&,
+                typename Context::char_type ch)
+            {
+                if (std::find(until.begin(), until.end(), ch) != until.end()) {
+                    return scan_status::end;
+                }
+                if (std::find(skip.begin(), skip.end(), ch) != skip.end()) {
+                    return scan_status::skip;
+                }
+                return scan_status::keep;
+            }
+
+            span<typename Context::char_type> until;
+            span<typename Context::char_type> skip;
         };
         template <typename Context>
         struct until_space_and_skip_chars {
             expected<scan_status, error> operator()(
+                Context& ctx,
                 typename Context::char_type ch)
             {
                 if (ctx.locale().is_space(ch)) {
@@ -70,10 +136,11 @@ namespace scn {
                 return scan_status::keep;
             }
 
-            Context& ctx;
             span<typename Context::char_type> skip;
         };
     }  // namespace predicates
+
+    namespace pred = predicates;
 
     template <typename Context, typename Iterator, typename Predicate>
     expected<Iterator, error> scan_chars(Context& ctx,
@@ -89,7 +156,7 @@ namespace scn {
                 return make_unexpected(ret.error());
             }
 
-            auto r = p(ret.value());
+            auto r = p(ctx, ret.value());
             if (!r) {
                 return make_unexpected(r.error());
             }
@@ -122,7 +189,7 @@ namespace scn {
                 return make_unexpected(ret.error());
             }
 
-            auto r = p(ret.value());
+            auto r = p(ctx, ret.value());
             if (!r) {
                 return make_unexpected(r.error());
             }
@@ -235,9 +302,8 @@ namespace scn {
                     std::max(truename.size(), falsename.size());
                 std::basic_string<CharT> buf(max_len, 0);
 
-                auto it =
-                    scan_chars_until(ctx, buf.begin(), buf.end(),
-                                     predicates::until_space<Context>{ctx});
+                auto it = scan_chars_until(ctx, buf.begin(), buf.end(),
+                                           predicates::until_space<Context>{});
                 if (!it) {
                     return make_unexpected(it.error());
                 }
@@ -476,9 +542,9 @@ namespace scn {
 
             auto thousands_sep = ctx.locale().thousands_separator();
             auto thsep_span = span<CharT>(&thousands_sep, 1);
-            auto r = scan_chars(ctx, std::back_inserter(buf),
-                                predicates::until_space_and_skip_chars<Context>{
-                                    ctx, thsep_span});
+            auto r = scan_chars(
+                ctx, std::back_inserter(buf),
+                predicates::until_space_and_skip_chars<Context>{thsep_span});
             if (!r) {
                 return make_unexpected(r.error());
             }
@@ -639,14 +705,14 @@ namespace scn {
             bool point = false;
             auto r = scan_chars(
                 ctx, std::back_inserter(buf),
-                [&ctx, &point](CharT ch) -> expected<scan_status, error> {
-                    if (ctx.locale().is_space(ch)) {
+                [&point](Context& c, CharT ch) -> expected<scan_status, error> {
+                    if (c.locale().is_space(ch)) {
                         return scan_status::end;
                     }
-                    if (ch == ctx.locale().thousands_separator()) {
+                    if (ch == c.locale().thousands_separator()) {
                         return scan_status::skip;
                     }
-                    if (ch == ctx.locale().decimal_point()) {
+                    if (ch == c.locale().decimal_point()) {
                         if (point) {
                             return make_unexpected(
                                 error::invalid_scanned_value);
@@ -729,6 +795,155 @@ namespace scn {
 
         bool localized{false};
     };
+
+    template <typename CharT>
+    struct basic_value_scanner<CharT, std::basic_string<CharT>>
+        : public detail::empty_parser<CharT> {
+    public:
+        template <typename Context>
+        expected<void, error> scan(std::basic_string<CharT>& val, Context& ctx)
+        {
+            val.clear();
+            auto s = scan_chars(ctx, std::back_inserter(val),
+                                predicates::until_space<Context>{});
+            if (!s) {
+                return make_unexpected(s.error());
+            }
+            if (val.empty()) {
+                return make_unexpected(error::invalid_scanned_value);
+            }
+
+            return {};
+        }
+    };
+
+    template <typename Stream,
+              typename Traits,
+              typename Allocator,
+              typename CharT = typename Stream::char_type>
+    expected<void, error> getline(
+        Stream& s,
+        std::basic_string<CharT, Traits, Allocator>& str)
+    {
+        using context_type = basic_context<Stream>;
+        auto f = string_view("{}");
+        auto ctx = context_type(s, f);
+
+        str.clear();
+        auto res = scan_chars(
+            ctx, std::back_inserter(str),
+            predicates::until<context_type>{ctx.locale().widen('\n')});
+        if (!res) {
+            return make_unexpected(res.error());
+        }
+        return {};
+    }
+
+    namespace detail {
+        template <typename CharT>
+        struct ignore_iterator {
+            using value_type = CharT;
+            using pointer = value_type*;
+            using reference = value_type&;
+            using difference_type = std::ptrdiff_t;
+            using iterator_category = std::input_iterator_tag;
+
+            reference operator*() const
+            {
+                static CharT c(0);
+                return c;
+            }
+            pointer operator->() const
+            {
+                return &operator*();
+            }
+
+            ignore_iterator& operator++()
+            {
+                ++i;
+                return *this;
+            }
+            ignore_iterator operator++(int)
+            {
+                auto tmp(*this);
+                operator++();
+                return tmp;
+            }
+
+            void swap(ignore_iterator& other)
+            {
+                using std::swap;
+                swap(i, other.i);
+            }
+
+            bool operator==(ignore_iterator& other)
+            {
+                return i == other.i;
+            }
+            bool operator!=(ignore_iterator& other)
+            {
+                return !(*this == other);
+            }
+
+            static ignore_iterator max()
+            {
+                return {std::numeric_limits<difference_type>::max()};
+            }
+
+            difference_type i{0};
+        };
+
+        template <typename CharT>
+        void swap(ignore_iterator<CharT>& a, ignore_iterator<CharT>& b)
+        {
+            a.swap(b);
+        }
+    }  // namespace detail
+
+    template <typename Stream, typename CharT = typename Stream::char_type>
+    expected<void, error> ignore(Stream& s, CharT until)
+    {
+        using context_type = basic_context<Stream>;
+        auto f = string_view("{}");
+        auto ctx = context_type(s, f);
+
+        auto res = scan_chars(ctx, detail::ignore_iterator<CharT>{},
+                              predicates::until<context_type>{until});
+        if (!res) {
+            return make_unexpected(res.error());
+        }
+        return {};
+    }
+    template <typename Stream, typename CharT = typename Stream::char_type>
+    expected<void, error> ignore(Stream& s, std::ptrdiff_t count = 1)
+    {
+        using context_type = basic_context<Stream>;
+        auto f = string_view("{}");
+        auto ctx = context_type(s, f);
+
+        auto res = scan_chars_until(ctx, detail::ignore_iterator<CharT>{},
+                                    detail::ignore_iterator<CharT>{count},
+                                    predicates::propagate<context_type>{});
+        if (!res) {
+            return make_unexpected(res.error());
+        }
+        return {};
+    }
+    template <typename Stream, typename CharT = typename Stream::char_type>
+    expected<void, error> ignore(Stream& s, std::ptrdiff_t count, CharT until)
+    {
+        using context_type = basic_context<Stream>;
+        auto f = string_view("{}");
+        auto ctx = context_type(s, f);
+
+        auto res = scan_chars_until(ctx, detail::ignore_iterator<CharT>{},
+                                    detail::ignore_iterator<CharT>{count},
+                                    predicates::until<context_type>{until});
+        if (!res) {
+            return make_unexpected(res.error());
+        }
+        return {};
+    }
 }  // namespace scn
 
 #if SCN_CLANG >= SCN_COMPILER(3, 9, 0)

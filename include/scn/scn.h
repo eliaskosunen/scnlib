@@ -63,9 +63,10 @@ namespace scn {
         auto locale = basic_locale_ref<typename Stream::char_type>(
             static_cast<const void*>(std::addressof(loc)));
         auto ctx = context_type(s, f);
-        return vscan<context_type>(ctx, args);
+        return vscan<context_type>(ctx, args, std::move(locale));
     }
 
+#if 0
     template <typename... Args>
     expected<void, error> input(string_view f, Args&... a)
     {
@@ -75,7 +76,7 @@ namespace scn {
         auto s = stream_type(stdin);
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, f);
-        return vscan<stream_type, context_type>(s, ctx, args);
+        return vscan<context_type>(ctx, args);
     }
     template <typename... Args>
     expected<void, error> winput(wstring_view f, Args&... a)
@@ -86,10 +87,9 @@ namespace scn {
         auto s = stream_type(stdin);
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, f);
-        return vscan<stream_type, context_type>(s, ctx, args);
+        return vscan<context_type>(ctx, args);
     }
 
-#if 0
     template <typename Source,
               typename CharT =
                   decltype(make_stream(std::declval<const Source&>()), void()),
