@@ -42,3 +42,4 @@ namespace scn {
 }  // namespace scn
 
 #endif  // SCN_UTIL_H
+

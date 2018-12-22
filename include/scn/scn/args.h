@@ -61,7 +61,7 @@ namespace scn {
     template <typename Context, typename... Args>
     class arg_store {
     public:
-        arg_store(Args&... a) : m_data{basic_arg<Context>(a)...} {}
+        arg_store(Args&... a) : m_data{{basic_arg<Context>(a)...}} {}
 
         span<basic_arg<Context>> data()
         {
@@ -120,3 +120,4 @@ namespace scn {
 }  // namespace scn
 
 #endif  // SCN_ARGS_H
+

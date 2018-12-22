@@ -9,6 +9,7 @@ else ()
 endif ()
 
 option(SCN_HEADER_ONLY "Build scnlib as a header-only library" OFF)
+option(SCN_BENCHMARKS "Build scnlib benchmarks" OFF)
 
 add_subdirectory(include/scn/expected-lite/expected-lite)
 add_subdirectory(include/scn/span-lite/span-lite)
@@ -52,5 +53,7 @@ endif ()
 
 if (SCN_TESTS)
     add_subdirectory(test)
+endif ()
+if (SCN_BENCHMARKS)
     add_subdirectory(benchmark)
 endif ()

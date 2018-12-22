@@ -1,5 +1,7 @@
 # scnlib
 
+[![Travis CI Build Status](https://travis-ci.com/eliaskosunen/scnlib.svg?branch=master)](https://travis-ci.com/eliaskosunen/scnlib)
+
 ## Acknowledgements
 
 The contents of this library are heavily influenced by fmtlib and its derivative works.

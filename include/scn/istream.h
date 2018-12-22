@@ -117,3 +117,4 @@ namespace scn {
 }  // namespace scn
 
 #endif  // SCN_ISTREAM_H
+

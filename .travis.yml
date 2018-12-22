@@ -1,0 +1,256 @@
+language: cpp
+dist: trusty
+sudo: false
+os: linux
+
+git:
+  depth: 1
+
+matrix:
+  include:
+    # g++ 8
+    - env: COMPILER=g++-8 STANDARD=17
+      compiler: gcc
+      addons:
+        apt:
+          update: true
+          packages: ["g++-8"]
+          sources: ["ubuntu-toolchain-r-test"]
+    # g++ 7
+    - env: COMPILER=g++-7 STANDARD=17
+      compiler: gcc
+      addons:
+        apt:
+          update: true
+          packages: ["g++-7"]
+          sources: ["ubuntu-toolchain-r-test"]
+    # g++ 6
+    - env: COMPILER=g++-6 STANDARD=14
+      compiler: gcc
+      addons:
+        apt:
+          update: true
+          packages: ["g++-6"]
+          sources: ["ubuntu-toolchain-r-test"]
+    # g++ 5
+    - env: COMPILER=g++-5 STANDARD=14
+      compiler: gcc
+      addons:
+        apt:
+          update: true
+          packages: ["g++-5"]
+          sources: ["ubuntu-toolchain-r-test"]
+    # g++ 4.9
+    - env: COMPILER=g++-4.9 STANDARD=14
+      compiler: gcc
+      addons:
+        apt:
+          update: true
+          packages: ["g++-4.9"]
+          sources: ["ubuntu-toolchain-r-test"]
+
+    # clang 8
+    - env: COMPILER=clang++-8 STANDARD=17
+      compiler: clang
+      addons:
+        apt:
+          update: true
+          packages: ["clang-8", "g++-7"]
+          sources: ["llvm-toolchain-trusty", "ubuntu-toolchain-r-test"]
+    # clang 7
+    - env: COMPILER=clang++-7 STANDARD=17
+      compiler: clang
+      addons:
+        apt:
+          update: true
+          packages: ["clang-7", "g++-7"]
+          sources: ["llvm-toolchain-trusty-7", "ubuntu-toolchain-r-test"]
+    # clang 6.0
+    - env: COMPILER=clang++-6.0 STANDARD=17
+      compiler: clang
+      addons:
+        apt:
+          update: true
+          packages: ["clang-6.0", "g++-7"]
+          sources: ["llvm-toolchain-trusty-6.0", "ubuntu-toolchain-r-test"]
+    # clang 5.0
+    - env: COMPILER=clang++-5.0 STANDARD=17
+      compiler: clang
+      addons:
+        apt:
+          update: true
+          packages: ["clang-5.0", "g++-7"]
+          sources: ["llvm-toolchain-trusty-5.0", "ubuntu-toolchain-r-test"]
+    # clang 4.0
+    - env: COMPILER=clang++-4.0 STANDARD=14
+      compiler: clang
+      addons:
+        apt:
+          update: true
+          packages: ["clang-4.0", "g++-7"]
+          sources: ["llvm-toolchain-trusty-4.0", "ubuntu-toolchain-r-test"]
+    # clang 3.9
+    - env: COMPILER=clang++-3.9 STANDARD=14
+      compiler: clang
+      addons:
+        apt:
+          update: true
+          packages: ["clang-3.9", "g++-7"]
+          sources: ["llvm-toolchain-trusty-3.9", "ubuntu-toolchain-r-test"]
+    # clang 3.8
+    - env: COMPILER=clang++-3.8 STANDARD=14
+      compiler: clang
+      addons:
+        apt:
+          update: true
+          packages: ["clang-3.8", "g++-7"]
+          sources: ["llvm-toolchain-trusty-3.8", "ubuntu-toolchain-r-test"]
+    # clang 3.7
+    - env: COMPILER=clang++-3.7 STANDARD=14
+      compiler: clang
+      addons:
+        apt:
+          update: true
+          packages: ["clang-3.7", "g++-7"]
+          sources: ["llvm-toolchain-trusty-3.7", "ubuntu-toolchain-r-test"]
+    # clang 3.6
+    - env: COMPILER=clang++-3.6 STANDARD=14
+      compiler: clang
+      addons:
+        apt:
+          update: true
+          packages: ["clang-3.6", "g++-7"]
+          sources: ["llvm-toolchain-trusty-3.6", "llvm-toolchain-trusty-3.6-binaries", "ubuntu-toolchain-r-test"]
+    # clang 3.5
+    - env: COMPILER=clang++-3.5 STANDARD=14
+      compiler: clang
+      addons:
+        apt:
+          update: true
+          packages: ["clang-3.5", "g++-7"]
+          sources: ["llvm-toolchain-trusty-3.5", "llvm-toolchain-trusty-3.5-binaries", "ubuntu-toolchain-r-test"]
+
+    # osx xcode 9
+    - env: COMPILER=clang++
+      compiler: clang
+      osx_image: xcode9
+      os: osx
+    # osx xcode 8
+    - env: COMPILER=clang++
+      compiler: clang
+      osx_image: xcode8
+      os: osx
+    # osx xcode 7.3
+    - env: COMPILER=clang++
+      compiler: clang
+      osx_image: xcode7.3
+      os: osx
+    # osx xcode 6.4
+    - env: COMPILER=clang++
+      compiler: clang
+      osx_image: xcode6.4
+      os: osx
+    
+    # osx g++ 7 (xcode 9.3)
+    - env: COMPILER=g++-7
+      compiler: gcc
+      osx_image: xcode9.3
+      os: osx
+    # osx llvm-gcc
+    - env: COMPILER=g++
+      compiler: gcc
+      os: osx
+
+  allow_failures:
+    - os: osx
+
+install:
+  - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
+  - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
+
+  - if [[ "${COVERAGE}" = "true" ]]; then gem install coveralls-lcov ; fi
+
+  - |
+    if [[ "${TRAVIS_OS_NAME}" = "linux" ]]; then
+      CMAKE_URL="http://www.cmake.org/files/v3.11/cmake-3.11.4-Linux-x86_64.tar.gz"
+      mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
+      export PATH=${DEPS_DIR}/cmake/bin:${PATH}
+      if [[ "${COMPILER}" = "clang++-3.7" ]]; then
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/*
+        wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.7 main" | sudo tee -a /etc/apt/sources.list > /dev/null
+        sudo apt-get --allow-unauthenticated -yq update
+        sudo apt-get -yq --no-install-suggests --no-install-recommends --force-yes install clang-3.7
+      fi
+      if [[ "${COMPILER}" = "clang++-3.4" ]]; then
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/*
+        wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.4 main" | sudo tee -a /etc/apt/sources.list > /dev/null
+        sudo apt-get --allow-unauthenticated -yq update
+        sudo apt-get -yq --no-install-suggests --no-install-recommends --force-yes install clang-3.4
+      fi
+    fi
+  - cd ${TRAVIS_BUILD_DIR}
+
+  - |
+    if [[ "${TRAVIS_OS_NAME}" = "osx" ]]; then
+      brew update
+      if brew list -1 | grep -q "^cmake\$"; then
+        brew outdated cmake || brew upgrade cmake
+      else
+        brew install cmake
+      fi
+      if [[ "${COMPILER}" = "g++-4.9" ]]; then
+        brew install gcc49
+      fi
+      if [[ "${COMPILER}" = "g++-5" ]]; then
+        brew install gcc5
+      fi
+      if [[ "${COMPILER}" = "g++-6" ]]; then
+        brew install gcc@6 || true
+        brew link --overwrite gcc@6
+      fi
+      if [[ "${COMPILER}" = "g++-7" ]]; then
+        brew install gcc@7 || true
+        brew link --overwrite gcc@7
+      fi
+      if [[ "${COMPILER}" = "g++-8" ]]; then
+        brew install gcc@8 || true
+        brew link --overwrite gcc@8
+      fi
+    fi
+  - export CXX="${COMPILER}"
+
+before_script:
+  - cmake --version
+  - ${CXX} --version
+
+script:
+  - |
+    run_build() {
+      cmake -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_BUILD_TYPE=Debug -DSCN_BENCHMARKS=OFF "$@" .. || return 1
+      make -k -j2 || return 1
+      ./test/tests || return 1
+      make clean || return 1
+      cmake -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_BUILD_TYPE=Release -DSCN_BENCHMARKS=OFF "$@" .. || return 1
+      make -k -j2 || return 1
+      ./test/tests || return 1
+      make clean || return 1
+      return 0
+    }
+    cd ${TRAVIS_BUILD_DIR}
+    mkdir build
+    cd build
+    if [[ -z "$STANDARD" ]]; then
+      run_build
+    else
+      standards="11 14 17"
+      for std in $standards; do
+        run_build -DCMAKE_CXX_STANDARD=$std || exit 1
+        if [[ "${std}" == "${STANDARD}" ]]; then
+          break
+        fi
+      done
+    fi

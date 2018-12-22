@@ -55,3 +55,4 @@ namespace scn {
 }  // namespace scn
 
 #endif  // SCN_SPAN_LITE_H
+

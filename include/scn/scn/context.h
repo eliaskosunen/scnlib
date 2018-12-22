@@ -33,19 +33,19 @@ namespace scn {
         template <typename T>
         using value_scanner_type = basic_value_scanner<char_type, T>;
 
-#if SCN_CLANG
+#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundefined-func-template"
 #endif
         basic_context(stream_type& s,
                       basic_string_view<char_type> f,
-                      locale_type locale = locale_type())
+                      locale_type l = locale_type())
             : m_stream(std::addressof(s)),
-              m_parse_ctx(std::move(f)),
-              m_locale(locale)
+              m_parse_ctx(f),
+              m_locale(std::move(l))
         {
         }
-#if SCN_CLANG
+#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
 #pragma clang diagnostic pop
 #endif
 
@@ -70,3 +70,4 @@ namespace scn {
 }  // namespace scn
 
 #endif  // SCN_CONTEXT_H
+

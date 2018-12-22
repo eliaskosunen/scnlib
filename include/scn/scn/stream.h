@@ -430,3 +430,4 @@ namespace scn {
 }  // namespace scn
 
 #endif  // SCN_STREAM_H
+

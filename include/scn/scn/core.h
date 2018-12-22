@@ -58,7 +58,7 @@ namespace scn {
             if (!ch) {
                 return make_unexpected(ch.error());
             }
-#if SCN_CLANG
+#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundefined-func-template"
 #endif
@@ -69,7 +69,7 @@ namespace scn {
                 }
                 break;
             }
-#if SCN_CLANG
+#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
 #pragma clang diagnostic pop
 #endif
         }
@@ -131,3 +131,4 @@ namespace scn {
 }  // namespace scn
 
 #endif  // SCN_CORE_H
+

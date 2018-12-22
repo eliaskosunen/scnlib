@@ -26,9 +26,16 @@
 #pragma clang diagnostic ignored "-Wpadded"
 #pragma clang diagnostic ignored "-Wweak-vtables"
 #endif
+#if SCN_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
 
 #include "nonstd/expected.hpp"
 
+#if SCN_GCC
+#pragma GCC diagnostic pop
+#endif
 #if SCN_CLANG
 #pragma clang diagnostic pop
 #endif
@@ -39,3 +46,4 @@ namespace scn {
 }  // namespace scn
 
 #endif  // SCN_EXPECTED_H
+

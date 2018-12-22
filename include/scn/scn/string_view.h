@@ -209,3 +209,4 @@ namespace scn {
 }  // namespace scn
 
 #endif  // SCN_STRING_VIEW_H
+

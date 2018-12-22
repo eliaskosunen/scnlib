@@ -1,12 +1,9 @@
-set(DOCTEST_WITH_TESTS OFF)
-set(DOCTEST_NO_INSTALL ON)
-add_subdirectory(doctest EXCLUDE_FROM_ALL)
-
 add_executable(tests test.cpp empty.cpp string_view.cpp)
-target_link_libraries(tests scn doctest)
+target_link_libraries(tests scn)
+target_include_directories(tests SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/doctest/doctest)
 target_compile_options(tests PRIVATE 
     $<$<CXX_COMPILER_ID:Clang>:
-        -Weverything -Werror
+        -Weverything
         -Wpedantic -pedantic-errors
         -fvisibility=hidden -fstrict-aliasing
         -Wno-c++98-compat
@@ -15,13 +12,13 @@ target_compile_options(tests PRIVATE
         -Wno-c++98-compat-local-type-template-args>
     $<$<CXX_COMPILER_ID:GNU>:
         -Wall -Wextra -Wpedantic
-        -pedantic-errors -Werror
+        -pedantic-errors
         -fvisibility=hidden -fstrict-aliasing
         -Wconversion -Wsign-conversion
         -Wold-style-cast -Wfloat-equal
         -Wlogical-op -Wundef
         -Wredundant-decls -Wshadow
-        -Wstrict-overflow=5 -Wwrite-strings
+        -Wwrite-strings
         -Wpointer-arith -Wcast-qual
         -Wformat=2 -Wswitch-default
         -Wmissing-include-dirs -Wcast-align
@@ -43,5 +40,5 @@ target_compile_options(tests PRIVATE
         -Wcast-align=strict>
         >
     $<$<CXX_COMPILER_ID:MSVC>:
-        /W4 /WX
+        /W4
         /std:c++latest /permissive->)

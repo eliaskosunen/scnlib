@@ -86,3 +86,4 @@ namespace scn {
 #endif
 
 #endif  // SCN_LOCALE_H
+

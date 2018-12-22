@@ -27,7 +27,7 @@
 #include <charconv>
 #endif
 
-#if SCN_CLANG
+#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundefined-func-template"
 #endif
@@ -474,14 +474,7 @@ namespace scn {
             buf.reserve(static_cast<size_t>(
                 detail::max_digits<T>(base == 0 ? 8 : base)));
 
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif
             auto thousands_sep = ctx.locale().thousands_separator();
-#if SCN_CLANG
-#pragma clang diagnostic pop
-#endif
             auto thsep_span = span<CharT>(&thousands_sep, 1);
             auto r = scan_chars(ctx, std::back_inserter(buf),
                                 predicates::until_space_and_skip_chars<Context>{
@@ -583,6 +576,35 @@ namespace scn {
         int base{0};
         int localized{0};
     };
+
+    namespace detail {
+        template <typename CharT, typename T>
+        struct str_to_float;
+
+        template <typename CharT>
+        struct str_to_float<CharT, float> {
+            static float get(const std::basic_string<CharT>& str, size_t& chars)
+            {
+                return std::stof(str, &chars);
+            }
+        };
+        template <typename CharT>
+        struct str_to_float<CharT, double> {
+            static double get(const std::basic_string<CharT>& str,
+                              size_t& chars)
+            {
+                return std::stod(str, &chars);
+            }
+        };
+        template <typename CharT>
+        struct str_to_float<CharT, long double> {
+            static long double get(const std::basic_string<CharT>& str,
+                                   size_t& chars)
+            {
+                return std::stold(str, &chars);
+            }
+        };
+    }  // namespace detail
 
     template <typename CharT, typename T>
     struct basic_value_scanner<
@@ -686,30 +708,7 @@ namespace scn {
             val = tmp;
 #else
             try {
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wconversion"
-#pragma clang diagnostic ignored "-Wdouble-promotion"
-#endif
-#if SCN_MSVC
-#pragma warning(push)
-#pragma warning(disable : 4244)  // narrowing conversion
-#endif
-                if (std::is_same<T, float>::value) {
-                    tmp = std::stof(buf, &chars);
-                }
-                else if (std::is_same<T, double>::value) {
-                    tmp = std::stod(buf, &chars);
-                }
-                else {
-                    tmp = std::stold(buf, &chars);
-                }
-#if SCN_MSVC
-#pragma warning(pop)
-#endif
-#if SCN_CLANG
-#pragma clang diagnostic pop
-#endif
+                tmp = detail::str_to_float<CharT, T>::get(buf, chars);
             }
             catch (const std::invalid_argument&) {
                 return make_unexpected(error::invalid_scanned_value);
@@ -732,9 +731,10 @@ namespace scn {
     };
 }  // namespace scn
 
-#if SCN_CLANG
+#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
 // -Wundefined-func-template
 #pragma clang diagnostic pop
 #endif
 
 #endif  // SCN_TYPES_H
+
