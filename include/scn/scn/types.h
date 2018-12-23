@@ -307,7 +307,9 @@ namespace scn {
                 if (!it) {
                     return make_unexpected(it.error());
                 }
-                buf.erase(it.value());
+                if (it.value() != buf.end()) {
+                    buf.erase(it.value());
+                }
 
                 bool found = false;
                 size_t chars = 0;
@@ -848,6 +850,9 @@ namespace scn {
             using difference_type = std::ptrdiff_t;
             using iterator_category = std::input_iterator_tag;
 
+            ignore_iterator() = default;
+            ignore_iterator(difference_type n) : i(n) {}
+
             reference operator*() const
             {
                 static CharT c(0);
@@ -901,7 +906,21 @@ namespace scn {
     }  // namespace detail
 
     template <typename Stream, typename CharT = typename Stream::char_type>
-    expected<void, error> ignore(Stream& s, CharT until)
+    expected<void, error> ignore_all(Stream& s)
+    {
+        using context_type = basic_context<Stream>;
+        auto f = string_view("{}");
+        auto ctx = context_type(s, f);
+
+        auto res = scan_chars(ctx, detail::ignore_iterator<CharT>{},
+                              predicates::propagate<context_type>{});
+        if (!res) {
+            return make_unexpected(res.error());
+        }
+        return {};
+    }
+    template <typename Stream, typename CharT = typename Stream::char_type>
+    expected<void, error> ignore_until(Stream& s, CharT until)
     {
         using context_type = basic_context<Stream>;
         auto f = string_view("{}");
@@ -915,7 +934,7 @@ namespace scn {
         return {};
     }
     template <typename Stream, typename CharT = typename Stream::char_type>
-    expected<void, error> ignore(Stream& s, std::ptrdiff_t count = 1)
+    expected<void, error> ignore_n(Stream& s, std::ptrdiff_t count)
     {
         using context_type = basic_context<Stream>;
         auto f = string_view("{}");
@@ -930,7 +949,9 @@ namespace scn {
         return {};
     }
     template <typename Stream, typename CharT = typename Stream::char_type>
-    expected<void, error> ignore(Stream& s, std::ptrdiff_t count, CharT until)
+    expected<void, error> ignore_n_until(Stream& s,
+                                         std::ptrdiff_t count,
+                                         CharT until)
     {
         using context_type = basic_context<Stream>;
         auto f = string_view("{}");
