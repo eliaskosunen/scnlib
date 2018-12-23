@@ -94,7 +94,7 @@ TEST_CASE("ignore")
         ret = scn::scan(stream, "{}", s);
         CHECK(!ret);
         if (!ret) {
-            CHECK(ret.error() == scn::error::end_of_stream);
+            CHECK(ret == scn::error::end_of_stream);
         }
     }
 }

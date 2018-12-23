@@ -18,45 +18,18 @@
 #ifndef SCN_CORE_H
 #define SCN_CORE_H
 
-#include "../expected-lite/expected.h"
 #include "../span-lite/span.h"
+#include "result.h"
 #include "string_view.h"
 
 namespace scn {
-    enum class error {
-        good,
-        end_of_stream,
-        invalid_format_string,
-        invalid_scanned_value,
-        value_out_of_range,
-        unrecoverable_stream_error,
-        stream_source_error,
-        unrecoverable_stream_source_error
-    };
-
-    inline bool is_recoverable_error(error e)
-    {
-        return e == error::unrecoverable_stream_error ||
-               e == error::unrecoverable_stream_source_error;
-    }
-
-    namespace detail {
-        template <typename Context>
-        struct custom_value {
-            using fn_type = expected<void, error>(void*, Context&);
-
-            void* value;
-            fn_type* scan;
-        };
-    }  // namespace detail
-
     template <typename Context>
-    expected<void, error> skip_stream_whitespace(Context& ctx)
+    error skip_stream_whitespace(Context& ctx)
     {
         while (true) {
             auto ch = ctx.stream().read_char();
             if (!ch) {
-                return make_unexpected(ch.error());
+                return ch.get_error();
             }
 #if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
 #pragma clang diagnostic push
@@ -76,7 +49,7 @@ namespace scn {
         return {};
     }
     template <typename Context>
-    expected<void, error> parse_whitespace(Context& ctx)
+    error parse_whitespace(Context& ctx)
     {
         bool found = false;
         while (ctx.locale().is_space(*ctx.parse_context().begin())) {
@@ -90,6 +63,16 @@ namespace scn {
         }
         return {};
     }
+
+    namespace detail {
+        template <typename Context>
+        struct custom_value {
+            using fn_type = error(void*, Context&);
+
+            void* value;
+            fn_type* scan;
+        };
+    }  // namespace detail
 
     template <typename Char>
     class basic_parse_context {

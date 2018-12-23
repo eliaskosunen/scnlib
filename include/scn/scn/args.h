@@ -31,14 +31,14 @@ namespace scn {
         {
         }
 
-        expected<void, error> visit(Context& ctx)
+        error visit(Context& ctx)
         {
             return m_value.scan(m_value.value, ctx);
         }
 
     private:
         template <typename T>
-        static expected<void, error> custom_arg(void* arg, Context& ctx)
+        static error custom_arg(void* arg, Context& ctx)
         {
             typename Context::template value_scanner_type<T> s;
             auto err = s.parse(ctx);
@@ -93,7 +93,7 @@ namespace scn {
 
         basic_args(span<basic_arg<Context>> args) : m_args(args) {}
 
-        expected<void, error> visit(Context& ctx)
+        error visit(Context& ctx)
         {
             for (auto& a : m_args) {
                 auto ret = a.visit(ctx);

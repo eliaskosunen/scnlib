@@ -52,7 +52,7 @@ TEST_CASE("integer")
         CHECK(u == 0);
         CHECK(!ret);
         if (!ret) {
-            CHECK(ret.error() == scn::error::value_out_of_range);
+            CHECK(ret == scn::error::value_out_of_range);
         }
         u = 0;
     }
@@ -71,7 +71,7 @@ TEST_CASE("integer")
         CHECK(i == 0);
         CHECK(!ret);
         if (!ret) {
-            CHECK(ret.error() == scn::error::value_out_of_range);
+            CHECK(ret == scn::error::value_out_of_range);
         }
         i = 0;
     }
@@ -124,7 +124,7 @@ TEST_CASE("integer")
         CHECK(i == 0);
         CHECK(!ret);
         if (!ret) {
-            CHECK(ret.error() == scn::error::end_of_stream);
+            CHECK(ret.get_code() == scn::error::end_of_stream);
         }
         i = 0;
     }

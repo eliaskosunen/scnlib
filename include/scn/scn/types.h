@@ -38,17 +38,16 @@ namespace scn {
     namespace predicates {
         template <typename Context>
         struct propagate {
-            expected<scan_status, error> operator()(Context&,
-                                                    typename Context::char_type)
+            result<scan_status> operator()(Context&,
+                                           typename Context::char_type)
             {
                 return scan_status::keep;
             }
         };
         template <typename Context>
         struct until {
-            expected<scan_status, error> operator()(
-                Context&,
-                typename Context::char_type ch)
+            result<scan_status> operator()(Context&,
+                                           typename Context::char_type ch)
             {
                 if (ch == until_ch) {
                     return scan_status::end;
@@ -60,9 +59,8 @@ namespace scn {
         };
         template <typename Context>
         struct until_one_of {
-            expected<scan_status, error> operator()(
-                Context&,
-                typename Context::char_type ch)
+            result<scan_status> operator()(Context&,
+                                           typename Context::char_type ch)
             {
                 if (std::find(until.begin(), until.end(), ch) != until.end()) {
                     return scan_status::end;
@@ -74,9 +72,8 @@ namespace scn {
         };
         template <typename Context>
         struct until_space {
-            expected<scan_status, error> operator()(
-                Context& ctx,
-                typename Context::char_type ch)
+            result<scan_status> operator()(Context& ctx,
+                                           typename Context::char_type ch)
             {
                 if (ctx.locale().is_space(ch)) {
                     return scan_status::end;
@@ -87,9 +84,8 @@ namespace scn {
 
         template <typename Context>
         struct until_and_skip_chars {
-            expected<scan_status, error> operator()(
-                Context&,
-                typename Context::char_type ch)
+            result<scan_status> operator()(Context&,
+                                           typename Context::char_type ch)
             {
                 if (ch == until) {
                     return scan_status::end;
@@ -105,9 +101,8 @@ namespace scn {
         };
         template <typename Context>
         struct until_one_of_and_skip_chars {
-            expected<scan_status, error> operator()(
-                Context&,
-                typename Context::char_type ch)
+            result<scan_status> operator()(Context&,
+                                           typename Context::char_type ch)
             {
                 if (std::find(until.begin(), until.end(), ch) != until.end()) {
                     return scan_status::end;
@@ -123,9 +118,8 @@ namespace scn {
         };
         template <typename Context>
         struct until_space_and_skip_chars {
-            expected<scan_status, error> operator()(
-                Context& ctx,
-                typename Context::char_type ch)
+            result<scan_status> operator()(Context& ctx,
+                                           typename Context::char_type ch)
             {
                 if (ctx.locale().is_space(ch)) {
                     return scan_status::end;
@@ -143,22 +137,20 @@ namespace scn {
     namespace pred = predicates;
 
     template <typename Context, typename Iterator, typename Predicate>
-    expected<Iterator, error> scan_chars(Context& ctx,
-                                         Iterator begin,
-                                         Predicate&& p)
+    result<Iterator> scan_chars(Context& ctx, Iterator begin, Predicate&& p)
     {
         while (true) {
             auto ret = ctx.stream().read_char();
             if (!ret) {
-                if (ret.error() == error::end_of_stream) {
+                if (ret.get_error() == error::end_of_stream) {
                     return begin;
                 }
-                return make_unexpected(ret.error());
+                return ret.get_error();
             }
 
             auto r = p(ctx, ret.value());
             if (!r) {
-                return make_unexpected(r.error());
+                return r.get_error();
             }
             if (r.value() == scan_status::skip) {
                 continue;
@@ -175,23 +167,23 @@ namespace scn {
               typename Iterator,
               typename EndIterator,
               typename Predicate>
-    expected<Iterator, error> scan_chars_until(Context& ctx,
-                                               Iterator begin,
-                                               EndIterator end,
-                                               Predicate&& p)
+    result<Iterator> scan_chars_until(Context& ctx,
+                                      Iterator begin,
+                                      EndIterator end,
+                                      Predicate&& p)
     {
         while (begin != end) {
             auto ret = ctx.stream().read_char();
             if (!ret) {
-                if (ret.error() == error::end_of_stream) {
+                if (ret.get_error() == error::end_of_stream) {
                     return begin;
                 }
-                return make_unexpected(ret.error());
+                return ret.get_error();
             }
 
             auto r = p(ctx, ret.value());
             if (!r) {
-                return make_unexpected(r.error());
+                return r.get_error();
             }
             if (r.value() == scan_status::skip) {
                 continue;
@@ -208,10 +200,10 @@ namespace scn {
         template <typename CharT>
         struct empty_parser {
             template <typename Context>
-            expected<void, error> parse(Context& ctx)
+            error parse(Context& ctx)
             {
                 if (*ctx.parse_context().begin() != ctx.locale().widen('{')) {
-                    return make_unexpected(error::invalid_format_string);
+                    return error::invalid_format_string;
                 }
                 ctx.parse_context().advance();
                 return {};
@@ -223,11 +215,11 @@ namespace scn {
     struct basic_value_scanner<CharT, CharT>
         : public detail::empty_parser<CharT> {
         template <typename Context>
-        expected<void, error> scan(CharT& val, Context& ctx)
+        error scan(CharT& val, Context& ctx)
         {
             auto ch = ctx.stream().read_char();
             if (!ch) {
-                return make_unexpected(ch.error());
+                return ch.error();
             }
             val = ch.value();
             return {};
@@ -238,7 +230,7 @@ namespace scn {
     struct basic_value_scanner<CharT, span<CharT>>
         : public detail::empty_parser<CharT> {
         template <typename Context>
-        expected<void, error> scan(span<CharT> val, Context& ctx)
+        error scan(span<CharT> val, Context& ctx)
         {
             if (val.size() == 0) {
                 return {};
@@ -248,7 +240,7 @@ namespace scn {
             auto s = scan_chars_until(ctx, buf.begin(), buf.end(),
                                       predicates::propagate<Context>{});
             if (!s) {
-                return make_unexpected(s.error());
+                return s.get_error();
             }
             std::copy(buf.begin(), s.value(), val.begin());
 
@@ -259,7 +251,7 @@ namespace scn {
     template <typename CharT>
     struct basic_value_scanner<CharT, bool> {
         template <typename Context>
-        expected<void, error> parse(Context& ctx)
+        error parse(Context& ctx)
         {
             // {}: no boolalpha, not localized
             // l: localized
@@ -279,21 +271,21 @@ namespace scn {
                     boolalpha = true;
                 }
                 else {
-                    return make_unexpected(error::invalid_format_string);
+                    return error::invalid_format_string;
                 }
             }
 
             if (localized && !boolalpha) {
-                return make_unexpected(error::invalid_format_string);
+                return error::invalid_format_string;
             }
             if (ch != ctx.locale().widen('}')) {
-                return make_unexpected(error::invalid_format_string);
+                return error::invalid_format_string;
             }
             return {};
         }
 
         template <typename Context>
-        expected<void, error> scan(bool& val, Context& ctx)
+        error scan(bool& val, Context& ctx)
         {
             if (boolalpha) {
                 const auto truename = ctx.locale().truename();
@@ -305,7 +297,7 @@ namespace scn {
                 auto it = scan_chars_until(ctx, buf.begin(), buf.end(),
                                            predicates::until_space<Context>{});
                 if (!it) {
-                    return make_unexpected(it.error());
+                    return it.get_error();
                 }
                 if (it.value() != buf.end()) {
                     buf.erase(it.value());
@@ -347,19 +339,19 @@ namespace scn {
             else {
                 auto tmp = ctx.stream().read_char();
                 if (!tmp) {
-                    return make_unexpected(tmp.error());
+                    return tmp.get_error();
                 }
-                if (tmp == ctx.locale().widen('0')) {
+                if (tmp.value() == ctx.locale().widen('0')) {
                     val = false;
                     return {};
                 }
-                if (tmp == ctx.locale().widen('1')) {
+                if (tmp.value() == ctx.locale().widen('1')) {
                     val = true;
                     return {};
                 }
             }
 
-            return make_unexpected(error::invalid_scanned_value);
+            return error::invalid_scanned_value;
         }
 
         bool localized{false};
@@ -372,47 +364,50 @@ namespace scn {
 
         template <typename CharT>
         struct str_to_int<CharT, long long> {
-            static expected<long long, error>
-            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            static result<long long> get(const std::basic_string<CharT>& str,
+                                         size_t& chars,
+                                         int base)
             {
                 return std::stoll(str, &chars, base);
             }
         };
         template <typename CharT>
         struct str_to_int<CharT, long> {
-            static expected<long, error>
-            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            static result<long> get(const std::basic_string<CharT>& str,
+                                    size_t& chars,
+                                    int base)
             {
                 return std::stol(str, &chars, base);
             }
         };
         template <typename CharT>
         struct str_to_int<CharT, int> {
-            static expected<int, error> get(const std::basic_string<CharT>& str,
-                                            size_t& chars,
-                                            int base)
+            static result<int> get(const std::basic_string<CharT>& str,
+                                   size_t& chars,
+                                   int base)
             {
                 return std::stoi(str, &chars, base);
             }
         };
         template <typename CharT>
         struct str_to_int<CharT, short> {
-            static expected<short, error>
-            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            static result<short> get(const std::basic_string<CharT>& str,
+                                     size_t& chars,
+                                     int base)
             {
                 auto i = std::stoi(str, &chars, base);
                 if (i > static_cast<int>(std::numeric_limits<short>::max())) {
-                    return make_unexpected(error::value_out_of_range);
+                    return make_error(error::value_out_of_range);
                 }
                 if (i < static_cast<int>(std::numeric_limits<short>::min())) {
-                    return make_unexpected(error::value_out_of_range);
+                    return make_error(error::value_out_of_range);
                 }
                 return static_cast<short>(i);
             }
         };
         template <typename CharT>
         struct str_to_int<CharT, unsigned long long> {
-            static expected<unsigned long long, error>
+            static result<unsigned long long>
             get(const std::basic_string<CharT>& str, size_t& chars, int base)
             {
                 return std::stoull(str, &chars, base);
@@ -420,7 +415,7 @@ namespace scn {
         };
         template <typename CharT>
         struct str_to_int<CharT, unsigned long> {
-            static expected<unsigned long, error>
+            static result<unsigned long>
             get(const std::basic_string<CharT>& str, size_t& chars, int base)
             {
                 return std::stoul(str, &chars, base);
@@ -428,26 +423,27 @@ namespace scn {
         };
         template <typename CharT>
         struct str_to_int<CharT, unsigned int> {
-            static expected<unsigned int, error>
-            get(const std::basic_string<CharT>& str, size_t& chars, int base)
+            static result<unsigned int> get(const std::basic_string<CharT>& str,
+                                            size_t& chars,
+                                            int base)
             {
                 auto i = std::stoul(str, &chars, base);
                 if (i > static_cast<unsigned long>(
                             std::numeric_limits<unsigned int>::max())) {
-                    return make_unexpected(error::value_out_of_range);
+                    return make_error(error::value_out_of_range);
                 }
                 return static_cast<unsigned int>(i);
             }
         };
         template <typename CharT>
         struct str_to_int<CharT, unsigned short> {
-            static expected<unsigned short, error>
+            static result<unsigned short>
             get(const std::basic_string<CharT>& str, size_t& chars, int base)
             {
                 auto i = std::stoul(str, &chars, base);
                 if (i > static_cast<unsigned long>(
                             std::numeric_limits<unsigned short>::max())) {
-                    return make_unexpected(error::value_out_of_range);
+                    return make_error(error::value_out_of_range);
                 }
                 return static_cast<unsigned short>(i);
             }
@@ -462,7 +458,7 @@ namespace scn {
                                 !std::is_same<T, CharT>::value &&
                                 !std::is_same<T, bool>::value>::type> {
         template <typename Context>
-        expected<void, error> parse(Context& ctx)
+        error parse(Context& ctx)
         {
             // {}: base detect, not localized
             // n: localized decimal/thousand separator
@@ -504,7 +500,7 @@ namespace scn {
                 int tmp = 0;
                 if (ch < ctx.locale().widen('0') ||
                     ch > ctx.locale().widen('9')) {
-                    return make_unexpected(error::invalid_format_string);
+                    return error::invalid_format_string;
                 }
                 tmp = ch - ctx.locale().widen('0');
                 ctx.parse_context().advance();
@@ -516,27 +512,27 @@ namespace scn {
                 }
                 if (ch < ctx.locale().widen('0') ||
                     ch > ctx.locale().widen('9')) {
-                    return make_unexpected(error::invalid_format_string);
+                    return error::invalid_format_string;
                 }
                 tmp *= 10;
                 tmp += ch - ctx.locale().widen('0');
                 if (tmp < 1 || tmp > 36) {
-                    return make_unexpected(error::invalid_format_string);
+                    return error::invalid_format_string;
                 }
                 base = tmp;
             }
             else {
-                return make_unexpected(error::invalid_format_string);
+                return error::invalid_format_string;
             }
 
             if (localized && (base != 0 && base != 10)) {
-                return make_unexpected(error::invalid_format_string);
+                return error::invalid_format_string;
             }
             return {};
         }
 
         template <typename Context>
-        expected<void, error> scan(T& val, Context& ctx)
+        error scan(T& val, Context& ctx)
         {
             std::basic_string<CharT> buf{};
             buf.reserve(static_cast<size_t>(
@@ -548,13 +544,13 @@ namespace scn {
                 ctx, std::back_inserter(buf),
                 predicates::until_space_and_skip_chars<Context>{thsep_span});
             if (!r) {
-                return make_unexpected(r.error());
+                return r.get_error();
             }
 
             T tmp = 0;
             size_t chars = 0;
 
-            auto putback = [&chars, &ctx, &buf]() -> expected<void, error> {
+            auto putback = [&chars, &ctx, &buf]() -> error {
                 for (auto it = buf.rbegin();
                      it !=
                      buf.rend() - static_cast<typename std::iterator_traits<
@@ -571,7 +567,7 @@ namespace scn {
             if ((localized & digits) != 0) {
                 auto ret = ctx.locale().read_num(tmp, buf);
                 if (!ret) {
-                    return make_unexpected(ret.error());
+                    return ret.get_error();
                 }
                 chars = ret.value();
                 auto pb = putback();
@@ -585,10 +581,10 @@ namespace scn {
             auto end = begin + buf.size();
             auto result = std::from_chars(begin, end, tmp, base);
             if (result.ec == std::errc::result_out_of_range) {
-                return make_unexpected(error::value_out_of_range);
+                return error::value_out_of_range;
             }
             if (result.ec == std::errc::invalid_argument) {
-                return make_unexpected(error::invalid_scanned_value);
+                return error::invalid_scanned_value;
             }
 
             for (auto it = buf.rbegin(); it != result.ptr; ++it) {
@@ -607,12 +603,12 @@ namespace scn {
 #endif
                 if (std::is_unsigned<T>::value) {
                     if (buf.front() == ctx.locale().widen('-')) {
-                        return make_unexpected(error::value_out_of_range);
+                        return error::value_out_of_range;
                     }
                 }
                 auto ret = detail::str_to_int<CharT, T>::get(buf, chars, base);
                 if (!ret) {
-                    return make_unexpected(ret.error());
+                    return ret.get_error();
                 }
                 tmp = ret.value();
 #if SCN_MSVC
@@ -620,10 +616,10 @@ namespace scn {
 #endif
             }
             catch (const std::invalid_argument&) {
-                return make_unexpected(error::invalid_scanned_value);
+                return error::invalid_scanned_value;
             }
             catch (const std::out_of_range&) {
-                return make_unexpected(error::value_out_of_range);
+                return error::value_out_of_range;
             }
 
             auto pb = putback();
@@ -680,7 +676,7 @@ namespace scn {
         T,
         typename std::enable_if<std::is_floating_point<T>::value>::type> {
         template <typename Context>
-        expected<void, error> parse(Context& ctx)
+        error parse(Context& ctx)
         {
             // {}: not localized
             // l: localized
@@ -696,10 +692,10 @@ namespace scn {
                 ctx.parse_context().advance();
                 ch = *ctx.parse_context().begin();
             }
-            return make_unexpected(error::invalid_format_string);
+            return error::invalid_format_string;
         }
         template <typename Context>
-        expected<void, error> scan(T& val, Context& ctx)
+        error scan(T& val, Context& ctx)
         {
             std::basic_string<CharT> buf{};
             buf.reserve(21);
@@ -707,7 +703,7 @@ namespace scn {
             bool point = false;
             auto r = scan_chars(
                 ctx, std::back_inserter(buf),
-                [&point](Context& c, CharT ch) -> expected<scan_status, error> {
+                [&point](Context& c, CharT ch) -> result<scan_status> {
                     if (c.locale().is_space(ch)) {
                         return scan_status::end;
                     }
@@ -716,21 +712,20 @@ namespace scn {
                     }
                     if (ch == c.locale().decimal_point()) {
                         if (point) {
-                            return make_unexpected(
-                                error::invalid_scanned_value);
+                            return make_error(error::invalid_scanned_value);
                         }
                         point = true;
                     }
                     return scan_status::keep;
                 });
             if (!r) {
-                return make_unexpected(r.error());
+                return r.get_error();
             }
 
             T tmp{};
             size_t chars = 0;
 
-            auto putback = [&chars, &buf, &ctx]() -> expected<void, error> {
+            auto putback = [&chars, &buf, &ctx]() -> error {
                 for (auto it = buf.rbegin();
                      it !=
                      buf.rend() - static_cast<typename std::iterator_traits<
@@ -747,7 +742,7 @@ namespace scn {
             if (localized) {
                 auto ret = ctx.locale().read_num(tmp, buf);
                 if (!ret) {
-                    return make_unexpected(ret.error());
+                    return ret.get_error();
                 }
                 chars = ret.value();
                 auto pb = putback();
@@ -761,10 +756,10 @@ namespace scn {
             auto end = begin + buf.size();
             auto result = std::from_chars(begin, end, tmp);
             if (result.ec == std::errc::result_out_of_range) {
-                return make_unexpected(error::value_out_of_range);
+                return error::value_out_of_range;
             }
             if (result.ec == std::errc::invalid_argument) {
-                return make_unexpected(error::invalid_scanned_value);
+                return error::invalid_scanned_value;
             }
 
             for (auto it = buf.rbegin(); it != result.ptr; ++it) {
@@ -779,10 +774,10 @@ namespace scn {
                 tmp = detail::str_to_float<CharT, T>::get(buf, chars);
             }
             catch (const std::invalid_argument&) {
-                return make_unexpected(error::invalid_scanned_value);
+                return error::invalid_scanned_value;
             }
             catch (const std::out_of_range&) {
-                return make_unexpected(error::value_out_of_range);
+                return error::value_out_of_range;
             }
 
             auto pb = putback();
@@ -803,16 +798,16 @@ namespace scn {
         : public detail::empty_parser<CharT> {
     public:
         template <typename Context>
-        expected<void, error> scan(std::basic_string<CharT>& val, Context& ctx)
+        error scan(std::basic_string<CharT>& val, Context& ctx)
         {
             val.clear();
             auto s = scan_chars(ctx, std::back_inserter(val),
                                 predicates::until_space<Context>{});
             if (!s) {
-                return make_unexpected(s.error());
+                return s.get_error();
             }
             if (val.empty()) {
-                return make_unexpected(error::invalid_scanned_value);
+                return error::invalid_scanned_value;
             }
 
             return {};
@@ -823,9 +818,7 @@ namespace scn {
               typename Traits,
               typename Allocator,
               typename CharT = typename Stream::char_type>
-    expected<void, error> getline(
-        Stream& s,
-        std::basic_string<CharT, Traits, Allocator>& str)
+    error getline(Stream& s, std::basic_string<CharT, Traits, Allocator>& str)
     {
         using context_type = basic_context<Stream>;
         auto f = string_view("{}");
@@ -836,7 +829,7 @@ namespace scn {
             ctx, std::back_inserter(str),
             predicates::until<context_type>{ctx.locale().widen('\n')});
         if (!res) {
-            return make_unexpected(res.error());
+            return res.get_error();
         }
         return {};
     }
@@ -906,7 +899,7 @@ namespace scn {
     }  // namespace detail
 
     template <typename Stream, typename CharT = typename Stream::char_type>
-    expected<void, error> ignore_all(Stream& s)
+    error ignore_all(Stream& s)
     {
         using context_type = basic_context<Stream>;
         auto f = string_view("{}");
@@ -915,12 +908,12 @@ namespace scn {
         auto res = scan_chars(ctx, detail::ignore_iterator<CharT>{},
                               predicates::propagate<context_type>{});
         if (!res) {
-            return make_unexpected(res.error());
+            return res.get_error();
         }
         return {};
     }
     template <typename Stream, typename CharT = typename Stream::char_type>
-    expected<void, error> ignore_until(Stream& s, CharT until)
+    error ignore_until(Stream& s, CharT until)
     {
         using context_type = basic_context<Stream>;
         auto f = string_view("{}");
@@ -929,12 +922,12 @@ namespace scn {
         auto res = scan_chars(ctx, detail::ignore_iterator<CharT>{},
                               predicates::until<context_type>{until});
         if (!res) {
-            return make_unexpected(res.error());
+            return res.get_error();
         }
         return {};
     }
     template <typename Stream, typename CharT = typename Stream::char_type>
-    expected<void, error> ignore_n(Stream& s, std::ptrdiff_t count)
+    error ignore_n(Stream& s, std::ptrdiff_t count)
     {
         using context_type = basic_context<Stream>;
         auto f = string_view("{}");
@@ -944,14 +937,12 @@ namespace scn {
                                     detail::ignore_iterator<CharT>{count},
                                     predicates::propagate<context_type>{});
         if (!res) {
-            return make_unexpected(res.error());
+            return res.get_error();
         }
         return {};
     }
     template <typename Stream, typename CharT = typename Stream::char_type>
-    expected<void, error> ignore_n_until(Stream& s,
-                                         std::ptrdiff_t count,
-                                         CharT until)
+    error ignore_n_until(Stream& s, std::ptrdiff_t count, CharT until)
     {
         using context_type = basic_context<Stream>;
         auto f = string_view("{}");
@@ -961,7 +952,7 @@ namespace scn {
                                     detail::ignore_iterator<CharT>{count},
                                     predicates::until<context_type>{until});
         if (!res) {
-            return make_unexpected(res.error());
+            return res.get_error();
         }
         return {};
     }

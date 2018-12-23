@@ -32,58 +32,54 @@ namespace scn {
 
         basic_std_istream_stream(source_type& is) : m_is(std::addressof(is)) {}
 
-        expected<char_type, error> read_char()
+        result<char_type> read_char()
         {
             try {
                 auto tmp = m_is->get();
                 if (tmp == traits::eof()) {
                     if (m_is->bad()) {
-                        return make_unexpected(
-                            error::unrecoverable_stream_source_error);
+                        return error::unrecoverable_stream_source_error;
                     }
                     if (m_is->fail()) {
-                        return make_unexpected(error::stream_source_error);
+                        return error::stream_source_error;
                     }
-                    return make_unexpected(error::end_of_stream);
+                    return error::end_of_stream;
                 }
                 ++m_read;
                 return static_cast<char_type>(tmp);
             }
             catch (const std::ios_base::failure& e) {
                 if (m_is->bad()) {
-                    return make_unexpected(
-                        error::unrecoverable_stream_source_error);
+                    return error::unrecoverable_stream_source_error;
                 }
                 if (m_is->fail()) {
-                    return make_unexpected(error::stream_source_error);
+                    return error::stream_source_error;
                 }
-                return make_unexpected(error::end_of_stream);
+                return error::end_of_stream;
             }
         }
-        expected<void, error> putback(char_type ch)
+        error putback(char_type ch)
         {
             assert(m_read > 0);
             try {
                 m_is->putback(ch);
                 if (m_is->fail()) {
-                    return make_unexpected(
-                        error::unrecoverable_stream_source_error);
+                    return error::unrecoverable_stream_source_error;
                 }
                 --m_read;
                 return {};
             }
             catch (const std::ios_base::failure& e) {
-                return make_unexpected(
-                    error::unrecoverable_stream_source_error);
+                return error::unrecoverable_stream_source_error;
             }
         }
 
-        expected<void, error> set_roll_back()
+        error set_roll_back()
         {
             m_read = 0;
             return {};
         }
-        expected<void, error> roll_back()
+        error roll_back()
         {
             assert(m_read >= 0);
             if (m_read == 0) {
@@ -92,21 +88,19 @@ namespace scn {
             try {
                 m_is->seekg(-m_read, std::ios_base::cur);
                 if (m_is->bad()) {
-                    return make_unexpected(
-                        error::unrecoverable_stream_source_error);
+                    return error::unrecoverable_stream_source_error;
                 }
                 if (m_is->fail()) {
-                    return make_unexpected(error::stream_source_error);
+                    return error::stream_source_error;
                 }
                 m_read = 0;
                 return {};
             }
             catch (const std::ios_base::failure& e) {
                 if (m_is->bad()) {
-                    return make_unexpected(
-                        error::unrecoverable_stream_source_error);
+                    return error::unrecoverable_stream_source_error;
                 }
-                return make_unexpected(error::stream_source_error);
+                return error::stream_source_error;
             }
         }
 

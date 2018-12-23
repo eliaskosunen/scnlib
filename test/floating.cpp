@@ -100,7 +100,7 @@ TEST_CASE("floating point")
         CHECK(d == doctest::Approx(0.0));
         CHECK(!ret);
         if (!ret) {
-            CHECK(ret.error() == scn::error::end_of_stream);
+            CHECK(ret == scn::error::end_of_stream);
         }
         d = 0.0;
     }

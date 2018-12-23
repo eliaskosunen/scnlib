@@ -30,20 +30,21 @@
 #include "scn/context.h"
 #include "scn/core.h"
 #include "scn/locale.h"
+#include "scn/result.h"
 #include "scn/stream.h"
 #include "scn/types.h"
 
 namespace scn {
     template <typename Context>
-    expected<void, error> vscan(Context ctx, basic_args<Context> a)
+    error vscan(Context ctx, basic_args<Context> a)
     {
         return a.visit(ctx);
     }
 
     template <typename Stream, typename... Args>
-    expected<void, error> scan(Stream& s,
-                               basic_string_view<typename Stream::char_type> f,
-                               Args&... a)
+    error scan(Stream& s,
+               basic_string_view<typename Stream::char_type> f,
+               Args&... a)
     {
         using context_type = basic_context<Stream>;
 
@@ -52,10 +53,10 @@ namespace scn {
         return vscan<context_type>(ctx, args);
     }
     template <typename Locale, typename Stream, typename... Args>
-    expected<void, error> scan(const Locale& loc,
-                               Stream& s,
-                               basic_string_view<typename Stream::char_type> f,
-                               Args&... a)
+    error scan(const Locale& loc,
+               Stream& s,
+               basic_string_view<typename Stream::char_type> f,
+               Args&... a)
     {
         using context_type = basic_context<Stream>;
 
@@ -68,7 +69,7 @@ namespace scn {
 
 #if 0
     template <typename... Args>
-    expected<void, error> input(string_view f, Args&... a)
+    error input(string_view f, Args&... a)
     {
         using stream_type = basic_cstdio_stream<char>;
         using context_type = basic_context<stream_type>;
@@ -79,7 +80,7 @@ namespace scn {
         return vscan<context_type>(ctx, args);
     }
     template <typename... Args>
-    expected<void, error> winput(wstring_view f, Args&... a)
+    error winput(wstring_view f, Args&... a)
     {
         using stream_type = basic_cstdio_stream<wchar_t>;
         using context_type = basic_context<stream_type>;
@@ -94,7 +95,7 @@ namespace scn {
               typename CharT =
                   decltype(make_stream(std::declval<const Source&>()), void()),
               typename... Args>
-    expected<void, error> sscan(const Source& s,
+    error sscan(const Source& s,
                                 basic_string_view<CharT> f,
                                 Args&... a)
     {

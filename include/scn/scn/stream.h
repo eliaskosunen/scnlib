@@ -21,6 +21,7 @@
 #include "string_view.h"
 
 #include <array>
+#include <cassert>
 #include <cstdio>
 #include <vector>
 
@@ -42,29 +43,30 @@ namespace scn {
         {
         }
 
-        expected<char_type, error> read_char()
+        result<char_type> read_char()
         {
             if (m_next == end()) {
-                return make_unexpected(error::end_of_stream);
+                return make_error(error::end_of_stream);
             }
             auto ch = *m_next;
             ++m_next;
             return ch;
         }
-        expected<void, error> putback(char_type)
+        error putback(char_type)
         {
+            if (m_begin == m_next) {
+                return error::invalid_operation;
+            }
             --m_next;
-            // TODO: Check underflow
-            // TODO: Check if given char is correct
             return {};
         }
 
-        expected<void, error> set_roll_back()
+        error set_roll_back()
         {
             m_begin = m_next;
             return {};
         }
-        expected<void, error> roll_back()
+        error roll_back()
         {
             m_next = begin();
             return {};
@@ -116,29 +118,30 @@ namespace scn {
         {
         }
 
-        expected<char_type, error> read_char()
+        result<char_type> read_char()
         {
             if (m_next == end()) {
-                return make_unexpected(error::end_of_stream);
+                return make_error(error::end_of_stream);
             }
             auto ch = *m_next;
             ++m_next;
             return ch;
         }
-        expected<void, error> putback(char_type)
+        error putback(char_type)
         {
+            if (m_begin == m_next) {
+                return error::invalid_operation;
+            }
             --m_next;
-            // TODO: Check underflow
-            // TODO: Check if given char is correct
             return {};
         }
 
-        expected<void, error> set_roll_back()
+        error set_roll_back()
         {
             m_begin = m_next;
             return {};
         }
-        expected<void, error> roll_back()
+        error roll_back()
         {
             m_next = begin();
             return {};
@@ -175,16 +178,16 @@ namespace scn {
         {
         }
 
-        expected<char_type, error> read_char()
+        result<char_type> read_char()
         {
             if (m_next == m_end) {
-                return make_unexpected(error::end_of_stream);
+                return make_error(error::end_of_stream);
             }
             auto ch = *m_next;
             ++m_next;
             return ch;
         }
-        expected<void, error> putback(char_type)
+        error putback(char_type)
         {
             --m_next;
             // TODO: Check underflow
@@ -192,12 +195,12 @@ namespace scn {
             return {};
         }
 
-        expected<void, error> set_roll_back()
+        error set_roll_back()
         {
             m_begin = m_next;
             return {};
         }
-        expected<void, error> roll_back()
+        error roll_back()
         {
             m_next = m_begin;
             return {};
@@ -215,7 +218,7 @@ namespace scn {
         {
         }
 
-        expected<char_type, error> read_char()
+        result<char_type> read_char()
         {
             if (m_rollback.size() > 0) {
                 auto top = m_rollback.back();
@@ -223,24 +226,24 @@ namespace scn {
                 return top;
             }
             if (m_begin == m_end) {
-                return make_unexpected(error::end_of_stream);
+                return make_error(error::end_of_stream);
             }
             auto ch = *m_begin;
             ++m_begin;
             return ch;
         }
-        expected<void, error> putback(char_type ch)
+        error putback(char_type ch)
         {
             m_rollback.push_back(ch);
             return {};
         }
 
-        expected<void, error> set_roll_back()
+        error set_roll_back()
         {
             m_rollback.clear();
             return {};
         }
-        expected<void, error> roll_back()
+        error roll_back()
         {
             return {};
         }
@@ -307,47 +310,44 @@ namespace scn {
 
         basic_cstdio_stream(FILE* f) : m_file(f) {}
 
-        expected<char_type, error> read_char()
+        result<char_type> read_char()
         {
             auto ret = std::fgetc(m_file);
             if (ret == EOF) {
                 if (std::ferror(m_file) != 0) {
-                    return make_unexpected(error::stream_source_error);
+                    return make_error(error::stream_source_error);
                 }
                 if (std::feof(m_file) != 0) {
-                    return make_unexpected(error::end_of_stream);
+                    return make_error(error::end_of_stream);
                 }
-                return make_unexpected(
-                    error::unrecoverable_stream_source_error);
+                return make_error(error::unrecoverable_stream_source_error);
             }
             ++m_read;
             return static_cast<char_type>(ret);
         }
-        expected<void, error> putback(char_type ch)
+        error putback(char_type ch)
         {
             assert(m_read > 0);
             if (std::ungetc(ch, m_file) == EOF) {
-                return make_unexpected(
-                    error::unrecoverable_stream_source_error);
+                return error::unrecoverable_stream_source_error;
             }
             --m_read;
             return {};
         }
 
-        expected<void, error> set_roll_back()
+        error set_roll_back()
         {
             m_read = 0;
             return {};
         }
-        expected<void, error> roll_back()
+        error roll_back()
         {
             assert(m_read >= 0);
             if (m_read == 0) {
                 return {};
             }
             if (std::fseek(m_file, -m_read, SEEK_CUR) != 0) {
-                return make_unexpected(
-                    error::unrecoverable_stream_source_error);
+                return error::unrecoverable_stream_source_error;
             }
             m_read = 0;
             return {};
@@ -363,48 +363,45 @@ namespace scn {
 
         basic_cstdio_stream(FILE* f) : m_file(f) {}
 
-        expected<char_type, error> read_char()
+        result<char_type> read_char()
         {
             auto ret = std::fgetwc(m_file);
             if (ret == WEOF) {
                 if (std::ferror(m_file) != 0) {
-                    return make_unexpected(error::stream_source_error);
+                    return make_error(error::stream_source_error);
                 }
                 if (std::feof(m_file) != 0) {
-                    return make_unexpected(error::end_of_stream);
+                    return make_error(error::end_of_stream);
                 }
-                return make_unexpected(
-                    error::unrecoverable_stream_source_error);
+                return make_error(error::unrecoverable_stream_source_error);
             }
             ++m_read;
             return static_cast<char_type>(ret);
         }
-        expected<void, error> putback(char_type ch)
+        error putback(char_type ch)
         {
             assert(m_read > 0);
             if (std::ungetwc(std::char_traits<char_type>::to_int_type(ch),
                              m_file) == WEOF) {
-                return make_unexpected(
-                    error::unrecoverable_stream_source_error);
+                return error::unrecoverable_stream_source_error;
             }
             --m_read;
             return {};
         }
 
-        expected<void, error> set_roll_back()
+        error set_roll_back()
         {
             m_read = 0;
             return {};
         }
-        expected<void, error> roll_back()
+        error roll_back()
         {
             assert(m_read >= 0);
             if (m_read == 0) {
                 return {};
             }
             if (std::fseek(m_file, -m_read, SEEK_CUR) != 0) {
-                return make_unexpected(
-                    error::unrecoverable_stream_source_error);
+                return error::unrecoverable_stream_source_error;
             }
             return {};
         }

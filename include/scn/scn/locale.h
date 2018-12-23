@@ -19,6 +19,7 @@
 #define SCN_LOCALE_H
 
 #include "string_view.h"
+#include "result.h"
 
 namespace scn {
 #if SCN_GCC
@@ -58,7 +59,7 @@ namespace scn {
         char narrow(CharT ch, char def) const;
 
         template <typename T>
-        expected<size_t, error> read_num(T& val, string_type buf);
+        result<size_t> read_num(T& val, string_type buf);
 
         bool is_default() const
         {

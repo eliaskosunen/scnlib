@@ -17,7 +17,6 @@
 
 #define SCN_LOCALE_CPP
 
-#include <scn/expected-lite/expected.h>
 #include <scn/scn/core.h>
 #include <scn/scn/locale.h>
 
@@ -179,9 +178,9 @@ namespace scn {
 
     namespace detail {
         template <typename T, typename CharT>
-        expected<size_t, error> read_num_impl(T& val,
-                                              const std::locale& loc,
-                                              std::basic_string<CharT> buf)
+        result<size_t> read_num_impl(T& val,
+                                     const std::locale& loc,
+                                     std::basic_string<CharT> buf)
         {
             std::basic_istringstream<CharT> ss(buf);
             ss.imbue(loc);
@@ -195,25 +194,25 @@ namespace scn {
                 }
             }
             catch (const std::ios_base::failure&) {
-                return make_unexpected(error::invalid_scanned_value);
+                return error::invalid_scanned_value;
             }
             return static_cast<size_t>(ss.gcount());
         }
 
         template <typename T, typename CharT>
         struct read_num {
-            static expected<size_t, error> read(T& val,
-                                                const std::locale& loc,
-                                                std::basic_string<CharT> buf)
+            static result<size_t> read(T& val,
+                                       const std::locale& loc,
+                                       std::basic_string<CharT> buf)
             {
                 return read_num_impl(val, loc, buf);
             }
         };
         template <typename CharT>
         struct read_num<short, CharT> {
-            static expected<size_t, error> read(short& val,
-                                                const std::locale& loc,
-                                                std::basic_string<CharT> buf)
+            static result<size_t> read(short& val,
+                                       const std::locale& loc,
+                                       std::basic_string<CharT> buf)
             {
                 long long tmp{};
                 auto ret = read_num_impl(tmp, loc, buf);
@@ -222,11 +221,11 @@ namespace scn {
                 }
                 if (tmp >
                     static_cast<long long>(std::numeric_limits<short>::max())) {
-                    return make_unexpected(error::value_out_of_range);
+                    return error::value_out_of_range;
                 }
                 if (tmp <
                     static_cast<long long>(std::numeric_limits<short>::min())) {
-                    return make_unexpected(error::value_out_of_range);
+                    return error::value_out_of_range;
                 }
                 val = static_cast<short>(tmp);
                 return ret;
@@ -234,9 +233,9 @@ namespace scn {
         };
         template <typename CharT>
         struct read_num<int, CharT> {
-            static expected<size_t, error> read(int& val,
-                                                const std::locale& loc,
-                                                std::basic_string<CharT> buf)
+            static result<size_t> read(int& val,
+                                       const std::locale& loc,
+                                       std::basic_string<CharT> buf)
             {
                 long long tmp{};
                 auto ret = read_num_impl(tmp, loc, buf);
@@ -245,11 +244,11 @@ namespace scn {
                 }
                 if (tmp >
                     static_cast<long long>(std::numeric_limits<int>::max())) {
-                    return make_unexpected(error::value_out_of_range);
+                    return error::value_out_of_range;
                 }
                 if (tmp <
                     static_cast<long long>(std::numeric_limits<int>::min())) {
-                    return make_unexpected(error::value_out_of_range);
+                    return error::value_out_of_range;
                 }
                 val = static_cast<int>(tmp);
                 return ret;
@@ -259,8 +258,7 @@ namespace scn {
 
     template <typename CharT>
     template <typename T>
-    expected<size_t, error> basic_locale_ref<CharT>::read_num(T& val,
-                                                              string_type buf)
+    result<size_t> basic_locale_ref<CharT>::read_num(T& val, string_type buf)
     {
         return detail::read_num<T, CharT>::read(val, detail::get_locale(*this),
                                                 buf);
@@ -276,65 +274,69 @@ namespace scn {
 #pragma clang diagnostic pop
 #endif
 
-    template expected<size_t, error> basic_locale_ref<char>::read_num<short>(
+    template result<size_t> basic_locale_ref<char>::read_num<short>(
         short&,
         string_type);
-    template expected<size_t, error> basic_locale_ref<char>::read_num<int>(
-        int&,
+    template result<size_t> basic_locale_ref<char>::read_num<int>(int&,
+                                                                  string_type);
+    template result<size_t> basic_locale_ref<char>::read_num<long>(long&,
+                                                                   string_type);
+    template result<size_t> basic_locale_ref<char>::read_num<long long>(
+        long long&,
         string_type);
-    template expected<size_t, error> basic_locale_ref<char>::read_num<long>(
-        long&,
+    template result<size_t> basic_locale_ref<char>::read_num<unsigned short>(
+        unsigned short&,
         string_type);
-    template expected<size_t, error>
-    basic_locale_ref<char>::read_num<long long>(long long&, string_type);
-    template expected<size_t, error>
-    basic_locale_ref<char>::read_num<unsigned short>(unsigned short&,
-                                                     string_type);
-    template expected<size_t, error>
-    basic_locale_ref<char>::read_num<unsigned int>(unsigned int&, string_type);
-    template expected<size_t, error>
-    basic_locale_ref<char>::read_num<unsigned long>(unsigned long&,
-                                                    string_type);
-    template expected<size_t, error>
+    template result<size_t> basic_locale_ref<char>::read_num<unsigned int>(
+        unsigned int&,
+        string_type);
+    template result<size_t> basic_locale_ref<char>::read_num<unsigned long>(
+        unsigned long&,
+        string_type);
+    template result<size_t>
     basic_locale_ref<char>::read_num<unsigned long long>(unsigned long long&,
                                                          string_type);
-    template expected<size_t, error> basic_locale_ref<char>::read_num<float>(
+    template result<size_t> basic_locale_ref<char>::read_num<float>(
         float&,
         string_type);
-    template expected<size_t, error> basic_locale_ref<char>::read_num<double>(
+    template result<size_t> basic_locale_ref<char>::read_num<double>(
         double&,
         string_type);
-    template expected<size_t, error>
-    basic_locale_ref<char>::read_num<long double>(long double&, string_type);
+    template result<size_t> basic_locale_ref<char>::read_num<long double>(
+        long double&,
+        string_type);
 
-    template expected<size_t, error> basic_locale_ref<wchar_t>::read_num<short>(
+    template result<size_t> basic_locale_ref<wchar_t>::read_num<short>(
         short&,
         string_type);
-    template expected<size_t, error> basic_locale_ref<wchar_t>::read_num<int>(
+    template result<size_t> basic_locale_ref<wchar_t>::read_num<int>(
         int&,
         string_type);
-    template expected<size_t, error> basic_locale_ref<wchar_t>::read_num<long>(
+    template result<size_t> basic_locale_ref<wchar_t>::read_num<long>(
         long&,
         string_type);
-    template expected<size_t, error>
-    basic_locale_ref<wchar_t>::read_num<long long>(long long&, string_type);
-    template expected<size_t, error>
-    basic_locale_ref<wchar_t>::read_num<unsigned short>(unsigned short&,
-                                                        string_type);
-    template expected<size_t, error>
-    basic_locale_ref<wchar_t>::read_num<unsigned int>(unsigned int&,
-                                                      string_type);
-    template expected<size_t, error>
-    basic_locale_ref<wchar_t>::read_num<unsigned long>(unsigned long&,
-                                                       string_type);
-    template expected<size_t, error>
+    template result<size_t> basic_locale_ref<wchar_t>::read_num<long long>(
+        long long&,
+        string_type);
+    template result<size_t> basic_locale_ref<wchar_t>::read_num<unsigned short>(
+        unsigned short&,
+        string_type);
+    template result<size_t> basic_locale_ref<wchar_t>::read_num<unsigned int>(
+        unsigned int&,
+        string_type);
+    template result<size_t> basic_locale_ref<wchar_t>::read_num<unsigned long>(
+        unsigned long&,
+        string_type);
+    template result<size_t>
     basic_locale_ref<wchar_t>::read_num<unsigned long long>(unsigned long long&,
                                                             string_type);
-    template expected<size_t, error> basic_locale_ref<wchar_t>::read_num<float>(
+    template result<size_t> basic_locale_ref<wchar_t>::read_num<float>(
         float&,
         string_type);
-    template expected<size_t, error>
-    basic_locale_ref<wchar_t>::read_num<double>(double&, string_type);
-    template expected<size_t, error>
-    basic_locale_ref<wchar_t>::read_num<long double>(long double&, string_type);
+    template result<size_t> basic_locale_ref<wchar_t>::read_num<double>(
+        double&,
+        string_type);
+    template result<size_t> basic_locale_ref<wchar_t>::read_num<long double>(
+        long double&,
+        string_type);
 }  // namespace scn

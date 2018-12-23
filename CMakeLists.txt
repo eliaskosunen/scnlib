@@ -22,7 +22,7 @@ set(SCN_HEADERS
 	include/scn/scn/context.h include/scn/scn/core.h
 	include/scn/scn/locale.h include/scn/scn/stream.h
 	include/scn/scn/string_view.h include/scn/scn/types.h
-	include/scn/scn/util.h include/scn/expected-lite/expected.h
+	include/scn/scn/util.h
 	include/scn/span-lite/span.h)
 
 if (SCN_HEADER_ONLY)
