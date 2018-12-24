@@ -1,6 +1,7 @@
 # scnlib
 
 [![Travis CI Build Status](https://travis-ci.com/eliaskosunen/scnlib.svg?branch=master)](https://travis-ci.com/eliaskosunen/scnlib)
+[![Appveyor CI Build Status](https://ci.appveyor.com/api/projects/status/ex0q59kt5h8yciqa?svg=true)](https://ci.appveyor.com/project/eliaskosunen/scnlib)
 
 ## Acknowledgements
 

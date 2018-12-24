@@ -1,0 +1,53 @@
+version: 0.0.{build}
+clone_depth: 1
+
+environment:
+    MSVC_DEFAULT_OPTIONS: ON
+    matrix:
+      - gen: "Visual Studio 14 2015"
+        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+      - gen: "Visual Studio 15 2017"
+        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+        #- gen: "Visual Studio 15 2017"
+        #APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017 Preview
+
+init:
+  - cmake --version
+
+before_build:
+  - git submodule update --init
+
+build_script:
+  - md debug_32
+  - cd debug_32
+  - cmake -G "%gen%" ..
+  - cmake --build . --config Debug -- /maxcpucount
+  - .\test\Debug\tests.exe
+  - cd ..
+
+  - md release_32
+  - cd release_32
+  - cmake -G "%gen%" ..
+  - cmake --build . --config Release -- /maxcpucount
+  - .\test\Release\tests.exe
+  - cd ..
+
+  - md debug_64
+  - cd debug_64
+  - cmake -G "%gen% Win64" ..
+  - cmake --build . --config Debug -- /maxcpucount
+  - .\test\Debug\tests.exe
+  - cd ..
+
+  - md release_64
+  - cd release_64
+  - cmake -G "%gen% Win64" ..
+  - cmake --build . --config Release -- /maxcpucount
+  - .\test\Release\tests.exe
+  - cd ..
+
+  - if "%gen%" == "Visual Studio 15 2017" md analysis
+  - if "%gen%" == "Visual Studio 15 2017" cd analysis
+  - if "%gen%" == "Visual Studio 15 2017" cmake -G "%gen% Win64" ..
+  - if "%gen%" == "Visual Studio 15 2017" cmake --build . --config Debug -- /maxcpucount /p:RunCodeAnalysis=true
+  - if "%gen%" == "Visual Studio 15 2017" cd ..

@@ -77,7 +77,7 @@ namespace scn {
     bool basic_locale_ref<CharT>::is_space(CharT ch) const
     {
         if (is_default()) {
-            return std::isspace(ch);
+            return std::isspace(ch) != 0;
         }
         return std::isspace(ch, detail::get_locale(*this));
     }
@@ -85,7 +85,7 @@ namespace scn {
     bool basic_locale_ref<CharT>::is_digit(CharT ch) const
     {
         if (is_default()) {
-            return std::isdigit(ch);
+            return std::isdigit(ch) != 0;
         }
         return std::isdigit(ch, detail::get_locale(*this));
     }

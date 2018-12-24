@@ -114,7 +114,7 @@ namespace scn {
         }
         success_type&& value() &&
         {
-            return m_s;
+            return std::move(m_s);
         }
 
         error& get_error()
