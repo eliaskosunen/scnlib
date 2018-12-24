@@ -288,8 +288,12 @@ namespace scn {
         error scan(bool& val, Context& ctx)
         {
             if (boolalpha) {
-                const auto truename = ctx.locale().truename();
-                const auto falsename = ctx.locale().falsename();
+                basic_string_view<CharT> truename{"true"};
+                basic_string_view<CharT> falsename{"false"};
+                if (localized) {
+                    truename = ctx.locale().truename();
+                    falsename = ctx.locale().falsename();
+                }
                 const auto max_len =
                     std::max(truename.size(), falsename.size());
                 std::basic_string<CharT> buf(max_len, 0);

@@ -117,15 +117,11 @@ namespace scn {
             return m_s;
         }
 
-        error& get_error() &
+        error& get_error()
         {
             return m_e;
         }
-        error get_error() const&
-        {
-            return m_e;
-        }
-        error&& get_error() &&
+        error get_error() const
         {
             return m_e;
         }
@@ -219,15 +215,11 @@ namespace scn {
             return *m_ptr;
         }
 
-        error& get_error() &
+        error& get_error()
         {
             return m_e;
         }
-        error get_error() const&
-        {
-            return m_e;
-        }
-        error&& get_error() &&
+        error get_error() const
         {
             return m_e;
         }

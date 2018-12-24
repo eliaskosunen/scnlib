@@ -5,13 +5,14 @@ project(scn)
 if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     option(SCN_TESTS "Build scnlib tests" ON)
     option(SCN_EXAMPLES "Build scnlib examples" ON)
+    option(SCN_BENCHMARKS "Build scnlib benchmarks" ON)
 else ()
     option(SCN_TESTS "Build scnlib tests" OFF)
     option(SCN_EXAMPLES "Build scnlib examples" OFF)
+    option(SCN_BENCHMARKS "Build scnlib benchmarks" OFF)
 endif ()
 
 option(SCN_HEADER_ONLY "Build scnlib as a header-only library" OFF)
-option(SCN_BENCHMARKS "Build scnlib benchmarks" OFF)
 
 add_subdirectory(include/scn/span-lite/span-lite)
 

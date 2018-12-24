@@ -99,7 +99,7 @@ static void scanint_scn(benchmark::State& state)
 
         benchmark::DoNotOptimize(i);
         if (!e) {
-            if (e.error() == scn::error::end_of_stream) {
+            if (e == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data =
                     generate_int_data<Int>(static_cast<size_t>(state.range(0)));
@@ -159,7 +159,7 @@ static void scanfloat_scn(benchmark::State& state)
 
         benchmark::DoNotOptimize(f);
         if (!e) {
-            if (e.error() == scn::error::end_of_stream) {
+            if (e == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_float_data<Float>(
                     static_cast<size_t>(state.range(0)));
