@@ -56,8 +56,8 @@ namespace scn {
 
         bool is_recoverable() const
         {
-            return m_code == unrecoverable_stream_error ||
-                   m_code == unrecoverable_stream_source_error;
+            return !(m_code == unrecoverable_stream_error ||
+                     m_code == unrecoverable_stream_source_error);
         }
 
     private:
@@ -88,7 +88,6 @@ namespace scn {
     public:
         using success_type = T;
 
-        result() = default;
         result(success_type s) : m_s(s) {}
         result(error e) : m_e(e) {}
 

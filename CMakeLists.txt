@@ -13,7 +13,6 @@ endif ()
 option(SCN_HEADER_ONLY "Build scnlib as a header-only library" OFF)
 option(SCN_BENCHMARKS "Build scnlib benchmarks" OFF)
 
-add_subdirectory(include/scn/expected-lite/expected-lite)
 add_subdirectory(include/scn/span-lite/span-lite)
 
 set(SCN_HEADERS
@@ -31,7 +30,7 @@ if (SCN_HEADER_ONLY)
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${PROJECT_SOURCE_DIR}/src>"
         "$<INSTALL_INTERFACE:include;src>")
     target_link_libraries(scn INTERFACE
-        expected-lite span-lite)
+        span-lite)
     target_compile_features(scn INTERFACE
         cxx_nullptr)
     target_compile_definitions(scn INTERFACE
@@ -46,7 +45,7 @@ else ()
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
         $<INSTALL_INTERFACE:src>)
     target_link_libraries(scn PUBLIC
-        expected-lite span-lite)
+        span-lite)
     target_compile_features(scn PUBLIC
         cxx_nullptr)
     target_compile_definitions(scn PUBLIC
