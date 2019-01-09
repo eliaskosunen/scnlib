@@ -24,11 +24,14 @@
 
 namespace scn {
     template <typename Context>
-    error skip_stream_whitespace(Context& ctx)
+    error skip_stream_whitespace(Context& ctx, bool allow_eof = true)
     {
         while (true) {
             auto ch = ctx.stream().read_char();
             if (!ch) {
+                if (ch.get_error() == error::end_of_stream && allow_eof) {
+                    return {};
+                }
                 return ch.get_error();
             }
 #if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
@@ -67,10 +70,10 @@ namespace scn {
     namespace detail {
         template <typename Context>
         struct custom_value {
-            using fn_type = error(void*, Context&);
+            using fn_type = error(*)(void*, Context&);
 
             void* value;
-            fn_type* scan;
+            fn_type scan;
         };
     }  // namespace detail
 

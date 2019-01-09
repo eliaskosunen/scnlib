@@ -288,6 +288,13 @@ namespace scn {
         template <typename Context>
         error scan(bool& val, Context& ctx)
         {
+            {
+                auto err = skip_stream_whitespace(ctx, false);
+                if (!err) {
+                    return err;
+                }
+            }
+
             if (boolalpha) {
                 basic_string_view<CharT> truename{"true"};
                 basic_string_view<CharT> falsename{"false"};
@@ -491,12 +498,15 @@ namespace scn {
 
             if (ch == ctx.locale().widen('d')) {
                 base = 10;
+                ch = *ctx.parse_context().advance();
             }
             else if (ch == ctx.locale().widen('x')) {
                 base = 16;
+                ch = *ctx.parse_context().advance();
             }
             else if (ch == ctx.locale().widen('o')) {
                 base = 8;
+                ch = *ctx.parse_context().advance();
             }
             else if (ch == ctx.locale().widen('b')) {
                 ctx.parse_context().advance();
@@ -525,6 +535,7 @@ namespace scn {
                     return error::invalid_format_string;
                 }
                 base = tmp;
+                ch = *ctx.parse_context().advance();
             }
             else {
                 return error::invalid_format_string;
@@ -533,12 +544,22 @@ namespace scn {
             if (localized && (base != 0 && base != 10)) {
                 return error::invalid_format_string;
             }
+            if (ch != ctx.locale().widen('}')) {
+                return error::invalid_format_string;
+            }
             return {};
         }
 
         template <typename Context>
         error scan(T& val, Context& ctx)
         {
+            {
+                auto err = skip_stream_whitespace(ctx, false);
+                if (!err) {
+                    return err;
+                }
+            }
+
             std::basic_string<CharT> buf{};
             buf.reserve(static_cast<size_t>(
                 detail::max_digits<T>(base == 0 ? 8 : base)));
@@ -702,6 +723,13 @@ namespace scn {
         template <typename Context>
         error scan(T& val, Context& ctx)
         {
+            {
+                auto err = skip_stream_whitespace(ctx, false);
+                if (!err) {
+                    return err;
+                }
+            }
+
             std::basic_string<CharT> buf{};
             buf.reserve(21);
 
@@ -805,6 +833,13 @@ namespace scn {
         template <typename Context>
         error scan(std::basic_string<CharT>& val, Context& ctx)
         {
+            {
+                auto err = skip_stream_whitespace(ctx, false);
+                if (!err) {
+                    return err;
+                }
+            }
+
             val.clear();
             auto s = scan_chars(ctx, std::back_inserter(val),
                                 predicates::until_space<Context>{});

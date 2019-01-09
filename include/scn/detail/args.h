@@ -45,10 +45,6 @@ namespace scn {
             if (!err) {
                 return err;
             }
-            err = skip_stream_whitespace(ctx);
-            if (!err) {
-                return err;
-            }
             return s.scan(*static_cast<T*>(arg), ctx);
         }
 
@@ -93,19 +89,61 @@ namespace scn {
 
         basic_args(span<basic_arg<Context>> args) : m_args(args) {}
 
+        span<basic_arg<Context>> get() const
+        {
+            return m_args;
+        }
+
         error visit(Context& ctx)
         {
-            for (auto& a : m_args) {
-                auto ret = a.visit(ctx);
-                if (!ret) {
-                    auto rb = ctx.stream().roll_back();
-                    if (!rb) {
-                        return rb;
+            auto& pctx = ctx.parse_context();
+            auto arg = m_args.begin();
+            for (auto it = pctx.begin(); it != pctx.end();
+                 it = pctx.begin()) {
+                if (ctx.locale().is_space(*it)) {
+                    // Skip whitespace from format string and from stream
+                    auto ret = parse_whitespace(ctx);
+                    if (!ret) {
+                        auto rb = ctx.stream().roll_back();
+                        if (!rb) {
+                            return rb;
+                        }
+                        return ret;
                     }
-                    return ret;
                 }
-                ctx.parse_context().advance();
-                parse_whitespace(ctx);
+                else if (*it != ctx.locale().widen('{')) {
+                    // Check for any non-specifier {foo} characters
+                    auto ret = ctx.stream().read_char();
+                    if (!ret || ret.value() != *it) {
+                        auto rb = ctx.stream().roll_back();
+                        if (!rb) {
+                            return rb;
+                        }
+                        if (!ret) {
+                            return ret.get_error();
+                        }
+                        else {
+                            return error::invalid_scanned_value;
+                        }
+                    }
+                    pctx.advance();
+                }
+                else {
+                    // Scan argument
+                    if (arg == m_args.end()) {
+                        return error::invalid_format_string;
+                    }
+                    auto ret = arg->visit(ctx);
+                    if (!ret) {
+                        auto rb = ctx.stream().roll_back();
+                        if (!rb) {
+                            return rb;
+                        }
+                        return ret;
+                    }
+                    ++arg;
+                    pctx.advance();
+                }
             }
             auto srb = ctx.stream().set_roll_back();
             if (!srb) {

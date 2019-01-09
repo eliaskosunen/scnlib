@@ -59,30 +59,43 @@ namespace scn {
         return vscan<context_type>(ctx, args, std::move(locale));
     }
 
-#if 0
+    template <typename CharT>
+    basic_cstdio_stream<CharT>& stdin_stream() {
+        static basic_cstdio_stream<CharT> stream(stdin);
+        return stream;
+    }
+
+    inline basic_cstdio_stream<char>& cstdin() {
+        return stdin_stream<char>();
+    }
+    inline basic_cstdio_stream<wchar_t>& wcstdin() {
+        return stdin_stream<wchar_t>();
+    }
+
     template <typename... Args>
     error input(string_view f, Args&... a)
     {
-        using stream_type = basic_cstdio_stream<char>;
+        auto& stream = stdin_stream<char>();
+        using stream_type = std::remove_reference<decltype(stream)>::type;
         using context_type = basic_context<stream_type>;
 
-        auto s = stream_type(stdin);
         auto args = make_args<context_type>(a...);
-        auto ctx = context_type(s, f);
+        auto ctx = context_type(stream, f);
         return vscan<context_type>(ctx, args);
     }
     template <typename... Args>
     error winput(wstring_view f, Args&... a)
     {
-        using stream_type = basic_cstdio_stream<wchar_t>;
+        auto& stream = stdin_stream<wchar_t>();
+        using stream_type = std::remove_reference<decltype(stream)>::type;
         using context_type = basic_context<stream_type>;
 
-        auto s = stream_type(stdin);
         auto args = make_args<context_type>(a...);
-        auto ctx = context_type(s, f);
+        auto ctx = context_type(stream, f);
         return vscan<context_type>(ctx, args);
     }
 
+#if 0
     template <typename Source,
               typename CharT =
                   decltype(make_stream(std::declval<const Source&>()), void()),

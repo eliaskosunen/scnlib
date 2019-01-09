@@ -22,7 +22,6 @@ int main() {
     std::cout << "Hi there! What's your first name?\n";
 
     std::string name;
-    auto in = scn::make_stream(stdin);
-    scn::scan(in, "{}", name);
+    scn::scan(scn::cstdin(), "{}", name);
     std::cout << "Welcome, " << name << '\n';
 }

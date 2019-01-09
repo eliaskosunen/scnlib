@@ -22,7 +22,6 @@ int main() {
     std::cout << "Hi there! What's your favorite number?\n";
 
     int i;
-    auto in = scn::make_stream(stdin);
-    scn::scan(in, "{}", i);
+    scn::input("{}", i);
     std::cout << "Ooh, " << i << ", interesting!\n";
 }
