@@ -72,6 +72,11 @@ namespace scn {
             return {};
         }
 
+        size_t rcount() const
+        {
+            return static_cast<size_t>(m_begin, m_next);
+        }
+
     private:
         iterator begin() const
         {
@@ -147,6 +152,11 @@ namespace scn {
             return {};
         }
 
+        size_t rcount() const
+        {
+            return static_cast<size_t>(m_begin, m_next);
+        }
+
     private:
         iterator begin()
         {
@@ -189,9 +199,10 @@ namespace scn {
         }
         error putback(char_type)
         {
+            if (m_begin == m_next) {
+                return error::invalid_operation;
+            }
             --m_next;
-            // TODO: Check underflow
-            // TODO: Check if given char is correct
             return {};
         }
 
@@ -204,6 +215,11 @@ namespace scn {
         {
             m_next = m_begin;
             return {};
+        }
+
+        size_t rcount() const
+        {
+            return static_cast<size_t>(m_begin, m_next);
         }
 
     private:
@@ -246,6 +262,11 @@ namespace scn {
         error roll_back()
         {
             return {};
+        }
+
+        size_t rcount() const
+        {
+            return m_rollback.size();
         }
 
     private:
@@ -322,40 +343,46 @@ namespace scn {
                 }
                 return make_error(error::unrecoverable_stream_source_error);
             }
-            ++m_read;
+            m_read.push_back(static_cast<char_type>(ret));
             return static_cast<char_type>(ret);
         }
         error putback(char_type ch)
         {
-            assert(m_read > 0);
+            assert(m_read.size() > 0);
             if (std::ungetc(ch, m_file) == EOF) {
                 return error::unrecoverable_stream_source_error;
             }
-            --m_read;
+            m_read.pop_back();
             return {};
         }
 
         error set_roll_back()
         {
-            m_read = 0;
+            m_read.clear();
             return {};
         }
         error roll_back()
         {
-            assert(m_read >= 0);
-            if (m_read == 0) {
+            if (m_read.size() == 0) {
                 return {};
             }
-            if (std::fseek(m_file, -m_read, SEEK_CUR) != 0) {
-                return error::unrecoverable_stream_source_error;
+            for (auto it = m_read.rbegin(); it != m_read.rend(); ++it) {
+                if (std::ungetc(*it, m_file) == EOF) {
+                    return error::unrecoverable_stream_source_error;
+                }
             }
-            m_read = 0;
+            m_read.clear();
             return {};
+        }
+
+        size_t rcount() const
+        {
+            return m_read.size();
         }
 
     private:
         FILE* m_file;
-        long m_read{0};
+        std::string m_read{};
     };
     template <>
     struct basic_cstdio_stream<wchar_t> {
@@ -375,40 +402,48 @@ namespace scn {
                 }
                 return make_error(error::unrecoverable_stream_source_error);
             }
-            ++m_read;
+            m_read.push_back(static_cast<char_type>(ret));
             return static_cast<char_type>(ret);
         }
         error putback(char_type ch)
         {
-            assert(m_read > 0);
+            assert(m_read.size() > 0);
             if (std::ungetwc(std::char_traits<char_type>::to_int_type(ch),
                              m_file) == WEOF) {
                 return error::unrecoverable_stream_source_error;
             }
-            --m_read;
+            m_read.pop_back();
             return {};
         }
 
         error set_roll_back()
         {
-            m_read = 0;
+            m_read.clear();
             return {};
         }
         error roll_back()
         {
-            assert(m_read >= 0);
-            if (m_read == 0) {
+            if (m_read.size() == 0) {
                 return {};
             }
-            if (std::fseek(m_file, -m_read, SEEK_CUR) != 0) {
-                return error::unrecoverable_stream_source_error;
+            for (auto it = m_read.rbegin(); it != m_read.rend(); ++it) {
+                if (std::ungetwc(std::char_traits<char_type>::to_int_type(*it),
+                                 m_file) == WEOF) {
+                    return error::unrecoverable_stream_source_error;
+                }
             }
+            m_read.clear();
             return {};
+        }
+
+        size_t rcount() const
+        {
+            return m_read.size();
         }
 
     private:
         FILE* m_file;
-        long m_read{0};
+        std::wstring m_read{};
     };
 
     template <typename CharT = char>

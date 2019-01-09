@@ -48,7 +48,7 @@ namespace scn {
                 ++m_read;
                 return static_cast<char_type>(tmp);
             }
-            catch (const std::ios_base::failure& e) {
+            catch (const std::ios_base::failure&) {
                 if (m_is->bad()) {
                     return error::unrecoverable_stream_source_error;
                 }
@@ -69,7 +69,7 @@ namespace scn {
                 --m_read;
                 return {};
             }
-            catch (const std::ios_base::failure& e) {
+            catch (const std::ios_base::failure&) {
                 return error::unrecoverable_stream_source_error;
             }
         }
@@ -85,23 +85,13 @@ namespace scn {
             if (m_read == 0) {
                 return {};
             }
-            try {
-                m_is->seekg(-m_read, std::ios_base::cur);
-                if (m_is->bad()) {
+            for (auto i = 0; i < m_read; ++i) {
+                if (m_is->rdbuf().sungetc() == traits::eof()) {
                     return error::unrecoverable_stream_source_error;
                 }
-                if (m_is->fail()) {
-                    return error::stream_source_error;
-                }
-                m_read = 0;
-                return {};
             }
-            catch (const std::ios_base::failure& e) {
-                if (m_is->bad()) {
-                    return error::unrecoverable_stream_source_error;
-                }
-                return error::stream_source_error;
-            }
+            m_read = 0;
+            return {};
         }
 
     private:

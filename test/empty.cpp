@@ -17,3 +17,4 @@
 
 #include <doctest.h>
 #include <scn/scn.h>
+#include <scn/istream.h>
