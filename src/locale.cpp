@@ -15,7 +15,9 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY
 #define SCN_LOCALE_CPP
+#endif
 
 #include <scn/detail/core.h>
 #include <scn/detail/locale.h>

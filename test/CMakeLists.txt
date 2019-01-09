@@ -1,3 +1,7 @@
+message(STATUS "Installing doctest submodule")
+execute_process(COMMAND git submodule update --init -- doctest
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(tests
     test.cpp empty.cpp string_view.cpp
     integer.cpp floating.cpp boolean.cpp string.cpp

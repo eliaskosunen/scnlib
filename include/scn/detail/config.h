@@ -140,8 +140,12 @@
 #endif
 
 // Detect <charconv>
+#if 0
 #if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606
 #define SCN_HAS_CHARCONV 1
+#else
+#define SCN_HAS_CHARCONV 0
+#endif
 #else
 #define SCN_HAS_CHARCONV 0
 #endif

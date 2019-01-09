@@ -13,7 +13,8 @@ option(SCN_BENCHMARKS "Generate benchmark target" ${MASTER_PROJECT})
 option(SCN_INSTALL "Generate install target" ${MASTER_PROJECT})
 option(SCN_PEDANTIC "Use stricter warnings" ${MASTER_PROJECT})
 
-option(SCN_HEADER_ONLY "Build scnlib as a header-only library" OFF)
+option(SCN_HEADER_ONLY
+    "Build scnlib as a header-only library (if OFF, scn-header-only will still be generated)" OFF)
 option(SCN_WERROR "Halt compilation in case of a warning" OFF)
 
 file(READ include/scn/detail/config.h config_h)
@@ -37,8 +38,7 @@ set_headers(SCN_HEADERS
 	detail/context.h detail/core.h
 	detail/locale.h detail/stream.h
 	detail/span.h detail/string_view.h
-	detail/types.h detail/util.h
-        detail/locale.cpp)
+	detail/types.h detail/util.h)
 
 add_library(scn-base INTERFACE)
 target_compile_features(scn-base INTERFACE cxx_std_11)
@@ -95,25 +95,36 @@ if (SCN_WERROR)
             /WX)
 endif()
 
-if (SCN_HEADER_ONLY)
-    add_library(scn INTERFACE)
-    target_include_directories(scn INTERFACE
-        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
-        "$<INSTALL_INTERFACE:include>")
-    target_link_libraries(scn INTERFACE scn-base)
-    target_compile_definitions(scn INTERFACE
-        -DSCN_HEADER_ONLY=1)
-else ()
-    add_library(scn ${SCN_HEADERS})
-    target_include_directories(scn PUBLIC
+function (generate_library_target target_name)
+    add_library(${target_name} ${SCN_HEADERS} src/locale.cpp)
+    target_include_directories(${target_name} PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
-    target_include_directories(scn PRIVATE
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
-        $<INSTALL_INTERFACE:src>)
-    target_link_libraries(scn INTERFACE scn-base)
-    target_compile_definitions(scn PUBLIC
+    target_include_directories(${target_name} PRIVATE
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
+    target_link_libraries(${target_name} PRIVATE scn-base)
+    target_compile_definitions(${target_name} PUBLIC
         -DSCN_HEADER_ONLY=0)
+endfunction ()
+function (generate_header_only_target target_name)
+    add_library(${target_name} INTERFACE)
+    target_include_directories(${target_name} INTERFACE
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${PROJECT_SOURCE_DIR}/src>"
+        "$<INSTALL_INTERFACE:include>")
+    target_link_libraries(${target_name} INTERFACE scn-base)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_HEADER_ONLY=1)
+endfunction ()
+
+if (SCN_HEADER_ONLY)
+    generate_header_only_target(scn)
+    set(SCN_EXPORT_TARGETS_LIST scn scn-base)
+    add_library(scn::scn-header-only ALIAS scn)
+else ()
+    generate_library_target(scn)
+    generate_header_only_target(scn-header-only)
+    set(SCN_EXPORT_TARGETS_LIST scn scn-base scn-header-only)
+    add_library(scn::scn-header-only ALIAS scn-header-only)
 endif ()
 add_library(scn::scn ALIAS scn)
 
@@ -131,6 +142,11 @@ if (SCN_INSTALL)
     include(GNUInstallDirs)
     include(CMakePackageConfigHelpers)
 
+    if (SCN_HEADER_ONLY)
+        status(WARNING "Installing in header-only mode only exports scn::scn-header-only as scn::scn")
+        status(WARNING "Consider switching header-only mode off to export both library and header-only targets")
+    endif ()
+
     write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/scnConfigVersion.cmake"
         VERSION ${SCN_VERSION}
@@ -144,6 +160,10 @@ if (SCN_INSTALL)
         "${CMAKE_CURRENT_SOURCE_DIR}/include/"
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
+    install(DIRECTORY
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn/detail")
+
     install(FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
         "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
@@ -154,11 +174,11 @@ if (SCN_INSTALL)
         "${CMAKE_CURRENT_BINARY_DIR}/scnConfig.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/scn")
 
-    export(TARGETS scn scn-base
+    export(TARGETS ${SCN_EXPORT_TARGETS_LIST}
         NAMESPACE scn
         FILE "${CMAKE_CURRENT_BINARY_DIR}/scnTargets.cmake")
 
-    install(TARGETS scn scn-base
+    install(TARGETS ${SCN_EXPORT_TARGETS_LIST}
         EXPORT scnTargets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
