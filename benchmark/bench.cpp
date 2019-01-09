@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <benchmark/benchmark.h>
-#include <scn/scn.h>
+#include "benchmark.h"
+
 #include <cctype>
 #include <cstring>
 #include <functional>
@@ -26,6 +26,19 @@
 #include <sstream>
 #include <string>
 
+#if SCN_CLANG
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wglobal-constructors"
+#pragma clang diagnostic ignored "-Wunused-template"
+#pragma clang diagnostic ignored "-Wexit-time-destructors"
+#endif
+
+#if SCN_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wredundant-decls"
+#endif
+
+#if 0
 static std::string generate_data(size_t len)
 {
     static const std::vector<char> chars = {
@@ -44,6 +57,7 @@ static std::string generate_data(size_t len)
     }
     return data;
 }
+#endif
 template <typename Int>
 static std::string generate_int_data(size_t n)
 {
@@ -209,3 +223,11 @@ static void scanfloat_sstream(benchmark::State& state)
 // BENCHMARK_TEMPLATE(scanfloat_sstream, double)->Arg(2 << 15);
 
 BENCHMARK_MAIN();
+
+#if SCN_GCC
+#pragma GCC diagnostic pop
+#endif
+
+#if SCN_CLANG
+#pragma clang diagnostic pop
+#endif

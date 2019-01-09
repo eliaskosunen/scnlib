@@ -26,6 +26,7 @@
 
 #define SCN_COMPILER(major, minor, patch) \
     ((major)*10000000 /* 10,000,000 */ + (minor)*10000 /* 10,000 */ + (patch))
+#define SCN_VERSION SCN_COMPILER(0, 0, 1)
 
 #ifdef __INTEL_COMPILER
 // Intel
@@ -49,6 +50,7 @@
     SCN_COMPILER(__clang_major__, __clang_minor__, __clang_patchlevel__)
 #elif defined(__GNUC__) && defined(__GNUC_MINOR__) && \
     defined(__GNUC_PATCHLEVEL__)
+// GCC
 #define SCN_GCC SCN_COMPILER(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
 #endif
 
