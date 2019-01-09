@@ -21,6 +21,7 @@
 #include "core.h"
 #include "util.h"
 
+#include <algorithm>
 #include <vector>
 
 #if SCN_HAS_CHARCONV

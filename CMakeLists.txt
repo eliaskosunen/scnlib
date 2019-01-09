@@ -14,24 +14,19 @@ endif ()
 
 option(SCN_HEADER_ONLY "Build scnlib as a header-only library" OFF)
 
-add_subdirectory(include/scn/span-lite/span-lite)
-
 set(SCN_HEADERS
 	include/scn/istream.h include/scn/scn.h
-	include/scn/scn/args.h include/scn/scn/config.h
-	include/scn/scn/context.h include/scn/scn/core.h
-	include/scn/scn/locale.h include/scn/scn/stream.h
-	include/scn/scn/string_view.h include/scn/scn/types.h
-	include/scn/scn/util.h
-	include/scn/span-lite/span.h)
+	include/scn/detail/args.h include/scn/detail/config.h
+	include/scn/detail/context.h include/scn/detail/core.h
+	include/scn/detail/locale.h include/scn/detail/stream.h
+	include/scn/detail/span.h include/scn/detail/string_view.h
+	include/scn/detail/types.h include/scn/detail/util.h)
 
 if (SCN_HEADER_ONLY)
     add_library(scn INTERFACE ${SCN_HEADERS})
     target_include_directories(scn INTERFACE
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${PROJECT_SOURCE_DIR}/src>"
         "$<INSTALL_INTERFACE:include;src>")
-    target_link_libraries(scn INTERFACE
-        span-lite)
     target_compile_features(scn INTERFACE
         cxx_nullptr)
     target_compile_definitions(scn INTERFACE
@@ -45,8 +40,6 @@ else ()
     target_include_directories(scn PRIVATE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
         $<INSTALL_INTERFACE:src>)
-    target_link_libraries(scn PUBLIC
-        span-lite)
     target_compile_features(scn PUBLIC
         cxx_nullptr)
     target_compile_definitions(scn PUBLIC

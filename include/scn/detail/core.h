@@ -18,7 +18,7 @@
 #ifndef SCN_CORE_H
 #define SCN_CORE_H
 
-#include "../span-lite/span.h"
+#include "span.h"
 #include "result.h"
 #include "string_view.h"
 

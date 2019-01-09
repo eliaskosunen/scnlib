@@ -18,8 +18,8 @@
 #ifndef SCN_ISTREAM_H
 #define SCN_ISTREAM_H
 
-#include "scn/core.h"
-#include "scn/stream.h"
+#include "detail/core.h"
+#include "detail/stream.h"
 
 #include <istream>
 

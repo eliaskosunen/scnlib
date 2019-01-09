@@ -1,9 +1,3 @@
-[submodule "include/scn/expected-lite/expected-lite"]
-	path = include/scn/expected-lite/expected-lite
-	url = https://github.com/martinmoene/expected-lite
-[submodule "include/scn/span-lite/span-lite"]
-	path = include/scn/span-lite/span-lite
-	url = https://github.com/martinmoene/span-lite
 [submodule "test/doctest"]
 	path = test/doctest
 	url = https://github.com/onqtam/doctest

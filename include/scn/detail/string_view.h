@@ -18,10 +18,10 @@
 #ifndef SCN_STRING_VIEW_H
 #define SCN_STRING_VIEW_H
 
-#include "config.h"
+#include "span.h"
 
+#include <limits>
 #include <string>
-#include "../span-lite/span.h"
 
 namespace scn {
     template <typename CharT, typename Traits = std::char_traits<CharT>>
@@ -29,7 +29,7 @@ namespace scn {
     public:
         using traits_type = Traits;
         using value_type = CharT;
-        using span_type = nonstd::span<const value_type>;
+        using span_type = span<const value_type>;
 
         using pointer = value_type*;
         using const_pointer = const value_type*;

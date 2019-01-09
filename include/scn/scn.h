@@ -18,13 +18,13 @@
 #ifndef SCN_SCN_H
 #define SCN_SCN_H
 
-#include "scn/args.h"
-#include "scn/context.h"
-#include "scn/core.h"
-#include "scn/locale.h"
-#include "scn/result.h"
-#include "scn/stream.h"
-#include "scn/types.h"
+#include "detail/args.h"
+#include "detail/context.h"
+#include "detail/core.h"
+#include "detail/locale.h"
+#include "detail/result.h"
+#include "detail/stream.h"
+#include "detail/types.h"
 
 namespace scn {
     template <typename Context>

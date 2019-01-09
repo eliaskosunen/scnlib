@@ -17,8 +17,8 @@
 
 #define SCN_LOCALE_CPP
 
-#include <scn/scn/core.h>
-#include <scn/scn/locale.h>
+#include <scn/detail/core.h>
+#include <scn/detail/locale.h>
 
 #include <cctype>
 #include <cwchar>
