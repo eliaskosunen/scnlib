@@ -15,9 +15,10 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_TYPES_H
-#define SCN_TYPES_H
+#ifndef SCN_DETAIL_TYPES_H
+#define SCN_DETAIL_TYPES_H
 
+#include "context.h"
 #include "core.h"
 #include "util.h"
 
@@ -138,7 +139,10 @@ namespace scn {
     namespace pred = predicates;
 
     template <typename Context, typename Iterator, typename Predicate>
-    result<Iterator> scan_chars(Context& ctx, Iterator begin, Predicate&& p)
+    result<Iterator> scan_chars(Context& ctx,
+                                Iterator begin,
+                                Predicate&& p,
+                                bool keep_final = false)
     {
         while (true) {
             auto ret = ctx.stream().read_char();
@@ -157,6 +161,9 @@ namespace scn {
                 continue;
             }
             if (r.value() == scan_status::end) {
+                if (keep_final) {
+                    *begin = ret.value();
+                }
                 break;
             }
             *begin = ret.value();
@@ -171,7 +178,8 @@ namespace scn {
     result<Iterator> scan_chars_until(Context& ctx,
                                       Iterator begin,
                                       EndIterator end,
-                                      Predicate&& p)
+                                      Predicate&& p,
+                                      bool keep_final = false)
     {
         while (begin != end) {
             auto ret = ctx.stream().read_char();
@@ -190,6 +198,9 @@ namespace scn {
                 continue;
             }
             if (r.value() == scan_status::end) {
+                if (keep_final) {
+                    *begin = ret.value();
+                }
                 break;
             }
             *begin = ret.value();
@@ -265,7 +276,7 @@ namespace scn {
                 if (ch == ctx.locale().widen('}')) {
                     break;
                 }
-                else if (ch == ctx.locale().widen('l')) {
+                if (ch == ctx.locale().widen('l')) {
                     localized = true;
                 }
                 else if (ch == ctx.locale().widen('a')) {
@@ -288,13 +299,6 @@ namespace scn {
         template <typename Context>
         error scan(bool& val, Context& ctx)
         {
-            {
-                auto err = skip_stream_whitespace(ctx, false);
-                if (!err) {
-                    return err;
-                }
-            }
-
             if (boolalpha) {
                 basic_string_view<CharT> truename{"true"};
                 basic_string_view<CharT> falsename{"false"};
@@ -553,22 +557,12 @@ namespace scn {
         template <typename Context>
         error scan(T& val, Context& ctx)
         {
-            {
-                auto err = skip_stream_whitespace(ctx, false);
-                if (!err) {
-                    return err;
-                }
-            }
-
             std::basic_string<CharT> buf{};
             buf.reserve(static_cast<size_t>(
                 detail::max_digits<T>(base == 0 ? 8 : base)));
 
-            auto thousands_sep = ctx.locale().thousands_separator();
-            auto thsep_span = span<CharT>(&thousands_sep, 1);
-            auto r = scan_chars(
-                ctx, std::back_inserter(buf),
-                predicates::until_space_and_skip_chars<Context>{thsep_span});
+            auto r = scan_chars(ctx, std::back_inserter(buf),
+                                predicates::until_space<Context>{}, true);
             if (!r) {
                 return r.get_error();
             }
@@ -657,14 +651,14 @@ namespace scn {
             return {};
         }
 
-        enum localized_type {
+        enum localized_type : uint8_t {
             thousands_separator = 1,
             decimal = 2,
             digits = 4
         };
 
         int base{0};
-        int localized{0};
+        uint8_t localized{0};
     };
 
     namespace detail {
@@ -723,13 +717,6 @@ namespace scn {
         template <typename Context>
         error scan(T& val, Context& ctx)
         {
-            {
-                auto err = skip_stream_whitespace(ctx, false);
-                if (!err) {
-                    return err;
-                }
-            }
-
             std::basic_string<CharT> buf{};
             buf.reserve(21);
 
@@ -834,7 +821,7 @@ namespace scn {
         error scan(std::basic_string<CharT>& val, Context& ctx)
         {
             {
-                auto err = skip_stream_whitespace(ctx, false);
+                auto err = skip_stream_whitespace(ctx);
                 if (!err) {
                     return err;
                 }
@@ -873,6 +860,26 @@ namespace scn {
         }
         return {};
     }
+    template <typename Stream,
+              typename Traits,
+              typename Allocator,
+              typename CharT = typename Stream::char_type>
+    error getline(Stream& s,
+                  std::basic_string<CharT, Traits, Allocator>& str,
+                  CharT until)
+    {
+        using context_type = basic_context<Stream>;
+        auto f = string_view("{}");
+        auto ctx = context_type(s, f);
+
+        str.clear();
+        auto res = scan_chars(ctx, std::back_inserter(str),
+                              predicates::until<context_type>{until});
+        if (!res) {
+            return res.get_error();
+        }
+        return {};
+    }
 
     namespace detail {
         template <typename CharT>
@@ -884,7 +891,7 @@ namespace scn {
             using iterator_category = std::input_iterator_tag;
 
             ignore_iterator() = default;
-            ignore_iterator(difference_type n) : i(n) {}
+            explicit ignore_iterator(difference_type n) : i(n) {}
 
             reference operator*() const
             {
@@ -1003,5 +1010,4 @@ namespace scn {
 #pragma clang diagnostic pop
 #endif
 
-#endif  // SCN_TYPES_H
-
+#endif  // SCN_DETAIL_TYPES_H

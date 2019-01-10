@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_CONFIG_H
-#define SCN_CONFIG_H
+#ifndef SCN_DETAIL_CONFIG_H
+#define SCN_DETAIL_CONFIG_H
 
 #include <cstddef>
 
@@ -150,5 +150,4 @@
 #define SCN_HAS_CHARCONV 0
 #endif
 
-#endif  // SCN_CONFIG_H
-
+#endif  // SCN_DETAIL_CONFIG_H

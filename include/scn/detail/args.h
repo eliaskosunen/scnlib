@@ -15,28 +15,31 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_ARGS_H
-#define SCN_ARGS_H
+#ifndef SCN_DETAIL_ARGS_H
+#define SCN_DETAIL_ARGS_H
 
 #include "core.h"
 
 namespace scn {
+    /// Type-erased scanning argument.
     template <typename Context>
     class basic_arg {
     public:
         using char_type = typename Context::char_type;
 
         template <typename T>
-        explicit basic_arg(T& val) : m_value{std::addressof(val), custom_arg<T>}
+        basic_arg(T& val) : m_value{std::addressof(val), custom_arg<T>}
         {
         }
 
+        /// Scan this argument
         error visit(Context& ctx)
         {
             return m_value.scan(m_value.value, ctx);
         }
 
     private:
+        /// Pointee of detail::custom_value<>::scan
         template <typename T>
         static error custom_arg(void* arg, Context& ctx)
         {
@@ -94,22 +97,36 @@ namespace scn {
             return m_args;
         }
 
+        /// Visit argument list
         error visit(Context& ctx)
         {
             auto& pctx = ctx.parse_context();
             auto arg = m_args.begin();
-            for (auto it = pctx.begin(); it != pctx.end();
-                 it = pctx.begin()) {
+
+            {
+                auto ret = skip_stream_whitespace(ctx);
+                if (!ret) {
+                    return ret;
+                }
+            }
+
+            for (auto it = pctx.begin(); it != pctx.end(); it = pctx.begin()) {
                 if (ctx.locale().is_space(*it)) {
                     // Skip whitespace from format string and from stream
+                    // EOF is not an error
                     auto ret = parse_whitespace(ctx);
                     if (!ret) {
+                        if (ret == error::end_of_stream &&
+                            arg == m_args.end()) {
+                            return {};
+                        }
                         auto rb = ctx.stream().roll_back();
                         if (!rb) {
                             return rb;
                         }
                         return ret;
                     }
+                    // Don't advance pctx, parse_whitespace() does it for us
                 }
                 else if (*it != ctx.locale().widen('{')) {
                     // Check for any non-specifier {foo} characters
@@ -117,20 +134,24 @@ namespace scn {
                     if (!ret || ret.value() != *it) {
                         auto rb = ctx.stream().roll_back();
                         if (!rb) {
+                            // Failed rollback
                             return rb;
                         }
                         if (!ret) {
+                            // Failed read
                             return ret.get_error();
                         }
-                        else {
-                            return error::invalid_scanned_value;
-                        }
+
+                        // Mismatching characters in scan string and stream
+                        return error::invalid_scanned_value;
                     }
+                    // Bump pctx to next char
                     pctx.advance();
                 }
                 else {
                     // Scan argument
                     if (arg == m_args.end()) {
+                        // Mismatch between number of args and {}s
                         return error::invalid_format_string;
                     }
                     auto ret = arg->visit(ctx);
@@ -141,9 +162,14 @@ namespace scn {
                         }
                         return ret;
                     }
+                    // Handle next arg and bump pctx
                     ++arg;
                     pctx.advance();
                 }
+            }
+            if (pctx.begin() != pctx.end()) {
+                // Format string not exhausted
+                return error::invalid_format_string;
             }
             auto srb = ctx.stream().set_roll_back();
             if (!srb) {
@@ -157,5 +183,4 @@ namespace scn {
     };
 }  // namespace scn
 
-#endif  // SCN_ARGS_H
-
+#endif  // SCN_DETAIL_ARGS_H

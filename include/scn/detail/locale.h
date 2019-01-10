@@ -15,11 +15,11 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_LOCALE_H
-#define SCN_LOCALE_H
+#ifndef SCN_DETAIL_LOCALE_H
+#define SCN_DETAIL_LOCALE_H
 
-#include "string_view.h"
 #include "result.h"
+#include "string_view.h"
 
 namespace scn {
 #if SCN_GCC
@@ -39,7 +39,7 @@ namespace scn {
         using iterator = typename string_view_type::iterator;
 
         basic_locale_ref();
-        basic_locale_ref(const void* loc);
+        explicit basic_locale_ref(const void* loc);
 
         const void* get_ptr() const
         {
@@ -86,5 +86,4 @@ namespace scn {
 #include "locale.cpp"
 #endif
 
-#endif  // SCN_LOCALE_H
-
+#endif  // SCN_DETAIL_LOCALE_H

@@ -16,5 +16,32 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <doctest.h>
-#include <scn/istream.h>
 #include <scn/scn.h>
+
+struct user_type {
+    int val1, val2;
+};
+
+namespace scn {
+    template <typename CharT>
+    struct basic_value_scanner<CharT, user_type>
+        : public detail::empty_parser<CharT> {
+        template <typename Context>
+        error scan(user_type& val, Context& ctx)
+        {
+            return scn::scan(ctx.stream(), "[{}, {}]", val.val1, val.val2);
+        }
+    };
+}  // namespace scn
+
+TEST_CASE("user type")
+{
+    std::string source{"[4, 20]"};
+    auto stream = scn::make_stream(source);
+
+    user_type ut{};
+    auto ret = scn::scan(stream, "{}", ut);
+    CHECK(ret);
+    CHECK(ut.val1 == 4);
+    CHECK(ut.val2 == 20);
+}

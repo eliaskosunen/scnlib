@@ -30,7 +30,10 @@ namespace scn {
         using source_type = std::basic_istream<char_type>;
         using traits = typename source_type::traits_type;
 
-        basic_std_istream_stream(source_type& is) : m_is(std::addressof(is)) {}
+        explicit basic_std_istream_stream(source_type& is)
+            : m_is(std::addressof(is))
+        {
+        }
 
         result<char_type> read_char()
         {

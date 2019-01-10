@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_STRING_VIEW_H
-#define SCN_STRING_VIEW_H
+#ifndef SCN_DETAIL_STRING_VIEW_H
+#define SCN_DETAIL_STRING_VIEW_H
 
 #include "span.h"
 
@@ -24,6 +24,10 @@
 #include <string>
 
 namespace scn {
+    /**
+     * A view over a (sub)string.
+     * Used even when std::string_view is available to avoid compatibility issues.
+     */
     template <typename CharT, typename Traits = std::char_traits<CharT>>
     class basic_string_view {
     public:
@@ -161,10 +165,12 @@ namespace scn {
             auto n = std::min(size(), v.size());
             auto cmp = Traits::compare(data(), v.data(), n);
             if (cmp == 0) {
-                if (size() == v.size())
+                if (size() == v.size()) {
                     return 0;
-                if (size() > v.size())
+                }
+                if (size() > v.size()) {
                     return 1;
+                }
                 return -1;
             }
             return cmp;
@@ -208,5 +214,4 @@ namespace scn {
 
 }  // namespace scn
 
-#endif  // SCN_STRING_VIEW_H
-
+#endif  // SCN_DETAIL_STRING_VIEW_H

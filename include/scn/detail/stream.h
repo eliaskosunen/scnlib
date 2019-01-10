@@ -15,10 +15,11 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_STREAM_H
-#define SCN_STREAM_H
+#ifndef SCN_DETAIL_STREAM_H
+#define SCN_DETAIL_STREAM_H
 
 #include "string_view.h"
+#include "result.h"
 
 #include <array>
 #include <cassert>
@@ -348,7 +349,7 @@ namespace scn {
         }
         error putback(char_type ch)
         {
-            assert(m_read.size() > 0);
+            assert(!m_read.empty());
             if (std::ungetc(ch, m_file) == EOF) {
                 return error::unrecoverable_stream_source_error;
             }
@@ -363,7 +364,7 @@ namespace scn {
         }
         error roll_back()
         {
-            if (m_read.size() == 0) {
+            if (m_read.empty()) {
                 return {};
             }
             for (auto it = m_read.rbegin(); it != m_read.rend(); ++it) {
@@ -407,7 +408,7 @@ namespace scn {
         }
         error putback(char_type ch)
         {
-            assert(m_read.size() > 0);
+            assert(!m_read.empty());
             if (std::ungetwc(std::char_traits<char_type>::to_int_type(ch),
                              m_file) == WEOF) {
                 return error::unrecoverable_stream_source_error;
@@ -423,7 +424,7 @@ namespace scn {
         }
         error roll_back()
         {
-            if (m_read.size() == 0) {
+            if (m_read.empty()) {
                 return {};
             }
             for (auto it = m_read.rbegin(); it != m_read.rend(); ++it) {
@@ -461,5 +462,4 @@ namespace scn {
     }
 }  // namespace scn
 
-#endif  // SCN_STREAM_H
-
+#endif  // SCN_DETAIL_STREAM_H

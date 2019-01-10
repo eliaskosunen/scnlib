@@ -15,9 +15,9 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#include <cmath>
 #include <doctest.h>
 #include <scn/scn.h>
-#include <cmath>
 
 TEST_CASE("floating point")
 {
@@ -102,6 +102,6 @@ TEST_CASE("floating point")
         if (!ret) {
             CHECK(ret == scn::error::end_of_stream);
         }
-        d = 0.0;
+        //d = 0.0;
     }
 }

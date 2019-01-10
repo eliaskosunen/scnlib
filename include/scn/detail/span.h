@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_SPAN_H
-#define SCN_SPAN_H
+#ifndef SCN_DETAIL_SPAN_H
+#define SCN_DETAIL_SPAN_H
 
 #include "config.h"
 
@@ -24,6 +24,10 @@
 #include <type_traits>
 
 namespace scn {
+    /**
+     * A view over a contiguous range.
+     * Stripped-down version of `std::span`.
+     */
     template <typename T>
     class span {
     public:
@@ -130,5 +134,4 @@ namespace scn {
     }
 }  // namespace scn
 
-#endif  // SCN_SPAN_H
-
+#endif  // SCN_DETAIL_SPAN_H

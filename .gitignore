@@ -1,6 +1,8 @@
 .vscode
 build*/
-doc/
+doc/html/
+doc/latex/
+doc/*.tmp
 .vs/
 .ycm_extra_conf.py
 

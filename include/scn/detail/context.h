@@ -15,21 +15,24 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_CONTEXT_H
-#define SCN_CONTEXT_H
+#ifndef SCN_DETAIL_CONTEXT_H
+#define SCN_DETAIL_CONTEXT_H
 
 #include "core.h"
 #include "locale.h"
 
 namespace scn {
+    /// Scanning context.
     template <typename Stream>
     class basic_context {
     public:
         using stream_type = Stream;
+        /// Stream character type
         using char_type = typename stream_type::char_type;
         using parse_context_type = basic_parse_context<char_type>;
         using locale_type = basic_locale_ref<char_type>;
 
+        /// basic_value_scanner to use with a specific `T`
         template <typename T>
         using value_scanner_type = basic_value_scanner<char_type, T>;
 
@@ -69,5 +72,4 @@ namespace scn {
     };
 }  // namespace scn
 
-#endif  // SCN_CONTEXT_H
-
+#endif  // SCN_DETAIL_CONTEXT_H

@@ -55,6 +55,6 @@ TEST_CASE("boolean")
         if (!ret) {
             CHECK(ret == scn::error::invalid_scanned_value);
         }
-        b = false;
+        //b = false;
     }
 }

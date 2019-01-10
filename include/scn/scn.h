@@ -27,12 +27,19 @@
 #include "detail/types.h"
 
 namespace scn {
+    /**
+     * Non-variadic version of scan(), to prevent bloat in generated code.
+     */
     template <typename Context>
     error vscan(Context ctx, basic_args<Context> a)
     {
         return a.visit(ctx);
     }
 
+    /**
+     * Scan the given arguments from the stream.
+     * \param f Scanning options
+     */
     template <typename Stream, typename... Args>
     error scan(Stream& s,
                basic_string_view<typename Stream::char_type> f,
@@ -44,6 +51,12 @@ namespace scn {
         auto ctx = context_type(s, f);
         return vscan<context_type>(ctx, args);
     }
+    /**
+     * Scan the given arguments from the stream, using locale loc.
+     * Noticeably slower compared to non-localized scan(), avoid if possible.
+     * \param loc `std::locale` to use
+     * \param f   Scanning options
+     */
     template <typename Locale, typename Stream, typename... Args>
     error scan(const Locale& loc,
                Stream& s,
@@ -59,19 +72,35 @@ namespace scn {
         return vscan<context_type>(ctx, args, std::move(locale));
     }
 
+    /**
+     * Reference to global stdin stream.
+     * Not safe to use during static construction or destruction.
+     */
     template <typename CharT>
     basic_cstdio_stream<CharT>& stdin_stream() {
         static basic_cstdio_stream<CharT> stream(stdin);
         return stream;
     }
 
+    /**
+     * Reference to narrow global stdin stream.
+     * Not safe to use during static construction or destruction.
+     */
     inline basic_cstdio_stream<char>& cstdin() {
         return stdin_stream<char>();
     }
+    /**
+     * Reference to wide global stdin stream.
+     * Not safe to use during static construction or destruction.
+     */
     inline basic_cstdio_stream<wchar_t>& wcstdin() {
         return stdin_stream<wchar_t>();
     }
 
+    /**
+     * Scan from stdin.
+     * \param f Scanning options
+     */
     template <typename... Args>
     error input(string_view f, Args&... a)
     {
@@ -83,6 +112,10 @@ namespace scn {
         auto ctx = context_type(stream, f);
         return vscan<context_type>(ctx, args);
     }
+    /**
+     * Wide scan from stdin.
+     * \param f Scanning options
+     */
     template <typename... Args>
     error winput(wstring_view f, Args&... a)
     {

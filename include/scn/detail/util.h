@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_UTIL_H
-#define SCN_UTIL_H
+#ifndef SCN_DETAIL_UTIL_H
+#define SCN_DETAIL_UTIL_H
 
 #include "config.h"
 
@@ -25,6 +25,11 @@
 
 namespace scn {
     namespace detail {
+        /**
+         * Maximum digits potentially required to represent an integer of type
+         * Integral. Includes possible sign.
+         * \param base Base of the integer
+         */
         template <typename Integral>
         int max_digits(int base) noexcept
         {
@@ -41,5 +46,4 @@ namespace scn {
     }  // namespace detail
 }  // namespace scn
 
-#endif  // SCN_UTIL_H
-
+#endif  // SCN_DETAIL_UTIL_H

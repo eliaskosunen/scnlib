@@ -8,5 +8,7 @@ set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON CACHE INTERNAL "")
 set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE INTERNAL "")
 add_subdirectory(google-benchmark EXCLUDE_FROM_ALL)
 
-add_executable(bench bench.cpp benchmark.h)
+add_executable(bench
+    bench.cpp benchmark.h
+    bench_int.cpp bench_float.cpp)
 target_link_libraries(bench scn benchmark)

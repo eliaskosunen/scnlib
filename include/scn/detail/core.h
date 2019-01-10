@@ -15,23 +15,27 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_CORE_H
-#define SCN_CORE_H
+#ifndef SCN_DETAIL_CORE_H
+#define SCN_DETAIL_CORE_H
 
-#include "span.h"
 #include "result.h"
+#include "span.h"
 #include "string_view.h"
 
 namespace scn {
+    /**
+     * Skip any whitespace from the stream.
+     * Next read_char() will return the first non-whitespace character of EOF.
+     * \param ctx Stream and locale to use
+     * \param allow_eof In case of EOF, return error::good if `true` or
+     * error::end_of_stream if `false`
+     */
     template <typename Context>
-    error skip_stream_whitespace(Context& ctx, bool allow_eof = true)
+    error skip_stream_whitespace(Context& ctx)
     {
         while (true) {
             auto ch = ctx.stream().read_char();
             if (!ch) {
-                if (ch.get_error() == error::end_of_stream && allow_eof) {
-                    return {};
-                }
                 return ch.get_error();
             }
 #if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
@@ -70,7 +74,7 @@ namespace scn {
     namespace detail {
         template <typename Context>
         struct custom_value {
-            using fn_type = error(*)(void*, Context&);
+            using fn_type = error (*)(void*, Context&);
 
             void* value;
             fn_type scan;
@@ -116,5 +120,4 @@ namespace scn {
     struct basic_value_scanner;
 }  // namespace scn
 
-#endif  // SCN_CORE_H
-
+#endif  // SCN_DETAIL_CORE_H

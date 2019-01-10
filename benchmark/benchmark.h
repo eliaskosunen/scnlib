@@ -26,6 +26,7 @@
 #pragma clang diagnostic ignored "-Wweak-vtables"
 #pragma clang diagnostic ignored "-Wglobal-constructors"
 #pragma clang diagnostic ignored "-Wused-but-marked-unused"
+#pragma clang diagnostic ignored "-Wexit-time-destructors"
 #endif
 
 #if SCN_GCC
@@ -35,6 +36,64 @@
 #endif
 
 #include <benchmark/benchmark.h>
+
+#include <cctype>
+#include <cstring>
+#include <functional>
+#include <iostream>
+#include <limits>
+#include <random>
+#include <sstream>
+#include <string>
+
+inline std::string generate_data(size_t len)
+{
+    static const std::vector<char> chars = {
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',  'A',  'B',
+        'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',  'M',  'N',
+        'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',  'Y',  'Z',
+        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',  'k',  'l',
+        'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',  'w',  'x',
+        'y', 'z', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '\n', '\n', '\t'};
+    std::default_random_engine rng(std::random_device{}());
+    std::uniform_int_distribution<> dist(0, static_cast<int>(chars.size() - 1));
+
+    std::string data;
+    for (std::size_t i = 0; i < len; ++i) {
+        data.push_back(chars[static_cast<size_t>(dist(rng))]);
+    }
+    return data;
+}
+
+template <typename Int>
+std::string generate_int_data(size_t n)
+{
+    std::default_random_engine rng(std::random_device{}());
+    std::uniform_int_distribution<Int> dist(std::numeric_limits<Int>::min(),
+                                            std::numeric_limits<Int>::max());
+
+    std::ostringstream oss;
+    for (size_t i = 0; i < n; ++i) {
+        oss << dist(rng) << ' ';
+    }
+    return oss.str();
+}
+template <typename Float>
+std::string generate_float_data(size_t n)
+{
+    std::default_random_engine rng(std::random_device{}());
+    std::uniform_int_distribution<int> int_dist(-16, 16);
+    std::uniform_real_distribution<Float> float_dist(Float(0.0), Float(1.0));
+
+    std::ostringstream oss;
+    for (size_t i = 0; i < n; ++i) {
+        auto f = float_dist(rng);
+        auto exp = int_dist(rng);
+        f = std::scalbn(f, exp);
+        oss << f << ' ';
+    }
+    return oss.str();
+}
 
 #if SCN_GCC
 #pragma GCC diagnostic pop

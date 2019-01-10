@@ -15,31 +15,53 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_RESULT_H
-#define SCN_RESULT_H
+#ifndef SCN_DETAIL_RESULT_H
+#define SCN_DETAIL_RESULT_H
+
+#include "config.h"
 
 #include <memory>
 #include <type_traits>
 #include <utility>
 
 namespace scn {
+    /**
+     * Error class.
+     * Used as a return value for functions without a success value.
+     * \see result For a Either-like type
+     */
     class error {
     public:
+        /// Error code
         enum code {
+            /// No error
             good,
+            /// EOF
             end_of_stream,
+            /// Format string was invalid
             invalid_format_string,
+            /// Scanned value was invalid for given type.
+            /// e.g. a period '.' when scanning for an int
             invalid_scanned_value,
+            /// Stream does not support the performed operation
             invalid_operation,
+            /// Scanned value was out of range for the desired type.
+            /// (e.g. `>2^32` for an `uint32_t`)
             value_out_of_range,
+            /// The stream has encountered an error that cannot be recovered
+            /// from. The stream is now unusable.
             unrecoverable_stream_error,
+            /// The stream source emitted an error.
             stream_source_error,
+            /// The stream source emitted an error that cannot be recovered
+            /// from. The stream is now unusable.
             unrecoverable_stream_source_error
         };
 
         error() = default;
         error(code c) : m_code(c) {}
 
+        /// Evaluated to true if there was no error
         explicit operator bool() const
         {
             return m_code == good;
@@ -49,11 +71,13 @@ namespace scn {
             return !(operator bool());
         }
 
+        /// Get error code
         code get_code() const
         {
             return m_code;
         }
 
+        /// Can the stream be used again
         bool is_recoverable() const
         {
             return !(m_code == unrecoverable_stream_error ||
@@ -73,6 +97,11 @@ namespace scn {
         return !(a == b);
     }
 
+    /**
+     * Either-like type.
+     * For situations where there can be a value in case of success or an error
+     * code.
+     */
     template <typename T, typename Enable = void>
     class result;
 
@@ -81,6 +110,12 @@ namespace scn {
 #pragma clang diagnostic ignored "-Wpadded"
 #endif
 
+    /**
+     * Either-like type for default-constructible success values.
+     * Not optimized for space-efficiency (both members are stored
+     * simultaneously).
+     * `error` is used as the error value and discriminant flag.
+     */
     template <typename T>
     class result<T,
                  typename std::enable_if<
@@ -131,6 +166,11 @@ namespace scn {
         error m_e{error::good};
     };
 
+    /**
+     * Either-like type for non-default-constructible success values.
+     * Not optimized for space-efficiency.
+     * `error` is used as the error value and discriminant flag.
+     */
     template <typename T>
     class result<T,
                  typename std::enable_if<
@@ -248,5 +288,4 @@ namespace scn {
     }
 }  // namespace scn
 
-#endif  // SCN_RESULT_H
-
+#endif  // SCN_DETAIL_RESULT_H

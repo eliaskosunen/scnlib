@@ -54,7 +54,7 @@ TEST_CASE("integer")
         if (!ret) {
             CHECK(ret == scn::error::value_out_of_range);
         }
-        u = 0;
+        //u = 0;
     }
     {
         // -1 to int
@@ -115,7 +115,7 @@ TEST_CASE("integer")
         auto ret = scn::scan(stream, "{}", l);
         CHECK(l == 0xbad1dea);
         CHECK(ret);
-        l = 0;
+        //l = 0;
     }
     {
         // Scan from EOF
@@ -126,6 +126,6 @@ TEST_CASE("integer")
         if (!ret) {
             CHECK(ret.get_code() == scn::error::end_of_stream);
         }
-        i = 0;
+        //i = 0;
     }
 }
