@@ -19,9 +19,7 @@
 #include <iostream>
 
 int main() {
-    std::cout << "Hi there! What's your favorite number?\n";
-
     int i;
-    scn::input("{}", i);
+    scn::prompt("Hi there! What's your favorite number? ", "{}", i);
     std::cout << "Ooh, " << i << ", interesting!\n";
 }

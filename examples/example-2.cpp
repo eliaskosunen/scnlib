@@ -22,6 +22,6 @@ int main() {
     std::cout << "Hi there! What's your first name?\n";
 
     std::string name;
-    scn::scan(scn::cstdin(), "{}", name);
+    scn::input("{}", name);
     std::cout << "Welcome, " << name << '\n';
 }

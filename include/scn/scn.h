@@ -95,6 +95,33 @@ namespace scn {
         return vscan<context_type>(ctx, args);
     }
 
+    template <typename... Args>
+    error prompt(const char* p, string_view f, Args&... a)
+    {
+        std::printf("%s", p);
+
+        auto& stream = stdin_stream<char>();
+        using stream_type = std::remove_reference<decltype(stream)>::type;
+        using context_type = basic_context<stream_type>;
+
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(stream, f);
+        return vscan<context_type>(ctx, args);
+    }
+    template <typename... Args>
+    error wprompt(const wchar_t* p, wstring_view f, Args&... a)
+    {
+        std::wprintf(L"%ls", p);
+
+        auto& stream = stdin_stream<wchar_t>();
+        using stream_type = std::remove_reference<decltype(stream)>::type;
+        using context_type = basic_context<stream_type>;
+
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(stream, f);
+        return vscan<context_type>(ctx, args);
+    }
+
 #if 0
     template <typename Source,
               typename CharT =
