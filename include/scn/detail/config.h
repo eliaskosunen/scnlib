@@ -150,4 +150,11 @@
 #define SCN_HAS_CHARCONV 0
 #endif
 
+// Detect std::launder
+#if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606
+#define SCN_HAS_LAUNDER 1
+#else
+#define SCN_HAS_LAUNDER 0
+#endif
+
 #endif  // SCN_DETAIL_CONFIG_H

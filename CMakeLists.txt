@@ -112,14 +112,13 @@ function (generate_header_only_target target_name)
     target_include_directories(${target_name} INTERFACE
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${PROJECT_SOURCE_DIR}/src>"
         "$<INSTALL_INTERFACE:include>")
-    target_link_libraries(${target_name} INTERFACE scn-base)
     target_compile_definitions(${target_name} INTERFACE
         -DSCN_HEADER_ONLY=1)
 endfunction ()
 
 if (SCN_HEADER_ONLY)
     generate_header_only_target(scn)
-    set(SCN_EXPORT_TARGETS_LIST scn scn-base)
+    set(SCN_EXPORT_TARGETS_LIST scn)
     add_library(scn::scn-header-only ALIAS scn)
 else ()
     generate_library_target(scn)

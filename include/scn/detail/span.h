@@ -43,12 +43,12 @@ namespace scn {
         using reverse_iterator = std::reverse_iterator<iterator>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-        SCN_CONSTEXPR span() = default;
-        SCN_CONSTEXPR span(pointer ptr, index_type count)
+        SCN_CONSTEXPR span() noexcept = default;
+        SCN_CONSTEXPR span(pointer ptr, index_type count) noexcept
             : m_ptr(ptr), m_size(count)
         {
         }
-        SCN_CONSTEXPR span(pointer first, pointer last)
+        SCN_CONSTEXPR span(pointer first, pointer last) noexcept
             : span(first, last - first)
         {
         }
@@ -117,17 +117,17 @@ namespace scn {
     };
 
     template <typename T>
-    span<T> make_span(T* ptr, std::ptrdiff_t count)
+    SCN_CONSTEXPR span<T> make_span(T* ptr, std::ptrdiff_t count) noexcept
     {
         return span<T>(ptr, count);
     }
     template <typename T>
-    span<T> make_span(T* first, T* last)
+    SCN_CONSTEXPR span<T> make_span(T* first, T* last) noexcept
     {
         return span<T>(first, last);
     }
     template <typename T>
-    span<typename T::value_type> make_span(T& container)
+    SCN_CONSTEXPR span<typename T::value_type> make_span(T& container) noexcept
     {
         return span<typename T::value_type>(std::begin(container),
                                             std::end(container));

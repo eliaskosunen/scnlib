@@ -52,11 +52,11 @@ namespace scn {
 #pragma clang diagnostic pop
 #endif
 
-        parse_context_type& parse_context()
+        SCN_CONSTEXPR14 parse_context_type& parse_context() noexcept
         {
             return m_parse_ctx;
         }
-        stream_type& stream()
+        SCN_CONSTEXPR14 stream_type& stream() noexcept
         {
             return *m_stream;
         }

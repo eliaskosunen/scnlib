@@ -18,8 +18,8 @@
 #ifndef SCN_DETAIL_STREAM_H
 #define SCN_DETAIL_STREAM_H
 
-#include "string_view.h"
 #include "result.h"
+#include "string_view.h"
 
 #include <array>
 #include <cassert>
@@ -37,14 +37,15 @@ namespace scn {
         using source_type = Container;
         using iterator = typename source_type::const_iterator;
 
-        basic_static_container_stream(const source_type& s)
+        SCN_CONSTEXPR basic_static_container_stream(
+            const source_type& s) noexcept
             : m_source(std::addressof(s)),
               m_begin(m_source->begin()),
               m_next(begin())
         {
         }
 
-        result<char_type> read_char()
+        SCN_CONSTEXPR14 result<char_type> read_char() noexcept
         {
             if (m_next == end()) {
                 return make_error(error::end_of_stream);
@@ -53,7 +54,7 @@ namespace scn {
             ++m_next;
             return ch;
         }
-        error putback(char_type)
+        SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
             if (m_begin == m_next) {
                 return error::invalid_operation;
@@ -62,28 +63,28 @@ namespace scn {
             return {};
         }
 
-        error set_roll_back()
+        SCN_CONSTEXPR14 error set_roll_back() noexcept
         {
             m_begin = m_next;
             return {};
         }
-        error roll_back()
+        SCN_CONSTEXPR14 error roll_back() noexcept
         {
             m_next = begin();
             return {};
         }
 
-        size_t rcount() const
+        size_t rcount() const noexcept
         {
-            return static_cast<size_t>(m_begin, m_next);
+            return static_cast<size_t>(std::distance(m_begin, m_next));
         }
 
     private:
-        iterator begin() const
+        SCN_CONSTEXPR iterator begin() const noexcept
         {
             return m_begin;
         }
-        iterator end() const
+        SCN_CONSTEXPR iterator end() const noexcept
         {
             using std::end;
             return end(*m_source);
@@ -94,20 +95,20 @@ namespace scn {
     };
 
     template <typename CharT>
-    basic_static_container_stream<CharT, std::basic_string<CharT>> make_stream(
-        const std::basic_string<CharT>& s)
+    SCN_CONSTEXPR basic_static_container_stream<CharT, std::basic_string<CharT>>
+    make_stream(const std::basic_string<CharT>& s) noexcept
     {
         return s;
     }
     template <typename CharT>
-    basic_static_container_stream<CharT, std::vector<CharT>> make_stream(
-        const std::vector<CharT>& s)
+    SCN_CONSTEXPR basic_static_container_stream<CharT, std::vector<CharT>>
+    make_stream(const std::vector<CharT>& s) noexcept
     {
         return s;
     }
     template <typename CharT, size_t N>
-    basic_static_container_stream<CharT, std::array<CharT, N>> make_stream(
-        const std::array<CharT, N>& s)
+    SCN_CONSTEXPR basic_static_container_stream<CharT, std::array<CharT, N>>
+    make_stream(const std::array<CharT, N>& s) noexcept
     {
         return s;
     }
@@ -119,12 +120,12 @@ namespace scn {
         using source_type = span<const Char>;
         using iterator = typename source_type::const_iterator;
 
-        basic_static_container_stream(source_type s)
+        SCN_CONSTEXPR basic_static_container_stream(source_type s) noexcept
             : m_source(s), m_begin(m_source.begin()), m_next(begin())
         {
         }
 
-        result<char_type> read_char()
+        SCN_CONSTEXPR14 result<char_type> read_char() noexcept
         {
             if (m_next == end()) {
                 return make_error(error::end_of_stream);
@@ -133,7 +134,7 @@ namespace scn {
             ++m_next;
             return ch;
         }
-        error putback(char_type)
+        SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
             if (m_begin == m_next) {
                 return error::invalid_operation;
@@ -142,31 +143,30 @@ namespace scn {
             return {};
         }
 
-        error set_roll_back()
+        SCN_CONSTEXPR14 error set_roll_back() noexcept
         {
             m_begin = m_next;
             return {};
         }
-        error roll_back()
+        SCN_CONSTEXPR14 error roll_back() noexcept
         {
             m_next = begin();
             return {};
         }
 
-        size_t rcount() const
+        size_t rcount() const noexcept
         {
-            return static_cast<size_t>(m_begin, m_next);
+            return static_cast<size_t>(std::distance(m_begin, m_next));
         }
 
     private:
-        iterator begin()
+        SCN_CONSTEXPR iterator begin() const noexcept
         {
             return m_begin;
         }
-        iterator end()
+        SCN_CONSTEXPR iterator end() const noexcept
         {
-            using std::end;
-            return end(m_source);
+            return m_source.end();
         }
 
         source_type m_source;
@@ -174,8 +174,8 @@ namespace scn {
     };
 
     template <typename CharT>
-    basic_static_container_stream<CharT, span<const CharT>> make_stream(
-        span<const CharT> s)
+    SCN_CONSTEXPR basic_static_container_stream<CharT, span<const CharT>>
+    make_stream(span<const CharT> s) noexcept
     {
         return s;
     }
@@ -184,12 +184,13 @@ namespace scn {
     struct basic_bidirectional_iterator_stream {
         using char_type = typename std::iterator_traits<Iterator>::value_type;
 
-        basic_bidirectional_iterator_stream(Iterator begin, Iterator end)
+        SCN_CONSTEXPR basic_bidirectional_iterator_stream(Iterator begin,
+                                                          Iterator end) noexcept
             : m_begin(begin), m_end(end), m_next(begin)
         {
         }
 
-        result<char_type> read_char()
+        SCN_CONSTEXPR14 result<char_type> read_char() noexcept
         {
             if (m_next == m_end) {
                 return make_error(error::end_of_stream);
@@ -198,7 +199,7 @@ namespace scn {
             ++m_next;
             return ch;
         }
-        error putback(char_type)
+        SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
             if (m_begin == m_next) {
                 return error::invalid_operation;
@@ -207,20 +208,20 @@ namespace scn {
             return {};
         }
 
-        error set_roll_back()
+        SCN_CONSTEXPR14 error set_roll_back() noexcept
         {
             m_begin = m_next;
             return {};
         }
-        error roll_back()
+        SCN_CONSTEXPR14 error roll_back() noexcept
         {
             m_next = m_begin;
             return {};
         }
 
-        size_t rcount() const
+        size_t rcount() const noexcept
         {
-            return static_cast<size_t>(m_begin, m_next);
+            return static_cast<size_t>(std::distance(m_begin, m_next));
         }
 
     private:
@@ -230,12 +231,13 @@ namespace scn {
     struct basic_forward_iterator_stream {
         using char_type = typename std::iterator_traits<Iterator>::value_type;
 
-        basic_forward_iterator_stream(Iterator begin, Iterator end)
+        SCN_CONSTEXPR basic_forward_iterator_stream(Iterator begin,
+                                                    Iterator end) noexcept
             : m_begin(begin), m_end(end)
         {
         }
 
-        result<char_type> read_char()
+        result<char_type> read_char() noexcept
         {
             if (m_rollback.size() > 0) {
                 auto top = m_rollback.back();
@@ -255,17 +257,17 @@ namespace scn {
             return {};
         }
 
-        error set_roll_back()
+        error set_roll_back() noexcept
         {
             m_rollback.clear();
             return {};
         }
-        error roll_back()
+        SCN_CONSTEXPR error roll_back() const noexcept
         {
             return {};
         }
 
-        size_t rcount() const
+        size_t rcount() const noexcept
         {
             return m_rollback.size();
         }
@@ -282,7 +284,8 @@ namespace scn {
             using iterator = Iterator;
             using type = basic_bidirectional_iterator_stream<iterator>;
 
-            static type make_stream(iterator b, iterator e)
+            static SCN_CONSTEXPR type make_stream(iterator b,
+                                                  iterator e) noexcept
             {
                 return {b, e};
             }
@@ -292,7 +295,7 @@ namespace scn {
             using iterator = Iterator;
             using type = basic_forward_iterator_stream<iterator>;
 
-            static type make_stream(iterator b, iterator e)
+            static type make_stream(iterator b, iterator e) noexcept
             {
                 return {b, e};
             }
@@ -318,7 +321,8 @@ namespace scn {
               typename StreamHelper = detail::iterator_stream<
                   Iterator,
                   typename std::iterator_traits<Iterator>::iterator_category>>
-    typename StreamHelper::type make_stream(Iterator begin, Iterator end)
+    typename StreamHelper::type make_stream(Iterator begin,
+                                            Iterator end) noexcept
     {
         return StreamHelper::make_stream(begin, end);
     }
@@ -330,7 +334,7 @@ namespace scn {
     struct basic_cstdio_stream<char> {
         using char_type = char;
 
-        basic_cstdio_stream(FILE* f) : m_file(f) {}
+        basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
         result<char_type> read_char()
         {
@@ -347,7 +351,7 @@ namespace scn {
             m_read.push_back(static_cast<char_type>(ret));
             return static_cast<char_type>(ret);
         }
-        error putback(char_type ch)
+        error putback(char_type ch) noexcept
         {
             assert(!m_read.empty());
             if (std::ungetc(ch, m_file) == EOF) {
@@ -362,7 +366,7 @@ namespace scn {
             m_read.clear();
             return {};
         }
-        error roll_back()
+        error roll_back() noexcept
         {
             if (m_read.empty()) {
                 return {};
@@ -376,7 +380,7 @@ namespace scn {
             return {};
         }
 
-        size_t rcount() const
+        size_t rcount() const noexcept
         {
             return m_read.size();
         }
@@ -389,7 +393,7 @@ namespace scn {
     struct basic_cstdio_stream<wchar_t> {
         using char_type = wchar_t;
 
-        basic_cstdio_stream(FILE* f) : m_file(f) {}
+        basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
         result<char_type> read_char()
         {
@@ -406,7 +410,7 @@ namespace scn {
             m_read.push_back(static_cast<char_type>(ret));
             return static_cast<char_type>(ret);
         }
-        error putback(char_type ch)
+        error putback(char_type ch) noexcept
         {
             assert(!m_read.empty());
             if (std::ungetwc(std::char_traits<char_type>::to_int_type(ch),
@@ -417,12 +421,12 @@ namespace scn {
             return {};
         }
 
-        error set_roll_back()
+        error set_roll_back() noexcept
         {
             m_read.clear();
             return {};
         }
-        error roll_back()
+        error roll_back() noexcept
         {
             if (m_read.empty()) {
                 return {};
@@ -437,7 +441,7 @@ namespace scn {
             return {};
         }
 
-        size_t rcount() const
+        size_t rcount() const noexcept
         {
             return m_read.size();
         }
@@ -448,15 +452,15 @@ namespace scn {
     };
 
     template <typename CharT = char>
-    basic_cstdio_stream<CharT> make_stream(FILE* s)
+    basic_cstdio_stream<CharT> make_stream(FILE* s) noexcept
     {
         return s;
     }
-    inline basic_cstdio_stream<char> make_narrow_stream(FILE* s)
+    inline basic_cstdio_stream<char> make_narrow_stream(FILE* s) noexcept
     {
         return s;
     }
-    inline basic_cstdio_stream<wchar_t> make_wide_stream(FILE* s)
+    inline basic_cstdio_stream<wchar_t> make_wide_stream(FILE* s) noexcept
     {
         return s;
     }

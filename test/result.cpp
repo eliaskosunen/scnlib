@@ -46,6 +46,13 @@ TEST_CASE("error")
         CHECK(!e.is_recoverable());
     }
 }
+TEST_CASE("erased_storage")
+{
+    scn::detail::erased_storage<int> val{42};
+    CHECK(*val == 42);
+    auto cp = val;
+    CHECK(*cp == 42);
+}
 TEST_CASE("result")
 {
     SUBCASE("success")

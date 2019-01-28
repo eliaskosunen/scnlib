@@ -19,8 +19,8 @@
 #define SCN_DETAIL_RESULT_H
 
 #include "config.h"
+#include "util.h"
 
-#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -58,27 +58,27 @@ namespace scn {
             unrecoverable_stream_source_error
         };
 
-        error() = default;
-        error(code c) : m_code(c) {}
+        SCN_CONSTEXPR error() noexcept = default;
+        SCN_CONSTEXPR error(code c) noexcept : m_code(c) {}
 
         /// Evaluated to true if there was no error
-        explicit operator bool() const
+        SCN_CONSTEXPR explicit operator bool() const noexcept
         {
             return m_code == good;
         }
-        bool operator!() const
+        SCN_CONSTEXPR bool operator!() const noexcept
         {
             return !(operator bool());
         }
 
         /// Get error code
-        code get_code() const
+        SCN_CONSTEXPR code get_code() const noexcept
         {
             return m_code;
         }
 
         /// Can the stream be used again
-        bool is_recoverable() const
+        SCN_CONSTEXPR bool is_recoverable() const noexcept
         {
             return !(m_code == unrecoverable_stream_error ||
                      m_code == unrecoverable_stream_source_error);
@@ -88,11 +88,11 @@ namespace scn {
         code m_code{good};
     };
 
-    inline bool operator==(error a, error b)
+    SCN_CONSTEXPR inline bool operator==(error a, error b) noexcept
     {
         return a.get_code() == b.get_code();
     }
-    inline bool operator!=(error a, error b)
+    SCN_CONSTEXPR inline bool operator!=(error a, error b) noexcept
     {
         return !(a == b);
     }
@@ -123,40 +123,40 @@ namespace scn {
     public:
         using success_type = T;
 
-        result(success_type s) : m_s(s) {}
-        result(error e) : m_e(e) {}
+        SCN_CONSTEXPR result(success_type s) : m_s(s) {}
+        SCN_CONSTEXPR result(error e) : m_e(e) {}
 
-        bool has_value() const
+        SCN_CONSTEXPR bool has_value() const noexcept
         {
             return m_e == error::good;
         }
-        explicit operator bool() const
+        SCN_CONSTEXPR explicit operator bool() const noexcept
         {
             return has_value();
         }
-        bool operator!() const
+        SCN_CONSTEXPR bool operator!() const noexcept
         {
             return !operator bool();
         }
 
-        success_type& value() &
+        SCN_CONSTEXPR14 success_type& value() & noexcept
         {
             return m_s;
         }
-        success_type value() const&
+        SCN_CONSTEXPR success_type value() const& noexcept
         {
             return m_s;
         }
-        success_type&& value() &&
+        SCN_CONSTEXPR14 success_type&& value() && noexcept
         {
             return std::move(m_s);
         }
 
-        error& get_error()
+        SCN_CONSTEXPR14 error& get_error() noexcept
         {
             return m_e;
         }
-        error get_error() const
+        SCN_CONSTEXPR error get_error() const noexcept
         {
             return m_e;
         }
@@ -175,67 +175,16 @@ namespace scn {
     class result<T,
                  typename std::enable_if<
                      !std::is_default_constructible<T>::value>::type> {
-        struct deleter {
-            void operator()(T* ptr)
-            {
-                ptr->~T();
-            }
-        };
-
     public:
-        using deleter_type = deleter;
-
         using success_type = T;
-        using success_storage =
-            typename std::aligned_storage<sizeof(T), alignof(T)>::type;
-        using success_ptr = std::unique_ptr<success_type, deleter_type>;
+        using success_storage = detail::erased_storage<T>;
 
-        result(success_type s) : m_ptr(::new (&m_s) T(std::move(s))) {}
+        result(success_type s) : m_s(std::move(s)) {}
         result(error e) : m_e(e) {}
-
-        result(const result& o)
-        {
-            if (o.has_value()) {
-                m_ptr.reset(::new (&m_s) T(o.value()));
-            }
-            else {
-                m_e = o.get_error();
-            }
-        }
-        result& operator=(const result& o)
-        {
-            if (o.has_value()) {
-                m_ptr.reset(::new (&m_s) T(o.value()));
-            }
-            else {
-                m_e = o.get_error();
-            }
-        }
-
-        result(result&& o) noexcept
-        {
-            if (o.has_value()) {
-                m_ptr.reset(::new (&m_s) T(std::move(o.value())));
-            }
-            else {
-                m_e = std::move(o.get_error());
-            }
-        }
-        result& operator=(result&& o) noexcept
-        {
-            if (o.has_value()) {
-                m_ptr.reset(::new (&m_s) T(std::move(o.value())));
-            }
-            else {
-                m_e = std::move(o.get_error());
-            }
-        }
-
-        ~result() = default;
 
         bool has_value() const
         {
-            return m_ptr != nullptr;
+            return m_e == error::good;
         }
         explicit operator bool() const
         {
@@ -248,11 +197,11 @@ namespace scn {
 
         success_type& value()
         {
-            return *m_ptr;
+            return *m_s;
         }
         const success_type& value() const
         {
-            return *m_ptr;
+            return *m_s;
         }
 
         error& get_error()
@@ -266,7 +215,6 @@ namespace scn {
 
     private:
         success_storage m_s{};
-        success_ptr m_ptr{nullptr};
         error m_e{error::good};
     };
 
@@ -282,7 +230,7 @@ namespace scn {
     {
         return result<U>(std::forward<T>(val));
     }
-    inline error make_error(error e)
+    SCN_CONSTEXPR inline error make_error(error e) noexcept
     {
         return e;
     }

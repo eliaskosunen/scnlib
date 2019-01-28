@@ -311,6 +311,15 @@ Error handling, `ignore`, `vscan`, user types, lower-level stuff, user stream
 
 Build CMake target `doc` and look in the folder `doc/html` for Doxygen output.
 
+## Compiler support
+
+Every commit is tested with
+ * gcc 4.9 and newer
+ * clang 3.5 and newer
+ * Visual Studio 2015 and 2017
+
+Older compilers may work, but it is not guaranteed.
+
 ## Benchmarks
 
 These benchmarks were run on a Windows 10 machine, with an Intel Core i7-8750H processor, and compiled with Visual Studio version 15.9.4.

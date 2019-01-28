@@ -20,6 +20,8 @@
 
 #include "core.h"
 
+#include <array>
+
 namespace scn {
     /// Type-erased scanning argument.
     template <typename Context>
@@ -28,7 +30,8 @@ namespace scn {
         using char_type = typename Context::char_type;
 
         template <typename T>
-        basic_arg(T& val) : m_value{std::addressof(val), custom_arg<T>}
+        SCN_CONSTEXPR basic_arg(T& val) noexcept
+            : m_value{std::addressof(val), custom_arg<T>}
         {
         }
 

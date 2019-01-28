@@ -40,21 +40,20 @@ namespace scn {
     namespace predicates {
         template <typename Context>
         struct propagate {
-            result<scan_status> operator()(Context&,
-                                           typename Context::char_type)
+            SCN_CONSTEXPR result<scan_status> operator()(
+                Context&,
+                typename Context::char_type) const noexcept
             {
                 return scan_status::keep;
             }
         };
         template <typename Context>
         struct until {
-            result<scan_status> operator()(Context&,
-                                           typename Context::char_type ch)
+            SCN_CONSTEXPR result<scan_status> operator()(
+                Context&,
+                typename Context::char_type ch) const noexcept
             {
-                if (ch == until_ch) {
-                    return scan_status::end;
-                }
-                return scan_status::keep;
+                return ch == until_ch ? scan_status::end : scan_status::keep;
             }
 
             typename Context::char_type until_ch;

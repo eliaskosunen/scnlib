@@ -27,11 +27,10 @@ namespace scn {
      * Skip any whitespace from the stream.
      * Next read_char() will return the first non-whitespace character of EOF.
      * \param ctx Stream and locale to use
-     * \param allow_eof In case of EOF, return error::good if `true` or
      * error::end_of_stream if `false`
      */
     template <typename Context>
-    error skip_stream_whitespace(Context& ctx)
+    error skip_stream_whitespace(Context& ctx) noexcept
     {
         while (true) {
             auto ch = ctx.stream().read_char();
@@ -56,7 +55,7 @@ namespace scn {
         return {};
     }
     template <typename Context>
-    error parse_whitespace(Context& ctx)
+    error parse_whitespace(Context& ctx) noexcept
     {
         bool found = false;
         while (ctx.locale().is_space(*ctx.parse_context().begin())) {
@@ -102,14 +101,15 @@ namespace scn {
             return m_str.end();
         }
 
-        SCN_CONSTEXPR14 iterator advance()
+        SCN_CONSTEXPR14 iterator advance() noexcept
         {
             m_str.remove_prefix(1);
             return begin();
         }
-        SCN_CONSTEXPR14 void advance_to(iterator it)
+        SCN_CONSTEXPR14 void advance_to(iterator it) noexcept
         {
-            m_str.remove_refix(static_cast<size_t>(std::distance(begin(), it)));
+            m_str.remove_prefix(
+                static_cast<size_t>(std::distance(begin(), it)));
         }
 
     private:
