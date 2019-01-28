@@ -23,7 +23,7 @@ int main() {
 
 ## What is this?
 
-`scnlib` is a (work-in-progress) modern C++ library for replacing `scanf` and `std::cin`.
+`scnlib` is a (work-in-progress) modern C++ library for replacing `scanf` and `std::istream`.
 This library attempts to move us ever so closer to replacing `iostream`s and C stdio altogether.
 It's (going to, eventually, be) faster than `iostream` (see Benchmarks) and type-safe, unlike `scanf`.
 Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.

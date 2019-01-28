@@ -26,6 +26,25 @@
 #include <type_traits>
 
 namespace scn {
+#if SCN_HAS_VOID_T
+    template <typename... Ts>
+    using void_t = std::void_t<Ts...>;
+#else
+    template <typename... Ts>
+    struct make_void {
+        using type = void;
+    };
+    template <typename... Ts>
+    using void_t = typename make_void<Ts...>::type;
+#endif
+
+    template <size_t I>
+    struct priority_tag : priority_tag<I - 1> {
+    };
+    template <>
+    struct priority_tag<0> {
+    };
+
     namespace detail {
         /**
          * Maximum digits potentially required to represent an integer of type

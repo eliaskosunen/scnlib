@@ -157,4 +157,11 @@
 #define SCN_HAS_LAUNDER 0
 #endif
 
+// Detect void_t
+#if defined(__cpp_lib_void_t) && __cpp_lib_void_t >= 201411
+#define SCN_HAS_VOID_T 1
+#else
+#define SCN_HAS_VOID_T 0
+#endif
+
 #endif  // SCN_DETAIL_CONFIG_H
