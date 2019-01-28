@@ -5,4 +5,5 @@ doc/latex/
 doc/*.tmp
 .vs/
 .ycm_extra_conf.py
+compile_commands.json
 

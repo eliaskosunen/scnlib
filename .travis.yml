@@ -46,7 +46,7 @@ matrix:
       addons:
         apt:
           update: true
-          packages: ["g++-4.9"]
+          packages: ["g++-4.9", "g++-7"]
           sources: ["ubuntu-toolchain-r-test"]
 
     # clang 8
@@ -56,7 +56,7 @@ matrix:
         apt:
           update: true
           packages: ["clang-8", "g++-7"]
-          sources: ["llvm-toolchain-trusty", "ubuntu-toolchain-r-test"]
+          sources: ["llvm-toolchain-trusty-8", "ubuntu-toolchain-r-test"]
     # clang 7
     - env: COMPILER=clang++-7 STANDARD=17
       compiler: clang
@@ -163,6 +163,9 @@ matrix:
 
   allow_failures:
     - os: osx
+    # Source is disallowed
+    - env: COMPILER=clang++-8 STANDARD=17
+      compiler: clang
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"

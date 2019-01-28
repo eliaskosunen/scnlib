@@ -14,8 +14,6 @@ option(SCN_DOCS "Generate documentation target" ${MASTER_PROJECT})
 option(SCN_INSTALL "Generate install target" ${MASTER_PROJECT})
 option(SCN_PEDANTIC "Use stricter warnings" ${MASTER_PROJECT})
 
-option(SCN_HEADER_ONLY
-    "Build scnlib as a header-only library (if OFF, scn-header-only will still be generated)" OFF)
 option(SCN_WERROR "Halt compilation in case of a warning" OFF)
 
 file(READ include/scn/detail/config.h config_h)
@@ -116,16 +114,10 @@ function (generate_header_only_target target_name)
         -DSCN_HEADER_ONLY=1)
 endfunction ()
 
-if (SCN_HEADER_ONLY)
-    generate_header_only_target(scn)
-    set(SCN_EXPORT_TARGETS_LIST scn)
-    add_library(scn::scn-header-only ALIAS scn)
-else ()
-    generate_library_target(scn)
-    generate_header_only_target(scn-header-only)
-    set(SCN_EXPORT_TARGETS_LIST scn scn-base scn-header-only)
-    add_library(scn::scn-header-only ALIAS scn-header-only)
-endif ()
+generate_library_target(scn)
+generate_header_only_target(scn-header-only)
+set(SCN_EXPORT_TARGETS_LIST scn scn-base scn-header-only)
+add_library(scn::scn-header-only ALIAS scn-header-only)
 add_library(scn::scn ALIAS scn)
 
 if (SCN_TESTS)
@@ -144,11 +136,6 @@ endif ()
 if (SCN_INSTALL)
     include(GNUInstallDirs)
     include(CMakePackageConfigHelpers)
-
-    if (SCN_HEADER_ONLY)
-        status(WARNING "Installing in header-only mode only exports scn::scn-header-only as scn::scn")
-        status(WARNING "Consider switching header-only mode off to export both library and header-only targets")
-    endif ()
 
     write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/scnConfigVersion.cmake"

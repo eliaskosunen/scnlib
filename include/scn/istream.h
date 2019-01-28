@@ -202,9 +202,8 @@ namespace scn {
         template <typename Context>
         error scan(T& val, Context& ctx)
         {
-            auto streambuf =
-                detail::stream_std_streambuf<typename Context::stream_type,
-                                             CharT>(ctx.stream());
+            detail::stream_std_streambuf<typename Context::stream_type, CharT>
+                streambuf(ctx.stream());
             std::basic_istream<CharT> stream(std::addressof(streambuf));
 
             stream >> val;
