@@ -48,6 +48,8 @@ namespace scn {
             /// Scanned value was out of range for the desired type.
             /// (e.g. `>2^32` for an `uint32_t`)
             value_out_of_range,
+            /// Invalid argument given to operation
+            invalid_argument,
             /// The stream has encountered an error that cannot be recovered
             /// from. The stream is now unusable.
             unrecoverable_stream_error,
@@ -233,6 +235,15 @@ namespace scn {
     SCN_CONSTEXPR inline error make_error(error e) noexcept
     {
         return e;
+    }
+
+    namespace detail {
+        struct error_handler {
+            SCN_CONSTEXPR error_handler() = default;
+
+            void on_error(error e);
+            void on_error(const char* msg);
+        };
     }
 }  // namespace scn
 

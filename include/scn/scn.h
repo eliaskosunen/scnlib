@@ -25,15 +25,16 @@
 #include "detail/result.h"
 #include "detail/stream.h"
 #include "detail/types.h"
+#include "detail/visitor.h"
 
 namespace scn {
     /**
      * Non-variadic version of scan(), to prevent bloat in generated code.
      */
     template <typename Context>
-    error vscan(Context ctx, basic_args<Context> a)
+    error vscan(Context& ctx)
     {
-        return a.visit(ctx);
+        return visit(ctx);
     }
 
     /**
@@ -48,8 +49,8 @@ namespace scn {
         using context_type = basic_context<Stream>;
 
         auto args = make_args<context_type>(a...);
-        auto ctx = context_type(s, f);
-        return vscan<context_type>(ctx, args);
+        auto ctx = context_type(s, f, args);
+        return vscan<context_type>(ctx);
     }
     /**
      * Scan the given arguments from the stream, using locale loc.
@@ -68,8 +69,8 @@ namespace scn {
         auto args = make_args<context_type>(a...);
         auto locale = basic_locale_ref<typename Stream::char_type>(
             static_cast<const void*>(std::addressof(loc)));
-        auto ctx = context_type(s, f);
-        return vscan<context_type>(ctx, args, std::move(locale));
+        auto ctx = context_type(s, f, std::move(args), std::move(locale));
+        return vscan<context_type>(ctx);
     }
 
     /**
@@ -77,7 +78,8 @@ namespace scn {
      * Not safe to use during static construction or destruction.
      */
     template <typename CharT>
-    basic_cstdio_stream<CharT>& stdin_stream() {
+    basic_cstdio_stream<CharT>& stdin_stream()
+    {
         static basic_cstdio_stream<CharT> stream(stdin);
         return stream;
     }
@@ -86,14 +88,16 @@ namespace scn {
      * Reference to narrow global stdin stream.
      * Not safe to use during static construction or destruction.
      */
-    inline basic_cstdio_stream<char>& cstdin() {
+    inline basic_cstdio_stream<char>& cstdin()
+    {
         return stdin_stream<char>();
     }
     /**
      * Reference to wide global stdin stream.
      * Not safe to use during static construction or destruction.
      */
-    inline basic_cstdio_stream<wchar_t>& wcstdin() {
+    inline basic_cstdio_stream<wchar_t>& wcstdin()
+    {
         return stdin_stream<wchar_t>();
     }
 
@@ -109,8 +113,8 @@ namespace scn {
         using context_type = basic_context<stream_type>;
 
         auto args = make_args<context_type>(a...);
-        auto ctx = context_type(stream, f);
-        return vscan<context_type>(ctx, args);
+        auto ctx = context_type(stream, f, args);
+        return vscan<context_type>(ctx);
     }
     /**
      * Wide scan from stdin.
@@ -124,8 +128,8 @@ namespace scn {
         using context_type = basic_context<stream_type>;
 
         auto args = make_args<context_type>(a...);
-        auto ctx = context_type(stream, f);
-        return vscan<context_type>(ctx, args);
+        auto ctx = context_type(stream, f, args);
+        return vscan<context_type>(ctx);
     }
 
     template <typename... Args>
@@ -138,8 +142,8 @@ namespace scn {
         using context_type = basic_context<stream_type>;
 
         auto args = make_args<context_type>(a...);
-        auto ctx = context_type(stream, f);
-        return vscan<context_type>(ctx, args);
+        auto ctx = context_type(stream, f, args);
+        return vscan<context_type>(ctx);
     }
     template <typename... Args>
     error wprompt(const wchar_t* p, wstring_view f, Args&... a)
@@ -151,8 +155,8 @@ namespace scn {
         using context_type = basic_context<stream_type>;
 
         auto args = make_args<context_type>(a...);
-        auto ctx = context_type(stream, f);
-        return vscan<context_type>(ctx, args);
+        auto ctx = context_type(stream, f, args);
+        return vscan<context_type>(ctx);
     }
 
 #if 0

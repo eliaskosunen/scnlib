@@ -70,16 +70,6 @@ namespace scn {
         return {};
     }
 
-    namespace detail {
-        template <typename Context>
-        struct custom_value {
-            using fn_type = error (*)(void*, Context&);
-
-            void* value;
-            fn_type scan;
-        };
-    }  // namespace detail
-
     template <typename Char>
     class basic_parse_context {
     public:
@@ -112,8 +102,26 @@ namespace scn {
                 static_cast<size_t>(std::distance(begin(), it)));
         }
 
+        SCN_CONSTEXPR14 unsigned next_arg_id()
+        {
+            if (m_next_arg_id >= 0) {
+                return m_next_arg_id++;
+            }
+            return 0;
+        }
+        SCN_CONSTEXPR14 bool check_arg_id(unsigned)
+        {
+            if (m_next_arg_id > 0) {
+                return false;
+            }
+            m_next_arg_id = -1;
+            return true;
+        }
+        SCN_CONSTEXPR14 void check_arg_id(basic_string_view<Char>) {}
+
     private:
         basic_string_view<char_type> m_str;
+        int m_next_arg_id{0};
     };
 
     template <typename CharT, typename T, typename Enable = void>
