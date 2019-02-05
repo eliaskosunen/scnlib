@@ -224,7 +224,7 @@ namespace scn {
         template <typename CharT>
         struct buffer_scanner : public empty_parser<CharT> {
             template <typename Context>
-            error scan(span<CharT> val, Context& ctx)
+            error scan(span<CharT>& val, Context& ctx)
             {
                 if (val.size() == 0) {
                     return {};
@@ -837,7 +837,7 @@ namespace scn {
             }
             return s.scan(val, *m_ctx);
         }
-        auto visit(span<char_type> val, priority_tag<1>) -> error
+        auto visit(span<char_type>& val, priority_tag<1>) -> error
         {
             detail::buffer_scanner<char_type> s;
             auto err = s.parse(*m_ctx);
