@@ -246,7 +246,7 @@ namespace scn {
             return val;
         }
 
-        enum { max_packed_args = 12 };
+        enum { max_packed_args = sizeof(size_t) * 8 / 5 };
         enum : unsigned long long { is_unpacked_bit = 1ull << 63 };
 
         template <typename Context>
@@ -438,14 +438,14 @@ namespace scn {
         };
 
         template <typename Context>
-        SCN_CONSTEXPR uint64_t get_types()
+        SCN_CONSTEXPR size_t get_types()
         {
             return 0;
         }
         template <typename Context, typename Arg, typename... Args>
-        SCN_CONSTEXPR uint64_t get_types()
+        SCN_CONSTEXPR size_t get_types()
         {
-            return static_cast<uint64_t>(get_type<Context, Arg>::value) |
+            return static_cast<size_t>(get_type<Context, Arg>::value) |
                    (get_types<Context, Args...>() << 5);
         }
 
@@ -479,14 +479,14 @@ namespace scn {
 
         friend class basic_args<Context>;
 
-        static SCN_CONSTEXPR uint64_t get_types()
+        static SCN_CONSTEXPR size_t get_types()
         {
             return is_packed ? detail::get_types<Context, Args...>()
                              : detail::is_unpacked_bit | num_args;
         }
 
     public:
-        static SCN_CONSTEXPR uint64_t types = get_types();
+        static SCN_CONSTEXPR size_t types = get_types();
 
         arg_store(Args&... a)
             : m_data{{detail::make_arg<is_packed, Context>(a)...}}
@@ -551,7 +551,7 @@ namespace scn {
         }
 
     private:
-        uint64_t m_types{0};
+        size_t m_types{0};
         union {
             detail::value<Context>* m_values;
             arg_type* m_args;
