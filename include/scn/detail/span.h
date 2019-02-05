@@ -129,8 +129,9 @@ namespace scn {
     template <typename T>
     SCN_CONSTEXPR span<typename T::value_type> make_span(T& container) noexcept
     {
-        return span<typename T::value_type>(std::begin(container),
-                                            std::end(container));
+        return span<typename T::value_type>(
+            std::addressof(*std::begin(container)),
+            std::addressof(*(std::end(container) - 1)) + 1);
     }
 }  // namespace scn
 

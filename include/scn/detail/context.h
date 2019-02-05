@@ -87,7 +87,7 @@ namespace scn {
             result<arg_type> do_get_arg(unsigned id)
             {
                 auto a = m_args.get(id);
-                if (!a) {
+                if (!a && !m_args.get(id - 1)) {
                     return make_error(error::invalid_argument);
                 }
                 return a;

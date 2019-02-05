@@ -113,7 +113,7 @@ namespace scn {
                 double* double_value;
                 long double* long_double_value;
 
-                span<char_type> buffer_value;
+                span<char_type>* buffer_value;
                 std::basic_string<char_type>* string_value;
                 custom_value<Context> custom;
 
@@ -140,7 +140,7 @@ namespace scn {
             value(double& val) : double_value(&val) {}
             value(long double& val) : long_double_value(&val) {}
 
-            value(span<char_type> val) : buffer_value(val) {}
+            value(span<char_type>& val) : buffer_value(&val) {}
             value(std::basic_string<char_type>& val) : string_value(&val) {}
 
             value(void* val) : pointer(val) {}
@@ -185,37 +185,33 @@ namespace scn {
         template <typename Context, typename T>
         SCN_CONSTEXPR14 basic_arg<Context> make_arg(T& value);
 
-#define SCN_MAKE_VALUE(Tag, Type)                                      \
-    template <typename C>                                              \
-    SCN_CONSTEXPR init<C,                                              \
-                       typename std::remove_reference<                 \
-                           typename std::remove_cv<Type>::type>::type, \
-                       Tag>                                            \
-    make_value(Type val, priority_tag<1>)                              \
-    {                                                                  \
-        return val;                                                    \
+#define SCN_MAKE_VALUE(Tag, Type)                                           \
+    template <typename C>                                                   \
+    SCN_CONSTEXPR init<C, Type, Tag> make_value(Type& val, priority_tag<1>) \
+    {                                                                       \
+        return val;                                                         \
     }
 
-        SCN_MAKE_VALUE(short_type, short&)
-        SCN_MAKE_VALUE(int_type, int&)
-        SCN_MAKE_VALUE(long_type, long&)
-        SCN_MAKE_VALUE(long_long_type, long long&)
+        SCN_MAKE_VALUE(short_type, short)
+        SCN_MAKE_VALUE(int_type, int)
+        SCN_MAKE_VALUE(long_type, long)
+        SCN_MAKE_VALUE(long_long_type, long long)
 
-        SCN_MAKE_VALUE(ushort_type, unsigned short&)
-        SCN_MAKE_VALUE(uint_type, unsigned&)
-        SCN_MAKE_VALUE(ulong_type, unsigned long&)
-        SCN_MAKE_VALUE(ulong_long_type, unsigned long long&)
+        SCN_MAKE_VALUE(ushort_type, unsigned short)
+        SCN_MAKE_VALUE(uint_type, unsigned)
+        SCN_MAKE_VALUE(ulong_type, unsigned long)
+        SCN_MAKE_VALUE(ulong_long_type, unsigned long long)
 
-        SCN_MAKE_VALUE(bool_type, bool&)
-        SCN_MAKE_VALUE(char_type, char&)
+        SCN_MAKE_VALUE(bool_type, bool)
+        SCN_MAKE_VALUE(char_type, char)
         // SCN_MAKE_VALUE(uchar_type, unsigned char&)
 
-        SCN_MAKE_VALUE(float_type, float&)
-        SCN_MAKE_VALUE(double_type, double&)
-        SCN_MAKE_VALUE(long_double_type, long double&)
+        SCN_MAKE_VALUE(float_type, float)
+        SCN_MAKE_VALUE(double_type, double)
+        SCN_MAKE_VALUE(long_double_type, long double)
 
         SCN_MAKE_VALUE(buffer_type, span<typename C::char_type>)
-        SCN_MAKE_VALUE(string_type, std::basic_string<typename C::char_type>&)
+        SCN_MAKE_VALUE(string_type, std::basic_string<typename C::char_type>)
 
         template <typename C, typename T>
         init<C, void*, named_arg_type> make_value(
@@ -357,7 +353,7 @@ namespace scn {
                 return vis(*arg.m_value.long_double_value);
 
             case detail::buffer_type:
-                return vis(arg.m_value.buffer_value);
+                return vis(*arg.m_value.buffer_value);
             case detail::string_type:
                 return vis(*arg.m_value.string_value);
 
@@ -449,7 +445,7 @@ namespace scn {
         template <typename Context, typename Arg, typename... Args>
         SCN_CONSTEXPR uint64_t get_types()
         {
-            return get_type<Context, Arg>::value |
+            return static_cast<uint64_t>(get_type<Context, Arg>::value) |
                    (get_types<Context, Args...>() << 5);
         }
 
@@ -570,7 +566,7 @@ namespace scn {
         {
             unsigned shift = i * 5;
             return static_cast<typename detail::type>(
-                (m_types & (0xfull << shift)) >> shift);
+                (m_types & (0x1full << shift)) >> shift);
         }
 
         friend class detail::arg_map<Context>;
