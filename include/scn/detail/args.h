@@ -247,7 +247,9 @@ namespace scn {
         }
 
         enum { max_packed_args = sizeof(size_t) * 8 / 5 };
-        enum : unsigned long long { is_unpacked_bit = 1ull << 63 };
+        enum : unsigned long long {
+            is_unpacked_bit = size_t{1} << (sizeof(size_t) * 8 - 1)
+        };
 
         template <typename Context>
         class arg_map;
@@ -566,7 +568,7 @@ namespace scn {
         {
             unsigned shift = i * 5;
             return static_cast<typename detail::type>(
-                (m_types & (0x1full << shift)) >> shift);
+                (m_types & (size_t{0x1f} << shift)) >> shift);
         }
 
         friend class detail::arg_map<Context>;
