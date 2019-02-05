@@ -148,7 +148,7 @@ namespace scn {
             template <typename T>
             value(T& val)
                 : custom(custom_value<Context>{std::addressof(val),
-                                               &scan_custom_arg<T>})
+                                               scan_custom_arg<T>})
             {
             }
 
