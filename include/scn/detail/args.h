@@ -84,6 +84,18 @@ namespace scn {
             void* value;
             fn_type scan;
         };
+
+        template <typename Context, typename T>
+        error scan_custom_arg(void* arg, Context& ctx)
+        {
+            typename Context::template value_scanner_type<T> s;
+            auto err = s.parse(ctx);
+            if (!err) {
+                return err;
+            }
+            return s.scan(*static_cast<T*>(arg), ctx);
+        }
+
         struct monostate {
         };
 
@@ -148,25 +160,13 @@ namespace scn {
             template <typename T>
             value(T& val)
                 : custom(custom_value<Context>{std::addressof(val),
-                                               scan_custom_arg<T>})
+                                               scan_custom_arg<Context, T>})
             {
             }
 
             named_arg_base<char_type>& as_named_arg()
             {
                 return *static_cast<named_arg_base<char_type>*>(pointer);
-            }
-
-        private:
-            template <typename T>
-            static error scan_custom_arg(void* arg, Context& ctx)
-            {
-                typename Context::template value_scanner_type<T> s;
-                auto err = s.parse(ctx);
-                if (!err) {
-                    return err;
-                }
-                return s.scan(*static_cast<T*>(arg), ctx);
             }
         };
 
