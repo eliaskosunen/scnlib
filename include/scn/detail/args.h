@@ -247,7 +247,7 @@ namespace scn {
         }
 
         enum { max_packed_args = sizeof(size_t) * 8 / 5 };
-        enum : unsigned long long {
+        enum : size_t {
             is_unpacked_bit = size_t{1} << (sizeof(size_t) * 8 - 1)
         };
 
@@ -564,9 +564,9 @@ namespace scn {
             return (m_types & detail::is_unpacked_bit) == 0;
         }
 
-        typename detail::type type(unsigned i) const
+        typename detail::type type(size_t i) const
         {
-            unsigned shift = i * 5;
+            size_t shift = i * 5;
             return static_cast<typename detail::type>(
                 (m_types & (size_t{0x1f} << shift)) >> shift);
         }
@@ -582,7 +582,7 @@ namespace scn {
             m_args = args;
         }
 
-        arg_type do_get(unsigned i) const
+        arg_type do_get(size_t i) const
         {
             if (!is_packed()) {
                 auto num_args = max_size();
