@@ -102,14 +102,14 @@ namespace scn {
                 static_cast<size_t>(std::distance(begin(), it)));
         }
 
-        SCN_CONSTEXPR14 unsigned next_arg_id()
+        SCN_CONSTEXPR14 size_t next_arg_id()
         {
             if (m_next_arg_id >= 0) {
                 return m_next_arg_id++;
             }
             return 0;
         }
-        SCN_CONSTEXPR14 bool check_arg_id(unsigned)
+        SCN_CONSTEXPR14 bool check_arg_id(size_t)
         {
             if (m_next_arg_id > 0) {
                 return false;
