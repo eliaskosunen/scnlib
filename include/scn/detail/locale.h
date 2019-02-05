@@ -59,7 +59,7 @@ namespace scn {
         char narrow(CharT ch, char def) const;
 
         template <typename T>
-        result<size_t> read_num(T& val, string_type buf);
+        result<size_t> read_num(T& val, const string_type& buf);
 
         bool is_default() const
         {

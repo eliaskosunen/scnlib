@@ -182,7 +182,7 @@ namespace scn {
         template <typename T, typename CharT>
         result<size_t> read_num_impl(T& val,
                                      const std::locale& loc,
-                                     std::basic_string<CharT> buf)
+                                     const std::basic_string<CharT>& buf)
         {
             std::basic_istringstream<CharT> ss(buf);
             ss.imbue(loc);
@@ -205,7 +205,7 @@ namespace scn {
         struct read_num {
             static result<size_t> read(T& val,
                                        const std::locale& loc,
-                                       std::basic_string<CharT> buf)
+                                       const std::basic_string<CharT>& buf)
             {
                 return read_num_impl(val, loc, buf);
             }
@@ -214,7 +214,7 @@ namespace scn {
         struct read_num<short, CharT> {
             static result<size_t> read(short& val,
                                        const std::locale& loc,
-                                       std::basic_string<CharT> buf)
+                                       const std::basic_string<CharT>& buf)
             {
                 long long tmp{};
                 auto ret = read_num_impl(tmp, loc, buf);
@@ -237,7 +237,7 @@ namespace scn {
         struct read_num<int, CharT> {
             static result<size_t> read(int& val,
                                        const std::locale& loc,
-                                       std::basic_string<CharT> buf)
+                                       const std::basic_string<CharT>& buf)
             {
                 long long tmp{};
                 auto ret = read_num_impl(tmp, loc, buf);
@@ -260,7 +260,8 @@ namespace scn {
 
     template <typename CharT>
     template <typename T>
-    result<size_t> basic_locale_ref<CharT>::read_num(T& val, string_type buf)
+    result<size_t> basic_locale_ref<CharT>::read_num(T& val,
+                                                     const string_type& buf)
     {
         return detail::read_num<T, CharT>::read(val, detail::get_locale(*this),
                                                 buf);
@@ -278,67 +279,69 @@ namespace scn {
 
     template result<size_t> basic_locale_ref<char>::read_num<short>(
         short&,
-        string_type);
-    template result<size_t> basic_locale_ref<char>::read_num<int>(int&,
-                                                                  string_type);
-    template result<size_t> basic_locale_ref<char>::read_num<long>(long&,
-                                                                   string_type);
+        const string_type&);
+    template result<size_t> basic_locale_ref<char>::read_num<int>(
+        int&,
+        const string_type&);
+    template result<size_t> basic_locale_ref<char>::read_num<long>(
+        long&,
+        const string_type&);
     template result<size_t> basic_locale_ref<char>::read_num<long long>(
         long long&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<char>::read_num<unsigned short>(
         unsigned short&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<char>::read_num<unsigned int>(
         unsigned int&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<char>::read_num<unsigned long>(
         unsigned long&,
-        string_type);
+        const string_type&);
     template result<size_t>
     basic_locale_ref<char>::read_num<unsigned long long>(unsigned long long&,
-                                                         string_type);
+                                                         const string_type&);
     template result<size_t> basic_locale_ref<char>::read_num<float>(
         float&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<char>::read_num<double>(
         double&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<char>::read_num<long double>(
         long double&,
-        string_type);
+        const string_type&);
 
     template result<size_t> basic_locale_ref<wchar_t>::read_num<short>(
         short&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<wchar_t>::read_num<int>(
         int&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<wchar_t>::read_num<long>(
         long&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<wchar_t>::read_num<long long>(
         long long&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<wchar_t>::read_num<unsigned short>(
         unsigned short&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<wchar_t>::read_num<unsigned int>(
         unsigned int&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<wchar_t>::read_num<unsigned long>(
         unsigned long&,
-        string_type);
+        const string_type&);
     template result<size_t>
     basic_locale_ref<wchar_t>::read_num<unsigned long long>(unsigned long long&,
-                                                            string_type);
+                                                            const string_type&);
     template result<size_t> basic_locale_ref<wchar_t>::read_num<float>(
         float&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<wchar_t>::read_num<double>(
         double&,
-        string_type);
+        const string_type&);
     template result<size_t> basic_locale_ref<wchar_t>::read_num<long double>(
         long double&,
-        string_type);
+        const string_type&);
 }  // namespace scn
