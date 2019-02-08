@@ -39,9 +39,7 @@ namespace scn {
 
         SCN_CONSTEXPR basic_static_container_stream(
             const source_type& s) noexcept
-            : m_source(std::addressof(s)),
-              m_begin(m_source->begin()),
-              m_next(begin())
+            : m_source(std::addressof(s)), m_begin(_begin(s)), m_next(begin())
         {
         }
 
@@ -84,15 +82,53 @@ namespace scn {
         {
             return m_begin;
         }
-        SCN_CONSTEXPR iterator end() const noexcept
+        SCN_CONSTEXPR14 iterator end() const noexcept
         {
             using std::end;
             return end(*m_source);
         }
 
+        static SCN_CONSTEXPR14 iterator _begin(const source_type& s) noexcept
+        {
+            using std::begin;
+            return begin(s);
+        }
+
         const source_type* m_source;
         iterator m_begin, m_next{};
     };
+
+    namespace detail {
+        template <typename CharT, size_t N>
+        struct array_container_stream_adaptor {
+            using type = const CharT (&)[N];
+
+            using value_type = const CharT;
+            using reference = const CharT&;
+            using const_reference = reference;
+            using pointer = const CharT*;
+            using const_pointer = pointer;
+            using iterator = pointer;
+            using const_iterator = const_pointer;
+
+            type array;
+        };
+
+        template <typename CharT,
+                  size_t N,
+                  typename T = array_container_stream_adaptor<CharT, N>>
+        SCN_CONSTEXPR auto begin(const T& a) -> typename T::iterator
+        {
+            return std::begin(a.array);
+        }
+        template <typename CharT,
+                  size_t N,
+                  typename T = array_container_stream_adaptor<CharT, N>>
+        SCN_CONSTEXPR auto end(const T& a) -> typename T::iterator
+        {
+            return std::end(a.array);
+        }
+    }  // namespace detail
 
     template <typename CharT>
     SCN_CONSTEXPR basic_static_container_stream<CharT, std::basic_string<CharT>>
@@ -109,6 +145,14 @@ namespace scn {
     template <typename CharT, size_t N>
     SCN_CONSTEXPR basic_static_container_stream<CharT, std::array<CharT, N>>
     make_stream(const std::array<CharT, N>& s) noexcept
+    {
+        return s;
+    }
+    template <typename CharT, size_t N>
+    SCN_CONSTEXPR basic_static_container_stream<
+        CharT,
+        detail::array_container_stream_adaptor<CharT, N>>
+    make_stream(const CharT (&s)[N]) noexcept
     {
         return s;
     }
@@ -277,6 +321,14 @@ namespace scn {
         // string for SSO
         std::basic_string<char_type> m_rollback;
     };
+
+    template <typename Char>
+    SCN_CONSTEXPR basic_bidirectional_iterator_stream<Char*> make_stream(
+        Char* ptr,
+        size_t n) noexcept
+    {
+        return {ptr, ptr + n};
+    }
 
     namespace detail {
         template <typename Iterator>

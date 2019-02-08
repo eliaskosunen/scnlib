@@ -164,4 +164,61 @@
 #define SCN_HAS_VOID_T 0
 #endif
 
+// Detect __assume
+#if SCN_INTEL || SCN_MSVC
+#define SCN_HAS_ASSUME 1
+#else
+#define SCN_HAS_ASSUME 0
+#endif
+
+// Detect __builtin_assume
+#if SCN_HAS_BUILTIN(__builtin_assume)
+#define SCN_HAS_BUILTIN_ASSUME 1
+#else
+#define SCN_HAS_BUILTIN_ASSUME 0
+#endif
+
+// Detect __builtin_unreachable
+#if SCN_HAS_BUILTIN(__builtin_unreachable) || SCN_GCC
+#define SCN_HAS_BUILTIN_UNREACHABLE 1
+#else
+#define SCN_HAS_BUILTIN_UNREACHABLE 0
+#endif
+
+#if SCN_HAS_ASSUME
+#define SCN_ASSUME(x) __assume(x)
+#elif SCN_HAS_BUILTIN_ASSUME
+#define SCN_ASSUME(x) __builtin_assume(x)
+#elif SCN_HAS_BUILTIN_UNREACHABLE
+#define SCN_ASSUME(x)                \
+    do {                             \
+        if (!(x)) {                  \
+            __builtin_unreachable(); \
+        }                            \
+    } while (false)
+#else
+#define SCN_ASSUME(x) static_cast<void>(sizeof(x))
+#endif
+
+#if SCN_HAS_BUILTIN_UNREACHABLE
+#define SCN_UNREACHABLE __builtin_unreachable()
+#else
+#define SCN_UNREACHABLE SCN_ASSUME(0)
+#endif
+
+// Detect __builtin_expect
+#if SCN_HAS_BUILTIN(__builtin_expect) || SCN_GCC || SCN_CLANG
+#define SCN_HAS_BUILTIN_EXPECT 1
+#else
+#define SCN_HAS_BUILTIN_EXPECT 0
+#endif
+
+#if SCN_HAS_BUILTIN_EXPECT
+#define SCN_LIKELY(x) __builtin_expect(!!(x), 1)
+#define SCN_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#define SCN_LIKELY(x) static_cast<void>(sizeof(x))
+#define SCN_UNLIKELY(x) static_cast<void>(sizeof(x))
+#endif
+
 #endif  // SCN_DETAIL_CONFIG_H

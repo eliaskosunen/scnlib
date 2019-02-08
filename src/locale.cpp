@@ -78,7 +78,7 @@ namespace scn {
     template <typename CharT>
     bool basic_locale_ref<CharT>::is_space(CharT ch) const
     {
-        if (is_default()) {
+        if (SCN_LIKELY(is_default())) {
             return std::isspace(ch) != 0;
         }
         return std::isspace(ch, detail::get_locale(*this));
@@ -86,7 +86,7 @@ namespace scn {
     template <typename CharT>
     bool basic_locale_ref<CharT>::is_digit(CharT ch) const
     {
-        if (is_default()) {
+        if (SCN_LIKELY(is_default())) {
             return std::isdigit(ch) != 0;
         }
         return std::isdigit(ch, detail::get_locale(*this));
@@ -138,7 +138,7 @@ namespace scn {
     template <typename CharT>
     CharT basic_locale_ref<CharT>::widen(char ch) const
     {
-        if (is_default()) {
+        if (SCN_LIKELY(is_default())) {
             return detail::default_widen<CharT>::widen(ch);
         }
         return std::use_facet<std::ctype<CharT>>(detail::get_locale(*this))
@@ -171,7 +171,7 @@ namespace scn {
     template <typename CharT>
     char basic_locale_ref<CharT>::narrow(char_type ch, char def) const
     {
-        if (is_default()) {
+        if (SCN_LIKELY(is_default())) {
             return detail::default_narrow<CharT>::narrow(ch, def);
         }
         return std::use_facet<std::ctype<CharT>>(detail::get_locale(*this))
