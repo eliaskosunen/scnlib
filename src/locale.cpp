@@ -30,42 +30,34 @@
 namespace scn {
     namespace detail {
         template <typename CharT>
-        std::locale get_locale(basic_locale_ref<CharT> ref)
+        std::locale get_locale(const basic_locale_ref<CharT>& ref)
         {
             if (ref.is_default()) {
                 return std::locale();
             }
             return *static_cast<const std::locale*>(ref.get_ptr());
         }
+
+        template <typename CharT>
+        truename_falsename_storage<CharT>::truename_falsename_storage(
+            const void* loc)
+            : m_truename(std::use_facet<std::numpunct<CharT>>(
+                             *static_cast<const std::locale*>(loc))
+                             .truename()),
+              m_falsename(std::use_facet<std::numpunct<CharT>>(
+                              *static_cast<const std::locale*>(loc))
+                              .falsename())
+        {
+        }
     }  // namespace detail
 
-    template <>
-    SCN_FUNC basic_locale_ref<char>::basic_locale_ref()
-        : m_locale(nullptr),
-          m_truename("true"),
-          m_falsename("false"),
-          m_decimal_point('.'),
-          m_thousands_separator(',')
-    {
-    }
-    template <>
-    SCN_FUNC basic_locale_ref<wchar_t>::basic_locale_ref()
-        : m_locale(nullptr),
-          m_truename(L"true"),
-          m_falsename(L"false"),
-          m_decimal_point(L'.'),
-          m_thousands_separator(L',')
-    {
-    }
     template <typename CharT>
     basic_locale_ref<CharT>::basic_locale_ref(const void* loc)
         : m_locale(loc),
-          m_truename(
-              std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
-                  .truename()),
-          m_falsename(
-              std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
-                  .falsename()),
+          m_truefalse_storage(
+              new detail::truename_falsename_storage<CharT>(loc)),
+          m_truename(m_truefalse_storage->get_true_view()),
+          m_falsename(m_truefalse_storage->get_false_view()),
           m_decimal_point(
               std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
                   .decimal_point()),
@@ -76,104 +68,26 @@ namespace scn {
     }
 
     template <typename CharT>
-    bool basic_locale_ref<CharT>::is_space(CharT ch) const
+    bool basic_locale_ref<CharT>::_is_space(CharT ch) const
     {
-        if (SCN_LIKELY(is_default())) {
-            return std::isspace(ch) != 0;
-        }
         return std::isspace(ch, detail::get_locale(*this));
     }
     template <typename CharT>
-    bool basic_locale_ref<CharT>::is_digit(CharT ch) const
+    bool basic_locale_ref<CharT>::_is_digit(CharT ch) const
     {
-        if (SCN_LIKELY(is_default())) {
-            return std::isdigit(ch) != 0;
-        }
         return std::isdigit(ch, detail::get_locale(*this));
     }
-    template <typename CharT>
-    CharT basic_locale_ref<CharT>::decimal_point() const
-    {
-        return m_decimal_point;
-    }
-    template <typename CharT>
-    CharT basic_locale_ref<CharT>::thousands_separator() const
-    {
-        return m_thousands_separator;
-    }
-    template <typename CharT>
-    auto basic_locale_ref<CharT>::truename() const -> string_view_type
-    {
-        return string_view_type(m_truename.data(), m_truename.size());
-    }
-    template <typename CharT>
-    auto basic_locale_ref<CharT>::falsename() const -> string_view_type
-    {
-        return string_view_type(m_falsename.data(), m_falsename.size());
-    }
-
-    namespace detail {
-        template <typename CharT>
-        struct default_widen;
-        template <>
-        struct default_widen<char> {
-            static char widen(char ch)
-            {
-                return ch;
-            }
-        };
-        template <>
-        struct default_widen<wchar_t> {
-            static wchar_t widen(char ch)
-            {
-                auto ret = std::btowc(static_cast<int>(ch));
-                if (ret == WEOF) {
-                    return static_cast<wchar_t>(-1);
-                }
-                return static_cast<wchar_t>(ret);
-            }
-        };
-    }  // namespace detail
 
     template <typename CharT>
-    CharT basic_locale_ref<CharT>::widen(char ch) const
+    CharT basic_locale_ref<CharT>::_widen(char ch) const
     {
-        if (SCN_LIKELY(is_default())) {
-            return detail::default_widen<CharT>::widen(ch);
-        }
         return std::use_facet<std::ctype<CharT>>(detail::get_locale(*this))
             .widen(ch);
     }
 
-    namespace detail {
-        template <typename CharT>
-        struct default_narrow;
-        template <>
-        struct default_narrow<char> {
-            static char narrow(char ch, char)
-            {
-                return ch;
-            }
-        };
-        template <>
-        struct default_narrow<wchar_t> {
-            static char narrow(wchar_t ch, char def)
-            {
-                auto ret = std::wctob(static_cast<wint_t>(ch));
-                if (ret == EOF) {
-                    return def;
-                }
-                return static_cast<char>(ret);
-            }
-        };
-    }  // namespace detail
-
     template <typename CharT>
-    char basic_locale_ref<CharT>::narrow(char_type ch, char def) const
+    char basic_locale_ref<CharT>::_narrow(char_type ch, char def) const
     {
-        if (SCN_LIKELY(is_default())) {
-            return detail::default_narrow<CharT>::narrow(ch, def);
-        }
         return std::use_facet<std::ctype<CharT>>(detail::get_locale(*this))
             .narrow(ch, def);
     }

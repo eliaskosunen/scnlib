@@ -25,7 +25,7 @@
 namespace scn {
     namespace detail {
         template <typename Stream, typename Context>
-        class context_base {
+        class context_base : public detail::disable_copy {
         public:
             using stream_type = Stream;
             using char_type = typename stream_type::char_type;
@@ -40,13 +40,14 @@ namespace scn {
             {
                 return *m_stream;
             }
+            locale_type& locale()
+            {
+                return m_locale;
+            }
+
             basic_arg<Context> arg(size_t id) const
             {
                 return m_args.get(id);
-            }
-            locale_type locale() const
-            {
-                return m_locale;
             }
 
             detail::error_handler error_handler()

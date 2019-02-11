@@ -26,7 +26,8 @@
 namespace scn {
     /**
      * A view over a (sub)string.
-     * Used even when std::string_view is available to avoid compatibility issues.
+     * Used even when std::string_view is available to avoid compatibility
+     * issues.
      */
     template <typename CharT, typename Traits = std::char_traits<CharT>>
     class basic_string_view {
@@ -56,6 +57,10 @@ namespace scn {
         }
         SCN_CONSTEXPR basic_string_view(const_pointer s)
             : m_data(s, static_cast<span_index_type>(Traits::length(s)))
+        {
+        }
+        template <size_t N>
+        SCN_CONSTEXPR basic_string_view(const CharT (&s)[N]) : m_data(s, N)
         {
         }
 

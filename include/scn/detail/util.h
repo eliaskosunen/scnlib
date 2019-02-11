@@ -46,24 +46,108 @@ namespace scn {
     };
 
     namespace detail {
-        /**
-         * Maximum digits potentially required to represent an integer of type
-         * Integral. Includes possible sign.
-         * \param base Base of the integer
-         */
         template <typename Integral>
-        int max_digits(int base) noexcept
+        int _max_digits(int base) noexcept
         {
-            auto i = std::numeric_limits<Integral>::max();
+            using lim = std::numeric_limits<Integral>;
+
+            static int base8_digits[4] = {3, 5, 11, 21};
+
+            if (base == 10) {
+                return lim::digits10;
+            }
+            if (base == 8) {
+                return base8_digits[sizeof(Integral) - 1];
+            }
+            if (base == lim::radix) {
+                return lim::digits;
+            }
+
+            auto i = lim::max();
 
             int digits = 0;
             while (i) {
                 i /= static_cast<Integral>(base);
                 digits++;
             }
-
-            return digits + (std::is_signed<Integral>::value ? 1 : 0);
+            return digits;
         }
+        template <typename Integral>
+        int max_digits(int base) noexcept
+        {
+            auto b = base == 0 ? 8 : base;
+            auto d = _max_digits<Integral>(b) +
+                     (std::is_signed<Integral>::value ? 1 : 0);
+            if (base == 0) {
+                return d + 2;  // accommondate for 0x/0o
+            }
+            return d;
+        }
+
+        struct disable_copy {
+            SCN_CONSTEXPR disable_copy() = default;
+            ~disable_copy() = default;
+
+            disable_copy(const disable_copy&) = delete;
+            disable_copy& operator=(const disable_copy&) = delete;
+
+            disable_copy(disable_copy&&) noexcept = default;
+            disable_copy& operator=(disable_copy&&) noexcept = default;
+        };
+
+        template <typename T>
+        class unique_ptr : disable_copy {
+        public:
+            using element_type = T;
+            using pointer = T*;
+
+            unique_ptr() = default;
+            unique_ptr(std::nullptr_t) {}
+
+            explicit unique_ptr(pointer p) : m_ptr(p) {}
+
+            unique_ptr(unique_ptr&& p) noexcept : m_ptr(std::move(p.m_ptr))
+            {
+                p.m_ptr = nullptr;
+            }
+            unique_ptr& operator=(unique_ptr&& p) noexcept
+            {
+                if (m_ptr) {
+                    delete m_ptr;
+                }
+                m_ptr = p.m_ptr;
+                p.m_ptr = 0;
+            }
+
+            ~unique_ptr() noexcept
+            {
+                if (m_ptr) {
+                    delete m_ptr;
+                }
+            }
+
+            explicit operator bool() const noexcept
+            {
+                return get() != nullptr;
+            }
+
+            pointer get() const noexcept
+            {
+                return m_ptr;
+            }
+
+            pointer operator->() const noexcept
+            {
+                return m_ptr;
+            }
+            typename std::add_lvalue_reference<T>::type operator*() const
+            {
+                return *m_ptr;
+            }
+
+        private:
+            pointer m_ptr{nullptr};
+        };
 
         template <typename T>
         class erased_storage {

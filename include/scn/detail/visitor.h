@@ -534,8 +534,7 @@ namespace scn {
             error scan(T& val, Context& ctx)
             {
                 std::basic_string<CharT> buf{};
-                buf.reserve(static_cast<size_t>(
-                    detail::max_digits<T>(base == 0 ? 8 : base)));
+                buf.reserve(15);
 
                 auto r = scan_chars(ctx, std::back_inserter(buf),
                                     predicates::until_space<Context>{}, true);
@@ -690,7 +689,7 @@ namespace scn {
             error scan(T& val, Context& ctx)
             {
                 std::basic_string<CharT> buf{};
-                buf.reserve(21);
+                buf.reserve(15);
 
                 bool point = false;
                 auto r = scan_chars(
