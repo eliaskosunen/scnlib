@@ -330,33 +330,42 @@ Times are in nanoseconds of CPU time. Lower is better.
 
 ### Reading random integers
 
-|             | `scn::scan` | `std::stringstream` |
-| :---------- | ----------: | ------------------: |
-| `int`       | 79          | 92                  |
-| `long long` | 123         | 146                 |
-| `unsigned`  | 76          | 77                  |
+| Integer type | `scn::scan` | `std::stringstream` |
+| :----------- | ----------: | ------------------: |
+| `int`        | 79          | 92                  |
+| `long long`  | 123         | 146                 |
+| `unsigned`   | 76          | 77                  |
 
 ### Reading random floating-point numbers
 
-|               | `scn::scan` | `std::stringstream` |
-| :------------ | ----------: | ------------------: |
-| `float`       | 157         | 240                 |
-| `double`      | 163         | 248                 |
-| `long double` | 176         | 256                 |
+| Floating-point type | `scn::scan` | `std::stringstream` |
+| :------------------ | ----------: | ------------------: |
+| `float`             | 157         | 240                 |
+| `double`            | 163         | 248                 |
+| `long double`       | 176         | 256                 |
 
 ### Reading random whitespace-separated `std::basic_string`s
 
-|           | `scn::scan` | `std::stringstream` |
-| :-------- | ----------: | ------------------: |
-| `char`    | 52          | 53                  |
-| `wchar_t` | 56          | 116                 |
+| Character type | `scn::scan` | `std::stringstream` |
+| :------------- | ----------: | ------------------: |
+| `char`         | 52          | 53                  |
+| `wchar_t`      | 56          | 116                 |
 
 ### Reading random characters
 
-|           | `scn::scan` | `std::stringstream` |
-| :-------- | ----------: | ------------------: |
-| `char`    | 29          | 9                   |
-| `wchar_t` | 33          | 14                  |
+| Character type | `scn::scan` | `std::stringstream` |
+| :------------- | ----------: | ------------------: |
+| `char`         | 29          | 9                   |
+| `wchar_t`      | 33          | 14                  |
+
+### Reading a buffer
+
+| Buffer length | `scn::scan` | `std::stringstream` |
+| :------------ | ----------: | ------------------: |
+| 256           | 382         | 380                 |
+| 1024          | 1393        | 1390                |
+| 4096          | 5273        | 5273                |
+| 16384         | 20916       | 20883               |
 
 TODO: More benchmarks
 

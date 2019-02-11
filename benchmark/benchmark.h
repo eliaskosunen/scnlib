@@ -46,6 +46,18 @@
 #include <sstream>
 #include <string>
 
+inline std::string generate_buffer(size_t len)
+{
+    std::default_random_engine rng(std::random_device{}());
+    std::uniform_int_distribution<> dist(std::numeric_limits<char>::min(),
+                                         std::numeric_limits<char>::max());
+
+    std::string data;
+    data.reserve(len);
+    std::generate(data.begin(), data.end(), [&]() { return dist(rng); });
+    return data;
+}
+
 template <typename Char>
 inline std::basic_string<Char> generate_data(size_t)
 {
