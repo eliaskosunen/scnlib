@@ -217,8 +217,8 @@
 #define SCN_LIKELY(x) __builtin_expect(!!(x), 1)
 #define SCN_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
-#define SCN_LIKELY(x) static_cast<void>(sizeof(x))
-#define SCN_UNLIKELY(x) static_cast<void>(sizeof(x))
+#define SCN_LIKELY(x) (x)
+#define SCN_UNLIKELY(x) (x)
 #endif
 
 #endif  // SCN_DETAIL_CONFIG_H
