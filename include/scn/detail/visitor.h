@@ -282,8 +282,8 @@ namespace scn {
             error scan(bool& val, Context& ctx)
             {
                 if (boolalpha) {
-                    basic_string_view<CharT> truename{"true"};
-                    basic_string_view<CharT> falsename{"false"};
+                    auto truename = ctx.locale().get_default().truename();
+                    auto falsename = ctx.locale().get_default().falsename();
                     if (localized) {
                         truename = ctx.locale().truename();
                         falsename = ctx.locale().falsename();
@@ -856,7 +856,9 @@ namespace scn {
         }
         template <typename T>
         auto visit(T& val, priority_tag<0>) ->
-            typename std::enable_if<std::is_integral<T>::value, error>::type
+            typename std::enable_if<std::is_integral<T>::value &&
+                                        sizeof(T) >= sizeof(char_type),
+                                    error>::type
         {
             detail::integer_scanner<char_type, T> s;
             auto err = s.parse(*m_ctx);
@@ -864,6 +866,14 @@ namespace scn {
                 return err;
             }
             return s.scan(val, *m_ctx);
+        }
+        template <typename T>
+        auto visit(T&, priority_tag<0>) ->
+            typename std::enable_if<std::is_integral<T>::value &&
+                                        sizeof(T) < sizeof(char_type),
+                                    error>::type
+        {
+            return error::invalid_operation;
         }
         template <typename T>
         auto visit(T& val, priority_tag<1>) ->

@@ -243,6 +243,11 @@ namespace scn {
             return m_locale == nullptr;
         }
 
+        static basic_locale_ref get_default()
+        {
+            return basic_locale_ref();
+        }
+
     private:
         bool _is_space(char_type) const;
         bool _is_digit(char_type) const;

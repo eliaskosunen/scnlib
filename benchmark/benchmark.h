@@ -46,7 +46,13 @@
 #include <sstream>
 #include <string>
 
-inline std::string generate_data(size_t len)
+template <typename Char>
+inline std::basic_string<Char> generate_data(size_t)
+{
+}
+
+template <>
+inline std::basic_string<char> generate_data<char>(size_t len)
 {
     static const std::vector<char> chars = {
         '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',  'A',  'B',
@@ -59,6 +65,26 @@ inline std::string generate_data(size_t len)
     std::uniform_int_distribution<> dist(0, static_cast<int>(chars.size() - 1));
 
     std::string data;
+    for (std::size_t i = 0; i < len; ++i) {
+        data.push_back(chars[static_cast<size_t>(dist(rng))]);
+    }
+    return data;
+}
+template <>
+inline std::basic_string<wchar_t> generate_data<wchar_t>(size_t len)
+{
+    static const std::vector<wchar_t> chars = {
+        L'0', L'1', L'2', L'3',  L'4',  L'5', L'6', L'7', L'8', L'9', L'A',
+        L'B', L'C', L'D', L'E',  L'F',  L'G', L'H', L'I', L'J', L'K', L'L',
+        L'M', L'N', L'O', L'P',  L'Q',  L'R', L'S', L'T', L'U', L'V', L'W',
+        L'X', L'Y', L'Z', L'a',  L'b',  L'c', L'd', L'e', L'f', L'g', L'h',
+        L'i', L'j', L'k', L'l',  L'm',  L'n', L'o', L'p', L'q', L'r', L's',
+        L't', L'u', L'v', L'w',  L'x',  L'y', L'z', L' ', L' ', L' ', L' ',
+        L' ', L' ', L' ', L'\n', L'\n', L'\t'};
+    std::default_random_engine rng(std::random_device{}());
+    std::uniform_int_distribution<> dist(0, static_cast<int>(chars.size() - 1));
+
+    std::wstring data;
     for (std::size_t i = 0; i < len; ++i) {
         data.push_back(chars[static_cast<size_t>(dist(rng))]);
     }

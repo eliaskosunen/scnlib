@@ -322,21 +322,41 @@ Older compilers may work, but it is not guaranteed.
 
 ## Benchmarks
 
-These benchmarks were run on a Windows 10 machine, with an Intel Core i7-8750H processor, and compiled with Visual Studio version 15.9.4.
+These benchmarks were run on a Xubuntu 18.04.2 machine running kernel version 4.15.0-45, with an Intel Core i7-8750H processor, and compiled with clang version 6.0.1, with `-O3`.
 CPU scaling was enabled for these benchmarks, which may have affected the results.
+The source code for the benchmarks can be seen in the `benchmark` directory.
+
+Times are in nanoseconds of CPU time. Lower is better.
 
 ### Reading random integers
 
-Units are MiBs per second. Higher is better.
-
 |             | `scn::scan` | `std::stringstream` |
 | :---------- | ----------: | ------------------: |
-| `int`       | 9.72        | 10.42               |
-| `long long` | 8.10        | 10.94               |
+| `int`       | 79          | 92                  |
+| `long long` | 123         | 146                 |
+| `unsigned`  | 76          | 77                  |
 
 ### Reading random floating-point numbers
 
-TODO
+|               | `scn::scan` | `std::stringstream` |
+| :------------ | ----------: | ------------------: |
+| `float`       | 157         | 240                 |
+| `double`      | 163         | 248                 |
+| `long double` | 176         | 256                 |
+
+### Reading random whitespace-separated `std::basic_string`s
+
+|           | `scn::scan` | `std::stringstream` |
+| :-------- | ----------: | ------------------: |
+| `char`    | 52          | 53                  |
+| `wchar_t` | 56          | 116                 |
+
+### Reading random characters
+
+|           | `scn::scan` | `std::stringstream` |
+| :-------- | ----------: | ------------------: |
+| `char`    | 29          | 9                   |
+| `wchar_t` | 33          | 14                  |
 
 TODO: More benchmarks
 

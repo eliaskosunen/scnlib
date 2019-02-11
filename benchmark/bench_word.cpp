@@ -24,21 +24,39 @@
 #pragma clang diagnostic ignored "-Wexit-time-destructors"
 #endif
 
-template <typename Float>
-static void scanfloat_scn(benchmark::State& state)
-{
-    auto data = generate_float_data<Float>(static_cast<size_t>(state.range(0)));
-    auto stream = scn::make_stream(data);
-    Float f{};
-    for (auto _ : state) {
-        auto e = scn::scan(stream, "{}", f);
+namespace {
+    template <typename Char>
+    scn::basic_string_view<Char> default_format_str()
+    {
+    }
+    template <>
+    scn::string_view default_format_str<char>()
+    {
+        return {"{}"};
+    }
+    template <>
+    scn::wstring_view default_format_str<wchar_t>()
+    {
+        return {L"{}"};
+    }
+}  // namespace
 
-        benchmark::DoNotOptimize(f);
+template <typename Char>
+static void scanword_scn(benchmark::State& state)
+{
+    using string_type = std::basic_string<Char>;
+    string_type data = generate_data<Char>(static_cast<size_t>(state.range(0)));
+    auto stream = scn::make_stream(data);
+    string_type str{};
+
+    for (auto _ : state) {
+        auto e = scn::scan(stream, default_format_str<Char>(), str);
+
+        benchmark::DoNotOptimize(str);
         if (!e) {
             if (e == scn::error::end_of_stream) {
                 state.PauseTiming();
-                data = generate_float_data<Float>(
-                    static_cast<size_t>(state.range(0)));
+                data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 stream = scn::make_stream(data);
                 state.ResumeTiming();
             }
@@ -48,28 +66,26 @@ static void scanfloat_scn(benchmark::State& state)
             }
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
 }
-BENCHMARK_TEMPLATE(scanfloat_scn, float)->Arg(2 << 15);
-BENCHMARK_TEMPLATE(scanfloat_scn, double)->Arg(2 << 15);
-BENCHMARK_TEMPLATE(scanfloat_scn, long double)->Arg(2 << 15);
+BENCHMARK_TEMPLATE(scanword_scn, char)->Arg(2 << 15);
+BENCHMARK_TEMPLATE(scanword_scn, wchar_t)->Arg(2 << 15);
 
-template <typename Float>
-static void scanfloat_sstream(benchmark::State& state)
+template <typename Char>
+static void scanword_sstream(benchmark::State& state)
 {
-    auto data = generate_float_data<Float>(static_cast<size_t>(state.range(0)));
-    auto stream = std::istringstream(data);
-    Float f{};
-    for (auto _ : state) {
-        stream >> f;
+    using string_type = std::basic_string<Char>;
+    string_type data = generate_data<Char>(static_cast<size_t>(state.range(0)));
+    auto stream = std::basic_istringstream<Char>{data};
+    string_type str{};
 
-        benchmark::DoNotOptimize(f);
+    for (auto _ : state) {
+        stream >> str;
+
+        benchmark::DoNotOptimize(str);
         if (stream.eof()) {
             state.PauseTiming();
-            data =
-                generate_float_data<Float>(static_cast<size_t>(state.range(0)));
-            stream = std::istringstream(data);
+            data = generate_data<Char>(static_cast<size_t>(state.range(0)));
+            stream = std::basic_istringstream<Char>{data};
             state.ResumeTiming();
             continue;
         }
@@ -78,12 +94,9 @@ static void scanfloat_sstream(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
 }
-BENCHMARK_TEMPLATE(scanfloat_sstream, float)->Arg(2 << 15);
-BENCHMARK_TEMPLATE(scanfloat_sstream, double)->Arg(2 << 15);
-BENCHMARK_TEMPLATE(scanfloat_sstream, long double)->Arg(2 << 15);
+BENCHMARK_TEMPLATE(scanword_sstream, char)->Arg(2 << 15);
+BENCHMARK_TEMPLATE(scanword_sstream, wchar_t)->Arg(2 << 15);
 
 #if SCN_CLANG
 #pragma clang diagnostic pop

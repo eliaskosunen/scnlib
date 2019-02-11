@@ -10,5 +10,5 @@ add_subdirectory(google-benchmark EXCLUDE_FROM_ALL)
 
 add_executable(bench
     bench.cpp benchmark.h
-    bench_int.cpp bench_float.cpp)
+    bench_int.cpp bench_float.cpp bench_word.cpp bench_char.cpp)
 target_link_libraries(bench scn benchmark)

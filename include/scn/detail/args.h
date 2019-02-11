@@ -118,8 +118,7 @@ namespace scn {
                 unsigned long long* ulong_long_value;
 
                 bool* bool_value;
-                char* char_value;
-                unsigned char* uchar_value;
+                char_type* char_value;
 
                 float* float_value;
                 double* double_value;
@@ -145,8 +144,7 @@ namespace scn {
             value(unsigned long long& val) : ulong_long_value(&val) {}
 
             value(bool& val) : bool_value(&val) {}
-            value(char& val) : char_value(&val) {}
-            value(unsigned char& val) : uchar_value(&val) {}
+            value(char_type& val) : char_value(&val) {}
 
             value(float& val) : float_value(&val) {}
             value(double& val) : double_value(&val) {}
@@ -203,8 +201,6 @@ namespace scn {
         SCN_MAKE_VALUE(ulong_long_type, unsigned long long)
 
         SCN_MAKE_VALUE(bool_type, bool)
-        SCN_MAKE_VALUE(char_type, char)
-        // SCN_MAKE_VALUE(uchar_type, unsigned char&)
 
         SCN_MAKE_VALUE(float_type, float)
         SCN_MAKE_VALUE(double_type, double)
@@ -212,6 +208,14 @@ namespace scn {
 
         SCN_MAKE_VALUE(buffer_type, span<typename C::char_type>)
         SCN_MAKE_VALUE(string_type, std::basic_string<typename C::char_type>)
+
+        template <typename C>
+        init<C, typename C::char_type, char_type> make_value(
+            typename C::char_type& val,
+            priority_tag<1>)
+        {
+            return val;
+        }
 
         template <typename C, typename T>
         init<C, void*, named_arg_type> make_value(
