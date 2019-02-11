@@ -163,9 +163,6 @@ matrix:
 
   allow_failures:
     - os: osx
-    # Source is disallowed
-    - env: COMPILER=clang++-8 STANDARD=17
-      compiler: clang
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"

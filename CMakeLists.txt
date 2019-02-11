@@ -72,11 +72,11 @@ if (SCN_PEDANTIC)
             -Wzero-as-null-pointer-constant
             -Wuseless-cast -Wvector-operation-performance>
             $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,6.0>>:
-            -Wshift-overflow=2 -Wnull-deference
+            -Wshift-overflow=2 -Wnull-dereference
             -Wduplicated-cond>
             $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,7.0>>:
             -Walloc-zero -Walloca
-            -Wducplicated-branches>
+            -Wduplicated-branches>
             $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,8.0>>:
             -Wcast-align=strict>
             >
@@ -93,6 +93,9 @@ if (SCN_WERROR)
         $<$<CXX_COMPILER_ID:MSVC>:
             /WX)
 endif()
+
+message(STATUS "SCN_PEDANTIC: ${SCN_PEDANTIC}")
+message(STATUS "SCN_WERROR: ${SCN_WERROR}")
 
 function (generate_library_target target_name)
     add_library(${target_name} ${SCN_HEADERS} src/locale.cpp)

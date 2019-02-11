@@ -80,11 +80,11 @@ namespace scn {
 
         static bool is_digit(char ch)
         {
-            return ch >= '0' || ch <= '9';
+            return ch >= '0' && ch <= '9';
         }
         static bool is_digit(wchar_t ch)
         {
-            return ch >= L'0' || ch <= L'9';
+            return ch >= L'0' && ch <= L'9';
         }
 
         template <typename CharT>
