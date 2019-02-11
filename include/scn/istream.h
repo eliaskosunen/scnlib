@@ -31,6 +31,7 @@ namespace scn {
         using char_type = CharT;
         using source_type = std::basic_istream<char_type>;
         using traits = typename source_type::traits_type;
+        using is_bulk_stream = std::false_type;
 
         basic_std_istream_stream(source_type& is) : m_is(std::addressof(is)) {}
 

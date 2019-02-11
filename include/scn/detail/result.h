@@ -33,7 +33,7 @@ namespace scn {
     class error {
     public:
         /// Error code
-        enum code {
+        enum code : char {
             /// No error
             good,
             /// EOF
@@ -149,7 +149,7 @@ namespace scn {
         {
             return m_s;
         }
-        SCN_CONSTEXPR14 success_type&& value() && noexcept
+        SCN_CONSTEXPR14 success_type value() && noexcept
         {
             return std::move(m_s);
         }
@@ -232,7 +232,7 @@ namespace scn {
     {
         return result<U>(std::forward<T>(val));
     }
-    SCN_CONSTEXPR inline error make_error(error e) noexcept
+    SCN_CONSTEXPR inline error make_error(error::code e) noexcept
     {
         return e;
     }
@@ -244,7 +244,7 @@ namespace scn {
             void on_error(error e);
             void on_error(const char* msg);
         };
-    }
+    }  // namespace detail
 }  // namespace scn
 
 #endif  // SCN_DETAIL_RESULT_H

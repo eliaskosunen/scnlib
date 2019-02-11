@@ -27,6 +27,10 @@
 #include <vector>
 
 namespace scn {
+    template <typename S>
+    struct is_bulk_stream : S::is_bulk_stream {
+    };
+
     template <typename Char, typename Source, typename Enable = void>
     class basic_static_container_stream;
 
@@ -36,6 +40,7 @@ namespace scn {
         using char_type = Char;
         using source_type = Container;
         using iterator = typename source_type::const_iterator;
+        using is_bulk_stream = std::true_type;
 
         SCN_CONSTEXPR basic_static_container_stream(
             const source_type& s) noexcept
@@ -58,6 +63,16 @@ namespace scn {
                 return error::invalid_operation;
             }
             --m_next;
+            return {};
+        }
+
+        SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
+        {
+            if (std::distance(m_next, end()) < s.size()) {
+                return error::end_of_stream;
+            }
+            std::copy(m_next, m_next + s.size(), s.begin());
+            m_next += s.size();
             return {};
         }
 
@@ -163,6 +178,7 @@ namespace scn {
         using char_type = Char;
         using source_type = span<const Char>;
         using iterator = typename source_type::const_iterator;
+        using is_bulk_stream = std::true_type;
 
         SCN_CONSTEXPR basic_static_container_stream(source_type s) noexcept
             : m_source(s), m_begin(m_source.begin()), m_next(begin())
@@ -184,6 +200,16 @@ namespace scn {
                 return error::invalid_operation;
             }
             --m_next;
+            return {};
+        }
+
+        SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
+        {
+            if (std::distance(m_next, end()) < s.size()) {
+                return error::end_of_stream;
+            }
+            std::copy(m_next, m_next + s.size(), s.begin());
+            m_next += s.size();
             return {};
         }
 
@@ -227,6 +253,7 @@ namespace scn {
     template <typename Iterator>
     struct basic_bidirectional_iterator_stream {
         using char_type = typename std::iterator_traits<Iterator>::value_type;
+        using is_bulk_stream = std::true_type;
 
         SCN_CONSTEXPR basic_bidirectional_iterator_stream(Iterator begin,
                                                           Iterator end) noexcept
@@ -252,6 +279,16 @@ namespace scn {
             return {};
         }
 
+        SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
+        {
+            if (std::distance(m_next, m_end) < s.size()) {
+                return error::end_of_stream;
+            }
+            std::copy(m_next, m_next + s.size(), s.begin());
+            std::advance(m_next, s.size());
+            return {};
+        }
+
         SCN_CONSTEXPR14 error set_roll_back() noexcept
         {
             m_begin = m_next;
@@ -274,6 +311,7 @@ namespace scn {
     template <typename Iterator>
     struct basic_forward_iterator_stream {
         using char_type = typename std::iterator_traits<Iterator>::value_type;
+        using is_bulk_stream = std::true_type;
 
         SCN_CONSTEXPR basic_forward_iterator_stream(Iterator begin,
                                                     Iterator end) noexcept
@@ -298,6 +336,16 @@ namespace scn {
         error putback(char_type ch)
         {
             m_rollback.push_back(ch);
+            return {};
+        }
+
+        SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
+        {
+            if (std::distance(m_begin, m_end) < s.size()) {
+                return error::end_of_stream;
+            }
+            std::copy(m_begin, m_begin + s.size(), s.begin());
+            std::advance(m_begin, s.size());
             return {};
         }
 
@@ -385,6 +433,7 @@ namespace scn {
     template <>
     struct basic_cstdio_stream<char> {
         using char_type = char;
+        using is_bulk_stream = std::false_type;
 
         basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
@@ -444,6 +493,7 @@ namespace scn {
     template <>
     struct basic_cstdio_stream<wchar_t> {
         using char_type = wchar_t;
+        using is_bulk_stream = std::false_type;
 
         basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 

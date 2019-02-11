@@ -20,6 +20,7 @@
 
 #include "args.h"
 #include "context.h"
+#include "stream.h"
 
 namespace scn {
     enum class scan_status { keep, skip, end };
@@ -194,6 +195,60 @@ namespace scn {
         }
         return begin;
     }
+
+    template <typename Context, typename Iterator, typename EndIterator>
+    result<Iterator> propagate_chars_until(Context& ctx,
+                                           Iterator begin,
+                                           EndIterator end)
+    {
+        for (; begin != end; ++begin) {
+            auto ret = ctx.stream().read_char();
+            if (!ret) {
+                if (ret.get_error() == error::end_of_stream) {
+                    return begin;
+                }
+                return ret.get_error();
+            }
+
+            *begin = ret.value();
+        }
+        return begin;
+    }
+
+    template <typename Context,
+              typename Char = typename Context::char_type,
+              typename Span = span<Char>,
+              typename Iterator = typename Span::iterator>
+    result<Iterator> bulk_propagate_chars_until(Context& ctx, Span s)
+    {
+        auto e = ctx.stream().read_bulk(s);
+        if (e != error::code::end_of_stream) {
+            return s.end();
+        }
+        return propagate_chars_until(ctx, s.begin(), s.end());
+    }
+
+    template <typename Context,
+              typename Char = typename Context::char_type,
+              typename Span = span<Char>,
+              typename Iterator = typename Span::iterator>
+    auto propagate_chars_until(Context& ctx, Span s) -> typename std::enable_if<
+        is_bulk_stream<typename Context::stream_type>::value,
+        result<Iterator>>::type
+    {
+        return bulk_propagate_chars_until(ctx, s);
+    }
+    template <typename Context,
+              typename Char = typename Context::char_type,
+              typename Span = span<Char>,
+              typename Iterator = typename Span::iterator>
+    auto propagate_chars_until(Context& ctx, Span s) -> typename std::enable_if<
+        !is_bulk_stream<typename Context::stream_type>::value,
+        result<Iterator>>::type
+    {
+        return propagate_chars_until(ctx, s.begin(), s.end());
+    }
+
     namespace detail {
         template <typename CharT>
         struct empty_parser {
@@ -230,13 +285,14 @@ namespace scn {
                     return {};
                 }
 
-                std::vector<CharT> buf(static_cast<size_t>(val.size()));
-                auto s = scan_chars_until(ctx, buf.begin(), buf.end(),
-                                          predicates::propagate<Context>{});
+                std::basic_string<CharT> buf(static_cast<size_t>(val.size()),
+                                             0);
+                auto span = scn::make_span(buf);
+                auto s = propagate_chars_until(ctx, span);
                 if (!s) {
                     return s.get_error();
                 }
-                std::copy(buf.begin(), s.value(), val.begin());
+                std::copy(buf.begin(), buf.end(), val.begin());
 
                 return {};
             }

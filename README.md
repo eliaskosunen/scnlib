@@ -358,15 +358,6 @@ Times are in nanoseconds of CPU time. Lower is better.
 | `char`         | 29          | 9                   |
 | `wchar_t`      | 33          | 14                  |
 
-### Reading a buffer
-
-| Buffer length | `scn::scan` | `std::stringstream` |
-| :------------ | ----------: | ------------------: |
-| 256           | 382         | 380                 |
-| 1024          | 1393        | 1390                |
-| 4096          | 5273        | 5273                |
-| 16384         | 20916       | 20883               |
-
 TODO: More benchmarks
 
 You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS` and building the target `bench`.

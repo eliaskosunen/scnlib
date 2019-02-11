@@ -51,7 +51,7 @@ static void scanbuffer_scn(benchmark::State& state)
         }
     }
 }
-BENCHMARK(scanbuffer_scn)->Arg(256)->Arg(1024)->Arg(4096)->Arg(2 << 13);
+//BENCHMARK(scanbuffer_scn)->Arg(256)->Arg(1024)->Arg(4096);
 
 static void scanbuffer_sstream(benchmark::State& state)
 {
@@ -77,7 +77,7 @@ static void scanbuffer_sstream(benchmark::State& state)
         }
     }
 }
-BENCHMARK(scanbuffer_scn)->Arg(256)->Arg(1024)->Arg(4096)->Arg(2 << 13);
+//BENCHMARK(scanbuffer_sstream)->Arg(256)->Arg(1024)->Arg(4096);
 
 #if SCN_CLANG
 #pragma clang diagnostic pop
