@@ -202,6 +202,12 @@ namespace scn {
         }
         return {};
     }
+
+    template <typename Stream>
+    result<typename Stream::char_type> getchar(Stream& s)
+    {
+        return s.read_char();
+    }
 }  // namespace scn
 
 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE

@@ -353,10 +353,10 @@ Times are in nanoseconds of CPU time. Lower is better.
 
 ### Reading random characters
 
-| Character type | `scn::scan` | `std::stringstream` | Control |
-| :------------- | ----------: | ------------------: | ------: |
-| `char`         | 29          | 9                   | 2       |
-| `wchar_t`      | 33          | 14                  | 2       |
+| Character type | `scn::scan` | `scn::getchar` | `std::stringstream` | Control |
+| :------------- | ----------: | -------------: | ------------------: | ------: |
+| `char`         | 29          | 3              | 9                   | 2       |
+| `wchar_t`      | 33          | 3              | 14                  | 2       |
 
 TODO: More benchmarks
 

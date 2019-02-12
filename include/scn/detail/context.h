@@ -83,7 +83,7 @@ namespace scn {
             result<arg_type> do_get_arg(size_t id)
             {
                 auto a = m_args.get(id);
-                if (!a && !m_args.get(id - 1)) {
+                if (!a && !m_args.check_id(id - 1)) {
                     return make_error(error::invalid_argument);
                 }
                 return a;

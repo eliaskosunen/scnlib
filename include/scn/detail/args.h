@@ -560,6 +560,15 @@ namespace scn {
             return arg;
         }
 
+        bool check_id(size_t i) const
+        {
+            if (!is_packed()) {
+                return i < (m_types &
+                            ~static_cast<size_t>(detail::is_unpacked_bit));
+            }
+            return type(i) != detail::none_type;
+        }
+
         size_t max_size() const
         {
             return is_packed()
