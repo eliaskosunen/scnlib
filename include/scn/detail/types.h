@@ -23,10 +23,7 @@
 #include <algorithm>
 #include <vector>
 
-#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif
+SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
 namespace scn {
     template <typename Stream,
@@ -207,9 +204,6 @@ namespace scn {
     }
 }  // namespace scn
 
-#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
-// -Wundefined-func-template
-#pragma clang diagnostic pop
-#endif
+SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
 #endif  // SCN_DETAIL_TYPES_H

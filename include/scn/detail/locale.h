@@ -162,8 +162,9 @@ namespace scn {
         };
     }  // namespace detail
 
+    SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+
     SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wundefined-func-template")
     SCN_CLANG_IGNORE("-Wpadded")
 
     template <typename CharT>
@@ -261,6 +262,7 @@ namespace scn {
     };
 
     SCN_CLANG_POP
+    SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 }  // namespace scn
 
 #if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_LOCALE_CPP)

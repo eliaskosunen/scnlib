@@ -33,8 +33,7 @@ namespace scn {
     error skip_stream_whitespace(Context& ctx) noexcept
     {
         while (true) {
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wundefined-func-template")
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
             auto ch = ctx.stream().read_char();
             if (!ch) {
@@ -48,7 +47,7 @@ namespace scn {
                 break;
             }
 
-            SCN_CLANG_POP
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
         }
         return {};
     }

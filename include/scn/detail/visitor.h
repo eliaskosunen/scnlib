@@ -619,10 +619,9 @@ namespace scn {
                 };
 
                 if ((localized & digits) != 0) {
-                    SCN_CLANG_PUSH
-                    SCN_CLANG_IGNORE("-Wundefined-func-template")
+                    SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                     auto ret = ctx.locale().read_num(tmp, buf);
-                    SCN_CLANG_POP
+                    SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
                     if (!ret) {
                         return ret.get_error();
@@ -794,10 +793,9 @@ namespace scn {
                 };
 
                 if (localized) {
-                    SCN_CLANG_PUSH
-                    SCN_CLANG_IGNORE("-Wundefined-func-template")
+                    SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                     auto ret = ctx.locale().read_num(tmp, buf);
-                    SCN_CLANG_POP
+                    SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
                     if (!ret) {
                         return ret.get_error();

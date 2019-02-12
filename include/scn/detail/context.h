@@ -65,10 +65,7 @@ namespace scn {
             }
 
         protected:
-#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
             context_base(stream_type& s,
                          basic_string_view<char_type> f,
                          basic_args<Context> args,
@@ -79,9 +76,7 @@ namespace scn {
                   m_locale(std::move(l))
             {
             }
-#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
-#pragma clang diagnostic pop
-#endif
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
             using arg_type = basic_arg<Context>;
 

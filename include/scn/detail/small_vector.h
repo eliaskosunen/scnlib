@@ -33,7 +33,7 @@ namespace scn {
         }
 
         struct small_vector_base {
-            size_t next_pow2(size_t x)
+            uint64_t next_pow2(uint64_t x)
             {
                 --x;
                 x |= (x >> 1);
@@ -42,6 +42,16 @@ namespace scn {
                 x |= (x >> 8);
                 x |= (x >> 16);
                 x |= (x >> 32);
+                return x + 1;
+            }
+            uint32_t next_pow2(uint32_t x)
+            {
+                --x;
+                x |= (x >> 1);
+                x |= (x >> 2);
+                x |= (x >> 4);
+                x |= (x >> 8);
+                x |= (x >> 16);
                 return x + 1;
             }
 
