@@ -80,6 +80,8 @@ function (get_warning_flags flags)
             >
         $<$<CXX_COMPILER_ID:MSVC>:
             /W4
+            /D_SCN_SECURE_NO_WARNINGS
+            /D_CRT_SECURE_NO_WARNINGS
             /std:c++latest /permissive->
 
             PARENT_SCOPE)

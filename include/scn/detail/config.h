@@ -98,8 +98,8 @@
 #endif
 
 #if SCN_MSVC
-#define SCN_MSVC_PUSH __pragma("warning(push)")
-#define SCN_MSVC_POP __pragma("warning(pop)")
+#define SCN_MSVC_PUSH __pragma(warning(push))
+#define SCN_MSVC_POP __pragma(warning(pop))
 
 #define SCN_MSVC_IGNORE(x) __pragma(warning(disable : x))
 #else

@@ -33,14 +33,13 @@ namespace scn {
     error skip_stream_whitespace(Context& ctx) noexcept
     {
         while (true) {
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wundefined-func-template")
+
             auto ch = ctx.stream().read_char();
             if (!ch) {
                 return ch.get_error();
             }
-#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wundefined-func-template"
-#endif
             if (!ctx.locale().is_space(ch.value())) {
                 auto pb = ctx.stream().putback(ch.value());
                 if (!pb) {
@@ -48,9 +47,8 @@ namespace scn {
                 }
                 break;
             }
-#if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
-#pragma clang diagnostic pop
-#endif
+
+            SCN_CLANG_POP
         }
         return {};
     }

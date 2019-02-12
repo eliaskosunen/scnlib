@@ -88,6 +88,9 @@ BENCHMARK_TEMPLATE(scanint_sstream, int)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanint_sstream, long long)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanint_sstream, unsigned)->Arg(2 << 15);
 
+SCN_MSVC_PUSH
+SCN_MSVC_IGNORE(4996)
+
 namespace detail {
     static int scanf_integral(char*& ptr, int& i)
     {
@@ -114,6 +117,8 @@ namespace detail {
         return ret;
     }
 }  // namespace detail
+
+SCN_MSVC_POP
 
 template <typename Int>
 static void scanint_scanf(benchmark::State& state)
