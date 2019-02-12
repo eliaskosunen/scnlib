@@ -23,6 +23,7 @@
 #include <iterator>
 #include <limits>
 #include <new>
+#include <type_traits>
 
 namespace scn {
     namespace detail {
@@ -101,6 +102,39 @@ namespace scn {
             }
         };
 
+        template <typename T>
+        using basic_stack_storage_type =
+            typename std::aligned_storage<sizeof(T), alignof(T)>::type;
+
+        template <typename T, size_t N>
+        struct basic_stack_storage {
+            basic_stack_storage_type<T> data[N];
+            size_t size{0};
+
+            T* get_data()
+            {
+                return reinterpret_cast<T*>(data);
+            }
+            const T* get_data() const
+            {
+                return reinterpret_cast<const T*>(data);
+            }
+        };
+        template <typename T>
+        struct basic_stack_storage<T, 0> {
+            basic_stack_storage_type<T>* data{nullptr};
+            size_t size{0};
+
+            T* get_data()
+            {
+                return nullptr;
+            }
+            const T* get_data() const
+            {
+                return nullptr;
+            }
+        };
+
         template <typename T, size_t StackN>
         class small_vector : protected small_vector_base {
         public:
@@ -116,21 +150,9 @@ namespace scn {
             using reverse_iterator = std::reverse_iterator<pointer>;
             using const_reverse_iterator = std::reverse_iterator<const_pointer>;
 
-            using stack_storage_type =
-                typename std::aligned_storage<sizeof(T), alignof(T)>::type;
+            using stack_storage_type = basic_stack_storage_type<T>;
 
-            struct stack_storage {
-                stack_storage_type data[StackN];
-                size_type size{0};
-
-                pointer get_data()
-                {
-                    return reinterpret_cast<pointer>(data);
-                }
-                const_pointer get_data() const
-                {
-                    return reinterpret_cast<const_pointer>(data);
-                }
+            struct stack_storage : basic_stack_storage<T, StackN> {
             };
             struct heap_storage {
                 pointer ptr{nullptr};
