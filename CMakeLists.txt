@@ -97,6 +97,18 @@ function (get_werror_flags flags)
 
             PARENT_SCOPE)
 endfunction ()
+function (get_suppress_warnings_flags flags)
+    set(${flags}
+        $<$<CXX_COMPILER_ID:Clang>:
+            -w>
+        $<$<CXX_COMPILER_ID:GNU>:
+            -w>
+        $<$<CXX_COMPILER_ID:MSVC>:
+            /w
+
+            PARENT_SCOPE)
+
+endfunction ()
 
 function (set_interface_flags target)
     if (SCN_PEDANTIC)

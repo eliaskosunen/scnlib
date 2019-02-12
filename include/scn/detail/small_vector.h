@@ -199,12 +199,17 @@ namespace scn {
 
             small_vector() noexcept
             {
+                SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4127)  // conditional expression is constant
+
                 if (StackN != 0) {
                     _construct_stack_storage();
                 }
                 else {
                     _construct_heap_storage();
                 }
+
+                SCN_MSVC_POP
             }
 
             explicit small_vector(size_type count, const T& value)
@@ -257,7 +262,7 @@ namespace scn {
                     return;
                 }
 
-                auto size = other.size();
+                auto s = other.size();
                 if (!other.is_small()) {
                     _construct_heap_storage();
                     auto cap = other.capacity();
@@ -265,7 +270,7 @@ namespace scn {
 
                     auto storage_ptr = new stack_storage_type[cap];
                     auto ptr = reinterpret_cast<pointer>(storage_ptr);
-                    this->uninitialized_copy(optr, optr + size, ptr);
+                    this->uninitialized_copy(optr, optr + s, ptr);
 
                     _get_heap().ptr = ptr;
                     _get_heap().cap = cap;
@@ -273,10 +278,10 @@ namespace scn {
                 else {
                     _construct_stack_storage();
                     auto optr = other.data();
-                    this->uninitialized_copy(optr, optr + size,
+                    this->uninitialized_copy(optr, optr + s,
                                              _get_stack().get_data());
                 }
-                _set_size(size);
+                _set_size(s);
             }
             small_vector(small_vector&& other) noexcept
             {
@@ -285,7 +290,7 @@ namespace scn {
                     return;
                 }
 
-                auto size = other.size();
+                auto s = other.size();
                 if (other.m_heap) {
                     _construct_heap_storage();
                     _get_heap().ptr = other.data();
@@ -298,14 +303,13 @@ namespace scn {
                 else {
                     _construct_stack_storage();
                     auto optr = other.data();
-                    this->uninitialized_move(optr, optr + size,
+                    this->uninitialized_move(optr, optr + s,
                                              _get_stack().get_data());
-                    _get_stack().size = size;
 
                     other._destruct_elements();
                     other._get_stack().size = 0;
                 }
-                _set_size(size);
+                _set_size(s);
             }
 
             small_vector& operator=(const small_vector& other)

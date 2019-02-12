@@ -124,38 +124,38 @@ namespace scn {
         struct locale_defaults;
         template <>
         struct locale_defaults<char> {
-            static string_view truename()
+            static SCN_CONSTEXPR string_view truename()
             {
                 return {"true"};
             }
-            static string_view falsename()
+            static SCN_CONSTEXPR string_view falsename()
             {
                 return {"false"};
             }
-            static char decimal_point()
+            static SCN_CONSTEXPR char decimal_point() noexcept
             {
                 return '.';
             }
-            static char thousands_separator()
+            static SCN_CONSTEXPR char thousands_separator() noexcept
             {
                 return ',';
             }
         };
         template <>
         struct locale_defaults<wchar_t> {
-            static wstring_view truename()
+            static SCN_CONSTEXPR wstring_view truename()
             {
                 return {L"true"};
             }
-            static wstring_view falsename()
+            static SCN_CONSTEXPR wstring_view falsename()
             {
                 return {L"false"};
             }
-            static wchar_t decimal_point()
+            static SCN_CONSTEXPR wchar_t decimal_point() noexcept
             {
                 return L'.';
             }
-            static wchar_t thousands_separator()
+            static SCN_CONSTEXPR wchar_t thousands_separator() noexcept
             {
                 return L',';
             }

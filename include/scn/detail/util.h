@@ -102,12 +102,13 @@ namespace scn {
             using element_type = T;
             using pointer = T*;
 
-            unique_ptr() = default;
-            unique_ptr(std::nullptr_t) {}
+            SCN_CONSTEXPR unique_ptr() noexcept = default;
+            SCN_CONSTEXPR unique_ptr(std::nullptr_t) noexcept {}
 
-            explicit unique_ptr(pointer p) : m_ptr(p) {}
+            SCN_CONSTEXPR explicit unique_ptr(pointer p) : m_ptr(p) {}
 
-            unique_ptr(unique_ptr&& p) noexcept : m_ptr(std::move(p.m_ptr))
+            SCN_CONSTEXPR14 unique_ptr(unique_ptr&& p) noexcept
+                : m_ptr(std::move(p.m_ptr))
             {
                 p.m_ptr = nullptr;
             }
@@ -127,21 +128,22 @@ namespace scn {
                 }
             }
 
-            explicit operator bool() const noexcept
+            SCN_CONSTEXPR explicit operator bool() const noexcept
             {
                 return get() != nullptr;
             }
 
-            pointer get() const noexcept
+            SCN_CONSTEXPR pointer get() const noexcept
             {
                 return m_ptr;
             }
 
-            pointer operator->() const noexcept
+            SCN_CONSTEXPR pointer operator->() const noexcept
             {
                 return m_ptr;
             }
-            typename std::add_lvalue_reference<T>::type operator*() const
+            SCN_CONSTEXPR typename std::add_lvalue_reference<T>::type
+            operator*() const
             {
                 return *m_ptr;
             }

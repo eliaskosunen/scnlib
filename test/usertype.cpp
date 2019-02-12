@@ -19,7 +19,7 @@
 #include <scn/scn.h>
 
 struct user_type {
-    int val1, val2;
+    int val1{}, val2{};
 };
 
 namespace scn {

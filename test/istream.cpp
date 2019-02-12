@@ -36,7 +36,7 @@ TEST_CASE("istream stream")
 }
 
 struct my_type {
-    int value;
+    int value{};
 
     friend std::istream& operator>>(std::istream& is, my_type& val)
     {

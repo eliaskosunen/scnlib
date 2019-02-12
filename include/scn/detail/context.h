@@ -168,9 +168,16 @@ namespace scn {
             template <typename Context>
             basic_arg<Context> deserialize()
             {
+#if SCN_GCC >= SCN_COMPILER(8, 0, 0)
+                SCN_GCC_PUSH
+                SCN_GCC_IGNORE("-Wclass-memaccess")
+#endif
                 basic_arg<Context> arg;
                 std::memcpy(&arg, &data, sizeof(arg_type));
                 return arg;
+#if SCN_GCC >= SCN_COMPILER(8, 0, 0)
+                SCN_GCC_POP
+#endif
             }
 
             basic_string_view<CharT> name;
