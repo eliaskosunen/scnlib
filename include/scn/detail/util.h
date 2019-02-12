@@ -19,6 +19,7 @@
 #define SCN_DETAIL_UTIL_H
 
 #include "config.h"
+#include "small_vector.h"
 
 #include <iterator>
 #include <limits>

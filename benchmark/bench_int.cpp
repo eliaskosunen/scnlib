@@ -34,6 +34,9 @@ static void scanint_scn(benchmark::State& state)
         auto e = scn::scan(stream, "{}", i);
 
         benchmark::DoNotOptimize(i);
+        benchmark::DoNotOptimize(e);
+        benchmark::DoNotOptimize(stream);
+        benchmark::ClobberMemory();
         if (!e) {
             if (e == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -62,9 +65,10 @@ static void scanint_sstream(benchmark::State& state)
     auto stream = std::istringstream(data);
     Int i{};
     for (auto _ : state) {
-        stream >> i;
+        benchmark::DoNotOptimize(stream >> i);
 
         benchmark::DoNotOptimize(i);
+        benchmark::ClobberMemory();
         if (stream.eof()) {
             state.PauseTiming();
             data = generate_int_data<Int>(static_cast<size_t>(state.range(0)));
@@ -137,9 +141,9 @@ static void scanint_scanf(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-//BENCHMARK_TEMPLATE(scanint_scanf, int)->Arg(2 << 15);
-//BENCHMARK_TEMPLATE(scanint_scanf, long long)->Arg(2 << 15);
-//BENCHMARK_TEMPLATE(scanint_scanf, unsigned)->Arg(2 << 15);
+// BENCHMARK_TEMPLATE(scanint_scanf, int)->Arg(2 << 15);
+// BENCHMARK_TEMPLATE(scanint_scanf, long long)->Arg(2 << 15);
+// BENCHMARK_TEMPLATE(scanint_scanf, unsigned)->Arg(2 << 15);
 
 #if SCN_CLANG
 #pragma clang diagnostic pop

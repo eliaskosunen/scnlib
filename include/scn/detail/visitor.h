@@ -285,8 +285,7 @@ namespace scn {
                     return {};
                 }
 
-                std::basic_string<CharT> buf(static_cast<size_t>(val.size()),
-                                             0);
+                detail::small_vector<CharT, 64> buf(static_cast<size_t>(val.size()));
                 auto span = scn::make_span(buf);
                 auto s = propagate_chars_until(ctx, span);
                 if (!s) {

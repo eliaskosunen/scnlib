@@ -52,7 +52,10 @@ static void scanchar_scn(benchmark::State& state)
     for (auto _ : state) {
         auto e = scn::scan(stream, default_format_str<Char>(), c);
 
+        benchmark::DoNotOptimize(e);
         benchmark::DoNotOptimize(c);
+        benchmark::DoNotOptimize(stream);
+        benchmark::ClobberMemory();
         if (!e) {
             if (e == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -81,9 +84,9 @@ static void scanchar_sstream(benchmark::State& state)
     Char c{};
 
     for (auto _ : state) {
-        stream >> c;
+        benchmark::DoNotOptimize(stream >> c);
 
-        benchmark::DoNotOptimize(c);
+        benchmark::ClobberMemory();
         if (stream.eof()) {
             state.PauseTiming();
             data = generate_data<Char>(static_cast<size_t>(state.range(0)));
@@ -101,6 +104,33 @@ static void scanchar_sstream(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scanchar_sstream, char)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanchar_sstream, wchar_t)->Arg(2 << 15);
+
+template <typename Char>
+static void scanchar_control(benchmark::State& state)
+{
+    using string_type = std::basic_string<Char>;
+    string_type data = generate_data<Char>(static_cast<size_t>(state.range(0)));
+    auto it = data.begin();
+    Char c{};
+
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(c = *it);
+        benchmark::DoNotOptimize(++it);
+
+        benchmark::ClobberMemory();
+        if (it == data.end()) {
+            state.PauseTiming();
+            data = generate_data<Char>(static_cast<size_t>(state.range(0)));
+            it = data.begin();
+            state.ResumeTiming();
+            continue;
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Char)));
+}
+BENCHMARK_TEMPLATE(scanchar_control, char)->Arg(2 << 15);
+BENCHMARK_TEMPLATE(scanchar_control, wchar_t)->Arg(2 << 15);
 
 #if SCN_CLANG
 #pragma clang diagnostic pop

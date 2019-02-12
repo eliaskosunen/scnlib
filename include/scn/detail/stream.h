@@ -366,8 +366,7 @@ namespace scn {
 
     private:
         Iterator m_begin, m_end;
-        // string for SSO
-        std::basic_string<char_type> m_rollback;
+        detail::small_vector<char_type, 32> m_rollback;
     };
 
     template <typename Char>

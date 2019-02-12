@@ -1,0 +1,563 @@
+// Copyright 2017-2019 Elias Kosunen
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// This file is a part of scnlib:
+//     https://github.com/eliaskosunen/scnlib
+
+#ifndef SCN_DETAIL_SMALL_VECTOR_H
+#define SCN_DETAIL_SMALL_VECTOR_H
+
+#include "config.h"
+
+#include <iterator>
+#include <new>
+
+namespace scn {
+    namespace detail {
+        struct small_vector_base {
+            size_t next_pow2(size_t x)
+            {
+                --x;
+                x |= (x >> 1);
+                x |= (x >> 2);
+                x |= (x >> 4);
+                x |= (x >> 8);
+                x |= (x >> 16);
+                x |= (x >> 32);
+                return x + 1;
+            }
+
+            template <typename ForwardIt, typename T>
+            static void uninitialized_fill(ForwardIt first,
+                                           ForwardIt last,
+                                           const T& value)
+            {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = first;
+                try {
+                    for (; current != last; ++current) {
+                        ::new (static_cast<void*>(std::addressof(*current)))
+                            value_type(value);
+                    }
+                }
+                catch (...) {
+                    for (; first != current; ++first) {
+                        first->~value_type();
+                    }
+                    throw;
+                }
+            }
+            template <typename T, typename ForwardIt>
+            static void uninitialized_fill_default_construct(ForwardIt first,
+                                                             ForwardIt last)
+            {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = first;
+                try {
+                    for (; current != last; ++current) {
+                        ::new (static_cast<void*>(std::addressof(*current)))
+                            value_type();
+                    }
+                }
+                catch (...) {
+                    for (; first != current; ++first) {
+                        first->~value_type();
+                    }
+                    throw;
+                }
+            }
+            template <typename InputIt, typename ForwardIt>
+            static ForwardIt uninitialized_copy(InputIt first,
+                                                InputIt last,
+                                                ForwardIt d_first)
+            {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = d_first;
+                try {
+                    for (; first != last; ++first, (void)++current) {
+                        ::new (static_cast<void*>(std::addressof(*current)))
+                            value_type(*first);
+                    }
+                    return current;
+                }
+                catch (...) {
+                    for (; d_first != current; ++d_first) {
+                        d_first->~value_type();
+                    }
+                    throw;
+                }
+            }
+            template <typename InputIt, typename ForwardIt>
+            static ForwardIt uninitialized_move(InputIt first,
+                                                InputIt last,
+                                                ForwardIt d_first)
+            {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = d_first;
+                try {
+                    for (; first != last; ++first, (void)++current) {
+                        ::new (static_cast<void*>(std::addressof(*current)))
+                            value_type(std::move(*first));
+                    }
+                    return current;
+                }
+                catch (...) {
+                    for (; d_first != current; ++d_first) {
+                        d_first->~value_type();
+                    }
+                    throw;
+                }
+            }
+        };
+
+        template <typename T, size_t StackN>
+        class small_vector : protected small_vector_base {
+        public:
+            using value_type = T;
+            using size_type = size_t;
+            using difference_type = std::ptrdiff_t;
+            using reference = T&;
+            using const_reference = const T&;
+            using pointer = T*;
+            using const_pointer = const T*;
+            using iterator = pointer;
+            using const_iterator = const_pointer;
+            using reverse_iterator = std::reverse_iterator<pointer>;
+            using const_reverse_iterator = std::reverse_iterator<const_pointer>;
+
+            using stack_storage_type =
+                typename std::aligned_storage<sizeof(T), alignof(T)>::type;
+
+            struct stack_storage {
+                stack_storage_type data[StackN];
+                size_type size{0};
+
+                pointer get_data()
+                {
+                    return reinterpret_cast<pointer>(data);
+                }
+                const_pointer get_data() const
+                {
+                    return reinterpret_cast<const_pointer>(data);
+                }
+            };
+            struct heap_storage {
+                pointer ptr{nullptr};
+                size_type size{0};
+                size_type cap{0};
+            };
+
+            using storage_type = typename std::
+                aligned_union<0, stack_storage, heap_storage>::type;
+
+            small_vector() noexcept
+            {
+                if (StackN != 0) {
+                    _construct_stack_storage();
+                }
+                else {
+                    _construct_heap_storage();
+                }
+            }
+
+            explicit small_vector(size_type count, const T& value)
+            {
+                if (!can_be_small(count)) {
+                    _construct_heap_storage();
+                    auto cap = next_pow2(count);
+                    auto storage_ptr = new stack_storage_type[count];
+                    auto ptr = reinterpret_cast<pointer>(storage_ptr);
+                    this->uninitialized_fill(ptr, ptr + count, value);
+
+                    _get_heap().ptr = ptr;
+                    _get_heap().cap = cap;
+                }
+                else {
+                    _construct_stack_storage();
+                    this->uninitialized_fill(_get_stack().get_data(),
+                                             _get_stack().get_data() + StackN,
+                                             value);
+                }
+                _set_size(count);
+            }
+
+            explicit small_vector(size_type count)
+            {
+                if (!can_be_small(count)) {
+                    _construct_heap_storage();
+                    auto cap = next_pow2(count);
+                    auto storage_ptr = new stack_storage_type[count];
+                    auto ptr = reinterpret_cast<pointer>(storage_ptr);
+                    this->uninitialized_fill_default_construct<T>(ptr,
+                                                                  ptr + count);
+
+                    _get_heap().ptr = ptr;
+                    _get_heap().cap = cap;
+                }
+                else {
+                    _construct_stack_storage();
+                    this->uninitialized_fill_default_construct<T>(
+                        _get_stack().get_data(),
+                        _get_stack().get_data() + count);
+                }
+                _set_size(count);
+            }
+
+            small_vector(const small_vector& other)
+            {
+                if (other.empty()) {
+                    _construct_stack_storage();
+                    return;
+                }
+
+                auto size = other.size();
+                if (!other.is_small()) {
+                    _construct_heap_storage();
+                    auto cap = other.capacity();
+                    auto optr = other.data();
+
+                    auto storage_ptr = new stack_storage_type[cap];
+                    auto ptr = reinterpret_cast<pointer>(storage_ptr);
+                    this->uninitialized_copy(optr, optr + size, ptr);
+
+                    _get_heap().ptr = ptr;
+                    _get_heap().cap = cap;
+                }
+                else {
+                    _construct_stack_storage();
+                    auto optr = other.data();
+                    this->uninitialized_copy(optr, optr + size,
+                                             _get_stack().get_data());
+                }
+                _set_size(size);
+            }
+            small_vector(small_vector&& other) noexcept
+            {
+                if (other.empty()) {
+                    _construct_stack_storage();
+                    return;
+                }
+
+                auto size = other.size();
+                if (other.m_heap) {
+                    _construct_heap_storage();
+                    _get_heap().ptr = other.data();
+                    _get_heap().cap = other.capacity();
+
+                    other._get_heap().ptr = nullptr;
+                    other._get_heap().size = 0;
+                    other._get_heap().cap = 0;
+                }
+                else {
+                    _construct_stack_storage();
+                    auto optr = other.data();
+                    this->uninitialized_move(optr, optr + size,
+                                             _get_stack().get_data());
+                    _get_stack().size = size;
+
+                    other._destruct_elements();
+                    other._get_stack().size = 0;
+                }
+                _set_size(size);
+            }
+
+            small_vector& operator=(const small_vector& other)
+            {
+                _destruct_elements();
+
+                if (other.empty()) {
+                    return *this;
+                }
+
+                // this other
+                // s s      false || true
+                // s h      false || false second
+                // h s      true || true
+                // h h      true || false
+                if (!is_small() || other.is_small()) {
+                    this->uninitialized_copy(
+                        other.data(), other.data() + other.size(), data());
+                }
+                else {
+                    _destruct_stack_storage();
+                    _construct_heap_storage();
+
+                    auto cap = next_pow2(other.size());
+                    auto storage_ptr = new stack_storage_type[cap];
+                    auto ptr = reinterpret_cast<pointer>(storage_ptr);
+                    this->uninitialized_copy(other.data(),
+                                             other.data() + other.size(), ptr);
+                    _get_heap().ptr = ptr;
+                }
+                _set_size(other.size());
+                return *this;
+            }
+
+            small_vector& operator=(small_vector&& other) noexcept
+            {
+                _destruct_elements();
+
+                if (other.empty()) {
+                    return *this;
+                }
+
+                if (!is_small() && !other.is_small()) {
+                    if (!is_small()) {
+                        if (capacity() != 0) {
+                            delete[] reinterpret_cast<stack_storage_type*>(
+                                _get_heap().ptr);
+                        }
+                    }
+
+                    _get_heap().ptr = other.data();
+                    _get_heap().cap = other.capacity();
+                    _get_heap().size = other.size();
+                }
+                else if (!is_small() || other.is_small()) {
+                    this->uninitialized_move(
+                        other.data(), other.data() + other.size(), data());
+                    _set_size(other.size());
+                    other._destruct_elements();
+                }
+                else {
+                    _destruct_stack_storage();
+                    _construct_heap_storage();
+
+                    _get_heap().ptr = other.data();
+                    _get_heap().cap = other.capacity();
+                    _get_heap().size = other.size();
+                }
+
+                other._set_size(0);
+                if (!other.is_small()) {
+                    other._get_heap().ptr = nullptr;
+                    other._get_heap().cap = 0;
+                    other._destruct_heap_storage();
+                    other._construct_stack_storage();
+                }
+
+                return *this;
+            }
+
+            ~small_vector()
+            {
+                _destruct();
+            }
+
+            pointer data() noexcept
+            {
+                if (is_small()) {
+                    return _get_stack().get_data();
+                }
+                return _get_heap().ptr;
+            }
+            const_pointer data() const noexcept
+            {
+                if (is_small()) {
+                    return _get_stack().get_data();
+                }
+                return _get_heap().ptr;
+            }
+            size_type size() const noexcept
+            {
+                if (is_small()) {
+                    return _get_stack().size;
+                }
+                return _get_heap().size;
+            }
+            size_type capacity() const noexcept
+            {
+                if (is_small()) {
+                    return StackN;
+                }
+                return _get_heap().cap;
+            }
+
+            bool empty() const noexcept
+            {
+                return size() == 0;
+            }
+
+            SCN_CONSTEXPR bool is_small() const noexcept
+            {
+                return !m_heap;
+            }
+            SCN_CONSTEXPR static bool can_be_small(size_type n) noexcept
+            {
+                return n <= StackN;
+            }
+
+            reference operator[](size_type pos)
+            {
+                return *(begin() + pos);
+            }
+            const_reference operator[](size_type pos) const
+            {
+                return *(begin() + pos);
+            }
+
+            reference front()
+            {
+                return *begin();
+            }
+            const_reference front() const
+            {
+                return *begin();
+            }
+
+            reference back()
+            {
+                return *(end() - 1);
+            }
+            const_reference back() const
+            {
+                return *(end() - 1);
+            }
+
+            iterator begin() noexcept
+            {
+                if (is_small()) {
+                    return _get_stack().get_data();
+                }
+                return _get_heap().ptr;
+            }
+            const_iterator begin() const noexcept
+            {
+                if (is_small()) {
+                    return _get_stack().get_data();
+                }
+                return _get_heap().ptr;
+            }
+            const_iterator cbegin() const noexcept
+            {
+                return begin();
+            }
+
+            iterator end() noexcept
+            {
+                if (is_small()) {
+                    return _get_stack().get_data() + size();
+                }
+                return _get_heap().ptr + size();
+            }
+            const_iterator end() const noexcept
+            {
+                if (is_small()) {
+                    return _get_stack().get_data() + size();
+                }
+                return _get_heap().ptr + size();
+            }
+            const_iterator cend() const noexcept
+            {
+                return end();
+            }
+
+        private:
+            void _construct_stack_storage() noexcept
+            {
+                ::new (static_cast<void*>(std::addressof(m_storage)))
+                    stack_storage();
+                m_heap = false;
+            }
+            void _construct_heap_storage() noexcept
+            {
+                ::new (static_cast<void*>(std::addressof(m_storage)))
+                    heap_storage();
+                m_heap = true;
+            }
+
+            void _destruct_stack_storage() noexcept
+            {
+                _get_stack().~stack_storage();
+            }
+            void _destruct_heap_storage() noexcept
+            {
+                if (capacity() != 0) {
+                    delete[] reinterpret_cast<stack_storage_type*>(
+                        _get_heap().ptr);
+                }
+                _get_heap().~heap_storage();
+            }
+
+            void _destruct_elements() noexcept
+            {
+                if (m_heap) {
+                    for (size_type i = 0; i != _get_heap().size; ++i) {
+                        _get_heap().ptr[i].~T();
+                    }
+                }
+                else {
+                    for (size_type i = 0; i != _get_stack().size; ++i) {
+                        reinterpret_cast<pointer>(
+                            std::addressof(_get_stack().data[i]))
+                            ->~T();
+                    }
+                }
+                _set_size(0);
+            }
+
+            void _destruct() noexcept
+            {
+                _destruct_elements();
+                if (m_heap) {
+                    _destruct_heap_storage();
+                }
+                else {
+                    _destruct_stack_storage();
+                }
+            }
+
+            void _set_size(size_t n) noexcept
+            {
+                if (is_small()) {
+                    _get_stack().size = n;
+                }
+                else {
+                    _get_heap().size = n;
+                }
+            }
+
+            stack_storage& _get_stack() noexcept
+            {
+                return *reinterpret_cast<stack_storage*>(
+                    std::addressof(m_storage));
+            }
+            const stack_storage& _get_stack() const noexcept
+            {
+                return *reinterpret_cast<const stack_storage*>(
+                    std::addressof(m_storage));
+            }
+
+            heap_storage& _get_heap() noexcept
+            {
+                return *reinterpret_cast<heap_storage*>(
+                    std::addressof(m_storage));
+            }
+            const heap_storage& _get_heap() const noexcept
+            {
+                return *reinterpret_cast<const heap_storage*>(
+                    std::addressof(m_storage));
+            }
+
+            storage_type m_storage;
+            bool m_heap{false};
+        };
+    }  // namespace detail
+}  // namespace scn
+
+#endif  // SCN_DETAIL_SMALL_VECTOR_H

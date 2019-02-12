@@ -37,6 +37,9 @@ static void scanbuffer_scn(benchmark::State& state)
 
         benchmark::DoNotOptimize(span);
         benchmark::DoNotOptimize(buf);
+        benchmark::DoNotOptimize(e);
+        benchmark::DoNotOptimize(stream);
+        benchmark::ClobberMemory();
         if (!e) {
             if (e == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -51,7 +54,7 @@ static void scanbuffer_scn(benchmark::State& state)
         }
     }
 }
-//BENCHMARK(scanbuffer_scn)->Arg(256)->Arg(1024)->Arg(4096);
+// BENCHMARK(scanbuffer_scn)->Arg(256)->Arg(1024)->Arg(4096);
 
 static void scanbuffer_sstream(benchmark::State& state)
 {
@@ -61,9 +64,10 @@ static void scanbuffer_sstream(benchmark::State& state)
     std::vector<char> buf(size);
 
     for (auto _ : state) {
-        stream.read(buf.data(), static_cast<std::streamsize>(size));
+        benchmark::DoNotOptimize(
+            stream.read(buf.data(), static_cast<std::streamsize>(size)));
 
-        benchmark::DoNotOptimize(buf);
+        benchmark::ClobberMemory();
         if (stream.eof()) {
             state.PauseTiming();
             data = generate_data<char>(size * 16);
@@ -77,7 +81,33 @@ static void scanbuffer_sstream(benchmark::State& state)
         }
     }
 }
-//BENCHMARK(scanbuffer_sstream)->Arg(256)->Arg(1024)->Arg(4096);
+// BENCHMARK(scanbuffer_sstream)->Arg(256)->Arg(1024)->Arg(4096);
+
+static void scanbuffer_control(benchmark::State& state)
+{
+    auto size = static_cast<size_t>(state.range(0));
+    auto data = generate_buffer(size * 16);
+    auto it = data.begin();
+    std::vector<char> buf(size);
+
+    for (auto _ : state) {
+        std::copy_n(it, size, buf.begin());
+        it += static_cast<std::ptrdiff_t>(size);
+
+        benchmark::DoNotOptimize(it);
+        benchmark::DoNotOptimize(data);
+        benchmark::DoNotOptimize(buf);
+        benchmark::ClobberMemory();
+        if (it >= data.end() - static_cast<std::ptrdiff_t>(size)) {
+            state.PauseTiming();
+            data = generate_data<char>(size * 16);
+            it = data.begin();
+            state.ResumeTiming();
+            continue;
+        }
+    }
+}
+// BENCHMARK(scanbuffer_control)->Arg(256)->Arg(1024)->Arg(4096);
 
 #if SCN_CLANG
 #pragma clang diagnostic pop
