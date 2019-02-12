@@ -149,9 +149,10 @@ namespace scn {
         struct aligned_union {
             static SCN_CONSTEXPR const size_t alignment_value =
                 constexpr_max(alignof(Types)...);
+            static SCN_CONSTEXPR const size_t size_value =
+                constexpr_max(sizeof(Types)...);
             struct type {
-                alignas(alignment_value) unsigned char _s[constexpr_max(
-                    sizeof(Types)...)];
+                alignas(alignment_value) unsigned char _s[size_value];
             };
         };
 

@@ -114,7 +114,8 @@ namespace scn {
     error input(string_view f, Args&... a)
     {
         auto& stream = stdin_stream<char>();
-        using stream_type = std::remove_reference<decltype(stream)>::type;
+        using stream_type =
+            typename std::remove_reference<decltype(stream)>::type;
         using context_type = basic_context<stream_type>;
 
         auto args = make_args<context_type>(a...);
@@ -129,7 +130,8 @@ namespace scn {
     error winput(wstring_view f, Args&... a)
     {
         auto& stream = stdin_stream<wchar_t>();
-        using stream_type = std::remove_reference<decltype(stream)>::type;
+        using stream_type =
+            typename std::remove_reference<decltype(stream)>::type;
         using context_type = basic_context<stream_type>;
 
         auto args = make_args<context_type>(a...);
@@ -143,7 +145,8 @@ namespace scn {
         std::printf("%s", p);
 
         auto& stream = stdin_stream<char>();
-        using stream_type = std::remove_reference<decltype(stream)>::type;
+        using stream_type =
+            typename std::remove_reference<decltype(stream)>::type;
         using context_type = basic_context<stream_type>;
 
         auto args = make_args<context_type>(a...);
@@ -156,7 +159,8 @@ namespace scn {
         std::wprintf(L"%ls", p);
 
         auto& stream = stdin_stream<wchar_t>();
-        using stream_type = std::remove_reference<decltype(stream)>::type;
+        using stream_type =
+            typename std::remove_reference<decltype(stream)>::type;
         using context_type = basic_context<stream_type>;
 
         auto args = make_args<context_type>(a...);
