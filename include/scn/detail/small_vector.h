@@ -23,7 +23,6 @@
 #include <iterator>
 #include <limits>
 #include <new>
-#include <type_traits>
 
 namespace scn {
     namespace detail {
@@ -135,6 +134,27 @@ namespace scn {
             }
         };
 
+        template <typename T>
+        SCN_CONSTEXPR T constexpr_max(T val)
+        {
+            return val;
+        }
+        template <typename T, typename... Ts>
+        SCN_CONSTEXPR T constexpr_max(T val, Ts... a)
+        {
+            return val > constexpr_max(a...) ? val : constexpr_max(a...);
+        }
+
+        template <typename... Types>
+        struct aligned_union {
+            static SCN_CONSTEXPR const size_t alignment_value =
+                constexpr_max(alignof(Types)...);
+            struct type {
+                alignas(alignment_value) unsigned char _s[constexpr_max(
+                    sizeof(Types)...)];
+            };
+        };
+
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wpadded")
 
@@ -163,8 +183,8 @@ namespace scn {
                 size_type cap{0};
             };
 
-            using storage_type = typename std::
-                aligned_union<0, stack_storage, heap_storage>::type;
+            using storage_type =
+                typename aligned_union<stack_storage, heap_storage>::type;
 
             small_vector() noexcept
             {
