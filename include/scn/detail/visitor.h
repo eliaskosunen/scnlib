@@ -285,7 +285,8 @@ namespace scn {
                     return {};
                 }
 
-                detail::small_vector<CharT, 64> buf(static_cast<size_t>(val.size()));
+                detail::small_vector<CharT, 64> buf(
+                    static_cast<size_t>(val.size()));
                 auto span = scn::make_span(buf);
                 auto s = propagate_chars_until(ctx, span);
                 if (!s) {
@@ -502,6 +503,9 @@ namespace scn {
             }
         };
 
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wpadded")
+
         template <typename CharT, typename T>
         struct integer_scanner {
             template <typename Context>
@@ -615,7 +619,11 @@ namespace scn {
                 };
 
                 if ((localized & digits) != 0) {
+                    SCN_CLANG_PUSH
+                    SCN_CLANG_IGNORE("-Wundefined-func-template")
                     auto ret = ctx.locale().read_num(tmp, buf);
+                    SCN_CLANG_POP
+
                     if (!ret) {
                         return ret.get_error();
                     }
@@ -646,11 +654,10 @@ namespace scn {
                 val = tmp;
 #else
                 try {
-#if SCN_MSVC
-#pragma warning(push)
-#pragma warning(disable : 4244)
-#pragma warning(disable : 4127)  // conditional expression is constant
-#endif
+                    SCN_MSVC_PUSH
+                    SCN_MSVC_IGNORE(4244)
+                    SCN_MSVC_IGNORE(4127)  // conditional expression is constant
+
                     if (std::is_unsigned<T>::value) {
                         if (buf.front() == ctx.locale().widen('-')) {
                             return error::value_out_of_range;
@@ -662,9 +669,8 @@ namespace scn {
                         return ret.get_error();
                     }
                     tmp = ret.value();
-#if SCN_MSVC
-#pragma warning(pop)
-#endif
+
+                    SCN_MSVC_POP
                 }
                 catch (const std::invalid_argument&) {
                     return error::invalid_scanned_value;
@@ -691,6 +697,8 @@ namespace scn {
             int base{0};
             uint8_t localized{0};
         };
+
+        SCN_CLANG_POP
 
         template <typename CharT, typename T>
         struct str_to_float;
@@ -786,7 +794,11 @@ namespace scn {
                 };
 
                 if (localized) {
+                    SCN_CLANG_PUSH
+                    SCN_CLANG_IGNORE("-Wundefined-func-template")
                     auto ret = ctx.locale().read_num(tmp, buf);
+                    SCN_CLANG_POP
+
                     if (!ret) {
                         return ret.get_error();
                     }

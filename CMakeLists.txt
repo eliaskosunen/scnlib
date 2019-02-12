@@ -23,7 +23,7 @@ endif ()
 set(SCN_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
 message(STATUS "scn version: ${SCN_VERSION}")
 
-function(set_headers VAR)
+function (set_headers VAR)
     set(headers ${${VAR}})
     foreach (header ${ARGN})
         set(headers ${headers} "${PROJECT_SOURCE_DIR}/include/scn/${header}")
@@ -39,10 +39,8 @@ set_headers(SCN_HEADERS
 	detail/span.h detail/string_view.h
 	detail/types.h detail/util.h)
 
-add_library(scn-base INTERFACE)
-target_compile_features(scn-base INTERFACE cxx_std_11)
-if (SCN_PEDANTIC)
-    target_compile_options(scn-base INTERFACE
+function (get_warning_flags flags)
+    set(${flags}
         $<$<CXX_COMPILER_ID:Clang>:
             -Weverything
             -Wpedantic -pedantic-errors
@@ -82,17 +80,42 @@ if (SCN_PEDANTIC)
             >
         $<$<CXX_COMPILER_ID:MSVC>:
             /W4
-            /std:c++latest /permissive->)
-endif ()
-if (SCN_WERROR)
-    target_compile_options(scn-base INTERFACE
+            /std:c++latest /permissive->
+
+            PARENT_SCOPE)
+endfunction ()
+function (get_werror_flags flags)
+    set(${flags}
         $<$<CXX_COMPILER_ID:Clang>:
             -Werror>
         $<$<CXX_COMPILER_ID:GNU>:
             -Werror>
         $<$<CXX_COMPILER_ID:MSVC>:
-            /WX)
-endif()
+            /WX
+
+            PARENT_SCOPE)
+endfunction ()
+
+function (set_interface_flags target)
+    if (SCN_PEDANTIC)
+        get_warning_flags(warning_flags)
+        target_compile_options(${target} INTERFACE ${warning_flags})
+    endif()
+    if (SCN_WERROR)
+        get_werror_flags(werror_flags)
+        target_compile_options(${target} INTERFACE ${werror_flags})
+    endif ()
+endfunction ()
+function (set_private_flags target)
+    if (SCN_PEDANTIC)
+        get_warning_flags(warning_flags)
+        target_compile_options(${target} PRIVATE ${warning_flags})
+    endif()
+    if (SCN_WERROR)
+        get_werror_flags(werror_flags)
+        target_compile_options(${target} PRIVATE ${werror_flags})
+    endif ()
+endfunction ()
 
 message(STATUS "SCN_PEDANTIC: ${SCN_PEDANTIC}")
 message(STATUS "SCN_WERROR: ${SCN_WERROR}")
@@ -104,9 +127,11 @@ function (generate_library_target target_name)
         $<INSTALL_INTERFACE:include>)
     target_include_directories(${target_name} PRIVATE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
-    target_link_libraries(${target_name} PRIVATE scn-base)
     target_compile_definitions(${target_name} PUBLIC
         -DSCN_HEADER_ONLY=0)
+
+    target_compile_features(${target_name} PUBLIC cxx_std_11)
+    set_private_flags(${target_name})
 endfunction ()
 function (generate_header_only_target target_name)
     add_library(${target_name} INTERFACE)
@@ -115,11 +140,13 @@ function (generate_header_only_target target_name)
         "$<INSTALL_INTERFACE:include>")
     target_compile_definitions(${target_name} INTERFACE
         -DSCN_HEADER_ONLY=1)
+
+    target_compile_features(${target_name} INTERFACE cxx_std_11)
 endfunction ()
 
 generate_library_target(scn)
 generate_header_only_target(scn-header-only)
-set(SCN_EXPORT_TARGETS_LIST scn scn-base scn-header-only)
+set(SCN_EXPORT_TARGETS_LIST scn scn-header-only)
 add_library(scn::scn-header-only ALIAS scn-header-only)
 add_library(scn::scn ALIAS scn)
 

@@ -150,6 +150,9 @@ namespace scn {
             pointer m_ptr{nullptr};
         };
 
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wpadded")
+
         template <typename T>
         class erased_storage {
         public:
@@ -250,6 +253,8 @@ namespace scn {
             storage_type m_data{};
             pointer m_ptr{nullptr};
         };
+
+        SCN_CLANG_POP
     }  // namespace detail
 }  // namespace scn
 

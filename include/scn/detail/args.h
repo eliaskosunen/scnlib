@@ -250,7 +250,7 @@ namespace scn {
             return val;
         }
 
-        enum { max_packed_args = sizeof(size_t) * 8 / 5 };
+        enum : size_t { max_packed_args = sizeof(size_t) * 8 / 5 };
         enum : size_t {
             is_unpacked_bit = size_t{1} << (sizeof(size_t) * 8 - 1)
         };
@@ -258,6 +258,9 @@ namespace scn {
         template <typename Context>
         class arg_map;
     }  // namespace detail
+
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wpadded")
 
     /// Type-erased scanning argument.
     template <typename Context>
@@ -317,10 +320,11 @@ namespace scn {
         detail::type m_type{detail::none_type};
     };
 
+    SCN_CLANG_POP
+
     template <typename Visitor, typename Context>
     SCN_CONSTEXPR14 error visit_arg(Visitor&& vis, basic_arg<Context>& arg)
     {
-        using char_type = typename Context::char_type;
         switch (arg.m_type) {
             case detail::none_type:
             case detail::named_arg_type:
@@ -366,8 +370,14 @@ namespace scn {
             case detail::custom_type:
                 return vis(
                     typename basic_arg<Context>::handle(arg.m_value.custom));
+
+                SCN_CLANG_PUSH
+                SCN_CLANG_IGNORE("-Wcovered-switch-default")
+            default:
+                return vis(detail::monostate{});
+                SCN_CLANG_POP
         }
-        return vis(detail::monostate{});
+        SCN_UNREACHABLE;
     }
 
     namespace detail {
@@ -552,8 +562,10 @@ namespace scn {
 
         size_t max_size() const
         {
-            return is_packed() ? detail::max_packed_args
-                               : m_types & ~detail::is_unpacked_bit;
+            return is_packed()
+                       ? static_cast<size_t>(detail::max_packed_args)
+                       : m_types &
+                             ~static_cast<size_t>(detail::is_unpacked_bit);
         }
 
     private:

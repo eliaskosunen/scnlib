@@ -135,6 +135,9 @@ namespace scn {
             }
         };
 
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wpadded")
+
         template <typename T, size_t StackN>
         class small_vector : protected small_vector_base {
         public:
@@ -724,6 +727,8 @@ namespace scn {
         {
             l.swap(r);
         }
+
+        SCN_CLANG_POP
     }  // namespace detail
 }  // namespace scn
 

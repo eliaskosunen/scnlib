@@ -67,6 +67,47 @@
 #define SCN_GCC 0
 #endif
 
+#define SCN_STRINGIFY_APPLY(x) #x
+#define SCN_STRINGIFY(x) SCN_STRINGIFY_APPLY(x)
+
+// Warning control
+#if SCN_GCC
+#define SCN_PRAGMA_APPLY(x) _Pragma(#x)
+
+#define SCN_GCC_PUSH _Pragma("GCC diagnostic push")
+#define SCN_GCC_POP _Pragma("GCC diagnostic pop")
+
+#define SCN_GCC_IGNORE(x) SCN_PRAGMA_APPLY(GCC diagnostic ignored x)
+#else
+#define SCN_GCC_PUSH
+#define SCN_GCC_POP
+#define SCN_GCC_IGNORE(x)
+#endif
+
+#if SCN_CLANG
+#define SCN_PRAGMA_APPLY(x) _Pragma(#x)
+
+#define SCN_CLANG_PUSH _Pragma("clang diagnostic push")
+#define SCN_CLANG_POP _Pragma("clang diagnostic pop")
+
+#define SCN_CLANG_IGNORE(x) SCN_PRAGMA_APPLY(clang diagnostic ignored x)
+#else
+#define SCN_CLANG_PUSH
+#define SCN_CLANG_POP
+#define SCN_CLANG_IGNORE(x)
+#endif
+
+#if SCN_MSVC
+#define SCN_MSVC_PUSH __pragma("warning(push)")
+#define SCN_MSVC_POP __pragma("warning(pop)")
+
+#define SCN_MSVC_IGNORE(x) __pragma(warning(disable : x))
+#else
+#define SCN_MSVC_PUSH
+#define SCN_MSVC_POP
+#define SCN_MSVC_IGNORE(x)
+#endif
+
 #ifdef __has_include
 #define SCN_HAS_INCLUDE(x) __has_include(x)
 #else

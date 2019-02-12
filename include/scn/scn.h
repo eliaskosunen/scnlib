@@ -73,6 +73,9 @@ namespace scn {
         return vscan<context_type>(ctx);
     }
 
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wexit-time-destructors")
+
     /**
      * Reference to global stdin stream.
      * Not safe to use during static construction or destruction.
@@ -100,6 +103,8 @@ namespace scn {
     {
         return stdin_stream<wchar_t>();
     }
+
+    SCN_CLANG_POP
 
     /**
      * Scan from stdin.

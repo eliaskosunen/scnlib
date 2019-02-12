@@ -114,14 +114,14 @@ namespace scn {
             if (m_next_arg_id > 0) {
                 return false;
             }
-            m_next_arg_id = -1;
+            m_next_arg_id = static_cast<size_t>(-1);
             return true;
         }
         SCN_CONSTEXPR14 void check_arg_id(basic_string_view<Char>) {}
 
     private:
         basic_string_view<char_type> m_str;
-        int m_next_arg_id{0};
+        size_t m_next_arg_id{0};
     };
 
     template <typename CharT, typename T, typename Enable = void>

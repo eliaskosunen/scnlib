@@ -9,3 +9,4 @@ add_executable(tests
     small_vector.cpp)
 target_link_libraries(tests scn)
 target_include_directories(tests SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/doctest/doctest)
+set_private_flags(tests)

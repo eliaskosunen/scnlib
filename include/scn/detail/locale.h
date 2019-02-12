@@ -23,15 +23,6 @@
 #include "util.h"
 
 namespace scn {
-#if SCN_GCC
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winline"
-#endif
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
-#endif
-
     namespace detail {
         template <typename CharT>
         class truename_falsename_storage {
@@ -67,22 +58,22 @@ namespace scn {
 
         // Hand write to avoid C locales and thus for noticeable performance
         // gains
-        static bool is_space(char ch)
+        inline bool is_space(char ch)
         {
             return ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r' ||
                    ch == '\v' || ch == '\f';
         }
-        static bool is_space(wchar_t ch)
+        inline bool is_space(wchar_t ch)
         {
             return ch == L' ' || ch == L'\n' || ch == L'\t' || ch == L'\r' ||
                    ch == L'\v' || ch == L'\f';
         }
 
-        static bool is_digit(char ch)
+        inline bool is_digit(char ch)
         {
             return ch >= '0' && ch <= '9';
         }
-        static bool is_digit(wchar_t ch)
+        inline bool is_digit(wchar_t ch)
         {
             return ch >= L'0' && ch <= L'9';
         }
@@ -170,6 +161,10 @@ namespace scn {
             }
         };
     }  // namespace detail
+
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wundefined-func-template")
+    SCN_CLANG_IGNORE("-Wpadded")
 
     template <typename CharT>
     class basic_locale_ref : public detail::disable_copy {
@@ -265,12 +260,7 @@ namespace scn {
         char_type m_thousands_separator{defaults::thousands_separator()};
     };
 
-#if SCN_CLANG
-#pragma clang diagnostic pop
-#endif
-#if SCN_GCC
-#pragma GCC diagnostic pop
-#endif
+    SCN_CLANG_POP
 }  // namespace scn
 
 #if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_LOCALE_CPP)

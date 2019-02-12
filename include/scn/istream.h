@@ -111,6 +111,9 @@ namespace scn {
     }
 
     namespace detail {
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wpadded")
+
         template <typename Stream, typename CharT>
         class stream_std_streambuf : public std::basic_streambuf<CharT> {
             using base = std::basic_streambuf<CharT>;
@@ -169,6 +172,8 @@ namespace scn {
             bool m_read{false};
         };
 
+        SCN_CLANG_POP
+
         // Trick stolen from fmtlib
         template <typename CharT>
         struct test_std_stream : std::basic_istream<CharT> {
@@ -190,8 +195,7 @@ namespace scn {
             void_t<decltype(std::declval<test_std_stream<CharT>&>() >>
                             std::declval<T&>())>> : std::true_type {
         };
-
-    };  // namespace detail
+    }  // namespace detail
 
     template <typename CharT, typename T>
     struct basic_value_scanner<
