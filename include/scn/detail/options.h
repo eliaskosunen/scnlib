@@ -94,20 +94,21 @@ namespace scn {
 
         template <typename T>
         SCN_CONSTEXPR auto get_method_for() const noexcept ->
-            typename std::enable_if<std::is_integral<T>::value,
-                                    enum method>::type {
-                return int_method;
-            }
+            typename std::enable_if<std::is_integral<T>::value, method>::type
+        {
+            return int_method;
+        }
         template <typename T>
         SCN_CONSTEXPR auto get_method_for() const noexcept ->
             typename std::enable_if<std::is_floating_point<T>::value,
-                                    enum method>::type {
-                return float_method;
-            }
+                                    method>::type
+        {
+            return float_method;
+        }
 
         const void* locale{nullptr};
-        enum method int_method { SCN_DEFAULT_SCANNING_METHOD };
-        enum method float_method { SCN_DEFAULT_SCANNING_METHOD };
+        method int_method{SCN_DEFAULT_SCANNING_METHOD};
+        method float_method{SCN_DEFAULT_SCANNING_METHOD};
     };
 
     SCN_CLANG_POP
@@ -119,12 +120,12 @@ namespace scn {
             opt.locale = &l;
             return *this;
         }
-        SCN_CONSTEXPR14 builder& int_method(enum method m) noexcept
+        SCN_CONSTEXPR14 builder& int_method(method m) noexcept
         {
             opt.int_method = m;
             return *this;
         }
-        SCN_CONSTEXPR14 builder& float_method(enum method m) noexcept
+        SCN_CONSTEXPR14 builder& float_method(method m) noexcept
         {
             opt.float_method = m;
             return *this;
@@ -134,7 +135,9 @@ namespace scn {
     };
 
     inline SCN_CONSTEXPR options::options(options::builder b) noexcept
-        : options(static_cast<options&&>(b.opt))
+        : locale(b.opt.locale),
+          int_method(b.opt.int_method),
+          float_method(b.opt.float_method)
     {
     }
 }  // namespace scn

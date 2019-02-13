@@ -138,8 +138,14 @@ namespace scn {
 
         basic_context(stream_type& s,
                       basic_string_view<char_type> f,
+                      basic_args<basic_context> args)
+            : base(s, f, std::move(args), {})
+        {
+        }
+        basic_context(stream_type& s,
+                      basic_string_view<char_type> f,
                       basic_args<basic_context> args,
-                      struct options opt = options{})
+                      struct options opt)
             : base(s, f, std::move(args), std::move(opt))
         {
         }
