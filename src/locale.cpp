@@ -110,7 +110,7 @@ namespace scn {
                 }
             }
             catch (const std::ios_base::failure&) {
-                return error::invalid_scanned_value;
+                return make_error(error::invalid_scanned_value);
             }
             return static_cast<size_t>(ss.gcount());
         }
@@ -137,11 +137,11 @@ namespace scn {
                 }
                 if (tmp >
                     static_cast<long long>(std::numeric_limits<short>::max())) {
-                    return error::value_out_of_range;
+                    return make_error(error::value_out_of_range);
                 }
                 if (tmp <
                     static_cast<long long>(std::numeric_limits<short>::min())) {
-                    return error::value_out_of_range;
+                    return make_error(error::value_out_of_range);
                 }
                 val = static_cast<short>(tmp);
                 return ret;
@@ -160,11 +160,11 @@ namespace scn {
                 }
                 if (tmp >
                     static_cast<long long>(std::numeric_limits<int>::max())) {
-                    return error::value_out_of_range;
+                    return make_error(error::value_out_of_range);
                 }
                 if (tmp <
                     static_cast<long long>(std::numeric_limits<int>::min())) {
-                    return error::value_out_of_range;
+                    return make_error(error::value_out_of_range);
                 }
                 val = static_cast<int>(tmp);
                 return ret;
