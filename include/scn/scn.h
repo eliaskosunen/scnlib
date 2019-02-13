@@ -22,6 +22,7 @@
 #include "detail/context.h"
 #include "detail/core.h"
 #include "detail/locale.h"
+#include "detail/options.h"
 #include "detail/result.h"
 #include "detail/stream.h"
 #include "detail/types.h"
@@ -67,9 +68,20 @@ namespace scn {
         using context_type = basic_context<Stream>;
 
         auto args = make_args<context_type>(a...);
-        auto locale = basic_locale_ref<typename Stream::char_type>(
-            static_cast<const void*>(std::addressof(loc)));
-        auto ctx = context_type(s, f, std::move(args), std::move(locale));
+        auto ctx =
+            context_type(s, f, std::move(args), options::builder{}.locale(loc));
+        return vscan<context_type>(ctx);
+    }
+    template <typename Stream, typename... Args>
+    error scan(options opt,
+               Stream& s,
+               basic_string_view<typename Stream::char_type> f,
+               Args&... a)
+    {
+        using context_type = basic_context<Stream>;
+
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(s, f, args, opt);
         return vscan<context_type>(ctx);
     }
 

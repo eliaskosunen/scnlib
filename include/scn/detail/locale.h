@@ -176,6 +176,7 @@ namespace scn {
         using iterator = typename string_view_type::iterator;
 
         basic_locale_ref() = default;
+        basic_locale_ref(std::nullptr_t) : basic_locale_ref() {}
         explicit basic_locale_ref(const void* loc);
 
         const void* get_ptr() const

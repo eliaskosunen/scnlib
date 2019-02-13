@@ -22,6 +22,8 @@
 #include "context.h"
 #include "stream.h"
 
+#include <cmath>
+
 namespace scn {
     enum class scan_status { keep, skip, end };
 
@@ -413,101 +415,299 @@ namespace scn {
             bool boolalpha{false};
         };
 
-        template <typename CharT, typename T>
-        struct str_to_int;
+        namespace sto {
+            template <typename CharT, typename T>
+            struct str_to_int;
 
-        template <typename CharT>
-        struct str_to_int<CharT, long long> {
-            static result<long long> get(const std::basic_string<CharT>& str,
+            template <typename CharT>
+            struct str_to_int<CharT, long long> {
+                static result<long long> get(
+                    const std::basic_string<CharT>& str,
+                    size_t& chars,
+                    int base)
+                {
+                    return std::stoll(str, &chars, base);
+                }
+            };
+            template <typename CharT>
+            struct str_to_int<CharT, long> {
+                static result<long> get(const std::basic_string<CharT>& str,
+                                        size_t& chars,
+                                        int base)
+                {
+                    return std::stol(str, &chars, base);
+                }
+            };
+            template <typename CharT>
+            struct str_to_int<CharT, int> {
+                static result<int> get(const std::basic_string<CharT>& str,
+                                       size_t& chars,
+                                       int base)
+                {
+                    return std::stoi(str, &chars, base);
+                }
+            };
+            template <typename CharT>
+            struct str_to_int<CharT, short> {
+                static result<short> get(const std::basic_string<CharT>& str,
                                          size_t& chars,
                                          int base)
-            {
-                return std::stoll(str, &chars, base);
-            }
-        };
-        template <typename CharT>
-        struct str_to_int<CharT, long> {
-            static result<long> get(const std::basic_string<CharT>& str,
-                                    size_t& chars,
-                                    int base)
-            {
-                return std::stol(str, &chars, base);
-            }
-        };
-        template <typename CharT>
-        struct str_to_int<CharT, int> {
-            static result<int> get(const std::basic_string<CharT>& str,
-                                   size_t& chars,
-                                   int base)
-            {
-                return std::stoi(str, &chars, base);
-            }
-        };
-        template <typename CharT>
-        struct str_to_int<CharT, short> {
-            static result<short> get(const std::basic_string<CharT>& str,
-                                     size_t& chars,
-                                     int base)
-            {
-                auto i = std::stoi(str, &chars, base);
-                if (i > static_cast<int>(std::numeric_limits<short>::max())) {
-                    return make_error(error::value_out_of_range);
+                {
+                    auto i = std::stoi(str, &chars, base);
+                    if (i >
+                        static_cast<int>(std::numeric_limits<short>::max())) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    if (i <
+                        static_cast<int>(std::numeric_limits<short>::min())) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    return static_cast<short>(i);
                 }
-                if (i < static_cast<int>(std::numeric_limits<short>::min())) {
-                    return make_error(error::value_out_of_range);
+            };
+            template <typename CharT>
+            struct str_to_int<CharT, unsigned long long> {
+                static result<unsigned long long> get(
+                    const std::basic_string<CharT>& str,
+                    size_t& chars,
+                    int base)
+                {
+                    return std::stoull(str, &chars, base);
                 }
-                return static_cast<short>(i);
-            }
-        };
-        template <typename CharT>
-        struct str_to_int<CharT, unsigned long long> {
-            static result<unsigned long long>
-            get(const std::basic_string<CharT>& str, size_t& chars, int base)
-            {
-                return std::stoull(str, &chars, base);
-            }
-        };
-        template <typename CharT>
-        struct str_to_int<CharT, unsigned long> {
-            static result<unsigned long>
-            get(const std::basic_string<CharT>& str, size_t& chars, int base)
-            {
-                return std::stoul(str, &chars, base);
-            }
-        };
-        template <typename CharT>
-        struct str_to_int<CharT, unsigned int> {
-            static result<unsigned int> get(const std::basic_string<CharT>& str,
-                                            size_t& chars,
-                                            int base)
-            {
-                auto i = std::stoul(str, &chars, base);
-                if (i > static_cast<unsigned long>(
-                            std::numeric_limits<unsigned int>::max())) {
-                    return make_error(error::value_out_of_range);
+            };
+            template <typename CharT>
+            struct str_to_int<CharT, unsigned long> {
+                static result<unsigned long> get(
+                    const std::basic_string<CharT>& str,
+                    size_t& chars,
+                    int base)
+                {
+                    return std::stoul(str, &chars, base);
                 }
-                return static_cast<unsigned int>(i);
-            }
-        };
-        template <typename CharT>
-        struct str_to_int<CharT, unsigned short> {
-            static result<unsigned short>
-            get(const std::basic_string<CharT>& str, size_t& chars, int base)
-            {
-                auto i = std::stoul(str, &chars, base);
-                if (i > static_cast<unsigned long>(
-                            std::numeric_limits<unsigned short>::max())) {
-                    return make_error(error::value_out_of_range);
+            };
+            template <typename CharT>
+            struct str_to_int<CharT, unsigned int> {
+                static result<unsigned int> get(
+                    const std::basic_string<CharT>& str,
+                    size_t& chars,
+                    int base)
+                {
+                    auto i = std::stoul(str, &chars, base);
+                    if (i > static_cast<unsigned long>(
+                                std::numeric_limits<unsigned int>::max())) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    return static_cast<unsigned int>(i);
                 }
-                return static_cast<unsigned short>(i);
-            }
-        };
+            };
+            template <typename CharT>
+            struct str_to_int<CharT, unsigned short> {
+                static result<unsigned short> get(
+                    const std::basic_string<CharT>& str,
+                    size_t& chars,
+                    int base)
+                {
+                    auto i = std::stoul(str, &chars, base);
+                    if (i > static_cast<unsigned long>(
+                                std::numeric_limits<unsigned short>::max())) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    return static_cast<unsigned short>(i);
+                }
+            };
+        }  // namespace sto
+
+        namespace strto {
+            template <typename CharT, typename T>
+            struct str_to_int;
+
+            template <>
+            struct str_to_int<char, long long> {
+                static result<long long> get(const char* str,
+                                             size_t& chars,
+                                             int base)
+                {
+                    char* end{};
+                    auto ret = std::strtoll(str, &end, base);
+                    chars = static_cast<size_t>(end - str);
+                    return ret;
+                }
+            };
+            template <>
+            struct str_to_int<wchar_t, long long> {
+                static result<long long> get(const wchar_t* str,
+                                             size_t& chars,
+                                             int base)
+                {
+                    wchar_t* end{};
+                    auto ret = std::wcstoll(str, &end, base);
+                    chars = static_cast<size_t>(end - str);
+                    return ret;
+                }
+            };
+
+            template <>
+            struct str_to_int<char, long> {
+                static result<long> get(const char* str,
+                                        size_t& chars,
+                                        int base)
+                {
+                    char* end{};
+                    auto ret = std::strtol(str, &end, base);
+                    chars = static_cast<size_t>(end - str);
+                    return ret;
+                }
+            };
+            template <>
+            struct str_to_int<wchar_t, long> {
+                static result<long> get(const wchar_t* str,
+                                        size_t& chars,
+                                        int base)
+                {
+                    wchar_t* end{};
+                    auto ret = std::wcstol(str, &end, base);
+                    chars = static_cast<size_t>(end - str);
+                    return ret;
+                }
+            };
+
+            template <typename Char>
+            struct str_to_int<Char, int> {
+                static result<int> get(const Char* str, size_t& chars, int base)
+                {
+                    auto tmp =
+                        str_to_int<Char, long long>::get(str, chars, base);
+                    if (!tmp) {
+                        return tmp.get_error();
+                    }
+                    if (tmp.value() > static_cast<long long>(
+                                          std::numeric_limits<int>::max())) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    if (tmp.value() < static_cast<long long>(
+                                          std::numeric_limits<int>::min())) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    return static_cast<int>(tmp.value());
+                }
+            };
+            template <typename Char>
+            struct str_to_int<Char, short> {
+                static result<short> get(const Char* str,
+                                         size_t& chars,
+                                         int base)
+                {
+                    auto tmp = str_to_int<Char, long>::get(str, chars, base);
+                    if (!tmp) {
+                        return tmp.get_error();
+                    }
+                    if (tmp.value() >
+                        static_cast<long>(std::numeric_limits<short>::max())) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    if (tmp.value() <
+                        static_cast<long>(std::numeric_limits<short>::min())) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    return static_cast<short>(tmp.value());
+                }
+            };
+
+            template <>
+            struct str_to_int<char, unsigned long long> {
+                static result<unsigned long long> get(const char* str,
+                                                      size_t& chars,
+                                                      int base)
+                {
+                    char* end{};
+                    auto ret = std::strtoull(str, &end, base);
+                    chars = static_cast<size_t>(end - str);
+                    return ret;
+                }
+            };
+            template <>
+            struct str_to_int<wchar_t, unsigned long long> {
+                static result<unsigned long long> get(const wchar_t* str,
+                                                      size_t& chars,
+                                                      int base)
+                {
+                    wchar_t* end{};
+                    auto ret = std::wcstoull(str, &end, base);
+                    chars = static_cast<size_t>(end - str);
+                    return ret;
+                }
+            };
+
+            template <>
+            struct str_to_int<char, unsigned long> {
+                static result<unsigned long> get(const char* str,
+                                                 size_t& chars,
+                                                 int base)
+                {
+                    char* end{};
+                    auto ret = std::strtoul(str, &end, base);
+                    chars = static_cast<size_t>(end - str);
+                    return ret;
+                }
+            };
+            template <>
+            struct str_to_int<wchar_t, unsigned long> {
+                static result<unsigned long> get(const wchar_t* str,
+                                                 size_t& chars,
+                                                 int base)
+                {
+                    wchar_t* end{};
+                    auto ret = std::wcstoul(str, &end, base);
+                    chars = static_cast<size_t>(end - str);
+                    return ret;
+                }
+            };
+
+            template <typename Char>
+            struct str_to_int<Char, unsigned int> {
+                static result<unsigned int> get(const Char* str,
+                                                size_t& chars,
+                                                int base)
+                {
+                    auto tmp = str_to_int<Char, unsigned long long>::get(
+                        str, chars, base);
+                    if (!tmp) {
+                        return tmp.get_error();
+                    }
+                    if (tmp.value() > static_cast<long long>(
+                                          std::numeric_limits<int>::max())) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    return static_cast<unsigned>(tmp.value());
+                }
+            };
+            template <typename Char>
+            struct str_to_int<Char, unsigned short> {
+                static result<unsigned short> get(const Char* str,
+                                                  size_t& chars,
+                                                  int base)
+                {
+                    auto tmp =
+                        str_to_int<Char, unsigned long>::get(str, chars, base);
+                    if (!tmp) {
+                        return tmp.get_error();
+                    }
+                    if (tmp.value() >
+                        static_cast<long>(std::numeric_limits<short>::max())) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    return static_cast<unsigned short>(tmp.value());
+                }
+            };
+
+        }  // namespace strto
 
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wpadded")
 
         template <typename CharT, typename T>
-        struct integer_scanner {
+        class integer_scanner {
+        public:
             template <typename Context>
             error parse(Context& ctx)
             {
@@ -604,11 +804,11 @@ namespace scn {
                 T tmp = 0;
                 size_t chars = 0;
 
-                auto putback = [&chars, &ctx, &buf]() -> error {
+                auto putback = [&ctx, &buf](size_t n) -> error {
                     for (auto it = buf.rbegin();
-                         it != buf.rend() -
-                                   static_cast<typename std::iterator_traits<
-                                       decltype(it)>::difference_type>(chars);
+                         it !=
+                         buf.rend() - static_cast<typename std::iterator_traits<
+                                          decltype(it)>::difference_type>(n);
                          ++it) {
                         auto ret = ctx.stream().putback(*it);
                         if (!ret) {
@@ -626,64 +826,51 @@ namespace scn {
                     if (!ret) {
                         return ret.get_error();
                     }
-                    chars = ret.value();
-                    auto pb = putback();
+                    auto pb = putback(ret.value());
                     if (!pb) {
                         return pb;
                     }
                     val = tmp;
                 }
-#if SCN_HAS_CHARCONV
-                auto begin = buf.data();
-                auto end = begin + buf.size();
-                auto result = std::from_chars(begin, end, tmp, base);
-                if (result.ec == std::errc::result_out_of_range) {
-                    return error::value_out_of_range;
-                }
-                if (result.ec == std::errc::invalid_argument) {
-                    return error::invalid_scanned_value;
-                }
 
-                for (auto it = buf.rbegin(); it != result.ptr; ++it) {
-                    auto ret = ctx.stream().putback(*it);
-                    if (!ret) {
-                        return ret;
+                SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4244)
+                SCN_MSVC_IGNORE(4127)  // conditional expression is constant
+
+                if (std::is_unsigned<T>::value) {
+                    if (buf.front() == ctx.locale().widen('-')) {
+                        return make_error(error::value_out_of_range);
                     }
                 }
-                val = tmp;
-#else
-                try {
-                    SCN_MSVC_PUSH
-                    SCN_MSVC_IGNORE(4244)
-                    SCN_MSVC_IGNORE(4127)  // conditional expression is constant
 
-                    if (std::is_unsigned<T>::value) {
-                        if (buf.front() == ctx.locale().widen('-')) {
-                            return error::value_out_of_range;
-                        }
+                SCN_MSVC_POP
+
+                auto do_read = [&]() {
+                    SCN_GCC_PUSH
+                    SCN_GCC_IGNORE("-Wswitch-default")
+                    switch (ctx.int_method()) {
+                        case method::sto:
+                            return &_read_sto;
+                        case method::from_chars:
+                            return &_read_from_chars;
+                        case method::strto:
+                            return &_read_strto;
                     }
-                    auto ret =
-                        detail::str_to_int<CharT, T>::get(buf, chars, base);
-                    if (!ret) {
-                        return ret.get_error();
-                    }
-                    tmp = ret.value();
+                    SCN_UNREACHABLE;
+                    SCN_GCC_POP
+                };
+                auto e = do_read()(tmp, buf, base);
+                if (!e) {
+                    return e.get_error();
+                }
+                chars = e.value();
 
-                    SCN_MSVC_POP
-                }
-                catch (const std::invalid_argument&) {
-                    return error::invalid_scanned_value;
-                }
-                catch (const std::out_of_range&) {
-                    return error::value_out_of_range;
-                }
-
-                auto pb = putback();
+                auto pb = putback(chars);
                 if (!pb) {
                     return pb;
                 }
                 val = tmp;
-#endif
+
                 return {};
             }
 
@@ -695,36 +882,176 @@ namespace scn {
 
             int base{0};
             uint8_t localized{0};
+
+        private:
+            static result<size_t> _read_sto(T& val,
+                                            const std::basic_string<CharT>& buf,
+                                            int base)
+            {
+                try {
+                    size_t chars = 0;
+                    auto ret = sto::str_to_int<CharT, T>::get(buf, chars, base);
+                    if (!ret) {
+                        return ret.get_error();
+                    }
+                    val = ret.value();
+                    return chars;
+                }
+                catch (const std::invalid_argument&) {
+                    return make_error(error::invalid_scanned_value);
+                }
+                catch (const std::out_of_range&) {
+                    return make_error(error::value_out_of_range);
+                }
+            }
+            static result<size_t>
+            _read_strto(T& val, const std::basic_string<CharT>& buf, int base)
+            {
+                size_t chars = 0;
+                errno = 0;
+                auto ret =
+                    strto::str_to_int<CharT, T>::get(&buf[0], chars, base);
+                if (!ret && (ret.get_error() == error::value_out_of_range ||
+                             errno != ERANGE)) {
+                    return ret.get_error();
+                }
+                if (chars == 0) {
+                    if (errno == ERANGE) {
+                        return make_error(error::value_out_of_range);
+                    }
+                    return make_error(error::invalid_scanned_value);
+                }
+                val = ret.value();
+
+                return chars;
+            }
+
+            static result<size_t> _read_from_chars(
+                T& val,
+                const std::basic_string<CharT>& buf,
+                int base)
+            {
+#if SCN_HAS_INTEGER_CHARCONV
+                auto begin = buf.data();
+                auto end = begin + buf.size();
+                auto result = std::from_chars(begin, end, val, base);
+                if (result.ec == std::errc::result_out_of_range) {
+                    return make_error(error::value_out_of_range);
+                }
+                if (result.ec == std::errc::invalid_argument) {
+                    return make_error(error::invalid_scanned_value);
+                }
+                return static_cast<size_t>(
+                    std::distance(buf.data(), result.ptr));
+#else
+                SCN_UNUSED(val);
+                SCN_UNUSED(buf);
+                SCN_UNUSED(base);
+                return make_error(error::invalid_operation);
+#endif
+            }
         };
 
         SCN_CLANG_POP
 
-        template <typename CharT, typename T>
-        struct str_to_float;
+        namespace sto {
+            template <typename CharT, typename T>
+            struct str_to_float;
 
-        template <typename CharT>
-        struct str_to_float<CharT, float> {
-            static float get(const std::basic_string<CharT>& str, size_t& chars)
-            {
-                return std::stof(str, &chars);
-            }
-        };
-        template <typename CharT>
-        struct str_to_float<CharT, double> {
-            static double get(const std::basic_string<CharT>& str,
-                              size_t& chars)
-            {
-                return std::stod(str, &chars);
-            }
-        };
-        template <typename CharT>
-        struct str_to_float<CharT, long double> {
-            static long double get(const std::basic_string<CharT>& str,
-                                   size_t& chars)
-            {
-                return std::stold(str, &chars);
-            }
-        };
+            template <typename CharT>
+            struct str_to_float<CharT, float> {
+                static float get(const std::basic_string<CharT>& str,
+                                 size_t& chars)
+                {
+                    return std::stof(str, &chars);
+                }
+            };
+            template <typename CharT>
+            struct str_to_float<CharT, double> {
+                static double get(const std::basic_string<CharT>& str,
+                                  size_t& chars)
+                {
+                    return std::stod(str, &chars);
+                }
+            };
+            template <typename CharT>
+            struct str_to_float<CharT, long double> {
+                static long double get(const std::basic_string<CharT>& str,
+                                       size_t& chars)
+                {
+                    return std::stold(str, &chars);
+                }
+            };
+        }  // namespace sto
+
+        namespace strto {
+            template <typename CharT, typename T>
+            struct str_to_float;
+
+            template <>
+            struct str_to_float<char, float> {
+                static result<float> get(const char* str, size_t& chars)
+                {
+                    char* end{};
+                    float f = std::strtof(str, &end);
+                    chars = static_cast<size_t>(end - str);
+                    return f;
+                }
+            };
+            template <>
+            struct str_to_float<wchar_t, float> {
+                static result<float> get(const wchar_t* str, size_t& chars)
+                {
+                    wchar_t* end{};
+                    float f = std::wcstof(str, &end);
+                    chars = static_cast<size_t>(end - str);
+                    return f;
+                }
+            };
+
+            template <>
+            struct str_to_float<char, double> {
+                static result<double> get(const char* str, size_t& chars)
+                {
+                    char* end{};
+                    double d = std::strtod(str, &end);
+                    chars = static_cast<size_t>(end - str);
+                    return d;
+                }
+            };
+            template <>
+            struct str_to_float<wchar_t, double> {
+                static result<double> get(const wchar_t* str, size_t& chars)
+                {
+                    wchar_t* end{};
+                    double d = std::wcstod(str, &end);
+                    chars = static_cast<size_t>(end - str);
+                    return d;
+                }
+            };
+
+            template <>
+            struct str_to_float<char, long double> {
+                static result<long double> get(const char* str, size_t& chars)
+                {
+                    char* end{};
+                    long double ld = std::strtold(str, &end);
+                    chars = static_cast<size_t>(end - str);
+                    return ld;
+                }
+            };
+            template <>
+            struct str_to_float<wchar_t, long double> {
+                static result<long double> get(const wchar_t* str,
+                                               size_t& chars)
+                {
+                    wchar_t* end{};
+                    long double ld = std::wcstold(str, &end);
+                    chars = static_cast<size_t>(end - str);
+                    return ld;
+                }
+            };
+        }  // namespace strto
 
         template <typename CharT, typename T>
         struct float_scanner {
@@ -778,11 +1105,11 @@ namespace scn {
                 T tmp{};
                 size_t chars = 0;
 
-                auto putback = [&chars, &buf, &ctx]() -> error {
+                auto putback = [&buf, &ctx](size_t n) -> error {
                     for (auto it = buf.rbegin();
-                         it != buf.rend() -
-                                   static_cast<typename std::iterator_traits<
-                                       decltype(it)>::difference_type>(chars);
+                         it !=
+                         buf.rend() - static_cast<typename std::iterator_traits<
+                                          decltype(it)>::difference_type>(n);
                          ++it) {
                         auto ret = ctx.stream().putback(*it);
                         if (!ret) {
@@ -801,52 +1128,93 @@ namespace scn {
                         return ret.get_error();
                     }
                     chars = ret.value();
-                    auto pb = putback();
+                    auto pb = putback(chars);
                     if (!pb) {
                         return pb;
                     }
                     val = tmp;
                 }
-#if SCN_HAS_CHARCONV
-                auto begin = buf.data();
-                auto end = begin + buf.size();
-                auto result = std::from_chars(begin, end, tmp);
-                if (result.ec == std::errc::result_out_of_range) {
-                    return error::value_out_of_range;
-                }
-                if (result.ec == std::errc::invalid_argument) {
-                    return error::invalid_scanned_value;
-                }
-
-                for (auto it = buf.rbegin(); it != result.ptr; ++it) {
-                    auto ret = ctx.stream().putback(*it);
-                    if (!ret) {
-                        return ret;
+                auto do_read = [&]() {
+                    SCN_GCC_PUSH
+                    SCN_GCC_IGNORE("-Wswitch-default")
+                    switch (ctx.int_method()) {
+                        case method::sto:
+                            return &_read_sto;
+                        case method::from_chars:
+                            return &_read_from_chars;
+                        case method::strto:
+                            return &_read_strto;
                     }
+                    SCN_UNREACHABLE;
+                    SCN_GCC_POP
+                };
+                auto e = do_read()(tmp, buf);
+                if (!e) {
+                    return e.get_error();
                 }
-                val = tmp;
-#else
-                try {
-                    tmp = detail::str_to_float<CharT, T>::get(buf, chars);
-                }
-                catch (const std::invalid_argument&) {
-                    return error::invalid_scanned_value;
-                }
-                catch (const std::out_of_range&) {
-                    return error::value_out_of_range;
-                }
+                chars = e.value();
 
-                auto pb = putback();
+                auto pb = putback(chars);
                 if (!pb) {
                     return pb;
                 }
                 val = tmp;
-#endif
 
                 return {};
             }
 
             bool localized{false};
+
+        private:
+            static result<size_t> _read_sto(T& val,
+                                            const std::basic_string<CharT>& buf)
+            {
+                try {
+                    size_t chars;
+                    val = sto::str_to_float<CharT, T>::get(buf, chars);
+                    return chars;
+                }
+                catch (const std::invalid_argument&) {
+                    return make_error(error::invalid_scanned_value);
+                }
+                catch (const std::out_of_range&) {
+                    return make_error(error::value_out_of_range);
+                }
+            }
+            static result<size_t> _read_strto(
+                T& val,
+                const std::basic_string<CharT>& buf)
+            {
+                size_t chars;
+                auto ret = strto::str_to_float<CharT, T>::get(&buf[0], chars);
+                if (!ret) {
+                    return ret.get_error();
+                }
+                val = ret.value();
+                return chars;
+            }
+            static result<size_t> _read_from_chars(
+                T& val,
+                const std::basic_string<CharT>& buf)
+            {
+#if SCN_HAS_FLOAT_CHARCONV
+                auto begin = buf.data();
+                auto end = begin + buf.size();
+                auto result = std::from_chars(begin, end, val);
+                if (result.ec == std::errc::result_out_of_range) {
+                    return make_error(error::value_out_of_range);
+                }
+                if (result.ec == std::errc::invalid_argument) {
+                    return make_error(error::invalid_scanned_value);
+                }
+                return static_cast<size_t>(
+                    std::distance(buf.data(), result.ptr));
+#else
+                SCN_UNUSED(val);
+                SCN_UNUSED(buf);
+                return make_error(error::invalid_operation);
+#endif
+            }
         };
 
         template <typename CharT>

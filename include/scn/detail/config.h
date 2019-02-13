@@ -193,14 +193,22 @@
 #endif
 
 // Detect <charconv>
-#if 0
-#if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606
-#define SCN_HAS_CHARCONV 1
-#else
-#define SCN_HAS_CHARCONV 0
+#if (defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606) || \
+    __has_include(<charconv>)
+
+#if defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= SCN_COMPILER(8, 1, 0)
+#define SCN_HAS_INTEGER_CHARCONV 1
+#define SCN_HAS_FLOAT_CHARCONV 0
+#elif SCN_MSVC >= SCN_COMPILER(19, 14, 0)
+#define SCN_HAS_INTEGER_CHARCONV 1
+#define SCN_HAS_FLOAT_CHARCONV 0
 #endif
-#else
-#define SCN_HAS_CHARCONV 0
+
+#endif
+
+#ifndef SCN_HAS_INTEGER_CHARCONV
+#define SCN_HAS_INTEGER_CHARCONV 0
+#define SCN_HAS_FLOAT_CHARCONV 0
 #endif
 
 // Detect std::launder
@@ -273,5 +281,7 @@
 #define SCN_LIKELY(x) (x)
 #define SCN_UNLIKELY(x) (x)
 #endif
+
+#define SCN_UNUSED(x) static_cast<void>(sizeof(x))
 
 #endif  // SCN_DETAIL_CONFIG_H

@@ -21,6 +21,7 @@
 #include "args.h"
 #include "core.h"
 #include "locale.h"
+#include "options.h"
 
 namespace scn {
     namespace detail {
@@ -32,6 +33,11 @@ namespace scn {
             using parse_context_type = basic_parse_context<char_type>;
             using locale_type = basic_locale_ref<char_type>;
 
+            struct options& options() noexcept
+            {
+                return m_options;
+            }
+
             SCN_CONSTEXPR14 parse_context_type& parse_context() noexcept
             {
                 return m_parse_ctx;
@@ -40,9 +46,17 @@ namespace scn {
             {
                 return *m_stream;
             }
-            locale_type& locale()
+            locale_type& locale() noexcept
             {
                 return m_locale;
+            }
+            method int_method() const noexcept
+            {
+                return m_options.int_method;
+            }
+            method float_method() const noexcept
+            {
+                return m_options.float_method;
             }
 
             basic_arg<Context> arg(size_t id) const
@@ -69,11 +83,12 @@ namespace scn {
             context_base(stream_type& s,
                          basic_string_view<char_type> f,
                          basic_args<Context> args,
-                         locale_type l = locale_type())
+                         struct options opt)
                 : m_stream(std::addressof(s)),
                   m_parse_ctx(f),
                   m_args(std::move(args)),
-                  m_locale(std::move(l))
+                  m_options(std::move(opt)),
+                  m_locale(opt.get_locale_ref<char_type>())
             {
             }
             SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
@@ -99,6 +114,7 @@ namespace scn {
             stream_type* m_stream;
             parse_context_type m_parse_ctx;
             basic_args<Context> m_args;
+            struct options m_options;
             locale_type m_locale;
         };
     }  // namespace detail
@@ -123,8 +139,8 @@ namespace scn {
         basic_context(stream_type& s,
                       basic_string_view<char_type> f,
                       basic_args<basic_context> args,
-                      locale_type l = locale_type())
-            : base(s, f, std::move(args), std::move(l))
+                      struct options opt = options{})
+            : base(s, f, std::move(args), std::move(opt))
         {
         }
 
