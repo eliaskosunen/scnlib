@@ -15,23 +15,22 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest.h>
-#include <scn/scn.h>
+#include "test.h"
+
+#include <iostream>
 
 namespace detail {
     template <typename CharT>
-    std::basic_string<CharT> widen(std::string)
+    static std::basic_string<CharT> widen(std::string)
     {
     }
-
     template <>
-    std::basic_string<char> widen(std::string str)
+    std::basic_string<char> widen<char>(std::string str)
     {
         return str;
     }
-
     template <>
-    std::basic_string<wchar_t> widen(std::string str)
+    std::basic_string<wchar_t> widen<wchar_t>(std::string str)
     {
         return std::wstring(str.begin(), str.end());
     }
@@ -43,11 +42,13 @@ static scn::error scan_value(scn::method m,
                              std::string f,
                              T& value)
 {
-    auto stream = scn::make_stream(detail::widen<CharT>(source));
+    auto wsource = detail::widen<CharT>(source);
+    auto stream = scn::make_stream(wsource);
     auto fstr = detail::widen<CharT>(f);
-    return scn::scan(scn::options::builder{}.int_method(m), stream,
-                     scn::basic_string_view<CharT>(fstr.data(), fstr.size()),
-                     value);
+    auto ret = scn::scan(
+        scn::options::builder{}.int_method(m), stream,
+        scn::basic_string_view<CharT>(fstr.data(), fstr.size()), value);
+    return ret;
 }
 
 template <typename CharT, typename T>
@@ -63,100 +64,98 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
 
     const bool u = std::is_unsigned<value_type>::value;
 
-    std::array<scn::method, 3> methods{scn::method::sto, scn::method::strto,
-                                       scn::int_from_chars_if_available()};
+    std::vector<scn::method> methods{scn::method::sto, scn::method::strto};
+    if (scn::is_int_from_chars_available()) {
+        methods.push_back(scn::method::from_chars);
+    }
+    scn::method method{};
 
-    for (auto&& method : methods) {
-        {
-            auto m = static_cast<int>(method);
-            CAPTURE(m);
-        }
+    DOCTEST_VALUE_PARAMETERIZED_DATA(method, methods);
 
-        {
-            value_type i{1};
-            auto e = scan_value<char_type>(method, "0", "{}", i);
-            CHECK(i == 0);
-            CHECK(e);
-        }
-        {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "1", "{}", i);
-            CHECK(i == 1);
-            CHECK(e);
-        }
+    {
+        value_type i{1};
+        auto e = scan_value<char_type>(method, "0", "{}", i);
+        CHECK(i == 0);
+        CHECK(e);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "1", "{}", i);
+        CHECK(i == 1);
+        CHECK(e);
+    }
 
-        if (!u) {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "-1", "{}", i);
-            CHECK(i == -1);
-            CHECK(e);
-        }
-        else {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "-1", "{}", i);
-            CHECK(e.get_code() == scn::error::value_out_of_range);
-        }
+    if (!u) {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "-1", "{}", i);
+        CHECK(i == -1);
+        CHECK(e);
+    }
+    else {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "-1", "{}", i);
+        CHECK(e.get_code() == scn::error::value_out_of_range);
+    }
 
-        const bool can_fit_2pow31 = []() {
-            if (u) {
-                return sizeof(value_type) >= 4;
-            }
-            return sizeof(value_type) >= 8;
-        }();
-        if (can_fit_2pow31) {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "2147483648", "{}", i);
-            CHECK(i == 2147483648);
-            CHECK(e);
+    const bool can_fit_2pow31 = []() {
+        if (u) {
+            return sizeof(value_type) >= 4;
         }
-        else {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "2147483648", "{}", i);
-            CHECK(e.get_code() == scn::error::value_out_of_range);
-        }
+        return sizeof(value_type) >= 8;
+    }();
+    if (can_fit_2pow31) {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "2147483648", "{}", i);
+        CHECK(i == 2147483648);
+        CHECK(e);
+    }
+    else {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "2147483648", "{}", i);
+        CHECK(e.get_code() == scn::error::value_out_of_range);
+    }
 
-        {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "1011", "{b2}", i);
-            CHECK(i == 11);
-            CHECK(e);
-        }
-        {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "400", "{o}", i);
-            CHECK(i == 0400);
-            CHECK(e);
-        }
-        {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "0400", "{}", i);
-            CHECK(i == 0400);
-            CHECK(e);
-        }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "1011", "{b2}", i);
+        CHECK(i == 11);
+        CHECK(e);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "400", "{o}", i);
+        CHECK(i == 0400);
+        CHECK(e);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "0400", "{}", i);
+        CHECK(i == 0400);
+        CHECK(e);
+    }
 
-        const bool can_fit_badidea = []() { return sizeof(value_type) >= 4; }();
-        if (can_fit_badidea) {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
-            CHECK(i == 0xbad1dea);
-            CHECK(e);
-        }
-        else {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
-            CHECK(e.get_code() == scn::error::value_out_of_range);
-        }
-        if (can_fit_badidea) {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
-            CHECK(i == 0xbad1dea);
-            CHECK(e);
-        }
-        else {
-            value_type i{};
-            auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
-            CHECK(e.get_code() == scn::error::value_out_of_range);
-        }
+    const bool can_fit_badidea = []() { return sizeof(value_type) >= 4; }();
+    if (can_fit_badidea) {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
+        CHECK(i == 0xbad1dea);
+        CHECK(e);
+    }
+    else {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
+        CHECK(e.get_code() == scn::error::value_out_of_range);
+    }
+    if (can_fit_badidea) {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
+        CHECK(i == 0xbad1dea);
+        CHECK(e);
+    }
+    else {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
+        CHECK(e.get_code() == scn::error::value_out_of_range);
     }
 }
 
