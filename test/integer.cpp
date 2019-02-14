@@ -17,36 +17,14 @@
 
 #include "test.h"
 
-namespace detail {
-    template <typename CharT>
-    static std::basic_string<CharT> widen(std::string)
-    {
-    }
-    template <>
-    std::basic_string<char> widen<char>(std::string str)
-    {
-        return str;
-    }
-    template <>
-    std::basic_string<wchar_t> widen<wchar_t>(std::string str)
-    {
-        return std::wstring(str.begin(), str.end());
-    }
-}  // namespace detail
-
 template <typename CharT, typename T>
 static scn::error scan_value(scn::method m,
                              std::string source,
                              std::string f,
                              T& value)
 {
-    auto wsource = detail::widen<CharT>(source);
-    auto stream = scn::make_stream(wsource);
-    auto fstr = detail::widen<CharT>(f);
-    auto ret = scn::scan(
-        scn::options::builder{}.int_method(m), stream,
-        scn::basic_string_view<CharT>(fstr.data(), fstr.size()), value);
-    return ret;
+    return scan_value<CharT>(scn::options::builder{}.int_method(m).make(),
+                             std::move(source), std::move(f), value);
 }
 
 template <typename CharT, typename T>

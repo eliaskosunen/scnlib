@@ -18,6 +18,42 @@
 #include <doctest.h>
 #include <scn/scn.h>
 
+template <typename CharT>
+std::basic_string<CharT> widen(std::string)
+{
+}
+template <>
+inline std::basic_string<char> widen<char>(std::string str)
+{
+    return str;
+}
+template <>
+inline std::basic_string<wchar_t> widen<wchar_t>(std::string str)
+{
+    return std::wstring(str.begin(), str.end());
+}
+
+template <typename CharT, typename... T>
+scn::error scan_value(scn::options o,
+                      std::string source,
+                      std::string f,
+                      T&... value)
+{
+    auto wsource = widen<CharT>(source);
+    auto stream = scn::make_stream(wsource);
+    auto fstr = widen<CharT>(f);
+    auto ret = scn::scan(
+        o, stream, scn::basic_string_view<CharT>(fstr.data(), fstr.size()),
+        value...);
+    return ret;
+}
+template <typename CharT, typename... T>
+scn::error scan_value(std::string source, std::string f, T&... value)
+{
+    return scan_value<CharT>(scn::options{}, std::move(source), std::move(f),
+                             value...);
+}
+
 #define DOCTEST_VALUE_PARAMETERIZED_DATA(data, data_array)                     \
     SCN_CLANG_PUSH SCN_CLANG_IGNORE("-Wexit-time-destructors") {}              \
     static std::vector<std::string> _doctest_subcases = [&data_array]() {      \

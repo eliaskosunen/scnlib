@@ -19,36 +19,14 @@
 
 #include <cmath>
 
-namespace detail {
-    template <typename CharT>
-    static std::basic_string<CharT> widen(std::string)
-    {
-    }
-    template <>
-    std::basic_string<char> widen<char>(std::string str)
-    {
-        return str;
-    }
-    template <>
-    std::basic_string<wchar_t> widen<wchar_t>(std::string str)
-    {
-        return std::wstring(str.begin(), str.end());
-    }
-}  // namespace detail
-
 template <typename CharT, typename T>
 static scn::error scan_value(scn::method m,
                              std::string source,
                              std::string f,
                              T& value)
 {
-    auto wsource = detail::widen<CharT>(source);
-    auto stream = scn::make_stream(wsource);
-    auto fstr = detail::widen<CharT>(f);
-    auto ret = scn::scan(
-        scn::options::builder{}.float_method(m), stream,
-        scn::basic_string_view<CharT>(fstr.data(), fstr.size()), value);
-    return ret;
+    return scan_value<CharT>(scn::options::builder{}.float_method(m).make(),
+                             std::move(source), std::move(f), value);
 }
 
 template <typename CharT, typename T>
@@ -56,6 +34,9 @@ struct fpair {
     using char_type = CharT;
     using value_type = T;
 };
+
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wdouble-promotion")
 
 TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
 {
@@ -161,3 +142,6 @@ TEST_CASE_TEMPLATE_INSTANTIATE(floating_test,
                                wchar_fpair<float>,
                                wchar_fpair<double>,
                                wchar_fpair<long double>);
+
+SCN_CLANG_POP
+

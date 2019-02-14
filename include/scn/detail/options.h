@@ -131,6 +131,10 @@ namespace scn {
             return *this;
         }
 
+        SCN_CONSTEXPR14 options make() noexcept {
+            return static_cast<options&&>(opt);
+        }
+
         options opt{};
     };
 

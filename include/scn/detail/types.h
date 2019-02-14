@@ -33,7 +33,7 @@ namespace scn {
     error getline(Stream& s, std::basic_string<CharT, Traits, Allocator>& str)
     {
         using context_type = basic_context<Stream>;
-        auto f = string_view("{}");
+        auto f = basic_string_view<CharT>();
         auto args = make_args<context_type>(str);
         auto ctx = context_type(s, f, args);
 
@@ -55,7 +55,7 @@ namespace scn {
                   CharT until)
     {
         using context_type = basic_context<Stream>;
-        auto f = string_view("{}");
+        auto f = basic_string_view<CharT>();
         auto args = make_args<context_type>(str);
         auto ctx = context_type(s, f, args);
 
@@ -136,9 +136,9 @@ namespace scn {
     error ignore_all(Stream& s)
     {
         using context_type = basic_context<Stream>;
-        auto f = string_view("{}");
+        auto f = basic_string_view<CharT>();
 
-        std::string dummy{};
+        std::basic_string<CharT> dummy{};
         auto args = make_args<context_type>(dummy);
         auto ctx = context_type(s, f, args);
 
@@ -149,17 +149,18 @@ namespace scn {
         }
         return {};
     }
-    template <typename Stream, typename CharT = typename Stream::char_type>
-    error ignore_until(Stream& s, CharT until)
+    template <typename Stream>
+    error ignore_until(Stream& s, typename Stream::char_type until)
     {
+        using char_type = typename Stream::char_type;
         using context_type = basic_context<Stream>;
-        auto f = string_view("{}");
+        auto f = basic_string_view<char_type>();
 
-        std::string dummy{};
+        std::basic_string<char_type> dummy{};
         auto args = make_args<context_type>(dummy);
         auto ctx = context_type(s, f, args);
 
-        auto res = scan_chars(ctx, detail::ignore_iterator<CharT>{},
+        auto res = scan_chars(ctx, detail::ignore_iterator<char_type>{},
                               predicates::until<context_type>{until});
         if (!res) {
             return res.get_error();
@@ -170,9 +171,9 @@ namespace scn {
     error ignore_n(Stream& s, std::ptrdiff_t count)
     {
         using context_type = basic_context<Stream>;
-        auto f = string_view("{}");
+        auto f = basic_string_view<CharT>();
 
-        std::string dummy{};
+        std::basic_string<CharT> dummy{};
         auto args = make_args<context_type>(dummy);
         auto ctx = context_type(s, f, args);
 
@@ -184,18 +185,21 @@ namespace scn {
         }
         return {};
     }
-    template <typename Stream, typename CharT = typename Stream::char_type>
-    error ignore_n_until(Stream& s, std::ptrdiff_t count, CharT until)
+    template <typename Stream>
+    error ignore_n_until(Stream& s,
+                         std::ptrdiff_t count,
+                         typename Stream::char_type until)
     {
+        using char_type = typename Stream::char_type;
         using context_type = basic_context<Stream>;
-        auto f = string_view("{}");
+        auto f = basic_string_view<char_type>();
 
-        std::string dummy{};
+        std::basic_string<char_type> dummy{};
         auto args = make_args<context_type>(dummy);
         auto ctx = context_type(s, f, args);
 
-        auto res = scan_chars_until(ctx, detail::ignore_iterator<CharT>{},
-                                    detail::ignore_iterator<CharT>{count},
+        auto res = scan_chars_until(ctx, detail::ignore_iterator<char_type>{},
+                                    detail::ignore_iterator<char_type>{count},
                                     predicates::until<context_type>{until});
         if (!res) {
             return res.get_error();

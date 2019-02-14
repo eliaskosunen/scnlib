@@ -15,86 +15,90 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest.h>
-#include <scn/scn.h>
+#include "test.h"
 
-TEST_CASE("string")
+TEST_CASE_TEMPLATE_DEFINE("string", CharT, string_test)
 {
-    std::string data{"thisisaword nextword WoRdW1th_Special<>Charact3rs"};
-    auto stream = scn::make_stream(data);
-    std::string s{}, s2{};
-
+    using string_type = std::basic_string<CharT>;
     {
-        auto ret = scn::scan(stream, "{} {}", s, s2);
-        CHECK(s == "thisisaword");
-        CHECK(s2 == "nextword");
-        CHECK(ret);
-        s.clear();
-        s2.clear();
+        string_type s{}, s2{};
+        auto e = scan_value<CharT>("thisisaword nextword", "{} {}", s, s2);
+        CHECK(s == widen<CharT>("thisisaword"));
+        CHECK(s2 == widen<CharT>("nextword"));
+        CHECK(e);
     }
     {
-        auto ret = scn::scan(stream, "{}", s);
-        CHECK(s == "WoRdW1th_Special<>Charact3rs");
-        CHECK(ret);
-        s.clear();
+        string_type s{};
+        auto e = scan_value<CharT>("WoRdW1th_Special<>Charact3rs", "{}", s);
+        CHECK(s == widen<CharT>("WoRdW1th_Special<>Charact3rs"));
+        CHECK(e);
     }
 }
 
-TEST_CASE("getline")
+TEST_CASE_TEMPLATE_DEFINE("getline", CharT, getline_test)
 {
-    std::string data{
+    using string_type = std::basic_string<CharT>;
+    string_type data = widen<CharT>(
         "firstline\n"
-        "Second line with spaces"};
+        "Second line with spaces");
     auto stream = scn::make_stream(data);
-    std::string s{};
 
     {
+        string_type s{};
         auto ret = scn::getline(stream, s);
-        CHECK(s == "firstline");
+        CHECK(s == widen<CharT>("firstline"));
         CHECK(ret);
-        s.clear();
     }
     {
+        string_type s{};
         auto ret = scn::getline(stream, s);
-        CHECK(s == "Second line with spaces");
+        CHECK(s == widen<CharT>("Second line with spaces"));
         CHECK(ret);
-        s.clear();
     }
 }
 
-TEST_CASE("ignore")
+TEST_CASE_TEMPLATE_DEFINE("ignore", CharT, ignore_test)
 {
-    std::string data{"line1\nline2"};
+    using string_type = std::basic_string<CharT>;
+    string_type data = widen<CharT>("line1\nline2");
     auto stream = scn::make_stream(data);
-    std::string s{};
+    auto fstr = widen<CharT>("{}");
+    auto f = scn::basic_string_view<CharT>(fstr.data(), fstr.size());
 
     SUBCASE("ignore_n")
     {
+        string_type s{};
         auto ret = scn::ignore_n(stream, 6);
         CHECK(ret);
 
-        ret = scn::scan(stream, "{}", s);
-        CHECK(s == "line2");
+        ret = scn::scan(stream, f, s);
+        CHECK(s == widen<CharT>("line2"));
         CHECK(ret);
     }
     SUBCASE("ignore_until")
     {
-        auto ret = scn::ignore_until(stream, '\n');
+        string_type s{};
+        auto ret = scn::ignore_until(stream, 0x0a);  // '\n'
         CHECK(ret);
 
-        ret = scn::scan(stream, "{}", s);
-        CHECK(s == "line2");
+        ret = scn::scan(stream, f, s);
+        CHECK(s == widen<CharT>("line2"));
         CHECK(ret);
     }
     SUBCASE("ignore_all")
     {
+        string_type s{};
         auto ret = scn::ignore_all(stream);
         CHECK(ret);
 
-        ret = scn::scan(stream, "{}", s);
+        ret = scn::scan(stream, f, s);
         CHECK(!ret);
         if (!ret) {
             CHECK(ret == scn::error::end_of_stream);
         }
     }
 }
+
+TEST_CASE_TEMPLATE_INSTANTIATE(string_test, char, wchar_t);
+TEST_CASE_TEMPLATE_INSTANTIATE(getline_test, char, wchar_t);
+TEST_CASE_TEMPLATE_INSTANTIATE(ignore_test, char, wchar_t);

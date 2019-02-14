@@ -21,36 +21,43 @@
 struct non_default_constructible {
     non_default_constructible(int v) : val(v) {}
 
+    operator int() const
+    {
+        return val;
+    }
+
     int val;
 };
 
-TEST_CASE("small_vector")
+template <typename T, size_t N>
+struct small_vector_size_construct {
+    static scn::detail::small_vector<T, N> make(size_t n)
+    {
+        return scn::detail::small_vector<T, N>(n);
+    }
+};
+template <size_t N>
+struct small_vector_size_construct<non_default_constructible, N> {
+    static scn::detail::small_vector<non_default_constructible, N> make(
+        size_t n)
+    {
+        return scn::detail::small_vector<non_default_constructible, N>(
+            n, non_default_constructible{0});
+    }
+};
+
+TEST_CASE_TEMPLATE_DEFINE("small_vector", T, small_vector_test)
 {
     SUBCASE("default construct stack")
     {
-        scn::detail::small_vector<int, 64> vec;
+        scn::detail::small_vector<T, 64> vec;
         CHECK(vec.is_small());
         CHECK(vec.size() == 0);
         CHECK(vec.capacity() == 64);
     }
     SUBCASE("default construct heap")
     {
-        scn::detail::small_vector<int, 0> vec;
-        CHECK(!vec.is_small());
-        CHECK(vec.size() == 0);
-        CHECK(vec.capacity() == 0);
-        CHECK(vec.data() == nullptr);
-    }
-    SUBCASE("default construct non-def-constructible stack")
-    {
-        scn::detail::small_vector<non_default_constructible, 64> vec;
-        CHECK(vec.is_small());
-        CHECK(vec.size() == 0);
-        CHECK(vec.capacity() == 64);
-    }
-    SUBCASE("default construct non-def-constructible heap")
-    {
-        scn::detail::small_vector<non_default_constructible, 0> vec;
+        scn::detail::small_vector<T, 0> vec;
         CHECK(!vec.is_small());
         CHECK(vec.size() == 0);
         CHECK(vec.capacity() == 0);
@@ -59,7 +66,7 @@ TEST_CASE("small_vector")
 
     SUBCASE("size construct stack")
     {
-        scn::detail::small_vector<int, 64> vec(32);
+        auto vec = small_vector_size_construct<T, 64>::make(32);
         CHECK(vec.is_small());
         CHECK(vec.size() == 32);
         CHECK(vec.capacity() == 64);
@@ -72,7 +79,7 @@ TEST_CASE("small_vector")
     }
     SUBCASE("size construct heap")
     {
-        scn::detail::small_vector<int, 64> vec(128);
+        auto vec = small_vector_size_construct<T, 64>::make(128);
         CHECK(!vec.is_small());
         CHECK(vec.size() == 128);
         CHECK(vec.capacity() >= vec.size());
@@ -86,7 +93,7 @@ TEST_CASE("small_vector")
 
     SUBCASE("size+value construct stack")
     {
-        scn::detail::small_vector<int, 64> vec(32, 42);
+        scn::detail::small_vector<T, 64> vec(32, 42);
         CHECK(vec.is_small());
         CHECK(vec.size() == 32);
         CHECK(vec.capacity() == 64);
@@ -99,7 +106,7 @@ TEST_CASE("small_vector")
     }
     SUBCASE("size+value construct heap")
     {
-        scn::detail::small_vector<int, 64> vec(128, 42);
+        scn::detail::small_vector<T, 64> vec(128, 42);
         CHECK(!vec.is_small());
         CHECK(vec.size() == 128);
         CHECK(vec.capacity() >= vec.size());
@@ -111,40 +118,9 @@ TEST_CASE("small_vector")
             std::all_of(vec.begin(), vec.end(), [](int v) { return v == 42; }));
     }
 
-    SUBCASE("size+value non-def-constructible construct stack")
-    {
-        scn::detail::small_vector<non_default_constructible, 64> vec(
-            32, non_default_constructible{42});
-        CHECK(vec.is_small());
-        CHECK(vec.size() == 32);
-        CHECK(vec.capacity() == 64);
-
-        CHECK(vec.front().val == 42);
-        CHECK(vec.back().val == 42);
-        CHECK(vec.begin()->val == vec.front().val);
-        CHECK(std::all_of(
-            vec.begin(), vec.end(),
-            [](non_default_constructible v) { return v.val == 42; }));
-    }
-    SUBCASE("size+value non-def-constructible construct heap")
-    {
-        scn::detail::small_vector<non_default_constructible, 64> vec(
-            128, non_default_constructible{42});
-        CHECK(!vec.is_small());
-        CHECK(vec.size() == 128);
-        CHECK(vec.capacity() >= vec.size());
-
-        CHECK(vec.front().val == 42);
-        CHECK(vec.back().val == 42);
-        CHECK(vec.begin()->val == vec.front().val);
-        CHECK(std::all_of(
-            vec.begin(), vec.end(),
-            [](non_default_constructible v) { return v.val == 42; }));
-    }
-
     SUBCASE("accessors stack")
     {
-        scn::detail::small_vector<int, 64> vec(16, 42);
+        scn::detail::small_vector<T, 64> vec(16, 42);
         CHECK(vec.front() == 42);
         CHECK(vec.back() == 42);
         CHECK(vec[0] == vec.front());
@@ -154,7 +130,7 @@ TEST_CASE("small_vector")
     }
     SUBCASE("accessors heap")
     {
-        scn::detail::small_vector<int, 64> vec(128, 42);
+        scn::detail::small_vector<T, 64> vec(128, 42);
         CHECK(vec.front() == 42);
         CHECK(vec.back() == 42);
         CHECK(vec[0] == vec.front());
@@ -165,13 +141,13 @@ TEST_CASE("small_vector")
 
     SUBCASE("capacity stack")
     {
-        scn::detail::small_vector<int, 64> vec;
+        scn::detail::small_vector<T, 64> vec;
         CHECK(vec.empty());
         CHECK(vec.size() == 0);
         CHECK(vec.capacity() == 64);
         CHECK(vec.max_size() == std::numeric_limits<size_t>::max());
 
-        vec = scn::detail::small_vector<int, 64>(16);
+        vec = small_vector_size_construct<T, 64>::make(16);
         CHECK(!vec.empty());
         CHECK(vec.size() == 16);
         CHECK(vec.capacity() == 64);
@@ -179,13 +155,13 @@ TEST_CASE("small_vector")
     }
     SUBCASE("capacity heap")
     {
-        scn::detail::small_vector<int, 0> vec;
+        scn::detail::small_vector<T, 0> vec;
         CHECK(vec.empty());
         CHECK(vec.size() == 0);
         CHECK(vec.capacity() == 0);
         CHECK(vec.max_size() == std::numeric_limits<size_t>::max());
 
-        vec = scn::detail::small_vector<int, 0>(16);
+        vec = small_vector_size_construct<T, 0>::make(16);
         CHECK(!vec.empty());
         CHECK(vec.size() == 16);
         CHECK(vec.capacity() >= vec.size());
@@ -194,7 +170,7 @@ TEST_CASE("small_vector")
 
     SUBCASE("push_back stack")
     {
-        scn::detail::small_vector<int, 64> vec;
+        scn::detail::small_vector<T, 64> vec;
         vec.push_back(1);
         CHECK(vec.size() == 1);
         CHECK(vec.back() == 1);
@@ -205,7 +181,7 @@ TEST_CASE("small_vector")
     }
     SUBCASE("push_back overflow")
     {
-        scn::detail::small_vector<int, 64> vec(64);
+        auto vec = small_vector_size_construct<T, 64>::make(64);
         CHECK(vec.is_small());
 
         vec.push_back(1);
@@ -220,7 +196,7 @@ TEST_CASE("small_vector")
     }
     SUBCASE("push_back heap")
     {
-        scn::detail::small_vector<int, 0> vec;
+        scn::detail::small_vector<T, 0> vec;
         vec.push_back(1);
         CHECK(vec.size() == 1);
         CHECK(vec.back() == 1);
@@ -232,7 +208,7 @@ TEST_CASE("small_vector")
 
     SUBCASE("reserve")
     {
-        scn::detail::small_vector<int, 64> vec;
+        scn::detail::small_vector<T, 64> vec;
         CHECK(vec.size() == 0);
         CHECK(vec.capacity() == 64);
         CHECK(vec.is_small());
@@ -250,7 +226,7 @@ TEST_CASE("small_vector")
 
     SUBCASE("shrink_to_fit")
     {
-        scn::detail::small_vector<int, 64> vec(64);
+        auto vec = small_vector_size_construct<T, 64>::make(64);
         vec.shrink_to_fit();
         CHECK(vec.size() == 64);
         CHECK(vec.capacity() == 64);
@@ -262,7 +238,7 @@ TEST_CASE("small_vector")
         CHECK(vec.capacity() >= vec.size());
         CHECK(!vec.is_small());
 
-        vec = scn::detail::small_vector<int, 64>();
+        vec = scn::detail::small_vector<T, 64>();
         vec.reserve(64);
         vec.shrink_to_fit();
         CHECK(vec.size() == 0);
@@ -277,64 +253,11 @@ TEST_CASE("small_vector")
     }
 }
 
-#if 0
-
-#include <iostream>
-
-static int default_construct{0};
-static int copy_construct{0};
-static int copy_assign{0};
-static int move_construct{0};
-static int move_assign{0};
-static int destruct{0};
-
-struct S {
-    S()
-    {
-        std::cout << "S()" << std::endl;
-        ++default_construct;
-    }
-    S(const S&)
-    {
-        std::cout << "S(const S&)" << std::endl;
-        ++copy_construct;
-    }
-    S& operator=(const S&)
-    {
-        std::cout << "S& operator=(const S&)" << std::endl;
-        ++copy_assign;
-        return *this;
-    }
-    S(S&&)
-    {
-        std::cout << "S(S&&)" << std::endl;
-        ++move_construct;
-    }
-    S& operator=(S&&)
-    {
-        std::cout << "S& operator=(S&&)" << std::endl;
-        ++move_assign;
-        return *this;
-    }
-    ~S()
-    {
-        std::cout << "~S()" << std::endl;
-        ++destruct;
-    }
-
-    unsigned char member{0x7f};
-};
-
-TEST_CASE("small_vector")
-{
-    scn::detail::small_vector<S, 4> vec(2);
-    auto copy{vec};
-    copy = vec;
-    auto move{std::move(vec)};
-    move = std::move(copy);
-
-    std::cout << default_construct << ' ' << copy_construct << ' '
-              << copy_assign << ' ' << move_construct << ' ' << move_assign
-              << ' ' << destruct << '\n';
-}
-#endif
+TYPE_TO_STRING(non_default_constructible);
+TEST_CASE_TEMPLATE_INSTANTIATE(small_vector_test,
+                               signed char,
+                               int,
+                               unsigned,
+                               long long,
+                               unsigned long long,
+                               non_default_constructible);

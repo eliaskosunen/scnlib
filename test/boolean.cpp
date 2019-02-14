@@ -15,46 +15,52 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest.h>
-#include <scn/scn.h>
+#include "test.h"
 
-TEST_CASE("boolean")
+TEST_CASE_TEMPLATE("boolean", CharT, char, wchar_t)
 {
-    std::string data{"true false 0 1 2"};
-    auto stream = scn::make_stream(data);
-    bool b{false};
-
     {
-        auto ret = scn::scan(stream, "{a}", b);
+        bool b{};
+        auto e = scan_value<CharT>("true", "{a}", b);
         CHECK(b);
-        CHECK(ret);
-        b = true;
+        CHECK(e);
     }
     {
-        auto ret = scn::scan(stream, "{a}", b);
+        bool b{};
+        auto e = scan_value<CharT>("false", "{a}", b);
         CHECK(!b);
-        CHECK(ret);
-        b = true;
+        CHECK(e);
     }
     {
-        auto ret = scn::scan(stream, "{}", b);
+        bool b{};
+        auto e = scan_value<CharT>("bool", "{a}", b);
+        CHECK(e.get_code() == scn::error::invalid_scanned_value);
+    }
+    {
+        bool b{};
+        auto e = scan_value<CharT>("0", "{a}", b);
+        CHECK(e.get_code() == scn::error::invalid_scanned_value);
+    }
+    {
+        bool b{};
+        auto e = scan_value<CharT>("0", "{}", b);
         CHECK(!b);
-        CHECK(ret);
-        b = false;
+        CHECK(e);
     }
     {
-        auto ret = scn::scan(stream, "{}", b);
+        bool b{};
+        auto e = scan_value<CharT>("1", "{}", b);
         CHECK(b);
-        CHECK(ret);
-        b = false;
+        CHECK(e);
     }
     {
-        auto ret = scn::scan(stream, "{}", b);
-        CHECK(!b);
-        CHECK(!ret);
-        if (!ret) {
-            CHECK(ret == scn::error::invalid_scanned_value);
-        }
-        //b = false;
+        bool b{};
+        auto e = scan_value<CharT>("2", "{}", b);
+        CHECK(e.get_code() == scn::error::invalid_scanned_value);
+    }
+    {
+        bool b{};
+        auto e = scan_value<CharT>("true", "{}", b);
+        CHECK(e.get_code() == scn::error::invalid_scanned_value);
     }
 }
