@@ -674,7 +674,7 @@ namespace scn {
                     if (!tmp) {
                         return tmp.get_error();
                     }
-                    if (tmp.value() > static_cast<long long>(
+                    if (tmp.value() > static_cast<unsigned long long>(
                                           std::numeric_limits<int>::max())) {
                         return make_error(error::value_out_of_range);
                     }
@@ -692,8 +692,8 @@ namespace scn {
                     if (!tmp) {
                         return tmp.get_error();
                     }
-                    if (tmp.value() >
-                        static_cast<long>(std::numeric_limits<short>::max())) {
+                    if (tmp.value() > static_cast<unsigned long>(
+                                          std::numeric_limits<short>::max())) {
                         return make_error(error::value_out_of_range);
                     }
                     return static_cast<unsigned short>(tmp.value());
