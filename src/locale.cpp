@@ -109,8 +109,8 @@ namespace scn {
                         .get(ss, {}, ss, err, val);
                 }
             }
-            catch (const std::ios_base::failure&) {
-                return make_error(error::invalid_scanned_value);
+            catch (const std::ios_base::failure& f) {
+                return error(error::invalid_scanned_value, f.what());
             }
             return static_cast<size_t>(ss.gcount());
         }
@@ -137,11 +137,15 @@ namespace scn {
                 }
                 if (tmp >
                     static_cast<long long>(std::numeric_limits<short>::max())) {
-                    return make_error(error::value_out_of_range);
+                    return error(error::value_out_of_range,
+                                 "Scanned integer out of range for a short "
+                                 "int: overflow");
                 }
                 if (tmp <
                     static_cast<long long>(std::numeric_limits<short>::min())) {
-                    return make_error(error::value_out_of_range);
+                    return error(error::value_out_of_range,
+                                 "Scanned integer out of range for a short "
+                                 "int: underflow");
                 }
                 val = static_cast<short>(tmp);
                 return ret;
@@ -160,11 +164,15 @@ namespace scn {
                 }
                 if (tmp >
                     static_cast<long long>(std::numeric_limits<int>::max())) {
-                    return make_error(error::value_out_of_range);
+                    return error(
+                        error::value_out_of_range,
+                        "Scanned integer out of range for an int: overflow");
                 }
                 if (tmp <
                     static_cast<long long>(std::numeric_limits<int>::min())) {
-                    return make_error(error::value_out_of_range);
+                    return error(
+                        error::value_out_of_range,
+                        "Scanned integer out of range for an int: underflow");
                 }
                 val = static_cast<int>(tmp);
                 return ret;

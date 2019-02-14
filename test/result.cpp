@@ -25,22 +25,21 @@ TEST_CASE("error")
         auto e = scn::error{};
         CHECK(e);
         CHECK(e == scn::error::good);
-        CHECK(e.get_code() == scn::error::good);
+        CHECK(e.code() == scn::error::good);
         CHECK(e.is_recoverable());
         CHECK(e == scn::error{});
     }
     SUBCASE("general")
     {
-        auto e = scn::error{scn::error::end_of_stream};
+        auto e = scn::error{scn::error::end_of_stream, "EOF"};
         CHECK(!e);
         CHECK(e == scn::error::end_of_stream);
-        CHECK(e == scn::error{scn::error::end_of_stream});
-        CHECK(e.get_code() == scn::error::end_of_stream);
+        CHECK(e.code() == scn::error::end_of_stream);
         CHECK(e.is_recoverable());
     }
     SUBCASE("general")
     {
-        auto e = scn::error{scn::error::unrecoverable_stream_error};
+        auto e = scn::error{scn::error::unrecoverable_stream_error, ""};
         CHECK(!e);
         CHECK(e == scn::error::unrecoverable_stream_error);
         CHECK(!e.is_recoverable());
@@ -65,7 +64,7 @@ TEST_CASE("result")
     }
     SUBCASE("error")
     {
-        scn::result<int> r{scn::make_error(scn::error::end_of_stream)};
+        scn::result<int> r{scn::error(scn::error::end_of_stream, "EOF")};
         CHECK(!r);
         CHECK(!r.has_value());
         CHECK(r.get_error() == scn::error::end_of_stream);
@@ -86,7 +85,7 @@ TEST_CASE("result")
     SUBCASE("complex error")
     {
         scn::result<not_default_constructible> r{
-            scn::make_error(scn::error::end_of_stream)};
+            scn::error(scn::error::end_of_stream, "EOF")};
         CHECK(!r);
         CHECK(!r.has_value());
         CHECK(r.get_error() == scn::error::end_of_stream);

@@ -24,6 +24,7 @@
 #include <array>
 #include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <vector>
 
 namespace scn {
@@ -51,7 +52,7 @@ namespace scn {
         SCN_CONSTEXPR14 result<char_type> read_char() noexcept
         {
             if (m_next == end()) {
-                return make_error(error::end_of_stream);
+                return error(error::end_of_stream, "EOF");
             }
             auto ch = *m_next;
             ++m_next;
@@ -60,7 +61,9 @@ namespace scn {
         SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
             if (m_begin == m_next) {
-                return error::invalid_operation;
+                return error(
+                    error::invalid_operation,
+                    "Cannot putback to a stream that hasn't been read from");
             }
             --m_next;
             return {};
@@ -69,7 +72,7 @@ namespace scn {
         SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
         {
             if (std::distance(m_next, end()) < s.size()) {
-                return error::end_of_stream;
+                return error(error::end_of_stream, "EOF");
             }
             std::copy(m_next, m_next + s.size(), s.begin());
             m_next += s.size();
@@ -188,7 +191,7 @@ namespace scn {
         SCN_CONSTEXPR14 result<char_type> read_char() noexcept
         {
             if (m_next == end()) {
-                return make_error(error::end_of_stream);
+                return error(error::end_of_stream, "EOF");
             }
             auto ch = *m_next;
             ++m_next;
@@ -197,7 +200,9 @@ namespace scn {
         SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
             if (m_begin == m_next) {
-                return error::invalid_operation;
+                return error(
+                    error::invalid_operation,
+                    "Cannot putback to a stream that hasn't been read from");
             }
             --m_next;
             return {};
@@ -206,7 +211,8 @@ namespace scn {
         SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
         {
             if (std::distance(m_next, end()) < s.size()) {
-                return error::end_of_stream;
+                return error(error::end_of_stream,
+                             "Cannot complete read_bulk: EOF encountered");
             }
             std::copy(m_next, m_next + s.size(), s.begin());
             m_next += s.size();
@@ -264,7 +270,7 @@ namespace scn {
         SCN_CONSTEXPR14 result<char_type> read_char() noexcept
         {
             if (m_next == m_end) {
-                return make_error(error::end_of_stream);
+                return error(error::end_of_stream, "EOF");
             }
             auto ch = *m_next;
             ++m_next;
@@ -273,7 +279,9 @@ namespace scn {
         SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
             if (m_begin == m_next) {
-                return error::invalid_operation;
+                return error(
+                    error::invalid_operation,
+                    "Cannot putback to a stream that hasn't been read from");
             }
             --m_next;
             return {};
@@ -282,7 +290,8 @@ namespace scn {
         SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
         {
             if (std::distance(m_next, m_end) < s.size()) {
-                return error::end_of_stream;
+                return error(error::end_of_stream,
+                             "Cannot complete read_bulk: EOF encountered");
             }
             std::copy(m_next, m_next + s.size(), s.begin());
             std::advance(m_next, s.size());
@@ -327,7 +336,7 @@ namespace scn {
                 return top;
             }
             if (m_begin == m_end) {
-                return make_error(error::end_of_stream);
+                return error(error::end_of_stream, "EOF");
             }
             auto ch = *m_begin;
             ++m_begin;
@@ -342,7 +351,8 @@ namespace scn {
         SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
         {
             if (std::distance(m_begin, m_end) < s.size()) {
-                return error::end_of_stream;
+                return error(error::end_of_stream,
+                             "Cannot complete read_bulk: EOF encountered");
             }
             std::copy(m_begin, m_begin + s.size(), s.begin());
             std::advance(m_begin, s.size());
@@ -441,12 +451,14 @@ namespace scn {
             auto ret = std::fgetc(m_file);
             if (ret == EOF) {
                 if (std::ferror(m_file) != 0) {
-                    return make_error(error::stream_source_error);
+                    return error(error::stream_source_error,
+                                 std::strerror(errno));
                 }
                 if (std::feof(m_file) != 0) {
-                    return make_error(error::end_of_stream);
+                    return error(error::end_of_stream, "EOF");
                 }
-                return make_error(error::unrecoverable_stream_source_error);
+                return error(error::unrecoverable_stream_source_error,
+                             "Unknown error");
             }
             m_read.push_back(static_cast<char_type>(ret));
             return static_cast<char_type>(ret);
@@ -455,7 +467,8 @@ namespace scn {
         {
             assert(!m_read.empty());
             if (std::ungetc(ch, m_file) == EOF) {
-                return error::unrecoverable_stream_source_error;
+                return error(error::unrecoverable_stream_source_error,
+                             std::strerror(errno));
             }
             m_read.pop_back();
             return {};
@@ -473,7 +486,8 @@ namespace scn {
             }
             for (auto it = m_read.rbegin(); it != m_read.rend(); ++it) {
                 if (std::ungetc(*it, m_file) == EOF) {
-                    return error::unrecoverable_stream_source_error;
+                    return error(error::unrecoverable_stream_source_error,
+                                 std::strerror(errno));
                 }
             }
             m_read.clear();
@@ -501,12 +515,14 @@ namespace scn {
             auto ret = std::fgetwc(m_file);
             if (ret == WEOF) {
                 if (std::ferror(m_file) != 0) {
-                    return make_error(error::stream_source_error);
+                    return error(error::stream_source_error,
+                                 std::strerror(errno));
                 }
                 if (std::feof(m_file) != 0) {
-                    return make_error(error::end_of_stream);
+                    return error(error::end_of_stream, "EOF");
                 }
-                return make_error(error::unrecoverable_stream_source_error);
+                return error(error::unrecoverable_stream_source_error,
+                             "Unknown error");
             }
             m_read.push_back(static_cast<char_type>(ret));
             return static_cast<char_type>(ret);
@@ -516,7 +532,8 @@ namespace scn {
             assert(!m_read.empty());
             if (std::ungetwc(std::char_traits<char_type>::to_int_type(ch),
                              m_file) == WEOF) {
-                return error::unrecoverable_stream_source_error;
+                return error(error::unrecoverable_stream_source_error,
+                             std::strerror(errno));
             }
             m_read.pop_back();
             return {};
@@ -535,7 +552,8 @@ namespace scn {
             for (auto it = m_read.rbegin(); it != m_read.rend(); ++it) {
                 if (std::ungetwc(std::char_traits<char_type>::to_int_type(*it),
                                  m_file) == WEOF) {
-                    return error::unrecoverable_stream_source_error;
+                    return error(error::unrecoverable_stream_source_error,
+                                 std::strerror(errno));
                 }
             }
             m_read.clear();

@@ -25,6 +25,10 @@
 #include <utility>
 
 namespace scn {
+
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wpadded")
+
     /**
      * Error class.
      * Used as a return value for functions without a success value.
@@ -60,8 +64,15 @@ namespace scn {
             unrecoverable_stream_source_error
         };
 
+        struct success_tag {
+        };
+
         SCN_CONSTEXPR error() noexcept = default;
-        SCN_CONSTEXPR error(code c) noexcept : m_code(c) {}
+        SCN_CONSTEXPR error(success_tag) noexcept : error() {}
+        SCN_CONSTEXPR error(enum code c, const char* m) noexcept
+            : m_msg(m), m_code(c)
+        {
+        }
 
         /// Evaluated to true if there was no error
         SCN_CONSTEXPR explicit operator bool() const noexcept
@@ -73,10 +84,16 @@ namespace scn {
             return !(operator bool());
         }
 
+        SCN_CONSTEXPR operator enum code() const noexcept { return m_code; }
+
         /// Get error code
-        SCN_CONSTEXPR code get_code() const noexcept
+        SCN_CONSTEXPR enum code code() const noexcept
         {
             return m_code;
+        }
+        SCN_CONSTEXPR const char* msg() const noexcept
+        {
+            return m_msg;
         }
 
         /// Can the stream be used again
@@ -87,12 +104,13 @@ namespace scn {
         }
 
     private:
-        code m_code{good};
+        const char* m_msg{nullptr};
+        enum code m_code { good };
     };
 
     SCN_CONSTEXPR inline bool operator==(error a, error b) noexcept
     {
-        return a.get_code() == b.get_code();
+        return a.code() == b.code();
     }
     SCN_CONSTEXPR inline bool operator!=(error a, error b) noexcept
     {
@@ -106,11 +124,6 @@ namespace scn {
      */
     template <typename T, typename Enable = void>
     class result;
-
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
-#endif
 
     /**
      * Either-like type for default-constructible success values.
@@ -165,7 +178,7 @@ namespace scn {
 
     private:
         success_type m_s{};
-        error m_e{error::good};
+        error m_e{error::success_tag{}};
     };
 
     /**
@@ -217,13 +230,11 @@ namespace scn {
 
     private:
         success_storage m_s{};
-        error m_e{error::good};
+        error m_e{error::success_tag{}};
     };
 
-#if SCN_CLANG
     // -Wpadded
-#pragma clang diagnostic pop
-#endif
+    SCN_CLANG_POP
 
     template <typename T,
               typename U = typename std::remove_cv<
@@ -231,10 +242,6 @@ namespace scn {
     result<U> make_result(T&& val)
     {
         return result<U>(std::forward<T>(val));
-    }
-    SCN_CONSTEXPR inline error make_error(error::code e) noexcept
-    {
-        return e;
     }
 
     namespace detail {

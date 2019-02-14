@@ -70,7 +70,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "-1", "{}", i);
-        CHECK(e.get_code() == scn::error::value_out_of_range);
+        CHECK(e.code() == scn::error::value_out_of_range);
     }
 
     const bool can_fit_2pow31 = [=]() {
@@ -88,7 +88,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "2147483648", "{}", i);
-        CHECK(e.get_code() == scn::error::value_out_of_range);
+        CHECK(e.code() == scn::error::value_out_of_range);
     }
 
     {
@@ -120,7 +120,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
-        CHECK(e.get_code() == scn::error::value_out_of_range);
+        CHECK(e.code() == scn::error::value_out_of_range);
     }
     if (can_fit_badidea) {
         value_type i{};
@@ -131,7 +131,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
-        CHECK(e.get_code() == scn::error::value_out_of_range);
+        CHECK(e.code() == scn::error::value_out_of_range);
     }
 }
 

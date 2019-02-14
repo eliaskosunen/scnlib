@@ -99,7 +99,8 @@ namespace scn {
             {
                 auto a = m_args.get(id);
                 if (!a && !m_args.check_id(id - 1)) {
-                    return make_error(error::invalid_argument);
+                    return error(error::invalid_argument,
+                                 "Argument id out of range");
                 }
                 return a;
             }

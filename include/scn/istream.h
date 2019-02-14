@@ -41,25 +41,26 @@ namespace scn {
                 auto tmp = m_is->get();
                 if (tmp == traits::eof()) {
                     if (m_is->bad()) {
-                        return make_error(
-                            error::unrecoverable_stream_source_error);
+                        return error(error::unrecoverable_stream_source_error,
+                                     "Bad underlying stream");
                     }
                     if (m_is->eof()) {
-                        return make_error(error::end_of_stream);
+                        return error(error::end_of_stream, "EOF");
                     }
-                    return make_error(error::stream_source_error);
+                    return error(error::stream_source_error, "Unknown error");
                 }
                 ++m_read;
                 return static_cast<char_type>(tmp);
             }
-            catch (const std::ios_base::failure&) {
+            catch (const std::ios_base::failure& e) {
                 if (m_is->bad()) {
-                    return make_error(error::unrecoverable_stream_source_error);
+                    return error(error::unrecoverable_stream_source_error,
+                                 e.what());
                 }
                 if (m_is->eof()) {
-                    return make_error(error::end_of_stream);
+                    return error(error::end_of_stream, e.what());
                 }
-                return make_error(error::stream_source_error);
+                return error(error::stream_source_error, e.what());
             }
         }
         error putback(char_type ch)
@@ -68,13 +69,15 @@ namespace scn {
             try {
                 m_is->putback(ch);
                 if (m_is->fail()) {
-                    return error::unrecoverable_stream_source_error;
+                    return error(error::unrecoverable_stream_source_error,
+                                 "Putback failed");
                 }
                 --m_read;
                 return {};
             }
-            catch (const std::ios_base::failure&) {
-                return error::unrecoverable_stream_source_error;
+            catch (const std::ios_base::failure& e) {
+                return error(error::unrecoverable_stream_source_error,
+                             e.what());
             }
         }
 
@@ -91,7 +94,8 @@ namespace scn {
             }
             for (auto i = 0; i < m_read; ++i) {
                 if (m_is->rdbuf()->sungetc() == traits::eof()) {
-                    return error::unrecoverable_stream_source_error;
+                    return error(error::unrecoverable_stream_source_error,
+                                 "ungetc failed");
                 }
             }
             m_read = 0;
@@ -211,9 +215,9 @@ namespace scn {
                 streambuf(ctx.stream());
             std::basic_istream<CharT> stream(std::addressof(streambuf));
 
-            stream >> val;
-            if (!stream) {
-                return error::unrecoverable_stream_source_error;
+            if (!(stream >> val)) {
+                return error(error::unrecoverable_stream_source_error,
+                             "Bad stream after reading");
             }
             return {};
         }

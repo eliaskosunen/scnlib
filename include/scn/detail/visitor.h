@@ -258,7 +258,7 @@ namespace scn {
             error parse(Context& ctx)
             {
                 if (*ctx.parse_context().begin() != ctx.locale().widen('{')) {
-                    return error::invalid_format_string;
+                    return error(error::invalid_format_string, "Expected '}'");
                 }
                 ctx.parse_context().advance();
                 return {};
@@ -323,15 +323,18 @@ namespace scn {
                         boolalpha = true;
                     }
                     else {
-                        return error::invalid_format_string;
+                        return error(error::invalid_format_string,
+                                     "Expected '}', 'l' or 'a'");
                     }
                 }
 
                 if (localized && !boolalpha) {
-                    return error::invalid_format_string;
+                    return error(
+                        error::invalid_format_string,
+                        "'l' and 'a' cannot be used simultaneously with bool");
                 }
                 if (ch != ctx.locale().widen('}')) {
-                    return error::invalid_format_string;
+                    return error(error::invalid_format_string, "Expected '}'");
                 }
                 return {};
             }
@@ -408,7 +411,8 @@ namespace scn {
                     }
                 }
 
-                return error::invalid_scanned_value;
+                return error(error::invalid_scanned_value,
+                             "Couldn't scan bool");
             }
 
             bool localized{false};
@@ -456,11 +460,15 @@ namespace scn {
                     auto i = std::stoi(str, &chars, base);
                     if (i >
                         static_cast<int>(std::numeric_limits<short>::max())) {
-                        return make_error(error::value_out_of_range);
+                        return error(error::value_out_of_range,
+                                     "Scanned integer out of range for a short "
+                                     "int: overflow");
                     }
                     if (i <
                         static_cast<int>(std::numeric_limits<short>::min())) {
-                        return make_error(error::value_out_of_range);
+                        return error(error::value_out_of_range,
+                                     "Scanned integer out of range for a short "
+                                     "int: underflow");
                     }
                     return static_cast<short>(i);
                 }
@@ -495,7 +503,10 @@ namespace scn {
                     auto i = std::stoul(str, &chars, base);
                     if (i > static_cast<unsigned long>(
                                 std::numeric_limits<unsigned int>::max())) {
-                        return make_error(error::value_out_of_range);
+                        return error(
+                            error::value_out_of_range,
+                            "Scanned integer out of range for a unsigned "
+                            "int: overflow");
                     }
                     return static_cast<unsigned int>(i);
                 }
@@ -510,7 +521,10 @@ namespace scn {
                     auto i = std::stoul(str, &chars, base);
                     if (i > static_cast<unsigned long>(
                                 std::numeric_limits<unsigned short>::max())) {
-                        return make_error(error::value_out_of_range);
+                        return error(
+                            error::value_out_of_range,
+                            "Scanned integer out of range for a unsigned "
+                            "short: overflow");
                     }
                     return static_cast<unsigned short>(i);
                 }
@@ -582,11 +596,15 @@ namespace scn {
                     }
                     if (tmp.value() > static_cast<long long>(
                                           std::numeric_limits<int>::max())) {
-                        return make_error(error::value_out_of_range);
+                        return error(error::value_out_of_range,
+                                     "Scanned integer out of range for an int: "
+                                     "overflow");
                     }
                     if (tmp.value() < static_cast<long long>(
                                           std::numeric_limits<int>::min())) {
-                        return make_error(error::value_out_of_range);
+                        return error(error::value_out_of_range,
+                                     "Scanned integer out of range for an int: "
+                                     "underflow");
                     }
                     return static_cast<int>(tmp.value());
                 }
@@ -603,11 +621,15 @@ namespace scn {
                     }
                     if (tmp.value() >
                         static_cast<long>(std::numeric_limits<short>::max())) {
-                        return make_error(error::value_out_of_range);
+                        return error(error::value_out_of_range,
+                                     "Scanned integer out of range for a short "
+                                     "int: overflow");
                     }
                     if (tmp.value() <
                         static_cast<long>(std::numeric_limits<short>::min())) {
-                        return make_error(error::value_out_of_range);
+                        return error(error::value_out_of_range,
+                                     "Scanned integer out of range for a short "
+                                     "int: underflow");
                     }
                     return static_cast<short>(tmp.value());
                 }
@@ -677,7 +699,9 @@ namespace scn {
                     if (tmp.value() >
                         static_cast<unsigned long long>(
                             std::numeric_limits<unsigned int>::max())) {
-                        return make_error(error::value_out_of_range);
+                        return error(error::value_out_of_range,
+                                     "Scanned integer out of range for an "
+                                     "unsigned int: overflow");
                     }
                     return static_cast<unsigned>(tmp.value());
                 }
@@ -696,7 +720,9 @@ namespace scn {
                     if (tmp.value() >
                         static_cast<unsigned long>(
                             std::numeric_limits<unsigned short>::max())) {
-                        return make_error(error::value_out_of_range);
+                        return error(error::value_out_of_range,
+                                     "Scanned integer out of range for an "
+                                     "unsigned short: overflow");
                     }
                     return static_cast<unsigned short>(tmp.value());
                 }
@@ -756,7 +782,9 @@ namespace scn {
                     int tmp = 0;
                     if (ch < ctx.locale().widen('0') ||
                         ch > ctx.locale().widen('9')) {
-                        return error::invalid_format_string;
+                        return error(
+                            error::invalid_format_string,
+                            "Invalid character after 'b', expected digit");
                     }
                     tmp = ch - ctx.locale().widen('0');
                     ctx.parse_context().advance();
@@ -768,25 +796,30 @@ namespace scn {
                     }
                     if (ch < ctx.locale().widen('0') ||
                         ch > ctx.locale().widen('9')) {
-                        return error::invalid_format_string;
+                        return error(
+                            error::invalid_format_string,
+                            "Invalid character after 'b', expected digit");
                     }
                     tmp *= 10;
                     tmp += ch - ctx.locale().widen('0');
                     if (tmp < 1 || tmp > 36) {
-                        return error::invalid_format_string;
+                        return error(error::invalid_format_string,
+                                     "Invalid base, must be between 1 and 36");
                     }
                     base = tmp;
                     ch = *ctx.parse_context().advance();
                 }
                 else {
-                    return error::invalid_format_string;
+                    return error(error::invalid_format_string, "Expected '}'");
                 }
 
                 if (localized && (base != 0 && base != 10)) {
-                    return error::invalid_format_string;
+                    return error(
+                        error::invalid_format_string,
+                        "Localized integers can only be scanned in base 10");
                 }
                 if (ch != ctx.locale().widen('}')) {
-                    return error::invalid_format_string;
+                    return error(error::invalid_format_string, "Expected '}'");
                 }
                 return {};
             }
@@ -841,7 +874,9 @@ namespace scn {
 
                 if (std::is_unsigned<T>::value) {
                     if (buf.front() == ctx.locale().widen('-')) {
-                        return make_error(error::value_out_of_range);
+                        return error(error::value_out_of_range,
+                                     "Unexpected sign '-' when scanning an "
+                                     "unsigned integer");
                     }
                 }
 
@@ -899,11 +934,11 @@ namespace scn {
                     val = ret.value();
                     return chars;
                 }
-                catch (const std::invalid_argument&) {
-                    return make_error(error::invalid_scanned_value);
+                catch (const std::invalid_argument& e) {
+                    return error(error::invalid_scanned_value, e.what());
                 }
-                catch (const std::out_of_range&) {
-                    return make_error(error::value_out_of_range);
+                catch (const std::out_of_range& e) {
+                    return error(error::value_out_of_range, e.what());
                 }
             }
             static result<size_t>
@@ -918,10 +953,12 @@ namespace scn {
                     return ret.get_error();
                 }
                 if (errno == ERANGE) {
-                    return make_error(error::value_out_of_range);
+                    return error(error::value_out_of_range,
+                                 "Scanned integer out of range");
                 }
                 if (chars == 0) {
-                    return make_error(error::invalid_scanned_value);
+                    return error(error::invalid_scanned_value,
+                                 "Could not parse integer");
                 }
                 val = ret.value();
 
@@ -949,7 +986,9 @@ namespace scn {
                 SCN_UNUSED(val);
                 SCN_UNUSED(buf);
                 SCN_UNUSED(base);
-                return make_error(error::invalid_operation);
+                return error(error::invalid_operation,
+                             "from_chars is not a supported integer scanning "
+                             "method with this platform");
 #endif
             }
         };
@@ -1074,7 +1113,11 @@ namespace scn {
                     ctx.parse_context().advance();
                     ch = *ctx.parse_context().begin();
                 }
-                return error::invalid_format_string;
+
+                if (ch != ctx.locale().widen('}')) {
+                    return error(error::invalid_format_string, "Expected '}'");
+                }
+                return {};
             }
             template <typename Context>
             error scan(T& val, Context& ctx)
@@ -1094,7 +1137,9 @@ namespace scn {
                         }
                         if (ch == c.locale().decimal_point()) {
                             if (point) {
-                                return make_error(error::invalid_scanned_value);
+                                return error(error::invalid_scanned_value,
+                                             "Extra decimal separator found in "
+                                             "parsing floating-point number");
                             }
                             point = true;
                         }
@@ -1176,11 +1221,11 @@ namespace scn {
                     val = sto::str_to_float<CharT, T>::get(buf, chars);
                     return chars;
                 }
-                catch (const std::invalid_argument&) {
-                    return make_error(error::invalid_scanned_value);
+                catch (const std::invalid_argument& e) {
+                    return error(error::invalid_scanned_value, e.what());
                 }
-                catch (const std::out_of_range&) {
-                    return make_error(error::value_out_of_range);
+                catch (const std::out_of_range& e) {
+                    return error(error::value_out_of_range, e.what());
                 }
             }
             static result<size_t> _read_strto(
@@ -1214,7 +1259,9 @@ namespace scn {
 #else
                 SCN_UNUSED(val);
                 SCN_UNUSED(buf);
-                return make_error(error::invalid_operation);
+                return error(error::invalid_operation,
+                             "from_chars is not a supported floating-point "
+                             "scanning method with this platform");
 #endif
             }
         };
@@ -1239,7 +1286,8 @@ namespace scn {
                     return s.get_error();
                 }
                 if (val.empty()) {
-                    return error::invalid_scanned_value;
+                    return error(error::invalid_scanned_value,
+                                 "Empty string parsed");
                 }
 
                 return {};
@@ -1308,7 +1356,8 @@ namespace scn {
                                         sizeof(T) < sizeof(char_type),
                                     error>::type
         {
-            return error::invalid_operation;
+            return error(error::invalid_operation,
+                         "Cannot scan this type with non-char char_type");
         }
         template <typename T>
         auto visit(T& val, priority_tag<1>) ->
@@ -1338,7 +1387,7 @@ namespace scn {
         }
         auto visit(detail::monostate, priority_tag<0>) -> error
         {
-            return error::invalid_argument;
+            return error(error::invalid_operation, "Cannot scan a monostate");
         }
 
         Context* m_ctx;
@@ -1393,7 +1442,9 @@ namespace scn {
                     }
 
                     // Mismatching characters in scan string and stream
-                    return error::invalid_scanned_value;
+                    return error(error::invalid_scanned_value,
+                                 "Expected character from format string not "
+                                 "found in the stream");
                 }
                 // Bump pctx to next char
                 pctx.advance();
@@ -1402,7 +1453,9 @@ namespace scn {
                 // Scan argument
                 if (!arg) {
                     // Mismatch between number of args and {}s
-                    return error::invalid_format_string;
+                    return error(error::invalid_format_string,
+                                 "Mismatch between number of arguments and "
+                                 "'{}' in the format string");
                 }
                 auto ret = visit_arg(basic_visitor<Context>(ctx), arg);
                 if (!ret) {
@@ -1423,7 +1476,8 @@ namespace scn {
         }
         if (pctx.begin() != pctx.end()) {
             // Format string not exhausted
-            return error::invalid_format_string;
+            return error(error::invalid_format_string,
+                         "Format string not exhausted");
         }
         auto srb = ctx.stream().set_roll_back();
         if (!srb) {
