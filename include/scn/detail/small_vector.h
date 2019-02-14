@@ -115,6 +115,9 @@ namespace scn {
         using basic_stack_storage_type =
             typename std::aligned_storage<sizeof(T), alignof(T)>::type;
 
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wpadded")
+
         template <typename T, size_t N>
         struct basic_stack_storage {
             basic_stack_storage_type<T> data[N];
@@ -129,6 +132,9 @@ namespace scn {
                 return reinterpret_cast<const T*>(data);
             }
         };
+
+        SCN_CLANG_POP
+
         template <typename T>
         struct basic_stack_storage<T, 0> {
             basic_stack_storage_type<T>* data{nullptr};

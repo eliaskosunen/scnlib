@@ -917,10 +917,10 @@ namespace scn {
                              errno != ERANGE)) {
                     return ret.get_error();
                 }
+                if (errno == ERANGE) {
+                    return make_error(error::value_out_of_range);
+                }
                 if (chars == 0) {
-                    if (errno == ERANGE) {
-                        return make_error(error::value_out_of_range);
-                    }
                     return make_error(error::invalid_scanned_value);
                 }
                 val = ret.value();

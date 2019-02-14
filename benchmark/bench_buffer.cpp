@@ -17,12 +17,14 @@
 
 #include "benchmark.h"
 
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wglobal-constructors"
-#pragma clang diagnostic ignored "-Wunused-template"
-#pragma clang diagnostic ignored "-Wexit-time-destructors"
-#endif
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wglobal-constructors")
+SCN_CLANG_IGNORE("-Wunused-template")
+SCN_CLANG_IGNORE("-Wunused-function")
+SCN_CLANG_IGNORE("-Wexit-time-destructors")
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wunused-function")
 
 static void scanbuffer_scn(benchmark::State& state)
 {
@@ -109,6 +111,5 @@ static void scanbuffer_control(benchmark::State& state)
 }
 // BENCHMARK(scanbuffer_control)->Arg(256)->Arg(1024)->Arg(4096);
 
-#if SCN_CLANG
-#pragma clang diagnostic pop
-#endif
+SCN_GCC_POP
+SCN_CLANG_POP

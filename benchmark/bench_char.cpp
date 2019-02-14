@@ -17,12 +17,10 @@
 
 #include "benchmark.h"
 
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wglobal-constructors"
-#pragma clang diagnostic ignored "-Wunused-template"
-#pragma clang diagnostic ignored "-Wexit-time-destructors"
-#endif
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wglobal-constructors")
+SCN_CLANG_IGNORE("-Wunused-template")
+SCN_CLANG_IGNORE("-Wexit-time-destructors")
 
 namespace {
     template <typename Char>
@@ -167,6 +165,4 @@ static void scanchar_control(benchmark::State& state)
 BENCHMARK_TEMPLATE(scanchar_control, char)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanchar_control, wchar_t)->Arg(2 << 15);
 
-#if SCN_CLANG
-#pragma clang diagnostic pop
-#endif
+SCN_CLANG_POP

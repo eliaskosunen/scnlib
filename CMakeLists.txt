@@ -16,6 +16,8 @@ option(SCN_PEDANTIC "Use stricter warnings" ${MASTER_PROJECT})
 
 option(SCN_WERROR "Halt compilation in case of a warning" OFF)
 
+option(SCN_USE_32BIT "Compile as 32-bit (gcc or clang only)" OFF)
+
 file(READ include/scn/detail/config.h config_h)
 if (NOT config_h MATCHES "SCN_VERSION SCN_COMPILER\\(([0-9]+), ([0-9]+), ([0-9]+)\\)")
     message(FATAL_ERROR "Cannot get SCN_VERSION from config.h")
@@ -128,6 +130,10 @@ function (set_private_flags target)
     if (SCN_WERROR)
         get_werror_flags(werror_flags)
         target_compile_options(${target} PRIVATE ${werror_flags})
+    endif ()
+    if (SCN_USE_32BIT)
+        target_compile_options(${target} PUBLIC -m32)
+        set_target_properties(${target} PROPERTIES LINK_FLAGS -m32)
     endif ()
 endfunction ()
 

@@ -17,12 +17,11 @@
 
 #include "benchmark.h"
 
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wglobal-constructors"
-#pragma clang diagnostic ignored "-Wunused-template"
-#pragma clang diagnostic ignored "-Wexit-time-destructors"
-#endif
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wglobal-constructors")
+SCN_CLANG_IGNORE("-Wunused-template")
+SCN_CLANG_IGNORE("-Wunused-function")
+SCN_CLANG_IGNORE("-Wexit-time-destructors")
 
 template <typename Int>
 static void scanint_scn(benchmark::State& state)
@@ -91,6 +90,9 @@ BENCHMARK_TEMPLATE(scanint_sstream, unsigned)->Arg(2 << 15);
 SCN_MSVC_PUSH
 SCN_MSVC_IGNORE(4996)
 
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wunused-function")
+
 namespace detail {
     static int scanf_integral(char*& ptr, int& i)
     {
@@ -150,6 +152,5 @@ static void scanint_scanf(benchmark::State& state)
 // BENCHMARK_TEMPLATE(scanint_scanf, long long)->Arg(2 << 15);
 // BENCHMARK_TEMPLATE(scanint_scanf, unsigned)->Arg(2 << 15);
 
-#if SCN_CLANG
-#pragma clang diagnostic pop
-#endif
+SCN_GCC_POP
+SCN_CLANG_POP

@@ -35,8 +35,10 @@ struct fpair {
     using value_type = T;
 };
 
+#if SCN_CLANG >= SCN_COMPILER(3, 8, 0)
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wdouble-promotion")
+#endif
 
 TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
 {
@@ -143,5 +145,7 @@ TEST_CASE_TEMPLATE_INSTANTIATE(floating_test,
                                wchar_fpair<double>,
                                wchar_fpair<long double>);
 
+#if SCN_CLANG >= SCN_COMPILER(3, 8, 0)
 SCN_CLANG_POP
+#endif
 

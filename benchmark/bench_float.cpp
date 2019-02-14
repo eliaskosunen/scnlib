@@ -17,12 +17,10 @@
 
 #include "benchmark.h"
 
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wglobal-constructors"
-#pragma clang diagnostic ignored "-Wunused-template"
-#pragma clang diagnostic ignored "-Wexit-time-destructors"
-#endif
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wglobal-constructors")
+SCN_CLANG_IGNORE("-Wunused-template")
+SCN_CLANG_IGNORE("-Wexit-time-destructors")
 
 template <typename Float>
 static void scanfloat_scn(benchmark::State& state)
@@ -89,6 +87,4 @@ BENCHMARK_TEMPLATE(scanfloat_sstream, float)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanfloat_sstream, double)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanfloat_sstream, long double)->Arg(2 << 15);
 
-#if SCN_CLANG
-#pragma clang diagnostic pop
-#endif
+SCN_CLANG_POP

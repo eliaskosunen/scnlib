@@ -8,8 +8,13 @@ set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON CACHE INTERNAL "")
 set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE INTERNAL "")
 add_subdirectory(google-benchmark EXCLUDE_FROM_ALL)
 
+if (SCN_USE_32BIT)
+    target_compile_options(benchmark PUBLIC -m32)
+    set_target_properties(benchmark PROPERTIES LINK_FLAGS -m32)
+endif ()
+
 add_executable(bench
     bench.cpp benchmark.h
     bench_int.cpp bench_float.cpp bench_word.cpp bench_char.cpp bench_buffer.cpp)
 target_link_libraries(bench scn benchmark)
-set_private_flags(tests)
+set_private_flags(bench)

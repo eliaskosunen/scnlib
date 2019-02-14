@@ -20,20 +20,16 @@
 
 #include <scn/scn.h>
 
-#if SCN_CLANG
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
-#pragma clang diagnostic ignored "-Wweak-vtables"
-#pragma clang diagnostic ignored "-Wglobal-constructors"
-#pragma clang diagnostic ignored "-Wused-but-marked-unused"
-#pragma clang diagnostic ignored "-Wexit-time-destructors"
-#endif
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wpadded")
+SCN_CLANG_IGNORE("-Wweak-vtables")
+SCN_CLANG_IGNORE("-Wglobal-constructors")
+SCN_CLANG_IGNORE("-Wused-but-marked-unused")
+SCN_CLANG_IGNORE("-Wexit-time-destructors")
 
-#if SCN_GCC
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wswitch-default"
-#pragma GCC diagnostic ignored "-Wredundant-decls"
-#endif
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wswitch-default")
+SCN_GCC_IGNORE("-Wredundant-decls")
 
 #include <benchmark/benchmark.h>
 
@@ -133,12 +129,7 @@ std::string generate_float_data(size_t n)
     return oss.str();
 }
 
-#if SCN_GCC
-#pragma GCC diagnostic pop
-#endif
-
-#if SCN_CLANG
-#pragma clang diagnostic pop
-#endif
+SCN_GCC_POP
+SCN_CLANG_POP
 
 #endif  // SCN_BENCHMARK_BENCHMARK_H
