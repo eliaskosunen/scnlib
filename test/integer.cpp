@@ -17,8 +17,6 @@
 
 #include "test.h"
 
-#include <iostream>
-
 namespace detail {
     template <typename CharT>
     static std::basic_string<CharT> widen(std::string)

@@ -15,93 +15,149 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#include "test.h"
+
 #include <cmath>
-#include <doctest.h>
-#include <scn/scn.h>
 
-TEST_CASE("floating point")
+namespace detail {
+    template <typename CharT>
+    static std::basic_string<CharT> widen(std::string)
+    {
+    }
+    template <>
+    std::basic_string<char> widen<char>(std::string str)
+    {
+        return str;
+    }
+    template <>
+    std::basic_string<wchar_t> widen<wchar_t>(std::string str)
+    {
+        return std::wstring(str.begin(), str.end());
+    }
+}  // namespace detail
+
+template <typename CharT, typename T>
+static scn::error scan_value(scn::method m,
+                             std::string source,
+                             std::string f,
+                             T& value)
 {
-    std::string data{
-        "42 3.14 -2.22 2.0e4 0x1.bc70a3d70a3d7p+6 inf -inf nan -0"};
-    auto stream = scn::make_stream(data);
-    double d{};
+    auto wsource = detail::widen<CharT>(source);
+    auto stream = scn::make_stream(wsource);
+    auto fstr = detail::widen<CharT>(f);
+    auto ret = scn::scan(
+        scn::options::builder{}.float_method(m), stream,
+        scn::basic_string_view<CharT>(fstr.data(), fstr.size()), value);
+    return ret;
+}
+
+template <typename CharT, typename T>
+struct fpair {
+    using char_type = CharT;
+    using value_type = T;
+};
+
+TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
+{
+    using value_type = typename T::value_type;
+    using char_type = typename T::char_type;
+
+    std::vector<scn::method> methods{scn::method::sto, scn::method::strto};
+    if (scn::is_int_from_chars_available()) {
+        methods.push_back(scn::method::from_chars);
+    }
+    scn::method method{};
+
+    DOCTEST_VALUE_PARAMETERIZED_DATA(method, methods);
 
     {
-        // Integer ("42") to double
-        auto ret = scn::scan(stream, "{}", d);
-        CHECK(d == doctest::Approx(42.0));
-        CHECK(ret);
-        d = 0.0;
+        value_type f{1.0};
+        auto e = scan_value<char_type>(method, "0", "{}", f);
+        CHECK(f == 0.0);
+        CHECK(e);
     }
     {
-        // Basic float ("3.14") to double
-        auto ret = scn::scan(stream, "{}", d);
-        CHECK(d == doctest::Approx(3.14));
-        CHECK(ret);
-        d = 0.0;
+        value_type f{1.0};
+        auto e = scan_value<char_type>(method, "0.0", "{}", f);
+        CHECK(f == 0.0);
+        CHECK(e);
     }
     {
-        // Negative float ("-2.22") to double
-        auto ret = scn::scan(stream, "{}", d);
-        CHECK(d == doctest::Approx(-2.22));
-        CHECK(ret);
-        d = 0.0;
+        value_type f{};
+        auto e = scan_value<char_type>(method, "42", "{}", f);
+        CHECK(f == doctest::Approx(42));
+        CHECK(e);
     }
     {
-        // Float with exponent ("2.0e4") to double
-        auto ret = scn::scan(stream, "{}", d);
-        CHECK(d == doctest::Approx(2.0e4));
-        CHECK(ret);
-        d = 0.0;
+        value_type f{};
+        auto e = scan_value<char_type>(method, "3.14", "{}", f);
+        CHECK(f == doctest::Approx(3.14));
+        CHECK(e);
     }
     {
-        // Binary float to double
-        auto ret = scn::scan(stream, "{}", d);
-        CHECK(d == doctest::Approx(111.11));
-        CHECK(ret);
-        d = 0.0;
+        value_type f{};
+        auto e = scan_value<char_type>(method, "-2.22", "{}", f);
+        CHECK(f == doctest::Approx(-2.22));
+        CHECK(e);
     }
     {
-        // +inf to double
-        auto ret = scn::scan(stream, "{}", d);
-        CHECK(std::isinf(d));
-        CHECK(!std::signbit(d));
-        CHECK(ret);
-        d = 0.0;
+        value_type f{};
+        auto e = scan_value<char_type>(method, "2.0e4", "{}", f);
+        CHECK(f == doctest::Approx(2.0e4));
+        CHECK(e);
     }
     {
-        // -inf to double
-        auto ret = scn::scan(stream, "{}", d);
-        CHECK(std::isinf(d));
-        CHECK_FALSE(!std::signbit(d));
-        CHECK(ret);
-        d = 0.0;
+        value_type f{};
+        auto e = scan_value<char_type>(method, "0x1.bc70a3d70a3d7p+6", "{}", f);
+        CHECK(f == doctest::Approx(111.11));
+        CHECK(e);
     }
     {
-        // nan to double
-        auto ret = scn::scan(stream, "{}", d);
-        CHECK(std::isnan(d));
-        CHECK(!std::signbit(d));
-        CHECK(ret);
-        d = 0.0;
+        value_type f{};
+        auto e = scan_value<char_type>(method, "inf", "{}", f);
+        CHECK(std::isinf(f));
+        CHECK(!std::signbit(f));
+        CHECK(e);
     }
     {
-        // Negative zero to double
-        auto ret = scn::scan(stream, "{}", d);
-        CHECK(d == doctest::Approx(0.0));
-        CHECK_FALSE(!std::signbit(d));
-        CHECK(ret);
-        d = 0.0;
+        value_type f{};
+        auto e = scan_value<char_type>(method, "-inf", "{}", f);
+        CHECK(std::isinf(f));
+        CHECK(std::signbit(f));
+        CHECK(e);
     }
     {
-        // Scan from EOF
-        // Should fail
-        auto ret = scn::scan(stream, "{}", d);
-        CHECK(d == doctest::Approx(0.0));
-        CHECK(!ret);
-        if (!ret) {
-            CHECK(ret == scn::error::end_of_stream);
-        }
-        //d = 0.0;
+        value_type f{};
+        auto e = scan_value<char_type>(method, "nan", "{}", f);
+        CHECK(std::isnan(f));
+        CHECK(!std::signbit(f));
+        CHECK(e);
+    }
+    {
+        value_type f{};
+        auto e = scan_value<char_type>(method, "-0", "{}", f);
+        CHECK(f == 0.0);
+        CHECK(std::signbit(f));
+        CHECK(e);
     }
 }
+
+template <typename T>
+using char_fpair = fpair<char, T>;
+template <typename T>
+using wchar_fpair = fpair<wchar_t, T>;
+
+TYPE_TO_STRING(char_fpair<float>);
+TYPE_TO_STRING(char_fpair<double>);
+TYPE_TO_STRING(char_fpair<long double>);
+TYPE_TO_STRING(wchar_fpair<float>);
+TYPE_TO_STRING(wchar_fpair<double>);
+TYPE_TO_STRING(wchar_fpair<long double>);
+
+TEST_CASE_TEMPLATE_INSTANTIATE(floating_test,
+                               char_fpair<float>,
+                               char_fpair<double>,
+                               char_fpair<long double>,
+                               wchar_fpair<float>,
+                               wchar_fpair<double>,
+                               wchar_fpair<long double>);
