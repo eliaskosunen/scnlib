@@ -53,25 +53,6 @@ namespace scn {
         auto ctx = context_type(s, f, args);
         return vscan<context_type>(ctx);
     }
-    /**
-     * Scan the given arguments from the stream, using locale loc.
-     * Noticeably slower compared to non-localized scan(), avoid if possible.
-     * \param loc `std::locale` to use
-     * \param f   Scanning options
-     */
-    template <typename Locale, typename Stream, typename... Args>
-    error scan(const Locale& loc,
-               Stream& s,
-               basic_string_view<typename Stream::char_type> f,
-               Args&... a)
-    {
-        using context_type = basic_context<Stream>;
-
-        auto args = make_args<context_type>(a...);
-        auto ctx =
-            context_type(s, f, std::move(args), options::builder{}.locale(loc));
-        return vscan<context_type>(ctx);
-    }
     template <typename Stream, typename... Args>
     error scan(options opt,
                Stream& s,
