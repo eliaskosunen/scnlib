@@ -73,7 +73,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         CHECK(e.get_code() == scn::error::value_out_of_range);
     }
 
-    const bool can_fit_2pow31 = []() {
+    const bool can_fit_2pow31 = [=]() {
         if (u) {
             return sizeof(value_type) >= 4;
         }
@@ -110,7 +110,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         CHECK(e);
     }
 
-    const bool can_fit_badidea = []() { return sizeof(value_type) >= 4; }();
+    const bool can_fit_badidea = [=]() { return sizeof(value_type) >= 4; }();
     if (can_fit_badidea) {
         value_type i{};
         auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
