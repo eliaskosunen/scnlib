@@ -224,7 +224,7 @@ namespace scn {
     result<Iterator> bulk_propagate_chars_until(Context& ctx, Span s)
     {
         auto e = ctx.stream().read_bulk(s);
-        if (e != error::code::end_of_stream) {
+        if (e != error::end_of_stream) {
             return s.end();
         }
         return propagate_chars_until(ctx, s.begin(), s.end());
