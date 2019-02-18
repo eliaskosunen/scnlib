@@ -27,16 +27,41 @@
 #include <cstring>
 #include <vector>
 
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wpadded")
+
 namespace scn {
     template <typename S>
     struct is_bulk_stream : S::is_bulk_stream {
+    };
+
+    struct stream_base {
+        using is_bulk_stream = std::false_type;
+
+        SCN_CONSTEXPR14 void _set_bad() noexcept
+        {
+            m_bad = true;
+        }
+
+        SCN_CONSTEXPR bool bad() const noexcept
+        {
+            return m_bad;
+        }
+
+        SCN_CONSTEXPR explicit operator bool() const noexcept
+        {
+            return !bad();
+        }
+
+    private:
+        bool m_bad{false};
     };
 
     template <typename Char, typename Source, typename Enable = void>
     class basic_static_container_stream;
 
     template <typename Char, typename Container>
-    class basic_static_container_stream<Char, Container> {
+    class basic_static_container_stream<Char, Container> : public stream_base {
     public:
         using char_type = Char;
         using source_type = Container;
@@ -176,7 +201,8 @@ namespace scn {
     }
 
     template <typename Char>
-    class basic_static_container_stream<Char, span<const Char>> {
+    class basic_static_container_stream<Char, span<const Char>>
+        : public stream_base {
     public:
         using char_type = Char;
         using source_type = span<const Char>;
@@ -257,7 +283,7 @@ namespace scn {
     }
 
     template <typename Iterator>
-    struct basic_bidirectional_iterator_stream {
+    struct basic_bidirectional_iterator_stream : public stream_base {
         using char_type = typename std::iterator_traits<Iterator>::value_type;
         using is_bulk_stream = std::true_type;
 
@@ -317,8 +343,9 @@ namespace scn {
     private:
         Iterator m_begin, m_end, m_next;
     };
+
     template <typename Iterator>
-    struct basic_forward_iterator_stream {
+    struct basic_forward_iterator_stream : public stream_base {
         using char_type = typename std::iterator_traits<Iterator>::value_type;
         using is_bulk_stream = std::true_type;
 
@@ -440,9 +467,8 @@ namespace scn {
     struct basic_cstdio_stream;
 
     template <>
-    struct basic_cstdio_stream<char> {
+    struct basic_cstdio_stream<char> : public stream_base {
         using char_type = char;
-        using is_bulk_stream = std::false_type;
 
         basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
@@ -504,9 +530,8 @@ namespace scn {
         std::string m_read{};
     };
     template <>
-    struct basic_cstdio_stream<wchar_t> {
+    struct basic_cstdio_stream<wchar_t> : public stream_base {
         using char_type = wchar_t;
-        using is_bulk_stream = std::false_type;
 
         basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
@@ -584,5 +609,7 @@ namespace scn {
         return s;
     }
 }  // namespace scn
+
+SCN_CLANG_POP
 
 #endif  // SCN_DETAIL_STREAM_H

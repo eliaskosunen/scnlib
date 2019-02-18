@@ -25,13 +25,15 @@
 #include <istream>
 
 namespace scn {
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wpadded")
+
     template <typename CharT>
-    class basic_std_istream_stream {
+    class basic_std_istream_stream : public stream_base {
     public:
         using char_type = CharT;
         using source_type = std::basic_istream<char_type>;
         using traits = typename source_type::traits_type;
-        using is_bulk_stream = std::false_type;
 
         basic_std_istream_stream(source_type& is) : m_is(std::addressof(is)) {}
 
@@ -41,6 +43,7 @@ namespace scn {
                 auto tmp = m_is->get();
                 if (tmp == traits::eof()) {
                     if (m_is->bad()) {
+                        _set_bad();
                         return error(error::unrecoverable_stream_source_error,
                                      "Bad underlying stream");
                     }
@@ -54,6 +57,7 @@ namespace scn {
             }
             catch (const std::ios_base::failure& e) {
                 if (m_is->bad()) {
+                    _set_bad();
                     return error(error::unrecoverable_stream_source_error,
                                  e.what());
                 }
@@ -69,6 +73,7 @@ namespace scn {
             try {
                 m_is->putback(ch);
                 if (m_is->fail()) {
+                    _set_bad();
                     return error(error::unrecoverable_stream_source_error,
                                  "Putback failed");
                 }
@@ -76,6 +81,7 @@ namespace scn {
                 return {};
             }
             catch (const std::ios_base::failure& e) {
+                _set_bad();
                 return error(error::unrecoverable_stream_source_error,
                              e.what());
             }
@@ -94,6 +100,7 @@ namespace scn {
             }
             for (auto i = 0; i < m_read; ++i) {
                 if (m_is->rdbuf()->sungetc() == traits::eof()) {
+                    _set_bad();
                     return error(error::unrecoverable_stream_source_error,
                                  "ungetc failed");
                 }
@@ -106,6 +113,8 @@ namespace scn {
         source_type* m_is;
         long m_read{0};
     };
+
+    SCN_CLANG_POP
 
     template <typename CharT>
     basic_std_istream_stream<CharT> make_stream(
@@ -216,6 +225,7 @@ namespace scn {
             std::basic_istream<CharT> stream(std::addressof(streambuf));
 
             if (!(stream >> val)) {
+                ctx.stream()._set_bad();
                 return error(error::unrecoverable_stream_source_error,
                              "Bad stream after reading");
             }
