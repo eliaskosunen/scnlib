@@ -143,10 +143,11 @@ scn::span<char> span_source(container_source.data(), container_source.size());
 auto span_stream = scn::make_stream(span_source);
 
 // Pairs of iterators
-auto iter_stream = scn::make_stream(container_source.begin(), container_source.end());
+auto iter_stream = scn::make_stream(container_source.begin(),
+                                    container_source.begin() + 2);
 
 // C FILEs
-auto cfile_source = fopen("myfile.txt", "r");
+auto cfile_source = fopen("myfile.txt", "r"); // Remember to call fclose yourself
 auto cfile_stream = scn::make_stream(cfile_source);
 
 // `std::istream`s
@@ -174,52 +175,101 @@ int i;
 scn::scan(scn::cstdin(), "{}", i);
 ```
 
+### Supported types
+
+ * Characters: `char` for narrow streams or `wchar_t` for wide streams
+ * Spans: Contiguous buffer views, `span<char>` for narrow streams, `span<wchar_t>` for wide streams
+ * Strings: `std::string` for narrow streams, `std::wstring` for wide streams
+ * Integral types: Both signed and unsigned varieties of `char`, `short`, `int`, `long` and `long long` for narrow streams.
+   No `char` for narrow streams, use `signed char` or `unsigned char`. 
+ * Floating-point types: `float`, `double` and `long double`.
+ * `bool`
+
 ### Format string
 
-Out of the box, `scnlib` supports the reading of following types:
- * `char`
- * `span<char>`
- * `bool`
- * Integral types (`(u)int(8|16|32|64)_t`, expect for `char`)
- * Floating-point types (`float`, `double`, `long double`)
- * `std::string`
+Every value to be scanned from the input stream is marked with a pair of curly braces `"{}"` in the format string.
+Inside these braces, additional options can be specified.
 
-To modify the way the values are read, the format string can be used to pass options to the scanner.
-These options are put inside the braces `"{}"`.
+For characters, spans and strings, there are no available options, and only the empty string `"{}"` is valid.
 
-For `char`, `span<char>` and `std::string` there are no special options, and only the empty option
-`"{}"` is valid.
+#### Integral types
 
-For `bool`, `a` *(for boolalpha) can be used to only accept the text version for the values (`true` and `false`).
-By default, only values `0` and `1` are accepted.  
-`l` (for localized) can be used to only accept text values as specified by the given locale (see Localization).
+| Base specifier | Meaning               |
+| :------------- | :-------------------- |
+| `d`            | Decimal (base-10)     |
+| `h`            | Hexadecimal (base-16) |
+| `o`            | Octal (base-8)        |
+| `b__`          | Custom base. `b` followed by one or two digits (e.g. `b2` for binary). Base must be between 2 and 36, inclusive. |
+| (default)      | Detect base. `0x`/`0X` prefix for hexadecimal, `0` prefix for octal, decimal by default |
 
-By default, for integral types, the scanner detects the base of the number: `0x` or `0X` for hexadecimal, `0` for octal, decimal by default.
-Also, `'.'` is used as the decimal point and `','` as the thousands separator.  
-`d`, `h`, `o` can be used to explicitly state the base of the number (decimal, hex and octal respectively).  
-`b` followed by one or two digits (e.g. `b2` for binary) can also be used to specify the base. 
-`bxx` is mutually exclusive with the other base specifiers.  
-`n` can be used to use the decimal and thousands separators from the given locale (see Localization).  
-`l` can be used to also accept characters that are specified to be digits by the given locale.  
-`l` implies `n` and cannot be used simultaneously.
+| Localization | Meaning                                                    |
+| :----------- | :--------------------------------------------------------- |
+| `n`          | Use decimal and thousands separator from the given locale. |
+| `l`          | Implies `n`. Accept characters specified as digits by the given locale. |
+| (default)    | Use `.` as decimal point, `,` as thousands separator and `[0-9]` as digits. |
 
-Floating point numbers have a single supported format specifier:
-`n`, which uses the decimal and thousands separators from the given locale, instead of the default `'.'` and `','`.
+#### Floating-point types
 
-### Localization
+| Localization | Meaning                                                    |
+| :----------- | :--------------------------------------------------------- |
+| `n`          | Use decimal and thousands separator from the given locale. |
+| (default)    | Use `.` as decimal point, `,` as thousands separator. |
 
-To scan localized input, you must use a specialized overload of `scn::scan`, which takes a const-reference to a `std::locale` as a parameter before the string:
+#### `bool`
+
+|              | Meaning                                                    |
+| :----------- | :--------------------------------------------------------- |
+| `a`          | Accept `true` and `false`                                  |
+| `l`          | Implies `a`. Expect boolean text values as specified as such by the given locale. |
+| (default)    | Accept `0` and `1 `.                                       |
+
+### Options
+
+An `scn::options` object can be passed as the first argument to `scn::scan` or `scn::input`,
+determining additional options for the scanning operation.
+`scn::options` cannot be constructed directly, but one can be created with `scn::options::builder`, like so:
 
 ```cpp
-auto locale = std::locale("fi_FI");
-
-double d;
-// ',' is used as the decimal point (comma?)
-scn::scan(locale, stream, "{n}", d);
+scn::scan(scn::options::builder{}.make(), /* ... */); 
 ```
 
-If you do not modify the format string, the semantics are equal to just leaving the locale out.
-In fact, passing the locale may have some performance implications, and it should probably be avoided if possible.
+#### Localization
+
+A const-reference to a `std::locale` can be passed to `builder::locale` for scanning localized input.
+
+```cpp
+auto loc = std::locale("fi_FI");
+
+int a, b;
+scn::scan(
+    scn::options::builder{}
+        .locale(loc)
+        .make(),
+    "{} {n}", a, b);
+```
+
+Only reading of `b` will be localized, as it has `{n}` as its format string.
+Redundant specification of the locale should be avoided, as it can have some performance implications.
+
+#### Scanning method
+
+An enumeration value of `scn::method` can be passed to `builder::int_method` or `builder::float_method`,
+that specifies how the value will be scanned.
+
+| Value             | Meaning |
+| :---------------- | :------ |
+| `strto` (default) | Use `std::strtol`, `std::strtod` etc. |
+| `sto`             | Use `std::stol`, `std::stod` etc. |
+| `from_chars`      | Use `std::from_chars` |
+
+```cpp
+scn::scan(
+    scn::options::builder{}
+        .int_method(scn::method::sto) 
+        .float_method(scn::method::sto) 
+        .make(),
+    /* ... */);
+```
 
 ### Strings and `getline`
 
@@ -235,7 +285,7 @@ auto stream = scn::make_stream(source);
 std::string word;
 scn::scan(stream, "{}", word);
 assert(word == "Hello");
-
+ 
 scn::scan(stream, "{}", word);
 assert(word == "world!");
 ```
@@ -303,9 +353,16 @@ if (!ret) {
 }
 ```
 
+#### Exceptions
+
+No exceptions will ever be thrown by `scnlib` functions.
+If any user-defined operations, like `operator>>` throw, the behavior is undefined.
+
+The library can't be used with `-fno-exceptions`, though, as it still needs to catch possible exceptions thrown by standard library functions.
+
 ### TODO
 
-Error handling, `ignore`, `vscan`, user types, lower-level stuff, user stream
+`ignore`, `vscan`, user types, lower-level stuff, user stream
 
 ## API Documentation
 

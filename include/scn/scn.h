@@ -99,10 +99,6 @@ namespace scn {
 
     SCN_CLANG_POP
 
-    /**
-     * Scan from stdin.
-     * \param f Scanning options
-     */
     template <typename... Args>
     error input(string_view f, Args&... a)
     {
@@ -115,12 +111,8 @@ namespace scn {
         auto ctx = context_type(stream, f, args);
         return vscan<context_type>(ctx);
     }
-    /**
-     * Wide scan from stdin.
-     * \param f Scanning options
-     */
     template <typename... Args>
-    error winput(wstring_view f, Args&... a)
+    error input(wstring_view f, Args&... a)
     {
         auto& stream = stdin_stream<wchar_t>();
         using stream_type =
@@ -160,27 +152,6 @@ namespace scn {
         auto ctx = context_type(stream, f, args);
         return vscan<context_type>(ctx);
     }
-
-#if 0
-    template <typename Source,
-              typename CharT =
-                  decltype(make_stream(std::declval<const Source&>()), void()),
-              typename... Args>
-    error sscan(const Source& s,
-                                basic_string_view<CharT> f,
-                                Args&... a)
-    {
-        auto stream = make_stream(s);
-
-        using stream_type = decltype(stream);
-        using context_type = basic_context<stream_type>;
-        using args_type = basic_arg<context_type>;
-
-        auto args = make_args<context_type>(a...);
-        auto ctx = context_type(s, f);
-        return vscan<stream_type, context_type>(s, ctx, args);
-    }
-#endif
 }  // namespace scn
 
 #endif  // SCN_SCN_H

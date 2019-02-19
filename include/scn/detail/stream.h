@@ -406,14 +406,6 @@ namespace scn {
         detail::small_vector<char_type, 32> m_rollback;
     };
 
-    template <typename Char>
-    SCN_CONSTEXPR basic_bidirectional_iterator_stream<Char*> make_stream(
-        Char* ptr,
-        size_t n) noexcept
-    {
-        return {ptr, ptr + n};
-    }
-
     namespace detail {
         template <typename Iterator>
         struct bidir_iterator_stream {
