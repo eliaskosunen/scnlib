@@ -133,22 +133,28 @@ namespace scn {
     }  // namespace detail
 
     template <typename Stream, typename CharT = typename Stream::char_type>
-    error ignore_all(Stream& s)
+    auto ignore_all(Stream& s) ->
+        typename std::enable_if<!is_bulk_stream<Stream>::value, error>::type
     {
         using context_type = basic_context<Stream>;
         auto f = basic_string_view<CharT>();
 
-        std::basic_string<CharT> dummy{};
-        auto args = make_args<context_type>(dummy);
-        auto ctx = context_type(s, f, args);
+        auto ctx = context_type(s, f, basic_args<context_type>());
 
         auto res = scan_chars(ctx, detail::ignore_iterator<CharT>{},
                               predicates::propagate<context_type>{});
-        if (!res) {
+        if (!res && res.get_error() != error::end_of_stream) {
             return res.get_error();
         }
         return {};
     }
+    template <typename Stream, typename CharT = typename Stream::char_type>
+    auto ignore_all(Stream& s) ->
+        typename std::enable_if<is_bulk_stream<Stream>::value, error>::type
+    {
+        return s.skip_all();
+    }
+
     template <typename Stream>
     error ignore_until(Stream& s, typename Stream::char_type until)
     {
@@ -156,9 +162,7 @@ namespace scn {
         using context_type = basic_context<Stream>;
         auto f = basic_string_view<char_type>();
 
-        std::basic_string<char_type> dummy{};
-        auto args = make_args<context_type>(dummy);
-        auto ctx = context_type(s, f, args);
+        auto ctx = context_type(s, f, basic_args<context_type>());
 
         auto res = scan_chars(ctx, detail::ignore_iterator<char_type>{},
                               predicates::until<context_type>{until});
@@ -167,15 +171,15 @@ namespace scn {
         }
         return {};
     }
+
     template <typename Stream, typename CharT = typename Stream::char_type>
-    error ignore_n(Stream& s, std::ptrdiff_t count)
+    auto ignore_n(Stream& s, std::ptrdiff_t count) ->
+        typename std::enable_if<!is_bulk_stream<Stream>::value, error>::type
     {
         using context_type = basic_context<Stream>;
         auto f = basic_string_view<CharT>();
 
-        std::basic_string<CharT> dummy{};
-        auto args = make_args<context_type>(dummy);
-        auto ctx = context_type(s, f, args);
+        auto ctx = context_type(s, f, basic_args<context_type>());
 
         auto res = scan_chars_until(ctx, detail::ignore_iterator<CharT>{},
                                     detail::ignore_iterator<CharT>{count},
@@ -185,6 +189,13 @@ namespace scn {
         }
         return {};
     }
+    template <typename Stream, typename CharT = typename Stream::char_type>
+    auto ignore_n(Stream& s, std::ptrdiff_t count) ->
+        typename std::enable_if<is_bulk_stream<Stream>::value, error>::type
+    {
+        return s.skip(static_cast<size_t>(count));
+    }
+
     template <typename Stream>
     error ignore_n_until(Stream& s,
                          std::ptrdiff_t count,
@@ -194,9 +205,7 @@ namespace scn {
         using context_type = basic_context<Stream>;
         auto f = basic_string_view<char_type>();
 
-        std::basic_string<char_type> dummy{};
-        auto args = make_args<context_type>(dummy);
-        auto ctx = context_type(s, f, args);
+        auto ctx = context_type(s, f, basic_args<context_type>());
 
         auto res = scan_chars_until(ctx, detail::ignore_iterator<char_type>{},
                                     detail::ignore_iterator<char_type>{count},

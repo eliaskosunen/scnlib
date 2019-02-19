@@ -96,7 +96,7 @@ namespace scn {
 
         SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
         {
-            if (std::distance(m_next, end()) < s.size()) {
+            if (chars_to_read() < static_cast<size_t>(s.size())) {
                 return error(error::end_of_stream, "EOF");
             }
             std::copy(m_next, m_next + s.size(), s.begin());
@@ -118,6 +118,26 @@ namespace scn {
         size_t rcount() const noexcept
         {
             return static_cast<size_t>(std::distance(m_begin, m_next));
+        }
+
+        SCN_CONSTEXPR14 size_t chars_to_read() const noexcept
+        {
+            return static_cast<size_t>(std::distance(m_next, end()));
+        }
+
+        SCN_CONSTEXPR14 error skip(size_t n) noexcept
+        {
+            if (chars_to_read() < n) {
+                m_next = end();
+                return error(error::end_of_stream, "EOF");
+            }
+            m_next += static_cast<std::ptrdiff_t>(n);
+            return {};
+        }
+        SCN_CONSTEXPR14 error skip_all() noexcept
+        {
+            m_next = end();
+            return {};
         }
 
     private:
@@ -236,7 +256,7 @@ namespace scn {
 
         SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
         {
-            if (std::distance(m_next, end()) < s.size()) {
+            if (chars_to_read() < s.size()) {
                 return error(error::end_of_stream,
                              "Cannot complete read_bulk: EOF encountered");
             }
@@ -259,6 +279,26 @@ namespace scn {
         size_t rcount() const noexcept
         {
             return static_cast<size_t>(std::distance(m_begin, m_next));
+        }
+
+        SCN_CONSTEXPR14 size_t chars_to_read() const noexcept
+        {
+            return static_cast<size_t>(std::distance(m_next, end()));
+        }
+
+        SCN_CONSTEXPR14 error skip(size_t n) noexcept
+        {
+            if (chars_to_read() < n) {
+                m_next = end();
+                return error(error::end_of_stream, "EOF");
+            }
+            m_next += n;
+            return {};
+        }
+        SCN_CONSTEXPR14 error skip_all() noexcept
+        {
+            m_next = end();
+            return {};
         }
 
     private:
@@ -315,7 +355,7 @@ namespace scn {
 
         SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
         {
-            if (std::distance(m_next, m_end) < s.size()) {
+            if (chars_to_read() < static_cast<size_t>(s.size())) {
                 return error(error::end_of_stream,
                              "Cannot complete read_bulk: EOF encountered");
             }
@@ -338,6 +378,26 @@ namespace scn {
         size_t rcount() const noexcept
         {
             return static_cast<size_t>(std::distance(m_begin, m_next));
+        }
+
+        SCN_CONSTEXPR14 size_t chars_to_read() const noexcept
+        {
+            return static_cast<size_t>(std::distance(m_next, m_end));
+        }
+
+        SCN_CONSTEXPR14 error skip(size_t n) noexcept
+        {
+            if (chars_to_read() < n) {
+                m_next = m_end;
+                return error(error::end_of_stream, "EOF");
+            }
+            m_next += n;
+            return {};
+        }
+        SCN_CONSTEXPR14 error skip_all() noexcept
+        {
+            m_next = m_end;
+            return {};
         }
 
     private:
@@ -377,7 +437,7 @@ namespace scn {
 
         SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
         {
-            if (std::distance(m_begin, m_end) < s.size()) {
+            if (chars_to_read() < s.size()) {
                 return error(error::end_of_stream,
                              "Cannot complete read_bulk: EOF encountered");
             }
@@ -399,6 +459,26 @@ namespace scn {
         size_t rcount() const noexcept
         {
             return m_rollback.size();
+        }
+
+        SCN_CONSTEXPR14 size_t chars_to_read() const noexcept
+        {
+            return static_cast<size_t>(std::distance(m_begin, m_end));
+        }
+
+        SCN_CONSTEXPR14 error skip(size_t n) noexcept
+        {
+            if (chars_to_read() < n) {
+                m_begin = m_end;
+                return error(error::end_of_stream, "EOF");
+            }
+            m_begin += n;
+            return {};
+        }
+        SCN_CONSTEXPR14 error skip_all() noexcept
+        {
+            m_begin = m_end;
+            return {};
         }
 
     private:

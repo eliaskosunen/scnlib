@@ -360,13 +360,21 @@ If any user-defined operations, like `operator>>` throw, the behavior is undefin
 
 The library can't be used with `-fno-exceptions`, though, as it still needs to catch possible exceptions thrown by standard library functions.
 
+### `ignore`
+
+`scnlib` has various functions for skipping characters from a stream.  
+`ignore_n(stream, n)` will skip `n` characters.  
+`ignore_until(stream, ch)` will skip until `ch` is read.  
+`ignore_n_until(stream, n, ch)` will skip until either `n` characters have been skipped or `ch` is read.  
+`ignore_all(stream)` will skip to the end of the stream.
+
+### `getchar`
+
+`getchar(stream)` will read a single character (`char` for narrow streams, `wchar_t` for wide streams) from a stream.
+
 ### TODO
 
-`ignore`, `vscan`, user types, lower-level stuff, user stream
-
-## API Documentation
-
-Build CMake target `doc` and look in the folder `doc/html` for Doxygen output.
+`vscan`, user types, lower-level stuff, user stream
 
 ## Compiler support
 
