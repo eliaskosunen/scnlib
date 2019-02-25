@@ -21,7 +21,7 @@
 
 TEST_CASE("general")
 {
-    std::string data{"42 3.14 foobar true"};
+    std::string data{"test {} 42 3.14 foobar true"};
     std::string copy = data;
 
     int i{0};
@@ -30,7 +30,7 @@ TEST_CASE("general")
     auto span = scn::make_span(&s[0], &s[0] + s.size());
     bool b{};
     auto stream = scn::make_stream(data.begin(), data.end());
-    auto ret = scn::scan(stream, "{} {} {} {a}", i, d, span, b);
+    auto ret = scn::scan(stream, "test {{}} {} {} {} {a}", i, d, span, b);
 
     CHECK(data == copy);
     CHECK(i == 42);

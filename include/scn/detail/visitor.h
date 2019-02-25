@@ -1425,8 +1425,20 @@ namespace scn {
                     return ret;
                 }
                 // Don't advance pctx, parse_whitespace() does it for us
+                continue;
             }
-            else if (*it != ctx.locale().widen('{')) {
+
+            // Non-brace character, or
+            // Brace followed by another brace, meaning a literal '{'
+            bool literal_brace = *it == ctx.locale().widen('{') &&
+                                 it + 1 != pctx.end() &&
+                                 *(it + 1) == ctx.locale().widen('{');
+            if (*it != ctx.locale().widen('{') || literal_brace) {
+                if (literal_brace || *it == ctx.locale().widen('}')) {
+                    pctx.advance();
+                    ++it;
+                }
+
                 // Check for any non-specifier {foo} characters
                 auto ret = ctx.stream().read_char();
                 if (!ret || ret.value() != *it) {
