@@ -122,7 +122,7 @@ namespace scn {
     };
 
     template <typename CharT, typename T, typename Enable = void>
-    struct basic_value_scanner;
+    struct value_scanner;
 }  // namespace scn
 
 #endif  // SCN_DETAIL_CORE_H

@@ -43,13 +43,11 @@ namespace scn {
             none_type,
             named_arg_type,
             // signed integer
-            schar_type,
             short_type,
             int_type,
             long_type,
             long_long_type,
             // unsigned integer
-            uchar_type,
             ushort_type,
             uint_type,
             ulong_type,
@@ -57,7 +55,6 @@ namespace scn {
             // other integral types
             bool_type,
             char_type,
-            // uchar_type,
             last_integer_type = char_type,
             // floats
             float_type,
@@ -109,13 +106,11 @@ namespace scn {
             union {
                 monostate empty_value;
 
-                signed char* schar_value;
                 short* short_value;
                 int* int_value;
                 long* long_value;
                 long long* long_long_value;
 
-                unsigned char* uchar_value;
                 unsigned short* ushort_value;
                 unsigned* uint_value;
                 unsigned long* ulong_value;
@@ -137,13 +132,11 @@ namespace scn {
 
             SCN_CONSTEXPR value() : empty_value{} {}
 
-            value(signed char& val) : schar_value(&val) {}
             value(short& val) : short_value(&val) {}
             value(int& val) : int_value(&val) {}
             value(long& val) : long_value(&val) {}
             value(long long& val) : long_long_value(&val) {}
 
-            value(unsigned char& val) : uchar_value(&val) {}
             value(unsigned short& val) : ushort_value(&val) {}
             value(unsigned& val) : uint_value(&val) {}
             value(unsigned long& val) : ulong_value(&val) {}
@@ -196,13 +189,11 @@ namespace scn {
         return val;                                                         \
     }
 
-        SCN_MAKE_VALUE(schar_type, signed char)
         SCN_MAKE_VALUE(short_type, short)
         SCN_MAKE_VALUE(int_type, int)
         SCN_MAKE_VALUE(long_type, long)
         SCN_MAKE_VALUE(long_long_type, long long)
 
-        SCN_MAKE_VALUE(uchar_type, unsigned char)
         SCN_MAKE_VALUE(ushort_type, unsigned short)
         SCN_MAKE_VALUE(uint_type, unsigned)
         SCN_MAKE_VALUE(ulong_type, unsigned long)
@@ -338,8 +329,6 @@ namespace scn {
             case detail::named_arg_type:
                 break;
 
-            case detail::schar_type:
-                return vis(*arg.m_value.schar_value);
             case detail::short_type:
                 return vis(*arg.m_value.short_value);
             case detail::int_type:
@@ -349,8 +338,6 @@ namespace scn {
             case detail::long_long_type:
                 return vis(*arg.m_value.long_long_value);
 
-            case detail::uchar_type:
-                return vis(*arg.m_value.uchar_value);
             case detail::ushort_type:
                 return vis(*arg.m_value.ushort_value);
             case detail::uint_type:

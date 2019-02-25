@@ -130,12 +130,13 @@ namespace scn {
         using stream_type = typename base::stream_type;
         using char_type = typename base::char_type;
         using locale_type = typename base::locale_type;
+        using format_string_type = basic_string_view<char_type>;
+        using args_type = basic_args<basic_context>;
 
         using arg_type = typename base::arg_type;
 
-        /// basic_value_scanner to use with a specific `T`
         template <typename T>
-        using value_scanner_type = basic_value_scanner<char_type, T>;
+        using value_scanner_type = value_scanner<char_type, T>;
 
         basic_context(stream_type& s,
                       basic_string_view<char_type> f,
@@ -167,6 +168,22 @@ namespace scn {
 
         using base::arg;
     };
+
+    template <typename Stream, typename Context = basic_context<Stream>>
+    Context make_context(Stream& s,
+                         typename Context::format_string_type f,
+                         typename Context::args_type a)
+    {
+        return Context(s, f, a);
+    }
+    template <typename Stream, typename Context = basic_context<Stream>>
+    Context make_context(Stream& s,
+                         typename Context::format_string_type f,
+                         typename Context::args_type a,
+                         struct options opt)
+    {
+        return Context(s, f, a, opt);
+    }
 
     namespace detail {
         template <typename CharT>

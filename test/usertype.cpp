@@ -22,17 +22,14 @@ struct user_type {
     int val1{}, val2{};
 };
 
-namespace scn {
-    template <typename CharT>
-    struct basic_value_scanner<CharT, user_type>
-        : public detail::empty_parser<CharT> {
-        template <typename Context>
-        error scan(user_type& val, Context& ctx)
-        {
-            return scn::scan(ctx.stream(), "[{}, {}]", val.val1, val.val2);
-        }
-    };
-}  // namespace scn
+template <typename CharT>
+struct scn::value_scanner<CharT, user_type> : public scn::empty_parser<CharT> {
+    template <typename Context>
+    error scan(user_type& val, Context& ctx)
+    {
+        return scn::scan(ctx.stream(), "[{}, {}]", val.val1, val.val2);
+    }
+};
 
 TEST_CASE("user type")
 {

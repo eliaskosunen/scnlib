@@ -251,20 +251,20 @@ namespace scn {
         return propagate_chars_until(ctx, s.begin(), s.end());
     }
 
-    namespace detail {
-        template <typename CharT>
-        struct empty_parser {
-            template <typename Context>
-            error parse(Context& ctx)
-            {
-                if (*ctx.parse_context().begin() != ctx.locale().widen('{')) {
-                    return error(error::invalid_format_string, "Expected '}'");
-                }
-                ctx.parse_context().advance();
-                return {};
+    template <typename CharT>
+    struct empty_parser {
+        template <typename Context>
+        error parse(Context& ctx)
+        {
+            if (*ctx.parse_context().begin() != ctx.locale().widen('{')) {
+                return error(error::invalid_format_string, "Expected '}'");
             }
-        };
+            ctx.parse_context().advance();
+            return {};
+        }
+    };
 
+    namespace detail {
         template <typename CharT>
         struct char_scanner : public empty_parser<CharT> {
             template <typename Context>
@@ -474,31 +474,6 @@ namespace scn {
                 }
             };
             template <typename CharT>
-            struct str_to_int<CharT, signed char> {
-                static result<signed char> get(
-                    const std::basic_string<CharT>& str,
-                    size_t& chars,
-                    int base)
-                {
-                    auto i = std::stoi(str, &chars, base);
-                    if (i > static_cast<int>(
-                                std::numeric_limits<signed char>::max())) {
-                        return error(
-                            error::value_out_of_range,
-                            "Scanned integer out of range for a signed "
-                            "char: overflow");
-                    }
-                    if (i < static_cast<int>(
-                                std::numeric_limits<signed char>::min())) {
-                        return error(
-                            error::value_out_of_range,
-                            "Scanned integer out of range for a signed "
-                            "char: underflow");
-                    }
-                    return static_cast<signed char>(i);
-                }
-            };
-            template <typename CharT>
             struct str_to_int<CharT, unsigned long long> {
                 static result<unsigned long long> get(
                     const std::basic_string<CharT>& str,
@@ -552,24 +527,6 @@ namespace scn {
                             "short: overflow");
                     }
                     return static_cast<unsigned short>(i);
-                }
-            };
-            template <typename CharT>
-            struct str_to_int<CharT, unsigned char> {
-                static result<unsigned char> get(
-                    const std::basic_string<CharT>& str,
-                    size_t& chars,
-                    int base)
-                {
-                    auto i = std::stoul(str, &chars, base);
-                    if (i > static_cast<unsigned long>(
-                                std::numeric_limits<unsigned char>::max())) {
-                        return error(
-                            error::value_out_of_range,
-                            "Scanned integer out of range for an unsigned "
-                            "char: overflow");
-                    }
-                    return static_cast<unsigned char>(i);
                 }
             };
         }  // namespace sto
@@ -677,35 +634,6 @@ namespace scn {
                     return static_cast<short>(tmp.value());
                 }
             };
-            template <typename Char>
-            struct str_to_int<Char, signed char> {
-                static result<signed char> get(const Char* str,
-                                               size_t& chars,
-                                               int base)
-                {
-                    auto tmp = str_to_int<Char, long>::get(str, chars, base);
-                    if (!tmp) {
-                        return tmp.get_error();
-                    }
-                    if (tmp.value() >
-                        static_cast<long>(
-                            std::numeric_limits<signed char>::max())) {
-                        return error(
-                            error::value_out_of_range,
-                            "Scanned integer out of range for a signed "
-                            "char: overflow");
-                    }
-                    if (tmp.value() <
-                        static_cast<long>(
-                            std::numeric_limits<signed char>::min())) {
-                        return error(
-                            error::value_out_of_range,
-                            "Scanned integer out of range for a signed "
-                            "char: underflow");
-                    }
-                    return static_cast<signed char>(tmp.value());
-                }
-            };
 
             template <>
             struct str_to_int<char, unsigned long long> {
@@ -797,27 +725,6 @@ namespace scn {
                                      "unsigned short: overflow");
                     }
                     return static_cast<unsigned short>(tmp.value());
-                }
-            };
-            template <typename Char>
-            struct str_to_int<Char, unsigned char> {
-                static result<unsigned char> get(const Char* str,
-                                                 size_t& chars,
-                                                 int base)
-                {
-                    auto tmp =
-                        str_to_int<Char, unsigned char>::get(str, chars, base);
-                    if (!tmp) {
-                        return tmp.get_error();
-                    }
-                    if (tmp.value() >
-                        static_cast<unsigned long>(
-                            std::numeric_limits<unsigned char>::max())) {
-                        return error(error::value_out_of_range,
-                                     "Scanned integer out of range for an "
-                                     "unsigned char: overflow");
-                    }
-                    return static_cast<unsigned char>(tmp.value());
                 }
             };
         }  // namespace strto
@@ -1359,7 +1266,7 @@ namespace scn {
         };
 
         template <typename CharT>
-        struct string_scanner : public detail::empty_parser<CharT> {
+        struct string_scanner : public empty_parser<CharT> {
         public:
             template <typename Context>
             error scan(std::basic_string<CharT>& val, Context& ctx)

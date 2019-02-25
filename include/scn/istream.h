@@ -211,12 +211,11 @@ namespace scn {
     }  // namespace detail
 
     template <typename CharT, typename T>
-    struct basic_value_scanner<
-        CharT,
-        T,
-        typename std::enable_if<
-            detail::is_std_streamable<CharT, T>::value>::type>
-        : public detail::empty_parser<CharT> {
+    struct value_scanner<CharT,
+                         T,
+                         typename std::enable_if<
+                             detail::is_std_streamable<CharT, T>::value>::type>
+        : public empty_parser<CharT> {
         template <typename Context>
         error scan(T& val, Context& ctx)
         {
