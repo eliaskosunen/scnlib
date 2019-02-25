@@ -1449,7 +1449,7 @@ namespace scn {
                                     error>::type
         {
             return error(error::invalid_operation,
-                         "Cannot scan this type with non-char char_type");
+                         "Cannot scan this type with this char_type");
         }
         template <typename T>
         auto visit(T& val, priority_tag<1>) ->
