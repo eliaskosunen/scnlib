@@ -180,10 +180,10 @@ scn::scan(scn::cstdin(), "{}", i);
  * Characters: `char` for narrow streams or `wchar_t` for wide streams
  * Spans: Contiguous buffer views, `span<char>` for narrow streams, `span<wchar_t>` for wide streams
  * Strings: `std::string` for narrow streams, `std::wstring` for wide streams
- * Integral types: Both signed and unsigned varieties of `char`, `short`, `int`, `long` and `long long` for narrow streams.
-   No `char` for narrow streams, use `signed char` or `unsigned char`. 
+ * Integral types: Both signed and unsigned varieties of `short`, `int`, `long` and `long long` for narrow streams.
  * Floating-point types: `float`, `double` and `long double`.
  * `bool`
+ * User-defined custom types, see "User types"
 
 ### Format string
 
