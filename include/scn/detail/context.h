@@ -185,6 +185,13 @@ namespace scn {
         return Context(s, f, a, opt);
     }
 
+    template <typename Context>
+    Context context_with_args(Context& ctx, basic_args<Context> args)
+    {
+        return Context(ctx.stream(), ctx.parse_context().view(), args,
+                       ctx.options());
+    }
+
     namespace detail {
         template <typename CharT>
         struct dummy_stream {

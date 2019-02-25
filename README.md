@@ -372,9 +372,36 @@ The library can't be used with `-fno-exceptions`, though, as it still needs to c
 
 `getchar(stream)` will read a single character (`char` for narrow streams, `wchar_t` for wide streams) from a stream.
 
-### TODO
+### User types
 
-`vscan`, user types, lower-level stuff, user stream
+To make your own type usable with `scnlib`, you can specialize the struct template `value_scanner`.
+
+```cpp
+struct my_type {
+   int i{};
+   double d{};
+};
+
+template <typename Char>
+struct scn::value_scanner<Char, my_type>
+   : public scn::empty_scanner {
+   template <typename Context>
+   error scan(my_type& val, Context& c) {
+      auto args = make_args<Context>(val.i, val.d);
+      auto ctx = Context(c.stream(), "[{}, {}]", args);
+      return vscan(ctx);
+   }
+};
+
+// Input: "[123, 4.56]"
+// ->
+//   my_type.i == 123
+//   my_type.d == 4.56
+```
+
+### TODO docs
+
+`vscan`, lower-level stuff, user stream
 
 ## Compiler support
 

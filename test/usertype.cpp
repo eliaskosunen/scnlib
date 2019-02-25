@@ -21,6 +21,9 @@
 struct user_type {
     int val1{}, val2{};
 };
+struct user_type2 {
+    int val1{}, val2{};
+};
 
 template <typename CharT>
 struct scn::value_scanner<CharT, user_type> : public scn::empty_parser<CharT> {
@@ -30,8 +33,18 @@ struct scn::value_scanner<CharT, user_type> : public scn::empty_parser<CharT> {
         return scn::scan(ctx.stream(), "[{}, {}]", val.val1, val.val2);
     }
 };
+template <typename CharT>
+struct scn::value_scanner<CharT, user_type2> : public scn::empty_parser<CharT> {
+    template <typename Context>
+    error scan(user_type2& val, Context& ctx)
+    {
+        auto args = make_args<Context>(val.val1, val.val2);
+        auto newctx = Context(ctx.stream(), "[{}, {}]", args);
+        return vscan(newctx);
+    }
+};
 
-TEST_CASE("user type")
+TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
 {
     std::string source{"[4, 20]"};
     auto stream = scn::make_stream(source);
@@ -42,3 +55,4 @@ TEST_CASE("user type")
     CHECK(ut.val1 == 4);
     CHECK(ut.val2 == 20);
 }
+TEST_CASE_TEMPLATE_INSTANTIATE(user_type_test, user_type, user_type2);

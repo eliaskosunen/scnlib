@@ -116,6 +116,10 @@ namespace scn {
         }
         SCN_CONSTEXPR14 void check_arg_id(basic_string_view<Char>) {}
 
+        SCN_CONSTEXPR basic_string_view<char_type> view() const noexcept {
+            return m_str;
+        }
+
     private:
         basic_string_view<char_type> m_str;
         size_t m_next_arg_id{0};
