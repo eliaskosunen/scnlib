@@ -22,7 +22,6 @@
 #include "util.h"
 
 #include <type_traits>
-#include <utility>
 
 namespace scn {
 

@@ -23,14 +23,20 @@ SCN_CLANG_IGNORE("-Wunused-template")
 SCN_CLANG_IGNORE("-Wunused-function")
 SCN_CLANG_IGNORE("-Wexit-time-destructors")
 
+#define INT_DATA_N (static_cast<size_t>(2 << 15))
+
 template <typename Int>
 static void scanint_scn(benchmark::State& state)
 {
-    auto data = generate_int_data<Int>(static_cast<size_t>(state.range(0)));
+    auto data = generate_int_data<Int>(INT_DATA_N);
     auto stream = scn::make_stream(data);
+    const auto options =
+        scn::options::builder{}
+            .int_method(static_cast<scn::method>(state.range(0)))
+            .make();
     Int i{};
     for (auto _ : state) {
-        auto e = scn::scan(stream, "{}", i);
+        auto e = scn::scan(options, stream, "{}", i);
 
         benchmark::DoNotOptimize(i);
         benchmark::DoNotOptimize(e);
@@ -39,8 +45,7 @@ static void scanint_scn(benchmark::State& state)
         if (!e) {
             if (e == scn::error::end_of_stream) {
                 state.PauseTiming();
-                data =
-                    generate_int_data<Int>(static_cast<size_t>(state.range(0)));
+                data = generate_int_data<Int>(INT_DATA_N);
                 stream = scn::make_stream(data);
                 state.ResumeTiming();
             }
@@ -53,14 +58,14 @@ static void scanint_scn(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_scn, int)->Arg(2 << 15);
-BENCHMARK_TEMPLATE(scanint_scn, long long)->Arg(2 << 15);
-BENCHMARK_TEMPLATE(scanint_scn, unsigned)->Arg(2 << 15);
+BENCHMARK_TEMPLATE(scanint_scn, int)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
+BENCHMARK_TEMPLATE(scanint_scn, long long)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
+BENCHMARK_TEMPLATE(scanint_scn, unsigned)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
 
 template <typename Int>
 static void scanint_sstream(benchmark::State& state)
 {
-    auto data = generate_int_data<Int>(static_cast<size_t>(state.range(0)));
+    auto data = generate_int_data<Int>(INT_DATA_N);
     auto stream = std::istringstream(data);
     Int i{};
     for (auto _ : state) {
@@ -70,7 +75,7 @@ static void scanint_sstream(benchmark::State& state)
         benchmark::ClobberMemory();
         if (stream.eof()) {
             state.PauseTiming();
-            data = generate_int_data<Int>(static_cast<size_t>(state.range(0)));
+            data = generate_int_data<Int>(INT_DATA_N);
             stream = std::istringstream(data);
             state.ResumeTiming();
             continue;
@@ -83,9 +88,9 @@ static void scanint_sstream(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_sstream, int)->Arg(2 << 15);
-BENCHMARK_TEMPLATE(scanint_sstream, long long)->Arg(2 << 15);
-BENCHMARK_TEMPLATE(scanint_sstream, unsigned)->Arg(2 << 15);
+BENCHMARK_TEMPLATE(scanint_sstream, int);
+BENCHMARK_TEMPLATE(scanint_sstream, long long);
+BENCHMARK_TEMPLATE(scanint_sstream, unsigned);
 
 SCN_MSVC_PUSH
 SCN_MSVC_IGNORE(4996)
@@ -125,7 +130,7 @@ SCN_MSVC_POP
 template <typename Int>
 static void scanint_scanf(benchmark::State& state)
 {
-    auto data = generate_int_data<Int>(static_cast<size_t>(state.range(0)));
+    auto data = generate_int_data<Int>(INT_DATA_N);
     auto ptr = &data[0];
     Int i{};
     for (auto _ : state) {
@@ -135,8 +140,7 @@ static void scanint_scanf(benchmark::State& state)
         if (ret != 1) {
             if (ret == EOF) {
                 state.PauseTiming();
-                data =
-                    generate_int_data<Int>(static_cast<size_t>(state.range(0)));
+                data = generate_int_data<Int>(INT_DATA_N);
                 ptr = &data[0];
                 state.ResumeTiming();
                 continue;
@@ -148,9 +152,9 @@ static void scanint_scanf(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-// BENCHMARK_TEMPLATE(scanint_scanf, int)->Arg(2 << 15);
-// BENCHMARK_TEMPLATE(scanint_scanf, long long)->Arg(2 << 15);
-// BENCHMARK_TEMPLATE(scanint_scanf, unsigned)->Arg(2 << 15);
+// BENCHMARK_TEMPLATE(scanint_scanf, int);
+// BENCHMARK_TEMPLATE(scanint_scanf, long long);
+// BENCHMARK_TEMPLATE(scanint_scanf, unsigned);
 
 SCN_GCC_POP
 SCN_CLANG_POP

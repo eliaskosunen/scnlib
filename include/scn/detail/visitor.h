@@ -22,7 +22,7 @@
 #include "context.h"
 #include "stream.h"
 
-#include <cmath>
+#include <string>  // for stoi, stol, stoll
 
 namespace scn {
     enum class scan_status { keep, skip, end };

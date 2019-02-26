@@ -28,6 +28,9 @@ This library attempts to move us ever so closer to replacing `iostream`s and C s
 It's (going to, eventually, be) faster than `iostream` (see Benchmarks) and type-safe, unlike `scanf`.
 Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 
+_There's bound to be bugs, there's no documentation apart from this file, `master` branch is going to get rebased and
+public APIs are going to change in backwards-incompatible ways._
+
 ## Installing
 
 ### Submodule

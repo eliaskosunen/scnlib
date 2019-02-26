@@ -21,11 +21,14 @@
 #include "result.h"
 #include "string_view.h"
 
-#include <array>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+
+#if SCN_STL_OVERLOADS
+#include <array>
 #include <vector>
+#endif
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wpadded")
@@ -193,6 +196,7 @@ namespace scn {
         }
     }  // namespace detail
 
+#if SCN_STL_OVERLOADS
     template <typename CharT>
     SCN_CONSTEXPR basic_static_container_stream<CharT, std::basic_string<CharT>>
     make_stream(const std::basic_string<CharT>& s) noexcept
@@ -211,6 +215,7 @@ namespace scn {
     {
         return s;
     }
+#endif
     template <typename CharT, size_t N>
     SCN_CONSTEXPR basic_static_container_stream<
         CharT,

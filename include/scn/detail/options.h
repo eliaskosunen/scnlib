@@ -31,9 +31,10 @@ namespace scn {
         sto,         // std::stoi, std::stod, etc.
         from_chars,  // std::from_chars
         strto,       // strtol, strtod, etc.
-        // scn          // custom hand-written
+        // scn       // custom hand-written
     };
 
+    // std::from_chars availibility
     SCN_CONSTEXPR inline bool is_int_from_chars_available() noexcept
     {
         return SCN_HAS_INTEGER_CHARCONV;
@@ -106,6 +107,7 @@ namespace scn {
             return float_method;
         }
 
+        // Type-erase locale to avoid including <locale>
         const void* locale{nullptr};
         method int_method{SCN_DEFAULT_SCANNING_METHOD};
         method float_method{SCN_DEFAULT_SCANNING_METHOD};

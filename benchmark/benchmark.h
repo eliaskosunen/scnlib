@@ -42,6 +42,9 @@ SCN_GCC_IGNORE("-Wredundant-decls")
 #include <sstream>
 #include <string>
 
+#define STRTO_METHOD (static_cast<int64_t>(scn::method::strto))
+#define STO_METHOD (static_cast<int64_t>(scn::method::sto))
+
 inline std::string generate_buffer(size_t len)
 {
     std::default_random_engine rng(std::random_device{}());

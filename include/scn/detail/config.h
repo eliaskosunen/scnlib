@@ -18,8 +18,6 @@
 #ifndef SCN_DETAIL_CONFIG_H
 #define SCN_DETAIL_CONFIG_H
 
-#include <cstddef>
-
 #define SCN_STD_11 201103L
 #define SCN_STD_14 201402L
 #define SCN_STD_17 201703L
@@ -283,5 +281,9 @@
 #endif
 
 #define SCN_UNUSED(x) static_cast<void>(sizeof(x))
+
+#ifndef SCN_STL_OVERLOADS
+#define SCN_STL_OVERLOADS 1
+#endif
 
 #endif  // SCN_DETAIL_CONFIG_H

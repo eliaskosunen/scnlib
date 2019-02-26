@@ -15,6 +15,12 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest.h>
-#include <scn/istream.h>
 #include <scn/scn.h>
+
+void empty_test();
+void empty_test() {
+    std::string str{"Hello world!"};
+    auto stream = scn::make_stream(str);
+    std::string line;
+    scn::getline(stream, line);
+}

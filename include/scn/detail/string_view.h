@@ -21,7 +21,6 @@
 #include "span.h"
 
 #include <limits>
-#include <string>
 
 namespace scn {
     /**

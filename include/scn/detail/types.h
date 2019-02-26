@@ -20,9 +20,6 @@
 
 #include "visitor.h"
 
-#include <algorithm>
-#include <vector>
-
 SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
 namespace scn {

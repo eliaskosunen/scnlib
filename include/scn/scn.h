@@ -29,19 +29,14 @@
 #include "detail/visitor.h"
 
 namespace scn {
-    /**
-     * Non-variadic version of scan(), to prevent bloat in generated code.
-     */
+    // Non-variadic version of scan() and alike,
+    // to prevent bloat in generated code.
     template <typename Context>
     error vscan(Context& ctx)
     {
         return visit(ctx);
     }
 
-    /**
-     * Scan the given arguments from the stream.
-     * \param f Scanning options
-     */
     template <typename Stream, typename... Args>
     error scan(Stream& s,
                basic_string_view<typename Stream::char_type> f,
@@ -69,29 +64,18 @@ namespace scn {
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wexit-time-destructors")
 
-    /**
-     * Reference to global stdin stream.
-     * Not safe to use during static construction or destruction.
-     */
+    // Reference to global stdin stream.
+    // Not safe to use during static construction or destruction.
     template <typename CharT>
     basic_cstdio_stream<CharT>& stdin_stream()
     {
         static basic_cstdio_stream<CharT> stream(stdin);
         return stream;
     }
-
-    /**
-     * Reference to narrow global stdin stream.
-     * Not safe to use during static construction or destruction.
-     */
     inline basic_cstdio_stream<char>& cstdin()
     {
         return stdin_stream<char>();
     }
-    /**
-     * Reference to wide global stdin stream.
-     * Not safe to use during static construction or destruction.
-     */
     inline basic_cstdio_stream<wchar_t>& wcstdin()
     {
         return stdin_stream<wchar_t>();
@@ -99,10 +83,12 @@ namespace scn {
 
     SCN_CLANG_POP
 
+    // Read from stdin
     template <typename... Args>
     error input(string_view f, Args&... a)
     {
         auto& stream = stdin_stream<char>();
+
         using stream_type =
             typename std::remove_reference<decltype(stream)>::type;
         using context_type = basic_context<stream_type>;
@@ -115,6 +101,7 @@ namespace scn {
     error input(wstring_view f, Args&... a)
     {
         auto& stream = stdin_stream<wchar_t>();
+
         using stream_type =
             typename std::remove_reference<decltype(stream)>::type;
         using context_type = basic_context<stream_type>;
@@ -124,6 +111,8 @@ namespace scn {
         return vscan<context_type>(ctx);
     }
 
+    // Read from stdin with prompt
+    // Like Python's input()
     template <typename... Args>
     error prompt(const char* p, string_view f, Args&... a)
     {
@@ -139,7 +128,7 @@ namespace scn {
         return vscan<context_type>(ctx);
     }
     template <typename... Args>
-    error wprompt(const wchar_t* p, wstring_view f, Args&... a)
+    error prompt(const wchar_t* p, wstring_view f, Args&... a)
     {
         std::wprintf(L"%ls", p);
 
