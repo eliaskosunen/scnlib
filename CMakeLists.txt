@@ -46,7 +46,7 @@ function (get_warning_flags flags)
         $<$<CXX_COMPILER_ID:Clang>:
             -Weverything
             -Wpedantic -pedantic-errors
-            -fvisibility=hidden -fstrict-aliasing
+            -fstrict-aliasing
             -Wno-c++98-compat
             -Wno-c++98-compat-pedantic
             -Wno-c++98-compat-bind-to-temporary-copy
@@ -54,7 +54,7 @@ function (get_warning_flags flags)
         $<$<CXX_COMPILER_ID:GNU>:
             -Wall -Wextra -Wpedantic
             -pedantic-errors
-            -fvisibility=hidden -fstrict-aliasing
+            -fstrict-aliasing
             -Wconversion -Wsign-conversion
             -Wold-style-cast -Wfloat-equal
             -Wlogical-op -Wundef
