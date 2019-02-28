@@ -330,6 +330,16 @@ auto stream = scn::make_wide_stream(stdin);
 Streams with character types other than `char` and `wchar_t` are not supported, due to lacking support in the standard library for them. Converting between character types is out-of-scope for this
 library.
 
+### Encoding and Unicode
+
+Because of the rather lackluster Unicode support of the standard library,
+this library doesn't have any significant Unicode support, either. 
+
+Narrow streams are expected to be ASCII encoded,
+and using multibyte encodings (like UTF-8) with them is going to cause problems (blame `std::locale`).
+If you need some sort of Unicode support, you'll need to use wide streams, encoded the way your platform
+expects (UTF-32 in POSIX, the thing resembling UCS-2 in Windows).
+
 ### Error handling
 
 `scnlib` does not use exceptions for error handling.
