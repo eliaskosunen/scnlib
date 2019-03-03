@@ -42,7 +42,7 @@ static void scanfloat_scn(benchmark::State& state)
         benchmark::DoNotOptimize(e);
         benchmark::ClobberMemory();
         if (!e) {
-            if (e == scn::error::end_of_stream) {
+            if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_float_data<Float>(FLOAT_DATA_N);
                 stream = scn::make_stream(data);
@@ -59,7 +59,9 @@ static void scanfloat_scn(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scanfloat_scn, float)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
 BENCHMARK_TEMPLATE(scanfloat_scn, double)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
-BENCHMARK_TEMPLATE(scanfloat_scn, long double)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
+BENCHMARK_TEMPLATE(scanfloat_scn, long double)
+    ->Arg(STRTO_METHOD)
+    ->Arg(STO_METHOD);
 
 template <typename Float>
 static void scanfloat_sstream(benchmark::State& state)

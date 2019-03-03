@@ -30,7 +30,7 @@ namespace scn {
     namespace predicates {
         template <typename Context>
         struct propagate {
-            SCN_CONSTEXPR result<scan_status> operator()(
+            SCN_CONSTEXPR either<scan_status> operator()(
                 Context&,
                 typename Context::char_type) const noexcept
             {
@@ -39,7 +39,7 @@ namespace scn {
         };
         template <typename Context>
         struct until {
-            SCN_CONSTEXPR result<scan_status> operator()(
+            SCN_CONSTEXPR either<scan_status> operator()(
                 Context&,
                 typename Context::char_type ch) const noexcept
             {
@@ -50,7 +50,7 @@ namespace scn {
         };
         template <typename Context>
         struct until_one_of {
-            result<scan_status> operator()(Context&,
+            either<scan_status> operator()(Context&,
                                            typename Context::char_type ch)
             {
                 if (std::find(until.begin(), until.end(), ch) != until.end()) {
@@ -63,7 +63,7 @@ namespace scn {
         };
         template <typename Context>
         struct until_space {
-            result<scan_status> operator()(Context& ctx,
+            either<scan_status> operator()(Context& ctx,
                                            typename Context::char_type ch)
             {
                 if (ctx.locale().is_space(ch)) {
@@ -75,7 +75,7 @@ namespace scn {
 
         template <typename Context>
         struct until_and_skip_chars {
-            result<scan_status> operator()(Context&,
+            either<scan_status> operator()(Context&,
                                            typename Context::char_type ch)
             {
                 if (ch == until) {
@@ -92,7 +92,7 @@ namespace scn {
         };
         template <typename Context>
         struct until_one_of_and_skip_chars {
-            result<scan_status> operator()(Context&,
+            either<scan_status> operator()(Context&,
                                            typename Context::char_type ch)
             {
                 if (std::find(until.begin(), until.end(), ch) != until.end()) {
@@ -109,7 +109,7 @@ namespace scn {
         };
         template <typename Context>
         struct until_space_and_skip_chars {
-            result<scan_status> operator()(Context& ctx,
+            either<scan_status> operator()(Context& ctx,
                                            typename Context::char_type ch)
             {
                 if (ctx.locale().is_space(ch)) {
@@ -128,7 +128,7 @@ namespace scn {
     namespace pred = predicates;
 
     template <typename Context, typename Iterator, typename Predicate>
-    result<Iterator> scan_chars(Context& ctx,
+    either<Iterator> scan_chars(Context& ctx,
                                 Iterator begin,
                                 Predicate&& p,
                                 bool keep_final = false)
@@ -164,7 +164,7 @@ namespace scn {
               typename Iterator,
               typename EndIterator,
               typename Predicate>
-    result<Iterator> scan_chars_until(Context& ctx,
+    either<Iterator> scan_chars_until(Context& ctx,
                                       Iterator begin,
                                       EndIterator end,
                                       Predicate&& p,
@@ -199,7 +199,7 @@ namespace scn {
     }
 
     template <typename Context, typename Iterator, typename EndIterator>
-    result<Iterator> propagate_chars_until(Context& ctx,
+    either<Iterator> propagate_chars_until(Context& ctx,
                                            Iterator begin,
                                            EndIterator end)
     {
@@ -221,7 +221,7 @@ namespace scn {
               typename Char = typename Context::char_type,
               typename Span = span<Char>,
               typename Iterator = typename Span::iterator>
-    result<Iterator> bulk_propagate_chars_until(Context& ctx, Span s)
+    either<Iterator> bulk_propagate_chars_until(Context& ctx, Span s)
     {
         auto e = ctx.stream().read_bulk(s);
         if (e != error::end_of_stream) {
@@ -236,7 +236,7 @@ namespace scn {
               typename Iterator = typename Span::iterator>
     auto propagate_chars_until(Context& ctx, Span s) -> typename std::enable_if<
         is_bulk_stream<typename Context::stream_type>::value,
-        result<Iterator>>::type
+        either<Iterator>>::type
     {
         return bulk_propagate_chars_until(ctx, s);
     }
@@ -246,7 +246,7 @@ namespace scn {
               typename Iterator = typename Span::iterator>
     auto propagate_chars_until(Context& ctx, Span s) -> typename std::enable_if<
         !is_bulk_stream<typename Context::stream_type>::value,
-        result<Iterator>>::type
+        either<Iterator>>::type
     {
         return propagate_chars_until(ctx, s.begin(), s.end());
     }
@@ -425,7 +425,7 @@ namespace scn {
 
             template <typename CharT>
             struct str_to_int<CharT, long long> {
-                static result<long long> get(
+                static either<long long> get(
                     const std::basic_string<CharT>& str,
                     size_t& chars,
                     int base)
@@ -435,7 +435,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, long> {
-                static result<long> get(const std::basic_string<CharT>& str,
+                static either<long> get(const std::basic_string<CharT>& str,
                                         size_t& chars,
                                         int base)
                 {
@@ -444,7 +444,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, int> {
-                static result<int> get(const std::basic_string<CharT>& str,
+                static either<int> get(const std::basic_string<CharT>& str,
                                        size_t& chars,
                                        int base)
                 {
@@ -453,7 +453,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, short> {
-                static result<short> get(const std::basic_string<CharT>& str,
+                static either<short> get(const std::basic_string<CharT>& str,
                                          size_t& chars,
                                          int base)
                 {
@@ -475,7 +475,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, unsigned long long> {
-                static result<unsigned long long> get(
+                static either<unsigned long long> get(
                     const std::basic_string<CharT>& str,
                     size_t& chars,
                     int base)
@@ -485,7 +485,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, unsigned long> {
-                static result<unsigned long> get(
+                static either<unsigned long> get(
                     const std::basic_string<CharT>& str,
                     size_t& chars,
                     int base)
@@ -495,7 +495,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, unsigned int> {
-                static result<unsigned int> get(
+                static either<unsigned int> get(
                     const std::basic_string<CharT>& str,
                     size_t& chars,
                     int base)
@@ -513,7 +513,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, unsigned short> {
-                static result<unsigned short> get(
+                static either<unsigned short> get(
                     const std::basic_string<CharT>& str,
                     size_t& chars,
                     int base)
@@ -537,7 +537,7 @@ namespace scn {
 
             template <>
             struct str_to_int<char, long long> {
-                static result<long long> get(const char* str,
+                static either<long long> get(const char* str,
                                              size_t& chars,
                                              int base)
                 {
@@ -549,7 +549,7 @@ namespace scn {
             };
             template <>
             struct str_to_int<wchar_t, long long> {
-                static result<long long> get(const wchar_t* str,
+                static either<long long> get(const wchar_t* str,
                                              size_t& chars,
                                              int base)
                 {
@@ -562,7 +562,7 @@ namespace scn {
 
             template <>
             struct str_to_int<char, long> {
-                static result<long> get(const char* str,
+                static either<long> get(const char* str,
                                         size_t& chars,
                                         int base)
                 {
@@ -574,7 +574,7 @@ namespace scn {
             };
             template <>
             struct str_to_int<wchar_t, long> {
-                static result<long> get(const wchar_t* str,
+                static either<long> get(const wchar_t* str,
                                         size_t& chars,
                                         int base)
                 {
@@ -587,7 +587,7 @@ namespace scn {
 
             template <typename Char>
             struct str_to_int<Char, int> {
-                static result<int> get(const Char* str, size_t& chars, int base)
+                static either<int> get(const Char* str, size_t& chars, int base)
                 {
                     auto tmp =
                         str_to_int<Char, long long>::get(str, chars, base);
@@ -611,7 +611,7 @@ namespace scn {
             };
             template <typename Char>
             struct str_to_int<Char, short> {
-                static result<short> get(const Char* str,
+                static either<short> get(const Char* str,
                                          size_t& chars,
                                          int base)
                 {
@@ -637,7 +637,7 @@ namespace scn {
 
             template <>
             struct str_to_int<char, unsigned long long> {
-                static result<unsigned long long> get(const char* str,
+                static either<unsigned long long> get(const char* str,
                                                       size_t& chars,
                                                       int base)
                 {
@@ -649,7 +649,7 @@ namespace scn {
             };
             template <>
             struct str_to_int<wchar_t, unsigned long long> {
-                static result<unsigned long long> get(const wchar_t* str,
+                static either<unsigned long long> get(const wchar_t* str,
                                                       size_t& chars,
                                                       int base)
                 {
@@ -662,7 +662,7 @@ namespace scn {
 
             template <>
             struct str_to_int<char, unsigned long> {
-                static result<unsigned long> get(const char* str,
+                static either<unsigned long> get(const char* str,
                                                  size_t& chars,
                                                  int base)
                 {
@@ -674,7 +674,7 @@ namespace scn {
             };
             template <>
             struct str_to_int<wchar_t, unsigned long> {
-                static result<unsigned long> get(const wchar_t* str,
+                static either<unsigned long> get(const wchar_t* str,
                                                  size_t& chars,
                                                  int base)
                 {
@@ -687,7 +687,7 @@ namespace scn {
 
             template <typename Char>
             struct str_to_int<Char, unsigned int> {
-                static result<unsigned int> get(const Char* str,
+                static either<unsigned int> get(const Char* str,
                                                 size_t& chars,
                                                 int base)
                 {
@@ -708,7 +708,7 @@ namespace scn {
             };
             template <typename Char>
             struct str_to_int<Char, unsigned short> {
-                static result<unsigned short> get(const Char* str,
+                static either<unsigned short> get(const Char* str,
                                                   size_t& chars,
                                                   int base)
                 {
@@ -920,7 +920,7 @@ namespace scn {
             uint8_t localized{0};
 
         private:
-            static result<size_t> _read_sto(T& val,
+            static either<size_t> _read_sto(T& val,
                                             const std::basic_string<CharT>& buf,
                                             int base)
             {
@@ -940,7 +940,7 @@ namespace scn {
                     return error(error::value_out_of_range, e.what());
                 }
             }
-            static result<size_t>
+            static either<size_t>
             _read_strto(T& val, const std::basic_string<CharT>& buf, int base)
             {
                 size_t chars = 0;
@@ -964,7 +964,7 @@ namespace scn {
                 return chars;
             }
 
-            static result<size_t> _read_from_chars(
+            static either<size_t> _read_from_chars(
                 T& val,
                 const std::basic_string<CharT>& buf,
                 int base)
@@ -1030,7 +1030,7 @@ namespace scn {
 
             template <>
             struct str_to_float<char, float> {
-                static result<float> get(const char* str, size_t& chars)
+                static either<float> get(const char* str, size_t& chars)
                 {
                     char* end{};
                     float f = std::strtof(str, &end);
@@ -1040,7 +1040,7 @@ namespace scn {
             };
             template <>
             struct str_to_float<wchar_t, float> {
-                static result<float> get(const wchar_t* str, size_t& chars)
+                static either<float> get(const wchar_t* str, size_t& chars)
                 {
                     wchar_t* end{};
                     float f = std::wcstof(str, &end);
@@ -1051,7 +1051,7 @@ namespace scn {
 
             template <>
             struct str_to_float<char, double> {
-                static result<double> get(const char* str, size_t& chars)
+                static either<double> get(const char* str, size_t& chars)
                 {
                     char* end{};
                     double d = std::strtod(str, &end);
@@ -1061,7 +1061,7 @@ namespace scn {
             };
             template <>
             struct str_to_float<wchar_t, double> {
-                static result<double> get(const wchar_t* str, size_t& chars)
+                static either<double> get(const wchar_t* str, size_t& chars)
                 {
                     wchar_t* end{};
                     double d = std::wcstod(str, &end);
@@ -1072,7 +1072,7 @@ namespace scn {
 
             template <>
             struct str_to_float<char, long double> {
-                static result<long double> get(const char* str, size_t& chars)
+                static either<long double> get(const char* str, size_t& chars)
                 {
                     char* end{};
                     long double ld = std::strtold(str, &end);
@@ -1082,7 +1082,7 @@ namespace scn {
             };
             template <>
             struct str_to_float<wchar_t, long double> {
-                static result<long double> get(const wchar_t* str,
+                static either<long double> get(const wchar_t* str,
                                                size_t& chars)
                 {
                     wchar_t* end{};
@@ -1127,7 +1127,7 @@ namespace scn {
                 bool point = false;
                 auto r = scan_chars(
                     ctx, std::back_inserter(buf),
-                    [&point](Context& c, CharT ch) -> result<scan_status> {
+                    [&point](Context& c, CharT ch) -> either<scan_status> {
                         if (c.locale().is_space(ch)) {
                             return scan_status::end;
                         }
@@ -1212,7 +1212,7 @@ namespace scn {
             bool localized{false};
 
         private:
-            static result<size_t> _read_sto(T& val,
+            static either<size_t> _read_sto(T& val,
                                             const std::basic_string<CharT>& buf)
             {
                 try {
@@ -1227,7 +1227,7 @@ namespace scn {
                     return error(error::value_out_of_range, e.what());
                 }
             }
-            static result<size_t> _read_strto(
+            static either<size_t> _read_strto(
                 T& val,
                 const std::basic_string<CharT>& buf)
             {
@@ -1239,7 +1239,7 @@ namespace scn {
                 val = ret.value();
                 return chars;
             }
-            static result<size_t> _read_from_chars(
+            static either<size_t> _read_from_chars(
                 T& val,
                 const std::basic_string<CharT>& buf)
             {
@@ -1393,19 +1393,25 @@ namespace scn {
     };
 
     template <typename Context>
-    error visit(Context& ctx)
+    result<int> visit(Context& ctx)
     {
+        int args_read = 0;
+
+        auto reterror = [&args_read](error e) {
+            return result<int>(args_read, std::move(e));
+        };
+
         auto& pctx = ctx.parse_context();
         auto arg_wrapped = ctx.next_arg();
         if (!arg_wrapped) {
-            return arg_wrapped.get_error();
+            return reterror(arg_wrapped.get_error());
         }
         auto arg = arg_wrapped.value();
 
         {
             auto ret = skip_stream_whitespace(ctx);
             if (!ret) {
-                return ret;
+                return reterror(ret);
             }
         }
 
@@ -1416,13 +1422,13 @@ namespace scn {
                 auto ret = parse_whitespace(ctx);
                 if (!ret) {
                     if (ret == error::end_of_stream && !arg) {
-                        return {};
+                        return {args_read};
                     }
                     auto rb = ctx.stream().roll_back();
                     if (!rb) {
-                        return rb;
+                        return reterror(rb);
                     }
-                    return ret;
+                    return reterror(ret);
                 }
                 // Don't advance pctx, parse_whitespace() does it for us
                 continue;
@@ -1445,17 +1451,18 @@ namespace scn {
                     auto rb = ctx.stream().roll_back();
                     if (!rb) {
                         // Failed rollback
-                        return rb;
+                        return reterror(rb);
                     }
                     if (!ret) {
                         // Failed read
-                        return ret.get_error();
+                        return reterror(ret.get_error());
                     }
 
                     // Mismatching characters in scan string and stream
-                    return error(error::invalid_scanned_value,
-                                 "Expected character from format string not "
-                                 "found in the stream");
+                    return reterror(
+                        error(error::invalid_scanned_value,
+                              "Expected character from format string not "
+                              "found in the stream"));
                 }
                 // Bump pctx to next char
                 pctx.advance();
@@ -1464,22 +1471,24 @@ namespace scn {
                 // Scan argument
                 if (!arg) {
                     // Mismatch between number of args and {}s
-                    return error(error::invalid_format_string,
-                                 "Mismatch between number of arguments and "
-                                 "'{}' in the format string");
+                    return reterror(
+                        error(error::invalid_format_string,
+                              "Mismatch between number of arguments and "
+                              "'{}' in the format string"));
                 }
                 auto ret = visit_arg(basic_visitor<Context>(ctx), arg);
                 if (!ret) {
                     auto rb = ctx.stream().roll_back();
                     if (!rb) {
-                        return rb;
+                        return reterror(rb);
                     }
-                    return ret;
+                    return reterror(ret);
                 }
                 // Handle next arg and bump pctx
+                ++args_read;
                 arg_wrapped = ctx.next_arg();
                 if (!arg_wrapped) {
-                    return arg_wrapped.get_error();
+                    return reterror(arg_wrapped.get_error());
                 }
                 arg = arg_wrapped.value();
                 pctx.advance();
@@ -1487,14 +1496,14 @@ namespace scn {
         }
         if (pctx.begin() != pctx.end()) {
             // Format string not exhausted
-            return error(error::invalid_format_string,
-                         "Format string not exhausted");
+            return reterror(error(error::invalid_format_string,
+                                  "Format string not exhausted"));
         }
         auto srb = ctx.stream().set_roll_back();
         if (!srb) {
-            return srb;
+            return reterror(srb);
         }
-        return {};
+        return {args_read};
     }
 }  // namespace scn
 

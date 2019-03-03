@@ -68,33 +68,45 @@ TEST_CASE_TEMPLATE_DEFINE("ignore", CharT, ignore_test)
     SUBCASE("ignore_n")
     {
         string_type s{};
-        auto ret = scn::ignore_n(stream, 6);
-        CHECK(ret);
+        {
+            auto ret = scn::ignore_n(stream, 6);
+            CHECK(ret);
+        }
 
-        ret = scn::scan(stream, f, s);
-        CHECK(s == widen<CharT>("line2"));
-        CHECK(ret);
+        {
+            auto ret = scn::scan(stream, f, s);
+            CHECK(s == widen<CharT>("line2"));
+            CHECK(ret);
+        }
     }
     SUBCASE("ignore_until")
     {
         string_type s{};
-        auto ret = scn::ignore_until(stream, 0x0a);  // '\n'
-        CHECK(ret);
+        {
+            auto ret = scn::ignore_until(stream, 0x0a);  // '\n'
+            CHECK(ret);
+        }
 
-        ret = scn::scan(stream, f, s);
-        CHECK(s == widen<CharT>("line2"));
-        CHECK(ret);
+        {
+            auto ret = scn::scan(stream, f, s);
+            CHECK(s == widen<CharT>("line2"));
+            CHECK(ret);
+        }
     }
     SUBCASE("ignore_all")
     {
         string_type s{};
-        auto ret = scn::ignore_all(stream);
-        CHECK(ret);
+        {
+            auto ret = scn::ignore_all(stream);
+            CHECK(ret);
+        }
 
-        ret = scn::scan(stream, f, s);
-        CHECK(!ret);
-        if (!ret) {
-            CHECK(ret == scn::error::end_of_stream);
+        {
+            auto ret = scn::scan(stream, f, s);
+            CHECK(!ret);
+            if (!ret) {
+                CHECK(ret.error() == scn::error::end_of_stream);
+            }
         }
     }
 }

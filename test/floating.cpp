@@ -20,10 +20,10 @@
 #include <cmath>
 
 template <typename CharT, typename T>
-static scn::error scan_value(scn::method m,
-                             std::string source,
-                             std::string f,
-                             T& value)
+static scn::result<int> scan_value(scn::method m,
+                                   std::string source,
+                                   std::string f,
+                                   T& value)
 {
     return scan_value<CharT>(scn::options::builder{}.float_method(m).make(),
                              std::move(source), std::move(f), value);

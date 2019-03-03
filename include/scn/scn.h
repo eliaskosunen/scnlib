@@ -32,15 +32,15 @@ namespace scn {
     // Non-variadic version of scan() and alike,
     // to prevent bloat in generated code.
     template <typename Context>
-    error vscan(Context& ctx)
+    result<int> vscan(Context& ctx)
     {
         return visit(ctx);
     }
 
     template <typename Stream, typename... Args>
-    error scan(Stream& s,
-               basic_string_view<typename Stream::char_type> f,
-               Args&... a)
+    result<int> scan(Stream& s,
+                     basic_string_view<typename Stream::char_type> f,
+                     Args&... a)
     {
         using context_type = basic_context<Stream>;
 
@@ -49,10 +49,10 @@ namespace scn {
         return vscan<context_type>(ctx);
     }
     template <typename Stream, typename... Args>
-    error scan(options opt,
-               Stream& s,
-               basic_string_view<typename Stream::char_type> f,
-               Args&... a)
+    result<int> scan(options opt,
+                     Stream& s,
+                     basic_string_view<typename Stream::char_type> f,
+                     Args&... a)
     {
         using context_type = basic_context<Stream>;
 
@@ -85,7 +85,7 @@ namespace scn {
 
     // Read from stdin
     template <typename... Args>
-    error input(string_view f, Args&... a)
+    result<int> input(string_view f, Args&... a)
     {
         auto& stream = stdin_stream<char>();
 
@@ -98,7 +98,7 @@ namespace scn {
         return vscan<context_type>(ctx);
     }
     template <typename... Args>
-    error input(wstring_view f, Args&... a)
+    result<int> input(wstring_view f, Args&... a)
     {
         auto& stream = stdin_stream<wchar_t>();
 
@@ -114,7 +114,7 @@ namespace scn {
     // Read from stdin with prompt
     // Like Python's input()
     template <typename... Args>
-    error prompt(const char* p, string_view f, Args&... a)
+    result<int> prompt(const char* p, string_view f, Args&... a)
     {
         std::printf("%s", p);
 
@@ -128,7 +128,7 @@ namespace scn {
         return vscan<context_type>(ctx);
     }
     template <typename... Args>
-    error prompt(const wchar_t* p, wstring_view f, Args&... a)
+    result<int> prompt(const wchar_t* p, wstring_view f, Args&... a)
     {
         std::wprintf(L"%ls", p);
 

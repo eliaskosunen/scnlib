@@ -18,10 +18,10 @@
 #include "test.h"
 
 template <typename CharT, typename T>
-static scn::error scan_value(scn::method m,
-                             std::string source,
-                             std::string f,
-                             T& value)
+static scn::result<int> scan_value(scn::method m,
+                                   std::string source,
+                                   std::string f,
+                                   T& value)
 {
     return scan_value<CharT>(scn::options::builder{}.int_method(m).make(),
                              std::move(source), std::move(f), value);
@@ -70,7 +70,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "-1", "{}", i);
-        CHECK(e.code() == scn::error::value_out_of_range);
+        CHECK(e.error().code() == scn::error::value_out_of_range);
     }
 
     const bool can_fit_2pow31 = [=]() {
@@ -88,7 +88,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "2147483648", "{}", i);
-        CHECK(e.code() == scn::error::value_out_of_range);
+        CHECK(e.error().code() == scn::error::value_out_of_range);
     }
 
     {
@@ -120,7 +120,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
-        CHECK(e.code() == scn::error::value_out_of_range);
+        CHECK(e.error().code() == scn::error::value_out_of_range);
     }
     if (can_fit_badidea) {
         value_type i{};
@@ -131,7 +131,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
-        CHECK(e.code() == scn::error::value_out_of_range);
+        CHECK(e.error().code() == scn::error::value_out_of_range);
     }
 }
 

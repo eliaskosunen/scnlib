@@ -95,7 +95,7 @@ namespace scn {
 
             using arg_type = basic_arg<Context>;
 
-            result<arg_type> do_get_arg(size_t id)
+            either<arg_type> do_get_arg(size_t id)
             {
                 auto a = m_args.get(id);
                 if (!a && !m_args.check_id(id - 1)) {
@@ -105,7 +105,7 @@ namespace scn {
                 return a;
             }
 
-            result<arg_type> arg(size_t id)
+            either<arg_type> arg(size_t id)
             {
                 return m_parse_ctx.check_arg_id(id) ? do_get_arg(id)
                                                     : arg_type();
@@ -152,16 +152,16 @@ namespace scn {
         {
         }
 
-        result<arg_type> next_arg()
+        either<arg_type> next_arg()
         {
             return this->do_get_arg(this->parse_context().next_arg_id());
         }
-        result<arg_type> arg(size_t id)
+        either<arg_type> arg(size_t id)
         {
             return this->do_get_arg(id);
         }
 
-        result<arg_type> arg(basic_string_view<char_type> name);
+        either<arg_type> arg(basic_string_view<char_type> name);
 
     private:
         detail::arg_map<basic_context> m_map;

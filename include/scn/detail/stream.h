@@ -77,7 +77,7 @@ namespace scn {
         {
         }
 
-        SCN_CONSTEXPR14 result<char_type> read_char() noexcept
+        SCN_CONSTEXPR14 either<char_type> read_char() noexcept
         {
             if (m_next == end()) {
                 return error(error::end_of_stream, "EOF");
@@ -239,7 +239,7 @@ namespace scn {
         {
         }
 
-        SCN_CONSTEXPR14 result<char_type> read_char() noexcept
+        SCN_CONSTEXPR14 either<char_type> read_char() noexcept
         {
             if (m_next == end()) {
                 return error(error::end_of_stream, "EOF");
@@ -338,7 +338,7 @@ namespace scn {
         {
         }
 
-        SCN_CONSTEXPR14 result<char_type> read_char() noexcept
+        SCN_CONSTEXPR14 either<char_type> read_char() noexcept
         {
             if (m_next == m_end) {
                 return error(error::end_of_stream, "EOF");
@@ -420,7 +420,7 @@ namespace scn {
         {
         }
 
-        result<char_type> read_char() noexcept
+        either<char_type> read_char() noexcept
         {
             if (m_rollback.size() > 0) {
                 auto top = m_rollback.back();
@@ -549,7 +549,7 @@ namespace scn {
 
         basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
-        result<char_type> read_char()
+        either<char_type> read_char()
         {
             auto ret = std::fgetc(m_file);
             if (ret == EOF) {
@@ -612,7 +612,7 @@ namespace scn {
 
         basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
-        result<char_type> read_char()
+        either<char_type> read_char()
         {
             auto ret = std::fgetwc(m_file);
             if (ret == WEOF) {

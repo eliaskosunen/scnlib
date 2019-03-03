@@ -214,7 +214,7 @@ namespace scn {
     }
 
     template <typename Stream>
-    result<typename Stream::char_type> getchar(Stream& s)
+    either<typename Stream::char_type> getchar(Stream& s)
     {
         return s.read_char();
     }

@@ -199,6 +199,15 @@ namespace scn {
                 _destruct();
             }
 
+            SCN_CONSTEXPR bool has_value() const noexcept
+            {
+                return m_ptr != nullptr;
+            }
+            SCN_CONSTEXPR explicit operator bool() const noexcept
+            {
+                return has_value();
+            }
+
             SCN_CONSTEXPR14 T& get() noexcept
             {
                 return _get();

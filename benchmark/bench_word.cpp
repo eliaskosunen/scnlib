@@ -55,7 +55,7 @@ static void scanword_scn(benchmark::State& state)
         benchmark::DoNotOptimize(stream);
         benchmark::ClobberMemory();
         if (!e) {
-            if (e == scn::error::end_of_stream) {
+            if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 stream = scn::make_stream(data);

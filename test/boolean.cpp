@@ -34,12 +34,12 @@ TEST_CASE_TEMPLATE("boolean", CharT, char, wchar_t)
     {
         bool b{};
         auto e = scan_value<CharT>("bool", "{a}", b);
-        CHECK(e.code() == scn::error::invalid_scanned_value);
+        CHECK(e.error().code() == scn::error::invalid_scanned_value);
     }
     {
         bool b{};
         auto e = scan_value<CharT>("0", "{a}", b);
-        CHECK(e.code() == scn::error::invalid_scanned_value);
+        CHECK(e.error().code() == scn::error::invalid_scanned_value);
     }
     {
         bool b{};
@@ -56,11 +56,11 @@ TEST_CASE_TEMPLATE("boolean", CharT, char, wchar_t)
     {
         bool b{};
         auto e = scan_value<CharT>("2", "{}", b);
-        CHECK(e.code() == scn::error::invalid_scanned_value);
+        CHECK(e.error().code() == scn::error::invalid_scanned_value);
     }
     {
         bool b{};
         auto e = scan_value<CharT>("true", "{}", b);
-        CHECK(e.code() == scn::error::invalid_scanned_value);
+        CHECK(e.error().code() == scn::error::invalid_scanned_value);
     }
 }

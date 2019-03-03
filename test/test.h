@@ -34,10 +34,10 @@ inline std::basic_string<wchar_t> widen<wchar_t>(std::string str)
 }
 
 template <typename CharT, typename... T>
-scn::error scan_value(scn::options o,
-                      std::string source,
-                      std::string f,
-                      T&... value)
+scn::result<int> scan_value(scn::options o,
+                            std::string source,
+                            std::string f,
+                            T&... value)
 {
     auto wsource = widen<CharT>(source);
     auto stream = scn::make_stream(wsource);
@@ -48,7 +48,7 @@ scn::error scan_value(scn::options o,
     return ret;
 }
 template <typename CharT, typename... T>
-scn::error scan_value(std::string source, std::string f, T&... value)
+scn::result<int> scan_value(std::string source, std::string f, T&... value)
 {
     return scan_value<CharT>(scn::options{}, std::move(source), std::move(f),
                              value...);

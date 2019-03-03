@@ -116,13 +116,66 @@ namespace scn {
         return !(a == b);
     }
 
+    template <typename T>
+    class result {
+    public:
+        using success_type = T;
+        using error_type = class error;
+        using error_storage = detail::erased_storage<error_type>;
+
+        result(success_type val) : m_value(std::move(val)) {}
+        result(success_type val, error err)
+            : m_value(std::move(val)), m_error(std::move(err))
+        {
+        }
+
+        SCN_CONSTEXPR14 success_type& value() & noexcept
+        {
+            return m_value;
+        }
+        SCN_CONSTEXPR const success_type& value() const& noexcept
+        {
+            return m_value;
+        }
+        SCN_CONSTEXPR14 success_type value() && noexcept
+        {
+            return m_value;
+        }
+
+        SCN_CONSTEXPR14 error_type& error() & noexcept
+        {
+            return m_error.get();
+        }
+        SCN_CONSTEXPR const error_type& error() const& noexcept
+        {
+            return m_error.get();
+        }
+        SCN_CONSTEXPR14 error_type error() && noexcept
+        {
+            return m_error.get();
+        }
+
+        SCN_CONSTEXPR bool has_error() const noexcept
+        {
+            return m_error.has_value();
+        }
+        SCN_CONSTEXPR explicit operator bool() const noexcept
+        {
+            return !has_error();
+        }
+
+    private:
+        success_type m_value;
+        error_storage m_error{};
+    };
+
     /**
      * Either-like type.
      * For situations where there can be a value in case of success or an error
      * code.
      */
     template <typename T, typename Enable = void>
-    class result;
+    class either;
 
     /**
      * Either-like type for default-constructible success values.
@@ -131,14 +184,14 @@ namespace scn {
      * `error` is used as the error value and discriminant flag.
      */
     template <typename T>
-    class result<T,
+    class either<T,
                  typename std::enable_if<
                      std::is_default_constructible<T>::value>::type> {
     public:
         using success_type = T;
 
-        SCN_CONSTEXPR result(success_type s) : m_s(s) {}
-        SCN_CONSTEXPR result(error e) : m_e(e) {}
+        SCN_CONSTEXPR either(success_type s) : m_s(s) {}
+        SCN_CONSTEXPR either(error e) : m_e(e) {}
 
         SCN_CONSTEXPR bool has_value() const noexcept
         {
@@ -186,15 +239,15 @@ namespace scn {
      * `error` is used as the error value and discriminant flag.
      */
     template <typename T>
-    class result<T,
+    class either<T,
                  typename std::enable_if<
                      !std::is_default_constructible<T>::value>::type> {
     public:
         using success_type = T;
         using success_storage = detail::erased_storage<T>;
 
-        result(success_type s) : m_s(std::move(s)) {}
-        result(error e) : m_e(e) {}
+        either(success_type s) : m_s(std::move(s)) {}
+        either(error e) : m_e(e) {}
 
         bool has_value() const
         {
@@ -238,9 +291,9 @@ namespace scn {
     template <typename T,
               typename U = typename std::remove_cv<
                   typename std::remove_reference<T>::type>::type>
-    result<U> make_result(T&& val)
+    either<U> make_either(T&& val)
     {
-        return result<U>(std::forward<T>(val));
+        return either<U>(std::forward<T>(val));
     }
 
     namespace detail {

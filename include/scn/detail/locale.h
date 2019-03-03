@@ -233,7 +233,7 @@ namespace scn {
         }
 
         template <typename T>
-        result<size_t> read_num(T& val, const string_type& buf);
+        either<size_t> read_num(T& val, const string_type& buf);
 
         bool is_default() const
         {

@@ -31,7 +31,11 @@ namespace scn {
         template <typename Context>
         error scan(user_type& val, Context& ctx)
         {
-            return scn::scan(ctx.stream(), "[{}, {}]", val.val1, val.val2);
+            auto r = scn::scan(ctx.stream(), "[{}, {}]", val.val1, val.val2);
+            if (r) {
+                return {};
+            }
+            return r.error();
         }
     };
     template <typename CharT>
@@ -41,7 +45,11 @@ namespace scn {
         {
             auto args = make_args<Context>(val.val1, val.val2);
             auto newctx = Context(ctx.stream(), "[{}, {}]", args);
-            return vscan(newctx);
+            auto r = vscan(newctx);
+            if (r) {
+                return {};
+            }
+            return r.error();
         }
     };
 }  // namespace scn

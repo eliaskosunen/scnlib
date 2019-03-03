@@ -40,7 +40,7 @@ TEST_CASE("general")
     CHECK(ret);
 
     if (!ret) {
-        std::cout << __LINE__ << ": " << static_cast<int>(ret.code()) << '\n';
+        std::cout << __LINE__ << ": " << static_cast<int>(ret.error().code()) << '\n';
     }
 
 #if 0

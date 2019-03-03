@@ -37,7 +37,7 @@ namespace scn {
 
         basic_std_istream_stream(source_type& is) : m_is(std::addressof(is)) {}
 
-        result<char_type> read_char()
+        either<char_type> read_char()
         {
             try {
                 auto tmp = m_is->get();

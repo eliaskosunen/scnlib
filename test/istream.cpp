@@ -30,7 +30,7 @@ TEST_CASE("istream stream")
     auto ret = scn::scan(stream, "{}", i);
     CHECK(ret);
     if (!ret) {
-        CHECK(ret.code() == scn::error::good);
+        CHECK(ret.error().code() == scn::error::good);
     }
     CHECK(i == 123);
 }
@@ -54,7 +54,7 @@ TEST_CASE("istream value")
     auto ret = scn::scan(stream, "{}", val);
     CHECK(ret);
     if (!ret) {
-        CHECK(ret.code() == scn::error::good);
+        CHECK(ret.error().code() == scn::error::good);
     }
     CHECK(val.value == 123);
 }

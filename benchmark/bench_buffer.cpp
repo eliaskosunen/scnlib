@@ -43,7 +43,7 @@ static void scanbuffer_scn(benchmark::State& state)
         benchmark::DoNotOptimize(stream);
         benchmark::ClobberMemory();
         if (!e) {
-            if (e == scn::error::end_of_stream) {
+            if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_data<char>(size * 16);
                 stream = scn::make_stream(data);
