@@ -62,6 +62,7 @@ TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
     user_type ut{};
     auto ret = scn::scan(stream, "{}", ut);
     CHECK(ret);
+    CHECK(ret.value() == 1);
     CHECK(ut.val1 == 4);
     CHECK(ut.val2 == 20);
 }

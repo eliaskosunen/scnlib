@@ -38,17 +38,6 @@ TEST_CASE("general")
     CHECK(s == "foobar");
     CHECK(b);
     CHECK(ret);
-
-    if (!ret) {
-        std::cout << __LINE__ << ": " << static_cast<int>(ret.error().code()) << '\n';
-    }
-
-#if 0
-    int j{};
-    ret = scn::input("{}", j);
-    
-    std::cout << j << '\n';
-    CHECK(ret);
-#endif
+    CHECK(ret.value() == 4);
 }
 

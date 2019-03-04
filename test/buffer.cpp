@@ -27,5 +27,6 @@ TEST_CASE("buffer")
 
     auto ret = scn::scan(stream, "{}", span);
     CHECK(ret);
+    CHECK(ret.value() == 1);
     CHECK(data.substr(0, 4) == s);
 }

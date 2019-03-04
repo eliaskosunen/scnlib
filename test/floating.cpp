@@ -58,42 +58,49 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         auto e = scan_value<char_type>(method, "0", "{}", f);
         CHECK(f == 0.0);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type f{1.0};
         auto e = scan_value<char_type>(method, "0.0", "{}", f);
         CHECK(f == 0.0);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type f{};
         auto e = scan_value<char_type>(method, "42", "{}", f);
         CHECK(f == doctest::Approx(42));
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type f{};
         auto e = scan_value<char_type>(method, "3.14", "{}", f);
         CHECK(f == doctest::Approx(3.14));
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type f{};
         auto e = scan_value<char_type>(method, "-2.22", "{}", f);
         CHECK(f == doctest::Approx(-2.22));
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type f{};
         auto e = scan_value<char_type>(method, "2.0e4", "{}", f);
         CHECK(f == doctest::Approx(2.0e4));
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type f{};
         auto e = scan_value<char_type>(method, "0x1.bc70a3d70a3d7p+6", "{}", f);
         CHECK(f == doctest::Approx(111.11));
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type f{};
@@ -101,6 +108,7 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         CHECK(std::isinf(f));
         CHECK(!std::signbit(f));
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type f{};
@@ -108,6 +116,7 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         CHECK(std::isinf(f));
         CHECK(std::signbit(f));
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type f{};
@@ -115,6 +124,7 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         CHECK(std::isnan(f));
         CHECK(!std::signbit(f));
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type f{};
@@ -122,6 +132,7 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         CHECK(f == 0.0);
         CHECK(std::signbit(f));
         CHECK(e);
+        CHECK(e.value() == 1);
     }
 }
 

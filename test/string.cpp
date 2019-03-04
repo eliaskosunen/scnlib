@@ -26,12 +26,14 @@ TEST_CASE_TEMPLATE_DEFINE("string", CharT, string_test)
         CHECK(s == widen<CharT>("thisisaword"));
         CHECK(s2 == widen<CharT>("nextword"));
         CHECK(e);
+        CHECK(e.value() == 2);
     }
     {
         string_type s{};
         auto e = scan_value<CharT>("WoRdW1th_Special<>Charact3rs", "{}", s);
         CHECK(s == widen<CharT>("WoRdW1th_Special<>Charact3rs"));
         CHECK(e);
+        CHECK(e.value() == 1);
     }
 }
 

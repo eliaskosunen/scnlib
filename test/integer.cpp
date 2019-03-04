@@ -53,12 +53,14 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         auto e = scan_value<char_type>(method, "0", "{}", i);
         CHECK(i == 0);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type i{};
         auto e = scan_value<char_type>(method, "1", "{}", i);
         CHECK(i == 1);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
 
     if (!u) {
@@ -66,11 +68,14 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         auto e = scan_value<char_type>(method, "-1", "{}", i);
         CHECK(i == -1);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "-1", "{}", i);
+        REQUIRE(!e);
         CHECK(e.error().code() == scn::error::value_out_of_range);
+        CHECK(e.value() == 0);
     }
 
     const bool can_fit_2pow31 = [=]() {
@@ -84,11 +89,14 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         auto e = scan_value<char_type>(method, "2147483648", "{}", i);
         CHECK(i == 2147483648);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "2147483648", "{}", i);
+        REQUIRE(!e);
         CHECK(e.error().code() == scn::error::value_out_of_range);
+        CHECK(e.value() == 0);
     }
 
     {
@@ -96,18 +104,21 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         auto e = scan_value<char_type>(method, "1011", "{b2}", i);
         CHECK(i == 11);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type i{};
         auto e = scan_value<char_type>(method, "400", "{o}", i);
         CHECK(i == 0400);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     {
         value_type i{};
         auto e = scan_value<char_type>(method, "0400", "{}", i);
         CHECK(i == 0400);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
 
     const bool can_fit_badidea = [=]() { return sizeof(value_type) >= 4; }();
@@ -116,22 +127,28 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
         CHECK(i == 0xbad1dea);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
+        REQUIRE(!e);
         CHECK(e.error().code() == scn::error::value_out_of_range);
+        CHECK(e.value() == 0);
     }
     if (can_fit_badidea) {
         value_type i{};
         auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
         CHECK(i == 0xbad1dea);
         CHECK(e);
+        CHECK(e.value() == 1);
     }
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
+        REQUIRE(!e);
         CHECK(e.error().code() == scn::error::value_out_of_range);
+        CHECK(e.value() == 0);
     }
 }
 
