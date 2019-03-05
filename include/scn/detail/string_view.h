@@ -20,18 +20,44 @@
 
 #include "span.h"
 
+#include <cstring>
+#include <cwchar>
 #include <limits>
 
 namespace scn {
+    namespace detail {
+        template <typename T>
+        SCN_CONSTEXPR T min(T a, T b) noexcept
+        {
+            return (b < a) ? b : a;
+        }
+
+        inline size_t strlen(const char* s) noexcept
+        {
+            return std::strlen(s);
+        }
+        inline size_t strlen(const wchar_t* s) noexcept
+        {
+            return std::wcslen(s);
+        }
+
+        inline int memcmp(const char* l, const char* r, size_t n) noexcept
+        {
+            return std::memcmp(l, r, n);
+        }
+        inline int memcmp(const wchar_t* l, const wchar_t* r, size_t n) noexcept
+        {
+            return std::wmemcmp(l, r, n);
+        }
+    }  // namespace detail
     /**
      * A view over a (sub)string.
      * Used even when std::string_view is available to avoid compatibility
      * issues.
      */
-    template <typename CharT, typename Traits = std::char_traits<CharT>>
+    template <typename CharT>
     class basic_string_view {
     public:
-        using traits_type = Traits;
         using value_type = CharT;
         using span_type = span<const value_type>;
 
@@ -55,7 +81,7 @@ namespace scn {
         {
         }
         SCN_CONSTEXPR basic_string_view(const_pointer s)
-            : m_data(s, static_cast<span_index_type>(Traits::length(s)))
+            : m_data(s, static_cast<span_index_type>(detail::strlen(s)))
         {
         }
         template <size_t N>
@@ -153,21 +179,21 @@ namespace scn {
 
         size_type copy(pointer dest, size_type count, size_type pos = 0) const
         {
-            auto n = std::min(count, size() - pos);
-            Traits::copy(dest, data() + pos, n);
+            auto n = detail::min(count, size() - pos);
+            std::copy(data() + pos, n, dest);
             return n;
         }
         SCN_CONSTEXPR14 basic_string_view substr(size_type pos = 0,
                                                  size_type count = npos) const
         {
-            auto n = std::min(count, size() - pos);
+            auto n = detail::min(count, size() - pos);
             return m_data.subspan(pos, n);
         }
 
         int compare(basic_string_view v) const noexcept
         {
-            auto n = std::min(size(), v.size());
-            auto cmp = Traits::compare(data(), v.data(), n);
+            auto n = detail::min(size(), v.size());
+            auto cmp = memcmp(data(), v.data(), n);
             if (cmp == 0) {
                 if (size() == v.size()) {
                     return 0;

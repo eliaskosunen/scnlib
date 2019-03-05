@@ -15,25 +15,27 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest.h>
-#include <scn/scn.h>
+#include "test.h"
 
 TEST_CASE("string_view")
 {
     std::string str{"Hello world!"};
 
-	SUBCASE("single-arg constructor") {
-		scn::string_view sv(str.data());
+    SUBCASE("single-arg constructor")
+    {
+        scn::string_view sv(str.data());
         REQUIRE(sv.data() == str.data());
         REQUIRE(sv.size() == str.size());
-	}
-	SUBCASE("double-arg constructor") {
-		scn::string_view sv(str.data(), str.size());
+    }
+    SUBCASE("double-arg constructor")
+    {
+        scn::string_view sv(str.data(), str.size());
         REQUIRE(sv.data() == str.data());
         REQUIRE(sv.size() == str.size());
-	}
-	SUBCASE("iterator") {
-		scn::string_view sv(str.data());
+    }
+    SUBCASE("iterator")
+    {
+        scn::string_view sv(str.data());
         CHECK(sv.begin() != sv.end());
         CHECK(sv.begin() + sv.size() == sv.end());
         CHECK(sv.begin() == sv.cbegin());
@@ -42,10 +44,10 @@ TEST_CASE("string_view")
         CHECK(*(sv.end() - 1) == *(str.end() - 1));
         CHECK(*sv.begin() == sv.front());
 
-		{
+        {
             auto it = sv.begin();
             ++it;
             CHECK(it == sv.begin() + 1);
-		}
-	}
+        }
+    }
 }

@@ -15,8 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest.h>
-#include <scn/scn.h>
+#include "test.h"
 
 TEST_CASE("buffer")
 {

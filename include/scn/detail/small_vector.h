@@ -32,8 +32,8 @@ namespace scn {
             return std::reverse_iterator<Iter>(i);
         }
 
-        struct small_vector_base {
-            uint64_t next_pow2(uint64_t x)
+        class small_vector_base {
+            uint64_t _next_pow2_64(uint64_t x)
             {
                 --x;
                 x |= (x >> 1);
@@ -44,7 +44,7 @@ namespace scn {
                 x |= (x >> 32);
                 return x + 1;
             }
-            uint32_t next_pow2(uint32_t x)
+            uint32_t _next_pow2_32(uint32_t x)
             {
                 --x;
                 x |= (x >> 1);
@@ -53,6 +53,15 @@ namespace scn {
                 x |= (x >> 8);
                 x |= (x >> 16);
                 return x + 1;
+            }
+
+        public:
+            size_t next_pow2(size_t x)
+            {
+                if (sizeof(size_t) == sizeof(uint64_t)) {
+                    return _next_pow2_64(x);
+                }
+                return _next_pow2_32(x);
             }
 
             template <typename ForwardIt, typename T>

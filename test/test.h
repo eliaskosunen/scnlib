@@ -17,6 +17,7 @@
 
 #include <doctest.h>
 #include <scn/scn.h>
+#include <ostream>
 
 template <typename CharT>
 std::basic_string<CharT> widen(std::string)

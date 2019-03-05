@@ -15,9 +15,10 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest.h>
+#include "test.h"
+
 #include <scn/istream.h>
-#include <scn/scn.h>
+#include <istream>
 #include <sstream>
 
 TEST_CASE("istream stream")

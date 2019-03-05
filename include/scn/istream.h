@@ -22,7 +22,7 @@
 #include "detail/stream.h"
 #include "detail/types.h"
 
-#include <iosfwd>
+#include <ios>
 
 namespace scn {
     SCN_CLANG_PUSH

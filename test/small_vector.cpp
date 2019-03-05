@@ -15,8 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest.h>
-#include <scn/scn.h>
+#include "test.h"
 
 struct non_default_constructible {
     non_default_constructible(int v) : val(v) {}

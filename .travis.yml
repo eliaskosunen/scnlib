@@ -131,33 +131,12 @@ matrix:
           sources: ["llvm-toolchain-trusty-3.5", "llvm-toolchain-trusty-3.5-binaries", "ubuntu-toolchain-r-test"]
 
     # osx xcode 9
-    - env: COMPILER=clang++
+    - env: COMPILER=clang++ STANDARD=17
       compiler: clang
       osx_image: xcode9
       os: osx
-    # osx xcode 8
-    - env: COMPILER=clang++
-      compiler: clang
-      osx_image: xcode8
-      os: osx
-    # osx xcode 7.3
-    - env: COMPILER=clang++
-      compiler: clang
-      osx_image: xcode7.3
-      os: osx
-    # osx xcode 6.4
-    - env: COMPILER=clang++
-      compiler: clang
-      osx_image: xcode6.4
-      os: osx
-    
-    # osx g++ 7 (xcode 9.3)
-    - env: COMPILER=g++-7
-      compiler: gcc
-      osx_image: xcode9.3
-      os: osx
     # osx llvm-gcc
-    - env: COMPILER=g++
+    - env: COMPILER=g++ STANDARD=17
       compiler: gcc
       os: osx
 
@@ -193,34 +172,6 @@ install:
       fi
     fi
   - cd ${TRAVIS_BUILD_DIR}
-
-  - |
-    if [[ "${TRAVIS_OS_NAME}" = "osx" ]]; then
-      brew update
-      if brew list -1 | grep -q "^cmake\$"; then
-        brew outdated cmake || brew upgrade cmake
-      else
-        brew install cmake
-      fi
-      if [[ "${COMPILER}" = "g++-4.9" ]]; then
-        brew install gcc49
-      fi
-      if [[ "${COMPILER}" = "g++-5" ]]; then
-        brew install gcc5
-      fi
-      if [[ "${COMPILER}" = "g++-6" ]]; then
-        brew install gcc@6 || true
-        brew link --overwrite gcc@6
-      fi
-      if [[ "${COMPILER}" = "g++-7" ]]; then
-        brew install gcc@7 || true
-        brew link --overwrite gcc@7
-      fi
-      if [[ "${COMPILER}" = "g++-8" ]]; then
-        brew install gcc@8 || true
-        brew link --overwrite gcc@8
-      fi
-    fi
   - export CXX="${COMPILER}"
 
 before_script:

@@ -22,6 +22,8 @@
 #include "string_view.h"
 #include "util.h"
 
+#include <cwchar>
+
 namespace scn {
     namespace detail {
         template <typename CharT>

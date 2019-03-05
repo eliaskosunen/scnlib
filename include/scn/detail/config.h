@@ -65,6 +65,27 @@
 #define SCN_GCC 0
 #endif
 
+// Pretending to be gcc (clang, icc, etc.)
+#ifdef __GNUC__
+
+#ifdef __GNUC_MINOR__
+#define SCN_GCC_COMPAT_MINOR __GNUC_MINOR__
+#else
+#define SCN_GCC_COMPAT_MINOR 0
+#endif
+
+#ifdef __GNUC_PATCHLEVEL__
+#define SCN_GCC_COMPAT_PATCHLEVEL __GNUC_PATCHLEVEL__
+#else
+#define SCN_GCC_COMPAT_PATCHLEVEL 0
+#endif
+
+#define SCN_GCC_COMPAT \
+    SCN_COMPILER(__GNUC__, SCN_GCC_COMPAT_MINOR, SCN_GCC_COMPAT_PATCHLEVEL)
+#else
+#define SCN_GCC_COMPAT 0
+#endif // #ifdef __GNUC__
+
 #define SCN_STRINGIFY_APPLY(x) #x
 #define SCN_STRINGIFY(x) SCN_STRINGIFY_APPLY(x)
 
@@ -238,7 +259,7 @@
 #endif
 
 // Detect __builtin_unreachable
-#if SCN_HAS_BUILTIN(__builtin_unreachable) || SCN_GCC
+#if SCN_HAS_BUILTIN(__builtin_unreachable) || SCN_GCC_COMPAT
 #define SCN_HAS_BUILTIN_UNREACHABLE 1
 #else
 #define SCN_HAS_BUILTIN_UNREACHABLE 0
@@ -266,7 +287,7 @@
 #endif
 
 // Detect __builtin_expect
-#if SCN_HAS_BUILTIN(__builtin_expect) || SCN_GCC || SCN_CLANG
+#if SCN_HAS_BUILTIN(__builtin_expect) || SCN_GCC_COMPAT
 #define SCN_HAS_BUILTIN_EXPECT 1
 #else
 #define SCN_HAS_BUILTIN_EXPECT 0

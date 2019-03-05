@@ -16,8 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <doctest.h>
-#include <scn/scn.h>
+#include "test.h"
 
 TEST_CASE("general")
 {
