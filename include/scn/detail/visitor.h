@@ -1397,7 +1397,7 @@ namespace scn {
     {
         int args_read = 0;
 
-        auto reterror = [&args_read](error e) {
+        auto reterror = [&args_read](error e) -> result<int> {
             return result<int>(args_read, std::move(e));
         };
 

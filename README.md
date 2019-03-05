@@ -343,27 +343,69 @@ expects (UTF-32 in POSIX, the thing resembling UCS-2 in Windows).
 ### Error handling
 
 `scnlib` does not use exceptions for error handling.
-`scnlib` functions that can fail return a `scn:error` object, containing a `scn::error::code`.
-
-See the API documentation for more details about the error codes.
+Instead, `scan`, `input`, `prompt` and `vscan` return a `result<int>`, which is an object containing
+an integer telling the number of arguments successfully read, and an `scn::error` object.
 
 ```cpp
-auto ret = scn::scan(...);
+// successful read:
+auto ret = scn::scan(stream, "{}", value);
+assert(ret);
+assert(ret.value() == 1);
+assert(ret.error());
 
+// failing read:
+ret = scn::scan(stream, "{}", value);
+assert(!ret);
+assert(ret.value() == 0);
+assert(!ret.error());
+```
+
+Other items of the `scnlib` public interface, like `ignore` or `getline` will only return a `scn::error`.
+
+The `scn::error` object can be examined further. It contains an error code `scn::error::code`,
+accessible with member function `code()` and a message, that can be get with `msg()`.
+
+```cpp
+auto ret = scn::scan(stream, "{}", value);
 if (!ret) {
-    // An error occurred
-
-    // Compare to codes with `==`
-    if (ret == scn::error::end_of_stream) {
-        return;
-    }
-
-    // Get code with `.get_code()`
-    auto code = ret.get_code();
-
-    // Can the stream be used again?
-    auto usable = ret.is_recoverable();
+   std::cout << "Read failed with message: '" << ret.error().msg() << "'\n";
 }
+```
+
+Please note, that EOF is also an error, with error code `scn::error::end_of_stream`.
+
+If the error is of such quality that it cannot be recovered from and the stream is deemed as bad,
+the member function `is_recoverable` will return `false` and `stream::bad()` will return `true`.
+
+See the source code (`include/scn/detail/result.h`) for more details about the error codes.
+
+#### Error guarantees
+
+Should the reading of any of the arguments fail, and the stream is not bad,
+the stream state will be reset to what it was before the reading of said argument,
+and the argument will not be written to.
+
+```cpp
+auto source = std::string{"123 foo"};
+auto stream = scn::make_stream(source);
+
+int i{}, j{};
+// "foo" cannot be read to an integer, so this will fail
+auto ret = scn::scan(stream, "{} {}", i, j);
+assert(!ret);
+// First read succeeded
+assert(ret.value() == 1);
+assert(i == 123);
+// Second read failed, value was not touched
+assert(j == 0);
+assert(ret.error().code() == scn::error::invalid_scanned_value);
+
+// The stream now contains "foo", as it was reset to the state preceding the read of j
+std::string s{};
+ret = scn::scan(stream, "{}", s);
+// This succeeds
+assert(ret);
+assert(s == "foo");
 ```
 
 #### Exceptions

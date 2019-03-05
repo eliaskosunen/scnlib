@@ -63,11 +63,13 @@ namespace scn {
             unrecoverable_stream_source_error
         };
 
-        struct success_tag {
+        struct success_tag_t {
         };
 
+        static const SCN_CONSTEXPR success_tag_t success_tag = success_tag_t{};
+
         SCN_CONSTEXPR error() noexcept = default;
-        SCN_CONSTEXPR error(success_tag) noexcept : error() {}
+        SCN_CONSTEXPR error(success_tag_t) noexcept : error() {}
         SCN_CONSTEXPR error(enum code c, const char* m) noexcept
             : m_msg(m), m_code(c)
         {
@@ -120,11 +122,10 @@ namespace scn {
     class result {
     public:
         using success_type = T;
-        using error_type = class error;
-        using error_storage = detail::erased_storage<error_type>;
+        using error_type = scn::error;
 
         result(success_type val) : m_value(std::move(val)) {}
-        result(success_type val, error err)
+        result(success_type val, error_type err)
             : m_value(std::move(val)), m_error(std::move(err))
         {
         }
@@ -144,29 +145,31 @@ namespace scn {
 
         SCN_CONSTEXPR14 error_type& error() & noexcept
         {
-            return m_error.get();
+            return m_error;
         }
         SCN_CONSTEXPR const error_type& error() const& noexcept
         {
-            return m_error.get();
+            return m_error;
         }
         SCN_CONSTEXPR14 error_type error() && noexcept
         {
-            return m_error.get();
+            return m_error;
         }
 
-        SCN_CONSTEXPR bool has_error() const noexcept
-        {
-            return m_error.has_value();
-        }
         SCN_CONSTEXPR explicit operator bool() const noexcept
         {
-            return !has_error();
+            return m_error.operator bool();
+        }
+        SCN_CONSTEXPR bool has_error() const noexcept
+        {
+            return !(operator bool());
         }
 
     private:
         success_type m_value;
-        error_storage m_error{};
+        scn::error m_error {
+            scn::error::success_tag
+        };
     };
 
     /**
@@ -230,7 +233,7 @@ namespace scn {
 
     private:
         success_type m_s{};
-        error m_e{error::success_tag{}};
+        error m_e{error::success_tag};
     };
 
     /**
@@ -282,7 +285,7 @@ namespace scn {
 
     private:
         success_storage m_s{};
-        error m_e{error::success_tag{}};
+        error m_e{error::success_tag};
     };
 
     // -Wpadded
