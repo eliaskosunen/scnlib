@@ -141,7 +141,7 @@ message(STATUS "SCN_PEDANTIC: ${SCN_PEDANTIC}")
 message(STATUS "SCN_WERROR: ${SCN_WERROR}")
 
 function (generate_library_target target_name)
-    add_library(${target_name} ${SCN_HEADERS} src/locale.cpp)
+    add_library(${target_name} ${SCN_HEADERS} src/locale.cpp src/visitor.cpp)
     target_include_directories(${target_name} PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
