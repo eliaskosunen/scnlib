@@ -60,6 +60,47 @@ namespace scn {
         bool m_bad{false};
     };
 
+    template <typename Char>
+    class basic_null_stream : public stream_base {
+    public:
+        using char_type = Char;
+
+        SCN_CONSTEXPR14 either<char_type> read_char() noexcept
+        {
+            ++m_read;
+            return error(error::end_of_stream, "Null stream EOF");
+        }
+        SCN_CONSTEXPR14 error putback(char_type) noexcept
+        {
+            --m_read;
+            return {};
+        }
+
+        SCN_CONSTEXPR14 error set_roll_back() noexcept
+        {
+            m_read = 0;
+            return {};
+        }
+        SCN_CONSTEXPR14 error roll_back() noexcept
+        {
+            m_read = 0;
+            return {};
+        }
+
+        SCN_CONSTEXPR size_t rcount() const noexcept
+        {
+            return m_read;
+        }
+
+    private:
+        size_t m_read{0};
+    };
+    template <typename CharT>
+    SCN_CONSTEXPR basic_null_stream<CharT> make_null_stream() noexcept
+    {
+        return basic_null_stream<CharT>{};
+    }
+
     template <typename Char, typename Source, typename Enable = void>
     class basic_static_container_stream;
 
