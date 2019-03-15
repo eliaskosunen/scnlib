@@ -89,6 +89,7 @@ namespace scn {
 
         SCN_CONSTEXPR14 reference operator[](index_type i) const noexcept
         {
+            SCN_EXPECT(size() > i);
             return *(m_ptr + i);
         }
 
@@ -103,11 +104,14 @@ namespace scn {
 
         SCN_CONSTEXPR14 span<T> subspan(index_type off) const
         {
+            SCN_EXPECT(size() >= off);
             return span<T>(data() + off, size() - off);
         }
         SCN_CONSTEXPR14 span<T> subspan(index_type off,
                                         difference_type count) const
         {
+            SCN_EXPECT(size() > off + count);
+            SCN_EXPECT(count > 0);
             return span<T>(data() + off, count);
         }
 
@@ -129,9 +133,11 @@ namespace scn {
     template <typename T>
     SCN_CONSTEXPR span<typename T::value_type> make_span(T& container) noexcept
     {
+        using std::begin;
+        using std::end;
         return span<typename T::value_type>(
-            std::addressof(*std::begin(container)),
-            std::addressof(*(std::end(container) - 1)) + 1);
+            std::addressof(*begin(container)),
+            std::addressof(*(end(container) - 1)) + 1);
     }
 }  // namespace scn
 

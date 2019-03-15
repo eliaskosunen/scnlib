@@ -42,6 +42,10 @@ namespace scn {
                      basic_string_view<typename Stream::char_type> f,
                      Args&... a)
     {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+        SCN_EXPECT(!f.empty());
+
         using context_type = basic_context<Stream>;
 
         auto args = make_args<context_type>(a...);
@@ -54,6 +58,10 @@ namespace scn {
                      basic_string_view<typename Stream::char_type> f,
                      Args&... a)
     {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+        SCN_EXPECT(!f.empty());
+
         using context_type = basic_context<Stream>;
 
         auto args = make_args<context_type>(a...);
@@ -87,6 +95,10 @@ namespace scn {
     template <typename... Args>
     result<int> input(string_view f, Args&... a)
     {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+        SCN_EXPECT(!f.empty());
+
         auto& stream = stdin_stream<char>();
 
         using stream_type =
@@ -100,6 +112,10 @@ namespace scn {
     template <typename... Args>
     result<int> input(wstring_view f, Args&... a)
     {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+        SCN_EXPECT(!f.empty());
+
         auto& stream = stdin_stream<wchar_t>();
 
         using stream_type =
@@ -116,6 +132,11 @@ namespace scn {
     template <typename... Args>
     result<int> prompt(const char* p, string_view f, Args&... a)
     {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+        SCN_EXPECT(!f.empty());
+        SCN_EXPECT(p != nullptr);
+
         std::printf("%s", p);
 
         auto& stream = stdin_stream<char>();
@@ -130,6 +151,11 @@ namespace scn {
     template <typename... Args>
     result<int> prompt(const wchar_t* p, wstring_view f, Args&... a)
     {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+        SCN_EXPECT(!f.empty());
+        SCN_EXPECT(p != nullptr);
+
         std::wprintf(L"%ls", p);
 
         auto& stream = stdin_stream<wchar_t>();

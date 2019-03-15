@@ -124,8 +124,8 @@ namespace scn {
         using success_type = T;
         using error_type = scn::error;
 
-        result(success_type val) : m_value(std::move(val)) {}
-        result(success_type val, error_type err)
+        SCN_CONSTEXPR result(success_type val) : m_value(std::move(val)) {}
+        SCN_CONSTEXPR result(success_type val, error_type err)
             : m_value(std::move(val)), m_error(std::move(err))
         {
         }
@@ -167,9 +167,7 @@ namespace scn {
 
     private:
         success_type m_value;
-        scn::error m_error {
-            scn::error::success_tag
-        };
+        scn::error m_error{scn::error::success_tag};
     };
 
     /**
@@ -250,35 +248,35 @@ namespace scn {
         using success_storage = detail::erased_storage<T>;
 
         either(success_type s) : m_s(std::move(s)) {}
-        either(error e) : m_e(e) {}
+        SCN_CONSTEXPR either(error e) : m_e(e) {}
 
-        bool has_value() const
+        SCN_CONSTEXPR bool has_value() const noexcept
         {
             return m_e == error::good;
         }
-        explicit operator bool() const
+        SCN_CONSTEXPR explicit operator bool() const noexcept
         {
             return has_value();
         }
-        bool operator!() const
+        SCN_CONSTEXPR bool operator!() const noexcept
         {
             return !operator bool();
         }
 
-        success_type& value()
+        SCN_CONSTEXPR14 success_type& value() noexcept
         {
             return *m_s;
         }
-        const success_type& value() const
+        SCN_CONSTEXPR const success_type& value() const noexcept
         {
             return *m_s;
         }
 
-        error& get_error()
+        SCN_CONSTEXPR14 error& get_error() noexcept
         {
             return m_e;
         }
-        error get_error() const
+        SCN_CONSTEXPR error get_error() const noexcept
         {
             return m_e;
         }

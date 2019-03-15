@@ -67,13 +67,15 @@ namespace scn {
             custom_type
         };
 
-        SCN_CONSTEXPR bool is_integral(type t) noexcept
+        SCN_CONSTEXPR14 bool is_integral(type t) noexcept
         {
-            return t > named_arg_type && t <= last_integer_type;
+            SCN_EXPECT(t != named_arg_type);
+            return t > none_type && t <= last_integer_type;
         }
-        SCN_CONSTEXPR bool is_arithmetic(type t) noexcept
+        SCN_CONSTEXPR14 bool is_arithmetic(type t) noexcept
         {
-            return t > named_arg_type && t <= last_numeric_type;
+            SCN_EXPECT(t != named_arg_type);
+            return t > none_type && t <= last_numeric_type;
         }
 
         template <typename Context>
@@ -87,6 +89,8 @@ namespace scn {
         template <typename Context, typename T>
         error scan_custom_arg(void* arg, Context& ctx)
         {
+            SCN_EXPECT(arg != nullptr);
+
             typename Context::template value_scanner_type<T> s;
             auto err = s.parse(ctx);
             if (!err) {
@@ -163,6 +167,7 @@ namespace scn {
 
             named_arg_base<char_type>& as_named_arg()
             {
+                SCN_EXPECT(pointer != nullptr);
                 return *static_cast<named_arg_base<char_type>*>(pointer);
             }
         };
@@ -175,6 +180,7 @@ namespace scn {
             SCN_CONSTEXPR init(T& v) : val(std::addressof(v)) {}
             SCN_CONSTEXPR14 operator value<Context>()
             {
+                SCN_EXPECT(val != nullptr);
                 return value<Context>(*val);
             }
         };
@@ -324,6 +330,7 @@ namespace scn {
     template <typename Visitor, typename Context>
     SCN_CONSTEXPR14 error visit_arg(Visitor&& vis, basic_arg<Context>& arg)
     {
+        SCN_EXPECT(arg.m_type != detail::named_arg_type);
         switch (arg.m_type) {
             case detail::none_type:
             case detail::named_arg_type:
@@ -416,6 +423,7 @@ namespace scn {
 
             basic_arg<Context> find(basic_string_view<char_type> name) const
             {
+                SCN_EXPECT(!m_args.empty());
                 auto it = std::find_if(
                     m_args.begin(), m_args.end(),
                     [&](const entry& e) { return e.name == name; });
@@ -436,6 +444,7 @@ namespace scn {
                 const named_arg_base<char_type>& named = val.as_named_arg();
                 m_args.emplace_back(named.name,
                                     named.template deserialize<Context>());
+                SCN_ENSURE(!m_args.empty());
             }
 
             std::vector<entry> m_args;

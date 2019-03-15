@@ -129,6 +129,7 @@ namespace scn {
         }
         SCN_CONSTEXPR14 const_reference at(size_type pos) const
         {
+            SCN_EXPECT(pos < size());
             return m_data.at(static_cast<typename span_type::index_type>(pos));
         }
 
@@ -164,10 +165,12 @@ namespace scn {
 
         SCN_CONSTEXPR14 void remove_prefix(size_type n)
         {
+            SCN_EXPECT(n <= size());
             m_data = m_data.subspan(static_cast<std::ptrdiff_t>(n));
         }
         SCN_CONSTEXPR14 void remove_suffix(size_type n)
         {
+            SCN_EXPECT(n <= size());
             m_data = m_data.first(size() - n);
         }
 
@@ -179,6 +182,7 @@ namespace scn {
 
         size_type copy(pointer dest, size_type count, size_type pos = 0) const
         {
+            SCN_EXPECT(pos <= size());
             auto n = detail::min(count, size() - pos);
             std::copy(data() + pos, n, dest);
             return n;
@@ -186,6 +190,7 @@ namespace scn {
         SCN_CONSTEXPR14 basic_string_view substr(size_type pos = 0,
                                                  size_type count = npos) const
         {
+            SCN_EXPECT(pos <= size());
             auto n = detail::min(count, size() - pos);
             return m_data.subspan(pos, n);
         }

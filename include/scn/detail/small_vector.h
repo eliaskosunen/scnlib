@@ -55,13 +55,13 @@ namespace scn {
                 return x + 1;
             }
 
-        public:
+        protected:
             size_t next_pow2(size_t x)
             {
                 if (sizeof(size_t) == sizeof(uint64_t)) {
-                    return _next_pow2_64(x);
+                    return _next_pow2_64(static_cast<uint64_t>(x));
                 }
-                return _next_pow2_32(x);
+                return _next_pow2_32(static_cast<uint32_t>(x));
             }
 
             template <typename ForwardIt, typename T>
@@ -146,7 +146,7 @@ namespace scn {
 
         template <typename T>
         struct basic_stack_storage<T, 0> {
-            basic_stack_storage_type<T>* data{nullptr};
+            T* data{nullptr};
             size_t size{0};
 
             T* get_data()
@@ -225,6 +225,8 @@ namespace scn {
                 }
 
                 SCN_MSVC_POP
+
+                SCN_ENSURE(size() == 0);
             }
 
             explicit small_vector(size_type count, const T& value)
@@ -246,6 +248,10 @@ namespace scn {
                                              value);
                 }
                 _set_size(count);
+
+                SCN_ENSURE(data());
+                SCN_ENSURE(size() == count);
+                SCN_ENSURE(capacity() >= size());
             }
 
             explicit small_vector(size_type count)
@@ -268,6 +274,10 @@ namespace scn {
                         _get_stack().get_data() + count);
                 }
                 _set_size(count);
+
+                SCN_ENSURE(data());
+                SCN_ENSURE(size() == count);
+                SCN_ENSURE(capacity() >= size());
             }
 
             small_vector(const small_vector& other)
@@ -297,6 +307,9 @@ namespace scn {
                                              _get_stack().get_data());
                 }
                 _set_size(s);
+
+                SCN_ENSURE(other.size() == size());
+                SCN_ENSURE(other.capacity() == capacity());
             }
             small_vector(small_vector&& other) noexcept
             {
@@ -325,6 +338,9 @@ namespace scn {
                     other._get_stack().size = 0;
                 }
                 _set_size(s);
+
+                SCN_ENSURE(other.size() == 0);
+                SCN_ENSURE(other.capacity() == 0);
             }
 
             small_vector& operator=(const small_vector& other)
@@ -334,6 +350,8 @@ namespace scn {
                 if (other.empty()) {
                     return *this;
                 }
+
+                SCN_ASSERT(size() == 0, "");
 
                 // this other
                 // s s      false || true
@@ -366,6 +384,8 @@ namespace scn {
                 if (other.empty()) {
                     return *this;
                 }
+
+                SCN_ASSERT(size() == 0, "");
 
                 if (!is_small() && !other.is_small()) {
                     if (!is_small()) {
@@ -455,28 +475,34 @@ namespace scn {
 
             reference operator[](size_type pos)
             {
+                SCN_EXPECT(pos < size());
                 return *(begin() + pos);
             }
             const_reference operator[](size_type pos) const
             {
+                SCN_EXPECT(pos < size());
                 return *(begin() + pos);
             }
 
             reference front()
             {
+                SCN_EXPECT(!empty());
                 return *begin();
             }
             const_reference front() const
             {
+                SCN_EXPECT(!empty());
                 return *begin();
             }
 
             reference back()
             {
+                SCN_EXPECT(!empty());
                 return *(end() - 1);
             }
             const_reference back() const
             {
+                SCN_EXPECT(!empty());
                 return *(end() - 1);
             }
 
@@ -600,7 +626,7 @@ namespace scn {
             {
                 if (pos == end()) {
                     pos->~T();
-                    --_get_stack().size;
+                    _set_size(size() - 1);
                     return end();
                 }
                 else {
@@ -609,6 +635,7 @@ namespace scn {
                         ::new (static_cast<void*>(it)) T(std::move(*(it + 1)));
                     }
                     (end() - 1)->~T();
+                    _set_size(size() - 1);
                     return pos;
                 }
             }

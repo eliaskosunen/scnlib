@@ -58,14 +58,14 @@ namespace scn {
     template <typename T>
     SCN_CONSTEXPR auto from_chars_if_available(
         method fallback = SCN_DEFAULT_SCANNING_METHOD) noexcept ->
-        typename std::enable_if<std::is_integral<T>::value, method>
+        typename std::enable_if<std::is_integral<T>::value, method>::type
     {
         return int_from_chars_if_available(fallback);
     }
     template <typename T>
     SCN_CONSTEXPR auto from_chars_if_available(
         method fallback = SCN_DEFAULT_SCANNING_METHOD) noexcept ->
-        typename std::enable_if<std::is_floating_point<T>::value, method>
+        typename std::enable_if<std::is_floating_point<T>::value, method>::type
     {
         return float_from_chars_if_available(fallback);
     }
@@ -133,7 +133,8 @@ namespace scn {
             return *this;
         }
 
-        SCN_CONSTEXPR14 options make() noexcept {
+        SCN_CONSTEXPR14 options make() noexcept
+        {
             return static_cast<options&&>(opt);
         }
 

@@ -33,7 +33,7 @@ namespace scn {
             using parse_context_type = basic_parse_context<char_type>;
             using locale_type = basic_locale_ref<char_type>;
 
-            struct options& options() noexcept
+            SCN_CONSTEXPR14 struct options& options() noexcept
             {
                 return m_options;
             }
@@ -44,6 +44,7 @@ namespace scn {
             }
             SCN_CONSTEXPR14 stream_type& stream() noexcept
             {
+                SCN_EXPECT(m_stream != nullptr);
                 return *m_stream;
             }
             locale_type& locale() noexcept
@@ -75,6 +76,7 @@ namespace scn {
             }
             void on_error(const char* e)
             {
+                SCN_EXPECT(e != nullptr);
                 m_parse_ctx.on_error(e);
             }
 

@@ -48,6 +48,7 @@ namespace scn {
                               *static_cast<const std::locale*>(loc))
                               .falsename())
         {
+            SCN_EXPECT(loc != nullptr);
         }
     }  // namespace detail
 
@@ -65,6 +66,7 @@ namespace scn {
               std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
                   .thousands_sep())
     {
+        SCN_EXPECT(loc != nullptr);
     }
 
     template <typename CharT>

@@ -58,8 +58,7 @@ namespace scn {
             string_type m_falsename;
         };
 
-        // Hand write to avoid C locales and thus for noticeable performance
-        // gains
+        // Hand write to avoid C locales and thus noticeable performance losses
         inline bool is_space(char ch)
         {
             return ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r' ||

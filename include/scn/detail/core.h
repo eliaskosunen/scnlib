@@ -90,11 +90,13 @@ namespace scn {
 
         SCN_CONSTEXPR14 iterator advance() noexcept
         {
+            SCN_EXPECT(!m_str.empty());
             m_str.remove_prefix(1);
             return begin();
         }
         SCN_CONSTEXPR14 void advance_to(iterator it) noexcept
         {
+            SCN_EXPECT(std::distance(begin(), it) >= m_str.size());
             m_str.remove_prefix(
                 static_cast<size_t>(std::distance(begin(), it)));
         }
@@ -116,7 +118,8 @@ namespace scn {
         }
         SCN_CONSTEXPR14 void check_arg_id(basic_string_view<Char>) {}
 
-        SCN_CONSTEXPR basic_string_view<char_type> view() const noexcept {
+        SCN_CONSTEXPR basic_string_view<char_type> view() const noexcept
+        {
             return m_str;
         }
 

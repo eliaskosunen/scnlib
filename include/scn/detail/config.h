@@ -18,6 +18,8 @@
 #ifndef SCN_DETAIL_CONFIG_H
 #define SCN_DETAIL_CONFIG_H
 
+#include <cassert>
+
 #define SCN_STD_11 201103L
 #define SCN_STD_14 201402L
 #define SCN_STD_17 201703L
@@ -84,7 +86,7 @@
     SCN_COMPILER(__GNUC__, SCN_GCC_COMPAT_MINOR, SCN_GCC_COMPAT_PATCHLEVEL)
 #else
 #define SCN_GCC_COMPAT 0
-#endif // #ifdef __GNUC__
+#endif  // #ifdef __GNUC__
 
 #define SCN_STRINGIFY_APPLY(x) #x
 #define SCN_STRINGIFY(x) SCN_STRINGIFY_APPLY(x)
@@ -270,14 +272,9 @@
 #elif SCN_HAS_BUILTIN_ASSUME
 #define SCN_ASSUME(x) __builtin_assume(x)
 #elif SCN_HAS_BUILTIN_UNREACHABLE
-#define SCN_ASSUME(x)                \
-    do {                             \
-        if (!(x)) {                  \
-            __builtin_unreachable(); \
-        }                            \
-    } while (false)
+#define SCN_ASSUME(x) ((x) ? static_cast<void>(0) : __builtin_unreachable())
 #else
-#define SCN_ASSUME(x) static_cast<void>(sizeof(x))
+#define SCN_ASSUME(x) static_cast<void>((x) ? 0 : 0)
 #endif
 
 #if SCN_HAS_BUILTIN_UNREACHABLE
@@ -306,5 +303,9 @@
 #ifndef SCN_STL_OVERLOADS
 #define SCN_STL_OVERLOADS 1
 #endif
+
+#define SCN_ASSERT(cond, msg) assert((cond) && (msg))
+#define SCN_EXPECT(cond) SCN_ASSERT(cond, "Precondition violation")
+#define SCN_ENSURE(cond) SCN_ASSERT(cond, "Postcondition violation")
 
 #endif  // SCN_DETAIL_CONFIG_H
