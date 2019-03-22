@@ -100,6 +100,7 @@ namespace scn {
                                      const std::locale& loc,
                                      const std::basic_string<CharT>& buf)
         {
+#if SCN_HAS_EXCEPTIONS
             std::basic_istringstream<CharT> ss(buf);
             ss.imbue(loc);
             std::ios_base::iostate err = std::ios_base::goodbit;
@@ -115,6 +116,14 @@ namespace scn {
                 return error(error::invalid_scanned_value, f.what());
             }
             return static_cast<size_t>(ss.gcount());
+#else
+            SCN_UNUSED(val);
+            SCN_UNUSED(loc);
+            SCN_UNUSED(buf);
+            return error(error::exceptions_required,
+                         "Localized number reading is only supported with "
+                         "exceptions enabled");
+#endif
         }
 
         template <typename T, typename CharT>

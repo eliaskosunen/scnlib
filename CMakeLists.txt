@@ -17,6 +17,8 @@ option(SCN_PEDANTIC "Use stricter warnings" ${MASTER_PROJECT})
 option(SCN_WERROR "Halt compilation in case of a warning" OFF)
 
 option(SCN_USE_32BIT "Compile as 32-bit (gcc or clang only)" OFF)
+option(SCN_USE_EXCEPTIONS "Compile with exception support (disabling will cause test failures)" ON)
+option(SCN_USE_RTTI "Compile with RTTI (run-time type information) support" ON)
 
 file(READ include/scn/detail/config.h config_h)
 if (NOT config_h MATCHES "SCN_VERSION SCN_COMPILER\\(([0-9]+), ([0-9]+), ([0-9]+)\\)")
@@ -95,7 +97,7 @@ function (get_werror_flags flags)
         $<$<CXX_COMPILER_ID:GNU>:
             -Werror>
         $<$<CXX_COMPILER_ID:MSVC>:
-            /WX
+            /WX>
 
             PARENT_SCOPE)
 endfunction ()
@@ -106,11 +108,32 @@ function (get_suppress_warnings_flags flags)
         $<$<CXX_COMPILER_ID:GNU>:
             -w>
         $<$<CXX_COMPILER_ID:MSVC>:
-            /w
+            /w>
 
             PARENT_SCOPE)
-
 endfunction ()
+function(get_disable_exceptions_flags flags)
+    set(${flags}
+        $<$<CXX_COMPILER_ID:Clang>:
+            -fno-exceptions>
+        $<$<CXX_COMPILER_ID:GNU>:
+            -fno-exceptions>
+        $<$<CXX_COMPILER_ID:MSVC>:
+            /EHs-c->
+
+            PARENT_SCOPE)
+endfunction()
+function(get_disable_rtti_flags flags)
+    set(${flags}
+        $<$<CXX_COMPILER_ID:Clang>:
+            -fno-rtti>
+        $<$<CXX_COMPILER_ID:GNU>:
+            -fno-rtti>
+        $<$<CXX_COMPILER_ID:MSVC>:
+            /GR->
+
+            PARENT_SCOPE)
+endfunction()
 
 function (set_interface_flags target)
     if (SCN_PEDANTIC)
@@ -135,6 +158,14 @@ function (set_private_flags target)
         target_compile_options(${target} PUBLIC -m32)
         set_target_properties(${target} PROPERTIES LINK_FLAGS -m32)
     endif ()
+    if (NOT SCN_USE_EXCEPTIONS)
+        get_disable_exceptions_flags(noexceptions_flags)
+        target_compile_options(${target} PRIVATE ${noexceptions_flags})
+    endif()
+    if (NOT SCN_USE_RTTI)
+        get_disable_rtti_flags(nortti_flags)
+        target_compile_options(${target} PRIVATE ${nortti_flags})
+    endif()
 endfunction ()
 
 message(STATUS "SCN_PEDANTIC: ${SCN_PEDANTIC}")

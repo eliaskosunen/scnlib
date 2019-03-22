@@ -53,6 +53,8 @@ namespace scn {
             value_out_of_range,
             /// Invalid argument given to operation
             invalid_argument,
+            /// This operation is only possible with exceptions enabled
+            exceptions_required,
             /// The stream has encountered an error that cannot be recovered
             /// from. The stream is now unusable.
             unrecoverable_stream_error,

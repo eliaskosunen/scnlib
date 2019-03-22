@@ -474,6 +474,7 @@ namespace scn {
             const std::basic_string<CharT>& buf,
             int base)
         {
+#if SCN_HAS_EXCEPTIONS
             try {
                 size_t chars = 0;
                 auto ret = sto::str_to_int<CharT, T>::get(buf, chars, base);
@@ -489,6 +490,15 @@ namespace scn {
             catch (const std::out_of_range& e) {
                 return error(error::value_out_of_range, e.what());
             }
+#else
+            SCN_UNUSED(val);
+            SCN_UNUSED(buf);
+            SCN_UNUSED(base);
+            return error(
+                error::exceptions_required,
+                "sto scanning method is only supported with exceptions "
+                "enabled. Use strto or from_chars instead.");
+#endif
         }
         template <typename CharT, typename T>
         either<size_t> integer_scanner<CharT, T>::_read_strto(
@@ -564,6 +574,7 @@ namespace scn {
             T& val,
             const std::basic_string<CharT>& buf)
         {
+#if SCN_HAS_EXCEPTIONS
             try {
                 size_t chars;
                 val = sto::str_to_float<CharT, T>::get(buf, chars);
@@ -575,6 +586,14 @@ namespace scn {
             catch (const std::out_of_range& e) {
                 return error(error::value_out_of_range, e.what());
             }
+#else
+            SCN_UNUSED(val);
+            SCN_UNUSED(buf);
+            return error(
+                error::exceptions_required,
+                "sto scanning method is only supported with exceptions "
+                "enabled. Use strto or from_chars instead.");
+#endif
         }
         template <typename CharT, typename T>
         either<size_t> float_scanner<CharT, T>::_read_strto(

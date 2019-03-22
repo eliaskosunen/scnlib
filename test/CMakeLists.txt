@@ -9,4 +9,7 @@ add_executable(tests
     small_vector.cpp)
 target_link_libraries(tests scn)
 target_include_directories(tests SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/doctest/doctest)
+if (NOT SCN_USE_EXCEPTIONS)
+    target_compile_definitions(tests PRIVATE -DDOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS=1)
+endif()
 set_private_flags(tests)

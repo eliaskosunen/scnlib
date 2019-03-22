@@ -141,6 +141,34 @@
 #define SCN_MSVC_IGNORE(x)
 #endif
 
+#ifdef __cpp_exceptions
+#define SCN_HAS_EXCEPTIONS 1
+#endif
+#if !defined(SCN_HAS_EXCEPTIONS) && defined(__EXCEPTIONS)
+#define SCN_HAS_EXCEPTIONS 1
+#endif
+#if !defined(SCN_HAS_EXCEPTIONS) && defined(_HAS_EXCEPTIONS)
+#define SCN_HAS_EXCEPTIONS 1
+#endif
+#if !defined(SCN_HAS_EXCEPTIONS) && !defined(_CPPUNWIND)
+#define SCN_HAS_EXCEPTIONS 0
+#endif
+#ifndef SCN_HAS_EXCEPTIONS
+#define SCN_HAS_EXCEPTIONS 0
+#endif
+
+#if SCN_HAS_EXCEPTIONS
+#define SCN_TRY try
+#define SCN_CATCH(x) catch (x)
+#define SCN_THROW(x) throw x
+#define SCN_RETHROW throw
+#else
+#define SCN_TRY if (true)
+#define SCN_CATCH(x) if (false)
+#define SCN_THROW(x) ::std::abort()
+#define SCN_RETHROW ::std::abort()
+#endif
+
 #ifdef __has_include
 #define SCN_HAS_INCLUDE(x) __has_include(x)
 #else

@@ -39,6 +39,7 @@ namespace scn {
 
         either<char_type> read_char()
         {
+#if SCN_HAS_EXCEPTIONS
             try {
                 auto tmp = m_is->get();
                 if (tmp == traits::eof()) {
@@ -66,9 +67,15 @@ namespace scn {
                 }
                 return error(error::stream_source_error, e.what());
             }
+#else
+            return error(error::exceptions_required,
+                         "Reading from a std::basic_istream without exceptions "
+                         "enabled is not supported. Use FILEs instead.");
+#endif
         }
         error putback(char_type ch)
         {
+#if SCN_HAS_EXCEPTIONS
             assert(m_read > 0);
             try {
                 m_is->putback(ch);
@@ -85,6 +92,12 @@ namespace scn {
                 return error(error::unrecoverable_stream_source_error,
                              e.what());
             }
+#else
+            SCN_UNUSED(ch);
+            return error(error::exceptions_required,
+                         "Reading from a std::basic_istream without exceptions "
+                         "enabled is not supported. Use FILEs instead.");
+#endif
         }
 
         error set_roll_back()
