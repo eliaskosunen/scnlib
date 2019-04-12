@@ -86,19 +86,8 @@ namespace scn {
             return d;
         }
 
-        struct disable_copy {
-            SCN_CONSTEXPR disable_copy() = default;
-            ~disable_copy() = default;
-
-            disable_copy(const disable_copy&) = delete;
-            disable_copy& operator=(const disable_copy&) = delete;
-
-            disable_copy(disable_copy&&) noexcept = default;
-            disable_copy& operator=(disable_copy&&) noexcept = default;
-        };
-
         template <typename T>
-        class unique_ptr : disable_copy {
+        class unique_ptr {
         public:
             using element_type = T;
             using pointer = T*;
@@ -107,6 +96,9 @@ namespace scn {
             SCN_CONSTEXPR unique_ptr(std::nullptr_t) noexcept {}
 
             SCN_CONSTEXPR explicit unique_ptr(pointer p) : m_ptr(p) {}
+
+            unique_ptr(const unique_ptr&) = delete;
+            unique_ptr& operator=(const unique_ptr&) = delete;
 
             SCN_CONSTEXPR14 unique_ptr(unique_ptr&& p) noexcept
                 : m_ptr(std::move(p.m_ptr))
@@ -119,7 +111,8 @@ namespace scn {
                     delete m_ptr;
                 }
                 m_ptr = p.m_ptr;
-                p.m_ptr = 0;
+                p.m_ptr = nullptr;
+                return *this;
             }
 
             ~unique_ptr() noexcept

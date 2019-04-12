@@ -28,7 +28,7 @@ namespace scn {
 
     namespace detail {
         template <typename Stream, typename Context>
-        class context_base : public detail::disable_copy {
+        class context_base {
         public:
             using stream_type = Stream;
             using char_type = typename stream_type::char_type;

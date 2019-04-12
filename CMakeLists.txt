@@ -172,7 +172,9 @@ message(STATUS "SCN_PEDANTIC: ${SCN_PEDANTIC}")
 message(STATUS "SCN_WERROR: ${SCN_WERROR}")
 
 function (generate_library_target target_name)
-    add_library(${target_name} ${SCN_HEADERS} src/locale.cpp src/visitor.cpp)
+    add_library(${target_name}
+        ${SCN_HEADERS}
+        src/vscan.cpp src/locale.cpp src/visitor.cpp)
     target_include_directories(${target_name} PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
@@ -191,7 +193,6 @@ function (generate_header_only_target target_name)
         "$<INSTALL_INTERFACE:include>")
     target_compile_definitions(${target_name} INTERFACE
         -DSCN_HEADER_ONLY=1)
-
     target_compile_features(${target_name} INTERFACE cxx_std_11)
 endfunction ()
 

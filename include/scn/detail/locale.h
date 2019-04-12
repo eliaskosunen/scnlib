@@ -171,7 +171,7 @@ namespace scn {
     SCN_CLANG_IGNORE("-Wpadded")
 
     template <typename CharT>
-    class basic_locale_ref : public detail::disable_copy {
+    class basic_locale_ref {
     public:
         using char_type = CharT;
         using string_type = std::basic_string<char_type>;

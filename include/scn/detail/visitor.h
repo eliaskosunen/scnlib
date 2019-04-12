@@ -223,9 +223,9 @@ namespace scn {
               typename Char = typename Context::char_type,
               typename Span = span<Char>,
               typename Iterator = typename Span::iterator>
-    either<Iterator> bulk_propagate_chars_until(Context& ctx, Span s)
+    either<Iterator> sized_propagate_chars_until(Context& ctx, Span s)
     {
-        auto e = ctx.stream().read_bulk(s);
+        auto e = ctx.stream().read_sized(s);
         if (e != error::end_of_stream) {
             return s.end();
         }
@@ -237,17 +237,17 @@ namespace scn {
               typename Span = span<Char>,
               typename Iterator = typename Span::iterator>
     auto propagate_chars_until(Context& ctx, Span s) -> typename std::enable_if<
-        is_bulk_stream<typename Context::stream_type>::value,
+        is_sized_stream<typename Context::stream_type>::value,
         either<Iterator>>::type
     {
-        return bulk_propagate_chars_until(ctx, s);
+        return sized_propagate_chars_until(ctx, s);
     }
     template <typename Context,
               typename Char = typename Context::char_type,
               typename Span = span<Char>,
               typename Iterator = typename Span::iterator>
     auto propagate_chars_until(Context& ctx, Span s) -> typename std::enable_if<
-        !is_bulk_stream<typename Context::stream_type>::value,
+        !is_sized_stream<typename Context::stream_type>::value,
         either<Iterator>>::type
     {
         return propagate_chars_until(ctx, s.begin(), s.end());

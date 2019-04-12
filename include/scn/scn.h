@@ -31,13 +31,31 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    // Non-variadic version of scan() and alike,
-    // to prevent bloat in generated code.
-    template <typename Context>
-    result<int> vscan(Context& ctx)
-    {
-        return visit(ctx);
-    }
+    template <typename CharT>
+    using basic_erased_stream_context = basic_context<erased_stream<CharT>>;
+    template <typename CharT>
+    using basic_erased_sized_stream_context =
+        basic_context<erased_sized_stream<CharT>>;
+
+    using erased_stream_context = basic_erased_stream_context<char>;
+    using werased_stream_context = basic_erased_stream_context<wchar_t>;
+    using erased_sized_stream_context = basic_erased_sized_stream_context<char>;
+    using werased_sized_stream_context =
+        basic_erased_sized_stream_context<wchar_t>;
+
+    template <typename Stream>
+    struct erased_stream_context_type {
+        using char_type = typename Stream::char_type;
+        using type = typename std::conditional<
+            is_sized_stream<Stream>::value,
+            basic_erased_sized_stream_context<char_type>,
+            basic_erased_stream_context<char_type>>::type;
+    };
+
+    result<int> vscan(erased_stream_context&);
+    result<int> vscan(werased_stream_context&);
+    result<int> vscan(erased_sized_stream_context&);
+    result<int> vscan(werased_sized_stream_context&);
 
     template <typename Stream, typename... Args>
     result<int> scan(Stream& s,
@@ -48,11 +66,11 @@ namespace scn {
                       "Have to scan at least a single argument");
         SCN_EXPECT(!f.empty());
 
-        using context_type = basic_context<Stream>;
+        using context_type = typename erased_stream_context_type<Stream>::type;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, f, args);
-        return vscan<context_type>(ctx);
+        return vscan(ctx);
     }
     template <typename Stream, typename... Args>
     result<int> scan(options opt,
@@ -64,11 +82,11 @@ namespace scn {
                       "Have to scan at least a single argument");
         SCN_EXPECT(!f.empty());
 
-        using context_type = basic_context<Stream>;
+        using context_type = typename erased_stream_context_type<Stream>::type;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, f, args, opt);
-        return vscan<context_type>(ctx);
+        return vscan(ctx);
     }
 
     SCN_CLANG_PUSH
@@ -77,16 +95,17 @@ namespace scn {
     // Reference to global stdin stream.
     // Not safe to use during static construction or destruction.
     template <typename CharT>
-    basic_cstdio_stream<CharT>& stdin_stream()
+    erased_stream<CharT>& stdin_stream()
     {
-        static basic_cstdio_stream<CharT> stream(stdin);
+        static basic_cstdio_stream<CharT> s(stdin);
+        static erased_stream<CharT> stream(s);
         return stream;
     }
-    inline basic_cstdio_stream<char>& cstdin()
+    inline erased_stream<char>& cstdin()
     {
         return stdin_stream<char>();
     }
-    inline basic_cstdio_stream<wchar_t>& wcstdin()
+    inline erased_stream<wchar_t>& wcstdin()
     {
         return stdin_stream<wchar_t>();
     }
@@ -105,11 +124,12 @@ namespace scn {
 
         using stream_type =
             typename std::remove_reference<decltype(stream)>::type;
-        using context_type = basic_context<stream_type>;
+        using context_type =
+            typename erased_stream_context_type<stream_type>::type;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(stream, f, args);
-        return vscan<context_type>(ctx);
+        return vscan(ctx);
     }
     template <typename... Args>
     result<int> input(wstring_view f, Args&... a)
@@ -122,11 +142,12 @@ namespace scn {
 
         using stream_type =
             typename std::remove_reference<decltype(stream)>::type;
-        using context_type = basic_context<stream_type>;
+        using context_type =
+            typename erased_stream_context_type<stream_type>::type;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(stream, f, args);
-        return vscan<context_type>(ctx);
+        return vscan(ctx);
     }
 
     // Read from stdin with prompt
@@ -144,11 +165,12 @@ namespace scn {
         auto& stream = stdin_stream<char>();
         using stream_type =
             typename std::remove_reference<decltype(stream)>::type;
-        using context_type = basic_context<stream_type>;
+        using context_type =
+            typename erased_stream_context_type<stream_type>::type;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(stream, f, args);
-        return vscan<context_type>(ctx);
+        return vscan(ctx);
     }
     template <typename... Args>
     result<int> prompt(const wchar_t* p, wstring_view f, Args&... a)
@@ -163,15 +185,20 @@ namespace scn {
         auto& stream = stdin_stream<wchar_t>();
         using stream_type =
             typename std::remove_reference<decltype(stream)>::type;
-        using context_type = basic_context<stream_type>;
+        using context_type =
+            typename erased_stream_context_type<stream_type>::type;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(stream, f, args);
-        return vscan<context_type>(ctx);
+        return vscan(ctx);
     }
 
     SCN_END_NAMESPACE
 }  // namespace scn
+
+#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_VSCAN_CPP)
+#include "vscan.cpp"
+#endif
 
 #endif  // SCN_SCN_H
 

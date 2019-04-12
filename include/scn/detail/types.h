@@ -133,7 +133,7 @@ namespace scn {
 
     template <typename Stream, typename CharT = typename Stream::char_type>
     auto ignore_all(Stream& s) ->
-        typename std::enable_if<!is_bulk_stream<Stream>::value, error>::type
+        typename std::enable_if<!is_sized_stream<Stream>::value, error>::type
     {
         using context_type = basic_context<Stream>;
         auto f = basic_string_view<CharT>();
@@ -149,7 +149,7 @@ namespace scn {
     }
     template <typename Stream, typename CharT = typename Stream::char_type>
     auto ignore_all(Stream& s) ->
-        typename std::enable_if<is_bulk_stream<Stream>::value, error>::type
+        typename std::enable_if<is_sized_stream<Stream>::value, error>::type
     {
         return s.skip_all();
     }
@@ -173,7 +173,7 @@ namespace scn {
 
     template <typename Stream, typename CharT = typename Stream::char_type>
     auto ignore_n(Stream& s, std::ptrdiff_t count) ->
-        typename std::enable_if<!is_bulk_stream<Stream>::value, error>::type
+        typename std::enable_if<!is_sized_stream<Stream>::value, error>::type
     {
         using context_type = basic_context<Stream>;
         auto f = basic_string_view<CharT>();
@@ -190,7 +190,7 @@ namespace scn {
     }
     template <typename Stream, typename CharT = typename Stream::char_type>
     auto ignore_n(Stream& s, std::ptrdiff_t count) ->
-        typename std::enable_if<is_bulk_stream<Stream>::value, error>::type
+        typename std::enable_if<is_sized_stream<Stream>::value, error>::type
     {
         return s.skip(static_cast<size_t>(count));
     }

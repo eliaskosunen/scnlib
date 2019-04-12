@@ -39,11 +39,11 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     template <typename S>
-    struct is_bulk_stream : S::is_bulk_stream {
+    struct is_sized_stream : S::is_sized_stream {
     };
 
     struct stream_base {
-        using is_bulk_stream = std::false_type;
+        using is_sized_stream = std::false_type;
 
         SCN_CONSTEXPR14 void _set_bad() noexcept
         {
@@ -63,6 +63,213 @@ namespace scn {
     private:
         bool m_bad{false};
     };
+
+    template <typename CharT>
+    class erased_stream_base {
+    public:
+        using char_type = CharT;
+
+        erased_stream_base(const erased_stream_base&) = delete;
+        erased_stream_base& operator=(const erased_stream_base&) = delete;
+        erased_stream_base(erased_stream_base&&) = default;
+        erased_stream_base& operator=(erased_stream_base&&) = default;
+        virtual ~erased_stream_base() = default;
+
+        virtual either<char_type> read_char() = 0;
+        virtual error putback(char_type) = 0;
+
+        virtual error set_roll_back() = 0;
+        virtual error roll_back() = 0;
+
+    protected:
+        erased_stream_base() = default;
+    };
+
+    template <typename CharT>
+    class erased_sized_stream_base : public erased_stream_base<CharT> {
+    public:
+        virtual error read_sized(span<CharT> s) = 0;
+
+        virtual size_t chars_to_read() const = 0;
+
+        virtual error skip(size_t n) = 0;
+        virtual error skip_all() = 0;
+    };
+
+    template <typename Stream>
+    class erased_stream_impl
+        : public erased_stream_base<typename Stream::char_type> {
+        using base = erased_stream_base<typename Stream::char_type>;
+
+    public:
+        using char_type = typename base::char_type;
+
+        erased_stream_impl(Stream s) : m_stream(std::move(s)) {}
+
+        either<char_type> read_char() override
+        {
+            return m_stream.read_char();
+        }
+        error putback(char_type ch) override
+        {
+            return m_stream.putback(ch);
+        }
+
+        error set_roll_back() override
+        {
+            return m_stream.set_roll_back();
+        }
+        error roll_back() override
+        {
+            return m_stream.roll_back();
+        }
+
+    private:
+        Stream m_stream;
+    };
+
+    template <typename Stream>
+    class erased_sized_stream_impl
+        : public erased_sized_stream_base<typename Stream::char_type> {
+        using base = erased_sized_stream_base<typename Stream::char_type>;
+
+    public:
+        using char_type = typename base::char_type;
+
+        erased_sized_stream_impl(Stream s) : m_stream(std::move(s)) {}
+
+        either<char_type> read_char() override
+        {
+            return m_stream.read_char();
+        }
+        error putback(char_type ch) override
+        {
+            return m_stream.putback(ch);
+        }
+
+        error set_roll_back() override
+        {
+            return m_stream.set_roll_back();
+        }
+        error roll_back() override
+        {
+            return m_stream.roll_back();
+        }
+
+        error read_sized(span<char_type> s) override
+        {
+            return m_stream.read_sized(s);
+        }
+
+        size_t chars_to_read() const override
+        {
+            return m_stream.chars_to_read();
+        }
+
+        error skip(size_t n) override
+        {
+            return m_stream.skip(n);
+        }
+        error skip_all() override
+        {
+            return m_stream.skip_all();
+        }
+
+    private:
+        Stream m_stream;
+    };
+
+    template <typename CharT>
+    class erased_stream : public stream_base {
+    public:
+        using char_type = CharT;
+
+        template <typename Stream>
+        erased_stream(Stream s)
+            : m_stream(new erased_stream_impl<Stream>(std::move(s)))
+        {
+        }
+
+        either<char_type> read_char()
+        {
+            return m_stream->read_char();
+        }
+        error putback(char_type ch)
+        {
+            return m_stream->putback(ch);
+        }
+
+        error set_roll_back()
+        {
+            return m_stream->set_roll_back();
+        }
+        error roll_back()
+        {
+            return m_stream->roll_back();
+        }
+
+    private:
+        detail::unique_ptr<erased_stream_base<CharT>> m_stream;
+    };
+
+    template <typename CharT>
+    class erased_sized_stream : public stream_base {
+    public:
+        using char_type = CharT;
+        using is_sized_stream = std::true_type;
+
+        template <typename Stream>
+        erased_sized_stream(Stream s)
+            : m_stream(new erased_sized_stream_impl<Stream>(std::move(s)))
+        {
+        }
+
+        either<char_type> read_char()
+        {
+            return m_stream->read_char();
+        }
+        error putback(char_type ch)
+        {
+            return m_stream->putback(ch);
+        }
+
+        error set_roll_back()
+        {
+            return m_stream->set_roll_back();
+        }
+        error roll_back()
+        {
+            return m_stream->roll_back();
+        }
+
+        error read_sized(span<char_type> s)
+        {
+            return m_stream->read_sized(s);
+        }
+
+        size_t chars_to_read() const
+        {
+            return m_stream->chars_to_read();
+        }
+
+        error skip(size_t n)
+        {
+            return m_stream->skip(n);
+        }
+        error skip_all()
+        {
+            return m_stream->skip_all();
+        }
+
+    private:
+        detail::unique_ptr<erased_sized_stream_base<CharT>> m_stream;
+    };
+
+    template <typename CharT>
+    erased_stream<CharT> make_stream(erased_stream<CharT>& s) = delete;
+    template <typename CharT>
+    erased_sized_stream<CharT> make_stream(erased_sized_stream<CharT>& s) =
+        delete;
 
     template <typename Char>
     class basic_null_stream : public stream_base {
@@ -100,9 +307,10 @@ namespace scn {
         size_t m_read{0};
     };
     template <typename CharT>
-    SCN_CONSTEXPR basic_null_stream<CharT> make_null_stream() noexcept
+    erased_stream<CharT> make_null_stream() noexcept
     {
-        return basic_null_stream<CharT>{};
+        auto s = basic_null_stream<CharT>{};
+        return {s};
     }
 
     template <typename Char, typename Source, typename Enable = void>
@@ -114,7 +322,7 @@ namespace scn {
         using char_type = Char;
         using source_type = Container;
         using iterator = typename source_type::const_iterator;
-        using is_bulk_stream = std::true_type;
+        using is_sized_stream = std::true_type;
 
         SCN_CONSTEXPR basic_static_container_stream(
             const source_type& s) noexcept
@@ -142,7 +350,7 @@ namespace scn {
             return {};
         }
 
-        SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
+        SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
         {
             if (chars_to_read() < static_cast<size_t>(s.size())) {
                 return error(error::end_of_stream, "EOF");
@@ -243,31 +451,32 @@ namespace scn {
 
 #if SCN_STL_OVERLOADS
     template <typename CharT>
-    SCN_CONSTEXPR basic_static_container_stream<CharT, std::basic_string<CharT>>
-    make_stream(const std::basic_string<CharT>& s) noexcept
+    erased_sized_stream<CharT> make_stream(const std::basic_string<CharT>& str)
     {
-        return s;
+        auto s =
+            basic_static_container_stream<CharT, std::basic_string<CharT>>(str);
+        return {s};
     }
     template <typename CharT>
-    SCN_CONSTEXPR basic_static_container_stream<CharT, std::vector<CharT>>
-    make_stream(const std::vector<CharT>& s) noexcept
+    erased_sized_stream<CharT> make_stream(const std::vector<CharT>& vec)
     {
-        return s;
+        auto s = basic_static_container_stream<CharT, std::vector<CharT>>(vec);
+        return {s};
     }
     template <typename CharT, size_t N>
-    SCN_CONSTEXPR basic_static_container_stream<CharT, std::array<CharT, N>>
-    make_stream(const std::array<CharT, N>& s) noexcept
+    erased_sized_stream<CharT> make_stream(const std::array<CharT, N>& arr)
     {
-        return s;
+        auto s =
+            basic_static_container_stream<CharT, std::array<CharT, N>>(arr);
+        return {s};
     }
 #endif
     template <typename CharT, size_t N>
-    SCN_CONSTEXPR basic_static_container_stream<
-        CharT,
-        detail::array_container_stream_adaptor<CharT, N>>
-    make_stream(const CharT (&s)[N]) noexcept
+    erased_sized_stream<CharT> make_stream(const CharT (&arr)[N])
     {
-        return s;
+        auto s = basic_static_container_stream<
+            CharT, detail::array_container_stream_adaptor<CharT, N>>(arr);
+        return {s};
     }
 
     template <typename Char>
@@ -277,7 +486,7 @@ namespace scn {
         using char_type = Char;
         using source_type = span<const Char>;
         using iterator = typename source_type::const_iterator;
-        using is_bulk_stream = std::true_type;
+        using is_sized_stream = std::true_type;
 
         SCN_CONSTEXPR basic_static_container_stream(source_type s) noexcept
             : m_source(s), m_begin(m_source.begin()), m_next(begin())
@@ -304,11 +513,11 @@ namespace scn {
             return {};
         }
 
-        SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
+        SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
         {
             if (chars_to_read() < s.size()) {
                 return error(error::end_of_stream,
-                             "Cannot complete read_bulk: EOF encountered");
+                             "Cannot complete read_sized: EOF encountered");
             }
             std::copy(m_next, m_next + s.size(), s.begin());
             m_next += s.size();
@@ -366,16 +575,17 @@ namespace scn {
     };
 
     template <typename CharT>
-    SCN_CONSTEXPR basic_static_container_stream<CharT, span<const CharT>>
-    make_stream(span<const CharT> s) noexcept
+    erased_sized_stream<CharT> make_stream(span<const CharT> s) noexcept
     {
-        return s;
+        auto stream =
+            basic_static_container_stream<CharT, span<const CharT>>(s);
+        return {stream};
     }
 
     template <typename Iterator>
     struct basic_bidirectional_iterator_stream : public stream_base {
         using char_type = typename std::iterator_traits<Iterator>::value_type;
-        using is_bulk_stream = std::true_type;
+        using is_sized_stream = std::true_type;
 
         SCN_CONSTEXPR basic_bidirectional_iterator_stream(Iterator begin,
                                                           Iterator end) noexcept
@@ -403,11 +613,11 @@ namespace scn {
             return {};
         }
 
-        SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
+        SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
         {
             if (chars_to_read() < static_cast<size_t>(s.size())) {
                 return error(error::end_of_stream,
-                             "Cannot complete read_bulk: EOF encountered");
+                             "Cannot complete read_sized: EOF encountered");
             }
             std::copy(m_next, m_next + s.size(), s.begin());
             std::advance(m_next, s.size());
@@ -441,7 +651,7 @@ namespace scn {
                 m_next = m_end;
                 return error(error::end_of_stream, "EOF");
             }
-            m_next += n;
+            m_next += static_cast<std::ptrdiff_t>(n);
             return {};
         }
         SCN_CONSTEXPR14 error skip_all() noexcept
@@ -457,7 +667,7 @@ namespace scn {
     template <typename Iterator>
     struct basic_forward_iterator_stream : public stream_base {
         using char_type = typename std::iterator_traits<Iterator>::value_type;
-        using is_bulk_stream = std::true_type;
+        using is_sized_stream = std::true_type;
 
         SCN_CONSTEXPR basic_forward_iterator_stream(Iterator begin,
                                                     Iterator end) noexcept
@@ -485,11 +695,11 @@ namespace scn {
             return {};
         }
 
-        SCN_CONSTEXPR14 error read_bulk(span<char_type> s) noexcept
+        SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
         {
             if (chars_to_read() < s.size()) {
                 return error(error::end_of_stream,
-                             "Cannot complete read_bulk: EOF encountered");
+                             "Cannot complete read_sized: EOF encountered");
             }
             std::copy(m_begin, m_begin + s.size(), s.begin());
             std::advance(m_begin, s.size());
@@ -575,14 +785,15 @@ namespace scn {
         };
     }  // namespace detail
 
-    template <typename Iterator,
-              typename StreamHelper = detail::iterator_stream<
-                  Iterator,
-                  typename std::iterator_traits<Iterator>::iterator_category>>
-    typename StreamHelper::type make_stream(Iterator begin,
-                                            Iterator end) noexcept
+    template <typename Iterator>
+    erased_sized_stream<typename std::iterator_traits<Iterator>::value_type>
+    make_stream(Iterator begin, Iterator end)
     {
-        return StreamHelper::make_stream(begin, end);
+        using StreamHelper = detail::iterator_stream<
+            Iterator,
+            typename std::iterator_traits<Iterator>::iterator_category>;
+        auto s = StreamHelper::make_stream(begin, end);
+        return {s};
     }
 
     template <typename CharT>
@@ -718,17 +929,18 @@ namespace scn {
     };
 
     template <typename CharT = char>
-    basic_cstdio_stream<CharT> make_stream(FILE* s) noexcept
+    erased_stream<CharT> make_stream(FILE* f) noexcept
     {
-        return s;
+        auto s = basic_cstdio_stream<CharT>(f);
+        return {s};
     }
-    inline basic_cstdio_stream<char> make_narrow_stream(FILE* s) noexcept
+    inline erased_stream<char> make_narrow_stream(FILE* f) noexcept
     {
-        return s;
+        return make_stream<char>(f);
     }
-    inline basic_cstdio_stream<wchar_t> make_wide_stream(FILE* s) noexcept
+    inline erased_stream<wchar_t> make_wide_stream(FILE* f) noexcept
     {
-        return s;
+        return make_stream<wchar_t>(f);
     }
 
     SCN_END_NAMESPACE
