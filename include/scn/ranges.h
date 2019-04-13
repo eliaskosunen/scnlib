@@ -43,6 +43,12 @@ namespace scn {
             iterator_type m_it;
         };
 
+        template <typename Iterator, typename Range>
+        auto subrange_from(Iterator it, const Range& r)
+        {
+            return ::ranges::make_subrange(it, ::ranges::end(r));
+        }
+
         template <typename CharT>
         using basic_erased_stream_context =
             basic_context<erased_range_stream<CharT>>;
@@ -72,8 +78,8 @@ namespace scn {
         result<int> vscan(werased_sized_stream_context&);
 
         template <typename Range, typename... Args>
-        ranges_result<::ranges::iterator_t<Range>> scan(
-            Range& range,
+        ranges_result<::ranges::iterator_t<const Range>> scan(
+            const Range& range,
             basic_string_view<
                 ::ranges::value_type_t<::ranges::iterator_t<Range>>> f,
             Args&... a)
@@ -96,9 +102,9 @@ namespace scn {
         }
 
         template <typename Range, typename... Args>
-        ranges_result<::ranges::iterator_t<Range>> scan(
+        ranges_result<::ranges::iterator_t<const Range>> scan(
             options opt,
-            Range& range,
+            const Range& range,
             basic_string_view<
                 ::ranges::value_type_t<::ranges::iterator_t<Range>>> f,
             Args&... a)

@@ -40,14 +40,6 @@ matrix:
           update: true
           packages: ["g++-5"]
           sources: ["ubuntu-toolchain-r-test"]
-    # g++ 4.9
-    - env: COMPILER=g++-4.9 STANDARD=14
-      compiler: gcc
-      addons:
-        apt:
-          update: true
-          packages: ["g++-4.9", "g++-7"]
-          sources: ["ubuntu-toolchain-r-test"]
 
     # clang 8
     - env: COMPILER=clang++-8 STANDARD=17
@@ -121,14 +113,6 @@ matrix:
           update: true
           packages: ["clang-3.6", "g++-7"]
           sources: ["llvm-toolchain-trusty-3.6", "llvm-toolchain-trusty-3.6-binaries", "ubuntu-toolchain-r-test"]
-    # clang 3.5
-    - env: COMPILER=clang++-3.5 STANDARD=14
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages: ["clang-3.5", "g++-7"]
-          sources: ["llvm-toolchain-trusty-3.5", "llvm-toolchain-trusty-3.5-binaries", "ubuntu-toolchain-r-test"]
 
     # osx xcode 9
     - env: COMPILER=clang++ STANDARD=17
@@ -159,17 +143,19 @@ install:
         sudo apt-get --allow-unauthenticated -yq update
         sudo apt-get -yq --no-install-suggests --no-install-recommends --force-yes install clang-3.7
       fi
-      if [[ "${COMPILER}" = "clang++-3.4" ]]; then
-        sudo apt-get clean
-        sudo rm -rf /var/lib/apt/lists/*
-        wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.4 main" | sudo tee -a /etc/apt/sources.list > /dev/null
-        sudo apt-get --allow-unauthenticated -yq update
-        sudo apt-get -yq --no-install-suggests --no-install-recommends --force-yes install clang-3.4
-      fi
     fi
   - cd ${TRAVIS_BUILD_DIR}
   - export CXX="${COMPILER}"
+  - |
+    cd ${TRAVIS_BUILD_DIR}
+    git clone https://github.com/ericniebler/range-v3
+    cd range-v3
+    git checkout v1.0-beta
+    mkdir build
+    cd build
+    cmake -DCMAKE_CXX_COMPILER=${CXX} -DRANGE_V3_TESTS=OFF -DRANGE_V3_HEADER_CHECKS=OFF -DRANGE_V3_EXAMPLES=OFF -DRANGE_V3_PERF=OFF -DRANGE_V3_DOCS=OFF ..
+    sudo make install
+    cd ${TRAVIS_BUILD_DIR}
 
 before_script:
   - cmake --version

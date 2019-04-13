@@ -206,7 +206,7 @@ if (range-v3_FOUND)
     target_compile_features(scn-ranges PUBLIC cxx_std_14)
 
     add_library(scn-ranges-header-only INTERFACE)
-    target_link_libraries(scn-ranges-header-only INTERFACE scn range-v3)
+    target_link_libraries(scn-ranges-header-only INTERFACE scn-header-only range-v3)
     target_compile_features(scn-ranges-header-only INTERFACE cxx_std_14)
 
     set(SCN_HAS_RANGES ON)

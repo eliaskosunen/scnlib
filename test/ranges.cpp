@@ -22,23 +22,46 @@
 
 TEST_CASE("ranges")
 {
-    std::string data{"test {} 42 3.14 foobar true"};
-    std::string copy = data;
+    SUBCASE("general")
+    {
+        std::string data{"test {} 42 3.14 foobar true"};
 
-    int i{0};
-    double d{};
-    std::string s(6, '\0');
-    auto span = scn::make_span(&s[0], &s[0] + s.size());
-    bool b{};
-    auto ret = scn::ranges::scan(data, "test {{}} {} {} {} {a}", i, d, span, b);
+        int i{0};
+        double d{};
+        std::string s(6, '\0');
+        auto span = scn::make_span(&s[0], &s[0] + s.size());
+        bool b{};
+        auto ret =
+            scn::ranges::scan(data, "test {{}} {} {} {} {a}", i, d, span, b);
 
-    CHECK(data == copy);
-    CHECK(i == 42);
-    CHECK(d == doctest::Approx(3.14));
-    CHECK(s == "foobar");
-    CHECK(b);
+        CHECK(i == 42);
+        CHECK(d == doctest::Approx(3.14));
+        CHECK(s == "foobar");
+        CHECK(b);
 
-    CHECK(ret);
-    CHECK(ret.value() == 4);
-    CHECK(ret.iterator() == data.end());
+        CHECK(ret);
+        CHECK(ret.value() == 4);
+        CHECK(ret.iterator() == data.end());
+    }
+    SUBCASE("subrange")
+    {
+        std::string data{"Hello world"};
+
+        std::string str{};
+        auto ret = scn::ranges::scan(data, "{}", str);
+
+        CHECK(str == "Hello");
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(ret.iterator() ==
+              data.begin() + static_cast<std::ptrdiff_t>(str.length()) + 1);
+
+        ret = scn::ranges::scan(
+            scn::ranges::subrange_from(ret.iterator(), data), "{}", str);
+
+        CHECK(str == "world");
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(ret.iterator() == data.end());
+    }
 }

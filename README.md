@@ -455,15 +455,65 @@ struct scn::value_scanner<Char, my_type>
 //   my_type.d == 4.56
 ```
 
+### Range-based interface
+
+`scnlib` also supports a range-based interface, using [range-v3](https://github.com/ericniebler/range-v3).
+To use the interface, range-v3 must be installed on your system, you must include the header file `<scn/ranges.h>`, and your program must link against the `scn::scn-ranges` CMake target.
+
+```cmake
+target_link_libraries(your-target scn::scn-ranges)
+# or scn::scn-ranges-header-only if you wish
+```
+
+The interface resides in the namespace `scn::ranges`. Instead of a stream, `scn::ranges::scan` takes a `Range` as its first argument.
+
+```cpp
+#include <scn/ranges.h>
+// ...
+auto range = std::string{"Hello"};
+std::string str{};
+auto ret = scn::ranges::scan(range, "{}", str);
+assert(str == "Hello");
+assert(ret);
+assert(ret.value() == 1);
+```
+
+The `scn::ranges::scan` return value has a member function `.iterator()`, which returns an iterator past the last read character of the stream.
+
+```cpp
+// ret from snippet above
+assert(ret.iterator() == range.end());
+```
+
+The iterator can be used to use the same source range for multiple `scn::ranges::scan` calls.
+
+```cpp
+auto range = std::string{"Hello world"};
+std::string str{};
+
+auto ret = scn::ranges::scan(range, "{}", str);
+assert(str == "Hello");
+// ret.iterator points to 'w' in "world"
+assert(ret.iterator() == range.begin() + str.length() + 1);
+
+// scn::ranges::subrange_from returns a view
+// to a range (second argument) starting from an iterator (first argument)
+// It's meant for making ranges for `scn::ranges::scan`
+ret = scn::ranges::scan(scn::ranges::subrange_from(ret.iterator(), range), "{}", str);
+assert(str == "world");
+assert(ret.iterator() == range.end());
+
+```
+
 ### TODO docs
 
-`vscan`, lower-level stuff, user stream
+`vscan`, lower-level stuff, erased stream, user stream
 
 ## Compiler support
 
 Every commit is tested with
- * gcc 4.9 and newer
- * clang 3.5 and newer
+ * gcc 5.5 and newer
+ * clang 3.6 and newer
  * Visual Studio 2015 and 2017
 
 Older compilers may work, but it is not guaranteed.
