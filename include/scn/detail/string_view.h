@@ -168,7 +168,7 @@ namespace scn {
         SCN_CONSTEXPR14 void remove_prefix(size_type n)
         {
             SCN_EXPECT(n <= size());
-            m_data = m_data.subspan(static_cast<std::ptrdiff_t>(n));
+            m_data = m_data.subspan(n);
         }
         SCN_CONSTEXPR14 void remove_suffix(size_type n)
         {

@@ -86,14 +86,27 @@ namespace scn {
     };
 
     template <typename CharT>
-    class erased_sized_stream_base : public erased_stream_base<CharT> {
+    class erased_sized_stream_base {
     public:
+        using char_type = CharT;
+
+        erased_sized_stream_base(const erased_sized_stream_base&) = delete;
+        erased_sized_stream_base& operator=(const erased_sized_stream_base&) =
+            delete;
+        erased_sized_stream_base(erased_sized_stream_base&&) = default;
+        erased_sized_stream_base& operator=(erased_sized_stream_base&&) =
+            default;
+        virtual ~erased_sized_stream_base() = default;
+
         virtual error read_sized(span<CharT> s) = 0;
 
         virtual size_t chars_to_read() const = 0;
 
         virtual error skip(size_t n) = 0;
         virtual error skip_all() = 0;
+
+    protected:
+        erased_sized_stream_base() = default;
     };
 
     template <typename Stream>
@@ -124,6 +137,15 @@ namespace scn {
             return m_stream.roll_back();
         }
 
+        Stream& get()
+        {
+            return m_stream;
+        }
+        const Stream& get() const
+        {
+            return m_stream;
+        }
+
     private:
         Stream m_stream;
     };
@@ -136,55 +158,48 @@ namespace scn {
     public:
         using char_type = typename base::char_type;
 
-        erased_sized_stream_impl(Stream s) : m_stream(std::move(s)) {}
-
-        either<char_type> read_char() override
-        {
-            return m_stream.read_char();
-        }
-        error putback(char_type ch) override
-        {
-            return m_stream.putback(ch);
-        }
-
-        error set_roll_back() override
-        {
-            return m_stream.set_roll_back();
-        }
-        error roll_back() override
-        {
-            return m_stream.roll_back();
-        }
+        erased_sized_stream_impl(Stream& s) : m_stream(std::addressof(s)) {}
 
         error read_sized(span<char_type> s) override
         {
-            return m_stream.read_sized(s);
+            return m_stream->read_sized(s);
         }
 
         size_t chars_to_read() const override
         {
-            return m_stream.chars_to_read();
+            return m_stream->chars_to_read();
         }
 
         error skip(size_t n) override
         {
-            return m_stream.skip(n);
+            return m_stream->skip(n);
         }
         error skip_all() override
         {
-            return m_stream.skip_all();
+            return m_stream->skip_all();
+        }
+
+        Stream& get()
+        {
+            return *m_stream;
+        }
+        const Stream& get() const
+        {
+            return *m_stream;
         }
 
     private:
-        Stream m_stream;
+        Stream* m_stream;
     };
 
     template <typename CharT>
     class erased_stream : public stream_base {
     public:
         using char_type = CharT;
-
-        template <typename Stream>
+        template <
+            typename Stream,
+            typename std::enable_if<
+                std::is_base_of<stream_base, Stream>::value>::type* = nullptr>
         erased_stream(Stream s)
             : m_stream(new erased_stream_impl<Stream>(std::move(s)))
         {
@@ -208,38 +223,47 @@ namespace scn {
             return m_stream->roll_back();
         }
 
+        erased_stream_base<CharT>& get()
+        {
+            return *m_stream;
+        }
+        const erased_stream_base<CharT>& get() const
+        {
+            return *m_stream;
+        }
+
+        template <typename Stream>
+        erased_stream_impl<Stream>& get_as()
+        {
+            return static_cast<erased_stream_impl<Stream>&>(*m_stream);
+        }
+        template <typename Stream>
+        const erased_stream_impl<Stream>& get_as() const
+        {
+            return static_cast<const erased_stream_impl<Stream>&>(*m_stream);
+        }
+
     private:
         detail::unique_ptr<erased_stream_base<CharT>> m_stream;
     };
 
     template <typename CharT>
-    class erased_sized_stream : public stream_base {
+    class erased_sized_stream : public erased_stream<CharT> {
+        using base = erased_stream<CharT>;
+
     public:
         using char_type = CharT;
         using is_sized_stream = std::true_type;
 
-        template <typename Stream>
+        template <
+            typename Stream,
+            typename std::enable_if<
+                std::is_base_of<stream_base, Stream>::value>::type* = nullptr>
         erased_sized_stream(Stream s)
-            : m_stream(new erased_sized_stream_impl<Stream>(std::move(s)))
+            : base(std::move(s)),
+              m_stream(new erased_sized_stream_impl<Stream>(
+                  base::template get_as<Stream>().get()))
         {
-        }
-
-        either<char_type> read_char()
-        {
-            return m_stream->read_char();
-        }
-        error putback(char_type ch)
-        {
-            return m_stream->putback(ch);
-        }
-
-        error set_roll_back()
-        {
-            return m_stream->set_roll_back();
-        }
-        error roll_back()
-        {
-            return m_stream->roll_back();
         }
 
         error read_sized(span<char_type> s)
@@ -259,6 +283,15 @@ namespace scn {
         error skip_all()
         {
             return m_stream->skip_all();
+        }
+
+        erased_sized_stream_base<CharT>& get_sized()
+        {
+            return *m_stream;
+        }
+        const erased_sized_stream_base<CharT>& get_sized() const
+        {
+            return *m_stream;
         }
 
     private:
@@ -355,8 +388,8 @@ namespace scn {
             if (chars_to_read() < static_cast<size_t>(s.size())) {
                 return error(error::end_of_stream, "EOF");
             }
-            std::copy(m_next, m_next + s.size(), s.begin());
-            m_next += s.size();
+            std::copy(m_next, m_next + s.ssize(), s.begin());
+            m_next += s.ssize();
             return {};
         }
 
@@ -619,8 +652,8 @@ namespace scn {
                 return error(error::end_of_stream,
                              "Cannot complete read_sized: EOF encountered");
             }
-            std::copy(m_next, m_next + s.size(), s.begin());
-            std::advance(m_next, s.size());
+            std::copy(m_next, m_next + s.ssize(), s.begin());
+            std::advance(m_next, s.ssize());
             return {};
         }
 

@@ -35,7 +35,8 @@ namespace scn {
     public:
         using element_type = T;
         using value_type = typename std::remove_cv<T>::type;
-        using index_type = std::ptrdiff_t;
+        using index_type = std::size_t;
+        using ssize_type = std::ptrdiff_t;
         using difference_type = std::ptrdiff_t;
         using pointer = T*;
         using const_pointer = T*;
@@ -51,7 +52,7 @@ namespace scn {
         {
         }
         SCN_CONSTEXPR span(pointer first, pointer last) noexcept
-            : span(first, last - first)
+            : span(first, static_cast<size_t>(last - first))
         {
         }
 
@@ -102,6 +103,10 @@ namespace scn {
         SCN_CONSTEXPR index_type size() const noexcept
         {
             return m_size;
+        }
+        SCN_CONSTEXPR ssize_type ssize() const noexcept
+        {
+            return static_cast<std::ptrdiff_t>(size());
         }
 
         SCN_CONSTEXPR14 span<T> subspan(index_type off) const

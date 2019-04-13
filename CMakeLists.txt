@@ -173,7 +173,6 @@ message(STATUS "SCN_WERROR: ${SCN_WERROR}")
 
 function (generate_library_target target_name)
     add_library(${target_name}
-        ${SCN_HEADERS}
         src/vscan.cpp src/locale.cpp src/visitor.cpp)
     target_include_directories(${target_name} PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -198,11 +197,36 @@ endfunction ()
 
 generate_library_target(scn)
 generate_header_only_target(scn-header-only)
+
+find_package(range-v3 QUIET CONFIG)
+if (range-v3_FOUND)
+    add_library(scn-ranges
+        src/ranges/vscan.cpp)
+    target_link_libraries(scn-ranges PUBLIC scn range-v3)
+    target_compile_features(scn-ranges PUBLIC cxx_std_14)
+
+    add_library(scn-ranges-header-only INTERFACE)
+    target_link_libraries(scn-ranges-header-only INTERFACE scn range-v3)
+    target_compile_features(scn-ranges-header-only INTERFACE cxx_std_14)
+
+    set(SCN_HAS_RANGES ON)
+else ()
+    message(STATUS "range-v3 not found, not generating scn-ranges target")
+    set(SCN_HAS_RANGES OFF)
+endif ()
+
 set(SCN_EXPORT_TARGETS_LIST scn scn-header-only)
-add_library(scn::scn-header-only ALIAS scn-header-only)
 add_library(scn::scn ALIAS scn)
+add_library(scn::scn-header-only ALIAS scn-header-only)
+
+if (SCN_HAS_RANGES)
+    set(SCN_EXPORT_TARGETS_LIST ${SCN_EXPORT_TARGETS_LIST} scn-ranges scn-ranges-header-only)
+    add_library(scn::scn-ranges ALIAS scn-ranges)
+    add_library(scn::scn-ranges-header-only ALIAS scn-ranges-header-only)
+endif()
 
 if (SCN_TESTS)
+    enable_testing()
     add_subdirectory(test)
 endif ()
 if (SCN_EXAMPLES)

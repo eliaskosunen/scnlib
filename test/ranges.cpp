@@ -15,10 +15,30 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_RANGES_RANGES_H
-#define SCN_RANGES_RANGES_H
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "test.h"
 
-#include "../scn.h"
+#include <scn/ranges.h>
 
-#endif  // SCN_RANGES_RANGES_H
+TEST_CASE("ranges")
+{
+    std::string data{"test {} 42 3.14 foobar true"};
+    std::string copy = data;
 
+    int i{0};
+    double d{};
+    std::string s(6, '\0');
+    auto span = scn::make_span(&s[0], &s[0] + s.size());
+    bool b{};
+    auto ret = scn::ranges::scan(data, "test {{}} {} {} {} {a}", i, d, span, b);
+
+    CHECK(data == copy);
+    CHECK(i == 42);
+    CHECK(d == doctest::Approx(3.14));
+    CHECK(s == "foobar");
+    CHECK(b);
+
+    CHECK(ret);
+    CHECK(ret.value() == 4);
+    CHECK(ret.iterator() == data.end());
+}
