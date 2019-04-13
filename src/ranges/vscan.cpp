@@ -23,6 +23,8 @@
 
 namespace scn {
     namespace ranges {
+        SCN_BEGIN_NAMESPACE
+
         result<int> vscan(erased_stream_context& ctx)
         {
             return visit(ctx);
@@ -39,5 +41,7 @@ namespace scn {
         {
             return visit(ctx);
         }
+
+        SCN_END_NAMESPACE
     }  // namespace ranges
 }  // namespace scn

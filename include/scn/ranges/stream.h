@@ -25,6 +25,8 @@
 
 namespace scn {
     namespace ranges {
+        SCN_BEGIN_NAMESPACE
+
         template <typename CharT>
         class erased_range_stream_base {
         public:
@@ -351,6 +353,8 @@ namespace scn {
             auto s = basic_sized_forward_range_stream<R>(r);
             return {s};
         }
+
+        SCN_END_NAMESPACE
     }  // namespace ranges
 }  // namespace scn
 

@@ -24,6 +24,8 @@
 
 namespace scn {
     namespace ranges {
+        SCN_BEGIN_NAMESPACE
+
         template <typename Iterator>
         class ranges_result : public result<int> {
         public:
@@ -126,6 +128,8 @@ namespace scn {
                         static_cast<std::ptrdiff_t>(stream.chars_read()),
                     std::move(result)};
         }
+
+        SCN_END_NAMESPACE
     }  // namespace ranges
 }  // namespace scn
 
