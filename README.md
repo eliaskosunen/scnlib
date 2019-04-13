@@ -50,6 +50,7 @@ add_subdirectory(external/scnlib EXCLUDE_FROM_ALL)
 
 # Target which you'd like to use scnlib
 add_executable(my_program ...)
+# Use scn::scn-header-only if you'd prefer
 target_link_libraries(my_program scn::scn)
 ```
 

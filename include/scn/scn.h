@@ -29,6 +29,8 @@
 #include "detail/visitor.h"
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     // Non-variadic version of scan() and alike,
     // to prevent bloat in generated code.
     template <typename Context>
@@ -167,6 +169,8 @@ namespace scn {
         auto ctx = context_type(stream, f, args);
         return vscan<context_type>(ctx);
     }
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_SCN_H

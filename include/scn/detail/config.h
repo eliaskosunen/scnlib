@@ -336,4 +336,7 @@
 #define SCN_EXPECT(cond) SCN_ASSERT(cond, "Precondition violation")
 #define SCN_ENSURE(cond) SCN_ASSERT(cond, "Postcondition violation")
 
+#define SCN_BEGIN_NAMESPACE inline namespace v0 {
+#define SCN_END_NAMESPACE }
+
 #endif  // SCN_DETAIL_CONFIG_H

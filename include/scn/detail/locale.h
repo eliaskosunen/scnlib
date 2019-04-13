@@ -25,6 +25,8 @@
 #include <cwchar>
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     namespace detail {
         template <typename CharT>
         class truename_falsename_storage {
@@ -265,6 +267,7 @@ namespace scn {
 
     SCN_CLANG_POP
     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_LOCALE_CPP)

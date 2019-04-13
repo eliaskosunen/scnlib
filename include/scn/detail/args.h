@@ -27,6 +27,8 @@
 #include <vector>
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     template <typename Context>
     class basic_arg;
     template <typename Context>
@@ -634,6 +636,8 @@ namespace scn {
             return arg;
         }
     };
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_DETAIL_ARGS_H

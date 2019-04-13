@@ -24,6 +24,8 @@
 #include "options.h"
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     namespace detail {
         template <typename Stream, typename Context>
         class context_base : public detail::disable_copy {
@@ -259,6 +261,8 @@ namespace scn {
 
     template <typename S, typename T, typename Char>
     void arg(S, detail::named_arg<T, Char>) = delete;
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_DETAIL_CONTEXT_H

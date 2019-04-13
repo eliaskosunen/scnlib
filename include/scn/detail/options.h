@@ -27,6 +27,8 @@
 #endif
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     enum class method {
         sto,         // std::stoi, std::stod, etc.
         from_chars,  // std::from_chars
@@ -147,6 +149,8 @@ namespace scn {
           float_method(b.opt.float_method)
     {
     }
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_OPTIONS_H

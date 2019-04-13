@@ -24,6 +24,8 @@
 #include <type_traits>
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     /**
      * A view over a contiguous range.
      * Stripped-down version of `std::span`.
@@ -139,6 +141,8 @@ namespace scn {
             std::addressof(*begin(container)),
             std::addressof(*(end(container) - 1)) + 1);
     }
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_DETAIL_SPAN_H

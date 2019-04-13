@@ -22,6 +22,8 @@
 #include <scn/detail/visitor.h>
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     namespace detail {
         namespace sto {
             template <typename CharT>
@@ -640,4 +642,6 @@ namespace scn {
         template struct float_scanner<wchar_t, double>;
         template struct float_scanner<wchar_t, long double>;
     }  // namespace detail
+
+    SCN_END_NAMESPACE
 }  // namespace scn

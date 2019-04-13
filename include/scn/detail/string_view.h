@@ -25,6 +25,8 @@
 #include <limits>
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     namespace detail {
         template <typename T>
         SCN_CONSTEXPR T min(T a, T b) noexcept
@@ -247,6 +249,7 @@ namespace scn {
     using u16string_view = basic_string_view<char>;
     using u32wstring_view = basic_string_view<wchar_t>;
 
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_DETAIL_STRING_VIEW_H

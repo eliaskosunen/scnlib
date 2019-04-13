@@ -23,6 +23,8 @@
 #include "string_view.h"
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     /**
      * Skip any whitespace from the stream.
      * Next read_char() will return the first non-whitespace character of EOF.
@@ -130,6 +132,8 @@ namespace scn {
 
     template <typename CharT, typename T, typename Enable = void>
     struct value_scanner;
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_DETAIL_CORE_H

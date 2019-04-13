@@ -25,6 +25,7 @@
 #include <ios>
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wpadded")
 
@@ -244,6 +245,7 @@ namespace scn {
             return {};
         }
     };
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_ISTREAM_H

@@ -24,7 +24,7 @@
 #include <type_traits>
 
 namespace scn {
-
+    SCN_BEGIN_NAMESPACE
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wpadded")
 
@@ -307,6 +307,8 @@ namespace scn {
             void on_error(const char* msg);
         };
     }  // namespace detail
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_DETAIL_RESULT_H

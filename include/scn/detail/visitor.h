@@ -25,6 +25,8 @@
 #include <string>  // for stoi, stol, stoll
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     enum class scan_status { keep, skip, end };
 
     namespace predicates {
@@ -1017,6 +1019,8 @@ namespace scn {
         }
         return {args_read};
     }
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_VISITOR_CPP)

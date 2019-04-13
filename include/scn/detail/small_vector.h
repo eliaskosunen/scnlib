@@ -25,6 +25,8 @@
 #include <new>
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     namespace detail {
         template <typename Iter>
         std::reverse_iterator<Iter> make_reverse_iterator(Iter i)
@@ -807,6 +809,8 @@ namespace scn {
 
         SCN_CLANG_POP
     }  // namespace detail
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_DETAIL_SMALL_VECTOR_H

@@ -23,6 +23,8 @@
 SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     template <typename Stream,
               typename Traits,
               typename Allocator,
@@ -218,6 +220,8 @@ namespace scn {
     {
         return s.read_char();
     }
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE

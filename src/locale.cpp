@@ -28,6 +28,8 @@
 #include <sstream>
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     namespace detail {
         template <typename CharT>
         std::locale get_locale(const basic_locale_ref<CharT>& ref)
@@ -316,4 +318,6 @@ namespace scn {
     template either<size_t> basic_locale_ref<wchar_t>::read_num<long double>(
         long double&,
         const string_type&);
+
+    SCN_END_NAMESPACE
 }  // namespace scn

@@ -26,6 +26,8 @@
 #include <type_traits>
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
 #if SCN_HAS_VOID_T
     template <typename... Ts>
     using void_t = std::void_t<Ts...>;
@@ -266,6 +268,8 @@ namespace scn {
 
         SCN_CLANG_POP
     }  // namespace detail
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_DETAIL_UTIL_H

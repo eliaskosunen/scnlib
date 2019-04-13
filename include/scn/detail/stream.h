@@ -36,6 +36,8 @@ SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wpadded")
 
 namespace scn {
+    SCN_BEGIN_NAMESPACE
+
     template <typename S>
     struct is_bulk_stream : S::is_bulk_stream {
     };
@@ -728,6 +730,8 @@ namespace scn {
     {
         return s;
     }
+
+    SCN_END_NAMESPACE
 }  // namespace scn
 
 SCN_CLANG_POP
