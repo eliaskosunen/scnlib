@@ -182,6 +182,17 @@ namespace scn {
                 return {};
             }
 
+            constexpr error putback_n(size_t n) noexcept
+            {
+                auto sn = static_cast<std::ptrdiff_t>(n);
+                if (std::distance(base::m_begin, base::m_next) < sn) {
+                    return error(error::invalid_argument,
+                                 "Cannot putback more than chars read");
+                }
+                base::m_next -= sn;
+                return {};
+            }
+
             constexpr error set_roll_back() noexcept
             {
                 base::m_begin = base::m_next;

@@ -54,7 +54,7 @@ TEST_CASE("ranges")
         CHECK(ret);
         CHECK(ret.value() == 1);
         CHECK(ret.iterator() ==
-              data.begin() + static_cast<std::ptrdiff_t>(str.length()) + 1);
+              data.begin() + static_cast<std::ptrdiff_t>(str.length()));
 
         ret = scn::ranges::scan(
             scn::ranges::subrange_from(ret.iterator(), data), "{}", str);

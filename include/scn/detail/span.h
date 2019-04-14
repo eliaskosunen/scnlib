@@ -109,6 +109,16 @@ namespace scn {
             return static_cast<std::ptrdiff_t>(size());
         }
 
+        SCN_CONSTEXPR14 span<T> first(index_type n) const
+        {
+            SCN_EXPECT(size() >= n);
+            return span<T>(data(), data() + n);
+        }
+        SCN_CONSTEXPR14 span<T> last(index_type n) const
+        {
+            SCN_EXPECT(size() >= n);
+            return span<T>(data() + size() - n, data() + size());
+        }
         SCN_CONSTEXPR14 span<T> subspan(index_type off) const
         {
             SCN_EXPECT(size() >= off);

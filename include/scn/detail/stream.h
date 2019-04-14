@@ -101,6 +101,8 @@ namespace scn {
 
             virtual error read_sized(span<CharT> s) = 0;
 
+            virtual error putback_n(size_t n) = 0;
+
             virtual size_t chars_to_read() const = 0;
 
             virtual error skip(size_t n) = 0;
@@ -166,6 +168,11 @@ namespace scn {
                 return m_stream->read_sized(s);
             }
 
+            error putback_n(size_t n) override
+            {
+                return m_stream->putback_n(n);
+            }
+
             size_t chars_to_read() const override
             {
                 return m_stream->chars_to_read();
@@ -200,8 +207,8 @@ namespace scn {
         using char_type = CharT;
         template <typename Stream>
         erased_stream(Stream s)
-            : m_stream(
-                  detail::make_unique<detail::erased_stream_impl<Stream>>(std::move(s)))
+            : m_stream(detail::make_unique<detail::erased_stream_impl<Stream>>(
+                  std::move(s)))
         {
         }
 
@@ -240,7 +247,8 @@ namespace scn {
         template <typename Stream>
         const detail::erased_stream_impl<Stream>& get_as() const
         {
-            return static_cast<const detail::erased_stream_impl<Stream>&>(*m_stream);
+            return static_cast<const detail::erased_stream_impl<Stream>&>(
+                *m_stream);
         }
 
     private:
@@ -258,14 +266,20 @@ namespace scn {
         template <typename Stream>
         erased_sized_stream(Stream s)
             : base(std::move(s)),
-              m_stream(detail::make_unique<detail::erased_sized_stream_impl<Stream>>(
-                  base::template get_as<Stream>().get()))
+              m_stream(
+                  detail::make_unique<detail::erased_sized_stream_impl<Stream>>(
+                      base::template get_as<Stream>().get()))
         {
         }
 
         error read_sized(span<char_type> s)
         {
             return m_stream->read_sized(s);
+        }
+
+        error putback_n(size_t n)
+        {
+            return m_stream->putback_n(n);
         }
 
         size_t chars_to_read() const
@@ -387,6 +401,16 @@ namespace scn {
             }
             std::copy(m_next, m_next + s.ssize(), s.begin());
             m_next += s.ssize();
+            return {};
+        }
+
+        error putback_n(size_t n) noexcept
+        {
+            if (rcount() < n) {
+                return error(error::invalid_argument,
+                             "Cannot putback more than chars read");
+            }
+            m_next -= static_cast<std::ptrdiff_t>(n);
             return {};
         }
 
@@ -554,6 +578,16 @@ namespace scn {
             return {};
         }
 
+        error putback_n(size_t n) noexcept
+        {
+            if (rcount() < n) {
+                return error(error::invalid_argument,
+                             "Cannot putback more than chars read");
+            }
+            m_next -= n;
+            return {};
+        }
+
         SCN_CONSTEXPR14 error set_roll_back() noexcept
         {
             m_begin = m_next;
@@ -654,6 +688,16 @@ namespace scn {
             return {};
         }
 
+        error putback_n(size_t n) noexcept
+        {
+            if (rcount() < n) {
+                return error(error::invalid_argument,
+                             "Cannot putback more than chars read");
+            }
+            m_next -= static_cast<std::ptrdiff_t>(n);
+            return {};
+        }
+
         SCN_CONSTEXPR14 error set_roll_back() noexcept
         {
             m_begin = m_next;
@@ -733,6 +777,16 @@ namespace scn {
             }
             std::copy(m_begin, m_begin + s.size(), s.begin());
             std::advance(m_begin, s.size());
+            return {};
+        }
+
+        error putback_n(size_t n)
+        {
+            if (m_rollback.size() < n) {
+                return error(error::invalid_argument,
+                             "Cannot putback more than chars read");
+            }
+            m_rollback.erase(m_rollback.begin(), m_rollback.begin() + n);
             return {};
         }
 

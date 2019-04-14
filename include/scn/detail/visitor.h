@@ -129,56 +129,359 @@ namespace scn {
 
     namespace pred = predicates;
 
-    template <typename Context, typename Iterator, typename Predicate>
-    either<Iterator> scan_chars(Context& ctx,
-                                Iterator begin,
+    // read
+
+    template <typename Context,
+              typename CharT = typename Context::char_type,
+              typename Span = span<CharT>,
+              typename std::enable_if<is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    result<typename Span::iterator> read(Context& ctx, Span s)
+    {
+        auto n = std::min(s.size(), ctx.stream().chars_to_read());
+        s = s.first(n);
+        auto ret = ctx.stream().read_sized(s);
+        if (!ret) {
+            return {s.begin(), ret};
+        }
+        return {s.end()};
+    }
+    template <typename Context,
+              typename CharT = typename Context::char_type,
+              typename Span = span<CharT>,
+              typename std::enable_if<!is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    result<typename Span::iterator> read(Context& ctx, Span s)
+    {
+        auto it = s.begin();
+        for (; it != s.end(); ++it) {
+            auto ret = ctx.stream().read_char();
+            if (!ret) {
+                return {it, ret.get_error()};
+            }
+            *it = ret.value();
+        }
+        return {it};
+    }
+
+    // read_into_with_buffer
+
+    namespace detail {
+        template <typename Context,
+                  typename Iterator,
+                  typename CharT = typename Context::char_type>
+        result<size_t> read_into_with_buffer(Context& ctx,
+                                             Iterator it,
+                                             span<CharT> buffer)
+        {
+            size_t n = 0, size = 0;
+            while (true) {
+                n = std::min(ctx.stream().chars_to_read(), size_t{64});
+                if (n == 0) {
+                    break;
+                }
+                buffer = buffer.first(n);
+                auto ret = read(ctx, buffer);
+                if (!ret) {
+                    return {size, ret.get_error()};
+                }
+                it = std::copy(buffer.begin(), buffer.end(), it);
+                size += n;
+            }
+            return {size};
+        }
+        template <typename Context,
+                  typename Iterator,
+                  typename Sentinel,
+                  typename CharT = typename Context::char_type>
+        result<Iterator> read_into_with_buffer(Context& ctx,
+                                               Iterator it,
+                                               Sentinel end,
+                                               span<CharT> buffer)
+        {
+            auto n = 0;
+            while (true) {
+                n = std::min({static_cast<size_t>(std::distance(it, end)),
+                              ctx.stream().chars_to_read(), size_t{64}});
+                if (n == 0) {
+                    break;
+                }
+                buffer = buffer.first(n);
+                auto ret = read(ctx, buffer);
+                if (!ret) {
+                    return {it, ret.get_error()};
+                }
+                it = std::copy(buffer.begin(), buffer.end(), it);
+            }
+            return {it};
+        }
+    }  // namespace detail
+
+    // read_into
+
+    template <typename Context,
+              typename Iterator,
+              typename CharT = typename Context::char_type,
+              typename std::enable_if<is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    result<Iterator> read_into(Context& ctx, Iterator it)
+    {
+        auto n = ctx.stream().chars_to_read();
+        size_t size = 0;
+        if (n > 64) {
+            std::array<CharT, 64> arr;
+            auto ret = read(ctx, make_span(arr));
+            if (!ret) {
+                return {size, ret.get_error()};
+            }
+            it = std::copy(arr.begin(), arr.begin() + n, it);
+            size += n;
+            return detail::read_into_with_buffer(ctx, it, make_span(arr));
+        }
+        std::array<CharT, 64> arr;
+        auto ret = read(ctx, make_span(arr.begin(), arr.begin() + n));
+        if (!ret) {
+            return {size, ret.get_error()};
+        }
+        std::copy(arr.begin(), arr.begin() + n, it);
+        return size + n;
+    }
+    template <typename Context,
+              typename Iterator,
+              typename CharT = typename Context::char_type,
+              typename std::enable_if<!is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    result<Iterator> read_into(Context& ctx, Iterator it)
+    {
+        size_t n = 0;
+        while (true) {
+            auto ret = ctx.stream().read_char();
+            if (!ret) {
+                return {n, ret.get_error()};
+            }
+            *it = ret.value();
+            ++it;
+            ++n;
+        }
+        return {n};
+    }
+
+    template <typename Context,
+              typename Iterator,
+              typename Sentinel,
+              typename CharT = typename Context::char_type,
+              typename std::enable_if<is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    result<Iterator> read_into(Context& ctx, Iterator it, Sentinel end)
+    {
+        auto n = std::min(static_cast<size_t>(std::distance(it, end)),
+                          ctx.stream().chars_to_read());
+        if (n > 64) {
+            std::array<CharT, 64> arr;
+            auto ret = read(ctx, make_span(arr));
+            if (!ret) {
+                return {it, ret.get_error()};
+            }
+            it = std::copy(arr.begin(), arr.begin() + n, it);
+            return detail::read_into_with_buffer(ctx, it, end, make_span(arr));
+        }
+        std::array<CharT, 64> arr;
+        auto ret = read(ctx, make_span(arr.begin(), arr.begin() + n));
+        if (!ret) {
+            return {it, ret.get_error()};
+        }
+        return {std::copy(arr.begin(), arr.begin() + n, it)};
+    }
+    template <typename Context,
+              typename Iterator,
+              typename Sentinel,
+              typename CharT = typename Context::char_type,
+              typename std::enable_if<!is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    result<Iterator> read_into(Context& ctx, Iterator it, Sentinel end)
+    {
+        for (; it != end; ++it) {
+            auto ret = ctx.stream().read_char();
+            if (!ret) {
+                return {it, ret.get_error()};
+            }
+            *it = ret.value();
+        }
+        return {it};
+    }
+
+    // read_into_if
+
+    template <typename Context,
+              typename Iterator,
+              typename Predicate,
+              typename CharT = typename Context::char_type,
+              typename std::enable_if<is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    result<size_t> read_into_if(Context& ctx,
+                                Iterator it,
                                 Predicate&& p,
                                 bool keep_final = false)
     {
+        size_t n = 0, size = 0;
+        std::array<CharT, 64> arr{{0}};
+        bool end = false;
+        while (!end) {
+            n = std::min(ctx.stream().chars_to_read(), std::size_t{64});
+            if (n == 0) {
+                break;
+            }
+
+            auto ret = read(ctx, make_span(arr.begin(), arr.begin() + n));
+            if (!ret) {
+                return {size, ret.error()};
+            }
+
+            const auto arr_end = arr.begin() + n;
+            for (auto arr_it = arr.begin(); arr_it != arr_end; ++arr_it) {
+                auto r = p(ctx, *arr_it);
+                if (!r) {
+                    return {size, r.get_error()};
+                }
+                if (r.value() == scan_status::skip) {
+                    continue;
+                }
+                if (r.value() == scan_status::end) {
+                    if (keep_final) {
+                        ++arr_it;
+                    }
+                    if (arr_it != arr_end) {
+                        auto pb = ctx.stream().putback_n(static_cast<size_t>(
+                            std::distance(arr_it, arr_end)));
+                        if (!pb) {
+                            ctx.stream()._set_bad();
+                            return {size, pb};
+                        }
+                    }
+                    end = true;
+                    break;
+                }
+                *it = *arr_it;
+                ++it;
+                ++size;
+            }
+        }
+        return {size};
+    }
+    template <typename Context,
+              typename Iterator,
+              typename Predicate,
+              typename CharT = typename Context::char_type,
+              typename std::enable_if<!is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    result<size_t> read_into_if(Context& ctx,
+                                Iterator it,
+                                Predicate&& p,
+                                bool keep_final = false)
+    {
+        size_t n = 0;
         while (true) {
             auto ret = ctx.stream().read_char();
             if (!ret) {
                 if (ret.get_error() == error::end_of_stream) {
-                    return begin;
+                    break;
                 }
-                return ret.get_error();
+                return {n, ret.get_error()};
             }
 
             auto r = p(ctx, ret.value());
             if (!r) {
-                return r.get_error();
+                return {n, r.get_error()};
             }
             if (r.value() == scan_status::skip) {
                 continue;
             }
             if (r.value() == scan_status::end) {
                 if (keep_final) {
-                    *begin = ret.value();
+                    *it = ret.value();
+                    ++it;
                 }
                 break;
             }
-            *begin = ret.value();
-            ++begin;
+            *it = ret.value();
+            ++it;
+            ++n;
         }
-        return begin;
+        return {n};
+    }
+
+    template <typename Context,
+              typename Iterator,
+              typename Sentinel,
+              typename Predicate,
+              typename CharT = typename Context::char_type,
+              typename std::enable_if<is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    result<Iterator> read_into_if(Context& ctx,
+                                  Iterator it,
+                                  Sentinel end,
+                                  Predicate&& p,
+                                  bool keep_final = false)
+    {
+        auto n = 0;
+        std::array<CharT, 64> arr{{0}};
+        while (true) {
+            n = std::min({static_cast<size_t>(std::distance(it, end)),
+                          ctx.stream().chars_to_read(), size_t{64}});
+            if (n == 0) {
+                break;
+            }
+
+            auto ret = read(ctx, make_span(arr.begin(), arr.begin() + n));
+            if (!ret) {
+                return {it, ret.get_error()};
+            }
+
+            const auto arr_end = arr.begin() + n;
+            for (auto arr_it = arr.begin(); arr_it != arr_end; ++arr_it) {
+                auto r = p(ctx, *arr_it);
+                if (!r) {
+                    return {it, r.get_error()};
+                }
+                if (r.value() == scan_status::skip) {
+                    continue;
+                }
+                if (r.value() == scan_status::end) {
+                    if (keep_final) {
+                        ++arr_it;
+                    }
+                    if (arr_it != arr_end) {
+                        if (!ctx.stream().putback_n(
+                                std::distance(arr_it, arr_end))) {
+                            ctx.stream()._set_bad();
+                            return {it, ctx.stream().get_error()};
+                        }
+                    }
+                    break;
+                }
+                *it = *arr_it;
+                ++it;
+            }
+        }
+        return {it};
     }
     template <typename Context,
               typename Iterator,
-              typename EndIterator,
-              typename Predicate>
-    either<Iterator> scan_chars_until(Context& ctx,
-                                      Iterator begin,
-                                      EndIterator end,
-                                      Predicate&& p,
-                                      bool keep_final = false)
+              typename Sentinel,
+              typename Predicate,
+              typename CharT = typename Context::char_type,
+              typename std::enable_if<!is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    result<Iterator> read_into_if(Context& ctx,
+                                  Iterator it,
+                                  Sentinel end,
+                                  Predicate&& p,
+                                  bool keep_final = false)
     {
-        while (begin != end) {
+        while (it != end) {
             auto ret = ctx.stream().read_char();
             if (!ret) {
-                if (ret.get_error() == error::end_of_stream) {
-                    return begin;
-                }
-                return ret.get_error();
+                return {it, ret.get_error()};
             }
 
             auto r = p(ctx, ret.value());
@@ -190,67 +493,41 @@ namespace scn {
             }
             if (r.value() == scan_status::end) {
                 if (keep_final) {
-                    *begin = ret.value();
+                    *it = ret.value();
+                    ++it;
                 }
                 break;
             }
-            *begin = ret.value();
-            ++begin;
+            *it = ret.value();
+            ++it;
         }
-        return begin;
+        return {it};
     }
 
-    template <typename Context, typename Iterator, typename EndIterator>
-    either<Iterator> propagate_chars_until(Context& ctx,
-                                           Iterator begin,
-                                           EndIterator end)
+    // putback_range
+
+    template <typename Context,
+              typename Iterator,
+              typename std::enable_if<!is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    error putback_range(Context& ctx, Iterator begin, Iterator end)
     {
         for (; begin != end; ++begin) {
-            auto ret = ctx.stream().read_char();
+            auto ret = ctx.stream().putback(*begin);
             if (!ret) {
-                if (ret.get_error() == error::end_of_stream) {
-                    return begin;
-                }
-                return ret.get_error();
+                return ret;
             }
-
-            *begin = ret.value();
         }
-        return begin;
-    }
-
-    template <typename Context,
-              typename Char = typename Context::char_type,
-              typename Span = span<Char>,
-              typename Iterator = typename Span::iterator>
-    either<Iterator> sized_propagate_chars_until(Context& ctx, Span s)
-    {
-        auto e = ctx.stream().read_sized(s);
-        if (e != error::end_of_stream) {
-            return s.end();
-        }
-        return propagate_chars_until(ctx, s.begin(), s.end());
-    }
-
-    template <typename Context,
-              typename Char = typename Context::char_type,
-              typename Span = span<Char>,
-              typename Iterator = typename Span::iterator>
-    auto propagate_chars_until(Context& ctx, Span s) -> typename std::enable_if<
-        is_sized_stream<typename Context::stream_type>::value,
-        either<Iterator>>::type
-    {
-        return sized_propagate_chars_until(ctx, s);
+        return {};
     }
     template <typename Context,
-              typename Char = typename Context::char_type,
-              typename Span = span<Char>,
-              typename Iterator = typename Span::iterator>
-    auto propagate_chars_until(Context& ctx, Span s) -> typename std::enable_if<
-        !is_sized_stream<typename Context::stream_type>::value,
-        either<Iterator>>::type
+              typename Iterator,
+              typename std::enable_if<is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    error putback_range(Context& ctx, Iterator begin, Iterator end)
     {
-        return propagate_chars_until(ctx, s.begin(), s.end());
+        return ctx.stream().putback_n(
+            static_cast<size_t>(std::distance(begin, end)));
     }
 
     template <typename CharT>
@@ -292,9 +569,9 @@ namespace scn {
                 detail::small_vector<CharT, 64> buf(
                     static_cast<size_t>(val.size()));
                 auto span = scn::make_span(buf);
-                auto s = propagate_chars_until(ctx, span);
+                auto s = read(ctx, span);
                 if (!s) {
-                    return s.get_error();
+                    return s.error();
                 }
                 std::copy(buf.begin(), buf.end(), val.begin());
 
@@ -353,17 +630,15 @@ namespace scn {
                     }
                     const auto max_len =
                         std::max(truename.size(), falsename.size());
-                    std::basic_string<CharT> buf(max_len, 0);
+                    std::basic_string<CharT> buf;
+                    buf.reserve(max_len);
 
-                    auto it =
-                        scan_chars_until(ctx, buf.begin(), buf.end(),
-                                         predicates::until_space<Context>{});
-                    if (!it) {
-                        return it.get_error();
+                    auto i = read_into_if(ctx, std::back_inserter(buf),
+                                          predicates::until_space<Context>{});
+                    if (!i) {
+                        return i.error();
                     }
-                    if (it.value() != buf.end()) {
-                        buf.erase(it.value());
-                    }
+                    buf.erase(i.value());
 
                     bool found = false;
                     size_t chars = 0;
@@ -385,17 +660,9 @@ namespace scn {
                         }
                     }
                     if (found) {
-                        for (auto i = buf.rbegin();
-                             i != buf.rend() -
-                                      static_cast<typename std::iterator_traits<
-                                          decltype(i)>::difference_type>(chars);
-                             ++i) {
-                            auto ret = ctx.stream().putback(*i);
-                            if (!ret) {
-                                return ret;
-                            }
-                        }
-                        return {};
+                        return putback_range(
+                            ctx, buf.rbegin(),
+                            buf.rend() - static_cast<std::ptrdiff_t>(chars));
                     }
                 }
                 else {
@@ -531,28 +798,15 @@ namespace scn {
                 std::basic_string<CharT> buf{};
                 buf.reserve(15 / sizeof(CharT));
 
-                auto r = scan_chars(ctx, std::back_inserter(buf),
-                                    predicates::until_space<Context>{}, true);
+                auto r = read_into_if(ctx, std::back_inserter(buf),
+                                      predicates::until_space<Context>{});
                 if (!r) {
-                    return r.get_error();
+                    return r.error();
                 }
+                buf.erase(r.value());
 
                 T tmp = 0;
                 size_t chars = 0;
-
-                auto putback = [&ctx, &buf](size_t n) -> error {
-                    for (auto it = buf.rbegin();
-                         it !=
-                         buf.rend() - static_cast<typename std::iterator_traits<
-                                          decltype(it)>::difference_type>(n);
-                         ++it) {
-                        auto ret = ctx.stream().putback(*it);
-                        if (!ret) {
-                            return ret;
-                        }
-                    }
-                    return {};
-                };
 
                 if ((localized & digits) != 0) {
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
@@ -562,7 +816,10 @@ namespace scn {
                     if (!ret) {
                         return ret.get_error();
                     }
-                    auto pb = putback(ret.value());
+
+                    auto pb = putback_range(
+                        ctx, buf.rbegin(),
+                        buf.rend() - static_cast<std::ptrdiff_t>(ret.value()));
                     if (!pb) {
                         return pb;
                     }
@@ -605,7 +862,9 @@ namespace scn {
                 }
                 chars = e.value();
 
-                auto pb = putback(chars);
+                auto pb = putback_range(
+                    ctx, buf.rbegin(),
+                    buf.rend() - static_cast<std::ptrdiff_t>(chars));
                 if (!pb) {
                     return pb;
                 }
@@ -679,7 +938,7 @@ namespace scn {
                 buf.reserve(15);
 
                 bool point = false;
-                auto r = scan_chars(
+                auto r = read_into_if(
                     ctx, std::back_inserter(buf),
                     [&point](Context& c, CharT ch) -> either<scan_status> {
                         if (c.locale().is_space(ch)) {
@@ -699,25 +958,12 @@ namespace scn {
                         return scan_status::keep;
                     });
                 if (!r) {
-                    return r.get_error();
+                    return r.error();
                 }
+                buf.erase(r.value());
 
                 T tmp{};
                 size_t chars = 0;
-
-                auto putback = [&buf, &ctx](size_t n) -> error {
-                    for (auto it = buf.rbegin();
-                         it !=
-                         buf.rend() - static_cast<typename std::iterator_traits<
-                                          decltype(it)>::difference_type>(n);
-                         ++it) {
-                        auto ret = ctx.stream().putback(*it);
-                        if (!ret) {
-                            return ret;
-                        }
-                    }
-                    return {};
-                };
 
                 if (localized) {
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
@@ -728,7 +974,10 @@ namespace scn {
                         return ret.get_error();
                     }
                     chars = ret.value();
-                    auto pb = putback(chars);
+
+                    auto pb = putback_range(
+                        ctx, buf.rbegin(),
+                        buf.rend() - static_cast<std::ptrdiff_t>(chars));
                     if (!pb) {
                         return pb;
                     }
@@ -756,7 +1005,9 @@ namespace scn {
                 }
                 chars = e.value();
 
-                auto pb = putback(chars);
+                auto pb = putback_range(
+                    ctx, buf.rbegin(),
+                    buf.rend() - static_cast<std::ptrdiff_t>(chars));
                 if (!pb) {
                     return pb;
                 }
@@ -793,11 +1044,12 @@ namespace scn {
                 }
 
                 val.clear();
-                auto s = scan_chars(ctx, std::back_inserter(val),
-                                    predicates::until_space<Context>{});
+                auto s = read_into_if(ctx, std::back_inserter(val),
+                                      predicates::until_space<Context>{});
                 if (!s) {
-                    return s.get_error();
+                    return s.error();
                 }
+                val.erase(s.value());
                 if (val.empty()) {
                     return error(error::invalid_scanned_value,
                                  "Empty string parsed");

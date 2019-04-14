@@ -37,11 +37,11 @@ namespace scn {
         auto ctx = context_type(s, f, args);
 
         str.clear();
-        auto res = scan_chars(
+        auto res = read_into_if(
             ctx, std::back_inserter(str),
-            predicates::until<context_type>{ctx.locale().widen('\n')});
+            predicates::until<context_type>{ctx.locale().widen('\n')}, true);
         if (!res) {
-            return res.get_error();
+            return res.error();
         }
         return {};
     }
@@ -59,10 +59,10 @@ namespace scn {
         auto ctx = context_type(s, f, args);
 
         str.clear();
-        auto res = scan_chars(ctx, std::back_inserter(str),
-                              predicates::until<context_type>{until});
+        auto res = read_into_if(ctx, std::back_inserter(str),
+                                predicates::until<context_type>{until}, true);
         if (!res) {
-            return res.get_error();
+            return res.error();
         }
         return {};
     }
@@ -140,10 +140,10 @@ namespace scn {
 
         auto ctx = context_type(s, f, basic_args<context_type>());
 
-        auto res = scan_chars(ctx, detail::ignore_iterator<CharT>{},
-                              predicates::propagate<context_type>{});
-        if (!res && res.get_error() != error::end_of_stream) {
-            return res.get_error();
+        auto res = read_into_if(ctx, detail::ignore_iterator<CharT>{},
+                                predicates::propagate<context_type>{});
+        if (!res && res.error() != error::end_of_stream) {
+            return res.error();
         }
         return {};
     }
@@ -163,10 +163,10 @@ namespace scn {
 
         auto ctx = context_type(s, f, basic_args<context_type>());
 
-        auto res = scan_chars(ctx, detail::ignore_iterator<char_type>{},
-                              predicates::until<context_type>{until});
+        auto res = read_into_if(ctx, detail::ignore_iterator<char_type>{},
+                                predicates::until<context_type>{until});
         if (!res) {
-            return res.get_error();
+            return res.error();
         }
         return {};
     }
@@ -180,11 +180,11 @@ namespace scn {
 
         auto ctx = context_type(s, f, basic_args<context_type>());
 
-        auto res = scan_chars_until(ctx, detail::ignore_iterator<CharT>{},
-                                    detail::ignore_iterator<CharT>{count},
-                                    predicates::propagate<context_type>{});
+        auto res = read_into_if(ctx, detail::ignore_iterator<CharT>{},
+                                detail::ignore_iterator<CharT>{count},
+                                predicates::propagate<context_type>{});
         if (!res) {
-            return res.get_error();
+            return res.error();
         }
         return {};
     }
@@ -206,11 +206,11 @@ namespace scn {
 
         auto ctx = context_type(s, f, basic_args<context_type>());
 
-        auto res = scan_chars_until(ctx, detail::ignore_iterator<char_type>{},
-                                    detail::ignore_iterator<char_type>{count},
-                                    predicates::until<context_type>{until});
+        auto res = read_into_if(ctx, detail::ignore_iterator<char_type>{},
+                                detail::ignore_iterator<char_type>{count},
+                                predicates::until<context_type>{until});
         if (!res) {
-            return res.get_error();
+            return res.error();
         }
         return {};
     }
