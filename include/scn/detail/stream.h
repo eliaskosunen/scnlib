@@ -64,144 +64,144 @@ namespace scn {
         bool m_bad{false};
     };
 
-    template <typename CharT>
-    class erased_stream_base {
-    public:
-        using char_type = CharT;
+    namespace detail {
+        template <typename CharT>
+        class erased_stream_base {
+        public:
+            using char_type = CharT;
 
-        erased_stream_base(const erased_stream_base&) = delete;
-        erased_stream_base& operator=(const erased_stream_base&) = delete;
-        erased_stream_base(erased_stream_base&&) = default;
-        erased_stream_base& operator=(erased_stream_base&&) = default;
-        virtual ~erased_stream_base() = default;
+            erased_stream_base(const erased_stream_base&) = delete;
+            erased_stream_base& operator=(const erased_stream_base&) = delete;
+            erased_stream_base(erased_stream_base&&) = default;
+            erased_stream_base& operator=(erased_stream_base&&) = default;
+            virtual ~erased_stream_base() = default;
 
-        virtual either<char_type> read_char() = 0;
-        virtual error putback(char_type) = 0;
+            virtual either<char_type> read_char() = 0;
+            virtual error putback(char_type) = 0;
 
-        virtual error set_roll_back() = 0;
-        virtual error roll_back() = 0;
+            virtual error set_roll_back() = 0;
+            virtual error roll_back() = 0;
 
-    protected:
-        erased_stream_base() = default;
-    };
+        protected:
+            erased_stream_base() = default;
+        };
 
-    template <typename CharT>
-    class erased_sized_stream_base {
-    public:
-        using char_type = CharT;
+        template <typename CharT>
+        class erased_sized_stream_base {
+        public:
+            using char_type = CharT;
 
-        erased_sized_stream_base(const erased_sized_stream_base&) = delete;
-        erased_sized_stream_base& operator=(const erased_sized_stream_base&) =
-            delete;
-        erased_sized_stream_base(erased_sized_stream_base&&) = default;
-        erased_sized_stream_base& operator=(erased_sized_stream_base&&) =
-            default;
-        virtual ~erased_sized_stream_base() = default;
+            erased_sized_stream_base(const erased_sized_stream_base&) = delete;
+            erased_sized_stream_base& operator=(
+                const erased_sized_stream_base&) = delete;
+            erased_sized_stream_base(erased_sized_stream_base&&) = default;
+            erased_sized_stream_base& operator=(erased_sized_stream_base&&) =
+                default;
+            virtual ~erased_sized_stream_base() = default;
 
-        virtual error read_sized(span<CharT> s) = 0;
+            virtual error read_sized(span<CharT> s) = 0;
 
-        virtual size_t chars_to_read() const = 0;
+            virtual size_t chars_to_read() const = 0;
 
-        virtual error skip(size_t n) = 0;
-        virtual error skip_all() = 0;
+            virtual error skip(size_t n) = 0;
+            virtual error skip_all() = 0;
 
-    protected:
-        erased_sized_stream_base() = default;
-    };
+        protected:
+            erased_sized_stream_base() = default;
+        };
 
-    template <typename Stream>
-    class erased_stream_impl
-        : public erased_stream_base<typename Stream::char_type> {
-        using base = erased_stream_base<typename Stream::char_type>;
+        template <typename Stream>
+        class erased_stream_impl
+            : public erased_stream_base<typename Stream::char_type> {
+            using base = erased_stream_base<typename Stream::char_type>;
 
-    public:
-        using char_type = typename base::char_type;
+        public:
+            using char_type = typename base::char_type;
 
-        erased_stream_impl(Stream s) : m_stream(std::move(s)) {}
+            erased_stream_impl(Stream s) : m_stream(std::move(s)) {}
 
-        either<char_type> read_char() override
-        {
-            return m_stream.read_char();
-        }
-        error putback(char_type ch) override
-        {
-            return m_stream.putback(ch);
-        }
+            either<char_type> read_char() override
+            {
+                return m_stream.read_char();
+            }
+            error putback(char_type ch) override
+            {
+                return m_stream.putback(ch);
+            }
 
-        error set_roll_back() override
-        {
-            return m_stream.set_roll_back();
-        }
-        error roll_back() override
-        {
-            return m_stream.roll_back();
-        }
+            error set_roll_back() override
+            {
+                return m_stream.set_roll_back();
+            }
+            error roll_back() override
+            {
+                return m_stream.roll_back();
+            }
 
-        Stream& get()
-        {
-            return m_stream;
-        }
-        const Stream& get() const
-        {
-            return m_stream;
-        }
+            Stream& get()
+            {
+                return m_stream;
+            }
+            const Stream& get() const
+            {
+                return m_stream;
+            }
 
-    private:
-        Stream m_stream;
-    };
+        private:
+            Stream m_stream;
+        };
 
-    template <typename Stream>
-    class erased_sized_stream_impl
-        : public erased_sized_stream_base<typename Stream::char_type> {
-        using base = erased_sized_stream_base<typename Stream::char_type>;
+        template <typename Stream>
+        class erased_sized_stream_impl
+            : public erased_sized_stream_base<typename Stream::char_type> {
+            using base = erased_sized_stream_base<typename Stream::char_type>;
 
-    public:
-        using char_type = typename base::char_type;
+        public:
+            using char_type = typename base::char_type;
 
-        erased_sized_stream_impl(Stream& s) : m_stream(std::addressof(s)) {}
+            erased_sized_stream_impl(Stream& s) : m_stream(std::addressof(s)) {}
 
-        error read_sized(span<char_type> s) override
-        {
-            return m_stream->read_sized(s);
-        }
+            error read_sized(span<char_type> s) override
+            {
+                return m_stream->read_sized(s);
+            }
 
-        size_t chars_to_read() const override
-        {
-            return m_stream->chars_to_read();
-        }
+            size_t chars_to_read() const override
+            {
+                return m_stream->chars_to_read();
+            }
 
-        error skip(size_t n) override
-        {
-            return m_stream->skip(n);
-        }
-        error skip_all() override
-        {
-            return m_stream->skip_all();
-        }
+            error skip(size_t n) override
+            {
+                return m_stream->skip(n);
+            }
+            error skip_all() override
+            {
+                return m_stream->skip_all();
+            }
 
-        Stream& get()
-        {
-            return *m_stream;
-        }
-        const Stream& get() const
-        {
-            return *m_stream;
-        }
+            Stream& get()
+            {
+                return *m_stream;
+            }
+            const Stream& get() const
+            {
+                return *m_stream;
+            }
 
-    private:
-        Stream* m_stream;
-    };
+        private:
+            Stream* m_stream;
+        };
+    }  // namespace detail
 
     template <typename CharT>
     class erased_stream : public stream_base {
     public:
         using char_type = CharT;
-        template <
-            typename Stream,
-            typename std::enable_if<
-                std::is_base_of<stream_base, Stream>::value>::type* = nullptr>
+        template <typename Stream>
         erased_stream(Stream s)
-            : m_stream(new erased_stream_impl<Stream>(std::move(s)))
+            : m_stream(
+                  detail::make_unique<detail::erased_stream_impl<Stream>>(std::move(s)))
         {
         }
 
@@ -223,28 +223,28 @@ namespace scn {
             return m_stream->roll_back();
         }
 
-        erased_stream_base<CharT>& get()
+        detail::erased_stream_base<CharT>& get()
         {
             return *m_stream;
         }
-        const erased_stream_base<CharT>& get() const
+        const detail::erased_stream_base<CharT>& get() const
         {
             return *m_stream;
         }
 
         template <typename Stream>
-        erased_stream_impl<Stream>& get_as()
+        detail::erased_stream_impl<Stream>& get_as()
         {
-            return static_cast<erased_stream_impl<Stream>&>(*m_stream);
+            return static_cast<detail::erased_stream_impl<Stream>&>(*m_stream);
         }
         template <typename Stream>
-        const erased_stream_impl<Stream>& get_as() const
+        const detail::erased_stream_impl<Stream>& get_as() const
         {
-            return static_cast<const erased_stream_impl<Stream>&>(*m_stream);
+            return static_cast<const detail::erased_stream_impl<Stream>&>(*m_stream);
         }
 
     private:
-        detail::unique_ptr<erased_stream_base<CharT>> m_stream;
+        detail::unique_ptr<detail::erased_stream_base<CharT>> m_stream;
     };
 
     template <typename CharT>
@@ -255,13 +255,10 @@ namespace scn {
         using char_type = CharT;
         using is_sized_stream = std::true_type;
 
-        template <
-            typename Stream,
-            typename std::enable_if<
-                std::is_base_of<stream_base, Stream>::value>::type* = nullptr>
+        template <typename Stream>
         erased_sized_stream(Stream s)
             : base(std::move(s)),
-              m_stream(new erased_sized_stream_impl<Stream>(
+              m_stream(detail::make_unique<detail::erased_sized_stream_impl<Stream>>(
                   base::template get_as<Stream>().get()))
         {
         }
@@ -285,17 +282,17 @@ namespace scn {
             return m_stream->skip_all();
         }
 
-        erased_sized_stream_base<CharT>& get_sized()
+        detail::erased_sized_stream_base<CharT>& get_sized()
         {
             return *m_stream;
         }
-        const erased_sized_stream_base<CharT>& get_sized() const
+        const detail::erased_sized_stream_base<CharT>& get_sized() const
         {
             return *m_stream;
         }
 
     private:
-        detail::unique_ptr<erased_sized_stream_base<CharT>> m_stream;
+        detail::unique_ptr<detail::erased_sized_stream_base<CharT>> m_stream;
     };
 
     template <typename CharT>

@@ -27,44 +27,50 @@ namespace scn {
     namespace ranges {
         SCN_BEGIN_NAMESPACE
 
-        template <typename CharT>
-        class erased_range_stream_base {
-        public:
-            using char_type = CharT;
+        namespace detail {
+            template <typename CharT>
+            class erased_range_stream_base {
+            public:
+                using char_type = CharT;
 
-            erased_range_stream_base(const erased_range_stream_base&) = delete;
-            erased_range_stream_base& operator=(
-                const erased_range_stream_base&) = delete;
-            erased_range_stream_base(erased_range_stream_base&&) = default;
-            erased_range_stream_base& operator=(erased_range_stream_base&&) =
-                default;
+                erased_range_stream_base(const erased_range_stream_base&) =
+                    delete;
+                erased_range_stream_base& operator=(
+                    const erased_range_stream_base&) = delete;
+                erased_range_stream_base(erased_range_stream_base&&) = default;
+                erased_range_stream_base& operator=(
+                    erased_range_stream_base&&) = default;
 
-            virtual ~erased_range_stream_base() = default;
+                virtual ~erased_range_stream_base() = default;
 
-            virtual size_t chars_read() const = 0;
+                virtual size_t chars_read() const = 0;
 
-        protected:
-            erased_range_stream_base() = default;
-        };
+            protected:
+                erased_range_stream_base() = default;
+            };
 
-        template <typename Stream>
-        class erased_range_stream_impl
-            : public erased_range_stream_base<typename Stream::char_type> {
-            using base = erased_stream_impl<Stream>;
+            template <typename Stream>
+            class erased_range_stream_impl
+                : public erased_range_stream_base<typename Stream::char_type> {
+                using base = ::scn::detail::erased_stream_impl<Stream>;
 
-        public:
-            using char_type = typename base::char_type;
+            public:
+                using char_type = typename base::char_type;
 
-            erased_range_stream_impl(Stream& s) : m_stream(std::addressof(s)) {}
+                erased_range_stream_impl(Stream& s)
+                    : m_stream(std::addressof(s))
+                {
+                }
 
-            size_t chars_read() const override
-            {
-                return m_stream->chars_read();
-            }
+                size_t chars_read() const override
+                {
+                    return m_stream->chars_read();
+                }
 
-        private:
-            Stream* m_stream;
-        };
+            private:
+                Stream* m_stream;
+            };
+        }  // namespace detail
 
         template <typename CharT, bool Sized>
         class basic_erased_range_stream
@@ -79,13 +85,11 @@ namespace scn {
             using char_type = CharT;
             using is_sized_stream = std::integral_constant<bool, Sized>;
 
-            template <typename Stream,
-                      typename std::enable_if<
-                          std::is_base_of<stream_base, Stream>::value>::type* =
-                          nullptr>
+            template <typename Stream>
             basic_erased_range_stream(Stream s)
                 : base(std::move(s)),
-                  m_stream(new erased_range_stream_impl<Stream>(
+                  m_stream(::scn::detail::make_unique<
+                           detail::erased_range_stream_impl<Stream>>(
                       base::template get_as<Stream>().get()))
             {
             }
@@ -96,7 +100,8 @@ namespace scn {
             }
 
         private:
-            detail::unique_ptr<erased_range_stream_base<CharT>> m_stream;
+            ::scn::detail::unique_ptr<detail::erased_range_stream_base<CharT>>
+                m_stream;
         };
 
         template <typename CharT>
@@ -256,62 +261,7 @@ namespace scn {
         protected:
             range_type* m_range;
             iterator m_begin, m_next;
-            detail::small_vector<char_type, 64> m_rollback{};
-        };
-
-        template <typename Range>
-        class basic_sized_forward_range_stream
-            : public basic_forward_range_stream<Range> {
-            using base = basic_forward_range_stream<Range>;
-
-        public:
-            using char_type = typename base::char_type;
-            using is_sized_stream = std::true_type;
-
-            basic_sized_forward_range_stream(Range& r) : base(r) {}
-
-            constexpr error read_sized(span<char_type> s) noexcept
-            {
-                if (chars_to_read() < s.size()) {
-                    return error(error::end_of_stream,
-                                 "Cannot complete read_sized: EOF encountered");
-                }
-                const auto ssize = static_cast<std::ptrdiff_t>(s.size());
-                std::copy(base::m_next, base::m_next + ssize, s.begin());
-                base::m_next += ssize;
-                return {};
-            }
-
-            error set_roll_back() noexcept
-            {
-                base::m_rollback.clear();
-                return {};
-            }
-            constexpr error roll_back() const noexcept
-            {
-                return {};
-            }
-
-            constexpr size_t chars_to_read() const noexcept
-            {
-                return static_cast<size_t>(std::distance(
-                    base::m_begin, ::ranges::end(*base::m_range)));
-            }
-
-            constexpr error skip(size_t n) noexcept
-            {
-                if (chars_to_read() < n) {
-                    base::m_begin = ::ranges::end(*base::m_range);
-                    return error(error::end_of_stream, "EOF");
-                }
-                base::m_next += static_cast<std::ptrdiff_t>(n);
-                return {};
-            }
-            constexpr error skip_all() noexcept
-            {
-                base::m_begin = ::ranges::end(*base::m_range);
-                return {};
-            }
+            ::scn::detail::small_vector<char_type, 64> m_rollback{};
         };
 
         CPP_template(
@@ -337,20 +287,10 @@ namespace scn {
             typename R,
             typename CharT = ::ranges::value_type_t<::ranges::iterator_t<R>>)(
             requires ::ranges::ForwardRange<R> &&
-            !::ranges::BidirectionalRange<R> && !::ranges::SizedRange<R>)
+            !::ranges::BidirectionalRange<R>)
             erased_range_stream<CharT> make_stream(R& r)
         {
             auto s = basic_forward_range_stream<R>(r);
-            return {s};
-        }
-        CPP_template(
-            typename R,
-            typename CharT = ::ranges::value_type_t<::ranges::iterator_t<R>>)(
-            requires ::ranges::ForwardRange<R> &&
-            !::ranges::BidirectionalRange<R> && ::ranges::SizedRange<R>)
-            erased_sized_range_stream<CharT> make_stream(R& r)
-        {
-            auto s = basic_sized_forward_range_stream<R>(r);
             return {s};
         }
 

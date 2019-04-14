@@ -19,6 +19,7 @@
 #define SCN_RANGES_VSCAN_CPP
 #endif
 
+#include <scn/detail/visitor.h>
 #include <scn/ranges.h>
 
 namespace scn {

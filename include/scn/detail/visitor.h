@@ -529,7 +529,7 @@ namespace scn {
             error scan(T& val, Context& ctx)
             {
                 std::basic_string<CharT> buf{};
-                buf.reserve(15);
+                buf.reserve(15 / sizeof(CharT));
 
                 auto r = scan_chars(ctx, std::back_inserter(buf),
                                     predicates::until_space<Context>{}, true);
@@ -819,11 +819,11 @@ namespace scn {
         template <typename T>
         auto operator()(T&& val) -> error
         {
-            return visit(std::forward<T>(val), priority_tag<1>{});
+            return visit(std::forward<T>(val), detail::priority_tag<1>{});
         }
 
     private:
-        auto visit(char_type& val, priority_tag<1>) -> error
+        auto visit(char_type& val, detail::priority_tag<1>) -> error
         {
             detail::char_scanner<char_type> s;
             auto err = s.parse(*m_ctx);
@@ -832,7 +832,7 @@ namespace scn {
             }
             return s.scan(val, *m_ctx);
         }
-        auto visit(span<char_type>& val, priority_tag<1>) -> error
+        auto visit(span<char_type>& val, detail::priority_tag<1>) -> error
         {
             detail::buffer_scanner<char_type> s;
             auto err = s.parse(*m_ctx);
@@ -841,7 +841,7 @@ namespace scn {
             }
             return s.scan(val, *m_ctx);
         }
-        auto visit(bool& val, priority_tag<1>) -> error
+        auto visit(bool& val, detail::priority_tag<1>) -> error
         {
             detail::bool_scanner<char_type> s;
             auto err = s.parse(*m_ctx);
@@ -851,7 +851,7 @@ namespace scn {
             return s.scan(val, *m_ctx);
         }
         template <typename T>
-        auto visit(T& val, priority_tag<0>) ->
+        auto visit(T& val, detail::priority_tag<0>) ->
             typename std::enable_if<std::is_integral<T>::value &&
                                         !std::is_same<T, char_type>::value,
                                     error>::type
@@ -864,7 +864,7 @@ namespace scn {
             return s.scan(val, *m_ctx);
         }
         template <typename T>
-        auto visit(T&, priority_tag<0>) ->
+        auto visit(T&, detail::priority_tag<0>) ->
             typename std::enable_if<std::is_integral<T>::value &&
                                         std::is_same<T, char_type>::value,
                                     error>::type
@@ -873,7 +873,7 @@ namespace scn {
                          "Cannot scan this type with this char_type");
         }
         template <typename T>
-        auto visit(T& val, priority_tag<1>) ->
+        auto visit(T& val, detail::priority_tag<1>) ->
             typename std::enable_if<std::is_floating_point<T>::value,
                                     error>::type
         {
@@ -884,7 +884,8 @@ namespace scn {
             }
             return s.scan(val, *m_ctx);
         }
-        auto visit(std::basic_string<char_type>& val, priority_tag<1>) -> error
+        auto visit(std::basic_string<char_type>& val, detail::priority_tag<1>)
+            -> error
         {
             detail::string_scanner<char_type> s;
             auto err = s.parse(*m_ctx);
@@ -893,12 +894,12 @@ namespace scn {
             }
             return s.scan(val, *m_ctx);
         }
-        auto visit(typename basic_arg<Context>::handle val, priority_tag<1>)
-            -> error
+        auto visit(typename basic_arg<Context>::handle val,
+                   detail::priority_tag<1>) -> error
         {
             return val.scan(*m_ctx);
         }
-        auto visit(detail::monostate, priority_tag<0>) -> error
+        auto visit(detail::monostate, detail::priority_tag<0>) -> error
         {
             return error(error::invalid_operation, "Cannot scan a monostate");
         }

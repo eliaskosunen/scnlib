@@ -20,8 +20,6 @@
 
 #include "ranges/stream.h"
 
-#include "scn.h"
-
 namespace scn {
     namespace ranges {
         SCN_BEGIN_NAMESPACE

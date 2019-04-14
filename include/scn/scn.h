@@ -27,35 +27,10 @@
 #include "detail/stream.h"
 #include "detail/types.h"
 #include "detail/visitor.h"
+#include "detail/vscan.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
-
-    template <typename CharT>
-    using basic_erased_stream_context = basic_context<erased_stream<CharT>>;
-    template <typename CharT>
-    using basic_erased_sized_stream_context =
-        basic_context<erased_sized_stream<CharT>>;
-
-    using erased_stream_context = basic_erased_stream_context<char>;
-    using werased_stream_context = basic_erased_stream_context<wchar_t>;
-    using erased_sized_stream_context = basic_erased_sized_stream_context<char>;
-    using werased_sized_stream_context =
-        basic_erased_sized_stream_context<wchar_t>;
-
-    template <typename Stream>
-    struct erased_stream_context_type {
-        using char_type = typename Stream::char_type;
-        using type = typename std::conditional<
-            is_sized_stream<Stream>::value,
-            basic_erased_sized_stream_context<char_type>,
-            basic_erased_stream_context<char_type>>::type;
-    };
-
-    result<int> vscan(erased_stream_context&);
-    result<int> vscan(werased_stream_context&);
-    result<int> vscan(erased_sized_stream_context&);
-    result<int> vscan(werased_sized_stream_context&);
 
     template <typename Stream, typename... Args>
     result<int> scan(Stream& s,
@@ -196,7 +171,8 @@ namespace scn {
     SCN_END_NAMESPACE
 }  // namespace scn
 
-#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_VSCAN_CPP)
+#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && \
+    !defined(SCN_DETAIL_VSCAN_CPP)
 #include "vscan.cpp"
 #endif
 

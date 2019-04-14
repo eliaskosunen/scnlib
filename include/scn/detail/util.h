@@ -28,26 +28,26 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    namespace detail {
 #if SCN_HAS_VOID_T
-    template <typename... Ts>
-    using void_t = std::void_t<Ts...>;
+        template <typename... Ts>
+        using void_t = std::void_t<Ts...>;
 #else
-    template <typename... Ts>
-    struct make_void {
-        using type = void;
-    };
-    template <typename... Ts>
-    using void_t = typename make_void<Ts...>::type;
+        template <typename... Ts>
+        struct make_void {
+            using type = void;
+        };
+        template <typename... Ts>
+        using void_t = typename make_void<Ts...>::type;
 #endif
 
-    template <size_t I>
-    struct priority_tag : priority_tag<I - 1> {
-    };
-    template <>
-    struct priority_tag<0> {
-    };
+        template <size_t I>
+        struct priority_tag : priority_tag<I - 1> {
+        };
+        template <>
+        struct priority_tag<0> {
+        };
 
-    namespace detail {
         template <typename Integral>
         int _max_digits(int base) noexcept
         {
@@ -95,7 +95,17 @@ namespace scn {
             SCN_CONSTEXPR unique_ptr() noexcept = default;
             SCN_CONSTEXPR unique_ptr(std::nullptr_t) noexcept {}
 
-            SCN_CONSTEXPR explicit unique_ptr(pointer p) : m_ptr(p) {}
+            SCN_CONSTEXPR explicit unique_ptr(pointer p) noexcept : m_ptr(p) {}
+
+            template <
+                typename U,
+                typename std::enable_if<
+                    std::is_convertible<U*, pointer>::value>::type* = nullptr>
+            SCN_CONSTEXPR14 unique_ptr(unique_ptr<U>&& u) noexcept
+                : m_ptr(std::move(u.get()))
+            {
+                u.reset();
+            }
 
             unique_ptr(const unique_ptr&) = delete;
             unique_ptr& operator=(const unique_ptr&) = delete;
@@ -142,6 +152,11 @@ namespace scn {
                 return *m_ptr;
             }
 
+            SCN_CONSTEXPR14 void reset()
+            {
+                m_ptr = nullptr;
+            }
+
         private:
             pointer m_ptr{nullptr};
         };
@@ -149,13 +164,18 @@ namespace scn {
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wpadded")
 
+        template <typename T, typename... Args>
+        unique_ptr<T> make_unique(Args&&... a)
+        {
+            return unique_ptr<T>(new T(std::forward<Args>(a)...));
+        }
+
         template <typename T>
         class erased_storage {
         public:
             using value_type = T;
             using pointer = T*;
-            using storage_type =
-                typename std::aligned_storage<sizeof(T), alignof(T)>::type;
+            using storage_type = unsigned char[sizeof(T)];
 
             erased_storage() noexcept = default;
 
@@ -255,7 +275,7 @@ namespace scn {
                 return *m_ptr;
             }
 
-            storage_type m_data{};
+            alignas(T) storage_type m_data{};
             pointer m_ptr{nullptr};
         };
 

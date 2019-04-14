@@ -58,7 +58,8 @@ namespace scn {
     basic_locale_ref<CharT>::basic_locale_ref(const void* loc)
         : m_locale(loc),
           m_truefalse_storage(
-              new detail::truename_falsename_storage<CharT>(loc)),
+              detail::make_unique<detail::truename_falsename_storage<CharT>>(
+                  loc)),
           m_truename(m_truefalse_storage->get_true_view()),
           m_falsename(m_truefalse_storage->get_false_view()),
           m_decimal_point(

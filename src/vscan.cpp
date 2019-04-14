@@ -16,10 +16,10 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY
-#define SCN_VSCAN_CPP
+#define SCN_DETAIL_VSCAN_CPP
 #endif
 
-#include <scn/scn.h>
+#include <scn/detail/vscan.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
