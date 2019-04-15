@@ -25,7 +25,6 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
-#include <string>
 
 #if SCN_STL_OVERLOADS
 #include <array>

@@ -553,6 +553,18 @@ namespace scn {
                          "method with this platform");
 #endif
         }
+        template <typename CharT, typename T>
+        either<size_t> integer_scanner<CharT, T>::_read_custom(
+            T& val,
+            const std::basic_string<CharT>& buf,
+            int base)
+        {
+            SCN_UNUSED(val);
+            SCN_UNUSED(buf);
+            SCN_UNUSED(base);
+            return error(error::invalid_operation,
+                         "custom is not a supported integer scanning method");
+        }
 
         template class integer_scanner<char, short>;
         template class integer_scanner<char, int>;
@@ -633,6 +645,17 @@ namespace scn {
                          "from_chars is not a supported floating-point "
                          "scanning method with this platform");
 #endif
+        }
+        template <typename CharT, typename T>
+        either<size_t> float_scanner<CharT, T>::_read_custom(
+            T& val,
+            const std::basic_string<CharT>& buf)
+        {
+            SCN_UNUSED(val);
+            SCN_UNUSED(buf);
+            return error(
+                error::invalid_operation,
+                "custom is not a supported floating-point scanning method");
         }
 
         template struct float_scanner<char, float>;

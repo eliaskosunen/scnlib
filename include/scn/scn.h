@@ -18,15 +18,7 @@
 #ifndef SCN_SCN_H
 #define SCN_SCN_H
 
-#include "detail/args.h"
-#include "detail/context.h"
-#include "detail/core.h"
-#include "detail/locale.h"
-#include "detail/options.h"
-#include "detail/result.h"
-#include "detail/stream.h"
 #include "detail/types.h"
-#include "detail/visitor.h"
 #include "detail/vscan.h"
 
 namespace scn {

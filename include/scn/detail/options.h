@@ -33,7 +33,7 @@ namespace scn {
         sto,         // std::stoi, std::stod, etc.
         from_chars,  // std::from_chars
         strto,       // strtol, strtod, etc.
-        // scn       // custom hand-written
+        custom       // custom hand-written
     };
 
     // std::from_chars availibility

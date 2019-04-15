@@ -20,7 +20,6 @@
 
 #include "result.h"
 #include "string_view.h"
-#include "util.h"
 
 #include <cwchar>
 

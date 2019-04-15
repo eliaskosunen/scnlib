@@ -18,10 +18,7 @@
 #ifndef SCN_DETAIL_RESULT_H
 #define SCN_DETAIL_RESULT_H
 
-#include "config.h"
 #include "util.h"
-
-#include <type_traits>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

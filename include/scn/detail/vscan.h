@@ -19,7 +19,6 @@
 #ifndef SCN_DETAIL_VSCAN_H
 #define SCN_DETAIL_VSCAN_H
 
-#include "context.h"
 #include "stream.h"
 #include "visitor.h"
 

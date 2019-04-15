@@ -19,7 +19,6 @@
 #define SCN_DETAIL_CONTEXT_H
 
 #include "args.h"
-#include "core.h"
 #include "locale.h"
 #include "options.h"
 

@@ -21,7 +21,6 @@
 #include "core.h"
 #include "util.h"
 
-#include <algorithm>
 #include <array>
 #include <cstring>
 #include <vector>
@@ -426,13 +425,13 @@ namespace scn {
             basic_arg<Context> find(basic_string_view<char_type> name) const
             {
                 SCN_EXPECT(!m_args.empty());
-                auto it = std::find_if(
-                    m_args.begin(), m_args.end(),
-                    [&](const entry& e) { return e.name == name; });
-                if (it == m_args.end()) {
-                    return {};
+                // Use for instead of find_if to avoid including <algorithm>
+                for (auto& e : m_args) {
+                    if (e.name == name) {
+                        return e.arg;
+                    }
                 }
-                return it->arg;
+                return {};
             }
 
         private:

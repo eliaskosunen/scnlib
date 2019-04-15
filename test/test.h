@@ -17,6 +17,7 @@
 
 #include <doctest.h>
 #include <scn/scn.h>
+#include <algorithm>
 #include <ostream>
 
 template <typename CharT>

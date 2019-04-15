@@ -18,11 +18,8 @@
 #ifndef SCN_DETAIL_VISITOR_H
 #define SCN_DETAIL_VISITOR_H
 
-#include "args.h"
 #include "context.h"
 #include "stream.h"
-
-#include <string>  // for stoi, stol, stoll
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -849,6 +846,8 @@ namespace scn {
                             return &_read_from_chars;
                         case method::strto:
                             return &_read_strto;
+                        case method::custom:
+                            return &_read_custom;
                     }
                     SCN_UNREACHABLE;
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
@@ -890,6 +889,8 @@ namespace scn {
                 T& val,
                 const std::basic_string<CharT>& buf,
                 int base);
+            static either<size_t>
+            _read_custom(T& val, const std::basic_string<CharT>& buf, int base);
         };
 
         SCN_CLANG_POP
@@ -992,6 +993,8 @@ namespace scn {
                             return &_read_from_chars;
                         case method::strto:
                             return &_read_strto;
+                        case method::custom:
+                            return &_read_custom;
                     }
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     SCN_UNREACHABLE;
@@ -1024,6 +1027,9 @@ namespace scn {
                 T& val,
                 const std::basic_string<CharT>& buf);
             static either<size_t> _read_from_chars(
+                T& val,
+                const std::basic_string<CharT>& buf);
+            static either<size_t> _read_custom(
                 T& val,
                 const std::basic_string<CharT>& buf);
         };
