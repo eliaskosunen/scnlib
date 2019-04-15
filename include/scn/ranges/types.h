@@ -38,7 +38,7 @@ namespace scn {
         {
             str.clear();
 
-            auto s = make_stream(r);
+            auto s = detail::make_underlying_stream(r);
             auto res = read_into_if(s, std::back_inserter(str),
                                     predicates::until<CharT>{until}, true);
             if (!res) {

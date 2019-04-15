@@ -275,34 +275,55 @@ namespace scn {
             ::scn::detail::small_vector<char_type, 64> m_rollback{};
         };
 
-        CPP_template(
+        namespace detail {
+            CPP_template(typename R)(requires ::ranges::BidirectionalRange<R> &&
+                                     !::ranges::SizedRange<R>)
+                basic_bidirectional_range_stream<R> make_underlying_stream(R& r)
+            {
+                return {r};
+            }
+            CPP_template(typename R)(requires ::ranges::BidirectionalRange<
+                                     R>&& ::ranges::SizedRange<R>)
+                basic_sized_bidirectional_range_stream<
+                    R> make_underlying_stream(R& r)
+            {
+                return {r};
+            }
+            CPP_template(typename R)(requires ::ranges::ForwardRange<R> &&
+                                     !::ranges::BidirectionalRange<R>)
+                basic_forward_range_stream<R> make_underlying_stream(R& r)
+            {
+                return {r};
+            }
+
+            template <typename R>
+            struct erased_stream_for;
+            template <typename R>
+            struct erased_stream_for<basic_bidirectional_range_stream<R>> {
+                template <typename CharT>
+                using type = erased_range_stream<CharT>;
+            };
+            template <typename R>
+            struct erased_stream_for<
+                basic_sized_bidirectional_range_stream<R>> {
+                template <typename CharT>
+                using type = erased_sized_range_stream<CharT>;
+            };
+            template <typename R>
+            struct erased_stream_for<basic_forward_range_stream<R>> {
+                template <typename CharT>
+                using type = erased_range_stream<CharT>;
+            };
+        }  // namespace detail
+
+        template <
             typename R,
-            typename CharT = ::ranges::value_type_t<::ranges::iterator_t<R>>)(
-            requires ::ranges::BidirectionalRange<R> &&
-            !::ranges::SizedRange<R>)
-            erased_range_stream<CharT> make_stream(R& r)
+            typename CharT = ::ranges::value_type_t<::ranges::iterator_t<R>>>
+        auto make_stream(R& r)
         {
-            auto s = basic_bidirectional_range_stream<R>(r);
-            return {s};
-        }
-        CPP_template(
-            typename R,
-            typename CharT = ::ranges::value_type_t<::ranges::iterator_t<R>>)(
-            requires ::ranges::BidirectionalRange<R>&& ::ranges::SizedRange<R>)
-            erased_sized_range_stream<CharT> make_stream(R& r)
-        {
-            auto s = basic_sized_bidirectional_range_stream<R>(r);
-            return {s};
-        }
-        CPP_template(
-            typename R,
-            typename CharT = ::ranges::value_type_t<::ranges::iterator_t<R>>)(
-            requires ::ranges::ForwardRange<R> &&
-            !::ranges::BidirectionalRange<R>)
-            erased_range_stream<CharT> make_stream(R& r)
-        {
-            auto s = basic_forward_range_stream<R>(r);
-            return {s};
+            auto s = detail::make_underlying_stream(r);
+            return typename detail::erased_stream_for<decltype(
+                s)>::template type<CharT>(std::move(s));
         }
 
         SCN_END_NAMESPACE
