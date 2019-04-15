@@ -237,7 +237,7 @@ namespace scn {
             return detail::read_into_with_buffer(s, it, make_span(arr));
         }
         std::array<CharT, 64> arr;
-        auto ret = read(s, make_span(arr.begin(), arr.begin() + n));
+        auto ret = read(s, make_span(arr.data(), n));
         if (!ret) {
             return {size, ret.get_error()};
         }
@@ -284,7 +284,7 @@ namespace scn {
             return detail::read_into_with_buffer(s, it, end, make_span(arr));
         }
         std::array<CharT, 64> arr;
-        auto ret = read(s, make_span(arr.begin(), arr.begin() + n));
+        auto ret = read(s, make_span(arr.data(), n));
         if (!ret) {
             return {it, ret.get_error()};
         }
@@ -330,7 +330,7 @@ namespace scn {
                 break;
             }
 
-            auto ret = read(s, make_span(arr.begin(), arr.begin() + n));
+            auto ret = read(s, make_span(arr.data(), n));
             if (!ret) {
                 return {size, ret.error()};
             }
@@ -430,7 +430,7 @@ namespace scn {
                 break;
             }
 
-            auto ret = read(s, make_span(arr.begin(), arr.begin() + n));
+            auto ret = read(s, make_span(arr.data(), n));
             if (!ret) {
                 return {it, ret.get_error()};
             }

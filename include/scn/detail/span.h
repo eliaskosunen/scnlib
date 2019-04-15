@@ -138,7 +138,7 @@ namespace scn {
     };
 
     template <typename T>
-    SCN_CONSTEXPR span<T> make_span(T* ptr, std::ptrdiff_t count) noexcept
+    SCN_CONSTEXPR span<T> make_span(T* ptr, std::size_t count) noexcept
     {
         return span<T>(ptr, count);
     }
