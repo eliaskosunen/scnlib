@@ -14,6 +14,8 @@ option(SCN_DOCS "Generate documentation target" ${MASTER_PROJECT})
 option(SCN_INSTALL "Generate install target" ${MASTER_PROJECT})
 option(SCN_PEDANTIC "Use stricter warnings" ${MASTER_PROJECT})
 
+option(SCN_COVERAGE "Enable coverage reporting" OFF)
+
 option(SCN_WERROR "Halt compilation in case of a warning" OFF)
 
 option(SCN_USE_32BIT "Compile as 32-bit (gcc or clang only)" OFF)
@@ -134,6 +136,14 @@ function(get_disable_rtti_flags flags)
 
             PARENT_SCOPE)
 endfunction()
+function(get_coverage_flags flags)
+    set(${flags}
+        $<$<CXX_COMPILER_ID:GNU>:
+            -O0
+            -g
+            --coverage>
+            PARENT_SCOPE)
+endfunction()
 
 function (set_interface_flags target)
     if (SCN_PEDANTIC)
@@ -143,6 +153,15 @@ function (set_interface_flags target)
     if (SCN_WERROR)
         get_werror_flags(werror_flags)
         target_compile_options(${target} INTERFACE ${werror_flags})
+    endif ()
+    if (SCN_COVERAGE)
+        get_coverage_flags(coverage_flags)
+        target_compile_options(${target} INTERFACE ${coverage_flags})
+        if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
+            target_link_options(${target} INTERFACE --coverage)
+        else ()
+            target_link_libraries(${target} INTERFACE --coverage)
+        endif()
     endif ()
 endfunction ()
 function (set_private_flags target)
@@ -166,6 +185,15 @@ function (set_private_flags target)
         get_disable_rtti_flags(nortti_flags)
         target_compile_options(${target} PRIVATE ${nortti_flags})
     endif()
+    if (SCN_COVERAGE)
+        get_coverage_flags(coverage_flags)
+        target_compile_options(${target} PUBLIC ${coverage_flags})
+        if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
+            target_link_options(${target} PUBLIC --coverage)
+        else ()
+            target_link_libraries(${target} PUBLIC --coverage)
+        endif()
+    endif ()
 endfunction ()
 
 message(STATUS "SCN_PEDANTIC: ${SCN_PEDANTIC}")
