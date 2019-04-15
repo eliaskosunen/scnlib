@@ -943,7 +943,7 @@ namespace scn {
 
     private:
         FILE* m_file;
-        std::string m_read{};
+        detail::small_vector<char, 32> m_read{};
     };
     template <>
     struct basic_cstdio_stream<wchar_t> : public stream_base {
@@ -1008,7 +1008,7 @@ namespace scn {
 
     private:
         FILE* m_file;
-        std::wstring m_read{};
+        detail::small_vector<wchar_t, 32> m_read{};
     };
 
     template <typename CharT = char>

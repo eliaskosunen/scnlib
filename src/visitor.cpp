@@ -21,6 +21,8 @@
 
 #include <scn/detail/visitor.h>
 
+#include <string>
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
