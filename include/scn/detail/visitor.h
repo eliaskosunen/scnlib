@@ -30,30 +30,29 @@ namespace scn {
     enum class scan_status { keep, skip, end };
 
     namespace predicates {
-        template <typename Context>
+        template <typename CharT>
+        using locale_ref = basic_locale_ref<CharT>&;
+
+        template <typename CharT>
         struct propagate {
-            SCN_CONSTEXPR either<scan_status> operator()(
-                Context&,
-                typename Context::char_type) const noexcept
+            SCN_CONSTEXPR either<scan_status> operator()(CharT) const noexcept
             {
                 return scan_status::keep;
             }
         };
-        template <typename Context>
+        template <typename CharT>
         struct until {
-            SCN_CONSTEXPR either<scan_status> operator()(
-                Context&,
-                typename Context::char_type ch) const noexcept
+            SCN_CONSTEXPR either<scan_status> operator()(CharT ch) const
+                noexcept
             {
                 return ch == until_ch ? scan_status::end : scan_status::keep;
             }
 
-            typename Context::char_type until_ch;
+            CharT until_ch;
         };
-        template <typename Context>
+        template <typename CharT>
         struct until_one_of {
-            either<scan_status> operator()(Context&,
-                                           typename Context::char_type ch)
+            either<scan_status> operator()(CharT ch)
             {
                 if (std::find(until.begin(), until.end(), ch) != until.end()) {
                     return scan_status::end;
@@ -61,24 +60,24 @@ namespace scn {
                 return scan_status::keep;
             }
 
-            span<typename Context::char_type> until;
+            span<CharT> until;
         };
-        template <typename Context>
+        template <typename CharT>
         struct until_space {
-            either<scan_status> operator()(Context& ctx,
-                                           typename Context::char_type ch)
+            either<scan_status> operator()(CharT ch)
             {
-                if (ctx.locale().is_space(ch)) {
+                if (locale.is_space(ch)) {
                     return scan_status::end;
                 }
                 return scan_status::keep;
             }
+
+            locale_ref<CharT> locale;
         };
 
-        template <typename Context>
+        template <typename CharT>
         struct until_and_skip_chars {
-            either<scan_status> operator()(Context&,
-                                           typename Context::char_type ch)
+            either<scan_status> operator()(CharT ch)
             {
                 if (ch == until) {
                     return scan_status::end;
@@ -89,13 +88,12 @@ namespace scn {
                 return scan_status::keep;
             }
 
-            typename Context::char_type until;
-            span<typename Context::char_type> skip;
+            CharT until;
+            span<CharT> skip;
         };
-        template <typename Context>
+        template <typename CharT>
         struct until_one_of_and_skip_chars {
-            either<scan_status> operator()(Context&,
-                                           typename Context::char_type ch)
+            either<scan_status> operator()(CharT ch)
             {
                 if (std::find(until.begin(), until.end(), ch) != until.end()) {
                     return scan_status::end;
@@ -106,15 +104,14 @@ namespace scn {
                 return scan_status::keep;
             }
 
-            span<typename Context::char_type> until;
-            span<typename Context::char_type> skip;
+            span<CharT> until;
+            span<CharT> skip;
         };
-        template <typename Context>
+        template <typename CharT>
         struct until_space_and_skip_chars {
-            either<scan_status> operator()(Context& ctx,
-                                           typename Context::char_type ch)
+            either<scan_status> operator()(CharT ch)
             {
-                if (ctx.locale().is_space(ch)) {
+                if (locale.is_space(ch)) {
                     return scan_status::end;
                 }
                 if (std::find(skip.begin(), skip.end(), ch) != skip.end()) {
@@ -123,7 +120,8 @@ namespace scn {
                 return scan_status::keep;
             }
 
-            span<typename Context::char_type> skip;
+            locale_ref<CharT> locale;
+            span<CharT> skip;
         };
     }  // namespace predicates
 
@@ -131,31 +129,31 @@ namespace scn {
 
     // read
 
-    template <typename Context,
-              typename CharT = typename Context::char_type,
+    template <typename Stream,
+              typename CharT = typename Stream::char_type,
               typename Span = span<CharT>,
-              typename std::enable_if<is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    result<typename Span::iterator> read(Context& ctx, Span s)
+              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    result<typename Span::iterator> read(Stream& stream, Span s)
     {
-        auto n = std::min(s.size(), ctx.stream().chars_to_read());
+        auto n = std::min(s.size(), stream.chars_to_read());
         s = s.first(n);
-        auto ret = ctx.stream().read_sized(s);
+        auto ret = stream.read_sized(s);
         if (!ret) {
             return {s.begin(), ret};
         }
         return {s.end()};
     }
-    template <typename Context,
-              typename CharT = typename Context::char_type,
+    template <typename Stream,
+              typename CharT = typename Stream::char_type,
               typename Span = span<CharT>,
-              typename std::enable_if<!is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    result<typename Span::iterator> read(Context& ctx, Span s)
+              typename std::enable_if<!is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    result<typename Span::iterator> read(Stream& stream, Span s)
     {
         auto it = s.begin();
         for (; it != s.end(); ++it) {
-            auto ret = ctx.stream().read_char();
+            auto ret = stream.read_char();
             if (!ret) {
                 return {it, ret.get_error()};
             }
@@ -167,21 +165,21 @@ namespace scn {
     // read_into_with_buffer
 
     namespace detail {
-        template <typename Context,
+        template <typename Stream,
                   typename Iterator,
-                  typename CharT = typename Context::char_type>
-        result<size_t> read_into_with_buffer(Context& ctx,
+                  typename CharT = typename Stream::char_type>
+        result<size_t> read_into_with_buffer(Stream& stream,
                                              Iterator it,
                                              span<CharT> buffer)
         {
             size_t n = 0, size = 0;
             while (true) {
-                n = std::min(ctx.stream().chars_to_read(), size_t{64});
+                n = std::min(stream.chars_to_read(), size_t{64});
                 if (n == 0) {
                     break;
                 }
                 buffer = buffer.first(n);
-                auto ret = read(ctx, buffer);
+                auto ret = read(stream, buffer);
                 if (!ret) {
                     return {size, ret.get_error()};
                 }
@@ -190,11 +188,11 @@ namespace scn {
             }
             return {size};
         }
-        template <typename Context,
+        template <typename Stream,
                   typename Iterator,
                   typename Sentinel,
-                  typename CharT = typename Context::char_type>
-        result<Iterator> read_into_with_buffer(Context& ctx,
+                  typename CharT = typename Stream::char_type>
+        result<Iterator> read_into_with_buffer(Stream& stream,
                                                Iterator it,
                                                Sentinel end,
                                                span<CharT> buffer)
@@ -202,12 +200,12 @@ namespace scn {
             auto n = 0;
             while (true) {
                 n = std::min({static_cast<size_t>(std::distance(it, end)),
-                              ctx.stream().chars_to_read(), size_t{64}});
+                              stream.chars_to_read(), size_t{64}});
                 if (n == 0) {
                     break;
                 }
                 buffer = buffer.first(n);
-                auto ret = read(ctx, buffer);
+                auto ret = read(stream, buffer);
                 if (!ret) {
                     return {it, ret.get_error()};
                 }
@@ -219,43 +217,43 @@ namespace scn {
 
     // read_into
 
-    template <typename Context,
+    template <typename Stream,
               typename Iterator,
-              typename CharT = typename Context::char_type,
-              typename std::enable_if<is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    result<Iterator> read_into(Context& ctx, Iterator it)
+              typename CharT = typename Stream::char_type,
+              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    result<Iterator> read_into(Stream& s, Iterator it)
     {
-        auto n = ctx.stream().chars_to_read();
+        auto n = s.chars_to_read();
         size_t size = 0;
         if (n > 64) {
             std::array<CharT, 64> arr;
-            auto ret = read(ctx, make_span(arr));
+            auto ret = read(s, make_span(arr));
             if (!ret) {
                 return {size, ret.get_error()};
             }
             it = std::copy(arr.begin(), arr.begin() + n, it);
             size += n;
-            return detail::read_into_with_buffer(ctx, it, make_span(arr));
+            return detail::read_into_with_buffer(s, it, make_span(arr));
         }
         std::array<CharT, 64> arr;
-        auto ret = read(ctx, make_span(arr.begin(), arr.begin() + n));
+        auto ret = read(s, make_span(arr.begin(), arr.begin() + n));
         if (!ret) {
             return {size, ret.get_error()};
         }
         std::copy(arr.begin(), arr.begin() + n, it);
         return size + n;
     }
-    template <typename Context,
+    template <typename Stream,
               typename Iterator,
-              typename CharT = typename Context::char_type,
-              typename std::enable_if<!is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    result<Iterator> read_into(Context& ctx, Iterator it)
+              typename CharT = typename Stream::char_type,
+              typename std::enable_if<!is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    result<Iterator> read_into(Stream& s, Iterator it)
     {
         size_t n = 0;
         while (true) {
-            auto ret = ctx.stream().read_char();
+            auto ret = s.read_char();
             if (!ret) {
                 return {n, ret.get_error()};
             }
@@ -266,42 +264,42 @@ namespace scn {
         return {n};
     }
 
-    template <typename Context,
+    template <typename Stream,
               typename Iterator,
               typename Sentinel,
-              typename CharT = typename Context::char_type,
-              typename std::enable_if<is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    result<Iterator> read_into(Context& ctx, Iterator it, Sentinel end)
+              typename CharT = typename Stream::char_type,
+              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    result<Iterator> read_into(Stream& s, Iterator it, Sentinel end)
     {
         auto n = std::min(static_cast<size_t>(std::distance(it, end)),
-                          ctx.stream().chars_to_read());
+                          s.chars_to_read());
         if (n > 64) {
             std::array<CharT, 64> arr;
-            auto ret = read(ctx, make_span(arr));
+            auto ret = read(s, make_span(arr));
             if (!ret) {
                 return {it, ret.get_error()};
             }
             it = std::copy(arr.begin(), arr.begin() + n, it);
-            return detail::read_into_with_buffer(ctx, it, end, make_span(arr));
+            return detail::read_into_with_buffer(s, it, end, make_span(arr));
         }
         std::array<CharT, 64> arr;
-        auto ret = read(ctx, make_span(arr.begin(), arr.begin() + n));
+        auto ret = read(s, make_span(arr.begin(), arr.begin() + n));
         if (!ret) {
             return {it, ret.get_error()};
         }
         return {std::copy(arr.begin(), arr.begin() + n, it)};
     }
-    template <typename Context,
+    template <typename Stream,
               typename Iterator,
               typename Sentinel,
-              typename CharT = typename Context::char_type,
-              typename std::enable_if<!is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    result<Iterator> read_into(Context& ctx, Iterator it, Sentinel end)
+              typename CharT = typename Stream::char_type,
+              typename std::enable_if<!is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    result<Iterator> read_into(Stream& s, Iterator it, Sentinel end)
     {
         for (; it != end; ++it) {
-            auto ret = ctx.stream().read_char();
+            auto ret = s.read_char();
             if (!ret) {
                 return {it, ret.get_error()};
             }
@@ -312,13 +310,13 @@ namespace scn {
 
     // read_into_if
 
-    template <typename Context,
+    template <typename Stream,
               typename Iterator,
               typename Predicate,
-              typename CharT = typename Context::char_type,
-              typename std::enable_if<is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    result<size_t> read_into_if(Context& ctx,
+              typename CharT = typename Stream::char_type,
+              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    result<size_t> read_into_if(Stream& s,
                                 Iterator it,
                                 Predicate&& p,
                                 bool keep_final = false)
@@ -327,19 +325,19 @@ namespace scn {
         std::array<CharT, 64> arr{{0}};
         bool end = false;
         while (!end) {
-            n = std::min(ctx.stream().chars_to_read(), std::size_t{64});
+            n = std::min(s.chars_to_read(), std::size_t{64});
             if (n == 0) {
                 break;
             }
 
-            auto ret = read(ctx, make_span(arr.begin(), arr.begin() + n));
+            auto ret = read(s, make_span(arr.begin(), arr.begin() + n));
             if (!ret) {
                 return {size, ret.error()};
             }
 
             const auto arr_end = arr.begin() + n;
             for (auto arr_it = arr.begin(); arr_it != arr_end; ++arr_it) {
-                auto r = p(ctx, *arr_it);
+                auto r = p(*arr_it);
                 if (!r) {
                     return {size, r.get_error()};
                 }
@@ -351,10 +349,10 @@ namespace scn {
                         ++arr_it;
                     }
                     if (arr_it != arr_end) {
-                        auto pb = ctx.stream().putback_n(static_cast<size_t>(
+                        auto pb = s.putback_n(static_cast<size_t>(
                             std::distance(arr_it, arr_end)));
                         if (!pb) {
-                            ctx.stream()._set_bad();
+                            s._set_bad();
                             return {size, pb};
                         }
                     }
@@ -368,20 +366,20 @@ namespace scn {
         }
         return {size};
     }
-    template <typename Context,
+    template <typename Stream,
               typename Iterator,
               typename Predicate,
-              typename CharT = typename Context::char_type,
-              typename std::enable_if<!is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    result<size_t> read_into_if(Context& ctx,
+              typename CharT = typename Stream::char_type,
+              typename std::enable_if<!is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    result<size_t> read_into_if(Stream& s,
                                 Iterator it,
                                 Predicate&& p,
                                 bool keep_final = false)
     {
         size_t n = 0;
         while (true) {
-            auto ret = ctx.stream().read_char();
+            auto ret = s.read_char();
             if (!ret) {
                 if (ret.get_error() == error::end_of_stream) {
                     break;
@@ -389,7 +387,7 @@ namespace scn {
                 return {n, ret.get_error()};
             }
 
-            auto r = p(ctx, ret.value());
+            auto r = p(ret.value());
             if (!r) {
                 return {n, r.get_error()};
             }
@@ -410,14 +408,14 @@ namespace scn {
         return {n};
     }
 
-    template <typename Context,
+    template <typename Stream,
               typename Iterator,
               typename Sentinel,
               typename Predicate,
-              typename CharT = typename Context::char_type,
-              typename std::enable_if<is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    result<Iterator> read_into_if(Context& ctx,
+              typename CharT = typename Stream::char_type,
+              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    result<Iterator> read_into_if(Stream& s,
                                   Iterator it,
                                   Sentinel end,
                                   Predicate&& p,
@@ -427,19 +425,19 @@ namespace scn {
         std::array<CharT, 64> arr{{0}};
         while (true) {
             n = std::min({static_cast<size_t>(std::distance(it, end)),
-                          ctx.stream().chars_to_read(), size_t{64}});
+                          s.chars_to_read(), size_t{64}});
             if (n == 0) {
                 break;
             }
 
-            auto ret = read(ctx, make_span(arr.begin(), arr.begin() + n));
+            auto ret = read(s, make_span(arr.begin(), arr.begin() + n));
             if (!ret) {
                 return {it, ret.get_error()};
             }
 
             const auto arr_end = arr.begin() + n;
             for (auto arr_it = arr.begin(); arr_it != arr_end; ++arr_it) {
-                auto r = p(ctx, *arr_it);
+                auto r = p(*arr_it);
                 if (!r) {
                     return {it, r.get_error()};
                 }
@@ -451,10 +449,9 @@ namespace scn {
                         ++arr_it;
                     }
                     if (arr_it != arr_end) {
-                        if (!ctx.stream().putback_n(
-                                std::distance(arr_it, arr_end))) {
-                            ctx.stream()._set_bad();
-                            return {it, ctx.stream().get_error()};
+                        if (!s.putback_n(std::distance(arr_it, arr_end))) {
+                            s._set_bad();
+                            return {it, s.get_error()};
                         }
                     }
                     break;
@@ -465,26 +462,26 @@ namespace scn {
         }
         return {it};
     }
-    template <typename Context,
+    template <typename Stream,
               typename Iterator,
               typename Sentinel,
               typename Predicate,
-              typename CharT = typename Context::char_type,
-              typename std::enable_if<!is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    result<Iterator> read_into_if(Context& ctx,
+              typename CharT = typename Stream::char_type,
+              typename std::enable_if<!is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    result<Iterator> read_into_if(Stream& s,
                                   Iterator it,
                                   Sentinel end,
                                   Predicate&& p,
                                   bool keep_final = false)
     {
         while (it != end) {
-            auto ret = ctx.stream().read_char();
+            auto ret = s.read_char();
             if (!ret) {
                 return {it, ret.get_error()};
             }
 
-            auto r = p(ctx, ret.value());
+            auto r = p(ret.value());
             if (!r) {
                 return r.get_error();
             }
@@ -506,28 +503,27 @@ namespace scn {
 
     // putback_range
 
-    template <typename Context,
+    template <typename Stream,
               typename Iterator,
-              typename std::enable_if<!is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    error putback_range(Context& ctx, Iterator begin, Iterator end)
+              typename std::enable_if<!is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    error putback_range(Stream& s, Iterator begin, Iterator end)
     {
         for (; begin != end; ++begin) {
-            auto ret = ctx.stream().putback(*begin);
+            auto ret = s.putback(*begin);
             if (!ret) {
                 return ret;
             }
         }
         return {};
     }
-    template <typename Context,
+    template <typename Stream,
               typename Iterator,
-              typename std::enable_if<is_sized_stream<
-                  typename Context::stream_type>::value>::type* = nullptr>
-    error putback_range(Context& ctx, Iterator begin, Iterator end)
+              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    error putback_range(Stream& s, Iterator begin, Iterator end)
     {
-        return ctx.stream().putback_n(
-            static_cast<size_t>(std::distance(begin, end)));
+        return s.putback_n(static_cast<size_t>(std::distance(begin, end)));
     }
 
     template <typename CharT>
@@ -569,7 +565,7 @@ namespace scn {
                 detail::small_vector<CharT, 64> buf(
                     static_cast<size_t>(val.size()));
                 auto span = scn::make_span(buf);
-                auto s = read(ctx, span);
+                auto s = read(ctx.stream(), span);
                 if (!s) {
                     return s.error();
                 }
@@ -633,8 +629,9 @@ namespace scn {
                     std::basic_string<CharT> buf;
                     buf.reserve(max_len);
 
-                    auto i = read_into_if(ctx, std::back_inserter(buf),
-                                          predicates::until_space<Context>{});
+                    auto i = read_into_if(
+                        ctx.stream(), std::back_inserter(buf),
+                        predicates::until_space<CharT>{ctx.locale()});
                     if (!i) {
                         return i.error();
                     }
@@ -661,7 +658,7 @@ namespace scn {
                     }
                     if (found) {
                         return putback_range(
-                            ctx, buf.rbegin(),
+                            ctx.stream(), buf.rbegin(),
                             buf.rend() - static_cast<std::ptrdiff_t>(chars));
                     }
                 }
@@ -798,8 +795,9 @@ namespace scn {
                 std::basic_string<CharT> buf{};
                 buf.reserve(15 / sizeof(CharT));
 
-                auto r = read_into_if(ctx, std::back_inserter(buf),
-                                      predicates::until_space<Context>{});
+                auto r =
+                    read_into_if(ctx.stream(), std::back_inserter(buf),
+                                 predicates::until_space<CharT>{ctx.locale()});
                 if (!r) {
                     return r.error();
                 }
@@ -818,7 +816,7 @@ namespace scn {
                     }
 
                     auto pb = putback_range(
-                        ctx, buf.rbegin(),
+                        ctx.stream(), buf.rbegin(),
                         buf.rend() - static_cast<std::ptrdiff_t>(ret.value()));
                     if (!pb) {
                         return pb;
@@ -863,7 +861,7 @@ namespace scn {
                 chars = e.value();
 
                 auto pb = putback_range(
-                    ctx, buf.rbegin(),
+                    ctx.stream(), buf.rbegin(),
                     buf.rend() - static_cast<std::ptrdiff_t>(chars));
                 if (!pb) {
                     return pb;
@@ -939,15 +937,15 @@ namespace scn {
 
                 bool point = false;
                 auto r = read_into_if(
-                    ctx, std::back_inserter(buf),
-                    [&point](Context& c, CharT ch) -> either<scan_status> {
-                        if (c.locale().is_space(ch)) {
+                    ctx.stream(), std::back_inserter(buf),
+                    [&point, &ctx](CharT ch) -> either<scan_status> {
+                        if (ctx.locale().is_space(ch)) {
                             return scan_status::end;
                         }
-                        if (ch == c.locale().thousands_separator()) {
+                        if (ch == ctx.locale().thousands_separator()) {
                             return scan_status::skip;
                         }
-                        if (ch == c.locale().decimal_point()) {
+                        if (ch == ctx.locale().decimal_point()) {
                             if (point) {
                                 return error(error::invalid_scanned_value,
                                              "Extra decimal separator found in "
@@ -976,7 +974,7 @@ namespace scn {
                     chars = ret.value();
 
                     auto pb = putback_range(
-                        ctx, buf.rbegin(),
+                        ctx.stream(), buf.rbegin(),
                         buf.rend() - static_cast<std::ptrdiff_t>(chars));
                     if (!pb) {
                         return pb;
@@ -1006,7 +1004,7 @@ namespace scn {
                 chars = e.value();
 
                 auto pb = putback_range(
-                    ctx, buf.rbegin(),
+                    ctx.stream(), buf.rbegin(),
                     buf.rend() - static_cast<std::ptrdiff_t>(chars));
                 if (!pb) {
                     return pb;
@@ -1044,8 +1042,9 @@ namespace scn {
                 }
 
                 val.clear();
-                auto s = read_into_if(ctx, std::back_inserter(val),
-                                      predicates::until_space<Context>{});
+                auto s =
+                    read_into_if(ctx.stream(), std::back_inserter(val),
+                                 predicates::until_space<CharT>{ctx.locale()});
                 if (!s) {
                     return s.error();
                 }

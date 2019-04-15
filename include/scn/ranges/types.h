@@ -1,0 +1,65 @@
+// Copyright 2017-2019 Elias Kosunen
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// This file is a part of scnlib:
+//     https://github.com/eliaskosunen/scnlib
+
+#ifndef SCN_RANGES_TYPES_H
+#define SCN_RANGES_TYPES_H
+
+#include "stream.h"
+
+#include "../detail/types.h"
+
+namespace scn {
+    namespace ranges {
+        SCN_BEGIN_NAMESPACE
+
+        template <typename Range,
+                  typename Traits,
+                  typename Allocator,
+                  typename Iterator = ::ranges::iterator_t<Range>,
+                  typename CharT = ::ranges::value_type_t<Iterator>>
+        either<Iterator> getline(
+            Range& r,
+            std::basic_string<CharT, Traits, Allocator>& str,
+            CharT until)
+        {
+            str.clear();
+
+            auto s = make_stream(r);
+            auto res = read_into_if(s, std::back_inserter(str),
+                                    predicates::until<CharT>{until}, true);
+            if (!res) {
+                return res.error();
+            }
+            str.erase(res.value());
+            return {::ranges::begin(r) +
+                    static_cast<std::ptrdiff_t>(s.chars_read())};
+        }
+        template <typename Range,
+                  typename Traits,
+                  typename Allocator,
+                  typename CharT =
+                      ::ranges::value_type_t<::ranges::iterator_t<Range>>>
+        auto getline(Range& r, std::basic_string<CharT, Traits, Allocator>& str)
+        {
+            return getline(r, str, basic_locale_ref<CharT>().widen('\n'));
+        }
+
+        SCN_END_NAMESPACE
+    }  // namespace ranges
+}  // namespace scn
+
+#endif  // SCN_RANGES_TYPES_H

@@ -18,7 +18,7 @@
 #ifndef SCN_RANGES_RANGES_H
 #define SCN_RANGES_RANGES_H
 
-#include "ranges/stream.h"
+#include "ranges/types.h"
 
 namespace scn {
     namespace ranges {

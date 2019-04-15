@@ -65,3 +65,27 @@ TEST_CASE("ranges")
         CHECK(ret.iterator() == data.end());
     }
 }
+
+TEST_CASE_TEMPLATE_DEFINE("ranges getline", CharT, getline_test)
+{
+    using string_type = std::basic_string<CharT>;
+    string_type data = widen<CharT>(
+        "firstline\n"
+        "Second line with spaces");
+
+    {
+        string_type s{};
+        auto ret = scn::ranges::getline(data, s);
+        CHECK(s == widen<CharT>("firstline"));
+        CHECK(ret);
+        CHECK(ret.value() == data.begin() + s.size());
+        data.erase(data.begin(), ret.value());
+    }
+    {
+        string_type s{};
+        auto ret = scn::ranges::getline(data, s);
+        CHECK(s == widen<CharT>("Second line with spaces"));
+        CHECK(ret);
+        CHECK(ret.value() == data.end());
+    }
+}

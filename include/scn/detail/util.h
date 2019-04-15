@@ -21,6 +21,7 @@
 #include "config.h"
 #include "small_vector.h"
 
+#include <cstddef>
 #include <limits>
 #include <new>
 #include <type_traits>
