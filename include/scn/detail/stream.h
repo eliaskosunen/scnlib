@@ -21,11 +21,6 @@
 #include "result.h"
 #include "string_view.h"
 
-#include <cassert>
-#include <cerrno>
-#include <cstdio>
-#include <cstring>
-
 #if SCN_STL_OVERLOADS
 #include <array>
 #include <vector>
@@ -888,53 +883,15 @@ namespace scn {
 
         basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
-        either<char_type> read_char()
-        {
-            auto ret = std::fgetc(m_file);
-            if (ret == EOF) {
-                if (std::ferror(m_file) != 0) {
-                    return error(error::stream_source_error,
-                                 std::strerror(errno));
-                }
-                if (std::feof(m_file) != 0) {
-                    return error(error::end_of_stream, "EOF");
-                }
-                return error(error::unrecoverable_stream_source_error,
-                             "Unknown error");
-            }
-            m_read.push_back(static_cast<char_type>(ret));
-            return static_cast<char_type>(ret);
-        }
-        error putback(char_type ch) noexcept
-        {
-            assert(!m_read.empty());
-            if (std::ungetc(ch, m_file) == EOF) {
-                return error(error::unrecoverable_stream_source_error,
-                             std::strerror(errno));
-            }
-            m_read.pop_back();
-            return {};
-        }
+        either<char_type> read_char();
+        error putback(char_type ch) noexcept;
 
         error set_roll_back()
         {
             m_read.clear();
             return {};
         }
-        error roll_back() noexcept
-        {
-            if (m_read.empty()) {
-                return {};
-            }
-            for (auto it = m_read.rbegin(); it != m_read.rend(); ++it) {
-                if (std::ungetc(*it, m_file) == EOF) {
-                    return error(error::unrecoverable_stream_source_error,
-                                 std::strerror(errno));
-                }
-            }
-            m_read.clear();
-            return {};
-        }
+        error roll_back() noexcept;
 
         size_t rcount() const noexcept
         {
@@ -951,55 +908,15 @@ namespace scn {
 
         basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
-        either<char_type> read_char()
-        {
-            auto ret = std::fgetwc(m_file);
-            if (ret == WEOF) {
-                if (std::ferror(m_file) != 0) {
-                    return error(error::stream_source_error,
-                                 std::strerror(errno));
-                }
-                if (std::feof(m_file) != 0) {
-                    return error(error::end_of_stream, "EOF");
-                }
-                return error(error::unrecoverable_stream_source_error,
-                             "Unknown error");
-            }
-            m_read.push_back(static_cast<char_type>(ret));
-            return static_cast<char_type>(ret);
-        }
-        error putback(char_type ch) noexcept
-        {
-            assert(!m_read.empty());
-            if (std::ungetwc(std::char_traits<char_type>::to_int_type(ch),
-                             m_file) == WEOF) {
-                return error(error::unrecoverable_stream_source_error,
-                             std::strerror(errno));
-            }
-            m_read.pop_back();
-            return {};
-        }
+        either<char_type> read_char();
+        error putback(char_type ch) noexcept;
 
         error set_roll_back() noexcept
         {
             m_read.clear();
             return {};
         }
-        error roll_back() noexcept
-        {
-            if (m_read.empty()) {
-                return {};
-            }
-            for (auto it = m_read.rbegin(); it != m_read.rend(); ++it) {
-                if (std::ungetwc(std::char_traits<char_type>::to_int_type(*it),
-                                 m_file) == WEOF) {
-                    return error(error::unrecoverable_stream_source_error,
-                                 std::strerror(errno));
-                }
-            }
-            m_read.clear();
-            return {};
-        }
+        error roll_back() noexcept;
 
         size_t rcount() const noexcept
         {
@@ -1030,5 +947,9 @@ namespace scn {
 }  // namespace scn
 
 SCN_CLANG_POP
+
+#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && !defined(SCN_STREAM_CPP)
+#include "stream.cpp"
+#endif
 
 #endif  // SCN_DETAIL_STREAM_H
