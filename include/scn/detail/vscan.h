@@ -54,5 +54,10 @@ namespace scn {
     SCN_END_NAMESPACE
 }  // namespace scn
 
+#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && \
+    !defined(SCN_DETAIL_VSCAN_CPP)
+#include "vscan.cpp"
+#endif
+
 #endif  // SCN_DETAIL_VSCAN_H
 

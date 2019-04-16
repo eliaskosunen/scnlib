@@ -15,12 +15,12 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_RANGES_TYPES_H
-#define SCN_RANGES_TYPES_H
+#ifndef SCN_DETAIL_RANGES_TYPES_H
+#define SCN_DETAIL_RANGES_TYPES_H
 
 #include "stream.h"
 
-#include "../detail/types.h"
+#include "../types.h"
 
 namespace scn {
     namespace ranges {
@@ -62,4 +62,4 @@ namespace scn {
     }  // namespace ranges
 }  // namespace scn
 
-#endif  // SCN_RANGES_TYPES_H
+#endif  // SCN_DETAIL_RANGES_TYPES_H

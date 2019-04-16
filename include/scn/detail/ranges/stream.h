@@ -15,11 +15,11 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_RANGES_STREAM_H
-#define SCN_RANGES_STREAM_H
+#ifndef SCN_DETAIL_RANGES_STREAM_H
+#define SCN_DETAIL_RANGES_STREAM_H
 
-#include "../detail/context.h"
-#include "../detail/stream.h"
+#include "../context.h"
+#include "../stream.h"
 
 #include <range/v3/core.hpp>
 
@@ -330,4 +330,4 @@ namespace scn {
     }  // namespace ranges
 }  // namespace scn
 
-#endif  // SCN_RANGES_RANGES_H
+#endif  // SCN_DETAIL_RANGES_RANGES_H

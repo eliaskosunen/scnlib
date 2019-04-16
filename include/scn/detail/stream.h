@@ -118,11 +118,15 @@ namespace scn {
 
             either<char_type> read_char() override
             {
+                SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                 return m_stream.read_char();
+                SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
             }
             error putback(char_type ch) override
             {
+                SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                 return m_stream.putback(ch);
+                SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
             }
 
             error set_roll_back() override
@@ -131,7 +135,9 @@ namespace scn {
             }
             error roll_back() override
             {
+                SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                 return m_stream.roll_back();
+                SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
             }
 
             Stream& get()

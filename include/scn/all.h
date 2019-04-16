@@ -15,10 +15,12 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_RANGES_H
-#define SCN_RANGES_H
+#ifndef SCN_ALL_H
+#define SCN_ALL_H
 
-#include "detail/ranges/ranges.h"
+#include "istream.h"
+#include "ranges.h"
+#include "scn.h"
 
-#endif  // SCN_RANGES_H
+#endif  // SCN_ALL_H
 

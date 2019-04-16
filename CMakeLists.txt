@@ -201,7 +201,7 @@ message(STATUS "SCN_WERROR: ${SCN_WERROR}")
 
 function (generate_library_target target_name)
     add_library(${target_name}
-        src/stream.cpp src/vscan.cpp src/locale.cpp src/visitor.cpp)
+        src/istream.cpp src/stream.cpp src/vscan.cpp src/locale.cpp src/visitor.cpp)
     target_include_directories(${target_name} PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)

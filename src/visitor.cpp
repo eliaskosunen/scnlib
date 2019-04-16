@@ -21,6 +21,7 @@
 
 #include <scn/detail/visitor.h>
 
+#include <cerrno>
 #include <string>
 
 namespace scn {
