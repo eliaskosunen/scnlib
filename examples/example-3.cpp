@@ -17,8 +17,10 @@
 
 #include <scn/scn.h>
 #include <iostream>
+#include <string>
 
-int main() {
+int main()
+{
     std::cout << "Hi there! What's your full name?\n";
 
     std::string name;
