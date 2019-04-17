@@ -22,7 +22,7 @@
 #include "stream.h"
 #include "types.h"
 
-#include <ios>
+#include <istream>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
