@@ -59,7 +59,11 @@ namespace scn {
             stream_source_error,
             /// The stream source emitted an error that cannot be recovered
             /// from. The stream is now unusable.
-            unrecoverable_stream_source_error
+            unrecoverable_stream_source_error,
+
+            unrecoverable_internal_error,
+
+            max_error
         };
 
         struct success_tag_t {
@@ -100,7 +104,8 @@ namespace scn {
         SCN_CONSTEXPR bool is_recoverable() const noexcept
         {
             return !(m_code == unrecoverable_stream_error ||
-                     m_code == unrecoverable_stream_source_error);
+                     m_code == unrecoverable_stream_source_error ||
+                     m_code == unrecoverable_internal_error);
         }
 
     private:
@@ -117,11 +122,11 @@ namespace scn {
         return !(a == b);
     }
 
-    template <typename T>
+    template <typename T, typename Error = ::scn::error>
     class result {
     public:
         using success_type = T;
-        using error_type = scn::error;
+        using error_type = Error;
 
         SCN_CONSTEXPR result(success_type val) : m_value(std::move(val)) {}
         SCN_CONSTEXPR result(success_type val, error_type err)
@@ -166,7 +171,7 @@ namespace scn {
 
     private:
         success_type m_value;
-        scn::error m_error{scn::error::success_tag};
+        Error m_error{Error::success_tag};
     };
 
     /**
@@ -174,7 +179,7 @@ namespace scn {
      * For situations where there can be a value in case of success or an error
      * code.
      */
-    template <typename T, typename Enable = void>
+    template <typename T, typename Error = ::scn::error, typename Enable = void>
     class either;
 
     /**
@@ -183,15 +188,17 @@ namespace scn {
      * simultaneously).
      * `error` is used as the error value and discriminant flag.
      */
-    template <typename T>
+    template <typename T, typename Error>
     class either<T,
+                 Error,
                  typename std::enable_if<
                      std::is_default_constructible<T>::value>::type> {
     public:
         using success_type = T;
+        using error_type = Error;
 
         SCN_CONSTEXPR either(success_type s) : m_s(s) {}
-        SCN_CONSTEXPR either(error e) : m_e(e) {}
+        SCN_CONSTEXPR either(error_type e) : m_e(e) {}
 
         SCN_CONSTEXPR bool has_value() const noexcept
         {
@@ -219,18 +226,18 @@ namespace scn {
             return std::move(m_s);
         }
 
-        SCN_CONSTEXPR14 error& get_error() noexcept
+        SCN_CONSTEXPR14 error_type& get_error() noexcept
         {
             return m_e;
         }
-        SCN_CONSTEXPR error get_error() const noexcept
+        SCN_CONSTEXPR error_type get_error() const noexcept
         {
             return m_e;
         }
 
     private:
         success_type m_s{};
-        error m_e{error::success_tag};
+        error_type m_e{error_type::success_tag};
     };
 
     /**
@@ -238,16 +245,18 @@ namespace scn {
      * Not optimized for space-efficiency.
      * `error` is used as the error value and discriminant flag.
      */
-    template <typename T>
+    template <typename T, typename Error>
     class either<T,
+                 Error,
                  typename std::enable_if<
                      !std::is_default_constructible<T>::value>::type> {
     public:
         using success_type = T;
         using success_storage = detail::erased_storage<T>;
+        using error_type = Error;
 
         either(success_type s) : m_s(std::move(s)) {}
-        SCN_CONSTEXPR either(error e) : m_e(e) {}
+        SCN_CONSTEXPR either(error_type e) : m_e(e) {}
 
         SCN_CONSTEXPR bool has_value() const noexcept
         {
@@ -271,18 +280,18 @@ namespace scn {
             return *m_s;
         }
 
-        SCN_CONSTEXPR14 error& get_error() noexcept
+        SCN_CONSTEXPR14 error_type& get_error() noexcept
         {
             return m_e;
         }
-        SCN_CONSTEXPR error get_error() const noexcept
+        SCN_CONSTEXPR error_type get_error() const noexcept
         {
             return m_e;
         }
 
     private:
         success_storage m_s{};
-        error m_e{error::success_tag};
+        error_type m_e{error_type::success_tag};
     };
 
     // -Wpadded
