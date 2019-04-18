@@ -566,31 +566,48 @@ You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS` and build
 
 ### Code size
 
+Code size benchmarks test code bloat for nontrivial projects.
+It generates 25 translation units and reads values from stdin\* five times to simulate a medium sized project.
+The resulting executable size is shown in the following tables.
+
+The code was compiled on Kubuntu 18.10 with clang++ 7.0.0.
+`scnlib` is linked dynamically to level out the playing field compared to already dynamically linked `libc` and `libstdc++`.
+See the directory `benchmark/bloat` for more information, e.g. templates for each TU.
+
+To run these tests yourself:
+
+```sh
+$ cd build
+$ cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF -DSCN_BLOAT=ON ..
+$ make -j
+$ ctest -V
+```
+
+\*: `scn::ranges::scan` scans from a `Range`, not from stdin
+
 #### Release build (-O3 -DNDEBUG)
 
-| Method                          | Executable size (KiB) | Stripped size (KiB) |
-| :------------------------------ | --------------------: | ------------------: |
-| empty                           | 20                    | 16                  |
-| scanf                           | 20                    | 16                  |
-| scanf + string                  | 20                    | 16                  |
-| iostream                        | 32                    | 28                  |
-| scnlib                          | 240                   | 180                 |
-| scnlib (header only)            | 300                   | 188                 |
-| scnlib + range-v3               | 248                   | 180                 |
-| scnlib + range-v3 (header only) | 296                   | 180                 |
+| Method                            | Executable size (KiB) | Stripped size (KiB) |
+| :-------------------------------- | --------------------: | ------------------: |
+| empty                             | 20                    | 16                  |
+| `scanf`                           | 20                    | 16                  |
+| `std::istream` / `std::cin`       | 28                    | 20                  |
+| `scn::input`                      | 40                    | 28                  |
+| `scn::ranges::scan`               | 52                    | 36                  |
+| `scn::input` (header only)        | 300                   | 188                 |
+| `scn::ranges::scan` (header only) | 312                   | 196                 |
 
 #### Debug build (-g)
 
-| Method                          | Executable size (KiB) | Stripped size (KiB) |
-| :------------------------------ | --------------------: | ------------------: |
-| empty                           | 32                    | 16                  |
-| scanf                           | 84                    | 16                  |
-| scanf + string                  | 272                   | 20                  |
-| iostream                        | 296                   | 24                  |
-| scnlib                          | ~3100                 | 388                 |
-| scnlib (header only)            | ~7400                 | 304                 |
-| scnlib + range-v3               | ~3400                 | 396                 |
-| scnlib + range-v3 (header only) | ~7800                 | 308                 |
+| Method                            | Executable size (KiB) | Stripped size (KiB) |
+| :-------------------------------- | --------------------: | ------------------: |
+| empty                             | 32                    | 16                  |
+| `scanf`                           | 276                   | 20                  |
+| `std::istream` / `std::cin`       | 308                   | 24                  |
+| `scn::input`                      | ~1900                 | 60                  |
+| `scn::ranges::scan`               | ~2700                 | 76                  |
+| `scn::input` (header only)        | ~7400                 | 312                 |
+| `scn::ranges::scan` (header only) | ~8200                 | 324                 |
 
 ## Acknowledgements
 

@@ -569,6 +569,9 @@ namespace scn {
                          "custom is not a supported integer scanning method");
         }
 
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wpadded")
+
         template class integer_scanner<char, short>;
         template class integer_scanner<char, int>;
         template class integer_scanner<char, long>;
@@ -585,6 +588,8 @@ namespace scn {
         template class integer_scanner<wchar_t, unsigned int>;
         template class integer_scanner<wchar_t, unsigned long>;
         template class integer_scanner<wchar_t, unsigned long long>;
+
+        SCN_CLANG_POP
 
         template <typename CharT, typename T>
         either<size_t> float_scanner<CharT, T>::_read_sto(

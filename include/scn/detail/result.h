@@ -68,8 +68,10 @@ namespace scn {
 
         struct success_tag_t {
         };
-
-        static const SCN_CONSTEXPR success_tag_t success_tag = success_tag_t{};
+        static SCN_CONSTEXPR success_tag_t success_tag()
+        {
+            return {};
+        }
 
         SCN_CONSTEXPR error() noexcept = default;
         SCN_CONSTEXPR error(success_tag_t) noexcept : error() {}
@@ -171,7 +173,7 @@ namespace scn {
 
     private:
         success_type m_value;
-        Error m_error{Error::success_tag};
+        Error m_error{Error::success_tag()};
     };
 
     /**
@@ -237,7 +239,7 @@ namespace scn {
 
     private:
         success_type m_s{};
-        error_type m_e{error_type::success_tag};
+        error_type m_e{error_type::success_tag()};
     };
 
     /**
@@ -291,7 +293,7 @@ namespace scn {
 
     private:
         success_storage m_s{};
-        error_type m_e{error_type::success_tag};
+        error_type m_e{error_type::success_tag()};
     };
 
     // -Wpadded

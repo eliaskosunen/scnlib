@@ -25,37 +25,40 @@ function (generate_bloat_test target)
     add_test(NAME ${target} COMMAND ${BASH} ${CMAKE_CURRENT_LIST_DIR}/bloat-test.sh ${target})
 endfunction ()
 
-generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/control_template.cpp" out/control bloat-control-sources)
+# control
+generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/control-template.cpp" out/control bloat-control-sources)
 add_executable(bloat-control ${bloat-control-sources})
 generate_bloat_test(bloat-control)
 
-generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/iostream_template.cpp" out/iostream bloat-iostream-sources)
+# iostream
+generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/iostream-template.cpp" out/iostream bloat-iostream-sources)
 add_executable(bloat-iostream ${bloat-iostream-sources})
 generate_bloat_test(bloat-iostream)
 
-generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scanf_template.cpp" out/scanf bloat-scanf-sources)
+# scanf
+generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scanf-template.cpp" out/scanf bloat-scanf-sources)
 add_executable(bloat-scanf ${bloat-scanf-sources})
 generate_bloat_test(bloat-scanf)
 
-generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scanf_string_template.cpp" out/scanf-string bloat-scanf-string-sources)
-add_executable(bloat-scanf-string ${bloat-scanf-string-sources})
-generate_bloat_test(bloat-scanf-string)
-
-generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scnlib_template.cpp" out/scnlib bloat-scnlib-sources)
+# scnlib
+generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scnlib-template.cpp" out/scnlib bloat-scnlib-sources)
 add_executable(bloat-scnlib ${bloat-scnlib-sources})
 target_link_libraries(bloat-scnlib scn)
 generate_bloat_test(bloat-scnlib)
 
+# scnlib (header-only)
 add_executable(bloat-scnlib-header-only ${bloat-scnlib-sources})
 target_link_libraries(bloat-scnlib-header-only scn-header-only)
 generate_bloat_test(bloat-scnlib-header-only)
 
 if (SCN_HAS_RANGES)
-    generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scnlib_ranges_template.cpp" out/scnlib-ranges bloat-scnlib-ranges-sources)
+    # scnlib + range-v3
+    generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scnlib-ranges-template.cpp" out/scnlib-ranges bloat-scnlib-ranges-sources)
     add_executable(bloat-scnlib-ranges ${bloat-scnlib-ranges-sources})
     target_link_libraries(bloat-scnlib-ranges scn-ranges)
     generate_bloat_test(bloat-scnlib-ranges)
 
+    # scnlib + range-v3 (header-only)
     add_executable(bloat-scnlib-ranges-header-only ${bloat-scnlib-ranges-sources})
     target_link_libraries(bloat-scnlib-ranges-header-only scn-ranges-header-only)
     generate_bloat_test(bloat-scnlib-ranges-header-only)
