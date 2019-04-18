@@ -26,19 +26,19 @@ namespace scn {
     namespace ranges {
         SCN_BEGIN_NAMESPACE
 
-        result<int> vscan(erased_stream_context& ctx)
+        SCN_FUNC result<int> vscan(erased_stream_context& ctx)
         {
             return visit(ctx);
         }
-        result<int> vscan(werased_stream_context& ctx)
+        SCN_FUNC result<int> vscan(werased_stream_context& ctx)
         {
             return visit(ctx);
         }
-        result<int> vscan(erased_sized_stream_context& ctx)
+        SCN_FUNC result<int> vscan(erased_sized_stream_context& ctx)
         {
             return visit(ctx);
         }
-        result<int> vscan(werased_sized_stream_context& ctx)
+        SCN_FUNC result<int> vscan(werased_sized_stream_context& ctx)
         {
             return visit(ctx);
         }

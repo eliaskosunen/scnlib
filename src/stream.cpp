@@ -29,7 +29,7 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    auto basic_cstdio_stream<char>::read_char() -> either<char_type>
+    SCN_FUNC auto basic_cstdio_stream<char>::read_char() -> either<char_type>
     {
         auto ret = std::fgetc(m_file);
         if (ret == EOF) {
@@ -45,7 +45,7 @@ namespace scn {
         m_read.push_back(static_cast<char_type>(ret));
         return static_cast<char_type>(ret);
     }
-    error basic_cstdio_stream<char>::putback(char_type ch) noexcept
+    SCN_FUNC error basic_cstdio_stream<char>::putback(char_type ch) noexcept
     {
         SCN_EXPECT(!m_read.empty());
         if (std::ungetc(ch, m_file) == EOF) {
@@ -55,7 +55,7 @@ namespace scn {
         m_read.pop_back();
         return {};
     }
-    error basic_cstdio_stream<char>::roll_back() noexcept
+    SCN_FUNC error basic_cstdio_stream<char>::roll_back() noexcept
     {
         if (m_read.empty()) {
             return {};
@@ -70,7 +70,7 @@ namespace scn {
         return {};
     }
 
-    auto basic_cstdio_stream<wchar_t>::read_char() -> either<char_type>
+    SCN_FUNC auto basic_cstdio_stream<wchar_t>::read_char() -> either<char_type>
     {
         auto ret = std::fgetwc(m_file);
         if (ret == WEOF) {
@@ -86,7 +86,7 @@ namespace scn {
         m_read.push_back(static_cast<char_type>(ret));
         return static_cast<char_type>(ret);
     }
-    error basic_cstdio_stream<wchar_t>::putback(char_type ch) noexcept
+    SCN_FUNC error basic_cstdio_stream<wchar_t>::putback(char_type ch) noexcept
     {
         SCN_EXPECT(!m_read.empty());
         if (std::ungetwc(std::char_traits<char_type>::to_int_type(ch),
@@ -97,7 +97,7 @@ namespace scn {
         m_read.pop_back();
         return {};
     }
-    error basic_cstdio_stream<wchar_t>::roll_back() noexcept
+    SCN_FUNC error basic_cstdio_stream<wchar_t>::roll_back() noexcept
     {
         if (m_read.empty()) {
             return {};

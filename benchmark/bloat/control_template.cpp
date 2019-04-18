@@ -1,0 +1,2 @@
+void do_scan() {
+}

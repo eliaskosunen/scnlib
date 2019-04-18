@@ -521,13 +521,15 @@ Older compilers may work, but it is not guaranteed.
 
 ## Benchmarks
 
+### Run-time performance
+
 These benchmarks were run on a Xubuntu 18.04.2 machine running kernel version 4.15.0-45, with an Intel Core i7-8750H processor, and compiled with clang version 6.0.1, with `-O3`.
 CPU scaling was enabled for these benchmarks, which may have affected the results.
 The source code for the benchmarks can be seen in the `benchmark` directory.
 
 Times are in nanoseconds of CPU time. Lower is better.
 
-### Reading random integers
+#### Reading random integers
 
 | Integer type | `scn::scan` | `std::stringstream` |
 | :----------- | ----------: | ------------------: |
@@ -535,7 +537,7 @@ Times are in nanoseconds of CPU time. Lower is better.
 | `long long`  | 123         | 146                 |
 | `unsigned`   | 76          | 77                  |
 
-### Reading random floating-point numbers
+#### Reading random floating-point numbers
 
 | Floating-point type | `scn::scan` | `std::stringstream` |
 | :------------------ | ----------: | ------------------: |
@@ -543,14 +545,14 @@ Times are in nanoseconds of CPU time. Lower is better.
 | `double`            | 163         | 248                 |
 | `long double`       | 176         | 256                 |
 
-### Reading random whitespace-separated `std::basic_string`s
+#### Reading random whitespace-separated `std::basic_string`s
 
 | Character type | `scn::scan` | `std::stringstream` |
 | :------------- | ----------: | ------------------: |
 | `char`         | 52          | 53                  |
 | `wchar_t`      | 56          | 116                 |
 
-### Reading random characters
+#### Reading random characters
 
 | Character type | `scn::scan` | `scn::getchar` | `std::stringstream` | Control |
 | :------------- | ----------: | -------------: | ------------------: | ------: |
@@ -561,6 +563,34 @@ TODO: More benchmarks
 
 You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS` and building the target `bench`.
 `SCN_BUILD_BENCHMARKS` is enabled by default if `scn` is the root CMake project, and disabled otherwise.
+
+### Code size
+
+#### Release build (-O3 -DNDEBUG)
+
+| Method                          | Executable size (KiB) | Stripped size (KiB) |
+| :------------------------------ | --------------------: | ------------------: |
+| empty                           | 20                    | 16                  |
+| scanf                           | 20                    | 16                  |
+| scanf + string                  | 20                    | 16                  |
+| iostream                        | 32                    | 28                  |
+| scnlib                          | 240                   | 180                 |
+| scnlib (header only)            | 300                   | 188                 |
+| scnlib + range-v3               | 248                   | 180                 |
+| scnlib + range-v3 (header only) | 296                   | 180                 |
+
+#### Debug build (-g)
+
+| Method                          | Executable size (KiB) | Stripped size (KiB) |
+| :------------------------------ | --------------------: | ------------------: |
+| empty                           | 32                    | 16                  |
+| scanf                           | 84                    | 16                  |
+| scanf + string                  | 272                   | 20                  |
+| iostream                        | 296                   | 24                  |
+| scnlib                          | ~3100                 | 388                 |
+| scnlib (header only)            | ~7400                 | 304                 |
+| scnlib + range-v3               | ~3400                 | 396                 |
+| scnlib + range-v3 (header only) | ~7800                 | 308                 |
 
 ## Acknowledgements
 

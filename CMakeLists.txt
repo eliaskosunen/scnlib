@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.4)
 
-project(scn)
+project(scn CXX)
 
 set(MASTER_PROJECT OFF)
 if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
@@ -15,6 +15,7 @@ option(SCN_INSTALL "Generate install target" ${MASTER_PROJECT})
 option(SCN_PEDANTIC "Use stricter warnings" ${MASTER_PROJECT})
 
 option(SCN_COVERAGE "Enable coverage reporting" OFF)
+option(SCN_BLOAT "Generate bloat test target" OFF)
 
 option(SCN_WERROR "Halt compilation in case of a warning" OFF)
 

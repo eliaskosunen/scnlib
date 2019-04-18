@@ -18,3 +18,7 @@ add_executable(bench
     bench_int.cpp bench_float.cpp bench_word.cpp bench_char.cpp bench_buffer.cpp)
 target_link_libraries(bench scn benchmark)
 set_private_flags(bench)
+
+if (SCN_BLOAT)
+    add_subdirectory(bloat)
+endif ()
