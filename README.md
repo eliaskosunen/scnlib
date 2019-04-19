@@ -32,6 +32,34 @@ Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 _There's bound to be bugs, there's no documentation apart from this file, `master` branch is going to get rebased and
 public APIs are going to change in backwards-incompatible ways._
 
+## Table of Contents
+
+* [What is this?](#what-is-this)
+* [Installing](#installing)
+   * [Submodule](#submodule)
+   * [External project](#external-project)
+* [Usage](#usage)
+   * [Basics](#basics)
+   * [Streams](#streams)
+   * [Supported types](#supported-types)
+   * [Format string](#format-string)
+   * [Options](#options)
+   * [Strings and getline](#strings-and-getline)
+   * [Wide streams](#wide-streams)
+   * [Encoding and Unicode](#encoding-and-unicode)
+   * [Error handling](#error-handling)
+   * [ignore](#ignore)
+   * [getchar](#getchar)
+   * [User types](#user-types)
+   * [Range-based interface](#range-based-interface)
+   * [TODO docs](#todo-docs)
+* [Compiler support](#compiler-support)
+* [Benchmarks](#benchmarks)
+   * [Run-time performance](#run-time-performance)
+   * [Code size](#code-size)
+* [Acknowledgements](#acknowledgements)
+* [License](#license)
+
 ## Installing
 
 ### Submodule
