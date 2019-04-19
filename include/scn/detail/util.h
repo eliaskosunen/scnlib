@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_UTIL_H
 #define SCN_DETAIL_UTIL_H
 
-#include "small_vector.h"
+#include "config.h"
 
 #include <cstddef>
 #include <limits>
@@ -84,6 +84,16 @@ namespace scn {
                 return d + 2;  // accommondate for 0x/0o
             }
             return d;
+        }
+
+        template <typename T>
+        SCN_CONSTEXPR T* launder(T* p) noexcept
+        {
+#if SCN_HAS_LAUNDER
+            return std::launder(p);
+#else
+            return p;
+#endif
         }
 
         template <typename T>
@@ -259,12 +269,7 @@ namespace scn {
             }
             static pointer _toptr(storage_type& data)
             {
-#if SCN_HAS_LAUNDER
-                return std::launder<T>(
-                    reinterpret_cast<T*>(std::addressof(data)));
-#else
-                return reinterpret_cast<T*>(std::addressof(data));
-#endif
+                return launder(reinterpret_cast<T*>(std::addressof(data)));
             }
             SCN_CONSTEXPR14 T& _get() noexcept
             {

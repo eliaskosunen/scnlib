@@ -19,12 +19,8 @@
 #define SCN_DETAIL_STREAM_H
 
 #include "result.h"
+#include "small_vector.h"
 #include "string_view.h"
-
-#if SCN_STL_OVERLOADS
-#include <array>
-#include <vector>
-#endif
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wpadded")
@@ -503,28 +499,17 @@ namespace scn {
         }
     }  // namespace detail
 
-#if SCN_STL_OVERLOADS
-    template <typename CharT>
-    erased_sized_stream<CharT> make_stream(const std::basic_string<CharT>& str)
+    template <typename ContiguousContainer,
+              typename = decltype(std::declval<ContiguousContainer&>().data(),
+                                  void())>
+    erased_sized_stream<typename ContiguousContainer::value_type> make_stream(
+        const ContiguousContainer& c)
     {
-        auto s =
-            basic_static_container_stream<CharT, std::basic_string<CharT>>(str);
+        auto s = basic_static_container_stream<
+            typename ContiguousContainer::value_type, ContiguousContainer>(c);
         return {s};
     }
-    template <typename CharT>
-    erased_sized_stream<CharT> make_stream(const std::vector<CharT>& vec)
-    {
-        auto s = basic_static_container_stream<CharT, std::vector<CharT>>(vec);
-        return {s};
-    }
-    template <typename CharT, size_t N>
-    erased_sized_stream<CharT> make_stream(const std::array<CharT, N>& arr)
-    {
-        auto s =
-            basic_static_container_stream<CharT, std::array<CharT, N>>(arr);
-        return {s};
-    }
-#endif
+
     template <typename CharT, size_t N>
     erased_sized_stream<CharT> make_stream(const CharT (&arr)[N])
     {

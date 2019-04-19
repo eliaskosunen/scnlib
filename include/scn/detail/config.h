@@ -328,11 +328,7 @@
 
 #define SCN_UNUSED(x) static_cast<void>(sizeof(x))
 
-#ifndef SCN_STL_OVERLOADS
-#define SCN_STL_OVERLOADS 1
-#endif
-
-#define SCN_ASSERT(cond, msg) assert((cond) && (msg))
+#define SCN_ASSERT(cond, msg) assert((cond) && msg)
 #define SCN_EXPECT(cond) SCN_ASSERT(cond, "Precondition violation")
 #define SCN_ENSURE(cond) SCN_ASSERT(cond, "Postcondition violation")
 

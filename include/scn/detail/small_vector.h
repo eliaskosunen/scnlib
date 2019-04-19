@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_SMALL_VECTOR_H
 #define SCN_DETAIL_SMALL_VECTOR_H
 
-#include "config.h"
+#include "util.h"
 
 #include <iterator>
 #include <limits>
@@ -134,13 +134,31 @@ namespace scn {
             basic_stack_storage_type<T> data[N];
             size_t size{0};
 
-            T* get_data()
+            T* reinterpret_data()
+            {
+                return launder(reinterpret_unconstructed_data());
+            }
+            const T* reinterpret_data() const
+            {
+                return launder(reinterpret_unconstructed_data());
+            }
+
+            T* reinterpret_unconstructed_data()
             {
                 return reinterpret_cast<T*>(data);
             }
-            const T* get_data() const
+            const T* reinterpret_unconstructed_data() const
             {
                 return reinterpret_cast<const T*>(data);
+            }
+
+            basic_stack_storage_type<T>* get_unconstructed_data()
+            {
+                return data;
+            }
+            const basic_stack_storage_type<T>* get_unconstructed_data() const
+            {
+                return data;
             }
         };
 
@@ -151,11 +169,29 @@ namespace scn {
             T* data{nullptr};
             size_t size{0};
 
-            T* get_data()
+            T* reinterpret_data()
             {
                 return nullptr;
             }
-            const T* get_data() const
+            const T* reinterpret_data() const
+            {
+                return nullptr;
+            }
+
+            T* reinterpret_unconstructed_data()
+            {
+                return nullptr;
+            }
+            const T* reinterpret_unconstructed_data() const
+            {
+                return nullptr;
+            }
+
+            basic_stack_storage_type<T>* get_unconstructed_data()
+            {
+                return nullptr;
+            }
+            const basic_stack_storage_type<T>* get_unconstructed_data() const
             {
                 return nullptr;
             }
@@ -206,7 +242,6 @@ namespace scn {
             struct stack_storage : basic_stack_storage<T, StackN> {
             };
             struct heap_storage {
-                pointer ptr{nullptr};
                 size_type size{0};
                 size_type cap{0};
             };
@@ -220,7 +255,8 @@ namespace scn {
                 SCN_MSVC_IGNORE(4127)  // conditional expression is constant
 
                 if (StackN != 0) {
-                    _construct_stack_storage();
+                    auto& stack = _construct_stack_storage();
+                    m_ptr = stack.reinterpret_unconstructed_data();
                 }
                 else {
                     _construct_heap_storage();
@@ -234,22 +270,24 @@ namespace scn {
             explicit small_vector(size_type count, const T& value)
             {
                 if (!can_be_small(count)) {
-                    _construct_heap_storage();
+                    auto& heap = _construct_heap_storage();
                     auto cap = next_pow2(count);
                     auto storage_ptr = new stack_storage_type[count];
                     auto ptr = reinterpret_cast<pointer>(storage_ptr);
                     this->uninitialized_fill(ptr, ptr + count, value);
 
-                    _get_heap().ptr = ptr;
-                    _get_heap().cap = cap;
+                    heap.cap = cap;
+                    heap.size = count;
+                    m_ptr = launder(ptr);
                 }
                 else {
-                    _construct_stack_storage();
-                    this->uninitialized_fill(_get_stack().get_data(),
-                                             _get_stack().get_data() + StackN,
-                                             value);
+                    auto& stack = _construct_stack_storage();
+                    this->uninitialized_fill(
+                        stack.reinterpret_unconstructed_data(),
+                        stack.reinterpret_unconstructed_data() + StackN, value);
+                    stack.size = count;
+                    m_ptr = stack.reinterpret_data();
                 }
-                _set_size(count);
 
                 SCN_ENSURE(data());
                 SCN_ENSURE(size() == count);
@@ -259,23 +297,24 @@ namespace scn {
             explicit small_vector(size_type count)
             {
                 if (!can_be_small(count)) {
-                    _construct_heap_storage();
+                    auto& heap = _construct_heap_storage();
                     auto cap = next_pow2(count);
                     auto storage_ptr = new stack_storage_type[count];
                     auto ptr = reinterpret_cast<pointer>(storage_ptr);
                     this->uninitialized_fill_default_construct<T>(ptr,
                                                                   ptr + count);
-
-                    _get_heap().ptr = ptr;
-                    _get_heap().cap = cap;
+                    heap.cap = cap;
+                    heap.size = count;
+                    m_ptr = launder(ptr);
                 }
                 else {
-                    _construct_stack_storage();
+                    auto& stack = _construct_stack_storage();
                     this->uninitialized_fill_default_construct<T>(
-                        _get_stack().get_data(),
-                        _get_stack().get_data() + count);
+                        stack.reinterpret_unconstructed_data(),
+                        stack.reinterpret_unconstructed_data() + count);
+                    stack.size = count;
+                    m_ptr = stack.reinterpret_data();
                 }
-                _set_size(count);
 
                 SCN_ENSURE(data());
                 SCN_ENSURE(size() == count);
@@ -286,12 +325,13 @@ namespace scn {
             {
                 if (other.empty()) {
                     _construct_stack_storage();
+                    m_ptr = nullptr;
                     return;
                 }
 
                 auto s = other.size();
                 if (!other.is_small()) {
-                    _construct_heap_storage();
+                    auto& heap = _construct_heap_storage();
                     auto cap = other.capacity();
                     auto optr = other.data();
 
@@ -299,17 +339,21 @@ namespace scn {
                     auto ptr = reinterpret_cast<pointer>(storage_ptr);
                     this->uninitialized_copy(optr, optr + s, ptr);
 
-                    _get_heap().ptr = ptr;
-                    _get_heap().cap = cap;
+                    m_ptr = launder(ptr);
+                    heap.size = s;
+                    heap.cap = cap;
                 }
                 else {
-                    _construct_stack_storage();
+                    auto& stack = _construct_stack_storage();
                     auto optr = other.data();
-                    this->uninitialized_copy(optr, optr + s,
-                                             _get_stack().get_data());
+                    this->uninitialized_copy(
+                        optr, optr + s, stack.reinterpret_unconstructed_data());
+                    stack.size = s;
+                    m_ptr = stack.reinterpret_data();
                 }
-                _set_size(s);
 
+                SCN_ENSURE(data());
+                SCN_ENSURE(other.data());
                 SCN_ENSURE(other.size() == size());
                 SCN_ENSURE(other.capacity() == capacity());
             }
@@ -317,32 +361,30 @@ namespace scn {
             {
                 if (other.empty()) {
                     _construct_stack_storage();
+                    m_ptr = nullptr;
                     return;
                 }
 
                 auto s = other.size();
-                if (other.m_heap) {
-                    _construct_heap_storage();
-                    _get_heap().ptr = other.data();
-                    _get_heap().cap = other.capacity();
+                if (!other.is_small()) {
+                    auto& heap = _construct_heap_storage();
+                    m_ptr = other.data();
 
-                    other._get_heap().ptr = nullptr;
-                    other._get_heap().size = 0;
-                    other._get_heap().cap = 0;
+                    heap.cap = other.capacity();
+                    heap.size = s;
                 }
                 else {
-                    _construct_stack_storage();
+                    auto& stack = _construct_stack_storage();
                     auto optr = other.data();
-                    this->uninitialized_move(optr, optr + s,
-                                             _get_stack().get_data());
+                    this->uninitialized_move(
+                        optr, optr + s, stack.reinterpret_unconstructed_data());
 
+                    stack.size = s;
                     other._destruct_elements();
-                    other._get_stack().size = 0;
                 }
-                _set_size(s);
+                other.m_ptr = nullptr;
 
-                SCN_ENSURE(other.size() == 0);
-                SCN_ENSURE(other.capacity() == 0);
+                SCN_ENSURE(data());
             }
 
             small_vector& operator=(const small_vector& other)
@@ -363,19 +405,25 @@ namespace scn {
                 if (!is_small() || other.is_small()) {
                     this->uninitialized_copy(
                         other.data(), other.data() + other.size(), data());
+                    m_ptr = launder(data());
+                    _set_size(other.size());
+                    if (!other.is_small()) {
+                        _get_heap().cap = other.capacity();
+                    }
                 }
                 else {
                     _destruct_stack_storage();
-                    _construct_heap_storage();
+                    auto& heap = _construct_heap_storage();
 
                     auto cap = next_pow2(other.size());
                     auto storage_ptr = new stack_storage_type[cap];
                     auto ptr = reinterpret_cast<pointer>(storage_ptr);
                     this->uninitialized_copy(other.data(),
                                              other.data() + other.size(), ptr);
-                    _get_heap().ptr = ptr;
+                    m_ptr = launder(ptr);
+                    heap.size = other.size();
+                    heap.cap = cap;
                 }
-                _set_size(other.size());
                 return *this;
             }
 
@@ -392,12 +440,12 @@ namespace scn {
                 if (!is_small() && !other.is_small()) {
                     if (!is_small()) {
                         if (capacity() != 0) {
-                            delete[] reinterpret_cast<stack_storage_type*>(
-                                _get_heap().ptr);
+                            delete[] launder(
+                                reinterpret_cast<stack_storage_type*>(m_ptr));
                         }
                     }
 
-                    _get_heap().ptr = other.data();
+                    m_ptr = other.data();
                     _get_heap().cap = other.capacity();
                     _get_heap().size = other.size();
                 }
@@ -409,20 +457,14 @@ namespace scn {
                 }
                 else {
                     _destruct_stack_storage();
-                    _construct_heap_storage();
+                    auto& heap = _construct_heap_storage();
 
-                    _get_heap().ptr = other.data();
-                    _get_heap().cap = other.capacity();
-                    _get_heap().size = other.size();
+                    m_ptr = other.data();
+                    heap.cap = other.capacity();
+                    heap.size = other.size();
                 }
 
-                other._set_size(0);
-                if (!other.is_small()) {
-                    other._get_heap().ptr = nullptr;
-                    other._get_heap().cap = 0;
-                    other._destruct_heap_storage();
-                    other._construct_stack_storage();
-                }
+                other.m_ptr = nullptr;
 
                 return *this;
             }
@@ -434,17 +476,11 @@ namespace scn {
 
             pointer data() noexcept
             {
-                if (is_small()) {
-                    return _get_stack().get_data();
-                }
-                return _get_heap().ptr;
+                return m_ptr;
             }
             const_pointer data() const noexcept
             {
-                if (is_small()) {
-                    return _get_stack().get_data();
-                }
-                return _get_heap().ptr;
+                return m_ptr;
             }
             size_type size() const noexcept
             {
@@ -510,17 +546,11 @@ namespace scn {
 
             iterator begin() noexcept
             {
-                if (is_small()) {
-                    return _get_stack().get_data();
-                }
-                return _get_heap().ptr;
+                return data();
             }
             const_iterator begin() const noexcept
             {
-                if (is_small()) {
-                    return _get_stack().get_data();
-                }
-                return _get_heap().ptr;
+                return data();
             }
             const_iterator cbegin() const noexcept
             {
@@ -529,17 +559,11 @@ namespace scn {
 
             iterator end() noexcept
             {
-                if (is_small()) {
-                    return _get_stack().get_data() + size();
-                }
-                return _get_heap().ptr + size();
+                return begin() + size();
             }
             const_iterator end() const noexcept
             {
-                if (is_small()) {
-                    return _get_stack().get_data() + size();
-                }
-                return _get_heap().ptr + size();
+                return begin() + size();
             }
             const_iterator cend() const noexcept
             {
@@ -584,18 +608,16 @@ namespace scn {
                 }
 
                 stack_storage s;
-                this->uninitialized_move(begin(), end(), s.get_data());
+                this->uninitialized_move(begin(), end(),
+                                         s.reinterpret_unconstructed_data());
                 s.size = size();
 
                 _destruct();
-                _construct_stack_storage();
-                this->uninitialized_move(s.get_data(), s.get_data() + s.size,
-                                         _get_stack().get_data());
-                _set_size(s.size);
-
-                for (size_t i = 0; i != s.size; ++i) {
-                    _get_stack().get_data()[i].~T();
-                }
+                auto& stack = _construct_stack_storage();
+                this->uninitialized_move(
+                    s.reinterpret_data(), s.reinterpret_data() + s.size,
+                    stack.reinterpret_unconstructed_data());
+                stack.size = s.size;
             }
 
             void reserve(size_type new_cap)
@@ -686,17 +708,17 @@ namespace scn {
             }
 
         private:
-            void _construct_stack_storage() noexcept
+            stack_storage& _construct_stack_storage() noexcept
             {
-                ::new (static_cast<void*>(std::addressof(m_storage)))
-                    stack_storage();
                 m_heap = false;
+                return *::new (static_cast<void*>(std::addressof(m_storage)))
+                    stack_storage();
             }
-            void _construct_heap_storage() noexcept
+            heap_storage& _construct_heap_storage() noexcept
             {
-                ::new (static_cast<void*>(std::addressof(m_storage)))
-                    heap_storage();
                 m_heap = true;
+                return *::new (static_cast<void*>(std::addressof(m_storage)))
+                    heap_storage();
             }
 
             void _destruct_stack_storage() noexcept
@@ -706,23 +728,16 @@ namespace scn {
             void _destruct_heap_storage() noexcept
             {
                 if (capacity() != 0) {
-                    delete[] reinterpret_cast<stack_storage_type*>(
-                        _get_heap().ptr);
+                    delete[] reinterpret_cast<stack_storage_type*>(m_ptr);
                 }
                 _get_heap().~heap_storage();
             }
 
             void _destruct_elements() noexcept
             {
-                if (m_heap) {
-                    for (size_type i = 0; i != _get_heap().size; ++i) {
-                        _get_heap().ptr[i].~T();
-                    }
-                }
-                else {
-                    for (size_type i = 0; i != _get_stack().size; ++i) {
-                        _get_stack().get_data()[i].~T();
-                    }
+                const auto s = size();
+                for (size_type i = 0; i != s; ++i) {
+                    m_ptr[i].~T();
                 }
                 _set_size(0);
             }
@@ -730,7 +745,7 @@ namespace scn {
             void _destruct() noexcept
             {
                 _destruct_elements();
-                if (m_heap) {
+                if (!is_small()) {
                     _destruct_heap_storage();
                 }
                 else {
@@ -755,12 +770,15 @@ namespace scn {
                 auto n = size();
                 this->uninitialized_move(begin(), end(), ptr);
                 _destruct();
-                if (is_small()) {
-                    _construct_heap_storage();
-                }
-                _get_heap().ptr = ptr;
-                _get_heap().size = n;
-                _get_heap().cap = new_cap;
+                auto& heap = [this]() -> heap_storage& {
+                    if (is_small()) {
+                        return _construct_heap_storage();
+                    }
+                    return _get_heap();
+                }();
+                m_ptr = ptr;
+                heap.size = n;
+                heap.cap = new_cap;
             }
 
             void* _prepare_push_back()
@@ -768,36 +786,34 @@ namespace scn {
                 if (size() == capacity()) {
                     _realloc(next_pow2(size() + 1));
                 }
-                if (is_small()) {
-                    return _get_stack().data + size();
-                }
-                return _get_heap().ptr + size();
+                return m_ptr + size();
             }
 
             stack_storage& _get_stack() noexcept
             {
-                return *reinterpret_cast<stack_storage*>(
-                    std::addressof(m_storage));
+                return *launder(reinterpret_cast<stack_storage*>(
+                    std::addressof(m_storage)));
             }
             const stack_storage& _get_stack() const noexcept
             {
-                return *reinterpret_cast<const stack_storage*>(
-                    std::addressof(m_storage));
+                return *launder(reinterpret_cast<const stack_storage*>(
+                    std::addressof(m_storage)));
             }
 
             heap_storage& _get_heap() noexcept
             {
-                return *reinterpret_cast<heap_storage*>(
-                    std::addressof(m_storage));
+                return *launder(
+                    reinterpret_cast<heap_storage*>(std::addressof(m_storage)));
             }
             const heap_storage& _get_heap() const noexcept
             {
-                return *reinterpret_cast<const heap_storage*>(
-                    std::addressof(m_storage));
+                return *launder(reinterpret_cast<const heap_storage*>(
+                    std::addressof(m_storage)));
             }
 
+            pointer m_ptr{nullptr};
             storage_type m_storage;
-            bool m_heap{false};
+            bool m_heap;
         };
 
         template <typename T, size_t N>

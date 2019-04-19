@@ -162,7 +162,7 @@ static void scanchar_control(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Char)));
 }
-BENCHMARK_TEMPLATE(scanchar_control, char)->Arg(2 << 15);
-BENCHMARK_TEMPLATE(scanchar_control, wchar_t)->Arg(2 << 15);
+// BENCHMARK_TEMPLATE(scanchar_control, char)->Arg(2 << 15);
+// BENCHMARK_TEMPLATE(scanchar_control, wchar_t)->Arg(2 << 15);
 
 SCN_CLANG_POP
