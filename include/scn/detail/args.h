@@ -110,6 +110,7 @@ namespace scn {
         class value {
         public:
             using char_type = typename Context::char_type;
+            using arg_type = typename Context::arg_type;
 
             union {
                 monostate empty_value;
@@ -190,7 +191,7 @@ namespace scn {
         };
 
         template <typename Context, typename T>
-        SCN_CONSTEXPR14 basic_arg<Context> make_arg(T& value);
+        SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value);
 
 #define SCN_MAKE_VALUE(Tag, Type)                                           \
     template <typename C>                                                   \
@@ -280,7 +281,7 @@ namespace scn {
         class handle {
         public:
             explicit handle(detail::custom_value<Context> custom)
-                : m_custom(custom)
+                : m_custom(std::move(custom))
             {
             }
 
@@ -315,12 +316,12 @@ namespace scn {
 
     private:
         template <typename ContextType, typename T>
-        friend SCN_CONSTEXPR14 basic_arg<ContextType> detail::make_arg(
+        friend SCN_CONSTEXPR14 typename ContextType::arg_type detail::make_arg(
             T& value);
 
-        template <typename Visitor, typename Ctx>
+        template <typename Ctx, typename Visitor>
         friend SCN_CONSTEXPR14 error visit_arg(Visitor&& vis,
-                                               basic_arg<Ctx>& arg);
+                                               typename Ctx::arg_type& arg);
 
         friend class basic_args<Context>;
         friend class detail::arg_map<Context>;
@@ -331,8 +332,9 @@ namespace scn {
 
     SCN_CLANG_POP
 
-    template <typename Visitor, typename Context>
-    SCN_CONSTEXPR14 error visit_arg(Visitor&& vis, basic_arg<Context>& arg)
+    template <typename Context, typename Visitor>
+    SCN_CONSTEXPR14 error visit_arg(Visitor&& vis,
+                                    typename Context::arg_type& arg)
     {
         SCN_EXPECT(arg.m_type != detail::named_arg_type);
         switch (arg.m_type) {
@@ -377,7 +379,7 @@ namespace scn {
 
             case detail::custom_type:
                 return vis(
-                    typename basic_arg<Context>::handle(arg.m_value.custom));
+                    typename Context::arg_type::handle(arg.m_value.custom));
 
                 SCN_CLANG_PUSH
                 SCN_CLANG_IGNORE("-Wcovered-switch-default")
@@ -425,7 +427,8 @@ namespace scn {
                 }
             }
 
-            basic_arg<Context> find(basic_string_view<char_type> name) const
+            typename Context::arg_type find(
+                basic_string_view<char_type> name) const
             {
                 SCN_EXPECT(!m_args.empty());
                 // Use for instead of find_if to avoid including <algorithm>
@@ -440,7 +443,7 @@ namespace scn {
         private:
             struct entry {
                 basic_string_view<char_type> name;
-                basic_arg<Context> arg;
+                typename Context::arg_type arg;
             };
 
             void push_back(value<Context> val)
@@ -476,9 +479,9 @@ namespace scn {
         }
 
         template <typename Context, typename T>
-        SCN_CONSTEXPR14 basic_arg<Context> make_arg(T& value)
+        SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value)
         {
-            basic_arg<Context> arg;
+            typename Context::arg_type arg;
             arg.m_type = get_type<Context, T>::value;
             arg.m_value = make_value<Context>(value, priority_tag<1>{});
             return arg;
@@ -492,9 +495,9 @@ namespace scn {
         }
         template <bool Packed, typename Context, typename T>
         inline auto make_arg(T& v) ->
-            typename std::enable_if<!Packed, basic_arg<Context>>::type
+            typename std::enable_if<!Packed, typename Context::arg_type>::type
         {
-            return basic_arg<Context>(v);
+            return typename Context::arg_type(v);
         }
     }  // namespace detail
 
@@ -513,38 +516,38 @@ namespace scn {
 
     public:
         static SCN_CONSTEXPR size_t types = get_types();
+        using arg_type = typename Context::arg_type;
+
+        using value_type = typename std::
+            conditional<is_packed, detail::value<Context>, arg_type>::type;
+        static SCN_CONSTEXPR size_t data_size =
+            num_args + (is_packed && num_args != 0 ? 0 : 1);
 
         arg_store(Args&... a)
             : m_data{{detail::make_arg<is_packed, Context>(a)...}}
         {
         }
 
-        span<basic_arg<Context>> data()
+        span<value_type> data()
         {
             return make_span(m_data.data(),
                              static_cast<std::ptrdiff_t>(m_data.size()));
         }
 
     private:
-        using value_type = typename std::conditional<is_packed,
-                                                     detail::value<Context>,
-                                                     basic_arg<Context>>::type;
-        static SCN_CONSTEXPR size_t data_size =
-            num_args + (is_packed && num_args != 0 ? 0 : 1);
-
         std::array<value_type, data_size> m_data;
     };
 
     template <typename Context, typename... Args>
-    arg_store<Context, Args...> make_args(Args&... args)
+    typename Context::template arg_store_type<Args...> make_args(Args&... args)
     {
-        return arg_store<Context, Args...>(args...);
+        return {args...};
     }
 
     template <typename Context>
     class basic_args {
     public:
-        using arg_type = basic_arg<Context>;
+        using arg_type = typename Context::arg_type;
 
         basic_args() = default;
 

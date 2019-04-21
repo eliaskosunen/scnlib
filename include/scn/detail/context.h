@@ -92,83 +92,116 @@ namespace scn {
             options_type m_options;
             locale_type m_locale;
         };
+
+        /// Scanning context.
+        template <typename Stream, typename ParseContext>
+        class arg_context_base
+            : public detail::context_base<
+                  Stream,
+                  typename Stream::char_type,
+                  ParseContext,
+                  struct options,
+                  basic_locale_ref<typename Stream::char_type>> {
+            using base = detail::context_base<
+                Stream,
+                typename Stream::char_type,
+                ParseContext,
+                struct options,
+                basic_locale_ref<typename Stream::char_type>>;
+
+        public:
+            using stream_type = Stream;
+            using char_type = typename stream_type::char_type;
+            using format_string_type = basic_string_view<char_type>;
+            using args_type = basic_args<arg_context_base>;
+            using parse_context_type = ParseContext;
+            using locale_type = basic_locale_ref<char_type>;
+            using options_type = struct options;
+            using arg_type = basic_arg<arg_context_base>;
+            using base::scanner_type;
+
+            template <typename... Args>
+            using arg_store_type = arg_store<arg_context_base, Args...>;
+
+            arg_context_base(stream_type& s,
+                             basic_string_view<char_type> f,
+                             args_type args)
+                : base(s, parse_context_type{f}, locale_type{}, options_type{}),
+                  m_args(std::move(args))
+            {
+            }
+            arg_context_base(stream_type& s,
+                             basic_string_view<char_type> f,
+                             args_type args,
+                             options_type opt)
+                : base(s,
+                       parse_context_type{f},
+                       opt.get_locale_ref<char_type>(),
+                       std::move(opt)),
+                  m_args(std::move(args))
+            {
+            }
+
+            arg_type arg(size_t id) const
+            {
+                return m_args.get(id);
+            }
+
+            either<arg_type> next_arg()
+            {
+                return this->do_get_arg(this->parse_context().next_arg_id());
+            }
+            either<arg_type> arg(size_t id)
+            {
+                return this->parse_context().check_arg_id(id) ? do_get_arg(id)
+                                                              : arg_type();
+            }
+
+            either<arg_type> arg(basic_string_view<char_type> name);
+
+        private:
+            either<arg_type> do_get_arg(size_t id)
+            {
+                auto a = this->m_args.get(id);
+                if (!a && !this->m_args.check_id(id - 1)) {
+                    return error(error::invalid_argument,
+                                 "Argument id out of range");
+                }
+                return a;
+            }
+
+            args_type m_args;
+            detail::arg_map<arg_context_base> m_map;
+        };
     }  // namespace detail
 
-    /// Scanning context.
     template <typename Stream>
-    class basic_context : public detail::context_base<
+    class basic_context : public detail::arg_context_base<
                               Stream,
-                              typename Stream::char_type,
-                              basic_parse_context<typename Stream::char_type>,
-                              struct options,
-                              basic_locale_ref<typename Stream::char_type>> {
-        using base = detail::context_base<
+                              basic_parse_context<typename Stream::char_type>> {
+        using base = detail::arg_context_base<
             Stream,
-            typename Stream::char_type,
-            basic_parse_context<typename Stream::char_type>,
-            struct options,
-            basic_locale_ref<typename Stream::char_type>>;
+            basic_parse_context<typename Stream::char_type>>;
 
     public:
-        using stream_type = Stream;
-        using char_type = typename stream_type::char_type;
-        using format_string_type = basic_string_view<char_type>;
-        using args_type = basic_args<basic_context>;
-        using parse_context_type = basic_parse_context<char_type>;
-        using locale_type = basic_locale_ref<char_type>;
-        using options_type = struct options;
-        using arg_type = basic_arg<basic_context>;
-        using base::scanner_type;
+        using stream_type = typename base::stream_type;
+        using char_type = typename base::char_type;
+        using args_type = typename base::args_type;
+        using options_type = typename base::options_type;
 
         basic_context(stream_type& s,
                       basic_string_view<char_type> f,
-                      basic_args<basic_context> args)
-            : base(s, parse_context_type{f}, locale_type{}, options_type{}),
-              m_args(std::move(args))
+                      args_type args)
+            : base(s, f, std::move(args))
         {
         }
         basic_context(stream_type& s,
                       basic_string_view<char_type> f,
-                      basic_args<basic_context> args,
+                      args_type args,
                       options_type opt)
-            : base(s,
-                   parse_context_type{f},
-                   opt.get_locale_ref<char_type>(),
-                   std::move(opt)),
-              m_args(std::move(args))
+            : base(s, f, std::move(args), std::move(opt))
         {
         }
-
-        basic_arg<basic_context> arg(size_t id) const
-        {
-            return m_args.get(id);
-        }
-
-        either<arg_type> next_arg()
-        {
-            return this->do_get_arg(this->parse_context().next_arg_id());
-        }
-        either<arg_type> arg(size_t id)
-        {
-            return this->parse_context().check_arg_id(id) ? do_get_arg(id)
-                                                          : arg_type();
-        }
-
-        either<arg_type> arg(basic_string_view<char_type> name);
-
-    private:
-        either<arg_type> do_get_arg(size_t id)
-        {
-            auto a = this->m_args.get(id);
-            if (!a && !this->m_args.check_id(id - 1)) {
-                return error(error::invalid_argument,
-                             "Argument id out of range");
-            }
-            return a;
-        }
-
-        basic_args<basic_context> m_args;
-        detail::arg_map<basic_context> m_map;
     };
 
     template <typename Stream, typename Context = basic_context<Stream>>

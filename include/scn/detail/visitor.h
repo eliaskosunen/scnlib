@@ -1217,7 +1217,7 @@ namespace scn {
             }
             return s.scan(val, *m_ctx);
         }
-        auto visit(typename basic_arg<Context>::handle val,
+        auto visit(typename Context::arg_type::handle val,
                    detail::priority_tag<1>) -> error
         {
             return val.scan(*m_ctx);
@@ -1306,7 +1306,7 @@ namespace scn {
                               "Mismatch between number of arguments and "
                               "'{}' in the format string"));
                 }
-                auto ret = visit_arg(basic_visitor<Context>(ctx), arg);
+                auto ret = visit_arg<Context>(basic_visitor<Context>(ctx), arg);
                 if (!ret) {
                     auto rb = ctx.stream().roll_back();
                     if (!rb) {

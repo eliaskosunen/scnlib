@@ -24,8 +24,41 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    namespace detail {
+        class parse_context_base {
+        public:
+            SCN_CONSTEXPR14 size_t next_arg_id()
+            {
+                if (m_next_arg_id >= 0) {
+                    return static_cast<size_t>(m_next_arg_id++);
+                }
+                return 0;
+            }
+            SCN_CONSTEXPR14 bool check_arg_id(int)
+            {
+                if (m_next_arg_id > 0) {
+                    return false;
+                }
+                m_next_arg_id = -1;
+                return true;
+            }
+
+        protected:
+            parse_context_base() = default;
+
+            int m_next_arg_id{0};
+        };
+        template <typename Char>
+        class basic_parse_context_base : public parse_context_base {
+            SCN_CONSTEXPR14 void check_arg_id(basic_string_view<Char>) {}
+        };
+    }  // namespace detail
+
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wpadded")
+
     template <typename Char>
-    class basic_parse_context {
+    class basic_parse_context : public detail::basic_parse_context_base<Char> {
     public:
         using char_type = Char;
         using iterator = typename basic_string_view<char_type>::iterator;
@@ -35,23 +68,6 @@ namespace scn {
             : m_str(f)
         {
         }
-
-        SCN_CONSTEXPR14 size_t next_arg_id()
-        {
-            if (m_next_arg_id >= 0) {
-                return m_next_arg_id++;
-            }
-            return 0;
-        }
-        SCN_CONSTEXPR14 bool check_arg_id(size_t)
-        {
-            if (m_next_arg_id > 0) {
-                return false;
-            }
-            m_next_arg_id = static_cast<size_t>(-1);
-            return true;
-        }
-        SCN_CONSTEXPR14 void check_arg_id(basic_string_view<Char>) {}
 
         template <typename Locale>
         bool should_skip_ws(const Locale& loc)
@@ -123,8 +139,9 @@ namespace scn {
 
     private:
         basic_string_view<char_type> m_str;
-        size_t m_next_arg_id{0};
     };
+
+    SCN_CLANG_POP
 
     SCN_END_NAMESPACE
 }  // namespace scn
