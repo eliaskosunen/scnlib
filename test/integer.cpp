@@ -40,7 +40,8 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
 
     const bool u = std::is_unsigned<value_type>::value;
 
-    std::vector<scn::method> methods{scn::method::sto, scn::method::strto};
+    std::vector<scn::method> methods{scn::method::sto, scn::method::strto,
+                                     scn::method::custom};
     if (scn::is_int_from_chars_available()) {
         methods.push_back(scn::method::from_chars);
     }

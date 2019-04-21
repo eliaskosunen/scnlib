@@ -132,6 +132,11 @@ namespace scn {
             return span<T>(data() + off, count);
         }
 
+        SCN_CONSTEXPR span<typename std::add_const<T>::type> as_const() const
+        {
+            return {m_ptr, m_size};
+        }
+
     private:
         pointer m_ptr{nullptr};
         index_type m_size{0};

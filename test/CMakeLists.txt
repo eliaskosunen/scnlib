@@ -14,7 +14,7 @@ add_executable(tests
     test.cpp empty.cpp string_view.cpp
     integer.cpp floating.cpp boolean.cpp string.cpp
     result.cpp usertype.cpp istream.cpp buffer.cpp
-    small_vector.cpp)
+    small_vector.cpp integer_each.cpp)
 target_link_libraries(tests PRIVATE scn tests-base)
 set_private_flags(tests)
 add_test(NAME tests COMMAND tests)

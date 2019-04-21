@@ -55,7 +55,7 @@ namespace scn {
                       ::ranges::value_type_t<::ranges::iterator_t<Range>>>
         auto getline(Range& r, std::basic_string<CharT, Traits, Allocator>& str)
         {
-            return getline(r, str, basic_locale_ref<CharT>().widen('\n'));
+            return getline(r, str, ::scn::detail::ascii_widen<CharT>('\n'));
         }
 
         SCN_END_NAMESPACE

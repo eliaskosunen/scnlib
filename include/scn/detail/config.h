@@ -245,7 +245,7 @@
 #if (defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606) || \
     SCN_HAS_INCLUDE(<charconv>)
 
-#if defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= SCN_COMPILER(8, 1, 0)
+#if defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= 9
 #define SCN_HAS_INTEGER_CHARCONV 1
 #define SCN_HAS_FLOAT_CHARCONV 0
 #elif SCN_MSVC >= SCN_COMPILER(19, 14, 0)

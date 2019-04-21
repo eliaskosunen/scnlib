@@ -601,17 +601,17 @@ namespace scn {
                 for (auto ch = pctx.next();
                      pctx && !pctx.check_arg_end(ctx.locale());
                      pctx.advance(), ch = pctx.next()) {
-                    if (ch == ctx.locale().widen('l')) {
+                    if (ch == detail::ascii_widen<CharT>('l')) {
                         localized = true;
                     }
-                    if (ch == ctx.locale().widen('l')) {
+                    if (ch == detail::ascii_widen<CharT>('l')) {
                         localized = true;
                     }
-                    else if (ch == ctx.locale().widen('a')) {
+                    else if (ch == detail::ascii_widen<CharT>('a')) {
                         a = true;
                         allow_set = true;
                     }
-                    else if (ch == ctx.locale().widen('n')) {
+                    else if (ch == detail::ascii_widen<CharT>('n')) {
                         n = true;
                         allow_set = true;
                     }
@@ -700,11 +700,11 @@ namespace scn {
                     if (!tmp) {
                         return tmp.get_error();
                     }
-                    if (tmp.value() == ctx.locale().widen('0')) {
+                    if (tmp.value() == detail::ascii_widen<CharT>('0')) {
                         val = false;
                         return {};
                     }
-                    if (tmp.value() == ctx.locale().widen('1')) {
+                    if (tmp.value() == detail::ascii_widen<CharT>('1')) {
                         val = true;
                         return {};
                     }
@@ -758,11 +758,11 @@ namespace scn {
                     return {};
                 }
 
-                if (pctx.next() == ctx.locale().widen('l')) {
+                if (pctx.next() == detail::ascii_widen<CharT>('l')) {
                     localized = thousands_separator | decimal | digits;
                     pctx.advance();
                 }
-                else if (pctx.next() == ctx.locale().widen('n')) {
+                else if (pctx.next() == detail::ascii_widen<CharT>('n')) {
                     localized = thousands_separator | decimal;
                     ctx.parse_context().advance();
                 }
@@ -776,19 +776,19 @@ namespace scn {
                     return {};
                 }
 
-                if (pctx.next() == ctx.locale().widen('d')) {
+                if (pctx.next() == detail::ascii_widen<CharT>('d')) {
                     base = 10;
                     pctx.advance();
                 }
-                else if (pctx.next() == ctx.locale().widen('x')) {
+                else if (pctx.next() == detail::ascii_widen<CharT>('x')) {
                     base = 16;
                     pctx.advance();
                 }
-                else if (pctx.next() == ctx.locale().widen('o')) {
+                else if (pctx.next() == detail::ascii_widen<CharT>('o')) {
                     base = 8;
                     pctx.advance();
                 }
-                else if (pctx.next() == ctx.locale().widen('b')) {
+                else if (pctx.next() == detail::ascii_widen<CharT>('b')) {
                     pctx.advance();
                     if (SCN_UNLIKELY(!pctx)) {
                         return error(error::invalid_format_string,
@@ -799,8 +799,8 @@ namespace scn {
                                      "Unexpected argument end");
                     }
 
-                    const auto zero = ctx.locale().widen('0'),
-                               nine = ctx.locale().widen('9');
+                    const auto zero = detail::ascii_widen<CharT>('0'),
+                               nine = detail::ascii_widen<CharT>('9');
                     int tmp = 0;
                     if (pctx.next() < zero || pctx.next() > nine) {
                         return error(
@@ -850,8 +850,7 @@ namespace scn {
             template <typename Context>
             error scan(T& val, Context& ctx)
             {
-                std::basic_string<CharT> buf{};
-                buf.reserve(15 / sizeof(CharT));
+                detail::small_vector<CharT, 32> buf;
 
                 auto r =
                     read_into_if(ctx.stream(), std::back_inserter(buf),
@@ -859,14 +858,16 @@ namespace scn {
                 if (!r) {
                     return r.error();
                 }
-                buf.erase(r.value());
+                buf.erase(buf.begin() + r.value(), buf.end());
+                buf.push_back(detail::ascii_widen<CharT>(0));
 
                 T tmp = 0;
                 size_t chars = 0;
 
                 if ((localized & digits) != 0) {
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-                    auto ret = ctx.locale().read_num(tmp, buf);
+                    std::basic_string<CharT> str(buf.data(), buf.size());
+                    auto ret = ctx.locale().read_num(tmp, str);
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
                     if (!ret) {
@@ -887,7 +888,7 @@ namespace scn {
                 SCN_MSVC_IGNORE(4127)  // conditional expression is constant
 
                 if (std::is_unsigned<T>::value) {
-                    if (buf.front() == ctx.locale().widen('-')) {
+                    if (buf.front() == detail::ascii_widen<CharT>('-')) {
                         return error(error::value_out_of_range,
                                      "Unexpected sign '-' when scanning an "
                                      "unsigned integer");
@@ -914,11 +915,13 @@ namespace scn {
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     SCN_GCC_POP
                 };
-                auto e = do_read()(tmp, buf, base);
+                auto e = do_read()(tmp, make_span(buf).as_const(), base,
+                                   ctx.locale());
                 if (!e) {
                     return e.get_error();
                 }
                 chars = e.value();
+                buf.pop_back();  // pop null terminator
 
                 auto pb = putback_range(
                     ctx.stream(), buf.rbegin(),
@@ -942,16 +945,24 @@ namespace scn {
 
         private:
             static either<size_t> _read_sto(T& val,
-                                            const std::basic_string<CharT>& buf,
-                                            int base);
-            static either<size_t>
-            _read_strto(T& val, const std::basic_string<CharT>& buf, int base);
+                                            span<const CharT> buf,
+                                            int base,
+                                            const basic_locale_ref<CharT>& loc);
+            static either<size_t> _read_strto(
+                T& val,
+                span<const CharT> buf,
+                int base,
+                const basic_locale_ref<CharT>& loc);
             static either<size_t> _read_from_chars(
                 T& val,
-                const std::basic_string<CharT>& buf,
-                int base);
-            static either<size_t>
-            _read_custom(T& val, const std::basic_string<CharT>& buf, int base);
+                span<const CharT> buf,
+                int base,
+                const basic_locale_ref<CharT>& loc);
+            static either<size_t> _read_custom(
+                T& val,
+                span<const CharT> buf,
+                int base,
+                const basic_locale_ref<CharT>& loc);
         };
 
         SCN_CLANG_POP
@@ -985,7 +996,7 @@ namespace scn {
                     return {};
                 }
 
-                if (pctx.next() == ctx.locale().widen('l')) {
+                if (pctx.next() == detail::ascii_widen<CharT>('l')) {
                     localized = true;
                     pctx.advance();
                 }

@@ -646,7 +646,7 @@ namespace scn {
                 _destruct_elements();
             }
 
-            iterator erase(const_iterator pos)
+            iterator erase(iterator pos)
             {
                 if (pos == end()) {
                     pos->~T();
@@ -662,6 +662,23 @@ namespace scn {
                     _set_size(size() - 1);
                     return pos;
                 }
+            }
+
+            iterator erase(iterator b, iterator e)
+            {
+                if (begin() == end()) {
+                    return b;
+                }
+                if (e == end()) {
+                    auto n = static_cast<size_t>(std::distance(b, e));
+                    for (auto it = b; it != e; ++it) {
+                        it->~T();
+                    }
+                    _set_size(size() - n);
+                    return end();
+                }
+                SCN_ENSURE(false);
+                SCN_UNREACHABLE;
             }
 
             void push_back(const T& value)

@@ -366,6 +366,42 @@ namespace scn {
             // template struct str_to_int<wchar_t, unsigned long long>;
         }  // namespace strto
 
+        namespace custom {
+            template <typename CharT>
+            bool is_base_digit(CharT ch, int base)
+            {
+                if (base <= 10) {
+                    return ch >= detail::ascii_widen<CharT>('0') &&
+                           ch <= detail::ascii_widen<CharT>('0') + base - 1;
+                }
+                return is_base_digit(ch, 10) ||
+                       (ch >= detail::ascii_widen<CharT>('a') &&
+                        ch <= detail::ascii_widen<CharT>('a') + base - 1) ||
+                       (ch >= detail::ascii_widen<CharT>('A') &&
+                        ch <= detail::ascii_widen<CharT>('A') + base - 1);
+            }
+            template <typename T, typename CharT>
+            T char_to_int(CharT ch, int base)
+            {
+                if (base <= 10) {
+                    return static_cast<T>(ch - detail::ascii_widen<CharT>('0'));
+                }
+                if (ch <= detail::ascii_widen<CharT>('9')) {
+                    return static_cast<T>(ch - detail::ascii_widen<CharT>('0'));
+                }
+                SCN_GCC_PUSH
+                SCN_GCC_IGNORE("-Wconversion")
+                if (ch >= detail::ascii_widen<CharT>('a') &&
+                    ch <= detail::ascii_widen<CharT>('z')) {
+                    return 10 +
+                           static_cast<T>(ch - detail::ascii_widen<CharT>('a'));
+                }
+                return 10 +
+                       static_cast<T>(ch - detail::ascii_widen<CharT>('A'));
+                SCN_GCC_POP
+            }
+        }  // namespace custom
+
         namespace sto {
             template <typename CharT>
             struct str_to_float<CharT, float> {
@@ -476,13 +512,15 @@ namespace scn {
         template <typename CharT, typename T>
         either<size_t> integer_scanner<CharT, T>::_read_sto(
             T& val,
-            const std::basic_string<CharT>& buf,
-            int base)
+            span<const CharT> buf,
+            int base,
+            const basic_locale_ref<CharT>&)
         {
 #if SCN_HAS_EXCEPTIONS
             try {
                 size_t chars = 0;
-                auto ret = sto::str_to_int<CharT, T>::get(buf, chars, base);
+                std::basic_string<CharT> str(buf.data(), buf.size());
+                auto ret = sto::str_to_int<CharT, T>::get(str, chars, base);
                 if (!ret) {
                     return ret.get_error();
                 }
@@ -508,8 +546,9 @@ namespace scn {
         template <typename CharT, typename T>
         either<size_t> integer_scanner<CharT, T>::_read_strto(
             T& val,
-            const std::basic_string<CharT>& buf,
-            int base)
+            span<const CharT> buf,
+            int base,
+            const basic_locale_ref<CharT>&)
         {
             size_t chars = 0;
             errno = 0;
@@ -533,8 +572,9 @@ namespace scn {
         template <typename CharT, typename T>
         either<size_t> integer_scanner<CharT, T>::_read_from_chars(
             T& val,
-            const std::basic_string<CharT>& buf,
-            int base)
+            span<const CharT> buf,
+            int base,
+            const basic_locale_ref<CharT>&)
         {
 #if SCN_HAS_INTEGER_CHARCONV
             auto begin = buf.data();
@@ -556,17 +596,81 @@ namespace scn {
                          "method with this platform");
 #endif
         }
+
         template <typename CharT, typename T>
         either<size_t> integer_scanner<CharT, T>::_read_custom(
             T& val,
-            const std::basic_string<CharT>& buf,
-            int base)
+            span<const CharT> buf,
+            int base,
+            const basic_locale_ref<CharT>&)
         {
-            SCN_UNUSED(val);
-            SCN_UNUSED(buf);
-            SCN_UNUSED(base);
-            return error(error::invalid_operation,
-                         "custom is not a supported integer scanning method");
+            T tmp = 0;
+            T sign = 1;
+            auto it = buf.begin();
+            if (buf[0] == detail::ascii_widen<CharT>('-') ||
+                buf[0] == detail::ascii_widen<CharT>('+')) {
+                sign = 1 - 2 * (buf[0] == detail::ascii_widen<CharT>('-'));
+                ++it;
+            }
+            if (SCN_UNLIKELY(it == buf.end())) {
+                return error(error::invalid_scanned_value,
+                             "Expected number after sign");
+            }
+            if (*it == detail::ascii_widen<CharT>('0')) {
+                ++it;
+                if (it == buf.end()) {
+                    val = 0;
+                    return static_cast<size_t>(std::distance(buf.begin(), it));
+                }
+                if (*it == detail::ascii_widen<CharT>('x') ||
+                    *it == detail::ascii_widen<CharT>('X')) {
+                    if (SCN_UNLIKELY(base != 0 && base != 16)) {
+                        return error(error::invalid_scanned_value,
+                                     "Unexpected 'x' in scanned integer");
+                    }
+                    ++it;
+                    if (SCN_UNLIKELY(it == buf.end())) {
+                        return error(error::invalid_scanned_value,
+                                     "Expected number after '0x'");
+                    }
+                    if (base == 0) {
+                        base = 16;
+                    }
+                }
+                else if (base == 0) {
+                    base = 8;
+                }
+            }
+            if (base == 0) {
+                base = 10;
+            }
+            const T max = std::numeric_limits<T>::max() / static_cast<T>(base);
+            auto cmp = [&](CharT ch) {
+                return static_cast<T>(ch - detail::ascii_widen<CharT>('0')) <=
+                       T(7 + (sign == 1 ? 0 : 1));
+            };
+            for (; it != buf.end(); ++it) {
+                if (SCN_LIKELY(custom::is_base_digit(*it, base))) {
+                    if (SCN_LIKELY(tmp < max || (tmp == max && cmp(*it)))) {
+                        tmp = tmp * static_cast<T>(base) +
+                              custom::char_to_int<T>(*it, base);
+                    }
+                    else {
+                        if (sign == 1) {
+                            return error(error::value_out_of_range,
+                                         "Out of range: integer overflow");
+                        }
+                        return error(error::value_out_of_range,
+                                     "Out of range: integer underflow");
+                    }
+                }
+                else {
+                    break;
+                }
+            }
+            val = tmp * sign;
+
+            return static_cast<size_t>(std::distance(buf.begin(), it));
         }
 
         SCN_CLANG_PUSH

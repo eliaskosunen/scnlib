@@ -80,11 +80,11 @@ namespace scn {
             return skip;
         }
         template <typename Locale>
-        bool should_read_literal(const Locale& loc)
+        bool should_read_literal(const Locale&)
         {
-            const auto brace = loc.widen('{');
+            const auto brace = detail::ascii_widen<char_type>('{');
             if (next() != brace) {
-                if (next() == loc.widen('}')) {
+                if (next() == detail::ascii_widen<char_type>('}')) {
                     advance();
                 }
                 return true;
@@ -121,14 +121,14 @@ namespace scn {
         }
 
         template <typename Locale>
-        bool check_arg_begin(const Locale& loc) const
+        bool check_arg_begin(const Locale&) const
         {
-            return next() == loc.widen('{');
+            return next() == detail::ascii_widen<char_type>('{');
         }
         template <typename Locale>
-        bool check_arg_end(const Locale& loc) const
+        bool check_arg_end(const Locale&) const
         {
-            return next() == loc.widen('}');
+            return next() == detail::ascii_widen<char_type>('}');
         }
 
         void arg_begin()

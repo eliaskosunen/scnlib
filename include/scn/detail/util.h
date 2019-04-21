@@ -97,6 +97,19 @@ namespace scn {
 #endif
         }
 
+        template <typename CharT>
+        CharT ascii_widen(char ch);
+        template <>
+        SCN_CONSTEXPR char ascii_widen(char ch)
+        {
+            return ch;
+        }
+        template <>
+        SCN_CONSTEXPR wchar_t ascii_widen(char ch)
+        {
+            return static_cast<wchar_t>(ch);
+        }
+
         template <typename T>
         class unique_ptr {
         public:

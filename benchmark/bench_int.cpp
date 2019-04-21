@@ -58,9 +58,18 @@ static void scanint_scn(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_scn, int)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
-BENCHMARK_TEMPLATE(scanint_scn, long long)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
-BENCHMARK_TEMPLATE(scanint_scn, unsigned)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
+BENCHMARK_TEMPLATE(scanint_scn, int)
+    ->Arg(STRTO_METHOD)
+    ->Arg(STO_METHOD)
+    ->Arg(CUSTOM_METHOD);
+BENCHMARK_TEMPLATE(scanint_scn, long long)
+    ->Arg(STRTO_METHOD)
+    ->Arg(STO_METHOD)
+    ->Arg(CUSTOM_METHOD);
+BENCHMARK_TEMPLATE(scanint_scn, unsigned)
+    ->Arg(STRTO_METHOD)
+    ->Arg(STO_METHOD)
+    ->Arg(CUSTOM_METHOD);
 
 template <typename Int>
 static void scanint_scn_default(benchmark::State& state)
@@ -97,13 +106,16 @@ static void scanint_scn_default(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scanint_scn_default, int)
     ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD);
+    ->Arg(STO_METHOD)
+    ->Arg(CUSTOM_METHOD);
 BENCHMARK_TEMPLATE(scanint_scn_default, long long)
     ->Arg(STRTO_METHOD)
+    ->Arg(CUSTOM_METHOD)
     ->Arg(STO_METHOD);
 BENCHMARK_TEMPLATE(scanint_scn_default, unsigned)
     ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD);
+    ->Arg(STO_METHOD)
+    ->Arg(CUSTOM_METHOD);
 
 template <typename Int>
 static void scanint_sstream(benchmark::State& state)
@@ -112,9 +124,10 @@ static void scanint_sstream(benchmark::State& state)
     auto stream = std::istringstream(data);
     Int i{};
     for (auto _ : state) {
-        benchmark::DoNotOptimize(stream >> i);
+        stream >> i;
 
         benchmark::DoNotOptimize(i);
+        benchmark::DoNotOptimize(stream);
         benchmark::ClobberMemory();
         if (stream.eof()) {
             state.PauseTiming();

@@ -44,6 +44,8 @@ SCN_GCC_IGNORE("-Wredundant-decls")
 
 #define STRTO_METHOD (static_cast<int64_t>(scn::method::strto))
 #define STO_METHOD (static_cast<int64_t>(scn::method::sto))
+#define FROM_CHARS_METHOD (static_cast<int64_t>(scn::method::from_chars))
+#define CUSTOM_METHOD (static_cast<int64_t>(scn::method::custom))
 
 inline std::string generate_buffer(size_t len)
 {
