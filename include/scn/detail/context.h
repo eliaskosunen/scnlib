@@ -25,6 +25,9 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wpadded")
+
     namespace detail {
         template <typename Stream,
                   typename FormatStringChar,
@@ -124,18 +127,18 @@ namespace scn {
             using arg_store_type = arg_store<arg_context_base, Args...>;
 
             arg_context_base(stream_type& s,
-                             basic_string_view<char_type> f,
+                             parse_context_type p,
                              args_type args)
-                : base(s, parse_context_type{f}, locale_type{}, options_type{}),
+                : base(s, std::move(p), locale_type{}, options_type{}),
                   m_args(std::move(args))
             {
             }
             arg_context_base(stream_type& s,
-                             basic_string_view<char_type> f,
+                             parse_context_type p,
                              args_type args,
                              options_type opt)
                 : base(s,
-                       parse_context_type{f},
+                       std::move(p),
                        opt.get_locale_ref<char_type>(),
                        std::move(opt)),
                   m_args(std::move(args))
@@ -188,21 +191,56 @@ namespace scn {
         using char_type = typename base::char_type;
         using args_type = typename base::args_type;
         using options_type = typename base::options_type;
+        using parse_context_type = typename base::parse_context_type;
 
         basic_context(stream_type& s,
                       basic_string_view<char_type> f,
                       args_type args)
-            : base(s, f, std::move(args))
+            : base(s, parse_context_type{f}, std::move(args))
         {
         }
         basic_context(stream_type& s,
                       basic_string_view<char_type> f,
                       args_type args,
                       options_type opt)
-            : base(s, f, std::move(args), std::move(opt))
+            : base(s, parse_context_type{f}, std::move(args), std::move(opt))
         {
         }
     };
+
+    template <typename Stream>
+    class basic_empty_context
+        : public detail::arg_context_base<
+              Stream,
+              basic_empty_parse_context<typename Stream::char_type>> {
+        using base = detail::arg_context_base<
+            Stream,
+            basic_empty_parse_context<typename Stream::char_type>>;
+
+    public:
+        using stream_type = typename base::stream_type;
+        using char_type = typename base::char_type;
+        using args_type = typename base::args_type;
+        using options_type = typename base::options_type;
+        using parse_context_type = typename base::parse_context_type;
+
+        basic_empty_context(stream_type& s, int n_args, args_type args)
+            : base(s, parse_context_type{n_args}, std::move(args))
+        {
+        }
+        basic_empty_context(stream_type& s,
+                            int n_args,
+                            args_type args,
+                            options_type opt)
+            : base(s,
+                   parse_context_type{n_args},
+                   std::move(args),
+                   std::move(opt))
+        {
+        }
+    };
+
+    SCN_CLANG_POP
 
     template <typename Stream, typename Context = basic_context<Stream>>
     Context make_context(Stream& s,
@@ -218,6 +256,19 @@ namespace scn {
                          struct options opt)
     {
         return Context(s, f, a, opt);
+    }
+    template <typename Stream, typename Context = basic_empty_context<Stream>>
+    Context make_context(Stream& s, int n_args, typename Context::args_type a)
+    {
+        return Context(s, n_args, a);
+    }
+    template <typename Stream, typename Context = basic_empty_context<Stream>>
+    Context make_context(Stream& s,
+                         int n_args,
+                         typename Context::args_type a,
+                         struct options opt)
+    {
+        return Context(s, n_args, a, opt);
     }
 
     template <typename Context>

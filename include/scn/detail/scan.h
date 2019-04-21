@@ -55,6 +55,34 @@ namespace scn {
         return vscan(ctx);
     }
 
+    template <typename Stream, typename... Args>
+    result<int> scan_default(Stream& s, Args&... a)
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using context_type =
+            typename erased_stream_context_type<Stream, true>::type;
+
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(s, static_cast<int>(sizeof...(Args)), args);
+        return vscan(ctx);
+    }
+    template <typename Stream, typename... Args>
+    result<int> scan_default(options opt, Stream& s, Args&... a)
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using context_type =
+            typename erased_stream_context_type<Stream, true>::type;
+
+        auto args = make_args<context_type>(a...);
+        auto ctx =
+            context_type(s, static_cast<int>(sizeof...(Args)), args, opt);
+        return vscan(ctx);
+    }
+
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wexit-time-destructors")
 

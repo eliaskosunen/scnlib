@@ -596,6 +596,8 @@ namespace scn {
                                  "Unexpected format string end");
                 }
 
+                bool allow_set = false;
+                bool a = false, n = false;
                 for (auto ch = pctx.next();
                      pctx && !pctx.check_arg_end(ctx.locale());
                      pctx.advance(), ch = pctx.next()) {
@@ -606,7 +608,12 @@ namespace scn {
                         localized = true;
                     }
                     else if (ch == ctx.locale().widen('a')) {
-                        boolalpha = true;
+                        a = true;
+                        allow_set = true;
+                    }
+                    else if (ch == ctx.locale().widen('n')) {
+                        n = true;
+                        allow_set = true;
                     }
                     else {
                         return error(error::invalid_format_string,
@@ -614,11 +621,15 @@ namespace scn {
                                      "format string");
                     }
                 }
+                if (allow_set) {
+                    allow_alpha = a;
+                    allow_num = n;
+                }
 
-                if (SCN_UNLIKELY(localized && !boolalpha)) {
+                if (SCN_UNLIKELY(localized && !allow_alpha)) {
                     return error(error::invalid_format_string,
-                                 "'l' and 'a' specifiers cannot be used "
-                                 "simultaneously with bool");
+                                 "boolalpha-mode cannot be enabled with 'l' "
+                                 "(localized) specifier with bool");
                 }
                 if (!pctx.check_arg_end(ctx.locale())) {
                     return error(error::invalid_format_string,
@@ -631,7 +642,7 @@ namespace scn {
             template <typename Context>
             error scan(bool& val, Context& ctx)
             {
-                if (boolalpha) {
+                if (allow_alpha) {
                     auto truename = ctx.locale().get_default().truename();
                     auto falsename = ctx.locale().get_default().falsename();
                     if (localized) {
@@ -675,8 +686,16 @@ namespace scn {
                             ctx.stream(), buf.rbegin(),
                             buf.rend() - static_cast<std::ptrdiff_t>(chars));
                     }
+                    else {
+                        auto pb = putback_range(ctx.stream(), buf.rbegin(),
+                                                buf.rend());
+                        if (!pb) {
+                            return pb;
+                        }
+                    }
                 }
-                else {
+
+                if (allow_num) {
                     auto tmp = ctx.stream().read_char();
                     if (!tmp) {
                         return tmp.get_error();
@@ -689,6 +708,10 @@ namespace scn {
                         val = true;
                         return {};
                     }
+                    auto pb = ctx.stream().putback(tmp.value());
+                    if (!pb) {
+                        return pb;
+                    }
                 }
 
                 return error(error::invalid_scanned_value,
@@ -696,7 +719,8 @@ namespace scn {
             }
 
             bool localized{false};
-            bool boolalpha{false};
+            bool allow_alpha{true};
+            bool allow_num{true};
         };
 
         namespace sto {
@@ -1149,7 +1173,7 @@ namespace scn {
         auto visit(char_type& val, detail::priority_tag<1>) -> error
         {
             detail::char_scanner<char_type> s;
-            auto err = s.parse(*m_ctx);
+            auto err = parse(s);
             if (!err) {
                 return err;
             }
@@ -1158,7 +1182,7 @@ namespace scn {
         auto visit(span<char_type>& val, detail::priority_tag<1>) -> error
         {
             detail::buffer_scanner<char_type> s;
-            auto err = s.parse(*m_ctx);
+            auto err = parse(s);
             if (!err) {
                 return err;
             }
@@ -1167,7 +1191,7 @@ namespace scn {
         auto visit(bool& val, detail::priority_tag<1>) -> error
         {
             detail::bool_scanner<char_type> s;
-            auto err = s.parse(*m_ctx);
+            auto err = parse(s);
             if (!err) {
                 return err;
             }
@@ -1180,7 +1204,7 @@ namespace scn {
                                     error>::type
         {
             detail::integer_scanner<char_type, T> s;
-            auto err = s.parse(*m_ctx);
+            auto err = parse(s);
             if (!err) {
                 return err;
             }
@@ -1201,7 +1225,7 @@ namespace scn {
                                     error>::type
         {
             detail::float_scanner<char_type, T> s;
-            auto err = s.parse(*m_ctx);
+            auto err = parse(s);
             if (!err) {
                 return err;
             }
@@ -1211,7 +1235,7 @@ namespace scn {
             -> error
         {
             detail::string_scanner<char_type> s;
-            auto err = s.parse(*m_ctx);
+            auto err = parse(s);
             if (!err) {
                 return err;
             }
@@ -1225,6 +1249,12 @@ namespace scn {
         auto visit(detail::monostate, detail::priority_tag<0>) -> error
         {
             return error(error::invalid_operation, "Cannot scan a monostate");
+        }
+
+        template <typename Scanner>
+        error parse(Scanner& s)
+        {
+            return m_ctx->parse_context().parse(s, *m_ctx);
         }
 
         Context* m_ctx;
@@ -1316,6 +1346,7 @@ namespace scn {
                 }
                 // Handle next arg and bump pctx
                 ++args_read;
+                pctx.arg_handled();
                 arg_wrapped = ctx.next_arg();
                 if (!arg_wrapped) {
                     return reterror(arg_wrapped.get_error());

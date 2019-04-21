@@ -137,8 +137,93 @@ namespace scn {
         }
         void arg_end() {}
 
+        SCN_CONSTEXPR14 void arg_handled() const {}
+
+        template <typename Scanner, typename Context>
+        error parse(Scanner& s, Context& ctx)
+        {
+            return s.parse(ctx);
+        }
+
     private:
         basic_string_view<char_type> m_str;
+    };
+
+    template <typename Char>
+    class basic_empty_parse_context
+        : public detail::basic_parse_context_base<Char> {
+    public:
+        using char_type = Char;
+
+        explicit SCN_CONSTEXPR basic_empty_parse_context(int args)
+            : m_args_left(args)
+        {
+        }
+
+        template <typename Locale>
+        SCN_CONSTEXPR14 bool should_skip_ws(const Locale&)
+        {
+            if (m_should_skip_ws) {
+                m_should_skip_ws = false;
+                return true;
+            }
+            return false;
+        }
+        template <typename Locale>
+        SCN_CONSTEXPR bool should_read_literal(const Locale&) const
+        {
+            return false;
+        }
+        SCN_CONSTEXPR bool check_literal(char_type) const
+        {
+            return false;
+        }
+
+        SCN_CONSTEXPR bool good() const
+        {
+            return m_args_left > 0;
+        }
+        SCN_CONSTEXPR explicit operator bool() const
+        {
+            return good();
+        }
+
+        SCN_CONSTEXPR14 void advance(size_t = 1) const noexcept {}
+        char_type next() const
+        {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
+        }
+
+        template <typename Locale>
+        SCN_CONSTEXPR bool check_arg_begin(const Locale&) const
+        {
+            return true;
+        }
+        template <typename Locale>
+        SCN_CONSTEXPR bool check_arg_end(const Locale&) const
+        {
+            return true;
+        }
+
+        SCN_CONSTEXPR14 void arg_begin() const {}
+        SCN_CONSTEXPR14 void arg_end() {}
+
+        SCN_CONSTEXPR14 void arg_handled()
+        {
+            m_should_skip_ws = true;
+            --m_args_left;
+        }
+
+        template <typename Scanner, typename Context>
+        error parse(Scanner&, Context&)
+        {
+            return {};
+        }
+
+    private:
+        int m_args_left;
+        bool m_should_skip_ws{false};
     };
 
     SCN_CLANG_POP

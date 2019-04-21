@@ -41,5 +41,22 @@ namespace scn {
         return visit(ctx);
     }
 
+    SCN_FUNC result<int> vscan(erased_empty_stream_context& ctx)
+    {
+        return visit(ctx);
+    }
+    SCN_FUNC result<int> vscan(werased_empty_stream_context& ctx)
+    {
+        return visit(ctx);
+    }
+    SCN_FUNC result<int> vscan(erased_empty_sized_stream_context& ctx)
+    {
+        return visit(ctx);
+    }
+    SCN_FUNC result<int> vscan(werased_empty_sized_stream_context& ctx)
+    {
+        return visit(ctx);
+    }
+
     SCN_END_NAMESPACE
 }  // namespace scn

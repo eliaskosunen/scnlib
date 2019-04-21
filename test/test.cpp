@@ -1,6 +1,6 @@
 // Copyright 2017-2019 Elias Kosunen
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
+// Licensed under the Apache License, Version 2.0 (the "License{");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -38,5 +38,24 @@ TEST_CASE("general")
     CHECK(b);
     CHECK(ret);
     CHECK(ret.value() == 4);
+}
+
+TEST_CASE("empty format")
+{
+    std::string data{"42 3.14 foobar true"};
+    auto stream = scn::make_stream(data);
+
+    int i{0};
+    double d{};
+    std::string s(6, '\0');
+    bool b{};
+    auto ret = scn::scan_default(stream, i, d, s, b);
+
+    CHECK(ret);
+    CHECK(ret.value() == 4);
+    CHECK(i == 42);
+    CHECK(d == doctest::Approx(3.14));
+    CHECK(s == "foobar");
+    CHECK(b);
 }
 

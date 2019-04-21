@@ -24,6 +24,7 @@
 #include <limits>
 #include <new>
 #include <type_traits>
+#include <utility>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -269,7 +270,8 @@ namespace scn {
             }
             static pointer _toptr(storage_type& data)
             {
-                return ::scn::detail::launder(reinterpret_cast<T*>(std::addressof(data)));
+                return ::scn::detail::launder(
+                    reinterpret_cast<T*>(std::addressof(data)));
             }
             SCN_CONSTEXPR14 T& _get() noexcept
             {

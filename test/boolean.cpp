@@ -70,7 +70,7 @@ TEST_CASE_TEMPLATE("boolean", CharT, char, wchar_t)
     }
     {
         bool b{};
-        auto e = scan_value<CharT>("true", "{}", b);
+        auto e = scan_value<CharT>("true", "{n}", b);
         REQUIRE(!e);
         CHECK(e.error().code() == scn::error::invalid_scanned_value);
         CHECK(e.value() == 0);
