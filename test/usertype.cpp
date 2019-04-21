@@ -26,7 +26,7 @@ struct user_type2 {
 
 namespace scn {
     template <typename CharT>
-    struct value_scanner<CharT, user_type> : public scn::empty_parser<CharT> {
+    struct scanner<CharT, user_type> : public scn::empty_parser<CharT> {
         template <typename Context>
         error scan(user_type& val, Context& ctx)
         {
@@ -38,7 +38,7 @@ namespace scn {
         }
     };
     template <typename CharT>
-    struct value_scanner<CharT, user_type2> : public scn::empty_parser<CharT> {
+    struct scanner<CharT, user_type2> : public scn::empty_parser<CharT> {
         template <typename Context>
         error scan(user_type2& val, Context& ctx)
         {

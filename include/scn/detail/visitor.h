@@ -321,7 +321,7 @@ namespace scn {
                                 bool keep_final = false)
     {
         size_t n = 0, size = 0;
-        std::array<CharT, 64> arr{{0}};
+        std::array<CharT, 64> arr;
         bool end = false;
         while (!end) {
             n = std::min(s.chars_to_read(), std::size_t{64});
@@ -421,7 +421,7 @@ namespace scn {
                                   bool keep_final = false)
     {
         auto n = 0;
-        std::array<CharT, 64> arr{{0}};
+        std::array<CharT, 64> arr;
         while (true) {
             n = std::min({static_cast<size_t>(std::distance(it, end)),
                           s.chars_to_read(), size_t{64}});
@@ -530,10 +530,17 @@ namespace scn {
         template <typename Context>
         error parse(Context& ctx)
         {
-            if (*ctx.parse_context().begin() != ctx.locale().widen('{')) {
-                return error(error::invalid_format_string, "Expected '}'");
+            auto& pctx = ctx.parse_context();
+            pctx.arg_begin();
+            if (SCN_UNLIKELY(!pctx)) {
+                return error(error::invalid_format_string,
+                             "Unexpected format string end");
             }
-            ctx.parse_context().advance();
+            if (!pctx.check_arg_end(ctx.locale())) {
+                return error(error::invalid_format_string,
+                             "Expected argument end");
+            }
+            pctx.arg_end();
             return {};
         }
     };
@@ -582,13 +589,18 @@ namespace scn {
                 // {}: no boolalpha, not localized
                 // l: localized
                 // a: boolalpha
-                ctx.parse_context().advance();
-                auto ch = *ctx.parse_context().begin();
+                auto& pctx = ctx.parse_context();
+                pctx.arg_begin();
+                if (SCN_UNLIKELY(!pctx)) {
+                    return error(error::invalid_format_string,
+                                 "Unexpected format string end");
+                }
 
-                for (; ch; ctx.parse_context().advance(),
-                           ch = *ctx.parse_context().begin()) {
-                    if (ch == ctx.locale().widen('}')) {
-                        break;
+                for (auto ch = pctx.next();
+                     pctx && !pctx.check_arg_end(ctx.locale());
+                     pctx.advance(), ch = pctx.next()) {
+                    if (ch == ctx.locale().widen('l')) {
+                        localized = true;
                     }
                     if (ch == ctx.locale().widen('l')) {
                         localized = true;
@@ -598,18 +610,21 @@ namespace scn {
                     }
                     else {
                         return error(error::invalid_format_string,
-                                     "Expected '}', 'l' or 'a'");
+                                     "Expected 'l', 'a' or argument end in "
+                                     "format string");
                     }
                 }
 
-                if (localized && !boolalpha) {
-                    return error(
-                        error::invalid_format_string,
-                        "'l' and 'a' cannot be used simultaneously with bool");
+                if (SCN_UNLIKELY(localized && !boolalpha)) {
+                    return error(error::invalid_format_string,
+                                 "'l' and 'a' specifiers cannot be used "
+                                 "simultaneously with bool");
                 }
-                if (ch != ctx.locale().widen('}')) {
-                    return error(error::invalid_format_string, "Expected '}'");
+                if (!pctx.check_arg_end(ctx.locale())) {
+                    return error(error::invalid_format_string,
+                                 "Expected argument end");
                 }
+                pctx.arg_end();
                 return {};
             }
 
@@ -707,74 +722,92 @@ namespace scn {
                 // n: localized decimal/thousand separator
                 // l: n + localized digits
                 // d: decimal, o: octal, x: hex, b[1-36]: base
-                ctx.parse_context().advance();
-                auto ch = *ctx.parse_context().begin();
+                auto& pctx = ctx.parse_context();
+                pctx.arg_begin();
+                if (SCN_UNLIKELY(!pctx)) {
+                    return error(error::invalid_format_string,
+                                 "Unexpected format string end");
+                }
 
-                if (ch == ctx.locale().widen('}')) {
+                if (pctx.check_arg_end(ctx.locale())) {
+                    pctx.arg_end();
                     return {};
                 }
 
-                if (ch == ctx.locale().widen('l')) {
+                if (pctx.next() == ctx.locale().widen('l')) {
                     localized = thousands_separator | decimal | digits;
-                    ctx.parse_context().advance();
+                    pctx.advance();
                 }
-                else if (ch == ctx.locale().widen('n')) {
+                else if (pctx.next() == ctx.locale().widen('n')) {
                     localized = thousands_separator | decimal;
                     ctx.parse_context().advance();
                 }
-                ch = *ctx.parse_context().begin();
-                if (ch == ctx.locale().widen('}')) {
+
+                if (SCN_UNLIKELY(!pctx)) {
+                    return error(error::invalid_format_string,
+                                 "Unexpected format string end");
+                }
+                if (pctx.check_arg_end(ctx.locale())) {
+                    pctx.arg_end();
                     return {};
                 }
 
-                if (ch == ctx.locale().widen('d')) {
+                if (pctx.next() == ctx.locale().widen('d')) {
                     base = 10;
-                    ch = *ctx.parse_context().advance();
+                    pctx.advance();
                 }
-                else if (ch == ctx.locale().widen('x')) {
+                else if (pctx.next() == ctx.locale().widen('x')) {
                     base = 16;
-                    ch = *ctx.parse_context().advance();
+                    pctx.advance();
                 }
-                else if (ch == ctx.locale().widen('o')) {
+                else if (pctx.next() == ctx.locale().widen('o')) {
                     base = 8;
-                    ch = *ctx.parse_context().advance();
+                    pctx.advance();
                 }
-                else if (ch == ctx.locale().widen('b')) {
-                    ctx.parse_context().advance();
-                    ch = *ctx.parse_context().begin();
+                else if (pctx.next() == ctx.locale().widen('b')) {
+                    pctx.advance();
+                    if (SCN_UNLIKELY(!pctx)) {
+                        return error(error::invalid_format_string,
+                                     "Unexpected format string end");
+                    }
+                    if (SCN_UNLIKELY(pctx.check_arg_end(ctx.locale()))) {
+                        return error(error::invalid_format_string,
+                                     "Unexpected argument end");
+                    }
 
+                    const auto zero = ctx.locale().widen('0'),
+                               nine = ctx.locale().widen('9');
                     int tmp = 0;
-                    if (ch < ctx.locale().widen('0') ||
-                        ch > ctx.locale().widen('9')) {
+                    if (pctx.next() < zero || pctx.next() > nine) {
                         return error(
                             error::invalid_format_string,
                             "Invalid character after 'b', expected digit");
                     }
-                    tmp = ch - ctx.locale().widen('0');
-                    ctx.parse_context().advance();
-                    ch = *ctx.parse_context().begin();
+                    tmp = pctx.next() - zero;
+                    pctx.advance();
 
-                    if (ch == ctx.locale().widen('}')) {
+                    if (pctx.check_arg_end(ctx.locale())) {
                         base = tmp;
+                        pctx.arg_end();
                         return {};
                     }
-                    if (ch < ctx.locale().widen('0') ||
-                        ch > ctx.locale().widen('9')) {
+                    if (pctx.next() < zero || pctx.next() > nine) {
                         return error(
                             error::invalid_format_string,
                             "Invalid character after 'b', expected digit");
                     }
                     tmp *= 10;
-                    tmp += ch - ctx.locale().widen('0');
+                    tmp += pctx.next() - zero;
                     if (tmp < 1 || tmp > 36) {
                         return error(error::invalid_format_string,
                                      "Invalid base, must be between 1 and 36");
                     }
                     base = tmp;
-                    ch = *ctx.parse_context().advance();
+                    pctx.advance();
                 }
                 else {
-                    return error(error::invalid_format_string, "Expected '}'");
+                    return error(error::invalid_format_string,
+                                 "Expected argument end");
                 }
 
                 if (localized && (base != 0 && base != 10)) {
@@ -782,9 +815,11 @@ namespace scn {
                         error::invalid_format_string,
                         "Localized integers can only be scanned in base 10");
                 }
-                if (ch != ctx.locale().widen('}')) {
-                    return error(error::invalid_format_string, "Expected '}'");
+                if (!pctx.check_arg_end(ctx.locale())) {
+                    return error(error::invalid_format_string,
+                                 "Expected argument end");
                 }
+                pctx.arg_end();
                 return {};
             }
 
@@ -914,22 +949,28 @@ namespace scn {
             {
                 // {}: not localized
                 // l: localized
-                ctx.parse_context().advance();
-                auto ch = *ctx.parse_context().begin();
+                auto& pctx = ctx.parse_context();
+                pctx.arg_begin();
+                if (SCN_UNLIKELY(!pctx)) {
+                    return error(error::invalid_format_string,
+                                 "Unexpected format string end");
+                }
 
-                if (ch == ctx.locale().widen('}')) {
+                if (pctx.check_arg_end(ctx.locale())) {
+                    pctx.arg_end();
                     return {};
                 }
 
-                if (ch == ctx.locale().widen('l')) {
+                if (pctx.next() == ctx.locale().widen('l')) {
                     localized = true;
-                    ctx.parse_context().advance();
-                    ch = *ctx.parse_context().begin();
+                    pctx.advance();
                 }
 
-                if (ch != ctx.locale().widen('}')) {
-                    return error(error::invalid_format_string, "Expected '}'");
+                if (!pctx.check_arg_end(ctx.locale())) {
+                    return error(error::invalid_format_string,
+                                 "Expected argument end");
                 }
+                pctx.arg_end();
                 return {};
             }
             template <typename Context>
@@ -1042,22 +1083,16 @@ namespace scn {
             template <typename Context>
             error scan(std::basic_string<CharT>& val, Context& ctx)
             {
-                {
-                    auto err = skip_stream_whitespace(ctx);
-                    if (!err) {
-                        return err;
-                    }
-                }
-
                 val.clear();
+                val.reserve(15);
                 auto s =
                     read_into_if(ctx.stream(), std::back_inserter(val),
                                  predicates::until_space<CharT>{ctx.locale()});
-                if (!s) {
+                if (SCN_UNLIKELY(!s)) {
                     return s.error();
                 }
                 val.erase(s.value());
-                if (val.empty()) {
+                if (SCN_UNLIKELY(val.empty())) {
                     return error(error::invalid_scanned_value,
                                  "Empty string parsed");
                 }
@@ -1066,6 +1101,35 @@ namespace scn {
             }
         };
     }  // namespace detail
+
+    /**
+     * Skip any whitespace from the stream.
+     * Next read_char() will return the first non-whitespace character of EOF.
+     * \param ctx Stream and locale to use
+     * error::end_of_stream if `false`
+     */
+    template <typename Context>
+    error skip_stream_whitespace(Context& ctx) noexcept
+    {
+        while (true) {
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+
+            auto ch = ctx.stream().read_char();
+            if (!ch) {
+                return ch.get_error();
+            }
+            if (!ctx.locale().is_space(ch.value())) {
+                auto pb = ctx.stream().putback(ch.value());
+                if (!pb) {
+                    return pb;
+                }
+                break;
+            }
+
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+        }
+        return {};
+    }
 
     template <typename Context>
     class basic_visitor {
@@ -1189,12 +1253,12 @@ namespace scn {
             }
         }
 
-        for (auto it = pctx.begin(); it != pctx.end(); it = pctx.begin()) {
-            if (ctx.locale().is_space(*it)) {
+        while (pctx) {
+            if (pctx.should_skip_ws(ctx.locale())) {
                 // Skip whitespace from format string and from stream
                 // EOF is not an error
-                auto ret = parse_whitespace(ctx);
-                if (!ret) {
+                auto ret = skip_stream_whitespace(ctx);
+                if (SCN_UNLIKELY(!ret)) {
                     if (ret == error::end_of_stream && !arg) {
                         return {args_read};
                     }
@@ -1204,24 +1268,16 @@ namespace scn {
                     }
                     return reterror(ret);
                 }
-                // Don't advance pctx, parse_whitespace() does it for us
+                // Don't advance pctx, should_skip_ws() does it for us
                 continue;
             }
 
             // Non-brace character, or
             // Brace followed by another brace, meaning a literal '{'
-            bool literal_brace = *it == ctx.locale().widen('{') &&
-                                 it + 1 != pctx.end() &&
-                                 *(it + 1) == ctx.locale().widen('{');
-            if (*it != ctx.locale().widen('{') || literal_brace) {
-                if (literal_brace || *it == ctx.locale().widen('}')) {
-                    pctx.advance();
-                    ++it;
-                }
-
+            if (pctx.should_read_literal(ctx.locale())) {
                 // Check for any non-specifier {foo} characters
                 auto ret = ctx.stream().read_char();
-                if (!ret || ret.value() != *it) {
+                if (!ret || !pctx.check_literal(ret.value())) {
                     auto rb = ctx.stream().roll_back();
                     if (!rb) {
                         // Failed rollback
@@ -1268,7 +1324,7 @@ namespace scn {
                 pctx.advance();
             }
         }
-        if (pctx.begin() != pctx.end()) {
+        if (pctx) {
             // Format string not exhausted
             return reterror(error(error::invalid_format_string,
                                   "Format string not exhausted"));

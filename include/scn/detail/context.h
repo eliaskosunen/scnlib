@@ -41,7 +41,7 @@ namespace scn {
             using locale_type = LocaleRef;
 
             template <typename T>
-            using value_scanner_type = value_scanner<char_type, T>;
+            using scanner_type = scanner<char_type, T>;
 
             SCN_CONSTEXPR14 stream_type& stream() noexcept
             {
@@ -118,7 +118,7 @@ namespace scn {
         using locale_type = basic_locale_ref<char_type>;
         using options_type = struct options;
         using arg_type = basic_arg<basic_context>;
-        using base::value_scanner_type;
+        using base::scanner_type;
 
         basic_context(stream_type& s,
                       basic_string_view<char_type> f,

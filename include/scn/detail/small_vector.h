@@ -136,11 +136,11 @@ namespace scn {
 
             T* reinterpret_data()
             {
-                return launder(reinterpret_unconstructed_data());
+                return ::scn::detail::launder(reinterpret_unconstructed_data());
             }
             const T* reinterpret_data() const
             {
-                return launder(reinterpret_unconstructed_data());
+                return ::scn::detail::launder(reinterpret_unconstructed_data());
             }
 
             T* reinterpret_unconstructed_data()
@@ -278,7 +278,7 @@ namespace scn {
 
                     heap.cap = cap;
                     heap.size = count;
-                    m_ptr = launder(ptr);
+                    m_ptr = ::scn::detail::launder(ptr);
                 }
                 else {
                     auto& stack = _construct_stack_storage();
@@ -305,7 +305,7 @@ namespace scn {
                                                                   ptr + count);
                     heap.cap = cap;
                     heap.size = count;
-                    m_ptr = launder(ptr);
+                    m_ptr = ::scn::detail::launder(ptr);
                 }
                 else {
                     auto& stack = _construct_stack_storage();
@@ -339,7 +339,7 @@ namespace scn {
                     auto ptr = reinterpret_cast<pointer>(storage_ptr);
                     this->uninitialized_copy(optr, optr + s, ptr);
 
-                    m_ptr = launder(ptr);
+                    m_ptr = ::scn::detail::launder(ptr);
                     heap.size = s;
                     heap.cap = cap;
                 }
@@ -405,7 +405,7 @@ namespace scn {
                 if (!is_small() || other.is_small()) {
                     this->uninitialized_copy(
                         other.data(), other.data() + other.size(), data());
-                    m_ptr = launder(data());
+                    m_ptr = ::scn::detail::launder(data());
                     _set_size(other.size());
                     if (!other.is_small()) {
                         _get_heap().cap = other.capacity();
@@ -420,7 +420,7 @@ namespace scn {
                     auto ptr = reinterpret_cast<pointer>(storage_ptr);
                     this->uninitialized_copy(other.data(),
                                              other.data() + other.size(), ptr);
-                    m_ptr = launder(ptr);
+                    m_ptr = ::scn::detail::launder(ptr);
                     heap.size = other.size();
                     heap.cap = cap;
                 }
@@ -440,7 +440,7 @@ namespace scn {
                 if (!is_small() && !other.is_small()) {
                     if (!is_small()) {
                         if (capacity() != 0) {
-                            delete[] launder(
+                            delete[] ::scn::detail::launder(
                                 reinterpret_cast<stack_storage_type*>(m_ptr));
                         }
                     }
@@ -791,24 +791,26 @@ namespace scn {
 
             stack_storage& _get_stack() noexcept
             {
-                return *launder(reinterpret_cast<stack_storage*>(
+                return *::scn::detail::launder(reinterpret_cast<stack_storage*>(
                     std::addressof(m_storage)));
             }
             const stack_storage& _get_stack() const noexcept
             {
-                return *launder(reinterpret_cast<const stack_storage*>(
-                    std::addressof(m_storage)));
+                return *::scn::detail::launder(
+                    reinterpret_cast<const stack_storage*>(
+                        std::addressof(m_storage)));
             }
 
             heap_storage& _get_heap() noexcept
             {
-                return *launder(
+                return *::scn::detail::launder(
                     reinterpret_cast<heap_storage*>(std::addressof(m_storage)));
             }
             const heap_storage& _get_heap() const noexcept
             {
-                return *launder(reinterpret_cast<const heap_storage*>(
-                    std::addressof(m_storage)));
+                return *::scn::detail::launder(
+                    reinterpret_cast<const heap_storage*>(
+                        std::addressof(m_storage)));
             }
 
             pointer m_ptr{nullptr};

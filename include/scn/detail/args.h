@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_ARGS_H
 #define SCN_DETAIL_ARGS_H
 
-#include "core.h"
+#include "parse_context.h"
 #include "util.h"
 
 #include <array>
@@ -32,6 +32,9 @@ namespace scn {
     class basic_arg;
     template <typename Context>
     class basic_args;
+
+    template <typename CharT, typename T, typename Enable = void>
+    struct scanner;
 
     namespace detail {
         template <typename CharT>
@@ -92,7 +95,7 @@ namespace scn {
         {
             SCN_EXPECT(arg != nullptr);
 
-            typename Context::template value_scanner_type<T> s;
+            typename Context::template scanner_type<T> s;
             auto err = s.parse(ctx);
             if (!err) {
                 return err;

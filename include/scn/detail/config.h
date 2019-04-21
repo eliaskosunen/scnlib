@@ -326,6 +326,25 @@
 #define SCN_UNLIKELY(x) (x)
 #endif
 
+#ifndef SCN_DEPRECATED
+
+#if (SCN_HAS_CPP_ATTRIBUTE(deprecated) && __cplusplus >= 201402L) || \
+    SCN_MSVC >= SCN_COMPILER(19, 0, 0)
+#define SCN_DEPRECATED [[deprecated]]
+#else
+
+#if SCN_GCC_COMPAT
+#define SCN_DEPRECATED __attribute__((deprecated))
+#elif SCN_MSVC
+#define SCN_DEPRECATED __declspec(deprecated)
+#else
+#define SCN_DEPRECATED /* deprecated */
+#endif
+
+#endif
+
+#endif  // !defined(SCN_DEPRECATED)
+
 #define SCN_UNUSED(x) static_cast<void>(sizeof(x))
 
 #define SCN_ASSERT(cond, msg) assert((cond) && msg)

@@ -18,7 +18,6 @@
 #ifndef SCN_DETAIL_ISTREAM_H
 #define SCN_DETAIL_ISTREAM_H
 
-#include "core.h"
 #include "stream.h"
 #include "types.h"
 
@@ -150,10 +149,10 @@ namespace scn {
     }  // namespace detail
 
     template <typename CharT, typename T>
-    struct value_scanner<CharT,
-                         T,
-                         typename std::enable_if<
-                             detail::is_std_streamable<CharT, T>::value>::type>
+    struct scanner<CharT,
+                   T,
+                   typename std::enable_if<
+                       detail::is_std_streamable<CharT, T>::value>::type>
         : public empty_parser<CharT> {
         template <typename Context>
         error scan(T& val, Context& ctx)
