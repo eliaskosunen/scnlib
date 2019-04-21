@@ -63,6 +63,49 @@ BENCHMARK_TEMPLATE(scanint_scn, long long)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
 BENCHMARK_TEMPLATE(scanint_scn, unsigned)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
 
 template <typename Int>
+static void scanint_scn_default(benchmark::State& state)
+{
+    auto data = generate_int_data<Int>(INT_DATA_N);
+    auto stream = scn::make_stream(data);
+    const auto options =
+        scn::options::builder{}
+            .int_method(static_cast<scn::method>(state.range(0)))
+            .make();
+    Int i{};
+    for (auto _ : state) {
+        auto e = scn::scan_default(options, stream, i);
+
+        benchmark::DoNotOptimize(i);
+        benchmark::DoNotOptimize(e);
+        benchmark::DoNotOptimize(stream);
+        benchmark::ClobberMemory();
+        if (!e) {
+            if (e.error() == scn::error::end_of_stream) {
+                state.PauseTiming();
+                data = generate_int_data<Int>(INT_DATA_N);
+                stream = scn::make_stream(data);
+                state.ResumeTiming();
+            }
+            else {
+                state.SkipWithError("Benchmark errored");
+                break;
+            }
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+}
+BENCHMARK_TEMPLATE(scanint_scn_default, int)
+    ->Arg(STRTO_METHOD)
+    ->Arg(STO_METHOD);
+BENCHMARK_TEMPLATE(scanint_scn_default, long long)
+    ->Arg(STRTO_METHOD)
+    ->Arg(STO_METHOD);
+BENCHMARK_TEMPLATE(scanint_scn_default, unsigned)
+    ->Arg(STRTO_METHOD)
+    ->Arg(STO_METHOD);
+
+template <typename Int>
 static void scanint_sstream(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);

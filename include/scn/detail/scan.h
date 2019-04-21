@@ -32,7 +32,7 @@ namespace scn {
                       "Have to scan at least a single argument");
         SCN_EXPECT(!f.empty());
 
-        using context_type = typename erased_stream_context_type<Stream>::type;
+        using context_type = basic_context<Stream>;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, f, args);
@@ -48,7 +48,7 @@ namespace scn {
                       "Have to scan at least a single argument");
         SCN_EXPECT(!f.empty());
 
-        using context_type = typename erased_stream_context_type<Stream>::type;
+        using context_type = basic_context<Stream>;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, f, args, opt);
@@ -61,8 +61,7 @@ namespace scn {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
-        using context_type =
-            typename erased_stream_context_type<Stream, true>::type;
+        using context_type = basic_empty_context<Stream>;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, static_cast<int>(sizeof...(Args)), args);
@@ -74,8 +73,7 @@ namespace scn {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
-        using context_type =
-            typename erased_stream_context_type<Stream, true>::type;
+        using context_type = basic_empty_context<Stream>;
 
         auto args = make_args<context_type>(a...);
         auto ctx =

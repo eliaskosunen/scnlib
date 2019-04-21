@@ -55,10 +55,10 @@ namespace scn {
     SCN_CLANG_POP
 
     template <typename CharT>
-    erased_stream<CharT> make_stream(std::basic_istream<CharT>& is) noexcept
+    basic_std_istream_stream<CharT> make_stream(
+        std::basic_istream<CharT>& is) noexcept
     {
-        auto s = basic_std_istream_stream<CharT>(is);
-        return {s};
+        return {is};
     }
 
     namespace detail {

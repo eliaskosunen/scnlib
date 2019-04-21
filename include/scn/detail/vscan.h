@@ -19,11 +19,17 @@
 #ifndef SCN_DETAIL_VSCAN_H
 #define SCN_DETAIL_VSCAN_H
 
-#include "stream.h"
+#include "erased_stream.h"
 #include "visitor.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
+
+    template <typename Context>
+    result<int> vscan(Context& ctx)
+    {
+        return visit(ctx);
+    }
 
     template <typename CharT>
     using basic_erased_stream_context = basic_context<erased_stream<CharT>>;

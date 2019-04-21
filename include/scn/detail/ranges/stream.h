@@ -19,7 +19,7 @@
 #define SCN_DETAIL_RANGES_STREAM_H
 
 #include "../context.h"
-#include "../stream.h"
+#include "../erased_stream.h"
 
 #include <range/v3/core.hpp>
 
@@ -321,7 +321,14 @@ namespace scn {
             typename CharT = ::ranges::value_type_t<::ranges::iterator_t<R>>>
         auto make_stream(R& r)
         {
-            auto s = detail::make_underlying_stream(r);
+            return detail::make_underlying_stream(r);
+        }
+
+        CPP_template(typename R)(requires ::ranges::Range<R>) auto erase_stream(
+            R& r)
+        {
+            using CharT = ::ranges::value_type_t<::ranges::iterator_t<R>>;
+            auto s = make_stream(r);
             return typename detail::erased_stream_for<decltype(
                 s)>::template type<CharT>(std::move(s));
         }

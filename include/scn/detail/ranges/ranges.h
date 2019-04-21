@@ -91,8 +91,7 @@ namespace scn {
             auto stream = make_stream(range);
 
             using stream_type = decltype(stream);
-            using context_type =
-                typename erased_stream_context_type<stream_type>::type;
+            using context_type = basic_context<stream_type>;
 
             auto args = make_args<context_type>(a...);
             auto ctx = context_type(stream, f, args);
@@ -116,8 +115,7 @@ namespace scn {
             auto stream = make_stream(range);
 
             using stream_type = decltype(stream);
-            using context_type =
-                typename erased_stream_context_type<stream_type>::type;
+            using context_type = basic_context<stream_type>;
 
             auto args = make_args<context_type>(a...);
             auto ctx = context_type(stream, f, args, opt);
