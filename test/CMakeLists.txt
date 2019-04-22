@@ -9,7 +9,7 @@ target_include_directories(tests-base SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DI
 if (NOT SCN_USE_EXCEPTIONS)
     target_compile_definitions(tests-base INTERFACE -DDOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS=1)
 endif()
-target_link_libraries(tests-base INTERFACE scn-asan scn-ubsan scn-msan)
+target_link_libraries(tests-base INTERFACE scn-sanitizers)
 
 add_executable(tests
     test.cpp empty.cpp string_view.cpp
@@ -24,4 +24,8 @@ add_subdirectory(each)
 
 if (SCN_HAS_RANGES)
     add_subdirectory(ranges)
+endif ()
+
+if (SCN_BUILD_FUZZING)
+    add_subdirectory(fuzz)
 endif ()

@@ -30,7 +30,6 @@ namespace scn {
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
-        SCN_EXPECT(!f.empty());
 
         using context_type = basic_context<Stream>;
 
@@ -46,7 +45,6 @@ namespace scn {
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
-        SCN_EXPECT(!f.empty());
 
         using context_type = basic_context<Stream>;
 
@@ -110,7 +108,6 @@ namespace scn {
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
-        SCN_EXPECT(!f.empty());
 
         auto& stream = stdin_stream<char>();
 
@@ -128,7 +125,6 @@ namespace scn {
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
-        SCN_EXPECT(!f.empty());
 
         auto& stream = stdin_stream<wchar_t>();
 
@@ -149,7 +145,6 @@ namespace scn {
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
-        SCN_EXPECT(!f.empty());
         SCN_EXPECT(p != nullptr);
 
         std::printf("%s", p);
@@ -169,7 +164,6 @@ namespace scn {
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
-        SCN_EXPECT(!f.empty());
         SCN_EXPECT(p != nullptr);
 
         std::wprintf(L"%ls", p);

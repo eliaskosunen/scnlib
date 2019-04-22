@@ -73,7 +73,7 @@ namespace scn {
         bool should_skip_ws(const Locale& loc)
         {
             bool skip = false;
-            while (loc.is_space(next())) {
+            while (*this && loc.is_space(next())) {
                 skip = true;
                 advance();
             }

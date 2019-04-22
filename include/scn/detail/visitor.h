@@ -1328,6 +1328,10 @@ namespace scn {
             // Non-brace character, or
             // Brace followed by another brace, meaning a literal '{'
             if (pctx.should_read_literal(ctx.locale())) {
+                if (SCN_UNLIKELY(!pctx)) {
+                    return reterror(error(error::invalid_format_string,
+                                          "Unexpected end of format string"));
+                }
                 // Check for any non-specifier {foo} characters
                 auto ret = ctx.stream().read_char();
                 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE

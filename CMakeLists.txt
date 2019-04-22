@@ -27,6 +27,8 @@ option(SCN_USE_ASAN "Compile with AddressSanitizer (clang only)" OFF)
 option(SCN_USE_UBSAN "Compile with UndefinedBehaviorSanitizer (clang only)" OFF)
 option(SCN_USE_MSAN "Compile with MemorySanitizer (clang only)" OFF)
 
+option(SCN_BUILD_FUZZING "Build fuzzing tests" OFF)
+
 file(READ include/scn/detail/config.h config_h)
 if (NOT config_h MATCHES "SCN_VERSION SCN_COMPILER\\(([0-9]+), ([0-9]+), ([0-9]+)\\)")
     message(FATAL_ERROR "Cannot get SCN_VERSION from config.h")
@@ -34,36 +36,64 @@ endif ()
 set(SCN_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
 message(STATUS "scn version: ${SCN_VERSION}")
 
-add_library(scn-asan INTERFACE)
+add_library(scn-sanitizers INTERFACE)
+set(SCN_SANITIZERS_COMPILE_FLAGS "")
+set(SCN_SANITIZERS_LINK_FLAGS "")
 if (SCN_USE_ASAN)
     if (CMAKE_VERSION VERSION_LESS 3.13)
         message(FATAL_ERROR "SCN_USE_ASAN requires CMake >= 3.13 (for target_link_options)")
     endif ()
-    target_compile_options(scn-asan INTERFACE
-        -g -fsanitize=address -fno-omit-frame-pointer)
-    target_link_options(scn-asan INTERFACE
-        -fsanitize=address)
+    list(APPEND SCN_SANITIZERS_COMPILE_FLAGS "address")
+    list(APPEND SCN_SANITIZERS_LINK_FLAGS "address")
+    target_compile_options(scn-sanitizers INTERFACE
+        -g -fno-omit-frame-pointer)
 endif ()
-add_library(scn-ubsan INTERFACE)
 if (SCN_USE_UBSAN)
     if (CMAKE_VERSION VERSION_LESS 3.13)
         message(FATAL_ERROR "SCN_USE_UBSAN requires CMake >= 3.13 (for target_link_options)")
     endif ()
-    target_compile_options(scn-ubsan INTERFACE
-        -fsanitize=undefined,implicit-conversion,integer,nullability
+    list(APPEND SCN_SANITIZERS_COMPILE_FLAGS "undefined,implicit-conversion,integer,nullability")
+    list(APPEND SCN_SANITIZERS_LINK_FLAGS "undefined,implicit-conversion,integer,nullability")
+    target_compile_options(scn-sanitizers INTERFACE
         -g -fno-omit-frame-pointer)
-    target_link_options(scn-ubsan INTERFACE
-        -fsanitize=undefined,implicit-conversion,integer,nullability)
 endif ()
-add_library(scn-msan INTERFACE)
 if (SCN_USE_MSAN)
     if (CMAKE_VERSION VERSION_LESS 3.13)
         message(FATAL_ERROR "SCN_USE_MSAN requires CMake >= 3.13 (for target_link_options)")
     endif ()
-    target_compile_options(scn-msan INTERFACE
-        -g -fsanitize=memory -fno-omit-frame-pointer)
-    target_link_options(scn-msan INTERFACE
-        -fsanitize=memory)
+    list(APPEND SCN_SANITIZERS_COMPILE_FLAGS "memory")
+    list(APPEND SCN_SANITIZERS_LINK_FLAGS "memory")
+    target_compile_options(scn-sanitizers INTERFACE
+        -g -fno-omit-frame-pointer)
+endif ()
+
+list(JOIN SCN_SANITIZERS_COMPILE_FLAGS "," SCN_SANITIZERS_COMPILE_FLAGS_JOINED)
+list(JOIN SCN_SANITIZERS_LINK_FLAGS "," SCN_SANITIZERS_LINK_FLAGS_JOINED)
+list(LENGTH SCN_SANITIZERS_COMPILE_FLAGS sanitizers_compiler_list_length)
+if (sanitizers_compiler_list_length GREATER 0)
+    target_compile_options(scn-sanitizers INTERFACE
+        "-fsanitize=${SCN_SANITIZERS_COMPILE_FLAGS_JOINED}")
+endif ()
+list(LENGTH SCN_SANITIZERS_LINK_FLAGS sanitizers_link_list_length)
+if (sanitizers_link_list_length GREATER 0)
+    target_link_options(scn-sanitizers INTERFACE
+        "-fsanitize=${SCN_SANITIZERS_LINK_FLAGS_JOINED}")
+endif ()
+
+if (SCN_BUILD_FUZZING)
+    if (CMAKE_VERSION VERSION_LESS 3.13)
+        message(FATAL_ERROR "SCN_BUILD_FUZZING requires CMake >= 3.13 (for target_link_options)")
+    endif ()
+    list(APPEND SCN_SANITIZERS_COMPILE_FLAGS "fuzzer")
+    list(APPEND SCN_SANITIZERS_LINK_FLAGS "fuzzer")
+    list(JOIN SCN_SANITIZERS_COMPILE_FLAGS "," SCN_SANITIZERS_COMPILE_FLAGS_JOINED)
+    list(JOIN SCN_SANITIZERS_LINK_FLAGS "," SCN_SANITIZERS_LINK_FLAGS_JOINED)
+
+    add_library(scn-fuzzer INTERFACE)
+    target_compile_options(scn-fuzzer INTERFACE
+        "-fsanitize=${SCN_SANITIZERS_COMPILE_FLAGS_JOINED}")
+    target_link_options(scn-fuzzer INTERFACE
+        "-fsanitize=${SCN_SANITIZERS_LINK_FLAGS_JOINED}")
 endif ()
 
 function (get_warning_flags flags)
