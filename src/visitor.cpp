@@ -693,8 +693,13 @@ namespace scn {
             auto it = buf.begin();
             if (buf[0] == detail::ascii_widen<CharT>('-') ||
                 buf[0] == detail::ascii_widen<CharT>('+')) {
+                SCN_GCC_PUSH
+                // integer_scanner::scan ensures that unsigned values have no
+                // '-' sign
+                SCN_GCC_IGNORE("-Wsign-conversion")
                 sign = 1 - 2 * (buf[0] == detail::ascii_widen<CharT>('-'));
                 ++it;
+                SCN_GCC_POP
             }
             if (SCN_UNLIKELY(it == buf.end())) {
                 return error(error::invalid_scanned_value,
@@ -728,6 +733,10 @@ namespace scn {
             if (base == 0) {
                 base = 10;
             }
+
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wconversion")
+
             const T max = std::numeric_limits<T>::max() / static_cast<T>(base);
             auto cmp = [&](CharT ch) {
                 return static_cast<T>(ch - detail::ascii_widen<CharT>('0')) <=
@@ -753,6 +762,8 @@ namespace scn {
                 }
             }
             val = tmp * sign;
+
+            SCN_GCC_POP
 
             return static_cast<size_t>(std::distance(buf.begin(), it));
         }
@@ -882,7 +893,7 @@ namespace scn {
             if (*it == detail::ascii_widen<CharT>('0')) {
                 ++it;
                 if (it == buf.end()) {
-                    val = static_cast<T>(0.0) * sign;
+                    val = static_cast<T>(0.0) * static_cast<T>(sign);
                 }
                 if (*it == detail::ascii_widen<CharT>('x') ||
                     *it == detail::ascii_widen<CharT>('X')) {

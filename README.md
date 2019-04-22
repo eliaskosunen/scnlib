@@ -252,9 +252,10 @@ For characters, spans and strings, there are no available options, and only the 
 
 |              | Meaning                                                    |
 | :----------- | :--------------------------------------------------------- |
-| `a`          | Accept `true` and `false`                                  |
+| `a`          | Accept only `true` and `false` (not `0` and `1`, unless `n` is also specified). |
+| `n`          | Accept only `0` and `1` (not `true` and `false`, unless `a` is also specified). |
 | `l`          | Implies `a`. Expect boolean text values as specified as such by the given locale. |
-| (default)    | Accept `0` and `1 `.                                       |
+| (default)    | Accept `0`, `1`, `true` and `false`, equivalent to `an`. |
 
 ### Options
 
@@ -294,6 +295,7 @@ that specifies how the value will be scanned.
 | `strto` (default) | Use `std::strtol`, `std::strtod` etc. |
 | `sto`             | Use `std::stol`, `std::stod` etc. |
 | `from_chars`      | Use `std::from_chars` |
+| `custom`          | Use custom `scnlib` algorithm |
 
 ```cpp
 scn::scan(
@@ -303,6 +305,11 @@ scn::scan(
         .make(),
     /* ... */);
 ```
+
+Please note, that:
+ * `from_chars` needs support from your standard library. At the time of writing, this only includes the most recent MSVC, and only for integer types.
+ * `custom` is a little faster than the other alternatives with the added caveat of being highly likely to contain bugs.
+ * `custom` at this time only supports integer types
 
 ### Strings and `getline`
 
@@ -366,8 +373,8 @@ Because of the rather lackluster Unicode support of the standard library,
 this library doesn't have any significant Unicode support, either. 
 
 Narrow streams are expected to be ASCII encoded,
-and using multibyte encodings (like UTF-8) with them is going to cause problems (blame `std::locale`).
-If you need some sort of Unicode support, you'll need to use wide streams, encoded the way your platform
+and using multibyte encodings (like UTF-8) with them is probably going to cause problems (blame `std::locale`).
+If you need some sort of Unicode support, your best bet is going to be wide streams, encoded the way your platform
 expects (UTF-32 in POSIX, the thing resembling UCS-2 in Windows).
 
 ### Error handling
@@ -443,7 +450,7 @@ assert(s == "foo");
 No exceptions will ever be thrown by `scnlib` functions.
 If any user-defined operations, like `operator>>` throw, the behavior is undefined.
 
-The library can't be used with `-fno-exceptions`, though, as it still needs to catch possible exceptions thrown by standard library functions.
+The library can be compiled with `-fno-exceptions`, but some of its functionality will be disabled, namely `sto` method for integer and float scanning.
 
 ### `ignore`
 
@@ -459,7 +466,7 @@ The library can't be used with `-fno-exceptions`, though, as it still needs to c
 
 ### User types
 
-To make your own type usable with `scnlib`, you can specialize the struct template `value_scanner`.
+To make your own type usable with `scnlib`, you can specialize the struct template `scanner`.
 
 ```cpp
 struct my_type {
@@ -468,8 +475,8 @@ struct my_type {
 };
 
 template <typename Char>
-struct scn::value_scanner<Char, my_type>
-   : public scn::empty_scanner {
+struct scn::scanner<Char, my_type>
+   : public scn::empty_parser<Char> {
    template <typename Context>
    error scan(my_type& val, Context& c) {
       auto args = make_args<Context>(val.i, val.d);
@@ -559,33 +566,33 @@ Times are in nanoseconds of CPU time. Lower is better.
 
 #### Reading random integers
 
-| Integer type | `scn::scan` | `std::stringstream` |
-| :----------- | ----------: | ------------------: |
-| `int`        | 79          | 92                  |
-| `long long`  | 123         | 146                 |
-| `unsigned`   | 76          | 77                  |
+| Integer type | `scn::scan` (`strto`) | `scn::scan` (`sto`) | `scn::scan` (`custom`) | `std::stringstream` |
+| :----------- | --------------------: | ------------------: | ---------------------: | ------------------: |
+| `int`        | 119                   | 129                 | 94                     | 101                 |
+| `long long`  | 136                   | 110                 | 178                    | 156                 |
+| `unsigned`   | 107                   | 121                 | 91                     | 85                  |
 
 #### Reading random floating-point numbers
 
-| Floating-point type | `scn::scan` | `std::stringstream` |
-| :------------------ | ----------: | ------------------: |
-| `float`             | 157         | 240                 |
-| `double`            | 163         | 248                 |
-| `long double`       | 176         | 256                 |
+| Floating-point type | `scn::scan` (`strto`) | `scn::scan` (`sto`) | `std::stringstream` |
+| :------------------ | --------------------: | ------------------: | ------------------: |
+| `float`             | 208                   | 207                 | 253                 |
+| `double`            | 211                   | 211                 | 260                 |
+| `long double`       | 225                   | 225                 | 273                 |
 
 #### Reading random whitespace-separated `std::basic_string`s
 
 | Character type | `scn::scan` | `std::stringstream` |
 | :------------- | ----------: | ------------------: |
-| `char`         | 52          | 53                  |
-| `wchar_t`      | 56          | 116                 |
+| `char`         | 75          | 56                  |
+| `wchar_t`      | 92          | 126                 |
 
 #### Reading random characters
 
-| Character type | `scn::scan` | `scn::getchar` | `std::stringstream` | Control |
-| :------------- | ----------: | -------------: | ------------------: | ------: |
-| `char`         | 29          | 3              | 9                   | 2       |
-| `wchar_t`      | 33          | 3              | 14                  | 2       |
+| Character type | `scn::scan` | `scn::getchar` | `std::stringstream` |
+| :------------- | ----------: | -------------: | ------------------: |
+| `char`         | 41          | 14             | 15                  |
+| `wchar_t`      | 41          | 14             | 22                  |
 
 TODO: More benchmarks
 
@@ -598,7 +605,7 @@ Code size benchmarks test code bloat for nontrivial projects.
 It generates 25 translation units and reads values from stdin\* five times to simulate a medium sized project.
 The resulting executable size is shown in the following tables.
 
-The code was compiled on Kubuntu 18.10 with clang++ 7.0.0.
+The code was compiled on Kubuntu 18.10 with g++ 8.2.0.
 `scnlib` is linked dynamically to level out the playing field compared to already dynamically linked `libc` and `libstdc++`.
 See the directory `benchmark/bloat` for more information, e.g. templates for each TU.
 
@@ -613,29 +620,35 @@ $ ctest -V
 
 \*: `scn::ranges::scan` scans from a `Range`, not from stdin
 
+`(erased)` marks the usage of `scn::make_erased_stream()` instead of `scn::make_stream()`.
+
 #### Release build (-O3 -DNDEBUG)
 
-| Method                            | Executable size (KiB) | Stripped size (KiB) |
-| :-------------------------------- | --------------------: | ------------------: |
-| empty                             | 20                    | 16                  |
-| `scanf`                           | 20                    | 16                  |
-| `std::istream` / `std::cin`       | 28                    | 20                  |
-| `scn::input`                      | 40                    | 28                  |
-| `scn::ranges::scan`               | 52                    | 36                  |
-| `scn::input` (header only)        | 300                   | 188                 |
-| `scn::ranges::scan` (header only) | 312                   | 196                 |
+| Method                              | Executable size (KiB) | Stripped size (KiB) |
+| :---------------------------------- | --------------------: | ------------------: |
+| empty                               | 20                    | 16                  |
+| `scanf`                             | 24                    | 20                  |
+| `std::istream` / `std::cin`         | 32                    | 24                  |
+| `scn::input`                        | 92                    | 80                  |
+| `scn::input` (erased)               | 80                    | 72                  |
+| `scn::ranges::scan`                 | 148                   | 132                 |
+| `scn::input` (header only)          | 280                   | 240                 |
+| `scn::input` (header only & erased) | 260                   | 216                 |
+| `scn::ranges::scan` (header only)   | 312                   | 196                 |
 
 #### Debug build (-g)
 
-| Method                            | Executable size (KiB) | Stripped size (KiB) |
-| :-------------------------------- | --------------------: | ------------------: |
-| empty                             | 32                    | 16                  |
-| `scanf`                           | 276                   | 20                  |
-| `std::istream` / `std::cin`       | 308                   | 24                  |
-| `scn::input`                      | ~1900                 | 60                  |
-| `scn::ranges::scan`               | ~2700                 | 76                  |
-| `scn::input` (header only)        | ~7400                 | 312                 |
-| `scn::ranges::scan` (header only) | ~8200                 | 324                 |
+| Method                              | Executable size (KiB) | Stripped size (KiB) |
+| :---------------------------------- | --------------------: | ------------------: |
+| empty                               | 32                    | 16                  |
+| `scanf`                             | 276                   | 20                  |
+| `std::istream` / `std::cin`         | 308                   | 24                  |
+| `scn::input`                        | ~2300                 | 72                  |
+| `scn::input` (erased)               | ~2100                 | 64                  |
+| `scn::ranges::scan`                 | ~5700                 | 196                 |
+| `scn::input` (header only)          | ~9500                 | 392                 |
+| `scn::input` (header only & erased) | ~8900                 | 380                 |
+| `scn::ranges::scan` (header only)   | ~9700                 | 384                 |
 
 ## Acknowledgements
 

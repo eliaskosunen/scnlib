@@ -23,7 +23,7 @@
 #include <type_traits>
 
 #ifndef SCN_DEFAULT_SCANNING_METHOD
-#define SCN_DEFAULT_SCANNING_METHOD ::scn::method::sto
+#define SCN_DEFAULT_SCANNING_METHOD ::scn::method::strto
 #endif
 
 namespace scn {

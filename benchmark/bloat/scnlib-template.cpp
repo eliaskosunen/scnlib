@@ -2,19 +2,22 @@
 
 void do_scan()
 {
+    auto source = std::string{"42 3.14 999999999 abcdefg test_string"};
+    auto stream = scn::make_erased_stream(source);
+
     int i;
-    scn::input("{}", i);
+    scn::scan(stream, "{}", i);
 
     double d;
-    scn::input("{}", d);
+    scn::scan(stream, "{}", d);
 
     long long ll;
-    scn::input("{}", ll);
+    scn::scan(stream, "{}", ll);
 
     char buf[7];
     auto buf_span = scn::make_span(buf, 7);
-    scn::input("{}", buf_span);
+    scn::scan(stream, "{}", buf_span);
 
     std::string str;
-    scn::input("{}", str);
+    scn::scan(stream, "{}", str);
 }

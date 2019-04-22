@@ -60,10 +60,15 @@ namespace scn {
         protected:
             size_t next_pow2(size_t x)
             {
+                SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4127)  // conditional expression is constant
                 if (sizeof(size_t) == sizeof(uint64_t)) {
-                    return _next_pow2_64(static_cast<uint64_t>(x));
+                    return static_cast<size_t>(
+                        _next_pow2_64(static_cast<uint64_t>(x)));
                 }
-                return _next_pow2_32(static_cast<uint32_t>(x));
+                SCN_MSVC_POP
+                return static_cast<size_t>(
+                    _next_pow2_32(static_cast<uint32_t>(x)));
             }
 
             template <typename ForwardIt, typename T>

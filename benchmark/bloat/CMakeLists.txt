@@ -51,6 +51,17 @@ add_executable(bloat-scnlib-header-only ${bloat-scnlib-sources})
 target_link_libraries(bloat-scnlib-header-only scn-header-only)
 generate_bloat_test(bloat-scnlib-header-only)
 
+# scnlib (erased)
+generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scnlib-erased-template.cpp" out/scnlib-erased bloat-scnlib-erased-sources)
+add_executable(bloat-erased-scnlib ${bloat-scnlib-erased-sources})
+target_link_libraries(bloat-erased-scnlib scn)
+generate_bloat_test(bloat-erased-scnlib)
+
+# scnlib (erased, header-only)
+add_executable(bloat-scnlib-erased-header-only ${bloat-scnlib-erased-sources})
+target_link_libraries(bloat-scnlib-erased-header-only scn-header-only)
+generate_bloat_test(bloat-scnlib-erased-header-only)
+
 if (SCN_HAS_RANGES)
     # scnlib + range-v3
     generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scnlib-ranges-template.cpp" out/scnlib-ranges bloat-scnlib-ranges-sources)

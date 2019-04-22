@@ -18,6 +18,7 @@
 #ifndef SCN_DETAIL_RANGES_RANGES_H
 #define SCN_DETAIL_RANGES_RANGES_H
 
+#include "../vscan.h"
 #include "types.h"
 
 namespace scn {

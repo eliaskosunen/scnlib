@@ -202,7 +202,7 @@ namespace scn {
                 if (!ret) {
                     return ret;
                 }
-                if (tmp > static_cast<long long>(
+                if (tmp > static_cast<unsigned long long>(
                               std::numeric_limits<unsigned int>::max())) {
                     return error(error::value_out_of_range,
                                  "Scanned integer out of range for an unsigned "
@@ -223,7 +223,7 @@ namespace scn {
                 if (!ret) {
                     return ret;
                 }
-                if (tmp > static_cast<long long>(
+                if (tmp > static_cast<unsigned long long>(
                               std::numeric_limits<unsigned short>::max())) {
                     return error(
                         error::value_out_of_range,
