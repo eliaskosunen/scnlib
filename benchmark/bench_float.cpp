@@ -64,6 +64,49 @@ BENCHMARK_TEMPLATE(scanfloat_scn, long double)
     ->Arg(STO_METHOD);
 
 template <typename Float>
+static void scanfloat_scn_default(benchmark::State& state)
+{
+    auto data = generate_float_data<Float>(FLOAT_DATA_N);
+    auto stream = scn::make_stream(data);
+    const auto options =
+        scn::options::builder{}
+            .float_method(static_cast<scn::method>(state.range(0)))
+            .make();
+    Float f{};
+    for (auto _ : state) {
+        auto e = scn::scan_default(options, stream, f);
+
+        benchmark::DoNotOptimize(f);
+        benchmark::DoNotOptimize(stream);
+        benchmark::DoNotOptimize(e);
+        benchmark::ClobberMemory();
+        if (!e) {
+            if (e.error() == scn::error::end_of_stream) {
+                state.PauseTiming();
+                data = generate_float_data<Float>(FLOAT_DATA_N);
+                stream = scn::make_stream(data);
+                state.ResumeTiming();
+            }
+            else {
+                state.SkipWithError("Benchmark errored");
+                break;
+            }
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+}
+BENCHMARK_TEMPLATE(scanfloat_scn_default, float)
+    ->Arg(STRTO_METHOD)
+    ->Arg(STO_METHOD);
+BENCHMARK_TEMPLATE(scanfloat_scn_default, double)
+    ->Arg(STRTO_METHOD)
+    ->Arg(STO_METHOD);
+BENCHMARK_TEMPLATE(scanfloat_scn_default, long double)
+    ->Arg(STRTO_METHOD)
+    ->Arg(STO_METHOD);
+
+template <typename Float>
 static void scanfloat_sstream(benchmark::State& state)
 {
     auto data = generate_float_data<Float>(FLOAT_DATA_N);

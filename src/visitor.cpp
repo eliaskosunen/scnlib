@@ -162,8 +162,14 @@ namespace scn {
                                              int base)
                 {
                     char* end{};
+                    errno = 0;
                     auto ret = std::strtoll(str, &end, base);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "strtoll range error");
+                    }
                     return ret;
                 }
             };
@@ -174,8 +180,14 @@ namespace scn {
                                              int base)
                 {
                     wchar_t* end{};
+                    errno = 0;
                     auto ret = std::wcstoll(str, &end, base);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "wcstoll range error");
+                    }
                     return ret;
                 }
             };
@@ -187,8 +199,14 @@ namespace scn {
                                         int base)
                 {
                     char* end{};
+                    errno = 0;
                     auto ret = std::strtol(str, &end, base);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "strtol range error");
+                    }
                     return ret;
                 }
             };
@@ -199,8 +217,14 @@ namespace scn {
                                         int base)
                 {
                     wchar_t* end{};
+                    errno = 0;
                     auto ret = std::wcstol(str, &end, base);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "wcstol range error");
+                    }
                     return ret;
                 }
             };
@@ -262,8 +286,14 @@ namespace scn {
                                                       int base)
                 {
                     char* end{};
+                    errno = 0;
                     auto ret = std::strtoull(str, &end, base);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "strtoull range error");
+                    }
                     return ret;
                 }
             };
@@ -274,8 +304,14 @@ namespace scn {
                                                       int base)
                 {
                     wchar_t* end{};
+                    errno = 0;
                     auto ret = std::wcstoull(str, &end, base);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "wcstoull range error");
+                    }
                     return ret;
                 }
             };
@@ -287,8 +323,14 @@ namespace scn {
                                                  int base)
                 {
                     char* end{};
+                    errno = 0;
                     auto ret = std::strtoul(str, &end, base);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "strtoul range error");
+                    }
                     return ret;
                 }
             };
@@ -299,8 +341,14 @@ namespace scn {
                                                  int base)
                 {
                     wchar_t* end{};
+                    errno = 0;
                     auto ret = std::wcstoul(str, &end, base);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "wcstoul range error");
+                    }
                     return ret;
                 }
             };
@@ -442,8 +490,14 @@ namespace scn {
                 static either<float> get(const char* str, size_t& chars)
                 {
                     char* end{};
+                    errno = 0;
                     float f = std::strtof(str, &end);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "strtof range error");
+                    }
                     return f;
                 }
             };
@@ -452,8 +506,14 @@ namespace scn {
                 static either<float> get(const wchar_t* str, size_t& chars)
                 {
                     wchar_t* end{};
+                    errno = 0;
                     float f = std::wcstof(str, &end);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "wcstof range error");
+                    }
                     return f;
                 }
             };
@@ -463,8 +523,14 @@ namespace scn {
                 static either<double> get(const char* str, size_t& chars)
                 {
                     char* end{};
+                    errno = 0;
                     double d = std::strtod(str, &end);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "strtod range error");
+                    }
                     return d;
                 }
             };
@@ -473,8 +539,14 @@ namespace scn {
                 static either<double> get(const wchar_t* str, size_t& chars)
                 {
                     wchar_t* end{};
+                    errno = 0;
                     double d = std::wcstod(str, &end);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "wcstod range error");
+                    }
                     return d;
                 }
             };
@@ -484,8 +556,14 @@ namespace scn {
                 static either<long double> get(const char* str, size_t& chars)
                 {
                     char* end{};
+                    errno = 0;
                     long double ld = std::strtold(str, &end);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "strtold range error");
+                    }
                     return ld;
                 }
             };
@@ -495,8 +573,14 @@ namespace scn {
                                                size_t& chars)
                 {
                     wchar_t* end{};
+                    errno = 0;
                     long double ld = std::wcstold(str, &end);
                     chars = static_cast<size_t>(end - str);
+                    if (errno == ERANGE) {
+                        errno = 0;
+                        return error(error::value_out_of_range,
+                                     "wcstold range error");
+                    }
                     return ld;
                 }
             };
@@ -698,12 +782,14 @@ namespace scn {
         template <typename CharT, typename T>
         either<size_t> float_scanner<CharT, T>::_read_sto(
             T& val,
-            const std::basic_string<CharT>& buf)
+            span<const CharT> buf,
+            basic_locale_ref<CharT>&)
         {
 #if SCN_HAS_EXCEPTIONS
             try {
                 size_t chars;
-                val = sto::str_to_float<CharT, T>::get(buf, chars);
+                std::basic_string<CharT> str(buf.data(), buf.size());
+                val = sto::str_to_float<CharT, T>::get(str, chars);
                 return chars;
             }
             catch (const std::invalid_argument& e) {
@@ -724,7 +810,8 @@ namespace scn {
         template <typename CharT, typename T>
         either<size_t> float_scanner<CharT, T>::_read_strto(
             T& val,
-            const std::basic_string<CharT>& buf)
+            span<const CharT> buf,
+            basic_locale_ref<CharT>&)
         {
             size_t chars;
             auto ret = strto::str_to_float<CharT, T>::get(&buf[0], chars);
@@ -737,7 +824,8 @@ namespace scn {
         template <typename CharT, typename T>
         either<size_t> float_scanner<CharT, T>::_read_from_chars(
             T& val,
-            const std::basic_string<CharT>& buf)
+            span<const CharT> buf,
+            basic_locale_ref<CharT>&)
         {
 #if SCN_HAS_FLOAT_CHARCONV
             auto begin = buf.data();
@@ -761,13 +849,70 @@ namespace scn {
         template <typename CharT, typename T>
         either<size_t> float_scanner<CharT, T>::_read_custom(
             T& val,
-            const std::basic_string<CharT>& buf)
+            span<const CharT> buf,
+            basic_locale_ref<CharT>& loc)
         {
-            SCN_UNUSED(val);
-            SCN_UNUSED(buf);
-            return error(
-                error::invalid_operation,
-                "custom is not a supported floating-point scanning method");
+            // TODO
+            auto it = buf.begin();
+            auto get_retval = [&]() {
+                return static_cast<size_t>(std::distance(buf.begin(), it));
+            };
+
+            // sign
+            int sign = 1;
+            if (buf[0] == detail::ascii_widen<CharT>('-') ||
+                buf[0] == detail::ascii_widen<CharT>('+')) {
+                sign = 1 - 2 * (buf[0] == detail::ascii_widen<CharT>('-'));
+                ++it;
+            }
+            if (SCN_UNLIKELY(it == buf.end())) {
+                return error(error::invalid_scanned_value,
+                             "Expected number after sign");
+            }
+
+            using int_scanner = integer_scanner<CharT, long long>;
+            auto make_float = [](long long whole, long long dec,
+                                 long long exp) {
+                auto f = static_cast<T>(whole);
+                SCN_UNUSED(dec);
+                SCN_UNUSED(exp);
+                return f;
+            };
+
+            if (*it == detail::ascii_widen<CharT>('0')) {
+                ++it;
+                if (it == buf.end()) {
+                    val = static_cast<T>(0.0) * sign;
+                }
+                if (*it == detail::ascii_widen<CharT>('x') ||
+                    *it == detail::ascii_widen<CharT>('X')) {
+                    // hex
+                    ++it;
+                    if (SCN_UNLIKELY(it == buf.end())) {
+                        return error(error::invalid_scanned_value,
+                                     "Expected number after '0x'");
+                    }
+
+                    long long a{0}, b{0};
+                    auto s = make_span(it, buf.end());
+                    auto ret = int_scanner::_read_custom(a, s, 16, loc);
+                    if (!ret) {
+                        return ret;
+                    }
+                    it += ret.value();
+                    if (it == buf.end()) {
+                        val = make_float(a, b, 1);
+                        return get_retval();
+                    }
+
+                    if (*it == detail::ascii_widen<CharT>('.')) {
+                        ++it;
+                    }
+                }
+            }
+            return error(error::invalid_operation,
+                         "custom is not a supported floating-point "
+                         "scanning method");
         }
 
         template struct float_scanner<char, float>;

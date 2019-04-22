@@ -52,7 +52,7 @@ namespace scn {
                 return *m_stream;
             }
 
-            SCN_CONSTEXPR14 options_type& options() noexcept
+            SCN_CONSTEXPR14 options_type& get_options() noexcept
             {
                 return m_options;
             }
@@ -103,13 +103,13 @@ namespace scn {
                   Stream,
                   typename Stream::char_type,
                   ParseContext,
-                  struct options,
+                  options,
                   basic_locale_ref<typename Stream::char_type>> {
             using base = detail::context_base<
                 Stream,
                 typename Stream::char_type,
                 ParseContext,
-                struct options,
+                options,
                 basic_locale_ref<typename Stream::char_type>>;
 
         public:
@@ -119,7 +119,7 @@ namespace scn {
             using args_type = basic_args<arg_context_base>;
             using parse_context_type = ParseContext;
             using locale_type = basic_locale_ref<char_type>;
-            using options_type = struct options;
+            using options_type = typename base::options_type;
             using arg_type = basic_arg<arg_context_base>;
             using base::scanner_type;
 
@@ -139,7 +139,7 @@ namespace scn {
                              options_type opt)
                 : base(s,
                        std::move(p),
-                       opt.get_locale_ref<char_type>(),
+                       opt.template get_locale_ref<char_type>(),
                        std::move(opt)),
                   m_args(std::move(args))
             {
@@ -253,7 +253,7 @@ namespace scn {
     Context make_context(Stream& s,
                          typename Context::format_string_type f,
                          typename Context::args_type a,
-                         struct options opt)
+                         options opt)
     {
         return Context(s, f, a, opt);
     }
@@ -266,7 +266,7 @@ namespace scn {
     Context make_context(Stream& s,
                          int n_args,
                          typename Context::args_type a,
-                         struct options opt)
+                         options opt)
     {
         return Context(s, n_args, a, opt);
     }

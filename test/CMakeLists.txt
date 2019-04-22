@@ -14,15 +14,13 @@ add_executable(tests
     test.cpp empty.cpp string_view.cpp
     integer.cpp floating.cpp boolean.cpp string.cpp
     result.cpp usertype.cpp istream.cpp buffer.cpp
-    small_vector.cpp integer_each.cpp)
+    small_vector.cpp)
 target_link_libraries(tests PRIVATE scn tests-base)
 set_private_flags(tests)
 add_test(NAME tests COMMAND tests)
 
+add_subdirectory(each)
+
 if (SCN_HAS_RANGES)
-    add_executable(tests-ranges
-        ranges.cpp)
-    target_link_libraries(tests-ranges PRIVATE scn-ranges tests-base)
-    set_private_flags(tests-ranges)
-    add_test(NAME ranges COMMAND tests-ranges)
+    add_subdirectory(ranges)
 endif ()

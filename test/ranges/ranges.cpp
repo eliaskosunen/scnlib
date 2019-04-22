@@ -16,7 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "test.h"
+#include "../test.h"
 
 #include <scn/ranges.h>
 

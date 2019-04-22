@@ -733,6 +733,9 @@ namespace scn {
             struct str_to_int;
         }  // namespace strto
 
+        template <typename CharT, typename T>
+        struct float_scanner;
+
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wpadded")
 
@@ -963,6 +966,10 @@ namespace scn {
                 span<const CharT> buf,
                 int base,
                 const basic_locale_ref<CharT>& loc);
+
+            friend struct float_scanner<CharT, float>;
+            friend struct float_scanner<CharT, double>;
+            friend struct float_scanner<CharT, long double>;
         };
 
         SCN_CLANG_POP
@@ -1011,8 +1018,7 @@ namespace scn {
             template <typename Context>
             error scan(T& val, Context& ctx)
             {
-                std::basic_string<CharT> buf{};
-                buf.reserve(15);
+                detail::small_vector<CharT, 32> buf{};
 
                 bool point = false;
                 auto r = read_into_if(
@@ -1037,14 +1043,16 @@ namespace scn {
                 if (!r) {
                     return r.error();
                 }
-                buf.erase(r.value());
+                buf.erase(buf.begin() + r.value(), buf.end());
+                buf.push_back(CharT{0});
 
                 T tmp{};
                 size_t chars = 0;
 
                 if (localized) {
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-                    auto ret = ctx.locale().read_num(tmp, buf);
+                    auto str = std::basic_string<CharT>(buf.data(), buf.size());
+                    auto ret = ctx.locale().read_num(tmp, str);
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
                     if (!ret) {
@@ -1078,11 +1086,13 @@ namespace scn {
                     SCN_UNREACHABLE;
                     SCN_GCC_POP
                 };
-                auto e = do_read()(tmp, buf);
+                auto e =
+                    do_read()(tmp, make_span(buf).as_const(), ctx.locale());
                 if (!e) {
                     return e.get_error();
                 }
                 chars = e.value();
+                buf.pop_back();
 
                 auto pb = putback_range(
                     ctx.stream(), buf.rbegin(),
@@ -1098,18 +1108,19 @@ namespace scn {
             bool localized{false};
 
         private:
-            static either<size_t> _read_sto(
-                T& val,
-                const std::basic_string<CharT>& buf);
-            static either<size_t> _read_strto(
-                T& val,
-                const std::basic_string<CharT>& buf);
+            static either<size_t> _read_sto(T& val,
+                                            span<const CharT> buf,
+                                            basic_locale_ref<CharT>& loc);
+            static either<size_t> _read_strto(T& val,
+                                              span<const CharT> buf,
+                                              basic_locale_ref<CharT>& loc);
             static either<size_t> _read_from_chars(
                 T& val,
-                const std::basic_string<CharT>& buf);
-            static either<size_t> _read_custom(
-                T& val,
-                const std::basic_string<CharT>& buf);
+                span<const CharT> buf,
+                basic_locale_ref<CharT>& loc);
+            static either<size_t> _read_custom(T& val,
+                                               span<const CharT> buf,
+                                               basic_locale_ref<CharT>& loc);
         };
 
         template <typename CharT>
@@ -1303,6 +1314,7 @@ namespace scn {
                     if (ret == error::end_of_stream && !arg) {
                         return {args_read};
                     }
+                    SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                     auto rb = ctx.stream().roll_back();
                     if (!rb) {
                         return reterror(rb);
@@ -1318,6 +1330,7 @@ namespace scn {
             if (pctx.should_read_literal(ctx.locale())) {
                 // Check for any non-specifier {foo} characters
                 auto ret = ctx.stream().read_char();
+                SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 if (!ret || !pctx.check_literal(ret.value())) {
                     auto rb = ctx.stream().roll_back();
                     if (!rb) {

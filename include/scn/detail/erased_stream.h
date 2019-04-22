@@ -23,6 +23,9 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wpadded")
+
     namespace detail {
         template <typename CharT>
         class erased_stream_base {
@@ -273,6 +276,8 @@ namespace scn {
     private:
         detail::unique_ptr<detail::erased_sized_stream_base<CharT>> m_stream;
     };
+
+    SCN_CLANG_POP
 
     template <
         typename Stream,
