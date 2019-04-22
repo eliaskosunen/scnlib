@@ -23,6 +23,10 @@ option(SCN_USE_32BIT "Compile as 32-bit (gcc or clang only)" OFF)
 option(SCN_USE_EXCEPTIONS "Compile with exception support (disabling will cause test failures)" ON)
 option(SCN_USE_RTTI "Compile with RTTI (run-time type information) support" ON)
 
+option(SCN_USE_ASAN "Compile with AddressSanitizer (clang only)" OFF)
+option(SCN_USE_UBSAN "Compile with UndefinedBehaviorSanitizer (clang only)" OFF)
+option(SCN_USE_MSAN "Compile with MemorySanitizer (clang only)" OFF)
+
 file(READ include/scn/detail/config.h config_h)
 if (NOT config_h MATCHES "SCN_VERSION SCN_COMPILER\\(([0-9]+), ([0-9]+), ([0-9]+)\\)")
     message(FATAL_ERROR "Cannot get SCN_VERSION from config.h")
@@ -30,21 +34,37 @@ endif ()
 set(SCN_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
 message(STATUS "scn version: ${SCN_VERSION}")
 
-function (set_headers VAR)
-    set(headers ${${VAR}})
-    foreach (header ${ARGN})
-        set(headers ${headers} "${PROJECT_SOURCE_DIR}/include/scn/${header}")
-    endforeach ()
-    set(${VAR} ${headers} PARENT_SCOPE)
-endfunction ()
-
-set_headers(SCN_HEADERS
-	istream.h scn.h
-	detail/args.h detail/config.h
-	detail/context.h detail/core.h
-	detail/locale.h detail/stream.h
-	detail/span.h detail/string_view.h
-	detail/types.h detail/util.h)
+add_library(scn-asan INTERFACE)
+if (SCN_USE_ASAN)
+    if (CMAKE_VERSION VERSION_LESS 3.13)
+        message(FATAL_ERROR "SCN_USE_ASAN requires CMake >= 3.13 (for target_link_options)")
+    endif ()
+    target_compile_options(scn-asan INTERFACE
+        -g -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(scn-asan INTERFACE
+        -fsanitize=address)
+endif ()
+add_library(scn-ubsan INTERFACE)
+if (SCN_USE_UBSAN)
+    if (CMAKE_VERSION VERSION_LESS 3.13)
+        message(FATAL_ERROR "SCN_USE_UBSAN requires CMake >= 3.13 (for target_link_options)")
+    endif ()
+    target_compile_options(scn-ubsan INTERFACE
+        -fsanitize=undefined,implicit-conversion,integer,nullability
+        -g -fno-omit-frame-pointer)
+    target_link_options(scn-ubsan INTERFACE
+        -fsanitize=undefined,implicit-conversion,integer,nullability)
+endif ()
+add_library(scn-msan INTERFACE)
+if (SCN_USE_MSAN)
+    if (CMAKE_VERSION VERSION_LESS 3.13)
+        message(FATAL_ERROR "SCN_USE_MSAN requires CMake >= 3.13 (for target_link_options)")
+    endif ()
+    target_compile_options(scn-msan INTERFACE
+        -g -fsanitize=memory -fno-omit-frame-pointer)
+    target_link_options(scn-msan INTERFACE
+        -fsanitize=memory)
+endif ()
 
 function (get_warning_flags flags)
     set(${flags}
