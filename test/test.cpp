@@ -29,7 +29,7 @@ TEST_CASE("general")
     auto span = scn::make_span(&s[0], &s[0] + s.size());
     bool b{};
     auto stream = scn::make_stream(data.begin(), data.end());
-    auto ret = scn::scan(stream, "test {{}} {} {} {} {a}", i, d, span, b);
+    auto ret = scn::scan(stream, "test {{}} {} {} {} {:a}", i, d, span, b);
 
     CHECK(data == copy);
     CHECK(i == 42);
@@ -50,6 +50,25 @@ TEST_CASE("empty format")
     std::string s(6, '\0');
     bool b{};
     auto ret = scn::scan_default(stream, i, d, s, b);
+
+    CHECK(ret);
+    CHECK(ret.value() == 4);
+    CHECK(i == 42);
+    CHECK(d == doctest::Approx(3.14));
+    CHECK(s == "foobar");
+    CHECK(b);
+}
+
+TEST_CASE("scanf")
+{
+    std::string data{"test % 42 3.14 foobar true"};
+    auto stream = scn::make_stream(data);
+
+    int i{0};
+    double d{};
+    std::string s(6, '\0');
+    bool b{};
+    auto ret = scn::scanf(stream, "test %% % % % %a", i, d, s, b);
 
     CHECK(ret);
     CHECK(ret.value() == 4);

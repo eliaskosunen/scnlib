@@ -102,14 +102,14 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
 
     {
         value_type i{};
-        auto e = scan_value<char_type>(method, "1011", "{b2}", i);
+        auto e = scan_value<char_type>(method, "1011", "{:b2}", i);
         CHECK(i == 11);
         CHECK(e);
         CHECK(e.value() == 1);
     }
     {
         value_type i{};
-        auto e = scan_value<char_type>(method, "400", "{o}", i);
+        auto e = scan_value<char_type>(method, "400", "{:o}", i);
         CHECK(i == 0400);
         CHECK(e);
         CHECK(e.value() == 1);
@@ -125,14 +125,14 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     const bool can_fit_badidea = [=]() { return sizeof(value_type) >= 4; }();
     if (can_fit_badidea) {
         value_type i{};
-        auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
+        auto e = scan_value<char_type>(method, "bad1dea", "{:x}", i);
         CHECK(i == 0xbad1dea);
         CHECK(e);
         CHECK(e.value() == 1);
     }
     else {
         value_type i{};
-        auto e = scan_value<char_type>(method, "bad1dea", "{x}", i);
+        auto e = scan_value<char_type>(method, "bad1dea", "{:x}", i);
         REQUIRE(!e);
         CHECK(e.error().code() == scn::error::value_out_of_range);
         CHECK(e.value() == 0);

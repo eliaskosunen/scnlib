@@ -54,6 +54,36 @@ namespace scn {
     }
 
     template <typename Stream, typename... Args>
+    result<int> scanf(Stream& s,
+                      basic_string_view<typename Stream::char_type> f,
+                      Args&... a)
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using context_type = basic_scanf_context<Stream>;
+
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(s, f, args);
+        return vscan(ctx);
+    }
+    template <typename Stream, typename... Args>
+    result<int> scanf(options opt,
+                      Stream& s,
+                      basic_string_view<typename Stream::char_type> f,
+                      Args&... a)
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using context_type = basic_scanf_context<Stream>;
+
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(s, f, args, opt);
+        return vscan(ctx);
+    }
+
+    template <typename Stream, typename... Args>
     result<int> scan_default(Stream& s, Args&... a)
     {
         static_assert(sizeof...(Args) > 0,

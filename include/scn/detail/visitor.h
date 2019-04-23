@@ -1357,6 +1357,11 @@ namespace scn {
             }
             else {
                 // Scan argument
+                auto id = pctx.parse_arg_id(ctx.locale());
+                if (!pctx) {
+                    return reterror(error(error::invalid_format_string,
+                                          "Unexpected end of format argument"));
+                }
                 if (!arg) {
                     // Mismatch between number of args and {}s
                     return reterror(
@@ -1380,7 +1385,9 @@ namespace scn {
                     return reterror(arg_wrapped.get_error());
                 }
                 arg = arg_wrapped.value();
-                pctx.advance();
+                if (pctx) {
+                    pctx.advance();
+                }
             }
         }
         if (pctx) {

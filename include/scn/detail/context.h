@@ -209,6 +209,37 @@ namespace scn {
     };
 
     template <typename Stream>
+    class basic_scanf_context
+        : public detail::arg_context_base<
+              Stream,
+              basic_scanf_parse_context<typename Stream::char_type>> {
+        using base = detail::arg_context_base<
+            Stream,
+            basic_scanf_parse_context<typename Stream::char_type>>;
+
+    public:
+        using stream_type = typename base::stream_type;
+        using char_type = typename base::char_type;
+        using args_type = typename base::args_type;
+        using options_type = typename base::options_type;
+        using parse_context_type = typename base::parse_context_type;
+
+        basic_scanf_context(stream_type& s,
+                            basic_string_view<char_type> f,
+                            args_type args)
+            : base(s, parse_context_type{f}, std::move(args))
+        {
+        }
+        basic_scanf_context(stream_type& s,
+                            basic_string_view<char_type> f,
+                            args_type args,
+                            options_type opt)
+            : base(s, parse_context_type{f}, std::move(args), std::move(opt))
+        {
+        }
+    };
+
+    template <typename Stream>
     class basic_empty_context
         : public detail::arg_context_base<
               Stream,
