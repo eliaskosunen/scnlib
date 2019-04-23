@@ -547,7 +547,27 @@ namespace scn {
 
     namespace detail {
         template <typename CharT>
-        struct char_scanner : public empty_parser<CharT> {
+        struct char_scanner {
+            template <typename Context>
+            error parse(Context& ctx)
+            {
+                auto& pctx = ctx.parse_context();
+                pctx.arg_begin();
+                if (SCN_UNLIKELY(!pctx)) {
+                    return error(error::invalid_format_string,
+                                 "Unexpected format string end");
+                }
+                if (pctx.next() == detail::ascii_widen<CharT>('c')) {
+                    pctx.advance();
+                }
+                if (!pctx.check_arg_end(ctx.locale())) {
+                    return error(error::invalid_format_string,
+                                 "Expected argument end");
+                }
+                pctx.arg_end();
+                return {};
+            }
+
             template <typename Context>
             error scan(CharT& val, Context& ctx)
             {
@@ -604,9 +624,6 @@ namespace scn {
                     if (ch == detail::ascii_widen<CharT>('l')) {
                         localized = true;
                     }
-                    if (ch == detail::ascii_widen<CharT>('l')) {
-                        localized = true;
-                    }
                     else if (ch == detail::ascii_widen<CharT>('a')) {
                         a = true;
                         allow_set = true;
@@ -616,9 +633,7 @@ namespace scn {
                         allow_set = true;
                     }
                     else {
-                        return error(error::invalid_format_string,
-                                     "Expected 'l', 'a' or argument end in "
-                                     "format string");
+                        break;
                     }
                 }
                 if (allow_set) {
@@ -630,6 +645,10 @@ namespace scn {
                     return error(error::invalid_format_string,
                                  "boolalpha-mode cannot be enabled with 'l' "
                                  "(localized) specifier with bool");
+                }
+
+                if (pctx.next() == detail::ascii_widen<CharT>('b')) {
+                    pctx.advance();
                 }
                 if (!pctx.check_arg_end(ctx.locale())) {
                     return error(error::invalid_format_string,
@@ -789,6 +808,24 @@ namespace scn {
                 }
                 else if (pctx.next() == detail::ascii_widen<CharT>('o')) {
                     base = 8;
+                    pctx.advance();
+                }
+                else if (pctx.next() == detail::ascii_widen<CharT>('i')) {
+                    if (std::is_unsigned<T>::value) {
+                        return error(error::invalid_format_string,
+                                     "'i' format specifier expects signed "
+                                     "integer argument");
+                    }
+                    base = 0;
+                    pctx.advance();
+                }
+                else if (pctx.next() == detail::ascii_widen<CharT>('u')) {
+                    if (std::is_signed<T>::value) {
+                        return error(error::invalid_format_string,
+                                     "'u' format specifier expects unsigned "
+                                     "integer argument");
+                    }
+                    base = 0;
                     pctx.advance();
                 }
                 else if (pctx.next() == detail::ascii_widen<CharT>('b')) {
@@ -1008,6 +1045,36 @@ namespace scn {
                     pctx.advance();
                 }
 
+                if (pctx.check_arg_end(ctx.locale())) {
+                    pctx.arg_end();
+                    return {};
+                }
+
+                if (pctx.next() == detail::ascii_widen<CharT>('a')) {
+                    pctx.advance();
+                }
+                else if (pctx.next() == detail::ascii_widen<CharT>('A')) {
+                    pctx.advance();
+                }
+                else if (pctx.next() == detail::ascii_widen<CharT>('e')) {
+                    pctx.advance();
+                }
+                else if (pctx.next() == detail::ascii_widen<CharT>('E')) {
+                    pctx.advance();
+                }
+                else if (pctx.next() == detail::ascii_widen<CharT>('f')) {
+                    pctx.advance();
+                }
+                else if (pctx.next() == detail::ascii_widen<CharT>('F')) {
+                    pctx.advance();
+                }
+                else if (pctx.next() == detail::ascii_widen<CharT>('g')) {
+                    pctx.advance();
+                }
+                else if (pctx.next() == detail::ascii_widen<CharT>('G')) {
+                    pctx.advance();
+                }
+
                 if (!pctx.check_arg_end(ctx.locale())) {
                     return error(error::invalid_format_string,
                                  "Expected argument end");
@@ -1124,8 +1191,28 @@ namespace scn {
         };
 
         template <typename CharT>
-        struct string_scanner : public empty_parser<CharT> {
+        struct string_scanner {
         public:
+            template <typename Context>
+            error parse(Context& ctx)
+            {
+                auto& pctx = ctx.parse_context();
+                pctx.arg_begin();
+                if (SCN_UNLIKELY(!pctx)) {
+                    return error(error::invalid_format_string,
+                                 "Unexpected format string end");
+                }
+                if (pctx.next() == detail::ascii_widen<CharT>('s')) {
+                    pctx.advance();
+                }
+                if (!pctx.check_arg_end(ctx.locale())) {
+                    return error(error::invalid_format_string,
+                                 "Expected argument end");
+                }
+                pctx.arg_end();
+                return {};
+            }
+
             template <typename Context>
             error scan(std::basic_string<CharT>& val, Context& ctx)
             {

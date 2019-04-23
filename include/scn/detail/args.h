@@ -36,6 +36,18 @@ namespace scn {
     template <typename CharT, typename T, typename Enable = void>
     struct scanner;
 
+    template <typename T>
+    struct temporary {
+        temporary(T&& val) : value(std::move(val)) {}
+
+        T& operator()() &&
+        {
+            return value;
+        }
+
+        T value;
+    };
+
     namespace detail {
         template <typename CharT>
         struct named_arg_base;

@@ -68,7 +68,7 @@ TEST_CASE("scanf")
     double d{};
     std::string s(6, '\0');
     bool b{};
-    auto ret = scn::scanf(stream, "test %% % % % %a", i, d, s, b);
+    auto ret = scn::scanf(stream, "test %% %i %f %s %b", i, d, s, b);
 
     CHECK(ret);
     CHECK(ret.value() == 4);
@@ -78,3 +78,28 @@ TEST_CASE("scanf")
     CHECK(b);
 }
 
+TEST_CASE("temporary")
+{
+    struct temporary {
+        temporary(int&& val) : value(std::move(val)) {}
+        ~temporary()
+        {
+            CHECK(value == 42);
+        }
+
+        int& operator()() &&
+        {
+            return value;
+        }
+
+        int value;
+    };
+
+    std::string data{"42"};
+    auto stream = scn::make_stream(data);
+
+    auto ret = scn::scan_default(stream, temporary{0}());
+
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+}
