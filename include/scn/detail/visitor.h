@@ -1379,11 +1379,7 @@ namespace scn {
         };
 
         auto& pctx = ctx.parse_context();
-        auto arg_wrapped = ctx.next_arg();
-        if (!arg_wrapped) {
-            return reterror(arg_wrapped.get_error());
-        }
-        auto arg = arg_wrapped.value();
+        auto arg = typename Context::arg_type();
 
         {
             auto ret = skip_stream_whitespace(ctx);
@@ -1398,8 +1394,8 @@ namespace scn {
                 // EOF is not an error
                 auto ret = skip_stream_whitespace(ctx);
                 if (SCN_UNLIKELY(!ret)) {
-                    if (ret == error::end_of_stream && !arg) {
-                        return {args_read};
+                    if (ret == error::end_of_stream) {
+                        break;
                     }
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                     auto rb = ctx.stream().roll_back();
@@ -1444,7 +1440,34 @@ namespace scn {
             }
             else {
                 // Scan argument
-                auto id = pctx.parse_arg_id(ctx.locale());
+                auto id_wrapped = pctx.parse_arg_id(ctx.locale());
+                if (!id_wrapped) {
+                    return reterror(id_wrapped.get_error());
+                }
+                auto id = id_wrapped.value();
+                auto arg_wrapped = [&]() -> either<typename Context::arg_type>
+                {
+                    if (id.empty()) {
+                        return ctx.next_arg();
+                    }
+                    if (ctx.locale().is_digit(id.front())) {
+                        size_t tmp = 0;
+                        for (auto ch : id) {
+                            tmp =
+                                tmp * 10 +
+                                static_cast<size_t>(
+                                    ch - detail::ascii_widen<
+                                             typename Context::char_type>('0'));
+                        }
+                        return ctx.arg(tmp);
+                    }
+                    return ctx.arg(id);
+                }
+                ();
+                if (!arg_wrapped) {
+                    return reterror(arg_wrapped.get_error());
+                }
+                arg = arg_wrapped.value();
                 if (!pctx) {
                     return reterror(error(error::invalid_format_string,
                                           "Unexpected end of format argument"));
@@ -1467,11 +1490,6 @@ namespace scn {
                 // Handle next arg and bump pctx
                 ++args_read;
                 pctx.arg_handled();
-                arg_wrapped = ctx.next_arg();
-                if (!arg_wrapped) {
-                    return reterror(arg_wrapped.get_error());
-                }
-                arg = arg_wrapped.value();
                 if (pctx) {
                     pctx.advance();
                 }

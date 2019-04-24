@@ -32,7 +32,7 @@ TEST_CASE("ranges")
         auto span = scn::make_span(&s[0], &s[0] + s.size());
         bool b{};
         auto ret =
-            scn::ranges::scan(data, "test {{}} {} {} {} {a}", i, d, span, b);
+            scn::ranges::scan(data, "test {{}} {} {} {} {:a}", i, d, span, b);
 
         CHECK(i == 42);
         CHECK(d == doctest::Approx(3.14));

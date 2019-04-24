@@ -145,11 +145,6 @@ namespace scn {
             {
             }
 
-            arg_type arg(size_t id) const
-            {
-                return m_args.get(id);
-            }
-
             either<arg_type> next_arg()
             {
                 return this->do_get_arg(this->parse_context().next_arg_id());
@@ -160,7 +155,10 @@ namespace scn {
                                                               : arg_type();
             }
 
-            either<arg_type> arg(basic_string_view<char_type> name);
+            either<arg_type> arg(basic_string_view<char_type>)
+            {
+                return arg_type{};
+            }
 
         private:
             either<arg_type> do_get_arg(size_t id)

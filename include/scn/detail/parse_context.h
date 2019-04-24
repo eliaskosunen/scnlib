@@ -34,7 +34,7 @@ namespace scn {
                 }
                 return 0;
             }
-            SCN_CONSTEXPR14 bool check_arg_id(int)
+            SCN_CONSTEXPR14 bool check_arg_id(size_t)
             {
                 if (m_next_arg_id > 0) {
                     return false;
@@ -50,6 +50,8 @@ namespace scn {
         };
         template <typename Char>
         class basic_parse_context_base : public parse_context_base {
+        public:
+            using parse_context_base::check_arg_id;
             SCN_CONSTEXPR14 void check_arg_id(basic_string_view<Char>) {}
         };
     }  // namespace detail
