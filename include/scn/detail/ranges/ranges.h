@@ -126,6 +126,52 @@ namespace scn {
                     std::move(result)};
         }
 
+        template <typename Range, typename... Args>
+        ranges_result<::ranges::iterator_t<const Range>> scanf(
+            const Range& range,
+            basic_string_view<
+                ::ranges::value_type_t<::ranges::iterator_t<Range>>> f,
+            Args&... a)
+        {
+            static_assert(sizeof...(Args) > 0,
+                          "Have to scan at least a single argument");
+
+            auto stream = make_stream(range);
+
+            using stream_type = decltype(stream);
+            using context_type = basic_scanf_context<stream_type>;
+
+            auto args = make_args<context_type>(a...);
+            auto ctx = context_type(stream, f, args);
+            auto result = vscan(ctx);
+            return {::ranges::begin(range) +
+                        static_cast<std::ptrdiff_t>(stream.chars_read()),
+                    std::move(result)};
+        }
+        template <typename Range, typename... Args>
+        ranges_result<::ranges::iterator_t<const Range>> scanf(
+            options opt,
+            const Range& range,
+            basic_string_view<
+                ::ranges::value_type_t<::ranges::iterator_t<Range>>> f,
+            Args&... a)
+        {
+            static_assert(sizeof...(Args) > 0,
+                          "Have to scan at least a single argument");
+
+            auto stream = make_stream(range);
+
+            using stream_type = decltype(stream);
+            using context_type = basic_scanf_context<stream_type>;
+
+            auto args = make_args<context_type>(a...);
+            auto ctx = context_type(stream, f, args, opt);
+            auto result = vscan(ctx);
+            return {::ranges::begin(range) +
+                        static_cast<std::ptrdiff_t>(stream.chars_read()),
+                    std::move(result)};
+        }
+
         SCN_END_NAMESPACE
     }  // namespace ranges
 }  // namespace scn

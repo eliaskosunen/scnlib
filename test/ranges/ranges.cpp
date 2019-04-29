@@ -89,3 +89,21 @@ TEST_CASE_TEMPLATE_DEFINE("ranges getline", CharT, getline_test)
         CHECK(ret.value() == data.end());
     }
 }
+
+TEST_CASE("scanf")
+{
+    std::string data{"test % 42 3.14 foobar true"};
+
+    int i{0};
+    double d{};
+    std::string s(6, '\0');
+    bool b{};
+    auto ret = scn::ranges::scanf(data, "test %% %i %f %s %b", i, d, s, b);
+
+    CHECK(ret);
+    CHECK(ret.value() == 4);
+    CHECK(i == 42);
+    CHECK(d == doctest::Approx(3.14));
+    CHECK(s == "foobar");
+    CHECK(b);
+}
