@@ -48,10 +48,11 @@ public APIs are going to change in backwards-incompatible ways._
    * [Wide streams](#wide-streams)
    * [Encoding and Unicode](#encoding-and-unicode)
    * [Error handling](#error-handling)
-   * [ignore](#ignore)
-   * [getchar](#getchar)
+   * [`ignore`](#ignore)
+   * [`getchar`](#getchar)
    * [User types](#user-types)
    * [Range-based interface](#range-based-interface)
+   * [`scanf` syntax](#scanf-syntax)
    * [TODO docs](#todo-docs)
 * [Compiler support](#compiler-support)
 * [Benchmarks](#benchmarks)
@@ -223,6 +224,8 @@ scn::scan(scn::cstdin(), "{}", i);
 Every value to be scanned from the input stream is marked with a pair of curly braces `"{}"` in the format string.
 Inside these braces, additional options can be specified.
 
+The syntax is not dissimilar from the one found in `{fmt}`.
+
 For characters, spans and strings, there are no available options, and only the empty string `"{}"` is valid.
 
 #### Integral types
@@ -279,7 +282,7 @@ scn::scan(
     scn::options::builder{}
         .locale(loc)
         .make(),
-    "{} {n}", a, b);
+    "{} {:n}", a, b);
 ```
 
 Only reading of `b` will be localized, as it has `{n}` as its format string.
@@ -539,6 +542,17 @@ ret = scn::ranges::scan(scn::ranges::subrange_from(ret.iterator(), range), "{}",
 assert(str == "world");
 assert(ret.iterator() == range.end());
 
+```
+
+### `scanf` syntax
+
+With `scn::scanf`, a `scanf`-like format string syntax can be used.
+For more information about the syntax, check `man scanf` or some other C standard library document.
+`scn::ranges::scanf` is also available.
+
+```cpp
+int i{};
+scn::scanf(stream, "%d", i);
 ```
 
 ### TODO docs
