@@ -21,6 +21,9 @@
 #include "../vscan.h"
 #include "types.h"
 
+#include <range/v3/action/action.hpp>
+#include <range/v3/action/drop.hpp>
+
 namespace scn {
     namespace ranges {
         SCN_BEGIN_NAMESPACE
@@ -127,6 +130,46 @@ namespace scn {
         }
 
         template <typename Range, typename... Args>
+        ranges_result<::ranges::iterator_t<const Range>> scan_default(
+            const Range& range,
+            Args&... a)
+        {
+            static_assert(sizeof...(Args) > 0,
+                          "Have to scan at least a single argument");
+
+            auto stream = make_stream(range);
+
+            using stream_type = decltype(stream);
+            using context_type = basic_empty_context<stream_type>;
+
+            auto args = make_args<context_type>(a...);
+            auto ctx = context_type(stream, sizeof...(Args), args);
+            auto result = vscan(ctx);
+            auto n = static_cast<std::ptrdiff_t>(stream.chars_read());
+            return {::ranges::begin(range) + n, std::move(result)};
+        }
+
+        template <typename Range, typename... Args>
+        ranges_result<::ranges::iterator_t<const Range>>
+        scan_default(options opt, const Range& range, Args&... a)
+        {
+            static_assert(sizeof...(Args) > 0,
+                          "Have to scan at least a single argument");
+
+            auto stream = make_stream(range);
+
+            using stream_type = decltype(stream);
+            using context_type = basic_empty_context<stream_type>;
+
+            auto args = make_args<context_type>(a...);
+            auto ctx = context_type(stream, sizeof...(Args), args, opt);
+            auto result = vscan(ctx);
+            return {::ranges::begin(range) +
+                        static_cast<std::ptrdiff_t>(stream.chars_read()),
+                    std::move(result)};
+        }
+
+        template <typename Range, typename... Args>
         ranges_result<::ranges::iterator_t<const Range>> scanf(
             const Range& range,
             basic_string_view<
@@ -173,7 +216,45 @@ namespace scn {
         }
 
         SCN_END_NAMESPACE
-    }  // namespace ranges
+
+        namespace action {
+            SCN_BEGIN_NAMESPACE
+
+            struct scan_fn {
+            private:
+                friend ::ranges::action::action_access;
+
+                template <typename T>
+                static auto CPP_fun(bind)(scan_fn scan, T& value, error& err)(
+                    requires(not::ranges::Range<T>))
+                {
+                    return std::bind(scan, std::placeholders::_1,
+                                     ::ranges::protect(value),
+                                     ::ranges::protect(err));
+                }
+
+            public:
+                CPP_template(typename Range, typename T)(
+                    requires ::ranges::ForwardRange<Range>) Range
+                operator()(Range&& rng, T& value, error& err) const
+                {
+                    auto ret = ::scn::ranges::scan_default(rng, value);
+                    if (!ret) {
+                        err = ret.error();
+                        return std::move(rng);
+                    }
+                    auto dist = ::ranges::distance(::ranges::begin(rng),
+                                                   ret.iterator());
+                    ::ranges::action::drop(rng, dist);
+                    return std::move(rng);
+                }
+            };
+
+            RANGES_INLINE_VARIABLE(::ranges::action::action<scan_fn>, scan)
+
+            SCN_END_NAMESPACE
+        }  // namespace action
+    }      // namespace ranges
 }  // namespace scn
 
 #if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && \
