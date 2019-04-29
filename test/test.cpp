@@ -103,3 +103,19 @@ TEST_CASE("temporary")
     CHECK(ret);
     CHECK(ret.value() == 1);
 }
+
+TEST_CASE("enumerated arguments")
+{
+    std::string source{"42 text"};
+    auto stream = scn::make_stream(source);
+
+    int i{};
+    std::string s{};
+    auto ret = scn::scan(stream, "{1} {0}", s, i);
+
+    CHECK(ret);
+    CHECK(ret.value() == 2);
+
+    CHECK(i == 42);
+    CHECK(s == "text");
+}
