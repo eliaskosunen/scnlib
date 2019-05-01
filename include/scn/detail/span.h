@@ -89,7 +89,7 @@ namespace scn {
             return reverse_iterator{cbegin()};
         }
 
-        SCN_CONSTEXPR14 reference operator[](index_type i) const noexcept
+        SCN_CONSTEXPR reference operator[](index_type i) const noexcept
         {
             SCN_EXPECT(size() > i);
             return *(m_ptr + i);
@@ -108,23 +108,23 @@ namespace scn {
             return static_cast<std::ptrdiff_t>(size());
         }
 
-        SCN_CONSTEXPR14 span<T> first(index_type n) const
+        SCN_CONSTEXPR span<T> first(index_type n) const
         {
             SCN_EXPECT(size() >= n);
             return span<T>(data(), data() + n);
         }
-        SCN_CONSTEXPR14 span<T> last(index_type n) const
+        SCN_CONSTEXPR span<T> last(index_type n) const
         {
             SCN_EXPECT(size() >= n);
             return span<T>(data() + size() - n, data() + size());
         }
-        SCN_CONSTEXPR14 span<T> subspan(index_type off) const
+        SCN_CONSTEXPR span<T> subspan(index_type off) const
         {
             SCN_EXPECT(size() >= off);
             return span<T>(data() + off, size() - off);
         }
-        SCN_CONSTEXPR14 span<T> subspan(index_type off,
-                                        difference_type count) const
+        SCN_CONSTEXPR span<T> subspan(index_type off,
+                                      difference_type count) const
         {
             SCN_EXPECT(size() > off + count);
             SCN_EXPECT(count > 0);

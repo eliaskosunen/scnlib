@@ -347,9 +347,15 @@
 
 #define SCN_UNUSED(x) static_cast<void>(sizeof(x))
 
+#if SCN_HAS_RELAXED_CONSTEXPR
 #define SCN_ASSERT(cond, msg) assert((cond) && msg)
 #define SCN_EXPECT(cond) SCN_ASSERT(cond, "Precondition violation")
 #define SCN_ENSURE(cond) SCN_ASSERT(cond, "Postcondition violation")
+#else
+#define SCN_ASSERT(cond, msg)
+#define SCN_EXPECT(cond)
+#define SCN_ENSURE(cond)
+#endif
 
 #define SCN_BEGIN_NAMESPACE inline namespace v0 {
 #define SCN_END_NAMESPACE }

@@ -136,4 +136,66 @@ BENCHMARK_TEMPLATE(scanfloat_sstream, float);
 BENCHMARK_TEMPLATE(scanfloat_sstream, double);
 BENCHMARK_TEMPLATE(scanfloat_sstream, long double);
 
+SCN_MSVC_PUSH
+SCN_MSVC_IGNORE(4996)
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wunused-function")
+
+namespace detail {
+    static int scanf_float(char*& ptr, float& f)
+    {
+        int n;
+        auto ret = sscanf(ptr, "%f%n", &f, &n);
+        ptr += n + 1;
+        return ret;
+    }
+    static int scanf_float(char*& ptr, double& d)
+    {
+        int n;
+        auto ret = sscanf(ptr, "%lf%n", &d, &n);
+        ptr += n + 1;
+        return ret;
+    }
+    static int scanf_float(char*& ptr, long double& ld)
+    {
+        int n;
+        auto ret = sscanf(ptr, "%Lf%n", &ld, &n);
+        ptr += n + 1;
+        return ret;
+    }
+}  // namespace detail
+
+SCN_MSVC_POP
+
+template <typename Float>
+static void scanfloat_scanf(benchmark::State& state)
+{
+    auto data = generate_float_data<Float>(FLOAT_DATA_N);
+    auto ptr = &data[0];
+    Float f{};
+    for (auto _ : state) {
+        auto ret = detail::scanf_float(ptr, f);
+
+        benchmark::DoNotOptimize(f);
+        if (ret != 1) {
+            if (ret == EOF) {
+                state.PauseTiming();
+                data = generate_float_data<Float>(FLOAT_DATA_N);
+                ptr = &data[0];
+                state.ResumeTiming();
+                continue;
+            }
+            state.SkipWithError("Benchmark errored");
+            break;
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+}
+BENCHMARK_TEMPLATE(scanfloat_scanf, float);
+BENCHMARK_TEMPLATE(scanfloat_scanf, double);
+BENCHMARK_TEMPLATE(scanfloat_scanf, long double);
+
+SCN_GCC_POP
 SCN_CLANG_POP

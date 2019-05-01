@@ -50,11 +50,11 @@ namespace scn {
         };
 
         template <typename Integral>
-        int _max_digits(int base) noexcept
+        SCN_CONSTEXPR14 int _max_digits(int base) noexcept
         {
             using lim = std::numeric_limits<Integral>;
 
-            static int base8_digits[4] = {3, 5, 11, 21};
+            int base8_digits[4] = {3, 5, 11, 21};
 
             if (base == 10) {
                 return lim::digits10;
@@ -76,7 +76,7 @@ namespace scn {
             return digits;
         }
         template <typename Integral>
-        int max_digits(int base) noexcept
+        SCN_CONSTEXPR14 int max_digits(int base) noexcept
         {
             auto b = base == 0 ? 8 : base;
             auto d = _max_digits<Integral>(b) +
@@ -108,6 +108,40 @@ namespace scn {
         SCN_CONSTEXPR wchar_t ascii_widen(char ch)
         {
             return static_cast<wchar_t>(ch);
+        }
+
+        template <typename T>
+        SCN_CONSTEXPR T max(T a, T b) noexcept
+        {
+            return (a < b) ? b : a;
+        }
+
+        template <typename It>
+        SCN_CONSTEXPR14 It min_element(It first, It last)
+        {
+            if (first == last) {
+                return last;
+            }
+
+            It smallest = first;
+            ++first;
+            for (; first != last; ++first) {
+                if (*first < *smallest) {
+                    smallest = first;
+                }
+            }
+            return smallest;
+        }
+
+        template <typename T>
+        SCN_CONSTEXPR T min(T a, T b) noexcept
+        {
+            return (b < a) ? b : a;
+        }
+        template <typename T>
+        SCN_CONSTEXPR14 T min(std::initializer_list<T> list) noexcept
+        {
+            return *min_element(list.begin(), list.end());
         }
 
         template <typename T>
@@ -196,6 +230,8 @@ namespace scn {
 
         template <typename T, std::size_t N>
         struct array {
+            static_assert(N > 0, "zero-sized array not supported");
+
             using value_type = T;
             using size_type = std::size_t;
             using difference_type = std::ptrdiff_t;
@@ -208,10 +244,12 @@ namespace scn {
 
             SCN_CONSTEXPR14 reference operator[](size_type i)
             {
+                SCN_EXPECT(i < size());
                 return m_data[i];
             }
             SCN_CONSTEXPR const_reference operator[](size_type i) const
             {
+                SCN_EXPECT(i < size());
                 return m_data[i];
             }
 

@@ -516,92 +516,92 @@ namespace scn {
                 return n <= StackN;
             }
 
-            reference operator[](size_type pos)
+            SCN_CONSTEXPR14 reference operator[](size_type pos)
             {
                 SCN_EXPECT(pos < size());
                 return *(begin() + pos);
             }
-            const_reference operator[](size_type pos) const
+            SCN_CONSTEXPR const_reference operator[](size_type pos) const
             {
                 SCN_EXPECT(pos < size());
                 return *(begin() + pos);
             }
 
-            reference front()
+            SCN_CONSTEXPR14 reference front()
             {
                 SCN_EXPECT(!empty());
                 return *begin();
             }
-            const_reference front() const
+            SCN_CONSTEXPR const_reference front() const
             {
                 SCN_EXPECT(!empty());
                 return *begin();
             }
 
-            reference back()
+            SCN_CONSTEXPR14 reference back()
             {
                 SCN_EXPECT(!empty());
                 return *(end() - 1);
             }
-            const_reference back() const
+            SCN_CONSTEXPR const_reference back() const
             {
                 SCN_EXPECT(!empty());
                 return *(end() - 1);
             }
 
-            iterator begin() noexcept
+            SCN_CONSTEXPR14 iterator begin() noexcept
             {
                 return data();
             }
-            const_iterator begin() const noexcept
+            SCN_CONSTEXPR const_iterator begin() const noexcept
             {
                 return data();
             }
-            const_iterator cbegin() const noexcept
+            SCN_CONSTEXPR const_iterator cbegin() const noexcept
             {
                 return begin();
             }
 
-            iterator end() noexcept
+            SCN_CONSTEXPR14 iterator end() noexcept
             {
                 return begin() + size();
             }
-            const_iterator end() const noexcept
+            SCN_CONSTEXPR const_iterator end() const noexcept
             {
                 return begin() + size();
             }
-            const_iterator cend() const noexcept
+            SCN_CONSTEXPR const_iterator cend() const noexcept
             {
                 return end();
             }
 
-            reverse_iterator rbegin() noexcept
+            SCN_CONSTEXPR14 reverse_iterator rbegin() noexcept
             {
                 return make_reverse_iterator(end());
             }
-            const_reverse_iterator rbegin() const noexcept
+            SCN_CONSTEXPR const_reverse_iterator rbegin() const noexcept
             {
                 return make_reverse_iterator(end());
             }
-            const_reverse_iterator crbegin() const noexcept
+            SCN_CONSTEXPR const_reverse_iterator crbegin() const noexcept
             {
                 return rbegin();
             }
 
-            reverse_iterator rend() noexcept
+            SCN_CONSTEXPR14 reverse_iterator rend() noexcept
             {
                 return make_reverse_iterator(begin());
             }
-            const_reverse_iterator rend() const noexcept
+            SCN_CONSTEXPR const_reverse_iterator rend() const noexcept
             {
                 return make_reverse_iterator(begin());
             }
-            const_reverse_iterator crend() const noexcept
+            SCN_CONSTEXPR const_reverse_iterator crend() const noexcept
             {
                 return rend();
             }
 
-            size_type max_size() const noexcept
+            SCN_CONSTEXPR size_type max_size() const noexcept
             {
                 return std::numeric_limits<size_type>::max();
             }
@@ -722,7 +722,7 @@ namespace scn {
                 _set_size(count);
             }
 
-            void swap(small_vector& other) noexcept
+            SCN_CONSTEXPR14 void swap(small_vector& other) noexcept
             {
                 small_vector tmp{std::move(other)};
                 other = std::move(*this);
@@ -841,8 +841,9 @@ namespace scn {
         };
 
         template <typename T, size_t N>
-        void swap(small_vector<T, N>& l,
-                  small_vector<T, N>& r) noexcept(noexcept(l.swap(r)))
+        SCN_CONSTEXPR14 void swap(
+            small_vector<T, N>& l,
+            small_vector<T, N>& r) noexcept(noexcept(l.swap(r)))
         {
             l.swap(r);
         }

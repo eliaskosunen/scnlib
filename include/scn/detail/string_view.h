@@ -28,12 +28,6 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        template <typename T>
-        SCN_CONSTEXPR T min(T a, T b) noexcept
-        {
-            return (b < a) ? b : a;
-        }
-
         inline size_t strlen(const char* s) noexcept
         {
             return std::strlen(s);
@@ -176,7 +170,7 @@ namespace scn {
             m_data = m_data.first(size() - n);
         }
 
-        SCN_CONSTEXPR14 void swap(basic_string_view& v) noexcept
+        SCN_CONSTEXPR void swap(basic_string_view& v) noexcept
         {
             using std::swap;
             swap(m_data, v.m_data);

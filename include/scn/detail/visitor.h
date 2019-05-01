@@ -135,7 +135,7 @@ namespace scn {
                   nullptr>
     result<typename Span::iterator> read(Stream& stream, Span s)
     {
-        auto n = std::min(s.size(), stream.chars_to_read());
+        auto n = detail::min(s.size(), stream.chars_to_read());
         s = s.first(n);
         auto ret = stream.read_sized(s);
         if (!ret) {
@@ -173,7 +173,7 @@ namespace scn {
         {
             size_t n = 0, size = 0;
             while (true) {
-                n = std::min(stream.chars_to_read(), size_t{64});
+                n = detail::min(stream.chars_to_read(), size_t{64});
                 if (n == 0) {
                     break;
                 }
@@ -198,8 +198,8 @@ namespace scn {
         {
             auto n = 0;
             while (true) {
-                n = std::min({static_cast<size_t>(std::distance(it, end)),
-                              stream.chars_to_read(), size_t{64}});
+                n = detail::min({static_cast<size_t>(std::distance(it, end)),
+                                 stream.chars_to_read(), size_t{64}});
                 if (n == 0) {
                     break;
                 }
@@ -271,8 +271,8 @@ namespace scn {
                   nullptr>
     result<Iterator> read_into(Stream& s, Iterator it, Sentinel end)
     {
-        auto n = std::min(static_cast<size_t>(std::distance(it, end)),
-                          s.chars_to_read());
+        auto n = detail::min(static_cast<size_t>(std::distance(it, end)),
+                             s.chars_to_read());
         if (n > 64) {
             detail::array<CharT, 64> arr;
             auto ret = read(s, make_span(arr));
@@ -324,7 +324,7 @@ namespace scn {
         detail::array<CharT, 64> arr;
         bool end = false;
         while (!end) {
-            n = std::min(s.chars_to_read(), std::size_t{64});
+            n = detail::min(s.chars_to_read(), std::size_t{64});
             if (n == 0) {
                 break;
             }
@@ -423,8 +423,8 @@ namespace scn {
         auto n = 0;
         detail::array<CharT, 64> arr;
         while (true) {
-            n = std::min({static_cast<size_t>(std::distance(it, end)),
-                          s.chars_to_read(), size_t{64}});
+            n = detail::min({static_cast<size_t>(std::distance(it, end)),
+                             s.chars_to_read(), size_t{64}});
             if (n == 0) {
                 break;
             }
@@ -669,7 +669,7 @@ namespace scn {
                         falsename = ctx.locale().falsename();
                     }
                     const auto max_len =
-                        std::max(truename.size(), falsename.size());
+                        detail::max(truename.size(), falsename.size());
                     std::basic_string<CharT> buf;
                     buf.reserve(max_len);
 

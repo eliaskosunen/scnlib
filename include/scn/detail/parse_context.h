@@ -29,10 +29,8 @@ namespace scn {
         public:
             SCN_CONSTEXPR14 size_t next_arg_id()
             {
-                if (m_next_arg_id >= 0) {
-                    return static_cast<size_t>(m_next_arg_id++);
-                }
-                return 0;
+                return m_next_arg_id >= 0 ? static_cast<size_t>(m_next_arg_id++)
+                                          : 0;
             }
             SCN_CONSTEXPR14 bool check_arg_id(size_t)
             {
@@ -124,20 +122,20 @@ namespace scn {
         }
 
         template <typename Locale>
-        bool check_arg_begin(const Locale&) const
+        SCN_CONSTEXPR bool check_arg_begin(const Locale&) const
         {
             return next() == detail::ascii_widen<char_type>('{');
         }
         template <typename Locale>
-        bool check_arg_end(const Locale&) const
+        SCN_CONSTEXPR bool check_arg_end(const Locale&) const
         {
             return next() == detail::ascii_widen<char_type>('}');
         }
 
-        void arg_begin() {}
-        void arg_end() {}
+        SCN_CONSTEXPR14 void arg_begin() const noexcept {}
+        SCN_CONSTEXPR14 void arg_end() const noexcept {}
 
-        SCN_CONSTEXPR14 void arg_handled() const {}
+        SCN_CONSTEXPR14 void arg_handled() const noexcept {}
 
         template <typename Scanner, typename Context>
         error parse(Scanner& s, Context& ctx)
@@ -245,18 +243,18 @@ namespace scn {
             return !good() || check_arg_begin(loc) || loc.is_space(next());
         }
 
-        void arg_begin()
+        SCN_CONSTEXPR14 void arg_begin()
         {
             advance();
         }
-        void arg_end()
+        SCN_CONSTEXPR14 void arg_end()
         {
             if (good()) {
                 backward();
             }
         }
 
-        SCN_CONSTEXPR14 void arg_handled() const {}
+        SCN_CONSTEXPR14 void arg_handled() const noexcept {}
 
         template <typename Scanner, typename Context>
         error parse(Scanner& s, Context& ctx)
@@ -265,7 +263,7 @@ namespace scn {
         }
 
         template <typename Locale>
-        either<string_view_type> parse_arg_id(const Locale&)
+        SCN_CONSTEXPR either<string_view_type> parse_arg_id(const Locale&)
         {
             SCN_EXPECT(good());
             return string_view_type{};
@@ -340,8 +338,8 @@ namespace scn {
             return true;
         }
 
-        SCN_CONSTEXPR14 void arg_begin() const {}
-        SCN_CONSTEXPR14 void arg_end() {}
+        SCN_CONSTEXPR14 void arg_begin() const noexcept {}
+        SCN_CONSTEXPR14 void arg_end() const noexcept {}
 
         SCN_CONSTEXPR14 void arg_handled()
         {
@@ -350,13 +348,13 @@ namespace scn {
         }
 
         template <typename Scanner, typename Context>
-        error parse(Scanner&, Context&)
+        SCN_CONSTEXPR error parse(Scanner&, Context&)
         {
             return {};
         }
 
         template <typename Locale>
-        either<string_view_type> parse_arg_id(const Locale&)
+        SCN_CONSTEXPR either<string_view_type> parse_arg_id(const Locale&) const
         {
             SCN_EXPECT(good());
             return string_view_type{};

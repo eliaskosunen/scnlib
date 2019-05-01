@@ -82,12 +82,12 @@ namespace scn {
             custom_type
         };
 
-        SCN_CONSTEXPR14 bool is_integral(type t) noexcept
+        SCN_CONSTEXPR bool is_integral(type t) noexcept
         {
             SCN_EXPECT(t != named_arg_type);
             return t > none_type && t <= last_integer_type;
         }
-        SCN_CONSTEXPR14 bool is_arithmetic(type t) noexcept
+        SCN_CONSTEXPR bool is_arithmetic(type t) noexcept
         {
             SCN_EXPECT(t != named_arg_type);
             return t > none_type && t <= last_numeric_type;
@@ -194,7 +194,7 @@ namespace scn {
             static const type type_tag = Type;
 
             SCN_CONSTEXPR init(T& v) : val(std::addressof(v)) {}
-            SCN_CONSTEXPR14 operator value<Context>()
+            SCN_CONSTEXPR operator value<Context>()
             {
                 SCN_EXPECT(val != nullptr);
                 return value<Context>(*val);

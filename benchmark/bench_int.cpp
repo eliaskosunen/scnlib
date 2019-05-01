@@ -158,7 +158,6 @@ namespace detail {
     static int scanf_integral(char*& ptr, int& i)
     {
         int n;
-        errno = 0;
         auto ret = sscanf(ptr, "%d%n", &i, &n);
         ptr += n + 1;
         return ret;
@@ -166,7 +165,6 @@ namespace detail {
     static int scanf_integral(char*& ptr, long long& i)
     {
         int n;
-        errno = 0;
         auto ret = sscanf(ptr, "%lld%n", &i, &n);
         ptr += n + 1;
         return ret;
@@ -174,7 +172,6 @@ namespace detail {
     static int scanf_integral(char*& ptr, unsigned& i)
     {
         int n;
-        errno = 0;
         auto ret = sscanf(ptr, "%u%n", &i, &n);
         ptr += n + 1;
         return ret;
@@ -208,9 +205,9 @@ static void scanint_scanf(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-// BENCHMARK_TEMPLATE(scanint_scanf, int);
-// BENCHMARK_TEMPLATE(scanint_scanf, long long);
-// BENCHMARK_TEMPLATE(scanint_scanf, unsigned);
+BENCHMARK_TEMPLATE(scanint_scanf, int);
+BENCHMARK_TEMPLATE(scanint_scanf, long long);
+BENCHMARK_TEMPLATE(scanint_scanf, unsigned);
 
 SCN_GCC_POP
 SCN_CLANG_POP

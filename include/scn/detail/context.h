@@ -46,7 +46,7 @@ namespace scn {
             template <typename T>
             using scanner_type = scanner<char_type, T>;
 
-            SCN_CONSTEXPR14 stream_type& stream() noexcept
+            SCN_CONSTEXPR stream_type& stream() noexcept
             {
                 SCN_EXPECT(m_stream != nullptr);
                 return *m_stream;
