@@ -194,6 +194,70 @@ namespace scn {
             return unique_ptr<T>(new T(std::forward<Args>(a)...));
         }
 
+        template <typename T, std::size_t N>
+        struct array {
+            using value_type = T;
+            using size_type = std::size_t;
+            using difference_type = std::ptrdiff_t;
+            using reference = T&;
+            using const_reference = const T&;
+            using pointer = T*;
+            using const_pointer = const T*;
+            using iterator = pointer;
+            using const_iterator = const_pointer;
+
+            SCN_CONSTEXPR14 reference operator[](size_type i)
+            {
+                return m_data[i];
+            }
+            SCN_CONSTEXPR const_reference operator[](size_type i) const
+            {
+                return m_data[i];
+            }
+
+            SCN_CONSTEXPR14 iterator begin() noexcept
+            {
+                return m_data;
+            }
+            SCN_CONSTEXPR const_iterator begin() const noexcept
+            {
+                return m_data;
+            }
+            SCN_CONSTEXPR const_iterator cbegin() const noexcept
+            {
+                return m_data;
+            }
+
+            SCN_CONSTEXPR14 iterator end() noexcept
+            {
+                return m_data + N;
+            }
+            SCN_CONSTEXPR const_iterator end() const noexcept
+            {
+                return m_data + N;
+            }
+            SCN_CONSTEXPR const_iterator cend() const noexcept
+            {
+                return m_data + N;
+            }
+
+            SCN_CONSTEXPR14 pointer data() noexcept
+            {
+                return m_data;
+            }
+            SCN_CONSTEXPR const_pointer data() const noexcept
+            {
+                return m_data;
+            }
+
+            SCN_CONSTEXPR size_type size() const noexcept
+            {
+                return N;
+            }
+
+            T m_data[N];
+        };
+
         template <typename T>
         class erased_storage {
         public:

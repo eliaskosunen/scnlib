@@ -29,8 +29,8 @@ namespace scn {
         template <typename Range,
                   typename Traits,
                   typename Allocator,
-                  typename Iterator = ::ranges::iterator_t<Range>,
-                  typename CharT = ::ranges::value_type_t<Iterator>>
+                  typename Iterator = SCN_RANGES_NS::iterator_t<Range>,
+                  typename CharT = SCN_RANGES_NS::value_type_t<Iterator>>
         either<Iterator> getline(
             Range& r,
             std::basic_string<CharT, Traits, Allocator>& str,
@@ -45,14 +45,14 @@ namespace scn {
                 return res.error();
             }
             str.erase(res.value());
-            return {::ranges::begin(r) +
+            return {SCN_RANGES_NS::begin(r) +
                     static_cast<std::ptrdiff_t>(s.chars_read())};
         }
         template <typename Range,
                   typename Traits,
                   typename Allocator,
-                  typename CharT =
-                      ::ranges::value_type_t<::ranges::iterator_t<Range>>>
+                  typename CharT = SCN_RANGES_NS::value_type_t<
+                      SCN_RANGES_NS::iterator_t<Range>>>
         auto getline(Range& r, std::basic_string<CharT, Traits, Allocator>& str)
         {
             return getline(r, str, ::scn::detail::ascii_widen<CharT>('\n'));

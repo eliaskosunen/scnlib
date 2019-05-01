@@ -21,7 +21,6 @@
 #include "config.h"
 
 #include <iterator>
-#include <type_traits>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -52,7 +51,7 @@ namespace scn {
         {
         }
         SCN_CONSTEXPR span(pointer first, pointer last) noexcept
-            : span(first, static_cast<size_t>(last - first))
+            : span(first, static_cast<index_type>(last - first))
         {
         }
 

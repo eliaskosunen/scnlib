@@ -21,7 +21,6 @@
 #include "parse_context.h"
 #include "util.h"
 
-#include <array>
 #include <cstring>
 #include <vector>
 
@@ -547,7 +546,7 @@ namespace scn {
         }
 
     private:
-        std::array<value_type, data_size> m_data;
+        detail::array<value_type, data_size> m_data;
     };
 
     template <typename Context, typename... Args>

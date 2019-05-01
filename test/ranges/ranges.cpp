@@ -56,14 +56,23 @@ TEST_CASE("ranges")
         CHECK(ret.iterator() ==
               data.begin() + static_cast<std::ptrdiff_t>(str.length()));
 
-        ret = scn::ranges::scan(
-            scn::ranges::subrange_from(ret.iterator(), data), "{}", str);
+        ret = scn::ranges::scan(ret.view(), "{}", str);
 
         CHECK(str == "world");
         CHECK(ret);
         CHECK(ret.value() == 1);
         CHECK(ret.iterator() == data.end());
     }
+#if 0
+    SUBCASE("action")
+    {
+        std::string data{"42 foo"};
+
+        scn::error err;
+        int i;
+        auto ret = data | scn::ranges::action::scan(i, err);
+    }
+#endif
 }
 
 TEST_CASE_TEMPLATE_DEFINE("ranges getline", CharT, getline_test)

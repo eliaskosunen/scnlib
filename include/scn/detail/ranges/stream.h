@@ -21,7 +21,7 @@
 #include "../context.h"
 #include "../erased_stream.h"
 
-#include <range/v3/core.hpp>
+#include "config.h"
 
 namespace scn {
     namespace ranges {
@@ -117,22 +117,22 @@ namespace scn {
         class basic_bidirectional_range_stream : public stream_base {
         public:
             using range_type = Range;
-            using underlying_iterator = ::ranges::iterator_t<range_type>;
-            using underlying_sentinel = ::ranges::sentinel_t<range_type>;
+            using underlying_iterator = SCN_RANGES_NS::iterator_t<range_type>;
+            using underlying_sentinel = SCN_RANGES_NS::sentinel_t<range_type>;
 
             using iterator = underlying_iterator;
-            using char_type = ::ranges::value_type_t<iterator>;
+            using char_type = SCN_RANGES_NS::value_type_t<iterator>;
 
             constexpr basic_bidirectional_range_stream(range_type& r) noexcept
                 : m_range(std::addressof(r)),
-                  m_begin(::ranges::begin(*m_range)),
+                  m_begin(SCN_RANGES_NS::begin(*m_range)),
                   m_next(m_begin)
             {
             }
 
             constexpr either<char_type> read_char() noexcept
             {
-                if (m_next == ::ranges::end(*m_range)) {
+                if (m_next == SCN_RANGES_NS::end(*m_range)) {
                     return error(error::end_of_stream, "EOF");
                 }
                 auto ch = *m_next;
@@ -149,7 +149,7 @@ namespace scn {
             size_t chars_read() const noexcept
             {
                 return static_cast<size_t>(
-                    std::distance(::ranges::begin(*m_range), m_next));
+                    std::distance(SCN_RANGES_NS::begin(*m_range), m_next));
             }
 
         protected:
@@ -206,14 +206,14 @@ namespace scn {
 
             constexpr size_t chars_to_read() const noexcept
             {
-                return static_cast<size_t>(
-                    std::distance(base::m_next, ::ranges::end(*base::m_range)));
+                return static_cast<size_t>(std::distance(
+                    base::m_next, SCN_RANGES_NS::end(*base::m_range)));
             }
 
             constexpr error skip(size_t n) noexcept
             {
                 if (chars_to_read() < n) {
-                    base::m_next = ::ranges::end(*base::m_range);
+                    base::m_next = SCN_RANGES_NS::end(*base::m_range);
                     return error(error::end_of_stream, "EOF");
                 }
                 base::m_next += static_cast<std::ptrdiff_t>(n);
@@ -221,7 +221,7 @@ namespace scn {
             }
             constexpr error skip_all() noexcept
             {
-                base::m_next = ::ranges::end(*base::m_range);
+                base::m_next = SCN_RANGES_NS::end(*base::m_range);
                 return {};
             }
         };
@@ -230,15 +230,15 @@ namespace scn {
         class basic_forward_range_stream : public stream_base {
         public:
             using range_type = Range;
-            using underlying_iterator = ::ranges::iterator_t<range_type>;
-            using underlying_sentinel = ::ranges::sentinel_t<range_type>;
+            using underlying_iterator = SCN_RANGES_NS::iterator_t<range_type>;
+            using underlying_sentinel = SCN_RANGES_NS::sentinel_t<range_type>;
 
             using iterator = underlying_iterator;
-            using char_type = ::ranges::value_type_t<iterator>;
+            using char_type = SCN_RANGES_NS::value_type_t<iterator>;
 
             constexpr basic_forward_range_stream(range_type& r)
                 : m_range(std::addressof(r)),
-                  m_begin(::ranges::begin(*m_range)),
+                  m_begin(SCN_RANGES_NS::begin(*m_range)),
                   m_next(m_begin)
             {
             }
@@ -250,7 +250,7 @@ namespace scn {
                     m_rollback.pop_back();
                     return top;
                 }
-                if (m_begin == ::ranges::end(*m_range)) {
+                if (m_begin == SCN_RANGES_NS::end(*m_range)) {
                     return error(error::end_of_stream, "EOF");
                 }
                 auto ch = *m_begin;
@@ -266,7 +266,7 @@ namespace scn {
             size_t chars_read() const noexcept
             {
                 return static_cast<size_t>(
-                    std::distance(::ranges::begin(*m_range), m_next));
+                    std::distance(SCN_RANGES_NS::begin(*m_range), m_next));
             }
 
         protected:
@@ -276,21 +276,23 @@ namespace scn {
         };
 
         namespace detail {
-            CPP_template(typename R)(requires ::ranges::BidirectionalRange<R> &&
-                                     !::ranges::SizedRange<R>)
+            CPP_template(typename R)(
+                requires SCN_RANGES_NS::BidirectionalRange<R> &&
+                !SCN_RANGES_NS::SizedRange<R>)
                 basic_bidirectional_range_stream<R> make_underlying_stream(R& r)
             {
                 return {r};
             }
-            CPP_template(typename R)(requires ::ranges::BidirectionalRange<
-                                     R>&& ::ranges::SizedRange<R>)
+            CPP_template(typename R)(
+                requires SCN_RANGES_NS::BidirectionalRange<R>&&
+                    SCN_RANGES_NS::SizedRange<R>)
                 basic_sized_bidirectional_range_stream<
                     R> make_underlying_stream(R& r)
             {
                 return {r};
             }
-            CPP_template(typename R)(requires ::ranges::ForwardRange<R> &&
-                                     !::ranges::BidirectionalRange<R>)
+            CPP_template(typename R)(requires SCN_RANGES_NS::ForwardRange<R> &&
+                                     !SCN_RANGES_NS::BidirectionalRange<R>)
                 basic_forward_range_stream<R> make_underlying_stream(R& r)
             {
                 return {r};
@@ -316,18 +318,19 @@ namespace scn {
             };
         }  // namespace detail
 
-        template <
-            typename R,
-            typename CharT = ::ranges::value_type_t<::ranges::iterator_t<R>>>
+        template <typename R,
+                  typename CharT =
+                      SCN_RANGES_NS::value_type_t<SCN_RANGES_NS::iterator_t<R>>>
         auto make_stream(R& r)
         {
             return detail::make_underlying_stream(r);
         }
 
-        CPP_template(typename R)(requires ::ranges::Range<R>) auto erase_stream(
-            R& r)
+        CPP_template(typename R)(
+            requires SCN_RANGES_NS::Range<R>) auto erase_stream(R& r)
         {
-            using CharT = ::ranges::value_type_t<::ranges::iterator_t<R>>;
+            using CharT =
+                SCN_RANGES_NS::value_type_t<SCN_RANGES_NS::iterator_t<R>>;
             auto s = make_stream(r);
             return typename detail::erased_stream_for<decltype(
                 s)>::template type<CharT>(std::move(s));

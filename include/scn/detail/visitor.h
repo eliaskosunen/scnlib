@@ -226,7 +226,7 @@ namespace scn {
         auto n = s.chars_to_read();
         size_t size = 0;
         if (n > 64) {
-            std::array<CharT, 64> arr;
+            detail::array<CharT, 64> arr;
             auto ret = read(s, make_span(arr));
             if (!ret) {
                 return {size, ret.get_error()};
@@ -235,7 +235,7 @@ namespace scn {
             size += n;
             return detail::read_into_with_buffer(s, it, make_span(arr));
         }
-        std::array<CharT, 64> arr;
+        detail::array<CharT, 64> arr;
         auto ret = read(s, make_span(arr.data(), n));
         if (!ret) {
             return {size, ret.get_error()};
@@ -274,7 +274,7 @@ namespace scn {
         auto n = std::min(static_cast<size_t>(std::distance(it, end)),
                           s.chars_to_read());
         if (n > 64) {
-            std::array<CharT, 64> arr;
+            detail::array<CharT, 64> arr;
             auto ret = read(s, make_span(arr));
             if (!ret) {
                 return {it, ret.get_error()};
@@ -282,7 +282,7 @@ namespace scn {
             it = std::copy(arr.begin(), arr.begin() + n, it);
             return detail::read_into_with_buffer(s, it, end, make_span(arr));
         }
-        std::array<CharT, 64> arr;
+        detail::array<CharT, 64> arr;
         auto ret = read(s, make_span(arr.data(), n));
         if (!ret) {
             return {it, ret.get_error()};
@@ -321,7 +321,7 @@ namespace scn {
                                 bool keep_final = false)
     {
         size_t n = 0, size = 0;
-        std::array<CharT, 64> arr;
+        detail::array<CharT, 64> arr;
         bool end = false;
         while (!end) {
             n = std::min(s.chars_to_read(), std::size_t{64});
@@ -421,7 +421,7 @@ namespace scn {
                                   bool keep_final = false)
     {
         auto n = 0;
-        std::array<CharT, 64> arr;
+        detail::array<CharT, 64> arr;
         while (true) {
             n = std::min({static_cast<size_t>(std::distance(it, end)),
                           s.chars_to_read(), size_t{64}});

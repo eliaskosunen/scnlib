@@ -7,6 +7,8 @@ if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     set(MASTER_PROJECT ON)
 endif ()
 
+option(SCN_USE_CMCSTL2 "Use cmcstl2 instead of range-v3" OFF)
+
 option(SCN_TESTS "Generate tests target" ${MASTER_PROJECT})
 option(SCN_EXAMPLES "Generate examples target" ${MASTER_PROJECT})
 option(SCN_BENCHMARKS "Generate benchmark target" ${MASTER_PROJECT})
@@ -277,22 +279,60 @@ endfunction ()
 generate_library_target(scn)
 generate_header_only_target(scn-header-only)
 
-find_package(range-v3 QUIET CONFIG)
-if (range-v3_FOUND)
+if (SCN_USE_CMCSTL2)
+    find_package(cmcstl2 QUIET CONFIG)
+    if (cmcstl2_FOUND)
+        set(SCN_HAS_RANGES ON)
+    else ()
+        message(STATUS "cmcstl2 not found")
+        set(SCN_HAS_RANGES OFF)
+    endif ()
+else ()
+    find_package(range-v3 QUIET CONFIG)
+    if (range-v3_FOUND)
+        set(SCN_HAS_RANGES ON)
+    else ()
+        message(STATUS "range-v3 not found")
+        set(SCN_HAS_RANGES OFF)
+    endif ()
+endif ()
+
+if (SCN_HAS_RANGES)
     add_library(scn-ranges
         src/ranges/vscan.cpp)
-    target_link_libraries(scn-ranges PUBLIC scn range-v3)
-    target_compile_features(scn-ranges PUBLIC cxx_std_14)
+    target_link_libraries(scn-ranges PUBLIC scn)
 
     add_library(scn-ranges-header-only INTERFACE)
-    target_link_libraries(scn-ranges-header-only INTERFACE scn-header-only range-v3)
-    target_compile_features(scn-ranges-header-only INTERFACE cxx_std_14)
+    target_link_libraries(scn-ranges-header-only INTERFACE scn-header-only)
 
-    set(SCN_HAS_RANGES ON)
-else ()
-    message(STATUS "range-v3 not found, not generating scn-ranges target")
-    set(SCN_HAS_RANGES OFF)
+    if (SCN_USE_CMCSTL2)
+        target_link_libraries(scn-ranges PUBLIC scn stl2)
+        target_link_libraries(scn-ranges-header-only INTERFACE scn-header-only stl2)
+
+        target_compile_features(scn-ranges PUBLIC cxx_std_17)
+        target_compile_features(scn-ranges-header-only INTERFACE cxx_std_17)
+
+        target_compile_options(scn-ranges PUBLIC
+            $<$<CXX_COMPILER_ID:GNU>: -fconcepts>
+            $<$<CXX_COMPILER_ID:Clang>: -Xclang -fconcepts-ts>)
+        target_compile_options(scn-ranges-header-only INTERFACE
+            $<$<CXX_COMPILER_ID:GNU>: -fconcepts>
+            $<$<CXX_COMPILER_ID:Clang>: -Xclang -fconcepts-ts>)
+
+        target_compile_definitions(scn-ranges PUBLIC -DSCN_RANGES_USE_CMCSTL2=1)
+        target_compile_definitions(scn-ranges-header-only INTERFACE -DSCN_RANGES_USE_CMCSTL2=1)
+    else ()
+        target_link_libraries(scn-ranges PUBLIC range-v3)
+        target_link_libraries(scn-ranges-header-only INTERFACE range-v3)
+
+        target_compile_features(scn-ranges PUBLIC cxx_std_14)
+        target_compile_features(scn-ranges-header-only INTERFACE cxx_std_14)
+
+        target_compile_definitions(scn-ranges PUBLIC -DSCN_RANGES_USE_RANGEV3=1)
+        target_compile_definitions(scn-ranges-header-only INTERFACE -DSCN_RANGES_USE_RANGEV3=1)
+    endif ()
 endif ()
+
 
 set(SCN_EXPORT_TARGETS_LIST scn scn-header-only)
 add_library(scn::scn ALIAS scn)

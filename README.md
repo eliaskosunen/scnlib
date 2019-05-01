@@ -524,7 +524,7 @@ The `scn::ranges::scan` return value has a member function `.iterator()`, which 
 assert(ret.iterator() == range.end());
 ```
 
-The iterator can be used to use the same source range for multiple `scn::ranges::scan` calls.
+Also, a member function `.view()` is available, returning a range that can be used for subsequent `scan` calls.
 
 ```cpp
 auto range = std::string{"Hello world"};
@@ -535,10 +535,8 @@ assert(str == "Hello");
 // ret.iterator points to 'w' in "world"
 assert(ret.iterator() == range.begin() + str.length() + 1);
 
-// scn::ranges::subrange_from returns a view
-// to a range (second argument) starting from an iterator (first argument)
-// It's meant for making ranges for `scn::ranges::scan`
-ret = scn::ranges::scan(scn::ranges::subrange_from(ret.iterator(), range), "{}", str);
+// ret.view() starts from ret.iterator() and ends at range.end()
+ret = scn::ranges::scan(ret.view(), "{}", str);
 assert(str == "world");
 assert(ret.iterator() == range.end());
 

@@ -22,6 +22,7 @@
 #include "string_view.h"
 
 #include <cwchar>
+#include <string>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
