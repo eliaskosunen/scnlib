@@ -145,23 +145,23 @@ namespace scn {
             {
             }
 
-            either<arg_type> next_arg()
+            expected<arg_type> next_arg()
             {
                 return this->do_get_arg(this->parse_context().next_arg_id());
             }
-            either<arg_type> arg(size_t id)
+            expected<arg_type> arg(size_t id)
             {
                 return this->parse_context().check_arg_id(id) ? do_get_arg(id)
                                                               : arg_type();
             }
 
-            either<arg_type> arg(basic_string_view<char_type>)
+            expected<arg_type> arg(basic_string_view<char_type>)
             {
                 return arg_type{};
             }
 
         private:
-            either<arg_type> do_get_arg(size_t id)
+            expected<arg_type> do_get_arg(size_t id)
             {
                 auto a = this->m_args.get(id);
                 if (!a && !this->m_args.check_id(id - 1)) {

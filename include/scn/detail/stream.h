@@ -59,7 +59,7 @@ namespace scn {
     public:
         using char_type = Char;
 
-        SCN_CONSTEXPR14 either<char_type> read_char() noexcept
+        SCN_CONSTEXPR14 expected<char_type> read_char() noexcept
         {
             ++m_read;
             return error(error::end_of_stream, "Null stream EOF");
@@ -112,9 +112,9 @@ namespace scn {
         {
         }
 
-        SCN_CONSTEXPR14 either<char_type> read_char() noexcept
+        SCN_CONSTEXPR14 expected<char_type> read_char() noexcept
         {
-            if (m_next == end()) {
+            if (SCN_UNLIKELY(m_next == end())) {
                 return error(error::end_of_stream, "EOF");
             }
             auto ch = *m_next;
@@ -123,7 +123,7 @@ namespace scn {
         }
         SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
-            if (m_begin == m_next) {
+            if (SCN_UNLIKELY(m_begin == m_next)) {
                 return error(
                     error::invalid_operation,
                     "Cannot putback to a stream that hasn't been read from");
@@ -132,24 +132,17 @@ namespace scn {
             return {};
         }
 
-        SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
+        SCN_CONSTEXPR14 void read_sized(span<char_type> s) noexcept
         {
-            if (chars_to_read() < static_cast<size_t>(s.size())) {
-                return error(error::end_of_stream, "EOF");
-            }
+            SCN_EXPECT(chars_to_read() >= static_cast<size_t>(s.size()));
             std::copy(m_next, m_next + s.ssize(), s.begin());
             m_next += s.ssize();
-            return {};
         }
 
-        error putback_n(size_t n) noexcept
+        SCN_CONSTEXPR14 void putback_n(size_t n) noexcept
         {
-            if (rcount() < n) {
-                return error(error::invalid_argument,
-                             "Cannot putback more than chars read");
-            }
+            SCN_EXPECT(rcount() >= n);
             m_next -= static_cast<std::ptrdiff_t>(n);
-            return {};
         }
 
         SCN_CONSTEXPR14 error set_roll_back() noexcept
@@ -222,23 +215,35 @@ namespace scn {
             using iterator = pointer;
             using const_iterator = const_pointer;
 
+            SCN_CONSTEXPR const_iterator begin() const noexcept
+            {
+                return array;
+            }
+            SCN_CONSTEXPR const_iterator cbegin() const noexcept
+            {
+                return array;
+            }
+
+            SCN_CONSTEXPR const_iterator end() const noexcept
+            {
+                return array + N;
+            }
+            SCN_CONSTEXPR const_iterator cend() const noexcept
+            {
+                return array + N;
+            }
+
+            SCN_CONSTEXPR const_pointer data() const noexcept
+            {
+                return array;
+            }
+            SCN_CONSTEXPR size_t size() const noexcept
+            {
+                return N;
+            }
+
             type array;
         };
-
-        template <typename CharT,
-                  size_t N,
-                  typename T = array_container_stream_adaptor<CharT, N>>
-        SCN_CONSTEXPR auto begin(const T& a) -> typename T::iterator
-        {
-            return std::begin(a.array);
-        }
-        template <typename CharT,
-                  size_t N,
-                  typename T = array_container_stream_adaptor<CharT, N>>
-        SCN_CONSTEXPR auto end(const T& a) -> typename T::iterator
-        {
-            return std::end(a.array);
-        }
     }  // namespace detail
 
     template <typename ContiguousContainer,
@@ -257,7 +262,7 @@ namespace scn {
         detail::array_container_stream_adaptor<CharT, N>>
     make_stream(const CharT (&arr)[N])
     {
-        return {arr};
+        return {{arr}};
     }
 
     template <typename Char>
@@ -274,7 +279,7 @@ namespace scn {
         {
         }
 
-        SCN_CONSTEXPR14 either<char_type> read_char() noexcept
+        SCN_CONSTEXPR14 expected<char_type> read_char() noexcept
         {
             if (m_next == end()) {
                 return error(error::end_of_stream, "EOF");
@@ -383,7 +388,7 @@ namespace scn {
         {
         }
 
-        SCN_CONSTEXPR14 either<char_type> read_char() noexcept
+        SCN_CONSTEXPR14 expected<char_type> read_char() noexcept
         {
             if (m_next == m_end) {
                 return error(error::end_of_stream, "EOF");
@@ -475,7 +480,7 @@ namespace scn {
         {
         }
 
-        either<char_type> read_char() noexcept
+        expected<char_type> read_char() noexcept
         {
             if (m_rollback.size() > 0) {
                 auto top = m_rollback.back();
@@ -613,7 +618,7 @@ namespace scn {
 
         basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
-        either<char_type> read_char();
+        expected<char_type> read_char();
         error putback(char_type ch) noexcept;
 
         error set_roll_back()
@@ -638,7 +643,7 @@ namespace scn {
 
         basic_cstdio_stream(FILE* f) noexcept : m_file(f) {}
 
-        either<char_type> read_char();
+        expected<char_type> read_char();
         error putback(char_type ch) noexcept;
 
         error set_roll_back() noexcept

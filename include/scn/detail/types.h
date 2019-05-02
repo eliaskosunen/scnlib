@@ -179,7 +179,7 @@ namespace scn {
     }
 
     template <typename Stream>
-    either<typename Stream::char_type> getchar(Stream& s)
+    expected<typename Stream::char_type> getchar(Stream& s)
     {
         return s.read_char();
     }

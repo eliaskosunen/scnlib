@@ -15,7 +15,8 @@ endif ()
 
 add_executable(bench
     bench.cpp benchmark.h
-    bench_int.cpp bench_float.cpp bench_word.cpp bench_char.cpp bench_buffer.cpp)
+    bench_int.cpp bench_float.cpp bench_word.cpp bench_char.cpp bench_buffer.cpp
+    bench_isspace.cpp)
 target_link_libraries(bench scn benchmark)
 set_private_flags(bench)
 target_compile_features(bench PRIVATE cxx_std_17)

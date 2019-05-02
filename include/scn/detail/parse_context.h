@@ -144,7 +144,7 @@ namespace scn {
         }
 
         template <typename Locale>
-        either<string_view_type> parse_arg_id(const Locale& loc)
+        expected<string_view_type> parse_arg_id(const Locale& loc)
         {
             SCN_EXPECT(good());
             advance();
@@ -263,7 +263,7 @@ namespace scn {
         }
 
         template <typename Locale>
-        SCN_CONSTEXPR either<string_view_type> parse_arg_id(const Locale&) const
+        SCN_CONSTEXPR expected<string_view_type> parse_arg_id(const Locale&) const
         {
             SCN_EXPECT(good());
             return string_view_type{};
@@ -354,7 +354,7 @@ namespace scn {
         }
 
         template <typename Locale>
-        SCN_CONSTEXPR either<string_view_type> parse_arg_id(const Locale&) const
+        SCN_CONSTEXPR expected<string_view_type> parse_arg_id(const Locale&) const
         {
             SCN_EXPECT(good());
             return string_view_type{};

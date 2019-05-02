@@ -38,7 +38,7 @@ namespace scn {
             erased_stream_base& operator=(erased_stream_base&&) = default;
             virtual ~erased_stream_base() = default;
 
-            virtual either<char_type> read_char() = 0;
+            virtual expected<char_type> read_char() = 0;
             virtual error putback(char_type) = 0;
 
             virtual error set_roll_back() = 0;
@@ -84,7 +84,7 @@ namespace scn {
 
             erased_stream_impl(Stream s) : m_stream(std::move(s)) {}
 
-            either<char_type> read_char() override
+            expected<char_type> read_char() override
             {
                 SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                 return m_stream.read_char();
@@ -180,7 +180,7 @@ namespace scn {
         {
         }
 
-        either<char_type> read_char()
+        expected<char_type> read_char()
         {
             return m_stream->read_char();
         }

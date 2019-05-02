@@ -130,7 +130,7 @@ namespace scn {
             {
             }
 
-            constexpr either<char_type> read_char() noexcept
+            constexpr expected<char_type> read_char() noexcept
             {
                 if (m_next == SCN_RANGES_NS::end(*m_range)) {
                     return error(error::end_of_stream, "EOF");
@@ -243,7 +243,7 @@ namespace scn {
             {
             }
 
-            either<char_type> read_char() noexcept
+            expected<char_type> read_char() noexcept
             {
                 if (m_rollback.size() > 0) {
                     auto top = m_rollback.back();

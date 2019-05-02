@@ -34,14 +34,14 @@ namespace scn {
 
         template <typename CharT>
         struct propagate {
-            SCN_CONSTEXPR either<scan_status> operator()(CharT) const noexcept
+            SCN_CONSTEXPR expected<scan_status> operator()(CharT) const noexcept
             {
                 return scan_status::keep;
             }
         };
         template <typename CharT>
         struct until {
-            SCN_CONSTEXPR either<scan_status> operator()(CharT ch) const
+            SCN_CONSTEXPR expected<scan_status> operator()(CharT ch) const
                 noexcept
             {
                 return ch == until_ch ? scan_status::end : scan_status::keep;
@@ -51,7 +51,7 @@ namespace scn {
         };
         template <typename CharT>
         struct until_one_of {
-            either<scan_status> operator()(CharT ch)
+            expected<scan_status> operator()(CharT ch)
             {
                 if (std::find(until.begin(), until.end(), ch) != until.end()) {
                     return scan_status::end;
@@ -63,7 +63,7 @@ namespace scn {
         };
         template <typename CharT>
         struct until_space {
-            either<scan_status> operator()(CharT ch)
+            expected<scan_status> operator()(CharT ch)
             {
                 if (locale.is_space(ch)) {
                     return scan_status::end;
@@ -76,7 +76,7 @@ namespace scn {
 
         template <typename CharT>
         struct until_and_skip_chars {
-            either<scan_status> operator()(CharT ch)
+            expected<scan_status> operator()(CharT ch)
             {
                 if (ch == until) {
                     return scan_status::end;
@@ -92,7 +92,7 @@ namespace scn {
         };
         template <typename CharT>
         struct until_one_of_and_skip_chars {
-            either<scan_status> operator()(CharT ch)
+            expected<scan_status> operator()(CharT ch)
             {
                 if (std::find(until.begin(), until.end(), ch) != until.end()) {
                     return scan_status::end;
@@ -108,7 +108,7 @@ namespace scn {
         };
         template <typename CharT>
         struct until_space_and_skip_chars {
-            either<scan_status> operator()(CharT ch)
+            expected<scan_status> operator()(CharT ch)
             {
                 if (locale.is_space(ch)) {
                     return scan_status::end;
@@ -137,10 +137,7 @@ namespace scn {
     {
         auto n = detail::min(s.size(), stream.chars_to_read());
         s = s.first(n);
-        auto ret = stream.read_sized(s);
-        if (!ret) {
-            return {s.begin(), ret};
-        }
+        stream.read_sized(s);
         return {s.end()};
     }
     template <typename Stream,
@@ -348,12 +345,8 @@ namespace scn {
                         ++arr_it;
                     }
                     if (arr_it != arr_end) {
-                        auto pb = s.putback_n(static_cast<size_t>(
+                        s.putback_n(static_cast<size_t>(
                             std::distance(arr_it, arr_end)));
-                        if (!pb) {
-                            s._set_bad();
-                            return {size, pb};
-                        }
                     }
                     end = true;
                     break;
@@ -448,10 +441,7 @@ namespace scn {
                         ++arr_it;
                     }
                     if (arr_it != arr_end) {
-                        if (!s.putback_n(std::distance(arr_it, arr_end))) {
-                            s._set_bad();
-                            return {it, s.get_error()};
-                        }
+                        s.putback_n(std::distance(arr_it, arr_end));
                     }
                     break;
                 }
@@ -522,7 +512,8 @@ namespace scn {
                   nullptr>
     error putback_range(Stream& s, Iterator begin, Iterator end)
     {
-        return s.putback_n(static_cast<size_t>(std::distance(begin, end)));
+        s.putback_n(static_cast<size_t>(std::distance(begin, end)));
+        return {};
     }
 
     template <typename CharT>
@@ -984,21 +975,21 @@ namespace scn {
             uint8_t localized{0};
 
         private:
-            static either<size_t> _read_sto(T& val,
+            static expected<size_t> _read_sto(T& val,
                                             span<const CharT> buf,
                                             int base,
                                             const basic_locale_ref<CharT>& loc);
-            static either<size_t> _read_strto(
+            static expected<size_t> _read_strto(
                 T& val,
                 span<const CharT> buf,
                 int base,
                 const basic_locale_ref<CharT>& loc);
-            static either<size_t> _read_from_chars(
+            static expected<size_t> _read_from_chars(
                 T& val,
                 span<const CharT> buf,
                 int base,
                 const basic_locale_ref<CharT>& loc);
-            static either<size_t> _read_custom(
+            static expected<size_t> _read_custom(
                 T& val,
                 span<const CharT> buf,
                 int base,
@@ -1090,7 +1081,7 @@ namespace scn {
                 bool point = false;
                 auto r = read_into_if(
                     ctx.stream(), std::back_inserter(buf),
-                    [&point, &ctx](CharT ch) -> either<scan_status> {
+                    [&point, &ctx](CharT ch) -> expected<scan_status> {
                         if (ctx.locale().is_space(ch)) {
                             return scan_status::end;
                         }
@@ -1175,17 +1166,17 @@ namespace scn {
             bool localized{false};
 
         private:
-            static either<size_t> _read_sto(T& val,
+            static expected<size_t> _read_sto(T& val,
                                             span<const CharT> buf,
                                             basic_locale_ref<CharT>& loc);
-            static either<size_t> _read_strto(T& val,
+            static expected<size_t> _read_strto(T& val,
                                               span<const CharT> buf,
                                               basic_locale_ref<CharT>& loc);
-            static either<size_t> _read_from_chars(
+            static expected<size_t> _read_from_chars(
                 T& val,
                 span<const CharT> buf,
                 basic_locale_ref<CharT>& loc);
-            static either<size_t> _read_custom(T& val,
+            static expected<size_t> _read_custom(T& val,
                                                span<const CharT> buf,
                                                basic_locale_ref<CharT>& loc);
         };
@@ -1248,12 +1239,12 @@ namespace scn {
             SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
             auto ch = ctx.stream().read_char();
-            if (!ch) {
+            if (SCN_UNLIKELY(!ch)) {
                 return ch.get_error();
             }
             if (!ctx.locale().is_space(ch.value())) {
                 auto pb = ctx.stream().putback(ch.value());
-                if (!pb) {
+                if (SCN_UNLIKELY(!pb)) {
                     return pb;
                 }
                 break;
@@ -1445,7 +1436,7 @@ namespace scn {
                     return reterror(id_wrapped.get_error());
                 }
                 auto id = id_wrapped.value();
-                auto arg_wrapped = [&]() -> either<typename Context::arg_type>
+                auto arg_wrapped = [&]() -> expected<typename Context::arg_type>
                 {
                     if (id.empty()) {
                         return ctx.next_arg();

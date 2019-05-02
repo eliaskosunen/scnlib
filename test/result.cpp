@@ -51,11 +51,11 @@ TEST_CASE("erased_storage")
     auto cp = val;
     CHECK(*cp == 42);
 }
-TEST_CASE("either")
+TEST_CASE("expected")
 {
     SUBCASE("success")
     {
-        scn::either<int> r{42};
+        scn::expected<int> r{42};
         CHECK(r);
         CHECK(r.has_value());
         CHECK(r.value() == 42);
@@ -63,7 +63,7 @@ TEST_CASE("either")
     }
     SUBCASE("error")
     {
-        scn::either<int> r{scn::error(scn::error::end_of_stream, "EOF")};
+        scn::expected<int> r{scn::error(scn::error::end_of_stream, "EOF")};
         CHECK(!r);
         CHECK(!r.has_value());
         CHECK(r.get_error() == scn::error::end_of_stream);
@@ -75,7 +75,7 @@ TEST_CASE("either")
     };
     SUBCASE("complex success")
     {
-        scn::either<not_default_constructible> r{42};
+        scn::expected<not_default_constructible> r{42};
         CHECK(r);
         CHECK(r.has_value());
         CHECK(r.value().val == 42);
@@ -83,7 +83,7 @@ TEST_CASE("either")
     }
     SUBCASE("complex error")
     {
-        scn::either<not_default_constructible> r{
+        scn::expected<not_default_constructible> r{
             scn::error(scn::error::end_of_stream, "EOF")};
         CHECK(!r);
         CHECK(!r.has_value());

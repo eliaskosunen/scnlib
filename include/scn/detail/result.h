@@ -28,7 +28,6 @@ namespace scn {
     /**
      * Error class.
      * Used as a return value for functions without a success value.
-     * \see result For a Either-like type
      */
     class error {
     public:
@@ -177,30 +176,30 @@ namespace scn {
     };
 
     /**
-     * Either-like type.
+     * expected-like type.
      * For situations where there can be a value in case of success or an error
      * code.
      */
     template <typename T, typename Error = ::scn::error, typename Enable = void>
-    class either;
+    class expected;
 
     /**
-     * Either-like type for default-constructible success values.
+     * expected-like type for default-constructible success values.
      * Not optimized for space-efficiency (both members are stored
      * simultaneously).
      * `error` is used as the error value and discriminant flag.
      */
     template <typename T, typename Error>
-    class either<T,
-                 Error,
-                 typename std::enable_if<
-                     std::is_default_constructible<T>::value>::type> {
+    class expected<T,
+                   Error,
+                   typename std::enable_if<
+                       std::is_default_constructible<T>::value>::type> {
     public:
         using success_type = T;
         using error_type = Error;
 
-        SCN_CONSTEXPR either(success_type s) : m_s(s) {}
-        SCN_CONSTEXPR either(error_type e) : m_e(e) {}
+        SCN_CONSTEXPR expected(success_type s) : m_s(s) {}
+        SCN_CONSTEXPR expected(error_type e) : m_e(e) {}
 
         SCN_CONSTEXPR bool has_value() const noexcept
         {
@@ -243,22 +242,22 @@ namespace scn {
     };
 
     /**
-     * Either-like type for non-default-constructible success values.
+     * expected-like type for non-default-constructible success values.
      * Not optimized for space-efficiency.
      * `error` is used as the error value and discriminant flag.
      */
     template <typename T, typename Error>
-    class either<T,
-                 Error,
-                 typename std::enable_if<
-                     !std::is_default_constructible<T>::value>::type> {
+    class expected<T,
+                   Error,
+                   typename std::enable_if<
+                       !std::is_default_constructible<T>::value>::type> {
     public:
         using success_type = T;
         using success_storage = detail::erased_storage<T>;
         using error_type = Error;
 
-        either(success_type s) : m_s(std::move(s)) {}
-        SCN_CONSTEXPR either(error_type e) : m_e(e) {}
+        expected(success_type s) : m_s(std::move(s)) {}
+        SCN_CONSTEXPR expected(error_type e) : m_e(e) {}
 
         SCN_CONSTEXPR bool has_value() const noexcept
         {
@@ -302,9 +301,9 @@ namespace scn {
     template <typename T,
               typename U = typename std::remove_cv<
                   typename std::remove_reference<T>::type>::type>
-    either<U> make_either(T&& val)
+    expected<U> make_expected(T&& val)
     {
-        return either<U>(std::forward<T>(val));
+        return expected<U>(std::forward<T>(val));
     }
 
     namespace detail {

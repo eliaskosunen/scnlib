@@ -37,20 +37,20 @@ namespace scn {
 
             truename_falsename_storage(const void* loc);
 
-            string_type get_true_str() const
+            SCN_CONSTEXPR const string_type& get_true_str() const
             {
                 return m_truename;
             }
-            string_type get_false_str() const
+            SCN_CONSTEXPR const string_type& get_false_str() const
             {
                 return m_falsename;
             }
 
-            string_view_type get_true_view() const
+            SCN_CONSTEXPR string_view_type get_true_view() const
             {
                 return string_view_type(m_truename.data(), m_truename.size());
             }
-            string_view_type get_false_view() const
+            SCN_CONSTEXPR string_view_type get_false_view() const
             {
                 return string_view_type(m_falsename.data(), m_falsename.size());
             }
@@ -61,22 +61,50 @@ namespace scn {
         };
 
         // Hand write to avoid C locales and thus noticeable performance losses
-        inline bool is_space(char ch)
+        inline bool is_space(char ch) noexcept
         {
-            return ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r' ||
-                   ch == '\v' || ch == '\f';
+            static const detail::array<bool, 256> lookup = {
+                {false, false, false, false, false, false, false, false, false,
+                 true,  true,  true,  true,  true,  false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, true,  false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false, false, false, false, false, false,
+                 false, false, false, false}};
+            return lookup[static_cast<size_t>(ch)];
         }
-        inline bool is_space(wchar_t ch)
+        SCN_CONSTEXPR inline bool is_space(wchar_t ch) noexcept
         {
-            return ch == L' ' || ch == L'\n' || ch == L'\t' || ch == L'\r' ||
-                   ch == L'\v' || ch == L'\f';
+            return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
         }
 
-        inline bool is_digit(char ch)
+        SCN_CONSTEXPR inline bool is_digit(char ch) noexcept
         {
             return ch >= '0' && ch <= '9';
         }
-        inline bool is_digit(wchar_t ch)
+        SCN_CONSTEXPR inline bool is_digit(wchar_t ch) noexcept
         {
             return ch >= L'0' && ch <= L'9';
         }
@@ -85,7 +113,7 @@ namespace scn {
         struct default_widen;
         template <>
         struct default_widen<char> {
-            static char widen(char ch)
+            static SCN_CONSTEXPR char widen(char ch) noexcept
             {
                 return ch;
             }
@@ -106,7 +134,7 @@ namespace scn {
         struct default_narrow;
         template <>
         struct default_narrow<char> {
-            static char narrow(char ch, char)
+            static SCN_CONSTEXPR char narrow(char ch, char) noexcept
             {
                 return ch;
             }
@@ -179,10 +207,10 @@ namespace scn {
         using iterator = typename string_view_type::iterator;
 
         basic_locale_ref() = default;
-        basic_locale_ref(std::nullptr_t) : basic_locale_ref() {}
+        SCN_CONSTEXPR basic_locale_ref(std::nullptr_t) : basic_locale_ref() {}
         explicit basic_locale_ref(const void* loc);
 
-        const void* get_ptr() const
+        SCN_CONSTEXPR const void* get_ptr() const
         {
             return m_locale;
         }
@@ -202,20 +230,20 @@ namespace scn {
             return _is_digit(ch);
         }
 
-        char_type decimal_point() const
+        SCN_CONSTEXPR char_type decimal_point() const
         {
             return m_decimal_point;
         }
-        char_type thousands_separator() const
+        SCN_CONSTEXPR char_type thousands_separator() const
         {
             return m_thousands_separator;
         }
 
-        string_view_type truename() const
+        SCN_CONSTEXPR string_view_type truename() const
         {
             return string_view_type(m_truename.data(), m_truename.size());
         }
-        string_view_type falsename() const
+        SCN_CONSTEXPR string_view_type falsename() const
         {
             return string_view_type(m_falsename.data(), m_falsename.size());
         }
@@ -236,14 +264,14 @@ namespace scn {
         }
 
         template <typename T>
-        either<size_t> read_num(T& val, const string_type& buf);
+        expected<size_t> read_num(T& val, const string_type& buf);
 
-        bool is_default() const
+        SCN_CONSTEXPR bool is_default() const noexcept
         {
             return m_locale == nullptr;
         }
 
-        static basic_locale_ref get_default()
+        SCN_CONSTEXPR static basic_locale_ref get_default()
         {
             return basic_locale_ref();
         }

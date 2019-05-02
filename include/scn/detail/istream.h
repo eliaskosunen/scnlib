@@ -37,7 +37,7 @@ namespace scn {
 
         basic_std_istream_stream(source_type& is) : m_is(std::addressof(is)) {}
 
-        either<char_type> read_char();
+        expected<char_type> read_char();
         error putback(char_type ch);
 
         error set_roll_back()

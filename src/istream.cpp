@@ -25,7 +25,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     template <typename CharT>
-    auto basic_std_istream_stream<CharT>::read_char() -> either<char_type>
+    auto basic_std_istream_stream<CharT>::read_char() -> expected<char_type>
     {
 #if SCN_HAS_EXCEPTIONS
         try {

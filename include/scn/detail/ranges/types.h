@@ -31,7 +31,7 @@ namespace scn {
                   typename Allocator,
                   typename Iterator = SCN_RANGES_NS::iterator_t<Range>,
                   typename CharT = SCN_RANGES_NS::value_type_t<Iterator>>
-        either<Iterator> getline(
+        expected<Iterator> getline(
             Range& r,
             std::basic_string<CharT, Traits, Allocator>& str,
             CharT until)

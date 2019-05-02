@@ -29,7 +29,7 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    SCN_FUNC auto basic_cstdio_stream<char>::read_char() -> either<char_type>
+    SCN_FUNC auto basic_cstdio_stream<char>::read_char() -> expected<char_type>
     {
         auto ret = std::fgetc(m_file);
         if (ret == EOF) {
@@ -70,7 +70,7 @@ namespace scn {
         return {};
     }
 
-    SCN_FUNC auto basic_cstdio_stream<wchar_t>::read_char() -> either<char_type>
+    SCN_FUNC auto basic_cstdio_stream<wchar_t>::read_char() -> expected<char_type>
     {
         auto ret = std::fgetwc(m_file);
         if (ret == WEOF) {

@@ -348,7 +348,11 @@
 #define SCN_UNUSED(x) static_cast<void>(sizeof(x))
 
 #if SCN_HAS_RELAXED_CONSTEXPR
-#define SCN_ASSERT(cond, msg) assert((cond) && msg)
+#define SCN_ASSERT(cond, msg)                \
+    do {                                     \
+        static_cast<void>(SCN_LIKELY(cond)); \
+        assert((cond) && msg);               \
+    } while (false)
 #define SCN_EXPECT(cond) SCN_ASSERT(cond, "Precondition violation")
 #define SCN_ENSURE(cond) SCN_ASSERT(cond, "Postcondition violation")
 #else

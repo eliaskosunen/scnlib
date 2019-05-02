@@ -31,7 +31,7 @@ namespace scn {
         namespace sto {
             template <typename CharT>
             struct str_to_int<CharT, long long> {
-                static either<long long> get(
+                static expected<long long> get(
                     const std::basic_string<CharT>& str,
                     size_t& chars,
                     int base)
@@ -41,7 +41,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, long> {
-                static either<long> get(const std::basic_string<CharT>& str,
+                static expected<long> get(const std::basic_string<CharT>& str,
                                         size_t& chars,
                                         int base)
                 {
@@ -50,7 +50,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, int> {
-                static either<int> get(const std::basic_string<CharT>& str,
+                static expected<int> get(const std::basic_string<CharT>& str,
                                        size_t& chars,
                                        int base)
                 {
@@ -59,7 +59,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, short> {
-                static either<short> get(const std::basic_string<CharT>& str,
+                static expected<short> get(const std::basic_string<CharT>& str,
                                          size_t& chars,
                                          int base)
                 {
@@ -81,7 +81,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, unsigned long long> {
-                static either<unsigned long long> get(
+                static expected<unsigned long long> get(
                     const std::basic_string<CharT>& str,
                     size_t& chars,
                     int base)
@@ -91,7 +91,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, unsigned long> {
-                static either<unsigned long> get(
+                static expected<unsigned long> get(
                     const std::basic_string<CharT>& str,
                     size_t& chars,
                     int base)
@@ -101,7 +101,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, unsigned int> {
-                static either<unsigned int> get(
+                static expected<unsigned int> get(
                     const std::basic_string<CharT>& str,
                     size_t& chars,
                     int base)
@@ -119,7 +119,7 @@ namespace scn {
             };
             template <typename CharT>
             struct str_to_int<CharT, unsigned short> {
-                static either<unsigned short> get(
+                static expected<unsigned short> get(
                     const std::basic_string<CharT>& str,
                     size_t& chars,
                     int base)
@@ -157,7 +157,7 @@ namespace scn {
         namespace strto {
             template <>
             struct str_to_int<char, long long> {
-                static either<long long> get(const char* str,
+                static expected<long long> get(const char* str,
                                              size_t& chars,
                                              int base)
                 {
@@ -175,7 +175,7 @@ namespace scn {
             };
             template <>
             struct str_to_int<wchar_t, long long> {
-                static either<long long> get(const wchar_t* str,
+                static expected<long long> get(const wchar_t* str,
                                              size_t& chars,
                                              int base)
                 {
@@ -194,7 +194,7 @@ namespace scn {
 
             template <>
             struct str_to_int<char, long> {
-                static either<long> get(const char* str,
+                static expected<long> get(const char* str,
                                         size_t& chars,
                                         int base)
                 {
@@ -212,7 +212,7 @@ namespace scn {
             };
             template <>
             struct str_to_int<wchar_t, long> {
-                static either<long> get(const wchar_t* str,
+                static expected<long> get(const wchar_t* str,
                                         size_t& chars,
                                         int base)
                 {
@@ -231,7 +231,7 @@ namespace scn {
 
             template <typename Char>
             struct str_to_int<Char, int> {
-                static either<int> get(const Char* str, size_t& chars, int base)
+                static expected<int> get(const Char* str, size_t& chars, int base)
                 {
                     auto tmp =
                         str_to_int<Char, long long>::get(str, chars, base);
@@ -255,7 +255,7 @@ namespace scn {
             };
             template <typename Char>
             struct str_to_int<Char, short> {
-                static either<short> get(const Char* str,
+                static expected<short> get(const Char* str,
                                          size_t& chars,
                                          int base)
                 {
@@ -281,7 +281,7 @@ namespace scn {
 
             template <>
             struct str_to_int<char, unsigned long long> {
-                static either<unsigned long long> get(const char* str,
+                static expected<unsigned long long> get(const char* str,
                                                       size_t& chars,
                                                       int base)
                 {
@@ -299,7 +299,7 @@ namespace scn {
             };
             template <>
             struct str_to_int<wchar_t, unsigned long long> {
-                static either<unsigned long long> get(const wchar_t* str,
+                static expected<unsigned long long> get(const wchar_t* str,
                                                       size_t& chars,
                                                       int base)
                 {
@@ -318,7 +318,7 @@ namespace scn {
 
             template <>
             struct str_to_int<char, unsigned long> {
-                static either<unsigned long> get(const char* str,
+                static expected<unsigned long> get(const char* str,
                                                  size_t& chars,
                                                  int base)
                 {
@@ -336,7 +336,7 @@ namespace scn {
             };
             template <>
             struct str_to_int<wchar_t, unsigned long> {
-                static either<unsigned long> get(const wchar_t* str,
+                static expected<unsigned long> get(const wchar_t* str,
                                                  size_t& chars,
                                                  int base)
                 {
@@ -355,7 +355,7 @@ namespace scn {
 
             template <typename Char>
             struct str_to_int<Char, unsigned int> {
-                static either<unsigned int> get(const Char* str,
+                static expected<unsigned int> get(const Char* str,
                                                 size_t& chars,
                                                 int base)
                 {
@@ -376,7 +376,7 @@ namespace scn {
             };
             template <typename Char>
             struct str_to_int<Char, unsigned short> {
-                static either<unsigned short> get(const Char* str,
+                static expected<unsigned short> get(const Char* str,
                                                   size_t& chars,
                                                   int base)
                 {
@@ -487,7 +487,7 @@ namespace scn {
         namespace strto {
             template <>
             struct str_to_float<char, float> {
-                static either<float> get(const char* str, size_t& chars)
+                static expected<float> get(const char* str, size_t& chars)
                 {
                     char* end{};
                     errno = 0;
@@ -503,7 +503,7 @@ namespace scn {
             };
             template <>
             struct str_to_float<wchar_t, float> {
-                static either<float> get(const wchar_t* str, size_t& chars)
+                static expected<float> get(const wchar_t* str, size_t& chars)
                 {
                     wchar_t* end{};
                     errno = 0;
@@ -520,7 +520,7 @@ namespace scn {
 
             template <>
             struct str_to_float<char, double> {
-                static either<double> get(const char* str, size_t& chars)
+                static expected<double> get(const char* str, size_t& chars)
                 {
                     char* end{};
                     errno = 0;
@@ -536,7 +536,7 @@ namespace scn {
             };
             template <>
             struct str_to_float<wchar_t, double> {
-                static either<double> get(const wchar_t* str, size_t& chars)
+                static expected<double> get(const wchar_t* str, size_t& chars)
                 {
                     wchar_t* end{};
                     errno = 0;
@@ -553,7 +553,7 @@ namespace scn {
 
             template <>
             struct str_to_float<char, long double> {
-                static either<long double> get(const char* str, size_t& chars)
+                static expected<long double> get(const char* str, size_t& chars)
                 {
                     char* end{};
                     errno = 0;
@@ -569,7 +569,7 @@ namespace scn {
             };
             template <>
             struct str_to_float<wchar_t, long double> {
-                static either<long double> get(const wchar_t* str,
+                static expected<long double> get(const wchar_t* str,
                                                size_t& chars)
                 {
                     wchar_t* end{};
@@ -594,7 +594,7 @@ namespace scn {
         }  // namespace strto
 
         template <typename CharT, typename T>
-        either<size_t> integer_scanner<CharT, T>::_read_sto(
+        expected<size_t> integer_scanner<CharT, T>::_read_sto(
             T& val,
             span<const CharT> buf,
             int base,
@@ -628,7 +628,7 @@ namespace scn {
 #endif
         }
         template <typename CharT, typename T>
-        either<size_t> integer_scanner<CharT, T>::_read_strto(
+        expected<size_t> integer_scanner<CharT, T>::_read_strto(
             T& val,
             span<const CharT> buf,
             int base,
@@ -654,7 +654,7 @@ namespace scn {
             return chars;
         }
         template <typename CharT, typename T>
-        either<size_t> integer_scanner<CharT, T>::_read_from_chars(
+        expected<size_t> integer_scanner<CharT, T>::_read_from_chars(
             T& val,
             span<const CharT> buf,
             int base,
@@ -682,7 +682,7 @@ namespace scn {
         }
 
         template <typename CharT, typename T>
-        either<size_t> integer_scanner<CharT, T>::_read_custom(
+        expected<size_t> integer_scanner<CharT, T>::_read_custom(
             T& val,
             span<const CharT> buf,
             int base,
@@ -791,7 +791,7 @@ namespace scn {
         SCN_CLANG_POP
 
         template <typename CharT, typename T>
-        either<size_t> float_scanner<CharT, T>::_read_sto(
+        expected<size_t> float_scanner<CharT, T>::_read_sto(
             T& val,
             span<const CharT> buf,
             basic_locale_ref<CharT>&)
@@ -819,7 +819,7 @@ namespace scn {
 #endif
         }
         template <typename CharT, typename T>
-        either<size_t> float_scanner<CharT, T>::_read_strto(
+        expected<size_t> float_scanner<CharT, T>::_read_strto(
             T& val,
             span<const CharT> buf,
             basic_locale_ref<CharT>&)
@@ -833,7 +833,7 @@ namespace scn {
             return chars;
         }
         template <typename CharT, typename T>
-        either<size_t> float_scanner<CharT, T>::_read_from_chars(
+        expected<size_t> float_scanner<CharT, T>::_read_from_chars(
             T& val,
             span<const CharT> buf,
             basic_locale_ref<CharT>&)
@@ -858,7 +858,7 @@ namespace scn {
 #endif
         }
         template <typename CharT, typename T>
-        either<size_t> float_scanner<CharT, T>::_read_custom(
+        expected<size_t> float_scanner<CharT, T>::_read_custom(
             T& val,
             span<const CharT> buf,
             basic_locale_ref<CharT>& loc)
