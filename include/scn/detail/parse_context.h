@@ -263,7 +263,7 @@ namespace scn {
         }
 
         template <typename Locale>
-        SCN_CONSTEXPR either<string_view_type> parse_arg_id(const Locale&)
+        SCN_CONSTEXPR either<string_view_type> parse_arg_id(const Locale&) const
         {
             SCN_EXPECT(good());
             return string_view_type{};
@@ -348,7 +348,7 @@ namespace scn {
         }
 
         template <typename Scanner, typename Context>
-        SCN_CONSTEXPR error parse(Scanner&, Context&)
+        SCN_CONSTEXPR error parse(Scanner&, Context&) const
         {
             return {};
         }

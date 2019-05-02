@@ -634,6 +634,20 @@ $ ctest -V
 
 `(erased)` marks the usage of `scn::make_erased_stream()` instead of `scn::make_stream()`.
 
+#### Minimized build (-Os -DNDEBUG)
+
+| Method                              | Executable size (KiB) | Stripped size (KiB) |
+| :---------------------------------- | --------------------: | ------------------: |
+| empty                               | 20                    | 16                  |
+| `scanf`                             | 24                    | 20                  |
+| `std::istream` / `std::cin`         | 28                    | 20                  |
+| `scn::input`                        | 52                    | 40                  |
+| `scn::input` (erased)               | 44                    | 36                  |
+| `scn::ranges::scan`                 | 116                   | 84                  |
+| `scn::input` (header only)          | 200                   | 136                 |
+| `scn::input` (header only & erased) | 196                   | 136                 |
+| `scn::ranges::scan` (header only)   | 200                   | 140                 |
+
 #### Release build (-O3 -DNDEBUG)
 
 | Method                              | Executable size (KiB) | Stripped size (KiB) |

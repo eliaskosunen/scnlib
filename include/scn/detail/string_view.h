@@ -170,7 +170,7 @@ namespace scn {
             m_data = m_data.first(size() - n);
         }
 
-        SCN_CONSTEXPR void swap(basic_string_view& v) noexcept
+        SCN_CONSTEXPR14 void swap(basic_string_view& v) noexcept
         {
             using std::swap;
             swap(m_data, v.m_data);

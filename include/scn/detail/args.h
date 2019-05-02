@@ -194,7 +194,7 @@ namespace scn {
             static const type type_tag = Type;
 
             SCN_CONSTEXPR init(T& v) : val(std::addressof(v)) {}
-            SCN_CONSTEXPR operator value<Context>()
+            SCN_CONSTEXPR14 operator value<Context>()
             {
                 SCN_EXPECT(val != nullptr);
                 return value<Context>(*val);
