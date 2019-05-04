@@ -975,10 +975,11 @@ namespace scn {
             uint8_t localized{0};
 
         private:
-            static expected<size_t> _read_sto(T& val,
-                                            span<const CharT> buf,
-                                            int base,
-                                            const basic_locale_ref<CharT>& loc);
+            static expected<size_t> _read_sto(
+                T& val,
+                span<const CharT> buf,
+                int base,
+                const basic_locale_ref<CharT>& loc);
             static expected<size_t> _read_strto(
                 T& val,
                 span<const CharT> buf,
@@ -1167,18 +1168,18 @@ namespace scn {
 
         private:
             static expected<size_t> _read_sto(T& val,
-                                            span<const CharT> buf,
-                                            basic_locale_ref<CharT>& loc);
-            static expected<size_t> _read_strto(T& val,
                                               span<const CharT> buf,
                                               basic_locale_ref<CharT>& loc);
+            static expected<size_t> _read_strto(T& val,
+                                                span<const CharT> buf,
+                                                basic_locale_ref<CharT>& loc);
             static expected<size_t> _read_from_chars(
                 T& val,
                 span<const CharT> buf,
                 basic_locale_ref<CharT>& loc);
             static expected<size_t> _read_custom(T& val,
-                                               span<const CharT> buf,
-                                               basic_locale_ref<CharT>& loc);
+                                                 span<const CharT> buf,
+                                                 basic_locale_ref<CharT>& loc);
         };
 
         template <typename CharT>
@@ -1207,8 +1208,8 @@ namespace scn {
             template <typename Context>
             error scan(std::basic_string<CharT>& val, Context& ctx)
             {
-                val.clear();
-                val.reserve(15);
+                std::basic_string<CharT> tmp;
+                tmp.reserve(15);
                 auto s =
                     read_into_if(ctx.stream(), std::back_inserter(val),
                                  predicates::until_space<CharT>{ctx.locale()});
@@ -1220,6 +1221,7 @@ namespace scn {
                     return error(error::invalid_scanned_value,
                                  "Empty string parsed");
                 }
+                val = std::move(tmp);
 
                 return {};
             }
