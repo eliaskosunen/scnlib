@@ -243,7 +243,7 @@
 
 // Detect <charconv>
 #if (defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606) || \
-    SCN_HAS_INCLUDE(<charconv>)
+    (SCN_HAS_INCLUDE(<charconv>) && __cplusplus >= SCN_STD_17)
 
 #if defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= 9
 #define SCN_HAS_INTEGER_CHARCONV 1
