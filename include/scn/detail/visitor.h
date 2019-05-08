@@ -1211,13 +1211,13 @@ namespace scn {
                 std::basic_string<CharT> tmp;
                 tmp.reserve(15);
                 auto s =
-                    read_into_if(ctx.stream(), std::back_inserter(val),
+                    read_into_if(ctx.stream(), std::back_inserter(tmp),
                                  predicates::until_space<CharT>{ctx.locale()});
                 if (SCN_UNLIKELY(!s)) {
                     return s.error();
                 }
-                val.erase(s.value());
-                if (SCN_UNLIKELY(val.empty())) {
+                tmp.erase(s.value());
+                if (SCN_UNLIKELY(tmp.empty())) {
                     return error(error::invalid_scanned_value,
                                  "Empty string parsed");
                 }
