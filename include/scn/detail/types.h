@@ -47,7 +47,7 @@ namespace scn {
               typename CharT = typename Stream::char_type>
     error getline(Stream& s, std::basic_string<CharT, Traits, Allocator>& str)
     {
-        return getline(s, str, basic_locale_ref<CharT>().widen('\n'));
+        return getline(s, str, detail::default_widen<CharT>::widen('\n'));
     }
 
     namespace detail {

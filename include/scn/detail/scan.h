@@ -46,7 +46,8 @@ namespace scn {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
-        using context_type = basic_context<Stream>;
+        using context_type =
+            basic_context<Stream, basic_locale_ref<typename Stream::char_type>>;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, f, args, opt);
@@ -76,7 +77,9 @@ namespace scn {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
-        using context_type = basic_scanf_context<Stream>;
+        using context_type =
+            basic_scanf_context<Stream,
+                                basic_locale_ref<typename Stream::char_type>>;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(s, f, args, opt);
@@ -101,7 +104,9 @@ namespace scn {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
-        using context_type = basic_empty_context<Stream>;
+        using context_type =
+            basic_empty_context<Stream,
+                                basic_locale_ref<typename Stream::char_type>>;
 
         auto args = make_args<context_type>(a...);
         auto ctx =

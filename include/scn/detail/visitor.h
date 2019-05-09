@@ -29,8 +29,8 @@ namespace scn {
     enum class scan_status { keep, skip, end };
 
     namespace predicates {
-        template <typename CharT>
-        using locale_ref = basic_locale_ref<CharT>&;
+        template <typename Context>
+        using locale_ref = typename Context::locale_type&;
 
         template <typename CharT>
         struct propagate {
@@ -61,7 +61,7 @@ namespace scn {
 
             span<CharT> until;
         };
-        template <typename CharT>
+        template <typename CharT, typename Locale>
         struct until_space {
             expected<scan_status> operator()(CharT ch)
             {
@@ -71,7 +71,7 @@ namespace scn {
                 return scan_status::keep;
             }
 
-            locale_ref<CharT> locale;
+            Locale& locale;
         };
 
         template <typename CharT>
@@ -106,7 +106,7 @@ namespace scn {
             span<CharT> until;
             span<CharT> skip;
         };
-        template <typename CharT>
+        template <typename CharT, typename Locale>
         struct until_space_and_skip_chars {
             expected<scan_status> operator()(CharT ch)
             {
@@ -119,7 +119,7 @@ namespace scn {
                 return scan_status::keep;
             }
 
-            locale_ref<CharT> locale;
+            Locale& locale;
             span<CharT> skip;
         };
     }  // namespace predicates
@@ -653,8 +653,9 @@ namespace scn {
             error scan(bool& val, Context& ctx)
             {
                 if (allow_alpha) {
-                    auto truename = ctx.locale().get_default().truename();
-                    auto falsename = ctx.locale().get_default().falsename();
+                    auto truename = detail::locale_defaults<CharT>::truename();
+                    auto falsename =
+                        detail::locale_defaults<CharT>::falsename();
                     if (localized) {
                         truename = ctx.locale().truename();
                         falsename = ctx.locale().falsename();
@@ -666,7 +667,9 @@ namespace scn {
 
                     auto i = read_into_if(
                         ctx.stream(), std::back_inserter(buf),
-                        predicates::until_space<CharT>{ctx.locale()});
+                        predicates::until_space<CharT,
+                                                typename Context::locale_type>{
+                            ctx.locale()});
                     if (!i) {
                         return i.error();
                     }
@@ -883,9 +886,11 @@ namespace scn {
             {
                 detail::small_vector<CharT, 32> buf;
 
-                auto r =
-                    read_into_if(ctx.stream(), std::back_inserter(buf),
-                                 predicates::until_space<CharT>{ctx.locale()});
+                auto r = read_into_if(
+                    ctx.stream(), std::back_inserter(buf),
+                    predicates::until_space<CharT,
+                                            typename Context::locale_type>{
+                        ctx.locale()});
                 if (!r) {
                     return r.error();
                 }
@@ -946,8 +951,7 @@ namespace scn {
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     SCN_GCC_POP
                 };
-                auto e = do_read()(tmp, make_span(buf).as_const(), base,
-                                   ctx.locale());
+                auto e = do_read()(tmp, make_span(buf).as_const(), base);
                 if (!e) {
                     return e.get_error();
                 }
@@ -975,26 +979,18 @@ namespace scn {
             uint8_t localized{0};
 
         private:
-            static expected<size_t> _read_sto(
-                T& val,
-                span<const CharT> buf,
-                int base,
-                const basic_locale_ref<CharT>& loc);
-            static expected<size_t> _read_strto(
-                T& val,
-                span<const CharT> buf,
-                int base,
-                const basic_locale_ref<CharT>& loc);
-            static expected<size_t> _read_from_chars(
-                T& val,
-                span<const CharT> buf,
-                int base,
-                const basic_locale_ref<CharT>& loc);
-            static expected<size_t> _read_custom(
-                T& val,
-                span<const CharT> buf,
-                int base,
-                const basic_locale_ref<CharT>& loc);
+            static expected<size_t> _read_sto(T& val,
+                                              span<const CharT> buf,
+                                              int base);
+            static expected<size_t> _read_strto(T& val,
+                                                span<const CharT> buf,
+                                                int base);
+            static expected<size_t> _read_from_chars(T& val,
+                                                     span<const CharT> buf,
+                                                     int base);
+            static expected<size_t> _read_custom(T& val,
+                                                 span<const CharT> buf,
+                                                 int base);
 
             friend struct float_scanner<CharT, float>;
             friend struct float_scanner<CharT, double>;
@@ -1145,8 +1141,7 @@ namespace scn {
                     SCN_UNREACHABLE;
                     SCN_GCC_POP
                 };
-                auto e =
-                    do_read()(tmp, make_span(buf).as_const(), ctx.locale());
+                auto e = do_read()(tmp, make_span(buf).as_const());
                 if (!e) {
                     return e.get_error();
                 }
@@ -1167,19 +1162,11 @@ namespace scn {
             bool localized{false};
 
         private:
-            static expected<size_t> _read_sto(T& val,
-                                              span<const CharT> buf,
-                                              basic_locale_ref<CharT>& loc);
-            static expected<size_t> _read_strto(T& val,
-                                                span<const CharT> buf,
-                                                basic_locale_ref<CharT>& loc);
-            static expected<size_t> _read_from_chars(
-                T& val,
-                span<const CharT> buf,
-                basic_locale_ref<CharT>& loc);
-            static expected<size_t> _read_custom(T& val,
-                                                 span<const CharT> buf,
-                                                 basic_locale_ref<CharT>& loc);
+            static expected<size_t> _read_sto(T& val, span<const CharT> buf);
+            static expected<size_t> _read_strto(T& val, span<const CharT> buf);
+            static expected<size_t> _read_from_chars(T& val,
+                                                     span<const CharT> buf);
+            static expected<size_t> _read_custom(T& val, span<const CharT> buf);
         };
 
         template <typename CharT>
@@ -1210,9 +1197,11 @@ namespace scn {
             {
                 std::basic_string<CharT> tmp;
                 tmp.reserve(15);
-                auto s =
-                    read_into_if(ctx.stream(), std::back_inserter(tmp),
-                                 predicates::until_space<CharT>{ctx.locale()});
+                auto s = read_into_if(
+                    ctx.stream(), std::back_inserter(tmp),
+                    predicates::until_space<CharT,
+                                            typename Context::locale_type>{
+                        ctx.locale()});
                 if (SCN_UNLIKELY(!s)) {
                     return s.error();
                 }

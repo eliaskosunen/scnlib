@@ -137,7 +137,10 @@ namespace scn {
             auto stream = make_stream(range);
 
             using stream_type = decltype(stream);
-            using context_type = basic_context<stream_type>;
+            using context_type =
+                basic_context<stream_type,
+                              basic_locale_ref<::ranges::value_type_t<
+                                  ::ranges::iterator_t<Range>>>>;
 
             auto args = make_args<context_type>(a...);
             auto ctx = context_type(stream, f, args, opt);
@@ -177,7 +180,10 @@ namespace scn {
             auto stream = make_stream(range);
 
             using stream_type = decltype(stream);
-            using context_type = basic_empty_context<stream_type>;
+            using context_type =
+                basic_empty_context<stream_type,
+                                    basic_locale_ref<::ranges::value_type_t<
+                                        ::ranges::iterator_t<Range>>>>;
 
             auto args = make_args<context_type>(a...);
             auto ctx = context_type(stream, sizeof...(Args), args, opt);
@@ -223,7 +229,10 @@ namespace scn {
             auto stream = make_stream(range);
 
             using stream_type = decltype(stream);
-            using context_type = basic_scanf_context<stream_type>;
+            using context_type =
+                basic_scanf_context<stream_type,
+                                    basic_locale_ref<::ranges::value_type_t<
+                                        ::ranges::iterator_t<Range>>>>;
 
             auto args = make_args<context_type>(a...);
             auto ctx = context_type(stream, f, args, opt);

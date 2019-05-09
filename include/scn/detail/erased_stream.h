@@ -280,7 +280,8 @@ namespace scn {
     SCN_CLANG_POP
 
     template <typename Stream,
-              typename std::enable_if<!is_sized_stream<Stream>::value>::type* =
+              typename std::enable_if<!is_sized_stream<
+                  typename std::remove_reference<Stream>::type>::value>::type* =
                   nullptr>
     erased_stream<typename Stream::char_type> erase_stream(Stream&& s)
     {
@@ -288,7 +289,8 @@ namespace scn {
             std::forward<Stream>(s));
     }
     template <typename Stream,
-              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
+              typename std::enable_if<is_sized_stream<
+                  typename std::remove_reference<Stream>::type>::value>::type* =
                   nullptr>
     erased_sized_stream<typename Stream::char_type> erase_stream(Stream&& s)
     {

@@ -28,6 +28,10 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        //
+        // sto
+        // integers
+        //
         namespace sto {
             template <typename CharT>
             struct str_to_int<CharT, long long> {
@@ -42,8 +46,8 @@ namespace scn {
             template <typename CharT>
             struct str_to_int<CharT, long> {
                 static expected<long> get(const std::basic_string<CharT>& str,
-                                        size_t& chars,
-                                        int base)
+                                          size_t& chars,
+                                          int base)
                 {
                     return std::stol(str, &chars, base);
                 }
@@ -51,8 +55,8 @@ namespace scn {
             template <typename CharT>
             struct str_to_int<CharT, int> {
                 static expected<int> get(const std::basic_string<CharT>& str,
-                                       size_t& chars,
-                                       int base)
+                                         size_t& chars,
+                                         int base)
                 {
                     return std::stoi(str, &chars, base);
                 }
@@ -60,8 +64,8 @@ namespace scn {
             template <typename CharT>
             struct str_to_int<CharT, short> {
                 static expected<short> get(const std::basic_string<CharT>& str,
-                                         size_t& chars,
-                                         int base)
+                                           size_t& chars,
+                                           int base)
                 {
                     auto i = std::stoi(str, &chars, base);
                     if (i >
@@ -154,12 +158,16 @@ namespace scn {
             template struct str_to_int<wchar_t, unsigned long long>;
         }  // namespace sto
 
+        //
+        // strto
+        // integers
+        //
         namespace strto {
             template <>
             struct str_to_int<char, long long> {
                 static expected<long long> get(const char* str,
-                                             size_t& chars,
-                                             int base)
+                                               size_t& chars,
+                                               int base)
                 {
                     char* end{};
                     errno = 0;
@@ -176,8 +184,8 @@ namespace scn {
             template <>
             struct str_to_int<wchar_t, long long> {
                 static expected<long long> get(const wchar_t* str,
-                                             size_t& chars,
-                                             int base)
+                                               size_t& chars,
+                                               int base)
                 {
                     wchar_t* end{};
                     errno = 0;
@@ -195,8 +203,8 @@ namespace scn {
             template <>
             struct str_to_int<char, long> {
                 static expected<long> get(const char* str,
-                                        size_t& chars,
-                                        int base)
+                                          size_t& chars,
+                                          int base)
                 {
                     char* end{};
                     errno = 0;
@@ -213,8 +221,8 @@ namespace scn {
             template <>
             struct str_to_int<wchar_t, long> {
                 static expected<long> get(const wchar_t* str,
-                                        size_t& chars,
-                                        int base)
+                                          size_t& chars,
+                                          int base)
                 {
                     wchar_t* end{};
                     errno = 0;
@@ -231,7 +239,9 @@ namespace scn {
 
             template <typename Char>
             struct str_to_int<Char, int> {
-                static expected<int> get(const Char* str, size_t& chars, int base)
+                static expected<int> get(const Char* str,
+                                         size_t& chars,
+                                         int base)
                 {
                     auto tmp =
                         str_to_int<Char, long long>::get(str, chars, base);
@@ -256,8 +266,8 @@ namespace scn {
             template <typename Char>
             struct str_to_int<Char, short> {
                 static expected<short> get(const Char* str,
-                                         size_t& chars,
-                                         int base)
+                                           size_t& chars,
+                                           int base)
                 {
                     auto tmp = str_to_int<Char, long>::get(str, chars, base);
                     if (!tmp) {
@@ -282,8 +292,8 @@ namespace scn {
             template <>
             struct str_to_int<char, unsigned long long> {
                 static expected<unsigned long long> get(const char* str,
-                                                      size_t& chars,
-                                                      int base)
+                                                        size_t& chars,
+                                                        int base)
                 {
                     char* end{};
                     errno = 0;
@@ -300,8 +310,8 @@ namespace scn {
             template <>
             struct str_to_int<wchar_t, unsigned long long> {
                 static expected<unsigned long long> get(const wchar_t* str,
-                                                      size_t& chars,
-                                                      int base)
+                                                        size_t& chars,
+                                                        int base)
                 {
                     wchar_t* end{};
                     errno = 0;
@@ -319,8 +329,8 @@ namespace scn {
             template <>
             struct str_to_int<char, unsigned long> {
                 static expected<unsigned long> get(const char* str,
-                                                 size_t& chars,
-                                                 int base)
+                                                   size_t& chars,
+                                                   int base)
                 {
                     char* end{};
                     errno = 0;
@@ -337,8 +347,8 @@ namespace scn {
             template <>
             struct str_to_int<wchar_t, unsigned long> {
                 static expected<unsigned long> get(const wchar_t* str,
-                                                 size_t& chars,
-                                                 int base)
+                                                   size_t& chars,
+                                                   int base)
                 {
                     wchar_t* end{};
                     errno = 0;
@@ -356,8 +366,8 @@ namespace scn {
             template <typename Char>
             struct str_to_int<Char, unsigned int> {
                 static expected<unsigned int> get(const Char* str,
-                                                size_t& chars,
-                                                int base)
+                                                  size_t& chars,
+                                                  int base)
                 {
                     auto tmp = str_to_int<Char, unsigned long long>::get(
                         str, chars, base);
@@ -377,8 +387,8 @@ namespace scn {
             template <typename Char>
             struct str_to_int<Char, unsigned short> {
                 static expected<unsigned short> get(const Char* str,
-                                                  size_t& chars,
-                                                  int base)
+                                                    size_t& chars,
+                                                    int base)
                 {
                     auto tmp =
                         str_to_int<Char, unsigned long>::get(str, chars, base);
@@ -414,6 +424,10 @@ namespace scn {
             // template struct str_to_int<wchar_t, unsigned long long>;
         }  // namespace strto
 
+        //
+        // custom
+        // integers
+        //
         namespace custom {
             template <typename CharT>
             bool is_base_digit(CharT ch, int base)
@@ -450,6 +464,10 @@ namespace scn {
             }
         }  // namespace custom
 
+        //
+        // sto
+        // floats
+        //
         namespace sto {
             template <typename CharT>
             struct str_to_float<CharT, float> {
@@ -484,6 +502,10 @@ namespace scn {
             template struct str_to_float<wchar_t, long double>;
         }  // namespace sto
 
+        //
+        // strto
+        // floats
+        //
         namespace strto {
             template <>
             struct str_to_float<char, float> {
@@ -570,7 +592,7 @@ namespace scn {
             template <>
             struct str_to_float<wchar_t, long double> {
                 static expected<long double> get(const wchar_t* str,
-                                               size_t& chars)
+                                                 size_t& chars)
                 {
                     wchar_t* end{};
                     errno = 0;
@@ -597,8 +619,7 @@ namespace scn {
         expected<size_t> integer_scanner<CharT, T>::_read_sto(
             T& val,
             span<const CharT> buf,
-            int base,
-            const basic_locale_ref<CharT>&)
+            int base)
         {
 #if SCN_HAS_EXCEPTIONS
             try {
@@ -631,8 +652,7 @@ namespace scn {
         expected<size_t> integer_scanner<CharT, T>::_read_strto(
             T& val,
             span<const CharT> buf,
-            int base,
-            const basic_locale_ref<CharT>&)
+            int base)
         {
             size_t chars = 0;
             errno = 0;
@@ -657,8 +677,7 @@ namespace scn {
         expected<size_t> integer_scanner<CharT, T>::_read_from_chars(
             T& val,
             span<const CharT> buf,
-            int base,
-            const basic_locale_ref<CharT>&)
+            int base)
         {
 #if SCN_HAS_INTEGER_CHARCONV
             auto begin = buf.data();
@@ -685,8 +704,7 @@ namespace scn {
         expected<size_t> integer_scanner<CharT, T>::_read_custom(
             T& val,
             span<const CharT> buf,
-            int base,
-            const basic_locale_ref<CharT>&)
+            int base)
         {
             T tmp = 0;
             T sign = 1;
@@ -793,8 +811,7 @@ namespace scn {
         template <typename CharT, typename T>
         expected<size_t> float_scanner<CharT, T>::_read_sto(
             T& val,
-            span<const CharT> buf,
-            basic_locale_ref<CharT>&)
+            span<const CharT> buf)
         {
 #if SCN_HAS_EXCEPTIONS
             try {
@@ -821,8 +838,7 @@ namespace scn {
         template <typename CharT, typename T>
         expected<size_t> float_scanner<CharT, T>::_read_strto(
             T& val,
-            span<const CharT> buf,
-            basic_locale_ref<CharT>&)
+            span<const CharT> buf)
         {
             size_t chars;
             auto ret = strto::str_to_float<CharT, T>::get(&buf[0], chars);
@@ -835,8 +851,7 @@ namespace scn {
         template <typename CharT, typename T>
         expected<size_t> float_scanner<CharT, T>::_read_from_chars(
             T& val,
-            span<const CharT> buf,
-            basic_locale_ref<CharT>&)
+            span<const CharT> buf)
         {
 #if SCN_HAS_FLOAT_CHARCONV
             auto begin = buf.data();
@@ -860,8 +875,7 @@ namespace scn {
         template <typename CharT, typename T>
         expected<size_t> float_scanner<CharT, T>::_read_custom(
             T& val,
-            span<const CharT> buf,
-            basic_locale_ref<CharT>& loc)
+            span<const CharT> buf)
         {
             // TODO
             auto it = buf.begin();
@@ -906,7 +920,7 @@ namespace scn {
 
                     long long a{0}, b{0};
                     auto s = make_span(it, buf.end());
-                    auto ret = int_scanner::_read_custom(a, s, 16, loc);
+                    auto ret = int_scanner::_read_custom(a, s, 16);
                     if (!ret) {
                         return ret;
                     }

@@ -199,6 +199,61 @@ namespace scn {
     SCN_CLANG_IGNORE("-Wpadded")
 
     template <typename CharT>
+    class basic_default_locale_ref {
+    public:
+        using char_type = CharT;
+        using string_type = std::basic_string<char_type>;
+        using string_view_type = basic_string_view<char_type>;
+        using iterator = typename string_view_type::iterator;
+        using defaults = detail::locale_defaults<char_type>;
+
+        basic_default_locale_ref() = default;
+
+        SCN_CONSTEXPR bool is_space(char_type ch) const
+        {
+            return detail::is_space(ch);
+        }
+        SCN_CONSTEXPR bool is_digit(char_type ch) const
+        {
+            return detail::is_digit(ch);
+        }
+
+        SCN_CONSTEXPR char_type decimal_point() const
+        {
+            return defaults::decimal_point();
+        }
+        SCN_CONSTEXPR char_type thousands_separator() const
+        {
+            return defaults::thousands_separator();
+        }
+
+        SCN_CONSTEXPR string_view_type truename() const
+        {
+            return defaults::truename();
+        }
+        SCN_CONSTEXPR string_view_type falsename() const
+        {
+            return defaults::falsename();
+        }
+
+        CharT widen(char ch) const
+        {
+            return detail::default_widen<CharT>::widen(ch);
+        }
+        char narrow(CharT ch, char def) const
+        {
+            return detail::default_narrow<CharT>::narrow(ch, def);
+        }
+
+        template <typename T>
+        expected<size_t> read_num(T&, const string_type&)
+        {
+            return error(error::invalid_operation,
+                         "No read_num with basic_default_locale_ref");
+        }
+    };
+
+    template <typename CharT>
     class basic_locale_ref {
     public:
         using char_type = CharT;

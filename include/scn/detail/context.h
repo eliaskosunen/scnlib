@@ -97,20 +97,18 @@ namespace scn {
         };
 
         /// Scanning context.
-        template <typename Stream, typename ParseContext>
+        template <typename Stream, typename ParseContext, typename Locale>
         class arg_context_base
-            : public detail::context_base<
-                  Stream,
-                  typename Stream::char_type,
-                  ParseContext,
-                  options,
-                  basic_locale_ref<typename Stream::char_type>> {
-            using base = detail::context_base<
-                Stream,
-                typename Stream::char_type,
-                ParseContext,
-                options,
-                basic_locale_ref<typename Stream::char_type>>;
+            : public detail::context_base<Stream,
+                                          typename Stream::char_type,
+                                          ParseContext,
+                                          options,
+                                          Locale> {
+            using base = detail::context_base<Stream,
+                                              typename Stream::char_type,
+                                              ParseContext,
+                                              options,
+                                              Locale>;
 
         public:
             using stream_type = Stream;
@@ -118,7 +116,7 @@ namespace scn {
             using format_string_type = basic_string_view<char_type>;
             using args_type = basic_args<arg_context_base>;
             using parse_context_type = ParseContext;
-            using locale_type = basic_locale_ref<char_type>;
+            using locale_type = Locale;
             using options_type = typename base::options_type;
             using arg_type = basic_arg<arg_context_base>;
             using base::scanner_type;
@@ -176,13 +174,17 @@ namespace scn {
         };
     }  // namespace detail
 
-    template <typename Stream>
+    template <typename Stream,
+              typename Locale =
+                  basic_default_locale_ref<typename Stream::char_type>>
     class basic_context : public detail::arg_context_base<
                               Stream,
-                              basic_parse_context<typename Stream::char_type>> {
+                              basic_parse_context<typename Stream::char_type>,
+                              Locale> {
         using base = detail::arg_context_base<
             Stream,
-            basic_parse_context<typename Stream::char_type>>;
+            basic_parse_context<typename Stream::char_type>,
+            Locale>;
 
     public:
         using stream_type = typename base::stream_type;
@@ -206,14 +208,18 @@ namespace scn {
         }
     };
 
-    template <typename Stream>
+    template <typename Stream,
+              typename Locale =
+                  basic_default_locale_ref<typename Stream::char_type>>
     class basic_scanf_context
         : public detail::arg_context_base<
               Stream,
-              basic_scanf_parse_context<typename Stream::char_type>> {
+              basic_scanf_parse_context<typename Stream::char_type>,
+              Locale> {
         using base = detail::arg_context_base<
             Stream,
-            basic_scanf_parse_context<typename Stream::char_type>>;
+            basic_scanf_parse_context<typename Stream::char_type>,
+            Locale>;
 
     public:
         using stream_type = typename base::stream_type;
@@ -237,14 +243,18 @@ namespace scn {
         }
     };
 
-    template <typename Stream>
+    template <typename Stream,
+              typename Locale =
+                  basic_default_locale_ref<typename Stream::char_type>>
     class basic_empty_context
         : public detail::arg_context_base<
               Stream,
-              basic_empty_parse_context<typename Stream::char_type>> {
+              basic_empty_parse_context<typename Stream::char_type>,
+              Locale> {
         using base = detail::arg_context_base<
             Stream,
-            basic_empty_parse_context<typename Stream::char_type>>;
+            basic_empty_parse_context<typename Stream::char_type>,
+            Locale>;
 
     public:
         using stream_type = typename base::stream_type;
@@ -270,42 +280,6 @@ namespace scn {
     };
 
     SCN_CLANG_POP
-
-    template <typename Stream, typename Context = basic_context<Stream>>
-    Context make_context(Stream& s,
-                         typename Context::format_string_type f,
-                         typename Context::args_type a)
-    {
-        return Context(s, f, a);
-    }
-    template <typename Stream, typename Context = basic_context<Stream>>
-    Context make_context(Stream& s,
-                         typename Context::format_string_type f,
-                         typename Context::args_type a,
-                         options opt)
-    {
-        return Context(s, f, a, opt);
-    }
-    template <typename Stream, typename Context = basic_empty_context<Stream>>
-    Context make_context(Stream& s, int n_args, typename Context::args_type a)
-    {
-        return Context(s, n_args, a);
-    }
-    template <typename Stream, typename Context = basic_empty_context<Stream>>
-    Context make_context(Stream& s,
-                         int n_args,
-                         typename Context::args_type a,
-                         options opt)
-    {
-        return Context(s, n_args, a, opt);
-    }
-
-    template <typename Context>
-    Context context_with_args(Context& ctx, basic_args<Context> args)
-    {
-        return Context(ctx.stream(), ctx.parse_context().view(), args,
-                       ctx.options());
-    }
 
     namespace detail {
         template <typename CharT>
