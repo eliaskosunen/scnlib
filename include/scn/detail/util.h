@@ -145,7 +145,7 @@ namespace scn {
         }
 
         template <typename T>
-        class unique_ptr {
+        class SCN_TRIVIAL_ABI unique_ptr {
         public:
             using element_type = T;
             using pointer = T*;
@@ -297,7 +297,7 @@ namespace scn {
         };
 
         template <typename T>
-        class erased_storage {
+        class SCN_TRIVIAL_ABI erased_storage {
         public:
             using value_type = T;
             using pointer = T*;

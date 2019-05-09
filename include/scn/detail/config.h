@@ -235,6 +235,13 @@
 #define SCN_NODISCARD /*nodiscard*/
 #endif
 
+// Detect [[clang::trivial_abi]]
+#if SCN_HAS_CPP_ATTRIBUTE(clang::trivial_abi)
+#define SCN_TRIVIAL_ABI [[clang::trivial_abi]]
+#else
+#define SCN_TRIVIAL_ABI /*trivial_abi*/
+#endif
+
 #if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY
 #define SCN_FUNC inline
 #else
