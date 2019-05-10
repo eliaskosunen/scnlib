@@ -226,11 +226,11 @@ namespace scn {
 
             SCN_CONSTEXPR const_iterator end() const noexcept
             {
-                return array + N;
+                return array + N - 1;
             }
             SCN_CONSTEXPR const_iterator cend() const noexcept
             {
-                return array + N;
+                return array + N - 1;
             }
 
             SCN_CONSTEXPR const_pointer data() const noexcept
@@ -239,7 +239,7 @@ namespace scn {
             }
             SCN_CONSTEXPR size_t size() const noexcept
             {
-                return N;
+                return N - 1;
             }
 
             type array;
