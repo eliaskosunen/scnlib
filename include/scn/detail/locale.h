@@ -261,8 +261,8 @@ namespace scn {
         using string_view_type = basic_string_view<char_type>;
         using iterator = typename string_view_type::iterator;
 
-        SCN_CONSTEXPR basic_locale_ref() = default;
-        SCN_CONSTEXPR basic_locale_ref(std::nullptr_t) : basic_locale_ref() {}
+        basic_locale_ref() = default;
+        basic_locale_ref(std::nullptr_t) : basic_locale_ref() {}
         explicit basic_locale_ref(const void* loc);
 
         SCN_CONSTEXPR const void* get_ptr() const
