@@ -82,7 +82,7 @@ namespace scn {
         template <typename Context>
         error scan(wrap_default<non_default_construct>& val, Context& ctx)
         {
-            int tmp;
+            int tmp{};
             auto ret = scanner<CharT, int>::scan(tmp, ctx);
             if (!ret) {
                 return ret;
