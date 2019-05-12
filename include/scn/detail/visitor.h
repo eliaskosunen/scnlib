@@ -1217,6 +1217,63 @@ namespace scn {
         };
     }  // namespace detail
 
+    template <typename CharT>
+    struct scanner<CharT, CharT> : public detail::char_scanner<CharT> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, span<CharT>> : public detail::buffer_scanner<CharT> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, bool> : public detail::bool_scanner<CharT> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, short>
+        : public detail::integer_scanner<CharT, short> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, int> : public detail::integer_scanner<CharT, int> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, long> : public detail::integer_scanner<CharT, long> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, long long>
+        : public detail::integer_scanner<CharT, long long> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, unsigned short>
+        : public detail::integer_scanner<CharT, unsigned short> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, unsigned int>
+        : public detail::integer_scanner<CharT, unsigned int> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, unsigned long>
+        : public detail::integer_scanner<CharT, unsigned long> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, unsigned long long>
+        : public detail::integer_scanner<CharT, unsigned long long> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, float> : public detail::float_scanner<CharT, float> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, double>
+        : public detail::float_scanner<CharT, double> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, long double>
+        : public detail::float_scanner<CharT, long double> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, std::basic_string<CharT>>
+        : public detail::string_scanner<CharT> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, detail::monostate>;
+
     /**
      * Skip any whitespace from the stream.
      * Next read_char() will return the first non-whitespace character of EOF.
@@ -1288,40 +1345,42 @@ namespace scn {
             }
             return s.scan(val, *m_ctx);
         }
-        template <typename T>
-        auto visit(T& val, detail::priority_tag<0>) ->
-            typename std::enable_if<std::is_integral<T>::value &&
-                                        !std::is_same<T, char_type>::value,
-                                    error>::type
-        {
-            detail::integer_scanner<char_type, T> s;
-            auto err = parse(s);
-            if (!err) {
-                return err;
-            }
-            return s.scan(val, *m_ctx);
-        }
-        template <typename T>
-        auto visit(T&, detail::priority_tag<0>) ->
-            typename std::enable_if<std::is_integral<T>::value &&
-                                        std::is_same<T, char_type>::value,
-                                    error>::type
-        {
-            return error(error::invalid_operation,
-                         "Cannot scan this type with this char_type");
-        }
-        template <typename T>
-        auto visit(T& val, detail::priority_tag<1>) ->
-            typename std::enable_if<std::is_floating_point<T>::value,
-                                    error>::type
-        {
-            detail::float_scanner<char_type, T> s;
-            auto err = parse(s);
-            if (!err) {
-                return err;
-            }
-            return s.scan(val, *m_ctx);
-        }
+
+#define SCN_VISIT_INT(T)                         \
+    error visit(T& val, detail::priority_tag<0>) \
+    {                                            \
+        detail::integer_scanner<char_type, T> s; \
+        auto err = parse(s);                     \
+        if (!err) {                              \
+            return err;                          \
+        }                                        \
+        return s.scan(val, *m_ctx);              \
+    }
+        SCN_VISIT_INT(short)
+        SCN_VISIT_INT(int)
+        SCN_VISIT_INT(long)
+        SCN_VISIT_INT(long long)
+        SCN_VISIT_INT(unsigned short)
+        SCN_VISIT_INT(unsigned int)
+        SCN_VISIT_INT(unsigned long)
+        SCN_VISIT_INT(unsigned long long)
+#undef SCN_VISIT_INT
+
+#define SCN_VISIT_FLOAT(T)                       \
+    error visit(T& val, detail::priority_tag<1>) \
+    {                                            \
+        detail::float_scanner<char_type, T> s;   \
+        auto err = parse(s);                     \
+        if (!err) {                              \
+            return err;                          \
+        }                                        \
+        return s.scan(val, *m_ctx);              \
+    }
+        SCN_VISIT_FLOAT(float)
+        SCN_VISIT_FLOAT(double)
+        SCN_VISIT_FLOAT(long double)
+#undef SCN_VISIT_FLOAT
+
         auto visit(std::basic_string<char_type>& val, detail::priority_tag<1>)
             -> error
         {

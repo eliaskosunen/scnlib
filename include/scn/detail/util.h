@@ -303,7 +303,7 @@ namespace scn {
             using pointer = T*;
             using storage_type = unsigned char[sizeof(T)];
 
-            erased_storage() noexcept = default;
+            SCN_CONSTEXPR erased_storage() noexcept = default;
 
             erased_storage(T val) noexcept(
                 std::is_nothrow_move_constructible<T>::value)
@@ -351,29 +351,33 @@ namespace scn {
 
             SCN_CONSTEXPR14 T& get() noexcept
             {
+                SCN_EXPECT(has_value());
                 return _get();
             }
             SCN_CONSTEXPR14 const T& get() const noexcept
             {
+                SCN_EXPECT(has_value());
                 return _get();
             }
 
             SCN_CONSTEXPR14 T& operator*() noexcept
             {
+                SCN_EXPECT(has_value());
                 return _get();
             }
             SCN_CONSTEXPR14 const T& operator*() const noexcept
             {
+                SCN_EXPECT(has_value());
                 return _get();
             }
 
             SCN_CONSTEXPR14 T* operator->() noexcept
             {
-                return std::addressof(_get());
+                return m_ptr;
             }
             SCN_CONSTEXPR14 const T* operator->() const noexcept
             {
-                return std::addressof(_get());
+                return m_ptr;
             }
 
         private:
@@ -403,6 +407,61 @@ namespace scn {
 
         SCN_CLANG_POP
     }  // namespace detail
+
+    template <typename T>
+    class wrap_default {
+    public:
+        using value_type = T;
+        using storage_type = detail::erased_storage<T>;
+
+        wrap_default() = default;
+
+        wrap_default(value_type&& val) : m_storage(std::move(val)) {}
+        wrap_default& operator=(value_type&& val)
+        {
+            m_storage = storage_type(std::move(val));
+            return *this;
+        }
+
+        SCN_CONSTEXPR bool has_value() const noexcept
+        {
+            return m_storage.operator bool();
+        }
+        SCN_CONSTEXPR explicit operator bool() const noexcept
+        {
+            return has_value();
+        }
+
+        SCN_CONSTEXPR14 T& get() noexcept
+        {
+            return m_storage.get();
+        }
+        SCN_CONSTEXPR14 const T& get() const noexcept
+        {
+            return m_storage.get();
+        }
+
+        SCN_CONSTEXPR14 T& operator*() noexcept
+        {
+            return get();
+        }
+        SCN_CONSTEXPR14 const T& operator*() const noexcept
+        {
+            return get();
+        }
+
+        SCN_CONSTEXPR14 T* operator->() noexcept
+        {
+            return m_storage.operator->();
+        }
+        SCN_CONSTEXPR14 const T* operator->() const noexcept
+        {
+            return m_storage.operator->();
+        }
+
+    private:
+        storage_type m_storage;
+    };
 
     SCN_END_NAMESPACE
 }  // namespace scn

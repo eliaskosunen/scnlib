@@ -66,3 +66,43 @@ TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
     CHECK(ut.val2 == 20);
 }
 TEST_CASE_TEMPLATE_INSTANTIATE(user_type_test, user_type, user_type2);
+
+struct non_default_construct {
+    non_default_construct() = delete;
+
+    non_default_construct(int val) : value(val) {}
+
+    int value{};
+};
+
+namespace scn {
+    template <typename CharT>
+    struct scanner<CharT, wrap_default<non_default_construct>>
+        : public scanner<CharT, int> {
+        template <typename Context>
+        error scan(wrap_default<non_default_construct>& val, Context& ctx)
+        {
+            int tmp;
+            auto ret = scanner<CharT, int>::scan(tmp, ctx);
+            if (!ret) {
+                return ret;
+            }
+            val = non_default_construct(tmp);
+            return {};
+        }
+    };
+}  // namespace scn
+
+TEST_CASE("non_default_construct")
+{
+    auto stream = scn::make_stream("42");
+
+    scn::wrap_default<non_default_construct> val;
+    auto ret = scn::scan(stream, "{}", val);
+
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+
+    REQUIRE(val);
+    CHECK(val->value == 42);
+}
