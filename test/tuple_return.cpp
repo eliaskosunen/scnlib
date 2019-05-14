@@ -35,6 +35,20 @@ TEST_CASE("tuple_return")
     CHECK(s == std::string{"foo"});
 }
 
+TEST_CASE("tuple_return int")
+{
+    auto stream = scn::make_stream("42");
+
+    int i;
+    scn::result<int> r(0);
+    std::tie(r, i) = scn::scan_return<int>(stream, "{}");
+
+    CHECK(r);
+    CHECK(r.value() == 1);
+
+    CHECK(i == 42);
+}
+
 struct non_default_construct {
     non_default_construct() = delete;
 

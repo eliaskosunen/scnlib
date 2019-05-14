@@ -22,8 +22,12 @@
 
 #include <type_traits>
 
-#ifndef SCN_DEFAULT_SCANNING_METHOD
-#define SCN_DEFAULT_SCANNING_METHOD ::scn::method::strto
+#ifndef SCN_DEFAULT_INT_SCANNING_METHOD
+#define SCN_DEFAULT_INT_SCANNING_METHOD ::scn::method::strto
+#endif
+
+#ifndef SCN_DEFAULT_FLOAT_SCANNING_METHOD
+#define SCN_DEFAULT_FLOAT_SCANNING_METHOD ::scn::method::strto
 #endif
 
 namespace scn {
@@ -47,26 +51,26 @@ namespace scn {
     }
 
     SCN_CONSTEXPR inline method int_from_chars_if_available(
-        method fallback = SCN_DEFAULT_SCANNING_METHOD) noexcept
+        method fallback = SCN_DEFAULT_INT_SCANNING_METHOD) noexcept
     {
         return is_int_from_chars_available() ? method::from_chars : fallback;
     }
     SCN_CONSTEXPR inline method float_from_chars_if_available(
-        method fallback = SCN_DEFAULT_SCANNING_METHOD) noexcept
+        method fallback = SCN_DEFAULT_FLOAT_SCANNING_METHOD) noexcept
     {
         return is_float_from_chars_available() ? method::from_chars : fallback;
     }
 
     template <typename T>
     SCN_CONSTEXPR auto from_chars_if_available(
-        method fallback = SCN_DEFAULT_SCANNING_METHOD) noexcept ->
+        method fallback = SCN_DEFAULT_INT_SCANNING_METHOD) noexcept ->
         typename std::enable_if<std::is_integral<T>::value, method>::type
     {
         return int_from_chars_if_available(fallback);
     }
     template <typename T>
     SCN_CONSTEXPR auto from_chars_if_available(
-        method fallback = SCN_DEFAULT_SCANNING_METHOD) noexcept ->
+        method fallback = SCN_DEFAULT_FLOAT_SCANNING_METHOD) noexcept ->
         typename std::enable_if<std::is_floating_point<T>::value, method>::type
     {
         return float_from_chars_if_available(fallback);
@@ -111,8 +115,8 @@ namespace scn {
 
         // Type-erase locale to avoid including <locale>
         const void* locale{nullptr};
-        method int_method{SCN_DEFAULT_SCANNING_METHOD};
-        method float_method{SCN_DEFAULT_SCANNING_METHOD};
+        method int_method{SCN_DEFAULT_INT_SCANNING_METHOD};
+        method float_method{SCN_DEFAULT_FLOAT_SCANNING_METHOD};
     };
 
     SCN_CLANG_POP

@@ -17,6 +17,8 @@
 
 #include "benchmark.h"
 
+#include <scn/tuple_return.h>
+
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wglobal-constructors")
 SCN_CLANG_IGNORE("-Wunused-template")
@@ -30,13 +32,9 @@ static void scanint_scn(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
     auto stream = scn::make_stream(data);
-    const auto options =
-        scn::options::builder{}
-            .int_method(static_cast<scn::method>(state.range(0)))
-            .make();
     Int i{};
     for (auto _ : state) {
-        auto e = scn::scan(options, stream, "{}", i);
+        auto e = scn::scan(stream, "{}", i);
 
         benchmark::DoNotOptimize(i);
         benchmark::DoNotOptimize(e);
@@ -58,31 +56,61 @@ static void scanint_scn(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_scn, int)
-    ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD)
-    ->Arg(CUSTOM_METHOD);
-BENCHMARK_TEMPLATE(scanint_scn, long long)
-    ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD)
-    ->Arg(CUSTOM_METHOD);
-BENCHMARK_TEMPLATE(scanint_scn, unsigned)
-    ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD)
-    ->Arg(CUSTOM_METHOD);
+BENCHMARK_TEMPLATE(scanint_scn, int);
+BENCHMARK_TEMPLATE(scanint_scn, long long);
+BENCHMARK_TEMPLATE(scanint_scn, unsigned);
+
+#if defined(__cpp_structured_bindings) && __cpp_structured_bindings >= 201606
+template <typename Int>
+static void scanint_tuple_scn(benchmark::State& state)
+{
+    auto data = generate_int_data<Int>(INT_DATA_N);
+    auto stream = scn::make_stream(data);
+    for (auto _ : state) {
+        // Structured bindings do not work with gcc
+#if SCN_GCC
+        scn::result<int> e(0);
+        Int i;
+        std::tie(e, i) = scn::scan_return<Int>(stream, "{}");
+#else
+        auto [e, i] = scn::scan_return<Int>(stream, "{}");
+#endif
+
+        benchmark::DoNotOptimize(i);
+        benchmark::DoNotOptimize(e);
+        benchmark::DoNotOptimize(stream);
+        benchmark::ClobberMemory();
+        if (!e) {
+            if (e.error() == scn::error::end_of_stream) {
+                state.PauseTiming();
+                data = generate_int_data<Int>(INT_DATA_N);
+                stream = scn::make_stream(data);
+                state.ResumeTiming();
+            }
+            else {
+                std::cout << e.error().code() << '\n';
+                std::cout << e.error().msg() << '\n';
+                state.SkipWithError("Benchmark errored");
+                break;
+            }
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+}
+BENCHMARK_TEMPLATE(scanint_tuple_scn, int);
+BENCHMARK_TEMPLATE(scanint_tuple_scn, long long);
+BENCHMARK_TEMPLATE(scanint_tuple_scn, unsigned);
+#endif
 
 template <typename Int>
 static void scanint_scn_default(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
     auto stream = scn::make_stream(data);
-    const auto options =
-        scn::options::builder{}
-            .int_method(static_cast<scn::method>(state.range(0)))
-            .make();
     Int i{};
     for (auto _ : state) {
-        auto e = scn::scan_default(options, stream, i);
+        auto e = scn::scan_default(stream, i);
 
         benchmark::DoNotOptimize(i);
         benchmark::DoNotOptimize(e);
@@ -104,18 +132,9 @@ static void scanint_scn_default(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_scn_default, int)
-    ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD)
-    ->Arg(CUSTOM_METHOD);
-BENCHMARK_TEMPLATE(scanint_scn_default, long long)
-    ->Arg(STRTO_METHOD)
-    ->Arg(CUSTOM_METHOD)
-    ->Arg(STO_METHOD);
-BENCHMARK_TEMPLATE(scanint_scn_default, unsigned)
-    ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD)
-    ->Arg(CUSTOM_METHOD);
+BENCHMARK_TEMPLATE(scanint_scn_default, int);
+BENCHMARK_TEMPLATE(scanint_scn_default, long long);
+BENCHMARK_TEMPLATE(scanint_scn_default, unsigned);
 
 template <typename Int>
 static void scanint_sstream(benchmark::State& state)
@@ -205,9 +224,9 @@ static void scanint_scanf(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_scanf, int);
-BENCHMARK_TEMPLATE(scanint_scanf, long long);
-BENCHMARK_TEMPLATE(scanint_scanf, unsigned);
+// BENCHMARK_TEMPLATE(scanint_scanf, int);
+// BENCHMARK_TEMPLATE(scanint_scanf, long long);
+// BENCHMARK_TEMPLATE(scanint_scanf, unsigned);
 
 SCN_GCC_POP
 SCN_CLANG_POP

@@ -166,11 +166,12 @@ namespace scn {
         Stream& s,
         basic_string_view<typename Stream::char_type> f)
     {
-        std::tuple<Args...> values;
-        auto scanfn = [&s, &f](Args&... a) { return scan(s, f, a...); };
-        auto ret = detail::apply(scanfn, values);
-        return std::tuple_cat(std::tuple<result<int>>{std::move(ret)},
-                              std::move(values));
+        auto scanfn = [&s, &f](result<int>& r, Args&... a) -> void {
+            r = ::scn::scan(s, f, a...);
+        };
+        std::tuple<result<int>, Args...> values{result<int>{0}, Args{}...};
+        detail::apply(scanfn, values);
+        return values;
     }
 
     SCN_END_NAMESPACE

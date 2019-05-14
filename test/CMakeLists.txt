@@ -20,6 +20,13 @@ target_link_libraries(tests PRIVATE scn tests-base)
 set_private_flags(tests)
 add_test(NAME tests COMMAND tests)
 
+add_executable(tests-structured-bindings
+    structured_bindings.cpp)
+target_link_libraries(tests-structured-bindings PRIVATE scn tests-base)
+set_private_flags(tests)
+target_compile_features(tests-structured-bindings PRIVATE cxx_std_17)
+add_test(NAME structured-bindings COMMAND tests-structured-bindings)
+
 add_subdirectory(each)
 
 if (SCN_HAS_RANGES)

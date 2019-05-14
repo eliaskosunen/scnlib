@@ -202,50 +202,6 @@ namespace scn {
         iterator m_begin, m_next{};
     };
 
-    namespace detail {
-        template <typename CharT, size_t N>
-        struct array_container_stream_adaptor {
-            using type = const CharT (&)[N];
-
-            using value_type = const CharT;
-            using reference = const CharT&;
-            using const_reference = reference;
-            using pointer = const CharT*;
-            using const_pointer = pointer;
-            using iterator = pointer;
-            using const_iterator = const_pointer;
-
-            SCN_CONSTEXPR const_iterator begin() const noexcept
-            {
-                return array;
-            }
-            SCN_CONSTEXPR const_iterator cbegin() const noexcept
-            {
-                return array;
-            }
-
-            SCN_CONSTEXPR const_iterator end() const noexcept
-            {
-                return array + N - 1;
-            }
-            SCN_CONSTEXPR const_iterator cend() const noexcept
-            {
-                return array + N - 1;
-            }
-
-            SCN_CONSTEXPR const_pointer data() const noexcept
-            {
-                return array;
-            }
-            SCN_CONSTEXPR size_t size() const noexcept
-            {
-                return N - 1;
-            }
-
-            type array;
-        };
-    }  // namespace detail
-
     template <typename ContiguousContainer,
               typename = decltype(std::declval<ContiguousContainer&>().data(),
                                   void())>
@@ -254,15 +210,6 @@ namespace scn {
     make_stream(const ContiguousContainer& c)
     {
         return {c};
-    }
-
-    template <typename CharT, size_t N>
-    basic_static_container_stream<
-        CharT,
-        detail::array_container_stream_adaptor<CharT, N>>
-    make_stream(const CharT (&arr)[N])
-    {
-        return {{arr}};
     }
 
     template <typename Char>
@@ -290,21 +237,14 @@ namespace scn {
         }
         SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
-            if (m_begin == m_next) {
-                return error(
-                    error::invalid_operation,
-                    "Cannot putback to a stream that hasn't been read from");
-            }
+            SCN_EXPECT(m_begin < m_next);
             --m_next;
             return {};
         }
 
         SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
         {
-            if (chars_to_read() < s.size()) {
-                return error(error::end_of_stream,
-                             "Cannot complete read_sized: EOF encountered");
-            }
+            SCN_EXPECT(chars_to_read() >= s.size());
             std::copy(m_next, m_next + s.size(), s.begin());
             m_next += s.size();
             return {};
@@ -312,10 +252,7 @@ namespace scn {
 
         error putback_n(size_t n) noexcept
         {
-            if (rcount() < n) {
-                return error(error::invalid_argument,
-                             "Cannot putback more than chars read");
-            }
+            SCN_EXPECT(rcount() >= n);
             m_next -= n;
             return {};
         }
@@ -375,6 +312,13 @@ namespace scn {
         span<const CharT> s) noexcept
     {
         return {s};
+    }
+
+    template <typename CharT, size_t N>
+    basic_static_container_stream<CharT, span<const CharT>> make_stream(
+        const CharT (&arr)[N])
+    {
+        return {{arr, N - 1}};
     }
 
     template <typename Iterator>

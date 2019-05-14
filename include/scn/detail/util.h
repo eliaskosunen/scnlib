@@ -312,26 +312,33 @@ namespace scn {
             }
 
             erased_storage(const erased_storage& other)
-                : m_ptr(::new (static_cast<void*>(&m_data)) T(other.get()))
+                : m_ptr(other ? ::new (static_cast<void*>(&m_data))
+                                    T(other.get())
+                              : nullptr)
             {
             }
             erased_storage& operator=(const erased_storage& other)
             {
                 _destruct();
-                m_ptr = ::new (static_cast<void*>(&m_data)) T(other.get());
+                if (other) {
+                    m_ptr = ::new (static_cast<void*>(&m_data)) T(other.get());
+                }
                 return *this;
             }
 
             erased_storage(erased_storage&& other) noexcept
-                : m_ptr(::new (static_cast<void*>(&m_data))
-                            T(std::move(other.get())))
+                : m_ptr(other ? ::new (static_cast<void*>(&m_data))
+                                    T(std::move(other.get()))
+                              : nullptr)
             {
             }
             erased_storage& operator=(erased_storage&& other) noexcept
             {
                 _destruct();
-                m_ptr = ::new (static_cast<void*>(&m_data))
-                    T(std::move(other.get()));
+                if (other) {
+                    m_ptr = ::new (static_cast<void*>(&m_data))
+                        T(std::move(other.get()));
+                }
                 return *this;
             }
 
@@ -386,6 +393,7 @@ namespace scn {
                 if (m_ptr) {
                     _get().~T();
                 }
+                m_ptr = nullptr;
             }
             static pointer _toptr(storage_type& data)
             {
