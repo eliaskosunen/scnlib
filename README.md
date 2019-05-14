@@ -48,6 +48,7 @@ public APIs are going to change in backwards-incompatible ways._
    * [Wide streams](#wide-streams)
    * [Encoding and Unicode](#encoding-and-unicode)
    * [Error handling](#error-handling)
+   * [Alternative `tuple`-based API](#alternative-tuple-based-api)
    * [`ignore`](#ignore)
    * [`getchar`](#getchar)
    * [User types](#user-types)
@@ -168,6 +169,9 @@ scn::scan(stream, "{}", i);
 Streams can be created from multiple different sources:
 
 ```cpp
+// String literals
+auto string_stream = scn::make_stream("42");
+
 // Containers
 std::vector<char> container_source{'1', '2', '3'};
 auto container_stream = scn::make_stream(container_source);
@@ -454,6 +458,26 @@ No exceptions will ever be thrown by `scnlib` functions.
 If any user-defined operations, like `operator>>` throw, the behavior is undefined.
 
 The library can be compiled with `-fno-exceptions`, but some of its functionality will be disabled, namely `sto` method for integer and float scanning.
+
+### Alternative `tuple`-based API
+
+By including `tuple_return.h`, an alternative API becomes available, returning a `std::tuple` instead of taking references.
+
+```cpp
+#include <scn/tuple_return.h>
+
+// Use structured bindings with C++17
+auto [result, i] = scn::scan_return<int>(stream, "{}");
+// result is a `result<int>`, similar to the return value of `scn::scan`
+// i is an `int`, scanned from the stream
+
+// `std::tie` for pre-C++17
+scn::result<int> result;
+int i;
+std::tie(result, i) = scn::scan_return<int>(stream, "{}");
+```
+
+The rationale of putting this API behing an additional header, is that it pulls in the entirety of `<tuple>` and `<functional>`, which may affect your compile times.
 
 ### `ignore`
 
