@@ -137,22 +137,41 @@ namespace scn {
         using index_sequence_for =
             make_integer_sequence<std::size_t, sizeof...(T)>;
 
+        template <typename T>
+        struct always_false : std::false_type {
+        };
+        template <typename T>
+        struct debug_base;
+        template <typename T>
+        struct debug : debug_base<T> {
+            static_assert(always_false<T>::value, "");
+        };
+
         // From cppreference
         template <class F, class Tuple, std::size_t... I>
-        constexpr auto apply_impl(F&& f, Tuple&& t, index_sequence<I...>)
-            -> decltype(invoke(std::forward<F>(f),
-                               std::get<I>(std::forward<Tuple>(t))...))
+        constexpr auto
+        apply_impl(F&& f, Tuple&& t, index_sequence<I...>) noexcept(
+            noexcept(detail::invoke(std::forward<F>(f),
+                                    std::get<I>(std::forward<Tuple>(t))...)))
+            -> decltype(detail::invoke(std::forward<F>(f),
+                                       std::get<I>(std::forward<Tuple>(t))...))
         {
-            return invoke(std::forward<F>(f),
-                          std::get<I>(std::forward<Tuple>(t))...);
+            return detail::invoke(std::forward<F>(f),
+                                  std::get<I>(std::forward<Tuple>(t))...);
         }  // namespace detail
 
         template <class F, class Tuple>
-        constexpr auto apply(F&& f, Tuple&& t) -> decltype(detail::apply_impl(
-            std::forward<F>(f),
-            std::forward<Tuple>(t),
-            make_index_sequence<std::tuple_size<
-                typename std::remove_reference<Tuple>::type>::value>{}))
+        constexpr auto apply(F&& f, Tuple&& t) noexcept(
+            noexcept(detail::apply_impl(
+                std::forward<F>(f),
+                std::forward<Tuple>(t),
+                make_index_sequence<std::tuple_size<
+                    typename std::remove_reference<Tuple>::type>::value>{})))
+            -> decltype(detail::apply_impl(
+                std::forward<F>(f),
+                std::forward<Tuple>(t),
+                make_index_sequence<std::tuple_size<
+                    typename std::remove_reference<Tuple>::type>::value>{}))
         {
             return detail::apply_impl(
                 std::forward<F>(f), std::forward<Tuple>(t),

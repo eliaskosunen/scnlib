@@ -1230,9 +1230,12 @@ namespace scn {
     struct scanner<CharT, short>
         : public detail::integer_scanner<CharT, short> {
     };
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wpadded")
     template <typename CharT>
     struct scanner<CharT, int> : public detail::integer_scanner<CharT, int> {
     };
+    SCN_CLANG_POP
     template <typename CharT>
     struct scanner<CharT, long> : public detail::integer_scanner<CharT, long> {
     };

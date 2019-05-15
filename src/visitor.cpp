@@ -24,6 +24,10 @@
 #include <cerrno>
 #include <string>
 
+#if SCN_HAS_INTEGER_CHARCONV || SCN_HAS_FLOAT_CHARCONV
+#include <charconv>
+#endif
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
@@ -433,33 +437,31 @@ namespace scn {
             bool is_base_digit(CharT ch, int base)
             {
                 if (base <= 10) {
-                    return ch >= detail::ascii_widen<CharT>('0') &&
-                           ch <= detail::ascii_widen<CharT>('0') + base - 1;
+                    return ch >= ascii_widen<CharT>('0') &&
+                           ch <= ascii_widen<CharT>('0') + base - 1;
                 }
                 return is_base_digit(ch, 10) ||
-                       (ch >= detail::ascii_widen<CharT>('a') &&
-                        ch <= detail::ascii_widen<CharT>('a') + base - 1) ||
-                       (ch >= detail::ascii_widen<CharT>('A') &&
-                        ch <= detail::ascii_widen<CharT>('A') + base - 1);
+                       (ch >= ascii_widen<CharT>('a') &&
+                        ch <= ascii_widen<CharT>('a') + base - 1) ||
+                       (ch >= ascii_widen<CharT>('A') &&
+                        ch <= ascii_widen<CharT>('A') + base - 1);
             }
             template <typename T, typename CharT>
             T char_to_int(CharT ch, int base)
             {
                 if (base <= 10) {
-                    return static_cast<T>(ch - detail::ascii_widen<CharT>('0'));
+                    return static_cast<T>(ch - ascii_widen<CharT>('0'));
                 }
-                if (ch <= detail::ascii_widen<CharT>('9')) {
-                    return static_cast<T>(ch - detail::ascii_widen<CharT>('0'));
+                if (ch <= ascii_widen<CharT>('9')) {
+                    return static_cast<T>(ch - ascii_widen<CharT>('0'));
                 }
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wconversion")
-                if (ch >= detail::ascii_widen<CharT>('a') &&
-                    ch <= detail::ascii_widen<CharT>('z')) {
-                    return 10 +
-                           static_cast<T>(ch - detail::ascii_widen<CharT>('a'));
+                if (ch >= ascii_widen<CharT>('a') &&
+                    ch <= ascii_widen<CharT>('z')) {
+                    return 10 + static_cast<T>(ch - ascii_widen<CharT>('a'));
                 }
-                return 10 +
-                       static_cast<T>(ch - detail::ascii_widen<CharT>('A'));
+                return 10 + static_cast<T>(ch - ascii_widen<CharT>('A'));
                 SCN_GCC_POP
             }
         }  // namespace custom
@@ -615,6 +617,66 @@ namespace scn {
             // template struct str_to_float<wchar_t, long double>;
         }  // namespace strto
 
+        namespace from_chars {
+#if SCN_HAS_INTEGER_CHARCONV
+            template <typename T>
+            expected<const char*> str_to_int(const char* begin,
+                                             const char* end,
+                                             T& value,
+                                             int base)
+            {
+                auto r = std::from_chars(begin, end, value, base);
+                if (r.ec == std::errc::result_out_of_range) {
+                    return error(error::value_out_of_range,
+                                 "from_chars: value out of range");
+                }
+                if (r.ec == std::errc::invalid_argument) {
+                    return error(error::invalid_scanned_value,
+                                 "from_chars: invalid scanned value");
+                }
+                return r.ptr;
+            }
+
+            template <typename T>
+            expected<const wchar_t*> str_to_int(const wchar_t*,
+                                                const wchar_t*,
+                                                T&,
+                                                int)
+            {
+                return error(error::invalid_operation,
+                             "from_chars is not a supported integer scanning "
+                             "method for wide streams");
+            }
+
+            template <typename T>
+            expected<const char*> str_to_float(const char* begin,
+                                               const char* end,
+                                               T& value)
+            {
+                auto r = std::from_chars(begin, end, value);
+                if (r.ec == std::errc::result_out_of_range) {
+                    return error(error::value_out_of_range,
+                                 "from_chars: value out of range");
+                }
+                if (r.ec == std::errc::invalid_argument) {
+                    return error(error::invalid_scanned_value,
+                                 "from_chars: invalid scanned value");
+                }
+                return r.ptr;
+            }
+
+            template <typename T>
+            expected<const wchar_t*> str_to_float(const wchar_t*,
+                                                  const wchar_t*,
+                                                  T&)
+            {
+                return error(error::invalid_operation,
+                             "from_chars is not a supported integer scanning "
+                             "method for wide streams");
+            }
+#endif
+        }  // namespace from_chars
+
         template <typename CharT, typename T>
         expected<size_t> integer_scanner<CharT, T>::_read_sto(
             T& val,
@@ -673,6 +735,7 @@ namespace scn {
 
             return chars;
         }
+
         template <typename CharT, typename T>
         expected<size_t> integer_scanner<CharT, T>::_read_from_chars(
             T& val,
@@ -682,14 +745,12 @@ namespace scn {
 #if SCN_HAS_INTEGER_CHARCONV
             auto begin = buf.data();
             auto end = begin + buf.size();
-            auto result = std::from_chars(begin, end, val, base);
-            if (result.ec == std::errc::result_out_of_range) {
-                return make_error(error::value_out_of_range);
+            auto result = from_chars::str_to_int(begin, end, val, base);
+            if (!result) {
+                return result.get_error();
             }
-            if (result.ec == std::errc::invalid_argument) {
-                return make_error(error::invalid_scanned_value);
-            }
-            return static_cast<size_t>(std::distance(buf.data(), result.ptr));
+            return static_cast<size_t>(
+                std::distance(buf.data(), result.value()));
 #else
             SCN_UNUSED(val);
             SCN_UNUSED(buf);
@@ -709,13 +770,13 @@ namespace scn {
             T tmp = 0;
             T sign = 1;
             auto it = buf.begin();
-            if (buf[0] == detail::ascii_widen<CharT>('-') ||
-                buf[0] == detail::ascii_widen<CharT>('+')) {
+            if (buf[0] == ascii_widen<CharT>('-') ||
+                buf[0] == ascii_widen<CharT>('+')) {
                 SCN_GCC_PUSH
                 // integer_scanner::scan ensures that unsigned values have no
                 // '-' sign
                 SCN_GCC_IGNORE("-Wsign-conversion")
-                sign = 1 - 2 * (buf[0] == detail::ascii_widen<CharT>('-'));
+                sign = 1 - 2 * (buf[0] == ascii_widen<CharT>('-'));
                 ++it;
                 SCN_GCC_POP
             }
@@ -723,14 +784,14 @@ namespace scn {
                 return error(error::invalid_scanned_value,
                              "Expected number after sign");
             }
-            if (*it == detail::ascii_widen<CharT>('0')) {
+            if (*it == ascii_widen<CharT>('0')) {
                 ++it;
                 if (it == buf.end()) {
                     val = 0;
                     return static_cast<size_t>(std::distance(buf.begin(), it));
                 }
-                if (*it == detail::ascii_widen<CharT>('x') ||
-                    *it == detail::ascii_widen<CharT>('X')) {
+                if (*it == ascii_widen<CharT>('x') ||
+                    *it == ascii_widen<CharT>('X')) {
                     if (SCN_UNLIKELY(base != 0 && base != 16)) {
                         return error(error::invalid_scanned_value,
                                      "Unexpected 'x' in scanned integer");
@@ -757,7 +818,7 @@ namespace scn {
 
             const T max = std::numeric_limits<T>::max() / static_cast<T>(base);
             auto cmp = [&](CharT ch) {
-                return static_cast<T>(ch - detail::ascii_widen<CharT>('0')) <=
+                return static_cast<T>(ch - ascii_widen<CharT>('0')) <=
                        T(7 + (sign == 1 ? 0 : 1));
             };
             for (; it != buf.end(); ++it) {
@@ -856,20 +917,18 @@ namespace scn {
 #if SCN_HAS_FLOAT_CHARCONV
             auto begin = buf.data();
             auto end = begin + buf.size();
-            auto result = std::from_chars(begin, end, val);
-            if (result.ec == std::errc::result_out_of_range) {
-                return make_error(error::value_out_of_range);
+            auto result = from_chars::str_to_float(begin, end, val);
+            if (!result) {
+                return result.get_error();
             }
-            if (result.ec == std::errc::invalid_argument) {
-                return make_error(error::invalid_scanned_value);
-            }
-            return static_cast<size_t>(std::distance(buf.data(), result.ptr));
+            return static_cast<size_t>(
+                std::distance(buf.data(), result.value()));
 #else
             SCN_UNUSED(val);
             SCN_UNUSED(buf);
             return error(error::invalid_operation,
-                         "from_chars is not a supported floating-point "
-                         "scanning method with this platform");
+                         "from_chars is not a supported integer scanning "
+                         "method with this platform");
 #endif
         }
         template <typename CharT, typename T>
@@ -885,9 +944,9 @@ namespace scn {
 
             // sign
             int sign = 1;
-            if (buf[0] == detail::ascii_widen<CharT>('-') ||
-                buf[0] == detail::ascii_widen<CharT>('+')) {
-                sign = 1 - 2 * (buf[0] == detail::ascii_widen<CharT>('-'));
+            if (buf[0] == ascii_widen<CharT>('-') ||
+                buf[0] == ascii_widen<CharT>('+')) {
+                sign = 1 - 2 * (buf[0] == ascii_widen<CharT>('-'));
                 ++it;
             }
             if (SCN_UNLIKELY(it == buf.end())) {
@@ -904,13 +963,13 @@ namespace scn {
                 return f;
             };
 
-            if (*it == detail::ascii_widen<CharT>('0')) {
+            if (*it == ascii_widen<CharT>('0')) {
                 ++it;
                 if (it == buf.end()) {
                     val = static_cast<T>(0.0) * static_cast<T>(sign);
                 }
-                if (*it == detail::ascii_widen<CharT>('x') ||
-                    *it == detail::ascii_widen<CharT>('X')) {
+                if (*it == ascii_widen<CharT>('x') ||
+                    *it == ascii_widen<CharT>('X')) {
                     // hex
                     ++it;
                     if (SCN_UNLIKELY(it == buf.end())) {
@@ -930,7 +989,7 @@ namespace scn {
                         return get_retval();
                     }
 
-                    if (*it == detail::ascii_widen<CharT>('.')) {
+                    if (*it == ascii_widen<CharT>('.')) {
                         ++it;
                     }
                 }
