@@ -26,7 +26,7 @@ namespace scn {
         SCN_BEGIN_NAMESPACE
 
         template <typename Iterator, typename Sentinel>
-        class ranges_result : public result<int> {
+        class ranges_result : public scan_result {
         public:
             using iterator_type = Iterator;
             using sentinel_type = Sentinel;
@@ -34,15 +34,15 @@ namespace scn {
 
             constexpr ranges_result(iterator_type it,
                                     sentinel_type end,
-                                    result<int>&& base)
-                : result<int>(std::move(base)), m_it(it), m_end(end)
+                                    scan_result&& base)
+                : scan_result(std::move(base)), m_it(it), m_end(end)
             {
             }
             template <typename Range>
             constexpr ranges_result(const Range& r,
                                     difference_type n,
-                                    result<int>&& base)
-                : result<int>(std::move(base)),
+                                    scan_result&& base)
+                : scan_result(std::move(base)),
                   m_it(::ranges::next(::ranges::begin(r), n)),
                   m_end(::ranges::end(r))
             {
@@ -92,10 +92,10 @@ namespace scn {
                 basic_erased_stream_context<char_type>>::type;
         };
 
-        result<int> vscan(erased_stream_context&);
-        result<int> vscan(werased_stream_context&);
-        result<int> vscan(erased_sized_stream_context&);
-        result<int> vscan(werased_sized_stream_context&);
+        scan_result vscan(erased_stream_context&);
+        scan_result vscan(werased_stream_context&);
+        scan_result vscan(erased_sized_stream_context&);
+        scan_result vscan(werased_sized_stream_context&);
 
         template <typename Range, typename... Args>
         ranges_result<::ranges::iterator_t<const Range>,

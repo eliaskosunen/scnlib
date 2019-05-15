@@ -25,7 +25,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
 #define SCN_DEFINE_VSCAN_CTX(context)        \
-    SCN_FUNC result<int> vscan(context& ctx) \
+    SCN_FUNC scan_result vscan(context& ctx) \
     {                                        \
         return visit(ctx);                   \
     }
@@ -40,15 +40,33 @@ namespace scn {
     SCN_DEFINE_VSCAN_CTX(erased_empty_sized_stream_context)
     SCN_DEFINE_VSCAN_CTX(werased_empty_sized_stream_context)
 
-#define SCN_DEFINE_VSCAN(stream, ch)                       \
-    SCN_FUNC result<int> vscan(basic_context<stream>& ctx) \
-    {                                                      \
-        return visit(ctx);                                 \
-    }                                                      \
-    SCN_FUNC result<int> vscan(                            \
-        basic_context<stream, basic_locale_ref<ch>>& ctx)  \
-    {                                                      \
-        return visit(ctx);                                 \
+#define SCN_DEFINE_VSCAN(stream, ch)                             \
+    SCN_FUNC scan_result vscan(basic_context<stream>& ctx)       \
+    {                                                            \
+        return visit(ctx);                                       \
+    }                                                            \
+    SCN_FUNC scan_result vscan(                                  \
+        basic_context<stream, basic_locale_ref<ch>>& ctx)        \
+    {                                                            \
+        return visit(ctx);                                       \
+    }                                                            \
+    SCN_FUNC scan_result vscan(basic_empty_context<stream>& ctx) \
+    {                                                            \
+        return visit(ctx);                                       \
+    }                                                            \
+    SCN_FUNC scan_result vscan(                                  \
+        basic_empty_context<stream, basic_locale_ref<ch>>& ctx)  \
+    {                                                            \
+        return visit(ctx);                                       \
+    }                                                            \
+    SCN_FUNC scan_result vscan(basic_scanf_context<stream>& ctx) \
+    {                                                            \
+        return visit(ctx);                                       \
+    }                                                            \
+    SCN_FUNC scan_result vscan(                                  \
+        basic_scanf_context<stream, basic_locale_ref<ch>>& ctx)  \
+    {                                                            \
+        return visit(ctx);                                       \
     }
 #define SCN_DEFINE_VSCAN_TEMPLATE(stream) \
     SCN_DEFINE_VSCAN(stream<char>, char)  \
@@ -60,6 +78,9 @@ namespace scn {
     SCN_DEFINE_VSCAN(basic_bidirectional_iterator_stream<const char*>, char)
     SCN_DEFINE_VSCAN(basic_bidirectional_iterator_stream<const wchar_t*>,
                      wchar_t)
+
+    SCN_DEFINE_VSCAN(detail::string_stream<char>, char)
+    SCN_DEFINE_VSCAN(detail::string_stream<wchar_t>, wchar_t)
 
     SCN_DEFINE_VSCAN(detail::vector_stream<char>, char)
     SCN_DEFINE_VSCAN(detail::vector_stream<wchar_t>, wchar_t)

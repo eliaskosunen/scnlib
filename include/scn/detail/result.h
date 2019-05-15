@@ -175,6 +175,8 @@ namespace scn {
         Error m_error{Error::success_tag()};
     };
 
+    using scan_result = result<int>;
+
     /**
      * expected-like type.
      * For situations where there can be a value in case of success or an error

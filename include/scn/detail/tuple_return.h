@@ -171,14 +171,26 @@ namespace scn {
     }  // namespace detail
 
     template <typename... Args, typename Stream>
-    SCN_NODISCARD std::tuple<result<int>, Args...> scan_return(
+    SCN_NODISCARD std::tuple<scan_result, Args...> scan(
         Stream& s,
         basic_string_view<typename Stream::char_type> f)
     {
-        auto scanfn = [&s, &f](result<int>& r, Args&... a) -> void {
+        auto scanfn = [&s, &f](scan_result& r, Args&... a) -> void {
             r = ::scn::scan(s, f, a...);
         };
-        std::tuple<result<int>, Args...> values{result<int>{0}, Args{}...};
+        std::tuple<scan_result, Args...> values{scan_result{0}, Args{}...};
+        detail::apply(scanfn, values);
+        return values;
+    }
+
+    template <typename... Args, typename Stream>
+    SCN_NODISCARD std::tuple<scan_result, Args...> scan(Stream& s,
+                                                        detail::default_t)
+    {
+        auto scanfn = [&s](scan_result& r, Args&... a) -> void {
+            r = ::scn::scan(s, default_tag, a...);
+        };
+        std::tuple<scan_result, Args...> values{scan_result{0}, Args{}...};
         detail::apply(scanfn, values);
         return values;
     }

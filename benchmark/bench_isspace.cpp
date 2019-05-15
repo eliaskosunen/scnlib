@@ -17,6 +17,10 @@
 
 #include "benchmark.h"
 
+#include <array>
+#include <cwctype>
+#include <locale>
+
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wglobal-constructors")
 SCN_CLANG_IGNORE("-Wunused-template")
@@ -177,7 +181,7 @@ namespace detail {
              true,  true, true,  true,  true, true}};
         return lookup[static_cast<size_t>(ch)];
     }
-    SCN_CONSTEXPR static inline bool is_space_table_auto(char ch) noexcept
+    SCN_CONSTEXPR14 static inline bool is_space_table_auto(char ch) noexcept
     {
         const std::array<bool, 256> lookup = {
             {true,  true, true,  true,  true, true, true, true, true, false,

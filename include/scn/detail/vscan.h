@@ -35,14 +35,19 @@ namespace scn {
     }
 
     template <typename Context>
-    result<int> vscan(Context& ctx)
+    scan_result vscan(Context& ctx)
     {
         return visit(ctx);
     }
 
 #define SCN_DECLARE_VSCAN(stream, ch)          \
-    result<int> vscan(basic_context<stream>&); \
-    result<int> vscan(basic_context<stream, basic_locale_ref<ch>>&)
+    scan_result vscan(basic_context<stream>&); \
+    scan_result vscan(basic_context<stream, basic_locale_ref<ch>>&); \
+    scan_result vscan(basic_empty_context<stream>&); \
+    scan_result vscan(basic_empty_context<stream, basic_locale_ref<ch>>&); \
+    scan_result vscan(basic_scanf_context<stream>&); \
+    scan_result vscan(basic_scanf_context<stream, basic_locale_ref<ch>>&)
+
 #define SCN_DECLARE_VSCAN_TEMPLATE(stream) \
     SCN_DECLARE_VSCAN(stream<char>, char); \
     SCN_DECLARE_VSCAN(stream<wchar_t>, wchar_t)
@@ -56,12 +61,17 @@ namespace scn {
 
     namespace detail {
         template <typename CharT>
+        using string_stream =
+            basic_static_container_stream<CharT, std::basic_string<CharT>>;
+        template <typename CharT>
         using vector_stream =
             basic_static_container_stream<CharT, std::vector<CharT>>;
         template <typename CharT>
         using span_stream =
             basic_static_container_stream<CharT, span<const CharT>>;
     }  // namespace detail
+    SCN_DECLARE_VSCAN(detail::string_stream<char>, char);
+    SCN_DECLARE_VSCAN(detail::string_stream<wchar_t>, wchar_t);
     SCN_DECLARE_VSCAN(detail::vector_stream<char>, char);
     SCN_DECLARE_VSCAN(detail::vector_stream<wchar_t>, wchar_t);
     SCN_DECLARE_VSCAN(detail::span_stream<char>, char);
@@ -79,10 +89,10 @@ namespace scn {
     using werased_sized_stream_context =
         basic_erased_sized_stream_context<wchar_t>;
 
-    result<int> vscan(erased_stream_context&);
-    result<int> vscan(werased_stream_context&);
-    result<int> vscan(erased_sized_stream_context&);
-    result<int> vscan(werased_sized_stream_context&);
+    scan_result vscan(erased_stream_context&);
+    scan_result vscan(werased_stream_context&);
+    scan_result vscan(erased_sized_stream_context&);
+    scan_result vscan(werased_sized_stream_context&);
 
     template <typename Stream, bool Empty = false>
     struct erased_stream_context_type {
@@ -108,10 +118,10 @@ namespace scn {
     using werased_empty_sized_stream_context =
         basic_erased_empty_sized_stream_context<wchar_t>;
 
-    result<int> vscan(erased_empty_stream_context&);
-    result<int> vscan(werased_empty_stream_context&);
-    result<int> vscan(erased_empty_sized_stream_context&);
-    result<int> vscan(werased_empty_sized_stream_context&);
+    scan_result vscan(erased_empty_stream_context&);
+    scan_result vscan(werased_empty_stream_context&);
+    scan_result vscan(erased_empty_sized_stream_context&);
+    scan_result vscan(werased_empty_sized_stream_context&);
 
     template <typename Stream>
     struct erased_stream_context_type<Stream, true> {

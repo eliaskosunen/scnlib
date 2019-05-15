@@ -1414,12 +1414,12 @@ namespace scn {
     };
 
     template <typename Context>
-    result<int> visit(Context& ctx)
+    scan_result visit(Context& ctx)
     {
         int args_read = 0;
 
-        auto reterror = [&args_read](error e) -> result<int> {
-            return result<int>(args_read, std::move(e));
+        auto reterror = [&args_read](error e) -> scan_result {
+            return scan_result(args_read, std::move(e));
         };
 
         auto& pctx = ctx.parse_context();

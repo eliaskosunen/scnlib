@@ -66,7 +66,7 @@ static void return_tuple_tie(benchmark::State& state)
     for (auto _ : state) {
         scn::result<int> r{0};
         char c{};
-        std::tie(r, c) = scn::scan_return<char>(stream, "{}");
+        std::tie(r, c) = scn::scan<char>(stream, "{}");
 
         benchmark::DoNotOptimize(r);
         benchmark::DoNotOptimize(c);
@@ -96,7 +96,7 @@ static void return_tuple(benchmark::State& state)
     auto stream = scn::make_stream(data);
 
     for (auto _ : state) {
-        auto [r, c] = scn::scan_return<char>(stream, "{}");
+        auto [r, c] = scn::scan<char>(stream, "{}");
 
         benchmark::DoNotOptimize(r);
         benchmark::DoNotOptimize(c);

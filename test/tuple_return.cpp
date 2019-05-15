@@ -26,7 +26,7 @@ TEST_CASE("tuple_return")
     int i;
     std::string s;
     scn::result<int> r(0);
-    std::tie(r, i, s) = scn::scan_return<int, std::string>(stream, "{} {}");
+    std::tie(r, i, s) = scn::scan<int, std::string>(stream, "{} {}");
 
     CHECK(r);
     CHECK(r.value() == 2);
@@ -41,7 +41,7 @@ TEST_CASE("tuple_return int")
 
     int i;
     scn::result<int> r(0);
-    std::tie(r, i) = scn::scan_return<int>(stream, "{}");
+    std::tie(r, i) = scn::scan<int>(stream, scn::default_tag);
 
     CHECK(r);
     CHECK(r.value() == 1);
@@ -81,9 +81,8 @@ TEST_CASE("tuple_return non_default_construct")
 
     scn::wrap_default<non_default_construct> val;
     scn::result<int> ret(0);
-    std::tie(ret, val) =
-        scn::scan_return<scn::wrap_default<non_default_construct>>(stream,
-                                                                   "{}");
+    std::tie(ret, val) = scn::scan<scn::wrap_default<non_default_construct>>(
+        stream, scn::default_tag);
 
     CHECK(ret);
     CHECK(ret.value() == 1);

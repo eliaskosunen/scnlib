@@ -71,9 +71,9 @@ static void scanint_tuple_scn(benchmark::State& state)
 #if SCN_GCC
         scn::result<int> e(0);
         Int i;
-        std::tie(e, i) = scn::scan_return<Int>(stream, "{}");
+        std::tie(e, i) = scn::scan<Int>(stream, "{}");
 #else
-        auto [e, i] = scn::scan_return<Int>(stream, "{}");
+        auto [e, i] = scn::scan<Int>(stream, "{}");
 #endif
 
         benchmark::DoNotOptimize(i);

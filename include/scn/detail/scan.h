@@ -24,7 +24,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     template <typename Stream, typename... Args>
-    result<int> scan(Stream& s,
+    scan_result scan(Stream& s,
                      basic_string_view<typename Stream::char_type> f,
                      Args&... a)
     {
@@ -38,7 +38,7 @@ namespace scn {
         return vscan(ctx);
     }
     template <typename Stream, typename... Args>
-    result<int> scan(options opt,
+    scan_result scan(options opt,
                      Stream& s,
                      basic_string_view<typename Stream::char_type> f,
                      Args&... a)
@@ -55,7 +55,7 @@ namespace scn {
     }
 
     template <typename Stream, typename... Args>
-    result<int> scanf(Stream& s,
+    scan_result scanf(Stream& s,
                       basic_string_view<typename Stream::char_type> f,
                       Args&... a)
     {
@@ -69,7 +69,7 @@ namespace scn {
         return vscan(ctx);
     }
     template <typename Stream, typename... Args>
-    result<int> scanf(options opt,
+    scan_result scanf(options opt,
                       Stream& s,
                       basic_string_view<typename Stream::char_type> f,
                       Args&... a)
@@ -87,7 +87,7 @@ namespace scn {
     }
 
     template <typename Stream, typename... Args>
-    result<int> scan(Stream& s, detail::default_t, Args&... a)
+    scan_result scan(Stream& s, detail::default_t, Args&... a)
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -99,7 +99,7 @@ namespace scn {
         return vscan(ctx);
     }
     template <typename Stream, typename... Args>
-    result<int> scan(options opt, Stream& s, detail::default_t, Args&... a)
+    scan_result scan(options opt, Stream& s, detail::default_t, Args&... a)
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -139,7 +139,7 @@ namespace scn {
 
     // Read from stdin
     template <typename... Args>
-    result<int> input(string_view f, Args&... a)
+    scan_result input(string_view f, Args&... a)
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -156,7 +156,7 @@ namespace scn {
         return vscan(ctx);
     }
     template <typename... Args>
-    result<int> input(wstring_view f, Args&... a)
+    scan_result input(wstring_view f, Args&... a)
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -176,7 +176,7 @@ namespace scn {
     // Read from stdin with prompt
     // Like Python's input()
     template <typename... Args>
-    result<int> prompt(const char* p, string_view f, Args&... a)
+    scan_result prompt(const char* p, string_view f, Args&... a)
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -195,7 +195,7 @@ namespace scn {
         return vscan(ctx);
     }
     template <typename... Args>
-    result<int> prompt(const wchar_t* p, wstring_view f, Args&... a)
+    scan_result prompt(const wchar_t* p, wstring_view f, Args&... a)
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");

@@ -213,6 +213,28 @@ int i;
 scn::scan(scn::cstdin(), "{}", i);
 ```
 
+### Alternative `tuple`-based API
+
+By including `tuple_return.h`, an alternative API becomes available, returning a `std::tuple` instead of taking references.
+
+```cpp
+#include <scn/tuple_return.h>
+
+// Use structured bindings with C++17
+auto [result, i] = scn::scan<int>(stream, "{}");
+// result is a `scan_result`, similar to the return value of `scn::scan`
+// Error handling is further touched upon later
+// i is an `int`, scanned from the stream
+
+// `std::tie` for pre-C++17
+// scn::scan_result is not default-constructible, init to a dummy value of 0
+scn::scan_result result{0};
+int i;
+std::tie(result, i) = scn::scan<int>(stream, "{}");
+```
+
+The rationale of putting this API behing an additional header, is that it pulls in the entirety of `<tuple>` and `<functional>`, which may affect your compile times.
+
 ### Supported types
 
  * Characters: `char` for narrow streams or `wchar_t` for wide streams
@@ -387,7 +409,7 @@ expects (UTF-32 in POSIX, the thing resembling UCS-2 in Windows).
 ### Error handling
 
 `scnlib` does not use exceptions for error handling.
-Instead, `scan`, `input`, `prompt` and `vscan` return a `result<int>`, which is an object containing
+Instead, `scan`, `input`, `prompt` and `vscan` return a `scan_result`, which is an object containing
 an integer telling the number of arguments successfully read, and an `scn::error` object.
 
 ```cpp
@@ -458,26 +480,6 @@ No exceptions will ever be thrown by `scnlib` functions.
 If any user-defined operations, like `operator>>` throw, the behavior is undefined.
 
 The library can be compiled with `-fno-exceptions`, but some of its functionality will be disabled, namely `sto` method for integer and float scanning.
-
-### Alternative `tuple`-based API
-
-By including `tuple_return.h`, an alternative API becomes available, returning a `std::tuple` instead of taking references.
-
-```cpp
-#include <scn/tuple_return.h>
-
-// Use structured bindings with C++17
-auto [result, i] = scn::scan_return<int>(stream, "{}");
-// result is a `result<int>`, similar to the return value of `scn::scan`
-// i is an `int`, scanned from the stream
-
-// `std::tie` for pre-C++17
-scn::result<int> result;
-int i;
-std::tie(result, i) = scn::scan_return<int>(stream, "{}");
-```
-
-The rationale of putting this API behing an additional header, is that it pulls in the entirety of `<tuple>` and `<functional>`, which may affect your compile times.
 
 ### `ignore`
 
