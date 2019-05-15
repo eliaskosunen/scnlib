@@ -42,6 +42,13 @@ namespace scn {
         using void_t = typename make_void<Ts...>::type;
 #endif
 
+        template <typename T>
+        struct static_const {
+            static SCN_CONSTEXPR T value{};
+        };
+        template <typename T>
+        SCN_CONSTEXPR T static_const<T>::value;
+
         template <size_t I>
         struct priority_tag : priority_tag<I - 1> {
         };

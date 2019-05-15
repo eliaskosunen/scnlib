@@ -80,7 +80,7 @@ static void scanword_scn_default(benchmark::State& state)
     string_type str{};
 
     for (auto _ : state) {
-        auto e = scn::scan_default(stream, str);
+        auto e = scn::scan(stream, scn::default_tag, str);
 
         benchmark::DoNotOptimize(str);
         benchmark::DoNotOptimize(e);

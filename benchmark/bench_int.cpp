@@ -110,7 +110,7 @@ static void scanint_scn_default(benchmark::State& state)
     auto stream = scn::make_stream(data);
     Int i{};
     for (auto _ : state) {
-        auto e = scn::scan_default(stream, i);
+        auto e = scn::scan(stream, scn::default_tag, i);
 
         benchmark::DoNotOptimize(i);
         benchmark::DoNotOptimize(e);

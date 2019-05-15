@@ -82,7 +82,7 @@ static void scanchar_scn_default(benchmark::State& state)
     Char c{};
 
     for (auto _ : state) {
-        auto e = scn::scan_default(stream, c);
+        auto e = scn::scan(stream, scn::default_tag, c);
 
         benchmark::DoNotOptimize(e);
         benchmark::DoNotOptimize(c);

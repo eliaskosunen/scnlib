@@ -29,13 +29,9 @@ static void scanfloat_scn(benchmark::State& state)
 {
     auto data = generate_float_data<Float>(FLOAT_DATA_N);
     auto stream = scn::make_stream(data);
-    const auto options =
-        scn::options::builder{}
-            .float_method(static_cast<scn::method>(state.range(0)))
-            .make();
     Float f{};
     for (auto _ : state) {
-        auto e = scn::scan(options, stream, "{}", f);
+        auto e = scn::scan(stream, "{}", f);
 
         benchmark::DoNotOptimize(f);
         benchmark::DoNotOptimize(stream);
@@ -57,24 +53,18 @@ static void scanfloat_scn(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Float)));
 }
-BENCHMARK_TEMPLATE(scanfloat_scn, float)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
-BENCHMARK_TEMPLATE(scanfloat_scn, double)->Arg(STRTO_METHOD)->Arg(STO_METHOD);
-BENCHMARK_TEMPLATE(scanfloat_scn, long double)
-    ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD);
+BENCHMARK_TEMPLATE(scanfloat_scn, float);
+BENCHMARK_TEMPLATE(scanfloat_scn, double);
+BENCHMARK_TEMPLATE(scanfloat_scn, long double);
 
 template <typename Float>
 static void scanfloat_scn_default(benchmark::State& state)
 {
     auto data = generate_float_data<Float>(FLOAT_DATA_N);
     auto stream = scn::make_stream(data);
-    const auto options =
-        scn::options::builder{}
-            .float_method(static_cast<scn::method>(state.range(0)))
-            .make();
     Float f{};
     for (auto _ : state) {
-        auto e = scn::scan_default(options, stream, f);
+        auto e = scn::scan(stream, scn::default_tag, f);
 
         benchmark::DoNotOptimize(f);
         benchmark::DoNotOptimize(stream);
@@ -96,15 +86,9 @@ static void scanfloat_scn_default(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Float)));
 }
-BENCHMARK_TEMPLATE(scanfloat_scn_default, float)
-    ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD);
-BENCHMARK_TEMPLATE(scanfloat_scn_default, double)
-    ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD);
-BENCHMARK_TEMPLATE(scanfloat_scn_default, long double)
-    ->Arg(STRTO_METHOD)
-    ->Arg(STO_METHOD);
+BENCHMARK_TEMPLATE(scanfloat_scn_default, float);
+BENCHMARK_TEMPLATE(scanfloat_scn_default, double);
+BENCHMARK_TEMPLATE(scanfloat_scn_default, long double);
 
 template <typename Float>
 static void scanfloat_sstream(benchmark::State& state)

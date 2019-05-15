@@ -42,7 +42,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer each", T, integer_each_test)
         auto stream = scn::make_stream(str);
 
         T tmp{};
-        auto ret = scn::scan_default(options, stream, tmp);
+        auto ret = scn::scan(options, stream, scn::default_tag, tmp);
 
         CHECK(ret);
         CHECK(ret.value() == 1);

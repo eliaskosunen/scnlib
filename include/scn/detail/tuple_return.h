@@ -137,16 +137,6 @@ namespace scn {
         using index_sequence_for =
             make_integer_sequence<std::size_t, sizeof...(T)>;
 
-        template <typename T>
-        struct always_false : std::false_type {
-        };
-        template <typename T>
-        struct debug_base;
-        template <typename T>
-        struct debug : debug_base<T> {
-            static_assert(always_false<T>::value, "");
-        };
-
         // From cppreference
         template <class F, class Tuple, std::size_t... I>
         constexpr auto
@@ -181,7 +171,7 @@ namespace scn {
     }  // namespace detail
 
     template <typename... Args, typename Stream>
-    std::tuple<result<int>, Args...> scan_return(
+    SCN_NODISCARD std::tuple<result<int>, Args...> scan_return(
         Stream& s,
         basic_string_view<typename Stream::char_type> f)
     {

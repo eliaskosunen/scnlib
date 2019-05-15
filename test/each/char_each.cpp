@@ -36,7 +36,7 @@ TEST_CASE("char each")
         auto stream = scn::make_stream(source);
 
         char tmp;
-        auto ret = scn::scan_default(stream, tmp);
+        auto ret = scn::scan(stream, scn::default_tag, tmp);
 
         CHECK(ret);
         CHECK(ret.value() == 1);
@@ -59,7 +59,7 @@ TEST_CASE("wchar_t each")
         auto stream = scn::make_stream(source);
 
         wchar_t tmp;
-        auto ret = scn::scan_default(stream, tmp);
+        auto ret = scn::scan(stream, scn::default_tag, tmp);
 
         CHECK(ret);
         CHECK(ret.value() == 1);

@@ -87,7 +87,7 @@ namespace scn {
     }
 
     template <typename Stream, typename... Args>
-    result<int> scan_default(Stream& s, Args&... a)
+    result<int> scan(Stream& s, detail::default_t, Args&... a)
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -99,7 +99,7 @@ namespace scn {
         return vscan(ctx);
     }
     template <typename Stream, typename... Args>
-    result<int> scan_default(options opt, Stream& s, Args&... a)
+    result<int> scan(options opt, Stream& s, detail::default_t, Args&... a)
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");

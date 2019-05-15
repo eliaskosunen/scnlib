@@ -49,7 +49,7 @@ TEST_CASE("empty format")
     double d{};
     std::string s(6, '\0');
     bool b{};
-    auto ret = scn::scan_default(stream, i, d, s, b);
+    auto ret = scn::scan(stream, scn::default_tag, i, d, s, b);
 
     CHECK(ret);
     CHECK(ret.value() == 4);
@@ -98,7 +98,7 @@ TEST_CASE("temporary")
     std::string data{"42"};
     auto stream = scn::make_stream(data);
 
-    auto ret = scn::scan_default(stream, temporary{0}());
+    auto ret = scn::scan(stream, scn::default_tag, temporary{0}());
 
     CHECK(ret);
     CHECK(ret.value() == 1);

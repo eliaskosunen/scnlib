@@ -25,11 +25,47 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    namespace detail {
+        struct default_t {
+        };
+    }  // namespace detail
+    namespace {
+        SCN_CONSTEXPR auto&& default_tag =
+            detail::static_const<detail::default_t>::value;
+    }
+
     template <typename Context>
     result<int> vscan(Context& ctx)
     {
         return visit(ctx);
     }
+
+#define SCN_DECLARE_VSCAN(stream, ch)          \
+    result<int> vscan(basic_context<stream>&); \
+    result<int> vscan(basic_context<stream, basic_locale_ref<ch>>&)
+#define SCN_DECLARE_VSCAN_TEMPLATE(stream) \
+    SCN_DECLARE_VSCAN(stream<char>, char); \
+    SCN_DECLARE_VSCAN(stream<wchar_t>, wchar_t)
+
+    SCN_DECLARE_VSCAN_TEMPLATE(basic_null_stream);
+    SCN_DECLARE_VSCAN_TEMPLATE(basic_cstdio_stream);
+
+    SCN_DECLARE_VSCAN(basic_bidirectional_iterator_stream<const char*>, char);
+    SCN_DECLARE_VSCAN(basic_bidirectional_iterator_stream<const wchar_t*>,
+                      wchar_t);
+
+    namespace detail {
+        template <typename CharT>
+        using vector_stream =
+            basic_static_container_stream<CharT, std::vector<CharT>>;
+        template <typename CharT>
+        using span_stream =
+            basic_static_container_stream<CharT, span<const CharT>>;
+    }  // namespace detail
+    SCN_DECLARE_VSCAN(detail::vector_stream<char>, char);
+    SCN_DECLARE_VSCAN(detail::vector_stream<wchar_t>, wchar_t);
+    SCN_DECLARE_VSCAN(detail::span_stream<char>, char);
+    SCN_DECLARE_VSCAN(detail::span_stream<wchar_t>, wchar_t);
 
     template <typename CharT>
     using basic_erased_stream_context = basic_context<erased_stream<CharT>>;

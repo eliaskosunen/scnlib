@@ -152,7 +152,7 @@ namespace scn {
         template <typename Range, typename... Args>
         ranges_result<::ranges::iterator_t<const Range>,
                       ::ranges::sentinel_t<const Range>>
-        scan_default(const Range& range, Args&... a)
+        scan(const Range& range, ::scn::detail::default_t, Args&... a)
         {
             static_assert(sizeof...(Args) > 0,
                           "Have to scan at least a single argument");
@@ -172,7 +172,10 @@ namespace scn {
         template <typename Range, typename... Args>
         ranges_result<::ranges::iterator_t<const Range>,
                       ::ranges::sentinel_t<const Range>>
-        scan_default(options opt, const Range& range, Args&... a)
+        scan(options opt,
+             const Range& range,
+             ::scn::detail::default_t,
+             Args&... a)
         {
             static_assert(sizeof...(Args) > 0,
                           "Have to scan at least a single argument");
