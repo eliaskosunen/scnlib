@@ -18,8 +18,10 @@
 #include <doctest.h>
 #include <scn/scn.h>
 #include <algorithm>
+#include <array>
 #include <ostream>
 #include <string>
+#include <vector>
 
 template <typename CharT>
 std::basic_string<CharT> widen(std::string)

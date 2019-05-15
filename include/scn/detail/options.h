@@ -23,7 +23,7 @@
 #include <type_traits>
 
 #ifndef SCN_DEFAULT_INT_SCANNING_METHOD
-#define SCN_DEFAULT_INT_SCANNING_METHOD ::scn::method::strto
+#define SCN_DEFAULT_INT_SCANNING_METHOD ::scn::method::custom
 #endif
 
 #ifndef SCN_DEFAULT_FLOAT_SCANNING_METHOD

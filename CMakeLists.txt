@@ -11,6 +11,8 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
 option(SCN_USE_CMCSTL2 "Use cmcstl2 instead of range-v3" OFF)
 
+option(SCN_PREDEFINE_VSCAN_OVERLOADS "Define additional overloads of scn::vscan in a source file (increases compilation time, decreases application object file size)" OFF)
+
 option(SCN_TESTS "Generate tests target" ${MASTER_PROJECT})
 option(SCN_EXAMPLES "Generate examples target" ${MASTER_PROJECT})
 option(SCN_BENCHMARKS "Generate benchmark target" ${MASTER_PROJECT})
@@ -55,7 +57,10 @@ function (generate_library_target target_name)
     target_include_directories(${target_name} PRIVATE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
     target_compile_definitions(${target_name} PUBLIC
-        -DSCN_HEADER_ONLY=0)
+        -DSCN_HEADER_ONLY=0
+        -DSCN_PREDEFINE_VSCAN_OVERLOADS=$<BOOL:${SCN_PREDEFINE_VSCAN_OVERLOADS}>)
+    target_compile_options(${target_name} PUBLIC
+        $<$<CXX_COMPILER_ID:MSVC>: /bigobj>)
 
     target_compile_features(${target_name} PUBLIC cxx_std_11)
     set_private_flags(${target_name})
@@ -66,7 +71,8 @@ function (generate_header_only_target target_name)
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${PROJECT_SOURCE_DIR}/src>"
         "$<INSTALL_INTERFACE:include>")
     target_compile_definitions(${target_name} INTERFACE
-        -DSCN_HEADER_ONLY=1)
+        -DSCN_HEADER_ONLY=1
+        -DSCN_PREDEFINE_VSCAN_OVERLOADS=$<BOOL:${SCN_PREDEFINE_VSCAN_OVERLOADS}>)
     target_compile_features(${target_name} INTERFACE cxx_std_11)
 endfunction ()
 

@@ -19,10 +19,10 @@
 #define SCN_DETAIL_ARGS_H
 
 #include "parse_context.h"
+#include "small_vector.h"
 #include "util.h"
 
 #include <cstring>
-#include <vector>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -465,7 +465,7 @@ namespace scn {
                 SCN_ENSURE(!m_args.empty());
             }
 
-            std::vector<entry> m_args;
+            detail::small_vector<entry, 16> m_args;
         };
 
         template <typename Context, typename T>

@@ -40,6 +40,8 @@ namespace scn {
         return visit(ctx);
     }
 
+#if SCN_PREDEFINE_VSCAN_OVERLOADS
+
 #define SCN_DECLARE_VSCAN(stream, ch)          \
     scan_result vscan(basic_context<stream>&); \
     scan_result vscan(basic_context<stream, basic_locale_ref<ch>>&); \
@@ -64,18 +66,15 @@ namespace scn {
         using string_stream =
             basic_static_container_stream<CharT, std::basic_string<CharT>>;
         template <typename CharT>
-        using vector_stream =
-            basic_static_container_stream<CharT, std::vector<CharT>>;
-        template <typename CharT>
         using span_stream =
             basic_static_container_stream<CharT, span<const CharT>>;
     }  // namespace detail
     SCN_DECLARE_VSCAN(detail::string_stream<char>, char);
     SCN_DECLARE_VSCAN(detail::string_stream<wchar_t>, wchar_t);
-    SCN_DECLARE_VSCAN(detail::vector_stream<char>, char);
-    SCN_DECLARE_VSCAN(detail::vector_stream<wchar_t>, wchar_t);
     SCN_DECLARE_VSCAN(detail::span_stream<char>, char);
     SCN_DECLARE_VSCAN(detail::span_stream<wchar_t>, wchar_t);
+
+#endif // SCN_PREDEFINE_SCN_OVERLOADS
 
     template <typename CharT>
     using basic_erased_stream_context = basic_context<erased_stream<CharT>>;

@@ -137,7 +137,6 @@ namespace scn {
         template <typename T, size_t N>
         struct basic_stack_storage {
             basic_stack_storage_type<T> data[N];
-            size_t size{0};
 
             T* reinterpret_data()
             {
@@ -172,7 +171,6 @@ namespace scn {
         template <typename T>
         struct basic_stack_storage<T, 0> {
             T* data{nullptr};
-            size_t size{0};
 
             T* reinterpret_data()
             {
@@ -247,7 +245,6 @@ namespace scn {
             struct stack_storage : basic_stack_storage<T, StackN> {
             };
             struct heap_storage {
-                size_type size{0};
                 size_type cap{0};
             };
 
@@ -282,7 +279,7 @@ namespace scn {
                     this->uninitialized_fill(ptr, ptr + count, value);
 
                     heap.cap = cap;
-                    heap.size = count;
+                    m_size = count;
                     m_ptr = ::scn::detail::launder(ptr);
                 }
                 else {
@@ -290,7 +287,7 @@ namespace scn {
                     this->uninitialized_fill(
                         stack.reinterpret_unconstructed_data(),
                         stack.reinterpret_unconstructed_data() + StackN, value);
-                    stack.size = count;
+                    m_size = count;
                     m_ptr = stack.reinterpret_data();
                 }
 
@@ -309,7 +306,7 @@ namespace scn {
                     this->uninitialized_fill_default_construct<T>(ptr,
                                                                   ptr + count);
                     heap.cap = cap;
-                    heap.size = count;
+                    m_size = count;
                     m_ptr = ::scn::detail::launder(ptr);
                 }
                 else {
@@ -317,7 +314,7 @@ namespace scn {
                     this->uninitialized_fill_default_construct<T>(
                         stack.reinterpret_unconstructed_data(),
                         stack.reinterpret_unconstructed_data() + count);
-                    stack.size = count;
+                    m_size = count;
                     m_ptr = stack.reinterpret_data();
                 }
 
@@ -345,7 +342,7 @@ namespace scn {
                     this->uninitialized_copy(optr, optr + s, ptr);
 
                     m_ptr = ::scn::detail::launder(ptr);
-                    heap.size = s;
+                    m_size = s;
                     heap.cap = cap;
                 }
                 else {
@@ -353,7 +350,7 @@ namespace scn {
                     auto optr = other.data();
                     this->uninitialized_copy(
                         optr, optr + s, stack.reinterpret_unconstructed_data());
-                    stack.size = s;
+                    m_size = s;
                     m_ptr = stack.reinterpret_data();
                 }
 
@@ -375,8 +372,8 @@ namespace scn {
                     auto& heap = _construct_heap_storage();
                     m_ptr = other.data();
 
+                    m_size = s;
                     heap.cap = other.capacity();
-                    heap.size = s;
                 }
                 else {
                     auto& stack = _construct_stack_storage();
@@ -384,7 +381,7 @@ namespace scn {
                     this->uninitialized_move(
                         optr, optr + s, stack.reinterpret_unconstructed_data());
 
-                    stack.size = s;
+                    m_size = s;
                     other._destruct_elements();
                 }
                 other.m_ptr = nullptr;
@@ -411,7 +408,7 @@ namespace scn {
                     this->uninitialized_copy(
                         other.data(), other.data() + other.size(), data());
                     m_ptr = ::scn::detail::launder(data());
-                    _set_size(other.size());
+                    m_size = other.size();
                     if (!other.is_small()) {
                         _get_heap().cap = other.capacity();
                     }
@@ -426,7 +423,7 @@ namespace scn {
                     this->uninitialized_copy(other.data(),
                                              other.data() + other.size(), ptr);
                     m_ptr = ::scn::detail::launder(ptr);
-                    heap.size = other.size();
+                    m_size = other.size();
                     heap.cap = cap;
                 }
                 return *this;
@@ -451,13 +448,13 @@ namespace scn {
                     }
 
                     m_ptr = other.data();
+                    m_size = other.size();
                     _get_heap().cap = other.capacity();
-                    _get_heap().size = other.size();
                 }
                 else if (!is_small() || other.is_small()) {
                     this->uninitialized_move(
                         other.data(), other.data() + other.size(), data());
-                    _set_size(other.size());
+                    m_size = other.size();
                     other._destruct_elements();
                 }
                 else {
@@ -465,8 +462,8 @@ namespace scn {
                     auto& heap = _construct_heap_storage();
 
                     m_ptr = other.data();
+                    m_size = other.size();
                     heap.cap = other.capacity();
-                    heap.size = other.size();
                 }
 
                 other.m_ptr = nullptr;
@@ -489,14 +486,11 @@ namespace scn {
             }
             size_type size() const noexcept
             {
-                if (is_small()) {
-                    return _get_stack().size;
-                }
-                return _get_heap().size;
+                return m_size;
             }
             size_type capacity() const noexcept
             {
-                if (is_small()) {
+                if (SCN_LIKELY(is_small())) {
                     return StackN;
                 }
                 return _get_heap().cap;
@@ -615,14 +609,14 @@ namespace scn {
                 stack_storage s;
                 this->uninitialized_move(begin(), end(),
                                          s.reinterpret_unconstructed_data());
-                s.size = size();
+                auto tmp_size = size();
 
                 _destruct();
                 auto& stack = _construct_stack_storage();
                 this->uninitialized_move(
-                    s.reinterpret_data(), s.reinterpret_data() + s.size,
+                    s.reinterpret_data(), s.reinterpret_data() + tmp_size,
                     stack.reinterpret_unconstructed_data());
-                stack.size = s.size;
+                m_size = tmp_size;
             }
 
             void reserve(size_type new_cap)
@@ -655,7 +649,7 @@ namespace scn {
             {
                 if (pos == end()) {
                     pos->~T();
-                    _set_size(size() - 1);
+                    m_size = size() - 1;
                     return end();
                 }
                 else {
@@ -664,7 +658,7 @@ namespace scn {
                         ::new (static_cast<void*>(it)) T(std::move(*(it + 1)));
                     }
                     (end() - 1)->~T();
-                    _set_size(size() - 1);
+                    m_size = size() - 1;
                     return pos;
                 }
             }
@@ -679,7 +673,7 @@ namespace scn {
                     for (auto it = b; it != e; ++it) {
                         it->~T();
                     }
-                    _set_size(size() - n);
+                    m_size = size() - n;
                     return end();
                 }
                 SCN_ENSURE(false);
@@ -689,26 +683,26 @@ namespace scn {
             void push_back(const T& value)
             {
                 ::new (_prepare_push_back()) T(value);
-                _set_size(size() + 1);
+                m_size = size() + 1;
             }
             void push_back(T&& value)
             {
                 ::new (_prepare_push_back()) T(std::move(value));
-                _set_size(size() + 1);
+                m_size = size() + 1;
             }
 
             template <typename... Args>
             reference emplace_back(Args&&... args)
             {
                 ::new (_prepare_push_back()) T(std::forward<Args>(args)...);
-                _set_size(size() + 1);
+                m_size = size() + 1;
                 return back();
             }
 
             void pop_back()
             {
                 back().~T();
-                _set_size(size() - 1);
+                m_size = size() - 1;
             }
 
             void resize(size_type count)
@@ -719,7 +713,7 @@ namespace scn {
                 for (auto it = begin() + count; it != end(); ++it) {
                     it->~T();
                 }
-                _set_size(count);
+                m_size = count;
             }
 
             SCN_CONSTEXPR14 void swap(small_vector& other) noexcept
@@ -761,27 +755,17 @@ namespace scn {
                 for (size_type i = 0; i != s; ++i) {
                     m_ptr[i].~T();
                 }
-                _set_size(0);
+                m_size = 0;
             }
 
             void _destruct() noexcept
             {
                 _destruct_elements();
-                if (!is_small()) {
+                if (SCN_UNLIKELY(!is_small())) {
                     _destruct_heap_storage();
                 }
                 else {
                     _destruct_stack_storage();
-                }
-            }
-
-            void _set_size(size_t n) noexcept
-            {
-                if (is_small()) {
-                    _get_stack().size = n;
-                }
-                else {
-                    _get_heap().size = n;
                 }
             }
 
@@ -799,13 +783,13 @@ namespace scn {
                     return _get_heap();
                 }();
                 m_ptr = ptr;
-                heap.size = n;
+                m_size = n;
                 heap.cap = new_cap;
             }
 
             void* _prepare_push_back()
             {
-                if (size() == capacity()) {
+                if (SCN_UNLIKELY(size() == capacity())) {
                     _realloc(next_pow2(size() + 1));
                 }
                 return m_ptr + size();
@@ -837,6 +821,7 @@ namespace scn {
 
             pointer m_ptr{nullptr};
             storage_type m_storage;
+            size_type m_size{0};
             bool m_heap;
         };
 

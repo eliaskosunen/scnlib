@@ -1127,7 +1127,7 @@ namespace scn {
                     SCN_GCC_PUSH
                     SCN_GCC_IGNORE("-Wswitch-default")
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-                    switch (ctx.int_method()) {
+                    switch (ctx.float_method()) {
                         case method::sto:
                             return &_read_sto;
                         case method::from_chars:

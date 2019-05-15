@@ -40,6 +40,8 @@ namespace scn {
     SCN_DEFINE_VSCAN_CTX(erased_empty_sized_stream_context)
     SCN_DEFINE_VSCAN_CTX(werased_empty_sized_stream_context)
 
+#if SCN_PREDEFINE_VSCAN_OVERLOADS
+
 #define SCN_DEFINE_VSCAN(stream, ch)                             \
     SCN_FUNC scan_result vscan(basic_context<stream>& ctx)       \
     {                                                            \
@@ -82,11 +84,10 @@ namespace scn {
     SCN_DEFINE_VSCAN(detail::string_stream<char>, char)
     SCN_DEFINE_VSCAN(detail::string_stream<wchar_t>, wchar_t)
 
-    SCN_DEFINE_VSCAN(detail::vector_stream<char>, char)
-    SCN_DEFINE_VSCAN(detail::vector_stream<wchar_t>, wchar_t)
-
     SCN_DEFINE_VSCAN(detail::span_stream<char>, char)
     SCN_DEFINE_VSCAN(detail::span_stream<wchar_t>, wchar_t)
+
+#endif // SCN_PREDEFINE_VSCAN_OVERLOADS
 
     SCN_END_NAMESPACE
 }  // namespace scn

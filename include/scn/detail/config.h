@@ -141,6 +141,10 @@
 #define SCN_MSVC_IGNORE(x)
 #endif
 
+#ifndef SCN_PREDEFINE_VSCAN_OVERLOADS
+#define SCN_PREDEFINE_VSCAN_OVERLOADS 0
+#endif
+
 #ifdef __cpp_exceptions
 #define SCN_HAS_EXCEPTIONS 1
 #endif
