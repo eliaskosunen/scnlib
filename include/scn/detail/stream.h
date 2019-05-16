@@ -66,6 +66,7 @@ namespace scn {
         }
         SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
+            SCN_EXPECT(m_read != 0);
             --m_read;
             return {};
         }
@@ -123,11 +124,7 @@ namespace scn {
         }
         SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
-            if (SCN_UNLIKELY(m_begin == m_next)) {
-                return error(
-                    error::invalid_operation,
-                    "Cannot putback to a stream that hasn't been read from");
-            }
+            SCN_EXPECT(m_begin != m_next);
             --m_next;
             return {};
         }
@@ -237,15 +234,16 @@ namespace scn {
         }
         SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
-            SCN_EXPECT(m_begin < m_next);
+            SCN_EXPECT(m_begin != m_next);
             --m_next;
             return {};
         }
 
-        SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
+        error read_sized(span<char_type> s) noexcept
         {
             SCN_EXPECT(chars_to_read() >= s.size());
-            std::copy(m_next, m_next + s.size(), s.begin());
+            std::memcpy(s.begin(), m_next, s.size() * sizeof(char_type));
+            /* std::copy(m_next, m_next + s.size(), s.begin()); */
             m_next += s.size();
             return {};
         }
@@ -343,21 +341,14 @@ namespace scn {
         }
         SCN_CONSTEXPR14 error putback(char_type) noexcept
         {
-            if (m_begin == m_next) {
-                return error(
-                    error::invalid_operation,
-                    "Cannot putback to a stream that hasn't been read from");
-            }
+            SCN_EXPECT(m_begin != m_next);
             --m_next;
             return {};
         }
 
         SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
         {
-            if (chars_to_read() < static_cast<size_t>(s.size())) {
-                return error(error::end_of_stream,
-                             "Cannot complete read_sized: EOF encountered");
-            }
+            SCN_EXPECT(chars_to_read() >= static_cast<size_t>(s.size()));
             std::copy(m_next, m_next + s.ssize(), s.begin());
             std::advance(m_next, s.ssize());
             return {};
@@ -365,10 +356,7 @@ namespace scn {
 
         error putback_n(size_t n) noexcept
         {
-            if (rcount() < n) {
-                return error(error::invalid_argument,
-                             "Cannot putback more than chars read");
-            }
+            SCN_EXPECT(rcount() >= n);
             m_next -= static_cast<std::ptrdiff_t>(n);
             return {};
         }
@@ -446,10 +434,7 @@ namespace scn {
 
         SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
         {
-            if (chars_to_read() < s.size()) {
-                return error(error::end_of_stream,
-                             "Cannot complete read_sized: EOF encountered");
-            }
+            SCN_EXPECT(chars_to_read() >= s.size());
             std::copy(m_begin, m_begin + s.size(), s.begin());
             std::advance(m_begin, s.size());
             return {};
@@ -457,10 +442,7 @@ namespace scn {
 
         error putback_n(size_t n)
         {
-            if (m_rollback.size() < n) {
-                return error(error::invalid_argument,
-                             "Cannot putback more than chars read");
-            }
+            SCN_EXPECT(m_rollback.size() >= n);
             m_rollback.erase(m_rollback.begin(), m_rollback.begin() + n);
             return {};
         }

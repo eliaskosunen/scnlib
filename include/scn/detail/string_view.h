@@ -19,6 +19,7 @@
 #define SCN_DETAIL_STRING_VIEW_H
 
 #include "span.h"
+#include "util.h"
 
 #include <cstring>
 #include <cwchar>
@@ -180,7 +181,8 @@ namespace scn {
         {
             SCN_EXPECT(pos <= size());
             auto n = detail::min(count, size() - pos);
-            std::copy(data() + pos, n, dest);
+            /* std::copy(data() + pos, n, dest); */
+            std::memcpy(dest, begin() + pos, n * sizeof(value_type));
             return n;
         }
         SCN_CONSTEXPR14 basic_string_view substr(size_type pos = 0,

@@ -586,7 +586,8 @@ namespace scn {
                 if (!s) {
                     return s.error();
                 }
-                std::copy(buf.begin(), buf.end(), val.begin());
+                std::memcpy(val.begin(), buf.begin(), buf.size());
+                /* std::copy(buf.begin(), buf.end(), val.begin()); */
 
                 return {};
             }

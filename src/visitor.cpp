@@ -464,6 +464,55 @@ namespace scn {
                 return 10 + static_cast<T>(ch - ascii_widen<CharT>('A'));
                 SCN_GCC_POP
             }
+
+            template <typename T, typename CharT>
+            expected<typename span<const CharT>::iterator>
+            read_decimal(T& val, T sign, span<const CharT> buf)
+            {
+                SCN_GCC_PUSH
+                SCN_GCC_IGNORE("-Wconversion")
+                SCN_GCC_IGNORE("-Wsign-conversion")
+                SCN_GCC_IGNORE("-Wsign-compare")
+
+                SCN_CLANG_PUSH
+                SCN_CLANG_IGNORE("-Wconversion")
+                SCN_CLANG_IGNORE("-Wsign-conversion")
+                SCN_CLANG_IGNORE("-Wsign-compare")
+
+                SCN_ASSUME(sign != 0);
+
+                const T max = std::numeric_limits<T>::max() / 10;
+                auto cmp = [&](CharT ch) {
+                    return ch - ascii_widen<CharT>('0') <=
+                           7 + (sign == 1 ? 0 : 1);
+                };
+
+                auto it = buf.begin();
+                for (; it != buf.end(); ++it) {
+                    if (SCN_LIKELY(*it >= ascii_widen<CharT>('0') &&
+                                   *it <= ascii_widen<CharT>('9'))) {
+                        if (SCN_LIKELY(val < max || (val == max && cmp(*it)))) {
+                            val = val * 10 + *it - ascii_widen<CharT>('0');
+                        }
+                        else {
+                            if (sign == 1) {
+                                return error(error::value_out_of_range,
+                                             "Out of range: integer overflow");
+                            }
+                            return error(error::value_out_of_range,
+                                         "Out of range: integer underflow");
+                        }
+                    }
+                    else {
+                        break;
+                    }
+                }
+                val = val * sign;
+                return it;
+
+                SCN_CLANG_POP
+                SCN_GCC_POP
+            }
         }  // namespace custom
 
         //
@@ -784,6 +833,18 @@ namespace scn {
                 return error(error::invalid_scanned_value,
                              "Expected number after sign");
             }
+
+            if (base == 10) {
+                auto r =
+                    custom::read_decimal(tmp, sign, make_span(it, buf.end()));
+                if (!r) {
+                    return r.get_error();
+                }
+                it = r.value();
+                val = tmp;
+                return static_cast<size_t>(std::distance(buf.begin(), it));
+            }
+
             if (*it == ascii_widen<CharT>('0')) {
                 ++it;
                 if (it == buf.end()) {
@@ -815,17 +876,36 @@ namespace scn {
 
             SCN_GCC_PUSH
             SCN_GCC_IGNORE("-Wconversion")
+            SCN_GCC_IGNORE("-Wsign-conversion")
+            SCN_GCC_IGNORE("-Wsign-compare")
 
-            const T max = std::numeric_limits<T>::max() / static_cast<T>(base);
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wconversion")
+            SCN_CLANG_IGNORE("-Wsign-conversion")
+            SCN_CLANG_IGNORE("-Wsign-compare")
+
+            SCN_ASSUME(base > 0);
+            SCN_ASSUME(sign != 0);
+
+            if (base == 10) {
+                auto r =
+                    custom::read_decimal(tmp, sign, make_span(it, buf.end()));
+                if (!r) {
+                    return r.get_error();
+                }
+                it = r.value();
+                val = tmp;
+                return static_cast<size_t>(std::distance(buf.begin(), it));
+            }
+
+            const T max = std::numeric_limits<T>::max() / base;
             auto cmp = [&](CharT ch) {
-                return static_cast<T>(ch - ascii_widen<CharT>('0')) <=
-                       T(7 + (sign == 1 ? 0 : 1));
+                return ch - ascii_widen<CharT>('0') <= 7 + (sign == 1 ? 0 : 1);
             };
             for (; it != buf.end(); ++it) {
                 if (SCN_LIKELY(custom::is_base_digit(*it, base))) {
                     if (SCN_LIKELY(tmp < max || (tmp == max && cmp(*it)))) {
-                        tmp = tmp * static_cast<T>(base) +
-                              custom::char_to_int<T>(*it, base);
+                        tmp = tmp * base + custom::char_to_int<T>(*it, base);
                     }
                     else {
                         if (sign == 1) {
@@ -842,6 +922,7 @@ namespace scn {
             }
             val = tmp * sign;
 
+            SCN_CLANG_POP
             SCN_GCC_POP
 
             return static_cast<size_t>(std::distance(buf.begin(), it));

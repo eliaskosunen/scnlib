@@ -18,6 +18,21 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
+TEST_CASE("simple")
+{
+    auto stream = scn::make_stream("42 foo");
+
+    int i;
+    std::string s;
+    auto r = scn::scan(stream, "{} {}", i, s);
+
+    CHECK(r);
+    CHECK(r.value() == 2);
+
+    CHECK(i == 42);
+    CHECK(s == std::string{"foo"});
+}
+
 TEST_CASE("general")
 {
     std::string data{"test {} 42 3.14 foobar true"};

@@ -708,10 +708,16 @@ namespace scn {
             void resize(size_type count)
             {
                 if (count > size()) {
-                    return;
+                    if (count > capacity()) {
+                        _realloc(next_pow2(capacity()));
+                    }
+                    this->uninitialized_fill_default_construct(begin() + size(),
+                                                               begin() + count);
                 }
-                for (auto it = begin() + count; it != end(); ++it) {
-                    it->~T();
+                else {
+                    for (auto it = begin() + count; it != end(); ++it) {
+                        it->~T();
+                    }
                 }
                 m_size = count;
             }
@@ -820,9 +826,9 @@ namespace scn {
             }
 
             pointer m_ptr{nullptr};
-            storage_type m_storage;
             size_type m_size{0};
             bool m_heap;
+            storage_type m_storage;
         };
 
         template <typename T, size_t N>
