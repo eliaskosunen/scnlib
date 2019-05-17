@@ -55,7 +55,7 @@ namespace scn {
         struct named_arg;
 
         enum type {
-            none_type,
+            none_type = 0,
             named_arg_type,
             // signed integer
             short_type,
@@ -285,7 +285,7 @@ namespace scn {
 
     /// Type-erased scanning argument.
     template <typename Context>
-    class basic_arg {
+    class SCN_TRIVIAL_ABI basic_arg {
     public:
         using char_type = typename Context::char_type;
 
@@ -326,6 +326,11 @@ namespace scn {
         }
 
     private:
+        SCN_CONSTEXPR basic_arg(detail::value<Context> v, detail::type t)
+            : m_value(v), m_type(t)
+        {
+        }
+
         template <typename ContextType, typename T>
         friend SCN_CONSTEXPR14 typename ContextType::arg_type detail::make_arg(
             T& value);
@@ -635,12 +640,13 @@ namespace scn {
         {
             if (!is_packed()) {
                 auto num_args = max_size();
-                if (i < num_args)
+                if (SCN_LIKELY(i < num_args)) {
                     return m_args[i];
+                }
                 return {};
             }
 
-            if (i > detail::max_packed_args)
+            if (SCN_UNLIKELY(i > detail::max_packed_args))
                 return {};
 
             arg_type arg;

@@ -29,7 +29,7 @@ namespace scn {
      * Error class.
      * Used as a return value for functions without a success value.
      */
-    class error {
+    class SCN_TRIVIAL_ABI error {
     public:
         /// Error code
         enum code : char {

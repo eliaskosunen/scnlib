@@ -41,6 +41,7 @@ public APIs are going to change in backwards-incompatible ways._
 * [Usage](#usage)
    * [Basics](#basics)
    * [Streams](#streams)
+   * [Alternative `tuple`-based API](#alternative-tuple-based-api)
    * [Supported types](#supported-types)
    * [Format string](#format-string)
    * [Options](#options)
@@ -48,7 +49,6 @@ public APIs are going to change in backwards-incompatible ways._
    * [Wide streams](#wide-streams)
    * [Encoding and Unicode](#encoding-and-unicode)
    * [Error handling](#error-handling)
-   * [Alternative `tuple`-based API](#alternative-tuple-based-api)
    * [`ignore`](#ignore)
    * [`getchar`](#getchar)
    * [User types](#user-types)
@@ -253,6 +253,12 @@ Inside these braces, additional options can be specified.
 The syntax is not dissimilar from the one found in `{fmt}`.
 
 For characters, spans and strings, there are no available options, and only the empty string `"{}"` is valid.
+
+If you wish to pass no custom options, you can pass a `scn::default_tag` instead of the format string to `scn::scan`, increasing performance.
+
+```cpp
+scn::scan(stream, scn::default_tag, ...);
+```
 
 #### Integral types
 

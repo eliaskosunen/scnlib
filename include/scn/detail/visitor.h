@@ -32,8 +32,13 @@ namespace scn {
         template <typename Context>
         using locale_ref = typename Context::locale_type&;
 
+        template <typename Predicate>
+        struct predicate_skips : Predicate::does_skip {
+        };
+
         template <typename CharT>
         struct propagate {
+            using does_skip = std::false_type;
             SCN_CONSTEXPR expected<scan_status> operator()(CharT) const noexcept
             {
                 return scan_status::keep;
@@ -41,6 +46,7 @@ namespace scn {
         };
         template <typename CharT>
         struct until {
+            using does_skip = std::false_type;
             SCN_CONSTEXPR expected<scan_status> operator()(CharT ch) const
                 noexcept
             {
@@ -51,6 +57,7 @@ namespace scn {
         };
         template <typename CharT>
         struct until_one_of {
+            using does_skip = std::false_type;
             expected<scan_status> operator()(CharT ch)
             {
                 if (std::find(until.begin(), until.end(), ch) != until.end()) {
@@ -63,6 +70,7 @@ namespace scn {
         };
         template <typename CharT, typename Locale>
         struct until_space {
+            using does_skip = std::false_type;
             expected<scan_status> operator()(CharT ch)
             {
                 if (locale.is_space(ch)) {
@@ -76,6 +84,7 @@ namespace scn {
 
         template <typename CharT>
         struct until_and_skip_chars {
+            using does_skip = std::true_type;
             expected<scan_status> operator()(CharT ch)
             {
                 if (ch == until) {
@@ -92,6 +101,7 @@ namespace scn {
         };
         template <typename CharT>
         struct until_one_of_and_skip_chars {
+            using does_skip = std::true_type;
             expected<scan_status> operator()(CharT ch)
             {
                 if (std::find(until.begin(), until.end(), ch) != until.end()) {
@@ -108,6 +118,7 @@ namespace scn {
         };
         template <typename CharT, typename Locale>
         struct until_space_and_skip_chars {
+            using does_skip = std::true_type;
             expected<scan_status> operator()(CharT ch)
             {
                 if (locale.is_space(ch)) {
@@ -332,28 +343,58 @@ namespace scn {
             }
 
             const auto arr_end = arr.begin() + n;
-            for (auto arr_it = arr.begin(); arr_it != arr_end; ++arr_it) {
-                auto r = p(*arr_it);
-                if (!r) {
-                    return {size, r.get_error()};
-                }
-                if (r.value() == scan_status::skip) {
-                    continue;
-                }
-                if (r.value() == scan_status::end) {
-                    if (keep_final) {
-                        ++arr_it;
+
+            if (predicates::predicate_skips<Predicate>::value) {
+                for (auto arr_it = arr.begin(); arr_it != arr_end; ++arr_it) {
+                    auto r = p(*arr_it);
+                    if (!r) {
+                        return {size, r.get_error()};
                     }
-                    if (arr_it != arr_end) {
-                        s.putback_n(static_cast<size_t>(
-                            std::distance(arr_it, arr_end)));
+                    if (r.value() == scan_status::skip) {
+                        continue;
                     }
-                    end = true;
-                    break;
+                    if (r.value() == scan_status::end) {
+                        if (keep_final) {
+                            ++arr_it;
+                        }
+                        if (arr_it != arr_end) {
+                            s.putback_n(static_cast<size_t>(
+                                std::distance(arr_it, arr_end)));
+                        }
+                        end = true;
+                        break;
+                    }
+                    *it = *arr_it;
+                    ++it;
+                    ++size;
                 }
-                *it = *arr_it;
-                ++it;
-                ++size;
+            }
+            else {
+                auto arr_it = arr.begin();
+                for (; arr_it != arr_end; ++arr_it) {
+                    auto r = p(*arr_it);
+                    if (!r) {
+                        return {size, r.get_error()};
+                    }
+                    if (r.value() == scan_status::end) {
+                        if (keep_final) {
+                            ++arr_it;
+                        }
+                        if (arr_it != arr_end) {
+                            s.putback_n(static_cast<size_t>(
+                                std::distance(arr_it, arr_end)));
+                        }
+                        if (keep_final) {
+                            --arr_it;
+                        }
+                        end = true;
+                        break;
+                    }
+                }
+                const auto chars =
+                    static_cast<size_t>(std::distance(arr.begin(), arr_it));
+                size += chars;
+                std::copy(arr.begin(), arr_it, it);
             }
         }
         return {size};
@@ -537,6 +578,95 @@ namespace scn {
     };
 
     namespace detail {
+        template <typename CharT>
+        class buffered_string_back_inserter {
+        public:
+            using char_type = CharT;
+            using string_type = std::basic_string<char_type>;
+            using buffer_type = detail::array<char_type, 64>;
+            using buffer_iterator = typename buffer_type::iterator;
+
+            struct SCN_TRIVIAL_ABI iterator {
+                using value_type = void;
+                using difference_type = void;
+                using pointer = void;
+                using reference = void;
+                using iterator_category = std::output_iterator_tag;
+
+                iterator(buffered_string_back_inserter* o) : m_obj(o) {}
+
+                iterator(const iterator&) = default;
+                iterator& operator=(const iterator&) = default;
+                iterator(iterator&&) = default;
+                iterator& operator=(iterator&&) = default;
+
+                ~iterator()
+                {
+                    m_obj->flush();
+                }
+
+                iterator& operator*()
+                {
+                    return *this;
+                }
+                iterator& operator++()
+                {
+                    return *this;
+                }
+                iterator& operator++(int)
+                {
+                    return *this;
+                }
+
+                iterator& operator=(CharT ch)
+                {
+                    if (SCN_UNLIKELY(m_obj->m_next == m_obj->m_buf.end())) {
+                        m_obj->flush();
+                    }
+                    *(m_obj->m_next) = ch;
+                    ++(m_obj->m_next);
+                    return *this;
+                }
+
+                buffered_string_back_inserter* m_obj{nullptr};
+            };
+
+            buffered_string_back_inserter(string_type& str)
+                : m_str(str), m_next(m_buf.begin())
+            {
+            }
+
+            iterator operator()()
+            {
+                return iterator{this};
+            }
+
+        private:
+            friend struct iterator;
+
+            void flush()
+            {
+                const auto chars = size();
+                if (chars != 0) {
+                    const auto n = m_str.size();
+                    m_str.resize(n + chars);
+                    std::memcpy((&m_str[0]) + n, m_buf.data(),
+                                chars * sizeof(char_type));
+                    m_next = m_buf.begin();
+                }
+            }
+
+            size_t size()
+            {
+                return static_cast<size_t>(
+                    std::distance(m_buf.begin(), m_next));
+            }
+
+            string_type& m_str;
+            buffer_type m_buf;
+            buffer_iterator m_next;
+        };
+
         template <typename CharT>
         struct char_scanner {
             template <typename Context>
@@ -1076,26 +1206,44 @@ namespace scn {
             {
                 detail::small_vector<CharT, 32> buf{};
 
-                bool point = false;
-                auto r = read_into_if(
-                    ctx.stream(), std::back_inserter(buf),
-                    [&point, &ctx](CharT ch) -> expected<scan_status> {
-                        if (ctx.locale().is_space(ch)) {
+                struct float_predicate {
+                    SCN_GCC_PUSH
+                    SCN_GCC_IGNORE("-Wunused-local-typedefs")
+
+                    SCN_CLANG_PUSH
+                    SCN_CLANG_IGNORE("-Wunused-local-typedefs")
+
+                    using does_skip = std::true_type;
+
+                    SCN_CLANG_POP
+                    SCN_GCC_POP
+
+                    expected<scan_status> operator()(CharT ch)
+                    {
+                        if (m_ctx.locale().is_space(ch)) {
                             return scan_status::end;
                         }
-                        if (ch == ctx.locale().thousands_separator()) {
+                        if (ch == m_ctx.locale().thousands_separator()) {
                             return scan_status::skip;
                         }
-                        if (ch == ctx.locale().decimal_point()) {
-                            if (point) {
+                        if (ch == m_ctx.locale().decimal_point()) {
+                            if (m_point) {
                                 return error(error::invalid_scanned_value,
                                              "Extra decimal separator found in "
                                              "parsing floating-point number");
                             }
-                            point = true;
+                            m_point = true;
                         }
                         return scan_status::keep;
-                    });
+                    }
+
+                    bool& m_point;
+                    Context& m_ctx;
+                };
+
+                bool point = false;
+                auto r = read_into_if(ctx.stream(), std::back_inserter(buf),
+                                      float_predicate{point, ctx});
                 if (!r) {
                     return r.error();
                 }
@@ -1197,7 +1345,7 @@ namespace scn {
             error scan(std::basic_string<CharT>& val, Context& ctx)
             {
                 std::basic_string<CharT> tmp;
-                tmp.reserve(15);
+                /* tmp.reserve(15); */
                 auto s = read_into_if(
                     ctx.stream(), std::back_inserter(tmp),
                     predicates::until_space<CharT,
@@ -1306,6 +1454,40 @@ namespace scn {
         }
         return {};
     }
+#if 0
+    template <typename Context,
+              typename std::enable_if<is_sized_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
+    error skip_stream_whitespace(Context& ctx) noexcept
+    {
+        using char_type = typename Context::char_type;
+        detail::array<char_type, 8> buf;
+        bool end = false;
+        while (!end) {
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+
+            const auto n =
+                detail::min(ctx.stream().chars_to_read(), buf.size());
+            if (n == 0) {
+                return error(error::end_of_stream, "EOF");
+            }
+            auto s = make_span(buf.data(), n);
+            ctx.stream().read_sized(s);
+
+            for (auto it = s.begin(); it != s.end(); ++it) {
+                if (!ctx.locale().is_space(*it)) {
+                    ctx.stream().putback_n(
+                        static_cast<size_t>(std::distance(it, s.end())));
+                    end = true;
+                    break;
+                }
+            }
+
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+        }
+        return {};
+    }
+#endif
 
     template <typename Context>
     class basic_visitor {
