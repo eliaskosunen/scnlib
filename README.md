@@ -235,6 +235,8 @@ std::tie(result, i) = scn::scan<int>(stream, "{}");
 
 The rationale of putting this API behing an additional header, is that it pulls in the entirety of `<tuple>` and `<functional>`, which may affect your compile times.
 
+Using this API will also involve a ~5-10% runtime slowdown.
+
 ### Supported types
 
  * Characters: `char` for narrow streams or `wchar_t` for wide streams
