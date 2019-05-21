@@ -467,7 +467,7 @@ namespace scn {
 
             template <typename T, typename CharT>
             expected<typename span<const CharT>::iterator>
-            read_decimal(T& val, T sign, span<const CharT> buf)
+            read_signed(T& val, T sign, span<const CharT> buf, int base)
             {
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wconversion")
@@ -481,20 +481,21 @@ namespace scn {
 
                 SCN_ASSUME(sign != 0);
 
-                const T max = std::numeric_limits<T>::max() / 10;
-                auto cmp = [&](CharT ch) {
-                    return ch - ascii_widen<CharT>('0') <=
-                           7 + (sign == 1 ? 0 : 1);
-                };
+                using utype = typename std::make_unsigned<T>::type;
+
+                utype cutoff_tmp =
+                    sign == -1
+                        ? -static_cast<utype>(std::numeric_limits<T>::min())
+                        : std::numeric_limits<T>::max();
+                const auto cutlim =
+                    detail::ascii_widen<CharT>(cutoff_tmp % base + '0');
+                const utype cutoff = cutoff_tmp / base;
 
                 auto it = buf.begin();
                 for (; it != buf.end(); ++it) {
-                    if (SCN_LIKELY(*it >= ascii_widen<CharT>('0') &&
-                                   *it <= ascii_widen<CharT>('9'))) {
-                        if (SCN_LIKELY(val < max || (val == max && cmp(*it)))) {
-                            val = val * 10 + *it - ascii_widen<CharT>('0');
-                        }
-                        else {
+                    if (SCN_LIKELY(is_base_digit(*it, base))) {
+                        if (SCN_UNLIKELY(val > cutoff ||
+                                         (val == cutoff && *it > cutlim))) {
                             if (sign == 1) {
                                 return error(error::value_out_of_range,
                                              "Out of range: integer overflow");
@@ -502,12 +503,54 @@ namespace scn {
                             return error(error::value_out_of_range,
                                          "Out of range: integer underflow");
                         }
+                        else {
+                            val = val * base + char_to_int<T>(*it, base);
+                        }
                     }
                     else {
                         break;
                     }
                 }
                 val = val * sign;
+                return it;
+
+                SCN_CLANG_POP
+                SCN_GCC_POP
+            }
+            template <typename T, typename CharT>
+            expected<typename span<const CharT>::iterator>
+            read_unsigned(T& val, span<const CharT> buf, int base)
+            {
+                SCN_GCC_PUSH
+                SCN_GCC_IGNORE("-Wconversion")
+                SCN_GCC_IGNORE("-Wsign-conversion")
+                SCN_GCC_IGNORE("-Wsign-compare")
+
+                SCN_CLANG_PUSH
+                SCN_CLANG_IGNORE("-Wconversion")
+                SCN_CLANG_IGNORE("-Wsign-conversion")
+                SCN_CLANG_IGNORE("-Wsign-compare")
+
+                const T cutoff = std::numeric_limits<T>::max() / base;
+                const auto cutlim = detail::ascii_widen<CharT>(
+                    std::numeric_limits<T>::max() % base + '0');
+
+                auto it = buf.begin();
+                for (; it != buf.end(); ++it) {
+                    if (SCN_LIKELY(is_base_digit(*it, base))) {
+                        if (SCN_UNLIKELY(val > cutoff ||
+                                         (val == cutoff && *it > cutlim))) {
+                            return error(error::value_out_of_range,
+                                         "Out of range: integer overflow");
+                        }
+                        else {
+                            val = val * base + char_to_int<T>(*it, base);
+                        }
+                    }
+                    else {
+                        break;
+                    }
+                }
                 return it;
 
                 SCN_CLANG_POP
@@ -834,17 +877,6 @@ namespace scn {
                              "Expected number after sign");
             }
 
-            if (base == 10) {
-                auto r =
-                    custom::read_decimal(tmp, sign, make_span(it, buf.end()));
-                if (!r) {
-                    return r.get_error();
-                }
-                it = r.value();
-                val = tmp;
-                return static_cast<size_t>(std::distance(buf.begin(), it));
-            }
-
             if (*it == ascii_widen<CharT>('0')) {
                 ++it;
                 if (it == buf.end()) {
@@ -854,13 +886,16 @@ namespace scn {
                 if (*it == ascii_widen<CharT>('x') ||
                     *it == ascii_widen<CharT>('X')) {
                     if (SCN_UNLIKELY(base != 0 && base != 16)) {
-                        return error(error::invalid_scanned_value,
-                                     "Unexpected 'x' in scanned integer");
+                        val = 0;
+                        return static_cast<size_t>(
+                            std::distance(buf.begin(), it));
                     }
                     ++it;
                     if (SCN_UNLIKELY(it == buf.end())) {
-                        return error(error::invalid_scanned_value,
-                                     "Expected number after '0x'");
+                        --it;
+                        val = 0;
+                        return static_cast<size_t>(
+                            std::distance(buf.begin(), it));
                     }
                     if (base == 0) {
                         base = 16;
@@ -887,9 +922,9 @@ namespace scn {
             SCN_ASSUME(base > 0);
             SCN_ASSUME(sign != 0);
 
-            if (base == 10) {
-                auto r =
-                    custom::read_decimal(tmp, sign, make_span(it, buf.end()));
+            if (std::is_signed<T>::value) {
+                auto r = custom::read_signed(tmp, sign,
+                                             make_span(it, buf.end()), base);
                 if (!r) {
                     return r.get_error();
                 }
@@ -897,35 +932,16 @@ namespace scn {
                 val = tmp;
                 return static_cast<size_t>(std::distance(buf.begin(), it));
             }
-
-            const T max = std::numeric_limits<T>::max() / base;
-            auto cmp = [&](CharT ch) {
-                return ch - ascii_widen<CharT>('0') <= 7 + (sign == 1 ? 0 : 1);
-            };
-            for (; it != buf.end(); ++it) {
-                if (SCN_LIKELY(custom::is_base_digit(*it, base))) {
-                    if (SCN_LIKELY(tmp < max || (tmp == max && cmp(*it)))) {
-                        tmp = tmp * base + custom::char_to_int<T>(*it, base);
-                    }
-                    else {
-                        if (sign == 1) {
-                            return error(error::value_out_of_range,
-                                         "Out of range: integer overflow");
-                        }
-                        return error(error::value_out_of_range,
-                                     "Out of range: integer underflow");
-                    }
-                }
-                else {
-                    break;
-                }
+            auto r = custom::read_unsigned(tmp, make_span(it, buf.end()), base);
+            if (!r) {
+                return r.get_error();
             }
-            val = tmp * sign;
+            it = r.value();
+            val = tmp;
+            return static_cast<size_t>(std::distance(buf.begin(), it));
 
             SCN_CLANG_POP
             SCN_GCC_POP
-
-            return static_cast<size_t>(std::distance(buf.begin(), it));
         }
 
         SCN_CLANG_PUSH

@@ -95,7 +95,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     else {
         value_type i{};
         auto e = scan_value<char_type>(method, "2147483648", "{}", i);
-        REQUIRE(!e);
+        CHECK(!e);
         CHECK(e.error().code() == scn::error::value_out_of_range);
         CHECK(e.value() == 0);
     }
@@ -154,6 +154,111 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
 }
 
 template <typename T>
+T maxval()
+{
+    return std::numeric_limits<T>::max();
+}
+template <typename T>
+std::string overstr()
+{
+    using type = typename std::conditional<std::is_unsigned<T>::value,
+                                           unsigned long long, long long>::type;
+    return std::to_string(static_cast<type>(std::numeric_limits<T>::max()) + 1);
+}
+template <typename T>
+T minval()
+{
+    return std::numeric_limits<T>::min();
+}
+template <typename T>
+std::string understr()
+{
+    using type = typename std::conditional<std::is_unsigned<T>::value,
+                                           unsigned long long, long long>::type;
+    return std::to_string(static_cast<type>(std::numeric_limits<T>::min()) - 1);
+}
+
+TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
+{
+    using value_type = typename T::value_type;
+    using char_type = typename T::char_type;
+
+    std::vector<scn::method> methods{scn::method::sto, scn::method::strto,
+                                     scn::method::custom};
+    if (scn::is_int_from_chars_available()) {
+        methods.push_back(scn::method::from_chars);
+    }
+    scn::method method{};
+
+    DOCTEST_VALUE_PARAMETERIZED_DATA(method, methods);
+
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(
+            method, std::to_string(maxval<value_type>()), "{}", i);
+        CHECK(e);
+        CHECK(e.value() == 1);
+        CHECK(i == maxval<value_type>());
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(
+            method, std::to_string(minval<value_type>()), "{}", i);
+        CHECK(e);
+        CHECK(e.value() == 1);
+        CHECK(i == minval<value_type>());
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(
+            method, std::to_string(maxval<value_type>() - 1), "{}", i);
+        CHECK(e);
+        CHECK(e.value() == 1);
+        CHECK(i == maxval<value_type>() - 1);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(
+            method, std::to_string(minval<value_type>() + 1), "{}", i);
+        CHECK(e);
+        CHECK(e.value() == 1);
+        CHECK(i == minval<value_type>() + 1);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(
+            method, std::to_string(maxval<value_type>() / 10), "{}", i);
+        CHECK(e);
+        CHECK(e.value() == 1);
+        CHECK(i == maxval<value_type>() / 10);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(
+            method, std::to_string(minval<value_type>() / 10), "{}", i);
+        CHECK(e);
+        CHECK(e.value() == 1);
+        CHECK(i == minval<value_type>() / 10);
+    }
+    if (sizeof(value_type) < 8) {
+        {
+            value_type i{};
+            auto e =
+                scan_value<char_type>(method, overstr<value_type>(), "{}", i);
+            CHECK(!e);
+            CHECK(e.value() == 0);
+        }
+        if (std::is_signed<value_type>::value) {
+            value_type i{};
+            auto e =
+                scan_value<char_type>(method, understr<value_type>(), "{}", i);
+            CHECK(!e);
+            CHECK(e.value() == 0);
+        }
+    }
+}
+
+template <typename T>
 using char_intpair = intpair<char, T>;
 template <typename T>
 using wchar_intpair = intpair<wchar_t, T>;
@@ -174,6 +279,21 @@ TYPE_TO_STRING(wchar_intpair<unsigned long>);
 TYPE_TO_STRING(wchar_intpair<unsigned long long>);
 
 TEST_CASE_TEMPLATE_INSTANTIATE(integer_test,
+                               char_intpair<short>,
+                               char_intpair<int>,
+                               char_intpair<long>,
+                               char_intpair<long long>,
+                               char_intpair<unsigned short>,
+                               char_intpair<unsigned int>,
+                               char_intpair<unsigned long>,
+                               char_intpair<unsigned long long>,
+                               wchar_intpair<int>,
+                               wchar_intpair<long>,
+                               wchar_intpair<long long>,
+                               wchar_intpair<unsigned int>,
+                               wchar_intpair<unsigned long>,
+                               wchar_intpair<unsigned long long>);
+TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_test,
                                char_intpair<short>,
                                char_intpair<int>,
                                char_intpair<long>,
