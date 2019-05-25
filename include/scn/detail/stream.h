@@ -28,6 +28,189 @@ SCN_CLANG_IGNORE("-Wpadded")
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /**
+     * \defgroup stream_concept Stream
+     * \ingroup concepts
+     * \{
+     * \par
+     * A `Stream` is something that the library can read values from.
+     *
+     * \par Description
+     * A `Stream` contains a <i>stream source</i> or just <i>source</i> for
+     * short inside of it, which is where the stream gets its input. The
+     * <i>source</i> can be a buffer, a file, a socket, or whatever the `Stream`
+     * happens to implement.
+     *
+     * \par
+     * In addition, a `Stream` contains a <i>putback buffer</i>.
+     * In practice, not all concrete stream types have one, but use the
+     * underlying source to their advantage, to achieve the same effect, under
+     * the as-if rule.
+     *
+     * \par
+     * Every `Stream` has an associated <i>character type</i>, which must be
+     * either `char` or `wchar_t`. This is the type of the charact//
+     * exposition-onlyers that the external interface uses; the stream source
+     * can use whatever character type it likes.
+     *
+     * \par
+     * An example of a `Stream` is `scn::basic_cstdio_stream`.
+     *
+     * \par Valid expressions
+     * A type `S` satisfies `Stream`, if
+     *   - the type `S` satisfies `MoveConstructible`, `MoveAssignable` and
+     * `Destructible`, and
+     *   - lvalues of type `S` satisfy `Swappable`, and
+     *
+     * \par
+     * given
+     *   - `s`, an lvalue of type `S`, and
+     *   - `ch`, a value of type `S::char_type`,
+     *
+     * \par
+     * the following expressions must be valid and have their specified effects:
+     *   - `S::char_type`: character type of `s`
+     *   - `S::is_sized_stream::value -> bool`
+     *   - `s.read_char() -> expected<S::char_type>`:
+     *      Reads a character from `s`, or returns an error.
+     *      <b>Precondition:</b> `s` must be <i>readable</i>
+     *   - `s.putback(ch) -> error`:
+     *      Puts a character into the <i>putback buffer</i> of `s`.
+     *      <b>Postcondition:</b> If the operation was successful,
+     *      `s` will be <i>readable</i>
+     *   - `s.bad() -> bool`: Returns `true` if `s` is <i>bad</i>
+     *   - `(bool)s`: Equivalent to: `!s.bad()`
+     *   - `s.set_roll_back() -> error`: Sets the current state of `s`
+     *      as the <i>recovery state</i>.
+     *      <b>Precondition:</b> `s` must not be <i>bad</i>
+     *   - `s.roll_back() -> error`: Resets the state of `s` into the
+     *      <i>recovery state</i>.
+     *      <b>Precondition:</b> `s` must not be <i>bad</i>
+     *   - `s.rcount() -> std::size_t`: Returns the number of characters read,
+     *      minus the size of the putback buffer, since the last call to
+     *      `set_roll_back()` or `roll_back()`
+     *
+     * \par Notes
+     * A `Stream` is <i>bad</i> if some non-recoverable error has occurred.
+     *
+     * \par
+     * A `Stream` is <i>readable</i> if it is:
+     *   - not <i>bad</i>, and
+     *   - the previous call to `read_char()` did not return an error.
+     *
+     * \par
+     * If the previous call to `read_char()` failed, either:
+     *   - `putback()` must be called, or
+     *   - the <i>source</i> must be modified (if supported)
+     *
+     * \par
+     * for the stream to become <i>readable</i> again.
+     *
+     * \par
+     * A call to `read_char()` first checks the top of the putback buffer,
+     * popping that if there's any characters there, and only if there's none,
+     * will it reach for the source.
+     *
+     * \par
+     * A `Stream` has a <i>recovery state</i>, which is the state of the stream
+     * at construction, or after any subsequent `set_roll_back()` call. This
+     * state can be then rolled back to using `roll_back()`. This functionality
+     * can be used for error recovery; if a higher-level operation fails, and
+     * `set_roll_back()` was called before the operation, the stream can be
+     * rolled back to the <i>recovery state</i> with `roll_back()`.
+     *
+     * \par
+     * `is_sized_stream::value` is `true` if and only if the type also satisfies
+     * `SizedStream`.
+     *
+     * \par
+     * If `s.putback()` is called, and then the underlying <i>stream source</i>
+     * is mutated, the behavior is undefined. Some concrete stream types may
+     * relax this requirement.
+     *
+     * \par Exposition-only Concept
+     * \code{.cpp}
+     * // exposition-only
+     * template <typename S>
+     * concept Stream =
+     *     std::Movable<S> && std::Destructible<S> &&
+     *     requires(S& s, typename S::char_type ch, typename S::is_sized_stream)
+     *     {
+     *         { s.read_char() } -> expected<char_type>;
+     *         { s.putback(ch) } -> error;
+     *         { s.bad() } -> std::Boolean;
+     *         { s } -> std::Boolean;
+     *         { s.set_roll_back() } -> error;
+     *         { s.roll_back() } -> error;
+     *         { s.rcount() } -> std::size_t;
+     *         { S::is_sized_stream::value } -> std::Boolean;
+     *     };
+     * \endcode
+     * \}
+     */
+
+    /**
+     * \defgroup sized_stream_concept SizedStream
+     * \ingroup concepts
+     *
+     * \par
+     * `SizedStream` is a refinement of \ref stream_concept.
+     * The size (number of characters) in a `SizedStream` <i>source</i> shall
+     * not change after construction.
+     *
+     * \par
+     * An example of a `SizedStream` is `scn::basic_static_container_stream`.
+     *
+     * \par Valid expressions
+     * A type `S` satisfies `SizedStream`, if
+     *   - the type `S` satisfies \ref stream_concept, and
+     *
+     * \par
+     * given
+     *   - `s`, an lvalue of type `S`, and
+     *   - `ch`, a value of type `S::char_type`, and
+     *   - `sz`, a value of type `std::size_t`, and
+     *   - `buf`, a value of type `span<S::char_type>`,
+     *
+     * \par
+     * the following expressions must be valid and have their specified effects:
+     *   - `s.read_sized(buf) -> void`: Fills `buf` with characters from `s`.
+     *      <b>Precondition:</b> `s` must be <i>readable</i> and
+     *      `s.chars_to_read()` must be greater or equal to `buf.size()`.
+     *   - `s.putback_n(sz) -> void`:
+     *      Puts back the last `sz` characters read into `s`.
+     *      <b>Precondition:</b> `s.rcount() >= sz` must be `true`.
+     *      <b>Postcondition:</b> `s` will be <i>readable</i> for `sz`
+     *      characters.
+     *   - `s.chars_to_read() -> std::size_t`:
+     *      Returns the number of characters `s` has available to read.
+     *   - `s.skip(sz) -> void`: Skips `sz` characters.
+     *      <b>Precondition:</b> `s` must be readable for `sz` characters.
+     *   - `s.skip_all() -> void`: Skips to the end of `s`.
+     *      <b>Postcondition:</b> `s` is not <i>readable</i>.
+     *
+     * \par Notes
+     * For the definitions of <i>stream source</i> and <i>readable</i>, see
+     * \ref stream_concept.
+     *
+     * \par Exposition-only Concept
+     * \code{.cpp}
+     * // exposition-only
+     * template <typename S>
+     * concept SizedStream =
+     *    Stream<S> &&
+     *    requires(S& s, typename S::char_type ch, std::size_t sz,
+     *             span<typename S::char_type> buf)
+     *    {
+     *       { s.read_sized(buf) } -> void;
+     *       { s.putback_n(sz) } -> void;
+     *       { s.chars_to_read() } -> std::size_t;
+     *       { s.skip(sz) } -> void;
+     *       { s.skip_all() } -> void;
+     *    }
+     * \endcode
+     */
+
     template <typename S>
     struct is_sized_stream : S::is_sized_stream {
     };
@@ -163,19 +346,14 @@ namespace scn {
             return static_cast<size_t>(std::distance(m_next, end()));
         }
 
-        SCN_CONSTEXPR14 error skip(size_t n) noexcept
+        SCN_CONSTEXPR14 void skip(size_t n) noexcept
         {
-            if (chars_to_read() < n) {
-                m_next = end();
-                return error(error::end_of_stream, "EOF");
-            }
+            SCN_EXPECT(chars_to_read() >= n);
             m_next += static_cast<std::ptrdiff_t>(n);
-            return {};
         }
-        SCN_CONSTEXPR14 error skip_all() noexcept
+        SCN_CONSTEXPR14 void skip_all() noexcept
         {
             m_next = end();
-            return {};
         }
 
     private:
@@ -246,7 +424,7 @@ namespace scn {
             /* std::copy(m_next, m_next + s.size(), s.begin()); */
             m_next += s.size();
             return {};
-        }
+        }  // namespace scn
 
         error putback_n(size_t n) noexcept
         {
@@ -276,19 +454,14 @@ namespace scn {
             return static_cast<size_t>(std::distance(m_next, end()));
         }
 
-        SCN_CONSTEXPR14 error skip(size_t n) noexcept
+        SCN_CONSTEXPR14 void skip(size_t n) noexcept
         {
-            if (chars_to_read() < n) {
-                m_next = end();
-                return error(error::end_of_stream, "EOF");
-            }
+            SCN_EXPECT(chars_to_read() >= n);
             m_next += n;
-            return {};
         }
-        SCN_CONSTEXPR14 error skip_all() noexcept
+        SCN_CONSTEXPR14 void skip_all() noexcept
         {
             m_next = end();
-            return {};
         }
 
     private:
@@ -382,19 +555,14 @@ namespace scn {
             return static_cast<size_t>(std::distance(m_next, m_end));
         }
 
-        SCN_CONSTEXPR14 error skip(size_t n) noexcept
+        SCN_CONSTEXPR14 void skip(size_t n) noexcept
         {
-            if (chars_to_read() < n) {
-                m_next = m_end;
-                return error(error::end_of_stream, "EOF");
-            }
+            SCN_EXPECT(chars_to_read() >= n);
             m_next += static_cast<std::ptrdiff_t>(n);
-            return {};
         }
-        SCN_CONSTEXPR14 error skip_all() noexcept
+        SCN_CONSTEXPR14 void skip_all() noexcept
         {
             m_next = m_end;
-            return {};
         }
 
     private:
@@ -467,19 +635,14 @@ namespace scn {
             return static_cast<size_t>(std::distance(m_begin, m_end));
         }
 
-        SCN_CONSTEXPR14 error skip(size_t n) noexcept
+        SCN_CONSTEXPR14 void skip(size_t n) noexcept
         {
-            if (chars_to_read() < n) {
-                m_begin = m_end;
-                return error(error::end_of_stream, "EOF");
-            }
+            SCN_EXPECT(chars_to_read() >= n);
             m_begin += n;
-            return {};
         }
-        SCN_CONSTEXPR14 error skip_all() noexcept
+        SCN_CONSTEXPR14 void skip_all() noexcept
         {
             m_begin = m_end;
-            return {};
         }
 
     private:

@@ -16,7 +16,7 @@ option(SCN_PREDEFINE_VSCAN_OVERLOADS "Define additional overloads of scn::vscan 
 option(SCN_TESTS "Generate tests target" ${MASTER_PROJECT})
 option(SCN_EXAMPLES "Generate examples target" ${MASTER_PROJECT})
 option(SCN_BENCHMARKS "Generate benchmark target" ${MASTER_PROJECT})
-#option(SCN_DOCS "Generate documentation target" ${MASTER_PROJECT})
+option(SCN_DOCS "Generate documentation target" ${MASTER_PROJECT})
 option(SCN_INSTALL "Generate install target" ${MASTER_PROJECT})
 option(SCN_PEDANTIC "Use stricter warnings" ${MASTER_PROJECT})
 
@@ -153,6 +153,9 @@ if (SCN_EXAMPLES)
 endif ()
 if (SCN_BENCHMARKS)
     add_subdirectory(benchmark)
+endif ()
+if (SCN_DOCS)
+    add_subdirectory(doc)
 endif ()
 
 if (SCN_INSTALL)
