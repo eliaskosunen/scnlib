@@ -1454,6 +1454,7 @@ namespace scn {
         }
         return {};
     }
+#if 0
     template <typename Context,
               typename std::enable_if<is_sized_stream<
                   typename Context::stream_type>::value>::type* = nullptr>
@@ -1486,6 +1487,7 @@ namespace scn {
         }
         return {};
     }
+#endif
 
     template <typename Context>
     class basic_visitor {

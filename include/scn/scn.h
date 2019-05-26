@@ -18,6 +18,9 @@
 #ifndef SCN_SCN_H
 #define SCN_SCN_H
 
+#include "detail/scan.h"
+#include "detail/types.h"
+
 /**
  * \mainpage
  *
@@ -488,7 +491,7 @@
  * \endcode
  *
  * \par
- * Only reading of `b` will be localized, as it has `{n}` as its format string.
+ * Only reading of `b` will be localized, as it has `{:n}` as its format string.
  *
  * \par Scanning method
  * An enumeration value of `scn::method` can be passed to
@@ -805,9 +808,6 @@
 /**
  * \defgroup concepts Concepts
  */
-
-#include "detail/scan.h"
-#include "detail/types.h"
 
 #endif  // SCN_SCN_H
 

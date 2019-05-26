@@ -129,7 +129,8 @@ namespace scn {
     auto ignore_all(Stream& s) ->
         typename std::enable_if<is_sized_stream<Stream>::value, error>::type
     {
-        return s.skip_all();
+        s.skip_all();
+        return {};
     }
 
     template <typename Stream>
@@ -160,7 +161,8 @@ namespace scn {
     auto ignore_n(Stream& s, std::ptrdiff_t count) ->
         typename std::enable_if<is_sized_stream<Stream>::value, error>::type
     {
-        return s.skip(static_cast<size_t>(count));
+        s.skip(static_cast<size_t>(count));
+        return {};
     }
 
     template <typename Stream>
