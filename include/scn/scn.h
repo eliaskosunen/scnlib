@@ -153,6 +153,10 @@
  * // You need to #include <scn/istream.h> as well for this to work
  * auto cppfile_source = std::ifstream("myfile.txt");
  * auto cppfile_stream = scn::make_stream(cppfile_source);
+ *
+ * // null stream
+ * // always at EOF
+ * auto null_stream = scn::make_null_stream<char>();
  * \endcode
  *
  * A notable exceptions to this `make_stream` pattern is the standard input
@@ -174,6 +178,18 @@
  * scn::scan(scn::cstdin(), ...);
  * \endcode
  *
+ * Because all of the streams are defined in the `scn` namespace, you could,
+ * theoretically, call virtually every function of the `scnlib` public interface
+ * without specifying the namespace `scn::`, instead relying on ADL.
+ * I would not recommend that, though.
+ *
+ * \code{.cpp}
+ * auto stream = make_null_stream<char>();
+ * // this would work
+ * // _please_ don't do this
+ * scan(stream, ...);
+ * \endcode
+ *
  * \subsection tuple Alternative tuple-based API
  *
  * By including `<scn/tuple_return.h>` an alternative API becomes available,
@@ -193,9 +209,165 @@
  * std::tie(result, i) = scn::scan<int>(stream, "{}");
  * \endcode
  *
- * \section advanced_tutorial Advanced tutorial
+ * \subsection strings Strings and getline
  *
- * This section of the tutorial is for more advanced usage.
+ * Reading a `std::string` with `scnlib` works the same way it does with
+ * `operator>>` and `<iostream>`: the stream is read until a whitespace
+ * character or EOF is found. This effectively means, that scanning a
+ * `std::string` reads a word at a time.
+ *
+ * \code{.cpp}
+ * auto stream = scn::make_stream("Hello world!");
+ *
+ * std::string word;
+ * scn::scan(stream, "{}", word);
+ * // word == "Hello"
+ *
+ * scn::scan(stream, "{}", word);
+ * // word == "world!"
+ * \endcode
+ *
+ * If reading word-by-word isn't what you're looking for, you can use
+ * `scn::getline`. It works pretty much the same way as `std::getline` does for
+ * `std::string`s.
+ *
+ * \code{.cpp}
+ * // Using the stream from the earlier example
+ * std::string word
+ * // A third parameter could be given, denoting the delimeter
+ * // Defaults to '\n'
+ * scn::getline(stream, word);
+ * // word == "Hello world!"
+ * // The delimeter is not included in the output
+ * \endcode
+ *
+ * \subsection error Error handling
+ *
+ * `scnlib` does not use exceptions for error handling.
+ * Instead, `scn::scan`, `scn::input`, `scn::prompt` and `scn::vscan` return a
+ * `scn::scan_result`, which is an object containing an integer, telling the
+ * number of arguments successfully read, and an `scn::error` object.
+ *
+ * \code{.cpp}
+ * // successful read:
+ * auto ret = scn::scan(stream, "{}", value);
+ * // ret == true
+ * // ret.value() == 1
+ * // ret.error() == true
+ *
+ * // failing read:
+ * ret = scn::scan(stream, "{}", value);
+ * // ret == false
+ * // ret.value() == 0
+ * // ret.error() == false
+ * \endcode
+ *
+ * Other items of the `scnlib` public interface, like `scn::ignore` or
+ * `scn::getline` will only return a `scn::error`.
+ *
+ * The `scn::error` object can be examined further. It contains an error code
+ * `scn::error::code`, accessible with member function `code()` and a message,
+ * that can be get with `msg()`.
+ *
+ * \code{.cpp}
+ * auto ret = scn::scan(stream, "{}", value);
+ * if (!ret) {
+ *     std::cout << "Read failed with message: '" << ret.error().msg() << "'\n";
+ * }
+ * \endcode
+ *
+ * Please note, that EOF is also an error, with error code
+ * `scn::error::end_of_stream`.
+ *
+ * If the error is of such quality that it cannot be recovered from, the stream
+ * is deemed <i>bad</i>. In this case, the member function `is_recoverable()` of
+ * `scn::error` will return `false`, and the member function `bad()` of your
+ * stream will return `true`.
+ *
+ * See `scn::error` for more details about the error codes.
+ *
+ * \par Error guarantees
+ * Should the reading of any of the arguments fail, and the stream is not bad,
+ * the state of the stream will be reset to what it was before the reading of
+ * said argument. Also, the argument will not be written to.
+ *
+ * \par
+ * \code{.cpp}
+ * auto stream = scn::make_stream("123 foo");
+ *
+ * int i{}, j{};
+ * // "foo" cannot be read to an integer, so this will fail
+ * auto ret = scn::scan(stream, "{} {}", i, j);
+ * assert(!ret);
+ * // First read succeeded
+ * assert(ret.value() == 1);
+ * assert(i == 123);
+ * // Second read failed, value was not touched
+ * assert(j == 0);
+ * assert(ret.error().code() == scn::error::invalid_scanned_value);
+ *
+ * // The stream now contains "foo",
+ * // as it was reset to the state preceding the read of j
+ * std::string s{};
+ * ret = scn::scan(stream, "{}", s);
+ * // This succeeds
+ * assert(ret);
+ * assert(s == "foo");
+ * \endcode
+ *
+ * \par Exceptions
+ * No exceptions will ever be thrown by `scnlib` functions (save for a
+ * `std::bad_alloc`, but that's probably your fault).
+ * Should any user-defined operations, like `operator>>` throw, the behavior is
+ * undefined.
+ *
+ * \par
+ * The library can be compiled with `-fno-exceptions` and `-fno-rtti`, but some
+ * of its functionality will be disabled, namely `sto` method for integer and
+ * float scanning (we'll talk more about scanning methods later).
+ *
+ * \subsection wide Wide streams
+ *
+ * Streams can also be wide, meaning that their character type is `wchar_t`
+ * instead of `char`. This has some usage implications.
+ *
+ * The format string must be wide:
+ *
+ * \code{.cpp}
+ * scn::scan(stream, L"{}", value);
+ * \endcode
+ *
+ * `char`s and `std::string`s cannot be read from a wide stream, but `wchar_t`s
+ * and `std::wstring`s can.
+ *
+ * \code{.cpp}
+ * std::wstring word;
+ * scn::scan(stream, L"{}", word);
+ * \endcode
+ *
+ * Wide streams using a `FILE*` as its source must use `make_stream<wchar_t>` or
+ * `make_wide_stream for construction:
+ *
+ * \code{.cpp}
+ * auto f = fopen("wide_file.txt", "r");
+ * auto stream = scn::make_wide_stream(f);
+ * \endcode
+ *
+ * Streams with character types other that `char` and `wchar_t` are not
+ * supported, due to lacking support for them in the standard library.
+ * Converting between character types is out-of-score for this library at this
+ * time.
+ *
+ * \par Encoding and Unicode
+ * Because of the rather lackluster Unicode support of the standard library,
+ * this library doesn't have any significant Unicode support either.
+ *
+ * \par
+ * Narrow streams are expected to be ASCII encoded, and using multibyte
+ * encodings (like UTF-8) with them is probably going to cause problems (blame
+ * `std::locale`). If you need some sort of Unicode support, your best bet is
+ * going to be wide streams, encoded in the way your platform expects (UTF-32 in
+ * POSIX, the thing resembling UCS-2 in Windows)
  *
  * \subsection format_string Format string
  *
@@ -270,6 +442,218 @@
  *
  * \par Characters
  * Only supported option is `c`, which has no effect
+ *
+ * \par Default format string
+ * If you wish to not pass any custom parsing options, you should probably pass
+ * a `scn::default_tag` instead. This will increase performance, as an useless
+ * format string doesn't need to be parsed.
+ *
+ * \par
+ * \code{.cpp}
+ * scn::scan(stream, scn::default_tag, value);
+ * // Equivalent to:
+ * // scn::scan(stream, "{}", value);
+ * \endcode
+ *
+ * \subsection options Additional options
+ *
+ * An `scn::options` object can be passed as the first argument to `scn::scan`
+ * or `scn::input`, determining additional options for the scanning operation.
+ * A `scn:::options` object cannot be constructed directly, but one can be
+ * created with `scn::options::builder`, like so:
+ *
+ * \code{.cpp}
+ * scn::scan(
+ *     scn::options::builder{}.make(),
+ *     stream, ...);
+ * \endcode
+ *
+ * Redundant specification of additional options should be avoided, as it can
+ * have some performance implications.
+ *
+ * \par Localization
+ * A constant reference to a `std::locale` can be passed to
+ * `scn::options::builder::locale()` for scanning localized input.
+ *
+ * \par
+ * \code{.cpp}
+ * auto loc = std::locale("fi_FI");
+ *
+ * int a, b;
+ * scn::scan(
+ *     scn::options::builder{}
+ *         .locale(loc)
+ *         .make(),
+ *     "{} {:n}", a, b);
+ * \endcode
+ *
+ * \par
+ * Only reading of `b` will be localized, as it has `{n}` as its format string.
+ *
+ * \par Scanning method
+ * An enumeration value of `scn::method` can be passed to
+ * `scn::options::builder::int_method()` or
+ * `scn::options::builder::float_method()`, specifying how a value of each
+ * respective type will be scanned.
+ *
+ * \par
+ *   - `strto`: Use `std::strtol`, `std::strtod` etc.
+ *   - `sto`: Use `std::stol`, `std::stod` etc.
+ *   - `from_chars`: Use `std::from_chars`
+ *   - `custom`: Use custom hand-rolled algorithm
+ *
+ * \par
+ * \code{.cpp}
+ * scn::scan(
+ *     scn::options::builder{}
+ *         .int_method(scn::method::strto)
+ *         .float_method(scn::method::sto)
+ *         .make(), ...);
+ * \endcode
+ *
+ * \par
+ * Please note, that:
+ *  - `custom` is the default method for integers, and `strto` for floats
+ *  - `from_chars` requires a very recent standard library version. Your
+ *     implementation may not yet have `std::from_chars` implemented.
+ *  - `custom` is a little faster than the other alternatives with the added
+ *     caveat of being highly likely to contain bugs
+ *  - `custom` at this time only supports integers
+ *
+ * \subsection ignore ignore
+ *
+ * `scnlib` has various functions for skipping characters from a stream.
+ *
+ * `scn::ignore_n(stream, n)` will skip `n` characters.
+ *
+ * `scn::ignore_until(stream, ch)` will skip until `ch` is read.
+ *
+ * `scn::ignore_n_until(stream, n, ch)` will skip until either `n` characters
+ * have been skipped or `ch` is read.
+ *
+ * `scn::ignore_all(stream)` will skip to the end of the stream.
+ *
+ * All of these functions return a `scn::error`.
+ *
+ * \subsection getchar getchar
+ *
+ * `scn::getchar(stream)` will read a single character from a stream.
+ * The character type will be `char` for narrow streams and `wchar_t` for wide
+ * streams. The function will return a `scn::expected<char_type>`.
+ *
+ * \subsection user_types User types
+ *
+ * To make your own types scannable with `scnlib`, you can specialize the struct
+ * template `scn::scanner`.
+ *
+ * \code{.cpp}
+ * struct my_type {
+ *    int i{};
+ *    double d{};
+ * };
+ *
+ * template <typename Char>
+ * struct scn::scanner<Char, my_type>
+ *    : public scn::empty_parser<Char> {
+ *    template <typename Context>
+ *    error scan(my_type& val, Context& c) {
+ *       // This interface is likely to change soon(tm)
+ *       auto args = make_args<Context>(val.i, val.d);
+ *       auto ctx = Context(c.stream(), "[{}, {}]", args);
+ *       return vscan(ctx);
+ *    }
+ * };
+ *
+ * // Input: "[123, 4.56]"
+ * // ->
+ * //   my_type.i == 123
+ * //   my_type.d == 4.56
+ * \endcode
+ *
+ * Inheriting from `scn::empty_parser` means only an empty format string `"{}"`
+ * is accepted. You can also implement a `parse()` method, or inherit from a
+ * `scn::scanner` for another type (like `scn::scanner<Char, int>`) to get
+ * access to additional options.
+ *
+ * \subsection range Range-based interface
+ *
+ * `scnlib` also supports a Ranges-based interface, using
+ * <a href="https://github.com/ericniebler/range-v3>range-v3</a>.
+ * To use the interface, range-v3 must be installed on your system, you must
+ * include the header file `<scn/ranges.h>`, and your program must link against
+ * the `scn::scn-ranges` CMake target.
+ *
+ * \code{.cmake}
+ * target_link_libraries(your-target scn::scn-ranges)
+ * # or scn::scn-ranges-header-only if you'd prefer that
+ * \endcode
+ *
+ * The inferface resides in the namespace `scn::ranges`. Instead of a stream,
+ * `scn::ranges::scan` takes a `ranges::ForwardRange` as its first argument.
+ *
+ * \code{.cpp}
+ * #include <scn/ranges.h>
+ * // ...
+ * auto range = std::string{"Hello"};
+ * std::string str{};
+ * auto ret = scn::ranges::scan(range, "{}", str);
+ * // str == "Hello"
+ * // ret == true
+ * // ret.value() == 1
+ * \endcode
+ *
+ * The `scn::ranges::scan` return value `scn::ranges::ranges_result` has a
+ * member function `iterator()`, which returns an iterator past the last read
+ * charaacter of the stream.
+ *
+ * \code{.cpp}
+ * // ret from snippet above
+ * assert(ret.iterator() == range.end());
+ * \endcode
+ *
+ * Also, a member function `view()` is available, returning a range that can be
+ * used for subsequent `scan` calls.
+ *
+ * \code{.cpp}
+ * auto range = std::string{"Hello world"};
+ * std::string str{};
+ *
+ * auto ret = scn::ranges::scan(range, "{}", str);
+ * // str == "Hello"
+ * // ret.iterator points to 'w' in "world"
+ * // ret.iterator() == range.begin() + str.length() + 1
+ *
+ * // ret.view() starts from ret.iterator() and ends at range.end()
+ * ret = scn::ranges::scan(ret.view(), "{}", str);
+ * // str == "world"
+ * // ret.iterator() == range.end()
+ * \endcode
+ *
+ * \subsection scanf scanf-like format strings
+ *
+ * With `scn::scanf`, a `scanf`-like format string syntax can be used, instead.
+ * `scn::ranges::scanf` is also available. The syntax is not 100% compatible
+ * with C `scanf`, as it uses the exact same options as the regular format
+ * string syntax. The following snippet demonstrates the syntax.
+ *
+ * \code{.cpp}
+ * int i;
+ * double d;
+ * std::string s;
+ * scn::scanf(stream, "%i %f %s", i, d, s);
+ * // How C scanf would do it:
+ * //   scanf(stream, "%i %lf", &i, &d);
+ * //   reading a dynamic-length string is not possible with scanf
+ * // How scn::scan would do it:
+ * //   scn::scan(stream, "{} {} {}", i, d, s);
+ * //   or to be more explicit:
+ * //   scn::scan(stream, "{:i} {:f} {:s}", i, d, s);
+ * \endcode
+ *
+ * Notice, how the options map exactly to the ones used with `scn::scan`: `%d ->
+ * {:d}`, `%f -> {:f}` and `%s -> {:s}`; and how the syntax is not fully
+ * compatible with C `scanf`: "%f != %lf", `scanf` doesn't support
+ * dynamic-length strings.
  *
  * \section rationale Rationale
  *
