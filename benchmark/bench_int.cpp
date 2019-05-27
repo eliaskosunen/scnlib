@@ -56,45 +56,6 @@ BENCHMARK_TEMPLATE(scanint_scn, int);
 BENCHMARK_TEMPLATE(scanint_scn, long long);
 BENCHMARK_TEMPLATE(scanint_scn, unsigned);
 
-#if defined(__cpp_structured_bindings) && __cpp_structured_bindings >= 201606
-template <typename Int>
-static void scanint_tuple_scn(benchmark::State& state)
-{
-    auto data = generate_int_data<Int>(INT_DATA_N);
-    auto stream = scn::make_stream(data);
-    for (auto _ : state) {
-        // Structured bindings do not work with gcc
-#if SCN_GCC
-        scn::result<int> e(0);
-        Int i;
-        std::tie(e, i) = scn::scan<Int>(stream, "{}");
-#else
-        auto [e, i] = scn::scan<Int>(stream, "{}");
-#endif
-
-        if (!e) {
-            if (e.error() == scn::error::end_of_stream) {
-                state.PauseTiming();
-                data = generate_int_data<Int>(INT_DATA_N);
-                stream = scn::make_stream(data);
-                state.ResumeTiming();
-            }
-            else {
-                std::cout << e.error().code() << '\n';
-                std::cout << e.error().msg() << '\n';
-                state.SkipWithError("Benchmark errored");
-                break;
-            }
-        }
-    }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
-}
-BENCHMARK_TEMPLATE(scanint_tuple_scn, int);
-BENCHMARK_TEMPLATE(scanint_tuple_scn, long long);
-BENCHMARK_TEMPLATE(scanint_tuple_scn, unsigned);
-#endif
-
 template <typename Int>
 static void scanint_scn_default(benchmark::State& state)
 {
@@ -123,6 +84,34 @@ static void scanint_scn_default(benchmark::State& state)
 BENCHMARK_TEMPLATE(scanint_scn_default, int);
 BENCHMARK_TEMPLATE(scanint_scn_default, long long);
 BENCHMARK_TEMPLATE(scanint_scn_default, unsigned);
+
+template <typename Int>
+static void scanint_scn_get_value(benchmark::State& state)
+{
+    auto data = generate_int_data<Int>(INT_DATA_N);
+    auto stream = scn::make_stream(data);
+    for (auto _ : state) {
+        auto e = scn::get_value<Int>(stream);
+
+        if (!e) {
+            if (e.get_error() == scn::error::end_of_stream) {
+                state.PauseTiming();
+                data = generate_int_data<Int>(INT_DATA_N);
+                stream = scn::make_stream(data);
+                state.ResumeTiming();
+            }
+            else {
+                state.SkipWithError("Benchmark errored");
+                break;
+            }
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+}
+BENCHMARK_TEMPLATE(scanint_scn_get_value, int);
+BENCHMARK_TEMPLATE(scanint_scn_get_value, long long);
+BENCHMARK_TEMPLATE(scanint_scn_get_value, unsigned);
 
 template <typename Int>
 static void scanint_sstream(benchmark::State& state)

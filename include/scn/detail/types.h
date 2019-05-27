@@ -188,6 +188,29 @@ namespace scn {
         return s.read_char();
     }
 
+    template <typename T, typename Stream>
+    expected<T> get_value(Stream& s)
+    {
+        using context_type = basic_empty_context<Stream>;
+        using char_type = typename Stream::char_type;
+
+        auto args = make_args<context_type>();
+        auto ctx = context_type(s, 1, args);
+
+        auto ret = skip_stream_whitespace(ctx);
+        if (!ret) {
+            return ret;
+        }
+
+        T val{};
+        scanner<char_type, T> sc;
+        ret = sc.scan(val, ctx);
+        if (!ret) {
+            return ret;
+        }
+        return val;
+    }
+
     SCN_END_NAMESPACE
 }  // namespace scn
 

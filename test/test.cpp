@@ -134,3 +134,20 @@ TEST_CASE("enumerated arguments")
     CHECK(i == 42);
     CHECK(s == "text");
 }
+
+TEST_CASE("get_value")
+{
+    auto stream = scn::make_stream("42 foo 3.14");
+
+    auto i = scn::get_value<int>(stream);
+    CHECK(i);
+    CHECK(i.value() == 42);
+
+    auto str = scn::get_value<std::string>(stream);
+    CHECK(str);
+    CHECK(str.value() == "foo");
+
+    auto d = scn::get_value<double>(stream);
+    CHECK(d);
+    CHECK(d.value() == 3.14);
+}

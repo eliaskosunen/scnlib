@@ -329,6 +329,20 @@
  * of its functionality will be disabled, namely `sto` method for integer and
  * float scanning (we'll talk more about scanning methods later).
  *
+ * \subsection get_value
+ *
+ * If you only wish to scan a single value with all default options, you can
+ * save some cycles and use `scn::get_value`. Instead of taking its argument by
+ * reference, it returns an `expected<T>`. It is functionally equivalent to
+ * `scn::scan(stream, scn::default_tag, value)`.
+ *
+ * \code{.cpp}
+ * auto stream = scn::make_stream("42");
+ * auto ret = scn::get_value<int>(stream);
+ * // ret == true
+ * // ret.value() == 42
+ * \endcode
+ *
  * \subsection wide Wide streams
  *
  * Streams can also be wide, meaning that their character type is `wchar_t`
@@ -446,6 +460,24 @@
  * \par Characters
  * Only supported option is `c`, which has no effect
  *
+ * \par Whitespace
+ * Any amount of whitespace in the format string tells the library to skip until
+ * the next non-whitespace character is found from the stream. Not finding any
+ * whitespace from the stream is not an error.
+ *
+ * \par Literal characters
+ * To scan literal characters and immediately discard them, just write the
+ * characters in the format string. `scanf`-like `[]`-wildcard is not supported.
+ * To read literal `{` or `}`, write `{{` or `}}`, respectively.
+ *
+ * \par
+ * \code{.cpp}
+ * auto stream = scn::make_stream("foobar");
+ * std::string bar;
+ * scn::scan(stream, "foo{}", bar);
+ * // bar == "bar"
+ * \endcode{.cpp}
+ *
  * \par Default format string
  * If you wish to not pass any custom parsing options, you should probably pass
  * a `scn::default_tag` instead. This will increase performance, as an useless
@@ -523,6 +555,77 @@
  *     caveat of being highly likely to contain bugs
  *  - `custom` at this time only supports integers
  *
+ * \subsection reading Semantics of scanning a value
+ *
+ * In the beginning, with every `scn::scan` and `scn::get_value` call, the
+ * stream is skipped until a non-whitespace character is found.
+ *
+ * After that, the format string is scanned character-by-character, until an
+ * unescaped \c '{' is found, after which the part after the \c '{' is parsed,
+ * until a <tt>':'</tt> or \c '}' is found. If the parser finds an argument id,
+ * the argument with that id is fetched from the argument list, otherwise the
+ * next argument is used.
+ *
+ * The `parse()` member function of the appropriate `scn::scanner`
+ * specialization is called, which parses the parsing options-part of the format
+ * string argument, setting the member variables of the `scn::scanner`
+ * specialization to their appropriate values.
+ *
+ * After that, the `scan()` member function is called. It reads the stream into
+ * a buffer until the next whitespace character is found (except for
+ * `char`/`wchar_t`: just a single character is read; and for `span`:
+ * `span.size()` characters are read). That buffer is then parsed with the
+ * appropriate algorithm (plain copy for `string`s, the method determined by the
+ * `options` object for ints and floats).
+ *
+ * If some of the characters in the buffer were not used, these characters are
+ * put back to the stream.
+ *
+ * Because how the stream is read until a whitespace character, and how the
+ * unused part of the buffer is simply put back to the stream, some interesting
+ * situations may arise. Please note, that the following behavior is consistent
+ * with both `scanf` and `<iostream>`.
+ *
+ * \code{.cpp}
+ * auto stream = scn::make_stream("abc");
+ * char c;
+ * std::string str;
+ *
+ * // No whitespace character after first {}, no stream whitespace is skipped
+ * scn::scan("{}{}", c, str);
+ * // c == 'a'
+ * // str == "bc"
+ *
+ * stream = scn::make_stream("abc");
+ * // Not finding whitespace to skip from the stream when whitespace is found in
+ * // the format string isn't an error
+ * scn::scan("{} {}", c, str);
+ * // c == 'a'
+ * // str == "bc"
+ *
+ * stream = scn::make_stream("a bc");
+ * // Because there are no non-whitespace characters between 'a' and the next
+ * // whitespace character ' ', `str` is empty
+ * scn::scan("{}{}", c, str);
+ * // c == 'a'
+ * // str == ""
+ *
+ * stream = scn::make_stream("a bc");
+ * // Nothing surprising
+ * scn::scan("{} {}", c, str);
+ * // c == 'a'
+ * // str == "bc"
+ * \endcode
+ *
+ * Using `scn::default_tag` is equivalent to using `"{}"` in the format string
+ * as many times as there are arguments, separated by whitespace.
+ *
+ * \code{.cpp}
+ * scn::scan(stream, scn::default_tag, a, b);
+ * // Equivalent to:
+ * // scn::scan(stream, "{} {}", a, b);
+ * \endcode
+ *
  * \subsection ignore ignore
  *
  * `scnlib` has various functions for skipping characters from a stream.
@@ -543,6 +646,11 @@
  * `scn::getchar(stream)` will read a single character from a stream.
  * The character type will be `char` for narrow streams and `wchar_t` for wide
  * streams. The function will return a `scn::expected<char_type>`.
+ *
+ * Please note, that the semantics of `scn::getchar` are different from
+ * `scn::scan` or `scn::get_value`. `scn::getchar` will return the next
+ * character from a stream, whereas `scn::scan` skips leading whitespace and
+ * returns the next non-whitespace character.
  *
  * \subsection user_types User types
  *
@@ -657,6 +765,9 @@
  * {:d}`, `%f -> {:f}` and `%s -> {:s}`; and how the syntax is not fully
  * compatible with C `scanf`: "%f != %lf", `scanf` doesn't support
  * dynamic-length strings.
+ *
+ * To read literal a `%`-character and immediately discard it, write `%%` (`{{`
+ * and `}}` with default format string syntax).
  *
  * \section rationale Rationale
  *

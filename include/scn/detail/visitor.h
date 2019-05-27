@@ -1639,12 +1639,6 @@ namespace scn {
     template <typename CharT>
     struct scanner<CharT, detail::monostate>;
 
-    /**
-     * Skip any whitespace from the stream.
-     * Next read_char() will return the first non-whitespace character of EOF.
-     * \param ctx Stream and locale to use
-     * error::end_of_stream if `false`
-     */
     template <typename Context>
     error skip_stream_whitespace(Context& ctx) noexcept
     {

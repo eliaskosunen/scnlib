@@ -151,6 +151,24 @@ namespace scn {
             return *min_element(list.begin(), list.end());
         }
 
+        template <typename ForwardIt, typename T>
+        ForwardIt remove(ForwardIt first, ForwardIt last, const T& value)
+        {
+            for (; first != last; ++first) {
+                if (*first == value) {
+                    break;
+                }
+            }
+            if (first != last) {
+                for (ForwardIt i = first; ++i != last;) {
+                    if (!(*i == value)) {
+                        *first++ = std::move(*i);
+                    }
+                }
+            }
+            return first;
+        }
+
         template <typename T>
         class SCN_TRIVIAL_ABI unique_ptr {
         public:

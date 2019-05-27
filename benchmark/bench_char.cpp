@@ -123,15 +123,43 @@ static void scanchar_scn_getchar(benchmark::State& state)
                 break;
             }
         }
-        else {
-            // c = r.value()
-        }
     }
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Char)));
 }
 BENCHMARK_TEMPLATE(scanchar_scn_getchar, char)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanchar_scn_getchar, wchar_t)->Arg(2 << 15);
+
+template <typename Char>
+static void scanchar_scn_get_value(benchmark::State& state)
+{
+    using string_type = std::basic_string<Char>;
+    string_type data = generate_data<Char>(static_cast<size_t>(state.range(0)));
+    auto stream = scn::make_stream(data);
+
+    for (auto _ : state) {
+        auto r = scn::get_value<Char>(stream);
+        benchmark::DoNotOptimize(r);
+        benchmark::ClobberMemory();
+
+        if (!r) {
+            if (r.get_error() == scn::error::end_of_stream) {
+                state.PauseTiming();
+                data = generate_data<Char>(static_cast<size_t>(state.range(0)));
+                stream = scn::make_stream(data);
+                state.ResumeTiming();
+            }
+            else {
+                state.SkipWithError("Benchmark errored");
+                break;
+            }
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Char)));
+}
+BENCHMARK_TEMPLATE(scanchar_scn_get_value, char)->Arg(2 << 15);
+BENCHMARK_TEMPLATE(scanchar_scn_get_value, wchar_t)->Arg(2 << 15);
 
 template <typename Char>
 static void scanchar_sstream(benchmark::State& state)

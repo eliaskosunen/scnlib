@@ -110,33 +110,33 @@ Times are in nanoseconds of CPU time. Lower is better.
 
 #### Reading random integers
 
-| Integer type | `scn::scan` | `scn::scan` /w `tuple` | `std::stringstream` |
-| :----------- | ----------- | ---------------------: | ------------------: |
-| `int`        | 71          | 75                     | 70                  |
-| `long long`  | 106         | 107                    | 95                  |
-| `unsigned`   | 81          | 85                     | 53                  |
+| Integer type | `scn::scan` | `scn::get_value` | `std::stringstream` |
+| :----------- | ----------- | ---------------: | ------------------: |
+| `int`        | 71          | 50               | 70                  |
+| `long long`  | 106         | 81               | 95                  |
+| `unsigned`   | 81          | 60               | 53                  |
 
 #### Reading random floating-point numbers
 
-| Floating-point type | `scn::scan` | `std::stringstream` |
-| :------------------ | ----------: | ------------------: |
-| `float`             | 136         | 203                 |
-| `double`            | 141         | 208                 |
-| `long double`       | 155         | 219                 |
+| Floating-point type | `scn::scan` | `scn::get_value` | `std::stringstream` |
+| :------------------ | ----------: | ---------------: | ------------------: |
+| `float`             | 136         | 130              | 203                 |
+| `double`            | 141         | 135              | 208                 |
+| `long double`       | 155         | 143              | 219                 |
 
 #### Reading random whitespace-separated `std::basic_string`s
 
-| Character type | `scn::scan` | `std::stringstream` |
-| :------------- | ----------: | ------------------: |
-| `char`         | 51          | 46                  |
-| `wchar_t`      | 71          | 110                 |
+| Character type | `scn::scan` | `scn::get_value` | `std::stringstream` |
+| :------------- | ----------: | ---------------: | ------------------: |
+| `char`         | 51          | 48               | 46                  |
+| `wchar_t`      | 71          | 80               | 110                 |
 
 #### Reading random characters
 
-| Character type | `scn::scan` | `scn::getchar` | `std::stringstream` |
-| :------------- | ----------: | -------------: | ------------------: |
-| `char`         | 20          | 5              | 8                   |
-| `wchar_t`      | 19          | 5              | 15                  |
+| Character type | `scn::scan` | `scn::get_value` | `scn::getchar` | `std::stringstream` |
+| :------------- | ----------: | ---------------: | -------------: | ------------------: |
+| `char`         | 20          | 12               | 5              | 8                   |
+| `wchar_t`      | 19          | 12               | 5              | 15                  |
 
 You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS` and building the target `bench`.
 `SCN_BUILD_BENCHMARKS` is enabled by default if `scn` is the root CMake project, and disabled otherwise.
