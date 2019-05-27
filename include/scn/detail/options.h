@@ -78,6 +78,8 @@ namespace scn {
 
     template <typename CharT>
     class basic_locale_ref;
+    template <typename CharT>
+    class basic_default_locale_ref;
 
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wpadded")
@@ -153,6 +155,29 @@ namespace scn {
           float_method(b.opt.float_method)
     {
     }
+
+    struct default_options {
+        template <typename CharT>
+        SCN_CONSTEXPR basic_default_locale_ref<CharT> get_locale_ref() const
+            noexcept
+        {
+            return basic_default_locale_ref<CharT>();
+        }
+
+        template <typename T>
+        SCN_CONSTEXPR auto get_method_for() const noexcept ->
+            typename std::enable_if<std::is_integral<T>::value, method>::type
+        {
+            return SCN_DEFAULT_INT_SCANNING_METHOD;
+        }
+        template <typename T>
+        SCN_CONSTEXPR auto get_method_for() const noexcept ->
+            typename std::enable_if<std::is_floating_point<T>::value,
+                                    method>::type
+        {
+            return SCN_DEFAULT_FLOAT_SCANNING_METHOD;
+        }
+    };
 
     SCN_END_NAMESPACE
 }  // namespace scn

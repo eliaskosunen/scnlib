@@ -94,6 +94,18 @@ namespace scn {
                 ForwardIt current = first;
                 for (; current != last; ++current) {
                     ::new (static_cast<void*>(std::addressof(*current)))
+                        value_type;
+                }
+            }
+            template <typename T, typename ForwardIt>
+            static void uninitialized_fill_value_init(ForwardIt first,
+                                                      ForwardIt last) noexcept
+            {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = first;
+                for (; current != last; ++current) {
+                    ::new (static_cast<void*>(std::addressof(*current)))
                         value_type();
                 }
             }
@@ -149,11 +161,11 @@ namespace scn {
 
             T* reinterpret_unconstructed_data()
             {
-                return reinterpret_cast<T*>(data);
+                return static_cast<T*>(static_cast<void*>(data));
             }
             const T* reinterpret_unconstructed_data() const
             {
-                return reinterpret_cast<const T*>(data);
+                return static_cast<const T*>(static_cast<const void*>(data));
             }
 
             basic_stack_storage_type<T>* get_unconstructed_data()
@@ -252,15 +264,14 @@ namespace scn {
                 typename aligned_union<stack_storage, heap_storage>::type;
 
             small_vector() noexcept
+                : m_ptr(_construct_stack_storage()
+                            .reinterpret_unconstructed_data())
             {
                 SCN_MSVC_PUSH
                 SCN_MSVC_IGNORE(4127)  // conditional expression is constant
 
-                if (StackN != 0) {
-                    auto& stack = _construct_stack_storage();
-                    m_ptr = stack.reinterpret_unconstructed_data();
-                }
-                else {
+                if (StackN == 0) {
+                    _destruct_stack_storage();
                     _construct_heap_storage();
                 }
 
@@ -275,7 +286,8 @@ namespace scn {
                     auto& heap = _construct_heap_storage();
                     auto cap = next_pow2(count);
                     auto storage_ptr = new stack_storage_type[count];
-                    auto ptr = reinterpret_cast<pointer>(storage_ptr);
+                    auto ptr =
+                        static_cast<pointer>(static_cast<void*>(storage_ptr));
                     this->uninitialized_fill(ptr, ptr + count, value);
 
                     heap.cap = cap;
@@ -302,16 +314,16 @@ namespace scn {
                     auto& heap = _construct_heap_storage();
                     auto cap = next_pow2(count);
                     auto storage_ptr = new stack_storage_type[count];
-                    auto ptr = reinterpret_cast<pointer>(storage_ptr);
-                    this->uninitialized_fill_default_construct<T>(ptr,
-                                                                  ptr + count);
+                    auto ptr =
+                        static_cast<pointer>(static_cast<void*>(storage_ptr));
+                    this->uninitialized_fill_value_init<T>(ptr, ptr + count);
                     heap.cap = cap;
                     m_size = count;
                     m_ptr = ::scn::detail::launder(ptr);
                 }
                 else {
                     auto& stack = _construct_stack_storage();
-                    this->uninitialized_fill_default_construct<T>(
+                    this->uninitialized_fill_value_init<T>(
                         stack.reinterpret_unconstructed_data(),
                         stack.reinterpret_unconstructed_data() + count);
                     m_size = count;
@@ -338,7 +350,8 @@ namespace scn {
                     auto optr = other.data();
 
                     auto storage_ptr = new stack_storage_type[cap];
-                    auto ptr = reinterpret_cast<pointer>(storage_ptr);
+                    auto ptr =
+                        static_cast<pointer>(static_cast<void*>(storage_ptr));
                     this->uninitialized_copy(optr, optr + s, ptr);
 
                     m_ptr = ::scn::detail::launder(ptr);
@@ -419,7 +432,8 @@ namespace scn {
 
                     auto cap = next_pow2(other.size());
                     auto storage_ptr = new stack_storage_type[cap];
-                    auto ptr = reinterpret_cast<pointer>(storage_ptr);
+                    auto ptr =
+                        static_cast<pointer>(static_cast<void*>(storage_ptr));
                     this->uninitialized_copy(other.data(),
                                              other.data() + other.size(), ptr);
                     m_ptr = ::scn::detail::launder(ptr);
@@ -443,7 +457,8 @@ namespace scn {
                     if (!is_small()) {
                         if (capacity() != 0) {
                             delete[] ::scn::detail::launder(
-                                reinterpret_cast<stack_storage_type*>(m_ptr));
+                                static_cast<stack_storage_type*>(
+                                    static_cast<void*>(m_ptr)));
                         }
                     }
 
@@ -711,8 +726,8 @@ namespace scn {
                     if (count > capacity()) {
                         _realloc(next_pow2(capacity()));
                     }
-                    this->uninitialized_fill_default_construct(begin() + size(),
-                                                               begin() + count);
+                    this->uninitialized_fill_value_init(begin() + size(),
+                                                        begin() + count);
                 }
                 else {
                     for (auto it = begin() + count; it != end(); ++it) {
@@ -734,13 +749,13 @@ namespace scn {
             {
                 m_heap = false;
                 return *::new (static_cast<void*>(std::addressof(m_storage)))
-                    stack_storage();
+                    stack_storage;
             }
             heap_storage& _construct_heap_storage() noexcept
             {
                 m_heap = true;
                 return *::new (static_cast<void*>(std::addressof(m_storage)))
-                    heap_storage();
+                    heap_storage;
             }
 
             void _destruct_stack_storage() noexcept
@@ -750,7 +765,8 @@ namespace scn {
             void _destruct_heap_storage() noexcept
             {
                 if (capacity() != 0) {
-                    delete[] reinterpret_cast<stack_storage_type*>(m_ptr);
+                    delete[] static_cast<stack_storage_type*>(
+                        static_cast<void*>(m_ptr));
                 }
                 _get_heap().~heap_storage();
             }
@@ -778,7 +794,8 @@ namespace scn {
             void _realloc(size_type new_cap)
             {
                 auto storage_ptr = new stack_storage_type[new_cap];
-                auto ptr = reinterpret_cast<pointer>(storage_ptr);
+                auto ptr =
+                    static_cast<pointer>(static_cast<void*>(storage_ptr));
                 auto n = size();
                 this->uninitialized_move(begin(), end(), ptr);
                 _destruct();
@@ -803,26 +820,25 @@ namespace scn {
 
             stack_storage& _get_stack() noexcept
             {
-                return *::scn::detail::launder(reinterpret_cast<stack_storage*>(
-                    std::addressof(m_storage)));
+                return *::scn::detail::launder(static_cast<stack_storage*>(
+                    static_cast<void*>(std::addressof(m_storage))));
             }
             const stack_storage& _get_stack() const noexcept
             {
                 return *::scn::detail::launder(
-                    reinterpret_cast<const stack_storage*>(
-                        std::addressof(m_storage)));
+                    static_cast<const stack_storage*>(
+                        static_cast<const void*>(std::addressof(m_storage))));
             }
 
             heap_storage& _get_heap() noexcept
             {
-                return *::scn::detail::launder(
-                    reinterpret_cast<heap_storage*>(std::addressof(m_storage)));
+                return *::scn::detail::launder(static_cast<heap_storage*>(
+                    static_cast<void*>(std::addressof(m_storage))));
             }
             const heap_storage& _get_heap() const noexcept
             {
-                return *::scn::detail::launder(
-                    reinterpret_cast<const heap_storage*>(
-                        std::addressof(m_storage)));
+                return *::scn::detail::launder(static_cast<const heap_storage*>(
+                    static_cast<const void*>(std::addressof(m_storage))));
             }
 
             pointer m_ptr{nullptr};

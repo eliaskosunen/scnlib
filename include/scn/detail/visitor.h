@@ -23,6 +23,10 @@
 
 #include <string>
 
+#ifdef __SSE4_1__
+#include <x86intrin.h>
+#endif
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
@@ -531,6 +535,203 @@ namespace scn {
         return {it};
     }
 
+    // read_into_until_space
+
+    namespace detail {
+        template <typename Stream,
+                  typename Locale,
+                  typename Iterator,
+                  typename = void>
+        struct read_into_until_space_impl {
+            using char_type = typename Stream::char_type;
+            static result<size_t> f(Stream& s,
+                                    Locale& l,
+                                    Iterator it,
+                                    bool keep_final)
+            {
+                return read_into_if(
+                    s, it, pred::until_space<char_type, Locale>{l}, keep_final);
+            }
+        };
+
+        template <typename Stream, typename Iterator>
+        struct read_into_until_space_impl<
+            Stream,
+            basic_default_locale_ref<char>,
+            Iterator,
+            typename std::enable_if<
+                std::is_same<typename Stream::char_type, char>::value &&
+                is_sized_stream<Stream>::value>::type> {
+            using char_type = char;
+            using locale_type = basic_default_locale_ref<char>;
+
+            static result<size_t> f(Stream& s,
+                                    locale_type& loc,
+                                    Iterator it,
+                                    bool keep_final)
+            {
+                size_t i = 0;
+                //#ifdef __SSE4_1__
+#if 0
+                if (s.chars_to_read() >= 16) {
+                    __m128i spaces = _mm_set1_epi8(' ');
+                    __m128i newline = _mm_set1_epi8('\n');
+                    __m128i carriage = _mm_set1_epi8('\r');
+                    __m128i tab = _mm_set1_epi8('\t');
+                    __m128i vtab = _mm_set1_epi8('\v');
+                    __m128i formfeed = _mm_set1_epi8('\f');
+                    __m128i bytes;
+                    auto bytes_span = make_span(
+                        static_cast<char*>(static_cast<void*>(&bytes)), 16);
+                    while (s.chars_to_read() >= 16) {
+                        s.read_sized(bytes_span);
+                        __m128i bspaces = _mm_cmpeq_epi8(bytes, spaces);
+                        __m128i bnewline = _mm_cmpeq_epi8(bytes, newline);
+                        __m128i bcarriage = _mm_cmpeq_epi8(bytes, carriage);
+                        __m128i btab = _mm_cmpeq_epi8(bytes, tab);
+                        __m128i bvtab = _mm_cmpeq_epi8(bytes, vtab);
+                        __m128i bformfeed = _mm_cmpeq_epi8(bytes, formfeed);
+                        __m128i anywhite = _mm_or_si128(
+                            _mm_or_si128(
+                                _mm_or_si128(
+                                    _mm_or_si128(
+                                        _mm_or_si128(bspaces, bnewline),
+                                        bcarriage),
+                                    btab),
+                                bvtab),
+                            bformfeed);
+                        int mask16 = _mm_movemask_epi8(anywhite);
+                        if (mask16 == 0) {
+                            // no match
+                            it = std::copy(bytes_span.begin(), bytes_span.end(),
+                                           it);
+                            i += 16;
+                        }
+                        else {
+                            size_t k = 0;
+                            for (auto ch : bytes_span) {
+                                if (loc.is_space(ch)) {
+                                    if (keep_final) {
+                                        ++k;
+                                    }
+                                    break;
+                                }
+                                ++k;
+                            }
+                            it = std::copy(bytes_span.begin(),
+                                           bytes_span.begin() + k, it);
+                            i += k;
+                            s.putback_n(16 - k);
+                            return {i};
+                        }
+                    }
+                }
+#elif 0
+                if (s.chars_to_read() >= 64) {
+                    auto make_mask = [](char ch) -> uint64_t {
+                        return ~UINT64_C(0) / UINT64_C(255) *
+                               static_cast<uint64_t>(ch);
+                    };
+                    auto mask_tab = make_mask('\t');
+                    auto mask_nl = make_mask('\n');
+                    auto mask_vtab = make_mask('\v');
+                    auto mask_ff = make_mask('\f');
+                    auto mask_cr = make_mask('\r');
+                    auto mask_space = make_mask(' ');
+
+                    uint64_t word = 0;
+                    auto buf_span = make_span(
+                        static_cast<char*>(static_cast<void*>(&word)), 8);
+
+                    while (s.chars_to_read() >= 8) {
+                        s.read_sized(buf_span);
+
+                        if (has_zero(word ^ mask_tab) ||
+                            has_zero(word ^ mask_nl) ||
+                            has_zero(word ^ mask_vtab) ||
+                            has_zero(word ^ mask_ff) ||
+                            has_zero(word ^ mask_cr) ||
+                            has_zero(word ^ mask_space)) {
+                            size_t k = 0;
+                            for (auto ch : buf_span) {
+                                if (loc.is_space(ch)) {
+                                    if (keep_final) {
+                                        ++k;
+                                    }
+                                    break;
+                                }
+                                ++k;
+                            }
+                            it = std::copy(buf_span.begin(),
+                                           buf_span.begin() + k, it);
+                            i += k;
+                            s.putback_n(8 - k - (keep_final ? 0 : 1));
+                            return {i};
+                        }
+                        else {
+                            it =
+                                std::copy(buf_span.begin(), buf_span.end(), it);
+                            i += 8;
+                        }
+                    }
+                }
+#elif 0
+                detail::array<char, 8> buf;
+                auto buf_span = make_span(buf);
+                bool found = false;
+                while (s.chars_to_read() >= 8 && !found) {
+                    s.read_sized(buf_span);
+
+                    size_t k = 0;
+                    for (auto ch : buf_span) {
+                        if (loc.is_space(ch)) {
+                            found = true;
+                            if (keep_final) {
+                                ++k;
+                            }
+                            break;
+                        }
+                        ++k;
+                    }
+                    it = std::copy(buf_span.begin(), buf_span.begin() + k, it);
+                    i += k;
+                    s.putback_n(8 - k);
+                }
+                if (found) {
+                    return {i};
+                }
+#endif
+
+                char ch{};
+                for (; s.chars_to_read() != 0; ++i) {
+                    s.read_sized(make_span(&ch, 1));
+                    if (loc.is_space(ch)) {
+                        if (keep_final) {
+                            ++i;
+                            *it++ = ch;
+                        }
+                        else {
+                            s.putback_n(1);
+                        }
+                        break;
+                    }
+                    *it++ = ch;
+                }
+                return {i};
+            }
+        };
+    }  // namespace detail
+
+    template <typename Stream, typename Locale, typename Iterator>
+    result<size_t> read_into_until_space(Stream& s,
+                                         Locale& l,
+                                         Iterator it,
+                                         bool keep_final = false)
+    {
+        return detail::read_into_until_space_impl<Stream, Locale, Iterator>::f(
+            s, l, it, keep_final);
+    }
+
     // putback_range
 
     template <typename Stream,
@@ -796,11 +997,15 @@ namespace scn {
                     std::basic_string<CharT> buf;
                     buf.reserve(max_len);
 
+                    auto i = read_into_until_space(ctx.stream(), ctx.locale(),
+                                                   std::back_inserter(buf));
+#if 0
                     auto i = read_into_if(
                         ctx.stream(), std::back_inserter(buf),
                         predicates::until_space<CharT,
                                                 typename Context::locale_type>{
                             ctx.locale()});
+#endif
                     if (!i) {
                         return i.error();
                     }
@@ -1017,11 +1222,15 @@ namespace scn {
             {
                 detail::small_vector<CharT, 32> buf;
 
+                auto r = read_into_until_space(ctx.stream(), ctx.locale(),
+                                               std::back_inserter(buf));
+#if 0
                 auto r = read_into_if(
                     ctx.stream(), std::back_inserter(buf),
                     predicates::until_space<CharT,
                                             typename Context::locale_type>{
                         ctx.locale()});
+#endif
                 if (!r) {
                     return r.error();
                 }
@@ -1346,11 +1555,15 @@ namespace scn {
             {
                 std::basic_string<CharT> tmp;
                 /* tmp.reserve(15); */
+                auto s = read_into_until_space(ctx.stream(), ctx.locale(),
+                                               std::back_inserter(tmp));
+#if 0
                 auto s = read_into_if(
                     ctx.stream(), std::back_inserter(tmp),
                     predicates::until_space<CharT,
                                             typename Context::locale_type>{
                         ctx.locale()});
+#endif
                 if (SCN_UNLIKELY(!s)) {
                     return s.error();
                 }

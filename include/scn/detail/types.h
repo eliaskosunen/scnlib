@@ -180,7 +180,9 @@ namespace scn {
         return {};
     }
 
-    template <typename Stream>
+    template <typename Stream,
+              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
+                  nullptr>
     expected<typename Stream::char_type> getchar(Stream& s)
     {
         return s.read_char();

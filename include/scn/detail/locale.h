@@ -60,6 +60,12 @@ namespace scn {
             string_type m_falsename;
         };
 
+        SCN_CONSTEXPR bool has_zero(uint64_t v)
+        {
+            return (v - UINT64_C(0x0101010101010101)) & ~v &
+                   UINT64_C(0x8080808080808080);
+        }
+
         // Hand write to avoid C locales and thus noticeable performance losses
         inline bool is_space(char ch) noexcept
         {
@@ -207,7 +213,7 @@ namespace scn {
         using iterator = typename string_view_type::iterator;
         using defaults = detail::locale_defaults<char_type>;
 
-        basic_default_locale_ref() = default;
+        SCN_CONSTEXPR basic_default_locale_ref() = default;
 
         SCN_CONSTEXPR bool is_space(char_type ch) const
         {

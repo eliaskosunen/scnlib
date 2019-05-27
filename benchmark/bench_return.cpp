@@ -37,10 +37,6 @@ static void return_ref(benchmark::State& state)
         char c{};
         auto e = scn::scan(stream, "{}", c);
 
-        benchmark::DoNotOptimize(e);
-        benchmark::DoNotOptimize(c);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -68,10 +64,6 @@ static void return_tuple_tie(benchmark::State& state)
         char c{};
         std::tie(r, c) = scn::scan<char>(stream, "{}");
 
-        benchmark::DoNotOptimize(r);
-        benchmark::DoNotOptimize(c);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (!r) {
             if (r.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -98,10 +90,6 @@ static void return_tuple(benchmark::State& state)
     for (auto _ : state) {
         auto [r, c] = scn::scan<char>(stream, "{}");
 
-        benchmark::DoNotOptimize(r);
-        benchmark::DoNotOptimize(c);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (!r) {
             if (r.error() == scn::error::end_of_stream) {
                 state.PauseTiming();

@@ -33,10 +33,6 @@ static void scanfloat_scn(benchmark::State& state)
     for (auto _ : state) {
         auto e = scn::scan(stream, "{}", f);
 
-        benchmark::DoNotOptimize(f);
-        benchmark::DoNotOptimize(stream);
-        benchmark::DoNotOptimize(e);
-        benchmark::ClobberMemory();
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -66,10 +62,6 @@ static void scanfloat_scn_default(benchmark::State& state)
     for (auto _ : state) {
         auto e = scn::scan(stream, scn::default_tag, f);
 
-        benchmark::DoNotOptimize(f);
-        benchmark::DoNotOptimize(stream);
-        benchmark::DoNotOptimize(e);
-        benchmark::ClobberMemory();
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -97,10 +89,8 @@ static void scanfloat_sstream(benchmark::State& state)
     auto stream = std::istringstream(data);
     Float f{};
     for (auto _ : state) {
-        benchmark::DoNotOptimize(stream >> f);
+        stream >> f;
 
-        benchmark::DoNotOptimize(f);
-        benchmark::ClobberMemory();
         if (stream.eof()) {
             state.PauseTiming();
             data = generate_float_data<Float>(FLOAT_DATA_N);
@@ -161,7 +151,6 @@ static void scanfloat_scanf(benchmark::State& state)
     for (auto _ : state) {
         auto ret = detail::scanf_float(ptr, f);
 
-        benchmark::DoNotOptimize(f);
         if (ret != 1) {
             if (ret == EOF) {
                 state.PauseTiming();

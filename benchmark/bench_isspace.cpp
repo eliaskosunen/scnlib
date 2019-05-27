@@ -251,3 +251,84 @@ static void isspace_table_auto(benchmark::State& state)
     }
 }
 BENCHMARK(isspace_table_auto);
+
+namespace detail {
+    SCN_CONSTEXPR bool has_zero(uint64_t v)
+    {
+        return (v - UINT64_C(0x0101010101010101)) & ~v &
+               UINT64_C(0x8080808080808080);
+    }
+
+    inline bool is_space_bit_twiddle_static(char ch) noexcept
+    {
+        static uint64_t mask_space =
+            ~UINT64_C(0) / 255 * static_cast<uint64_t>(' ');
+        static uint64_t mask_nl =
+            ~UINT64_C(0) / 255 * static_cast<uint64_t>('\n');
+        static uint64_t mask_tab =
+            ~UINT64_C(0) / 255 * static_cast<uint64_t>('\t');
+        static uint64_t mask_cr =
+            ~UINT64_C(0) / 255 * static_cast<uint64_t>('\r');
+        static uint64_t mask_vtab =
+            ~UINT64_C(0) / 255 * static_cast<uint64_t>('\v');
+        static uint64_t mask_ff =
+            ~UINT64_C(0) / 255 * static_cast<uint64_t>('\f');
+
+        auto word = static_cast<uint64_t>(ch);
+        return has_zero(word ^ mask_space) || has_zero(word ^ mask_nl) ||
+               has_zero(word ^ mask_tab) || has_zero(word ^ mask_cr) ||
+               has_zero(word ^ mask_vtab) || has_zero(word ^ mask_ff);
+    }
+    inline bool is_space_bit_twiddle(char ch) noexcept
+    {
+        uint64_t mask_space = ~UINT64_C(0) / 255 * static_cast<uint64_t>(' ');
+        uint64_t mask_nl = ~UINT64_C(0) / 255 * static_cast<uint64_t>('\n');
+        uint64_t mask_tab = ~UINT64_C(0) / 255 * static_cast<uint64_t>('\t');
+        uint64_t mask_cr = ~UINT64_C(0) / 255 * static_cast<uint64_t>('\r');
+        uint64_t mask_vtab = ~UINT64_C(0) / 255 * static_cast<uint64_t>('\v');
+        uint64_t mask_ff = ~UINT64_C(0) / 255 * static_cast<uint64_t>('\f');
+
+        auto word = static_cast<uint64_t>(ch);
+        return has_zero(word ^ mask_space) || has_zero(word ^ mask_nl) ||
+               has_zero(word ^ mask_tab) || has_zero(word ^ mask_cr) ||
+               has_zero(word ^ mask_vtab) || has_zero(word ^ mask_ff);
+    }
+}  // namespace detail
+
+static void isspace_bit_twiddle_static(benchmark::State& state)
+{
+    auto data = generate_data<char>(4096);
+    auto it = data.begin();
+
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(detail::is_space_bit_twiddle_static(*it));
+        ++it;
+
+        if (SCN_UNLIKELY(it == data.end())) {
+            state.PauseTiming();
+            data = generate_data<char>(4096);
+            it = data.begin();
+            state.ResumeTiming();
+        }
+    }
+}
+BENCHMARK(isspace_bit_twiddle_static);
+
+static void isspace_bit_twiddle(benchmark::State& state)
+{
+    auto data = generate_data<char>(4096);
+    auto it = data.begin();
+
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(detail::is_space_bit_twiddle(*it));
+        ++it;
+
+        if (SCN_UNLIKELY(it == data.end())) {
+            state.PauseTiming();
+            data = generate_data<char>(4096);
+            it = data.begin();
+            state.ResumeTiming();
+        }
+    }
+}
+BENCHMARK(isspace_bit_twiddle);

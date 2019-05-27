@@ -50,10 +50,6 @@ static void scanword_scn(benchmark::State& state)
     for (auto _ : state) {
         auto e = scn::scan(stream, default_format_str<Char>(), str);
 
-        benchmark::DoNotOptimize(str);
-        benchmark::DoNotOptimize(e);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -82,10 +78,6 @@ static void scanword_scn_default(benchmark::State& state)
     for (auto _ : state) {
         auto e = scn::scan(stream, scn::default_tag, str);
 
-        benchmark::DoNotOptimize(str);
-        benchmark::DoNotOptimize(e);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -112,9 +104,8 @@ static void scanword_sstream(benchmark::State& state)
     string_type str{};
 
     for (auto _ : state) {
-        benchmark::DoNotOptimize(stream >> str);
+        stream >> str;
 
-        benchmark::ClobberMemory();
         if (stream.eof()) {
             state.PauseTiming();
             data = generate_data<Char>(static_cast<size_t>(state.range(0)));

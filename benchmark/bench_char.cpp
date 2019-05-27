@@ -50,10 +50,6 @@ static void scanchar_scn(benchmark::State& state)
     for (auto _ : state) {
         auto e = scn::scan(stream, default_format_str<Char>(), c);
 
-        benchmark::DoNotOptimize(e);
-        benchmark::DoNotOptimize(c);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -84,10 +80,6 @@ static void scanchar_scn_default(benchmark::State& state)
     for (auto _ : state) {
         auto e = scn::scan(stream, scn::default_tag, c);
 
-        benchmark::DoNotOptimize(e);
-        benchmark::DoNotOptimize(c);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -113,16 +105,12 @@ static void scanchar_scn_getchar(benchmark::State& state)
     using string_type = std::basic_string<Char>;
     string_type data = generate_data<Char>(static_cast<size_t>(state.range(0)));
     auto stream = scn::make_stream(data);
-    Char c{};
 
     for (auto _ : state) {
         auto r = scn::getchar(stream);
-        benchmark::DoNotOptimize(c = r.value());
-
-        benchmark::DoNotOptimize(c);
         benchmark::DoNotOptimize(r);
-        benchmark::DoNotOptimize(stream);
         benchmark::ClobberMemory();
+
         if (!r) {
             if (r.get_error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -134,6 +122,9 @@ static void scanchar_scn_getchar(benchmark::State& state)
                 state.SkipWithError("Benchmark errored");
                 break;
             }
+        }
+        else {
+            // c = r.value()
         }
     }
     state.SetBytesProcessed(
@@ -151,9 +142,8 @@ static void scanchar_sstream(benchmark::State& state)
     Char c{};
 
     for (auto _ : state) {
-        benchmark::DoNotOptimize(stream >> c);
+        stream >> c;
 
-        benchmark::ClobberMemory();
         if (stream.eof()) {
             state.PauseTiming();
             data = generate_data<Char>(static_cast<size_t>(state.range(0)));
@@ -181,10 +171,9 @@ static void scanchar_control(benchmark::State& state)
     Char c{};
 
     for (auto _ : state) {
-        benchmark::DoNotOptimize(c = *it);
-        benchmark::DoNotOptimize(++it);
+        c = *it;
+        ++it;
 
-        benchmark::ClobberMemory();
         if (it == data.end()) {
             state.PauseTiming();
             data = generate_data<Char>(static_cast<size_t>(state.range(0)));

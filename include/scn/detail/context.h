@@ -29,12 +29,78 @@ namespace scn {
     SCN_CLANG_IGNORE("-Wpadded")
 
     namespace detail {
+        template <typename LocaleRef, typename = void>
+        struct context_locale_base {
+        public:
+            context_locale_base(LocaleRef loc) : m_locale(std::move(loc)) {}
+
+            SCN_CONSTEXPR14 LocaleRef& locale() noexcept
+            {
+                return m_locale;
+            }
+            SCN_CONSTEXPR const LocaleRef& locale() const noexcept
+            {
+                return m_locale;
+            }
+
+        private:
+            LocaleRef m_locale;
+        };
+        template <typename ParseContext, typename = void>
+        struct context_parse_context_base {
+        public:
+            context_parse_context_base(ParseContext pctx)
+                : m_parse_ctx(std::move(pctx))
+            {
+            }
+
+            SCN_CONSTEXPR14 ParseContext& parse_context() noexcept
+            {
+                return m_parse_ctx;
+            }
+            SCN_CONSTEXPR const ParseContext& parse_context() const noexcept
+            {
+                return m_parse_ctx;
+            }
+
+        private:
+            ParseContext m_parse_ctx;
+        };
+        template <typename Options, typename = void>
+        struct context_options_base {
+        public:
+            context_options_base(Options opt) : m_options(std::move(opt)) {}
+
+            SCN_CONSTEXPR14 Options& get_options() noexcept
+            {
+                return m_options;
+            }
+            SCN_CONSTEXPR const Options& get_options() const noexcept
+            {
+                return m_options;
+            }
+
+            SCN_CONSTEXPR method int_method() const noexcept
+            {
+                return m_options.template get_method_for<int>();
+            }
+            SCN_CONSTEXPR method float_method() const noexcept
+            {
+                return m_options.template get_method_for<double>();
+            }
+
+        private:
+            Options m_options;
+        };
+
         template <typename Stream,
                   typename FormatStringChar,
                   typename ParseContext,
                   typename Options,
                   typename LocaleRef>
-        class context_base {
+        class context_base : public context_locale_base<LocaleRef>,
+                             public context_parse_context_base<ParseContext>,
+                             public context_options_base<Options> {
         public:
             using stream_type = Stream;
             using char_type = typename stream_type::char_type;
@@ -52,62 +118,39 @@ namespace scn {
                 return *m_stream;
             }
 
-            SCN_CONSTEXPR14 options_type& get_options() noexcept
-            {
-                return m_options;
-            }
-
-            SCN_CONSTEXPR14 parse_context_type& parse_context() noexcept
-            {
-                return m_parse_ctx;
-            }
-
-            locale_type& locale() noexcept
-            {
-                return m_locale;
-            }
-            method int_method() const noexcept
-            {
-                return m_options.int_method;
-            }
-            method float_method() const noexcept
-            {
-                return m_options.float_method;
-            }
-
         protected:
             SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
             context_base(stream_type& s,
                          parse_context_type pctx,
                          locale_type loc,
                          options_type opt)
-                : m_stream(std::addressof(s)),
-                  m_parse_ctx(std::move(pctx)),
-                  m_options(std::move(opt)),
-                  m_locale(std::move(loc))
+                : context_locale_base<LocaleRef>(std::move(loc)),
+                  context_parse_context_base<ParseContext>(std::move(pctx)),
+                  context_options_base<Options>(std::move(opt)),
+                  m_stream(std::addressof(s))
             {
             }
             SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
         private:
             stream_type* m_stream;
-            parse_context_type m_parse_ctx;
-            options_type m_options;
-            locale_type m_locale;
         };
 
         /// Scanning context.
-        template <typename Stream, typename ParseContext, typename Locale>
+        template <typename Stream,
+                  typename ParseContext,
+                  typename Locale,
+                  typename Options>
         class arg_context_base
             : public detail::context_base<Stream,
                                           typename Stream::char_type,
                                           ParseContext,
-                                          options,
+                                          Options,
                                           Locale> {
             using base = detail::context_base<Stream,
                                               typename Stream::char_type,
                                               ParseContext,
-                                              options,
+                                              Options,
                                               Locale>;
 
         public:
@@ -170,21 +213,24 @@ namespace scn {
             }
 
             args_type m_args;
-            detail::arg_map<arg_context_base> m_map;
+            //detail::arg_map<arg_context_base> m_map;
         };
     }  // namespace detail
 
     template <typename Stream,
               typename Locale =
-                  basic_default_locale_ref<typename Stream::char_type>>
+                  basic_default_locale_ref<typename Stream::char_type>,
+              typename Options = default_options>
     class basic_context : public detail::arg_context_base<
                               Stream,
                               basic_parse_context<typename Stream::char_type>,
-                              Locale> {
+                              Locale,
+                              Options> {
         using base = detail::arg_context_base<
             Stream,
             basic_parse_context<typename Stream::char_type>,
-            Locale>;
+            Locale,
+            Options>;
 
     public:
         using stream_type = typename base::stream_type;
@@ -210,16 +256,19 @@ namespace scn {
 
     template <typename Stream,
               typename Locale =
-                  basic_default_locale_ref<typename Stream::char_type>>
+                  basic_default_locale_ref<typename Stream::char_type>,
+              typename Options = default_options>
     class basic_scanf_context
         : public detail::arg_context_base<
               Stream,
               basic_scanf_parse_context<typename Stream::char_type>,
-              Locale> {
+              Locale,
+              Options> {
         using base = detail::arg_context_base<
             Stream,
             basic_scanf_parse_context<typename Stream::char_type>,
-            Locale>;
+            Locale,
+            Options>;
 
     public:
         using stream_type = typename base::stream_type;
@@ -245,16 +294,19 @@ namespace scn {
 
     template <typename Stream,
               typename Locale =
-                  basic_default_locale_ref<typename Stream::char_type>>
+                  basic_default_locale_ref<typename Stream::char_type>,
+              typename Options = default_options>
     class basic_empty_context
         : public detail::arg_context_base<
               Stream,
               basic_empty_parse_context<typename Stream::char_type>,
-              Locale> {
+              Locale,
+              Options> {
         using base = detail::arg_context_base<
             Stream,
             basic_empty_parse_context<typename Stream::char_type>,
-            Locale>;
+            Locale,
+            Options>;
 
     public:
         using stream_type = typename base::stream_type;

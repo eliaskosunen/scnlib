@@ -470,7 +470,7 @@ namespace scn {
                 SCN_ENSURE(!m_args.empty());
             }
 
-            detail::small_vector<entry, 16> m_args;
+            detail::small_vector<entry, 2> m_args;
         };
 
         template <typename Context, typename T>

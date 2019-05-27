@@ -36,10 +36,6 @@ static void scanint_scn(benchmark::State& state)
     for (auto _ : state) {
         auto e = scn::scan(stream, "{}", i);
 
-        benchmark::DoNotOptimize(i);
-        benchmark::DoNotOptimize(e);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -76,10 +72,6 @@ static void scanint_tuple_scn(benchmark::State& state)
         auto [e, i] = scn::scan<Int>(stream, "{}");
 #endif
 
-        benchmark::DoNotOptimize(i);
-        benchmark::DoNotOptimize(e);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -112,10 +104,6 @@ static void scanint_scn_default(benchmark::State& state)
     for (auto _ : state) {
         auto e = scn::scan(stream, scn::default_tag, i);
 
-        benchmark::DoNotOptimize(i);
-        benchmark::DoNotOptimize(e);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
@@ -145,9 +133,6 @@ static void scanint_sstream(benchmark::State& state)
     for (auto _ : state) {
         stream >> i;
 
-        benchmark::DoNotOptimize(i);
-        benchmark::DoNotOptimize(stream);
-        benchmark::ClobberMemory();
         if (stream.eof()) {
             state.PauseTiming();
             data = generate_int_data<Int>(INT_DATA_N);
@@ -208,7 +193,6 @@ static void scanint_scanf(benchmark::State& state)
     for (auto _ : state) {
         auto ret = detail::scanf_integral(ptr, i);
 
-        benchmark::DoNotOptimize(i);
         if (ret != 1) {
             if (ret == EOF) {
                 state.PauseTiming();

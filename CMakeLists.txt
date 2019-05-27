@@ -28,6 +28,7 @@ option(SCN_WERROR "Halt compilation in case of a warning" OFF)
 option(SCN_USE_32BIT "Compile as 32-bit (gcc or clang only)" OFF)
 option(SCN_USE_EXCEPTIONS "Compile with exception support (disabling will cause test failures)" ON)
 option(SCN_USE_RTTI "Compile with RTTI (run-time type information) support" ON)
+option(SCN_USE_NATIVE_ARCH "Add -march=native to build flags (gcc or clang only)" OFF)
 
 option(SCN_USE_ASAN "Compile with AddressSanitizer (clang only)" OFF)
 option(SCN_USE_UBSAN "Compile with UndefinedBehaviorSanitizer (clang only)" OFF)
