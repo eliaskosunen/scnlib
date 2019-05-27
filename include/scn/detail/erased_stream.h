@@ -61,14 +61,14 @@ namespace scn {
                 default;
             virtual ~erased_sized_stream_base() = default;
 
-            virtual error read_sized(span<CharT> s) = 0;
+            virtual void read_sized(span<CharT> s) = 0;
 
-            virtual error putback_n(size_t n) = 0;
+            virtual void putback_n(size_t n) = 0;
 
             virtual size_t chars_to_read() const = 0;
 
-            virtual error skip(size_t n) = 0;
-            virtual error skip_all() = 0;
+            virtual void skip(size_t n) = 0;
+            virtual void skip_all() = 0;
 
         protected:
             erased_sized_stream_base() = default;
@@ -131,14 +131,14 @@ namespace scn {
 
             erased_sized_stream_impl(Stream& s) : m_stream(std::addressof(s)) {}
 
-            error read_sized(span<char_type> s) override
+            void read_sized(span<char_type> s) override
             {
-                return m_stream->read_sized(s);
+                m_stream->read_sized(s);
             }
 
-            error putback_n(size_t n) override
+            void putback_n(size_t n) override
             {
-                return m_stream->putback_n(n);
+                m_stream->putback_n(n);
             }
 
             size_t chars_to_read() const override
@@ -146,13 +146,13 @@ namespace scn {
                 return m_stream->chars_to_read();
             }
 
-            error skip(size_t n) override
+            void skip(size_t n) override
             {
-                return m_stream->skip(n);
+                m_stream->skip(n);
             }
-            error skip_all() override
+            void skip_all() override
             {
-                return m_stream->skip_all();
+                m_stream->skip_all();
             }
 
             Stream& get()
@@ -240,14 +240,14 @@ namespace scn {
         {
         }
 
-        error read_sized(span<char_type> s)
+        void read_sized(span<char_type> s)
         {
-            return m_stream->read_sized(s);
+            m_stream->read_sized(s);
         }
 
-        error putback_n(size_t n)
+        void putback_n(size_t n)
         {
-            return m_stream->putback_n(n);
+            m_stream->putback_n(n);
         }
 
         size_t chars_to_read() const
@@ -255,13 +255,13 @@ namespace scn {
             return m_stream->chars_to_read();
         }
 
-        error skip(size_t n)
+        void skip(size_t n)
         {
-            return m_stream->skip(n);
+            m_stream->skip(n);
         }
-        error skip_all()
+        void skip_all()
         {
-            return m_stream->skip_all();
+            m_stream->skip_all();
         }
 
         detail::erased_sized_stream_base<CharT>& get_sized()

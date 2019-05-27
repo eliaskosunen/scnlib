@@ -103,43 +103,40 @@ Older compilers may work, but it is not guaranteed.
 
 ### Run-time performance
 
-These benchmarks were run on a Xubuntu 18.04.2 machine running kernel version 4.15.0-45, with an Intel Core i7-8750H processor, and compiled with clang version 6.0.1, with `-O3`.
-CPU scaling was enabled for these benchmarks, which may have affected the results.
+These benchmarks were run on a Ubuntu 19.04 machine running kernel version 5.0.0-15, with an Intel Core i7-8750H processor, and compiled with gcc version 8.3.0, with `-O3 -march=native`.
 The source code for the benchmarks can be seen in the `benchmark` directory.
 
 Times are in nanoseconds of CPU time. Lower is better.
 
 #### Reading random integers
 
-| Integer type | `scn::scan` (`strto`) | `scn::scan` (`sto`) | `scn::scan` (`custom`) | `std::stringstream` |
-| :----------- | --------------------: | ------------------: | ---------------------: | ------------------: |
-| `int`        | 119                   | 129                 | 94                     | 101                 |
-| `long long`  | 136                   | 110                 | 178                    | 156                 |
-| `unsigned`   | 107                   | 121                 | 91                     | 85                  |
+| Integer type | `scn::scan` | `scn::scan` /w `tuple` | `std::stringstream` |
+| :----------- | ----------- | ---------------------: | ------------------: |
+| `int`        | 71          | 75                     | 70                  |
+| `long long`  | 106         | 107                    | 95                  |
+| `unsigned`   | 81          | 85                     | 53                  |
 
 #### Reading random floating-point numbers
 
-| Floating-point type | `scn::scan` (`strto`) | `scn::scan` (`sto`) | `std::stringstream` |
-| :------------------ | --------------------: | ------------------: | ------------------: |
-| `float`             | 208                   | 207                 | 253                 |
-| `double`            | 211                   | 211                 | 260                 |
-| `long double`       | 225                   | 225                 | 273                 |
+| Floating-point type | `scn::scan` | `std::stringstream` |
+| :------------------ | ----------: | ------------------: |
+| `float`             | 136         | 203                 |
+| `double`            | 141         | 208                 |
+| `long double`       | 155         | 219                 |
 
 #### Reading random whitespace-separated `std::basic_string`s
 
 | Character type | `scn::scan` | `std::stringstream` |
 | :------------- | ----------: | ------------------: |
-| `char`         | 75          | 56                  |
-| `wchar_t`      | 92          | 126                 |
+| `char`         | 51          | 46                  |
+| `wchar_t`      | 71          | 110                 |
 
 #### Reading random characters
 
 | Character type | `scn::scan` | `scn::getchar` | `std::stringstream` |
 | :------------- | ----------: | -------------: | ------------------: |
-| `char`         | 41          | 14             | 15                  |
-| `wchar_t`      | 41          | 14             | 22                  |
-
-TODO: More benchmarks
+| `char`         | 20          | 5              | 8                   |
+| `wchar_t`      | 19          | 5              | 15                  |
 
 You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS` and building the target `bench`.
 `SCN_BUILD_BENCHMARKS` is enabled by default if `scn` is the root CMake project, and disabled otherwise.
@@ -160,7 +157,7 @@ To run these tests yourself:
 $ cd build
 $ cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF -DSCN_BLOAT=ON ..
 $ make -j
-$ ctest -V
+$ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 ```
 
 \*: `scn::ranges::scan` scans from a `Range`, not from stdin
@@ -171,43 +168,43 @@ $ ctest -V
 
 | Method                              | Executable size (KiB) | Stripped size (KiB) |
 | :---------------------------------- | --------------------: | ------------------: |
-| empty                               | 20                    | 16                  |
-| `scanf`                             | 24                    | 20                  |
-| `std::istream` / `std::cin`         | 28                    | 20                  |
-| `scn::input`                        | 52                    | 40                  |
-| `scn::input` (erased)               | 44                    | 36                  |
-| `scn::ranges::scan`                 | 116                   | 84                  |
-| `scn::input` (header only)          | 200                   | 136                 |
-| `scn::input` (header only & erased) | 196                   | 136                 |
-| `scn::ranges::scan` (header only)   | 200                   | 140                 |
+| empty                               | 18                    | 14                  |
+| `scanf`                             | 23                    | 18                  |
+| `std::istream` / `std::cin`         | 25                    | 18                  |
+| `scn::input`                        | 47                    | 38                  |
+| `scn::input` (erased)               | 34                    | 26                  |
+| `scn::ranges::scan`                 | 94                    | 66                  |
+| `scn::input` (header only)          | 191                   | 130                 |
+| `scn::input` (header only & erased) | 189                   | 130                 |
+| `scn::ranges::scan` (header only)   | 194                   | 134                 |
 
 #### Release build (-O3 -DNDEBUG)
 
 | Method                              | Executable size (KiB) | Stripped size (KiB) |
 | :---------------------------------- | --------------------: | ------------------: |
-| empty                               | 20                    | 16                  |
-| `scanf`                             | 24                    | 20                  |
-| `std::istream` / `std::cin`         | 32                    | 24                  |
-| `scn::input`                        | 92                    | 80                  |
-| `scn::input` (erased)               | 80                    | 72                  |
-| `scn::ranges::scan`                 | 148                   | 132                 |
-| `scn::input` (header only)          | 280                   | 240                 |
-| `scn::input` (header only & erased) | 260                   | 216                 |
-| `scn::ranges::scan` (header only)   | 312                   | 196                 |
+| empty                               | 18                    | 14                  |
+| `scanf`                             | 24                    | 18                  |
+| `std::istream` / `std::cin`         | 30                    | 22                  |
+| `scn::input`                        | 52                    | 42                  |
+| `scn::input` (erased)               | 42                    | 34                  |
+| `scn::ranges::scan`                 | 80                    | 70                  |
+| `scn::input` (header only)          | 209                   | 170                 |
+| `scn::input` (header only & erased) | 277                   | 238                 |
+| `scn::ranges::scan` (header only)   | 201                   | 166                 |
 
 #### Debug build (-g)
 
 | Method                              | Executable size (KiB) | Stripped size (KiB) |
 | :---------------------------------- | --------------------: | ------------------: |
-| empty                               | 32                    | 16                  |
-| `scanf`                             | 276                   | 20                  |
-| `std::istream` / `std::cin`         | 308                   | 24                  |
-| `scn::input`                        | ~2300                 | 72                  |
-| `scn::input` (erased)               | ~2100                 | 64                  |
-| `scn::ranges::scan`                 | ~5700                 | 196                 |
-| `scn::input` (header only)          | ~9500                 | 392                 |
-| `scn::input` (header only & erased) | ~8900                 | 380                 |
-| `scn::ranges::scan` (header only)   | ~9700                 | 384                 |
+| empty                               | 29                    | 14                  |
+| `scanf`                             | 600                   | 18                  |
+| `std::istream` / `std::cin`         | 662                   | 22                  |
+| `scn::input`                        | 1910                  | 54                  |
+| `scn::input` (erased)               | 1760                  | 46                  |
+| `scn::ranges::scan`                 | 5350                  | 554                 |
+| `scn::input` (header only)          | 8460                  | 392                 |
+| `scn::input` (header only & erased) | 8140                  | 330                 |
+| `scn::ranges::scan` (header only)   | 9300                  | 718                 |
 
 ## Acknowledgements
 
