@@ -466,8 +466,12 @@ namespace scn {
             }
 
             template <typename T, typename CharT>
-            expected<typename span<const CharT>::iterator>
-            read_signed(T& val, T sign, span<const CharT> buf, int base)
+            expected<typename span<const CharT>::iterator> read_signed(
+                T& val,
+                T sign,
+                span<const CharT> buf,
+                int base,
+                CharT thsep)
             {
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wconversion")
@@ -508,6 +512,9 @@ namespace scn {
                         }
                     }
                     else {
+                        if (thsep != 0 && *it == thsep) {
+                            continue;
+                        }
                         break;
                     }
                 }
@@ -519,7 +526,7 @@ namespace scn {
             }
             template <typename T, typename CharT>
             expected<typename span<const CharT>::iterator>
-            read_unsigned(T& val, span<const CharT> buf, int base)
+            read_unsigned(T& val, span<const CharT> buf, int base, CharT thsep)
             {
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wconversion")
@@ -548,6 +555,9 @@ namespace scn {
                         }
                     }
                     else {
+                        if (thsep != 0 && *it == thsep) {
+                            continue;
+                        }
                         break;
                     }
                 }
@@ -773,7 +783,8 @@ namespace scn {
         expected<size_t> integer_scanner<CharT, T>::_read_sto(
             T& val,
             span<const CharT> buf,
-            int base)
+            int base,
+            CharT)
         {
 #if SCN_HAS_EXCEPTIONS
             try {
@@ -806,7 +817,8 @@ namespace scn {
         expected<size_t> integer_scanner<CharT, T>::_read_strto(
             T& val,
             span<const CharT> buf,
-            int base)
+            int base,
+            CharT)
         {
             size_t chars = 0;
             errno = 0;
@@ -832,7 +844,8 @@ namespace scn {
         expected<size_t> integer_scanner<CharT, T>::_read_from_chars(
             T& val,
             span<const CharT> buf,
-            int base)
+            int base,
+            CharT)
         {
 #if SCN_HAS_INTEGER_CHARCONV
             auto begin = buf.data();
@@ -857,7 +870,8 @@ namespace scn {
         expected<size_t> integer_scanner<CharT, T>::_read_custom(
             T& val,
             span<const CharT> buf,
-            int base)
+            int base,
+            CharT thsep)
         {
             T tmp = 0;
             T sign = 1;
@@ -923,8 +937,8 @@ namespace scn {
             SCN_ASSUME(sign != 0);
 
             if (std::is_signed<T>::value) {
-                auto r = custom::read_signed(tmp, sign,
-                                             make_span(it, buf.end()), base);
+                auto r = custom::read_signed(
+                    tmp, sign, make_span(it, buf.end()), base, thsep);
                 if (!r) {
                     return r.get_error();
                 }
@@ -932,7 +946,8 @@ namespace scn {
                 val = tmp;
                 return static_cast<size_t>(std::distance(buf.begin(), it));
             }
-            auto r = custom::read_unsigned(tmp, make_span(it, buf.end()), base);
+            auto r = custom::read_unsigned(tmp, make_span(it, buf.end()), base,
+                                           thsep);
             if (!r) {
                 return r.get_error();
             }
@@ -1076,7 +1091,7 @@ namespace scn {
 
                     long long a{0}, b{0};
                     auto s = make_span(it, buf.end());
-                    auto ret = int_scanner::_read_custom(a, s, 16);
+                    auto ret = int_scanner::_read_custom(a, s, 16, 0);
                     if (!ret) {
                         return ret;
                     }

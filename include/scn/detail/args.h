@@ -107,7 +107,7 @@ namespace scn {
             SCN_EXPECT(arg != nullptr);
 
             typename Context::template scanner_type<T> s;
-            auto err = s.parse(ctx);
+            auto err = ctx.parse_context().parse(s, ctx);
             if (!err) {
                 return err;
             }

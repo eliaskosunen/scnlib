@@ -416,14 +416,14 @@
  * For `span`s, there are no supported scanning options.
  *
  * \par Integral types
- * First, there's a localization specifier:
+ * There are localization specifiers:
  *  - `n`: Use thousands separator from the given locale
  *  - `l`: Accept characters specified as digits by the given locale. Implies
  * `n`
  *  - (default): Use `,` as thousands separator and `[0-9]` as digits
  *
  * \par
- * Then, there's a base specifier
+ * And base specifiers:
  *  - `d`: Decimal (base-10)
  *  - `x`: Hexadecimal (base-16)
  *  - `o`: Octal (base-8)
@@ -433,6 +433,16 @@
  *    `0` prefix for octal, decimal by default
  *  - `i`: Detect base. Argument must be signed
  *  - `u`: Detect base. Argument must be unsigned
+ *
+ * \par
+ * And other options:
+ *  - `'`: Accept thousands separator characters,
+ *         as specified by the given locale (only with `custom`-scanning method)
+ *  - (default): Thousands separator characters aren't accepter
+ *
+ * \par
+ * These specifiers can be given in any order, with up to one from each
+ * category.
  *
  * \par Floating-point types
  * First, there's a localization specifier:

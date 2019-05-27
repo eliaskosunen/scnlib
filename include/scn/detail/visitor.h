@@ -1105,109 +1105,117 @@ namespace scn {
                                  "Unexpected format string end");
                 }
 
-                if (pctx.check_arg_end(ctx.locale())) {
-                    pctx.arg_end();
-                    return {};
-                }
+                bool base_set = false;
+                bool loc_set = false;
+                for (auto ch = pctx.next();
+                     pctx && !pctx.check_arg_end(ctx.locale());
+                     pctx.advance(), ch = pctx.next()) {
+                    if (!base_set) {
+                        if (ch == detail::ascii_widen<CharT>('d')) {
+                            base = 10;
+                        }
+                        else if (ch == detail::ascii_widen<CharT>('x')) {
+                            base = 16;
+                        }
+                        else if (ch == detail::ascii_widen<CharT>('o')) {
+                            base = 8;
+                        }
+                        else if (ch == detail::ascii_widen<CharT>('i')) {
+                            if (std::is_unsigned<T>::value) {
+                                return error(
+                                    error::invalid_format_string,
+                                    "'i' format specifier expects signed "
+                                    "integer argument");
+                            }
+                            base = 0;
+                        }
+                        else if (ch == detail::ascii_widen<CharT>('u')) {
+                            if (std::is_signed<T>::value) {
+                                return error(
+                                    error::invalid_format_string,
+                                    "'u' format specifier expects unsigned "
+                                    "integer argument");
+                            }
+                            base = 0;
+                        }
+                        else if (ch == detail::ascii_widen<CharT>('b')) {
+                            pctx.advance();
+                            if (SCN_UNLIKELY(!pctx)) {
+                                return error(error::invalid_format_string,
+                                             "Unexpected format string end");
+                            }
+                            if (SCN_UNLIKELY(
+                                    pctx.check_arg_end(ctx.locale()))) {
+                                return error(error::invalid_format_string,
+                                             "Unexpected argument end");
+                            }
+                            ch = pctx.next();
 
-                if (pctx.next() == detail::ascii_widen<CharT>('l')) {
-                    localized = thousands_separator | decimal | digits;
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<CharT>('n')) {
-                    localized = thousands_separator | decimal;
-                    ctx.parse_context().advance();
-                }
+                            const auto zero = detail::ascii_widen<CharT>('0'),
+                                       nine = detail::ascii_widen<CharT>('9');
+                            int tmp = 0;
+                            if (ch < zero || ch > nine) {
+                                return error(error::invalid_format_string,
+                                             "Invalid character after 'b', "
+                                             "expected digit");
+                            }
+                            tmp = pctx.next() - zero;
+                            pctx.advance();
+                            ch = pctx.next();
 
-                if (SCN_UNLIKELY(!pctx)) {
+                            if (pctx.check_arg_end(ctx.locale())) {
+                                base = tmp;
+                                break;
+                            }
+                            if (ch < zero || ch > nine) {
+                                return error(error::invalid_format_string,
+                                             "Invalid character after 'b', "
+                                             "expected digit");
+                            }
+                            tmp *= 10;
+                            tmp += pctx.next() - zero;
+                            if (tmp < 1 || tmp > 36) {
+                                return error(
+                                    error::invalid_format_string,
+                                    "Invalid base, must be between 1 and 36");
+                            }
+                            base = tmp;
+                        }
+                        base_set = true;
+                        continue;
+                    }
+
+                    if (!loc_set) {
+                        if (ch == detail::ascii_widen<CharT>('l')) {
+                            localized = thousands_separator | digits;
+                        }
+                        else if (ch == detail::ascii_widen<CharT>('n')) {
+                            localized = thousands_separator;
+                        }
+                        loc_set = true;
+                        continue;
+                    }
+
+                    if (!have_thsep) {
+                        if (ch == detail::ascii_widen<CharT>('\'')) {
+                            have_thsep = true;
+                        }
+                        continue;
+                    }
+
                     return error(error::invalid_format_string,
-                                 "Unexpected format string end");
-                }
-                if (pctx.check_arg_end(ctx.locale())) {
-                    pctx.arg_end();
-                    return {};
-                }
-
-                if (pctx.next() == detail::ascii_widen<CharT>('d')) {
-                    base = 10;
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<CharT>('x')) {
-                    base = 16;
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<CharT>('o')) {
-                    base = 8;
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<CharT>('i')) {
-                    if (std::is_unsigned<T>::value) {
-                        return error(error::invalid_format_string,
-                                     "'i' format specifier expects signed "
-                                     "integer argument");
-                    }
-                    base = 0;
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<CharT>('u')) {
-                    if (std::is_signed<T>::value) {
-                        return error(error::invalid_format_string,
-                                     "'u' format specifier expects unsigned "
-                                     "integer argument");
-                    }
-                    base = 0;
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<CharT>('b')) {
-                    pctx.advance();
-                    if (SCN_UNLIKELY(!pctx)) {
-                        return error(error::invalid_format_string,
-                                     "Unexpected format string end");
-                    }
-                    if (SCN_UNLIKELY(pctx.check_arg_end(ctx.locale()))) {
-                        return error(error::invalid_format_string,
-                                     "Unexpected argument end");
-                    }
-
-                    const auto zero = detail::ascii_widen<CharT>('0'),
-                               nine = detail::ascii_widen<CharT>('9');
-                    int tmp = 0;
-                    if (pctx.next() < zero || pctx.next() > nine) {
-                        return error(
-                            error::invalid_format_string,
-                            "Invalid character after 'b', expected digit");
-                    }
-                    tmp = pctx.next() - zero;
-                    pctx.advance();
-
-                    if (pctx.check_arg_end(ctx.locale())) {
-                        base = tmp;
-                        pctx.arg_end();
-                        return {};
-                    }
-                    if (pctx.next() < zero || pctx.next() > nine) {
-                        return error(
-                            error::invalid_format_string,
-                            "Invalid character after 'b', expected digit");
-                    }
-                    tmp *= 10;
-                    tmp += pctx.next() - zero;
-                    if (tmp < 1 || tmp > 36) {
-                        return error(error::invalid_format_string,
-                                     "Invalid base, must be between 1 and 36");
-                    }
-                    base = tmp;
-                    pctx.advance();
-                }
-                else {
-                    return error(error::invalid_format_string,
-                                 "Expected argument end");
+                                 "Unexpected character in format string");
                 }
 
                 if (localized && (base != 0 && base != 10)) {
                     return error(
                         error::invalid_format_string,
                         "Localized integers can only be scanned in base 10");
+                }
+                if (have_thsep && ctx.int_method() != method::custom) {
+                    return error(error::invalid_format_string,
+                                 "Thousand separator scanning is only "
+                                 "supported with custom parsing method");
                 }
                 if (!pctx.check_arg_end(ctx.locale())) {
                     return error(error::invalid_format_string,
@@ -1291,7 +1299,9 @@ namespace scn {
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     SCN_GCC_POP
                 };
-                auto e = do_read()(tmp, make_span(buf).as_const(), base);
+                auto e = do_read()(
+                    tmp, make_span(buf).as_const(), base,
+                    have_thsep ? ctx.locale().thousands_separator() : 0);
                 if (!e) {
                     return e.get_error();
                 }
@@ -1311,26 +1321,30 @@ namespace scn {
 
             enum localized_type : uint8_t {
                 thousands_separator = 1,
-                decimal = 2,
-                digits = 4
+                digits = 2
             };
 
             int base{0};
             uint8_t localized{0};
+            bool have_thsep{false};
 
         private:
             static expected<size_t> _read_sto(T& val,
                                               span<const CharT> buf,
-                                              int base);
+                                              int base,
+                                              CharT thsep);
             static expected<size_t> _read_strto(T& val,
                                                 span<const CharT> buf,
-                                                int base);
+                                                int base,
+                                                CharT thsep);
             static expected<size_t> _read_from_chars(T& val,
                                                      span<const CharT> buf,
-                                                     int base);
+                                                     int base,
+                                                     CharT thsep);
             static expected<size_t> _read_custom(T& val,
                                                  span<const CharT> buf,
-                                                 int base);
+                                                 int base,
+                                                 CharT thsep);
 
             friend struct float_scanner<CharT, float>;
             friend struct float_scanner<CharT, double>;
