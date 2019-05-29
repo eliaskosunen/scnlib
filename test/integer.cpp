@@ -153,6 +153,39 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     }
 }
 
+TEST_CASE("integer thousands separator")
+{
+    auto stream = scn::make_stream("100,200");
+    int a{}, b{};
+
+    SUBCASE("without {'}")
+    {
+        auto ret = scn::scan(stream, "{}", a);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(a == 100);
+
+        {
+            auto cret = scn::getchar(stream);
+            CHECK(cret);
+            CHECK(cret.value() == ',');
+        }
+
+        ret = scn::scan(stream, "{}", b);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(b == 200);
+    }
+
+    SUBCASE("with {'}")
+    {
+        auto ret = scn::scan(stream, "{:'}", a);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(a == 100200);
+    }
+}
+
 template <typename T>
 T maxval()
 {

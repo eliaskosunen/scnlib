@@ -1113,12 +1113,18 @@ namespace scn {
                     if (!base_set) {
                         if (ch == detail::ascii_widen<CharT>('d')) {
                             base = 10;
+                            base_set = true;
+                            continue;
                         }
                         else if (ch == detail::ascii_widen<CharT>('x')) {
                             base = 16;
+                            base_set = true;
+                            continue;
                         }
                         else if (ch == detail::ascii_widen<CharT>('o')) {
                             base = 8;
+                            base_set = true;
+                            continue;
                         }
                         else if (ch == detail::ascii_widen<CharT>('i')) {
                             if (std::is_unsigned<T>::value) {
@@ -1128,6 +1134,8 @@ namespace scn {
                                     "integer argument");
                             }
                             base = 0;
+                            base_set = true;
+                            continue;
                         }
                         else if (ch == detail::ascii_widen<CharT>('u')) {
                             if (std::is_signed<T>::value) {
@@ -1137,6 +1145,8 @@ namespace scn {
                                     "integer argument");
                             }
                             base = 0;
+                            base_set = true;
+                            continue;
                         }
                         else if (ch == detail::ascii_widen<CharT>('b')) {
                             pctx.advance();
@@ -1180,27 +1190,29 @@ namespace scn {
                                     "Invalid base, must be between 1 and 36");
                             }
                             base = tmp;
+                            base_set = true;
+                            continue;
                         }
-                        base_set = true;
-                        continue;
                     }
 
                     if (!loc_set) {
                         if (ch == detail::ascii_widen<CharT>('l')) {
                             localized = thousands_separator | digits;
+                            loc_set = true;
+                            continue;
                         }
                         else if (ch == detail::ascii_widen<CharT>('n')) {
                             localized = thousands_separator;
+                            loc_set = true;
+                            continue;
                         }
-                        loc_set = true;
-                        continue;
                     }
 
                     if (!have_thsep) {
                         if (ch == detail::ascii_widen<CharT>('\'')) {
                             have_thsep = true;
+                            continue;
                         }
-                        continue;
                     }
 
                     return error(error::invalid_format_string,
