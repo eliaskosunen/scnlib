@@ -244,78 +244,79 @@ namespace scn {
                     std::move(result)};
         }
 
-        SCN_END_NAMESPACE
-#if 0
-        template <typename Range>
-        class scan_view : public ::ranges::view_interface<
-                              scan_view<Range>,
-                              ::ranges::is_finite<Range>::value
-                                  ? ::ranges::finite
-                                  : ::ranges::range_cardinality<Range>::value> {
-            using _difference_type = ::ranges::difference_type_t<Range>;
-
+        template <typename T, typename Iterator, typename Sentinel>
+        class get_value_result : public expected<T> {
         public:
-            scan_view() = default;
-            scan_view(Range r, _difference_type n = 0) : m_view(std::move(r), n)
+            using iterator_type = Iterator;
+            using sentinel_type = Sentinel;
+            using difference_type = ::ranges::difference_type_t<iterator_type>;
+
+            constexpr get_value_result(iterator_type it,
+                                       sentinel_type end,
+                                       expected<T>&& base)
+                : expected<T>(std::move(base)), m_it(it), m_end(end)
+            {
+            }
+            template <typename Range>
+            constexpr get_value_result(const Range& r,
+                                       difference_type n,
+                                       expected<T>&& base)
+                : expected<T>(std::move(base)),
+                  m_it(::ranges::next(::ranges::begin(r), n)),
+                  m_end(::ranges::end(r))
             {
             }
 
+            constexpr iterator_type iterator() const noexcept
+            {
+                return m_it;
+            }
+
+            constexpr auto view() const noexcept
+            {
+                return ::ranges::make_subrange(iterator(), m_end);
+            }
+
         private:
-            ::ranges::drop_view<Range> m_view;
+            iterator_type m_it;
+            sentinel_type m_end;
         };
 
+        template <typename T, typename Range>
+        get_value_result<T,
+                         ::ranges::iterator_t<const Range>,
+                         ::ranges::sentinel_t<const Range>>
+        get_value(const Range& r)
+        {
+            auto stream = make_stream(r);
+
+            using context_type = basic_empty_context<decltype(stream)>;
+            using char_type = typename context_type::char_type;
+            auto args = make_args<context_type>();
+            auto ctx = context_type(stream, 1, args);
+
+            auto ret = skip_stream_whitespace(ctx);
+            if (!ret) {
+                return ret;
+            }
+
+            T val{};
+            scanner<char_type, T> sc;
+            ret = sc.scan(val, ctx);
+            if (!ret) {
+                return ret;
+            }
+            return {r, static_cast<std::ptrdiff_t>(stream.chars_read()),
+                    expected<T>(val)};
+        }
+
+        template <typename T, typename CharT>
+        auto from_string(basic_string_view<CharT> str)
+        {
+            return get_value<T>(str);
+        }
+
         SCN_END_NAMESPACE
-
-        namespace view {
-            SCN_BEGIN_NAMESPACE
-
-            SCN_END_NAMESPACE
-        }  // namespace view
-
-        namespace action {
-            SCN_BEGIN_NAMESPACE
-
-            struct scan_fn {
-            private:
-                friend ::ranges::action::action_access;
-
-                template <typename T,
-                          typename E,
-                          typename P = ::ranges::identity>
-                static auto CPP_fun(bind)(scan_fn scan,
-                                          T& value,
-                                          E& err,
-                                          P proj = P{})(
-                    requires(!::ranges::Range<T>))
-                {
-                    return std::bind(scan, std::placeholders::_1, value, err,
-                                     std::move(proj));
-                }
-
-            public:
-                CPP_template(typename Range,
-                             typename T,
-                             typename P = ::ranges::identity)(
-                    requires ::ranges::ForwardRange<Range>) Range
-                operator()(Range&& rng, T& value, error& err, P = P{}) const
-                {
-                    auto ret = ::scn::ranges::scan_default(rng, value);
-                    if (!ret) {
-                        err = ret.error();
-                        return std::move(rng);
-                    }
-                    auto dist = ::ranges::distance(::ranges::begin(rng),
-                                                   ret.iterator());
-                    ::ranges::action::drop(rng, dist);
-                    return std::move(rng);
-                }
-            };
-
-            RANGES_INLINE_VARIABLE(::ranges::action::action<scan_fn>, scan)
-
-            SCN_END_NAMESPACE
-        }  // namespace action
-#endif
     }  // namespace ranges
 }  // namespace scn
 
