@@ -20,6 +20,13 @@ target_link_libraries(tests PRIVATE scn tests-base)
 set_private_flags(tests)
 add_test(NAME tests COMMAND tests)
 
+if (SCN_BUILD_LOCALE_TESTS)
+    add_executable(tests-locale locale.cpp)
+    target_link_libraries(tests-locale PRIVATE scn tests-base)
+    set_private_flags(tests-locale)
+    add_test(NAME locale COMMAND tests-locale)
+endif ()
+
 add_subdirectory(each)
 
 if (SCN_HAS_RANGES)

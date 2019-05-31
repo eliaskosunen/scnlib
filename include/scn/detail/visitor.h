@@ -1277,6 +1277,7 @@ namespace scn {
                         return pb;
                     }
                     val = tmp;
+                    return {};
                 }
 
                 SCN_MSVC_PUSH
@@ -1441,49 +1442,12 @@ namespace scn {
             {
                 detail::small_vector<CharT, 32> buf{};
 
-                struct float_predicate {
-                    SCN_GCC_PUSH
-                    SCN_GCC_IGNORE("-Wunused-local-typedefs")
-
-                    SCN_CLANG_PUSH
-                    SCN_CLANG_IGNORE("-Wunused-local-typedefs")
-
-                    using does_skip = std::true_type;
-
-                    SCN_CLANG_POP
-                    SCN_GCC_POP
-
-                    expected<scan_status> operator()(CharT ch)
-                    {
-                        if (m_ctx.locale().is_space(ch)) {
-                            return scan_status::end;
-                        }
-                        if (ch == m_ctx.locale().thousands_separator()) {
-                            return scan_status::skip;
-                        }
-                        if (ch == m_ctx.locale().decimal_point()) {
-                            if (m_point) {
-                                return error(error::invalid_scanned_value,
-                                             "Extra decimal separator found in "
-                                             "parsing floating-point number");
-                            }
-                            m_point = true;
-                        }
-                        return scan_status::keep;
-                    }
-
-                    bool& m_point;
-                    Context& m_ctx;
-                };
-
-                bool point = false;
-                auto r = read_into_if(ctx.stream(), std::back_inserter(buf),
-                                      float_predicate{point, ctx});
+                auto r = read_into_until_space(ctx.stream(), ctx.locale(),
+                                               std::back_inserter(buf));
                 if (!r) {
                     return r.error();
                 }
                 buf.erase(buf.begin() + r.value(), buf.end());
-                buf.push_back(CharT{0});
 
                 T tmp{};
                 size_t chars = 0;
@@ -1506,7 +1470,10 @@ namespace scn {
                         return pb;
                     }
                     val = tmp;
+                    return {};
                 }
+
+                buf.push_back(CharT{0});
                 auto do_read = [&]() {
                     SCN_GCC_PUSH
                     SCN_GCC_IGNORE("-Wswitch-default")

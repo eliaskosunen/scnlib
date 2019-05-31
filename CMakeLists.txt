@@ -35,6 +35,7 @@ option(SCN_USE_UBSAN "Compile with UndefinedBehaviorSanitizer (clang only)" OFF)
 option(SCN_USE_MSAN "Compile with MemorySanitizer (clang only)" OFF)
 
 option(SCN_BUILD_FUZZING "Build fuzzing tests" OFF)
+option(SCN_BUILD_LOCALE_TESTS "Build localized tests, needs en_US.utf8 and fi_FI.utf8 locales" OFF)
 
 file(READ include/scn/detail/config.h config_h)
 if (NOT config_h MATCHES "SCN_VERSION SCN_COMPILER\\(([0-9]+), ([0-9]+), ([0-9]+)\\)")
