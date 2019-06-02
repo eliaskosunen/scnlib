@@ -53,6 +53,22 @@ TEST_CASE("general")
     CHECK(b);
     CHECK(ret);
     CHECK(ret.value() == 4);
+
+    ret = scn::scan(stream, "{}", i);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::end_of_stream);
+
+    auto stream2 = nonsized_stream<decltype(stream)>{
+        scn::make_stream(data.begin(), data.end())};
+    ret = scn::scan(stream2, "test {{}} {} {} {} {:a}", i, d, span, b);
+
+    CHECK(i == 42);
+    CHECK(d == doctest::Approx(3.14));
+    CHECK(s == "foobar");
+    CHECK(b);
+    CHECK(ret);
+    CHECK(ret.value() == 4);
 }
 
 TEST_CASE("empty format")

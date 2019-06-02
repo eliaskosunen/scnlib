@@ -38,6 +38,13 @@ inline std::basic_string<wchar_t> widen<wchar_t>(std::string str)
     return std::wstring(str.begin(), str.end());
 }
 
+template <typename Stream>
+struct nonsized_stream : Stream {
+    using is_sized_stream = std::false_type;
+
+    nonsized_stream(Stream s) : Stream(std::move(s)) {}
+};
+
 template <typename CharT, typename... T>
 scn::result<int> scan_value(scn::options o,
                             std::string source,

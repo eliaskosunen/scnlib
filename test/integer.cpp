@@ -151,6 +151,14 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         CHECK(e.error().code() == scn::error::value_out_of_range);
         CHECK(e.value() == 0);
     }
+
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "ff", "{:b16}", i);
+        CHECK(i == 0xff);
+        CHECK(e);
+        CHECK(e.value() == 1);
+    }
 }
 
 TEST_CASE("integer thousands separator")
