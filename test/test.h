@@ -46,7 +46,7 @@ struct nonsized_stream : Stream {
 };
 
 template <typename CharT, typename... T>
-scn::result<int> scan_value(scn::options o,
+scn::scan_result scan_value(scn::options o,
                             std::string source,
                             std::string f,
                             T&... value)
@@ -60,10 +60,31 @@ scn::result<int> scan_value(scn::options o,
     return ret;
 }
 template <typename CharT, typename... T>
-scn::result<int> scan_value(std::string source, std::string f, T&... value)
+scn::scan_result scan_value(std::string source, std::string f, T&... value)
 {
     return scan_value<CharT>(scn::options{}, std::move(source), std::move(f),
                              value...);
+}
+
+template <typename CharT, typename... T>
+scn::scan_result scanf_value(scn::options o,
+                             std::string source,
+                             std::string f,
+                             T&... value)
+{
+    auto wsource = widen<CharT>(source);
+    auto stream = scn::make_stream(wsource);
+    auto fstr = widen<CharT>(f);
+    auto ret = scn::scanf(
+        o, stream, scn::basic_string_view<CharT>(fstr.data(), fstr.size()),
+        value...);
+    return ret;
+}
+template <typename CharT, typename... T>
+scn::scan_result scanf_value(std::string source, std::string f, T&... value)
+{
+    return scanf_value<CharT>(scn::options{}, std::move(source), std::move(f),
+                              value...);
 }
 
 #define DOCTEST_VALUE_PARAMETERIZED_DATA(data, data_array)                     \

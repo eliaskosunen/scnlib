@@ -116,3 +116,13 @@ TEST_CASE_TEMPLATE_DEFINE("ignore", CharT, ignore_test)
 TEST_CASE_TEMPLATE_INSTANTIATE(string_test, char, wchar_t);
 TEST_CASE_TEMPLATE_INSTANTIATE(getline_test, char, wchar_t);
 TEST_CASE_TEMPLATE_INSTANTIATE(ignore_test, char, wchar_t);
+
+TEST_CASE("string scanf")
+{
+    std::string str{};
+
+    auto ret = scanf_value<char>("str", "%s", str);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(str == "str");
+}

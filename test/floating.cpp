@@ -20,13 +20,23 @@
 #include <cmath>
 
 template <typename CharT, typename T>
-static scn::result<int> scan_value(scn::method m,
+static scn::scan_result scan_value(scn::method m,
                                    std::string source,
                                    std::string f,
                                    T& value)
 {
     return scan_value<CharT>(scn::options::builder{}.float_method(m).make(),
                              std::move(source), std::move(f), value);
+}
+
+template <typename CharT, typename T>
+static scn::scan_result scanf_value(scn::method m,
+                                    std::string source,
+                                    std::string f,
+                                    T& value)
+{
+    return scanf_value<CharT>(scn::options::builder{}.float_method(m).make(),
+                              std::move(source), std::move(f), value);
 }
 
 template <typename CharT, typename T>
@@ -173,6 +183,84 @@ TEST_CASE("float error")
     CHECK(ret.value() == 0);
     CHECK(ret.error() == scn::error::invalid_scanned_value);
     CHECK(d == doctest::Approx(0.0));
+}
+
+TEST_CASE("float scanf")
+{
+    std::vector<scn::method> methods{scn::method::sto, scn::method::strto};
+    if (scn::is_float_from_chars_available()) {
+        methods.push_back(scn::method::from_chars);
+    }
+    scn::method method{};
+
+    DOCTEST_VALUE_PARAMETERIZED_DATA(method, methods);
+
+    double d{};
+
+    SUBCASE("%f")
+    {
+        auto ret = scanf_value<char>(method, "1.0", "%f", d);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(d == doctest::Approx(1.0));
+    }
+    SUBCASE("%F")
+    {
+        auto ret = scanf_value<char>(method, "1.0", "%F", d);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(d == doctest::Approx(1.0));
+    }
+    SUBCASE("%a")
+    {
+        auto ret = scanf_value<char>(method, "1.0", "%a", d);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(d == doctest::Approx(1.0));
+    }
+    SUBCASE("%A")
+    {
+        auto ret = scanf_value<char>(method, "1.0", "%A", d);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(d == doctest::Approx(1.0));
+    }
+    SUBCASE("%e")
+    {
+        auto ret = scanf_value<char>(method, "1.0", "%e", d);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(d == doctest::Approx(1.0));
+    }
+    SUBCASE("%E")
+    {
+        auto ret = scanf_value<char>(method, "1.0", "%E", d);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(d == doctest::Approx(1.0));
+    }
+    SUBCASE("%g")
+    {
+        auto ret = scanf_value<char>(method, "1.0", "%g", d);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(d == doctest::Approx(1.0));
+    }
+    SUBCASE("%G")
+    {
+        auto ret = scanf_value<char>(method, "1.0", "%G", d);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(d == doctest::Approx(1.0));
+    }
+
+    SUBCASE("%f /w error")
+    {
+        auto ret = scanf_value<char>(method, "str", "%f", d);
+        CHECK(!ret);
+        CHECK(ret.value() == 0);
+        CHECK(ret.error() == scn::error::invalid_scanned_value);
+    }
 }
 
 #if SCN_CLANG >= SCN_COMPILER(3, 8, 0)

@@ -47,3 +47,12 @@ TEST_CASE("getchar")
     CHECK(ret.value() == 'b');
 }
 
+TEST_CASE("char scanf")
+{
+    char ch{};
+
+    auto ret = scanf_value<char>("a", "%c", ch);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(ch == 'a');
+}

@@ -18,13 +18,22 @@
 #include "test.h"
 
 template <typename CharT, typename T>
-static scn::result<int> scan_value(scn::method m,
+static scn::scan_result scan_value(scn::method m,
                                    std::string source,
                                    std::string f,
                                    T& value)
 {
     return scan_value<CharT>(scn::options::builder{}.int_method(m).make(),
                              std::move(source), std::move(f), value);
+}
+template <typename CharT, typename T>
+static scn::scan_result scanf_value(scn::method m,
+                                    std::string source,
+                                    std::string f,
+                                    T& value)
+{
+    return scanf_value<CharT>(scn::options::builder{}.int_method(m).make(),
+                              std::move(source), std::move(f), value);
 }
 
 template <typename CharT, typename T>
@@ -389,3 +398,86 @@ TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_test,
                                wchar_intpair<unsigned int>,
                                wchar_intpair<unsigned long>,
                                wchar_intpair<unsigned long long>);
+
+TEST_CASE("integer scanf")
+{
+    std::vector<scn::method> methods{scn::method::sto, scn::method::strto,
+                                     scn::method::custom};
+    if (scn::is_int_from_chars_available()) {
+        methods.push_back(scn::method::from_chars);
+    }
+    scn::method method{};
+
+    DOCTEST_VALUE_PARAMETERIZED_DATA(method, methods);
+
+    int i{};
+    unsigned u{};
+
+    SUBCASE("%d")
+    {
+        auto ret = scanf_value<char>(method, "1", "%d", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 1);
+    }
+    SUBCASE("%x")
+    {
+        auto ret = scanf_value<char>(method, "f", "%x", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 0xf);
+    }
+    SUBCASE("%o")
+    {
+        auto ret = scanf_value<char>(method, "10", "%o", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 010);
+    }
+    SUBCASE("%b2")
+    {
+        auto ret = scanf_value<char>(method, "10", "%b2", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 2);
+    }
+    SUBCASE("%i")
+    {
+        auto ret = scanf_value<char>(method, "1", "%i", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 1);
+    }
+    SUBCASE("%u")
+    {
+        auto ret = scanf_value<char>(method, "1", "%u", u);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(u == 1);
+    }
+
+    SUBCASE("%'d")
+    {
+        if (method == scn::method::custom) {
+            auto ret = scanf_value<char>(method, "1,000", "%'d", i);
+            CHECK(ret);
+            CHECK(ret.value() == 1);
+            CHECK(i == 1000);
+        }
+    }
+
+    SUBCASE("%i /w unsigned")
+    {
+        auto ret = scanf_value<char>(method, "1", "%i", u);
+        CHECK(!ret);
+        CHECK(ret.value() == 0);
+        CHECK(ret.error() == scn::error::invalid_format_string);
+    }
+    SUBCASE("%u /w signed")
+    {
+        auto ret = scanf_value<char>(method, "1", "%u", i);
+        CHECK(!ret);
+        CHECK(ret.value() == 0);
+        CHECK(ret.error() == scn::error::invalid_format_string);
+    }
+}

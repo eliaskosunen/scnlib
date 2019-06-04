@@ -76,3 +76,50 @@ TEST_CASE_TEMPLATE("boolean", CharT, char, wchar_t)
         CHECK(e.value() == 0);
     }
 }
+
+TEST_CASE("bool scanf")
+{
+    bool b{};
+
+    // 1 (default)
+    auto ret = scanf_value<char>("1", "%b", b);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(b);
+
+    // false (alpha)
+    ret = scanf_value<char>("false", "%a", b);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(!b);
+
+    // 0 (numeric)
+    ret = scanf_value<char>("0", "%n", b);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(!b);
+
+    // 1 (alpha => error)
+    ret = scanf_value<char>("1", "%a", b);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+
+    // true (numeric => error)
+    ret = scanf_value<char>("true", "%n", b);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+
+    // %d /w bool => error
+    ret = scanf_value<char>("1", "%d", b);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+
+    // 2 (invalid value => error)
+    ret = scanf_value<char>("2", "%b", b);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+}
