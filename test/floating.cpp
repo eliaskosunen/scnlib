@@ -156,6 +156,25 @@ TEST_CASE_TEMPLATE_INSTANTIATE(floating_test,
                                wchar_fpair<double>,
                                wchar_fpair<long double>);
 
+TEST_CASE("float error")
+{
+    std::vector<scn::method> methods{scn::method::sto, scn::method::strto};
+    if (scn::is_float_from_chars_available()) {
+        methods.push_back(scn::method::from_chars);
+    }
+    scn::method method{};
+
+    DOCTEST_VALUE_PARAMETERIZED_DATA(method, methods);
+
+    double d{};
+
+    auto ret = scan_value<char>(method, "str", "{}", d);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+    CHECK(d == doctest::Approx(0.0));
+}
+
 #if SCN_CLANG >= SCN_COMPILER(3, 8, 0)
 SCN_CLANG_POP
 #endif

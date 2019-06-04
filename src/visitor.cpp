@@ -182,6 +182,9 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "strtoll range error");
                     }
+                    if (ret == 0 && str == end) {
+                        return error(error::invalid_scanned_value, "strtoll");
+                    }
                     return ret;
                 }
             };
@@ -199,6 +202,9 @@ namespace scn {
                         errno = 0;
                         return error(error::value_out_of_range,
                                      "wcstoll range error");
+                    }
+                    if (ret == 0 && str == end) {
+                        return error(error::invalid_scanned_value, "wcstoll");
                     }
                     return ret;
                 }
@@ -219,6 +225,9 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "strtol range error");
                     }
+                    if (ret == 0 && str == end) {
+                        return error(error::invalid_scanned_value, "strtol");
+                    }
                     return ret;
                 }
             };
@@ -236,6 +245,9 @@ namespace scn {
                         errno = 0;
                         return error(error::value_out_of_range,
                                      "wcstol range error");
+                    }
+                    if (ret == 0 && str == end) {
+                        return error(error::invalid_scanned_value, "wcstol");
                     }
                     return ret;
                 }
@@ -308,6 +320,9 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "strtoull range error");
                     }
+                    if (ret == 0 && str == end) {
+                        return error(error::invalid_scanned_value, "strtoull");
+                    }
                     return ret;
                 }
             };
@@ -325,6 +340,9 @@ namespace scn {
                         errno = 0;
                         return error(error::value_out_of_range,
                                      "wcstoull range error");
+                    }
+                    if (ret == 0 && str == end) {
+                        return error(error::invalid_scanned_value, "wcstoull");
                     }
                     return ret;
                 }
@@ -345,6 +363,9 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "strtoul range error");
                     }
+                    if (ret == 0 && str == end) {
+                        return error(error::invalid_scanned_value, "strtoul");
+                    }
                     return ret;
                 }
             };
@@ -362,6 +383,9 @@ namespace scn {
                         errno = 0;
                         return error(error::value_out_of_range,
                                      "wcstoul range error");
+                    }
+                    if (ret == 0 && str == end) {
+                        return error(error::invalid_scanned_value, "wcstoul");
                     }
                     return ret;
                 }
@@ -624,6 +648,9 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "strtof range error");
                     }
+                    if (f == 0.0f && end == str) {
+                        return error(error::invalid_scanned_value, "strtof");
+                    }
                     return f;
                 }
             };
@@ -639,6 +666,9 @@ namespace scn {
                         errno = 0;
                         return error(error::value_out_of_range,
                                      "wcstof range error");
+                    }
+                    if (f == 0.0f && end == str) {
+                        return error(error::invalid_scanned_value, "wcstof");
                     }
                     return f;
                 }
@@ -657,6 +687,9 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "strtod range error");
                     }
+                    if (d == 0.0 && end == str) {
+                        return error(error::invalid_scanned_value, "strtod");
+                    }
                     return d;
                 }
             };
@@ -672,6 +705,9 @@ namespace scn {
                         errno = 0;
                         return error(error::value_out_of_range,
                                      "wcstod range error");
+                    }
+                    if (d == 0.0 && end == str) {
+                        return error(error::invalid_scanned_value, "wcstod");
                     }
                     return d;
                 }
@@ -690,6 +726,9 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "strtold range error");
                     }
+                    if (ld == 0.0l && end == str) {
+                        return error(error::invalid_scanned_value, "strtold");
+                    }
                     return ld;
                 }
             };
@@ -706,6 +745,9 @@ namespace scn {
                         errno = 0;
                         return error(error::value_out_of_range,
                                      "wcstold range error");
+                    }
+                    if (ld == 0.0l && end == str) {
+                        return error(error::invalid_scanned_value, "wcstold");
                     }
                     return ld;
                 }
@@ -943,6 +985,10 @@ namespace scn {
                     return r.get_error();
                 }
                 it = r.value();
+                if (buf.begin() == it) {
+                    return error(error::invalid_scanned_value,
+                                 "custom::read_signed");
+                }
                 val = tmp;
                 return static_cast<size_t>(std::distance(buf.begin(), it));
             }
@@ -952,6 +998,10 @@ namespace scn {
                 return r.get_error();
             }
             it = r.value();
+            if (buf.begin() == it) {
+                return error(error::invalid_scanned_value,
+                             "custom::read_unsigned");
+            }
             val = tmp;
             return static_cast<size_t>(std::distance(buf.begin(), it));
 

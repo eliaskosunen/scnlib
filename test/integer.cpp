@@ -161,6 +161,46 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     }
 }
 
+TEST_CASE("integer decimal separator")
+{
+    auto stream = scn::make_stream("100.200");
+    int i{};
+
+    auto ret = scn::scan(stream, scn::default_tag, i);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(i == 100);
+
+    auto cret = scn::getchar(stream);
+    CHECK(cret);
+    CHECK(cret.value() == '.');
+
+    ret = scn::scan(stream, scn::default_tag, i);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(i == 200);
+}
+
+TEST_CASE("integer error")
+{
+    std::vector<scn::method> methods{scn::method::sto, scn::method::strto,
+                                     scn::method::custom};
+    if (scn::is_int_from_chars_available()) {
+        methods.push_back(scn::method::from_chars);
+    }
+    scn::method method{};
+
+    DOCTEST_VALUE_PARAMETERIZED_DATA(method, methods);
+
+    int i{};
+
+    auto ret = scan_value<char>(method, "str", "{}", i);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+    CHECK(i == 0);
+}
+
 TEST_CASE("integer thousands separator")
 {
     auto stream = scn::make_stream("100,200");
