@@ -561,6 +561,10 @@
  *  - `custom` is the default method for integers, and `strto` for floats
  *  - `from_chars` requires a very recent standard library version. Your
  *     implementation may not yet have `std::from_chars` implemented.
+ *  - `scn::int_from_chars_if_available()` and
+ *    `scn::float_from_chars_if_available()` return `from_chars` if that method
+ *     is available for ints and floats, respectively, and the default method
+ *     otherwise
  *  - `custom` is a little faster than the other alternatives with the added
  *     caveat of being highly likely to contain bugs
  *  - `custom` at this time only supports integers
@@ -786,7 +790,7 @@
  *
  * A frequently asked question is, that why does `scn::scan` take a `Stream`
  * as its first argument, and not something simpler, like a string.
- * Let's explore the alternative, passing a string.
+ * Let's explore the alternative of passing a string.
  *
  * Let's say we have a file, and we want to read an integer.
  * We'd need to do the reading part ourselves, and then pass the result to
@@ -923,7 +927,7 @@
  * \endcode
  *
  * If the arguments were not type-erased, almost all of the internals would have
- * to be instantiated for every given combination.
+ * to be instantiated for every given combination of argument types.
  */
 
 /**

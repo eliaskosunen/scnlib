@@ -255,17 +255,115 @@ std::string overstr()
                                            unsigned long long, long long>::type;
     return std::to_string(static_cast<type>(std::numeric_limits<T>::max()) + 1);
 }
+
+template <typename T,
+          typename U = typename std::conditional<std::is_unsigned<T>::value,
+                                                 unsigned long long,
+                                                 long long>::type,
+          typename std::enable_if<sizeof(T) == sizeof(U)>::type* = nullptr>
+std::string overstr_64()
+{
+    using type = typename std::conditional<std::is_unsigned<T>::value,
+                                           unsigned long long, long long>::type;
+    auto str = std::to_string(std::numeric_limits<type>::max());
+    if (str.back() < '9') {
+        ++str.back();
+    }
+    else {
+        str.back() = '0';
+        ++(*(str.rbegin() + 1));
+    }
+    return str;
+}
+template <typename T,
+          typename U = typename std::conditional<std::is_unsigned<T>::value,
+                                                 unsigned long long,
+                                                 long long>::type,
+          typename std::enable_if<sizeof(T) != sizeof(U)>::type* = nullptr>
+std::string overstr_64()
+{
+    return std::to_string(static_cast<U>(std::numeric_limits<T>::max()) + 1);
+}
+template <>
+std::string overstr<long long>()
+{
+    return overstr_64<long long>();
+}
+template <>
+std::string overstr<unsigned long long>()
+{
+    return overstr_64<unsigned long long>();
+}
+template <>
+std::string overstr<long>()
+{
+    return overstr_64<long>();
+}
+template <>
+std::string overstr<unsigned long>()
+{
+    return overstr_64<unsigned long>();
+}
+
 template <typename T>
 T minval()
 {
     return std::numeric_limits<T>::min();
 }
+
 template <typename T>
 std::string understr()
 {
     using type = typename std::conditional<std::is_unsigned<T>::value,
                                            unsigned long long, long long>::type;
     return std::to_string(static_cast<type>(std::numeric_limits<T>::min()) - 1);
+}
+template <typename T,
+          typename U = typename std::conditional<std::is_unsigned<T>::value,
+                                                 unsigned long long,
+                                                 long long>::type,
+          typename std::enable_if<sizeof(T) == sizeof(U)>::type* = nullptr>
+std::string understr_64()
+{
+    auto str = std::to_string(std::numeric_limits<long long>::min());
+    if (str.back() < '9') {
+        ++str.back();
+    }
+    else {
+        str.back() = '0';
+        ++(*(str.rbegin() + 1));
+    }
+    return str;
+}
+template <typename T,
+          typename U = typename std::conditional<std::is_unsigned<T>::value,
+                                                 unsigned long long,
+                                                 long long>::type,
+          typename std::enable_if<sizeof(T) != sizeof(U)>::type* = nullptr>
+std::string understr_64()
+{
+    return std::to_string(static_cast<U>(std::numeric_limits<T>::min()) - 1);
+}
+
+template <>
+std::string understr<long long>()
+{
+    return understr_64<long long>();
+}
+template <>
+std::string understr<unsigned long long>()
+{
+    return "";
+}
+template <>
+std::string understr<long>()
+{
+    return understr_64<long>();
+}
+template <>
+std::string understr<unsigned long>()
+{
+    return "";
 }
 
 TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
@@ -316,35 +414,17 @@ TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
     }
     {
         value_type i{};
-        auto e = scan_value<char_type>(
-            method, std::to_string(maxval<value_type>() / 10), "{}", i);
-        CHECK(e);
-        CHECK(e.value() == 1);
-        CHECK(i == maxval<value_type>() / 10);
+        auto e = scan_value<char_type>(method, overstr<value_type>(), "{}", i);
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::value_out_of_range);
     }
-    {
+    if (std::is_signed<value_type>::value) {
         value_type i{};
-        auto e = scan_value<char_type>(
-            method, std::to_string(minval<value_type>() / 10), "{}", i);
-        CHECK(e);
-        CHECK(e.value() == 1);
-        CHECK(i == minval<value_type>() / 10);
-    }
-    if (sizeof(value_type) < 8) {
-        {
-            value_type i{};
-            auto e =
-                scan_value<char_type>(method, overstr<value_type>(), "{}", i);
-            CHECK(!e);
-            CHECK(e.value() == 0);
-        }
-        if (std::is_signed<value_type>::value) {
-            value_type i{};
-            auto e =
-                scan_value<char_type>(method, understr<value_type>(), "{}", i);
-            CHECK(!e);
-            CHECK(e.value() == 0);
-        }
+        auto e = scan_value<char_type>(method, understr<value_type>(), "{}", i);
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::value_out_of_range);
     }
 }
 
