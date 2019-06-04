@@ -262,7 +262,7 @@ namespace scn {
                     auto tmp =
                         str_to_int<Char, long long>::get(str, chars, base);
                     if (!tmp) {
-                        return tmp.get_error();
+                        return tmp.error();
                     }
                     if (tmp.value() > static_cast<long long>(
                                           std::numeric_limits<int>::max())) {
@@ -287,7 +287,7 @@ namespace scn {
                 {
                     auto tmp = str_to_int<Char, long>::get(str, chars, base);
                     if (!tmp) {
-                        return tmp.get_error();
+                        return tmp.error();
                     }
                     if (tmp.value() >
                         static_cast<long>(std::numeric_limits<short>::max())) {
@@ -400,7 +400,7 @@ namespace scn {
                     auto tmp = str_to_int<Char, unsigned long long>::get(
                         str, chars, base);
                     if (!tmp) {
-                        return tmp.get_error();
+                        return tmp.error();
                     }
                     if (tmp.value() >
                         static_cast<unsigned long long>(
@@ -421,7 +421,7 @@ namespace scn {
                     auto tmp =
                         str_to_int<Char, unsigned long>::get(str, chars, base);
                     if (!tmp) {
-                        return tmp.get_error();
+                        return tmp.error();
                     }
                     if (tmp.value() >
                         static_cast<unsigned long>(
@@ -834,7 +834,7 @@ namespace scn {
                 std::basic_string<CharT> str(buf.data(), buf.size());
                 auto ret = sto::str_to_int<CharT, T>::get(str, chars, base);
                 if (!ret) {
-                    return ret.get_error();
+                    return ret.error();
                 }
                 val = ret.value();
                 return chars;
@@ -865,9 +865,9 @@ namespace scn {
             size_t chars = 0;
             errno = 0;
             auto ret = strto::str_to_int<CharT, T>::get(&buf[0], chars, base);
-            if (!ret && (ret.get_error() == error::value_out_of_range ||
-                         errno != ERANGE)) {
-                return ret.get_error();
+            if (!ret &&
+                (ret.error() == error::value_out_of_range || errno != ERANGE)) {
+                return ret.error();
             }
             if (errno == ERANGE) {
                 return error(error::value_out_of_range,
@@ -894,7 +894,7 @@ namespace scn {
             auto end = begin + buf.size();
             auto result = from_chars::str_to_int(begin, end, val, base);
             if (!result) {
-                return result.get_error();
+                return result.error();
             }
             return static_cast<size_t>(
                 std::distance(buf.data(), result.value()));
@@ -982,7 +982,7 @@ namespace scn {
                 auto r = custom::read_signed(
                     tmp, sign, make_span(it, buf.end()), base, thsep);
                 if (!r) {
-                    return r.get_error();
+                    return r.error();
                 }
                 it = r.value();
                 if (buf.begin() == it) {
@@ -995,7 +995,7 @@ namespace scn {
             auto r = custom::read_unsigned(tmp, make_span(it, buf.end()), base,
                                            thsep);
             if (!r) {
-                return r.get_error();
+                return r.error();
             }
             it = r.value();
             if (buf.begin() == it) {
@@ -1066,7 +1066,7 @@ namespace scn {
             size_t chars;
             auto ret = strto::str_to_float<CharT, T>::get(&buf[0], chars);
             if (!ret) {
-                return ret.get_error();
+                return ret.error();
             }
             val = ret.value();
             return chars;
@@ -1081,7 +1081,7 @@ namespace scn {
             auto end = begin + buf.size();
             auto result = from_chars::str_to_float(begin, end, val);
             if (!result) {
-                return result.get_error();
+                return result.error();
             }
             return static_cast<size_t>(
                 std::distance(buf.data(), result.value()));

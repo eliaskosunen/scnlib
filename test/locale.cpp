@@ -111,10 +111,10 @@ TEST_CASE("basic_default_locale_ref")
 
         auto ret = loc.read_num(i, str);
         CHECK(!ret);
-        CHECK(ret.get_error() == scn::error::invalid_operation);
+        CHECK(ret.error() == scn::error::invalid_operation);
 
         ret = wloc.read_num(i, wstr);
         CHECK(!ret);
-        CHECK(ret.get_error() == scn::error::invalid_operation);
+        CHECK(ret.error() == scn::error::invalid_operation);
     }
 }

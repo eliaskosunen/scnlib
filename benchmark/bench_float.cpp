@@ -91,7 +91,7 @@ static void scanfloat_scn_get_value(benchmark::State& state)
         auto e = scn::get_value<Float>(stream);
 
         if (!e) {
-            if (e.get_error() == scn::error::end_of_stream) {
+            if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_float_data<Float>(FLOAT_DATA_N);
                 stream = scn::make_stream(data);

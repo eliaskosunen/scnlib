@@ -59,14 +59,14 @@ TEST_CASE("expected")
         CHECK(r);
         CHECK(r.has_value());
         CHECK(r.value() == 42);
-        CHECK(r.get_error() == scn::error::good);
+        CHECK(r.error() == scn::error::good);
     }
     SUBCASE("error")
     {
         scn::expected<int> r{scn::error(scn::error::end_of_stream, "EOF")};
         CHECK(!r);
         CHECK(!r.has_value());
-        CHECK(r.get_error() == scn::error::end_of_stream);
+        CHECK(r.error() == scn::error::end_of_stream);
     }
     struct not_default_constructible {
         not_default_constructible(int v) : val(v) {}
@@ -79,7 +79,7 @@ TEST_CASE("expected")
         CHECK(r);
         CHECK(r.has_value());
         CHECK(r.value().val == 42);
-        CHECK(r.get_error() == scn::error::good);
+        CHECK(r.error() == scn::error::good);
     }
     SUBCASE("complex error")
     {
@@ -87,6 +87,6 @@ TEST_CASE("expected")
             scn::error(scn::error::end_of_stream, "EOF")};
         CHECK(!r);
         CHECK(!r.has_value());
-        CHECK(r.get_error() == scn::error::end_of_stream);
+        CHECK(r.error() == scn::error::end_of_stream);
     }
 }

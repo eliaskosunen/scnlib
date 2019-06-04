@@ -166,7 +166,7 @@ namespace scn {
         for (; it != s.end(); ++it) {
             auto ret = stream.read_char();
             if (!ret) {
-                return {it, ret.get_error()};
+                return {it, ret.error()};
             }
             *it = ret.value();
         }
@@ -192,7 +192,7 @@ namespace scn {
                 buffer = buffer.first(n);
                 auto ret = read(stream, buffer);
                 if (!ret) {
-                    return {size, ret.get_error()};
+                    return {size, ret.error()};
                 }
                 it = std::copy(buffer.begin(), buffer.end(), it);
                 size += n;
@@ -218,7 +218,7 @@ namespace scn {
                 buffer = buffer.first(n);
                 auto ret = read(stream, buffer);
                 if (!ret) {
-                    return {it, ret.get_error()};
+                    return {it, ret.error()};
                 }
                 it = std::copy(buffer.begin(), buffer.end(), it);
             }
@@ -241,7 +241,7 @@ namespace scn {
             detail::array<CharT, 64> arr;
             auto ret = read(s, make_span(arr));
             if (!ret) {
-                return {size, ret.get_error()};
+                return {size, ret.error()};
             }
             it = std::copy(arr.begin(), arr.begin() + n, it);
             size += n;
@@ -250,7 +250,7 @@ namespace scn {
         detail::array<CharT, 64> arr;
         auto ret = read(s, make_span(arr.data(), n));
         if (!ret) {
-            return {size, ret.get_error()};
+            return {size, ret.error()};
         }
         std::copy(arr.begin(), arr.begin() + n, it);
         return size + n;
@@ -266,7 +266,7 @@ namespace scn {
         while (true) {
             auto ret = s.read_char();
             if (!ret) {
-                return {n, ret.get_error()};
+                return {n, ret.error()};
             }
             *it = ret.value();
             ++it;
@@ -289,7 +289,7 @@ namespace scn {
             detail::array<CharT, 64> arr;
             auto ret = read(s, make_span(arr));
             if (!ret) {
-                return {it, ret.get_error()};
+                return {it, ret.error()};
             }
             it = std::copy(arr.begin(), arr.begin() + n, it);
             return detail::read_into_with_buffer(s, it, end, make_span(arr));
@@ -297,7 +297,7 @@ namespace scn {
         detail::array<CharT, 64> arr;
         auto ret = read(s, make_span(arr.data(), n));
         if (!ret) {
-            return {it, ret.get_error()};
+            return {it, ret.error()};
         }
         return {std::copy(arr.begin(), arr.begin() + n, it)};
     }
@@ -312,7 +312,7 @@ namespace scn {
         for (; it != end; ++it) {
             auto ret = s.read_char();
             if (!ret) {
-                return {it, ret.get_error()};
+                return {it, ret.error()};
             }
             *it = ret.value();
         }
@@ -352,7 +352,7 @@ namespace scn {
                 for (auto arr_it = arr.begin(); arr_it != arr_end; ++arr_it) {
                     auto r = p(*arr_it);
                     if (!r) {
-                        return {size, r.get_error()};
+                        return {size, r.error()};
                     }
                     if (r.value() == scan_status::skip) {
                         continue;
@@ -378,7 +378,7 @@ namespace scn {
                 for (; arr_it != arr_end; ++arr_it) {
                     auto r = p(*arr_it);
                     if (!r) {
-                        return {size, r.get_error()};
+                        return {size, r.error()};
                     }
                     if (r.value() == scan_status::end) {
                         if (keep_final) {
@@ -418,15 +418,15 @@ namespace scn {
         while (true) {
             auto ret = s.read_char();
             if (!ret) {
-                if (ret.get_error() == error::end_of_stream) {
+                if (ret.error() == error::end_of_stream) {
                     break;
                 }
-                return {n, ret.get_error()};
+                return {n, ret.error()};
             }
 
             auto r = p(ret.value());
             if (!r) {
-                return {n, r.get_error()};
+                return {n, r.error()};
             }
             if (r.value() == scan_status::skip) {
                 continue;
@@ -469,14 +469,14 @@ namespace scn {
 
             auto ret = read(s, make_span(arr.data(), n));
             if (!ret) {
-                return {it, ret.get_error()};
+                return {it, ret.error()};
             }
 
             const auto arr_end = arr.begin() + n;
             for (auto arr_it = arr.begin(); arr_it != arr_end; ++arr_it) {
                 auto r = p(*arr_it);
                 if (!r) {
-                    return {it, r.get_error()};
+                    return {it, r.error()};
                 }
                 if (r.value() == scan_status::skip) {
                     continue;
@@ -512,12 +512,12 @@ namespace scn {
         while (it != end) {
             auto ret = s.read_char();
             if (!ret) {
-                return {it, ret.get_error()};
+                return {it, ret.error()};
             }
 
             auto r = p(ret.value());
             if (!r) {
-                return r.get_error();
+                return r.error();
             }
             if (r.value() == scan_status::skip) {
                 continue;
@@ -895,7 +895,7 @@ namespace scn {
             {
                 auto ch = ctx.stream().read_char();
                 if (!ch) {
-                    return ch.get_error();
+                    return ch.error();
                 }
                 val = ch.value();
                 return {};
@@ -1047,7 +1047,7 @@ namespace scn {
                 if (allow_num) {
                     auto tmp = ctx.stream().read_char();
                     if (!tmp) {
-                        return tmp.get_error();
+                        return tmp.error();
                     }
                     if (tmp.value() == detail::ascii_widen<CharT>('0')) {
                         val = false;
@@ -1267,7 +1267,7 @@ namespace scn {
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
                     if (!ret) {
-                        return ret.get_error();
+                        return ret.error();
                     }
 
                     auto pb = putback_range(
@@ -1316,7 +1316,7 @@ namespace scn {
                     tmp, make_span(buf).as_const(), base,
                     have_thsep ? ctx.locale().thousands_separator() : 0);
                 if (!e) {
-                    return e.get_error();
+                    return e.error();
                 }
                 chars = e.value();
                 buf.pop_back();  // pop null terminator
@@ -1459,7 +1459,7 @@ namespace scn {
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
                     if (!ret) {
-                        return ret.get_error();
+                        return ret.error();
                     }
                     chars = ret.value();
 
@@ -1494,7 +1494,7 @@ namespace scn {
                 };
                 auto e = do_read()(tmp, make_span(buf).as_const());
                 if (!e) {
-                    return e.get_error();
+                    return e.error();
                 }
                 chars = e.value();
                 buf.pop_back();
@@ -1640,7 +1640,7 @@ namespace scn {
 
             auto ch = ctx.stream().read_char();
             if (SCN_UNLIKELY(!ch)) {
-                return ch.get_error();
+                return ch.error();
             }
             if (!ctx.locale().is_space(ch.value())) {
                 auto pb = ctx.stream().putback(ch.value());
@@ -1853,7 +1853,7 @@ namespace scn {
                     }
                     if (!ret) {
                         // Failed read
-                        return reterror(ret.get_error());
+                        return reterror(ret.error());
                     }
 
                     // Mismatching characters in scan string and stream
@@ -1869,7 +1869,7 @@ namespace scn {
                 // Scan argument
                 auto id_wrapped = pctx.parse_arg_id(ctx.locale());
                 if (!id_wrapped) {
-                    return reterror(id_wrapped.get_error());
+                    return reterror(id_wrapped.error());
                 }
                 auto id = id_wrapped.value();
                 auto arg_wrapped = [&]() -> expected<typename Context::arg_type>
@@ -1892,7 +1892,7 @@ namespace scn {
                 }
                 ();
                 if (!arg_wrapped) {
-                    return reterror(arg_wrapped.get_error());
+                    return reterror(arg_wrapped.error());
                 }
                 arg = arg_wrapped.value();
                 if (!pctx) {

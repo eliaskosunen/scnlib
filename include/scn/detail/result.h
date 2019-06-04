@@ -229,11 +229,11 @@ namespace scn {
             return std::move(m_s);
         }
 
-        SCN_CONSTEXPR14 error_type& get_error() noexcept
+        SCN_CONSTEXPR14 error_type& error() noexcept
         {
             return m_e;
         }
-        SCN_CONSTEXPR error_type get_error() const noexcept
+        SCN_CONSTEXPR error_type error() const noexcept
         {
             return m_e;
         }
@@ -283,11 +283,11 @@ namespace scn {
             return *m_s;
         }
 
-        SCN_CONSTEXPR14 error_type& get_error() noexcept
+        SCN_CONSTEXPR14 error_type& error() noexcept
         {
             return m_e;
         }
-        SCN_CONSTEXPR error_type get_error() const noexcept
+        SCN_CONSTEXPR error_type error() const noexcept
         {
             return m_e;
         }

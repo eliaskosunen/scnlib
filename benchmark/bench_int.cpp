@@ -94,7 +94,7 @@ static void scanint_scn_get_value(benchmark::State& state)
         auto e = scn::get_value<Int>(stream);
 
         if (!e) {
-            if (e.get_error() == scn::error::end_of_stream) {
+            if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_int_data<Int>(INT_DATA_N);
                 stream = scn::make_stream(data);

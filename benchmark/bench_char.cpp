@@ -112,7 +112,7 @@ static void scanchar_scn_getchar(benchmark::State& state)
         benchmark::ClobberMemory();
 
         if (!r) {
-            if (r.get_error() == scn::error::end_of_stream) {
+            if (r.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 stream = scn::make_stream(data);
@@ -143,7 +143,7 @@ static void scanchar_scn_get_value(benchmark::State& state)
         benchmark::ClobberMemory();
 
         if (!r) {
-            if (r.get_error() == scn::error::end_of_stream) {
+            if (r.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 stream = scn::make_stream(data);

@@ -107,7 +107,7 @@ static void scanword_scn_get_value(benchmark::State& state)
         auto e = scn::get_value<string_type>(stream);
 
         if (!e) {
-            if (e.get_error() == scn::error::end_of_stream) {
+            if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 stream = scn::make_stream(data);
