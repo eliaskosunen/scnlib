@@ -14,7 +14,7 @@ target_link_libraries(tests-base INTERFACE scn-sanitizers)
 add_executable(tests
     test.cpp empty.cpp string_view.cpp char.cpp locale.cpp
     integer.cpp floating.cpp boolean.cpp string.cpp
-    result.cpp usertype.cpp istream.cpp buffer.cpp
+    result.cpp usertype.cpp istream.cpp buffer.cpp util.cpp
     small_vector.cpp tuple_return.cpp until_space.cpp)
 target_link_libraries(tests PRIVATE scn tests-base)
 set_private_flags(tests)

@@ -167,3 +167,45 @@ TEST_CASE("get_value")
     CHECK(d);
     CHECK(d.value() == 3.14);
 }
+
+TEST_CASE("format string literal mismatch")
+{
+    auto stream = scn::make_stream("abc");
+
+    std::string str;
+    auto ret = scn::scan(stream, "z{}", str);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+    CHECK(str.empty());
+}
+
+TEST_CASE("format string argument count mismatch")
+{
+    auto stream = scn::make_stream("foo bar baz biz whatevz");
+
+    std::string s1, s2;
+    auto ret = scn::scan(stream, "{} {}", s1);
+    CHECK(!ret);
+    CHECK(ret.value() == 1);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(s1 == "foo");
+
+    ret = scn::scan(stream, "{}", s1, s2);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(s1 == "bar");
+    CHECK(s2.empty());
+}
+
+TEST_CASE("brace mismatch")
+{
+    auto stream = scn::make_stream("foo bar baz biz whatevz");
+
+    std::string s1, s2;
+    auto ret = scn::scan(stream, "{} {", s1, s2);
+    CHECK(!ret);
+    CHECK(ret.value() == 1);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(s1 == "foo");
+}

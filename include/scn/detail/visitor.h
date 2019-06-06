@@ -23,7 +23,8 @@
 
 #include <string>
 
-#ifdef __SSE4_1__
+//#ifdef __SSE4_1__
+#if 0
 #include <x86intrin.h>
 #endif
 
@@ -1261,6 +1262,8 @@ namespace scn {
                 size_t chars = 0;
 
                 if ((localized & digits) != 0) {
+                    buf.pop_back();  // Pop \0
+
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                     std::basic_string<CharT> str(buf.data(), buf.size());
                     auto ret = ctx.locale().read_num(tmp, str);
@@ -1453,6 +1456,8 @@ namespace scn {
                 size_t chars = 0;
 
                 if (localized) {
+                    buf.pop_back();  // Pop \0
+
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                     auto str = std::basic_string<CharT>(buf.data(), buf.size());
                     auto ret = ctx.locale().read_num(tmp, str);

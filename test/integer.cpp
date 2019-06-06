@@ -26,6 +26,17 @@ static scn::scan_result scan_value(scn::method m,
     return scan_value<CharT>(scn::options::builder{}.int_method(m).make(),
                              std::move(source), std::move(f), value);
 }
+
+template <typename CharT, typename T>
+static scn::scan_result scan_value(const std::locale& loc,
+                                   std::string source,
+                                   std::string f,
+                                   T& value)
+{
+    return scan_value<CharT>(scn::options::builder{}.locale(loc).make(),
+                             std::move(source), std::move(f), value);
+}
+
 template <typename CharT, typename T>
 static scn::scan_result scanf_value(scn::method m,
                                     std::string source,
@@ -428,6 +439,65 @@ TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
     }
 }
 
+#if !SCN_MSVC
+TEST_CASE_TEMPLATE_DEFINE("integer range localized",
+                          T,
+                          integer_range_localized_test)
+{
+    using value_type = typename T::value_type;
+    using char_type = typename T::char_type;
+
+    auto locale = std::locale("en_US.utf8");
+
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(
+            locale, std::to_string(maxval<value_type>()), "{}", i);
+        CHECK(e);
+        CHECK(e.value() == 1);
+        CHECK(i == maxval<value_type>());
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(
+            locale, std::to_string(minval<value_type>()), "{}", i);
+        CHECK(e);
+        CHECK(e.value() == 1);
+        CHECK(i == minval<value_type>());
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(
+            locale, std::to_string(maxval<value_type>() - 1), "{}", i);
+        CHECK(e);
+        CHECK(e.value() == 1);
+        CHECK(i == maxval<value_type>() - 1);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(
+            locale, std::to_string(minval<value_type>() + 1), "{}", i);
+        CHECK(e);
+        CHECK(e.value() == 1);
+        CHECK(i == minval<value_type>() + 1);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(locale, overstr<value_type>(), "{}", i);
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::value_out_of_range);
+    }
+    if (std::is_signed<value_type>::value) {
+        value_type i{};
+        auto e = scan_value<char_type>(locale, understr<value_type>(), "{}", i);
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::value_out_of_range);
+    }
+}
+#endif
+
 template <typename T>
 using char_intpair = intpair<char, T>;
 template <typename T>
@@ -478,6 +548,23 @@ TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_test,
                                wchar_intpair<unsigned int>,
                                wchar_intpair<unsigned long>,
                                wchar_intpair<unsigned long long>);
+#if !SCN_MSVC
+TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_localized_test,
+                               char_intpair<short>,
+                               char_intpair<int>,
+                               char_intpair<long>,
+                               char_intpair<long long>,
+                               char_intpair<unsigned short>,
+                               char_intpair<unsigned int>,
+                               char_intpair<unsigned long>,
+                               char_intpair<unsigned long long>,
+                               wchar_intpair<int>,
+                               wchar_intpair<long>,
+                               wchar_intpair<long long>,
+                               wchar_intpair<unsigned int>,
+                               wchar_intpair<unsigned long>,
+                               wchar_intpair<unsigned long long>);
+#endif
 
 TEST_CASE("integer scanf")
 {

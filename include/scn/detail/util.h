@@ -61,13 +61,13 @@ namespace scn {
         {
             using lim = std::numeric_limits<Integral>;
 
-            int base8_digits[4] = {3, 5, 11, 21};
+            char base8_digits[8] = {3, 5, 0, 11, 0, 0, 0, 21};
 
             if (base == 10) {
                 return lim::digits10;
             }
             if (base == 8) {
-                return base8_digits[sizeof(Integral) - 1];
+                return static_cast<int>(base8_digits[sizeof(Integral) - 1]);
             }
             if (base == lim::radix) {
                 return lim::digits;

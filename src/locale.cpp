@@ -98,26 +98,39 @@ namespace scn {
 
     namespace detail {
         template <typename T, typename CharT>
-        expected<size_t> read_num_impl(T& val,
-                                     const std::locale& loc,
-                                     const std::basic_string<CharT>& buf)
+        expected<size_t> read_num(T& val,
+                                  const std::locale& loc,
+                                  const std::basic_string<CharT>& buf)
         {
 #if SCN_HAS_EXCEPTIONS
             std::basic_istringstream<CharT> ss(buf);
             ss.imbue(loc);
-            std::ios_base::iostate err = std::ios_base::goodbit;
 
             try {
-                typename decltype(ss)::sentry s(ss);
-                if (s) {
-                    std::use_facet<std::num_get<CharT>>(ss.getloc())
-                        .get(ss, {}, ss, err, val);
+                T tmp;
+                ss >> tmp;
+                if (ss.bad()) {
+                    return error(error::unrecoverable_internal_error,
+                                 "Localized stringstream is bad");
                 }
+                if (ss.fail()) {
+                    if (tmp == std::numeric_limits<T>::max()) {
+                        return error(error::value_out_of_range,
+                                     "Scanned number out of range: overflow");
+                    }
+                    if (tmp == std::numeric_limits<T>::min()) {
+                        return error(error::value_out_of_range,
+                                     "Scanned number out of range: underflow");
+                    }
+                    return error(error::invalid_scanned_value,
+                                 "Localized number read failed");
+                }
+                val = tmp;
             }
             catch (const std::ios_base::failure& f) {
                 return error(error::invalid_scanned_value, f.what());
             }
-            return static_cast<size_t>(ss.gcount());
+            return ss.eof() ? buf.size() : static_cast<size_t>(ss.tellg());
 #else
             SCN_UNUSED(val);
             SCN_UNUSED(loc);
@@ -127,122 +140,14 @@ namespace scn {
                          "exceptions enabled");
 #endif
         }
-
-        template <typename T, typename CharT>
-        struct read_num {
-            static expected<size_t> read(T& val,
-                                       const std::locale& loc,
-                                       const std::basic_string<CharT>& buf)
-            {
-                return read_num_impl(val, loc, buf);
-            }
-        };
-        template <typename CharT>
-        struct read_num<int, CharT> {
-            static expected<size_t> read(int& val,
-                                       const std::locale& loc,
-                                       const std::basic_string<CharT>& buf)
-            {
-                long long tmp{};
-                auto ret = read_num_impl(tmp, loc, buf);
-                if (!ret) {
-                    return ret;
-                }
-                if (tmp >
-                    static_cast<long long>(std::numeric_limits<int>::max())) {
-                    return error(
-                        error::value_out_of_range,
-                        "Scanned integer out of range for an int: overflow");
-                }
-                if (tmp <
-                    static_cast<long long>(std::numeric_limits<int>::min())) {
-                    return error(
-                        error::value_out_of_range,
-                        "Scanned integer out of range for an int: underflow");
-                }
-                val = static_cast<int>(tmp);
-                return ret;
-            }
-        };
-        template <typename CharT>
-        struct read_num<short, CharT> {
-            static expected<size_t> read(short& val,
-                                       const std::locale& loc,
-                                       const std::basic_string<CharT>& buf)
-            {
-                long long tmp{};
-                auto ret = read_num_impl(tmp, loc, buf);
-                if (!ret) {
-                    return ret;
-                }
-                if (tmp >
-                    static_cast<long long>(std::numeric_limits<short>::max())) {
-                    return error(error::value_out_of_range,
-                                 "Scanned integer out of range for a short "
-                                 "int: overflow");
-                }
-                if (tmp <
-                    static_cast<long long>(std::numeric_limits<short>::min())) {
-                    return error(error::value_out_of_range,
-                                 "Scanned integer out of range for a short "
-                                 "int: underflow");
-                }
-                val = static_cast<short>(tmp);
-                return ret;
-            }
-        };
-        template <typename CharT>
-        struct read_num<unsigned int, CharT> {
-            static expected<size_t> read(unsigned int& val,
-                                       const std::locale& loc,
-                                       const std::basic_string<CharT>& buf)
-            {
-                unsigned long long tmp{};
-                auto ret = read_num_impl(tmp, loc, buf);
-                if (!ret) {
-                    return ret;
-                }
-                if (tmp > static_cast<unsigned long long>(
-                              std::numeric_limits<unsigned int>::max())) {
-                    return error(error::value_out_of_range,
-                                 "Scanned integer out of range for an unsigned "
-                                 "int: overflow");
-                }
-                val = static_cast<unsigned int>(tmp);
-                return ret;
-            }
-        };
-        template <typename CharT>
-        struct read_num<unsigned short, CharT> {
-            static expected<size_t> read(unsigned short& val,
-                                       const std::locale& loc,
-                                       const std::basic_string<CharT>& buf)
-            {
-                unsigned long long tmp{};
-                auto ret = read_num_impl(tmp, loc, buf);
-                if (!ret) {
-                    return ret;
-                }
-                if (tmp > static_cast<unsigned long long>(
-                              std::numeric_limits<unsigned short>::max())) {
-                    return error(
-                        error::value_out_of_range,
-                        "Scanned integer out of range for a unsigned short "
-                        "int: overflow");
-                }
-                val = static_cast<unsigned short>(tmp);
-                return ret;
-            }
-        };
     }  // namespace detail
 
     template <typename CharT>
     template <typename T>
     expected<size_t> basic_locale_ref<CharT>::read_num(T& val,
-                                                     const string_type& buf)
+                                                       const string_type& buf)
     {
-        return detail::read_num<T, CharT>::read(val, detail::get_locale(*this),
-                                                buf);
+        return detail::read_num<T, CharT>(val, detail::get_locale(*this), buf);
     }
 
     SCN_CLANG_PUSH
@@ -297,15 +202,15 @@ namespace scn {
     template expected<size_t> basic_locale_ref<wchar_t>::read_num<long long>(
         long long&,
         const string_type&);
-    template expected<size_t> basic_locale_ref<wchar_t>::read_num<unsigned short>(
-        unsigned short&,
-        const string_type&);
+    template expected<size_t>
+    basic_locale_ref<wchar_t>::read_num<unsigned short>(unsigned short&,
+                                                        const string_type&);
     template expected<size_t> basic_locale_ref<wchar_t>::read_num<unsigned int>(
         unsigned int&,
         const string_type&);
-    template expected<size_t> basic_locale_ref<wchar_t>::read_num<unsigned long>(
-        unsigned long&,
-        const string_type&);
+    template expected<size_t>
+    basic_locale_ref<wchar_t>::read_num<unsigned long>(unsigned long&,
+                                                       const string_type&);
     template expected<size_t>
     basic_locale_ref<wchar_t>::read_num<unsigned long long>(unsigned long long&,
                                                             const string_type&);

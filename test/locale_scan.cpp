@@ -20,34 +20,19 @@
 
 TEST_CASE("locale scanning")
 {
-    auto stream = scn::make_stream("100,200");
+    auto stream = scn::make_stream("100,200 100.200");
 
-    SUBCASE("default")
-    {
-        int i;
-        auto ret = scn::scan(stream, "{:'}", i);
-        CHECK(ret);
-        CHECK(ret.value() == 1);
-        CHECK(i == 100200);
-    }
-    SUBCASE("en_US")
-    {
-        int i;
-        auto ret =
-            scn::scan(scn::options::builder{}.locale(std::locale("en_US.utf8")),
-                      stream, "{:'l}", i);
-        CHECK(ret);
-        CHECK(ret.value() == 1);
-        CHECK(i == 100200);
-    }
     SUBCASE("fi_FI")
     {
-        double d;
+        int i{};
+        double d{};
+
         auto ret =
             scn::scan(scn::options::builder{}.locale(std::locale("fi_FI.utf8")),
-                      stream, "{:l}", d);
+                      stream, "{:l} {:'l}", d, i);
         CHECK(ret);
-        CHECK(ret.value() == 1);
-        CHECK(d == doctest::Approx(100.200));
+        CHECK(ret.value() == 2);
+        CHECK(i == 100200);
+        CHECK(d == doctest::Approx(100.2));
     }
 }
