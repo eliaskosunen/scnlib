@@ -24,13 +24,13 @@ int main() {
 
 ## What is this?
 
-`scnlib` is a (work-in-progress) modern C++ library for replacing `scanf` and `std::istream`.
+`scnlib` is a modern C++ library for replacing `scanf` and `std::istream`.
 This library attempts to move us ever so closer to replacing `iostream`s and C stdio altogether.
 It's (going to, eventually, be) faster than `iostream` (see Benchmarks) and type-safe, unlike `scanf`.
 Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 
-_There's bound to be bugs, there's no documentation apart from this file, `master` branch is going to get rebased and
-public APIs are going to change in backwards-incompatible ways._
+The library is still under early development (pre-0.1), so don't expect perfection.
+See [Stability](#stability) for more details.
 
 ## Documentation and tutorial
 
@@ -96,8 +96,20 @@ Every commit is tested with
  * gcc 5.5 and newer
  * clang 3.6 and newer
  * Visual Studio 2015 and 2017
+with very extreme warning flags (see CMakeLists.txt) and with multiple build configurations for each compiler.
 
 Older compilers may work, but it is not guaranteed.
+GCC 4.x support will not be provided, as its C++11 support is too buggy.
+
+## Stability
+
+No API or ABI stability is guaranteed at this point.
+
+Once 0.1 is released, subsequent 0.1.x patches will be API-compatible with 0.1, and master-branch rebases will be a thing of the past.
+The next API break after that will be 0.2.
+No ABI stability will be provided pre-1.0.
+
+This is still a pre-1.0 library, so there's bound to be bugs. If you find one, _please_ report it.
 
 ## Benchmarks
 
