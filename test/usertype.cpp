@@ -57,13 +57,28 @@ TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
 {
     std::string source{"[4, 20]"};
     auto stream = scn::make_stream(source);
-
     user_type ut{};
-    auto ret = scn::scan(stream, "{}", ut);
-    CHECK(ret);
-    CHECK(ret.value() == 1);
-    CHECK(ut.val1 == 4);
-    CHECK(ut.val2 == 20);
+
+    SUBCASE("regular")
+    {
+        auto ret = scn::scan(stream, "{}", ut);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(ut.val1 == 4);
+        CHECK(ut.val2 == 20);
+    }
+    SUBCASE("format string error")
+    {
+        auto ret = scn::scan(stream, "{", ut);
+        CHECK(!ret);
+        CHECK(ret.value() == 0);
+        CHECK(ret.error() == scn::error::invalid_format_string);
+
+        ret = scn::scan(stream, "{:a}", ut);
+        CHECK(!ret);
+        CHECK(ret.value() == 0);
+        CHECK(ret.error() == scn::error::invalid_format_string);
+    }
 }
 TEST_CASE_TEMPLATE_INSTANTIATE(user_type_test, user_type, user_type2);
 

@@ -32,7 +32,7 @@ TEST_CASE("read_into_until_space optimized")
         CHECK(ret.value() == strlen("word"));
         CHECK(buf == "word");
 
-        stream.read_char(); // skip space
+        stream.read_char();  // skip space
 
         buf.clear();
         ret =
@@ -62,5 +62,114 @@ TEST_CASE("read_into_until_space optimized")
         CHECK(ret);
         CHECK(ret.value() == strlen("another"));
         CHECK(buf == "another");
+    }
+}
+
+TEST_CASE("read sized")
+{
+    auto stream = scn::make_stream("abcde");
+
+    SUBCASE("correct size span")
+    {
+        scn::detail::array<char, 6> buf{{0}};
+        auto s = scn::make_span(buf).first(5);
+        auto ret = scn::read(stream, s);
+        CHECK(ret);
+        CHECK(ret.value() == s.end());
+        CHECK(std::string{buf.data()} == "abcde");
+    }
+    SUBCASE("undersized span")
+    {
+        scn::detail::array<char, 5> buf{{0}};
+        auto s = scn::make_span(buf).first(4);
+        auto ret = scn::read(stream, s);
+        CHECK(ret);
+        CHECK(ret.value() == s.end());
+        CHECK(std::string{buf.data()} == "abcd");
+    }
+    SUBCASE("oversized span")
+    {
+        scn::detail::array<char, 7> buf{{0}};
+        auto s = scn::make_span(buf).first(6);
+        auto ret = scn::read(stream, s);
+        CHECK(ret);
+        CHECK(ret.value() == s.first(5).end());
+        CHECK(std::string{buf.data()} == "abcde");
+    }
+}
+TEST_CASE("read non-sized")
+{
+    auto stream = make_nonsized_stream(scn::make_stream("abcde"));
+
+    SUBCASE("correct size span")
+    {
+        scn::detail::array<char, 6> buf{{0}};
+        auto s = scn::make_span(buf).first(5);
+        auto ret = scn::read(stream, s);
+        CHECK(ret);
+        CHECK(ret.value() == s.end());
+        CHECK(std::string{buf.data()} == "abcde");
+    }
+    SUBCASE("undersized span")
+    {
+        scn::detail::array<char, 5> buf{{0}};
+        auto s = scn::make_span(buf).first(4);
+        auto ret = scn::read(stream, s);
+        CHECK(ret);
+        CHECK(ret.value() == s.end());
+        CHECK(std::string{buf.data()} == "abcd");
+    }
+    SUBCASE("oversized span")
+    {
+        scn::detail::array<char, 7> buf{{0}};
+        auto s = scn::make_span(buf).first(6);
+        auto ret = scn::read(stream, s);
+        CHECK(ret);
+        CHECK(ret.value() == s.first(5).end());
+        CHECK(std::string{buf.data()} == "abcde");
+    }
+}
+
+TEST_CASE("putback_range")
+{
+    SUBCASE("sized")
+    {
+        auto stream = scn::make_stream("foo");
+        scn::detail::array<char, 4> buf{{0}};
+        auto s = scn::make_span(buf).first(3);
+        {
+            auto ret = scn::read(stream, s);
+            CHECK(ret);
+            CHECK(ret.value() == s.end());
+            CHECK(std::strcmp(buf.data(), "foo") == 0);
+        }
+        auto err = scn::putback_range(stream, s.begin(), s.end());
+        CHECK(err);
+        {
+            auto ret = scn::read(stream, s);
+            CHECK(ret);
+            CHECK(ret.value() == s.end());
+            CHECK(std::strcmp(buf.data(), "foo") == 0);
+        }
+    }
+    SUBCASE("non-sized")
+    {
+        auto stream = make_nonsized_stream(scn::make_stream("foo"));
+        scn::detail::array<char, 4> buf{{0}};
+        auto s = scn::make_span(buf).first(3);
+        {
+            auto ret = scn::read(stream, s);
+            CHECK(ret);
+            CHECK(ret.value() == s.end());
+            CHECK(std::strcmp(buf.data(), "foo") == 0);
+        }
+        auto err = scn::putback_range(stream, s.begin(), s.end());
+        CHECK(err);
+        {
+            auto ret = scn::read(stream, s);
+            CHECK(ret);
+            CHECK(ret.value() == s.end());
+            CHECK(std::strcmp(buf.data(), "foo") == 0);
+        }
     }
 }

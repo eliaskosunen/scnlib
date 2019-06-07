@@ -56,3 +56,28 @@ TEST_CASE("char scanf")
     CHECK(ret.value() == 1);
     CHECK(ch == 'a');
 }
+
+TEST_CASE("char format string")
+{
+    char ch{};
+
+    auto ret = scan_value<char>("a", "{}", ch);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(ch == 'a');
+
+    ret = scan_value<char>("a", "{:c}", ch);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(ch == 'a');
+
+    ret = scan_value<char>("a", "{", ch);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+
+    ret = scan_value<char>("a", "{:a}", ch);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+}

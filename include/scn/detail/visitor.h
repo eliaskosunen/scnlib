@@ -23,11 +23,6 @@
 
 #include <string>
 
-//#ifdef __SSE4_1__
-#if 0
-#include <x86intrin.h>
-#endif
-
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
@@ -167,6 +162,9 @@ namespace scn {
         for (; it != s.end(); ++it) {
             auto ret = stream.read_char();
             if (!ret) {
+                if (ret.error() == error::end_of_stream) {
+                    return {it};
+                }
                 return {it, ret.error()};
             }
             *it = ret.value();
@@ -572,137 +570,6 @@ namespace scn {
                                     bool keep_final)
             {
                 size_t i = 0;
-                //#ifdef __SSE4_1__
-#if 0
-                if (s.chars_to_read() >= 16) {
-                    __m128i spaces = _mm_set1_epi8(' ');
-                    __m128i newline = _mm_set1_epi8('\n');
-                    __m128i carriage = _mm_set1_epi8('\r');
-                    __m128i tab = _mm_set1_epi8('\t');
-                    __m128i vtab = _mm_set1_epi8('\v');
-                    __m128i formfeed = _mm_set1_epi8('\f');
-                    __m128i bytes;
-                    auto bytes_span = make_span(
-                        static_cast<char*>(static_cast<void*>(&bytes)), 16);
-                    while (s.chars_to_read() >= 16) {
-                        s.read_sized(bytes_span);
-                        __m128i bspaces = _mm_cmpeq_epi8(bytes, spaces);
-                        __m128i bnewline = _mm_cmpeq_epi8(bytes, newline);
-                        __m128i bcarriage = _mm_cmpeq_epi8(bytes, carriage);
-                        __m128i btab = _mm_cmpeq_epi8(bytes, tab);
-                        __m128i bvtab = _mm_cmpeq_epi8(bytes, vtab);
-                        __m128i bformfeed = _mm_cmpeq_epi8(bytes, formfeed);
-                        __m128i anywhite = _mm_or_si128(
-                            _mm_or_si128(
-                                _mm_or_si128(
-                                    _mm_or_si128(
-                                        _mm_or_si128(bspaces, bnewline),
-                                        bcarriage),
-                                    btab),
-                                bvtab),
-                            bformfeed);
-                        int mask16 = _mm_movemask_epi8(anywhite);
-                        if (mask16 == 0) {
-                            // no match
-                            it = std::copy(bytes_span.begin(), bytes_span.end(),
-                                           it);
-                            i += 16;
-                        }
-                        else {
-                            size_t k = 0;
-                            for (auto ch : bytes_span) {
-                                if (loc.is_space(ch)) {
-                                    if (keep_final) {
-                                        ++k;
-                                    }
-                                    break;
-                                }
-                                ++k;
-                            }
-                            it = std::copy(bytes_span.begin(),
-                                           bytes_span.begin() + k, it);
-                            i += k;
-                            s.putback_n(16 - k);
-                            return {i};
-                        }
-                    }
-                }
-#elif 0
-                if (s.chars_to_read() >= 64) {
-                    auto make_mask = [](char ch) -> uint64_t {
-                        return ~UINT64_C(0) / UINT64_C(255) *
-                               static_cast<uint64_t>(ch);
-                    };
-                    auto mask_tab = make_mask('\t');
-                    auto mask_nl = make_mask('\n');
-                    auto mask_vtab = make_mask('\v');
-                    auto mask_ff = make_mask('\f');
-                    auto mask_cr = make_mask('\r');
-                    auto mask_space = make_mask(' ');
-
-                    uint64_t word = 0;
-                    auto buf_span = make_span(
-                        static_cast<char*>(static_cast<void*>(&word)), 8);
-
-                    while (s.chars_to_read() >= 8) {
-                        s.read_sized(buf_span);
-
-                        if (has_zero(word ^ mask_tab) ||
-                            has_zero(word ^ mask_nl) ||
-                            has_zero(word ^ mask_vtab) ||
-                            has_zero(word ^ mask_ff) ||
-                            has_zero(word ^ mask_cr) ||
-                            has_zero(word ^ mask_space)) {
-                            size_t k = 0;
-                            for (auto ch : buf_span) {
-                                if (loc.is_space(ch)) {
-                                    if (keep_final) {
-                                        ++k;
-                                    }
-                                    break;
-                                }
-                                ++k;
-                            }
-                            it = std::copy(buf_span.begin(),
-                                           buf_span.begin() + k, it);
-                            i += k;
-                            s.putback_n(8 - k - (keep_final ? 0 : 1));
-                            return {i};
-                        }
-                        else {
-                            it =
-                                std::copy(buf_span.begin(), buf_span.end(), it);
-                            i += 8;
-                        }
-                    }
-                }
-#elif 0
-                detail::array<char, 8> buf;
-                auto buf_span = make_span(buf);
-                bool found = false;
-                while (s.chars_to_read() >= 8 && !found) {
-                    s.read_sized(buf_span);
-
-                    size_t k = 0;
-                    for (auto ch : buf_span) {
-                        if (loc.is_space(ch)) {
-                            found = true;
-                            if (keep_final) {
-                                ++k;
-                            }
-                            break;
-                        }
-                        ++k;
-                    }
-                    it = std::copy(buf_span.begin(), buf_span.begin() + k, it);
-                    i += k;
-                    s.putback_n(8 - k);
-                }
-                if (found) {
-                    return {i};
-                }
-#endif
-
                 char ch{};
                 for (; s.chars_to_read() != 0; ++i) {
                     s.read_sized(make_span(&ch, 1));
@@ -781,95 +648,6 @@ namespace scn {
 
     namespace detail {
         template <typename CharT>
-        class buffered_string_back_inserter {
-        public:
-            using char_type = CharT;
-            using string_type = std::basic_string<char_type>;
-            using buffer_type = detail::array<char_type, 64>;
-            using buffer_iterator = typename buffer_type::iterator;
-
-            struct SCN_TRIVIAL_ABI iterator {
-                using value_type = void;
-                using difference_type = void;
-                using pointer = void;
-                using reference = void;
-                using iterator_category = std::output_iterator_tag;
-
-                iterator(buffered_string_back_inserter* o) : m_obj(o) {}
-
-                iterator(const iterator&) = default;
-                iterator& operator=(const iterator&) = default;
-                iterator(iterator&&) = default;
-                iterator& operator=(iterator&&) = default;
-
-                ~iterator()
-                {
-                    m_obj->flush();
-                }
-
-                iterator& operator*()
-                {
-                    return *this;
-                }
-                iterator& operator++()
-                {
-                    return *this;
-                }
-                iterator& operator++(int)
-                {
-                    return *this;
-                }
-
-                iterator& operator=(CharT ch)
-                {
-                    if (SCN_UNLIKELY(m_obj->m_next == m_obj->m_buf.end())) {
-                        m_obj->flush();
-                    }
-                    *(m_obj->m_next) = ch;
-                    ++(m_obj->m_next);
-                    return *this;
-                }
-
-                buffered_string_back_inserter* m_obj{nullptr};
-            };
-
-            buffered_string_back_inserter(string_type& str)
-                : m_str(str), m_next(m_buf.begin())
-            {
-            }
-
-            iterator operator()()
-            {
-                return iterator{this};
-            }
-
-        private:
-            friend struct iterator;
-
-            void flush()
-            {
-                const auto chars = size();
-                if (chars != 0) {
-                    const auto n = m_str.size();
-                    m_str.resize(n + chars);
-                    std::memcpy((&m_str[0]) + n, m_buf.data(),
-                                chars * sizeof(char_type));
-                    m_next = m_buf.begin();
-                }
-            }
-
-            size_t size()
-            {
-                return static_cast<size_t>(
-                    std::distance(m_buf.begin(), m_next));
-            }
-
-            string_type& m_str;
-            buffer_type m_buf;
-            buffer_iterator m_next;
-        };
-
-        template <typename CharT>
         struct char_scanner {
             template <typename Context>
             error parse(Context& ctx)
@@ -919,7 +697,6 @@ namespace scn {
                     return s.error();
                 }
                 std::memcpy(val.begin(), buf.begin(), buf.size());
-                /* std::copy(buf.begin(), buf.end(), val.begin()); */
 
                 return {};
             }
@@ -1245,25 +1022,15 @@ namespace scn {
 
                 auto r = read_into_until_space(ctx.stream(), ctx.locale(),
                                                std::back_inserter(buf));
-#if 0
-                auto r = read_into_if(
-                    ctx.stream(), std::back_inserter(buf),
-                    predicates::until_space<CharT,
-                                            typename Context::locale_type>{
-                        ctx.locale()});
-#endif
                 if (!r) {
                     return r.error();
                 }
                 buf.erase(buf.begin() + r.value(), buf.end());
-                buf.push_back(detail::ascii_widen<CharT>(0));
 
                 T tmp = 0;
                 size_t chars = 0;
 
                 if ((localized & digits) != 0) {
-                    buf.pop_back();  // Pop \0
-
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                     std::basic_string<CharT> str(buf.data(), buf.size());
                     auto ret = ctx.locale().read_num(tmp, str);
@@ -1322,7 +1089,6 @@ namespace scn {
                     return e.error();
                 }
                 chars = e.value();
-                buf.pop_back();  // pop null terminator
 
                 auto pb = putback_range(
                     ctx.stream(), buf.rbegin(),
@@ -1456,8 +1222,6 @@ namespace scn {
                 size_t chars = 0;
 
                 if (localized) {
-                    buf.pop_back();  // Pop \0
-
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                     auto str = std::basic_string<CharT>(buf.data(), buf.size());
                     auto ret = ctx.locale().read_num(tmp, str);
@@ -1478,7 +1242,6 @@ namespace scn {
                     return {};
                 }
 
-                buf.push_back(CharT{0});
                 auto do_read = [&]() {
                     SCN_GCC_PUSH
                     SCN_GCC_IGNORE("-Wswitch-default")
@@ -1502,7 +1265,6 @@ namespace scn {
                     return e.error();
                 }
                 chars = e.value();
-                buf.pop_back();
 
                 auto pb = putback_range(
                     ctx.stream(), buf.rbegin(),

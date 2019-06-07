@@ -45,6 +45,12 @@ struct nonsized_stream : Stream {
     nonsized_stream(Stream s) : Stream(std::move(s)) {}
 };
 
+template <typename Stream>
+nonsized_stream<Stream> make_nonsized_stream(Stream s)
+{
+    return nonsized_stream<Stream>(std::move(s));
+}
+
 template <typename CharT, typename... T>
 scn::scan_result scan_value(scn::options o,
                             std::string source,

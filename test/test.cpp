@@ -209,3 +209,13 @@ TEST_CASE("brace mismatch")
     CHECK(ret.error() == scn::error::invalid_format_string);
     CHECK(s1 == "foo");
 }
+
+TEST_CASE("empty span")
+{
+    auto stream = scn::make_stream("abc");
+    scn::span<char> s{};
+
+    auto ret = scn::scan(stream, scn::default_tag, s);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+}

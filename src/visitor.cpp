@@ -864,7 +864,9 @@ namespace scn {
         {
             size_t chars = 0;
             errno = 0;
-            auto ret = strto::str_to_int<CharT, T>::get(&buf[0], chars, base);
+            std::basic_string<CharT> str(buf.data(), buf.size());
+            auto ret =
+                strto::str_to_int<CharT, T>::get(str.data(), chars, base);
             if (!ret &&
                 (ret.error() == error::value_out_of_range || errno != ERANGE)) {
                 return ret.error();
@@ -1064,7 +1066,8 @@ namespace scn {
             span<const CharT> buf)
         {
             size_t chars;
-            auto ret = strto::str_to_float<CharT, T>::get(&buf[0], chars);
+            std::basic_string<CharT> str(buf.data(), buf.size());
+            auto ret = strto::str_to_float<CharT, T>::get(str.data(), chars);
             if (!ret) {
                 return ret.error();
             }
@@ -1098,6 +1101,7 @@ namespace scn {
             T& val,
             span<const CharT> buf)
         {
+#if 0
             // TODO
             auto it = buf.begin();
             auto get_retval = [&]() {
@@ -1156,6 +1160,9 @@ namespace scn {
                     }
                 }
             }
+#endif
+            SCN_UNUSED(val);
+            SCN_UNUSED(buf);
             return error(error::invalid_operation,
                          "custom is not a supported floating-point "
                          "scanning method");

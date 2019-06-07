@@ -179,10 +179,47 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
             CHECK(e.value() == 0);
         }
     }
+    {
+        if (can_fit_badidea) {
+            value_type i{};
+            auto e = scan_value<char_type>(method, "0xBAD1DEA", "{}", i);
+            CHECK(i == 0xbad1dea);
+            CHECK(e);
+            CHECK(e.value() == 1);
+        }
+        else {
+            value_type i{};
+            auto e = scan_value<char_type>(method, "0xBAD1DEA", "{}", i);
+            REQUIRE(!e);
+            CHECK(e.error().code() == scn::error::value_out_of_range);
+            CHECK(e.value() == 0);
+        }
+    }
 
     {
         value_type i{};
         auto e = scan_value<char_type>(method, "ff", "{:b16}", i);
+        CHECK(i == 0xff);
+        CHECK(e);
+        CHECK(e.value() == 1);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "FF", "{:b16}", i);
+        CHECK(i == 0xff);
+        CHECK(e);
+        CHECK(e.value() == 1);
+    }
+    {
+        value_type i{0};
+        auto e = scan_value<char_type>(method, "0xff", "{:b16}", i);
+        CHECK(i == 0xff);
+        CHECK(e);
+        CHECK(e.value() == 1);
+    }
+    {
+        value_type i{0};
+        auto e = scan_value<char_type>(method, "0xFF", "{:b16}", i);
         CHECK(i == 0xff);
         CHECK(e);
         CHECK(e.value() == 1);
@@ -194,6 +231,24 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         CHECK(!e);
         CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::invalid_scanned_value);
+    }
+
+    if (std::is_signed<value_type>::value) {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "-", "{}", i);
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
+        CHECK(i == 0);
+    }
+
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "+", "{}", i);
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
+        CHECK(i == 0);
     }
 }
 
