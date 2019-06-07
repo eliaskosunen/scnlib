@@ -144,6 +144,23 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         CHECK(e);
         CHECK(e.value() == 1);
     }
+    {
+        value_type f{1.0};
+        auto e = scan_value<char_type>(
+            method, "999999999999999.9999999999999e999999", "{}", f);
+        CHECK(f == doctest::Approx(1.0));
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::value_out_of_range);
+    }
+    {
+        value_type f{1.0};
+        auto e = scan_value<char_type>(method, "str", "{}", f);
+        CHECK(f == doctest::Approx(1.0));
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
+    }
 }
 
 template <typename T>

@@ -84,40 +84,44 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         CHECK(e.value() == 1);
     }
 
-    if (!u) {
-        value_type i{};
-        auto e = scan_value<char_type>(method, "-1", "{}", i);
-        CHECK(i == -1);
-        CHECK(e);
-        CHECK(e.value() == 1);
-    }
-    else {
-        value_type i{};
-        auto e = scan_value<char_type>(method, "-1", "{}", i);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::value_out_of_range);
-        CHECK(e.value() == 0);
+    {
+        if (!u) {
+            value_type i{};
+            auto e = scan_value<char_type>(method, "-1", "{}", i);
+            CHECK(i == -1);
+            CHECK(e);
+            CHECK(e.value() == 1);
+        }
+        else {
+            value_type i{};
+            auto e = scan_value<char_type>(method, "-1", "{}", i);
+            REQUIRE(!e);
+            CHECK(e.error().code() == scn::error::value_out_of_range);
+            CHECK(e.value() == 0);
+        }
     }
 
-    const bool can_fit_2pow31 = [=]() {
-        if (u) {
-            return sizeof(value_type) >= 4;
+    {
+        const bool can_fit_2pow31 = [=]() {
+            if (u) {
+                return sizeof(value_type) >= 4;
+            }
+            return sizeof(value_type) >= 8;
+        }();
+        if (can_fit_2pow31) {
+            value_type i{};
+            auto e = scan_value<char_type>(method, "2147483648", "{}", i);
+            CHECK(i == 2147483648);
+            CHECK(e);
+            CHECK(e.value() == 1);
         }
-        return sizeof(value_type) >= 8;
-    }();
-    if (can_fit_2pow31) {
-        value_type i{};
-        auto e = scan_value<char_type>(method, "2147483648", "{}", i);
-        CHECK(i == 2147483648);
-        CHECK(e);
-        CHECK(e.value() == 1);
-    }
-    else {
-        value_type i{};
-        auto e = scan_value<char_type>(method, "2147483648", "{}", i);
-        CHECK(!e);
-        CHECK(e.error().code() == scn::error::value_out_of_range);
-        CHECK(e.value() == 0);
+        else {
+            value_type i{};
+            auto e = scan_value<char_type>(method, "2147483648", "{}", i);
+            CHECK(!e);
+            CHECK(e.error().code() == scn::error::value_out_of_range);
+            CHECK(e.value() == 0);
+        }
     }
 
     {
@@ -143,33 +147,37 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     }
 
     const bool can_fit_badidea = [=]() { return sizeof(value_type) >= 4; }();
-    if (can_fit_badidea) {
-        value_type i{};
-        auto e = scan_value<char_type>(method, "bad1dea", "{:x}", i);
-        CHECK(i == 0xbad1dea);
-        CHECK(e);
-        CHECK(e.value() == 1);
+    {
+        if (can_fit_badidea) {
+            value_type i{};
+            auto e = scan_value<char_type>(method, "bad1dea", "{:x}", i);
+            CHECK(i == 0xbad1dea);
+            CHECK(e);
+            CHECK(e.value() == 1);
+        }
+        else {
+            value_type i{};
+            auto e = scan_value<char_type>(method, "bad1dea", "{:x}", i);
+            REQUIRE(!e);
+            CHECK(e.error().code() == scn::error::value_out_of_range);
+            CHECK(e.value() == 0);
+        }
     }
-    else {
-        value_type i{};
-        auto e = scan_value<char_type>(method, "bad1dea", "{:x}", i);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::value_out_of_range);
-        CHECK(e.value() == 0);
-    }
-    if (can_fit_badidea) {
-        value_type i{};
-        auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
-        CHECK(i == 0xbad1dea);
-        CHECK(e);
-        CHECK(e.value() == 1);
-    }
-    else {
-        value_type i{};
-        auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::value_out_of_range);
-        CHECK(e.value() == 0);
+    {
+        if (can_fit_badidea) {
+            value_type i{};
+            auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
+            CHECK(i == 0xbad1dea);
+            CHECK(e);
+            CHECK(e.value() == 1);
+        }
+        else {
+            value_type i{};
+            auto e = scan_value<char_type>(method, "0xbad1dea", "{}", i);
+            REQUIRE(!e);
+            CHECK(e.error().code() == scn::error::value_out_of_range);
+            CHECK(e.value() == 0);
+        }
     }
 
     {
@@ -178,6 +186,14 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         CHECK(i == 0xff);
         CHECK(e);
         CHECK(e.value() == 1);
+    }
+
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "text", "{}", i);
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
     }
 }
 
@@ -430,12 +446,15 @@ TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
         CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::value_out_of_range);
     }
-    if (std::is_signed<value_type>::value) {
-        value_type i{};
-        auto e = scan_value<char_type>(method, understr<value_type>(), "{}", i);
-        CHECK(!e);
-        CHECK(e.value() == 0);
-        CHECK(e.error() == scn::error::value_out_of_range);
+    {
+        if (std::is_signed<value_type>::value) {
+            value_type i{};
+            auto e =
+                scan_value<char_type>(method, understr<value_type>(), "{}", i);
+            CHECK(!e);
+            CHECK(e.value() == 0);
+            CHECK(e.error() == scn::error::value_out_of_range);
+        }
     }
 }
 
