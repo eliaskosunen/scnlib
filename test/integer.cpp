@@ -447,7 +447,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer range localized",
     using value_type = typename T::value_type;
     using char_type = typename T::char_type;
 
-    auto locale = std::locale("en_US.utf8");
+    auto locale = std::locale("en_US");
 
     {
         value_type i{};
