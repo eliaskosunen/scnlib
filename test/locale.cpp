@@ -255,7 +255,7 @@ TEST_CASE("default localized scanning")
         double d{};
 
         auto ret =
-            scn::scan(scn::options::builder{}.locale(std::locale("en_US.utf8")),
+            scn::scan(scn::options::builder{}.locale(std::locale("en_US")),
                       stream, "{:'l} {:l}", i, d);
         CHECK(ret);
         CHECK(ret.value() == 2);

@@ -173,6 +173,9 @@ install:
       export PATH=${DEPS_DIR}/cmake/bin:${PATH}
       cd ${DEPS_DIR}
 
+      sudo locale-gen en_US
+      sudo update-locale
+
       if [[ "${COMPILER}" = "clang++-3.7" ]]; then
         sudo apt-get clean
         sudo rm -rf /var/lib/apt/lists/*
@@ -190,6 +193,7 @@ install:
         find . -name "*lcov*"
       fi
     fi
+  - |
   - cd ${TRAVIS_BUILD_DIR}
   - export CXX="${COMPILER}"
   - |
