@@ -130,6 +130,152 @@ TEST_CASE("read non-sized")
     }
 }
 
+TEST_CASE("read_into_if sized")
+{
+    auto stream = scn::make_stream("abc def");
+    scn::detail::small_vector<char, 32> buf{};
+    auto locale = scn::basic_default_locale_ref<char>{};
+
+    SUBCASE("propagate back_insert")
+    {
+        auto ret = scn::read_into_if(stream, std::back_inserter(buf),
+                                     scn::pred::propagate<char>{});
+        CHECK(ret);
+        CHECK(ret.value() == 7);
+        CHECK(std::string{buf.data(), buf.size()} == "abc def");
+    }
+    SUBCASE("propagate range")
+    {
+        buf.resize(32);
+        auto ret = scn::read_into_if(stream, buf.begin(), buf.end(),
+                                     scn::pred::propagate<char>{});
+        CHECK(ret);
+        CHECK(ret.value() == buf.begin() + 7);
+        CHECK(std::string{buf.begin(), ret.value()} == "abc def");
+    }
+
+    SUBCASE("until_space back_insert")
+    {
+        auto ret = scn::read_into_if(
+            stream, std::back_inserter(buf),
+            scn::pred::until_space<char, scn::basic_default_locale_ref<char>>{
+                locale});
+        CHECK(ret);
+        CHECK(ret.value() == 3);
+        CHECK(std::string{buf.data(), buf.size()} == "abc");
+    }
+    SUBCASE("until_space range")
+    {
+        buf.resize(32);
+        auto ret = scn::read_into_if(
+            stream, buf.begin(), buf.end(),
+            scn::pred::until_space<char, scn::basic_default_locale_ref<char>>{
+                locale});
+        CHECK(ret);
+        CHECK(ret.value() == buf.begin() + 3);
+        CHECK(std::string{buf.begin(), ret.value()} == "abc");
+    }
+
+    SUBCASE("until_space_and_skip_chars back_insert")
+    {
+        char skip = 'b';
+        auto ret =
+            scn::read_into_if(stream, std::back_inserter(buf),
+                              scn::pred::until_space_and_skip_chars<
+                                  char, scn::basic_default_locale_ref<char>>{
+                                  locale, scn::make_span(&skip, 1)});
+        CHECK(ret);
+        CHECK(ret.value() == 2);
+        CHECK(std::string{buf.data(), buf.size()} == "ac");
+    }
+    SUBCASE("until_space_and_skip_chars range")
+    {
+        char skip = 'b';
+        buf.resize(32);
+        auto ret =
+            scn::read_into_if(stream, buf.begin(), buf.end(),
+                              scn::pred::until_space_and_skip_chars<
+                                  char, scn::basic_default_locale_ref<char>>{
+                                  locale, scn::make_span(&skip, 1)});
+        CHECK(ret);
+        CHECK(ret.value() == buf.begin() + 2);
+        CHECK(std::string{buf.begin(), ret.value()} == "ac");
+    }
+}
+
+TEST_CASE("read_into_if non-sized")
+{
+    auto stream = make_nonsized_stream(scn::make_stream("abc def"));
+    scn::detail::small_vector<char, 32> buf{};
+    auto locale = scn::basic_default_locale_ref<char>{};
+
+    SUBCASE("propagate back_insert")
+    {
+        auto ret = scn::read_into_if(stream, std::back_inserter(buf),
+                                     scn::pred::propagate<char>{});
+        CHECK(ret);
+        CHECK(ret.value() == 7);
+        CHECK(std::string{buf.data(), buf.size()} == "abc def");
+    }
+    SUBCASE("propagate range")
+    {
+        buf.resize(32);
+        auto ret = scn::read_into_if(stream, buf.begin(), buf.end(),
+                                     scn::pred::propagate<char>{});
+        CHECK(ret);
+        CHECK(ret.value() == buf.begin() + 7);
+        CHECK(std::string{buf.begin(), ret.value()} == "abc def");
+    }
+
+    SUBCASE("until_space back_insert")
+    {
+        auto ret = scn::read_into_if(
+            stream, std::back_inserter(buf),
+            scn::pred::until_space<char, scn::basic_default_locale_ref<char>>{
+                locale});
+        CHECK(ret);
+        CHECK(ret.value() == 3);
+        CHECK(std::string{buf.data(), buf.size()} == "abc");
+    }
+    SUBCASE("until_space range")
+    {
+        buf.resize(32);
+        auto ret = scn::read_into_if(
+            stream, buf.begin(), buf.end(),
+            scn::pred::until_space<char, scn::basic_default_locale_ref<char>>{
+                locale});
+        CHECK(ret);
+        CHECK(ret.value() == buf.begin() + 3);
+        CHECK(std::string{buf.begin(), ret.value()} == "abc");
+    }
+
+    SUBCASE("until_space_and_skip_chars back_insert")
+    {
+        char skip = 'b';
+        auto ret =
+            scn::read_into_if(stream, std::back_inserter(buf),
+                              scn::pred::until_space_and_skip_chars<
+                                  char, scn::basic_default_locale_ref<char>>{
+                                  locale, scn::make_span(&skip, 1)});
+        CHECK(ret);
+        CHECK(ret.value() == 2);
+        CHECK(std::string{buf.data(), buf.size()} == "ac");
+    }
+    SUBCASE("until_space_and_skip_chars range")
+    {
+        char skip = 'b';
+        buf.resize(32);
+        auto ret =
+            scn::read_into_if(stream, buf.begin(), buf.end(),
+                              scn::pred::until_space_and_skip_chars<
+                                  char, scn::basic_default_locale_ref<char>>{
+                                  locale, scn::make_span(&skip, 1)});
+        CHECK(ret);
+        CHECK(ret.value() == buf.begin() + 2);
+        CHECK(std::string{buf.begin(), ret.value()} == "ac");
+    }
+}
+
 TEST_CASE("putback_range")
 {
     SUBCASE("sized")

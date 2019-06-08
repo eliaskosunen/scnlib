@@ -169,6 +169,19 @@ namespace scn {
             return first;
         }
 
+        template <class InputIt, class T>
+        SCN_CONSTEXPR14 InputIt find(InputIt first,
+                                     InputIt last,
+                                     const T& value)
+        {
+            for (; first != last; ++first) {
+                if (*first == value) {
+                    return first;
+                }
+            }
+            return last;
+        }
+
         template <typename T>
         class SCN_TRIVIAL_ABI unique_ptr {
         public:
@@ -356,6 +369,7 @@ namespace scn {
                                     T(std::move(other.get()))
                               : nullptr)
             {
+                other.m_ptr = nullptr;
             }
             erased_storage& operator=(erased_storage&& other) noexcept
             {
@@ -363,6 +377,7 @@ namespace scn {
                 if (other) {
                     m_ptr = ::new (static_cast<void*>(&m_data))
                         T(std::move(other.get()));
+                    other.m_ptr = nullptr;
                 }
                 return *this;
             }

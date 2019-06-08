@@ -71,7 +71,7 @@ TEST_CASE("char format string")
     CHECK(ret.value() == 1);
     CHECK(ch == 'a');
 
-    ret = scan_value<char>("a", "{", ch);
+    ret = scan_value<char>("a", "{:", ch);
     CHECK(!ret);
     CHECK(ret.value() == 0);
     CHECK(ret.error() == scn::error::invalid_format_string);

@@ -84,7 +84,7 @@ namespace scn {
                         value_type(value);
                 }
             }
-            template <typename T, typename ForwardIt>
+            template <typename ForwardIt>
             static void uninitialized_fill_default_construct(
                 ForwardIt first,
                 ForwardIt last) noexcept
@@ -97,7 +97,7 @@ namespace scn {
                         value_type;
                 }
             }
-            template <typename T, typename ForwardIt>
+            template <typename ForwardIt>
             static void uninitialized_fill_value_init(ForwardIt first,
                                                       ForwardIt last) noexcept
             {
@@ -316,14 +316,14 @@ namespace scn {
                     auto storage_ptr = new stack_storage_type[count];
                     auto ptr =
                         static_cast<pointer>(static_cast<void*>(storage_ptr));
-                    this->uninitialized_fill_value_init<T>(ptr, ptr + count);
+                    this->uninitialized_fill_value_init(ptr, ptr + count);
                     heap.cap = cap;
                     m_size = count;
                     m_ptr = ::scn::detail::launder(ptr);
                 }
                 else {
                     auto& stack = _construct_stack_storage();
-                    this->uninitialized_fill_value_init<T>(
+                    this->uninitialized_fill_value_init(
                         stack.reinterpret_unconstructed_data(),
                         stack.reinterpret_unconstructed_data() + count);
                     m_size = count;

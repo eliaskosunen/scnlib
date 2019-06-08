@@ -77,6 +77,67 @@ TEST_CASE_TEMPLATE("boolean", CharT, char, wchar_t)
     }
 }
 
+TEST_CASE_TEMPLATE("bool localized", CharT, char, wchar_t)
+{
+    auto locale = std::locale("en_US");
+    {
+        bool b{};
+        auto e = scan_value<CharT>(locale, "true", "{:la}", b);
+        CHECK(b);
+        CHECK(e);
+        CHECK(e.value() == 1);
+    }
+    {
+        bool b{};
+        auto e = scan_value<CharT>(locale, "false", "{:la}", b);
+        CHECK(!b);
+        CHECK(e);
+        CHECK(e.value() == 1);
+    }
+    {
+        bool b{};
+        auto e = scan_value<CharT>(locale, "bool", "{:la}", b);
+        REQUIRE(!e);
+        CHECK(e.error().code() == scn::error::invalid_scanned_value);
+        CHECK(e.value() == 0);
+    }
+    {
+        bool b{};
+        auto e = scan_value<CharT>(locale, "0", "{:la}", b);
+        REQUIRE(!e);
+        CHECK(e.error().code() == scn::error::invalid_scanned_value);
+        CHECK(e.value() == 0);
+    }
+    {
+        bool b{};
+        auto e = scan_value<CharT>(locale, "0", "{:l}", b);
+        CHECK(!b);
+        CHECK(e);
+        CHECK(e.value() == 1);
+    }
+    {
+        bool b{};
+        auto e = scan_value<CharT>(locale, "1", "{:l}", b);
+        CHECK(b);
+        CHECK(e);
+        CHECK(e.value() == 1);
+    }
+    {
+        bool b{};
+        auto e = scan_value<CharT>(locale, "2", "{:l}", b);
+        REQUIRE(!e);
+        CHECK(e.error().code() == scn::error::invalid_scanned_value);
+        CHECK(e.value() == 0);
+    }
+    {
+        bool b{};
+        auto e = scan_value<CharT>(locale, "true", "{:ln}", b);
+        REQUIRE(!e);
+        CHECK(e.error().code() == scn::error::invalid_format_string);
+        CHECK(e.value() == 0);
+    }
+}
+
 TEST_CASE("bool scanf")
 {
     bool b{};

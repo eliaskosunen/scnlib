@@ -33,6 +33,18 @@ TEST_CASE("max_digits")
           std::numeric_limits<unsigned>::digits);
     CHECK(scn::detail::max_digits<long long>(radix) ==
           std::numeric_limits<long long>::digits + 1);
+
+    CHECK(scn::detail::max_digits<int>(8) == 12);
+    CHECK(scn::detail::max_digits<unsigned>(8) == 11);
+    CHECK(scn::detail::max_digits<long long>(8) == 22);
+
+    CHECK(scn::detail::max_digits<int>(4) == 17);
+    CHECK(scn::detail::max_digits<unsigned>(4) == 16);
+    CHECK(scn::detail::max_digits<long long>(4) == 33);
+
+    CHECK(scn::detail::max_digits<int>(0) == 14);
+    CHECK(scn::detail::max_digits<unsigned>(0) == 13);
+    CHECK(scn::detail::max_digits<long long>(0) == 24);
 }
 
 TEST_CASE("ascii_widen")
@@ -61,4 +73,36 @@ TEST_CASE("unique_ptr")
     ptr = scn::detail::unique_ptr<int>();
     CHECK(!ptr);
     CHECK(ptr.get() == nullptr);
+}
+
+TEST_CASE("erased_storage")
+{
+    auto val = scn::detail::erased_storage<int>{};
+    CHECK(!val);
+    CHECK(!val.has_value());
+    CHECK(!val.operator->());
+
+    val = scn::detail::erased_storage<int>{42};
+    CHECK(val);
+    CHECK(val.has_value());
+    CHECK(val.operator->());
+    CHECK(*val == 42);
+    CHECK(val.get() == 42);
+
+    auto copy = val;
+    CHECK(copy);
+    CHECK(*copy == 42);
+    CHECK(val);
+    CHECK(*val == 42);
+
+    auto move = std::move(val);
+    CHECK(move);
+    CHECK(*move == 42);
+    CHECK(!val);
+
+    *copy = 123;
+    move = std::move(copy);
+    CHECK(move);
+    CHECK(*move == 123);
+    CHECK(!copy);
 }

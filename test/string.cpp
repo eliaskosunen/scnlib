@@ -35,6 +35,20 @@ TEST_CASE_TEMPLATE_DEFINE("string", CharT, string_test)
         CHECK(e);
         CHECK(e.value() == 1);
     }
+    {
+        string_type s{};
+        auto e = scan_value<CharT>("foo", "{:s}", s);
+        CHECK(s == widen<CharT>("foo"));
+        CHECK(e);
+        CHECK(e.value());
+    }
+    {
+        string_type s{};
+        auto e = scan_value<CharT>("foo", "{:s}", s);
+        CHECK(s.empty());
+        CHECK(!e);
+        CHECK(e.error() == scn::error::invalid_format_string);
+    }
 }
 
 TEST_CASE_TEMPLATE_DEFINE("getline", CharT, getline_test)

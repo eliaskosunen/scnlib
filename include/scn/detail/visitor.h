@@ -60,7 +60,8 @@ namespace scn {
             using does_skip = std::false_type;
             expected<scan_status> operator()(CharT ch)
             {
-                if (std::find(until.begin(), until.end(), ch) != until.end()) {
+                if (detail::find(until.begin(), until.end(), ch) !=
+                    until.end()) {
                     return scan_status::end;
                 }
                 return scan_status::keep;
@@ -104,10 +105,11 @@ namespace scn {
             using does_skip = std::true_type;
             expected<scan_status> operator()(CharT ch)
             {
-                if (std::find(until.begin(), until.end(), ch) != until.end()) {
+                if (detail::find(until.begin(), until.end(), ch) !=
+                    until.end()) {
                     return scan_status::end;
                 }
-                if (std::find(skip.begin(), skip.end(), ch) != skip.end()) {
+                if (detail::find(skip.begin(), skip.end(), ch) != skip.end()) {
                     return scan_status::skip;
                 }
                 return scan_status::keep;
@@ -124,7 +126,7 @@ namespace scn {
                 if (locale.is_space(ch)) {
                     return scan_status::end;
                 }
-                if (std::find(skip.begin(), skip.end(), ch) != skip.end()) {
+                if (detail::find(skip.begin(), skip.end(), ch) != skip.end()) {
                     return scan_status::skip;
                 }
                 return scan_status::keep;
@@ -165,152 +167,6 @@ namespace scn {
                 if (ret.error() == error::end_of_stream) {
                     return {it};
                 }
-                return {it, ret.error()};
-            }
-            *it = ret.value();
-        }
-        return {it};
-    }
-
-    // read_into_with_buffer
-
-    namespace detail {
-        template <typename Stream,
-                  typename Iterator,
-                  typename CharT = typename Stream::char_type>
-        result<size_t> read_into_with_buffer(Stream& stream,
-                                             Iterator it,
-                                             span<CharT> buffer)
-        {
-            size_t n = 0, size = 0;
-            while (true) {
-                n = detail::min(stream.chars_to_read(), size_t{64});
-                if (n == 0) {
-                    break;
-                }
-                buffer = buffer.first(n);
-                auto ret = read(stream, buffer);
-                if (!ret) {
-                    return {size, ret.error()};
-                }
-                it = std::copy(buffer.begin(), buffer.end(), it);
-                size += n;
-            }
-            return {size};
-        }
-        template <typename Stream,
-                  typename Iterator,
-                  typename Sentinel,
-                  typename CharT = typename Stream::char_type>
-        result<Iterator> read_into_with_buffer(Stream& stream,
-                                               Iterator it,
-                                               Sentinel end,
-                                               span<CharT> buffer)
-        {
-            auto n = 0;
-            while (true) {
-                n = detail::min({static_cast<size_t>(std::distance(it, end)),
-                                 stream.chars_to_read(), size_t{64}});
-                if (n == 0) {
-                    break;
-                }
-                buffer = buffer.first(n);
-                auto ret = read(stream, buffer);
-                if (!ret) {
-                    return {it, ret.error()};
-                }
-                it = std::copy(buffer.begin(), buffer.end(), it);
-            }
-            return {it};
-        }
-    }  // namespace detail
-
-    // read_into
-
-    template <typename Stream,
-              typename Iterator,
-              typename CharT = typename Stream::char_type,
-              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
-                  nullptr>
-    result<Iterator> read_into(Stream& s, Iterator it)
-    {
-        auto n = s.chars_to_read();
-        size_t size = 0;
-        if (n > 64) {
-            detail::array<CharT, 64> arr;
-            auto ret = read(s, make_span(arr));
-            if (!ret) {
-                return {size, ret.error()};
-            }
-            it = std::copy(arr.begin(), arr.begin() + n, it);
-            size += n;
-            return detail::read_into_with_buffer(s, it, make_span(arr));
-        }
-        detail::array<CharT, 64> arr;
-        auto ret = read(s, make_span(arr.data(), n));
-        if (!ret) {
-            return {size, ret.error()};
-        }
-        std::copy(arr.begin(), arr.begin() + n, it);
-        return size + n;
-    }
-    template <typename Stream,
-              typename Iterator,
-              typename CharT = typename Stream::char_type,
-              typename std::enable_if<!is_sized_stream<Stream>::value>::type* =
-                  nullptr>
-    result<Iterator> read_into(Stream& s, Iterator it)
-    {
-        size_t n = 0;
-        while (true) {
-            auto ret = s.read_char();
-            if (!ret) {
-                return {n, ret.error()};
-            }
-            *it = ret.value();
-            ++it;
-            ++n;
-        }
-        return {n};
-    }
-
-    template <typename Stream,
-              typename Iterator,
-              typename Sentinel,
-              typename CharT = typename Stream::char_type,
-              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
-                  nullptr>
-    result<Iterator> read_into(Stream& s, Iterator it, Sentinel end)
-    {
-        auto n = detail::min(static_cast<size_t>(std::distance(it, end)),
-                             s.chars_to_read());
-        if (n > 64) {
-            detail::array<CharT, 64> arr;
-            auto ret = read(s, make_span(arr));
-            if (!ret) {
-                return {it, ret.error()};
-            }
-            it = std::copy(arr.begin(), arr.begin() + n, it);
-            return detail::read_into_with_buffer(s, it, end, make_span(arr));
-        }
-        detail::array<CharT, 64> arr;
-        auto ret = read(s, make_span(arr.data(), n));
-        if (!ret) {
-            return {it, ret.error()};
-        }
-        return {std::copy(arr.begin(), arr.begin() + n, it)};
-    }
-    template <typename Stream,
-              typename Iterator,
-              typename Sentinel,
-              typename CharT = typename Stream::char_type,
-              typename std::enable_if<!is_sized_stream<Stream>::value>::type* =
-                  nullptr>
-    result<Iterator> read_into(Stream& s, Iterator it, Sentinel end)
-    {
-        for (; it != end; ++it) {
-            auto ret = s.read_char();
-            if (!ret) {
                 return {it, ret.error()};
             }
             *it = ret.value();
@@ -457,9 +313,10 @@ namespace scn {
                                   Predicate&& p,
                                   bool keep_final = false)
     {
-        auto n = 0;
+        size_t n = 0;
         detail::array<CharT, 64> arr;
-        while (true) {
+        bool done = false;
+        while (!done) {
             n = detail::min({static_cast<size_t>(std::distance(it, end)),
                              s.chars_to_read(), size_t{64}});
             if (n == 0) {
@@ -471,8 +328,9 @@ namespace scn {
                 return {it, ret.error()};
             }
 
+            auto arr_it = arr.begin();
             const auto arr_end = arr.begin() + n;
-            for (auto arr_it = arr.begin(); arr_it != arr_end; ++arr_it) {
+            for (; arr_it != arr_end; ++arr_it) {
                 auto r = p(*arr_it);
                 if (!r) {
                     return {it, r.error()};
@@ -485,8 +343,10 @@ namespace scn {
                         ++arr_it;
                     }
                     if (arr_it != arr_end) {
-                        s.putback_n(std::distance(arr_it, arr_end));
+                        s.putback_n(static_cast<size_t>(
+                            std::distance(arr_it, arr_end)));
                     }
+                    done = true;
                     break;
                 }
                 *it = *arr_it;
@@ -511,12 +371,15 @@ namespace scn {
         while (it != end) {
             auto ret = s.read_char();
             if (!ret) {
+                if (ret.error() == error::end_of_stream) {
+                    break;
+                }
                 return {it, ret.error()};
             }
 
             auto r = p(ret.value());
             if (!r) {
-                return r.error();
+                return {it, r.error()};
             }
             if (r.value() == scan_status::skip) {
                 continue;
@@ -717,7 +580,6 @@ namespace scn {
                                  "Unexpected format string end");
                 }
 
-                bool allow_set = false;
                 bool a = false, n = false;
                 for (auto ch = pctx.next();
                      pctx && !pctx.check_arg_end(ctx.locale());
@@ -727,24 +589,22 @@ namespace scn {
                     }
                     else if (ch == detail::ascii_widen<CharT>('a')) {
                         a = true;
-                        allow_set = true;
                     }
                     else if (ch == detail::ascii_widen<CharT>('n')) {
                         n = true;
-                        allow_set = true;
                     }
                     else {
                         break;
                     }
                 }
-                if (allow_set) {
+                if (a || n) {
                     allow_alpha = a;
                     allow_num = n;
                 }
 
                 if (SCN_UNLIKELY(localized && !allow_alpha)) {
                     return error(error::invalid_format_string,
-                                 "boolalpha-mode cannot be enabled with 'l' "
+                                 "boolalpha-mode cannot be disabled with 'l' "
                                  "(localized) specifier with bool");
                 }
 
@@ -948,6 +808,12 @@ namespace scn {
                                              "expected digit");
                             }
                             tmp = pctx.next() - zero;
+                            if (tmp < 1) {
+                                return error(
+                                    error::invalid_format_string,
+                                    "Invalid base, must be between 1 and 36");
+                            }
+
                             pctx.advance();
                             ch = pctx.next();
 
@@ -961,7 +827,7 @@ namespace scn {
                                              "expected digit");
                             }
                             tmp *= 10;
-                            tmp += pctx.next() - zero;
+                            tmp += ch - zero;
                             if (tmp < 1 || tmp > 36) {
                                 return error(
                                     error::invalid_format_string,

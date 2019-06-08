@@ -71,6 +71,15 @@ scn::scan_result scan_value(std::string source, std::string f, T&... value)
     return scan_value<CharT>(scn::options{}, std::move(source), std::move(f),
                              value...);
 }
+template <typename CharT, typename... T>
+scn::scan_result scan_value(const std::locale& loc,
+                            std::string source,
+                            std::string f,
+                            T&... value)
+{
+    return scan_value<CharT>(scn::options::builder{}.locale(loc).make(),
+                             std::move(source), std::move(f), value...);
+}
 
 template <typename CharT, typename... T>
 scn::scan_result scanf_value(scn::options o,

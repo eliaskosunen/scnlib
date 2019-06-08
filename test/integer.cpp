@@ -250,6 +250,31 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         CHECK(e.error() == scn::error::invalid_scanned_value);
         CHECK(i == 0);
     }
+
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "123", "{:b}", i);
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::invalid_format_string);
+        CHECK(i == 0);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "123", "{:ba}", i);
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::invalid_format_string);
+        CHECK(i == 0);
+    }
+    {
+        value_type i{};
+        auto e = scan_value<char_type>(method, "123", "{:b0}", i);
+        CHECK(!e);
+        CHECK(e.value() == 0);
+        CHECK(e.error() == scn::error::invalid_format_string);
+        CHECK(i == 0);
+    }
 }
 
 TEST_CASE("integer decimal separator")
@@ -513,7 +538,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
     }
 }
 
-#if !SCN_MSVC
 TEST_CASE_TEMPLATE_DEFINE("integer range localized",
                           T,
                           integer_range_localized_test)
@@ -570,7 +594,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer range localized",
         CHECK(e.error() == scn::error::value_out_of_range);
     }
 }
-#endif
 
 template <typename T>
 using char_intpair = intpair<char, T>;
@@ -622,7 +645,6 @@ TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_test,
                                wchar_intpair<unsigned int>,
                                wchar_intpair<unsigned long>,
                                wchar_intpair<unsigned long long>);
-#if !SCN_MSVC
 TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_localized_test,
                                char_intpair<short>,
                                char_intpair<int>,
@@ -638,7 +660,6 @@ TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_localized_test,
                                wchar_intpair<unsigned int>,
                                wchar_intpair<unsigned long>,
                                wchar_intpair<unsigned long long>);
-#endif
 
 TEST_CASE("integer scanf")
 {
