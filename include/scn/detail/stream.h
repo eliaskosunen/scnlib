@@ -572,82 +572,59 @@ namespace scn {
     template <typename Iterator>
     struct basic_forward_iterator_stream : public stream_base {
         using char_type = typename std::iterator_traits<Iterator>::value_type;
-        using is_sized_stream = std::true_type;
 
         SCN_CONSTEXPR basic_forward_iterator_stream(Iterator begin,
                                                     Iterator end) noexcept
-            : m_begin(begin), m_end(end)
+            : m_begin(begin), m_end(end), m_read{}, m_read_it(m_read.begin())
         {
         }
 
         expected<char_type> read_char() noexcept
         {
-            if (m_rollback.size() > 0) {
-                auto top = m_rollback.back();
-                m_rollback.pop_back();
-                return top;
+            if (m_read_it != m_read.end()) {
+                auto ch = *m_read_it;
+                ++m_read_it;
+                return ch;
             }
             if (m_begin == m_end) {
                 return error(error::end_of_stream, "EOF");
             }
             auto ch = *m_begin;
             ++m_begin;
+            m_read.push_back(ch);
+            m_read_it = m_read.end();
             return ch;
         }
-        error putback(char_type ch)
+        error putback(char_type)
         {
-            m_rollback.push_back(ch);
-            return {};
-        }
-
-        SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
-        {
-            SCN_EXPECT(chars_to_read() >= s.size());
-            std::copy(m_begin, m_begin + s.size(), s.begin());
-            std::advance(m_begin, s.size());
-            return {};
-        }
-
-        error putback_n(size_t n)
-        {
-            SCN_EXPECT(m_rollback.size() >= n);
-            m_rollback.erase(m_rollback.begin(), m_rollback.begin() + n);
+            SCN_EXPECT(m_read_it != m_read.begin());
+            --m_read_it;
             return {};
         }
 
         error set_roll_back() noexcept
         {
-            m_rollback.clear();
+            m_read.clear();
+            m_read_it = m_read.end();
             return {};
         }
-        SCN_CONSTEXPR error roll_back() const noexcept
+        error roll_back() noexcept
         {
+            m_read_it = m_read.begin();
             return {};
         }
 
         size_t rcount() const noexcept
         {
-            return m_rollback.size();
-        }
-
-        SCN_CONSTEXPR14 size_t chars_to_read() const noexcept
-        {
-            return static_cast<size_t>(std::distance(m_begin, m_end));
-        }
-
-        SCN_CONSTEXPR14 void skip(size_t n) noexcept
-        {
-            SCN_EXPECT(chars_to_read() >= n);
-            m_begin += n;
-        }
-        SCN_CONSTEXPR14 void skip_all() noexcept
-        {
-            m_begin = m_end;
+            return m_read.size();
         }
 
     private:
+        using buffer_type = detail::small_vector<char_type, 32>;
+
         Iterator m_begin, m_end;
-        detail::small_vector<char_type, 32> m_rollback;
+        buffer_type m_read;
+        typename buffer_type::iterator m_read_it;
     };
 
     namespace detail {

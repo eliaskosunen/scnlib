@@ -15,6 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
 TEST_CASE_TEMPLATE("boolean", CharT, char, wchar_t)
@@ -77,6 +78,7 @@ TEST_CASE_TEMPLATE("boolean", CharT, char, wchar_t)
     }
 }
 
+#if !SCN_MSVC
 TEST_CASE_TEMPLATE("bool localized", CharT, char, wchar_t)
 {
     auto locale = std::locale("en_US");
@@ -137,6 +139,7 @@ TEST_CASE_TEMPLATE("bool localized", CharT, char, wchar_t)
         CHECK(e.value() == 0);
     }
 }
+#endif
 
 TEST_CASE("bool scanf")
 {

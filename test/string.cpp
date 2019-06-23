@@ -15,9 +15,10 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-TEST_CASE_TEMPLATE_DEFINE("string", CharT, string_test)
+TEST_CASE_TEMPLATE("string test", CharT, char, wchar_t)
 {
     using string_type = std::basic_string<CharT>;
     {
@@ -30,8 +31,8 @@ TEST_CASE_TEMPLATE_DEFINE("string", CharT, string_test)
     }
     {
         string_type s{};
-        auto e = scan_value<CharT>("WoRdW1th_Special<>Charact3rs", "{}", s);
-        CHECK(s == widen<CharT>("WoRdW1th_Special<>Charact3rs"));
+        auto e = scan_value<CharT>("WoRdW1th_Special<>Charact3rs!?", "{}", s);
+        CHECK(s == widen<CharT>("WoRdW1th_Special<>Charact3rs!?"));
         CHECK(e);
         CHECK(e.value() == 1);
     }
@@ -44,14 +45,14 @@ TEST_CASE_TEMPLATE_DEFINE("string", CharT, string_test)
     }
     {
         string_type s{};
-        auto e = scan_value<CharT>("foo", "{:s}", s);
+        auto e = scan_value<CharT>("foo", "{:a}", s);
         CHECK(s.empty());
         CHECK(!e);
         CHECK(e.error() == scn::error::invalid_format_string);
     }
 }
 
-TEST_CASE_TEMPLATE_DEFINE("getline", CharT, getline_test)
+TEST_CASE_TEMPLATE("getline", CharT, char, wchar_t)
 {
     using string_type = std::basic_string<CharT>;
     string_type data = widen<CharT>(
@@ -59,21 +60,20 @@ TEST_CASE_TEMPLATE_DEFINE("getline", CharT, getline_test)
         "Second line with spaces");
     auto stream = scn::make_stream(data);
 
+    SUBCASE("test")
     {
         string_type s{};
         auto ret = scn::getline(stream, s);
         CHECK(s == widen<CharT>("firstline"));
         CHECK(ret);
-    }
-    {
-        string_type s{};
-        auto ret = scn::getline(stream, s);
+
+        ret = scn::getline(stream, s);
         CHECK(s == widen<CharT>("Second line with spaces"));
         CHECK(ret);
     }
 }
 
-TEST_CASE_TEMPLATE_DEFINE("ignore", CharT, ignore_test)
+TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
 {
     using string_type = std::basic_string<CharT>;
     string_type data = widen<CharT>("line1\nline2");
@@ -126,10 +126,6 @@ TEST_CASE_TEMPLATE_DEFINE("ignore", CharT, ignore_test)
         }
     }
 }
-
-TEST_CASE_TEMPLATE_INSTANTIATE(string_test, char, wchar_t);
-TEST_CASE_TEMPLATE_INSTANTIATE(getline_test, char, wchar_t);
-TEST_CASE_TEMPLATE_INSTANTIATE(ignore_test, char, wchar_t);
 
 TEST_CASE("string scanf")
 {

@@ -11,20 +11,36 @@ if (NOT SCN_USE_EXCEPTIONS)
 endif()
 target_link_libraries(tests-base INTERFACE scn-sanitizers)
 
-add_executable(tests
-    test.cpp empty.cpp string_view.cpp char.cpp locale.cpp
-    integer.cpp floating.cpp boolean.cpp string.cpp
-    result.cpp usertype.cpp istream.cpp buffer.cpp util.cpp
-    small_vector.cpp tuple_return.cpp until_space.cpp)
-target_link_libraries(tests PRIVATE scn tests-base)
-set_private_flags(tests)
-add_test(NAME tests COMMAND tests)
+function (make_test test source)
+    add_executable(test-${test} ${source})
+    target_link_libraries(test-${test} PRIVATE scn tests-base)
+    set_private_flags(test-${test})
+    add_test(NAME ${test} COMMAND test-${test})
+endfunction()
+
+make_test(test test.cpp)
+make_test(empty empty.cpp)
+
+make_test(util util.cpp)
+make_test(small-vector small_vector.cpp)
+make_test(string-view string_view.cpp)
+make_test(until-space until_space.cpp)
+make_test(locale locale.cpp)
+make_test(stream stream.cpp)
+
+make_test(result result.cpp)
+make_test(istream istream.cpp)
+make_test(tuple-return tuple_return.cpp)
+
+make_test(char char.cpp)
+make_test(integer integer.cpp)
+make_test(float floating.cpp)
+make_test(string string.cpp)
+make_test(buffer buffer.cpp)
+make_test(usertype usertype.cpp)
 
 if (SCN_BUILD_LOCALE_TESTS)
-    add_executable(tests-locale locale_scan.cpp)
-    target_link_libraries(tests-locale PRIVATE scn tests-base)
-    set_private_flags(tests-locale)
-    add_test(NAME locale COMMAND tests-locale)
+    make_test(locale_scan locale_scan.cpp)
 endif ()
 
 add_subdirectory(each)

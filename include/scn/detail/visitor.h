@@ -439,14 +439,16 @@ namespace scn {
                     if (loc.is_space(ch)) {
                         if (keep_final) {
                             ++i;
-                            *it++ = ch;
+                            *it = ch;
+                            ++it;
                         }
                         else {
                             s.putback_n(1);
                         }
                         break;
                     }
-                    *it++ = ch;
+                    *it = ch;
+                    ++it;
                 }
                 return {i};
             }

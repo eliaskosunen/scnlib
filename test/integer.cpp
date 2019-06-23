@@ -15,6 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
 template <typename CharT, typename T>
@@ -538,6 +539,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
     }
 }
 
+#if !SCN_MSVC
 TEST_CASE_TEMPLATE_DEFINE("integer range localized",
                           T,
                           integer_range_localized_test)
@@ -594,6 +596,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer range localized",
         CHECK(e.error() == scn::error::value_out_of_range);
     }
 }
+#endif
 
 template <typename T>
 using char_intpair = intpair<char, T>;
@@ -645,6 +648,7 @@ TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_test,
                                wchar_intpair<unsigned int>,
                                wchar_intpair<unsigned long>,
                                wchar_intpair<unsigned long long>);
+#if !SCN_MSVC
 TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_localized_test,
                                char_intpair<short>,
                                char_intpair<int>,
@@ -660,6 +664,7 @@ TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_localized_test,
                                wchar_intpair<unsigned int>,
                                wchar_intpair<unsigned long>,
                                wchar_intpair<unsigned long long>);
+#endif
 
 TEST_CASE("integer scanf")
 {

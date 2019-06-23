@@ -15,6 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
 TEST_CASE("string_view")

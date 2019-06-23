@@ -18,75 +18,61 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-#include <scn/istream.h>
-#include <istream>
-#include <sstream>
-
-TEST_CASE("istream stream")
+TEST_CASE("bidirectional iterator stream")
 {
-    std::istringstream ss("123");
-    auto stream = scn::make_stream(ss);
+    auto data = std::string{"Hello world"};
+    auto stream = scn::make_stream(data.begin(), data.end());
 
-    int i{};
-    auto ret = scn::scan(stream, "{}", i);
-    CHECK(ret);
-    CHECK(ret.value() == 1);
-    CHECK(i == 123);
-}
-
-TEST_CASE("istream stream fail")
-{
-    SUBCASE("at eof")
     {
-        int i{};
-        std::istringstream ss{};
-        ss >> i;
-        CHECK(ss.eof());
-
-        auto stream = scn::make_stream(ss);
-        auto ret = scn::scan(stream, "{}", i);
-        CHECK(!ret);
-        CHECK(ret.value() == 0);
-        CHECK(ret.error() == scn::error::end_of_stream);
-        CHECK(i == 0);
+        std::string str{};
+        auto ret = scn::scan(stream, "{}", str);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(str == "Hello");
     }
-    SUBCASE("parsing failed")
     {
-        std::istringstream ss("foo");
-        auto stream = scn::make_stream(ss);
-
         int i{};
         auto ret = scn::scan(stream, "{}", i);
         CHECK(!ret);
         CHECK(ret.value() == 0);
         CHECK(ret.error() == scn::error::invalid_scanned_value);
         CHECK(i == 0);
-        CHECK(stream);
-
+    }
+    {
         std::string str{};
-        ret = scn::scan(stream, "{}", str);
+        auto ret = scn::scan(stream, "{}", str);
         CHECK(ret);
         CHECK(ret.value() == 1);
-        CHECK(str == "foo");
+        CHECK(str == "world");
     }
 }
 
-struct my_type {
-    int value{};
-
-    friend std::istream& operator>>(std::istream& is, my_type& val)
-    {
-        is >> val.value;
-        return is;
-    }
-};
-
-TEST_CASE("istream value")
+TEST_CASE("forward iterator stream")
 {
-    auto stream = scn::make_stream("123");
+    auto data = std::string{"Hello world"};
+    auto stream = scn::basic_forward_iterator_stream<std::string::iterator>(
+        data.begin(), data.end());
 
-    my_type val{};
-    auto ret = scn::scan(stream, "{}", val);
-    CHECK(ret.value() == 1);
-    CHECK(val.value == 123);
+    {
+        std::string str{};
+        auto ret = scn::scan(stream, "{}", str);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(str == "Hello");
+    }
+    {
+        int i{};
+        auto ret = scn::scan(stream, "{}", i);
+        CHECK(!ret);
+        CHECK(ret.value() == 0);
+        CHECK(ret.error() == scn::error::invalid_scanned_value);
+        CHECK(i == 0);
+    }
+    {
+        std::string str{};
+        auto ret = scn::scan(stream, "{}", str);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(str == "world");
+    }
 }

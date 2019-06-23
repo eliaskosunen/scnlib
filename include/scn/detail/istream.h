@@ -35,21 +35,39 @@ namespace scn {
         using source_type = std::basic_istream<char_type>;
         using traits = typename source_type::traits_type;
 
-        basic_std_istream_stream(source_type& is) : m_is(std::addressof(is)) {}
+        basic_std_istream_stream(source_type& is)
+            : m_is(std::addressof(is)), m_read{}, m_it(m_read.begin())
+        {
+        }
 
         expected<char_type> read_char();
-        error putback(char_type ch);
+
+        error putback(char_type)
+        {
+            SCN_EXPECT(m_it != m_read.begin());
+            --m_it;
+            return {};
+        }
 
         error set_roll_back()
         {
-            m_read = 0;
+            m_read.clear();
+            m_it = m_read.end();
             return {};
         }
-        error roll_back();
+        error roll_back()
+        {
+            m_it = m_read.begin();
+            return {};
+        }
 
     private:
+        using buffer_type = detail::small_vector<char_type, 32>;
+        using iterator = typename buffer_type::iterator;
+
         source_type* m_is;
-        long m_read{0};
+        buffer_type m_read{};
+        iterator m_it;
     };
 
     SCN_CLANG_POP

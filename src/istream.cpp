@@ -28,6 +28,11 @@ namespace scn {
     auto basic_std_istream_stream<CharT>::read_char() -> expected<char_type>
     {
 #if SCN_HAS_EXCEPTIONS
+        if (m_it != m_read.end()) {
+            auto ch = *m_it;
+            ++m_it;
+            return ch;
+        }
         try {
             auto tmp = m_is->get();
             if (tmp == traits::eof()) {
@@ -41,70 +46,27 @@ namespace scn {
                 }
                 return error(error::stream_source_error, "Unknown error");
             }
-            ++m_read;
-            return static_cast<char_type>(tmp);
+            auto ch = static_cast<char_type>(tmp);
+            m_read.push_back(ch);
+            m_it = m_read.end();
+            return ch;
         }
-        catch (const std::ios_base::failure& e) {
+        catch (const std::ios_base::failure&) {
             if (m_is->bad()) {
                 _set_bad();
                 return error(error::unrecoverable_stream_source_error,
-                             e.what());
+                             "Bad underlying stream");
             }
             if (m_is->eof()) {
-                return error(error::end_of_stream, e.what());
+                return error(error::end_of_stream, "EOF");
             }
-            return error(error::stream_source_error, e.what());
+            return error(error::stream_source_error, "Unknown error");
         }
 #else
         return error(error::exceptions_required,
                      "Reading from a std::basic_istream without exceptions "
                      "enabled is not supported. Use FILEs instead.");
 #endif
-    }
-
-    template <typename CharT>
-    error basic_std_istream_stream<CharT>::putback(char_type ch)
-    {
-#if SCN_HAS_EXCEPTIONS
-        assert(m_read > 0);
-        try {
-            m_is->putback(ch);
-            if (m_is->fail()) {
-                _set_bad();
-                return error(error::unrecoverable_stream_source_error,
-                             "Putback failed");
-            }
-            --m_read;
-            return {};
-        }
-        catch (const std::ios_base::failure& e) {
-            _set_bad();
-            return error(error::unrecoverable_stream_source_error, e.what());
-        }
-#else
-        SCN_UNUSED(ch);
-        return error(error::exceptions_required,
-                     "Reading from a std::basic_istream without exceptions "
-                     "enabled is not supported. Use FILEs instead.");
-#endif
-    }
-
-    template <typename CharT>
-    error basic_std_istream_stream<CharT>::roll_back()
-    {
-        assert(m_read >= 0);
-        if (m_read == 0) {
-            return {};
-        }
-        for (auto i = 0; i < m_read; ++i) {
-            if (m_is->rdbuf()->sungetc() == traits::eof()) {
-                _set_bad();
-                return error(error::unrecoverable_stream_source_error,
-                             "ungetc failed");
-            }
-        }
-        m_read = 0;
-        return {};
     }
 
     template class basic_std_istream_stream<char>;
