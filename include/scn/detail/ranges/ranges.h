@@ -297,14 +297,16 @@ namespace scn {
 
             auto ret = skip_stream_whitespace(ctx);
             if (!ret) {
-                return ret;
+                return {r, static_cast<std::ptrdiff_t>(stream.chars_read()),
+                        expected<T>(ret)};
             }
 
             T val{};
             scanner<char_type, T> sc;
             ret = sc.scan(val, ctx);
             if (!ret) {
-                return ret;
+                return {r, static_cast<std::ptrdiff_t>(stream.chars_read()),
+                        expected<T>(ret)};
             }
             return {r, static_cast<std::ptrdiff_t>(stream.chars_read()),
                     expected<T>(val)};
