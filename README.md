@@ -6,6 +6,7 @@
 [![Codacy Code Quality](https://api.codacy.com/project/badge/Grade/daf649bfab44407fa7afda6cb97add2a)](https://www.codacy.com/app/eliaskosunen/scnlib?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=eliaskosunen/scnlib&amp;utm_campaign=Badge_Grade)
 [![License](https://img.shields.io/github/license/eliaskosunen/scnlib.svg)](https://github.com/eliaskosunen/scnlib/blob/doc/LICENSE)
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)
+![GitHub release](https://img.shields.io/github/release-pre/eliaskosunen/scnlib.svg)
 
 ```cpp
 #include <scn/scn.h>
@@ -29,8 +30,12 @@ This library attempts to move us ever so closer to replacing `iostream`s and C s
 It's (going to, eventually, be) faster than `iostream` (see Benchmarks) and type-safe, unlike `scanf`.
 Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 
-The library is still under early development (pre-0.1), so don't expect perfection.
+The library is still under early development (0.1), so don't expect perfection.
 See [Stability](#stability) for more details.
+
+This library is _not_ an implementation of the ISO C++ standards proposal
+[P1729 "Text Parsing"](https://wg21.link/p1729),
+but is developed completely independently.
 
 ## Documentation and tutorial
 
@@ -103,11 +108,13 @@ GCC 4.x support will not be provided, as its C++11 support is too buggy.
 
 ## Stability
 
-No API or ABI stability is guaranteed at this point.
+The master-branch will be API-stable until the next minor release, 0.2.
+It will receive API-compatible bugfixes, should any be necessary, tagged appropriately (0.1.1 etc).
 
-Once 0.1 is released, subsequent 0.1.x patches will be API-compatible with 0.1, and master-branch rebases will be a thing of the past.
-The next API break after that will be 0.2.
-No ABI stability will be provided pre-1.0.
+The dev-branch will not be stable. It may be rebased, and will contain changes that may break your code.
+Please don't depend on it, unless you really want to live on the edge.
+
+No ABI stability is guaranteed at this point, and none will be pre-1.0.
 
 This is still a pre-1.0 library, so there's bound to be bugs. If you find one, _please_ report it.
 
