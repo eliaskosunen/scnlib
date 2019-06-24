@@ -6,7 +6,6 @@
 [![Codacy Code Quality](https://api.codacy.com/project/badge/Grade/daf649bfab44407fa7afda6cb97add2a)](https://www.codacy.com/app/eliaskosunen/scnlib?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=eliaskosunen/scnlib&amp;utm_campaign=Badge_Grade)
 [![License](https://img.shields.io/github/license/eliaskosunen/scnlib.svg)](https://github.com/eliaskosunen/scnlib/blob/doc/LICENSE)
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)
-![GitHub release](https://img.shields.io/github/release-pre/eliaskosunen/scnlib.svg)
 
 ```cpp
 #include <scn/scn.h>
@@ -30,12 +29,12 @@ This library attempts to move us ever so closer to replacing `iostream`s and C s
 It's (going to, eventually, be) faster than `iostream` (see Benchmarks) and type-safe, unlike `scanf`.
 Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 
-The library is still under early development (0.1), so don't expect perfection.
+The library is still in early development (0.1), so don't expect perfection.
 See [Stability](#stability) for more details.
 
 This library is _not_ an implementation of the ISO C++ standards proposal
 [P1729 "Text Parsing"](https://wg21.link/p1729),
-but is developed completely independently.
+but it's developed completely independently.
 
 ## Documentation and tutorial
 
