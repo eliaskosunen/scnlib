@@ -76,3 +76,16 @@ TEST_CASE("forward iterator stream")
         CHECK(str == "world");
     }
 }
+
+TEST_CASE("erased stream")
+{
+    auto stream = scn::make_erased_stream("Hello 42");
+
+    std::string str{};
+    int i{};
+    auto ret = scn::scan(stream, "{} {}", str, i);
+    CHECK(ret);
+    CHECK(ret.value() == 2);
+    CHECK(str == "Hello");
+    CHECK(i == 42);
+}

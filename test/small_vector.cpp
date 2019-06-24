@@ -251,6 +251,11 @@ TEST_CASE_TEMPLATE_DEFINE("small_vector", T, small_vector_test)
         CHECK(vec.capacity() == 64);
         CHECK(vec.is_small());
     }
+
+    SUBCASE("issue #8") {
+        auto vec = scn::detail::small_vector<char, 32>{};
+        vec.push_back('0');
+    }
 }
 
 TYPE_TO_STRING(non_default_constructible);
