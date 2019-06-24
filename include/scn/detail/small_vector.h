@@ -338,8 +338,8 @@ namespace scn {
             small_vector(const small_vector& other)
             {
                 if (other.empty()) {
-                    _construct_stack_storage();
-                    m_ptr = nullptr;
+                    auto& stack = _construct_stack_storage();
+                    m_ptr = stack.reinterpret_unconstructed_data();
                     return;
                 }
 
@@ -375,8 +375,8 @@ namespace scn {
             small_vector(small_vector&& other) noexcept
             {
                 if (other.empty()) {
-                    _construct_stack_storage();
-                    m_ptr = nullptr;
+                    auto& stack = _construct_stack_storage();
+                    m_ptr = stack.reinterpret_unconstructed_data();
                     return;
                 }
 

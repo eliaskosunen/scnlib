@@ -119,16 +119,16 @@ namespace scn {
     // Reference to global stdin stream.
     // Not safe to use during static construction or destruction.
     template <typename CharT>
-    basic_cstdio_stream<CharT>& stdin_stream()
+    erased_stream<CharT>& stdin_stream()
     {
-        static basic_cstdio_stream<CharT> stream(stdin);
+        static erased_stream<CharT> stream{basic_cstdio_stream<CharT>(stdin)};
         return stream;
     }
-    inline basic_cstdio_stream<char>& cstdin()
+    inline erased_stream<char>& cstdin()
     {
         return stdin_stream<char>();
     }
-    inline basic_cstdio_stream<wchar_t>& wcstdin()
+    inline erased_stream<wchar_t>& wcstdin()
     {
         return stdin_stream<wchar_t>();
     }
@@ -146,7 +146,8 @@ namespace scn {
 
         using stream_type =
             typename std::remove_reference<decltype(stream)>::type;
-        using context_type = basic_context<stream_type>;
+        using context_type =
+            typename erased_stream_context_type<stream_type>::type;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(stream, f, args);
@@ -162,7 +163,8 @@ namespace scn {
 
         using stream_type =
             typename std::remove_reference<decltype(stream)>::type;
-        using context_type = basic_context<stream_type>;
+        using context_type =
+            typename erased_stream_context_type<stream_type>::type;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(stream, f, args);
@@ -183,7 +185,8 @@ namespace scn {
         auto& stream = stdin_stream<char>();
         using stream_type =
             typename std::remove_reference<decltype(stream)>::type;
-        using context_type = basic_context<stream_type>;
+        using context_type =
+            typename erased_stream_context_type<stream_type>::type;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(stream, f, args);
@@ -201,7 +204,8 @@ namespace scn {
         auto& stream = stdin_stream<wchar_t>();
         using stream_type =
             typename std::remove_reference<decltype(stream)>::type;
-        using context_type = basic_context<stream_type>;
+        using context_type =
+            typename erased_stream_context_type<stream_type>::type;
 
         auto args = make_args<context_type>(a...);
         auto ctx = context_type(stream, f, args);
