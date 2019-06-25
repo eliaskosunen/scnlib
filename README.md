@@ -46,7 +46,7 @@ Building the documentation requires Doxygen.
 
 Rather lacking examples can be found from the `examples/` folder.
 
-Should you get stuck somewhere, you can find me on the [CppLang Slack](cpplang.now.sh),
+Should you get stuck somewhere, you can find me on the [CppLang Slack](https://cpplang.now.sh),
 or by DMing me on [Twitter](https://twitter.com/eliaskosunen).
 
 ## Installing
