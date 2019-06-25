@@ -754,6 +754,24 @@
  * // ret.iterator() == range.end()
  * \endcode
  *
+ * \subsection temp Scanning temporaries
+ *
+ * `scnlib` provides a helper type for scanning into a temporary value:
+ * `scn::temporary`. which can be created with the helper function `scn::temp`.
+ * This is useful, for example, for scanning a `scn::span`.
+ *
+ * \code{.cpp}
+ * // Doesn't work, because arguments must be lvalue references
+ * scn::scan(stream, "{}", scn::make_span(...));
+ *
+ * // Workaround
+ * auto span = scn::make_span(...);
+ * scn::scan(stream, "{}", span);
+ *
+ * // Using scn::temporary
+ * scn::scan(stream, "{}", scn::temp(scn::make_span(...)));
+ * \endcode
+ *
  * \subsection scanf scanf-like format strings
  *
  * With `scn::scanf`, a `scanf`-like format string syntax can be used, instead.
@@ -782,6 +800,53 @@
  *
  * To read literal a `%`-character and immediately discard it, write `%%` (`{{`
  * and `}}` with default format string syntax).
+ *
+ * \section cmake CMake usage
+ *
+ * Using `scnlib` with CMake is pretty easy. Just import it in the way of your
+ * liking (`find_package`, `add_subdirectory` etc) and add `scn::scn` (or
+ * `scn::scn-header-only`) to your `target_link_libraries`.
+ *
+ * \subsection cmake-config CMake configuration options
+ *
+ * These default to `OFF`, unless `scnlib` is built as a standalone project.
+ *
+ *  * `SCN_TESTS`: Build tests
+ *  * `SCN_EXAMPLES`: Build examples
+ *  * `SCN_BENCHMARKS`: Build benchmarks
+ *  * `SCN_DOCS`: Build docs
+ *  * `SCN_INSTALL` Generate `install` target
+ *  * `SCN_PEDANTIC`: Enable stricter warning levels
+ *
+ * These default to `OFF`, but can be turned on if you want to:
+ *
+ *  * `SCN_PREDEFINE_VSCAN_OVERLOADS`: Increases compile time and generated
+ *     library size, but decreases user binary size.
+ *     Don't use in header-only mode.
+ *  * `SCN_USE_NATIVE_ARCH`: Add `-march=native` to build flags
+ *     (gcc or clang only). Useful for increasing performance,
+ *     but makes your binary non-portable.
+ *  * `SCN_USE_ASAN`, `SCN_USE_UBSAN`, `SCN_USE_MSAN`:
+ *     Enable sanitizers, clang only
+ *
+ * These default to `ON`:
+ *
+ *  * `SCN_RANGES`: Search for `range-v3`
+ *     (or `cmcstl2` if `SCN_USE_CMCSTL2` is `ON`).
+ *     Doesn't error if not found, but just doesn't generate the targets.
+ *  * `SCN_USE_EXCEPTIONS`, `SCN_USE_RTTI`: self-explanatory
+ *
+ * These default to `OFF`, and should only be turned on if necessary:
+ *
+ *  * `SCN_WERROR`: Stops compilation on compiler warnings
+ *  * `SCN_USE_CMCSTL2`: Use `cmcstl2` instead of `range-v3`, not supported yet
+ *  * `SCN_USE_32BIT`: Compile as 32-bit (gcc or clang only)
+ *  * `SCN_COVERAGE`: Generate code coverage report
+ *  * `SCN_BLOAT`: Generate bloat test target
+ *  * `SCN_BUILD_FUZZING`: Build fuzzer
+ *  * `SCN_BUILD_LOCALE_TESTS`: Build localized tests,
+ *     needs `en_US.utf8` and `fi_FI.utf8` locales
+ *
  *
  * \section rationale Rationale
  *

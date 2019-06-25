@@ -511,10 +511,10 @@ namespace scn {
 
                 using utype = typename std::make_unsigned<T>::type;
 
-                utype cutoff_tmp =
-                    sign == -1
-                        ? -static_cast<utype>(std::numeric_limits<T>::min())
-                        : std::numeric_limits<T>::max();
+                utype cutoff_tmp = sign == -1
+                                       ? -static_cast<unsigned long long>(
+                                             std::numeric_limits<T>::min())
+                                       : std::numeric_limits<T>::max();
                 const auto cutlim =
                     detail::ascii_widen<CharT>(cutoff_tmp % base + '0');
                 const utype cutoff = cutoff_tmp / base;
@@ -648,9 +648,13 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "strtof range error");
                     }
+                    SCN_GCC_PUSH
+                    // bogus warning, == with 0.0 is safe
+                    SCN_GCC_IGNORE("-Wfloat-equal")
                     if (f == 0.0f && end == str) {
                         return error(error::invalid_scanned_value, "strtof");
                     }
+                    SCN_GCC_POP
                     return f;
                 }
             };
@@ -667,9 +671,13 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "wcstof range error");
                     }
+                    SCN_GCC_PUSH
+                    // bogus warning, == with 0.0 is safe
+                    SCN_GCC_IGNORE("-Wfloat-equal")
                     if (f == 0.0f && end == str) {
                         return error(error::invalid_scanned_value, "wcstof");
                     }
+                    SCN_GCC_POP
                     return f;
                 }
             };
@@ -687,9 +695,13 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "strtod range error");
                     }
+                    SCN_GCC_PUSH
+                    // bogus warning, == with 0.0 is safe
+                    SCN_GCC_IGNORE("-Wfloat-equal")
                     if (d == 0.0 && end == str) {
                         return error(error::invalid_scanned_value, "strtod");
                     }
+                    SCN_GCC_POP
                     return d;
                 }
             };
@@ -706,9 +718,13 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "wcstod range error");
                     }
+                    SCN_GCC_PUSH
+                    // bogus warning, == with 0.0 is safe
+                    SCN_GCC_IGNORE("-Wfloat-equal")
                     if (d == 0.0 && end == str) {
                         return error(error::invalid_scanned_value, "wcstod");
                     }
+                    SCN_GCC_POP
                     return d;
                 }
             };
@@ -726,9 +742,13 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "strtold range error");
                     }
+                    SCN_GCC_PUSH
+                    // bogus warning, == with 0.0 is safe
+                    SCN_GCC_IGNORE("-Wfloat-equal")
                     if (ld == 0.0l && end == str) {
                         return error(error::invalid_scanned_value, "strtold");
                     }
+                    SCN_GCC_POP
                     return ld;
                 }
             };
@@ -746,9 +766,13 @@ namespace scn {
                         return error(error::value_out_of_range,
                                      "wcstold range error");
                     }
+                    SCN_GCC_PUSH
+                    // bogus warning, == with 0.0 is safe
+                    SCN_GCC_IGNORE("-Wfloat-equal")
                     if (ld == 0.0l && end == str) {
                         return error(error::invalid_scanned_value, "wcstold");
                     }
+                    SCN_GCC_POP
                     return ld;
                 }
             };

@@ -59,6 +59,8 @@ struct non_default_construct {
 };
 
 namespace scn {
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wpadded")
     template <typename CharT>
     struct scanner<CharT, wrap_default<non_default_construct>>
         : public scanner<CharT, int> {
@@ -74,6 +76,7 @@ namespace scn {
             return {};
         }
     };
+    SCN_CLANG_POP
 }  // namespace scn
 
 TEST_CASE("tuple_return non_default_construct")

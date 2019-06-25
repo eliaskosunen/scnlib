@@ -53,8 +53,11 @@ TEST_CASE("basic_default_locale_ref")
     SUBCASE("digit")
     {
         for (char i = 0; i != 10; ++i) {
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wconversion")
             CHECK(loc.is_digit('0' + i));
             CHECK(wloc.is_digit(L'0' + i));
+            SCN_GCC_POP
         }
         CHECK(!loc.is_digit('a'));
         CHECK(!loc.is_digit('Z'));
@@ -157,8 +160,11 @@ TEST_CASE("basic_locale_ref")
     SUBCASE("digit")
     {
         for (char i = 0; i != 10; ++i) {
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wconversion")
             CHECK(loc.is_digit('0' + i));
             CHECK(wloc.is_digit(L'0' + i));
+            SCN_GCC_POP
         }
         CHECK(!loc.is_digit('a'));
         CHECK(!loc.is_digit('Z'));

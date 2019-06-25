@@ -46,6 +46,11 @@ namespace scn {
 
         T value;
     };
+    template <typename T>
+    temporary<T> temp(T&& val)
+    {
+        return {std::move(val)};
+    }
 
     namespace detail {
         template <typename CharT>

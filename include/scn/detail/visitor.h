@@ -1207,6 +1207,8 @@ namespace scn {
         };
     }  // namespace detail
 
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wpadded")
     template <typename CharT>
     struct scanner<CharT, CharT> : public detail::char_scanner<CharT> {
     };
@@ -1220,12 +1222,9 @@ namespace scn {
     struct scanner<CharT, short>
         : public detail::integer_scanner<CharT, short> {
     };
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wpadded")
     template <typename CharT>
     struct scanner<CharT, int> : public detail::integer_scanner<CharT, int> {
     };
-    SCN_CLANG_POP
     template <typename CharT>
     struct scanner<CharT, long> : public detail::integer_scanner<CharT, long> {
     };
@@ -1266,6 +1265,7 @@ namespace scn {
     };
     template <typename CharT>
     struct scanner<CharT, detail::monostate>;
+    SCN_CLANG_POP
 
     template <typename Context>
     error skip_stream_whitespace(Context& ctx) noexcept

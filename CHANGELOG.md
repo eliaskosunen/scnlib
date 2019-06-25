@@ -1,3 +1,13 @@
+# 0.1.2
+
+_Released 2019-06-25_
+
+ * Add `SCN_RANGES` CMake option
+ * Add `scn::temp` helper function
+ * Fix `-Wpadded` warnings on clang
+ * Fix `-Wfloat-equal` and `-Wconversion` warnings on gcc
+ * Fix `C4146` error on UWP MSVC
+
 # 0.1.1
 
 _Released 2019-06-25_
