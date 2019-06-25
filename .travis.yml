@@ -276,7 +276,7 @@ before_deploy:
 deploy:
   provider: script
   skip_cleanup: true
-  script: rsync -r --delete-after --quiet ${TRAVIS_BUILD_DIR}/doc/html/* upload@eliaskosunen.com:/var/www/scnlib.eliaskosunen.com/master
+  script: rsync -r --delete-after --quiet ${TRAVIS_BUILD_DIR}/doc/html/* upload@eliaskosunen.com:/var/www/scnlib.dev/master
   on:
     branch: master
     condition: "$DOC = ON"

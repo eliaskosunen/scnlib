@@ -1,4 +1,4 @@
-version: 0.0.{build}
+version: 0.1.1.{build}
 clone_depth: 1
 
 environment:
