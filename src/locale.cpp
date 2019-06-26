@@ -22,6 +22,7 @@
 #include <scn/detail/locale.h>
 
 #include <cctype>
+#include <cmath>
 #include <cwchar>
 #include <locale>
 #include <sstream>
@@ -97,6 +98,34 @@ namespace scn {
     }
 
     namespace detail {
+        template <typename T>
+        auto read_num_check_range(T val) ->
+            typename std::enable_if<std::is_integral<T>::value, error>::type
+        {
+            if (val == std::numeric_limits<T>::max()) {
+                return error(error::value_out_of_range,
+                             "Scanned number out of range: overflow");
+            }
+            if (val == std::numeric_limits<T>::min()) {
+                return error(error::value_out_of_range,
+                             "Scanned number out of range: underflow");
+            }
+            return error(error::invalid_scanned_value,
+                         "Localized number read failed");
+        }
+        template <typename T>
+        auto read_num_check_range(T val) ->
+            typename std::enable_if<std::is_floating_point<T>::value,
+                                    error>::type
+        {
+            if (std::isinf(val)) {
+                return error(error::value_out_of_range,
+                             "Scanned number out of range");
+            }
+            return error(error::invalid_scanned_value,
+                         "Localized number read failed");
+        }
+
         template <typename T, typename CharT>
         expected<size_t> read_num(T& val,
                                   const std::locale& loc,
@@ -114,16 +143,7 @@ namespace scn {
                                  "Localized stringstream is bad");
                 }
                 if (ss.fail()) {
-                    if (tmp == std::numeric_limits<T>::max()) {
-                        return error(error::value_out_of_range,
-                                     "Scanned number out of range: overflow");
-                    }
-                    if (tmp == std::numeric_limits<T>::min()) {
-                        return error(error::value_out_of_range,
-                                     "Scanned number out of range: underflow");
-                    }
-                    return error(error::invalid_scanned_value,
-                                 "Localized number read failed");
+                    return read_num_check_range(tmp);
                 }
                 val = tmp;
             }

@@ -214,9 +214,13 @@ namespace scn {
     template <typename S>
     struct is_sized_stream : S::is_sized_stream {
     };
+    template <typename S>
+    struct is_zero_copy_stream : S::is_zero_copy_stream {
+    };
 
     struct stream_base {
         using is_sized_stream = std::false_type;
+        using is_zero_copy_stream = std::false_type;
 
         SCN_CONSTEXPR14 void _set_bad() noexcept
         {
@@ -325,6 +329,19 @@ namespace scn {
             m_next -= static_cast<std::ptrdiff_t>(n);
         }
 
+        span<const char_type> read_zero_copy(size_t n) noexcept
+        {
+            SCN_EXPECT(chars_to_read() >= n);
+            auto s = make_span(&*m_next, n);
+            m_next += static_cast<std::ptrdiff_t>(n);
+            return s;
+        }
+        char_type peek(size_t n) noexcept
+        {
+            SCN_EXPECT(chars_to_read() >= n);
+            return *(m_next + n);
+        }
+
         SCN_CONSTEXPR14 error set_roll_back() noexcept
         {
             m_begin = m_next;
@@ -395,6 +412,7 @@ namespace scn {
         using source_type = span<const Char>;
         using iterator = typename source_type::const_iterator;
         using is_sized_stream = std::true_type;
+        using is_zero_copy_stream = std::true_type;
 
         SCN_CONSTEXPR basic_static_container_stream(source_type s) noexcept
             : m_source(s), m_begin(m_source.begin()), m_next(begin())
@@ -417,20 +435,30 @@ namespace scn {
             return {};
         }
 
-        error read_sized(span<char_type> s) noexcept
+        void read_sized(span<char_type> s) noexcept
         {
             SCN_EXPECT(chars_to_read() >= s.size());
             std::memcpy(s.begin(), m_next, s.size() * sizeof(char_type));
-            /* std::copy(m_next, m_next + s.size(), s.begin()); */
             m_next += s.size();
-            return {};
         }  // namespace scn
 
-        error putback_n(size_t n) noexcept
+        void putback_n(size_t n) noexcept
         {
             SCN_EXPECT(rcount() >= n);
             m_next -= n;
-            return {};
+        }
+
+        span<const char_type> read_zero_copy(size_t n) noexcept
+        {
+            SCN_EXPECT(chars_to_read() >= n);
+            auto s = make_span(m_next, n);
+            m_next += static_cast<std::ptrdiff_t>(n);
+            return s;
+        }
+        char_type peek(size_t n) noexcept
+        {
+            SCN_EXPECT(chars_to_read() >= n);
+            return *(m_next + n);
         }
 
         SCN_CONSTEXPR14 error set_roll_back() noexcept
@@ -519,19 +547,17 @@ namespace scn {
             return {};
         }
 
-        SCN_CONSTEXPR14 error read_sized(span<char_type> s) noexcept
+        SCN_CONSTEXPR14 void read_sized(span<char_type> s) noexcept
         {
             SCN_EXPECT(chars_to_read() >= static_cast<size_t>(s.size()));
             std::copy(m_next, m_next + s.ssize(), s.begin());
             std::advance(m_next, s.ssize());
-            return {};
         }
 
-        error putback_n(size_t n) noexcept
+        void putback_n(size_t n) noexcept
         {
             SCN_EXPECT(rcount() >= n);
             m_next -= static_cast<std::ptrdiff_t>(n);
-            return {};
         }
 
         SCN_CONSTEXPR14 error set_roll_back() noexcept

@@ -174,6 +174,24 @@ namespace scn {
         return {it};
     }
 
+    template <typename Stream,
+              typename std::enable_if<
+                  is_zero_copy_stream<Stream>::value>::type* = nullptr>
+    span<const typename Stream::char_type> read_zero_copy(Stream& s, size_t n)
+    {
+        if (s.chars_to_read() < n) {
+            return {};
+        }
+        return s.read_zero_copy(n);
+    }
+    template <typename Stream,
+              typename std::enable_if<
+                  !is_zero_copy_stream<Stream>::value>::type* = nullptr>
+    span<const typename Stream::char_type> read_zero_copy(Stream&, size_t)
+    {
+        return {};
+    }
+
     // read_into_if
 
     template <typename Stream,
@@ -465,6 +483,35 @@ namespace scn {
             s, l, it, keep_final);
     }
 
+    template <typename Stream,
+              typename Locale,
+              typename std::enable_if<
+                  is_zero_copy_stream<Stream>::value>::type* = nullptr>
+    span<const typename Stream::char_type> read_into_until_space_zero_copy(
+        Stream& stream,
+        Locale& l,
+        bool keep_final = false)
+    {
+        for (size_t i = 0; i != stream.chars_to_read(); ++i) {
+            if (l.is_space(stream.peek(i))) {
+                if (keep_final) {
+                    ++i;
+                }
+                return stream.read_zero_copy(i);
+            }
+        }
+        return stream.read_zero_copy(stream.chars_to_read());
+    }
+    template <typename Stream,
+              typename Locale,
+              typename std::enable_if<
+                  !is_zero_copy_stream<Stream>::value>::type* = nullptr>
+    span<const typename Stream::char_type>
+    read_into_until_space_zero_copy(Stream&, Locale&, bool = false)
+    {
+        return {};
+    }
+
     // putback_range
 
     template <typename Stream,
@@ -554,10 +601,16 @@ namespace scn {
                     return {};
                 }
 
+                auto span = read_zero_copy(ctx.stream(), val.size());
+                if (span.size() != 0) {
+                    std::memcpy(val.begin(), span.begin(), val.size());
+                    return {};
+                }
+
                 detail::small_vector<CharT, 64> buf(
                     static_cast<size_t>(val.size()));
-                auto span = scn::make_span(buf);
-                auto s = read(ctx.stream(), span);
+                auto bufspan = scn::make_span(buf);
+                auto s = read(ctx.stream(), bufspan);
                 if (!s) {
                     return s.error();
                 }
@@ -637,34 +690,33 @@ namespace scn {
                     std::basic_string<CharT> buf;
                     buf.reserve(max_len);
 
-                    auto i = read_into_until_space(ctx.stream(), ctx.locale(),
-                                                   std::back_inserter(buf));
-#if 0
-                    auto i = read_into_if(
-                        ctx.stream(), std::back_inserter(buf),
-                        predicates::until_space<CharT,
-                                                typename Context::locale_type>{
-                            ctx.locale()});
-#endif
-                    if (!i) {
-                        return i.error();
+                    auto span = read_into_until_space_zero_copy(ctx.stream(),
+                                                                ctx.locale());
+                    if (span.size() == 0) {
+                        auto i =
+                            read_into_until_space(ctx.stream(), ctx.locale(),
+                                                  std::back_inserter(buf));
+                        if (!i) {
+                            return i.error();
+                        }
+                        buf.erase(i.value());
+                        span = make_span(buf).as_const();
                     }
-                    buf.erase(i.value());
 
                     bool found = false;
                     size_t chars = 0;
 
-                    if (buf.size() >= falsename.size()) {
+                    if (span.size() >= falsename.size()) {
                         if (std::equal(falsename.begin(), falsename.end(),
-                                       buf.begin())) {
+                                       span.begin())) {
                             val = false;
                             found = true;
                             chars = falsename.size();
                         }
                     }
-                    if (!found && buf.size() >= truename.size()) {
+                    if (!found && span.size() >= truename.size()) {
                         if (std::equal(truename.begin(), truename.end(),
-                                       buf.begin())) {
+                                       span.begin())) {
                             val = true;
                             found = true;
                             chars = truename.size();
@@ -672,12 +724,12 @@ namespace scn {
                     }
                     if (found) {
                         return putback_range(
-                            ctx.stream(), buf.rbegin(),
-                            buf.rend() - static_cast<std::ptrdiff_t>(chars));
+                            ctx.stream(), span.rbegin(),
+                            span.rend() - static_cast<std::ptrdiff_t>(chars));
                     }
                     else {
-                        auto pb = putback_range(ctx.stream(), buf.rbegin(),
-                                                buf.rend());
+                        auto pb = putback_range(ctx.stream(), span.rbegin(),
+                                                span.rend());
                         if (!pb) {
                             return pb;
                         }
@@ -886,21 +938,25 @@ namespace scn {
             template <typename Context>
             error scan(T& val, Context& ctx)
             {
-                detail::small_vector<CharT, 32> buf;
-
-                auto r = read_into_until_space(ctx.stream(), ctx.locale(),
-                                               std::back_inserter(buf));
-                if (!r) {
-                    return r.error();
+                detail::small_vector<CharT, 16> buf;
+                auto span =
+                    read_into_until_space_zero_copy(ctx.stream(), ctx.locale());
+                if (span.size() == 0) {
+                    auto r = read_into_until_space(ctx.stream(), ctx.locale(),
+                                                   std::back_inserter(buf));
+                    if (!r) {
+                        return r.error();
+                    }
+                    buf.erase(buf.begin() + r.value(), buf.end());
+                    span = make_span(buf).as_const();
                 }
-                buf.erase(buf.begin() + r.value(), buf.end());
 
                 T tmp = 0;
                 size_t chars = 0;
 
                 if ((localized & digits) != 0) {
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-                    std::basic_string<CharT> str(buf.data(), buf.size());
+                    std::basic_string<CharT> str(span.data(), span.size());
                     auto ret = ctx.locale().read_num(tmp, str);
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
@@ -909,8 +965,8 @@ namespace scn {
                     }
 
                     auto pb = putback_range(
-                        ctx.stream(), buf.rbegin(),
-                        buf.rend() - static_cast<std::ptrdiff_t>(ret.value()));
+                        ctx.stream(), span.rbegin(),
+                        span.rend() - static_cast<std::ptrdiff_t>(ret.value()));
                     if (!pb) {
                         return pb;
                     }
@@ -923,7 +979,7 @@ namespace scn {
                 SCN_MSVC_IGNORE(4127)  // conditional expression is constant
 
                 if (std::is_unsigned<T>::value) {
-                    if (buf.front() == detail::ascii_widen<CharT>('-')) {
+                    if (span[0] == detail::ascii_widen<CharT>('-')) {
                         return error(error::value_out_of_range,
                                      "Unexpected sign '-' when scanning an "
                                      "unsigned integer");
@@ -951,7 +1007,7 @@ namespace scn {
                     SCN_GCC_POP
                 };
                 auto e = do_read()(
-                    tmp, make_span(buf).as_const(), base,
+                    tmp, span, base,
                     have_thsep ? ctx.locale().thousands_separator() : 0);
                 if (!e) {
                     return e.error();
@@ -959,8 +1015,8 @@ namespace scn {
                 chars = e.value();
 
                 auto pb = putback_range(
-                    ctx.stream(), buf.rbegin(),
-                    buf.rend() - static_cast<std::ptrdiff_t>(chars));
+                    ctx.stream(), span.rbegin(),
+                    span.rend() - static_cast<std::ptrdiff_t>(chars));
                 if (!pb) {
                     return pb;
                 }
@@ -1078,20 +1134,25 @@ namespace scn {
             error scan(T& val, Context& ctx)
             {
                 detail::small_vector<CharT, 32> buf{};
-
-                auto r = read_into_until_space(ctx.stream(), ctx.locale(),
-                                               std::back_inserter(buf));
-                if (!r) {
-                    return r.error();
+                auto span =
+                    read_into_until_space_zero_copy(ctx.stream(), ctx.locale());
+                if (span.size() == 0) {
+                    auto r = read_into_until_space(ctx.stream(), ctx.locale(),
+                                                   std::back_inserter(buf));
+                    if (!r) {
+                        return r.error();
+                    }
+                    buf.erase(buf.begin() + r.value(), buf.end());
+                    span = make_span(buf).as_const();
                 }
-                buf.erase(buf.begin() + r.value(), buf.end());
 
                 T tmp{};
                 size_t chars = 0;
 
                 if (localized) {
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-                    auto str = std::basic_string<CharT>(buf.data(), buf.size());
+                    auto str =
+                        std::basic_string<CharT>(span.data(), span.size());
                     auto ret = ctx.locale().read_num(tmp, str);
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
@@ -1101,8 +1162,8 @@ namespace scn {
                     chars = ret.value();
 
                     auto pb = putback_range(
-                        ctx.stream(), buf.rbegin(),
-                        buf.rend() - static_cast<std::ptrdiff_t>(chars));
+                        ctx.stream(), span.rbegin(),
+                        span.rend() - static_cast<std::ptrdiff_t>(chars));
                     if (!pb) {
                         return pb;
                     }
@@ -1128,15 +1189,15 @@ namespace scn {
                     SCN_UNREACHABLE;
                     SCN_GCC_POP
                 };
-                auto e = do_read()(tmp, make_span(buf).as_const());
+                auto e = do_read()(tmp, span);
                 if (!e) {
                     return e.error();
                 }
                 chars = e.value();
 
                 auto pb = putback_range(
-                    ctx.stream(), buf.rbegin(),
-                    buf.rend() - static_cast<std::ptrdiff_t>(chars));
+                    ctx.stream(), span.rbegin(),
+                    span.rend() - static_cast<std::ptrdiff_t>(chars));
                 if (!pb) {
                     return pb;
                 }
@@ -1181,26 +1242,25 @@ namespace scn {
             template <typename Context>
             error scan(std::basic_string<CharT>& val, Context& ctx)
             {
-                std::basic_string<CharT> tmp;
-                /* tmp.reserve(15); */
-                auto s = read_into_until_space(ctx.stream(), ctx.locale(),
-                                               std::back_inserter(tmp));
-#if 0
-                auto s = read_into_if(
-                    ctx.stream(), std::back_inserter(tmp),
-                    predicates::until_space<CharT,
-                                            typename Context::locale_type>{
-                        ctx.locale()});
-#endif
-                if (SCN_UNLIKELY(!s)) {
-                    return s.error();
+                auto span =
+                    read_into_until_space_zero_copy(ctx.stream(), ctx.locale());
+                if (span.size() != 0) {
+                    val = std::basic_string<CharT>{span.data(), span.size()};
                 }
-                tmp.erase(s.value());
-                if (SCN_UNLIKELY(tmp.empty())) {
-                    return error(error::invalid_scanned_value,
-                                 "Empty string parsed");
+                else {
+                    std::basic_string<CharT> tmp;
+                    auto s = read_into_until_space(ctx.stream(), ctx.locale(),
+                                                   std::back_inserter(tmp));
+                    if (SCN_UNLIKELY(!s)) {
+                        return s.error();
+                    }
+                    tmp.erase(s.value());
+                    if (SCN_UNLIKELY(tmp.empty())) {
+                        return error(error::invalid_scanned_value,
+                                     "Empty string parsed");
+                    }
+                    val = std::move(tmp);
                 }
-                val = std::move(tmp);
 
                 return {};
             }
