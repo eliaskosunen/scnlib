@@ -65,12 +65,14 @@ namespace scn {
      * \par
      * given
      *   - `s`, an lvalue of type `S`, and
+     *   - `cs`, an lvalue of type `const S`, and
      *   - `ch`, a value of type `S::char_type`,
      *
      * \par
      * the following expressions must be valid and have their specified effects:
      *   - `S::char_type`: character type of `s`
      *   - `S::is_sized_stream::value -> bool`
+     *   - `S::is_zero_copy_stream::value -> bool`
      *   - `s.read_char() -> expected<S::char_type>`:
      *      Reads a character from `s`, or returns an error.
      *      <b>Precondition:</b> `s` must be <i>readable</i>
@@ -78,15 +80,15 @@ namespace scn {
      *      Puts a character into the <i>putback buffer</i> of `s`.
      *      <b>Postcondition:</b> If the operation was successful,
      *      `s` will be <i>readable</i>
-     *   - `s.bad() -> bool`: Returns `true` if `s` is <i>bad</i>
-     *   - `(bool)s`: Equivalent to: `!s.bad()`
+     *   - `cs.bad() -> bool`: Returns `true` if `cs` is <i>bad</i>
+     *   - `(bool)cs`: Equivalent to: `!cs.bad()`
      *   - `s.set_roll_back() -> error`: Sets the current state of `s`
      *      as the <i>recovery state</i>.
      *      <b>Precondition:</b> `s` must not be <i>bad</i>
      *   - `s.roll_back() -> error`: Resets the state of `s` into the
      *      <i>recovery state</i>.
      *      <b>Precondition:</b> `s` must not be <i>bad</i>
-     *   - `s.rcount() -> std::size_t`: Returns the number of characters read,
+     *   - `cs.rcount() -> std::size_t`: Returns the number of characters read,
      *      minus the size of the putback buffer, since the last call to
      *      `set_roll_back()` or `roll_back()`
      *
@@ -134,16 +136,19 @@ namespace scn {
      * template <typename S>
      * concept Stream =
      *     std::Movable<S> && std::Destructible<S> &&
-     *     requires(S& s, typename S::char_type ch, typename S::is_sized_stream)
+     *     requires(S& s, const S& cs, typename S::char_type ch,
+     *              typename S::is_sized_stream, typename
+     * S::is_zero_copy_stream)
      *     {
      *         { s.read_char() } -> expected<char_type>;
      *         { s.putback(ch) } -> error;
-     *         { s.bad() } -> std::Boolean;
-     *         { s } -> std::Boolean;
+     *         { cs.bad() } -> std::Boolean;
+     *         { cs } -> std::Boolean;
      *         { s.set_roll_back() } -> error;
      *         { s.roll_back() } -> error;
-     *         { s.rcount() } -> std::size_t;
+     *         { cs.rcount() } -> std::size_t;
      *         { S::is_sized_stream::value } -> std::Boolean;
+     *         { S::is_zero_copy_stream::value } -> std::Boolean;
      *     };
      * \endcode
      * \}
@@ -168,6 +173,7 @@ namespace scn {
      * \par
      * given
      *   - `s`, an lvalue of type `S`, and
+     *   - `cs`, an lvalue of type `const S`, and
      *   - `ch`, a value of type `S::char_type`, and
      *   - `sz`, a value of type `std::size_t`, and
      *   - `buf`, a value of type `span<S::char_type>`,
@@ -182,7 +188,7 @@ namespace scn {
      *      <b>Precondition:</b> `s.rcount() >= sz` must be `true`.
      *      <b>Postcondition:</b> `s` will be <i>readable</i> for `sz`
      *      characters.
-     *   - `s.chars_to_read() -> std::size_t`:
+     *   - `cs.chars_to_read() -> std::size_t`:
      *      Returns the number of characters `s` has available to read.
      *   - `s.skip(sz) -> void`: Skips `sz` characters.
      *      <b>Precondition:</b> `s` must be readable for `sz` characters.
@@ -199,14 +205,67 @@ namespace scn {
      * template <typename S>
      * concept SizedStream =
      *    Stream<S> &&
-     *    requires(S& s, typename S::char_type ch, std::size_t sz,
-     *             span<typename S::char_type> buf)
+     *    requires(S& s, const S& cs, typename S::char_type ch,
+     *             std::size_t sz, span<typename S::char_type> buf)
      *    {
      *       { s.read_sized(buf) } -> void;
      *       { s.putback_n(sz) } -> void;
-     *       { s.chars_to_read() } -> std::size_t;
+     *       { cs.chars_to_read() } -> std::size_t;
      *       { s.skip(sz) } -> void;
      *       { s.skip_all() } -> void;
+     *    }
+     * \endcode
+     */
+
+    /**
+     * \defgroup zero_copy_stream_concept ZeroCopyStream
+     * \ingroup concepts
+     *
+     * \par
+     * `ZeroCopyStream` is a refinement of \ref sized_stream_concept.
+     *
+     * \par
+     * An example of a `ZeroCopyStream` is `scn::basic_static_container_stream`.
+     *
+     * \par Valid expressions
+     * A type `S` satisfies `ZeroCopyStream`, if
+     *   - the type `S` satisfies \ref sized_stream_concept, and
+     *
+     * \par
+     * given
+     *   - `s`, an lvalue of type `S`, and
+     *   - `cs`, an lvalue of type `const S`, and
+     *   - `ch`, a value of type `S::char_type`, and
+     *   - `sz`, a value of type `std::size_t`, and
+     *   - `buf`, a value of type `span<const S::char_type>`,
+     *
+     * \par
+     * the following expressions must be valid and have their specified effects:
+     *   - `s.read_zero_copy(sz) -> span<const S::char_type>`: Returns a view to
+     *      the <i>stream source</i>, with a length of `sz`.
+     *      <b>Precondition:</b> `s` must be <i>readable</i> and
+     *      `s.chars_to_read()` must be greater or equal to `sz`.
+     *   - `cs.peek(sz) -> S::char_type`: Returns the character `sz` characters
+     *      from the next readable character. Doesn't advance the stream.
+     *      For example, `s.peek(0)` returns the next readable character,
+     *      and `s.peek(1)` returns the one after that.
+     *      <b>Precondition:</b> `s` must be <i>readable</i> and
+     *      `s.chars_to_read()` must be greater or equal to `sz`.
+     *
+     * \par Notes
+     * For the definitions of <i>stream source</i> and <i>readable</i>, see
+     * \ref stream_concept.
+     *
+     * \par Exposition-only Concept
+     * \code{.cpp}
+     * // exposition-only
+     * template <typename S>
+     * concept ZeroCopyStream =
+     *    SizedStream<S> &&
+     *    requires(S& s, const S& cs, typename S::char_type ch, std::size_t sz)
+     *    {
+     *       { s.read_zero_copy(sz) } -> span<const typename S::char_type>;
+     *       { cs.peek(sz) } -> typename S::char_type;
      *    }
      * \endcode
      */
@@ -336,7 +395,7 @@ namespace scn {
             m_next += static_cast<std::ptrdiff_t>(n);
             return s;
         }
-        char_type peek(size_t n) noexcept
+        char_type peek(size_t n) const noexcept
         {
             SCN_EXPECT(chars_to_read() >= n);
             return *(m_next + n);
@@ -440,7 +499,7 @@ namespace scn {
             SCN_EXPECT(chars_to_read() >= s.size());
             std::memcpy(s.begin(), m_next, s.size() * sizeof(char_type));
             m_next += s.size();
-        }  // namespace scn
+        }
 
         void putback_n(size_t n) noexcept
         {
@@ -455,7 +514,7 @@ namespace scn {
             m_next += static_cast<std::ptrdiff_t>(n);
             return s;
         }
-        char_type peek(size_t n) noexcept
+        char_type peek(size_t n) const noexcept
         {
             SCN_EXPECT(chars_to_read() >= n);
             return *(m_next + n);
