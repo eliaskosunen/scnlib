@@ -118,7 +118,7 @@ namespace scn {
         // Type-erase locale to avoid including <locale>
         const void* locale{nullptr};
         method int_method{SCN_DEFAULT_INT_SCANNING_METHOD};
-        method float_method{SCN_DEFAULT_FLOAT_SCANNING_METHOD};
+        method float_method{float_from_chars_if_available()};
     };
 
     SCN_CLANG_POP

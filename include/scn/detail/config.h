@@ -261,10 +261,15 @@
 #define SCN_HAS_FLOAT_CHARCONV 0
 #elif SCN_MSVC >= SCN_COMPILER(19, 14, 0)
 #define SCN_HAS_INTEGER_CHARCONV 1
+
+#if SCN_MSVC >= SCN_COMPILER(19, 21, 0)
+#define SCN_HAS_FLOAT_CHARCONV 1
+#else
 #define SCN_HAS_FLOAT_CHARCONV 0
 #endif
 
-#endif
+#endif  // _GLIBCXX_RELEASE
+#endif  // __cpp_lib_to_chars
 
 #ifndef SCN_HAS_INTEGER_CHARCONV
 #define SCN_HAS_INTEGER_CHARCONV 0
