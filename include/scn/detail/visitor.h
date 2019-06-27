@@ -1327,7 +1327,9 @@ namespace scn {
     struct scanner<CharT, detail::monostate>;
     SCN_CLANG_POP
 
-    template <typename Context>
+    template <typename Context,
+              typename std::enable_if<!is_zero_copy_stream<
+                  typename Context::stream_type>::value>::type* = nullptr>
     error skip_stream_whitespace(Context& ctx) noexcept
     {
         while (true) {
@@ -1349,40 +1351,26 @@ namespace scn {
         }
         return {};
     }
-#if 0
     template <typename Context,
-              typename std::enable_if<is_sized_stream<
+              typename std::enable_if<is_zero_copy_stream<
                   typename Context::stream_type>::value>::type* = nullptr>
     error skip_stream_whitespace(Context& ctx) noexcept
     {
-        using char_type = typename Context::char_type;
-        detail::array<char_type, 8> buf;
-        bool end = false;
-        while (!end) {
-            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+        SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
-            const auto n =
-                detail::min(ctx.stream().chars_to_read(), buf.size());
-            if (n == 0) {
-                return error(error::end_of_stream, "EOF");
+        for (size_t i = 0; i != ctx.stream().chars_to_read(); ++i) {
+            char ch = ctx.stream().peek(i);
+            if (!ctx.locale().is_space(ch)) {
+                ctx.stream().skip(i);
+                return {};
             }
-            auto s = make_span(buf.data(), n);
-            ctx.stream().read_sized(s);
-
-            for (auto it = s.begin(); it != s.end(); ++it) {
-                if (!ctx.locale().is_space(*it)) {
-                    ctx.stream().putback_n(
-                        static_cast<size_t>(std::distance(it, s.end())));
-                    end = true;
-                    break;
-                }
-            }
-
-            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
         }
+
+        ctx.stream().skip_all();
         return {};
+
+        SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
     }
-#endif
 
     template <typename Context>
     class basic_visitor {
