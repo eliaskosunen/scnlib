@@ -84,6 +84,7 @@ namespace scn {
             // other
             buffer_type,
             string_type,
+            string_view_type,
             custom_type
         };
 
@@ -150,6 +151,7 @@ namespace scn {
 
                 span<char_type>* buffer_value;
                 std::basic_string<char_type>* string_value;
+                basic_string_view<char_type>* string_view_value;
                 custom_value<Context> custom;
 
                 void* pointer;
@@ -176,6 +178,7 @@ namespace scn {
 
             value(span<char_type>& val) : buffer_value(&val) {}
             value(std::basic_string<char_type>& val) : string_value(&val) {}
+            value(basic_string_view<char_type>& val) : string_view_value(&val) {}
 
             value(void* val) : pointer(val) {}
 
@@ -234,6 +237,7 @@ namespace scn {
 
         SCN_MAKE_VALUE(buffer_type, span<typename C::char_type>)
         SCN_MAKE_VALUE(string_type, std::basic_string<typename C::char_type>)
+        SCN_MAKE_VALUE(string_view_type, basic_string_view<typename C::char_type>)
 
         template <typename C>
         init<C, typename C::char_type, char_type> make_value(
@@ -397,6 +401,8 @@ namespace scn {
                 return vis(*arg.m_value.buffer_value);
             case detail::string_type:
                 return vis(*arg.m_value.string_value);
+            case detail::string_view_type:
+                return vis(*arg.m_value.string_view_value);
 
             case detail::custom_type:
                 return vis(

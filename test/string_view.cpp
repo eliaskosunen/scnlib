@@ -52,3 +52,38 @@ TEST_CASE("string_view")
         }
     }
 }
+
+TEST_CASE_TEMPLATE("string_view scan", CharT, char, wchar_t)
+{
+    using string_type = scn::basic_string_view<CharT>;
+    {
+        string_type s{}, s2{};
+        auto e = scan_value<CharT>("thisisaword nextword", "{} {}", s, s2);
+        CHECK(s.compare(widen<CharT>("thisisaword").c_str()) == 0);
+        CHECK(s2.compare(widen<CharT>("nextword").c_str()) == 0);
+        CHECK(e);
+        CHECK(e.value() == 2);
+    }
+    {
+        string_type s{};
+        auto e = scan_value<CharT>("WoRdW1th_Special<>Charact3rs!?", "{}", s);
+        CHECK(s.compare(
+                  widen<CharT>("WoRdW1th_Special<>Charact3rs!?").c_str()) == 0);
+        CHECK(e);
+        CHECK(e.value() == 1);
+    }
+    {
+        string_type s{};
+        auto e = scan_value<CharT>("foo", "{:s}", s);
+        CHECK(s.compare(widen<CharT>("foo").c_str()) == 0);
+        CHECK(e);
+        CHECK(e.value());
+    }
+    {
+        string_type s{};
+        auto e = scan_value<CharT>("foo", "{:a}", s);
+        CHECK(s.empty());
+        CHECK(!e);
+        CHECK(e.error() == scn::error::invalid_format_string);
+    }
+}

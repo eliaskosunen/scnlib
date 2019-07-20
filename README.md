@@ -231,7 +231,7 @@ $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 The contents of this library are heavily influenced by fmtlib and its derivative works.
 
 <https://github.com/fmtlib/fmt>  
-<https://fmtlib.net>  
+<https://fmt.dev>  
 <https://wg21.link/p0645>
 
 fmtlib is licensed under the BSD 2-clause license.  

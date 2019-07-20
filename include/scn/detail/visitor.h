@@ -1265,6 +1265,25 @@ namespace scn {
                 return {};
             }
         };
+
+        template <typename CharT>
+        struct string_view_scanner : string_scanner<CharT> {
+        public:
+            template <typename Context>
+            error scan(basic_string_view<CharT>& val, Context& ctx)
+            {
+                auto span =
+                    read_into_until_space_zero_copy(ctx.stream(), ctx.locale());
+                if (span.size() == 0) {
+                    // TODO: Compile-time error?
+                    return error(
+                        error::invalid_operation,
+                        "Cannot read a string_view from a non-ZeroCopyStream");
+                }
+                val = basic_string_view<CharT>(span.data(), span.size());
+                return {};
+            }
+        };
     }  // namespace detail
 
     SCN_CLANG_PUSH
@@ -1322,6 +1341,10 @@ namespace scn {
     template <typename CharT>
     struct scanner<CharT, std::basic_string<CharT>>
         : public detail::string_scanner<CharT> {
+    };
+    template <typename CharT>
+    struct scanner<CharT, basic_string_view<CharT>>
+        : public detail::string_view_scanner<CharT> {
     };
     template <typename CharT>
     struct scanner<CharT, detail::monostate>;
@@ -1454,6 +1477,16 @@ namespace scn {
             -> error
         {
             detail::string_scanner<char_type> s;
+            auto err = parse(s);
+            if (!err) {
+                return err;
+            }
+            return s.scan(val, *m_ctx);
+        }
+        auto visit(basic_string_view<char_type>& val, detail::priority_tag<1>)
+            -> error
+        {
+            detail::string_view_scanner<char_type> s;
             auto err = parse(s);
             if (!err) {
                 return err;
