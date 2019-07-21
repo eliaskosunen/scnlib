@@ -205,6 +205,10 @@ namespace scn {
                                 Predicate&& p,
                                 bool keep_final = false)
     {
+        if (s.chars_to_read() == 0) {
+            return {0, error(error::end_of_stream, "EOF")};
+        }
+
         size_t n = 0, size = 0;
         detail::array<CharT, 64> arr;
         bool end = false;
@@ -413,6 +417,42 @@ namespace scn {
             ++it;
         }
         return {it};
+    }
+
+    template <typename Stream,
+              typename Predicate,
+              typename std::enable_if<
+                  is_zero_copy_stream<Stream>::value>::type* = nullptr>
+    expected<span<const typename Stream::char_type>> read_into_if_zero_copy(
+        Stream& stream,
+        Predicate&& p,
+        bool keep_final = false)
+    {
+        if (stream.chars_to_read() == 0) {
+            return error(error::end_of_stream, "EOF");
+        }
+        for (size_t i = 0; i != stream.chars_to_read(); ++i) {
+            auto r = p(stream.peek(i));
+            if (!r) {
+                return r.error();
+            }
+            if (r.value() == scan_status::end) {
+                if (keep_final) {
+                    ++i;
+                }
+                return stream.read_zero_copy(i);
+            }
+        }
+        return stream.read_zero_copy(stream.chars_to_read());
+    }
+    template <typename Stream,
+              typename Predicate,
+              typename std::enable_if<
+                  !is_zero_copy_stream<Stream>::value>::type* = nullptr>
+    expected<span<const typename Stream::char_type>>
+    read_into_if_zero_copy(Stream&, Predicate&&, bool = false)
+    {
+        return span<const typename Stream::char_type>{};
     }
 
     // read_into_until_space

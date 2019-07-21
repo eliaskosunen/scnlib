@@ -50,6 +50,30 @@ namespace scn {
         return getline(s, str, detail::default_widen<CharT>::widen('\n'));
     }
 
+    template <typename Stream,
+              typename CharT = typename Stream::char_type,
+              typename std::enable_if<
+                  is_zero_copy_stream<Stream>::value>::type* = nullptr>
+    error getline(Stream& s, basic_string_view<CharT>& str, CharT until)
+    {
+        auto span_wrapped =
+            read_into_if_zero_copy(s, predicates::until<CharT>{until}, true);
+        if (!span_wrapped) {
+            return span_wrapped.error();
+        }
+        str = basic_string_view<CharT>{span_wrapped.value().data(),
+                                       span_wrapped.value().size()};
+        return {};
+    }
+    template <typename Stream,
+              typename CharT = typename Stream::char_type,
+              typename std::enable_if<
+                  is_zero_copy_stream<Stream>::value>::type* = nullptr>
+    error getline(Stream& s, basic_string_view<CharT>& str)
+    {
+        return getline(s, str, detail::default_widen<CharT>::widen('\n'));
+    }
+
     namespace detail {
         template <typename CharT>
         struct ignore_iterator {
