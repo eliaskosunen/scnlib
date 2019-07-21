@@ -487,11 +487,14 @@ namespace scn {
               typename Locale,
               typename std::enable_if<
                   is_zero_copy_stream<Stream>::value>::type* = nullptr>
-    span<const typename Stream::char_type> read_into_until_space_zero_copy(
-        Stream& stream,
-        Locale& l,
-        bool keep_final = false)
+    expected<span<const typename Stream::char_type>>
+    read_into_until_space_zero_copy(Stream& stream,
+                                    Locale& l,
+                                    bool keep_final = false)
     {
+        if (stream.chars_to_read() == 0) {
+            return error(error::end_of_stream, "EOF");
+        }
         for (size_t i = 0; i != stream.chars_to_read(); ++i) {
             if (l.is_space(stream.peek(i))) {
                 if (keep_final) {
@@ -506,10 +509,10 @@ namespace scn {
               typename Locale,
               typename std::enable_if<
                   !is_zero_copy_stream<Stream>::value>::type* = nullptr>
-    span<const typename Stream::char_type>
+    expected<span<const typename Stream::char_type>>
     read_into_until_space_zero_copy(Stream&, Locale&, bool = false)
     {
-        return {};
+        return span<const typename Stream::char_type>{};
     }
 
     // putback_range
@@ -690,8 +693,12 @@ namespace scn {
                     std::basic_string<CharT> buf;
                     buf.reserve(max_len);
 
-                    auto span = read_into_until_space_zero_copy(ctx.stream(),
-                                                                ctx.locale());
+                    auto span_wrapped = read_into_until_space_zero_copy(
+                        ctx.stream(), ctx.locale());
+                    if (!span_wrapped) {
+                        return span_wrapped.error();
+                    }
+                    auto span = span_wrapped.value();
                     if (span.size() == 0) {
                         auto i =
                             read_into_until_space(ctx.stream(), ctx.locale(),
@@ -939,8 +946,12 @@ namespace scn {
             error scan(T& val, Context& ctx)
             {
                 detail::small_vector<CharT, 16> buf;
-                auto span =
+                auto span_wrapped =
                     read_into_until_space_zero_copy(ctx.stream(), ctx.locale());
+                if (!span_wrapped) {
+                    return span_wrapped.error();
+                }
+                auto span = span_wrapped.value();
                 if (span.size() == 0) {
                     auto r = read_into_until_space(ctx.stream(), ctx.locale(),
                                                    std::back_inserter(buf));
@@ -1134,8 +1145,12 @@ namespace scn {
             error scan(T& val, Context& ctx)
             {
                 detail::small_vector<CharT, 32> buf{};
-                auto span =
+                auto span_wrapped =
                     read_into_until_space_zero_copy(ctx.stream(), ctx.locale());
+                if (!span_wrapped) {
+                    return span_wrapped.error();
+                }
+                auto span = span_wrapped.value();
                 if (span.size() == 0) {
                     auto r = read_into_until_space(ctx.stream(), ctx.locale(),
                                                    std::back_inserter(buf));
@@ -1242,8 +1257,12 @@ namespace scn {
             template <typename Context>
             error scan(std::basic_string<CharT>& val, Context& ctx)
             {
-                auto span =
+                auto span_wrapped =
                     read_into_until_space_zero_copy(ctx.stream(), ctx.locale());
+                if (!span_wrapped) {
+                    return span_wrapped.error();
+                }
+                auto span = span_wrapped.value();
                 if (span.size() != 0) {
                     val = std::basic_string<CharT>{span.data(), span.size()};
                 }
@@ -1272,8 +1291,12 @@ namespace scn {
             template <typename Context>
             error scan(basic_string_view<CharT>& val, Context& ctx)
             {
-                auto span =
+                auto span_wrapped =
                     read_into_until_space_zero_copy(ctx.stream(), ctx.locale());
+                if (!span_wrapped) {
+                    return span_wrapped.error();
+                }
+                auto span = span_wrapped.value();
                 if (span.size() == 0) {
                     // TODO: Compile-time error?
                     return error(
@@ -1382,7 +1405,7 @@ namespace scn {
         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
         for (size_t i = 0; i != ctx.stream().chars_to_read(); ++i) {
-            char ch = ctx.stream().peek(i);
+            auto ch = ctx.stream().peek(i);
             if (!ctx.locale().is_space(ch)) {
                 ctx.stream().skip(i);
                 return {};

@@ -342,133 +342,11 @@ namespace scn {
         return basic_null_stream<CharT>{};
     }
 
-    template <typename Char, typename Source, typename Enable = void>
-    class basic_static_container_stream;
-
     template <typename Char, typename Container>
-    class basic_static_container_stream<Char, Container> : public stream_base {
+    class basic_static_container_stream : public stream_base {
     public:
         using char_type = Char;
         using source_type = Container;
-        using iterator = typename source_type::const_iterator;
-        using is_sized_stream = std::true_type;
-
-        SCN_CONSTEXPR basic_static_container_stream(
-            const source_type& s) noexcept
-            : m_source(std::addressof(s)), m_begin(_begin(s)), m_next(begin())
-        {
-        }
-
-        SCN_CONSTEXPR14 expected<char_type> read_char() noexcept
-        {
-            if (SCN_UNLIKELY(m_next == end())) {
-                return error(error::end_of_stream, "EOF");
-            }
-            auto ch = *m_next;
-            ++m_next;
-            return ch;
-        }
-        SCN_CONSTEXPR14 error putback(char_type) noexcept
-        {
-            SCN_EXPECT(m_begin != m_next);
-            --m_next;
-            return {};
-        }
-
-        SCN_CONSTEXPR14 void read_sized(span<char_type> s) noexcept
-        {
-            SCN_EXPECT(chars_to_read() >= static_cast<size_t>(s.size()));
-            std::copy(m_next, m_next + s.ssize(), s.begin());
-            m_next += s.ssize();
-        }
-
-        SCN_CONSTEXPR14 void putback_n(size_t n) noexcept
-        {
-            SCN_EXPECT(rcount() >= n);
-            m_next -= static_cast<std::ptrdiff_t>(n);
-        }
-
-        span<const char_type> read_zero_copy(size_t n) noexcept
-        {
-            SCN_EXPECT(chars_to_read() >= n);
-            auto s = make_span(&*m_next, n);
-            m_next += static_cast<std::ptrdiff_t>(n);
-            return s;
-        }
-        char_type peek(size_t n) const noexcept
-        {
-            SCN_EXPECT(chars_to_read() >= n);
-            return *(m_next + n);
-        }
-
-        SCN_CONSTEXPR14 error set_roll_back() noexcept
-        {
-            m_begin = m_next;
-            return {};
-        }
-        SCN_CONSTEXPR14 error roll_back() noexcept
-        {
-            m_next = begin();
-            return {};
-        }
-
-        size_t rcount() const noexcept
-        {
-            return static_cast<size_t>(std::distance(m_begin, m_next));
-        }
-
-        SCN_CONSTEXPR14 size_t chars_to_read() const noexcept
-        {
-            return static_cast<size_t>(std::distance(m_next, end()));
-        }
-
-        SCN_CONSTEXPR14 void skip(size_t n) noexcept
-        {
-            SCN_EXPECT(chars_to_read() >= n);
-            m_next += static_cast<std::ptrdiff_t>(n);
-        }
-        SCN_CONSTEXPR14 void skip_all() noexcept
-        {
-            m_next = end();
-        }
-
-    private:
-        SCN_CONSTEXPR iterator begin() const noexcept
-        {
-            return m_begin;
-        }
-        SCN_CONSTEXPR14 iterator end() const noexcept
-        {
-            using std::end;
-            return end(*m_source);
-        }
-
-        static SCN_CONSTEXPR14 iterator _begin(const source_type& s) noexcept
-        {
-            using std::begin;
-            return begin(s);
-        }
-
-        const source_type* m_source;
-        iterator m_begin, m_next{};
-    };
-
-    template <typename ContiguousContainer,
-              typename = decltype(std::declval<ContiguousContainer&>().data(),
-                                  void())>
-    basic_static_container_stream<typename ContiguousContainer::value_type,
-                                  ContiguousContainer>
-    make_stream(const ContiguousContainer& c)
-    {
-        return {c};
-    }
-
-    template <typename Char>
-    class basic_static_container_stream<Char, span<const Char>>
-        : public stream_base {
-    public:
-        using char_type = Char;
-        using source_type = span<const Char>;
         using iterator = typename source_type::const_iterator;
         using is_sized_stream = std::true_type;
         using is_zero_copy_stream = std::true_type;
@@ -497,27 +375,28 @@ namespace scn {
         void read_sized(span<char_type> s) noexcept
         {
             SCN_EXPECT(chars_to_read() >= s.size());
-            std::memcpy(s.begin(), m_next, s.size() * sizeof(char_type));
-            m_next += s.size();
+            std::memcpy(s.begin(), std::addressof(*m_next),
+                        s.size() * sizeof(char_type));
+            m_next += s.ssize();
         }
 
         void putback_n(size_t n) noexcept
         {
             SCN_EXPECT(rcount() >= n);
-            m_next -= n;
+            m_next -= static_cast<std::ptrdiff_t>(n);
         }
 
         span<const char_type> read_zero_copy(size_t n) noexcept
         {
             SCN_EXPECT(chars_to_read() >= n);
-            auto s = make_span(m_next, n);
+            auto s = make_span(std::addressof(*m_next), n);
             m_next += static_cast<std::ptrdiff_t>(n);
             return s;
         }
         char_type peek(size_t n) const noexcept
         {
             SCN_EXPECT(chars_to_read() >= n);
-            return *(m_next + n);
+            return *(m_next + static_cast<std::ptrdiff_t>(n));
         }
 
         SCN_CONSTEXPR14 error set_roll_back() noexcept
@@ -544,7 +423,7 @@ namespace scn {
         SCN_CONSTEXPR14 void skip(size_t n) noexcept
         {
             SCN_EXPECT(chars_to_read() >= n);
-            m_next += n;
+            m_next += static_cast<std::ptrdiff_t>(n);
         }
         SCN_CONSTEXPR14 void skip_all() noexcept
         {
@@ -565,18 +444,20 @@ namespace scn {
         iterator m_begin{}, m_next{};
     };
 
-    template <typename CharT>
-    basic_static_container_stream<CharT, span<const CharT>> make_stream(
-        span<const CharT> s) noexcept
+    template <typename ContiguousContainer,
+              typename = decltype(std::declval<ContiguousContainer&>().data(),
+                                  void())>
+    basic_static_container_stream<typename ContiguousContainer::value_type,
+                                  ContiguousContainer>
+    make_stream(const ContiguousContainer& c)
     {
-        return {s};
+        return {c};
     }
-
     template <typename CharT, size_t N>
     basic_static_container_stream<CharT, span<const CharT>> make_stream(
         const CharT (&arr)[N])
     {
-        return {{arr, N - 1}};
+        return {span<const CharT>{arr, N - 1}};
     }
 
     template <typename Iterator>

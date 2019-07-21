@@ -53,37 +53,42 @@ TEST_CASE("string_view")
     }
 }
 
-TEST_CASE_TEMPLATE("string_view scan", CharT, char, wchar_t)
+TEST_CASE("string_view scan")
 {
-    using string_type = scn::basic_string_view<CharT>;
+    using string_type = scn::string_view;
     {
+        auto stream = scn::make_stream("thisisaword nextword");
         string_type s{}, s2{};
-        auto e = scan_value<CharT>("thisisaword nextword", "{} {}", s, s2);
-        CHECK(s.compare(widen<CharT>("thisisaword").c_str()) == 0);
-        CHECK(s2.compare(widen<CharT>("nextword").c_str()) == 0);
+        auto e = scn::scan(stream, "{} {}", s, s2);
+        CHECK(std::strncmp("thisisaword", s.data(), s.size()) == 0);
+        CHECK(std::strncmp("nextword", s2.data(), s2.size()) == 0);
         CHECK(e);
         CHECK(e.value() == 2);
     }
     {
+        auto stream = scn::make_stream("WoRdW1th_Special<>Charact3rs!?");
         string_type s{};
-        auto e = scan_value<CharT>("WoRdW1th_Special<>Charact3rs!?", "{}", s);
-        CHECK(s.compare(
-                  widen<CharT>("WoRdW1th_Special<>Charact3rs!?").c_str()) == 0);
+        auto e = scn::scan(stream, "{}", s);
+        CHECK(std::strncmp("WoRdW1th_Special<>Charact3rs!?", s.data(),
+                           s.size()) == 0);
         CHECK(e);
         CHECK(e.value() == 1);
     }
     {
+        auto stream = scn::make_stream("foo");
         string_type s{};
-        auto e = scan_value<CharT>("foo", "{:s}", s);
-        CHECK(s.compare(widen<CharT>("foo").c_str()) == 0);
+        auto e = scn::scan(stream, "{:s}", s);
+        CHECK(std::strncmp("foo", s.data(), s.size()) == 0);
         CHECK(e);
-        CHECK(e.value());
+        CHECK(e.value() == 1);
     }
     {
+        auto stream = scn::make_stream("foo");
         string_type s{};
-        auto e = scan_value<CharT>("foo", "{:a}", s);
+        auto e = scn::scan(stream, "{:a}", s);
         CHECK(s.empty());
         CHECK(!e);
+        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::invalid_format_string);
     }
 }
