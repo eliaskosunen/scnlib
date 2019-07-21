@@ -125,6 +125,34 @@ BENCHMARK_TEMPLATE(scanword_scn_get_value, char)->Arg(2 << 15);
 BENCHMARK_TEMPLATE(scanword_scn_get_value, wchar_t)->Arg(2 << 15);
 
 template <typename Char>
+static void scanword_scn_string_view(benchmark::State& state)
+{
+    using string_type = scn::basic_string_view<Char>;
+    auto data = generate_data<Char>(static_cast<size_t>(state.range(0)));
+    auto stream = scn::make_stream(data);
+    string_type str{};
+
+    for (auto _ : state) {
+        auto e = scn::scan(stream, default_format_str<Char>(), str);
+
+        if (!e) {
+            if (e.error() == scn::error::end_of_stream) {
+                state.PauseTiming();
+                data = generate_data<Char>(static_cast<size_t>(state.range(0)));
+                stream = scn::make_stream(data);
+                state.ResumeTiming();
+            }
+            else {
+                state.SkipWithError("Benchmark errored");
+                break;
+            }
+        }
+    }
+}
+BENCHMARK_TEMPLATE(scanword_scn_string_view, char)->Arg(2 << 15);
+BENCHMARK_TEMPLATE(scanword_scn_string_view, wchar_t)->Arg(2 << 15);
+
+template <typename Char>
 static void scanword_sstream(benchmark::State& state)
 {
     using string_type = std::basic_string<Char>;
