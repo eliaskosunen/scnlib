@@ -581,6 +581,34 @@ namespace scn {
         return {};
     }
 
+    // peek
+
+    template <typename Stream,
+              typename std::enable_if<!is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    expected<typename Stream::char_type> peek(Stream& s)
+    {
+        auto ch = s.read_char();
+        if (!ch) {
+            return ch;
+        }
+        auto err = s.putback(ch.value());
+        if (!err) {
+            return err;
+        }
+        return ch.value();
+    }
+    template <typename Stream,
+              typename std::enable_if<is_sized_stream<Stream>::value>::type* =
+                  nullptr>
+    expected<typename Stream::char_type> peek(Stream& s)
+    {
+        if (s.chars_to_read() == 0) {
+            return error(error::end_of_stream, "EOF");
+        }
+        return s.peek(0);
+    }
+
     template <typename CharT>
     struct empty_parser {
         template <typename Context>

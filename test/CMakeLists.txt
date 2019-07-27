@@ -38,6 +38,7 @@ make_test(float floating.cpp)
 make_test(string string.cpp)
 make_test(buffer buffer.cpp)
 make_test(usertype usertype.cpp)
+make_test(list list.cpp)
 
 if (SCN_BUILD_LOCALE_TESTS)
     make_test(locale_scan locale_scan.cpp)

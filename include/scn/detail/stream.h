@@ -342,17 +342,91 @@ namespace scn {
         return basic_null_stream<CharT>{};
     }
 
+    namespace detail {
+        template <typename Container>
+        struct static_container_stream_source {
+            using container_type = Container;
+            using member_type = const Container*;
+            using reference_type = const Container&;
+
+            static member_type make_member(reference_type c)
+            {
+                return std::addressof(c);
+            }
+            static reference_type make_reference(member_type c)
+            {
+                return *c;
+            }
+        };
+
+        template <typename CharT>
+        struct static_container_stream_source<span<CharT>> {
+            using container_type = span<CharT>;
+            using member_type = container_type;
+            using reference_type = container_type;
+
+            static member_type make_member(reference_type c)
+            {
+                return c;
+            }
+            static reference_type make_reference(member_type c)
+            {
+                return c;
+            }
+        };
+
+        template <typename CharT>
+        struct static_container_stream_source<basic_string_view<CharT>> {
+            using container_type = basic_string_view<CharT>;
+            using member_type = container_type;
+            using reference_type = container_type;
+
+            static member_type make_member(reference_type c)
+            {
+                return c;
+            }
+            static reference_type make_reference(member_type c)
+            {
+                return c;
+            }
+        };
+
+        template <typename CharT, size_t N>
+        struct static_container_stream_source<CharT (&)[N]> {
+            using container_type = CharT (&)[N];
+            using member_type = CharT (*)[N];
+            using reference_type = container_type;
+
+            static member_type make_member(reference_type c)
+            {
+                return c;
+            }
+            static reference_type make_reference(member_type c)
+            {
+                return c;
+            }
+        };
+    }  // namespace detail
+
     template <typename Char, typename Container>
     class basic_static_container_stream : public stream_base {
+        using stream_source_type =
+            detail::static_container_stream_source<Container>;
+
     public:
         using char_type = Char;
-        using source_type = Container;
-        using iterator = typename source_type::const_iterator;
+        using source_type = typename stream_source_type::member_type;
+        using source_reference_type =
+            typename stream_source_type::reference_type;
+        using iterator = typename Container::const_iterator;
         using is_sized_stream = std::true_type;
         using is_zero_copy_stream = std::true_type;
 
-        SCN_CONSTEXPR basic_static_container_stream(source_type s) noexcept
-            : m_source(s), m_begin(m_source.begin()), m_next(begin())
+        SCN_CONSTEXPR basic_static_container_stream(
+            source_reference_type s) noexcept
+            : m_source(stream_source_type::make_member(s)),
+              m_begin(stream_source_type::make_reference(m_source).begin()),
+              m_next(begin())
         {
         }
 
@@ -437,7 +511,7 @@ namespace scn {
         }
         SCN_CONSTEXPR iterator end() const noexcept
         {
-            return m_source.end();
+            return stream_source_type::make_reference(m_source).end();
         }
 
         source_type m_source;

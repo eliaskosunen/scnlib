@@ -235,6 +235,97 @@ namespace scn {
         return val;
     }
 
+    template <typename T, typename OutputIt>
+    struct list {
+        using value_type = T;
+        using iterator = OutputIt;
+
+        OutputIt it;
+    };
+    template <typename Container>
+    list<typename Container::value_type, std::back_insert_iterator<Container>>
+    make_list(Container& c)
+    {
+        return {std::back_inserter(c)};
+    }
+
+    template <typename CharT, typename T, typename OutputIt>
+    struct scanner<CharT, list<T, OutputIt>> {
+        template <typename Context>
+        error parse(Context& ctx)
+        {
+            auto& pctx = ctx.parse_context();
+            pctx.arg_begin();
+            if (SCN_UNLIKELY(!pctx)) {
+                return error(error::invalid_format_string,
+                             "Unexpected format string end");
+            }
+            if (!pctx.check_arg_end(ctx.locale())) {
+                separator = pctx.next();
+                pctx.advance();
+            }
+            if (!pctx.check_arg_end(ctx.locale())) {
+                return error(error::invalid_format_string,
+                             "Expected argument end");
+            }
+            pctx.arg_end();
+            return {};
+        }
+
+        template <typename Context>
+        error scan(list<T, OutputIt>& val, Context& ctx)
+        {
+            using context_type =
+                basic_empty_context<typename Context::stream_type>;
+
+            auto args = make_args<context_type>();
+            auto c = context_type(ctx.stream(), 1, args);
+            detail::small_vector<T, 8> buf{};
+
+            while (true) {
+                auto ret = skip_stream_whitespace(ctx);
+                if (!ret) {
+                    if (ret == scn::error::end_of_stream) {
+                        break;
+                    }
+                    return ret;
+                }
+
+                T tmp{};
+                scanner<CharT, T> sc;
+                ret = sc.scan(tmp, c);
+                if (!ret) {
+                    if (ret == scn::error::end_of_stream) {
+                        break;
+                    }
+                    return ret;
+                }
+                buf.push_back(tmp);
+
+                if (separator != 0) {
+                    auto sret = peek(ctx.stream());
+                    if (!sret) {
+                        if (sret.error() == scn::error::end_of_stream) {
+                            break;
+                        }
+                        return sret.error();
+                    }
+                    if (sret.value() == separator) {
+                        ctx.stream().read_char();
+                    }
+                    else {
+                        return error(error::invalid_scanned_value,
+                                     "Invalid separator character");
+                    }
+                }
+            }
+            std::copy(buf.begin(), buf.end(), val.it);
+            return {};
+        }
+
+        CharT separator{0};
+    };
+
     SCN_END_NAMESPACE
 }  // namespace scn
 

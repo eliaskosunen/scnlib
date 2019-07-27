@@ -85,6 +85,7 @@ namespace scn {
             buffer_type,
             string_type,
             string_view_type,
+
             custom_type
         };
 
