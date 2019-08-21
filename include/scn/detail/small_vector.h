@@ -201,16 +201,12 @@ namespace scn {
             }
         };
 
-        template <typename T>
-        using basic_stack_storage_type =
-            typename std::aligned_storage<sizeof(T), alignof(T)>::type;
-
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wpadded")
 
         template <typename T, size_t N>
         struct basic_stack_storage {
-            basic_stack_storage_type<T> data[N];
+            alignas(T) unsigned char data[N * sizeof(T)];
 
             T* reinterpret_data()
             {
@@ -230,11 +226,11 @@ namespace scn {
                 return static_cast<const T*>(static_cast<const void*>(data));
             }
 
-            basic_stack_storage_type<T>* get_unconstructed_data()
+            unsigned char* get_unconstructed_data()
             {
                 return data;
             }
-            const basic_stack_storage_type<T>* get_unconstructed_data() const
+            const unsigned char* get_unconstructed_data() const
             {
                 return data;
             }
@@ -264,11 +260,11 @@ namespace scn {
                 return nullptr;
             }
 
-            basic_stack_storage_type<T>* get_unconstructed_data()
+            unsigned char* get_unconstructed_data()
             {
                 return nullptr;
             }
-            const basic_stack_storage_type<T>* get_unconstructed_data() const
+            const unsigned char* get_unconstructed_data() const
             {
                 return nullptr;
             }
@@ -284,17 +280,6 @@ namespace scn {
         {
             return val > constexpr_max(a...) ? val : constexpr_max(a...);
         }
-
-        template <typename... Types>
-        struct aligned_union {
-            static SCN_CONSTEXPR const size_t alignment_value =
-                constexpr_max(alignof(Types)...);
-            static SCN_CONSTEXPR const size_t size_value =
-                constexpr_max(sizeof(Types)...);
-            struct type {
-                alignas(alignment_value) unsigned char _s[size_value];
-            };
-        };
 
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wpadded")
@@ -314,16 +299,11 @@ namespace scn {
             using reverse_iterator = std::reverse_iterator<pointer>;
             using const_reverse_iterator = std::reverse_iterator<const_pointer>;
 
-            using stack_storage_type = basic_stack_storage_type<T>;
-
             struct stack_storage : basic_stack_storage<T, StackN> {
             };
             struct heap_storage {
                 size_type cap{0};
             };
-
-            using storage_type =
-                typename aligned_union<stack_storage, heap_storage>::type;
 
             small_vector() noexcept
                 : m_ptr(_construct_stack_storage()
@@ -347,7 +327,7 @@ namespace scn {
                 if (!can_be_small(count)) {
                     auto& heap = _construct_heap_storage();
                     auto cap = next_pow2(count);
-                    auto storage_ptr = new stack_storage_type[count];
+                    auto storage_ptr = new unsigned char[count * sizeof(T)];
                     auto ptr =
                         static_cast<pointer>(static_cast<void*>(storage_ptr));
                     small_vector_algos::uninitialized_fill(ptr, ptr + count,
@@ -376,7 +356,7 @@ namespace scn {
                 if (!can_be_small(count)) {
                     auto& heap = _construct_heap_storage();
                     auto cap = next_pow2(count);
-                    auto storage_ptr = new stack_storage_type[count];
+                    auto storage_ptr = new unsigned char[count * sizeof(T)];
                     auto ptr =
                         static_cast<pointer>(static_cast<void*>(storage_ptr));
                     small_vector_algos::uninitialized_fill_value_init(
@@ -413,7 +393,7 @@ namespace scn {
                     auto cap = other.capacity();
                     auto optr = other.data();
 
-                    auto storage_ptr = new stack_storage_type[cap];
+                    auto storage_ptr = new unsigned char[cap * sizeof(T)];
                     auto ptr =
                         static_cast<pointer>(static_cast<void*>(storage_ptr));
                     small_vector_algos::uninitialized_copy(optr, optr + s, ptr);
@@ -495,7 +475,7 @@ namespace scn {
                     auto& heap = _construct_heap_storage();
 
                     auto cap = next_pow2(other.size());
-                    auto storage_ptr = new stack_storage_type[cap];
+                    auto storage_ptr = new unsigned char[cap * sizeof(T)];
                     auto ptr =
                         static_cast<pointer>(static_cast<void*>(storage_ptr));
                     small_vector_algos::uninitialized_copy(
@@ -521,7 +501,7 @@ namespace scn {
                     if (!is_small()) {
                         if (capacity() != 0) {
                             delete[] ::scn::detail::launder(
-                                static_cast<stack_storage_type*>(
+                                static_cast<unsigned char*>(
                                     static_cast<void*>(m_ptr)));
                         }
                     }
@@ -829,7 +809,7 @@ namespace scn {
             void _destruct_heap_storage() noexcept
             {
                 if (capacity() != 0) {
-                    delete[] static_cast<stack_storage_type*>(
+                    delete[] static_cast<unsigned char*>(
                         static_cast<void*>(m_ptr));
                 }
                 _get_heap().~heap_storage();
@@ -857,7 +837,7 @@ namespace scn {
 
             void _realloc(size_type new_cap)
             {
-                auto storage_ptr = new stack_storage_type[new_cap];
+                auto storage_ptr = new unsigned char[new_cap * sizeof(T)];
                 auto ptr =
                     static_cast<pointer>(static_cast<void*>(storage_ptr));
                 auto n = size();
@@ -908,7 +888,8 @@ namespace scn {
             pointer m_ptr{nullptr};
             size_type m_size{0};
             bool m_heap;
-            storage_type m_storage;
+            alignas(stack_storage) unsigned char m_storage
+                [constexpr_max(sizeof(stack_storage), sizeof(heap_storage))];
         };
 
         template <typename T, size_t N>
