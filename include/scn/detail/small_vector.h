@@ -20,6 +20,7 @@
 
 #include "util.h"
 
+#include <cstring>
 #include <iterator>
 #include <limits>
 #include <new>
@@ -33,6 +34,134 @@ namespace scn {
         {
             return std::reverse_iterator<Iter>(i);
         }
+
+        namespace small_vector_algos {
+            template <typename ForwardIt, typename T>
+            void uninitialized_fill(ForwardIt first,
+                                    ForwardIt last,
+                                    const T& value,
+                                    std::true_type) noexcept
+            {
+                auto dist = static_cast<size_t>(std::distance(first, last));
+                std::memset(&*first, static_cast<unsigned char>(value), dist);
+            }
+            template <typename ForwardIt, typename T>
+            void uninitialized_fill(ForwardIt first,
+                                    ForwardIt last,
+                                    const T& value,
+                                    std::false_type) noexcept
+            {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = first;
+                for (; current != last; ++current) {
+                    ::new (static_cast<void*>(std::addressof(*current)))
+                        value_type(value);
+                }
+            }
+            template <typename ForwardIt, typename T>
+            void uninitialized_fill(ForwardIt first,
+                                    ForwardIt last,
+                                    const T& value) noexcept
+            {
+                return uninitialized_fill(
+                    first, last, value, std::integral_constant < bool,
+                    std::is_trivially_copyable<T>::value&&
+                            std::is_pointer<ForwardIt>::value &&
+                        sizeof(T) == 1 > {});
+            }
+
+            template <typename ForwardIt>
+            void uninitialized_fill_default_construct(ForwardIt first,
+                                                      ForwardIt last) noexcept
+            {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = first;
+                for (; current != last; ++current) {
+                    ::new (static_cast<void*>(std::addressof(*current)))
+                        value_type;
+                }
+            }
+            template <typename ForwardIt>
+            void uninitialized_fill_value_init(ForwardIt first,
+                                               ForwardIt last) noexcept
+            {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = first;
+                for (; current != last; ++current) {
+                    ::new (static_cast<void*>(std::addressof(*current)))
+                        value_type();
+                }
+            }
+
+            template <typename InputIt,
+                      typename ForwardIt,
+                      typename std::enable_if<!std::is_trivially_copyable<
+                          typename std::iterator_traits<
+                              ForwardIt>::value_type>::value>::type* = nullptr>
+            ForwardIt uninitialized_copy(InputIt first,
+                                         InputIt last,
+                                         ForwardIt d_first) noexcept
+            {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = d_first;
+                for (; first != last; ++first, (void)++current) {
+                    ::new (static_cast<void*>(std::addressof(*current)))
+                        value_type(*first);
+                }
+                return current;
+            }
+            template <typename InputIt,
+                      typename ForwardIt,
+                      typename std::enable_if<std::is_trivially_copyable<
+                          typename std::iterator_traits<
+                              ForwardIt>::value_type>::value>::type* = nullptr>
+            ForwardIt uninitialized_copy(InputIt first,
+                                         InputIt last,
+                                         ForwardIt d_first) noexcept
+            {
+                auto ptr = std::memcpy(
+                    &*d_first, &*first,
+                    static_cast<size_t>(std::distance(first, last)));
+                return ForwardIt(ptr);
+            }
+
+            template <typename InputIt,
+                      typename ForwardIt,
+                      typename std::enable_if<!std::is_trivially_copyable<
+                          typename std::iterator_traits<
+                              ForwardIt>::value_type>::value>::type* = nullptr>
+            ForwardIt uninitialized_move(InputIt first,
+                                         InputIt last,
+                                         ForwardIt d_first) noexcept
+            {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                ForwardIt current = d_first;
+                for (; first != last; ++first, (void)++current) {
+                    ::new (static_cast<void*>(std::addressof(*current)))
+                        value_type(std::move(*first));
+                }
+                return current;
+            }
+            template <typename InputIt,
+                      typename ForwardIt,
+                      typename std::enable_if<std::is_trivially_copyable<
+                          typename std::iterator_traits<
+                              ForwardIt>::value_type>::value>::type* = nullptr>
+            ForwardIt uninitialized_move(InputIt first,
+                                         InputIt last,
+                                         ForwardIt d_first) noexcept
+            {
+                auto ptr = std::memcpy(
+                    &*d_first, &*first,
+                    static_cast<size_t>(std::distance(first, last)));
+                return ForwardIt(ptr);
+            }
+        }  // namespace small_vector_algos
 
         class small_vector_base {
             uint64_t _next_pow2_64(uint64_t x)
@@ -69,73 +198,6 @@ namespace scn {
                 SCN_MSVC_POP
                 return static_cast<size_t>(
                     _next_pow2_32(static_cast<uint32_t>(x)));
-            }
-
-            template <typename ForwardIt, typename T>
-            static void uninitialized_fill(ForwardIt first,
-                                           ForwardIt last,
-                                           const T& value) noexcept
-            {
-                using value_type =
-                    typename std::iterator_traits<ForwardIt>::value_type;
-                ForwardIt current = first;
-                for (; current != last; ++current) {
-                    ::new (static_cast<void*>(std::addressof(*current)))
-                        value_type(value);
-                }
-            }
-            template <typename ForwardIt>
-            static void uninitialized_fill_default_construct(
-                ForwardIt first,
-                ForwardIt last) noexcept
-            {
-                using value_type =
-                    typename std::iterator_traits<ForwardIt>::value_type;
-                ForwardIt current = first;
-                for (; current != last; ++current) {
-                    ::new (static_cast<void*>(std::addressof(*current)))
-                        value_type;
-                }
-            }
-            template <typename ForwardIt>
-            static void uninitialized_fill_value_init(ForwardIt first,
-                                                      ForwardIt last) noexcept
-            {
-                using value_type =
-                    typename std::iterator_traits<ForwardIt>::value_type;
-                ForwardIt current = first;
-                for (; current != last; ++current) {
-                    ::new (static_cast<void*>(std::addressof(*current)))
-                        value_type();
-                }
-            }
-            template <typename InputIt, typename ForwardIt>
-            static ForwardIt uninitialized_copy(InputIt first,
-                                                InputIt last,
-                                                ForwardIt d_first) noexcept
-            {
-                using value_type =
-                    typename std::iterator_traits<ForwardIt>::value_type;
-                ForwardIt current = d_first;
-                for (; first != last; ++first, (void)++current) {
-                    ::new (static_cast<void*>(std::addressof(*current)))
-                        value_type(*first);
-                }
-                return current;
-            }
-            template <typename InputIt, typename ForwardIt>
-            static ForwardIt uninitialized_move(InputIt first,
-                                                InputIt last,
-                                                ForwardIt d_first) noexcept
-            {
-                using value_type =
-                    typename std::iterator_traits<ForwardIt>::value_type;
-                ForwardIt current = d_first;
-                for (; first != last; ++first, (void)++current) {
-                    ::new (static_cast<void*>(std::addressof(*current)))
-                        value_type(std::move(*first));
-                }
-                return current;
             }
         };
 
@@ -288,7 +350,8 @@ namespace scn {
                     auto storage_ptr = new stack_storage_type[count];
                     auto ptr =
                         static_cast<pointer>(static_cast<void*>(storage_ptr));
-                    this->uninitialized_fill(ptr, ptr + count, value);
+                    small_vector_algos::uninitialized_fill(ptr, ptr + count,
+                                                           value);
 
                     heap.cap = cap;
                     m_size = count;
@@ -296,7 +359,7 @@ namespace scn {
                 }
                 else {
                     auto& stack = _construct_stack_storage();
-                    this->uninitialized_fill(
+                    small_vector_algos::uninitialized_fill(
                         stack.reinterpret_unconstructed_data(),
                         stack.reinterpret_unconstructed_data() + StackN, value);
                     m_size = count;
@@ -316,14 +379,15 @@ namespace scn {
                     auto storage_ptr = new stack_storage_type[count];
                     auto ptr =
                         static_cast<pointer>(static_cast<void*>(storage_ptr));
-                    this->uninitialized_fill_value_init(ptr, ptr + count);
+                    small_vector_algos::uninitialized_fill_value_init(
+                        ptr, ptr + count);
                     heap.cap = cap;
                     m_size = count;
                     m_ptr = ::scn::detail::launder(ptr);
                 }
                 else {
                     auto& stack = _construct_stack_storage();
-                    this->uninitialized_fill_value_init(
+                    small_vector_algos::uninitialized_fill_value_init(
                         stack.reinterpret_unconstructed_data(),
                         stack.reinterpret_unconstructed_data() + count);
                     m_size = count;
@@ -352,7 +416,7 @@ namespace scn {
                     auto storage_ptr = new stack_storage_type[cap];
                     auto ptr =
                         static_cast<pointer>(static_cast<void*>(storage_ptr));
-                    this->uninitialized_copy(optr, optr + s, ptr);
+                    small_vector_algos::uninitialized_copy(optr, optr + s, ptr);
 
                     m_ptr = ::scn::detail::launder(ptr);
                     m_size = s;
@@ -361,7 +425,7 @@ namespace scn {
                 else {
                     auto& stack = _construct_stack_storage();
                     auto optr = other.data();
-                    this->uninitialized_copy(
+                    small_vector_algos::uninitialized_copy(
                         optr, optr + s, stack.reinterpret_unconstructed_data());
                     m_size = s;
                     m_ptr = stack.reinterpret_data();
@@ -391,7 +455,7 @@ namespace scn {
                 else {
                     auto& stack = _construct_stack_storage();
                     auto optr = other.data();
-                    this->uninitialized_move(
+                    small_vector_algos::uninitialized_move(
                         optr, optr + s, stack.reinterpret_unconstructed_data());
 
                     m_size = s;
@@ -418,7 +482,7 @@ namespace scn {
                 // h s      true || true
                 // h h      true || false
                 if (!is_small() || other.is_small()) {
-                    this->uninitialized_copy(
+                    small_vector_algos::uninitialized_copy(
                         other.data(), other.data() + other.size(), data());
                     m_ptr = ::scn::detail::launder(data());
                     m_size = other.size();
@@ -434,8 +498,8 @@ namespace scn {
                     auto storage_ptr = new stack_storage_type[cap];
                     auto ptr =
                         static_cast<pointer>(static_cast<void*>(storage_ptr));
-                    this->uninitialized_copy(other.data(),
-                                             other.data() + other.size(), ptr);
+                    small_vector_algos::uninitialized_copy(
+                        other.data(), other.data() + other.size(), ptr);
                     m_ptr = ::scn::detail::launder(ptr);
                     m_size = other.size();
                     heap.cap = cap;
@@ -467,7 +531,7 @@ namespace scn {
                     _get_heap().cap = other.capacity();
                 }
                 else if (!is_small() || other.is_small()) {
-                    this->uninitialized_move(
+                    small_vector_algos::uninitialized_move(
                         other.data(), other.data() + other.size(), data());
                     m_size = other.size();
                     other._destruct_elements();
@@ -622,13 +686,13 @@ namespace scn {
                 }
 
                 stack_storage s;
-                this->uninitialized_move(begin(), end(),
-                                         s.reinterpret_unconstructed_data());
+                small_vector_algos::uninitialized_move(
+                    begin(), end(), s.reinterpret_unconstructed_data());
                 auto tmp_size = size();
 
                 _destruct();
                 auto& stack = _construct_stack_storage();
-                this->uninitialized_move(
+                small_vector_algos::uninitialized_move(
                     s.reinterpret_data(), s.reinterpret_data() + tmp_size,
                     stack.reinterpret_unconstructed_data());
                 m_size = tmp_size;
@@ -726,8 +790,8 @@ namespace scn {
                     if (count > capacity()) {
                         _realloc(next_pow2(capacity()));
                     }
-                    this->uninitialized_fill_value_init(begin() + size(),
-                                                        begin() + count);
+                    small_vector_algos::uninitialized_fill_value_init(
+                        begin() + size(), begin() + count);
                 }
                 else {
                     for (auto it = begin() + count; it != end(); ++it) {
@@ -797,7 +861,7 @@ namespace scn {
                 auto ptr =
                     static_cast<pointer>(static_cast<void*>(storage_ptr));
                 auto n = size();
-                this->uninitialized_move(begin(), end(), ptr);
+                small_vector_algos::uninitialized_move(begin(), end(), ptr);
                 _destruct();
                 auto& heap = [this]() -> heap_storage& {
                     if (is_small()) {

@@ -368,6 +368,7 @@
     do {                                     \
         static_cast<void>(SCN_LIKELY(cond)); \
         assert((cond) && msg);               \
+        SCN_ASSUME(cond);                    \
     } while (false)
 #define SCN_EXPECT(cond) SCN_ASSERT(cond, "Precondition violation")
 #define SCN_ENSURE(cond) SCN_ASSERT(cond, "Postcondition violation")
