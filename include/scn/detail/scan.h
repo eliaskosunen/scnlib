@@ -23,193 +23,46 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    template <typename Stream, typename... Args>
-    scan_result scan(Stream& s,
-                     basic_string_view<typename Stream::char_type> f,
-                     Args&... a)
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
+    namespace detail {
+        template <typename Range>
+        struct scan_result_for_range {
+            using type =
+                scan_result<typename range_wrapper_for_t<Range>::return_type>;
+        };
+        template <typename Range>
+        using scan_result_for_range_t =
+            typename scan_result_for_range<Range>::type;
+    }  // namespace detail
 
-        using context_type = basic_context<Stream>;
-
-        auto args = make_args<context_type>(a...);
-        auto ctx = context_type(s, f, args);
-        return vscan(ctx);
-    }
-    template <typename Stream, typename... Args>
-    scan_result scan(options opt,
-                     Stream& s,
-                     basic_string_view<typename Stream::char_type> f,
-                     Args&... a)
+    template <typename Range, typename Format, typename... Args>
+    auto scan(const Range& r, Format f, Args&... a)
+        -> detail::scan_result_for_range_t<const Range&>
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
         using context_type =
-            basic_context<Stream, basic_locale_ref<typename Stream::char_type>,
-                          options>;
-
+            basic_context<detail::range_wrapper_for_t<const Range&>>;
         auto args = make_args<context_type>(a...);
-        auto ctx = context_type(s, f, args, opt);
-        return vscan(ctx);
+        auto ctx = context_type(detail::make_range_wrapper(r), args);
+        auto pctx =
+            basic_parse_context<typename context_type::locale_type>(f, ctx);
+        return vscan(ctx, pctx);
     }
-
-    template <typename Stream, typename... Args>
-    scan_result scanf(Stream& s,
-                      basic_string_view<typename Stream::char_type> f,
-                      Args&... a)
+    template <typename Range, typename Format, typename... Args>
+    auto scan(Range&& r, Format f, Args&... a) ->
+        typename std::enable_if<!std::is_reference<Range>::value,
+                                detail::scan_result_for_range_t<Range>>::type
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
-        using context_type = basic_scanf_context<Stream>;
-
+        using context_type = basic_context<detail::range_wrapper_for_t<Range>>;
         auto args = make_args<context_type>(a...);
-        auto ctx = context_type(s, f, args);
-        return vscan(ctx);
-    }
-    template <typename Stream, typename... Args>
-    scan_result scanf(options opt,
-                      Stream& s,
-                      basic_string_view<typename Stream::char_type> f,
-                      Args&... a)
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-
-        using context_type = basic_scanf_context<
-            Stream, basic_locale_ref<typename Stream::char_type>, options>;
-
-        auto args = make_args<context_type>(a...);
-        auto ctx = context_type(s, f, args, opt);
-        return vscan(ctx);
-    }
-
-    template <typename Stream, typename... Args>
-    scan_result scan(Stream& s, detail::default_t, Args&... a)
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-
-        using context_type = basic_empty_context<Stream>;
-
-        auto args = make_args<context_type>(a...);
-        auto ctx = context_type(s, static_cast<int>(sizeof...(Args)), args);
-        return vscan(ctx);
-    }
-    template <typename Stream, typename... Args>
-    scan_result scan(options opt, Stream& s, detail::default_t, Args&... a)
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-
-        using context_type = basic_empty_context<
-            Stream, basic_locale_ref<typename Stream::char_type>, options>;
-
-        auto args = make_args<context_type>(a...);
-        auto ctx =
-            context_type(s, static_cast<int>(sizeof...(Args)), args, opt);
-        return vscan(ctx);
-    }
-
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wexit-time-destructors")
-
-    // Reference to global stdin stream.
-    // Not safe to use during static construction or destruction.
-    template <typename CharT>
-    erased_stream<CharT>& stdin_stream()
-    {
-        static erased_stream<CharT> stream{basic_cstdio_stream<CharT>(stdin)};
-        return stream;
-    }
-    inline erased_stream<char>& cstdin()
-    {
-        return stdin_stream<char>();
-    }
-    inline erased_stream<wchar_t>& wcstdin()
-    {
-        return stdin_stream<wchar_t>();
-    }
-
-    SCN_CLANG_POP
-
-    // Read from stdin
-    template <typename... Args>
-    scan_result input(string_view f, Args&... a)
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-
-        auto& stream = stdin_stream<char>();
-
-        using stream_type =
-            typename std::remove_reference<decltype(stream)>::type;
-        using context_type =
-            typename erased_stream_context_type<stream_type>::type;
-
-        auto args = make_args<context_type>(a...);
-        auto ctx = context_type(stream, f, args);
-        return vscan(ctx);
-    }
-    template <typename... Args>
-    scan_result input(wstring_view f, Args&... a)
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-
-        auto& stream = stdin_stream<wchar_t>();
-
-        using stream_type =
-            typename std::remove_reference<decltype(stream)>::type;
-        using context_type =
-            typename erased_stream_context_type<stream_type>::type;
-
-        auto args = make_args<context_type>(a...);
-        auto ctx = context_type(stream, f, args);
-        return vscan(ctx);
-    }
-
-    // Read from stdin with prompt
-    // Like Python's input()
-    template <typename... Args>
-    scan_result prompt(const char* p, string_view f, Args&... a)
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-        SCN_EXPECT(p != nullptr);
-
-        std::printf("%s", p);
-
-        auto& stream = stdin_stream<char>();
-        using stream_type =
-            typename std::remove_reference<decltype(stream)>::type;
-        using context_type =
-            typename erased_stream_context_type<stream_type>::type;
-
-        auto args = make_args<context_type>(a...);
-        auto ctx = context_type(stream, f, args);
-        return vscan(ctx);
-    }
-    template <typename... Args>
-    scan_result prompt(const wchar_t* p, wstring_view f, Args&... a)
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-        SCN_EXPECT(p != nullptr);
-
-        std::wprintf(L"%ls", p);
-
-        auto& stream = stdin_stream<wchar_t>();
-        using stream_type =
-            typename std::remove_reference<decltype(stream)>::type;
-        using context_type =
-            typename erased_stream_context_type<stream_type>::type;
-
-        auto args = make_args<context_type>(a...);
-        auto ctx = context_type(stream, f, args);
-        return vscan(ctx);
+        auto ctx = context_type(detail::make_range_wrapper(r), args);
+        auto pctx =
+            basic_parse_context<typename context_type::locale_type>(f, ctx);
+        return vscan(ctx, pctx);
     }
 
     SCN_END_NAMESPACE

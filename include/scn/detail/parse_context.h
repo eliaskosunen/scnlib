@@ -27,12 +27,11 @@ namespace scn {
     namespace detail {
         class parse_context_base {
         public:
-            SCN_CONSTEXPR14 size_t next_arg_id()
+            SCN_CONSTEXPR14 std::ptrdiff_t next_arg_id()
             {
-                return m_next_arg_id >= 0 ? static_cast<size_t>(m_next_arg_id++)
-                                          : 0;
+                return m_next_arg_id >= 0 ? m_next_arg_id++ : 0;
             }
-            SCN_CONSTEXPR14 bool check_arg_id(size_t)
+            SCN_CONSTEXPR14 bool check_arg_id(std::ptrdiff_t)
             {
                 if (m_next_arg_id > 0) {
                     return false;
@@ -44,7 +43,7 @@ namespace scn {
         protected:
             parse_context_base() = default;
 
-            int m_next_arg_id{0};
+            std::ptrdiff_t m_next_arg_id{0};
         };
         template <typename Char>
         class basic_parse_context_base : public parse_context_base {
@@ -57,31 +56,32 @@ namespace scn {
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wpadded")
 
-    template <typename Char>
-    class basic_parse_context : public detail::basic_parse_context_base<Char> {
+    template <typename Locale>
+    class basic_parse_context
+        : public detail::basic_parse_context_base<typename Locale::char_type> {
     public:
-        using char_type = Char;
+        using locale_type = Locale;
+        using char_type = typename Locale::char_type;
         using string_view_type = basic_string_view<char_type>;
         using iterator = typename string_view_type::iterator;
 
         explicit SCN_CONSTEXPR basic_parse_context(
-            basic_string_view<char_type> f)
-            : m_str(f)
+            basic_string_view<char_type> f,
+            locale_type& loc)
+            : m_str(f), m_locale(loc)
         {
         }
 
-        template <typename Locale>
-        bool should_skip_ws(const Locale& loc)
+        bool should_skip_ws()
         {
             bool skip = false;
-            while (*this && loc.is_space(next())) {
+            while (*this && m_locale.is_space(next())) {
                 skip = true;
                 advance();
             }
             return skip;
         }
-        template <typename Locale>
-        bool should_read_literal(const Locale&)
+        bool should_read_literal()
         {
             const auto brace = detail::ascii_widen<char_type>('{');
             if (next() != brace) {
@@ -111,7 +111,7 @@ namespace scn {
             return good();
         }
 
-        SCN_CONSTEXPR14 void advance(size_t n = 1) noexcept
+        SCN_CONSTEXPR14 void advance(std::ptrdiff_t n = 1) noexcept
         {
             SCN_EXPECT(good());
             m_str.remove_prefix(n);
@@ -121,13 +121,11 @@ namespace scn {
             return m_str.front();
         }
 
-        template <typename Locale>
-        SCN_CONSTEXPR bool check_arg_begin(const Locale&) const
+        SCN_CONSTEXPR bool check_arg_begin() const
         {
             return next() == detail::ascii_widen<char_type>('{');
         }
-        template <typename Locale>
-        SCN_CONSTEXPR bool check_arg_end(const Locale&) const
+        SCN_CONSTEXPR bool check_arg_end() const
         {
             return next() == detail::ascii_widen<char_type>('}');
         }
@@ -137,14 +135,13 @@ namespace scn {
 
         SCN_CONSTEXPR14 void arg_handled() const noexcept {}
 
-        template <typename Scanner, typename Context>
-        error parse(Scanner& s, Context& ctx)
+        template <typename Scanner, typename ParseContext>
+        error parse(Scanner& s, ParseContext& pctx)
         {
-            return s.parse(ctx);
+            return s.parse(pctx);
         }
 
-        template <typename Locale>
-        expected<string_view_type> parse_arg_id(const Locale& loc)
+        expected<string_view_type> parse_arg_id()
         {
             SCN_EXPECT(good());
             advance();
@@ -153,13 +150,17 @@ namespace scn {
                              "Unexpected end of format argument");
             }
             auto it = m_str.begin();
-            for (size_t i = 0; good(); ++i, (void)advance()) {
-                if (check_arg_end(loc)) {
-                    return string_view_type{it, i};
+            for (std::ptrdiff_t i = 0; good(); ++i, (void)advance()) {
+                if (check_arg_end()) {
+                    return string_view_type{
+                        it,
+                        static_cast<typename string_view_type::size_type>(i)};
                 }
                 if (next() == detail::ascii_widen<char_type>(':')) {
                     advance();
-                    return string_view_type{it, i};
+                    return string_view_type{
+                        it,
+                        static_cast<typename string_view_type::size_type>(i)};
                 }
             }
             return error(error::invalid_format_string,
@@ -168,34 +169,35 @@ namespace scn {
 
     private:
         string_view_type m_str;
+        locale_type& m_locale;
     };
 
-    template <typename Char>
+    template <typename Locale>
     class basic_scanf_parse_context
-        : public detail::basic_parse_context_base<Char> {
+        : public detail::basic_parse_context_base<typename Locale::char_type> {
     public:
-        using char_type = Char;
+        using locale_type = Locale;
+        using char_type = typename Locale::char_type;
         using string_view_type = basic_string_view<char_type>;
         using iterator = typename string_view_type::iterator;
 
         explicit SCN_CONSTEXPR basic_scanf_parse_context(
-            basic_string_view<char_type> f)
-            : m_str(f), m_it(m_str.begin())
+            basic_string_view<char_type> f,
+            locale_type& loc)
+            : m_str(f), m_it(m_str.begin()), m_locale(loc)
         {
         }
 
-        template <typename Locale>
-        bool should_skip_ws(const Locale& loc)
+        bool should_skip_ws()
         {
             bool skip = false;
-            while (good() && loc.is_space(next())) {
+            while (good() && m_locale.is_space(next())) {
                 skip = true;
                 advance();
             }
             return skip;
         }
-        template <typename Locale>
-        bool should_read_literal(const Locale&)
+        bool should_read_literal()
         {
             const auto percent = detail::ascii_widen<char_type>('%');
             if (next() != percent) {
@@ -222,7 +224,7 @@ namespace scn {
             return good();
         }
 
-        SCN_CONSTEXPR14 void advance(size_t n = 1) noexcept
+        SCN_CONSTEXPR14 void advance(std::ptrdiff_t n = 1) noexcept
         {
             SCN_EXPECT(good());
             m_it += n;
@@ -232,15 +234,13 @@ namespace scn {
             return *m_it;
         }
 
-        template <typename Locale>
-        bool check_arg_begin(const Locale&) const
+        bool check_arg_begin() const
         {
             return next() == detail::ascii_widen<char_type>('%');
         }
-        template <typename Locale>
-        bool check_arg_end(const Locale& loc) const
+        bool check_arg_end() const
         {
-            return !good() || check_arg_begin(loc) || loc.is_space(next());
+            return !good() || check_arg_begin() || m_locale.is_space(next());
         }
 
         SCN_CONSTEXPR14 void arg_begin()
@@ -262,15 +262,14 @@ namespace scn {
             return s.parse(ctx);
         }
 
-        template <typename Locale>
-        SCN_CONSTEXPR expected<string_view_type> parse_arg_id(const Locale&) const
+        SCN_CONSTEXPR expected<string_view_type> parse_arg_id() const
         {
             SCN_EXPECT(good());
             return string_view_type{};
         }
 
     private:
-        void backward(size_t n = 1) noexcept
+        void backward(std::ptrdiff_t n = 1) noexcept
         {
             SCN_EXPECT(m_it != m_str.begin());
             m_it -= n;
@@ -278,22 +277,23 @@ namespace scn {
 
         basic_string_view<char_type> m_str;
         iterator m_it;
+        locale_type& m_locale;
     };
 
-    template <typename Char>
+    template <typename Locale>
     class basic_empty_parse_context
-        : public detail::basic_parse_context_base<Char> {
+        : public detail::basic_parse_context_base<typename Locale::char_type> {
     public:
-        using char_type = Char;
+        using locale_type = Locale;
+        using char_type = typename Locale::char_type;
         using string_view_type = basic_string_view<char_type>;
 
-        explicit SCN_CONSTEXPR basic_empty_parse_context(int args)
-            : m_args_left(args)
+        explicit SCN_CONSTEXPR basic_empty_parse_context(int args, Locale& loc)
+            : m_args_left(args), m_locale(loc)
         {
         }
 
-        template <typename Locale>
-        SCN_CONSTEXPR14 bool should_skip_ws(const Locale&)
+        SCN_CONSTEXPR14 bool should_skip_ws()
         {
             if (m_should_skip_ws) {
                 m_should_skip_ws = false;
@@ -301,8 +301,7 @@ namespace scn {
             }
             return false;
         }
-        template <typename Locale>
-        SCN_CONSTEXPR bool should_read_literal(const Locale&) const
+        SCN_CONSTEXPR bool should_read_literal() const
         {
             return false;
         }
@@ -320,20 +319,18 @@ namespace scn {
             return good();
         }
 
-        SCN_CONSTEXPR14 void advance(size_t = 1) const noexcept {}
+        SCN_CONSTEXPR14 void advance(std::ptrdiff_t = 1) const noexcept {}
         char_type next() const
         {
             SCN_EXPECT(false);
             SCN_UNREACHABLE;
         }
 
-        template <typename Locale>
-        SCN_CONSTEXPR bool check_arg_begin(const Locale&) const
+        SCN_CONSTEXPR bool check_arg_begin() const
         {
             return true;
         }
-        template <typename Locale>
-        SCN_CONSTEXPR bool check_arg_end(const Locale&) const
+        SCN_CONSTEXPR bool check_arg_end() const
         {
             return true;
         }
@@ -353,8 +350,7 @@ namespace scn {
             return {};
         }
 
-        template <typename Locale>
-        SCN_CONSTEXPR expected<string_view_type> parse_arg_id(const Locale&) const
+        SCN_CONSTEXPR expected<string_view_type> parse_arg_id() const
         {
             SCN_EXPECT(good());
             return string_view_type{};
@@ -363,6 +359,7 @@ namespace scn {
     private:
         int m_args_left;
         bool m_should_skip_ws{false};
+        locale_type& m_locale;
     };
 
     SCN_CLANG_POP

@@ -179,7 +179,9 @@ namespace scn {
 
             value(span<char_type>& val) : buffer_value(&val) {}
             value(std::basic_string<char_type>& val) : string_value(&val) {}
-            value(basic_string_view<char_type>& val) : string_view_value(&val) {}
+            value(basic_string_view<char_type>& val) : string_view_value(&val)
+            {
+            }
 
             value(void* val) : pointer(val) {}
 
@@ -238,7 +240,8 @@ namespace scn {
 
         SCN_MAKE_VALUE(buffer_type, span<typename C::char_type>)
         SCN_MAKE_VALUE(string_type, std::basic_string<typename C::char_type>)
-        SCN_MAKE_VALUE(string_view_type, basic_string_view<typename C::char_type>)
+        SCN_MAKE_VALUE(string_view_type,
+                       basic_string_view<typename C::char_type>)
 
         template <typename C>
         init<C, typename C::char_type, char_type> make_value(
@@ -419,72 +422,6 @@ namespace scn {
     }
 
     namespace detail {
-        template <typename Context>
-        class arg_map {
-        public:
-            using char_type = typename Context::char_type;
-
-            arg_map() = default;
-
-            void init(const basic_args<Context>& args)
-            {
-                if (!m_args.empty()) {
-                    return;
-                }
-
-                m_args.resize(args.max_size());
-                if (args.is_packed()) {
-                    for (size_t i = 0;; ++i) {
-                        switch (args.type(i)) {
-                            case none_type:
-                                return;
-                            case named_arg_type:
-                                push_back(args.m_values[i]);
-                                break;
-                        }
-                    }
-                }
-                for (size_t i = 0;; ++i) {
-                    switch (args.m_args[i].m_type) {
-                        case none_type:
-                            return;
-                        case named_arg_type:
-                            push_back(args.m_args[i].m_value);
-                            break;
-                    }
-                }
-            }
-
-            typename Context::arg_type find(
-                basic_string_view<char_type> name) const
-            {
-                SCN_EXPECT(!m_args.empty());
-                // Use for instead of find_if to avoid including <algorithm>
-                for (auto& e : m_args) {
-                    if (e.name == name) {
-                        return e.arg;
-                    }
-                }
-                return {};
-            }
-
-        private:
-            struct entry {
-                basic_string_view<char_type> name;
-                typename Context::arg_type arg;
-            };
-
-            void push_back(value<Context> val)
-            {
-                const named_arg_base<char_type>& named = val.as_named_arg();
-                m_args.emplace_back(named.name,
-                                    named.template deserialize<Context>());
-                SCN_ENSURE(!m_args.empty());
-            }
-
-            detail::small_vector<entry, 2> m_args;
-        };
-
         template <typename Context, typename T>
         struct get_type {
             using value_type = decltype(make_value<Context>(
@@ -591,17 +528,16 @@ namespace scn {
             set_data(args.data());
         }
 
-        arg_type get(size_t i) const
+        arg_type get(std::ptrdiff_t i) const
         {
             auto arg = do_get(i);
             if (arg.m_type == detail::named_arg_type) {
-                arg =
-                    arg.m_value.as_named_arg().template deserialize<Context>();
+                SCN_UNREACHABLE;
             }
             return arg;
         }
 
-        bool check_id(size_t i) const
+        bool check_id(std::ptrdiff_t i) const
         {
             if (!is_packed()) {
                 return i < (m_types &
@@ -630,9 +566,9 @@ namespace scn {
             return (m_types & detail::is_unpacked_bit) == 0;
         }
 
-        typename detail::type type(size_t i) const
+        typename detail::type type(std::ptrdiff_t i) const
         {
-            size_t shift = i * 5;
+            size_t shift = static_cast<size_t>(i) * 5;
             return static_cast<typename detail::type>(
                 (m_types & (size_t{0x1f} << shift)) >> shift);
         }
@@ -648,7 +584,7 @@ namespace scn {
             m_args = args;
         }
 
-        arg_type do_get(size_t i) const
+        arg_type do_get(std::ptrdiff_t i) const
         {
             if (!is_packed()) {
                 auto num_args = max_size();

@@ -85,6 +85,10 @@ namespace scn {
         SCN_CONSTEXPR basic_string_view(const CharT (&s)[N]) : m_data(s, N)
         {
         }
+        SCN_CONSTEXPR basic_string_view(const_pointer first, const_pointer last)
+            : m_data(first, last)
+        {
+        }
 
         SCN_CONSTEXPR const_iterator begin() const noexcept
         {

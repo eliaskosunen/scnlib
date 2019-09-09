@@ -127,9 +127,9 @@ namespace scn {
         }
 
         template <typename T, typename CharT>
-        expected<size_t> read_num(T& val,
-                                  const std::locale& loc,
-                                  const std::basic_string<CharT>& buf)
+        expected<std::ptrdiff_t> read_num(T& val,
+                                          const std::locale& loc,
+                                          const std::basic_string<CharT>& buf)
         {
 #if SCN_HAS_EXCEPTIONS
             std::basic_istringstream<CharT> ss(buf);
@@ -164,8 +164,9 @@ namespace scn {
 
     template <typename CharT>
     template <typename T>
-    expected<size_t> basic_locale_ref<CharT>::read_num(T& val,
-                                                       const string_type& buf)
+    expected<std::ptrdiff_t> basic_locale_ref<CharT>::read_num(
+        T& val,
+        const string_type& buf)
     {
         return detail::read_num<T, CharT>(val, detail::get_locale(*this), buf);
     }
@@ -176,73 +177,69 @@ namespace scn {
     template class basic_locale_ref<wchar_t>;
     SCN_CLANG_POP
 
-    template expected<size_t> basic_locale_ref<char>::read_num<short>(
+    template expected<std::ptrdiff_t> basic_locale_ref<char>::read_num<short>(
         short&,
         const string_type&);
-    template expected<size_t> basic_locale_ref<char>::read_num<int>(
+    template expected<std::ptrdiff_t> basic_locale_ref<char>::read_num<int>(
         int&,
         const string_type&);
-    template expected<size_t> basic_locale_ref<char>::read_num<long>(
+    template expected<std::ptrdiff_t> basic_locale_ref<char>::read_num<long>(
         long&,
         const string_type&);
-    template expected<size_t> basic_locale_ref<char>::read_num<long long>(
-        long long&,
-        const string_type&);
-    template expected<size_t> basic_locale_ref<char>::read_num<unsigned short>(
-        unsigned short&,
-        const string_type&);
-    template expected<size_t> basic_locale_ref<char>::read_num<unsigned int>(
-        unsigned int&,
-        const string_type&);
-    template expected<size_t> basic_locale_ref<char>::read_num<unsigned long>(
-        unsigned long&,
-        const string_type&);
-    template expected<size_t>
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<char>::read_num<long long>(long long&, const string_type&);
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<char>::read_num<unsigned short>(unsigned short&,
+                                                     const string_type&);
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<char>::read_num<unsigned int>(unsigned int&,
+                                                   const string_type&);
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<char>::read_num<unsigned long>(unsigned long&,
+                                                    const string_type&);
+    template expected<std::ptrdiff_t>
     basic_locale_ref<char>::read_num<unsigned long long>(unsigned long long&,
                                                          const string_type&);
-    template expected<size_t> basic_locale_ref<char>::read_num<float>(
+    template expected<std::ptrdiff_t> basic_locale_ref<char>::read_num<float>(
         float&,
         const string_type&);
-    template expected<size_t> basic_locale_ref<char>::read_num<double>(
+    template expected<std::ptrdiff_t> basic_locale_ref<char>::read_num<double>(
         double&,
         const string_type&);
-    template expected<size_t> basic_locale_ref<char>::read_num<long double>(
-        long double&,
-        const string_type&);
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<char>::read_num<long double>(long double&,
+                                                  const string_type&);
 
-    template expected<size_t> basic_locale_ref<wchar_t>::read_num<short>(
-        short&,
-        const string_type&);
-    template expected<size_t> basic_locale_ref<wchar_t>::read_num<int>(
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<wchar_t>::read_num<short>(short&, const string_type&);
+    template expected<std::ptrdiff_t> basic_locale_ref<wchar_t>::read_num<int>(
         int&,
         const string_type&);
-    template expected<size_t> basic_locale_ref<wchar_t>::read_num<long>(
+    template expected<std::ptrdiff_t> basic_locale_ref<wchar_t>::read_num<long>(
         long&,
         const string_type&);
-    template expected<size_t> basic_locale_ref<wchar_t>::read_num<long long>(
-        long long&,
-        const string_type&);
-    template expected<size_t>
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<wchar_t>::read_num<long long>(long long&,
+                                                   const string_type&);
+    template expected<std::ptrdiff_t>
     basic_locale_ref<wchar_t>::read_num<unsigned short>(unsigned short&,
                                                         const string_type&);
-    template expected<size_t> basic_locale_ref<wchar_t>::read_num<unsigned int>(
-        unsigned int&,
-        const string_type&);
-    template expected<size_t>
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<wchar_t>::read_num<unsigned int>(unsigned int&,
+                                                      const string_type&);
+    template expected<std::ptrdiff_t>
     basic_locale_ref<wchar_t>::read_num<unsigned long>(unsigned long&,
                                                        const string_type&);
-    template expected<size_t>
+    template expected<std::ptrdiff_t>
     basic_locale_ref<wchar_t>::read_num<unsigned long long>(unsigned long long&,
                                                             const string_type&);
-    template expected<size_t> basic_locale_ref<wchar_t>::read_num<float>(
-        float&,
-        const string_type&);
-    template expected<size_t> basic_locale_ref<wchar_t>::read_num<double>(
-        double&,
-        const string_type&);
-    template expected<size_t> basic_locale_ref<wchar_t>::read_num<long double>(
-        long double&,
-        const string_type&);
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<wchar_t>::read_num<float>(float&, const string_type&);
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<wchar_t>::read_num<double>(double&, const string_type&);
+    template expected<std::ptrdiff_t>
+    basic_locale_ref<wchar_t>::read_num<long double>(long double&,
+                                                     const string_type&);
 
     SCN_END_NAMESPACE
 }  // namespace scn

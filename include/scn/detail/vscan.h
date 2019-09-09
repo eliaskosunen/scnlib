@@ -1,4 +1,3 @@
-
 // Copyright 2017-2019 Elias Kosunen
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +18,7 @@
 #ifndef SCN_DETAIL_VSCAN_H
 #define SCN_DETAIL_VSCAN_H
 
-#include "erased_stream.h"
+#include "context.h"
 #include "visitor.h"
 
 namespace scn {
@@ -30,114 +29,45 @@ namespace scn {
         };
     }  // namespace detail
     namespace {
-        SCN_CONSTEXPR auto&& default_tag =
+        SCN_CONSTEXPR auto& default_tag =
             detail::static_const<detail::default_t>::value;
     }
 
-    template <typename Context>
-    scan_result vscan(Context& ctx)
+    template <typename Context, typename ParseCtx>
+    scan_result_for_t<Context> vscan(Context& ctx, ParseCtx& pctx)
     {
-        return visit(ctx);
+        return visit(ctx, pctx);
     }
 
-#if SCN_PREDEFINE_VSCAN_OVERLOADS
+#if 0
 
-#define SCN_DECLARE_VSCAN(stream, ch)          \
-    scan_result vscan(basic_context<stream>&); \
-    scan_result vscan(basic_context<stream, basic_locale_ref<ch>>&); \
-    scan_result vscan(basic_empty_context<stream>&); \
-    scan_result vscan(basic_empty_context<stream, basic_locale_ref<ch>>&); \
-    scan_result vscan(basic_scanf_context<stream>&); \
-    scan_result vscan(basic_scanf_context<stream, basic_locale_ref<ch>>&)
+#define SCN_DECLARE_VSCAN(range, locale)                                     \
+    scan_result_for_t<                                                       \
+        basic_context<detail::range_wrapper_for_t<const range&>, locale>>    \
+    vscan(basic_context<detail::range_wrapper_for_t<const range&>, locale>&, \
+          basic_parse_context<locale>&);                                     \
+                                                                             \
+    scan_result_for_t<                                                       \
+        basic_context<detail::range_wrapper_for_t<range>, locale>>           \
+    vscan(basic_context<detail::range_wrapper_for_t<range>, locale>&,        \
+          basic_parse_context<locale>&);                                     \
+                                                                             \
+    scan_result_for_t<                                                       \
+        basic_context<detail::range_wrapper_for_t<const range&>, locale>>    \
+    vscan(basic_context<detail::range_wrapper_for_t<const range&>, locale>&, \
+          basic_empty_parse_context<locale>&);                               \
+                                                                             \
+    scan_result_for_t<                                                       \
+        basic_context<detail::range_wrapper_for_t<range>, locale>>           \
+    vscan(basic_context<detail::range_wrapper_for_t<range>, locale>&,        \
+          basic_empty_parse_context<locale>&);
 
-#define SCN_DECLARE_VSCAN_TEMPLATE(stream) \
-    SCN_DECLARE_VSCAN(stream<char>, char); \
-    SCN_DECLARE_VSCAN(stream<wchar_t>, wchar_t)
+    SCN_DECLARE_VSCAN(basic_string_view<char>, basic_default_locale_ref<char>)
+    SCN_DECLARE_VSCAN(basic_string_view<char>, basic_locale_ref<char>)
 
-    SCN_DECLARE_VSCAN_TEMPLATE(basic_null_stream);
-    SCN_DECLARE_VSCAN_TEMPLATE(basic_cstdio_stream);
-
-    SCN_DECLARE_VSCAN(basic_bidirectional_iterator_stream<const char*>, char);
-    SCN_DECLARE_VSCAN(basic_bidirectional_iterator_stream<const wchar_t*>,
-                      wchar_t);
-
-    namespace detail {
-        template <typename CharT>
-        using string_stream =
-            basic_static_container_stream<CharT, std::basic_string<CharT>>;
-        template <typename CharT>
-        using span_stream =
-            basic_static_container_stream<CharT, span<const CharT>>;
-    }  // namespace detail
-    SCN_DECLARE_VSCAN(detail::string_stream<char>, char);
-    SCN_DECLARE_VSCAN(detail::string_stream<wchar_t>, wchar_t);
-    SCN_DECLARE_VSCAN(detail::span_stream<char>, char);
-    SCN_DECLARE_VSCAN(detail::span_stream<wchar_t>, wchar_t);
-
-#endif // SCN_PREDEFINE_SCN_OVERLOADS
-
-    template <typename CharT>
-    using basic_erased_stream_context = basic_context<erased_stream<CharT>>;
-    template <typename CharT>
-    using basic_erased_sized_stream_context =
-        basic_context<erased_sized_stream<CharT>>;
-
-    using erased_stream_context = basic_erased_stream_context<char>;
-    using werased_stream_context = basic_erased_stream_context<wchar_t>;
-    using erased_sized_stream_context = basic_erased_sized_stream_context<char>;
-    using werased_sized_stream_context =
-        basic_erased_sized_stream_context<wchar_t>;
-
-    scan_result vscan(erased_stream_context&);
-    scan_result vscan(werased_stream_context&);
-    scan_result vscan(erased_sized_stream_context&);
-    scan_result vscan(werased_sized_stream_context&);
-
-    template <typename Stream, bool Empty = false>
-    struct erased_stream_context_type {
-        using char_type = typename Stream::char_type;
-        using type = typename std::conditional<
-            is_sized_stream<Stream>::value,
-            basic_erased_sized_stream_context<char_type>,
-            basic_erased_stream_context<char_type>>::type;
-    };
-
-    template <typename CharT>
-    using basic_erased_empty_stream_context =
-        basic_empty_context<erased_stream<CharT>>;
-    template <typename CharT>
-    using basic_erased_empty_sized_stream_context =
-        basic_empty_context<erased_sized_stream<CharT>>;
-
-    using erased_empty_stream_context = basic_erased_empty_stream_context<char>;
-    using werased_empty_stream_context =
-        basic_erased_empty_stream_context<wchar_t>;
-    using erased_empty_sized_stream_context =
-        basic_erased_empty_sized_stream_context<char>;
-    using werased_empty_sized_stream_context =
-        basic_erased_empty_sized_stream_context<wchar_t>;
-
-    scan_result vscan(erased_empty_stream_context&);
-    scan_result vscan(werased_empty_stream_context&);
-    scan_result vscan(erased_empty_sized_stream_context&);
-    scan_result vscan(werased_empty_sized_stream_context&);
-
-    template <typename Stream>
-    struct erased_stream_context_type<Stream, true> {
-        using char_type = typename Stream::char_type;
-        using type = typename std::conditional<
-            is_sized_stream<Stream>::value,
-            basic_erased_empty_sized_stream_context<char_type>,
-            basic_erased_empty_stream_context<char_type>>::type;
-    };
+#endif
 
     SCN_END_NAMESPACE
 }  // namespace scn
 
-#if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY && \
-    !defined(SCN_DETAIL_VSCAN_CPP)
-#include "vscan.cpp"
-#endif
-
 #endif  // SCN_DETAIL_VSCAN_H
-

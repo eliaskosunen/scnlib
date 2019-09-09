@@ -210,7 +210,6 @@ namespace scn {
         using char_type = CharT;
         using string_type = std::basic_string<char_type>;
         using string_view_type = basic_string_view<char_type>;
-        using iterator = typename string_view_type::iterator;
         using defaults = detail::locale_defaults<char_type>;
 
         SCN_CONSTEXPR basic_default_locale_ref() = default;
@@ -252,7 +251,7 @@ namespace scn {
         }
 
         template <typename T>
-        expected<size_t> read_num(T&, const string_type&)
+        expected<std::ptrdiff_t> read_num(T&, const string_type&)
         {
             return error(error::invalid_operation,
                          "No read_num with basic_default_locale_ref");
@@ -265,7 +264,6 @@ namespace scn {
         using char_type = CharT;
         using string_type = std::basic_string<char_type>;
         using string_view_type = basic_string_view<char_type>;
-        using iterator = typename string_view_type::iterator;
 
         basic_locale_ref() = default;
         basic_locale_ref(std::nullptr_t) : basic_locale_ref() {}
@@ -325,7 +323,7 @@ namespace scn {
         }
 
         template <typename T>
-        expected<size_t> read_num(T& val, const string_type& buf);
+        expected<std::ptrdiff_t> read_num(T& val, const string_type& buf);
 
         SCN_CONSTEXPR bool is_default() const noexcept
         {

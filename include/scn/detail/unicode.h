@@ -15,10 +15,24 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_RANGES_H
-#define SCN_RANGES_H
+#ifndef SCN_DETAIL_UNICODE_H
+#define SCN_DETAIL_UNICODE_H
 
-#include "detail/ranges/ranges.h"
+#include "ranges.h"
+#include "result.h"
 
-#endif  // SCN_RANGES_H
+namespace scn {
+    SCN_BEGIN_NAMESPACE
 
+    enum class encoding { utf8, narrow, wide };
+    using code_point = char32_t;
+
+    template <typename Iterator, typename Sentinel>
+    expected<code_point> read_code_point(Iterator& begin,
+                                         const Sentinel& end,
+                                         encoding source_encoding);
+
+    SCN_END_NAMESPACE
+}  // namespace scn
+
+#endif
