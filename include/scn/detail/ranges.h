@@ -1220,17 +1220,17 @@ namespace scn {
                     }
 #endif
 
-                    SCN_CONSTEXPR I begin() const
+                    SCN_CONSTEXPR I begin() const noexcept
                     {
                         return m_data.begin;
                     }
 
-                    SCN_CONSTEXPR S end() const
+                    SCN_CONSTEXPR S end() const noexcept
                     {
                         return m_data.end;
                     }
 
-                    SCN_NODISCARD SCN_CONSTEXPR bool empty() const
+                    SCN_NODISCARD SCN_CONSTEXPR bool empty() const noexcept
                     {
                         return m_data.begin == m_data.end;
                     }
@@ -1238,7 +1238,7 @@ namespace scn {
                     template <subrange_kind KK = K,
                               typename std::enable_if<
                                   KK == subrange_kind::sized>::type* = nullptr>
-                    SCN_CONSTEXPR iter_difference_t<I> size() const
+                    SCN_CONSTEXPR iter_difference_t<I> size() const noexcept
                     {
                         return m_data.get_size();
                     }
@@ -1248,12 +1248,12 @@ namespace scn {
                 };
 
                 template <typename I, typename S, subrange_kind K>
-                I begin(subrange<I, S, K>&& r)
+                I begin(subrange<I, S, K>&& r) noexcept
                 {
                     return r.begin();
                 }
                 template <typename I, typename S, subrange_kind K>
-                S end(subrange<I, S, K>&& r)
+                S end(subrange<I, S, K>&& r) noexcept
                 {
                     return r.end();
                 }

@@ -53,15 +53,8 @@ namespace scn {
     }
 
     namespace detail {
-        template <typename CharT>
-        struct named_arg_base;
-
-        template <typename T, typename CharT>
-        struct named_arg;
-
         enum type {
             none_type = 0,
-            named_arg_type,
             // signed integer
             short_type,
             int_type,
@@ -91,12 +84,10 @@ namespace scn {
 
         SCN_CONSTEXPR bool is_integral(type t) noexcept
         {
-            SCN_EXPECT(t != named_arg_type);
             return t > none_type && t <= last_integer_type;
         }
         SCN_CONSTEXPR bool is_arithmetic(type t) noexcept
         {
-            SCN_EXPECT(t != named_arg_type);
             return t > none_type && t <= last_numeric_type;
         }
 
@@ -158,44 +149,42 @@ namespace scn {
                 void* pointer;
             };
 
-            SCN_CONSTEXPR value() : empty_value{} {}
+            SCN_CONSTEXPR value() noexcept : empty_value{} {}
 
-            value(short& val) : short_value(&val) {}
-            value(int& val) : int_value(&val) {}
-            value(long& val) : long_value(&val) {}
-            value(long long& val) : long_long_value(&val) {}
+            value(short& val) noexcept : short_value(&val) {}
+            value(int& val) noexcept : int_value(&val) {}
+            value(long& val) noexcept : long_value(&val) {}
+            value(long long& val) noexcept : long_long_value(&val) {}
 
-            value(unsigned short& val) : ushort_value(&val) {}
-            value(unsigned& val) : uint_value(&val) {}
-            value(unsigned long& val) : ulong_value(&val) {}
-            value(unsigned long long& val) : ulong_long_value(&val) {}
+            value(unsigned short& val) noexcept : ushort_value(&val) {}
+            value(unsigned& val) noexcept : uint_value(&val) {}
+            value(unsigned long& val) noexcept : ulong_value(&val) {}
+            value(unsigned long long& val) noexcept : ulong_long_value(&val) {}
 
-            value(bool& val) : bool_value(&val) {}
-            value(char_type& val) : char_value(&val) {}
+            value(bool& val) noexcept : bool_value(&val) {}
+            value(char_type& val) noexcept : char_value(&val) {}
 
-            value(float& val) : float_value(&val) {}
-            value(double& val) : double_value(&val) {}
-            value(long double& val) : long_double_value(&val) {}
+            value(float& val) noexcept : float_value(&val) {}
+            value(double& val) noexcept : double_value(&val) {}
+            value(long double& val) noexcept : long_double_value(&val) {}
 
-            value(span<char_type>& val) : buffer_value(&val) {}
-            value(std::basic_string<char_type>& val) : string_value(&val) {}
-            value(basic_string_view<char_type>& val) : string_view_value(&val)
+            value(span<char_type>& val) noexcept : buffer_value(&val) {}
+            value(std::basic_string<char_type>& val) noexcept
+                : string_value(&val)
+            {
+            }
+            value(basic_string_view<char_type>& val) noexcept
+                : string_view_value(&val)
             {
             }
 
-            value(void* val) : pointer(val) {}
+            value(void* val) noexcept : pointer(val) {}
 
             template <typename T>
             value(T& val)
                 : custom(custom_value<Context>{std::addressof(val),
                                                scan_custom_arg<Context, T>})
             {
-            }
-
-            named_arg_base<char_type>& as_named_arg()
-            {
-                SCN_EXPECT(pointer != nullptr);
-                return *static_cast<named_arg_base<char_type>*>(pointer);
             }
         };
 
@@ -249,16 +238,6 @@ namespace scn {
             priority_tag<1>)
         {
             return val;
-        }
-
-        template <typename C, typename T>
-        init<C, void*, named_arg_type> make_value(
-            named_arg<T, typename C::char_type>& val,
-            priority_tag<1>)
-        {
-            auto arg = make_arg<C>(val.value);
-            std::memcpy(val.data, &arg, sizeof(arg));
-            return static_cast<void*>(&val);
         }
 
         template <typename T, typename Char, typename Enable = void>
@@ -365,10 +344,8 @@ namespace scn {
     SCN_CONSTEXPR14 error visit_arg(Visitor&& vis,
                                     typename Context::arg_type& arg)
     {
-        SCN_EXPECT(arg.m_type != detail::named_arg_type);
         switch (arg.m_type) {
             case detail::none_type:
-            case detail::named_arg_type:
                 break;
 
             case detail::short_type:
@@ -530,11 +507,7 @@ namespace scn {
 
         arg_type get(std::ptrdiff_t i) const
         {
-            auto arg = do_get(i);
-            if (arg.m_type == detail::named_arg_type) {
-                SCN_UNREACHABLE;
-            }
-            return arg;
+            return do_get(i);
         }
 
         bool check_id(std::ptrdiff_t i) const

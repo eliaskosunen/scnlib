@@ -184,16 +184,17 @@ namespace scn {
                 return {m_begin, ranges::end(m_range)};
             }
 
-            const Range& range() const
+            const Range& range() const noexcept
             {
                 return m_range;
             }
 
-            SCN_NODISCARD iterator& begin()
+            SCN_NODISCARD iterator& begin() noexcept
             {
                 return m_begin;
             }
             sentinel end() const
+                noexcept(noexcept(ranges::end(std::declval<const Range&>())))
             {
                 return ranges::end(m_range);
             }
@@ -201,7 +202,7 @@ namespace scn {
             template <typename R = Range,
                       typename std::enable_if<
                           ranges::contiguous_range<R>::value>::type* = nullptr>
-            auto data() const
+            auto data() const noexcept(noexcept(*std::declval<iterator>()))
                 -> decltype(std::addressof(*std::declval<iterator>()))
             {
                 return std::addressof(*m_begin);
@@ -210,8 +211,10 @@ namespace scn {
                       typename std::enable_if<
                           ranges::sized_range<R>::value>::type* = nullptr>
             auto size() const
-                -> decltype(ranges::distance(std::declval<iterator>(),
-                                             std::declval<sentinel>()))
+                noexcept(noexcept(ranges::distance(std::declval<iterator>(),
+                                                   end())))
+                    -> decltype(ranges::distance(std::declval<iterator>(),
+                                                 std::declval<sentinel>()))
             {
                 return ranges::distance(m_begin, end());
             }
@@ -272,21 +275,37 @@ namespace scn {
             {
             }
 
+            rvalue_range_wrapper(const rvalue_range_wrapper& other) = delete;
+
+            rvalue_range_wrapper(rvalue_range_wrapper&& other)
+            {
+                const auto begin_offset = ranges::distance(
+                    ranges::begin(other.m_range), other.m_begin);
+                const auto rollback_offset = ranges::distance(
+                    ranges::begin(other.m_range), other.m_rollback);
+                m_range = std::move(other.m_range);
+                m_begin = _iterator_at_offset(m_range, begin_offset);
+                m_rollback = _iterator_at_offset(m_range, rollback_offset);
+            }
+
+            ~rvalue_range_wrapper() = default;
+
             return_type get_return() const
             {
                 return {m_begin, ranges::end(m_range)};
             }
 
-            const Range& range() const
+            const Range& range() const noexcept
             {
                 return m_range;
             }
 
-            SCN_NODISCARD iterator& begin()
+            SCN_NODISCARD iterator& begin() noexcept
             {
                 return m_begin;
             }
             sentinel end() const
+                noexcept(noexcept(ranges::end(std::declval<const Range&>())))
             {
                 return ranges::end(m_range);
             }
@@ -294,7 +313,7 @@ namespace scn {
             template <typename R = Range,
                       typename std::enable_if<
                           ranges::contiguous_range<R>::value>::type* = nullptr>
-            auto data() const
+            auto data() const noexcept(noexcept(*std::declval<iterator>()))
                 -> decltype(std::addressof(*std::declval<iterator>()))
             {
                 return std::addressof(*m_begin);
@@ -303,8 +322,10 @@ namespace scn {
                       typename std::enable_if<
                           ranges::sized_range<R>::value>::type* = nullptr>
             auto size() const
-                -> decltype(ranges::distance(std::declval<iterator>(),
-                                             std::declval<sentinel>()))
+                noexcept(noexcept(ranges::distance(std::declval<iterator>(),
+                                                   end())))
+                    -> decltype(ranges::distance(std::declval<iterator>(),
+                                                 std::declval<sentinel>()))
             {
                 return ranges::distance(m_begin, end());
             }
@@ -339,6 +360,15 @@ namespace scn {
             }
 
         private:
+            template <typename R>
+            static iterator _iterator_at_offset(R& r,
+                                                ranges::range_difference_t<R> n)
+            {
+                auto b = ranges::begin(r);
+                ranges::advance(b, n);
+                return b;
+            }
+
             Range m_range;
             iterator m_begin;
             iterator m_rollback;
@@ -367,16 +397,17 @@ namespace scn {
                 return {m_begin, ranges::end(m_range)};
             }
 
-            Range range() const
+            Range range() const noexcept
             {
                 return m_range;
             }
 
-            SCN_NODISCARD iterator& begin()
+            SCN_NODISCARD iterator& begin() noexcept
             {
                 return m_begin;
             }
             sentinel end() const
+                noexcept(noexcept(ranges::end(std::declval<const Range&>())))
             {
                 return ranges::end(m_range);
             }
@@ -384,7 +415,7 @@ namespace scn {
             template <typename R = Range,
                       typename std::enable_if<
                           ranges::contiguous_range<R>::value>::type* = nullptr>
-            auto data() const
+            auto data() const noexcept(noexcept(*std::declval<iterator>()))
                 -> decltype(std::addressof(*std::declval<iterator>()))
             {
                 return std::addressof(*m_begin);
@@ -393,8 +424,10 @@ namespace scn {
                       typename std::enable_if<
                           ranges::sized_range<R>::value>::type* = nullptr>
             auto size() const
-                -> decltype(ranges::distance(std::declval<iterator>(),
-                                             std::declval<sentinel>()))
+                noexcept(noexcept(ranges::distance(std::declval<iterator>(),
+                                                   end())))
+                    -> decltype(ranges::distance(std::declval<iterator>(),
+                                                 std::declval<sentinel>()))
             {
                 return ranges::distance(m_begin, end());
             }

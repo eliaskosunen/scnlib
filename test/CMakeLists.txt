@@ -19,8 +19,6 @@ function (make_test test source)
 endfunction()
 
 make_test(test test.cpp)
-
-#make_test(test test.cpp)
 #make_test(empty empty.cpp)
 
 #make_test(util util.cpp)
@@ -35,7 +33,7 @@ make_test(test test.cpp)
 #make_test(tuple-return tuple_return.cpp)
 
 #make_test(char char.cpp)
-#make_test(integer integer.cpp)
+make_test(integer integer.cpp)
 #make_test(float floating.cpp)
 #make_test(string string.cpp)
 #make_test(buffer buffer.cpp)

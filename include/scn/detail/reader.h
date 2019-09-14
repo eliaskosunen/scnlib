@@ -442,14 +442,11 @@ namespace scn {
                     }
 
                     bool found = false;
-                    size_t chars = 0;
-
                     if (buf.size() >= falsename.size()) {
                         if (std::equal(falsename.begin(), falsename.end(),
                                        buf.begin())) {
                             val = false;
                             found = true;
-                            chars = falsename.size();
                         }
                     }
                     if (!found && buf.size() >= truename.size()) {
@@ -457,11 +454,9 @@ namespace scn {
                                        buf.begin())) {
                             val = true;
                             found = true;
-                            chars = truename.size();
                         }
                     }
                     if (found) {
-                        // putback?
                         return {};
                     }
                     else {

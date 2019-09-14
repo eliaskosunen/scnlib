@@ -59,9 +59,79 @@ namespace scn {
 
         using context_type = basic_context<detail::range_wrapper_for_t<Range>>;
         auto args = make_args<context_type>(a...);
-        auto ctx = context_type(detail::make_range_wrapper(r), args);
+        auto ctx = context_type(detail::make_range_wrapper(std::move(r)), args);
         auto pctx =
             basic_parse_context<typename context_type::locale_type>(f, ctx);
+        return vscan(ctx, pctx);
+    }
+
+    // default format
+
+    template <typename Range, typename... Args>
+    auto scan(const Range& r, detail::default_t, Args&... a)
+        -> detail::scan_result_for_range_t<const Range&>
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using context_type =
+            basic_context<detail::range_wrapper_for_t<const Range&>>;
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(detail::make_range_wrapper(r), args);
+        auto pctx =
+            basic_empty_parse_context<typename context_type::locale_type>(
+                static_cast<int>(sizeof...(Args)), ctx);
+        return vscan(ctx, pctx);
+    }
+    template <typename Range, typename... Args>
+    auto scan(Range&& r, detail::default_t, Args&... a) ->
+        typename std::enable_if<!std::is_reference<Range>::value,
+                                detail::scan_result_for_range_t<Range>>::type
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using context_type = basic_context<detail::range_wrapper_for_t<Range>>;
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(detail::make_range_wrapper(std::move(r)), args);
+        auto pctx =
+            basic_empty_parse_context<typename context_type::locale_type>(
+                static_cast<int>(sizeof...(Args)), ctx);
+        return vscan(ctx, pctx);
+    }
+
+    // scanf
+
+    template <typename Range, typename Format, typename... Args>
+    auto scanf(const Range& r, Format f, Args&... a)
+        -> detail::scan_result_for_range_t<const Range&>
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using context_type =
+            basic_context<detail::range_wrapper_for_t<const Range&>>;
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(detail::make_range_wrapper(r), args);
+        auto pctx =
+            basic_scanf_parse_context<typename context_type::locale_type>(f,
+                                                                          ctx);
+        return vscan(ctx, pctx);
+    }
+    template <typename Range, typename Format, typename... Args>
+    auto scanf(Range&& r, Format f, Args&... a) ->
+        typename std::enable_if<!std::is_reference<Range>::value,
+                                detail::scan_result_for_range_t<Range>>::type
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using context_type = basic_context<detail::range_wrapper_for_t<Range>>;
+        auto args = make_args<context_type>(a...);
+        auto ctx = context_type(detail::make_range_wrapper(std::move(r)), args);
+        auto pctx =
+            basic_scanf_parse_context<typename context_type::locale_type>(f,
+                                                                          ctx);
         return vscan(ctx, pctx);
     }
 

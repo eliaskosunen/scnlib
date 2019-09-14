@@ -23,6 +23,21 @@
 #include <string>
 #include <vector>
 
+template <typename CharT>
+std::basic_string<CharT> widen(std::string)
+{
+}
+template <>
+inline std::basic_string<char> widen<char>(std::string str)
+{
+    return str;
+}
+template <>
+inline std::basic_string<wchar_t> widen<wchar_t>(std::string str)
+{
+    return std::wstring(str.begin(), str.end());
+}
+
 #define DOCTEST_VALUE_PARAMETERIZED_DATA(data, data_array)                     \
     SCN_CLANG_PUSH SCN_CLANG_IGNORE("-Wexit-time-destructors") {}              \
     static std::vector<std::string> _doctest_subcases = [&data_array]() {      \
