@@ -1,18 +1,18 @@
 function (get_warning_flags flags)
     set(${flags}
         $<$<CXX_COMPILER_ID:Clang>:
+            -ftemplate-backtrace-limit=0
             -Weverything
             -Wpedantic -pedantic-errors
-            -fstrict-aliasing
             -Wno-padded
             -Wno-c++98-compat
             -Wno-c++98-compat-pedantic
             -Wno-c++98-compat-bind-to-temporary-copy
             -Wno-c++98-compat-local-type-template-args>
         $<$<CXX_COMPILER_ID:GNU>:
+            -ftemplate-backtrace-limit=0
             -Wall -Wextra -Wpedantic
             -pedantic-errors
-            -fstrict-aliasing
             -Wconversion -Wsign-conversion
             -Wold-style-cast -Wfloat-equal
             -Wlogical-op -Wundef

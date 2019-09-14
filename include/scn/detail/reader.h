@@ -36,6 +36,9 @@ namespace scn {
     expected<detail::ranges::range_value_t<WrappedRange>> read_char(
         WrappedRange& r)
     {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_stream, "EOF");
+        }
         auto ch = *r.begin();
         ++r.begin();
         return {ch};
@@ -45,6 +48,9 @@ namespace scn {
         typename std::enable_if<!WrappedRange::is_direct()>::type* = nullptr>
     detail::ranges::range_value_t<WrappedRange> read_char(WrappedRange& r)
     {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_stream, "EOF");
+        }
         auto ch = *r.begin();
         ++r.begin();
         return ch;
@@ -143,20 +149,20 @@ namespace scn {
                                Predicate is_space,
                                bool keep_final_space)
     {
-        for (auto ptr = r.data(); ptr != r.end(); ++ptr) {
-            if (is_space(*ptr)) {
+        for (auto it = r.begin(); it != r.end(); ++it) {
+            if (is_space(*it)) {
                 auto b = r.begin();
                 if (keep_final_space) {
-                    r.begin() = ptr + 2;
-                    return {b, ptr + 1};
+                    r.begin() = it + 2;
+                    return {&*b, (&*it) + 1};
                 }
-                r.begin() = ptr + 1;
-                return {b, ptr};
+                r.begin() = it + 1;
+                return {&*b, &*it};
             }
         }
         auto b = r.begin();
         r.begin() = r.end();
-        return {b, r.end()};
+        return {&*b, &*(r.end() - 1) + 1};
     }
     template <typename WrappedRange,
               typename Predicate,
@@ -455,8 +461,8 @@ namespace scn {
                         }
                     }
                     if (found) {
-                        return putback_n(ctx.range(),
-                                         static_cast<std::ptrdiff_t>(chars));
+                        // putback?
+                        return {};
                     }
                     else {
                         auto pb =
@@ -1253,9 +1259,9 @@ namespace scn {
     {
         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
-        for (auto ptr = ctx.range().data(); ptr != ctx.range().end(); ++ptr) {
-            if (!ctx.locale().is_space(*ptr)) {
-                ctx.range().begin() = ptr;
+        for (auto it = ctx.range().begin(); it != ctx.range().end(); ++it) {
+            if (!ctx.locale().is_space(*it)) {
+                ctx.range().begin() = it;
                 return {};
             }
         }

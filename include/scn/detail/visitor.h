@@ -156,37 +156,6 @@ namespace scn {
         {
         }
 
-        auto begin()
-            -> decltype(detail::ranges::begin(std::declval<range_type>()))
-        {
-            return detail::ranges::begin(m_range);
-        }
-        auto begin() const
-            -> decltype(detail::ranges::begin(std::declval<const range_type>()))
-        {
-            return detail::ranges::begin(m_range);
-        }
-        auto cbegin() const -> decltype(
-            detail::ranges::cbegin(std::declval<const range_type>()))
-        {
-            return detail::ranges::cbegin(m_range);
-        }
-
-        auto end() -> decltype(detail::ranges::end(std::declval<range_type>()))
-        {
-            return detail::ranges::end(m_range);
-        }
-        auto end() const
-            -> decltype(detail::ranges::end(std::declval<const range_type>()))
-        {
-            return detail::ranges::end(m_range);
-        }
-        auto cend() const
-            -> decltype(detail::ranges::cend(std::declval<const range_type>()))
-        {
-            return detail::ranges::cend(m_range);
-        }
-
         range_type& range() &
         {
             return m_range.get();
@@ -198,6 +167,32 @@ namespace scn {
         range_type&& range() &&
         {
             return std::move(m_range.get());
+        }
+
+        auto begin() -> decltype(detail::ranges::begin(range()))
+        {
+            return detail::ranges::begin(m_range);
+        }
+        auto begin() const -> decltype(detail::ranges::begin(range()))
+        {
+            return detail::ranges::begin(m_range);
+        }
+        auto cbegin() const -> decltype(detail::ranges::cbegin(range()))
+        {
+            return detail::ranges::cbegin(m_range);
+        }
+
+        auto end() -> decltype(detail::ranges::end(range()))
+        {
+            return detail::ranges::end(m_range);
+        }
+        auto end() const -> decltype(detail::ranges::end(range()))
+        {
+            return detail::ranges::end(m_range);
+        }
+        auto cend() const -> decltype(detail::ranges::cend(range()))
+        {
+            return detail::ranges::cend(m_range);
         }
 
     private:

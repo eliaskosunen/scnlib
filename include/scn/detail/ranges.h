@@ -560,6 +560,37 @@ namespace scn {
             namespace _data {
                 struct fn {
                 private:
+                    template <typename CharT,
+                              typename Traits,
+                              typename Allocator>
+                    static constexpr auto impl(
+                        std::basic_string<CharT, Traits, Allocator>& str,
+                        priority_tag<2>) -> typename std::
+                        basic_string<CharT, Traits, Allocator>::pointer
+                    {
+                        return std::addressof(*str.begin());
+                    }
+                    template <typename CharT,
+                              typename Traits,
+                              typename Allocator>
+                    static constexpr auto impl(
+                        const std::basic_string<CharT, Traits, Allocator>& str,
+                        priority_tag<2>) -> typename std::
+                        basic_string<CharT, Traits, Allocator>::const_pointer
+                    {
+                        return std::addressof(*str.begin());
+                    }
+                    template <typename CharT,
+                              typename Traits,
+                              typename Allocator>
+                    static constexpr auto impl(
+                        std::basic_string<CharT, Traits, Allocator>&& str,
+                        priority_tag<2>) -> typename std::
+                        basic_string<CharT, Traits, Allocator>::pointer
+                    {
+                        return std::addressof(*str.begin());
+                    }
+
                     template <typename T,
                               typename D = decltype(
                                   decay_copy(std::declval<T&>().data()))>
@@ -568,7 +599,7 @@ namespace scn {
                         typename std::enable_if<_is_object_pointer<D>::value,
                                                 D>::type
                     {
-                        return t.data();
+                        return decay_copy(t.data());
                     }
 
                     template <typename T>
@@ -589,11 +620,11 @@ namespace scn {
                     template <typename T>
                     constexpr auto operator()(T&& t) const
                         noexcept(noexcept(fn::impl(std::forward<T>(t),
-                                                   priority_tag<1>{})))
+                                                   priority_tag<2>{})))
                             -> decltype(fn::impl(std::forward<T>(t),
-                                                 priority_tag<1>{}))
+                                                 priority_tag<2>{}))
                     {
-                        return fn::impl(std::forward<T>(t), priority_tag<1>{});
+                        return fn::impl(std::forward<T>(t), priority_tag<2>{});
                     }
                 };
             }  // namespace _data
@@ -1093,6 +1124,7 @@ namespace scn {
                     {
                     }
 
+#if 0
                     template <
                         typename R,
                         bool SS = _store_size(),
@@ -1186,6 +1218,7 @@ namespace scn {
                     {
                         return PairLike(begin(), end());
                     }
+#endif
 
                     SCN_CONSTEXPR I begin() const
                     {
@@ -1213,7 +1246,49 @@ namespace scn {
                 private:
                     _subrange_data<I, S, _store_size()> m_data{};
                 };
+
+                template <typename I, typename S, subrange_kind K>
+                I begin(subrange<I, S, K>&& r)
+                {
+                    return r.begin();
+                }
+                template <typename I, typename S, subrange_kind K>
+                S end(subrange<I, S, K>&& r)
+                {
+                    return r.end();
+                }
             }  // namespace _subrange
+
+            template <std::size_t N>
+            struct _subrange_get_impl;
+            template <>
+            struct _subrange_get_impl<0> {
+                template <typename I, typename S, subrange_kind K>
+                static auto get(const subrange<I, S, K>& s)
+                    -> decltype(s.begin())
+                {
+                    return s.begin();
+                }
+            };
+            template <>
+            struct _subrange_get_impl<1> {
+                template <typename I, typename S, subrange_kind K>
+                static auto get(const subrange<I, S, K>& s) -> decltype(s.end())
+                {
+                    return s.end();
+                }
+            };
+
+            template <std::size_t N,
+                      typename I,
+                      typename S,
+                      subrange_kind K,
+                      typename std::enable_if<(N < 2)>::type* = nullptr>
+            auto get(const subrange<I, S, K>& s)
+                -> decltype(_subrange_get_impl<N>::get(s))
+            {
+                return _subrange_get_impl<N>::get(s);
+            }
 
             // reconstructible_range
             template <typename R>
@@ -1580,6 +1655,8 @@ namespace std {
     public:
         using type = S;
     };
+
+    using ::scn::detail::ranges::get;
 }  // namespace std
 
 #endif  // SCN_DETAIL_RANGES_H

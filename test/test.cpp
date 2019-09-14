@@ -22,13 +22,15 @@ TEST_CASE("simple")
 {
     int i;
     std::string s;
-    auto r = scn::scan("42 foo", "{} {}", i, s);
+    double d;
+    auto r = scn::scan("42 foo 3.14", "{} {} {}", i, s, d);
 
     CHECK(r);
-    CHECK(r.value() == 2);
+    CHECK(r.value() == 3);
 
     CHECK(i == 42);
     CHECK(s == std::string{"foo"});
+    CHECK(d == doctest::Approx(3.14));
 }
 
 TEST_CASE("general")

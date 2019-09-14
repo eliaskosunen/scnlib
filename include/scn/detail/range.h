@@ -48,42 +48,12 @@ namespace scn {
         public:
             using range_type = Range;
             using view_type = Range;
-            using iterator = ranges::iterator_t<range_type>;
-            using sentinel = ranges::sentinel_t<range_type>;
+            using iterator = ranges::iterator_t<const range_type>;
+            using sentinel = ranges::sentinel_t<const range_type>;
 
             reconstructed_return_type(iterator i, sentinel s)
                 : r(std::move(i), std::move(s))
             {
-            }
-
-            auto begin() -> decltype(ranges::begin(std::declval<range_type>()))
-            {
-                return ranges::begin(r);
-            }
-            auto begin() const
-                -> decltype(ranges::begin(std::declval<const range_type>()))
-            {
-                return ranges::begin(r);
-            }
-            auto cbegin() const
-                -> decltype(ranges::cbegin(std::declval<const range_type>()))
-            {
-                return ranges::cbegin(r);
-            }
-
-            auto end() -> decltype(ranges::end(std::declval<range_type>()))
-            {
-                return ranges::end(r);
-            }
-            auto end() const
-                -> decltype(ranges::end(std::declval<const range_type>()))
-            {
-                return ranges::end(r);
-            }
-            auto cend() const
-                -> decltype(ranges::cend(std::declval<const range_type>()))
-            {
-                return ranges::cend(r);
             }
 
             Range& get() &
@@ -99,6 +69,32 @@ namespace scn {
                 return std::move(r);
             }
 
+            auto begin() -> decltype(ranges::begin(get()))
+            {
+                return ranges::begin(r);
+            }
+            auto begin() const -> decltype(ranges::begin(get()))
+            {
+                return ranges::begin(r);
+            }
+            auto cbegin() const -> decltype(ranges::cbegin(get()))
+            {
+                return ranges::cbegin(r);
+            }
+
+            auto end() -> decltype(ranges::end(get()))
+            {
+                return ranges::end(r);
+            }
+            auto end() const -> decltype(ranges::end(get()))
+            {
+                return ranges::end(r);
+            }
+            auto cend() const -> decltype(ranges::cend(get()))
+            {
+                return ranges::cend(r);
+            }
+
         private:
             Range r;
         };
@@ -106,43 +102,13 @@ namespace scn {
         class subrange_return_type {
         public:
             using range_type = Range;
-            using iterator = ranges::iterator_t<range_type>;
-            using sentinel = ranges::sentinel_t<range_type>;
+            using iterator = ranges::iterator_t<const range_type>;
+            using sentinel = ranges::sentinel_t<const range_type>;
             using view_type = ranges::subrange<iterator, sentinel>;
 
             subrange_return_type(iterator i, sentinel s)
                 : r(std::move(i), std::move(s))
             {
-            }
-
-            auto begin() -> decltype(ranges::begin(std::declval<view_type&>()))
-            {
-                return ranges::begin(r);
-            }
-            auto begin() const
-                -> decltype(ranges::begin(std::declval<const view_type&>()))
-            {
-                return ranges::begin(r);
-            }
-            auto cbegin() const
-                -> decltype(ranges::cbegin(std::declval<const view_type&>()))
-            {
-                return ranges::cbegin(r);
-            }
-
-            auto end() -> decltype(ranges::end(std::declval<view_type&>()))
-            {
-                return ranges::end(r);
-            }
-            auto end() const
-                -> decltype(ranges::end(std::declval<const view_type&>()))
-            {
-                return ranges::end(r);
-            }
-            auto cend() const
-                -> decltype(ranges::cend(std::declval<const view_type&>()))
-            {
-                return ranges::cend(r);
             }
 
             view_type& get() &
@@ -156,6 +122,32 @@ namespace scn {
             view_type&& get() &&
             {
                 return std::move(r);
+            }
+
+            auto begin() -> decltype(ranges::begin(get()))
+            {
+                return ranges::begin(r);
+            }
+            auto begin() const -> decltype(ranges::begin(get()))
+            {
+                return ranges::begin(r);
+            }
+            auto cbegin() const -> decltype(ranges::cbegin(get()))
+            {
+                return ranges::cbegin(r);
+            }
+
+            auto end() -> decltype(ranges::end(get()))
+            {
+                return ranges::end(r);
+            }
+            auto end() const -> decltype(ranges::end(get()))
+            {
+                return ranges::end(r);
+            }
+            auto cend() const -> decltype(ranges::cend(get()))
+            {
+                return ranges::cend(r);
             }
 
         private:
@@ -187,10 +179,9 @@ namespace scn {
             {
             }
 
-            return_type get_return()
+            return_type get_return() const
             {
-                return {ranges::iterator_t<Range>{m_begin},
-                        ranges::sentinel_t<Range>{ranges::end(m_range)}};
+                return {m_begin, ranges::end(m_range)};
             }
 
             const Range& range() const
@@ -281,10 +272,9 @@ namespace scn {
             {
             }
 
-            return_type get_return()
+            return_type get_return() const
             {
-                return {ranges::iterator_t<Range>{m_begin},
-                        ranges::sentinel_t<Range>{ranges::end(m_range)}};
+                return {m_begin, ranges::end(m_range)};
             }
 
             const Range& range() const
@@ -372,10 +362,9 @@ namespace scn {
             {
             }
 
-            return_type get_return()
+            return_type get_return() const
             {
-                return {ranges::iterator_t<Range>{m_begin},
-                        ranges::sentinel_t<Range>{ranges::end(m_range)}};
+                return {m_begin, ranges::end(m_range)};
             }
 
             Range range() const
