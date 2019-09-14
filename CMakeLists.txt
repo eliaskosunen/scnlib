@@ -9,17 +9,12 @@ endif ()
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
-option(SCN_USE_CMCSTL2 "Use cmcstl2 instead of range-v3" OFF)
-
-option(SCN_PREDEFINE_VSCAN_OVERLOADS "Define additional overloads of scn::vscan in a source file (increases compilation time, decreases application object file size)" OFF)
-
 option(SCN_TESTS "Generate tests target" ${MASTER_PROJECT})
 option(SCN_EXAMPLES "Generate examples target" ${MASTER_PROJECT})
 option(SCN_BENCHMARKS "Generate benchmark target" ${MASTER_PROJECT})
 option(SCN_DOCS "Generate documentation target" ${MASTER_PROJECT})
 option(SCN_INSTALL "Generate install target" ${MASTER_PROJECT})
 option(SCN_PEDANTIC "Use stricter warnings" ${MASTER_PROJECT})
-option(SCN_RANGES "Generate scn-ranges and scn-ranges-header-only targets (requires range-v3)" ON)
 
 option(SCN_COVERAGE "Enable coverage reporting" OFF)
 option(SCN_BLOAT "Generate bloat test target" OFF)
@@ -52,8 +47,10 @@ message(STATUS "SCN_PEDANTIC: ${SCN_PEDANTIC}")
 message(STATUS "SCN_WERROR: ${SCN_WERROR}")
 
 function (generate_library_target target_name)
+    #add_library(${target_name}
+    #    src/istream.cpp src/stream.cpp src/vscan.cpp src/locale.cpp src/visitor.cpp)
     add_library(${target_name}
-        src/istream.cpp src/stream.cpp src/vscan.cpp src/locale.cpp src/visitor.cpp)
+        src/vscan.cpp src/locale.cpp src/reader.cpp)
     target_include_directories(${target_name} PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
@@ -82,88 +79,23 @@ endfunction ()
 generate_library_target(scn)
 generate_header_only_target(scn-header-only)
 
-if (SCN_RANGES)
-    if (SCN_USE_CMCSTL2)
-        find_package(cmcstl2 QUIET CONFIG)
-        if (cmcstl2_FOUND)
-            set(SCN_HAS_RANGES ON)
-        else ()
-            message(STATUS "cmcstl2 not found")
-            set(SCN_HAS_RANGES OFF)
-        endif ()
-    else ()
-        find_package(range-v3 QUIET CONFIG)
-        if (range-v3_FOUND)
-            set(SCN_HAS_RANGES ON)
-        else ()
-            message(STATUS "range-v3 not found")
-            set(SCN_HAS_RANGES OFF)
-        endif ()
-    endif ()
-else ()
-    set(SCN_HAS_RANGES OFF)
-endif ()
-
-if (SCN_HAS_RANGES)
-    add_library(scn-ranges
-        src/ranges/vscan.cpp)
-    target_link_libraries(scn-ranges PUBLIC scn)
-
-    add_library(scn-ranges-header-only INTERFACE)
-    target_link_libraries(scn-ranges-header-only INTERFACE scn-header-only)
-
-    if (SCN_USE_CMCSTL2)
-        target_link_libraries(scn-ranges PUBLIC scn stl2)
-        target_link_libraries(scn-ranges-header-only INTERFACE scn-header-only stl2)
-
-        target_compile_features(scn-ranges PUBLIC cxx_std_17)
-        target_compile_features(scn-ranges-header-only INTERFACE cxx_std_17)
-
-        target_compile_options(scn-ranges PUBLIC
-            $<$<CXX_COMPILER_ID:GNU>: -fconcepts>
-            $<$<CXX_COMPILER_ID:Clang>: -Xclang -fconcepts-ts>)
-        target_compile_options(scn-ranges-header-only INTERFACE
-            $<$<CXX_COMPILER_ID:GNU>: -fconcepts>
-            $<$<CXX_COMPILER_ID:Clang>: -Xclang -fconcepts-ts>)
-
-        target_compile_definitions(scn-ranges PUBLIC -DSCN_RANGES_USE_CMCSTL2=1)
-        target_compile_definitions(scn-ranges-header-only INTERFACE -DSCN_RANGES_USE_CMCSTL2=1)
-    else ()
-        target_link_libraries(scn-ranges PUBLIC range-v3)
-        target_link_libraries(scn-ranges-header-only INTERFACE range-v3)
-
-        target_compile_features(scn-ranges PUBLIC cxx_std_14)
-        target_compile_features(scn-ranges-header-only INTERFACE cxx_std_14)
-
-        target_compile_definitions(scn-ranges PUBLIC -DSCN_RANGES_USE_RANGEV3=1)
-        target_compile_definitions(scn-ranges-header-only INTERFACE -DSCN_RANGES_USE_RANGEV3=1)
-    endif ()
-endif ()
-
-
 set(SCN_EXPORT_TARGETS_LIST scn scn-header-only)
 add_library(scn::scn ALIAS scn)
 add_library(scn::scn-header-only ALIAS scn-header-only)
-
-if (SCN_HAS_RANGES)
-    set(SCN_EXPORT_TARGETS_LIST ${SCN_EXPORT_TARGETS_LIST} scn-ranges scn-ranges-header-only)
-    add_library(scn::scn-ranges ALIAS scn-ranges)
-    add_library(scn::scn-ranges-header-only ALIAS scn-ranges-header-only)
-endif()
 
 if (SCN_TESTS)
     enable_testing()
     add_subdirectory(test)
 endif ()
-if (SCN_EXAMPLES)
-    add_subdirectory(examples)
-endif ()
-if (SCN_BENCHMARKS)
-    add_subdirectory(benchmark)
-endif ()
-if (SCN_DOCS)
-    add_subdirectory(doc)
-endif ()
+#if (SCN_EXAMPLES)
+#    add_subdirectory(examples)
+#endif ()
+#if (SCN_BENCHMARKS)
+#    add_subdirectory(benchmark)
+#endif ()
+#if (SCN_DOCS)
+#    add_subdirectory(doc)
+#endif ()
 
 if (SCN_INSTALL)
     include(GNUInstallDirs)

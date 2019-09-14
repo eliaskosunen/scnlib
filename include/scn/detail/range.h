@@ -115,32 +115,32 @@ namespace scn {
             {
             }
 
-            auto begin() -> decltype(ranges::begin(std::declval<view_type>()))
+            auto begin() -> decltype(ranges::begin(std::declval<view_type&>()))
             {
                 return ranges::begin(r);
             }
             auto begin() const
-                -> decltype(ranges::begin(std::declval<const view_type>()))
+                -> decltype(ranges::begin(std::declval<const view_type&>()))
             {
                 return ranges::begin(r);
             }
             auto cbegin() const
-                -> decltype(ranges::cbegin(std::declval<const view_type>()))
+                -> decltype(ranges::cbegin(std::declval<const view_type&>()))
             {
                 return ranges::cbegin(r);
             }
 
-            auto end() -> decltype(ranges::end(std::declval<view_type>()))
+            auto end() -> decltype(ranges::end(std::declval<view_type&>()))
             {
                 return ranges::end(r);
             }
             auto end() const
-                -> decltype(ranges::end(std::declval<const view_type>()))
+                -> decltype(ranges::end(std::declval<const view_type&>()))
             {
                 return ranges::end(r);
             }
             auto cend() const
-                -> decltype(ranges::cend(std::declval<const view_type>()))
+                -> decltype(ranges::cend(std::declval<const view_type&>()))
             {
                 return ranges::cend(r);
             }
@@ -187,9 +187,10 @@ namespace scn {
             {
             }
 
-            return_type get_return() const
+            return_type get_return()
             {
-                return {m_begin, end()};
+                return {ranges::iterator_t<Range>{m_begin},
+                        ranges::sentinel_t<Range>{ranges::end(m_range)}};
             }
 
             const Range& range() const
@@ -201,7 +202,7 @@ namespace scn {
             {
                 return m_begin;
             }
-            iterator end() const
+            sentinel end() const
             {
                 return ranges::end(m_range);
             }
@@ -280,9 +281,10 @@ namespace scn {
             {
             }
 
-            return_type get_return() const
+            return_type get_return()
             {
-                return {m_begin, end()};
+                return {ranges::iterator_t<Range>{m_begin},
+                        ranges::sentinel_t<Range>{ranges::end(m_range)}};
             }
 
             const Range& range() const
@@ -294,7 +296,7 @@ namespace scn {
             {
                 return m_begin;
             }
-            iterator end() const
+            sentinel end() const
             {
                 return ranges::end(m_range);
             }
@@ -370,9 +372,10 @@ namespace scn {
             {
             }
 
-            return_type get_return() const
+            return_type get_return()
             {
-                return {m_begin, end()};
+                return {ranges::iterator_t<Range>{m_begin},
+                        ranges::sentinel_t<Range>{ranges::end(m_range)}};
             }
 
             Range range() const
@@ -384,7 +387,7 @@ namespace scn {
             {
                 return m_begin;
             }
-            iterator end() const
+            sentinel end() const
             {
                 return ranges::end(m_range);
             }
@@ -440,7 +443,7 @@ namespace scn {
             Range m_range;
             iterator m_begin;
             iterator m_rollback;
-        };
+        };  // namespace detail
 
         namespace _make_range_wrapper {
             struct fn {
@@ -459,10 +462,12 @@ namespace scn {
                 template <typename Range,
                           typename std::enable_if<ranges::view<
                               remove_cvref_t<Range>>::value>::type* = nullptr>
-                static view_range_wrapper<Range> impl(Range&& r,
-                                                      priority_tag<1>)
+                static view_range_wrapper<remove_cvref_t<Range>> impl(
+                    Range&& r,
+                    priority_tag<1>)
                 {
-                    return view_range_wrapper<Range>(std::forward<Range>(r));
+                    return view_range_wrapper<remove_cvref_t<Range>>(
+                        std::forward<Range>(r));
                 }
 
                 template <typename Range,

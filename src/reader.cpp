@@ -176,6 +176,23 @@ namespace scn {
         {
             return read_float_impl<CharT, T>::get(str, chars);
         }
+
+        template expected<float> float_scanner<float>::_read_float_impl(
+            const char*,
+            size_t&);
+        template expected<double> float_scanner<double>::_read_float_impl(
+            const char*,
+            size_t&);
+        template expected<long double>
+        float_scanner<long double>::_read_float_impl(const char*, size_t&);
+        template expected<float> float_scanner<float>::_read_float_impl(
+            const wchar_t*,
+            size_t&);
+        template expected<double> float_scanner<double>::_read_float_impl(
+            const wchar_t*,
+            size_t&);
+        template expected<long double>
+        float_scanner<long double>::_read_float_impl(const wchar_t*, size_t&);
     }  // namespace detail
 
     SCN_END_NAMESPACE

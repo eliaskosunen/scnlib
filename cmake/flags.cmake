@@ -4,6 +4,7 @@ function (get_warning_flags flags)
             -Weverything
             -Wpedantic -pedantic-errors
             -fstrict-aliasing
+            -Wno-padded
             -Wno-c++98-compat
             -Wno-c++98-compat-pedantic
             -Wno-c++98-compat-bind-to-temporary-copy

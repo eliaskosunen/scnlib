@@ -114,7 +114,7 @@ namespace scn {
         SCN_CONSTEXPR14 void advance(std::ptrdiff_t n = 1) noexcept
         {
             SCN_EXPECT(good());
-            m_str.remove_prefix(n);
+            m_str.remove_prefix(static_cast<std::size_t>(n));
         }
         SCN_CONSTEXPR char_type next() const
         {

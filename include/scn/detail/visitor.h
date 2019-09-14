@@ -148,7 +148,7 @@ namespace scn {
     class scan_result : public result<std::ptrdiff_t> {
     public:
         using return_type = ReturnType;
-        using range_type = typename return_type::range_type;
+        using range_type = typename return_type::view_type;
         using base_type = result<std::ptrdiff_t>;
 
         SCN_CONSTEXPR scan_result(base_type&& b, return_type&& r)
@@ -156,31 +156,35 @@ namespace scn {
         {
         }
 
-        auto begin() -> decltype(std::declval<range_type>().begin())
+        auto begin()
+            -> decltype(detail::ranges::begin(std::declval<range_type>()))
         {
-            return m_range.begin();
+            return detail::ranges::begin(m_range);
         }
-        auto begin() const -> decltype(std::declval<const range_type>().begin())
+        auto begin() const
+            -> decltype(detail::ranges::begin(std::declval<const range_type>()))
         {
-            return m_range.begin();
+            return detail::ranges::begin(m_range);
         }
-        auto cbegin() const
-            -> decltype(std::declval<const range_type>().cbegin())
+        auto cbegin() const -> decltype(
+            detail::ranges::cbegin(std::declval<const range_type>()))
         {
-            return m_range.cbegin();
+            return detail::ranges::cbegin(m_range);
         }
 
-        auto end() -> decltype(std::declval<range_type>().end())
+        auto end() -> decltype(detail::ranges::end(std::declval<range_type>()))
         {
-            return m_range.end();
+            return detail::ranges::end(m_range);
         }
-        auto end() const -> decltype(std::declval<const range_type>().end())
+        auto end() const
+            -> decltype(detail::ranges::end(std::declval<const range_type>()))
         {
-            return m_range.end();
+            return detail::ranges::end(m_range);
         }
-        auto cend() const -> decltype(std::declval<const range_type>().cend())
+        auto cend() const
+            -> decltype(detail::ranges::cend(std::declval<const range_type>()))
         {
-            return m_range.cend();
+            return detail::ranges::cend(m_range);
         }
 
         range_type& range() &
@@ -288,11 +292,11 @@ namespace scn {
                         return ctx.next_arg(pctx);
                     }
                     if (ctx.locale().is_digit(id.front())) {
-                        size_t tmp = 0;
+                        std::ptrdiff_t tmp = 0;
                         for (auto ch : id) {
                             tmp =
                                 tmp * 10 +
-                                static_cast<size_t>(
+                                static_cast<std::ptrdiff_t>(
                                     ch - detail::ascii_widen<
                                              typename Context::char_type>('0'));
                         }

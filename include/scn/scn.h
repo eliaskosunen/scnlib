@@ -19,7 +19,6 @@
 #define SCN_SCN_H
 
 #include "detail/scan.h"
-#include "detail/types.h"
 
 /**
  * \mainpage

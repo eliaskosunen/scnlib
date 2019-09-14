@@ -540,8 +540,9 @@ namespace scn {
         bool check_id(std::ptrdiff_t i) const
         {
             if (!is_packed()) {
-                return i < (m_types &
-                            ~static_cast<size_t>(detail::is_unpacked_bit));
+                return static_cast<size_t>(i) <
+                       (m_types &
+                        ~static_cast<size_t>(detail::is_unpacked_bit));
             }
             return type(i) != detail::none_type;
         }
@@ -587,15 +588,17 @@ namespace scn {
         arg_type do_get(std::ptrdiff_t i) const
         {
             if (!is_packed()) {
-                auto num_args = max_size();
+                auto num_args = static_cast<std::ptrdiff_t>(max_size());
                 if (SCN_LIKELY(i < num_args)) {
                     return m_args[i];
                 }
                 return {};
             }
 
-            if (SCN_UNLIKELY(i > detail::max_packed_args))
+            if (SCN_UNLIKELY(
+                    i > static_cast<std::ptrdiff_t>(detail::max_packed_args))) {
                 return {};
+            }
 
             arg_type arg;
             arg.m_type = type(i);

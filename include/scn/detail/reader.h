@@ -60,7 +60,7 @@ namespace scn {
         detail::ranges::range_difference_t<WrappedRange> n)
     {
         const auto n_to_read = std::min(r.size(), n);
-        auto s = make_span(r.data(), n_to_read).as_const();
+        auto s = make_span(r.data(), static_cast<size_t>(n_to_read)).as_const();
         detail::ranges::advance(r.begin(), n_to_read);
         return s;
     }
@@ -97,7 +97,7 @@ namespace scn {
                     OutputIterator& it,
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
-        for (detail::ranges::range_reference_t<WrappedRange> i = 0; i < n;
+        for (detail::ranges::range_difference_t<WrappedRange> i = 0; i < n;
              ++i) {
             if (r.begin() == r.end()) {
                 return error(error::end_of_stream, "EOF");
@@ -117,7 +117,7 @@ namespace scn {
                     OutputIterator& it,
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
-        for (detail::ranges::range_reference_t<WrappedRange> i = 0; i < n;
+        for (detail::ranges::range_difference_t<WrappedRange> i = 0; i < n;
              ++i) {
             if (r.begin() == r.end()) {
                 return error(error::end_of_stream, "EOF");
@@ -498,6 +498,8 @@ namespace scn {
 
         template <typename T>
         struct integer_scanner {
+            static_assert(std::is_integral<T>::value, "");
+
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {
@@ -946,6 +948,8 @@ namespace scn {
 
         template <typename T>
         struct float_scanner {
+            static_assert(std::is_floating_point<T>::value, "");
+
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {
@@ -1065,9 +1069,11 @@ namespace scn {
             template <typename CharT>
             expected<std::ptrdiff_t> _read_float(T& val, span<const CharT> s)
             {
-                size_t chars;
+                size_t chars{};
                 std::basic_string<CharT> str(s.data(), s.size());
-                auto ret = expected<T>{0.0};
+                SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+                auto ret = _read_float_impl(str.data(), chars);
+                SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 if (!ret) {
                     return ret.error();
                 }
