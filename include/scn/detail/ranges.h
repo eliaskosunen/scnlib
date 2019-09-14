@@ -565,7 +565,7 @@ namespace scn {
                               typename Allocator>
                     static constexpr auto impl(
                         std::basic_string<CharT, Traits, Allocator>& str,
-                        priority_tag<2>) -> typename std::
+                        priority_tag<2>) noexcept -> typename std::
                         basic_string<CharT, Traits, Allocator>::pointer
                     {
                         return std::addressof(*str.begin());
@@ -575,7 +575,7 @@ namespace scn {
                               typename Allocator>
                     static constexpr auto impl(
                         const std::basic_string<CharT, Traits, Allocator>& str,
-                        priority_tag<2>) -> typename std::
+                        priority_tag<2>) noexcept -> typename std::
                         basic_string<CharT, Traits, Allocator>::const_pointer
                     {
                         return std::addressof(*str.begin());
@@ -585,7 +585,7 @@ namespace scn {
                               typename Allocator>
                     static constexpr auto impl(
                         std::basic_string<CharT, Traits, Allocator>&& str,
-                        priority_tag<2>) -> typename std::
+                        priority_tag<2>) noexcept -> typename std::
                         basic_string<CharT, Traits, Allocator>::pointer
                     {
                         return std::addressof(*str.begin());

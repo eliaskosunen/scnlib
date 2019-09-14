@@ -212,7 +212,7 @@ namespace scn {
                           ranges::sized_range<R>::value>::type* = nullptr>
             auto size() const
                 noexcept(noexcept(ranges::distance(std::declval<iterator>(),
-                                                   end())))
+                                                   std::declval<sentinel>())))
                     -> decltype(ranges::distance(std::declval<iterator>(),
                                                  std::declval<sentinel>()))
             {
@@ -323,7 +323,7 @@ namespace scn {
                           ranges::sized_range<R>::value>::type* = nullptr>
             auto size() const
                 noexcept(noexcept(ranges::distance(std::declval<iterator>(),
-                                                   end())))
+                                                   std::declval<sentinel>())))
                     -> decltype(ranges::distance(std::declval<iterator>(),
                                                  std::declval<sentinel>()))
             {
@@ -425,7 +425,7 @@ namespace scn {
                           ranges::sized_range<R>::value>::type* = nullptr>
             auto size() const
                 noexcept(noexcept(ranges::distance(std::declval<iterator>(),
-                                                   end())))
+                                                   std::declval<sentinel>())))
                     -> decltype(ranges::distance(std::declval<iterator>(),
                                                  std::declval<sentinel>()))
             {

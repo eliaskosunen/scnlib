@@ -150,7 +150,8 @@ namespace scn {
             catch (const std::ios_base::failure& f) {
                 return error(error::invalid_scanned_value, f.what());
             }
-            return ss.eof() ? buf.size() : static_cast<size_t>(ss.tellg());
+            return ss.eof() ? static_cast<std::ptrdiff_t>(buf.size())
+                            : static_cast<std::ptrdiff_t>(ss.tellg());
 #else
             SCN_UNUSED(val);
             SCN_UNUSED(loc);

@@ -17,8 +17,6 @@
 
 #include "benchmark.h"
 
-#include <scn/tuple_return.h>
-
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wglobal-constructors")
 SCN_CLANG_IGNORE("-Wunused-template")
@@ -31,16 +29,18 @@ template <typename Int>
 static void scanint_scn(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
-    auto stream = scn::make_stream(data);
     Int i{};
+    auto tmp = scn::scan(data, "{}", i);
+    auto e = scn::scan(tmp.range(), "{}", i);
     for (auto _ : state) {
-        auto e = scn::scan(stream, "{}", i);
+        e = scn::scan(e.range(), "{}", i);
 
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_int_data<Int>(INT_DATA_N);
-                stream = scn::make_stream(data);
+                tmp = scn::scan(data, "{}", i);
+                e = scn::scan(tmp.range(), "{}", i);
                 state.ResumeTiming();
             }
             else {
@@ -60,16 +60,18 @@ template <typename Int>
 static void scanint_scn_default(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
-    auto stream = scn::make_stream(data);
     Int i{};
+    auto tmp = scn::scan(data, "{}", i);
+    auto e = scn::scan(tmp.range(), "{}", i);
     for (auto _ : state) {
-        auto e = scn::scan(stream, scn::default_tag, i);
+        e = scn::scan(e.range(), scn::default_tag, i);
 
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_int_data<Int>(INT_DATA_N);
-                stream = scn::make_stream(data);
+                tmp = scn::scan(data, "{}", i);
+                e = scn::scan(tmp.range(), "{}", i);
                 state.ResumeTiming();
             }
             else {
@@ -84,34 +86,6 @@ static void scanint_scn_default(benchmark::State& state)
 BENCHMARK_TEMPLATE(scanint_scn_default, int);
 BENCHMARK_TEMPLATE(scanint_scn_default, long long);
 BENCHMARK_TEMPLATE(scanint_scn_default, unsigned);
-
-template <typename Int>
-static void scanint_scn_get_value(benchmark::State& state)
-{
-    auto data = generate_int_data<Int>(INT_DATA_N);
-    auto stream = scn::make_stream(data);
-    for (auto _ : state) {
-        auto e = scn::get_value<Int>(stream);
-
-        if (!e) {
-            if (e.error() == scn::error::end_of_stream) {
-                state.PauseTiming();
-                data = generate_int_data<Int>(INT_DATA_N);
-                stream = scn::make_stream(data);
-                state.ResumeTiming();
-            }
-            else {
-                state.SkipWithError("Benchmark errored");
-                break;
-            }
-        }
-    }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
-}
-BENCHMARK_TEMPLATE(scanint_scn_get_value, int);
-BENCHMARK_TEMPLATE(scanint_scn_get_value, long long);
-BENCHMARK_TEMPLATE(scanint_scn_get_value, unsigned);
 
 template <typename Int>
 static void scanint_sstream(benchmark::State& state)

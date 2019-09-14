@@ -19,16 +19,16 @@ function (make_test test source)
 endfunction()
 
 make_test(test test.cpp)
-#make_test(empty empty.cpp)
+make_test(empty empty.cpp)
 
-#make_test(util util.cpp)
-#make_test(small-vector small_vector.cpp)
-#make_test(string-view string_view.cpp)
+make_test(util util.cpp)
+make_test(small-vector small_vector.cpp)
+make_test(string-view string_view.cpp)
 #make_test(until-space until_space.cpp)
-#make_test(locale locale.cpp)
+make_test(locale locale.cpp)
 #make_test(stream stream.cpp)
 
-#make_test(result result.cpp)
+make_test(result result.cpp)
 #make_test(istream istream.cpp)
 #make_test(tuple-return tuple_return.cpp)
 

@@ -13,10 +13,11 @@ if (SCN_USE_32BIT)
     set_target_properties(benchmark PROPERTIES LINK_FLAGS -m32)
 endif ()
 
-add_executable(bench
-    bench.cpp benchmark.h
-    bench_int.cpp bench_float.cpp bench_word.cpp bench_char.cpp bench_buffer.cpp
-    bench_isspace.cpp bench_return.cpp bench_list.cpp)
+#add_executable(bench
+#    bench.cpp benchmark.h
+#    bench_int.cpp bench_float.cpp bench_word.cpp bench_char.cpp bench_buffer.cpp
+#    bench_isspace.cpp bench_return.cpp bench_list.cpp)
+add_executable(bench bench.cpp benchmark.h bench_int.cpp)
 target_link_libraries(bench scn benchmark)
 set_private_flags(bench)
 target_compile_features(bench PRIVATE cxx_std_17)
