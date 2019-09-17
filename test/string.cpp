@@ -72,61 +72,27 @@ TEST_CASE_TEMPLATE("getline", CharT, char, wchar_t)
     }
 }
 
-#if 0
 TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
 {
     using string_type = std::basic_string<CharT>;
     string_type data = widen<CharT>("line1\nline2");
-    auto stream = scn::make_stream(data);
-    auto fstr = widen<CharT>("{}");
-    auto f = scn::basic_string_view<CharT>(fstr.data(), fstr.size());
 
-    SUBCASE("ignore_n")
-    {
-        string_type s{};
-        {
-            auto ret = scn::ignore_n(stream, 6);
-            CHECK(ret);
-        }
-
-        {
-            auto ret = scn::scan(stream, f, s);
-            CHECK(s == widen<CharT>("line2"));
-            CHECK(ret);
-        }
-    }
     SUBCASE("ignore_until")
     {
         string_type s{};
         {
-            auto ret = scn::ignore_until(stream, 0x0a);  // '\n'
+            auto ret = scn::ignore_until(data, 0x0a);  // '\n'
             CHECK(ret);
+            data.assign(ret.range().data(), ret.range().size());
         }
 
         {
-            auto ret = scn::scan(stream, f, s);
+            auto ret = scn::scan(data, scn::default_tag, s);
             CHECK(s == widen<CharT>("line2"));
             CHECK(ret);
         }
     }
-    SUBCASE("ignore_all")
-    {
-        string_type s{};
-        {
-            auto ret = scn::ignore_all(stream);
-            CHECK(ret);
-        }
-
-        {
-            auto ret = scn::scan(stream, f, s);
-            CHECK(!ret);
-            if (!ret) {
-                CHECK(ret.error() == scn::error::end_of_stream);
-            }
-        }
-    }
 }
-#endif
 
 TEST_CASE("string scanf")
 {

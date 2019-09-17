@@ -167,11 +167,11 @@ namespace scn {
         for (auto it = r.begin(); it != r.end(); ++it) {
             if (is_space(*it)) {
                 auto b = r.begin();
+                r.begin() = it;
                 if (keep_final_space) {
-                    r.begin() = it + 2;
-                    return {{&*b, (&*it) + 1}};
+                    ++it;
+                    ++r.begin();
                 }
-                r.begin() = it + 1;
                 return {{&*b, &*it}};
             }
         }
@@ -251,6 +251,71 @@ namespace scn {
             return error(error::end_of_stream, "EOF");
         }
         for (auto& it = r.begin(); it != r.end(); ++it) {
+            auto tmp = *it;
+            if (!tmp) {
+                return tmp.error();
+            }
+            auto ch = tmp.value();
+            if (is_space(ch)) {
+                if (keep_final_space) {
+                    *out = ch;
+                    ++out;
+                }
+                return {};
+            }
+            *out = ch;
+            ++out;
+        }
+        return {};
+    }
+
+    // read_until_space_ranged
+
+    template <
+        typename WrappedRange,
+        typename OutputIterator,
+        typename Sentinel,
+        typename Predicate,
+        typename std::enable_if<WrappedRange::is_direct()>::type* = nullptr>
+    error read_until_space_ranged(WrappedRange& r,
+                                  OutputIterator& out,
+                                  Sentinel end,
+                                  Predicate is_space,
+                                  bool keep_final_space)
+    {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_stream, "EOF");
+        }
+        for (auto& it = r.begin(); it != r.end() && out != end; ++it) {
+            const auto ch = *it;
+            if (is_space(ch)) {
+                if (keep_final_space) {
+                    *out = ch;
+                    ++out;
+                }
+                return {};
+            }
+            *out = ch;
+            ++out;
+        }
+        return {};
+    }
+    template <
+        typename WrappedRange,
+        typename OutputIterator,
+        typename Sentinel,
+        typename Predicate,
+        typename std::enable_if<!WrappedRange::is_direct()>::type* = nullptr>
+    error read_until_space_ranged(WrappedRange& r,
+                                  OutputIterator& out,
+                                  Sentinel end,
+                                  Predicate is_space,
+                                  bool keep_final_space)
+    {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_stream, "EOF");
+        }
+        for (auto& it = r.begin(); it != r.end() && out != end; ++it) {
             auto tmp = *it;
             if (!tmp) {
                 return tmp.error();

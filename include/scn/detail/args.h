@@ -91,21 +91,20 @@ namespace scn {
             return t > none_type && t <= last_numeric_type;
         }
 
-        template <typename Context>
         struct custom_value {
-            using fn_type = error (*)(void*, Context&);
+            // using scan_type = error (*)(void*, Context&, ParseCtx&);
 
             void* value;
-            fn_type scan;
+            void (*scan)();
         };
 
-        template <typename Context, typename T>
-        error scan_custom_arg(void* arg, Context& ctx)
+        template <typename Context, typename ParseCtx, typename T>
+        error scan_custom_arg(void* arg, Context& ctx, ParseCtx& pctx)
         {
             SCN_EXPECT(arg != nullptr);
 
             typename Context::template scanner_type<T> s;
-            auto err = ctx.parse_context().parse(s, ctx);
+            auto err = pctx.parse(s);
             if (!err) {
                 return err;
             }
@@ -113,6 +112,10 @@ namespace scn {
         }
 
         struct monostate {
+        };
+
+        template <typename ParseCtx>
+        struct parse_ctx_tag {
         };
 
         template <typename Context>
@@ -144,7 +147,7 @@ namespace scn {
                 span<char_type>* buffer_value;
                 std::basic_string<char_type>* string_value;
                 basic_string_view<char_type>* string_view_value;
-                custom_value<Context> custom;
+                custom_value custom;
 
                 void* pointer;
             };
@@ -180,10 +183,12 @@ namespace scn {
 
             value(void* val) noexcept : pointer(val) {}
 
-            template <typename T>
-            value(T& val)
-                : custom(custom_value<Context>{std::addressof(val),
-                                               scan_custom_arg<Context, T>})
+            template <typename ParseCtx, typename T>
+            value(parse_ctx_tag<ParseCtx>, T& val)
+                : custom(
+                      custom_value{std::addressof(val),
+                                   reinterpret_cast<void (*)()>(
+                                       &scan_custom_arg<Context, ParseCtx, T>)})
             {
             }
         };
@@ -194,10 +199,24 @@ namespace scn {
             static const type type_tag = Type;
 
             SCN_CONSTEXPR init(T& v) : val(std::addressof(v)) {}
-            SCN_CONSTEXPR14 operator value<Context>()
+            template <typename ParseCtx>
+            SCN_CONSTEXPR14 value<Context> get()
             {
                 SCN_EXPECT(val != nullptr);
                 return value<Context>(*val);
+            }
+        };
+        template <typename Context, typename T>
+        struct init<Context, T, custom_type> {
+            T* val;
+            static const type type_tag = custom_type;
+
+            SCN_CONSTEXPR init(T& v) : val(std::addressof(v)) {}
+            template <typename ParseCtx>
+            SCN_CONSTEXPR14 value<Context> get()
+            {
+                SCN_EXPECT(val != nullptr);
+                return value<Context>(parse_ctx_tag<ParseCtx>(), *val);
             }
         };
 
@@ -267,9 +286,6 @@ namespace scn {
         enum : size_t {
             is_unpacked_bit = size_t{1} << (sizeof(size_t) * 8 - 1)
         };
-
-        template <typename Context>
-        class arg_map;
     }  // namespace detail
 
     SCN_CLANG_PUSH
@@ -283,18 +299,20 @@ namespace scn {
 
         class handle {
         public:
-            explicit handle(detail::custom_value<Context> custom)
+            explicit handle(detail::custom_value custom)
                 : m_custom(std::move(custom))
             {
             }
 
-            error scan(Context& ctx)
+            template <typename ParseCtx>
+            error scan(Context& ctx, ParseCtx& pctx)
             {
-                return m_custom.scan(m_custom.value, ctx);
+                return reinterpret_cast<error (*)(void*, Context&, ParseCtx&)>(
+                    m_custom.scan)(m_custom.value, ctx, pctx);
             }
 
         private:
-            detail::custom_value<Context> m_custom;
+            detail::custom_value m_custom;
         };
 
         SCN_CONSTEXPR basic_arg() = default;
@@ -332,7 +350,6 @@ namespace scn {
                                                typename Ctx::arg_type& arg);
 
         friend class basic_args<Context>;
-        friend class detail::arg_map<Context>;
 
         detail::value<Context> m_value{};
         detail::type m_type{detail::none_type};
@@ -420,22 +437,24 @@ namespace scn {
                    (get_types<Context, Args...>() << 5);
         }
 
-        template <typename Context, typename T>
+        template <typename Context, typename ParseCtx, typename T>
         SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value)
         {
             typename Context::arg_type arg;
             arg.m_type = get_type<Context, T>::value;
-            arg.m_value = make_value<Context>(value, priority_tag<1>{});
+            arg.m_value = make_value<Context>(value, priority_tag<1>{})
+                              .template get<ParseCtx>();
             return arg;
         }
 
-        template <bool Packed, typename Context, typename T>
+        template <bool Packed, typename Context, typename ParseCtx, typename T>
         inline auto make_arg(T& v) ->
             typename std::enable_if<Packed, value<Context>>::type
         {
-            return make_value<Context>(v, priority_tag<1>{});
+            return make_value<Context>(v, priority_tag<1>{})
+                .template get<ParseCtx>();
         }
-        template <bool Packed, typename Context, typename T>
+        template <bool Packed, typename Context, typename ParseCtx, typename T>
         inline auto make_arg(T& v) ->
             typename std::enable_if<!Packed, typename Context::arg_type>::type
         {
@@ -465,8 +484,9 @@ namespace scn {
         static SCN_CONSTEXPR size_t data_size =
             num_args + (is_packed && num_args != 0 ? 0 : 1);
 
-        arg_store(Args&... a)
-            : m_data{{detail::make_arg<is_packed, Context>(a)...}}
+        template <typename ParseCtx>
+        arg_store(detail::parse_ctx_tag<ParseCtx>, Args&... a)
+            : m_data{{detail::make_arg<is_packed, Context, ParseCtx>(a)...}}
         {
         }
 
@@ -480,10 +500,10 @@ namespace scn {
         detail::array<value_type, data_size> m_data;
     };
 
-    template <typename Context, typename... Args>
+    template <typename Context, typename ParseCtx, typename... Args>
     typename Context::template arg_store_type<Args...> make_args(Args&... args)
     {
-        return {args...};
+        return {detail::parse_ctx_tag<ParseCtx>(), args...};
     }
 
     template <typename Context>
@@ -546,8 +566,6 @@ namespace scn {
             return static_cast<typename detail::type>(
                 (m_types & (size_t{0x1f} << shift)) >> shift);
         }
-
-        friend class detail::arg_map<Context>;
 
         void set_data(detail::value<Context>* values)
         {

@@ -127,7 +127,7 @@ namespace scn {
         auto visit(typename Context::arg_type::handle val,
                    detail::priority_tag<1>) -> error
         {
-            return val.scan(*m_ctx);
+            return val.scan(*m_ctx, *m_pctx);
         }
         auto visit(detail::monostate, detail::priority_tag<0>) -> error
         {
@@ -137,7 +137,7 @@ namespace scn {
         template <typename Scanner>
         error parse(Scanner& s)
         {
-            return m_pctx->parse(s, *m_pctx);
+            return m_pctx->parse(s);
         }
 
         Context* m_ctx;

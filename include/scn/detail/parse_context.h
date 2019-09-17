@@ -135,10 +135,10 @@ namespace scn {
 
         SCN_CONSTEXPR14 void arg_handled() const noexcept {}
 
-        template <typename Scanner, typename ParseContext>
-        error parse(Scanner& s, ParseContext& pctx)
+        template <typename Scanner>
+        error parse(Scanner& s)
         {
-            return s.parse(pctx);
+            return s.parse(*this);
         }
 
         expected<string_view_type> parse_arg_id()
@@ -256,10 +256,10 @@ namespace scn {
 
         SCN_CONSTEXPR14 void arg_handled() const noexcept {}
 
-        template <typename Scanner, typename Context>
-        error parse(Scanner& s, Context& ctx)
+        template <typename Scanner>
+        error parse(Scanner& s)
         {
-            return s.parse(ctx);
+            return s.parse(*this);
         }
 
         SCN_CONSTEXPR expected<string_view_type> parse_arg_id() const
@@ -344,8 +344,8 @@ namespace scn {
             --m_args_left;
         }
 
-        template <typename Scanner, typename Context>
-        SCN_CONSTEXPR error parse(Scanner&, Context&) const
+        template <typename Scanner>
+        SCN_CONSTEXPR error parse(Scanner&) const
         {
             return {};
         }

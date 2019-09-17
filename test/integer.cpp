@@ -603,3 +603,15 @@ TEST_CASE("integer scanf")
         CHECK(ret.error() == scn::error::invalid_format_string);
     }
 }
+
+TEST_CASE("trailing")
+{
+    int i{}, j{};
+    auto ret = scn::scan(";42;43;", ";{};{}", i, j);
+    CHECK(ret);
+    CHECK(ret.value() == 2);
+    CHECK(i == 42);
+    CHECK(j == 43);
+    CHECK(ret.range().size() == 1);
+    CHECK(ret.range()[0] == ';');
+}
