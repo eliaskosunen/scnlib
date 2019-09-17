@@ -30,17 +30,16 @@ static void scanint_scn(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
     Int i{};
-    auto tmp = scn::scan(data, "{}", i);
-    auto e = scn::scan(tmp.range(), "{}", i);
+    auto range = scn::wrap(data);
     for (auto _ : state) {
-        e = scn::scan(e.range(), "{}", i);
+        auto ret = scn::scan(range, "{}", i);
+        range = ret.range();
 
-        if (!e) {
-            if (e.error() == scn::error::end_of_stream) {
+        if (!ret) {
+            if (ret.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_int_data<Int>(INT_DATA_N);
-                tmp = scn::scan(data, "{}", i);
-                e = scn::scan(tmp.range(), "{}", i);
+                range = scn::wrap(data);
                 state.ResumeTiming();
             }
             else {
@@ -61,17 +60,16 @@ static void scanint_scn_default(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
     Int i{};
-    auto tmp = scn::scan(data, "{}", i);
-    auto e = scn::scan(tmp.range(), "{}", i);
+    auto range = scn::wrap(data);
     for (auto _ : state) {
-        e = scn::scan(e.range(), scn::default_tag, i);
+        auto ret = scn::scan(range, scn::default_tag, i);
+        range = ret.range();
 
-        if (!e) {
-            if (e.error() == scn::error::end_of_stream) {
+        if (!ret) {
+            if (ret.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_int_data<Int>(INT_DATA_N);
-                tmp = scn::scan(data, "{}", i);
-                e = scn::scan(tmp.range(), "{}", i);
+                range = scn::wrap(data);
                 state.ResumeTiming();
             }
             else {

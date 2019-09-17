@@ -59,6 +59,61 @@ TEST_CASE("general")
     CHECK(ret2.error() == scn::error::end_of_stream);
 }
 
+TEST_CASE("wrapped range")
+{
+    int i;
+
+    // view
+    {
+        auto range = scn::wrap("123 456");
+
+        auto ret = scn::scan(range, "{}", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 123);
+
+        range = ret.range();
+        ret = scn::scan(range, "{}", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 456);
+    }
+
+    // rvalue
+    // scn::wrap from rvalue owning range should fail
+#if 0
+    {
+        auto range = scn::wrap(std::string{"123 456"});
+        auto ret = scn::scan(std::move(range), "{}", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 123);
+
+        range = ret.range();
+        ret = scn::scan(std::move(range), "{}", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 456);
+    }
+#endif
+
+    // lvalue
+    {
+        auto str = std::string{"123 456"};
+        auto range = scn::wrap(str);
+        auto ret = scn::scan(range, "{}", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 123);
+
+        range = ret.range();
+        ret = scn::scan(range, "{}", i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 456);
+    }
+}
+
 TEST_CASE("rvalue range")
 {
     int i{0};

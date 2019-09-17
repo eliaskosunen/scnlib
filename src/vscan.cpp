@@ -62,43 +62,7 @@ namespace scn {
         return visit(ctx, pctx);
     }
 
-    scan_result_for_t<basic_context<detail::range_wrapper_for_t<std::string>,
-                                    basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<std::string>,
-                        basic_default_locale_ref<char>>& ctx,
-          basic_parse_context<basic_default_locale_ref<char>>& pctx)
-    {
-        return visit(ctx, pctx);
-    }
-
-    scan_result_for_t<basic_context<detail::range_wrapper_for_t<std::string>,
-                                    basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<std::string>,
-                        basic_default_locale_ref<char>>& ctx,
-          basic_empty_parse_context<basic_default_locale_ref<char>>& pctx)
-    {
-        return visit(ctx, pctx);
-    }
-
-    scan_result_for_t<basic_context<detail::range_wrapper_for_t<std::string>,
-                                    basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<std::string>,
-                        basic_locale_ref<char>>& ctx,
-          basic_parse_context<basic_default_locale_ref<char>>& pctx)
-    {
-        return visit(ctx, pctx);
-    }
-
-    scan_result_for_t<basic_context<detail::range_wrapper_for_t<std::string>,
-                                    basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<std::string>,
-                        basic_locale_ref<char>>& ctx,
-          basic_empty_parse_context<basic_default_locale_ref<char>>& pctx)
-    {
-        return visit(ctx, pctx);
-    }
-
-#endif // !SCN_HEADER_ONLY
+#endif  // !SCN_HEADER_ONLY
 
     SCN_END_NAMESPACE
 }  // namespace scn

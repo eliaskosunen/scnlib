@@ -61,10 +61,13 @@ namespace scn {
     template <
         typename WrappedRange,
         typename std::enable_if<WrappedRange::is_contiguous()>::type* = nullptr>
-    span<const detail::ranges::range_value_t<WrappedRange>> read_zero_copy(
-        WrappedRange& r,
-        detail::ranges::range_difference_t<WrappedRange> n)
+    expected<span<const detail::ranges::range_value_t<WrappedRange>>>
+    read_zero_copy(WrappedRange& r,
+                   detail::ranges::range_difference_t<WrappedRange> n)
     {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_stream, "EOF");
+        }
         const auto n_to_read = std::min(r.size(), n);
         auto s = make_span(r.data(), static_cast<size_t>(n_to_read)).as_const();
         detail::ranges::advance(r.begin(), n_to_read);
@@ -73,9 +76,9 @@ namespace scn {
     template <typename WrappedRange,
               typename std::enable_if<!WrappedRange::is_contiguous()>::type* =
                   nullptr>
-    span<const detail::ranges::range_value_t<WrappedRange>> read_zero_copy(
-        WrappedRange&,
-        detail::ranges::range_difference_t<WrappedRange>)
+    expected<span<const detail::ranges::range_value_t<WrappedRange>>>
+    read_zero_copy(WrappedRange&,
+                   detail::ranges::range_difference_t<WrappedRange>)
     {
         return {};
     }
@@ -91,7 +94,10 @@ namespace scn {
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
         auto s = read_zero_copy(r, n);
-        it = std::copy(s.begin(), s.end(), it);
+        if (!s) {
+            return s.error();
+        }
+        it = std::copy(s.value().begin(), s.value().end(), it);
         return {};
     }
     template <
@@ -103,6 +109,9 @@ namespace scn {
                     OutputIterator& it,
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_stream, "EOF");
+        }
         for (detail::ranges::range_difference_t<WrappedRange> i = 0; i < n;
              ++i) {
             if (r.begin() == r.end()) {
@@ -123,6 +132,9 @@ namespace scn {
                     OutputIterator& it,
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_stream, "EOF");
+        }
         for (detail::ranges::range_difference_t<WrappedRange> i = 0; i < n;
              ++i) {
             if (r.begin() == r.end()) {
@@ -144,25 +156,28 @@ namespace scn {
         typename WrappedRange,
         typename Predicate,
         typename std::enable_if<WrappedRange::is_contiguous()>::type* = nullptr>
-    span<const detail::ranges::range_value_t<WrappedRange>>
+    expected<span<const detail::ranges::range_value_t<WrappedRange>>>
     read_until_space_zero_copy(WrappedRange& r,
                                Predicate is_space,
                                bool keep_final_space)
     {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_stream, "EOF");
+        }
         for (auto it = r.begin(); it != r.end(); ++it) {
             if (is_space(*it)) {
                 auto b = r.begin();
                 if (keep_final_space) {
                     r.begin() = it + 2;
-                    return {&*b, (&*it) + 1};
+                    return {{&*b, (&*it) + 1}};
                 }
                 r.begin() = it + 1;
-                return {&*b, &*it};
+                return {{&*b, &*it}};
             }
         }
         auto b = r.begin();
         r.begin() = r.end();
-        return {&*b, &*(r.end() - 1) + 1};
+        return {{&*b, &*(r.end() - 1) + 1}};
     }
     template <typename WrappedRange,
               typename Predicate,
@@ -187,7 +202,10 @@ namespace scn {
                            bool keep_final_space)
     {
         auto s = read_until_space_zero_copy(r, is_space, keep_final_space);
-        out = std::copy(s.begin(), s.end(), out);
+        if (!s) {
+            return s.error();
+        }
+        out = std::copy(s.value().begin(), s.value().end(), out);
         return {};
     }
     template <
@@ -201,6 +219,9 @@ namespace scn {
                            Predicate is_space,
                            bool keep_final_space)
     {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_stream, "EOF");
+        }
         for (auto& it = r.begin(); it != r.end(); ++it) {
             const auto ch = *it;
             if (is_space(ch)) {
@@ -226,6 +247,9 @@ namespace scn {
                            Predicate is_space,
                            bool keep_final_space)
     {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_stream, "EOF");
+        }
         for (auto& it = r.begin(); it != r.end(); ++it) {
             auto tmp = *it;
             if (!tmp) {
@@ -338,12 +362,15 @@ namespace scn {
                 }
 
                 auto s = read_zero_copy(ctx.range(), val.ssize());
-                if (s.size() != 0) {
-                    if (s.size() != val.size()) {
+                if (!s) {
+                    return s.error();
+                }
+                if (s.value().size() != 0) {
+                    if (s.value().size() != val.size()) {
                         return error(error::end_of_stream, "EOF");
                     }
-                    std::memcpy(val.begin(), s.begin(),
-                                s.size() * sizeof(char_type));
+                    std::memcpy(val.begin(), s.value().begin(),
+                                s.value().size() * sizeof(char_type));
                     return {};
                 }
 
@@ -355,7 +382,7 @@ namespace scn {
                 }
                 buf.erase(it);
                 std::memcpy(val.begin(), buf.begin(),
-                            s.size() * sizeof(char_type));
+                            buf.size() * sizeof(char_type));
                 return {};
             }
         };
@@ -686,8 +713,11 @@ namespace scn {
                 {
                     auto s = read_until_space_zero_copy(ctx.range(),
                                                         is_space_pred, false);
-                    if (s.size() != 0) {
-                        return do_parse_int(s);
+                    if (!s) {
+                        return s.error();
+                    }
+                    if (s.value().size() != 0) {
+                        return do_parse_int(s.value());
                     }
                 }
 
@@ -1048,8 +1078,11 @@ namespace scn {
                 {
                     auto s = read_until_space_zero_copy(ctx.range(),
                                                         is_space_pred, false);
-                    if (s.size() != 0) {
-                        return do_parse_float(s);
+                    if (!s) {
+                        return s.error();
+                    }
+                    if (s.value().size() != 0) {
+                        return do_parse_float(s.value());
                     }
                 }
 
@@ -1118,8 +1151,12 @@ namespace scn {
                 };
                 auto s = read_until_space_zero_copy(ctx.range(), is_space_pred,
                                                     false);
-                if (s.size() != 0) {
-                    val = std::basic_string<char_type>{s.data(), s.size()};
+                if (!s) {
+                    return s.error();
+                }
+                if (s.value().size() != 0) {
+                    val = std::basic_string<char_type>{s.value().data(),
+                                                       s.value().size()};
                 }
                 else {
                     std::basic_string<char_type> tmp;
@@ -1152,13 +1189,17 @@ namespace scn {
                 };
                 auto s = read_until_space_zero_copy(ctx.range(), is_space_pred,
                                                     false);
-                if (s.size() == 0) {
+                if (!s) {
+                    return s.error();
+                }
+                if (s.value().size() == 0) {
                     // TODO: Compile-time error?
                     return error(error::invalid_operation,
                                  "Cannot read a string_view from a "
                                  "non-contiguous_range");
                 }
-                val = basic_string_view<char_type>(s.data(), s.size());
+                val = basic_string_view<char_type>(s.value().data(),
+                                                   s.value().size());
                 return {};
             }
         };

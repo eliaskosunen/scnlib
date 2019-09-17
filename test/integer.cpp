@@ -24,13 +24,6 @@ struct intpair {
     using value_type = T;
 };
 
-template <typename CharT, typename Input, typename Fmt, typename... T>
-auto do_scan(Input i, Fmt f, T&... a)
-    -> decltype(scn::scan(widen<CharT>(i), widen<CharT>(f).c_str(), a...))
-{
-    return scn::scan(widen<CharT>(i), widen<CharT>(f).c_str(), a...);
-}
-
 TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
 {
     using value_type = typename T::value_type;

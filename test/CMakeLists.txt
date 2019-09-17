@@ -34,9 +34,10 @@ make_test(result result.cpp)
 
 #make_test(char char.cpp)
 make_test(integer integer.cpp)
-#make_test(float floating.cpp)
-#make_test(string string.cpp)
-#make_test(buffer buffer.cpp)
+make_test(float floating.cpp)
+make_test(string string.cpp)
+make_test(buffer buffer.cpp)
+make_test(bool boolean.cpp)
 #make_test(usertype usertype.cpp)
 #make_test(list list.cpp)
 

@@ -23,6 +23,9 @@
 #include <string>
 #include <vector>
 
+template <typename T>
+struct debug;
+
 template <typename CharT>
 std::basic_string<CharT> widen(std::string)
 {
@@ -36,6 +39,19 @@ template <>
 inline std::basic_string<wchar_t> widen<wchar_t>(std::string str)
 {
     return std::wstring(str.begin(), str.end());
+}
+
+template <typename CharT, typename Input, typename Fmt, typename... T>
+auto do_scan(Input i, Fmt f, T&... a)
+    -> decltype(scn::scan(widen<CharT>(i), widen<CharT>(f).c_str(), a...))
+{
+    return scn::scan(widen<CharT>(i), widen<CharT>(f).c_str(), a...);
+}
+template <typename CharT, typename Input, typename Fmt, typename... T>
+auto do_scanf(Input i, Fmt f, T&... a)
+    -> decltype(scn::scanf(widen<CharT>(i), widen<CharT>(f).c_str(), a...))
+{
+    return scn::scanf(widen<CharT>(i), widen<CharT>(f).c_str(), a...);
 }
 
 #define DOCTEST_VALUE_PARAMETERIZED_DATA(data, data_array)                     \

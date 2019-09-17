@@ -154,6 +154,28 @@ namespace scn {
             view_type r;
         };
 
+        template <typename Range>
+        struct lvalue_range_wrapper_return_type {
+            using type = subrange_return_type<Range>;
+
+            template <typename I, typename S>
+            static type make(I&& i, S&& s)
+            {
+                return {std::forward<I>(i), std::forward<S>(s)};
+            }
+        };
+        template <typename CharT, typename Traits, typename Allocator>
+        struct lvalue_range_wrapper_return_type<
+            std::basic_string<CharT, Traits, Allocator>> {
+            using type = reconstructed_return_type<basic_string_view<CharT>>;
+
+            template <typename I, typename S>
+            static type make(I i, S s)
+            {
+                return {std::addressof(*i), std::addressof(*s)};
+            }
+        };
+
         // lvalue range owning its contents
         // const std::string&
         template <typename Range>
@@ -167,7 +189,8 @@ namespace scn {
                 reconstructed_return_type<Range>,
                 view_return_type<Range>>::type;
 #endif
-            using return_type = subrange_return_type<Range>;
+            using return_type =
+                typename lvalue_range_wrapper_return_type<Range>::type;
             using iterator = ranges::iterator_t<const Range>;
             using sentinel = ranges::sentinel_t<const Range>;
             using char_type = typename extract_char_type<Range>::type;
@@ -181,7 +204,8 @@ namespace scn {
 
             return_type get_return() const
             {
-                return {m_begin, ranges::end(m_range)};
+                return lvalue_range_wrapper_return_type<Range>::make(
+                    m_begin, ranges::end(m_range));
             }
 
             const Range& range() const noexcept
@@ -190,6 +214,10 @@ namespace scn {
             }
 
             SCN_NODISCARD iterator& begin() noexcept
+            {
+                return m_begin;
+            }
+            const iterator& begin() const noexcept
             {
                 return m_begin;
             }
@@ -304,6 +332,10 @@ namespace scn {
             {
                 return m_begin;
             }
+            const iterator& begin() const noexcept
+            {
+                return m_begin;
+            }
             sentinel end() const
                 noexcept(noexcept(ranges::end(std::declval<const Range&>())))
             {
@@ -406,6 +438,10 @@ namespace scn {
             {
                 return m_begin;
             }
+            const iterator& begin() const noexcept
+            {
+                return m_begin;
+            }
             sentinel end() const
                 noexcept(noexcept(ranges::end(std::declval<const Range&>())))
             {
@@ -465,11 +501,33 @@ namespace scn {
             Range m_range;
             iterator m_begin;
             iterator m_rollback;
-        };  // namespace detail
+        };
 
         namespace _make_range_wrapper {
             struct fn {
             private:
+                template <typename Range>
+                static view_range_wrapper<Range> impl(
+                    view_range_wrapper<Range> r,
+                    priority_tag<3>)
+                {
+                    return r;
+                }
+                template <typename Range>
+                static lvalue_range_wrapper<Range> impl(
+                    lvalue_range_wrapper<Range> r,
+                    priority_tag<3>)
+                {
+                    return r;
+                }
+                template <typename Range>
+                static rvalue_range_wrapper<Range> impl(
+                    rvalue_range_wrapper<Range> r,
+                    priority_tag<3>)
+                {
+                    return r;
+                }
+
                 template <typename CharT,
                           std::size_t N,
                           typename std::enable_if<
@@ -479,6 +537,30 @@ namespace scn {
                     priority_tag<2>)
                 {
                     return view_range_wrapper<basic_string_view<CharT>>(str);
+                }
+                template <typename CharT,
+                          std::size_t N,
+                          typename std::enable_if<
+                              std::is_integral<CharT>::value>::type* = nullptr>
+                static view_range_wrapper<basic_string_view<CharT>> impl(
+                    CharT(&&str)[N],
+                    priority_tag<2>) = delete;
+
+                template <typename CharT, typename Traits, typename Allocator>
+                static view_range_wrapper<basic_string_view<CharT>> impl(
+                    const std::basic_string<CharT, Traits, Allocator>& str,
+                    priority_tag<2>)
+                {
+                    return view_range_wrapper<basic_string_view<CharT>>(
+                        {str.data(), str.size()});
+                }
+                template <typename CharT, typename Traits, typename Allocator>
+                static rvalue_range_wrapper<
+                    std::basic_string<CharT, Traits, Allocator>>
+                impl(std::basic_string<CharT, Traits, Allocator>&& str,
+                     priority_tag<2>)
+                {
+                    return {std::move(str)};
                 }
 
                 template <typename Range,
@@ -516,9 +598,9 @@ namespace scn {
                 template <typename Range>
                 auto operator()(Range&& r) const
                     -> decltype(fn::impl(std::forward<Range>(r),
-                                         priority_tag<2>{}))
+                                         priority_tag<3>{}))
                 {
-                    return fn::impl(std::forward<Range>(r), priority_tag<2>{});
+                    return fn::impl(std::forward<Range>(r), priority_tag<3>{});
                 }
             };
         }  // namespace _make_range_wrapper
@@ -530,7 +612,51 @@ namespace scn {
         template <typename Range>
         using range_wrapper_for_t =
             decltype(make_range_wrapper(std::declval<Range>()));
-    }  // namespace detail
+
+        namespace _wrap {
+            struct fn {
+            private:
+                template <
+                    typename Range,
+                    typename std::enable_if<
+                        ranges::view<Range>::value &&
+                        !std::is_reference<Range>::value>::type* = nullptr>
+                static auto impl(Range&& r, priority_tag<1>)
+                    -> decltype(make_range_wrapper(std::forward<Range>(r)))
+                {
+                    return make_range_wrapper(std::forward<Range>(r));
+                }
+                template <typename Range>
+                static auto impl(const Range& r, priority_tag<1>)
+                    -> decltype(make_range_wrapper(r))
+                {
+                    return make_range_wrapper(r);
+                }
+                template <
+                    typename Range,
+                    typename std::enable_if<
+                        !ranges::view<Range>::value &&
+                        !std::is_reference<Range>::value>::type* = nullptr>
+                static auto impl(Range&& r, priority_tag<0>) -> decltype(
+                    make_range_wrapper(std::forward<Range>(r))) = delete;
+
+            public:
+                template <typename Range>
+                auto operator()(Range&& r) const
+                    noexcept(noexcept(fn::impl(std::forward<Range>(r),
+                                               priority_tag<1>{})))
+                        -> decltype(fn::impl(std::forward<Range>(r),
+                                             priority_tag<1>{}))
+                {
+                    return fn::impl(std::forward<Range>(r), priority_tag<1>{});
+                }
+            };
+        }  // namespace _wrap
+    }      // namespace detail
+    namespace {
+        static SCN_CONSTEXPR auto& wrap =
+            detail::static_const<detail::_wrap::fn>::value;
+    }
 
     SCN_END_NAMESPACE
 }  // namespace scn

@@ -67,32 +67,6 @@ namespace scn {
                         basic_locale_ref<char>>&,
           basic_empty_parse_context<basic_default_locale_ref<char>>&);
 
-    // overloads for std::string
-
-    scan_result_for_t<basic_context<detail::range_wrapper_for_t<std::string>,
-                                    basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<std::string>,
-                        basic_default_locale_ref<char>>&,
-          basic_parse_context<basic_default_locale_ref<char>>&);
-
-    scan_result_for_t<basic_context<detail::range_wrapper_for_t<std::string>,
-                                    basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<std::string>,
-                        basic_default_locale_ref<char>>&,
-          basic_empty_parse_context<basic_default_locale_ref<char>>&);
-
-    scan_result_for_t<basic_context<detail::range_wrapper_for_t<std::string>,
-                                    basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<std::string>,
-                        basic_locale_ref<char>>&,
-          basic_parse_context<basic_default_locale_ref<char>>&);
-
-    scan_result_for_t<basic_context<detail::range_wrapper_for_t<std::string>,
-                                    basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<std::string>,
-                        basic_locale_ref<char>>&,
-          basic_empty_parse_context<basic_default_locale_ref<char>>&);
-
 #endif // !SCN_HEADER_ONLY
 
     SCN_END_NAMESPACE
