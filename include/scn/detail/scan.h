@@ -135,6 +135,68 @@ namespace scn {
         return vscan(ctx, pctx);
     }
 
+    // getline
+
+    namespace detail {
+        template <typename WrappedRange, typename String, typename CharT>
+        auto getline_impl(WrappedRange& r, String& str, CharT until)
+            -> scan_result<typename WrappedRange::return_type, error>
+        {
+            auto until_pred = [until](CharT ch) { return ch == until; };
+            auto s = read_until_space_zero_copy(r, until_pred, false);
+            if (!s) {
+                return {std::move(s.error()), r.get_return()};
+            }
+            if (s.value().size() != 0) {
+                str.assign(s.value().data(), s.value().size());
+                return {{}, r.get_return()};
+            }
+
+            String tmp;
+            auto out = std::back_inserter(tmp);
+            auto e = read_until_space(r, out, until_pred, false);
+            if (!e) {
+                return {std::move(e), r.get_return()};
+            }
+            str.assign(tmp);
+            return {{}, r.get_return()};
+        }
+    }  // namespace detail
+
+    template <typename Range, typename String, typename CharT>
+    auto getline(const Range& r, String& str, CharT until) -> scan_result<
+        typename detail::range_wrapper_for_t<const Range&>::return_type,
+        error>
+    {
+        auto wrapped = detail::make_range_wrapper(r);
+        return getline_impl(wrapped, str, until);
+    }
+    template <typename Range,
+              typename String,
+              typename CharT,
+              typename std::enable_if<!std::is_reference<Range>::value>::type* =
+                  nullptr>
+    auto getline(Range&& r, String& str, CharT until)
+        -> scan_result<typename detail::range_wrapper_for_t<Range>::return_type,
+                       error>
+    {
+        auto wrapped = detail::make_range_wrapper(std::move(r));
+        return getline_impl(wrapped, str, until);
+    }
+
+    template <typename Range,
+              typename String,
+              typename CharT = typename detail::extract_char_type<
+                  detail::range_wrapper_for_t<Range>>::type>
+    auto getline(Range&& r, String& str)
+        -> decltype(getline(std::forward<Range>(r),
+                            str,
+                            detail::default_widen<CharT>::widen('\n')))
+    {
+        return getline(std::forward<Range>(r), str,
+                       detail::default_widen<CharT>::widen('\n'));
+    }
+
     SCN_END_NAMESPACE
 }  // namespace scn
 

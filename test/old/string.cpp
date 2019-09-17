@@ -23,7 +23,7 @@ TEST_CASE_TEMPLATE("string test", CharT, char, wchar_t)
     using string_type = std::basic_string<CharT>;
     {
         string_type s{}, s2{};
-        auto e = do_scan<CharT>("thisisaword nextword", "{} {}", s, s2);
+        auto e = scan_value<CharT>("thisisaword nextword", "{} {}", s, s2);
         CHECK(s == widen<CharT>("thisisaword"));
         CHECK(s2 == widen<CharT>("nextword"));
         CHECK(e);
@@ -31,21 +31,21 @@ TEST_CASE_TEMPLATE("string test", CharT, char, wchar_t)
     }
     {
         string_type s{};
-        auto e = do_scan<CharT>("WoRdW1th_Special<>Charact3rs!?", "{}", s);
+        auto e = scan_value<CharT>("WoRdW1th_Special<>Charact3rs!?", "{}", s);
         CHECK(s == widen<CharT>("WoRdW1th_Special<>Charact3rs!?"));
         CHECK(e);
         CHECK(e.value() == 1);
     }
     {
         string_type s{};
-        auto e = do_scan<CharT>("foo", "{:s}", s);
+        auto e = scan_value<CharT>("foo", "{:s}", s);
         CHECK(s == widen<CharT>("foo"));
         CHECK(e);
         CHECK(e.value());
     }
     {
         string_type s{};
-        auto e = do_scan<CharT>("foo", "{:a}", s);
+        auto e = scan_value<CharT>("foo", "{:a}", s);
         CHECK(s.empty());
         CHECK(!e);
         CHECK(e.error() == scn::error::invalid_format_string);
@@ -58,21 +58,21 @@ TEST_CASE_TEMPLATE("getline", CharT, char, wchar_t)
     string_type data = widen<CharT>(
         "firstline\n"
         "Second line with spaces");
+    auto stream = scn::make_stream(data);
 
     SUBCASE("test")
     {
         string_type s{};
-        auto ret = scn::getline(data, s);
+        auto ret = scn::getline(stream, s);
         CHECK(s == widen<CharT>("firstline"));
         CHECK(ret);
 
-        auto ret2 = scn::getline(ret.range(), s);
+        ret = scn::getline(stream, s);
         CHECK(s == widen<CharT>("Second line with spaces"));
-        CHECK(ret2);
+        CHECK(ret);
     }
 }
 
-#if 0
 TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
 {
     using string_type = std::basic_string<CharT>;
@@ -126,13 +126,12 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
         }
     }
 }
-#endif
 
 TEST_CASE("string scanf")
 {
     std::string str{};
 
-    auto ret = do_scanf<char>("str", "%s", str);
+    auto ret = scanf_value<char>("str", "%s", str);
     CHECK(ret);
     CHECK(ret.value() == 1);
     CHECK(str == "str");

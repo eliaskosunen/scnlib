@@ -528,6 +528,7 @@ namespace scn {
                     return r;
                 }
 
+                // string literal -> string_view
                 template <typename CharT,
                           std::size_t N,
                           typename std::enable_if<
@@ -546,6 +547,7 @@ namespace scn {
                     CharT(&&str)[N],
                     priority_tag<2>) = delete;
 
+                // std::string -> string_view
                 template <typename CharT, typename Traits, typename Allocator>
                 static view_range_wrapper<basic_string_view<CharT>> impl(
                     const std::basic_string<CharT, Traits, Allocator>& str,
@@ -561,6 +563,15 @@ namespace scn {
                      priority_tag<2>)
                 {
                     return {std::move(str)};
+                }
+
+                // span -> string_view
+                template <typename CharT>
+                static view_range_wrapper<
+                    basic_string_view<typename std::remove_const<CharT>::type>>
+                impl(span<CharT> s, priority_tag<2>)
+                {
+                    return {s.data(), s.size()};
                 }
 
                 template <typename Range,

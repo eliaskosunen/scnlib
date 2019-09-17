@@ -144,12 +144,12 @@ namespace scn {
         ParseCtx* m_pctx;
     };
 
-    template <typename ReturnType>
-    class scan_result : public result<std::ptrdiff_t> {
+    template <typename ReturnType, typename Base = result<std::ptrdiff_t>>
+    class scan_result : public Base {
     public:
         using return_type = ReturnType;
         using range_type = typename return_type::view_type;
-        using base_type = result<std::ptrdiff_t>;
+        using base_type = Base;
 
         SCN_CONSTEXPR scan_result(base_type&& b, return_type&& r)
             : base_type(std::move(b)), m_range(std::move(r))
