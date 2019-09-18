@@ -30,7 +30,8 @@ make_test(locale locale.cpp)
 
 make_test(result result.cpp)
 #make_test(istream istream.cpp)
-#make_test(tuple-return tuple_return.cpp)
+make_test(tuple-return tuple_return.cpp)
+target_compile_features(test-tuple-return PUBLIC cxx_std_17)
 
 make_test(char char.cpp)
 make_test(integer integer.cpp)
@@ -39,7 +40,7 @@ make_test(string string.cpp)
 make_test(buffer buffer.cpp)
 make_test(bool boolean.cpp)
 make_test(usertype usertype.cpp)
-#make_test(list list.cpp)
+make_test(list list.cpp)
 
 if (SCN_BUILD_LOCALE_TESTS)
     #make_test(locale_scan locale_scan.cpp)

@@ -34,6 +34,8 @@ namespace scn {
             typename scan_result_for_range<Range>::type;
     }  // namespace detail
 
+    // scan
+
     template <typename Range, typename Format, typename... Args>
     auto scan(const Range& r, Format f, Args&... a)
         -> detail::scan_result_for_range_t<const Range&>
@@ -65,6 +67,54 @@ namespace scn {
 
         auto args = make_args<context_type, parse_context_type>(a...);
         auto ctx = context_type(detail::make_range_wrapper(std::move(r)), args);
+        auto pctx = parse_context_type(f, ctx);
+        return vscan(ctx, pctx);
+    }
+
+    // scan localized
+
+    template <typename Locale,
+              typename Range,
+              typename Format,
+              typename... Args>
+    auto scan_localized(const Locale& loc, const Range& r, Format f, Args&... a)
+        -> detail::scan_result_for_range_t<const Range&>
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using range_type = detail::range_wrapper_for_t<const Range&>;
+        using locale_type = basic_locale_ref<typename range_type::char_type>;
+        using context_type = basic_context<range_type, locale_type>;
+        using parse_context_type =
+            basic_parse_context<typename context_type::locale_type>;
+
+        auto args = make_args<context_type, parse_context_type>(a...);
+        auto ctx = context_type(detail::make_range_wrapper(r), args,
+                                {std::addressof(loc)});
+        auto pctx = parse_context_type(f, ctx);
+        return vscan(ctx, pctx);
+    }
+    template <typename Locale,
+              typename Range,
+              typename Format,
+              typename... Args>
+    auto scan_localized(const Locale& loc, Range&& r, Format f, Args&... a) ->
+        typename std::enable_if<!std::is_reference<Range>::value,
+                                detail::scan_result_for_range_t<Range>>::type
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using range_type = detail::range_wrapper_for_t<Range>;
+        using locale_type = basic_locale_ref<typename range_type::char_type>;
+        using context_type = basic_context<range_type, locale_type>;
+        using parse_context_type =
+            basic_parse_context<typename context_type::locale_type>;
+
+        auto args = make_args<context_type, parse_context_type>(a...);
+        auto ctx = context_type(detail::make_range_wrapper(r), args,
+                                {std::addressof(loc)});
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx);
     }
@@ -161,8 +211,8 @@ namespace scn {
                     --size;
                 }
                 str.clear();
-                str.resize(size);
-                std::memcpy(&str[0], s.value().data(), size * sizeof(CharT));
+                str.resize(s.value().size());
+                std::copy(s.value().begin(), s.value().end(), str.begin());
                 return {{}, r.get_return()};
             }
 
@@ -177,6 +227,32 @@ namespace scn {
             }
             str = std::move(tmp);
             return {{}, r.get_return()};
+        }
+        template <typename WrappedRange, typename CharT>
+        auto getline_impl(WrappedRange& r,
+                          basic_string_view<CharT>& str,
+                          CharT until)
+            -> scan_result<typename WrappedRange::return_type, error>
+        {
+            auto until_pred = [until](CharT ch) { return ch == until; };
+            auto s = read_until_space_zero_copy(r, until_pred, true);
+            if (!s) {
+                return {std::move(s.error()), r.get_return()};
+            }
+            if (s.value().size() != 0) {
+                auto size = s.value().size();
+                if (until_pred(s.value()[size - 1])) {
+                    --size;
+                }
+                str = basic_string_view<CharT>{s.value().data(),
+                                               s.value().size()};
+                return {{}, r.get_return()};
+            }
+            return {
+                error(
+                    error::invalid_operation,
+                    "Cannot getline a string_view from a non-contiguous range"),
+                r.get_return()};
         }
     }  // namespace detail
 
@@ -393,6 +469,93 @@ namespace scn {
         }
         return ret;
     }
+
+    // list
+
+    template <typename T, typename OutputIt>
+    struct list {
+        using value_type = T;
+        using iterator = OutputIt;
+
+        OutputIt it;
+    };
+    template <typename Container>
+    list<typename Container::value_type, std::back_insert_iterator<Container>>
+    make_list(Container& c)
+    {
+        return {std::back_inserter(c)};
+    }
+
+    template <typename CharT, typename T, typename OutputIt>
+    struct scanner<CharT, list<T, OutputIt>> {
+        template <typename ParseCtx>
+        error parse(ParseCtx& pctx)
+        {
+            pctx.arg_begin();
+            if (SCN_UNLIKELY(!pctx)) {
+                return error(error::invalid_format_string,
+                             "Unexpected format string end");
+            }
+            if (!pctx.check_arg_end()) {
+                separator = pctx.next();
+                pctx.advance();
+            }
+            if (!pctx.check_arg_end()) {
+                return error(error::invalid_format_string,
+                             "Expected argument end");
+            }
+            pctx.arg_end();
+            return {};
+        }
+
+        template <typename Context>
+        error scan(list<T, OutputIt>& val, Context& ctx)
+        {
+            detail::small_vector<T, 8> buf{};
+
+            while (true) {
+                auto ret = skip_range_whitespace(ctx);
+                if (!ret) {
+                    if (ret == scn::error::end_of_stream) {
+                        break;
+                    }
+                    return ret;
+                }
+
+                T tmp{};
+                auto sret = ::scn::scan(ctx.range(), default_tag, tmp);
+                ctx.range() = sret.range();
+                if (!sret) {
+                    if (sret.error() == scn::error::end_of_stream) {
+                        break;
+                    }
+                    return sret.error();
+                }
+                buf.push_back(tmp);
+
+                if (separator != 0) {
+                    auto sep_ret = read_char(ctx.range());
+                    if (!sep_ret) {
+                        if (sep_ret.error() == scn::error::end_of_stream) {
+                            break;
+                        }
+                        return sep_ret.error();
+                    }
+                    if (sep_ret.value() == separator) {
+                        continue;
+                    }
+                    else {
+                        return error(error::invalid_scanned_value,
+                                     "Invalid separator character");
+                    }
+                }
+            }
+            std::copy(buf.begin(), buf.end(), val.it);
+            return {};
+        }
+
+        CharT separator{0};
+    };
 
     SCN_END_NAMESPACE
 }  // namespace scn

@@ -18,9 +18,8 @@
 #ifndef SCN_ALL_H
 #define SCN_ALL_H
 
-#include "istream.h"
-#include "ranges.h"
 #include "scn.h"
+#include "tuple_return.h"
 
 #endif  // SCN_ALL_H
 

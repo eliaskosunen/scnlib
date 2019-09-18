@@ -45,7 +45,14 @@ namespace scn {
 
         template <typename R>
         basic_context(R&& r, args_type args)
-            : m_range(std::forward<R>(r)), m_args(std::move(args))
+            : LocaleRef{}, m_range(std::forward<R>(r)), m_args(std::move(args))
+        {
+        }
+        template <typename R>
+        basic_context(R&& r, args_type args, LocaleRef&& loc)
+            : LocaleRef(std::move(loc)),
+              m_range(std::forward<R>(r)),
+              m_args(std::move(args))
         {
         }
 
