@@ -262,3 +262,34 @@ TEST_CASE("empty span")
     CHECK(ret);
     CHECK(ret.value() == 1);
 }
+
+TEST_CASE("empty input")
+{
+    int i{};
+    auto ret = scn::scan("", "{}", i);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(i == 0);
+    CHECK(ret.error() == scn::error::end_of_stream);
+}
+TEST_CASE("empty format string")
+{
+    int i{};
+    auto ret = scn::scan("", "", i);
+    CHECK(ret);
+    CHECK(ret.value() == 0);
+    CHECK(i == 0);
+}
+TEST_CASE("unpacked arguments")
+{
+    std::array<int, 16> a{{0}};
+    auto ret =
+        scn::scan("0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15", scn::default_tag,
+                  a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9],
+                  a[10], a[11], a[12], a[13], a[14], a[15]);
+    CHECK(ret);
+    CHECK(ret.value() == 16);
+    for (int i = 0; i < 16; ++i) {
+        CHECK(a[static_cast<size_t>(i)] == i);
+    }
+}

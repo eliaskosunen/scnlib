@@ -287,17 +287,20 @@ namespace scn {
                         return ctx.next_arg(pctx);
                     }
                     if (ctx.locale().is_digit(id.front())) {
-                        std::ptrdiff_t tmp = 0;
-                        for (auto ch : id) {
-                            tmp =
-                                tmp * 10 +
-                                static_cast<std::ptrdiff_t>(
-                                    ch - detail::ascii_widen<
-                                             typename Context::char_type>('0'));
+                        auto s = detail::integer_scanner<std::ptrdiff_t>{};
+                        s.base = 10;
+                        std::ptrdiff_t i{0};
+                        auto span = make_span(id.data(), id.size()).as_const();
+                        auto ret = s._read_signed(
+                            i, 1, span, typename decltype(span)::value_type{0});
+                        if (!ret || ret.value() != span.end()) {
+                            return error(error::invalid_format_string,
+                                         "Failed to parse argument id from "
+                                         "format string");
                         }
-                        return ctx.arg(pctx, tmp);
+                        return ctx.arg(pctx, i);
                     }
-                    return ctx.arg(id);
+                    return ctx.arg(pctx, id);
                 }
                 ();
                 if (!arg_wrapped) {

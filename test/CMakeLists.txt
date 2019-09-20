@@ -46,8 +46,8 @@ if (SCN_BUILD_LOCALE_TESTS)
     #make_test(locale_scan locale_scan.cpp)
 endif ()
 
-#add_subdirectory(each)
+add_subdirectory(each)
 
 if (SCN_BUILD_FUZZING)
-    #add_subdirectory(fuzz)
+    add_subdirectory(fuzz)
 endif ()

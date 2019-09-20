@@ -84,7 +84,8 @@ namespace scn {
         {
             return pctx.check_arg_id(id) ? do_get_arg(id) : arg_type{};
         }
-        expected<arg_type> arg(basic_string_view<char_type>)
+        template <typename ParseCtx>
+        expected<arg_type> arg(ParseCtx&, basic_string_view<char_type>)
         {
             return arg_type{};
         }

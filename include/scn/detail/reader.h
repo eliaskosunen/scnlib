@@ -806,7 +806,6 @@ namespace scn {
             uint8_t localized{0};
             bool have_thsep{false};
 
-        private:
             template <typename CharT>
             expected<std::ptrdiff_t> _parse_int(T& val,
                                                 span<const CharT> s,
@@ -1164,7 +1163,6 @@ namespace scn {
 
             bool localized{false};
 
-        private:
             template <typename CharT>
             expected<std::ptrdiff_t> _read_float(T& val, span<const CharT> s)
             {

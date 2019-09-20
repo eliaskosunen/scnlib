@@ -23,26 +23,15 @@
 
 TEST_CASE_TEMPLATE_DEFINE("integer each", T, integer_each_test)
 {
-    std::vector<scn::method> methods{scn::method::sto, scn::method::strto,
-                                     scn::method::custom};
-    if (scn::is_int_from_chars_available()) {
-        methods.push_back(scn::method::from_chars);
-    }
-    scn::method method{};
-
-    DOCTEST_VALUE_PARAMETERIZED_DATA(method, methods);
-
     const auto min = std::numeric_limits<T>::min();
     const auto max = std::numeric_limits<T>::max();
-    const auto options = scn::options::builder{}.int_method(method).make();
     auto check = [&](T val) {
         std::ostringstream oss;
         oss << val;
         auto str = oss.str();
-        auto stream = scn::make_stream(str);
 
         T tmp{};
-        auto ret = scn::scan(options, stream, scn::default_tag, tmp);
+        auto ret = scn::scan(str, scn::default_tag, tmp);
 
         CHECK(ret);
         CHECK(ret.value() == 1);
@@ -65,9 +54,8 @@ TEST_CASE_TEMPLATE_DEFINE("integer each", T, integer_each_test)
         check(i);
     }
     for (T i = max - 1000; i != max; ++i) {
-        check(i);
+        check(static_cast<T>(i + T{1}));
     }
-    check(max);
 }
 
 TEST_CASE_TEMPLATE_INSTANTIATE(integer_each_test,

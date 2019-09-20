@@ -18,6 +18,16 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
+TEST_CASE("simple")
+{
+    int i{};
+    auto ret = scn::scan("42", "{}", i);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
+    CHECK(i == 42);
+    CHECK(ret.range().size() == 0);
+}
+
 template <typename CharT, typename T>
 struct intpair {
     using char_type = CharT;

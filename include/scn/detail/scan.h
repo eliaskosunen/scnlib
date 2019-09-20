@@ -211,8 +211,9 @@ namespace scn {
                     --size;
                 }
                 str.clear();
-                str.resize(s.value().size());
-                std::copy(s.value().begin(), s.value().end(), str.begin());
+                str.resize(size);
+                std::copy(s.value().begin(), s.value().begin() + size,
+                          str.begin());
                 return {{}, r.get_return()};
             }
 
@@ -244,8 +245,7 @@ namespace scn {
                 if (until_pred(s.value()[size - 1])) {
                     --size;
                 }
-                str = basic_string_view<CharT>{s.value().data(),
-                                               s.value().size()};
+                str = basic_string_view<CharT>{s.value().data(), size};
                 return {{}, r.get_return()};
             }
             return {
@@ -288,13 +288,11 @@ namespace scn {
               typename String,
               typename CharT = typename detail::extract_char_type<
                   detail::range_wrapper_for_t<Range>>::type>
-    auto getline(Range&& r, String& str)
-        -> decltype(getline(std::forward<Range>(r),
-                            str,
-                            detail::default_widen<CharT>::widen('\n')))
+    auto getline(Range&& r, String& str) -> decltype(
+        getline(std::forward<Range>(r), str, detail::ascii_widen<CharT>('\n')))
     {
         return getline(std::forward<Range>(r), str,
-                       detail::default_widen<CharT>::widen('\n'));
+                       detail::ascii_widen<CharT>('\n'));
     }
 
     // ignore

@@ -15,32 +15,19 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <scn/ranges.h>
 #include <scn/scn.h>
+#include <iostream>
+#include <vector>
 
 template <typename T>
 void run(const std::string& source, T& val)
 {
-    auto stream = scn::make_stream(source);
+    auto wrapped = scn::wrap(source);
     while (true) {
-        auto ret = scn::scan_default(stream, val);
+        auto ret = scn::scan(wrapped, scn::default_tag, val);
+        wrapped = ret.range();
         if (!ret) {
-            if (ret.error() == scn::error::end_of_stream) {
-                break;
-            }
-        }
-    }
-}
-
-template <typename T>
-void run_range(const std::string& source, T& val)
-{
-    while (true) {
-        auto ret = scn::ranges::scan(source, "{}", val);
-        if (!ret) {
-            if (ret.error() == scn::error::end_of_stream) {
-                break;
-            }
+            break;
         }
     }
 }
@@ -51,44 +38,36 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 
     std::string str;
     run(source, str);
-    run_range(source, str);
 
     char ch;
     run(source, ch);
-    run_range(source, ch);
 
     int i;
     run(source, i);
-    run_range(source, i);
 
     double d;
     run(source, d);
-    run_range(source, d);
 
     long long ll;
     run(source, ll);
-    run_range(source, ll);
 
     unsigned u;
     run(source, u);
-    run_range(source, u);
 
     std::vector<char> vec(32, 0);
     auto s = scn::make_span(vec);
     run(source, s);
-    run_range(source, s);
 
-    {
-        std::string source(reinterpret_cast<const char*>(data), size);
-        auto stream = scn::make_stream(source);
+    // empty format string would loop forever
+    if (size != 0) {
+        auto wrapped = scn::wrap(source);
         std::string str{};
-        while (true) {
-            auto f = scn::string_view(source.data(), source.size());
-            auto ret = scn::scan(stream, f, str);
+        while (wrapped.size() != 0) {
+            auto f = scn::string_view(wrapped.data(), wrapped.size());
+            auto ret = scn::scan(wrapped, f, str);
+            wrapped = ret.range();
             if (!ret) {
-                if (ret.error() == scn::error::end_of_stream) {
-                    break;
-                }
+                break;
             }
         }
     }

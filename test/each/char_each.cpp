@@ -33,10 +33,8 @@ TEST_CASE("char each")
 
     for (auto ch : vec) {
         std::string source(1, ch);
-        auto stream = scn::make_stream(source);
-
         char tmp;
-        auto ret = scn::scan(stream, scn::default_tag, tmp);
+        auto ret = scn::scan(source, scn::default_tag, tmp);
 
         CHECK(ret);
         CHECK(ret.value() == 1);
@@ -56,10 +54,8 @@ TEST_CASE("wchar_t each")
         }
 
         std::wstring source(1, ch);
-        auto stream = scn::make_stream(source);
-
         wchar_t tmp;
-        auto ret = scn::scan(stream, scn::default_tag, tmp);
+        auto ret = scn::scan(source, scn::default_tag, tmp);
 
         CHECK(ret);
         CHECK(ret.value() == 1);

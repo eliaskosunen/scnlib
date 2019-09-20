@@ -220,7 +220,7 @@ namespace scn {
             }
         };
 
-        template <typename Context, typename T>
+        template <typename Context, typename ParseCtx, typename T>
         SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value);
 
 #define SCN_MAKE_VALUE(Tag, Type)                                           \
@@ -341,7 +341,7 @@ namespace scn {
         {
         }
 
-        template <typename ContextType, typename T>
+        template <typename ContextType, typename ParseCtx, typename T>
         friend SCN_CONSTEXPR14 typename ContextType::arg_type detail::make_arg(
             T& value);
 
@@ -458,7 +458,7 @@ namespace scn {
         inline auto make_arg(T& v) ->
             typename std::enable_if<!Packed, typename Context::arg_type>::type
         {
-            return typename Context::arg_type(v);
+            return make_arg<Context, ParseCtx>(v);
         }
     }  // namespace detail
 
@@ -578,6 +578,7 @@ namespace scn {
 
         arg_type do_get(std::ptrdiff_t i) const
         {
+            SCN_EXPECT(i >= 0);
             if (!is_packed()) {
                 auto num_args = static_cast<std::ptrdiff_t>(max_size());
                 if (SCN_LIKELY(i < num_args)) {
@@ -586,6 +587,7 @@ namespace scn {
                 return {};
             }
 
+            SCN_EXPECT(m_values);
             if (SCN_UNLIKELY(
                     i > static_cast<std::ptrdiff_t>(detail::max_packed_args))) {
                 return {};
