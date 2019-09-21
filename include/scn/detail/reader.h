@@ -32,7 +32,7 @@ namespace scn {
 
     template <
         typename WrappedRange,
-        typename std::enable_if<WrappedRange::is_direct()>::type* = nullptr>
+        typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
     expected<detail::ranges::range_value_t<WrappedRange>> read_char(
         WrappedRange& r)
     {
@@ -45,7 +45,7 @@ namespace scn {
     }
     template <
         typename WrappedRange,
-        typename std::enable_if<!WrappedRange::is_direct()>::type* = nullptr>
+        typename std::enable_if<!WrappedRange::is_direct>::type* = nullptr>
     detail::ranges::range_value_t<WrappedRange> read_char(WrappedRange& r)
     {
         if (r.begin() == r.end()) {
@@ -60,7 +60,7 @@ namespace scn {
 
     template <
         typename WrappedRange,
-        typename std::enable_if<WrappedRange::is_contiguous()>::type* = nullptr>
+        typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
     expected<span<const detail::ranges::range_value_t<WrappedRange>>>
     read_zero_copy(WrappedRange& r,
                    detail::ranges::range_difference_t<WrappedRange> n)
@@ -68,13 +68,13 @@ namespace scn {
         if (r.begin() == r.end()) {
             return error(error::end_of_stream, "EOF");
         }
-        const auto n_to_read = std::min(r.size(), n);
+        const auto n_to_read = detail::min(r.size(), n);
         auto s = make_span(r.data(), static_cast<size_t>(n_to_read)).as_const();
         detail::ranges::advance(r.begin(), n_to_read);
         return s;
     }
     template <typename WrappedRange,
-              typename std::enable_if<!WrappedRange::is_contiguous()>::type* =
+              typename std::enable_if<!WrappedRange::is_contiguous>::type* =
                   nullptr>
     expected<span<const detail::ranges::range_value_t<WrappedRange>>>
     read_zero_copy(WrappedRange&,
@@ -88,7 +88,7 @@ namespace scn {
     template <
         typename WrappedRange,
         typename OutputIterator,
-        typename std::enable_if<WrappedRange::is_contiguous()>::type* = nullptr>
+        typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
     error read_into(WrappedRange& r,
                     OutputIterator& it,
                     detail::ranges::range_difference_t<WrappedRange> n)
@@ -103,8 +103,8 @@ namespace scn {
     template <
         typename WrappedRange,
         typename OutputIterator,
-        typename std::enable_if<!WrappedRange::is_contiguous() &&
-                                WrappedRange::is_direct()>::type* = nullptr>
+        typename std::enable_if<!WrappedRange::is_contiguous &&
+                                WrappedRange::is_direct>::type* = nullptr>
     error read_into(WrappedRange& r,
                     OutputIterator& it,
                     detail::ranges::range_difference_t<WrappedRange> n)
@@ -126,8 +126,8 @@ namespace scn {
     template <
         typename WrappedRange,
         typename OutputIterator,
-        typename std::enable_if<!WrappedRange::is_contiguous() &&
-                                !WrappedRange::is_direct()>::type* = nullptr>
+        typename std::enable_if<!WrappedRange::is_contiguous &&
+                                !WrappedRange::is_direct>::type* = nullptr>
     error read_into(WrappedRange& r,
                     OutputIterator& it,
                     detail::ranges::range_difference_t<WrappedRange> n)
@@ -155,7 +155,7 @@ namespace scn {
     template <
         typename WrappedRange,
         typename Predicate,
-        typename std::enable_if<WrappedRange::is_contiguous()>::type* = nullptr>
+        typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
     expected<span<const detail::ranges::range_value_t<WrappedRange>>>
     read_until_space_zero_copy(WrappedRange& r,
                                Predicate is_space,
@@ -181,7 +181,7 @@ namespace scn {
     }
     template <typename WrappedRange,
               typename Predicate,
-              typename std::enable_if<!WrappedRange::is_contiguous()>::type* =
+              typename std::enable_if<!WrappedRange::is_contiguous>::type* =
                   nullptr>
     span<const detail::ranges::range_value_t<WrappedRange>>
     read_until_space_zero_copy(WrappedRange&, Predicate, bool)
@@ -195,7 +195,7 @@ namespace scn {
         typename WrappedRange,
         typename OutputIterator,
         typename Predicate,
-        typename std::enable_if<WrappedRange::is_contiguous()>::type* = nullptr>
+        typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
     error read_until_space(WrappedRange& r,
                            OutputIterator& out,
                            Predicate is_space,
@@ -212,8 +212,8 @@ namespace scn {
         typename WrappedRange,
         typename OutputIterator,
         typename Predicate,
-        typename std::enable_if<!WrappedRange::is_contiguous() &&
-                                WrappedRange::is_direct()>::type* = nullptr>
+        typename std::enable_if<!WrappedRange::is_contiguous &&
+                                WrappedRange::is_direct>::type* = nullptr>
     error read_until_space(WrappedRange& r,
                            OutputIterator& out,
                            Predicate is_space,
@@ -240,8 +240,8 @@ namespace scn {
         typename WrappedRange,
         typename OutputIterator,
         typename Predicate,
-        typename std::enable_if<!WrappedRange::is_contiguous() &&
-                                !WrappedRange::is_direct()>::type* = nullptr>
+        typename std::enable_if<!WrappedRange::is_contiguous &&
+                                !WrappedRange::is_direct>::type* = nullptr>
     error read_until_space(WrappedRange& r,
                            OutputIterator& out,
                            Predicate is_space,
@@ -276,7 +276,7 @@ namespace scn {
         typename OutputIterator,
         typename Sentinel,
         typename Predicate,
-        typename std::enable_if<WrappedRange::is_direct()>::type* = nullptr>
+        typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
     error read_until_space_ranged(WrappedRange& r,
                                   OutputIterator& out,
                                   Sentinel end,
@@ -305,7 +305,7 @@ namespace scn {
         typename OutputIterator,
         typename Sentinel,
         typename Predicate,
-        typename std::enable_if<!WrappedRange::is_direct()>::type* = nullptr>
+        typename std::enable_if<!WrappedRange::is_direct>::type* = nullptr>
     error read_until_space_ranged(WrappedRange& r,
                                   OutputIterator& out,
                                   Sentinel end,
@@ -338,16 +338,16 @@ namespace scn {
 
     template <
         typename WrappedRange,
-        typename std::enable_if<WrappedRange::is_contiguous()>::type* = nullptr>
+        typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
     error putback_n(WrappedRange& r,
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
-        SCN_EXPECT(n <= r.size());
+        SCN_EXPECT(n <= detail::ranges::distance(detail::ranges::begin(r.range()), r.begin()));
         std::advance(r.begin(), -n);
         return {};
     }
     template <typename WrappedRange,
-              typename std::enable_if<!WrappedRange::is_contiguous()>::type* =
+              typename std::enable_if<!WrappedRange::is_contiguous>::type* =
                   nullptr>
     error putback_n(WrappedRange& r,
                     detail::ranges::range_difference_t<WrappedRange> n)
@@ -933,16 +933,25 @@ namespace scn {
                 SCN_CLANG_IGNORE("-Wsign-conversion")
                 SCN_CLANG_IGNORE("-Wsign-compare")
 
+				SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4018) // > signed/unsigned mismatch
+                SCN_MSVC_IGNORE(4389) // == signed/unsigned mismatch
+                SCN_MSVC_IGNORE(4244) // lossy conversion
+
                 SCN_ASSUME(sign != 0);
 
                 using utype = typename std::make_unsigned<T>::type;
 
+				SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4146) // unary minus applied to unsigned
                 utype cutoff_tmp = sign == -1
                                        ? -static_cast<unsigned long long>(
                                              std::numeric_limits<T>::min())
                                        : std::numeric_limits<T>::max();
+				SCN_MSVC_POP
+
                 const auto cutlim =
-                    detail::ascii_widen<CharT>(cutoff_tmp % base + '0');
+                    detail::ascii_widen<CharT>(cutoff_tmp % static_cast<utype>(base) + 48); // 48 is '0'
                 const utype cutoff = cutoff_tmp / base;
 
                 auto it = buf.begin();
@@ -971,6 +980,7 @@ namespace scn {
                 val = val * sign;
                 return it;
 
+				SCN_MSVC_POP
                 SCN_CLANG_POP
                 SCN_GCC_POP
             }
@@ -988,6 +998,11 @@ namespace scn {
                 SCN_CLANG_IGNORE("-Wconversion")
                 SCN_CLANG_IGNORE("-Wsign-conversion")
                 SCN_CLANG_IGNORE("-Wsign-compare")
+
+				SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4018) // > signed/unsigned mismatch
+                SCN_MSVC_IGNORE(4389) // == signed/unsigned mismatch
+                SCN_MSVC_IGNORE(4244) // lossy conversion
 
                 const T cutoff = std::numeric_limits<T>::max() / base;
                 const auto cutlim = detail::ascii_widen<CharT>(
@@ -1014,6 +1029,7 @@ namespace scn {
                 }
                 return it;
 
+				SCN_MSVC_POP
                 SCN_CLANG_POP
                 SCN_GCC_POP
             }
@@ -1329,7 +1345,7 @@ namespace scn {
 
     template <typename Context,
               typename std::enable_if<
-                  !Context::range_type::is_contiguous()>::type* = nullptr>
+                  !Context::range_type::is_contiguous>::type* = nullptr>
     error skip_range_whitespace(Context& ctx) noexcept
     {
         while (true) {
@@ -1353,7 +1369,7 @@ namespace scn {
     }
     template <typename Context,
               typename std::enable_if<
-                  Context::range_type::is_contiguous()>::type* = nullptr>
+                  Context::range_type::is_contiguous>::type* = nullptr>
     error skip_range_whitespace(Context& ctx) noexcept
     {
         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE

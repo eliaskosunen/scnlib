@@ -56,7 +56,7 @@ namespace scn {
             byte_mapped_file(const byte_mapped_file&) = delete;
             byte_mapped_file& operator=(const byte_mapped_file&) = delete;
 
-            byte_mapped_file(byte_mapped_file&& o)
+            byte_mapped_file(byte_mapped_file&& o) noexcept
                 : m_file(o.m_file), m_begin(o.m_begin), m_end(o.m_end)
             {
                 o.m_file = file_handle::invalid();
@@ -66,7 +66,7 @@ namespace scn {
                 SCN_ENSURE(!o.valid());
                 SCN_ENSURE(valid());
             }
-            byte_mapped_file& operator=(byte_mapped_file&& o)
+            byte_mapped_file& operator=(byte_mapped_file&& o) noexcept
             {
                 if (valid()) {
                     _destruct();

@@ -50,8 +50,8 @@ SCN_GCC_IGNORE("-Wredundant-decls")
 inline std::string generate_buffer(size_t len)
 {
     std::default_random_engine rng(std::random_device{}());
-    std::uniform_int_distribution<> dist(std::numeric_limits<char>::min(),
-                                         std::numeric_limits<char>::max());
+    std::uniform_int_distribution<> dist((std::numeric_limits<char>::min)(),
+                                         (std::numeric_limits<char>::max)());
 
     std::string data;
     data.reserve(len);

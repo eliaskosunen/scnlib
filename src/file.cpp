@@ -26,6 +26,12 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#elif SCN_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <Windows.h>
+#undef NOMINMAX
+#undef WIN32_LEAN_AND_MEAN
 #endif
 
 namespace scn {
@@ -39,11 +45,11 @@ namespace scn {
             if (fd == -1) {
                 return;
             }
-            m_file.handle = fd;
 
             struct stat s;
             int status = fstat(fd, &s);
             if (status == -1) {
+                close(fd);
                 return;
             }
             auto size = s.st_size;
@@ -52,14 +58,36 @@ namespace scn {
                 static_cast<char*>(mmap(nullptr, static_cast<size_t>(size),
                                         PROT_READ, MAP_PRIVATE, fd, 0));
             if (ptr == MAP_FAILED) {
-                m_file = file_handle::invalid();
+                close(fd);
                 return;
             }
 
+            m_file.handle = fd;
             m_begin = ptr;
             m_end = m_begin + size;
 #elif SCN_WINDOWS
+            auto f = CreateFileA(
+                filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
+            if (f == INVALID_HANDLE_VALUE) {
+                return;
+            }
 
+			auto size = GetFileSize(f, NULL);
+            if (size == INVALID_FILE_SIZE) {
+                CloseHandle(f);
+                return;
+			}
+
+            auto h = CreateFileMappingA(f, NULL, PAGE_READONLY, 0, size, NULL);
+            if (h == NULL) {
+                CloseHandle(f);
+				return;
+            }
+
+            m_file.handle = f;
+            m_begin = static_cast<char*>(h);
+            m_end = static_cast<char*>(h) + size;
 #else
             SCN_UNUSED(filename);
 #endif
@@ -67,7 +95,13 @@ namespace scn {
 
         SCN_FUNC void byte_mapped_file::_destruct()
         {
+#if SCN_POSIX
             munmap(m_begin, static_cast<size_t>(m_end - m_begin));
+            close(m_file.handle);
+#elif SCN_WINDOWS
+            CloseHandle(m_begin);
+            CloseHandle(m_file.handle);
+#endif
             *this = mapped_file{};
             SCN_ENSURE(!valid());
         }
