@@ -264,14 +264,13 @@ namespace scn {
             }
 
             // iterator value type is a character
-            static SCN_CONSTEXPR bool is_direct
-                = std::is_integral<ranges::iter_value_t<iterator>>::value;
+            static SCN_CONSTEXPR bool is_direct =
+                std::is_integral<ranges::iter_value_t<iterator>>::value;
             // can call .data() and memcpy
-            static SCN_CONSTEXPR bool is_contiguous
-                = ranges::contiguous_range<Range>::value;
+            static SCN_CONSTEXPR bool is_contiguous =
+                ranges::contiguous_range<Range>::value;
             // provides mechanism to get a pointer to memcpy from
-            static SCN_CONSTEXPR bool provides_buffer_access
-                = false;
+            static SCN_CONSTEXPR bool provides_buffer_access = false;
 
         private:
             storage_type m_range;
@@ -372,12 +371,11 @@ namespace scn {
                 m_rollback = m_begin;
             }
 
-            static SCN_CONSTEXPR bool is_direct
-                = std::is_integral<ranges::iter_value_t<iterator>>::value;
-            static SCN_CONSTEXPR bool is_contiguous
-                = ranges::contiguous_range<Range>::value;
-            static SCN_CONSTEXPR bool provides_buffer_access
-                = false;
+            static SCN_CONSTEXPR bool is_direct =
+                std::is_integral<ranges::iter_value_t<iterator>>::value;
+            static SCN_CONSTEXPR bool is_contiguous =
+                ranges::contiguous_range<Range>::value;
+            static SCN_CONSTEXPR bool provides_buffer_access = false;
 
         private:
             template <typename R>
@@ -472,12 +470,11 @@ namespace scn {
                 m_rollback = m_begin;
             }
 
-            static SCN_CONSTEXPR bool is_direct
-                = std::is_integral<ranges::iter_value_t<iterator>>::value;
-            static SCN_CONSTEXPR bool is_contiguous
-                = ranges::contiguous_range<Range>::value;
-            static SCN_CONSTEXPR bool provides_buffer_access
-                = false;
+            static SCN_CONSTEXPR bool is_direct =
+                std::is_integral<ranges::iter_value_t<iterator>>::value;
+            static SCN_CONSTEXPR bool is_contiguous =
+                ranges::contiguous_range<Range>::value;
+            static SCN_CONSTEXPR bool provides_buffer_access = false;
 
         private:
             Range m_range;

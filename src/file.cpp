@@ -26,6 +26,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 #elif SCN_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -73,16 +74,16 @@ namespace scn {
                 return;
             }
 
-			auto size = GetFileSize(f, NULL);
+            auto size = GetFileSize(f, NULL);
             if (size == INVALID_FILE_SIZE) {
                 CloseHandle(f);
                 return;
-			}
+            }
 
             auto h = CreateFileMappingA(f, NULL, PAGE_READONLY, 0, size, NULL);
             if (h == NULL) {
                 CloseHandle(f);
-				return;
+                return;
             }
 
             m_file.handle = f;

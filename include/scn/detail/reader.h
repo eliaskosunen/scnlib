@@ -30,9 +30,8 @@ namespace scn {
 
     // read_char
 
-    template <
-        typename WrappedRange,
-        typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
+    template <typename WrappedRange,
+              typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
     expected<detail::ranges::range_value_t<WrappedRange>> read_char(
         WrappedRange& r)
     {
@@ -73,9 +72,9 @@ namespace scn {
         detail::ranges::advance(r.begin(), n_to_read);
         return s;
     }
-    template <typename WrappedRange,
-              typename std::enable_if<!WrappedRange::is_contiguous>::type* =
-                  nullptr>
+    template <
+        typename WrappedRange,
+        typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
     expected<span<const detail::ranges::range_value_t<WrappedRange>>>
     read_zero_copy(WrappedRange&,
                    detail::ranges::range_difference_t<WrappedRange>)
@@ -100,11 +99,10 @@ namespace scn {
         it = std::copy(s.value().begin(), s.value().end(), it);
         return {};
     }
-    template <
-        typename WrappedRange,
-        typename OutputIterator,
-        typename std::enable_if<!WrappedRange::is_contiguous &&
-                                WrappedRange::is_direct>::type* = nullptr>
+    template <typename WrappedRange,
+              typename OutputIterator,
+              typename std::enable_if<!WrappedRange::is_contiguous &&
+                                      WrappedRange::is_direct>::type* = nullptr>
     error read_into(WrappedRange& r,
                     OutputIterator& it,
                     detail::ranges::range_difference_t<WrappedRange> n)
@@ -179,10 +177,10 @@ namespace scn {
         r.begin() = r.end();
         return {{&*b, &*(r.end() - 1) + 1}};
     }
-    template <typename WrappedRange,
-              typename Predicate,
-              typename std::enable_if<!WrappedRange::is_contiguous>::type* =
-                  nullptr>
+    template <
+        typename WrappedRange,
+        typename Predicate,
+        typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
     span<const detail::ranges::range_value_t<WrappedRange>>
     read_until_space_zero_copy(WrappedRange&, Predicate, bool)
     {
@@ -208,12 +206,11 @@ namespace scn {
         out = std::copy(s.value().begin(), s.value().end(), out);
         return {};
     }
-    template <
-        typename WrappedRange,
-        typename OutputIterator,
-        typename Predicate,
-        typename std::enable_if<!WrappedRange::is_contiguous &&
-                                WrappedRange::is_direct>::type* = nullptr>
+    template <typename WrappedRange,
+              typename OutputIterator,
+              typename Predicate,
+              typename std::enable_if<!WrappedRange::is_contiguous &&
+                                      WrappedRange::is_direct>::type* = nullptr>
     error read_until_space(WrappedRange& r,
                            OutputIterator& out,
                            Predicate is_space,
@@ -271,12 +268,11 @@ namespace scn {
 
     // read_until_space_ranged
 
-    template <
-        typename WrappedRange,
-        typename OutputIterator,
-        typename Sentinel,
-        typename Predicate,
-        typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
+    template <typename WrappedRange,
+              typename OutputIterator,
+              typename Sentinel,
+              typename Predicate,
+              typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
     error read_until_space_ranged(WrappedRange& r,
                                   OutputIterator& out,
                                   Sentinel end,
@@ -342,13 +338,14 @@ namespace scn {
     error putback_n(WrappedRange& r,
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
-        SCN_EXPECT(n <= detail::ranges::distance(detail::ranges::begin(r.range()), r.begin()));
+        SCN_EXPECT(n <= detail::ranges::distance(
+                            detail::ranges::begin(r.range()), r.begin()));
         std::advance(r.begin(), -n);
         return {};
     }
-    template <typename WrappedRange,
-              typename std::enable_if<!WrappedRange::is_contiguous>::type* =
-                  nullptr>
+    template <
+        typename WrappedRange,
+        typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
     error putback_n(WrappedRange& r,
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
@@ -933,25 +930,25 @@ namespace scn {
                 SCN_CLANG_IGNORE("-Wsign-conversion")
                 SCN_CLANG_IGNORE("-Wsign-compare")
 
-				SCN_MSVC_PUSH
-                SCN_MSVC_IGNORE(4018) // > signed/unsigned mismatch
-                SCN_MSVC_IGNORE(4389) // == signed/unsigned mismatch
-                SCN_MSVC_IGNORE(4244) // lossy conversion
+                SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4018)  // > signed/unsigned mismatch
+                SCN_MSVC_IGNORE(4389)  // == signed/unsigned mismatch
+                SCN_MSVC_IGNORE(4244)  // lossy conversion
 
                 SCN_ASSUME(sign != 0);
 
                 using utype = typename std::make_unsigned<T>::type;
 
-				SCN_MSVC_PUSH
-                SCN_MSVC_IGNORE(4146) // unary minus applied to unsigned
+                SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4146)  // unary minus applied to unsigned
                 utype cutoff_tmp = sign == -1
                                        ? -static_cast<unsigned long long>(
                                              std::numeric_limits<T>::min())
                                        : std::numeric_limits<T>::max();
-				SCN_MSVC_POP
+                SCN_MSVC_POP
 
-                const auto cutlim =
-                    detail::ascii_widen<CharT>(cutoff_tmp % static_cast<utype>(base) + 48); // 48 is '0'
+                const auto cutlim = detail::ascii_widen<CharT>(
+                    cutoff_tmp % static_cast<utype>(base) + 48);  // 48 is '0'
                 const utype cutoff = cutoff_tmp / base;
 
                 auto it = buf.begin();
@@ -980,7 +977,7 @@ namespace scn {
                 val = val * sign;
                 return it;
 
-				SCN_MSVC_POP
+                SCN_MSVC_POP
                 SCN_CLANG_POP
                 SCN_GCC_POP
             }
@@ -999,10 +996,10 @@ namespace scn {
                 SCN_CLANG_IGNORE("-Wsign-conversion")
                 SCN_CLANG_IGNORE("-Wsign-compare")
 
-				SCN_MSVC_PUSH
-                SCN_MSVC_IGNORE(4018) // > signed/unsigned mismatch
-                SCN_MSVC_IGNORE(4389) // == signed/unsigned mismatch
-                SCN_MSVC_IGNORE(4244) // lossy conversion
+                SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4018)  // > signed/unsigned mismatch
+                SCN_MSVC_IGNORE(4389)  // == signed/unsigned mismatch
+                SCN_MSVC_IGNORE(4244)  // lossy conversion
 
                 const T cutoff = std::numeric_limits<T>::max() / base;
                 const auto cutlim = detail::ascii_widen<CharT>(
@@ -1029,7 +1026,7 @@ namespace scn {
                 }
                 return it;
 
-				SCN_MSVC_POP
+                SCN_MSVC_POP
                 SCN_CLANG_POP
                 SCN_GCC_POP
             }
