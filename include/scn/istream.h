@@ -15,12 +15,9 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_ALL_H
-#define SCN_ALL_H
+#ifndef SCN_ISTREAM_H
+#define SCN_ISTREAM_H
 
-#include "istream.h"
-#include "scn.h"
-#include "tuple_return.h"
+#include "detail/istream.h"
 
-#endif  // SCN_ALL_H
-
+#endif  // SCN_ISTREAM_H

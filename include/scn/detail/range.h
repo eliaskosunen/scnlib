@@ -276,7 +276,7 @@ namespace scn {
             // provides mechanism to get a pointer to memcpy from
             static SCN_CONSTEXPR bool provides_buffer_access()
             {
-                return ranges::contiguous_range<Range>::value;
+                return false;
             }
 
         private:
@@ -388,7 +388,7 @@ namespace scn {
             }
             static SCN_CONSTEXPR bool provides_buffer_access()
             {
-                return ranges::contiguous_range<Range>::value;
+                return false;
             }
 
         private:
@@ -494,7 +494,7 @@ namespace scn {
             }
             static SCN_CONSTEXPR bool provides_buffer_access()
             {
-                return ranges::contiguous_range<Range>::value;
+                return false;
             }
 
         private:
