@@ -26,135 +26,115 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        class byte_file {
-        public:
-            using fileptr = FILE*;
+        struct file_handle {
+#if SCN_WINDOWS
+            using handle_type = void*;
+#else
+            using handle_type = int;
+#endif
 
-            byte_file(fileptr f) : m_file(f) {}
-
-            byte_file(const byte_file&) = delete;
-            byte_file& operator=(const byte_file&) = delete;
-
-            byte_file(byte_file&& o) : m_file(o.m_file)
+            static constexpr file_handle invalid()
             {
-                const auto n = std::distance(o.m_buffer.begin(), o.m_it);
-                m_buffer = std::move(o.m_buffer);
-                m_it = m_buffer.begin() + n;
-
-                o.m_file = nullptr;
-                o.m_buffer.clear();
-            }
-            byte_file& operator=(byte_file&&) = delete;
-
-            ~byte_file()
-            {
-                flush();
+#if SCN_WINDOWS
+                return {nullptr};
+#else
+                return {-1};
+#endif
             }
 
-            fileptr& get()
-            {
-                return m_file;
-            }
-            fileptr get() const
-            {
-                return m_file;
-            }
-
-            error read(span<char>);
-            expected<char> read()
-            {
-                char ch;
-                auto e = read(make_span(&ch, 1));
-                if (!e) {
-                    return e;
-                }
-                return {ch};
-            }
-
-            void putback(std::ptrdiff_t);
-
-            void flush();
-
-            fileptr m_file;
-            std::string m_buffer;
-            std::string::iterator m_it;
+            handle_type handle;
         };
 
-        class byte_file_iterator {
+        class byte_mapped_file {
         public:
-            using value_type = expected<char>;
-            using reference = expected<char>&;
-            using pointer = expected<char>*;
-            using difference_type = std::ptrdiff_t;
-            using iterator_category = std::bidirectional_iterator_tag;
+            using iterator = const char*;
+            using sentinel = const char*;
 
-            byte_file_iterator() = default;
-            byte_file_iterator(byte_file& f) : m_file(std::addressof(f)) {}
+            byte_mapped_file() = default;
+            byte_mapped_file(const char* filename);
 
-            expected<char> operator*()
+            byte_mapped_file(const byte_mapped_file&) = delete;
+            byte_mapped_file& operator=(const byte_mapped_file&) = delete;
+
+            byte_mapped_file(byte_mapped_file&& o)
+                : m_file(o.m_file), m_begin(o.m_begin), m_end(o.m_end)
             {
-                if (!m_latest) {
-                    return m_latest.error();
-                }
-                if (m_latest && m_latest.value() == EOF) {
-                    _read_next();
-                }
-                return static_cast<char>(m_latest.value());
+                o.m_file = file_handle::invalid();
+                o.m_begin = nullptr;
+                o.m_end = nullptr;
+
+                SCN_ENSURE(!o.valid());
+                SCN_ENSURE(valid());
             }
-
-            byte_file_iterator& operator++()
+            byte_mapped_file& operator=(byte_mapped_file&& o)
             {
-                if (m_latest) {
-                    _read_next();
+                if (valid()) {
+                    _destruct();
                 }
+                m_file = o.m_file;
+                m_begin = o.m_begin;
+                m_end = o.m_end;
+
+                o.m_file = file_handle::invalid();
+                o.m_begin = nullptr;
+                o.m_end = nullptr;
+
+                SCN_ENSURE(!o.valid());
+                SCN_ENSURE(valid());
                 return *this;
             }
-            byte_file_iterator& operator--()
+
+            ~byte_mapped_file()
             {
-                m_file->putback(1);
-                _refresh();
-                return *this;
+                if (valid()) {
+                    _destruct();
+                }
             }
 
-            bool operator==(const byte_file_iterator& o) const
+            bool valid() const
             {
-                return _is_sentinel() == o._is_sentinel();
+                return m_file.handle != file_handle::invalid().handle;
             }
-            bool operator!=(const byte_file_iterator& o) const
+
+            iterator begin() const
             {
-                return !(operator==(o));
+                return m_begin;
+            }
+            sentinel end() const
+            {
+                return m_end;
             }
 
         private:
-            void _read_next()
-            {
-                auto r = m_file->read();
-                if (!r) {
-                    m_latest = r.error();
-                }
-                m_latest = static_cast<int>(r.value());
-            }
+            void _destruct();
 
-            void _refresh()
-            {
-                m_latest = *(m_file->m_it);
-            }
-
-            bool _is_sentinel() const
-            {
-                if (!m_file) {
-                    return true;
-                }
-                if (!m_latest) {
-                    return m_latest.error() == error::end_of_stream;
-                }
-                return false;
-            }
-
-            byte_file* m_file;
-            expected<int> m_latest{EOF};
+            file_handle m_file{file_handle::invalid()};
+            char* m_begin{nullptr};
+            char* m_end{nullptr};
         };
     }  // namespace detail
+
+    template <typename CharT>
+    class basic_mapped_file : public detail::byte_mapped_file {
+    public:
+        using iterator = const CharT*;
+        using sentinel = const CharT*;
+
+        using byte_mapped_file::byte_mapped_file;
+
+        // embrace the UB
+        iterator begin() const
+        {
+            return reinterpret_cast<iterator>(byte_mapped_file::begin());
+        }
+        sentinel end() const
+        {
+            return reinterpret_cast<sentinel>(byte_mapped_file::end());
+        }
+    };
+
+    using mapped_file = basic_mapped_file<char>;
+    using wmapped_file = basic_mapped_file<wchar_t>;
 
     SCN_END_NAMESPACE
 }  // namespace scn

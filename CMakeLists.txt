@@ -50,7 +50,7 @@ function (generate_library_target target_name)
     #add_library(${target_name}
     #    src/istream.cpp src/stream.cpp src/vscan.cpp src/locale.cpp src/visitor.cpp)
     add_library(${target_name}
-        src/vscan.cpp src/locale.cpp src/reader.cpp)
+        src/vscan.cpp src/locale.cpp src/reader.cpp src/file.cpp)
     target_include_directories(${target_name} PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)

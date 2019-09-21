@@ -91,6 +91,22 @@
 #define SCN_STRINGIFY_APPLY(x) #x
 #define SCN_STRINGIFY(x) SCN_STRINGIFY_APPLY(x)
 
+// POSIX
+
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#define SCN_POSIX 1
+#else
+#define SCN_POSIX 0
+#endif
+
+// Windows
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32)) && \
+    !defined(__CYGWIN__)
+#define SCN_WINDOWS 1
+#else
+#define SCN_WINDOWS 0
+#endif
+
 // Warning control
 #if SCN_GCC
 #define SCN_PRAGMA_APPLY(x) _Pragma(#x)

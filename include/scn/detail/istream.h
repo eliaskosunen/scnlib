@@ -42,7 +42,46 @@ namespace scn {
             }
 
         private:
+            int_type underflow() override
+            {
+                // already read
+                if (!traits_type::eq_int_type(m_ch, traits_type::eof())) {
+                    return m_ch;
+                }
+
+                auto ret = read_char(*m_range);
+                if (!ret) {
+                    // error
+                    // m_ch is already eof
+                    return traits_type::eof();
+                }
+                m_ch = traits_type::to_int_type(ret.value());
+                return m_ch;
+            }
+            int_type uflow() override
+            {
+                auto ret = underflow();
+                if (ret != traits_type::eof()) {
+                    m_ch = traits_type::eof();
+                }
+                return ret;
+            }
+            std::streamsize showmanyc() override
+            {
+                return traits_type::eq_int_type(m_ch, traits_type::eof()) ? 0
+                                                                          : 1;
+            }
+            int_type pbackfail(int_type) override
+            {
+                auto e = putback_n(*m_range, 1);
+                if (!e) {
+                    return traits_type::eof();
+                }
+                return traits_type::to_int_type(0);
+            }
+
             range_type* m_range;
+            int_type m_ch{traits_type::eof()};
         };
 
         // Trick stolen from {fmt}

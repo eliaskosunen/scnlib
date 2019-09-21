@@ -29,7 +29,7 @@ make_test(locale locale.cpp)
 #make_test(stream stream.cpp)
 
 make_test(result result.cpp)
-#make_test(istream istream.cpp)
+make_test(istream istream.cpp)
 make_test(tuple-return tuple_return.cpp)
 target_compile_features(test-tuple-return PUBLIC cxx_std_17)
 

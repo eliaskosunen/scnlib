@@ -21,27 +21,55 @@
 
 #include <scn/detail/file.h>
 
+#if SCN_POSIX
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#endif
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        error byte_file::read(span<char> s)
+        SCN_FUNC byte_mapped_file::byte_mapped_file(const char* filename)
         {
-            if (s.size() == 0) {
-                return {};
+#if SCN_POSIX
+            int fd = open(filename, O_RDONLY);
+            if (fd == -1) {
+                return;
             }
-            if (m_it != m_buffer.end()) {
-                const auto n = std::min(s.ssize(), m_buffer.end() - m_it);
-                std::copy(m_it, m_it + n, s.begin());
-                return read(s.subspan(static_cast<size_t>(n)));
+            m_file.handle = fd;
+
+            struct stat s;
+            int status = fstat(fd, &s);
+            if (status == -1) {
+                return;
+            }
+            auto size = s.st_size;
+
+            auto ptr =
+                static_cast<char*>(mmap(nullptr, static_cast<size_t>(size),
+                                        PROT_READ, MAP_PRIVATE, fd, 0));
+            if (ptr == MAP_FAILED) {
+                m_file = file_handle::invalid();
+                return;
             }
 
-            std::string buf(s.size(), '\0');
-            const auto n = std::fread(&buf[0], s.size(), 1, m_file);
-            std::copy(buf.begin(), buf.begin() + static_cast<std::ptrdiff_t>(n),
-                      s.begin());
-            if (n != s.size()) {
-            }
+            m_begin = ptr;
+            m_end = m_begin + size;
+#elif SCN_WINDOWS
+
+#else
+            SCN_UNUSED(filename);
+#endif
+        }
+
+        SCN_FUNC void byte_mapped_file::_destruct()
+        {
+            munmap(m_begin, static_cast<size_t>(m_end - m_begin));
+            *this = mapped_file{};
+            SCN_ENSURE(!valid());
         }
     }  // namespace detail
 
