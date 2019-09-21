@@ -1091,11 +1091,9 @@ namespace scn {
                                       !sized_sentinel_for<S, I>::value,
                                   "");
 
-                    static SCN_CONSTEXPR bool _store_size()
-                    {
-                        return K == subrange_kind::sized &&
-                               !sized_sentinel_for<S, I>::value;
-                    }
+                    static SCN_CONSTEXPR bool _store_size =
+                        K == subrange_kind::sized &&
+                        !sized_sentinel_for<S, I>::value;
 
                 public:
                     using iterator = I;
@@ -1103,7 +1101,7 @@ namespace scn {
 
                     subrange() = default;
 
-                    template <bool SS = _store_size(),
+                    template <bool SS = _store_size,
                               typename std::enable_if<!SS>::type* = nullptr>
                     SCN_CONSTEXPR14 subrange(I i, S s)
                         : m_data{std::move(i), std::move(s)}
@@ -1116,102 +1114,6 @@ namespace scn {
                         : m_data{std::move(i), std::move(s), n}
                     {
                     }
-
-#if 0
-                    template <
-                        typename R,
-                        bool SS = _store_size(),
-                        typename std::enable_if<
-                            _not_same_as<R, subrange>::value>::type* = nullptr,
-                        typename std::enable_if<
-                            _subrange_range_constructor_constraint_helper<
-                                R,
-                                I,
-                                S,
-                                K>::value &&
-                            SS && sized_range<R>::value>::type* = nullptr>
-                    SCN_CONSTEXPR14 subrange(R&& r)
-                        : subrange(::scn::detail::ranges::begin(r),
-                                   ::scn::detail::ranges::end(r),
-                                   ::scn::detail::ranges::size(r))
-                    {
-                    }
-
-                    template <
-                        typename R,
-                        bool SS = _store_size(),
-                        typename std::enable_if<
-                            _not_same_as<R, subrange>::value>::type* = nullptr,
-                        typename std::enable_if<
-                            _subrange_range_constructor_constraint_helper<
-                                R,
-                                I,
-                                S,
-                                K>::value &&
-                            !SS>::type* = nullptr>
-                    SCN_CONSTEXPR14 subrange(R&& r)
-                        : subrange(::scn::detail::ranges::begin(r),
-                                   ::scn::detail::ranges::end(r))
-                    {
-                    }
-
-                    template <
-                        typename R,
-                        subrange_kind KK = K,
-                        typename std::enable_if<
-                            forwarding_range<R>::value &&
-                            std::is_convertible<iterator_t<R>, I>::value &&
-                            std::is_convertible<sentinel_t<R>, S>::value &&
-                            KK == subrange_kind::sized>::type* = nullptr>
-                    SCN_CONSTEXPR14 subrange(R&& r, iter_difference_t<I> n)
-                        : subrange(::scn::detail::ranges::begin(r),
-                                   ::scn::detail::ranges::end(r),
-                                   n)
-                    {
-                    }
-
-                    template <
-                        typename PairLike,
-                        bool SS = _store_size(),
-                        typename std::enable_if<
-                            _not_same_as<PairLike, subrange>::value>::type* =
-                            nullptr,
-                        typename std::enable_if<
-                            _pair_like_convertible_to<PairLike, I, S>::value &&
-                            !SS>::type* = nullptr>
-                    SCN_CONSTEXPR14 subrange(PairLike&& r)
-                        : subrange{std::get<0>(std::forward<PairLike>(r)),
-                                   std::get<1>(std::forward<PairLike>(r))}
-                    {
-                    }
-
-                    template <
-                        typename PairLike,
-                        subrange_kind KK = K,
-                        typename std::enable_if<
-                            _pair_like_convertible_to<PairLike, I, S>::value &&
-                            KK == subrange_kind::sized>::type* = nullptr>
-                    SCN_CONSTEXPR14 subrange(PairLike&& r,
-                                             iter_difference_t<I> n)
-                        : subrange{std::get<0>(std::forward<PairLike>(r)),
-                                   std::get<1>(std::forward<PairLike>(r)), n}
-                    {
-                    }
-
-                    template <
-                        typename PairLike,
-                        typename std::enable_if<
-                            _not_same_as<PairLike, subrange>::value>::type* =
-                            nullptr,
-                        typename std::enable_if<_pair_like_convertible_from<
-                            PairLike,
-                            const I&,
-                            const S&>::value>::type* = nullptr>
-                    SCN_CONSTEXPR14 operator PairLike() const
-                    {
-                        return PairLike(begin(), end());
-                    }
-#endif
 
                     SCN_CONSTEXPR I begin() const noexcept
                     {
@@ -1237,7 +1139,7 @@ namespace scn {
                     }
 
                 private:
-                    _subrange_data<I, S, _store_size()> m_data{};
+                    _subrange_data<I, S, _store_size> m_data{};
                 };
 
                 template <typename I, typename S, subrange_kind K>

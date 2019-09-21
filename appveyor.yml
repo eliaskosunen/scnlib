@@ -4,12 +4,12 @@ clone_depth: 1
 environment:
     MSVC_DEFAULT_OPTIONS: ON
     matrix:
-      - gen: "Visual Studio 14 2015"
-        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+      #- gen: "Visual Studio 14 2015"
+      #  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       - gen: "Visual Studio 15 2017"
         APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-        #- gen: "Visual Studio 15 2017"
-        #APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017 Preview
+      - gen: "Visual Studio 16 2019"
+        APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
 
 init:
   - cmake --version
@@ -46,8 +46,8 @@ build_script:
   - ctest -C Release -V -j %NUMBER_OF_PROCESSORS%
   - cd ..
 
-  - if "%gen%" == "Visual Studio 15 2017" md analysis
-  - if "%gen%" == "Visual Studio 15 2017" cd analysis
-  - if "%gen%" == "Visual Studio 15 2017" cmake -G "%gen% Win64" ..
-  - if "%gen%" == "Visual Studio 15 2017" cmake --build . --config Debug -- /maxcpucount /p:RunCodeAnalysis=true
-  - if "%gen%" == "Visual Studio 15 2017" cd ..
+  - if "%gen%" == "Visual Studio 16 2019" md analysis
+  - if "%gen%" == "Visual Studio 16 2019" cd analysis
+  - if "%gen%" == "Visual Studio 16 2019" cmake -G "%gen% Win64" ..
+  - if "%gen%" == "Visual Studio 16 2019" cmake --build . --config Debug -- /maxcpucount /p:RunCodeAnalysis=true
+  - if "%gen%" == "Visual Studio 16 2019" cd ..

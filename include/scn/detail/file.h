@@ -108,7 +108,7 @@ namespace scn {
         private:
             void _destruct();
 
-            file_handle m_file{file_handle::invalid()};
+            file_handle m_file{file_handle::invalid().handle};
             char* m_begin{nullptr};
             char* m_end{nullptr};
         };

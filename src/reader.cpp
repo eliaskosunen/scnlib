@@ -21,6 +21,8 @@
 
 #include <scn/detail/reader.h>
 
+#include <cerrno>
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 

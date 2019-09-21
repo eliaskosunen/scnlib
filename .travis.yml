@@ -19,6 +19,16 @@ matrix:
           - graphviz
           sources:
           - ubuntu-toolchain-r-test
+
+    - env: COMPILER=g++-9 STANDARD=17
+      compiler: gcc
+      addons:
+        apt:
+          update: true
+          packages:
+          - g++-9
+          sources:
+          - ubuntu-toolchain-r-test
     - env: COMPILER=g++-8 STANDARD=17
       compiler: gcc
       addons:
@@ -62,7 +72,7 @@ matrix:
           update: true
           packages:
           - clang-8
-          - g++-7
+          - g++-8
           sources:
           - llvm-toolchain-trusty-8
           - ubuntu-toolchain-r-test
@@ -73,7 +83,7 @@ matrix:
           update: true
           packages:
           - clang-7
-          - g++-7
+          - g++-8
           sources:
           - llvm-toolchain-trusty-7
           - ubuntu-toolchain-r-test
@@ -84,7 +94,7 @@ matrix:
           update: true
           packages:
           - clang-6.0
-          - g++-7
+          - g++-8
           sources:
           - llvm-toolchain-trusty-6.0
           - ubuntu-toolchain-r-test
@@ -95,7 +105,7 @@ matrix:
           update: true
           packages:
           - clang-5.0
-          - g++-7
+          - g++-8
           sources:
           - llvm-toolchain-trusty-5.0
           - ubuntu-toolchain-r-test
@@ -106,7 +116,7 @@ matrix:
           update: true
           packages:
           - clang-4.0
-          - g++-7
+          - g++-8
           sources:
           - llvm-toolchain-trusty-4.0
           - ubuntu-toolchain-r-test
@@ -117,7 +127,7 @@ matrix:
           update: true
           packages:
           - clang-3.9
-          - g++-7
+          - g++-8
           sources:
           - llvm-toolchain-trusty-3.9
           - ubuntu-toolchain-r-test
@@ -128,7 +138,7 @@ matrix:
           update: true
           packages:
           - clang-3.8
-          - g++-7
+          - g++-8
           sources:
           - llvm-toolchain-trusty-3.8
           - ubuntu-toolchain-r-test
@@ -139,7 +149,7 @@ matrix:
           update: true
           packages:
           - clang-3.7
-          - g++-7
+          - g++-8
           sources:
           - llvm-toolchain-trusty-3.7
           - ubuntu-toolchain-r-test
@@ -150,7 +160,7 @@ matrix:
           update: true
           packages:
           - clang-3.6
-          - g++-7
+          - g++-8
           sources:
           - llvm-toolchain-trusty-3.6
           - llvm-toolchain-trusty-3.6-binaries
