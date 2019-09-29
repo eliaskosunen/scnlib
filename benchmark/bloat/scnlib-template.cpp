@@ -3,21 +3,26 @@
 void do_scan()
 {
     auto source = std::string{"42 3.14 999999999 abcdefg test_string"};
-    auto stream = scn::make_erased_stream(source);
+    auto range = scn::wrap(source);
 
     int i;
-    scn::scan(stream, "{}", i);
+    auto ret = scn::scan(range, "{}", i);
+    range = ret.range();
 
     double d;
-    scn::scan(stream, "{}", d);
+    ret = scn::scan(range, "{}", d);
+    range = ret.range();
 
     long long ll;
-    scn::scan(stream, "{}", ll);
+    ret = scn::scan(range, "{}", ll);
+    range = ret.range();
 
     char buf[7];
     auto buf_span = scn::make_span(buf, 7);
-    scn::scan(stream, "{}", buf_span);
+    ret = scn::scan(range, "{}", buf_span);
+    range = ret.range();
 
     std::string str;
-    scn::scan(stream, "{}", str);
+    ret = scn::scan(range, "{}", str);
+    range = ret.range();
 }

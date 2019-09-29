@@ -60,7 +60,8 @@ namespace scn {
     template <
         typename WrappedRange,
         typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
-    expected<span<const detail::ranges::range_value_t<WrappedRange>>>
+    expected<span<const typename detail::extract_char_type<
+        typename WrappedRange::iterator>::type>>
     read_zero_copy(WrappedRange& r,
                    detail::ranges::range_difference_t<WrappedRange> n)
     {
@@ -75,11 +76,13 @@ namespace scn {
     template <
         typename WrappedRange,
         typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
-    expected<span<const detail::ranges::range_value_t<WrappedRange>>>
+    expected<span<const typename detail::extract_char_type<
+        typename WrappedRange::iterator>::type>>
     read_zero_copy(WrappedRange&,
                    detail::ranges::range_difference_t<WrappedRange>)
     {
-        return {};
+        return span<const typename detail::extract_char_type<
+            typename WrappedRange::iterator>::type>{};
     }
 
     // read_into
@@ -154,7 +157,8 @@ namespace scn {
         typename WrappedRange,
         typename Predicate,
         typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
-    expected<span<const detail::ranges::range_value_t<WrappedRange>>>
+    expected<span<const typename detail::extract_char_type<
+        typename WrappedRange::iterator>::type>>
     read_until_space_zero_copy(WrappedRange& r,
                                Predicate is_space,
                                bool keep_final_space)
@@ -181,10 +185,12 @@ namespace scn {
         typename WrappedRange,
         typename Predicate,
         typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
-    span<const detail::ranges::range_value_t<WrappedRange>>
+    expected<span<const typename detail::extract_char_type<
+        typename WrappedRange::iterator>::type>>
     read_until_space_zero_copy(WrappedRange&, Predicate, bool)
     {
-        return {};
+        return span<const typename detail::extract_char_type<
+            typename WrappedRange::iterator>::type>{};
     }
 
     // read_until_space

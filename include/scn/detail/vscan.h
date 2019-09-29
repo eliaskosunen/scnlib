@@ -19,6 +19,7 @@
 #define SCN_DETAIL_VSCAN_H
 
 #include "context.h"
+#include "file.h"
 #include "visitor.h"
 
 namespace scn {
@@ -67,7 +68,37 @@ namespace scn {
                         basic_locale_ref<char>>&,
           basic_empty_parse_context<basic_default_locale_ref<char>>&);
 
-#endif // !SCN_HEADER_ONLY
+    // overloads for file
+
+    scan_result_for_t<
+        basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+                      basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+                        basic_default_locale_ref<char>>&,
+          basic_parse_context<basic_default_locale_ref<char>>&);
+
+    scan_result_for_t<
+        basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+                      basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+                        basic_default_locale_ref<char>>&,
+          basic_empty_parse_context<basic_default_locale_ref<char>>&);
+
+    scan_result_for_t<
+        basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+                      basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+                        basic_locale_ref<char>>&,
+          basic_parse_context<basic_default_locale_ref<char>>&);
+
+    scan_result_for_t<
+        basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+                      basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+                        basic_locale_ref<char>>&,
+          basic_empty_parse_context<basic_default_locale_ref<char>>&);
+
+#endif  // !SCN_HEADER_ONLY
 
     SCN_END_NAMESPACE
 }  // namespace scn

@@ -41,26 +41,6 @@ target_link_libraries(bloat-scnlib scn)
 add_executable(bloat-scnlib-header-only ${bloat-scnlib-sources})
 target_link_libraries(bloat-scnlib-header-only scn-header-only)
 
-# scnlib (erased)
-generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scnlib-erased-template.cpp" out/scnlib-erased bloat-scnlib-erased-sources)
-add_executable(bloat-erased-scnlib ${bloat-scnlib-erased-sources})
-target_link_libraries(bloat-erased-scnlib scn)
-
-# scnlib (erased, header-only)
-add_executable(bloat-scnlib-erased-header-only ${bloat-scnlib-erased-sources})
-target_link_libraries(bloat-scnlib-erased-header-only scn-header-only)
-
-if (SCN_HAS_RANGES)
-    # scnlib + range-v3
-    generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scnlib-ranges-template.cpp" out/scnlib-ranges bloat-scnlib-ranges-sources)
-    add_executable(bloat-scnlib-ranges ${bloat-scnlib-ranges-sources})
-    target_link_libraries(bloat-scnlib-ranges scn-ranges)
-
-    # scnlib + range-v3 (header-only)
-    add_executable(bloat-scnlib-ranges-header-only ${bloat-scnlib-ranges-sources})
-    target_link_libraries(bloat-scnlib-ranges-header-only scn-ranges-header-only)
-endif ()
-
 add_custom_target(bloat-prepare ALL
     COMMAND ${CMAKE_COMMAND} -E copy
     "${CMAKE_CURRENT_LIST_DIR}/bloat-test.py" "${CMAKE_CURRENT_LIST_DIR}/run-bloat-tests.py"

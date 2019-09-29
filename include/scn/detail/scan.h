@@ -37,7 +37,7 @@ namespace scn {
     // scan
 
     template <typename Range, typename Format, typename... Args>
-    auto scan(const Range& r, Format f, Args&... a)
+    auto scan(const Range& r, const Format& f, Args&... a)
         -> detail::scan_result_for_range_t<const Range&>
     {
         static_assert(sizeof...(Args) > 0,
@@ -54,7 +54,7 @@ namespace scn {
         return vscan(ctx, pctx);
     }
     template <typename Range, typename Format, typename... Args>
-    auto scan(Range&& r, Format f, Args&... a) ->
+    auto scan(Range&& r, const Format& f, Args&... a) ->
         typename std::enable_if<!std::is_reference<Range>::value,
                                 detail::scan_result_for_range_t<Range>>::type
     {
@@ -77,7 +77,10 @@ namespace scn {
               typename Range,
               typename Format,
               typename... Args>
-    auto scan_localized(const Locale& loc, const Range& r, Format f, Args&... a)
+    auto scan_localized(const Locale& loc,
+                        const Range& r,
+                        const Format& f,
+                        Args&... a)
         -> detail::scan_result_for_range_t<const Range&>
     {
         static_assert(sizeof...(Args) > 0,
@@ -99,7 +102,10 @@ namespace scn {
               typename Range,
               typename Format,
               typename... Args>
-    auto scan_localized(const Locale& loc, Range&& r, Format f, Args&... a) ->
+    auto scan_localized(const Locale& loc,
+                        Range&& r,
+                        const Format& f,
+                        Args&... a) ->
         typename std::enable_if<!std::is_reference<Range>::value,
                                 detail::scan_result_for_range_t<Range>>::type
     {
@@ -159,7 +165,7 @@ namespace scn {
     // scanf
 
     template <typename Range, typename Format, typename... Args>
-    auto scanf(const Range& r, Format f, Args&... a)
+    auto scanf(const Range& r, const Format& f, Args&... a)
         -> detail::scan_result_for_range_t<const Range&>
     {
         static_assert(sizeof...(Args) > 0,
@@ -176,7 +182,7 @@ namespace scn {
         return vscan(ctx, pctx);
     }
     template <typename Range, typename Format, typename... Args>
-    auto scanf(Range&& r, Format f, Args&... a) ->
+    auto scanf(Range&& r, const Format& f, Args&... a) ->
         typename std::enable_if<!std::is_reference<Range>::value,
                                 detail::scan_result_for_range_t<Range>>::type
     {
@@ -189,6 +195,53 @@ namespace scn {
 
         auto args = make_args<context_type, parse_context_type>(a...);
         auto ctx = context_type(detail::make_range_wrapper(std::move(r)), args);
+        auto pctx = parse_context_type(f, ctx);
+        return vscan(ctx, pctx);
+    }
+
+    // input
+
+    template <typename Format,
+              typename... Args,
+              typename CharT = detail::ranges::range_value_t<Format>>
+    auto input(const Format& f, Args&... a)
+        -> detail::scan_result_for_range_t<decltype(stdin_range<CharT>())>
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using context_type = basic_context<
+            detail::range_wrapper_for_t<decltype(stdin_range<CharT>())>>;
+        using parse_context_type =
+            basic_parse_context<typename context_type::locale_type>;
+
+        auto args = make_args<context_type, parse_context_type>(a...);
+        auto ctx = context_type(stdin_range<CharT>(), args);
+        auto pctx = parse_context_type(f, ctx);
+        return vscan(ctx, pctx);
+    }
+
+    // prompt
+
+    template <typename Format,
+              typename... Args,
+              typename CharT = detail::ranges::range_value_t<Format>>
+    auto prompt(const CharT* p, const Format& f, Args&... a)
+        -> detail::scan_result_for_range_t<decltype(stdin_range<CharT>())>
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+        SCN_EXPECT(p != nullptr);
+
+        std::printf("%s", p);
+
+        using context_type = basic_context<
+            detail::range_wrapper_for_t<decltype(stdin_range<CharT>())>>;
+        using parse_context_type =
+            basic_parse_context<typename context_type::locale_type>;
+
+        auto args = make_args<context_type, parse_context_type>(a...);
+        auto ctx = context_type(stdin_range<CharT>(), args);
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx);
     }
@@ -286,8 +339,9 @@ namespace scn {
 
     template <typename Range,
               typename String,
-              typename CharT = typename detail::extract_char_type<
-                  detail::range_wrapper_for_t<Range>>::type>
+              typename CharT =
+                  typename detail::extract_char_type<detail::ranges::iterator_t<
+                      detail::range_wrapper_for_t<Range>>>::type>
     auto getline(Range&& r, String& str) -> decltype(
         getline(std::forward<Range>(r), str, detail::ascii_widen<CharT>('\n')))
     {
@@ -364,7 +418,8 @@ namespace scn {
 
         template <typename WrappedRange,
                   typename CharT = typename detail::extract_char_type<
-                      detail::range_wrapper_for_t<WrappedRange>>::type>
+                      detail::range_wrapper_for_t<
+                          typename WrappedRange::iterator>>::type>
         auto ignore_until_impl(WrappedRange& r, CharT until)
             -> scan_result<typename WrappedRange::return_type, error>
         {
@@ -379,7 +434,8 @@ namespace scn {
 
         template <typename WrappedRange,
                   typename CharT = typename detail::extract_char_type<
-                      detail::range_wrapper_for_t<WrappedRange>>::type>
+                      detail::range_wrapper_for_t<
+                          typename WrappedRange::iterator>>::type>
         auto ignore_until_n_impl(WrappedRange& r,
                                  ranges::range_difference_t<WrappedRange> n,
                                  CharT until)

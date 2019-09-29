@@ -21,6 +21,8 @@
 
 #include <scn/detail/file.h>
 
+#include <cstdio>
+
 #if SCN_POSIX
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -106,7 +108,69 @@ namespace scn {
             *this = mapped_file{};
             SCN_ENSURE(!valid());
         }
+
+        template <>
+        SCN_FUNC expected<char> cfile_iterator<char>::operator*() const
+        {
+            SCN_EXPECT(valid());
+            int tmp = std::fgetc(file().file());
+            if (tmp == EOF) {
+                if (std::feof(file().file()) != 0) {
+                    return error(error::end_of_stream, "EOF");
+                }
+                if (std::ferror(file().file()) != 0) {
+                    return error(error::stream_source_error, "fgetc error");
+                }
+                return error(error::unrecoverable_stream_source_error,
+                             "Unknown fgetc error");
+            }
+            return static_cast<char>(tmp);
+        }
+        template <>
+        SCN_FUNC expected<wchar_t> cfile_iterator<wchar_t>::operator*() const
+        {
+            SCN_EXPECT(valid());
+            wint_t tmp = std::fgetwc(file().file());
+            if (tmp == WEOF) {
+                if (std::feof(file().file()) != 0) {
+                    return error(error::end_of_stream, "EOF");
+                }
+                if (std::ferror(file().file()) != 0) {
+                    return error(error::stream_source_error, "fgetc error");
+                }
+                return error(error::unrecoverable_stream_source_error,
+                             "Unknown fgetc error");
+            }
+            return static_cast<wchar_t>(tmp);
+        }
     }  // namespace detail
+
+    template <>
+    SCN_FUNC bool basic_file<char>::sync() const
+    {
+        return m_it.sync([&](span<char> s) {
+            for (auto it = s.rbegin(); it != s.rend(); ++it) {
+                if (std::ungetc(static_cast<unsigned char>(*it),
+                                m_it.base().file().file()) == EOF) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
+    template <>
+    SCN_FUNC bool basic_file<wchar_t>::sync() const
+    {
+        return m_it.sync([&](span<wchar_t> s) {
+            for (auto it = s.rbegin(); it != s.rend(); ++it) {
+                if (std::ungetwc(static_cast<wint_t>(*it),
+                                 m_it.base().file().file()) == WEOF) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
 
     SCN_END_NAMESPACE
 }  // namespace scn

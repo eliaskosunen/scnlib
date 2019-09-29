@@ -293,3 +293,51 @@ TEST_CASE("unpacked arguments")
         CHECK(a[static_cast<size_t>(i)] == i);
     }
 }
+
+TEST_CASE("backtracking_iterator")
+{
+    std::string str{"0123456789"};
+
+    auto strit = str.begin();
+    auto it = scn::backtracking_iterator<decltype(strit)>{strit};
+
+    ++strit;
+    ++it;
+    CHECK(strit == it.base());
+    CHECK(*strit == (*it).value());
+
+    ++strit;
+    ++it;
+    CHECK(strit == it.base());
+    CHECK(*strit == (*it).value());
+
+    ++strit;
+    ++it;
+    CHECK(strit == it.base());
+    CHECK(*strit == (*it).value());
+
+    --strit;
+    --it;
+    CHECK(strit == it.base() - 1);
+    CHECK(*strit == (*it).value());
+
+    ++strit;
+    ++it;
+    CHECK(strit == it.base());
+    CHECK(*strit == (*it).value());
+
+    --strit;
+    --it;
+    CHECK(strit == it.base() - 1);
+    CHECK(*strit == (*it).value());
+
+    --strit;
+    --it;
+    CHECK(strit == it.base() - 2);
+    CHECK(*strit == (*it).value());
+
+    ++strit;
+    ++it;
+    CHECK(strit == it.base() - 1);
+    CHECK(*strit == (*it).value());
+}

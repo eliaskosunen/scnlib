@@ -29,12 +29,11 @@ This library attempts to move us ever so closer to replacing `iostream`s and C s
 It's (going to, eventually, be) faster than `iostream` (see Benchmarks) and type-safe, unlike `scanf`.
 Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 
-The library is still in early development (0.1), so don't expect perfection.
+The library is still in early development (0.2), so don't expect perfection.
 See [Stability](#stability) for more details.
 
-This library is _not_ an implementation of the ISO C++ standards proposal
-[P1729 "Text Parsing"](https://wg21.link/p1729),
-but it's developed completely independently.
+This library is an implementation of the ISO C++ standards proposal
+[P1729 "Text Parsing"](https://wg21.link/p1729).
 
 ## Documentation and tutorial
 
@@ -101,7 +100,7 @@ target_link_libraries(my_program scn::scn)
 Every commit is tested with
  * gcc 5.5 and newer
  * clang 3.6 and newer
- * Visual Studio 2015 and 2017
+ * Visual Studio 2017 and 2019
 with very extreme warning flags (see CMakeLists.txt) and with multiple build configurations for each compiler.
 
 Older compilers may work, but it is not guaranteed.
@@ -167,7 +166,7 @@ Code size benchmarks test code bloat for nontrivial projects.
 It generates 25 translation units and reads values from stdin\* five times to simulate a medium sized project.
 The resulting executable size is shown in the following tables.
 
-The code was compiled on Kubuntu 18.10 with g++ 8.2.0.
+The code was compiled on Ubuntu 19.04 with g++ 8.2.0.
 `scnlib` is linked dynamically to level out the playing field compared to already dynamically linked `libc` and `libstdc++`.
 See the directory `benchmark/bloat` for more information, e.g. templates for each TU.
 
@@ -180,8 +179,6 @@ $ make -j
 $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 ```
 
-\*: `scn::ranges::scan` scans from a `Range`, not from stdin
-
 `(erased)` marks the usage of `scn::make_erased_stream()` instead of `scn::make_stream()`.
 
 #### Minimized build (-Os -DNDEBUG)
@@ -191,12 +188,8 @@ $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 | empty                               | 18                    | 14                  |
 | `scanf`                             | 23                    | 18                  |
 | `std::istream` / `std::cin`         | 25                    | 18                  |
-| `scn::input`                        | 47                    | 38                  |
-| `scn::input` (erased)               | 34                    | 26                  |
-| `scn::ranges::scan`                 | 94                    | 66                  |
-| `scn::input` (header only)          | 191                   | 130                 |
-| `scn::input` (header only & erased) | 189                   | 130                 |
-| `scn::ranges::scan` (header only)   | 194                   | 134                 |
+| `scn::scan`                         | 56                    | 50                  |
+| `scn::scan` (header only)           | 158                   | 110                 |
 
 #### Release build (-O3 -DNDEBUG)
 
@@ -205,12 +198,8 @@ $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 | empty                               | 18                    | 14                  |
 | `scanf`                             | 24                    | 18                  |
 | `std::istream` / `std::cin`         | 30                    | 22                  |
-| `scn::input`                        | 52                    | 42                  |
-| `scn::input` (erased)               | 42                    | 34                  |
-| `scn::ranges::scan`                 | 80                    | 70                  |
-| `scn::input` (header only)          | 209                   | 170                 |
-| `scn::input` (header only & erased) | 277                   | 238                 |
-| `scn::ranges::scan` (header only)   | 201                   | 166                 |
+| `scn::scan`                         | 52                    | 46                  |
+| `scn::scan` (header only)           | 165                   | 138                 |
 
 #### Debug build (-g)
 
@@ -219,12 +208,8 @@ $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 | empty                               | 29                    | 14                  |
 | `scanf`                             | 600                   | 18                  |
 | `std::istream` / `std::cin`         | 662                   | 22                  |
-| `scn::input`                        | 1910                  | 54                  |
-| `scn::input` (erased)               | 1760                  | 46                  |
-| `scn::ranges::scan`                 | 5350                  | 554                 |
-| `scn::input` (header only)          | 8460                  | 392                 |
-| `scn::input` (header only & erased) | 8140                  | 330                 |
-| `scn::ranges::scan` (header only)   | 9300                  | 718                 |
+| `scn::scan`                         | 1540                  | 62                  |
+| `scn::scan` (header only)           | 6340                  | 286                 |
 
 ## Acknowledgements
 
@@ -232,13 +217,19 @@ The contents of this library are heavily influenced by fmtlib and its derivative
 
 <https://github.com/fmtlib/fmt>  
 <https://fmt.dev>  
-<https://wg21.link/p0645>
 
 fmtlib is licensed under the BSD 2-clause license.  
 Copyright (c) 2012-2019 Victor Zverovich
 
+The ranges implementation found from this library is based on NanoRange:
+
+<https://github.com/tcbrindle/NanoRange>
+
+NanoRange is licensed under the Boost Software License, version 1.0.  
+Copyright (c) 2018 Tristan Brindle
+
 ## License
 
+scnlib is licensed under the Apache License, version 2.0.  
 Copyright (c) Elias Kosunen 2017-2019  
-Apache License 2.0   
 See LICENSE for further details

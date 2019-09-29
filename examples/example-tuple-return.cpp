@@ -21,16 +21,13 @@
 
 int main()
 {
-    auto stream = scn::make_stream("Hello 42");
 #if defined(__cpp_structured_bindings) && __cpp_structured_bindings >= 201606
-    auto [result, str, i] = scn::scan<std::string, int>(stream, "{} {}");
-#else
-    scn::scan_result result{0};
-    std::string str{};
-    int i{};
-    std::tie(result, str, i) = scn::scan<std::string, int>(stream, "{} {}");
-#endif
+    auto [result, str, i] = scn::scan<std::string, int>("Hello 42", "{} {}");
     if (result) {
         std::cout << "Read " << str << " and " << i << '\n';
     }
+#else
+    std::cout << "Compile with structured bindings support (C++17) for this "
+                 "example to work\n";
+#endif
 }

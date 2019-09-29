@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 
+#if 0
 int main()
 {
     std::string filename{};
@@ -33,3 +34,4 @@ int main()
         }
     }
 }
+#endif

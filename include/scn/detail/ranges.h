@@ -1012,7 +1012,12 @@ namespace scn {
                     : begin(std::move(b)), end(std::move(e))
                 {
                 }
-                SCN_CONSTEXPR _subrange_data(I&& b, S&& e, iter_difference_t<I>)
+                template <bool Dependent = true>
+                SCN_CONSTEXPR _subrange_data(
+                    I&& b,
+                    S&& e,
+                    typename std::enable_if<Dependent,
+                                            iter_difference_t<I>>::type)
                     : begin(std::move(b)), end(std::move(e))
                 {
                 }
@@ -1107,10 +1112,15 @@ namespace scn {
                         : m_data{std::move(i), std::move(s)}
                     {
                     }
-                    template <subrange_kind KK = K,
+                    template <bool Dependent = true,
+                              subrange_kind KK = K,
                               typename std::enable_if<
                                   KK == subrange_kind::sized>::type* = nullptr>
-                    SCN_CONSTEXPR14 subrange(I i, S s, iter_difference_t<I> n)
+                    SCN_CONSTEXPR14 subrange(
+                        I i,
+                        S s,
+                        typename std::enable_if<Dependent,
+                                                iter_difference_t<I>>::type n)
                         : m_data{std::move(i), std::move(s), n}
                     {
                     }
