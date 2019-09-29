@@ -166,7 +166,7 @@ Code size benchmarks test code bloat for nontrivial projects.
 It generates 25 translation units and reads values from stdin\* five times to simulate a medium sized project.
 The resulting executable size is shown in the following tables.
 
-The code was compiled on Ubuntu 19.04 with g++ 8.2.0.
+The code was compiled on Ubuntu 19.04 with g++ 8.3.0.
 `scnlib` is linked dynamically to level out the playing field compared to already dynamically linked `libc` and `libstdc++`.
 See the directory `benchmark/bloat` for more information, e.g. templates for each TU.
 
@@ -188,8 +188,8 @@ $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 | empty                               | 18                    | 14                  |
 | `scanf`                             | 23                    | 18                  |
 | `std::istream` / `std::cin`         | 25                    | 18                  |
-| `scn::scan`                         | 56                    | 50                  |
-| `scn::scan` (header only)           | 158                   | 110                 |
+| `scn::input`                        | 35                    | 30                  |
+| `scn::input` (header only)          | 138                   | 98                  |
 
 #### Release build (-O3 -DNDEBUG)
 
@@ -198,8 +198,8 @@ $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 | empty                               | 18                    | 14                  |
 | `scanf`                             | 24                    | 18                  |
 | `std::istream` / `std::cin`         | 30                    | 22                  |
-| `scn::scan`                         | 52                    | 46                  |
-| `scn::scan` (header only)           | 165                   | 138                 |
+| `scn::input`                        | 41                    | 34                  |
+| `scn::input` (header only)          | 177                   | 146                 |
 
 #### Debug build (-g)
 
@@ -208,8 +208,8 @@ $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 | empty                               | 29                    | 14                  |
 | `scanf`                             | 600                   | 18                  |
 | `std::istream` / `std::cin`         | 662                   | 22                  |
-| `scn::scan`                         | 1540                  | 62                  |
-| `scn::scan` (header only)           | 6340                  | 286                 |
+| `scn::input`                        | 1709                  | 51                  |
+| `scn::input` (header only)          | 6858                  | 281                 |
 
 ## Acknowledgements
 

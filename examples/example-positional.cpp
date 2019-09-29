@@ -20,9 +20,8 @@
 
 int main()
 {
-    auto stream = scn::make_stream("123 456");
     int first{}, second{};
-    if (auto ret = scn::scan(stream, "{1} {0}", first, second)) {
+    if (auto ret = scn::scan("123 456", "{1} {0}", first, second)) {
         std::cout << "First: " << first << ", second: " << second << '\n';
     }
 }

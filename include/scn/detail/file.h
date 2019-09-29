@@ -205,17 +205,17 @@ namespace scn {
             SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
         }
 
-        const iterator& begin() const
+        const iterator& begin() const noexcept
         {
             return m_it;
         }
 
-        sentinel end() const
+        sentinel end() const noexcept
         {
             return {};
         }
 
-        FILE* file() const
+        FILE* file() const noexcept
         {
             return m_file;
         }
@@ -332,12 +332,12 @@ namespace scn {
             {
             }
 
-            iterator begin() const
+            iterator begin() const noexcept
             {
                 SCN_EXPECT(*this);
                 return {m_file->begin()};
             }
-            sentinel end() const
+            sentinel end() const noexcept
             {
                 SCN_EXPECT(*this);
                 return m_file->end();
@@ -349,7 +349,7 @@ namespace scn {
                 return begin().base().base().file().sync();
             }
 
-            FILE* file()
+            FILE* file() const noexcept
             {
                 SCN_EXPECT(*this);
                 return m_file->file();
@@ -384,8 +384,8 @@ namespace scn {
     auto stdin_range()
         -> decltype(wrap(std::declval<const basic_file<CharT>&>()))&
     {
-        static auto file = basic_file<CharT>{stdin};
-        static auto wrapped = wrap(file);
+        static auto f = basic_file<CharT>{stdin};
+        static auto wrapped = wrap(f);
         return wrapped;
     }
     inline auto cstdin() -> decltype(wrap(std::declval<const file&>()))&

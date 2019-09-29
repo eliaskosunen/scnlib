@@ -270,7 +270,8 @@ namespace scn {
                     const Range& r,
                     Iterator& begin,
                     Iterator& rollback,
-                    priority_tag<0>) noexcept(noexcept(begin != rollback,
+                    priority_tag<0>) noexcept(noexcept(SCN_UNUSED(begin !=
+                                                                  rollback),
                                                        (void)(--begin),
                                                        (void)(begin ==
                                                               ranges::end(r))))
@@ -683,23 +684,26 @@ namespace scn {
             struct fn {
             private:
                 template <typename Range>
-                static view_range_wrapper<Range> impl(
-                    view_range_wrapper<Range> r,
-                    priority_tag<5>)
+                static view_range_wrapper<Range>
+                impl(view_range_wrapper<Range> r, priority_tag<5>) noexcept(
+                    std::is_nothrow_copy_constructible<
+                        view_range_wrapper<Range>>::value)
                 {
                     return r;
                 }
                 template <typename Range>
-                static lvalue_range_wrapper<Range> impl(
-                    lvalue_range_wrapper<Range> r,
-                    priority_tag<5>)
+                static lvalue_range_wrapper<Range>
+                impl(lvalue_range_wrapper<Range> r, priority_tag<5>) noexcept(
+                    std::is_nothrow_copy_constructible<
+                        lvalue_range_wrapper<Range>>::value)
                 {
                     return r;
                 }
                 template <typename Range>
-                static rvalue_range_wrapper<Range> impl(
-                    rvalue_range_wrapper<Range> r,
-                    priority_tag<5>)
+                static rvalue_range_wrapper<Range>
+                impl(rvalue_range_wrapper<Range> r, priority_tag<5>) noexcept(
+                    std::is_nothrow_copy_constructible<
+                        rvalue_range_wrapper<Range>>::value)
                 {
                     return r;
                 }
@@ -711,7 +715,7 @@ namespace scn {
                               std::is_integral<CharT>::value>::type* = nullptr>
                 static view_range_wrapper<basic_string_view<CharT>> impl(
                     const CharT (&str)[N],
-                    priority_tag<4>)
+                    priority_tag<4>) noexcept
                 {
                     return view_range_wrapper<basic_string_view<CharT>>(str);
                 }
@@ -727,7 +731,7 @@ namespace scn {
                 template <typename CharT, typename Traits, typename Allocator>
                 static view_range_wrapper<basic_string_view<CharT>> impl(
                     const std::basic_string<CharT, Traits, Allocator>& str,
-                    priority_tag<4>)
+                    priority_tag<4>) noexcept
                 {
                     return view_range_wrapper<basic_string_view<CharT>>(
                         {str.data(), str.size()});
@@ -736,7 +740,7 @@ namespace scn {
                 static rvalue_range_wrapper<
                     std::basic_string<CharT, Traits, Allocator>>
                 impl(std::basic_string<CharT, Traits, Allocator>&& str,
-                     priority_tag<4>)
+                     priority_tag<4>) noexcept
                 {
                     return {std::move(str)};
                 }
@@ -745,7 +749,7 @@ namespace scn {
                 template <typename CharT>
                 static view_range_wrapper<
                     basic_string_view<typename std::remove_const<CharT>::type>>
-                impl(span<CharT> s, priority_tag<4>)
+                impl(span<CharT> s, priority_tag<4>) noexcept
                 {
                     return {s.data(), s.size()};
                 }
@@ -769,7 +773,7 @@ namespace scn {
                               remove_cvref_t<Range>>::value>::type* = nullptr>
                 static view_range_wrapper<remove_cvref_t<Range>> impl(
                     Range&& r,
-                    priority_tag<1>)
+                    priority_tag<1>) noexcept
                 {
                     return view_range_wrapper<remove_cvref_t<Range>>(
                         std::forward<Range>(r));
@@ -778,8 +782,9 @@ namespace scn {
                 template <typename Range,
                           typename std::enable_if<!ranges::view<
                               remove_cvref_t<Range>>::value>::type* = nullptr>
-                static lvalue_range_wrapper<Range> impl(const Range& r,
-                                                        priority_tag<0>)
+                static lvalue_range_wrapper<Range> impl(
+                    const Range& r,
+                    priority_tag<0>) noexcept
                 {
                     return lvalue_range_wrapper<Range>(r);
                 }
@@ -789,8 +794,9 @@ namespace scn {
                         !std::is_reference<Range>::value &&
                         !ranges::view<remove_cvref_t<Range>>::value>::type* =
                         nullptr>
-                static rvalue_range_wrapper<Range> impl(Range&& r,
-                                                        priority_tag<0>)
+                static rvalue_range_wrapper<Range> impl(
+                    Range&& r,
+                    priority_tag<0>) noexcept
                 {
                     return rvalue_range_wrapper<Range>(std::move(r));
                 }
@@ -824,13 +830,15 @@ namespace scn {
                     typename std::enable_if<
                         ranges::view<Range>::value &&
                         !std::is_reference<Range>::value>::type* = nullptr>
-                static auto impl(Range&& r, priority_tag<1>)
+                static auto impl(Range&& r, priority_tag<1>) noexcept(
+                    noexcept(make_range_wrapper(std::forward<Range>(r))))
                     -> decltype(make_range_wrapper(std::forward<Range>(r)))
                 {
                     return make_range_wrapper(std::forward<Range>(r));
                 }
                 template <typename Range>
-                static auto impl(const Range& r, priority_tag<1>)
+                static auto impl(const Range& r, priority_tag<1>) noexcept(
+                    noexcept(make_range_wrapper(r)))
                     -> decltype(make_range_wrapper(r))
                 {
                     return make_range_wrapper(r);

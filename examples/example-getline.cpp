@@ -20,11 +20,13 @@
 
 int main()
 {
-    auto stream = scn::make_stream("First line\nSecond line");
+    auto r = scn::wrap("First line\nSecond line");
     std::string line{};
-    if (auto ret = scn::getline(stream, line)) {
+    if (auto ret = scn::getline(r, line)) {
+        r = ret.range();
         std::cout << "First line was: '" << line << "'\n";
-        if ((ret = scn::getline(stream, line))) {
+        if ((ret = scn::getline(r, line))) {
+            r = ret.range();
             std::cout << "Second line was: '" << line << "'\n";
         }
     }
