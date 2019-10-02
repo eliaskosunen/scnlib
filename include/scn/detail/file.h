@@ -265,7 +265,7 @@ namespace scn {
                 }
                 return *this;
             }
-            caching_cfile_iterator& operator--()
+            caching_cfile_iterator& operator--() noexcept
             {
                 SCN_EXPECT(m_cache != nullptr);
                 ++m_cache->n;

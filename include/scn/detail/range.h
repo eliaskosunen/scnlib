@@ -144,7 +144,10 @@ namespace scn {
             using char_type = typename extract_char_type<iterator>::type;
             using return_type = remove_cvref_t<range_type>;
 
-            template <typename R>
+            template <typename R,
+                      typename std::enable_if<
+                          std::is_same<remove_cvref_t<R>,
+                                       return_type>::value>::type* = nullptr>
             range_wrapper(R&& r)
                 : m_range(std::forward<R>(r)),
                   m_begin(ranges::begin(m_range)),
@@ -238,6 +241,13 @@ namespace scn {
             struct fn {
             private:
                 template <typename Range>
+                static range_wrapper<Range> impl(range_wrapper<Range> r,
+                                                 priority_tag<3>) noexcept
+                {
+                    return r;
+                }
+
+                template <typename Range>
                 static auto impl(Range&& r, priority_tag<2>) noexcept(
                     noexcept(std::forward<Range>(r)))
                     -> decltype(wrap(std::forward<Range>(r)))
@@ -269,11 +279,11 @@ namespace scn {
                 template <typename Range>
                 auto operator()(Range&& r) const
                     noexcept(noexcept(fn::impl(std::forward<Range>(r),
-                                               priority_tag<2>{})))
+                                               priority_tag<3>{})))
                         -> decltype(fn::impl(std::forward<Range>(r),
-                                             priority_tag<2>{}))
+                                             priority_tag<3>{}))
                 {
-                    return fn::impl(std::forward<Range>(r), priority_tag<2>{});
+                    return fn::impl(std::forward<Range>(r), priority_tag<3>{});
                 }
             };
         }  // namespace _wrap
@@ -334,21 +344,24 @@ namespace scn {
                 return r.make_view();
             }
 
-            template <typename View>
-            static View impl(View& v, detail::priority_tag<0>) noexcept
+            template <typename Range>
+            static Range impl(Range v, detail::priority_tag<0>) noexcept
             {
-                static_assert(detail::ranges::view<View>::value,
+                static_assert(detail::ranges::view<Range>::value,
                               "Unknown value given to make_view");
                 return v;
             }
 
         public:
             template <typename Range>
-            auto operator()(Range& r) const
-                noexcept(noexcept(fn::impl(r, detail::priority_tag<4>{})))
-                    -> decltype(fn::impl(r, detail::priority_tag<4>{}))
+            auto operator()(Range&& r) const
+                noexcept(noexcept(fn::impl(std::forward<Range>(r),
+                                           detail::priority_tag<4>{})))
+                    -> decltype(fn::impl(std::forward<Range>(r),
+                                         detail::priority_tag<4>{}))
             {
-                return fn::impl(r, detail::priority_tag<4>{});
+                return fn::impl(std::forward<Range>(r),
+                                detail::priority_tag<4>{});
             }
         };
     }  // namespace _make_view

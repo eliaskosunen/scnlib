@@ -127,35 +127,30 @@ The source code for the benchmarks can be seen in the `benchmark` directory.
 
 Times are in nanoseconds of CPU time. Lower is better.
 
+`scn::scan` is calling the `scn::scan(..., scn::default_tag, ...)` overload.
+
 #### Reading random integers
 
-| Integer type | `scn::scan` | `scn::get_value` | `std::stringstream` |
-| :----------- | ----------- | ---------------: | ------------------: |
-| `int`        | 71          | 50               | 70                  |
-| `long long`  | 106         | 81               | 95                  |
-| `unsigned`   | 81          | 60               | 53                  |
+| Integer type | `scn::scan` | `std::stringstream` | % decrease with scnlib |
+| :----------- | ----------- | ------------------: | ---------------------: |
+| `int`        | 64          | 80                  | 20 %                   |
+| `long long`  | 88          | 106                 | 17 %                   |
+| `unsigned`   | 76          | 60                  | -27 %                  |
 
 #### Reading random floating-point numbers
 
-| Floating-point type | `scn::scan` | `scn::get_value` | `std::stringstream` |
-| :------------------ | ----------: | ---------------: | ------------------: |
-| `float`             | 136         | 130              | 203                 |
-| `double`            | 141         | 135              | 208                 |
-| `long double`       | 155         | 143              | 219                 |
+| Floating-point type | `scn::scan` | `std::stringstream` | % decrease with scnlib |
+| :------------------ | ----------: | ------------------: | ---------------------: |
+| `float`             | 131         | 213                 | 38 %                   |
+| `double`            | 141         | 221                 | 36 %                   |
+| `long double`       | 156         | 231                 | 32 %                   |
 
-#### Reading random whitespace-separated `std::basic_string`s
+#### Reading random whitespace-separated strings
 
-| Character type | `scn::scan` | `scn::get_value` | `std::stringstream` |
-| :------------- | ----------: | ---------------: | ------------------: |
-| `char`         | 51          | 48               | 46                  |
-| `wchar_t`      | 71          | 80               | 110                 |
-
-#### Reading random characters
-
-| Character type | `scn::scan` | `scn::get_value` | `scn::getchar` | `std::stringstream` |
-| :------------- | ----------: | ---------------: | -------------: | ------------------: |
-| `char`         | 20          | 12               | 5              | 8                   |
-| `wchar_t`      | 19          | 12               | 5              | 15                  |
+| Character type | `scn::scan` | `scn::scan` and `string_view` | `std::stringstream` | % decrease with scnlib       |
+| :------------- | ----------: | ----------------------------: | ------------------: | ---------------------------: |
+| `char`         | 38          | 35                            | 48                  | 21 % (27 % /w `string_view`) |
+| `wchar_t`      | 48          | 35                            | 118                 | 59 % (70 % /w `string_view`) |
 
 You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS` and building the target `bench`.
 `SCN_BUILD_BENCHMARKS` is enabled by default if `scn` is the root CMake project, and disabled otherwise.

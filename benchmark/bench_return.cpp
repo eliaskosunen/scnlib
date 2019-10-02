@@ -31,18 +31,17 @@ SCN_GCC_IGNORE("-Wunused-function")
 static void return_ref(benchmark::State& state)
 {
     auto data = generate_data<char>(4096);
-    auto wrapped = scn::wrap(data);
+    auto range = scn::make_view(data);
 
     for (auto _ : state) {
         char c{};
-        auto e = scn::scan(wrapped, "{}", c);
-        wrapped = e.range();
+        auto e = scn::scan(range, "{}", c);
 
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_data<char>(4096);
-                wrapped = scn::wrap(data);
+                range = scn::make_view(data);
                 state.ResumeTiming();
             }
             else {
@@ -59,17 +58,16 @@ BENCHMARK(return_ref);
 static void return_tuple(benchmark::State& state)
 {
     auto data = generate_data<char>(4096);
-    auto wrapped = scn::wrap(data);
+    auto range = scn::make_view(data);
 
     for (auto _ : state) {
-        auto [r, c] = scn::scan_tuple<char>(wrapped, "{}");
-        wrapped = r.range();
+        auto [r, c] = scn::scan_tuple<char>(range, "{}");
 
         if (!r) {
             if (r.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_data<char>(4096);
-                wrapped = scn::wrap(data);
+                range = scn::make_view(data);
                 state.ResumeTiming();
             }
             else {

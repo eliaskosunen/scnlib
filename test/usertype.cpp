@@ -61,12 +61,11 @@ namespace scn {
 
 TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
 {
-    std::string source{"[4, 20]"};
     T ut{};
 
     SUBCASE("regular")
     {
-        auto ret = scn::scan(source, "{}", ut);
+        auto ret = scn::scan("[4, 20]", "{}", ut);
         CHECK(ret);
         CHECK(ret.value() == 1);
         CHECK(ut.val1 == 4);
@@ -74,7 +73,7 @@ TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
     }
     SUBCASE("format string error")
     {
-        auto ret = scn::scan(source, "{", ut);
+        auto ret = scn::scan("[4, 20]", "{", ut);
         CHECK(!ret);
         CHECK(ret.value() == 0);
         CHECK(ret.error() == scn::error::invalid_format_string);

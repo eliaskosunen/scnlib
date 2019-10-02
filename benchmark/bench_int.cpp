@@ -30,16 +30,15 @@ static void scanint_scn(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
     Int i{};
-    auto range = scn::wrap(data);
+    auto range = scn::make_view(data);
     for (auto _ : state) {
         auto ret = scn::scan(range, "{}", i);
-        range = ret.range();
 
         if (!ret) {
             if (ret.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_int_data<Int>(INT_DATA_N);
-                range = scn::wrap(data);
+                range = scn::make_view(data);
                 state.ResumeTiming();
             }
             else {
@@ -60,16 +59,15 @@ static void scanint_scn_default(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
     Int i{};
-    auto range = scn::wrap(data);
+    auto range = scn::make_view(data);
     for (auto _ : state) {
         auto ret = scn::scan(range, scn::default_tag, i);
-        range = ret.range();
 
         if (!ret) {
             if (ret.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_int_data<Int>(INT_DATA_N);
-                range = scn::wrap(data);
+                range = scn::make_view(data);
                 state.ResumeTiming();
             }
             else {

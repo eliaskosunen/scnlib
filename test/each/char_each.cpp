@@ -34,7 +34,7 @@ TEST_CASE("char each")
     for (auto ch : vec) {
         std::string source(1, ch);
         char tmp;
-        auto ret = scn::scan(source, scn::default_tag, tmp);
+        auto ret = scn::scan(scn::make_view(source), scn::default_tag, tmp);
 
         CHECK(ret);
         CHECK(ret.value() == 1);
@@ -55,7 +55,7 @@ TEST_CASE("wchar_t each")
 
         std::wstring source(1, ch);
         wchar_t tmp;
-        auto ret = scn::scan(source, scn::default_tag, tmp);
+        auto ret = scn::scan(scn::make_view(source), scn::default_tag, tmp);
 
         CHECK(ret);
         CHECK(ret.value() == 1);

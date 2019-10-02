@@ -62,13 +62,13 @@ TEST_CASE_TEMPLATE("getline", CharT, char, wchar_t)
     SUBCASE("test")
     {
         string_type s{};
-        auto ret = scn::getline(data, s);
+        auto ret = scn::getline(scn::make_view(data), s);
         CHECK(s == widen<CharT>("firstline"));
         CHECK(ret);
 
-        auto ret2 = scn::getline(ret.range(), s);
+        ret = scn::getline(ret.range(), s);
         CHECK(s == widen<CharT>("Second line with spaces"));
-        CHECK(ret2);
+        CHECK(ret);
     }
 }
 
@@ -81,13 +81,14 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
     {
         string_type s{};
         {
-            auto ret = scn::ignore_until(data, 0x0a);  // '\n'
+            auto ret = scn::ignore_until(scn::make_view(data), 0x0a);  // '\n'
             CHECK(ret);
-            data.assign(ret.range().data(), ret.range().size());
+            data.assign(ret.range().data(),
+                        static_cast<size_t>(ret.range().size()));
         }
 
         {
-            auto ret = scn::scan(data, scn::default_tag, s);
+            auto ret = scn::scan(scn::make_view(data), scn::default_tag, s);
             CHECK(s == widen<CharT>("line2"));
             CHECK(ret);
         }

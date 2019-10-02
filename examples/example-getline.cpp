@@ -20,13 +20,11 @@
 
 int main()
 {
-    auto r = scn::wrap("First line\nSecond line");
+    auto r = scn::make_view("First line\nSecond line");
     std::string line{};
     if (auto ret = scn::getline(r, line)) {
-        r = ret.range();
         std::cout << "First line was: '" << line << "'\n";
         if ((ret = scn::getline(r, line))) {
-            r = ret.range();
             std::cout << "Second line was: '" << line << "'\n";
         }
     }

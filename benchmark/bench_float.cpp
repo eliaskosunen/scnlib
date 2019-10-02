@@ -28,17 +28,16 @@ template <typename Float>
 static void scanfloat_scn(benchmark::State& state)
 {
     auto data = generate_float_data<Float>(FLOAT_DATA_N);
-    auto wrapped = scn::wrap(data);
+    auto range = scn::make_view(data);
     Float f{};
     for (auto _ : state) {
-        auto e = scn::scan(wrapped, "{}", f);
-        wrapped = e.range();
+        auto e = scn::scan(range, "{}", f);
 
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_float_data<Float>(FLOAT_DATA_N);
-                wrapped = scn::wrap(data);
+                range = scn::make_view(data);
                 state.ResumeTiming();
             }
             else {
@@ -58,17 +57,16 @@ template <typename Float>
 static void scanfloat_scn_default(benchmark::State& state)
 {
     auto data = generate_float_data<Float>(FLOAT_DATA_N);
-    auto wrapped = scn::wrap(data);
+    auto range = scn::make_view(data);
     Float f{};
     for (auto _ : state) {
-        auto e = scn::scan(wrapped, scn::default_tag, f);
-        wrapped = e.range();
+        auto e = scn::scan(range, scn::default_tag, f);
 
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_float_data<Float>(FLOAT_DATA_N);
-                wrapped = scn::wrap(data);
+                range = scn::make_view(data);
                 state.ResumeTiming();
             }
             else {

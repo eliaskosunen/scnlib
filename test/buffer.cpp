@@ -24,7 +24,7 @@ TEST_CASE("buffer")
     std::string s(4, '\0');
     auto span = scn::make_span(s);
 
-    auto ret = scn::scan(data, "{}", span);
+    auto ret = scn::scan(scn::make_view(data), "{}", span);
     CHECK(ret);
     CHECK(ret.value() == 1);
     CHECK(data.substr(0, 4) == s);

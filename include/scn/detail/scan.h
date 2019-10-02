@@ -447,7 +447,7 @@ namespace scn {
 
                 T tmp{};
                 auto sret = ::scn::scan(ctx.range(), default_tag, tmp);
-                ctx.range() = sret.range();
+                ctx.begin() = sret.range().begin();
                 if (!sret) {
                     if (sret.error() == scn::error::end_of_stream) {
                         break;

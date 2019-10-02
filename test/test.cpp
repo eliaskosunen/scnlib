@@ -43,7 +43,8 @@ TEST_CASE("general")
     std::string s(6, '\0');
     auto span = scn::make_span(&s[0], &s[0] + s.size());
     bool b{};
-    auto ret = scn::scan(data, "test {{}} {} {} {} {:a}", i, d, span, b);
+    auto ret = scn::scan(scn::make_view(data), "test {{}} {} {} {} {:a}", i, d,
+                         span, b);
 
     CHECK(data == copy);
     CHECK(i == 42);
@@ -53,10 +54,10 @@ TEST_CASE("general")
     CHECK(ret);
     CHECK(ret.value() == 4);
 
-    auto ret2 = scn::scan(ret.range(), "{}", i);
-    CHECK(!ret2);
-    CHECK(ret2.value() == 0);
-    CHECK(ret2.error() == scn::error::end_of_stream);
+    ret = scn::scan(ret.range(), "{}", i);
+    CHECK(!ret);
+    CHECK(ret.value() == 0);
+    CHECK(ret.error() == scn::error::end_of_stream);
 }
 
 TEST_CASE("wrapped range")
@@ -65,74 +66,27 @@ TEST_CASE("wrapped range")
 
     // view
     {
-        auto range = scn::wrap("123 456");
+        auto range = scn::make_view("123 456");
 
         auto ret = scn::scan(range, "{}", i);
         CHECK(ret);
         CHECK(ret.value() == 1);
         CHECK(i == 123);
 
-        range = ret.range();
         ret = scn::scan(range, "{}", i);
         CHECK(ret);
         CHECK(ret.value() == 1);
         CHECK(i == 456);
     }
-
-    // rvalue
-    // scn::wrap from rvalue owning range should fail
-#if 0
-    {
-        auto range = scn::wrap(std::string{"123 456"});
-        auto ret = scn::scan(std::move(range), "{}", i);
-        CHECK(ret);
-        CHECK(ret.value() == 1);
-        CHECK(i == 123);
-
-        range = ret.range();
-        ret = scn::scan(std::move(range), "{}", i);
-        CHECK(ret);
-        CHECK(ret.value() == 1);
-        CHECK(i == 456);
-    }
-#endif
-
-    // lvalue
-    {
-        auto str = std::string{"123 456"};
-        auto range = scn::wrap(str);
-        auto ret = scn::scan(range, "{}", i);
-        CHECK(ret);
-        CHECK(ret.value() == 1);
-        CHECK(i == 123);
-
-        range = ret.range();
-        ret = scn::scan(range, "{}", i);
-        CHECK(ret);
-        CHECK(ret.value() == 1);
-        CHECK(i == 456);
-    }
-}
-
-TEST_CASE("rvalue range")
-{
-    int i{0};
-    auto ret = scn::scan(std::string{"42"}, "{}", i);
-
-    CHECK(ret);
-    CHECK(ret.value() == 1);
-    CHECK(i == 42);
 }
 
 TEST_CASE("empty format")
 {
-    std::string data{"42 3.14 foobar true"};
-
     int i{0};
     double d{};
     std::string s(6, '\0');
     bool b{};
-    auto ret = scn::scan(data, scn::default_tag, i, d, s, b);
+    auto ret = scn::scan("42 3.14 foobar true", scn::default_tag, i, d, s, b);
 
     CHECK(ret);
     CHECK(ret.value() == 4);
@@ -144,13 +98,12 @@ TEST_CASE("empty format")
 
 TEST_CASE("scanf")
 {
-    std::string data{"test % 42 3.14 foobar true"};
-
     int i{0};
     double d{};
     std::string s(6, '\0');
     bool b{};
-    auto ret = scn::scanf(data, "test %% %i %f %s %b", i, d, s, b);
+    auto ret = scn::scanf("test % 42 3.14 foobar true", "test %% %i %f %s %b",
+                          i, d, s, b);
 
     CHECK(ret);
     CHECK(ret.value() == 4);
@@ -177,9 +130,7 @@ TEST_CASE("temporary")
         int value;
     };
 
-    std::string data{"42"};
-
-    auto ret = scn::scan(data, scn::default_tag, temporary{0}());
+    auto ret = scn::scan("42", scn::default_tag, temporary{0}());
 
     CHECK(ret);
     CHECK(ret.value() == 1);
@@ -187,11 +138,9 @@ TEST_CASE("temporary")
 
 TEST_CASE("enumerated arguments")
 {
-    std::string source{"42 text"};
-
     int i{};
     std::string s{};
-    auto ret = scn::scan(source, "{1} {0}", s, i);
+    auto ret = scn::scan("42 text", "{1} {0}", s, i);
 
     CHECK(ret);
     CHECK(ret.value() == 2);
@@ -199,25 +148,6 @@ TEST_CASE("enumerated arguments")
     CHECK(i == 42);
     CHECK(s == "text");
 }
-
-#if 0
-TEST_CASE("get_value")
-{
-    auto stream = scn::make_stream("42 foo 3.14");
-
-    auto i = scn::get_value<int>(stream);
-    CHECK(i);
-    CHECK(i.value() == 42);
-
-    auto str = scn::get_value<std::string>(stream);
-    CHECK(str);
-    CHECK(str.value() == "foo");
-
-    auto d = scn::get_value<double>(stream);
-    CHECK(d);
-    CHECK(d.value() == 3.14);
-}
-#endif
 
 TEST_CASE("format string literal mismatch")
 {
@@ -238,9 +168,9 @@ TEST_CASE("format string argument count mismatch")
     CHECK(ret.error() == scn::error::invalid_format_string);
     CHECK(s1 == "foo");
 
-    auto ret2 = scn::scan(ret.range(), "{}", s1, s2);
-    CHECK(ret2);
-    CHECK(ret2.value() == 1);
+    ret = scn::scan(ret.range(), "{}", s1, s2);
+    CHECK(ret);
+    CHECK(ret.value() == 1);
     CHECK(s1 == "bar");
     CHECK(s2.empty());
 }
@@ -292,52 +222,4 @@ TEST_CASE("unpacked arguments")
     for (int i = 0; i < 16; ++i) {
         CHECK(a[static_cast<size_t>(i)] == i);
     }
-}
-
-TEST_CASE("backtracking_iterator")
-{
-    std::string str{"0123456789"};
-
-    auto strit = str.begin();
-    auto it = scn::backtracking_iterator<decltype(strit)>{strit};
-
-    ++strit;
-    ++it;
-    CHECK(strit == it.base());
-    CHECK(*strit == (*it).value());
-
-    ++strit;
-    ++it;
-    CHECK(strit == it.base());
-    CHECK(*strit == (*it).value());
-
-    ++strit;
-    ++it;
-    CHECK(strit == it.base());
-    CHECK(*strit == (*it).value());
-
-    --strit;
-    --it;
-    CHECK(strit == it.base() - 1);
-    CHECK(*strit == (*it).value());
-
-    ++strit;
-    ++it;
-    CHECK(strit == it.base());
-    CHECK(*strit == (*it).value());
-
-    --strit;
-    --it;
-    CHECK(strit == it.base() - 1);
-    CHECK(*strit == (*it).value());
-
-    --strit;
-    --it;
-    CHECK(strit == it.base() - 2);
-    CHECK(*strit == (*it).value());
-
-    ++strit;
-    ++it;
-    CHECK(strit == it.base() - 1);
-    CHECK(*strit == (*it).value());
 }

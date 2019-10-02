@@ -39,19 +39,18 @@ std::string generate_list_data(size_t n)
 static void scanlist_scn(benchmark::State& state)
 {
     auto data = generate_list_data<int>(static_cast<size_t>(state.range(0)));
+    auto range = scn::make_view(data);
     std::vector<int> read;
     read.reserve(static_cast<size_t>(state.range(0)));
-    auto wrapped = scn::wrap(data);
     for (auto _ : state) {
         scn::string_view str;
-        auto err = scn::getline(wrapped, str, ',');
-        wrapped = err.range();
+        auto err = scn::getline(range, str, ',');
         if (!err) {
             if (err == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_list_data<int>(
                     static_cast<size_t>(state.range(0)));
-                wrapped = scn::wrap(data);
+                range = scn::make_view(data);
                 read.clear();
                 read.reserve(static_cast<size_t>(state.range(0)));
                 state.ResumeTiming();
@@ -62,7 +61,7 @@ static void scanlist_scn(benchmark::State& state)
         }
 
         int value{};
-        auto tmp = scn::scan(str, scn::default_tag, value);
+        auto tmp = scn::scan(scn::make_view(str), scn::default_tag, value);
         if (!tmp) {
             state.SkipWithError("");
             break;
@@ -75,13 +74,12 @@ BENCHMARK(scanlist_scn)->Arg(16)->Arg(64)->Arg(256);
 static void scanlist_scn_alt(benchmark::State& state)
 {
     auto data = generate_list_data<int>(static_cast<size_t>(state.range(0)));
+    auto range = scn::make_view(data);
     std::vector<int> read;
     read.reserve(static_cast<size_t>(state.range(0)));
-    auto wrapped = scn::wrap(data);
     for (auto _ : state) {
         int value{};
-        auto d = scn::scan(wrapped, scn::default_tag, value);
-        wrapped = scn::wrap(d.range());
+        auto d = scn::scan(range, scn::default_tag, value);
         if (!d) {
             state.SkipWithError(d.error().msg());
             break;
@@ -89,13 +87,13 @@ static void scanlist_scn_alt(benchmark::State& state)
         read.push_back(value);
 
         char ch{};
-        d = scn::scan(wrapped, scn::default_tag, ch);
+        d = scn::scan(range, scn::default_tag, ch);
         if (!d) {
             if (d.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_list_data<int>(
                     static_cast<size_t>(state.range(0)));
-                wrapped = scn::wrap(data);
+                range = scn::make_view(data);
                 read.clear();
                 read.reserve(static_cast<size_t>(state.range(0)));
                 state.ResumeTiming();
@@ -115,19 +113,17 @@ BENCHMARK(scanlist_scn_alt)->Arg(16)->Arg(64)->Arg(256);
 static void scanlist_scn_list(benchmark::State& state)
 {
     auto data = generate_list_data<int>(static_cast<size_t>(state.range(0)));
+    auto range = scn::make_view(data);
     std::vector<int> read;
     read.reserve(static_cast<size_t>(state.range(0)));
-    auto wrapped = scn::wrap(data);
     for (auto _ : state) {
-        auto ret =
-            scn::scan(wrapped, "{:,}", scn::temp(scn::make_list(read))());
-        wrapped = scn::wrap(ret.range());
+        auto ret = scn::scan(range, "{:,}", scn::temp(scn::make_list(read))());
         if (!ret) {
             if (ret.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_list_data<int>(
                     static_cast<size_t>(state.range(0)));
-                wrapped = scn::wrap(data);
+                range = scn::make_view(data);
                 read.clear();
                 read.reserve(static_cast<size_t>(state.range(0)));
                 state.ResumeTiming();

@@ -44,18 +44,17 @@ static void scanword_scn(benchmark::State& state)
 {
     using string_type = std::basic_string<Char>;
     string_type data = generate_data<Char>(static_cast<size_t>(state.range(0)));
-    auto wrapped = scn::wrap(data);
+    auto range = scn::make_view(data);
     string_type str{};
 
     for (auto _ : state) {
-        auto e = scn::scan(wrapped, default_format_str<Char>(), str);
-        wrapped = e.range();
+        auto e = scn::scan(range, default_format_str<Char>(), str);
 
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_data<Char>(static_cast<size_t>(state.range(0)));
-                wrapped = scn::wrap(data);
+                range = scn::make_view(data);
                 state.ResumeTiming();
             }
             else {
@@ -73,17 +72,17 @@ static void scanword_scn_default(benchmark::State& state)
 {
     using string_type = std::basic_string<Char>;
     string_type data = generate_data<Char>(static_cast<size_t>(state.range(0)));
-    auto wrapped = scn::wrap(data);
+    auto range = scn::make_view(data);
     string_type str{};
 
     for (auto _ : state) {
-        auto e = scn::scan(wrapped, scn::default_tag, str);
+        auto e = scn::scan(range, scn::default_tag, str);
 
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_data<Char>(static_cast<size_t>(state.range(0)));
-                wrapped = scn::wrap(data);
+                range = scn::make_view(data);
                 state.ResumeTiming();
             }
             else {
@@ -101,17 +100,17 @@ static void scanword_scn_string_view(benchmark::State& state)
 {
     using string_type = scn::basic_string_view<Char>;
     auto data = generate_data<Char>(static_cast<size_t>(state.range(0)));
-    auto wrapped = scn::wrap(data);
+    auto range = scn::make_view(data);
     string_type str{};
 
     for (auto _ : state) {
-        auto e = scn::scan(wrapped, default_format_str<Char>(), str);
+        auto e = scn::scan(range, default_format_str<Char>(), str);
 
         if (!e) {
             if (e.error() == scn::error::end_of_stream) {
                 state.PauseTiming();
                 data = generate_data<Char>(static_cast<size_t>(state.range(0)));
-                wrapped = scn::wrap(data);
+                range = scn::make_view(data);
                 state.ResumeTiming();
             }
             else {
