@@ -148,10 +148,10 @@ namespace scn {
     template <>
     SCN_FUNC bool basic_file<char>::sync() const
     {
-        return m_it.sync([&](span<char> s) {
+        return m_cache.sync([&](span<char> s) {
             for (auto it = s.rbegin(); it != s.rend(); ++it) {
-                if (std::ungetc(static_cast<unsigned char>(*it),
-                                m_it.base().file().file()) == EOF) {
+                if (std::ungetc(static_cast<unsigned char>(*it), m_file) ==
+                    EOF) {
                     return false;
                 }
             }
@@ -161,10 +161,9 @@ namespace scn {
     template <>
     SCN_FUNC bool basic_file<wchar_t>::sync() const
     {
-        return m_it.sync([&](span<wchar_t> s) {
+        return m_cache.sync([&](span<wchar_t> s) {
             for (auto it = s.rbegin(); it != s.rend(); ++it) {
-                if (std::ungetwc(static_cast<wint_t>(*it),
-                                 m_it.base().file().file()) == WEOF) {
+                if (std::ungetwc(static_cast<wint_t>(*it), m_file) == WEOF) {
                     return false;
                 }
             }

@@ -144,29 +144,29 @@ namespace scn {
         ParseCtx* m_pctx;
     };
 
-    template <typename ReturnType, typename Base = result<std::ptrdiff_t>>
+    template <typename Range, typename Base = result<std::ptrdiff_t>>
     class scan_result : public Base {
     public:
-        using return_type = ReturnType;
-        using range_type = typename return_type::view_type;
+        using range_type = Range;
         using base_type = Base;
 
-        SCN_CONSTEXPR scan_result(base_type&& b, return_type&& r)
-            : base_type(std::move(b)), m_range(std::move(r))
+        template <typename R>
+        SCN_CONSTEXPR scan_result(base_type&& b, R&& r)
+            : base_type(std::move(b)), m_range(std::forward<R>(r))
         {
         }
 
         range_type& range() &
         {
-            return m_range.get();
+            return m_range;
         }
         const range_type& range() const&
         {
-            return m_range.get();
+            return m_range;
         }
         range_type&& range() &&
         {
-            return std::move(m_range.get());
+            return m_range;
         }
 
         auto begin() -> decltype(detail::ranges::begin(range()))
@@ -196,7 +196,7 @@ namespace scn {
         }
 
     private:
-        return_type m_range;
+        detail::remove_cvref_t<range_type> m_range;
     };
     template <typename Context>
     struct scan_result_for {

@@ -68,6 +68,10 @@ namespace scn {
         struct priority_tag<0> {
         };
 
+        template <typename T>
+        struct dependent_false : std::false_type {
+        };
+
         // Stolen from NanoRange
         struct nonesuch {
             nonesuch() = delete;

@@ -24,49 +24,33 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        template <typename Range>
+        template <typename Range, typename E = result<ptrdiff_t>>
         struct scan_result_for_range {
-            using type =
-                scan_result<typename range_wrapper_for_t<Range>::return_type>;
+            using type = scan_result<
+                typename detail::range_wrapper_for_t<Range>::return_type,
+                E>;
         };
-        template <typename Range>
+        template <typename Range, typename E = result<ptrdiff_t>>
         using scan_result_for_range_t =
-            typename scan_result_for_range<Range>::type;
+            typename scan_result_for_range<Range, E>::type;
     }  // namespace detail
 
     // scan
 
     template <typename Range, typename Format, typename... Args>
-    auto scan(const Range& r, const Format& f, Args&... a)
-        -> detail::scan_result_for_range_t<const Range&>
+    auto scan(Range&& r, const Format& f, Args&... a)
+        -> detail::scan_result_for_range_t<Range>
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
-        using context_type =
-            basic_context<detail::range_wrapper_for_t<const Range&>>;
+        using range_type = detail::range_wrapper_for_t<Range>;
+        using context_type = basic_context<range_type>;
         using parse_context_type =
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::make_range_wrapper(r), args);
-        auto pctx = parse_context_type(f, ctx);
-        return vscan(ctx, pctx);
-    }
-    template <typename Range, typename Format, typename... Args>
-    auto scan(Range&& r, const Format& f, Args&... a) ->
-        typename std::enable_if<!std::is_reference<Range>::value,
-                                detail::scan_result_for_range_t<Range>>::type
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-
-        using context_type = basic_context<detail::range_wrapper_for_t<Range>>;
-        using parse_context_type =
-            basic_parse_context<typename context_type::locale_type>;
-
-        auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::make_range_wrapper(std::move(r)), args);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)), args);
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx);
     }
@@ -78,36 +62,9 @@ namespace scn {
               typename Format,
               typename... Args>
     auto scan_localized(const Locale& loc,
-                        const Range& r,
-                        const Format& f,
-                        Args&... a)
-        -> detail::scan_result_for_range_t<const Range&>
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-
-        using range_type = detail::range_wrapper_for_t<const Range&>;
-        using locale_type = basic_locale_ref<typename range_type::char_type>;
-        using context_type = basic_context<range_type, locale_type>;
-        using parse_context_type =
-            basic_parse_context<typename context_type::locale_type>;
-
-        auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::make_range_wrapper(r), args,
-                                {std::addressof(loc)});
-        auto pctx = parse_context_type(f, ctx);
-        return vscan(ctx, pctx);
-    }
-    template <typename Locale,
-              typename Range,
-              typename Format,
-              typename... Args>
-    auto scan_localized(const Locale& loc,
                         Range&& r,
                         const Format& f,
-                        Args&... a) ->
-        typename std::enable_if<!std::is_reference<Range>::value,
-                                detail::scan_result_for_range_t<Range>>::type
+                        Args&... a) -> detail::scan_result_for_range_t<Range>
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -119,7 +76,7 @@ namespace scn {
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::make_range_wrapper(r), args,
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)), args,
                                 {std::addressof(loc)});
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx);
@@ -128,36 +85,19 @@ namespace scn {
     // default format
 
     template <typename Range, typename... Args>
-    auto scan(const Range& r, detail::default_t, Args&... a)
-        -> detail::scan_result_for_range_t<const Range&>
+    auto scan(Range&& r, detail::default_t, Args&... a)
+        -> detail::scan_result_for_range_t<Range>
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
-        using context_type =
-            basic_context<detail::range_wrapper_for_t<const Range&>>;
+        using range_type = detail::range_wrapper_for_t<Range>;
+        using context_type = basic_context<range_type>;
         using parse_context_type =
             basic_empty_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::make_range_wrapper(r), args);
-        auto pctx = parse_context_type(static_cast<int>(sizeof...(Args)), ctx);
-        return vscan(ctx, pctx);
-    }
-    template <typename Range, typename... Args>
-    auto scan(Range&& r, detail::default_t, Args&... a) ->
-        typename std::enable_if<!std::is_reference<Range>::value,
-                                detail::scan_result_for_range_t<Range>>::type
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-
-        using context_type = basic_context<detail::range_wrapper_for_t<Range>>;
-        using parse_context_type =
-            basic_empty_parse_context<typename context_type::locale_type>;
-
-        auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::make_range_wrapper(std::move(r)), args);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)), args);
         auto pctx = parse_context_type(static_cast<int>(sizeof...(Args)), ctx);
         return vscan(ctx, pctx);
     }
@@ -165,26 +105,8 @@ namespace scn {
     // scanf
 
     template <typename Range, typename Format, typename... Args>
-    auto scanf(const Range& r, const Format& f, Args&... a)
-        -> detail::scan_result_for_range_t<const Range&>
-    {
-        static_assert(sizeof...(Args) > 0,
-                      "Have to scan at least a single argument");
-
-        using context_type =
-            basic_context<detail::range_wrapper_for_t<const Range&>>;
-        using parse_context_type =
-            basic_scanf_parse_context<typename context_type::locale_type>;
-
-        auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::make_range_wrapper(r), args);
-        auto pctx = parse_context_type(f, ctx);
-        return vscan(ctx, pctx);
-    }
-    template <typename Range, typename Format, typename... Args>
-    auto scanf(Range&& r, const Format& f, Args&... a) ->
-        typename std::enable_if<!std::is_reference<Range>::value,
-                                detail::scan_result_for_range_t<Range>>::type
+    auto scanf(Range&& r, const Format& f, Args&... a)
+        -> detail::scan_result_for_range_t<Range>
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -194,7 +116,7 @@ namespace scn {
             basic_scanf_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::make_range_wrapper(std::move(r)), args);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)), args);
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx);
     }
@@ -216,7 +138,7 @@ namespace scn {
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(stdin_range<CharT>(), args);
+        auto ctx = context_type(detail::wrap(stdin_range<CharT>()), args);
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx);
     }
@@ -241,7 +163,7 @@ namespace scn {
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(stdin_range<CharT>(), args);
+        auto ctx = context_type(detail::wrap(stdin_range<CharT>()), args);
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx);
     }
@@ -251,7 +173,7 @@ namespace scn {
     namespace detail {
         template <typename WrappedRange, typename String, typename CharT>
         auto getline_impl(WrappedRange& r, String& str, CharT until)
-            -> scan_result<typename WrappedRange::return_type, error>
+            -> detail::scan_result_for_range_t<WrappedRange, error>
         {
             auto until_pred = [until](CharT ch) { return ch == until; };
             auto s = read_until_space_zero_copy(r, until_pred, true);
@@ -286,7 +208,7 @@ namespace scn {
         auto getline_impl(WrappedRange& r,
                           basic_string_view<CharT>& str,
                           CharT until)
-            -> scan_result<typename WrappedRange::return_type, error>
+            -> detail::scan_result_for_range_t<WrappedRange, error>
         {
             auto until_pred = [until](CharT ch) { return ch == until; };
             auto s = read_until_space_zero_copy(r, until_pred, true);
@@ -310,30 +232,13 @@ namespace scn {
     }  // namespace detail
 
     template <typename Range, typename String, typename CharT>
-    auto getline(const Range& r, String& str, CharT until) -> scan_result<
-        typename detail::range_wrapper_for_t<const Range&>::return_type,
-        error>
-    {
-        auto wrapped = detail::make_range_wrapper(r);
-        auto ret = getline_impl(wrapped, str, until);
-        if (!ret) {
-            auto e = wrapped.reset_to_rollback_point();
-            if (!e) {
-                return {std::move(e), wrapped.get_return()};
-            }
-        }
-        return ret;
-    }
-    template <typename Range,
-              typename String,
-              typename CharT,
-              typename std::enable_if<!std::is_reference<Range>::value>::type* =
-                  nullptr>
     auto getline(Range&& r, String& str, CharT until)
-        -> scan_result<typename detail::range_wrapper_for_t<Range>::return_type,
-                       error>
+        -> decltype(detail::getline_impl(
+            std::declval<decltype(detail::wrap(std::forward<Range>(r)))&>(),
+            str,
+            until))
     {
-        auto wrapped = detail::make_range_wrapper(std::move(r));
+        auto wrapped = detail::wrap(std::forward<Range>(r));
         return getline_impl(wrapped, str, until);
     }
 
@@ -421,7 +326,7 @@ namespace scn {
                       detail::range_wrapper_for_t<
                           typename WrappedRange::iterator>>::type>
         auto ignore_until_impl(WrappedRange& r, CharT until)
-            -> scan_result<typename WrappedRange::return_type, error>
+            -> scan_result<WrappedRange, error>
         {
             auto until_pred = [until](CharT ch) { return ch == until; };
             ignore_iterator<CharT> it{};
@@ -439,7 +344,7 @@ namespace scn {
         auto ignore_until_n_impl(WrappedRange& r,
                                  ranges::range_difference_t<WrappedRange> n,
                                  CharT until)
-            -> scan_result<typename WrappedRange::return_type, error>
+            -> scan_result<WrappedRange, error>
         {
             auto until_pred = [until](CharT ch) { return ch == until; };
             ignore_iterator_n<CharT> begin{}, end{n};
@@ -452,29 +357,12 @@ namespace scn {
     }  // namespace detail
 
     template <typename Range, typename CharT>
-    auto ignore_until(const Range& r, CharT until) -> scan_result<
-        typename detail::range_wrapper_for_t<const Range&>::return_type,
-        error>
-    {
-        auto wrapped = detail::make_range_wrapper(r);
-        auto ret = detail::ignore_until_impl(wrapped, until);
-        if (!ret) {
-            auto e = wrapped.reset_to_rollback_point();
-            if (!e) {
-                return {std::move(e), wrapped.get_return()};
-            }
-        }
-        return ret;
-    }
-    template <typename Range,
-              typename CharT,
-              typename std::enable_if<!std::is_reference<Range>::value>::type* =
-                  nullptr>
     auto ignore_until(Range&& r, CharT until)
-        -> scan_result<typename detail::range_wrapper_for_t<Range>::return_type,
-                       error>
+        -> decltype(detail::ignore_until_impl(
+            std::declval<decltype(detail::wrap(std::forward<Range>(r)))&>(),
+            until))
     {
-        auto wrapped = detail::make_range_wrapper(std::move(r));
+        auto wrapped = detail::wrap(std::forward<Range>(r));
         auto ret = detail::ignore_until_impl(wrapped, until);
         if (!ret) {
             auto e = wrapped.reset_to_rollback_point();
@@ -486,34 +374,15 @@ namespace scn {
     }
 
     template <typename Range, typename CharT>
-    auto ignore_until_n(const Range& r,
-                        detail::ranges::range_difference_t<Range> n,
-                        CharT until)
-        -> scan_result<
-            typename detail::range_wrapper_for_t<const Range&>::return_type,
-            error>
-    {
-        auto wrapped = detail::make_range_wrapper(r);
-        auto ret = detail::ignore_until_n_impl(wrapped, n, until);
-        if (!ret) {
-            auto e = wrapped.reset_to_rollback_point();
-            if (!e) {
-                return {std::move(e), wrapped.get_return()};
-            }
-        }
-        return ret;
-    }
-    template <typename Range,
-              typename CharT,
-              typename std::enable_if<!std::is_reference<Range>::value>::type* =
-                  nullptr>
     auto ignore_until_n(Range&& r,
                         detail::ranges::range_difference_t<Range> n,
                         CharT until)
-        -> scan_result<typename detail::range_wrapper_for_t<Range>::return_type,
-                       error>
+        -> decltype(detail::ignore_until_n_impl(
+            std::declval<decltype(detail::wrap(std::forward<Range>(r)))&>(),
+            n,
+            until))
     {
-        auto wrapped = detail::make_range_wrapper(std::move(r));
+        auto wrapped = detail::wrap(std::forward<Range>(r));
         auto ret = detail::ignore_until_n_impl(wrapped, n, until);
         if (!ret) {
             auto e = wrapped.reset_to_rollback_point();

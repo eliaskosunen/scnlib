@@ -151,7 +151,7 @@ namespace scn {
             using iterator_category = std::input_iterator_tag;
 
             cfile_iterator() = default;
-            cfile_iterator(basic_file<CharT>* f) : m_file(f) {}
+            cfile_iterator(const basic_file<CharT>* f) : m_file(f) {}
 
             expected<CharT> operator*() const;
             const cfile_iterator& operator++() const
@@ -179,18 +179,167 @@ namespace scn {
             }
 
         private:
-            basic_file<CharT>* m_file{nullptr};
+            const basic_file<CharT>* m_file{nullptr};
+        };
+
+        template <typename CharT>
+        struct cfile_iterator_cache {
+            using char_type = CharT;
+            using traits = std::char_traits<CharT>;
+            using int_type = typename traits::int_type;
+
+            template <typename F>
+            bool sync(F sync_fn)
+            {
+                if (n == 0) {
+                    return true;
+                }
+                auto s = span<char_type>(std::addressof(*(buffer.end() - n)),
+                                         &buffer[0] + buffer.size());
+                if (sync_fn(s)) {
+                    buffer.clear();
+                    n = 0;
+                    return true;
+                }
+                return false;
+            }
+
+            std::basic_string<char_type> buffer{};
+            std::ptrdiff_t n{0};
+            int_type latest{traits::eof()};
+            error err{};
+        };
+
+        template <typename CharT>
+        class caching_cfile_iterator {
+        public:
+            using char_type = CharT;
+            using underlying_iterator = cfile_iterator<CharT>;
+            using cache_type = cfile_iterator_cache<CharT>;
+            using traits = std::char_traits<char_type>;
+
+            using value_type = ranges::iter_value_t<underlying_iterator>;
+            using reference = ranges::iter_reference_t<underlying_iterator>;
+            using pointer = value_type*;
+            using difference_type =
+                ranges::iter_difference_t<underlying_iterator>;
+            using iterator_category = std::bidirectional_iterator_tag;
+
+            caching_cfile_iterator() = default;
+            caching_cfile_iterator(underlying_iterator it, cache_type& c)
+                : m_it(std::move(it)), m_cache(std::addressof(c))
+            {
+            }
+
+            underlying_iterator base()
+            {
+                return m_it;
+            }
+            cache_type* cache()
+            {
+                return m_cache;
+            }
+
+            expected<char_type> operator*()
+            {
+                SCN_EXPECT(m_cache != nullptr);
+                if (m_cache->n > 0) {
+                    return {*(m_cache->buffer.end() - m_cache->n)};
+                }
+                if (m_cache->err) {
+                    if (m_cache->latest == traits::eof()) {
+                        return _read_next();
+                    }
+                    return traits::to_char_type(m_cache->latest);
+                }
+                return m_cache->err;
+            }
+            caching_cfile_iterator& operator++()
+            {
+                SCN_EXPECT(m_cache != nullptr);
+                if (m_cache->n > 0) {
+                    --m_cache->n;
+                }
+                else {
+                    _read_next();
+                }
+                return *this;
+            }
+            caching_cfile_iterator& operator--()
+            {
+                SCN_EXPECT(m_cache != nullptr);
+                ++m_cache->n;
+                return *this;
+            }
+
+            bool operator==(const caching_cfile_iterator& o) const
+            {
+                if (m_it == o.m_it) {
+                    if (!m_cache) {
+                        return true;
+                    }
+                    return m_cache->n == o.m_cache->n;
+                }
+                return false;
+            }
+            bool operator!=(const caching_cfile_iterator& o) const
+            {
+                return !operator==(o);
+            }
+
+            template <typename Sentinel>
+            bool operator==(const Sentinel& o) const
+            {
+                if (!m_cache || m_cache->n == 0) {
+                    return m_it == o;
+                }
+                return false;
+            }
+            template <typename Sentinel>
+            bool operator!=(const Sentinel& o) const
+            {
+                return !operator==(o);
+            }
+
+        private:
+            expected<char_type> _read_next()
+            {
+                SCN_EXPECT(m_cache != nullptr);
+                if (m_cache->err && m_cache->latest != traits::eof()) {
+                    m_cache->buffer.push_back(
+                        traits::to_char_type(m_cache->latest));
+                }
+                if (!m_cache->err) {
+                    return m_cache->err;
+                }
+                ++m_it;
+                auto next = wrap_deref(*m_it);
+                if (next) {
+                    m_cache->latest = traits::to_int_type(next.value());
+                }
+                else {
+                    m_cache->err = next.error();
+                }
+                return next;
+            }
+
+            underlying_iterator m_it{};
+            cache_type* m_cache{nullptr};
         };
     }  // namespace detail
 
     template <typename CharT>
+    class basic_file_view;
+
+    template <typename CharT>
     class basic_file {
     public:
+        using iterator = detail::caching_cfile_iterator<CharT>;
         using underlying_iterator = detail::cfile_iterator<CharT>;
-        using iterator = backtracking_iterator<underlying_iterator>;
         using sentinel = underlying_iterator;
+        using cache_type = detail::cfile_iterator_cache<CharT>;
 
-        basic_file(FILE* f) : m_file(f), m_it(this) {}
+        basic_file(FILE* f) : m_file(f), m_cache{} {}
 
         basic_file(const basic_file&) = delete;
         basic_file& operator=(const basic_file&) = delete;
@@ -205,9 +354,10 @@ namespace scn {
             SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
         }
 
-        const iterator& begin() const noexcept
+        iterator begin() const noexcept
         {
-            return m_it;
+            auto uit = underlying_iterator{this};
+            return {std::move(uit), m_cache};
         }
 
         sentinel end() const noexcept
@@ -220,179 +370,98 @@ namespace scn {
             return m_file;
         }
 
+        cache_type& cache() const noexcept
+        {
+            return m_cache;
+        }
+
         bool sync() const;
+
+        basic_file_view<CharT> make_view() const;
 
     private:
         FILE* m_file;
-        mutable iterator m_it;
+        mutable cache_type m_cache;
     };
 
     using file = basic_file<char>;
     using wfile = basic_file<wchar_t>;
 
-    namespace detail {
-        template <typename CharT>
-        class basic_file_view_iterator {
-        public:
-            using file_type = basic_file<CharT>;
-            using underlying_iterator = typename file_type::iterator;
-            using value_type = ranges::iter_value_t<underlying_iterator>;
-            using reference = ranges::iter_reference_t<underlying_iterator>;
-            using pointer = typename underlying_iterator::pointer;
-            using difference_type =
-                ranges::iter_difference_t<underlying_iterator>;
-            using iterator_category =
-                ranges::iterator_category_t<underlying_iterator>;
+    template <typename CharT>
+    class basic_file_view : public detail::ranges::view_base {
+    public:
+        using file_type = basic_file<CharT>;
+        using iterator = typename file_type::iterator;
+        using sentinel = typename file_type::sentinel;
 
-            basic_file_view_iterator() = default;
-            basic_file_view_iterator(const underlying_iterator& it)
-                // eww
-                : m_it(std::addressof(const_cast<underlying_iterator&>(it)))
-            {
-            }
-
-            value_type operator*() const
-            {
-                return m_it->operator*();
-            }
-            const basic_file_view_iterator& operator++() const
-            {
-                m_it->operator++();
-                return *this;
-            }
-            const basic_file_view_iterator& operator--() const
-            {
-                m_it->operator--();
-                return *this;
-            }
-
-            template <typename F>
-            bool sync(F&& s) const
-            {
-                return m_it->sync(std::forward<F>(s));
-            }
-
-            const underlying_iterator& base() const
-            {
-                SCN_EXPECT(m_it != nullptr);
-                return *m_it;
-            }
-
-            bool operator==(const basic_file_view_iterator& o) const
-            {
-                return o.m_it == m_it;
-            }
-            bool operator!=(const basic_file_view_iterator& o) const
-            {
-                return !operator==(o);
-            }
-
-        private:
-            // const correctness? never heard of it
-            mutable underlying_iterator* m_it{nullptr};
-        };
-
-        template <typename CharT, typename Sentinel>
-        bool operator==(const basic_file_view_iterator<CharT>& l,
-                        const Sentinel& r)
+        basic_file_view() = default;
+        basic_file_view(const file_type& f) : m_file(std::addressof(f)) {}
+        basic_file_view(iterator i, sentinel)
+            : m_file(std::addressof(i.base().file()))
         {
-            return l.base() == r;
-        }
-        template <typename CharT, typename Sentinel>
-        bool operator!=(const basic_file_view_iterator<CharT>& l,
-                        const Sentinel& r)
-        {
-            return !(l == r);
         }
 
-        template <typename CharT, typename Sentinel>
-        bool operator==(const Sentinel& l,
-                        const basic_file_view_iterator<CharT>& r)
+        iterator begin() const noexcept
         {
-            return l == r.base();
+            SCN_EXPECT(*this);
+            return {m_file->begin()};
         }
-        template <typename CharT, typename Sentinel>
-        bool operator!=(const Sentinel& l,
-                        const basic_file_view_iterator<CharT>& r)
+        sentinel end() const noexcept
         {
-            return !(l == r);
+            SCN_EXPECT(*this);
+            return m_file->end();
         }
 
-        template <typename CharT>
-        class basic_file_view {
-        public:
-            using file_type = basic_file<CharT>;
-            using iterator = basic_file_view_iterator<CharT>;
-            using sentinel = typename file_type::sentinel;
+        bool sync() const
+        {
+            SCN_EXPECT(*this);
+            return begin().base().base().file().sync();
+        }
 
-            basic_file_view() = default;
-            basic_file_view(const file_type& f) : m_file(std::addressof(f)) {}
-            basic_file_view(iterator i, sentinel)
-                : m_file(std::addressof(i.base().base().file()))
-            {
-            }
+        FILE* file() const noexcept
+        {
+            SCN_EXPECT(*this);
+            return m_file->file();
+        }
 
-            iterator begin() const noexcept
-            {
-                SCN_EXPECT(*this);
-                return {m_file->begin()};
-            }
-            sentinel end() const noexcept
-            {
-                SCN_EXPECT(*this);
-                return m_file->end();
-            }
+        const file_type& get() const
+        {
+            SCN_EXPECT(*this);
+            return *m_file;
+        }
 
-            bool sync() const
-            {
-                SCN_EXPECT(*this);
-                return begin().base().base().file().sync();
-            }
+        operator bool() const
+        {
+            return m_file != nullptr;
+        }
 
-            FILE* file() const noexcept
-            {
-                SCN_EXPECT(*this);
-                return m_file->file();
-            }
+    private:
+        const file_type* m_file{nullptr};
+    };
 
-            const file_type& get() const
-            {
-                SCN_EXPECT(*this);
-                return *m_file;
-            }
-
-            operator bool() const
-            {
-                return m_file != nullptr;
-            }
-
-        private:
-            const file_type* m_file{nullptr};
-        };
-    }  // namespace detail
+    using file_view = basic_file_view<char>;
+    using wfile_view = basic_file_view<wchar_t>;
 
     template <typename CharT>
-    detail::view_range_wrapper<detail::basic_file_view<CharT>>
-    make_range_wrapper(const basic_file<CharT>& f)
+    basic_file_view<CharT> basic_file<CharT>::make_view() const
     {
-        return {detail::basic_file_view<CharT>{f}};
+        return {*this};
     }
 
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wexit-time-destructors")
     template <typename CharT>
-    auto stdin_range()
-        -> decltype(wrap(std::declval<const basic_file<CharT>&>()))&
+    basic_file_view<CharT>& stdin_range()
     {
         static auto f = basic_file<CharT>{stdin};
-        static auto wrapped = wrap(f);
-        return wrapped;
+        static auto view = basic_file_view<CharT>(f);
+        return view;
     }
-    inline auto cstdin() -> decltype(wrap(std::declval<const file&>()))&
+    inline file_view& cstdin()
     {
         return stdin_range<char>();
     }
-    inline auto wcstdin() -> decltype(wrap(std::declval<const wfile&>()))&
+    inline wfile_view& wcstdin()
     {
         return stdin_range<wchar_t>();
     }

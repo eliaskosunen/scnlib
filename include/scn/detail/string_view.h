@@ -240,6 +240,15 @@ namespace scn {
             return substr(pos1, count1).compare(basic_string_view(s, count2));
         }
 
+        basic_string_view<value_type> make_view(span<value_type> s)
+        {
+            return {s.data(), s.size()};
+        }
+        basic_string_view<value_type> make_view(span<const value_type> s)
+        {
+            return {s.data(), s.size()};
+        }
+
     private:
         span_type m_data{};
     };
