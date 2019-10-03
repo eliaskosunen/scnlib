@@ -60,23 +60,44 @@ TEST_CASE("general")
     CHECK(ret.error() == scn::error::end_of_stream);
 }
 
-TEST_CASE("wrapped range")
+TEST_CASE("range wrapping")
 {
-    int i;
-
-    // view
+    SUBCASE("rvalue view")
     {
-        auto range = scn::make_view("123 456");
+        auto view = "hello 42";
 
-        auto ret = scn::scan(range, "{}", i);
+        std::string str;
+        auto ret = scn::scan(scn::string_view(view), "{}", str);
+        CHECK(str == "hello");
         CHECK(ret);
-        CHECK(ret.value() == 1);
-        CHECK(i == 123);
+        CHECK(ret.range()[0] == ' ');
+        CHECK(view[0] == 'h');
 
-        ret = scn::scan(range, "{}", i);
+        int i;
+        ret = scn::scan(ret.range(), "{}", i);
+        CHECK(i == 42);
         CHECK(ret);
-        CHECK(ret.value() == 1);
-        CHECK(i == 456);
+        CHECK(ret.range().empty());
+        CHECK(view[0] == 'h');
+    }
+
+    SUBCASE("lvalue view")
+    {
+        auto view = scn::make_view("hello 42");
+
+        std::string str;
+        auto ret = scn::scan(view, "{}", str);
+        CHECK(str == "hello");
+        CHECK(ret);
+        CHECK(ret.range()[0] == ' ');
+        CHECK(view[0] == ' ');
+
+        int i;
+        ret = scn::scan(view, "{}", i);
+        CHECK(i == 42);
+        CHECK(ret);
+        CHECK(ret.range().empty());
+        CHECK(view.empty());
     }
 }
 

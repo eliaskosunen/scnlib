@@ -174,8 +174,6 @@ $ make -j
 $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 ```
 
-`(erased)` marks the usage of `scn::make_erased_stream()` instead of `scn::make_stream()`.
-
 #### Minimized build (-Os -DNDEBUG)
 
 | Method                              | Executable size (KiB) | Stripped size (KiB) |
