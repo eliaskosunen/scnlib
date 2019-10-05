@@ -105,6 +105,7 @@ with very extreme warning flags (see CMakeLists.txt) and with multiple build con
 
 Older compilers may work, but it is not guaranteed.
 GCC 4.x support will not be provided, as its C++11 support is too buggy.
+Same thing applies for VS 2015, due to its inability to handle templates.
 
 ## Stability
 

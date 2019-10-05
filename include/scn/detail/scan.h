@@ -20,6 +20,8 @@
 
 #include "vscan.h"
 
+#include <vector>
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
@@ -400,63 +402,89 @@ namespace scn {
         using value_type = T;
         using iterator = OutputIt;
 
-        OutputIt it;
-    };
-    template <typename Container>
-    list<typename Container::value_type, std::back_insert_iterator<Container>>
-    make_list(Container& c)
-    {
-        return {std::back_inserter(c)};
-    }
-
-    template <typename CharT, typename T, typename OutputIt>
-    struct scanner<CharT, list<T, OutputIt>> {
-        template <typename ParseCtx>
-        error parse(ParseCtx& pctx)
+        list(OutputIt i)
+            : it(std::move(i)), has_separator(false), is_separator(nullptr)
         {
-            pctx.arg_begin();
-            if (SCN_UNLIKELY(!pctx)) {
-                return error(error::invalid_format_string,
-                             "Unexpected format string end");
-            }
-            if (!pctx.check_arg_end()) {
-                separator = pctx.next();
-                pctx.advance();
-            }
-            if (!pctx.check_arg_end()) {
-                return error(error::invalid_format_string,
-                             "Expected argument end");
-            }
-            pctx.arg_end();
-            return {};
         }
 
+        template <typename F>
+        list(OutputIt i, F f)
+            : it(std::move(i)),
+              has_separator(true),
+              is_separator(reinterpret_cast<void (*)()>(+f))
+        {
+        }
+
+        template <typename CharT>
+        auto get_separator_fn() -> bool (*)(CharT)
+        {
+            return reinterpret_cast<bool (*)(CharT)>(is_separator);
+        }
+
+        OutputIt it;
+        bool has_separator;
+
+        void (*is_separator)();
+    };
+
+    template <typename Container, typename... A>
+    list<typename Container::value_type, std::back_insert_iterator<Container>>
+    make_list(Container& c, A&&... a)
+    {
+        return {std::back_inserter(c), std::forward<A>(a)...};
+    }
+    template <typename T, typename... A>
+    list<T, std::vector<T>*> make_list(std::vector<T>& vec, A&&... a)
+    {
+        return {std::addressof(vec), std::forward<A>(a)...};
+    }
+
+    namespace detail {
+        template <typename T, typename OutputIt, typename InputIt>
+        void list_append(InputIt b, InputIt e, list<T, OutputIt>& l)
+        {
+            std::copy(b, e, l.it);
+        }
+        template <typename T, typename InputIt>
+        void list_append(InputIt b, InputIt e, list<T, std::vector<T>*>& l)
+        {
+            l.it->insert(l.it->end(), b, e);
+        }
+    }  // namespace detail
+
+    template <typename CharT, typename T, typename OutputIt>
+    struct scanner<CharT, list<T, OutputIt>> : public scanner<CharT, T> {
         template <typename Context>
         error scan(list<T, OutputIt>& val, Context& ctx)
         {
             detail::small_vector<T, 8> buf{};
+            auto is_separator = val.template get_separator_fn<CharT>();
 
             while (true) {
-                auto ret = skip_range_whitespace(ctx);
-                if (!ret) {
-                    if (ret == scn::error::end_of_stream) {
-                        break;
+                {
+                    auto ret = skip_range_whitespace(ctx);
+                    if (!ret) {
+                        if (ret == scn::error::end_of_stream) {
+                            break;
+                        }
+                        return ret;
                     }
-                    return ret;
                 }
 
-                T tmp{};
-                auto sret = ::scn::scan(ctx.range(), default_tag, tmp);
-                ctx.begin() = sret.range().begin();
-                if (!sret) {
-                    if (sret.error() == scn::error::end_of_stream) {
-                        break;
+                {
+                    T tmp{};
+                    auto ret = scanner<CharT, T>::scan(tmp, ctx);
+                    if (!ret) {
+                        if (ret == scn::error::end_of_stream) {
+                            break;
+                        }
+                        return ret;
                     }
-                    return sret.error();
+                    buf.push_back(tmp);
+                    *this = scanner<CharT, list<T, OutputIt>>{};
                 }
-                buf.push_back(tmp);
 
-                if (separator != 0) {
+                if (val.has_separator) {
                     auto sep_ret = read_char(ctx.range());
                     if (!sep_ret) {
                         if (sep_ret.error() == scn::error::end_of_stream) {
@@ -464,7 +492,7 @@ namespace scn {
                         }
                         return sep_ret.error();
                     }
-                    if (sep_ret.value() == separator) {
+                    if (is_separator(sep_ret.value())) {
                         continue;
                     }
                     else {
@@ -473,11 +501,9 @@ namespace scn {
                     }
                 }
             }
-            std::copy(buf.begin(), buf.end(), val.it);
+            detail::list_append(buf.begin(), buf.end(), val);
             return {};
         }
-
-        CharT separator{0};
     };
 
     SCN_END_NAMESPACE

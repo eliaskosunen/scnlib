@@ -244,3 +244,105 @@ TEST_CASE("unpacked arguments")
         CHECK(a[static_cast<size_t>(i)] == i);
     }
 }
+
+TEST_CASE("argument amount")
+{
+    SUBCASE("1")
+    {
+        int i;
+        auto ret = scn::scan("0", scn::default_tag, i);
+        CHECK(ret);
+        CHECK(ret.value() == 1);
+        CHECK(i == 0);
+    }
+#define MAKE_ARGUMENT_AMOUNT_TEST(str, n, ...)                \
+    int i[n];                                                 \
+    auto ret = scn::scan(str, scn::default_tag, __VA_ARGS__); \
+    CHECK(ret);                                               \
+    CHECK(ret.value() == n);                                  \
+    for (int j = 0; j < n; ++j) {                             \
+        CHECK(i[j] == j);                                     \
+    }                                                         \
+    do {                                                      \
+    } while (false)
+    SUBCASE("2")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1", 2, i[0], i[1]);
+    }
+    SUBCASE("3")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2", 3, i[0], i[1], i[2]);
+    }
+    SUBCASE("4")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3", 4, i[0], i[1], i[2], i[3]);
+    }
+    SUBCASE("5")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4", 5, i[0], i[1], i[2], i[3], i[4]);
+    }
+    SUBCASE("6")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5", 6, i[0], i[1], i[2], i[3],
+                                  i[4], i[5]);
+    }
+    SUBCASE("7")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5 6", 7, i[0], i[1], i[2], i[3],
+                                  i[4], i[5], i[6]);
+    }
+    SUBCASE("8")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5 6 7", 8, i[0], i[1], i[2], i[3],
+                                  i[4], i[5], i[6], i[7]);
+    }
+    SUBCASE("9")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5 6 7 8", 9, i[0], i[1], i[2],
+                                  i[3], i[4], i[5], i[6], i[7], i[8]);
+    }
+    SUBCASE("10")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5 6 7 8 9", 10, i[0], i[1], i[2],
+                                  i[3], i[4], i[5], i[6], i[7], i[8], i[9]);
+    }
+    SUBCASE("11")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5 6 7 8 9 10", 11, i[0], i[1],
+                                  i[2], i[3], i[4], i[5], i[6], i[7], i[8],
+                                  i[9], i[10]);
+    }
+    // 12 should be the limit for packing arguments
+    SUBCASE("12")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5 6 7 8 9 10 11", 12, i[0], i[1],
+                                  i[2], i[3], i[4], i[5], i[6], i[7], i[8],
+                                  i[9], i[10], i[11]);
+    }
+    SUBCASE("13")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5 6 7 8 9 10 11 12", 13, i[0],
+                                  i[1], i[2], i[3], i[4], i[5], i[6], i[7],
+                                  i[8], i[9], i[10], i[11], i[12]);
+    }
+    SUBCASE("14")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5 6 7 8 9 10 11 12 13", 14, i[0],
+                                  i[1], i[2], i[3], i[4], i[5], i[6], i[7],
+                                  i[8], i[9], i[10], i[11], i[12], i[13]);
+    }
+    SUBCASE("15")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5 6 7 8 9 10 11 12 13 14", 15,
+                                  i[0], i[1], i[2], i[3], i[4], i[5], i[6],
+                                  i[7], i[8], i[9], i[10], i[11], i[12], i[13],
+                                  i[14]);
+    }
+    SUBCASE("16")
+    {
+        MAKE_ARGUMENT_AMOUNT_TEST("0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15", 16,
+                                  i[0], i[1], i[2], i[3], i[4], i[5], i[6],
+                                  i[7], i[8], i[9], i[10], i[11], i[12], i[13],
+                                  i[14], i[15]);
+    }
+}

@@ -124,73 +124,48 @@ namespace scn {
             using char_type = typename Context::char_type;
             using arg_type = typename Context::arg_type;
 
-            union {
-                monostate empty_value;
+            SCN_CONSTEXPR value() noexcept : m_empty{} {}
 
-                short* short_value;
-                int* int_value;
-                long* long_value;
-                long long* long_long_value;
-
-                unsigned short* ushort_value;
-                unsigned* uint_value;
-                unsigned long* ulong_value;
-                unsigned long long* ulong_long_value;
-
-                bool* bool_value;
-                char_type* char_value;
-
-                float* float_value;
-                double* double_value;
-                long double* long_double_value;
-
-                span<char_type>* buffer_value;
-                std::basic_string<char_type>* string_value;
-                basic_string_view<char_type>* string_view_value;
-                custom_value custom;
-
-                void* pointer;
-            };
-
-            SCN_CONSTEXPR value() noexcept : empty_value{} {}
-
-            value(short& val) noexcept : short_value(&val) {}
-            value(int& val) noexcept : int_value(&val) {}
-            value(long& val) noexcept : long_value(&val) {}
-            value(long long& val) noexcept : long_long_value(&val) {}
-
-            value(unsigned short& val) noexcept : ushort_value(&val) {}
-            value(unsigned& val) noexcept : uint_value(&val) {}
-            value(unsigned long& val) noexcept : ulong_value(&val) {}
-            value(unsigned long long& val) noexcept : ulong_long_value(&val) {}
-
-            value(bool& val) noexcept : bool_value(&val) {}
-            value(char_type& val) noexcept : char_value(&val) {}
-
-            value(float& val) noexcept : float_value(&val) {}
-            value(double& val) noexcept : double_value(&val) {}
-            value(long double& val) noexcept : long_double_value(&val) {}
-
-            value(span<char_type>& val) noexcept : buffer_value(&val) {}
-            value(std::basic_string<char_type>& val) noexcept
-                : string_value(&val)
+            template <typename T>
+            value(T& val) noexcept : m_value(std::addressof(val))
             {
             }
-            value(basic_string_view<char_type>& val) noexcept
-                : string_view_value(&val)
-            {
-            }
-
-            value(void* val) noexcept : pointer(val) {}
 
             template <typename ParseCtx, typename T>
             value(parse_ctx_tag<ParseCtx>, T& val)
-                : custom(
+                : m_custom(
                       custom_value{std::addressof(val),
                                    reinterpret_cast<void (*)()>(
                                        &scan_custom_arg<Context, ParseCtx, T>)})
             {
             }
+
+            template <typename T>
+            T& get_as() noexcept
+            {
+                return *static_cast<T*>(m_value);
+            }
+            template <typename T>
+            const T& get_as() const noexcept
+            {
+                return *static_cast<const T*>(m_value);
+            }
+
+            custom_value& get_custom() noexcept
+            {
+                return m_custom;
+            }
+            const custom_value& get_custom() const noexcept
+            {
+                return m_custom;
+            }
+
+        private:
+            union {
+                monostate m_empty;
+                void* m_value;
+                custom_value m_custom;
+            };
         };
 
         template <typename Context, typename T, type Type>
@@ -361,50 +336,55 @@ namespace scn {
     SCN_CONSTEXPR14 error visit_arg(Visitor&& vis,
                                     typename Context::arg_type& arg)
     {
+        using char_type = typename Context::char_type;
         switch (arg.m_type) {
             case detail::none_type:
                 break;
 
             case detail::short_type:
-                return vis(*arg.m_value.short_value);
+                return vis(arg.m_value.template get_as<short>());
             case detail::int_type:
-                return vis(*arg.m_value.int_value);
+                return vis(arg.m_value.template get_as<int>());
             case detail::long_type:
-                return vis(*arg.m_value.long_value);
+                return vis(arg.m_value.template get_as<long>());
             case detail::long_long_type:
-                return vis(*arg.m_value.long_long_value);
+                return vis(arg.m_value.template get_as<long long>());
 
             case detail::ushort_type:
-                return vis(*arg.m_value.ushort_value);
+                return vis(arg.m_value.template get_as<unsigned short>());
             case detail::uint_type:
-                return vis(*arg.m_value.uint_value);
+                return vis(arg.m_value.template get_as<unsigned int>());
             case detail::ulong_type:
-                return vis(*arg.m_value.ulong_value);
+                return vis(arg.m_value.template get_as<unsigned long>());
             case detail::ulong_long_type:
-                return vis(*arg.m_value.ulong_long_value);
+                return vis(arg.m_value.template get_as<unsigned long long>());
 
             case detail::bool_type:
-                return vis(*arg.m_value.bool_value);
+                return vis(arg.m_value.template get_as<bool>());
             case detail::char_type:
-                return vis(*arg.m_value.char_value);
+                return vis(arg.m_value.template get_as<char_type>());
 
             case detail::float_type:
-                return vis(*arg.m_value.float_value);
+                return vis(arg.m_value.template get_as<float>());
             case detail::double_type:
-                return vis(*arg.m_value.double_value);
+                return vis(arg.m_value.template get_as<double>());
             case detail::long_double_type:
-                return vis(*arg.m_value.long_double_value);
+                return vis(arg.m_value.template get_as<long double>());
 
             case detail::buffer_type:
-                return vis(*arg.m_value.buffer_value);
+                return vis(arg.m_value.template get_as<span<char_type>>());
             case detail::string_type:
-                return vis(*arg.m_value.string_value);
+                return vis(
+                    arg.m_value
+                        .template get_as<std::basic_string<char_type>>());
             case detail::string_view_type:
-                return vis(*arg.m_value.string_view_value);
+                return vis(
+                    arg.m_value
+                        .template get_as<basic_string_view<char_type>>());
 
             case detail::custom_type:
-                return vis(
-                    typename Context::arg_type::handle(arg.m_value.custom));
+                return vis(typename Context::arg_type::handle(
+                    arg.m_value.get_custom()));
 
                 SCN_CLANG_PUSH
                 SCN_CLANG_IGNORE("-Wcovered-switch-default")

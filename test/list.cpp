@@ -34,8 +34,9 @@ TEST_CASE("list")
 TEST_CASE("comma list")
 {
     std::vector<int> values;
-    auto ret = scn::scan("0, 1, 2, 3, 42, -1, 1024", "{:,}",
-                         scn::temp(scn::make_list(values))());
+    auto ret = scn::scan(
+        "0, 1, 2, 3, 42, -1, 1024", "{}",
+        scn::temp(scn::make_list(values, [](char ch) { return ch == ','; }))());
     CHECK(ret);
     CHECK(ret.value() == 1);
 
