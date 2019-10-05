@@ -121,7 +121,7 @@ namespace scn {
             std::basic_istream<CharT> stream(std::addressof(streambuf));
 
             if (!(stream >> val)) {
-                return error(error::unrecoverable_stream_source_error,
+                return error(error::unrecoverable_source_error,
                              "Bad stream after reading");
             }
             return {};

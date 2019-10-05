@@ -230,7 +230,7 @@ namespace scn {
                 // EOF is not an error
                 auto ret = skip_range_whitespace(ctx);
                 if (SCN_UNLIKELY(!ret)) {
-                    if (ret == error::end_of_stream) {
+                    if (ret == error::end_of_range) {
                         break;
                     }
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE

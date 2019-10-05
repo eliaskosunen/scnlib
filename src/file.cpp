@@ -116,12 +116,12 @@ namespace scn {
             int tmp = std::fgetc(file().file());
             if (tmp == EOF) {
                 if (std::feof(file().file()) != 0) {
-                    return error(error::end_of_stream, "EOF");
+                    return error(error::end_of_range, "EOF");
                 }
                 if (std::ferror(file().file()) != 0) {
-                    return error(error::stream_source_error, "fgetc error");
+                    return error(error::source_error, "fgetc error");
                 }
-                return error(error::unrecoverable_stream_source_error,
+                return error(error::unrecoverable_source_error,
                              "Unknown fgetc error");
             }
             return static_cast<char>(tmp);
@@ -133,12 +133,12 @@ namespace scn {
             wint_t tmp = std::fgetwc(file().file());
             if (tmp == WEOF) {
                 if (std::feof(file().file()) != 0) {
-                    return error(error::end_of_stream, "EOF");
+                    return error(error::end_of_range, "EOF");
                 }
                 if (std::ferror(file().file()) != 0) {
-                    return error(error::stream_source_error, "fgetc error");
+                    return error(error::source_error, "fgetc error");
                 }
-                return error(error::unrecoverable_stream_source_error,
+                return error(error::unrecoverable_source_error,
                              "Unknown fgetc error");
             }
             return static_cast<wchar_t>(tmp);

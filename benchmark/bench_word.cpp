@@ -51,7 +51,7 @@ static void scanword_scn(benchmark::State& state)
         auto e = scn::scan(range, default_format_str<Char>(), str);
 
         if (!e) {
-            if (e.error() == scn::error::end_of_stream) {
+            if (e.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 range = scn::make_view(data);
@@ -79,7 +79,7 @@ static void scanword_scn_default(benchmark::State& state)
         auto e = scn::scan(range, scn::default_tag, str);
 
         if (!e) {
-            if (e.error() == scn::error::end_of_stream) {
+            if (e.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 range = scn::make_view(data);
@@ -107,7 +107,7 @@ static void scanword_scn_string_view(benchmark::State& state)
         auto e = scn::scan(range, default_format_str<Char>(), str);
 
         if (!e) {
-            if (e.error() == scn::error::end_of_stream) {
+            if (e.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 range = scn::make_view(data);

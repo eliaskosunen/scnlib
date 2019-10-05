@@ -57,7 +57,7 @@ TEST_CASE("general")
     ret = scn::scan(ret.range(), "{}", i);
     CHECK(!ret);
     CHECK(ret.value() == 0);
-    CHECK(ret.error() == scn::error::end_of_stream);
+    CHECK(ret.error() == scn::error::end_of_range);
 }
 
 TEST_CASE("range wrapping")
@@ -221,7 +221,7 @@ TEST_CASE("empty input")
     CHECK(!ret);
     CHECK(ret.value() == 0);
     CHECK(i == 0);
-    CHECK(ret.error() == scn::error::end_of_stream);
+    CHECK(ret.error() == scn::error::end_of_range);
 }
 TEST_CASE("empty format string")
 {

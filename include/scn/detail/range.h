@@ -98,7 +98,7 @@ namespace scn {
                     while (begin != rollback) {
                         --begin;
                         if (begin == ranges::end(r)) {
-                            return error(error::unrecoverable_stream_error,
+                            return error(error::unrecoverable_source_error,
                                          "Putback failed");
                         }
                     }

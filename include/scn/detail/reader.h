@@ -36,7 +36,7 @@ namespace scn {
         WrappedRange& r)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_stream, "EOF");
+            return error(error::end_of_range, "EOF");
         }
         auto ch = *r.begin();
         ++r.begin();
@@ -48,7 +48,7 @@ namespace scn {
     detail::ranges::range_value_t<WrappedRange> read_char(WrappedRange& r)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_stream, "EOF");
+            return error(error::end_of_range, "EOF");
         }
         auto ch = *r.begin();
         ++r.begin();
@@ -66,7 +66,7 @@ namespace scn {
                    detail::ranges::range_difference_t<WrappedRange> n)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_stream, "EOF");
+            return error(error::end_of_range, "EOF");
         }
         const auto n_to_read = detail::min(r.size(), n);
         auto s = make_span(r.data(), static_cast<size_t>(n_to_read)).as_const();
@@ -111,12 +111,12 @@ namespace scn {
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_stream, "EOF");
+            return error(error::end_of_range, "EOF");
         }
         for (detail::ranges::range_difference_t<WrappedRange> i = 0; i < n;
              ++i) {
             if (r.begin() == r.end()) {
-                return error(error::end_of_stream, "EOF");
+                return error(error::end_of_range, "EOF");
             }
             *it = *r.begin();
             ++it;
@@ -134,12 +134,12 @@ namespace scn {
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_stream, "EOF");
+            return error(error::end_of_range, "EOF");
         }
         for (detail::ranges::range_difference_t<WrappedRange> i = 0; i < n;
              ++i) {
             if (r.begin() == r.end()) {
-                return error(error::end_of_stream, "EOF");
+                return error(error::end_of_range, "EOF");
             }
             auto tmp = *r.begin();
             if (!tmp) {
@@ -164,7 +164,7 @@ namespace scn {
                                bool keep_final_space)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_stream, "EOF");
+            return error(error::end_of_range, "EOF");
         }
         for (auto it = r.begin(); it != r.end(); ++it) {
             if (is_space(*it)) {
@@ -223,7 +223,7 @@ namespace scn {
                            bool keep_final_space)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_stream, "EOF");
+            return error(error::end_of_range, "EOF");
         }
         for (auto& it = r.begin(); it != r.end(); ++it) {
             const auto ch = *it;
@@ -251,7 +251,7 @@ namespace scn {
                            bool keep_final_space)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_stream, "EOF");
+            return error(error::end_of_range, "EOF");
         }
         for (auto& it = r.begin(); it != r.end(); ++it) {
             auto tmp = *it;
@@ -286,7 +286,7 @@ namespace scn {
                                   bool keep_final_space)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_stream, "EOF");
+            return error(error::end_of_range, "EOF");
         }
         for (auto& it = r.begin(); it != r.end() && out != end; ++it) {
             const auto ch = *it;
@@ -315,7 +315,7 @@ namespace scn {
                                   bool keep_final_space)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_stream, "EOF");
+            return error(error::end_of_range, "EOF");
         }
         for (auto& it = r.begin(); it != r.end() && out != end; ++it) {
             auto tmp = *it;
@@ -344,8 +344,8 @@ namespace scn {
     error putback_n(WrappedRange& r,
                     detail::ranges::range_difference_t<WrappedRange> n)
     {
-        SCN_EXPECT(n <= detail::ranges::distance(
-                            detail::ranges::begin(r.range()), r.begin()));
+        SCN_EXPECT(n <=
+                   detail::ranges::distance(r.begin_underlying(), r.begin()));
         std::advance(r.begin(), -n);
         return {};
     }
@@ -359,7 +359,7 @@ namespace scn {
              ++i) {
             --r.begin();
             if (r.begin() == r.end()) {
-                return error(error::unrecoverable_stream_error,
+                return error(error::unrecoverable_source_error,
                              "Putback failed");
             }
         }
@@ -435,7 +435,7 @@ namespace scn {
                 }
                 if (s.value().size() != 0) {
                     if (s.value().size() != val.size()) {
-                        return error(error::end_of_stream, "EOF");
+                        return error(error::end_of_range, "EOF");
                     }
                     std::memcpy(val.begin(), s.value().begin(),
                                 s.value().size() * sizeof(char_type));

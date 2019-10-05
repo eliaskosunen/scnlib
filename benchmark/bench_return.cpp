@@ -38,7 +38,7 @@ static void return_ref(benchmark::State& state)
         auto e = scn::scan(range, "{}", c);
 
         if (!e) {
-            if (e.error() == scn::error::end_of_stream) {
+            if (e.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_data<char>(4096);
                 range = scn::make_view(data);
@@ -64,7 +64,7 @@ static void return_tuple(benchmark::State& state)
         auto [r, c] = scn::scan_tuple<char>(range, "{}");
 
         if (!r) {
-            if (r.error() == scn::error::end_of_stream) {
+            if (r.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_data<char>(4096);
                 range = scn::make_view(data);

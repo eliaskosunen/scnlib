@@ -35,7 +35,7 @@ static void scanint_scn(benchmark::State& state)
         auto ret = scn::scan(range, "{}", i);
 
         if (!ret) {
-            if (ret.error() == scn::error::end_of_stream) {
+            if (ret.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_int_data<Int>(INT_DATA_N);
                 range = scn::make_view(data);
@@ -64,7 +64,7 @@ static void scanint_scn_default(benchmark::State& state)
         auto ret = scn::scan(range, scn::default_tag, i);
 
         if (!ret) {
-            if (ret.error() == scn::error::end_of_stream) {
+            if (ret.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_int_data<Int>(INT_DATA_N);
                 range = scn::make_view(data);

@@ -1,3 +1,31 @@
+# 0.2
+
+_Released 2019-10-xx_
+
+## Major changes
+
+ * Remove the notion of streams, and replace them with ranges
+   * Using a hand-written minimal ranges implementation based on NanoRange: https://github.com/tcbrindle/NanoRange
+   * A lot of things changed, renamed or removed because of this
+
+## Additions
+
+ * Add zero-copy parsing of `string_view`s from a `contiguous_range`
+   * Works like parsing a `std::string`, except the pointers of the `string_view` are directed to the input range
+ * Add `list` (see #9)
+ * Add experimental memory mapped file reading support
+
+## Removals
+
+ * Remove `scn::options` and `scn::scan` overloads taking one
+ * Remove parsing algorithms based on `std::strto*`, `std::sto*` and `std::from_chars`
+ * Remove reading from a `std::basic_istream`
+
+## Changes
+
+ * Fix UB in `small_vector` using `std::aligned_storage` and `std::aligned_union`
+ * _And probably tons more that I've not written down anywhere_
+
 # 0.1.2
 
 _Released 2019-06-25_

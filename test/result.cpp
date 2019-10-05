@@ -31,17 +31,17 @@ TEST_CASE("error")
     }
     SUBCASE("general")
     {
-        auto e = scn::error{scn::error::end_of_stream, "EOF"};
+        auto e = scn::error{scn::error::end_of_range, "EOF"};
         CHECK(!e);
-        CHECK(e == scn::error::end_of_stream);
-        CHECK(e.code() == scn::error::end_of_stream);
+        CHECK(e == scn::error::end_of_range);
+        CHECK(e.code() == scn::error::end_of_range);
         CHECK(e.is_recoverable());
     }
     SUBCASE("general")
     {
-        auto e = scn::error{scn::error::unrecoverable_stream_error, ""};
+        auto e = scn::error{scn::error::unrecoverable_source_error, ""};
         CHECK(!e);
-        CHECK(e == scn::error::unrecoverable_stream_error);
+        CHECK(e == scn::error::unrecoverable_source_error);
         CHECK(!e.is_recoverable());
     }
 }
@@ -64,10 +64,10 @@ TEST_CASE("expected")
     }
     SUBCASE("error")
     {
-        scn::expected<int> r{scn::error(scn::error::end_of_stream, "EOF")};
+        scn::expected<int> r{scn::error(scn::error::end_of_range, "EOF")};
         CHECK(!r);
         CHECK(!r.has_value());
-        CHECK(r.error() == scn::error::end_of_stream);
+        CHECK(r.error() == scn::error::end_of_range);
     }
     struct not_default_constructible {
         not_default_constructible(int v) : val(v) {}
@@ -85,9 +85,9 @@ TEST_CASE("expected")
     SUBCASE("complex error")
     {
         scn::expected<not_default_constructible> r{
-            scn::error(scn::error::end_of_stream, "EOF")};
+            scn::error(scn::error::end_of_range, "EOF")};
         CHECK(!r);
         CHECK(!r.has_value());
-        CHECK(r.error() == scn::error::end_of_stream);
+        CHECK(r.error() == scn::error::end_of_range);
     }
 }

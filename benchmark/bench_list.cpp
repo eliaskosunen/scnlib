@@ -46,7 +46,7 @@ static void scanlist_scn(benchmark::State& state)
         scn::string_view str;
         auto err = scn::getline(range, str, ',');
         if (!err) {
-            if (err == scn::error::end_of_stream) {
+            if (err == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_list_data<int>(
                     static_cast<size_t>(state.range(0)));
@@ -89,7 +89,7 @@ static void scanlist_scn_alt(benchmark::State& state)
         char ch{};
         d = scn::scan(range, scn::default_tag, ch);
         if (!d) {
-            if (d.error() == scn::error::end_of_stream) {
+            if (d.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_list_data<int>(
                     static_cast<size_t>(state.range(0)));
@@ -121,7 +121,7 @@ static void scanlist_scn_list(benchmark::State& state)
                              scn::temp(scn::make_list(
                                  read, [](char ch) { return ch == ','; }))());
         if (!ret) {
-            if (ret.error() == scn::error::end_of_stream) {
+            if (ret.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_list_data<int>(
                     static_cast<size_t>(state.range(0)));

@@ -36,7 +36,7 @@ namespace scn {
             /// No error
             good,
             /// EOF
-            end_of_stream,
+            end_of_range,
             /// Format string was invalid
             invalid_format_string,
             /// Scanned value was invalid for given type.
@@ -51,14 +51,11 @@ namespace scn {
             invalid_argument,
             /// This operation is only possible with exceptions enabled
             exceptions_required,
-            /// The stream has encountered an error that cannot be recovered
+            /// The source range emitted an error.
+            source_error,
+            /// The source range emitted an error that cannot be recovered
             /// from. The stream is now unusable.
-            unrecoverable_stream_error,
-            /// The stream source emitted an error.
-            stream_source_error,
-            /// The stream source emitted an error that cannot be recovered
-            /// from. The stream is now unusable.
-            unrecoverable_stream_source_error,
+            unrecoverable_source_error,
 
             unrecoverable_internal_error,
 
@@ -104,8 +101,7 @@ namespace scn {
         /// Can the stream be used again
         SCN_CONSTEXPR bool is_recoverable() const noexcept
         {
-            return !(m_code == unrecoverable_stream_error ||
-                     m_code == unrecoverable_stream_source_error ||
+            return !(m_code == unrecoverable_source_error ||
                      m_code == unrecoverable_internal_error);
         }
 

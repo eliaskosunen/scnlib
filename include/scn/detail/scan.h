@@ -464,7 +464,7 @@ namespace scn {
                 {
                     auto ret = skip_range_whitespace(ctx);
                     if (!ret) {
-                        if (ret == scn::error::end_of_stream) {
+                        if (ret == scn::error::end_of_range) {
                             break;
                         }
                         return ret;
@@ -475,7 +475,7 @@ namespace scn {
                     T tmp{};
                     auto ret = scanner<CharT, T>::scan(tmp, ctx);
                     if (!ret) {
-                        if (ret == scn::error::end_of_stream) {
+                        if (ret == scn::error::end_of_range) {
                             break;
                         }
                         return ret;
@@ -487,7 +487,7 @@ namespace scn {
                 if (val.has_separator) {
                     auto sep_ret = read_char(ctx.range());
                     if (!sep_ret) {
-                        if (sep_ret.error() == scn::error::end_of_stream) {
+                        if (sep_ret.error() == scn::error::end_of_range) {
                             break;
                         }
                         return sep_ret.error();

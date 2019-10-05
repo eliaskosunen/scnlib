@@ -32,7 +32,7 @@ TEST_CASE("read_char")
 
         ret = scn::read_char(range);
         CHECK(!ret);
-        CHECK(ret.error() == scn::error::end_of_stream);
+        CHECK(ret.error() == scn::error::end_of_range);
     }
 #if 0
     SUBCASE("indirect")
@@ -47,7 +47,7 @@ TEST_CASE("read_char")
 
         ret = scn::read_char(range);
         CHECK(!ret);
-        CHECK(ret.error() == scn::error::end_of_stream);
+        CHECK(ret.error() == scn::error::end_of_range);
     }
 #endif
 }
@@ -68,7 +68,7 @@ TEST_CASE("read_zero_copy")
 
         ret = scn::read_zero_copy(range, 1);
         CHECK(!ret);
-        CHECK(ret.error() == scn::error::end_of_stream);
+        CHECK(ret.error() == scn::error::end_of_range);
     }
 }
 
@@ -90,7 +90,7 @@ TEST_CASE("read_into")
 
         ret = scn::read_into(range, it, 1);
         CHECK(!ret);
-        CHECK(ret == scn::error::end_of_stream);
+        CHECK(ret == scn::error::end_of_range);
         CHECK(data.size() == 2);
         CHECK(data[0] == '1');
         CHECK(data[1] == '2');
