@@ -22,7 +22,8 @@
 int main()
 {
 #if defined(__cpp_structured_bindings) && __cpp_structured_bindings >= 201606
-    auto [result, str, i] = scn::scan<std::string, int>("Hello 42", "{} {}");
+    auto [result, str, i] =
+        scn::scan_tuple<std::string, int>("Hello 42", "{} {}");
     if (result) {
         std::cout << "Read " << str << " and " << i << '\n';
     }
