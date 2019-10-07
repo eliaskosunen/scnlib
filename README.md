@@ -4,6 +4,7 @@
 [![Appveyor CI Build Status](https://ci.appveyor.com/api/projects/status/ex0q59kt5h8yciqa/branch/master?svg=true)](https://ci.appveyor.com/project/eliaskosunen/scnlib/branch/master)
 [![Codecov Coverage](https://codecov.io/gh/eliaskosunen/scnlib/branch/master/graph/badge.svg)](https://codecov.io/gh/eliaskosunen/scnlib)
 [![Codacy Code Quality](https://api.codacy.com/project/badge/Grade/daf649bfab44407fa7afda6cb97add2a)](https://www.codacy.com/app/eliaskosunen/scnlib?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=eliaskosunen/scnlib&amp;utm_campaign=Badge_Grade)
+[![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver)](https://github.com/eliaskosunen/scnlib/releases)
 [![License](https://img.shields.io/github/license/eliaskosunen/scnlib.svg)](https://github.com/eliaskosunen/scnlib/blob/master/LICENSE)
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)
 
@@ -13,6 +14,8 @@
 
 int main() {
     int i;
+    // Read an integer from stdin
+    // with an accompanying message
     scn::prompt("What's your favorite number?", "{}", i);
     printf("Oh, cool, %d!", i);
 }
@@ -29,10 +32,7 @@ This library attempts to move us ever so closer to replacing `iostream`s and C s
 It's (going to, eventually, be) faster than `iostream` (see Benchmarks) and type-safe, unlike `scanf`.
 Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 
-The library is still in early development (0.2), so don't expect perfection.
-See [Stability](#stability) for more details.
-
-This library is an implementation of the ISO C++ standards proposal
+This library is the reference implementation of the ISO C++ standards proposal
 [P1729 "Text Parsing"](https://wg21.link/p1729).
 
 ## Documentation and tutorial
@@ -47,6 +47,64 @@ Rather lacking examples can be found from the `examples/` folder.
 
 Should you get stuck somewhere, you can find me on the [CppLang Slack](https://cpplang.now.sh),
 or by DMing me on [Twitter](https://twitter.com/eliaskosunen).
+
+## Examples
+
+### Reading a `std::string`
+
+```cpp
+#include <scn/scn.h>
+#include <iostream>
+#include <string_view>
+
+using namespace std::literals; // For sv
+
+int main() {
+    auto str = "Hello world!"sv;
+
+    std::string word;
+    scn::scan(str, "{}", word);
+
+    std::cout << word << '\n'; // Will output "Hello"
+    std::cout << str << '\n';  // Will output " world!"
+}
+```
+
+### Using the `tuple`-return API
+
+```cpp
+#include <scn/scn.h>
+#include <scn/tuple_return.h>
+
+int main() {
+    auto [r, i] = scn::scan_tuple<int>("42", "{}");
+    // r is a result object, contextually convertible to `bool`
+    // i == 42
+}
+```
+
+### Error handling
+
+```cpp
+#include <scn/scn.h>
+#include <string_view>
+#include <iostream>
+
+using namespace std::literals;
+
+int main() {
+    auto str = "foo"sv;
+    int i;
+    // "foo" is not a valid integer
+    auto result = scn::scan(str, "{}", i);
+    if (!result) {
+        // i is not touched (still unconstructed)
+        // str == "foo" (range not advanced)
+        // result.value() == 0, meaning that no values were parsed (similar to scanf's return value)
+        std::cout << "Integer parsing failed with message: " << result.error().msg() << '\n';
+    }
+}
+```
 
 ## Installing
 
@@ -106,18 +164,6 @@ with very extreme warning flags (see CMakeLists.txt) and with multiple build con
 Older compilers may work, but it is not guaranteed.
 GCC 4.x support will not be provided, as its C++11 support is too buggy.
 Same thing applies for VS 2015, due to its inability to handle templates.
-
-## Stability
-
-The master-branch will be API-stable until the next minor release, 0.2.
-It will receive API-compatible bugfixes, should any be necessary, tagged appropriately (0.1.1 etc).
-
-The dev-branch will not be stable. It may be rebased, and will contain changes that may break your code.
-Please don't depend on it, unless you really want to live on the edge.
-
-No ABI stability is guaranteed at this point, and none will be pre-1.0.
-
-This is still a pre-1.0 library, so there's bound to be bugs. If you find one, _please_ report it.
 
 ## Benchmarks
 
