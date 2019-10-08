@@ -37,9 +37,19 @@
  * Copyright (c) 2017-2019 Elias Kosunen\n
  * For further details, see the LICENSE file.
  *
- * \section tutorial Tutorial
+ * \subpage tutorial\n
+ * \subpage cmake\n
+ * \subpage rationale\n
  *
- * \subsection basics Basics
+ * \par API reference
+ * \ref scanning\n
+ * \ref scanning_operations
+ */
+
+/**
+ * \page tutorial Tutorial
+ *
+ * \section basics Basics
  *
  * The most basic operation is reading from `stdin`, which can be achieved with
  * `scn::input`. The function takes a format string as its first parameter,
@@ -96,7 +106,7 @@
  * //   scanf("%d", &i);
  * \endcode
  *
- * \subsection ranges Ranges
+ * \section ranges Ranges
  *
  * We can, of course, read from other sources than `stdin`.
  * In fact, with scnlib, we can read from any `range`, as long as it fulfills
@@ -105,7 +115,7 @@
  * call `begin()` and `end()` on. For example, a `std::string` or a
  * `std::vector` are ranges.
  *
- * Scnlib can't work with every range, though.
+ * The library can't work with every range, though.
  * Most importantly, it needs to be a `view`, meaning that it doesn't own its
  * elements, and is fast to copy. Examples of `view`s are `std::string_view` and
  * `std::span`.
@@ -176,12 +186,23 @@
  * scn::scan(str, ...);
  * \endcode
  *
- * Scnlib also provides a range wrapper for a `FILE*`, which allows reading from
- * files.
+ * Reading from files is also supported, with a range wrapping a `FILE*`.
  *
- * TODO
+ * \code{.cpp}
+ * auto f = std::fopen(...);
+ * // Non-owning wrapper around a FILE*
+ * auto file = scn::file(f);
+ * scn::scan(file, ...);
+ * // scn::file does _not_ sync with the underlying FILE* by default
+ * // call .sync() if you wish to use scnlib in conjunction with <cstdio>
+ * file.sync();
+ * // scn::file doesn't take ownership, and doesn't close
+ * std::fclose(f);
+ * \endcode
  *
- * \subsection tuple Alternative tuple-based API
+ * `scn::cstdin()` returns a `scn::file` pointing to `stdin`.
+ *
+ * \section tuple Alternative tuple-based API
  *
  * By including `<scn/tuple_return.h>` an alternative API becomes available,
  * returning a `std::tuple` instead of taking references.
@@ -194,7 +215,7 @@
  * // i is an `int`, scanned from the range
  * \endcode
  *
- * \subsection strings Strings and getline
+ * \section strings Strings and getline
  *
  * Reading a `std::string` with `scnlib` works the same way it does with
  * `operator>>` and `<iostream>`: the input range is read until a whitespace
@@ -226,7 +247,7 @@
  * // The delimeter is not included in the output
  * \endcode
  *
- * \subsection error Error handling
+ * \section error Error handling
  *
  * `scnlib` does not use exceptions for error handling.
  * Instead, `scn::scan` and others return a
@@ -274,12 +295,11 @@
  *
  * See `scn::error` for more details about the error codes.
  *
- * \par Error guarantees
+ * \subsection error_guarantees Error guarantees
  * Should the reading of any of the arguments fail, and the range is not bad,
  * the state of the range will be reset to what it was before the reading of
  * said argument. Also, the argument will not be written to.
  *
- * \par
  * \code{.cpp}
  * int i{}, j{};
  * // "foo" cannot be read to an integer, so this will fail
@@ -305,16 +325,15 @@
  * assert(ret.range().empty() == true);
  * \endcode
  *
- * \par Exceptions
+ * \subsection error_exceptions Exceptions
  * No exceptions will ever be thrown by `scnlib` functions (save for a
  * `std::bad_alloc`, but that's probably your fault).
  * Should any user-defined operations, like `operator*` on an iterator, or
  * `operator>>`, throw, the behavior is undefined.
  *
- * \par
  * The library can be compiled with `-fno-exceptions` and `-fno-rtti`.
  *
- * \subsection scan_value
+ * \section scan_value
  *
  * If you only wish to scan a single value with all default options, you can
  * save some cycles and use `scn::scan_value`. Instead of taking its argument by
@@ -328,7 +347,7 @@
  * // ret.range() == " leftovers"
  * \endcode
  *
- * \subsection wide Wide ranges
+ * \section wide Wide ranges
  *
  * Ranges can also be wide (terminology borrowed from iostreams), meaning that
  * their character type is `wchar_t` instead of `char`. This has some usage
@@ -352,18 +371,17 @@
  * supported, due to lacking support for them in the standard library.
  * Converting between character types is out-of-score for this library.
  *
- * \par Encoding and Unicode
+ * \subsection unicode Encoding and Unicode
  * Because of the rather lackluster Unicode support of the standard library,
  * this library doesn't have any significant Unicode support either.
  *
- * \par
  * Narrow ranges are expected to be ASCII encoded, and using multibyte
  * encodings (like UTF-8) with them is probably going to cause problems (blame
  * `std::locale`). If you need some sort of Unicode support, your best bet is
  * going to be wide ranges, encoded in the way your platform expects (UTF-32 in
  * POSIX, the thing resembling UCS-2 in Windows)
  *
- * \subsection format_string Format string
+ * \section format_string Format string
  *
  * Every value to be scanned from the input range is marked with a pair of
  * curly braces `"{}"` in the format string. Inside these braces, additional
@@ -476,7 +494,7 @@
  * // scn::scan(range, "{}", value);
  * \endcode
  *
- * \subsection locale Localization
+ * \section locale Localization
  *
  * To scan localized input, a `std::locale` can be passed as the first argument
  * to `scn::scan_localized`.
@@ -492,7 +510,7 @@
  *
  * Only reading of `b` will be localized, as it has `{:n}` as its format string.
  *
- * \subsection reading Semantics of scanning a value
+ * \section reading Semantics of scanning a value
  *
  * In the beginning, with every `scn::scan` (or similar) call, the
  * library calls `begin()` on the range, getting an iterator. This iterator is
@@ -561,7 +579,7 @@
  * // scn::scan(range, "{} {}", a, b);
  * \endcode
  *
- * \subsection ignore ignore
+ * \section ignore ignore
  *
  * `scnlib` has various functions for skipping characters from a range.
  *
@@ -570,7 +588,7 @@
  * `scn::ignore_n_until(range, n, ch)` will skip until either `n` characters
  * have been skipped or `ch` is read.
  *
- * \subsection user_types User types
+ * \section user_types User types
  *
  * To make your own types scannable with `scnlib`, you can specialize the struct
  * template `scn::scanner`.
@@ -601,7 +619,7 @@
  * `scn::scanner` for another type (like `scn::scanner<Char, int>`) to get
  * access to additional options.
  *
- * \subsection temp Scanning temporaries
+ * \section temp Scanning temporaries
  *
  * `scnlib` provides a helper type for scanning into a temporary value:
  * `scn::temporary`. which can be created with the helper function `scn::temp`.
@@ -620,7 +638,7 @@
  * scn::scan(range, "{}", scn::temp(scn::make_span(...))());
  * \endcode
  *
- * \subsection scanf scanf-like format strings
+ * \section scanf scanf-like format strings
  *
  * With `scn::scanf`, a `scanf`-like format string syntax can be used, instead.
  * `scn::ranges::scanf` is also available. The syntax is not 100% compatible
@@ -648,14 +666,16 @@
  *
  * To read literal a `%`-character and immediately discard it, write `%%` (`{{`
  * and `}}` with default format string syntax).
- *
- * \section cmake CMake usage
+ */
+
+/**
+ * \page cmake CMake usage
  *
  * Using `scnlib` with CMake is pretty easy. Just import it in the way of your
  * liking (`find_package`, `add_subdirectory` etc) and add `scn::scn` (or
  * `scn::scn-header-only`) to your `target_link_libraries`.
  *
- * \subsection cmake-config CMake configuration options
+ * \section cmake-config CMake configuration options
  *
  * These default to `OFF`, unless `scnlib` is built as a standalone project.
  *
@@ -687,10 +707,12 @@
  *  * `SCN_BUILD_FUZZING`: Build fuzzer
  *  * `SCN_BUILD_LOCALE_TESTS`: Build localized tests,
  *     needs `en_US.utf8` and `fi_FI.utf8` locales
+ */
+
+/**
+ * \page rationale Rationale
  *
- * \section rationale Rationale
- *
- * \subsection view Why take just views? Why not every possible range?
+ * \section view Why take just views? Why not every possible range?
  *
  * First off, taking it's not possible to take every `range`; `operator--` is
  * required for error recovery, so at least `bidirectional_range` is needed.
@@ -704,7 +726,7 @@
  * // str would have to be reallocated and its contents moved
  * \endcode
  *
- * \subsection return Why take arguments by reference?
+ * \section return Why take arguments by reference?
  *
  * <a href="https://github.com/eliaskosunen/scnlib/issues/2">
  * Relevant GitHub issue</a>
@@ -721,8 +743,9 @@
  * To elaborate on the second bullet point, consider this example:
  *
  * \code{.cpp}
- * auto [result, i, str] = scn::scan<int, non_default_constructible_string>(
- *     range, scn::default_tag);
+ * auto [result, i, str] =
+ *     scn::scan_tuple<int, non_default_constructible_string>(
+ *         range, scn::default_tag);
  * \endcode
  *
  * Now, consider what would happen if an error occurs during scanning the
@@ -736,7 +759,7 @@
  * The rationale of putting it in a separate header is to avoid pulling in the
  * entirety of very heavy standard headers `<tuple>` and `<functional>`.
  *
- * \subsection vscan What's with all the vscan, basic_args and arg_store stuff?
+ * \section vscan What's with all the vscan, basic_args and arg_store stuff?
  *
  * This approach is borrowed (*cough* stolen *cough*) from fmtlib, for the same
  * reason it's in there as well. Consider this peace of code:
@@ -751,10 +774,20 @@
  *
  * If the arguments were not type-erased, almost all of the internals would have
  * to be instantiated for every given combination of argument types.
+ */
+
+/**
+ * \page format_string Format string
+ */
+
+/**
+ * \page range Input range
  *
- * \section migrate Migrating from 0.1 to 0.2
- *
- *
+ * The range has an associated character type.
+ * This character type shall either be `char` or `wchar_t`.
+ * The character type is determined by the result of `operator*` of the range
+ * iterator. If `operator*()` returns `expected<T>`, then the character type is
+ * `T`.
  */
 
 #endif  // SCN_SCN_H

@@ -37,8 +37,37 @@ namespace scn {
             typename scan_result_for_range<Range, E>::type;
     }  // namespace detail
 
+    /**
+     * \defgroup scanning Scanning API
+     * Generally, the functions in this group take a range, a format string, and
+     * a list of arguments. The arguments are parsed from the range based on the
+     * information given in the format string.
+     *
+     * The range is described further here: \ref range,
+     * and the format string here: \ref format_string.
+     *
+     * If the function takes a format string and a range, they must share
+     * character types. Also, the format string must be convertible to
+     * `basic_string_view<CharT>`, where `CharT` is that aforementioned
+     * character type.
+     *
+     * The majority of the functions in this category return a
+     * `scan_result<Range, result<ptrdiff_t>>`, which has the following member
+     * functions:
+     *  - `operator bool`: `true` when successful
+     *  - `value() -> std::ptrdiff_t`: number of arguments successfully read
+     *  - `range() -> Range`
+     *  - `error() -> error`
+     */
+
+    /// @{
+
     // scan
 
+    /**
+     * The most fundamental part of the scanning API.
+     * Reads from the range in \c r according to the format string \c f.
+     */
     template <typename Range, typename Format, typename... Args>
     auto scan(Range&& r, const Format& f, Args&... a)
         -> detail::scan_result_for_range_t<Range>
@@ -59,6 +88,14 @@ namespace scn {
 
     // scan localized
 
+    /**
+     * Read from the range in \c r using the locale in \c loc.
+     * \c loc must be a std::locale.
+     *
+     * Use of this function is discouraged, due to the overhead involved with
+     * locales. Note, that the other functions are completely locale-agnostic,
+     * and aren't affected by changes to the global C locale.
+     */
     template <typename Locale,
               typename Range,
               typename Format,
@@ -86,6 +123,14 @@ namespace scn {
 
     // default format
 
+    /**
+     * Equivalent to \ref scan, but with a
+     * format string with the appropriate amount of space-separated "{}"s for
+     * the number of arguments. Because this function doesn't have to parse the
+     * format string, performance is improved.
+     *
+     * \see scan
+     */
     template <typename Range, typename... Args>
     auto scan(Range&& r, detail::default_t, Args&... a)
         -> detail::scan_result_for_range_t<Range>
@@ -106,6 +151,19 @@ namespace scn {
 
     // value
 
+    /**
+     * Scans a single value with the default options, returning it instead of
+     * using an output parameter.
+     *
+     * The parsed value is in `ret.value()`, if `ret == true`.
+     *
+     * \code{.cpp}
+     * auto ret = scn::scan_value<int>("42");
+     * if (ret) {
+     *   // ret.value() == 42
+     * }
+     * \endcode
+     */
     template <typename T, typename Range>
     auto scan_value(Range&& r)
         -> detail::scan_result_for_range_t<Range, expected<T>>
@@ -146,6 +204,10 @@ namespace scn {
 
     // scanf
 
+    /**
+     * Otherwise equivalent to \ref scan, except it uses scanf-like format
+     * string syntax, instead of the Python-like default one.
+     */
     template <typename Range, typename Format, typename... Args>
     auto scanf(Range&& r, const Format& f, Args&... a)
         -> detail::scan_result_for_range_t<Range>
@@ -165,6 +227,15 @@ namespace scn {
 
     // input
 
+    /**
+     * Otherwise equivalent to \ref scan, expect reads from `stdin`.
+     * Character type is determined by the format string.
+     *
+     * Does not sync with the rest `<cstdio>` (like
+     * `std::ios_base::sync_with_stdio(false)`). To use `<cstdio>` (like `fread`
+     * or `fgets`) with this function, call `cstdin().sync()` or
+     * `wcstdin().sync()` before calling `<cstdio>`.
+     */
     template <typename Format,
               typename... Args,
               typename CharT = detail::ranges::range_value_t<Format>>
@@ -187,6 +258,17 @@ namespace scn {
 
     // prompt
 
+    /**
+     * Equivalent to \ref, except writes what's in `p` to `stdout`.
+     *
+     * \code{.cpp}
+     * int i{};
+     * scn::prompt("What's your favorite number? ", "{}", i);
+     * // Equivalent to:
+     * //   std::fputs("What's your favorite number? ", stdout);
+     * //   scn::input("{}", i);
+     * \endcode
+     */
     template <typename Format,
               typename... Args,
               typename CharT = detail::ranges::range_value_t<Format>>
@@ -197,7 +279,7 @@ namespace scn {
                       "Have to scan at least a single argument");
         SCN_EXPECT(p != nullptr);
 
-        std::printf("%s", p);
+        std::fputs(p, stdout);
 
         using context_type = basic_context<
             detail::range_wrapper_for_t<decltype(stdin_range<CharT>())>>;
@@ -209,6 +291,19 @@ namespace scn {
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx);
     }
+
+    // scanning api
+    /// @}
+
+    /**
+     * \defgroup scanning_operations Higher-level scanning operations
+     *
+     * Functions in this category return a `scan_result<Range, error>`.
+     * It has the following member functions:
+     *  - `operator bool`: `true` when successful
+     *  - `range() -> Range`
+     *  - `error() -> error`
+     */
 
     // getline
 
@@ -265,6 +360,7 @@ namespace scn {
                 str = basic_string_view<CharT>{s.value().data(), size};
                 return {{}, r.get_return()};
             }
+            // TODO: Compile-time error?
             return {
                 error(
                     error::invalid_operation,
@@ -273,6 +369,21 @@ namespace scn {
         }
     }  // namespace detail
 
+    /**
+     * \ingroup scanning_operations
+     * Read the range in \c r into \c str until \c until is found.
+     *
+     * \c r and \c str must share character types, which must be \c CharT.
+     *
+     * If `str` is convertible to a `basic_string_view`:
+     *  - And if `r` is a `contiguous_range`:
+     *    - `str` is set to point inside `r` with the appropriate length
+     *  - if not, returns an error
+     *
+     * Otherwise, clears `str` by calling `str.clear()`, and then reads the
+     * range into `str` as if by repeatedly calling \c str.push_back.
+     * `str.reserve` is also required to be present.
+     */
     template <typename Range, typename String, typename CharT>
     auto getline(Range&& r, String& str, CharT until)
         -> decltype(detail::getline_impl(
@@ -284,6 +395,15 @@ namespace scn {
         return getline_impl(wrapped, str, until);
     }
 
+    /**
+     * \ingroup scanning_operations
+     * Equivalent to \ref getline with the last parameter set to <tt>'\\n'</tt>
+     * with the appropriate character type.
+     *
+     * In other words, reads `r` into `str` until <tt>'\\n'</tt> is found.
+     *
+     * The character type is determined by `r`.
+     */
     template <typename Range,
               typename String,
               typename CharT =
@@ -398,6 +518,12 @@ namespace scn {
         }
     }  // namespace detail
 
+    /**
+     * \ingroup scanning_operations
+     *
+     * Advances the beginning of \c r until \c until is found.
+     * The character type of \c r must be \c CharT.
+     */
     template <typename Range, typename CharT>
     auto ignore_until(Range&& r, CharT until)
         -> decltype(detail::ignore_until_impl(
@@ -415,6 +541,13 @@ namespace scn {
         return ret;
     }
 
+    /**
+     * \ingroup scanning_operations
+     *
+     * Advances the beginning of \c r until \c until is found, or the beginning
+     * has been advanced \c n times. The character type of \c r must be \c
+     * CharT.
+     */
     template <typename Range, typename CharT>
     auto ignore_until_n(Range&& r,
                         detail::ranges::range_difference_t<Range> n,
@@ -434,6 +567,12 @@ namespace scn {
         }
         return ret;
     }
+
+    /**
+     * \defgroup convenience_scan_types Convenience scannable types
+     * This category has types and factory functions, that can be passed as
+     * arguments to `scn::scan` (or alike), providing various functionality.
+     */
 
     // list
 
@@ -467,16 +606,66 @@ namespace scn {
         void (*is_separator)();
     };
 
+    namespace detail {
+        template <typename Container, typename... A>
+        list<typename Container::value_type,
+             std::back_insert_iterator<Container>>
+        make_list(Container& c, A&&... a)
+        {
+            return {std::back_inserter(c), std::forward<A>(a)...};
+        }
+        template <typename T, typename... A>
+        list<T, std::vector<T>*> make_list(std::vector<T>& vec, A&&... a)
+        {
+            return {std::addressof(vec), std::forward<A>(a)...};
+        }
+    }  // namespace detail
+
+    /**
+     * \ingroup convenience_scan_types
+     * Allows the user to repeatedly read values of the same type.
+     * \c Container must have a member function `push_back`.
+     * Instances of its `value_type` are scanned repeatedly from the input
+     * range, and then pushed to the container.
+     *
+     * A lambda can be passed as the second argument, taking a character, and
+     * returning a bool, which tells the library whether the given character is
+     * a separator character. A separator character can appear between the
+     * elements in a list without terminating it.
+     *
+     * \code{.cpp}
+     * std::vector<int> vec{};
+     * // `int` is the container value type
+     * auto list = scn::make_list(vec, [](char ch) {
+     *     // ',' is the separator
+     *     return ch == ',';
+     * });
+     *
+     * auto ret = scn::scan("1, 2, 3", "{}", list);
+     * // ret == true
+     * // ret.value() == 1 (only a single argument, `list`, was read)
+     * // vec == {1, 2, 3}
+     * // ret.range() is empty
+     * \endcode
+     *
+     * This is also a great use case for `scn::temp`:
+     *
+     * \code{.cpp}
+     * // Same code as above, but using `scn::temp`
+     * std::vector<int> vec{};
+     * auto ret = scn::scan("1, 2, 3", "{}",
+     *     scn::temp(
+     *         scn::make_list(vec, [](char ch) {
+     *             return ch == ',';
+     *         })
+     *     )());
+     * \endcode
+     */
     template <typename Container, typename... A>
-    list<typename Container::value_type, std::back_insert_iterator<Container>>
-    make_list(Container& c, A&&... a)
+    auto make_list(Container& c, A&&... a)
+        -> decltype(detail::make_list(c, std::forward<A>(a)...))
     {
-        return {std::back_inserter(c), std::forward<A>(a)...};
-    }
-    template <typename T, typename... A>
-    list<T, std::vector<T>*> make_list(std::vector<T>& vec, A&&... a)
-    {
-        return {std::addressof(vec), std::forward<A>(a)...};
+        return detail::make_list(c, std::forward<A>(a)...);
     }
 
     namespace detail {
@@ -543,13 +732,30 @@ namespace scn {
             }
             detail::list_append(buf.begin(), buf.end(), val);
             return {};
-        }
+        }  // namespace scn
     };
 
     template <typename T>
     struct discard_type {
         discard_type() = default;
     };
+
+    /**
+     * \ingroup convenience_scan_types
+     *
+     * Scans an instance of `T`, but doesn't store it anywhere.
+     * Uses `scn::temp` internally, so the user doesn't have to bother.
+     *
+     * \code{.cpp}
+     * int i{};
+     * // 123 is discarded, 456 is read into `i`
+     * auto ret = scn::scan("123 456", "{} {}",
+     *     discard<T>(), i);
+     * // ret == true
+     * // ret.value() == 2
+     * // i == 456
+     * \endcode
+     */
     template <typename T>
     discard_type<T>& discard()
     {
