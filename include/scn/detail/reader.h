@@ -39,7 +39,7 @@ namespace scn {
             return error(error::end_of_range, "EOF");
         }
         auto ch = *r.begin();
-        ++r.begin();
+        r.advance();
         return {ch};
     }
     template <
@@ -51,7 +51,7 @@ namespace scn {
             return error(error::end_of_range, "EOF");
         }
         auto ch = *r.begin();
-        ++r.begin();
+        r.advance();
         return ch;
     }
 
@@ -70,7 +70,7 @@ namespace scn {
         }
         const auto n_to_read = detail::min(r.size(), n);
         auto s = make_span(r.data(), static_cast<size_t>(n_to_read)).as_const();
-        detail::ranges::advance(r.begin(), n_to_read);
+        r.advance(n_to_read);
         return s;
     }
     template <
@@ -120,7 +120,7 @@ namespace scn {
             }
             *it = *r.begin();
             ++it;
-            ++r.begin();
+            r.advance();
         }
         return {};
     }
@@ -146,7 +146,7 @@ namespace scn {
                 return tmp.error();
             }
             *it = tmp.value();
-            ++r.begin();
+            r.advance();
         }
         return {};
     }
@@ -169,16 +169,16 @@ namespace scn {
         for (auto it = r.begin(); it != r.end(); ++it) {
             if (is_space(*it)) {
                 auto b = r.begin();
-                r.begin() = it;
+                r.advance_to(it);
                 if (keep_final_space) {
                     ++it;
-                    ++r.begin();
+                    r.advance();
                 }
                 return {{&*b, &*it}};
             }
         }
         auto b = r.begin();
-        r.begin() = r.end();
+        r.advance_to(r.end());
         return {{&*b, &*(r.end() - 1) + 1}};
     }
     template <
@@ -225,7 +225,7 @@ namespace scn {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
-        for (auto& it = r.begin(); it != r.end(); ++it) {
+        for (auto it = r.begin(); it != r.end(); ++it, (void)r.advance()) {
             const auto ch = *it;
             if (is_space(ch)) {
                 if (keep_final_space) {
@@ -253,7 +253,7 @@ namespace scn {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
-        for (auto& it = r.begin(); it != r.end(); ++it) {
+        for (auto it = r.begin(); it != r.end(); ++it, (void)r.advance()) {
             auto tmp = *it;
             if (!tmp) {
                 return tmp.error();
@@ -288,7 +288,8 @@ namespace scn {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
-        for (auto& it = r.begin(); it != r.end() && out != end; ++it) {
+        for (auto it = r.begin(); it != r.end() && out != end;
+             ++it, (void)r.advance()) {
             const auto ch = *it;
             if (is_space(ch)) {
                 if (keep_final_space) {
@@ -317,7 +318,8 @@ namespace scn {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
-        for (auto& it = r.begin(); it != r.end() && out != end; ++it) {
+        for (auto it = r.begin(); it != r.end() && out != end;
+             ++it, (void)r.advance()) {
             auto tmp = *it;
             if (!tmp) {
                 return tmp.error();
@@ -346,7 +348,7 @@ namespace scn {
     {
         SCN_EXPECT(n <=
                    detail::ranges::distance(r.begin_underlying(), r.begin()));
-        std::advance(r.begin(), -n);
+        r.advance(-n);
         return {};
     }
     template <
@@ -357,7 +359,7 @@ namespace scn {
     {
         for (detail::ranges::range_difference_t<WrappedRange> i = 0; i < n;
              ++i) {
-            --r.begin();
+            r.advance(-1);
             if (r.begin() == r.end()) {
                 return error(error::unrecoverable_source_error,
                              "Putback failed");
@@ -1379,11 +1381,11 @@ namespace scn {
 
         for (auto it = ctx.range().begin(); it != ctx.range().end(); ++it) {
             if (!ctx.locale().is_space(*it)) {
-                ctx.range().begin() = it;
+                ctx.range().advance_to(it);
                 return {};
             }
         }
-        ctx.range().begin() = ctx.range().end();
+        ctx.range().advance_to(ctx.range().end());
         return {};
 
         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE

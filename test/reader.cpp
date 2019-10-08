@@ -28,7 +28,7 @@ TEST_CASE("read_char")
         CHECK(ret.value() == '4');
 
         CHECK(*range.begin() == '2');
-        ++range.begin();
+        range.advance();
 
         ret = scn::read_char(range);
         CHECK(!ret);
@@ -43,7 +43,7 @@ TEST_CASE("read_char")
         CHECK(ret.value() == '4');
 
         CHECK(range.range()[0] == '2');
-        ++range.begin();
+        range.advane();
 
         ret = scn::read_char(range);
         CHECK(!ret);
@@ -64,7 +64,7 @@ TEST_CASE("read_zero_copy")
         CHECK(ret.value()[1] == '2');
 
         CHECK(*range.begin() == '3');
-        ++range.begin();
+        range.advance();
 
         ret = scn::read_zero_copy(range, 1);
         CHECK(!ret);
@@ -86,7 +86,7 @@ TEST_CASE("read_into")
         CHECK(data[1] == '2');
 
         CHECK(*range.begin() == '3');
-        ++range.begin();
+        range.advance();
 
         ret = scn::read_into(range, it, 1);
         CHECK(!ret);
@@ -111,7 +111,7 @@ TEST_CASE("read_until_space_zero_copy")
         CHECK(ret.value()[2] == '3');
 
         CHECK(*range.begin() == ' ');
-        ++range.begin();
+        range.advance();
 
         ret = scn::read_until_space_zero_copy(
             range, [](char ch) { return ch == ' '; }, false);

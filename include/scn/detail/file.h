@@ -288,16 +288,14 @@ namespace scn {
                 return !operator==(o);
             }
 
-            template <typename Sentinel>
-            bool operator==(const Sentinel& o) const
+            bool operator==(const cfile_iterator<CharT>& o) const
             {
                 if (!m_cache || m_cache->n == 0) {
                     return m_it == o;
                 }
                 return false;
             }
-            template <typename Sentinel>
-            bool operator!=(const Sentinel& o) const
+            bool operator!=(const cfile_iterator<CharT>& o) const
             {
                 return !operator==(o);
             }
@@ -314,7 +312,9 @@ namespace scn {
                     return m_cache->err;
                 }
                 ++m_it;
+                SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                 auto next = wrap_deref(*m_it);
+                SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 if (next) {
                     m_cache->latest = traits::to_int_type(next.value());
                 }
@@ -389,6 +389,12 @@ namespace scn {
         mutable cache_type m_cache;
     };
 
+    namespace detail {
+        template <typename CharT>
+        struct is_caching_range_impl<basic_file<CharT>> : std::true_type {
+        };
+    }  // namespace detail
+
     using file = basic_file<char>;
     using wfile = basic_file<wchar_t>;
 
@@ -443,6 +449,12 @@ namespace scn {
     private:
         const file_type* m_file{nullptr};
     };
+
+    namespace detail {
+        template <typename CharT>
+        struct is_caching_range_impl<basic_file_view<CharT>> : std::true_type {
+        };
+    }  // namespace detail
 
     using file_view = basic_file_view<char>;
     using wfile_view = basic_file_view<wchar_t>;

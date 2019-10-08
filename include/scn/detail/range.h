@@ -54,76 +54,6 @@ namespace scn {
         struct provides_buffer_access_impl : std::false_type {
         };
 
-        namespace _reset_to_rollback_point {
-            struct fn {
-            private:
-                template <typename Range, typename Iterator>
-                static auto impl(
-                    const Range& r,
-                    Iterator& begin,
-                    Iterator& rollback,
-                    priority_tag<
-                        2>) noexcept(noexcept(r
-                                                  .reset_to_rollback_point(
-                                                      begin,
-                                                      rollback)))
-                    -> decltype(r.reset_to_rollback_point(begin, rollback))
-                {
-                    return r.reset_to_rollback_point(begin, rollback);
-                }
-                template <typename Range, typename Iterator>
-                static auto impl(
-                    const Range& r,
-                    Iterator& begin,
-                    Iterator& rollback,
-                    priority_tag<
-                        1>) noexcept(noexcept(reset_to_rollback_point(r,
-                                                                      begin,
-                                                                      rollback)))
-                    -> decltype(reset_to_rollback_point(r, begin, rollback))
-                {
-                    return reset_to_rollback_point(r, begin, rollback);
-                }
-                template <typename Range, typename Iterator>
-                static error impl(
-                    const Range& r,
-                    Iterator& begin,
-                    Iterator& rollback,
-                    priority_tag<0>) noexcept(noexcept(SCN_UNUSED(begin !=
-                                                                  rollback),
-                                                       (void)(--begin),
-                                                       (void)(begin ==
-                                                              ranges::end(r))))
-                {
-                    while (begin != rollback) {
-                        --begin;
-                        if (begin == ranges::end(r)) {
-                            return error(error::unrecoverable_source_error,
-                                         "Putback failed");
-                        }
-                    }
-                    return {};
-                }
-
-            public:
-                template <typename Range, typename Iterator>
-                auto operator()(const Range& r,
-                                Iterator& begin,
-                                Iterator& rollback) const
-                    noexcept(noexcept(
-                        fn::impl(r, begin, rollback, priority_tag<2>{})))
-                        -> decltype(
-                            fn::impl(r, begin, rollback, priority_tag<2>{}))
-                {
-                    return fn::impl(r, begin, rollback, priority_tag<2>{});
-                }
-            };
-        }  // namespace _reset_to_rollback_point
-        namespace {
-            static SCN_CONSTEXPR auto& reset_to_rollback_point =
-                static_const<_reset_to_rollback_point::fn>::value;
-        }
-
         template <typename Range, typename It>
         void write_return(const Range&, It)
         {
@@ -136,6 +66,13 @@ namespace scn {
         }
 
         template <typename Range>
+        struct is_caching_range_impl : std::false_type {
+        };
+        template <typename Range>
+        struct is_caching_range : is_caching_range_impl<remove_cvref_t<Range>> {
+        };
+
+        template <typename Range>
         class range_wrapper {
         public:
             using range_type = Range;
@@ -143,15 +80,14 @@ namespace scn {
             using sentinel = ranges::sentinel_t<const Range>;
             using char_type = typename extract_char_type<iterator>::type;
             using return_type = remove_cvref_t<range_type>;
+            using difference_type = ranges::range_difference_t<Range>;
 
             template <typename R,
                       typename std::enable_if<
                           std::is_same<remove_cvref_t<R>,
                                        return_type>::value>::type* = nullptr>
             range_wrapper(R&& r)
-                : m_range(std::forward<R>(r)),
-                  m_begin(ranges::begin(m_range)),
-                  m_rollback(m_begin)
+                : m_range(std::forward<R>(r)), m_begin(ranges::begin(m_range))
             {
             }
 
@@ -165,19 +101,32 @@ namespace scn {
                 return range();
             }
 
-            SCN_NODISCARD iterator& begin() noexcept
-            {
-                return m_begin;
-            }
             iterator begin() const noexcept
             {
                 return m_begin;
             }
-
             sentinel end() const
                 noexcept(noexcept(ranges::end(std::declval<const Range&>())))
             {
                 return ranges::end(m_range);
+            }
+
+            iterator advance(difference_type n = 1) noexcept
+            {
+                m_read += n;
+                if (!is_caching_range<Range>::value) {
+                    ranges::advance(m_begin, n);
+                }
+                return m_begin;
+            }
+            template <typename R = Range,
+                      typename std::enable_if<
+                          ranges::sized_range<R>::value>::type* = nullptr>
+            void advance_to(iterator it) noexcept
+            {
+                const auto diff = ranges::distance(m_begin, it);
+                m_read += diff;
+                m_begin = it;
             }
 
             iterator begin_underlying() const
@@ -215,12 +164,18 @@ namespace scn {
 
             error reset_to_rollback_point()
             {
-                return ::scn::detail::reset_to_rollback_point(range(), begin(),
-                                                              m_rollback);
+                for (; m_read != 0; --m_read) {
+                    --m_begin;
+                    if (m_begin == end()) {
+                        return error(error::unrecoverable_source_error,
+                                     "Putback failed");
+                    }
+                }
+                return {};
             }
             void set_rollback_point()
             {
-                m_rollback = m_begin;
+                m_read = 0;
             }
 
             // iterator value type is a character
@@ -234,7 +189,8 @@ namespace scn {
 
         private:
             range_type m_range;
-            iterator m_begin, m_rollback;
+            iterator m_begin;
+            difference_type m_read{0};
         };
 
         namespace _wrap {

@@ -12,8 +12,14 @@ int main()
 {
     auto f = std::fopen("test.cpp", "r");
     auto file = scn::file(f);
+
+    int i;
+    auto ret = scn::scan(file, "{}", i);
+    SCN_ENSURE(!ret);
+
     std::string str;
-    scn::scan(file, "{}", str);
-    std::fclose(f);
+    ret = scn::scan(file, "{}", str);
     std::cout << str << '\n';
+
+    std::fclose(f);
 }
