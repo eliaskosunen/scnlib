@@ -21,6 +21,7 @@
 #include "range.h"
 
 #include <cstdio>
+#include <string>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

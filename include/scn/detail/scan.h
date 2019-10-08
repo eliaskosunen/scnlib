@@ -547,19 +547,19 @@ namespace scn {
     };
 
     template <typename T>
-    struct skip_type {
-        skip_type() = default;
+    struct discard_type {
+        discard_type() = default;
     };
     template <typename T>
-    skip_type<T>& skip()
+    discard_type<T>& discard()
     {
-        return temp(skip_type<T>{})();
+        return temp(discard_type<T>{})();
     }
 
     template <typename CharT, typename T>
-    struct scanner<CharT, skip_type<T>> : public scanner<CharT, T> {
+    struct scanner<CharT, discard_type<T>> : public scanner<CharT, T> {
         template <typename Context>
-        error scan(skip_type<T>&, Context& ctx)
+        error scan(discard_type<T>&, Context& ctx)
         {
             T tmp;
             return scanner<CharT, T>::scan(tmp, ctx);

@@ -65,17 +65,6 @@ matrix:
           - g++-5
           sources:
           - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-9 STANDARD=17
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-          - clang-9
-          - g++-6
-          sources:
-          - llvm-toolchain-trusty-9
-          - ubuntu-toolchain-r-test
     - env: COMPILER=clang++-8 STANDARD=17
       compiler: clang
       addons:

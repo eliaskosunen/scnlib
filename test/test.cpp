@@ -168,9 +168,9 @@ TEST_CASE("temporary")
     CHECK(ret.value() == 1);
 }
 
-TEST_CASE("skip")
+TEST_CASE("discard")
 {
-    auto ret = scn::scan("123 456", scn::default_tag, scn::skip<int>());
+    auto ret = scn::scan("123 456", scn::default_tag, scn::discard<int>());
     CHECK(ret);
     CHECK(ret.value());
     CHECK(std::string{ret.range().data(), ret.range().size()} == " 456");
