@@ -379,6 +379,10 @@ namespace scn {
         bool sync() const;
 
         basic_file_view<CharT> make_view() const;
+        detail::range_wrapper<basic_file_view<CharT>> wrap() const
+        {
+            return {make_view()};
+        }
 
     private:
         FILE* m_file;
