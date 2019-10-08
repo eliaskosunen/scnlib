@@ -104,6 +104,46 @@ namespace scn {
         return vscan(ctx, pctx);
     }
 
+    // value
+
+    template <typename T, typename Range>
+    auto scan_value(Range&& r)
+        -> detail::scan_result_for_range_t<Range, expected<T>>
+    {
+        using range_type = detail::range_wrapper_for_t<Range>;
+        using context_type = basic_context<range_type>;
+        using parse_context_type =
+            basic_empty_parse_context<typename context_type::locale_type>;
+
+        T value;
+        auto args = make_args<context_type, parse_context_type>(value);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)), args);
+
+#if 0
+        using char_type = typename context_type::char_type;
+        auto e = skip_range_whitespace(ctx);
+        if (!e) {
+            ctx.range().reset_to_rollback_point();
+            return {e, ctx.range().get_return()};
+        }
+
+        scanner<char_type, T> s{};
+        e = s.scan(value, ctx);
+        if (!e) {
+            ctx.range().reset_to_rollback_point();
+            return {e, ctx.range().get_return()};
+        }
+        return {std::move(value), ctx.range().get_return()};
+#else
+        auto pctx = parse_context_type(1, ctx);
+        auto ret = vscan(ctx, pctx);
+        if (!ret) {
+            return {ret.error(), ret.range()};
+        }
+        return {value, ret.range()};
+#endif
+    }
+
     // scanf
 
     template <typename Range, typename Format, typename... Args>
@@ -503,6 +543,26 @@ namespace scn {
             }
             detail::list_append(buf.begin(), buf.end(), val);
             return {};
+        }
+    };
+
+    template <typename T>
+    struct skip_type {
+        skip_type() = default;
+    };
+    template <typename T>
+    skip_type<T>& skip()
+    {
+        return temp(skip_type<T>{})();
+    }
+
+    template <typename CharT, typename T>
+    struct scanner<CharT, skip_type<T>> : public scanner<CharT, T> {
+        template <typename Context>
+        error scan(skip_type<T>&, Context& ctx)
+        {
+            T tmp;
+            return scanner<CharT, T>::scan(tmp, ctx);
         }
     };
 

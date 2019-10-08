@@ -84,6 +84,37 @@ BENCHMARK_TEMPLATE(scanint_scn_default, long long);
 BENCHMARK_TEMPLATE(scanint_scn_default, unsigned);
 
 template <typename Int>
+static void scanint_scn_value(benchmark::State& state)
+{
+    auto data = generate_int_data<Int>(INT_DATA_N);
+    auto range = scn::make_view(data);
+    Int i{};
+    for (auto _ : state) {
+        auto ret = scn::scan_value<Int>(range);
+
+        if (!ret) {
+            if (ret.error() == scn::error::end_of_range) {
+                state.PauseTiming();
+                data = generate_int_data<Int>(INT_DATA_N);
+                range = scn::make_view(data);
+                state.ResumeTiming();
+            }
+            else {
+                state.SkipWithError("Benchmark errored");
+                break;
+            }
+        } else {
+            i = ret.value();
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+}
+BENCHMARK_TEMPLATE(scanint_scn_value, int);
+BENCHMARK_TEMPLATE(scanint_scn_value, long long);
+BENCHMARK_TEMPLATE(scanint_scn_value, unsigned);
+
+template <typename Int>
 static void scanint_sstream(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);

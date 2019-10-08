@@ -117,6 +117,17 @@ TEST_CASE("empty format")
     CHECK(b);
 }
 
+TEST_CASE("value")
+{
+    auto ret = scn::scan_value<int>("42");
+    CHECK(ret);
+    CHECK(ret.value() == 42);
+
+    auto ret2 = scn::scan_value<int>("foo");
+    CHECK(!ret2);
+    CHECK(std::string{ret2.range().data(), ret2.range().size()} == "foo");
+}
+
 TEST_CASE("scanf")
 {
     int i{0};
@@ -155,6 +166,14 @@ TEST_CASE("temporary")
 
     CHECK(ret);
     CHECK(ret.value() == 1);
+}
+
+TEST_CASE("skip")
+{
+    auto ret = scn::scan("123 456", scn::default_tag, scn::skip<int>());
+    CHECK(ret);
+    CHECK(ret.value());
+    CHECK(std::string{ret.range().data(), ret.range().size()} == " 456");
 }
 
 TEST_CASE("enumerated arguments")

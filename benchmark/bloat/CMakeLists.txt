@@ -41,6 +41,15 @@ target_link_libraries(bloat-scnlib scn)
 add_executable(bloat-scnlib-header-only ${bloat-scnlib-sources})
 target_link_libraries(bloat-scnlib-header-only scn-header-only)
 
+# scnlib-value
+generate_bloat_test_files("${CMAKE_CURRENT_LIST_DIR}/scnlib-value-template.cpp" out/scnlib-value bloat-scnlib-value-sources)
+add_executable(bloat-scnlib-value ${bloat-scnlib-value-sources})
+target_link_libraries(bloat-scnlib-value scn)
+
+# scnlib-value (header-only)
+add_executable(bloat-scnlib-value-header-only ${bloat-scnlib-value-sources})
+target_link_libraries(bloat-scnlib-value-header-only scn-header-only)
+
 add_custom_target(bloat-prepare ALL
     COMMAND ${CMAKE_COMMAND} -E copy
     "${CMAKE_CURRENT_LIST_DIR}/bloat-test.py" "${CMAKE_CURRENT_LIST_DIR}/run-bloat-tests.py"
