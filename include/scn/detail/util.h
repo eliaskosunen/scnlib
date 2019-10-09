@@ -56,10 +56,10 @@ namespace scn {
         // Stolen from range-v3
         template <typename T>
         struct static_const {
-            static SCN_CONSTEXPR T value{};
+            static constexpr T value{};
         };
         template <typename T>
-        SCN_CONSTEXPR T static_const<T>::value;
+        constexpr T static_const<T>::value;
 
         template <size_t I>
         struct priority_tag : priority_tag<I - 1> {
@@ -431,7 +431,7 @@ namespace scn {
         };
 
         template <typename T>
-        SCN_CONSTEXPR typename std::decay<T>::type decay_copy(T&& t) noexcept(
+        constexpr typename std::decay<T>::type decay_copy(T&& t) noexcept(
             noexcept(
                 static_cast<typename std::decay<T>::type>(std::forward<T>(t))))
         {
@@ -477,7 +477,7 @@ namespace scn {
         }
 
         template <typename T>
-        SCN_CONSTEXPR T* launder(T* p) noexcept
+        constexpr T* launder(T* p) noexcept
         {
 #if SCN_HAS_LAUNDER
             return std::launder(p);
@@ -489,18 +489,18 @@ namespace scn {
         template <typename CharT>
         CharT ascii_widen(char ch);
         template <>
-        SCN_CONSTEXPR char ascii_widen(char ch)
+        constexpr char ascii_widen(char ch)
         {
             return ch;
         }
         template <>
-        SCN_CONSTEXPR wchar_t ascii_widen(char ch)
+        constexpr wchar_t ascii_widen(char ch)
         {
             return static_cast<wchar_t>(ch);
         }
 
         template <typename T>
-        SCN_CONSTEXPR T max(T a, T b) noexcept
+        constexpr T max(T a, T b) noexcept
         {
             return (a < b) ? b : a;
         }
@@ -523,7 +523,7 @@ namespace scn {
         }
 
         template <typename T>
-        SCN_CONSTEXPR T min(T a, T b) noexcept
+        constexpr T min(T a, T b) noexcept
         {
             return (b < a) ? b : a;
         }
@@ -531,37 +531,6 @@ namespace scn {
         SCN_CONSTEXPR14 T min(std::initializer_list<T> list) noexcept
         {
             return *min_element(list.begin(), list.end());
-        }
-
-        template <typename ForwardIt, typename T>
-        ForwardIt remove(ForwardIt first, ForwardIt last, const T& value)
-        {
-            for (; first != last; ++first) {
-                if (*first == value) {
-                    break;
-                }
-            }
-            if (first != last) {
-                for (ForwardIt i = first; ++i != last;) {
-                    if (!(*i == value)) {
-                        *first++ = std::move(*i);
-                    }
-                }
-            }
-            return first;
-        }
-
-        template <class InputIt, class T>
-        SCN_CONSTEXPR14 InputIt find(InputIt first,
-                                     InputIt last,
-                                     const T& value)
-        {
-            for (; first != last; ++first) {
-                if (*first == value) {
-                    return first;
-                }
-            }
-            return last;
         }
 
         template <typename CharT>
@@ -584,10 +553,10 @@ namespace scn {
             using element_type = T;
             using pointer = T*;
 
-            SCN_CONSTEXPR unique_ptr() noexcept = default;
-            SCN_CONSTEXPR unique_ptr(std::nullptr_t) noexcept {}
+            constexpr unique_ptr() noexcept = default;
+            constexpr unique_ptr(std::nullptr_t) noexcept {}
 
-            SCN_CONSTEXPR explicit unique_ptr(pointer p) noexcept : m_ptr(p) {}
+            constexpr explicit unique_ptr(pointer p) noexcept : m_ptr(p) {}
 
             template <
                 typename U,
@@ -624,22 +593,22 @@ namespace scn {
                 }
             }
 
-            SCN_CONSTEXPR explicit operator bool() const noexcept
+            constexpr explicit operator bool() const noexcept
             {
                 return get() != nullptr;
             }
 
-            SCN_CONSTEXPR pointer get() const noexcept
+            constexpr pointer get() const noexcept
             {
                 return m_ptr;
             }
 
-            SCN_CONSTEXPR pointer operator->() const noexcept
+            constexpr pointer operator->() const noexcept
             {
                 return m_ptr;
             }
-            SCN_CONSTEXPR typename std::add_lvalue_reference<T>::type
-            operator*() const
+            constexpr typename std::add_lvalue_reference<T>::type operator*()
+                const
             {
                 return *m_ptr;
             }
@@ -681,7 +650,7 @@ namespace scn {
                 SCN_EXPECT(i < size());
                 return m_data[i];
             }
-            SCN_CONSTEXPR const_reference operator[](size_type i) const
+            constexpr const_reference operator[](size_type i) const
             {
                 SCN_EXPECT(i < size());
                 return m_data[i];
@@ -691,11 +660,11 @@ namespace scn {
             {
                 return m_data;
             }
-            SCN_CONSTEXPR const_iterator begin() const noexcept
+            constexpr const_iterator begin() const noexcept
             {
                 return m_data;
             }
-            SCN_CONSTEXPR const_iterator cbegin() const noexcept
+            constexpr const_iterator cbegin() const noexcept
             {
                 return m_data;
             }
@@ -704,11 +673,11 @@ namespace scn {
             {
                 return m_data + N;
             }
-            SCN_CONSTEXPR const_iterator end() const noexcept
+            constexpr const_iterator end() const noexcept
             {
                 return m_data + N;
             }
-            SCN_CONSTEXPR const_iterator cend() const noexcept
+            constexpr const_iterator cend() const noexcept
             {
                 return m_data + N;
             }
@@ -717,12 +686,12 @@ namespace scn {
             {
                 return m_data;
             }
-            SCN_CONSTEXPR const_pointer data() const noexcept
+            constexpr const_pointer data() const noexcept
             {
                 return m_data;
             }
 
-            SCN_CONSTEXPR size_type size() const noexcept
+            constexpr size_type size() const noexcept
             {
                 return N;
             }
@@ -737,7 +706,7 @@ namespace scn {
             using pointer = T*;
             using storage_type = unsigned char[sizeof(T)];
 
-            SCN_CONSTEXPR erased_storage() noexcept = default;
+            constexpr erased_storage() noexcept = default;
 
             erased_storage(T val) noexcept(
                 std::is_nothrow_move_constructible<T>::value)
@@ -783,11 +752,11 @@ namespace scn {
                 _destruct();
             }
 
-            SCN_CONSTEXPR bool has_value() const noexcept
+            constexpr bool has_value() const noexcept
             {
                 return m_ptr != nullptr;
             }
-            SCN_CONSTEXPR explicit operator bool() const noexcept
+            constexpr explicit operator bool() const noexcept
             {
                 return has_value();
             }
@@ -867,11 +836,11 @@ namespace scn {
             return *this;
         }
 
-        SCN_CONSTEXPR bool has_value() const noexcept
+        constexpr bool has_value() const noexcept
         {
             return m_storage.operator bool();
         }
-        SCN_CONSTEXPR explicit operator bool() const noexcept
+        constexpr explicit operator bool() const noexcept
         {
             return has_value();
         }

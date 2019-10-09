@@ -65,9 +65,8 @@ namespace scn {
         using string_view_type = basic_string_view<char_type>;
         using iterator = typename string_view_type::iterator;
 
-        explicit SCN_CONSTEXPR basic_parse_context(
-            basic_string_view<char_type> f,
-            locale_type& loc)
+        explicit constexpr basic_parse_context(basic_string_view<char_type> f,
+                                               locale_type& loc)
             : m_str(f), m_locale(loc)
         {
         }
@@ -97,16 +96,16 @@ namespace scn {
             }
             return false;
         }
-        SCN_CONSTEXPR bool check_literal(char_type ch) const
+        constexpr bool check_literal(char_type ch) const
         {
             return ch == next();
         }
 
-        SCN_CONSTEXPR bool good() const
+        constexpr bool good() const
         {
             return !m_str.empty();
         }
-        SCN_CONSTEXPR explicit operator bool() const
+        constexpr explicit operator bool() const
         {
             return good();
         }
@@ -116,16 +115,16 @@ namespace scn {
             SCN_EXPECT(good());
             m_str.remove_prefix(static_cast<std::size_t>(n));
         }
-        SCN_CONSTEXPR char_type next() const
+        constexpr char_type next() const
         {
             return m_str.front();
         }
 
-        SCN_CONSTEXPR bool check_arg_begin() const
+        constexpr bool check_arg_begin() const
         {
             return next() == detail::ascii_widen<char_type>('{');
         }
-        SCN_CONSTEXPR bool check_arg_end() const
+        constexpr bool check_arg_end() const
         {
             return next() == detail::ascii_widen<char_type>('}');
         }
@@ -181,7 +180,7 @@ namespace scn {
         using string_view_type = basic_string_view<char_type>;
         using iterator = typename string_view_type::iterator;
 
-        explicit SCN_CONSTEXPR basic_scanf_parse_context(
+        explicit constexpr basic_scanf_parse_context(
             basic_string_view<char_type> f,
             locale_type& loc)
             : m_str(f), m_it(m_str.begin()), m_locale(loc)
@@ -210,16 +209,16 @@ namespace scn {
             }
             return false;
         }
-        SCN_CONSTEXPR bool check_literal(char_type ch) const
+        constexpr bool check_literal(char_type ch) const
         {
             return ch == next();
         }
 
-        SCN_CONSTEXPR bool good() const
+        constexpr bool good() const
         {
             return m_it != m_str.end();
         }
-        SCN_CONSTEXPR explicit operator bool() const
+        constexpr explicit operator bool() const
         {
             return good();
         }
@@ -229,7 +228,7 @@ namespace scn {
             SCN_EXPECT(good());
             m_it += n;
         }
-        SCN_CONSTEXPR char_type next() const
+        constexpr char_type next() const
         {
             return *m_it;
         }
@@ -262,7 +261,7 @@ namespace scn {
             return s.parse(*this);
         }
 
-        SCN_CONSTEXPR expected<string_view_type> parse_arg_id() const
+        constexpr expected<string_view_type> parse_arg_id() const
         {
             SCN_EXPECT(good());
             return string_view_type{};
@@ -288,7 +287,7 @@ namespace scn {
         using char_type = typename Locale::char_type;
         using string_view_type = basic_string_view<char_type>;
 
-        explicit SCN_CONSTEXPR basic_empty_parse_context(int args, Locale& loc)
+        explicit constexpr basic_empty_parse_context(int args, Locale& loc)
             : m_args_left(args), m_locale(loc)
         {
         }
@@ -301,20 +300,20 @@ namespace scn {
             }
             return false;
         }
-        SCN_CONSTEXPR bool should_read_literal() const
+        constexpr bool should_read_literal() const
         {
             return false;
         }
-        SCN_CONSTEXPR bool check_literal(char_type) const
+        constexpr bool check_literal(char_type) const
         {
             return false;
         }
 
-        SCN_CONSTEXPR bool good() const
+        constexpr bool good() const
         {
             return m_args_left > 0;
         }
-        SCN_CONSTEXPR explicit operator bool() const
+        constexpr explicit operator bool() const
         {
             return good();
         }
@@ -326,11 +325,11 @@ namespace scn {
             SCN_UNREACHABLE;
         }
 
-        SCN_CONSTEXPR bool check_arg_begin() const
+        constexpr bool check_arg_begin() const
         {
             return true;
         }
-        SCN_CONSTEXPR bool check_arg_end() const
+        constexpr bool check_arg_end() const
         {
             return true;
         }
@@ -345,12 +344,12 @@ namespace scn {
         }
 
         template <typename Scanner>
-        SCN_CONSTEXPR error parse(Scanner&) const
+        constexpr error parse(Scanner&) const
         {
             return {};
         }
 
-        SCN_CONSTEXPR expected<string_view_type> parse_arg_id() const
+        constexpr expected<string_view_type> parse_arg_id() const
         {
             SCN_EXPECT(good());
             return string_view_type{};

@@ -179,12 +179,12 @@ namespace scn {
             }
 
             // iterator value type is a character
-            static SCN_CONSTEXPR bool is_direct = is_direct_impl<Range>::value;
+            static constexpr bool is_direct = is_direct_impl<Range>::value;
             // can call .data() and memcpy
-            static SCN_CONSTEXPR bool is_contiguous =
+            static constexpr bool is_contiguous =
                 is_contiguous_impl<Range>::value;
             // provides mechanism to get a pointer to memcpy from
-            static SCN_CONSTEXPR bool provides_buffer_access =
+            static constexpr bool provides_buffer_access =
                 provides_buffer_access_impl<Range>::value;
 
         private:

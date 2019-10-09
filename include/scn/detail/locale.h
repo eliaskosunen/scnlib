@@ -37,20 +37,20 @@ namespace scn {
 
             truename_falsename_storage(const void* loc);
 
-            SCN_CONSTEXPR const string_type& get_true_str() const
+            constexpr const string_type& get_true_str() const
             {
                 return m_truename;
             }
-            SCN_CONSTEXPR const string_type& get_false_str() const
+            constexpr const string_type& get_false_str() const
             {
                 return m_falsename;
             }
 
-            SCN_CONSTEXPR string_view_type get_true_view() const
+            constexpr string_view_type get_true_view() const
             {
                 return string_view_type(m_truename.data(), m_truename.size());
             }
-            SCN_CONSTEXPR string_view_type get_false_view() const
+            constexpr string_view_type get_false_view() const
             {
                 return string_view_type(m_falsename.data(), m_falsename.size());
             }
@@ -60,7 +60,7 @@ namespace scn {
             string_type m_falsename;
         };
 
-        SCN_CONSTEXPR bool has_zero(uint64_t v)
+        constexpr bool has_zero(uint64_t v)
         {
             return (v - UINT64_C(0x0101010101010101)) & ~v &
                    UINT64_C(0x8080808080808080);
@@ -101,16 +101,16 @@ namespace scn {
                  false, false, false, false}};
             return lookup[static_cast<size_t>(ch)];
         }
-        SCN_CONSTEXPR inline bool is_space(wchar_t ch) noexcept
+        constexpr inline bool is_space(wchar_t ch) noexcept
         {
             return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
         }
 
-        SCN_CONSTEXPR inline bool is_digit(char ch) noexcept
+        constexpr inline bool is_digit(char ch) noexcept
         {
             return ch >= '0' && ch <= '9';
         }
-        SCN_CONSTEXPR inline bool is_digit(wchar_t ch) noexcept
+        constexpr inline bool is_digit(wchar_t ch) noexcept
         {
             return ch >= L'0' && ch <= L'9';
         }
@@ -119,7 +119,7 @@ namespace scn {
         struct default_widen;
         template <>
         struct default_widen<char> {
-            static SCN_CONSTEXPR char widen(char ch) noexcept
+            static constexpr char widen(char ch) noexcept
             {
                 return ch;
             }
@@ -140,7 +140,7 @@ namespace scn {
         struct default_narrow;
         template <>
         struct default_narrow<char> {
-            static SCN_CONSTEXPR char narrow(char ch, char) noexcept
+            static constexpr char narrow(char ch, char) noexcept
             {
                 return ch;
             }
@@ -161,38 +161,38 @@ namespace scn {
         struct locale_defaults;
         template <>
         struct locale_defaults<char> {
-            static SCN_CONSTEXPR string_view truename()
+            static constexpr string_view truename()
             {
                 return {"true"};
             }
-            static SCN_CONSTEXPR string_view falsename()
+            static constexpr string_view falsename()
             {
                 return {"false"};
             }
-            static SCN_CONSTEXPR char decimal_point() noexcept
+            static constexpr char decimal_point() noexcept
             {
                 return '.';
             }
-            static SCN_CONSTEXPR char thousands_separator() noexcept
+            static constexpr char thousands_separator() noexcept
             {
                 return ',';
             }
         };
         template <>
         struct locale_defaults<wchar_t> {
-            static SCN_CONSTEXPR wstring_view truename()
+            static constexpr wstring_view truename()
             {
                 return {L"true"};
             }
-            static SCN_CONSTEXPR wstring_view falsename()
+            static constexpr wstring_view falsename()
             {
                 return {L"false"};
             }
-            static SCN_CONSTEXPR wchar_t decimal_point() noexcept
+            static constexpr wchar_t decimal_point() noexcept
             {
                 return L'.';
             }
-            static SCN_CONSTEXPR wchar_t thousands_separator() noexcept
+            static constexpr wchar_t thousands_separator() noexcept
             {
                 return L',';
             }
@@ -212,31 +212,31 @@ namespace scn {
         using string_view_type = basic_string_view<char_type>;
         using defaults = detail::locale_defaults<char_type>;
 
-        SCN_CONSTEXPR basic_default_locale_ref() = default;
+        constexpr basic_default_locale_ref() = default;
 
-        SCN_CONSTEXPR bool is_space(char_type ch) const
+        constexpr bool is_space(char_type ch) const
         {
             return detail::is_space(ch);
         }
-        SCN_CONSTEXPR bool is_digit(char_type ch) const
+        constexpr bool is_digit(char_type ch) const
         {
             return detail::is_digit(ch);
         }
 
-        SCN_CONSTEXPR char_type decimal_point() const
+        constexpr char_type decimal_point() const
         {
             return defaults::decimal_point();
         }
-        SCN_CONSTEXPR char_type thousands_separator() const
+        constexpr char_type thousands_separator() const
         {
             return defaults::thousands_separator();
         }
 
-        SCN_CONSTEXPR string_view_type truename() const
+        constexpr string_view_type truename() const
         {
             return defaults::truename();
         }
-        SCN_CONSTEXPR string_view_type falsename() const
+        constexpr string_view_type falsename() const
         {
             return defaults::falsename();
         }
@@ -269,7 +269,7 @@ namespace scn {
         basic_locale_ref(std::nullptr_t) : basic_locale_ref() {}
         explicit basic_locale_ref(const void* loc);
 
-        SCN_CONSTEXPR const void* get_ptr() const
+        constexpr const void* get_ptr() const
         {
             return m_locale;
         }
@@ -289,20 +289,20 @@ namespace scn {
             return _is_digit(ch);
         }
 
-        SCN_CONSTEXPR char_type decimal_point() const
+        constexpr char_type decimal_point() const
         {
             return m_decimal_point;
         }
-        SCN_CONSTEXPR char_type thousands_separator() const
+        constexpr char_type thousands_separator() const
         {
             return m_thousands_separator;
         }
 
-        SCN_CONSTEXPR string_view_type truename() const
+        constexpr string_view_type truename() const
         {
             return string_view_type(m_truename.data(), m_truename.size());
         }
-        SCN_CONSTEXPR string_view_type falsename() const
+        constexpr string_view_type falsename() const
         {
             return string_view_type(m_falsename.data(), m_falsename.size());
         }
@@ -325,12 +325,12 @@ namespace scn {
         template <typename T>
         expected<std::ptrdiff_t> read_num(T& val, const string_type& buf);
 
-        SCN_CONSTEXPR bool is_default() const noexcept
+        constexpr bool is_default() const noexcept
         {
             return m_locale == nullptr;
         }
 
-        SCN_CONSTEXPR static basic_locale_ref get_default()
+        constexpr static basic_locale_ref get_default()
         {
             return basic_locale_ref();
         }

@@ -151,7 +151,7 @@ namespace scn {
         using base_type = Base;
 
         template <typename R>
-        SCN_CONSTEXPR scan_result(base_type&& b, R&& r)
+        constexpr scan_result(base_type&& b, R&& r)
             : base_type(std::move(b)), m_range(std::forward<R>(r))
         {
         }

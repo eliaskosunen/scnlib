@@ -94,11 +94,11 @@ namespace scn {
             custom_type
         };
 
-        SCN_CONSTEXPR bool is_integral(type t) noexcept
+        constexpr bool is_integral(type t) noexcept
         {
             return t > none_type && t <= last_integer_type;
         }
-        SCN_CONSTEXPR bool is_arithmetic(type t) noexcept
+        constexpr bool is_arithmetic(type t) noexcept
         {
             return t > none_type && t <= last_numeric_type;
         }
@@ -136,7 +136,7 @@ namespace scn {
             using char_type = typename Context::char_type;
             using arg_type = typename Context::arg_type;
 
-            SCN_CONSTEXPR value() noexcept : m_empty{} {}
+            constexpr value() noexcept : m_empty{} {}
 
             template <typename T>
             value(T& val) noexcept : m_value(std::addressof(val))
@@ -185,7 +185,7 @@ namespace scn {
             T* val;
             static const type type_tag = Type;
 
-            SCN_CONSTEXPR init(T& v) : val(std::addressof(v)) {}
+            constexpr init(T& v) : val(std::addressof(v)) {}
             template <typename ParseCtx>
             SCN_CONSTEXPR14 value<Context> get()
             {
@@ -198,7 +198,7 @@ namespace scn {
             T* val;
             static const type type_tag = custom_type;
 
-            SCN_CONSTEXPR init(T& v) : val(std::addressof(v)) {}
+            constexpr init(T& v) : val(std::addressof(v)) {}
             template <typename ParseCtx>
             SCN_CONSTEXPR14 value<Context> get()
             {
@@ -210,11 +210,11 @@ namespace scn {
         template <typename Context, typename ParseCtx, typename T>
         SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value);
 
-#define SCN_MAKE_VALUE(Tag, Type)                                           \
-    template <typename C>                                                   \
-    SCN_CONSTEXPR init<C, Type, Tag> make_value(Type& val, priority_tag<1>) \
-    {                                                                       \
-        return val;                                                         \
+#define SCN_MAKE_VALUE(Tag, Type)                                       \
+    template <typename C>                                               \
+    constexpr init<C, Type, Tag> make_value(Type& val, priority_tag<1>) \
+    {                                                                   \
+        return val;                                                     \
     }
 
         SCN_MAKE_VALUE(short_type, short)
@@ -302,7 +302,7 @@ namespace scn {
             detail::custom_value m_custom;
         };
 
-        SCN_CONSTEXPR basic_arg() = default;
+        constexpr basic_arg() = default;
 
         explicit operator bool() const noexcept
         {
@@ -323,7 +323,7 @@ namespace scn {
         }
 
     private:
-        SCN_CONSTEXPR basic_arg(detail::value<Context> v, detail::type t)
+        constexpr basic_arg(detail::value<Context> v, detail::type t)
             : m_value(v), m_type(t)
         {
         }
@@ -418,12 +418,12 @@ namespace scn {
         };
 
         template <typename Context>
-        SCN_CONSTEXPR size_t get_types()
+        constexpr size_t get_types()
         {
             return 0;
         }
         template <typename Context, typename Arg, typename... Args>
-        SCN_CONSTEXPR size_t get_types()
+        constexpr size_t get_types()
         {
             return static_cast<size_t>(get_type<Context, Arg>::value) |
                    (get_types<Context, Args...>() << 5);
@@ -456,24 +456,24 @@ namespace scn {
 
     template <typename Context, typename... Args>
     class arg_store {
-        static SCN_CONSTEXPR const size_t num_args = sizeof...(Args);
+        static constexpr const size_t num_args = sizeof...(Args);
         static const bool is_packed = num_args < detail::max_packed_args;
 
         friend class basic_args<Context>;
 
-        static SCN_CONSTEXPR size_t get_types()
+        static constexpr size_t get_types()
         {
             return is_packed ? detail::get_types<Context, Args...>()
                              : detail::is_unpacked_bit | num_args;
         }
 
     public:
-        static SCN_CONSTEXPR size_t types = get_types();
+        static constexpr size_t types = get_types();
         using arg_type = typename Context::arg_type;
 
         using value_type = typename std::
             conditional<is_packed, detail::value<Context>, arg_type>::type;
-        static SCN_CONSTEXPR size_t data_size =
+        static constexpr size_t data_size =
             num_args + (is_packed && num_args != 0 ? 0 : 1);
 
         template <typename ParseCtx>

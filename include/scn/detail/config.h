@@ -235,13 +235,9 @@
 #endif
 
 #if SCN_HAS_RELAXED_CONSTEXPR
-#define SCN_CONSTEXPR constexpr
 #define SCN_CONSTEXPR14 constexpr
-#define SCN_CONSTEXPR_DECL constexpr
 #else
-#define SCN_CONSTEXPR constexpr
 #define SCN_CONSTEXPR14 inline
-#define SCN_CONSTEXPR_DECL
 #endif
 
 // Detect [[nodiscard]]

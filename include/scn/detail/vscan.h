@@ -30,7 +30,7 @@ namespace scn {
         };
     }  // namespace detail
     namespace {
-        SCN_CONSTEXPR auto& default_tag =
+        constexpr auto& default_tag =
             detail::static_const<detail::default_t>::value;
     }
 

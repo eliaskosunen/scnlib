@@ -64,42 +64,42 @@ namespace scn {
 
         struct success_tag_t {
         };
-        static SCN_CONSTEXPR success_tag_t success_tag()
+        static constexpr success_tag_t success_tag()
         {
             return {};
         }
 
-        SCN_CONSTEXPR error() noexcept = default;
-        SCN_CONSTEXPR error(success_tag_t) noexcept : error() {}
-        SCN_CONSTEXPR error(enum code c, const char* m) noexcept
+        constexpr error() noexcept = default;
+        constexpr error(success_tag_t) noexcept : error() {}
+        constexpr error(enum code c, const char* m) noexcept
             : m_msg(m), m_code(c)
         {
         }
 
         /// Evaluated to true if there was no error
-        SCN_CONSTEXPR explicit operator bool() const noexcept
+        constexpr explicit operator bool() const noexcept
         {
             return m_code == good;
         }
-        SCN_CONSTEXPR bool operator!() const noexcept
+        constexpr bool operator!() const noexcept
         {
             return !(operator bool());
         }
 
-        SCN_CONSTEXPR operator enum code() const noexcept { return m_code; }
+        constexpr operator enum code() const noexcept { return m_code; }
 
         /// Get error code
-        SCN_CONSTEXPR enum code code() const noexcept
+        constexpr enum code code() const noexcept
         {
             return m_code;
         }
-        SCN_CONSTEXPR const char* msg() const noexcept
+        constexpr const char* msg() const noexcept
         {
             return m_msg;
         }
 
         /// Can the stream be used again
-        SCN_CONSTEXPR bool is_recoverable() const noexcept
+        constexpr bool is_recoverable() const noexcept
         {
             return !(m_code == unrecoverable_source_error ||
                      m_code == unrecoverable_internal_error);
@@ -110,11 +110,11 @@ namespace scn {
         enum code m_code { good };
     };
 
-    SCN_CONSTEXPR inline bool operator==(error a, error b) noexcept
+    constexpr inline bool operator==(error a, error b) noexcept
     {
         return a.code() == b.code();
     }
-    SCN_CONSTEXPR inline bool operator!=(error a, error b) noexcept
+    constexpr inline bool operator!=(error a, error b) noexcept
     {
         return !(a == b);
     }
@@ -125,8 +125,8 @@ namespace scn {
         using success_type = T;
         using error_type = Error;
 
-        SCN_CONSTEXPR result(success_type val) : m_value(std::move(val)) {}
-        SCN_CONSTEXPR result(success_type val, error_type err)
+        constexpr result(success_type val) : m_value(std::move(val)) {}
+        constexpr result(success_type val, error_type err)
             : m_value(std::move(val)), m_error(std::move(err))
         {
         }
@@ -135,7 +135,7 @@ namespace scn {
         {
             return m_value;
         }
-        SCN_CONSTEXPR const success_type& value() const& noexcept
+        constexpr const success_type& value() const& noexcept
         {
             return m_value;
         }
@@ -148,7 +148,7 @@ namespace scn {
         {
             return m_error;
         }
-        SCN_CONSTEXPR const error_type& error() const& noexcept
+        constexpr const error_type& error() const& noexcept
         {
             return m_error;
         }
@@ -157,11 +157,11 @@ namespace scn {
             return m_error;
         }
 
-        SCN_CONSTEXPR explicit operator bool() const noexcept
+        constexpr explicit operator bool() const noexcept
         {
             return m_error.operator bool();
         }
-        SCN_CONSTEXPR bool has_error() const noexcept
+        constexpr bool has_error() const noexcept
         {
             return !(operator bool());
         }
@@ -194,18 +194,18 @@ namespace scn {
         using success_type = T;
         using error_type = Error;
 
-        SCN_CONSTEXPR expected(success_type s) : m_s(s) {}
-        SCN_CONSTEXPR expected(error_type e) : m_e(e) {}
+        constexpr expected(success_type s) : m_s(s) {}
+        constexpr expected(error_type e) : m_e(e) {}
 
-        SCN_CONSTEXPR bool has_value() const noexcept
+        constexpr bool has_value() const noexcept
         {
             return m_e == error::good;
         }
-        SCN_CONSTEXPR explicit operator bool() const noexcept
+        constexpr explicit operator bool() const noexcept
         {
             return has_value();
         }
-        SCN_CONSTEXPR bool operator!() const noexcept
+        constexpr bool operator!() const noexcept
         {
             return !operator bool();
         }
@@ -214,7 +214,7 @@ namespace scn {
         {
             return m_s;
         }
-        SCN_CONSTEXPR success_type value() const& noexcept
+        constexpr success_type value() const& noexcept
         {
             return m_s;
         }
@@ -227,7 +227,7 @@ namespace scn {
         {
             return m_e;
         }
-        SCN_CONSTEXPR error_type error() const noexcept
+        constexpr error_type error() const noexcept
         {
             return m_e;
         }
@@ -253,17 +253,17 @@ namespace scn {
         using error_type = Error;
 
         expected(success_type s) : m_s(std::move(s)) {}
-        SCN_CONSTEXPR expected(error_type e) : m_e(e) {}
+        constexpr expected(error_type e) : m_e(e) {}
 
-        SCN_CONSTEXPR bool has_value() const noexcept
+        constexpr bool has_value() const noexcept
         {
             return m_e == error::good;
         }
-        SCN_CONSTEXPR explicit operator bool() const noexcept
+        constexpr explicit operator bool() const noexcept
         {
             return has_value();
         }
-        SCN_CONSTEXPR bool operator!() const noexcept
+        constexpr bool operator!() const noexcept
         {
             return !operator bool();
         }
@@ -272,7 +272,7 @@ namespace scn {
         {
             return *m_s;
         }
-        SCN_CONSTEXPR const success_type& value() const noexcept
+        constexpr const success_type& value() const noexcept
         {
             return *m_s;
         }
@@ -281,7 +281,7 @@ namespace scn {
         {
             return m_e;
         }
-        SCN_CONSTEXPR error_type error() const noexcept
+        constexpr error_type error() const noexcept
         {
             return m_e;
         }
@@ -304,7 +304,7 @@ namespace scn {
 
     namespace detail {
         struct error_handler {
-            SCN_CONSTEXPR error_handler() = default;
+            constexpr error_handler() = default;
 
             void on_error(error e);
             void on_error(const char* msg);

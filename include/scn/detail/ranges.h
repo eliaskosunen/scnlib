@@ -327,7 +327,7 @@ namespace scn {
                 };
             }  // namespace _begin
             namespace {
-                SCN_CONSTEXPR auto& begin = static_const<_begin::fn>::value;
+                constexpr auto& begin = static_const<_begin::fn>::value;
             }
 
             // end
@@ -340,20 +340,20 @@ namespace scn {
                 struct fn {
                 private:
                     template <typename T, std::size_t N>
-                    static SCN_CONSTEXPR void impl(T(&&)[N],
-                                                   priority_tag<2>) = delete;
+                    static constexpr void impl(T(&&)[N],
+                                               priority_tag<2>) = delete;
 
                     template <typename T, std::size_t N>
-                    static SCN_CONSTEXPR auto impl(T (&t)[N],
-                                                   priority_tag<2>) noexcept
+                    static constexpr auto impl(T (&t)[N],
+                                               priority_tag<2>) noexcept
                         -> decltype((t) + N)
                     {
                         return (t) + N;
                     }
 
                     template <typename C>
-                    static SCN_CONSTEXPR auto impl(basic_string_view<C> sv,
-                                                   priority_tag<2>) noexcept
+                    static constexpr auto impl(basic_string_view<C> sv,
+                                               priority_tag<2>) noexcept
                         -> decltype(sv.end())
                     {
                         return sv.end();
@@ -365,9 +365,8 @@ namespace scn {
                             decltype(decay_copy(std::declval<T&>().end())),
                         typename I = decltype(
                             ::scn::detail::ranges::begin(std::declval<T&>()))>
-                    static SCN_CONSTEXPR auto impl(
-                        T& t,
-                        priority_tag<1>) noexcept(noexcept(decay_copy(t.end())))
+                    static constexpr auto impl(T& t, priority_tag<1>) noexcept(
+                        noexcept(decay_copy(t.end())))
                         -> decltype(decay_copy(t.end()))
                     {
                         return decay_copy(t.end());
@@ -379,8 +378,7 @@ namespace scn {
                             decltype(decay_copy(end(std::declval<T>()))),
                         typename I = decltype(
                             ::scn::detail::ranges::begin(std::declval<T>()))>
-                    static SCN_CONSTEXPR auto
-                    impl(T& t, priority_tag<0>) noexcept(
+                    static constexpr auto impl(T& t, priority_tag<0>) noexcept(
                         noexcept(decay_copy(end(std::forward<T>(t))))) -> S
                     {
                         return decay_copy(end(std::forward<T>(t)));
@@ -388,7 +386,7 @@ namespace scn {
 
                 public:
                     template <typename T>
-                    SCN_CONSTEXPR auto operator()(T&& t) const
+                    constexpr auto operator()(T&& t) const
                         noexcept(noexcept(fn::impl(std::forward<T>(t),
                                                    priority_tag<2>{})))
                             -> decltype(fn::impl(std::forward<T>(t),
@@ -399,14 +397,14 @@ namespace scn {
                 };
             }  // namespace _end
             namespace {
-                SCN_CONSTEXPR auto& end = static_const<_end::fn>::value;
+                constexpr auto& end = static_const<_end::fn>::value;
             }
 
             // cbegin
             namespace _cbegin {
                 struct fn {
                     template <typename T>
-                    SCN_CONSTEXPR auto operator()(const T& t) const
+                    constexpr auto operator()(const T& t) const
                         noexcept(noexcept(::scn::detail::ranges::begin(t)))
                             -> decltype(::scn::detail::ranges::begin(t))
                     {
@@ -414,7 +412,7 @@ namespace scn {
                     }
 
                     template <typename T>
-                    SCN_CONSTEXPR auto operator()(const T&& t) const
+                    constexpr auto operator()(const T&& t) const
                         noexcept(noexcept(::scn::detail::ranges::begin(
                             static_cast<const T&&>(t))))
                             -> decltype(::scn::detail::ranges::begin(
@@ -426,14 +424,14 @@ namespace scn {
                 };
             }  // namespace _cbegin
             namespace {
-                SCN_CONSTEXPR auto& cbegin = static_const<_cbegin::fn>::value;
+                constexpr auto& cbegin = static_const<_cbegin::fn>::value;
             }
 
             // cend
             namespace _cend {
                 struct fn {
                     template <typename T>
-                    SCN_CONSTEXPR auto operator()(const T& t) const
+                    constexpr auto operator()(const T& t) const
                         noexcept(noexcept(::scn::detail::ranges::end(t)))
                             -> decltype(::scn::detail::ranges::end(t))
                     {
@@ -441,7 +439,7 @@ namespace scn {
                     }
 
                     template <typename T>
-                    SCN_CONSTEXPR auto operator()(const T&& t) const
+                    constexpr auto operator()(const T&& t) const
                         noexcept(noexcept(::scn::detail::ranges::end(
                             static_cast<const T&&>(t))))
                             -> decltype(::scn::detail::ranges::end(
@@ -453,7 +451,7 @@ namespace scn {
                 };
             }  // namespace _cend
             namespace {
-                SCN_CONSTEXPR auto& cend = static_const<_cend::fn>::value;
+                constexpr auto& cend = static_const<_cend::fn>::value;
             }
 
             // range
@@ -622,7 +620,7 @@ namespace scn {
                 };
             }  // namespace _data
             namespace {
-                SCN_CONSTEXPR auto& data = static_const<_data::fn>::value;
+                constexpr auto& data = static_const<_data::fn>::value;
             }
 
             // size
@@ -639,17 +637,15 @@ namespace scn {
                 struct fn {
                 private:
                     template <typename T, std::size_t N>
-                    static SCN_CONSTEXPR std::size_t impl(
-                        const T(&&)[N],
-                        priority_tag<3>) noexcept
+                    static constexpr std::size_t impl(const T(&&)[N],
+                                                      priority_tag<3>) noexcept
                     {
                         return N;
                     }
 
                     template <typename T, std::size_t N>
-                    static SCN_CONSTEXPR std::size_t impl(
-                        const T (&)[N],
-                        priority_tag<3>) noexcept
+                    static constexpr std::size_t impl(const T (&)[N],
+                                                      priority_tag<3>) noexcept
                     {
                         return N;
                     }
@@ -712,7 +708,7 @@ namespace scn {
                 };
             }  // namespace _size
             namespace {
-                SCN_CONSTEXPR auto& size = static_const<_size::fn>::value;
+                constexpr auto& size = static_const<_size::fn>::value;
             }
 
             // empty
@@ -720,8 +716,7 @@ namespace scn {
                 struct fn {
                 private:
                     template <typename T>
-                    static SCN_CONSTEXPR auto
-                    impl(T&& t, priority_tag<2>) noexcept(
+                    static constexpr auto impl(T&& t, priority_tag<2>) noexcept(
                         noexcept((bool(std::forward<T>(t).empty()))))
                         -> decltype((bool(std::forward<T>(t).empty())))
                     {
@@ -765,7 +760,7 @@ namespace scn {
                 };
             }  // namespace _empty_ns
             namespace {
-                SCN_CONSTEXPR auto& empty = static_const<_empty_ns::fn>::value;
+                constexpr auto& empty = static_const<_empty_ns::fn>::value;
             }
 
             // sized_range
@@ -818,7 +813,7 @@ namespace scn {
                 {
                     return static_cast<D&>(*this);
                 }
-                SCN_CONSTEXPR D& derived() const noexcept
+                constexpr D& derived() const noexcept
                 {
                     return static_cast<const D&>(*this);
                 }
@@ -829,7 +824,7 @@ namespace scn {
                     return ::scn::detail::ranges::begin(derived()) ==
                            ::scn::detail::ranges::end(derived());
                 }
-                SCN_NODISCARD SCN_CONSTEXPR bool empty() const
+                SCN_NODISCARD constexpr bool empty() const
                 {
                     return ::scn::detail::ranges::begin(derived()) ==
                            ::scn::detail::ranges::end(derived());
@@ -845,7 +840,7 @@ namespace scn {
                 template <typename R = D,
                           typename = decltype(::scn::detail::ranges::empty(
                               std::declval<const R&>()))>
-                SCN_CONSTEXPR explicit operator bool() const
+                constexpr explicit operator bool() const
                 {
                     return !::scn::detail::ranges::empty(derived());
                 }
@@ -894,7 +889,7 @@ namespace scn {
                         sized_sentinel_for<sentinel_t<const R>,
                                            iterator_t<const R>>::value>::type* =
                         nullptr>
-                SCN_CONSTEXPR auto size() const -> decltype(
+                constexpr auto size() const -> decltype(
                     ::scn::detail::ranges::end(static_cast<const R&>(*this)) -
                     ::scn::detail::ranges::begin(static_cast<const R&>(*this)))
                 {
@@ -1007,13 +1002,13 @@ namespace scn {
 
             template <typename I, typename S, bool StoreSize = false>
             struct _subrange_data {
-                SCN_CONSTEXPR _subrange_data() = default;
-                SCN_CONSTEXPR _subrange_data(I&& b, S&& e)
+                constexpr _subrange_data() = default;
+                constexpr _subrange_data(I&& b, S&& e)
                     : begin(std::move(b)), end(std::move(e))
                 {
                 }
                 template <bool Dependent = true>
-                SCN_CONSTEXPR _subrange_data(
+                constexpr _subrange_data(
                     I&& b,
                     S&& e,
                     typename std::enable_if<Dependent,
@@ -1022,7 +1017,7 @@ namespace scn {
                 {
                 }
 
-                SCN_CONSTEXPR iter_difference_t<I> get_size() const
+                constexpr iter_difference_t<I> get_size() const
                 {
                     return distance(begin, end);
                 }
@@ -1033,15 +1028,13 @@ namespace scn {
 
             template <typename I, typename S>
             struct _subrange_data<I, S, true> {
-                SCN_CONSTEXPR _subrange_data() = default;
-                SCN_CONSTEXPR _subrange_data(I&& b,
-                                             S&& e,
-                                             iter_difference_t<I> s)
+                constexpr _subrange_data() = default;
+                constexpr _subrange_data(I&& b, S&& e, iter_difference_t<I> s)
                     : begin(std::move(b)), end(std::move(e)), size(s)
                 {
                 }
 
-                SCN_CONSTEXPR iter_difference_t<I> get_size() const
+                constexpr iter_difference_t<I> get_size() const
                 {
                     return size;
                 }
@@ -1073,7 +1066,7 @@ namespace scn {
             };
 
             template <typename R>
-            SCN_CONSTEXPR subrange_kind _subrange_deduction_guide_helper()
+            constexpr subrange_kind _subrange_deduction_guide_helper()
             {
                 return (sized_range<R>::value ||
                         sized_sentinel_for<sentinel_t<R>, iterator_t<R>>::value)
@@ -1096,7 +1089,7 @@ namespace scn {
                                       !sized_sentinel_for<S, I>::value,
                                   "");
 
-                    static SCN_CONSTEXPR bool _store_size =
+                    static constexpr bool _store_size =
                         K == subrange_kind::sized &&
                         !sized_sentinel_for<S, I>::value;
 
@@ -1125,17 +1118,17 @@ namespace scn {
                     {
                     }
 
-                    SCN_CONSTEXPR I begin() const noexcept
+                    constexpr I begin() const noexcept
                     {
                         return m_data.begin;
                     }
 
-                    SCN_CONSTEXPR S end() const noexcept
+                    constexpr S end() const noexcept
                     {
                         return m_data.end;
                     }
 
-                    SCN_NODISCARD SCN_CONSTEXPR bool empty() const noexcept
+                    SCN_NODISCARD constexpr bool empty() const noexcept
                     {
                         return m_data.begin == m_data.end;
                     }
@@ -1143,7 +1136,7 @@ namespace scn {
                     template <subrange_kind KK = K,
                               typename std::enable_if<
                                   KK == subrange_kind::sized>::type* = nullptr>
-                    SCN_CONSTEXPR iter_difference_t<I> size() const noexcept
+                    constexpr iter_difference_t<I> size() const noexcept
                     {
                         return m_data.get_size();
                     }
@@ -1283,7 +1276,7 @@ namespace scn {
                 struct fn {
                 private:
                     template <typename T>
-                    static SCN_CONSTEXPR T abs(T t)
+                    static constexpr T abs(T t)
                     {
                         return t < T{0} ? -t : t;
                     }
@@ -1467,7 +1460,7 @@ namespace scn {
                 };
             }  // namespace _advance
             namespace {
-                SCN_CONSTEXPR auto& advance = static_const<_advance::fn>::value;
+                constexpr auto& advance = static_const<_advance::fn>::value;
             }
 
             // distance
@@ -1535,8 +1528,7 @@ namespace scn {
                 };
             }  // namespace _distance
             namespace {
-                SCN_CONSTEXPR auto& distance =
-                    static_const<_distance::fn>::value;
+                constexpr auto& distance = static_const<_distance::fn>::value;
             }
         }  // namespace ranges
     }      // namespace detail

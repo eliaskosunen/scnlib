@@ -271,12 +271,12 @@ namespace scn {
         };
 
         template <typename T>
-        SCN_CONSTEXPR T constexpr_max(T val)
+        constexpr T constexpr_max(T val)
         {
             return val;
         }
         template <typename T, typename... Ts>
-        SCN_CONSTEXPR T constexpr_max(T val, Ts... a)
+        constexpr T constexpr_max(T val, Ts... a)
         {
             return val > constexpr_max(a...) ? val : constexpr_max(a...);
         }
@@ -560,11 +560,11 @@ namespace scn {
                 return size() == 0;
             }
 
-            SCN_CONSTEXPR bool is_small() const noexcept
+            constexpr bool is_small() const noexcept
             {
                 return !m_heap;
             }
-            SCN_CONSTEXPR static bool can_be_small(size_type n) noexcept
+            constexpr static bool can_be_small(size_type n) noexcept
             {
                 return n <= StackN;
             }
@@ -574,7 +574,7 @@ namespace scn {
                 SCN_EXPECT(pos < size());
                 return *(begin() + pos);
             }
-            SCN_CONSTEXPR const_reference operator[](size_type pos) const
+            constexpr const_reference operator[](size_type pos) const
             {
                 SCN_EXPECT(pos < size());
                 return *(begin() + pos);
@@ -585,7 +585,7 @@ namespace scn {
                 SCN_EXPECT(!empty());
                 return *begin();
             }
-            SCN_CONSTEXPR const_reference front() const
+            constexpr const_reference front() const
             {
                 SCN_EXPECT(!empty());
                 return *begin();
@@ -596,7 +596,7 @@ namespace scn {
                 SCN_EXPECT(!empty());
                 return *(end() - 1);
             }
-            SCN_CONSTEXPR const_reference back() const
+            constexpr const_reference back() const
             {
                 SCN_EXPECT(!empty());
                 return *(end() - 1);
@@ -606,11 +606,11 @@ namespace scn {
             {
                 return data();
             }
-            SCN_CONSTEXPR const_iterator begin() const noexcept
+            constexpr const_iterator begin() const noexcept
             {
                 return data();
             }
-            SCN_CONSTEXPR const_iterator cbegin() const noexcept
+            constexpr const_iterator cbegin() const noexcept
             {
                 return begin();
             }
@@ -619,11 +619,11 @@ namespace scn {
             {
                 return begin() + size();
             }
-            SCN_CONSTEXPR const_iterator end() const noexcept
+            constexpr const_iterator end() const noexcept
             {
                 return begin() + size();
             }
-            SCN_CONSTEXPR const_iterator cend() const noexcept
+            constexpr const_iterator cend() const noexcept
             {
                 return end();
             }
@@ -632,11 +632,11 @@ namespace scn {
             {
                 return make_reverse_iterator(end());
             }
-            SCN_CONSTEXPR const_reverse_iterator rbegin() const noexcept
+            constexpr const_reverse_iterator rbegin() const noexcept
             {
                 return make_reverse_iterator(end());
             }
-            SCN_CONSTEXPR const_reverse_iterator crbegin() const noexcept
+            constexpr const_reverse_iterator crbegin() const noexcept
             {
                 return rbegin();
             }
@@ -645,16 +645,16 @@ namespace scn {
             {
                 return make_reverse_iterator(begin());
             }
-            SCN_CONSTEXPR const_reverse_iterator rend() const noexcept
+            constexpr const_reverse_iterator rend() const noexcept
             {
                 return make_reverse_iterator(begin());
             }
-            SCN_CONSTEXPR const_reverse_iterator crend() const noexcept
+            constexpr const_reverse_iterator crend() const noexcept
             {
                 return rend();
             }
 
-            SCN_CONSTEXPR size_type max_size() const noexcept
+            constexpr size_type max_size() const noexcept
             {
                 return std::numeric_limits<size_type>::max();
             }

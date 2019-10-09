@@ -70,61 +70,61 @@ namespace scn {
         using difference_type = std::ptrdiff_t;
         using span_index_type = typename span_type::index_type;
 
-        static SCN_CONSTEXPR_DECL const size_type npos = size_type(-1);
+        static constexpr const size_type npos = size_type(-1);
 
-        SCN_CONSTEXPR basic_string_view() noexcept = default;
-        SCN_CONSTEXPR basic_string_view(const_pointer s, size_type c)
+        constexpr basic_string_view() noexcept = default;
+        constexpr basic_string_view(const_pointer s, size_type c)
             : m_data(s, static_cast<span_index_type>(c))
         {
         }
-        SCN_CONSTEXPR basic_string_view(const_pointer s)
+        constexpr basic_string_view(const_pointer s)
             : m_data(s, static_cast<span_index_type>(detail::strlen(s)))
         {
         }
         template <size_t N>
-        SCN_CONSTEXPR basic_string_view(const CharT (&s)[N]) : m_data(s, N)
+        constexpr basic_string_view(const CharT (&s)[N]) : m_data(s, N)
         {
         }
-        SCN_CONSTEXPR basic_string_view(const_pointer first, const_pointer last)
+        constexpr basic_string_view(const_pointer first, const_pointer last)
             : m_data(first, last)
         {
         }
 
-        SCN_CONSTEXPR const_iterator begin() const noexcept
+        constexpr const_iterator begin() const noexcept
         {
             return cbegin();
         }
-        SCN_CONSTEXPR const_iterator cbegin() const noexcept
+        constexpr const_iterator cbegin() const noexcept
         {
             return m_data.cbegin();
         }
-        SCN_CONSTEXPR const_iterator end() const noexcept
+        constexpr const_iterator end() const noexcept
         {
             return cend();
         }
-        SCN_CONSTEXPR const_iterator cend() const noexcept
+        constexpr const_iterator cend() const noexcept
         {
             return m_data.cend();
         }
 
-        SCN_CONSTEXPR const_iterator rbegin() const noexcept
+        constexpr const_iterator rbegin() const noexcept
         {
             return crbegin();
         }
-        SCN_CONSTEXPR const_iterator crbegin() const noexcept
+        constexpr const_iterator crbegin() const noexcept
         {
             return m_data.crbegin();
         }
-        SCN_CONSTEXPR const_iterator rend() const noexcept
+        constexpr const_iterator rend() const noexcept
         {
             return crend();
         }
-        SCN_CONSTEXPR const_iterator crend() const noexcept
+        constexpr const_iterator crend() const noexcept
         {
             return m_data.crend();
         }
 
-        SCN_CONSTEXPR const_reference operator[](size_type pos) const
+        constexpr const_reference operator[](size_type pos) const
         {
             return m_data[static_cast<typename span_type::index_type>(pos)];
         }
@@ -134,32 +134,32 @@ namespace scn {
             return m_data.at(static_cast<typename span_type::index_type>(pos));
         }
 
-        SCN_CONSTEXPR const_reference front() const
+        constexpr const_reference front() const
         {
             return operator[](0);
         }
-        SCN_CONSTEXPR const_reference back() const
+        constexpr const_reference back() const
         {
             return operator[](size() - 1);
         }
-        SCN_CONSTEXPR const_pointer data() const noexcept
+        constexpr const_pointer data() const noexcept
         {
             return m_data.data();
         }
 
-        SCN_CONSTEXPR size_type size() const noexcept
+        constexpr size_type size() const noexcept
         {
             return static_cast<size_type>(m_data.size());
         }
-        SCN_CONSTEXPR size_type length() const noexcept
+        constexpr size_type length() const noexcept
         {
             return size();
         }
-        SCN_CONSTEXPR size_type max_size() const noexcept
+        constexpr size_type max_size() const noexcept
         {
             return std::numeric_limits<size_type>::max() - 1;
         }
-        SCN_NODISCARD SCN_CONSTEXPR bool empty() const noexcept
+        SCN_NODISCARD constexpr bool empty() const noexcept
         {
             return size() == 0;
         }

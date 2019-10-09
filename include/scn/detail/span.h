@@ -241,12 +241,12 @@ namespace scn {
         using reverse_iterator = std::reverse_iterator<iterator>;
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-        SCN_CONSTEXPR span() noexcept = default;
-        SCN_CONSTEXPR span(pointer ptr, index_type count) noexcept
+        constexpr span() noexcept = default;
+        constexpr span(pointer ptr, index_type count) noexcept
             : m_ptr(ptr), m_size(count)
         {
         }
-        SCN_CONSTEXPR span(pointer first, pointer last) noexcept
+        constexpr span(pointer first, pointer last) noexcept
             : span(first, static_cast<index_type>(last - first))
         {
         }
@@ -268,83 +268,82 @@ namespace scn {
             return reverse_iterator{begin()};
         }
 
-        SCN_CONSTEXPR const_iterator begin() const noexcept
+        constexpr const_iterator begin() const noexcept
         {
             return _make_begin();
         }
-        SCN_CONSTEXPR const_iterator end() const noexcept
+        constexpr const_iterator end() const noexcept
         {
             return _make_end();
         }
-        SCN_CONSTEXPR const_reverse_iterator rbegin() const noexcept
+        constexpr const_reverse_iterator rbegin() const noexcept
         {
             return reverse_iterator{end()};
         }
-        SCN_CONSTEXPR const_reverse_iterator rend() const noexcept
+        constexpr const_reverse_iterator rend() const noexcept
         {
             return reverse_iterator{begin()};
         }
 
-        SCN_CONSTEXPR const_iterator cbegin() const noexcept
+        constexpr const_iterator cbegin() const noexcept
         {
             return _make_begin();
         }
-        SCN_CONSTEXPR const_iterator cend() const noexcept
+        constexpr const_iterator cend() const noexcept
         {
             return _make_end();
         }
-        SCN_CONSTEXPR const_reverse_iterator crbegin() const noexcept
+        constexpr const_reverse_iterator crbegin() const noexcept
         {
             return reverse_iterator{cend()};
         }
-        SCN_CONSTEXPR const_reverse_iterator crend() const noexcept
+        constexpr const_reverse_iterator crend() const noexcept
         {
             return reverse_iterator{cbegin()};
         }
 
-        SCN_CONSTEXPR reference operator[](index_type i) const noexcept
+        constexpr reference operator[](index_type i) const noexcept
         {
             SCN_EXPECT(size() > i);
             return *(m_ptr + i);
         }
 
-        SCN_CONSTEXPR pointer data() const noexcept
+        constexpr pointer data() const noexcept
         {
             return m_ptr;
         }
-        SCN_CONSTEXPR index_type size() const noexcept
+        constexpr index_type size() const noexcept
         {
             return m_size;
         }
-        SCN_CONSTEXPR ssize_type ssize() const noexcept
+        constexpr ssize_type ssize() const noexcept
         {
             return static_cast<std::ptrdiff_t>(size());
         }
 
-        SCN_CONSTEXPR span<T> first(index_type n) const
+        constexpr span<T> first(index_type n) const
         {
             SCN_EXPECT(size() >= n);
             return span<T>(data(), data() + n);
         }
-        SCN_CONSTEXPR span<T> last(index_type n) const
+        constexpr span<T> last(index_type n) const
         {
             SCN_EXPECT(size() >= n);
             return span<T>(data() + size() - n, data() + size());
         }
-        SCN_CONSTEXPR span<T> subspan(index_type off) const
+        constexpr span<T> subspan(index_type off) const
         {
             SCN_EXPECT(size() >= off);
             return span<T>(data() + off, size() - off);
         }
-        SCN_CONSTEXPR span<T> subspan(index_type off,
-                                      difference_type count) const
+        constexpr span<T> subspan(index_type off, difference_type count) const
         {
             SCN_EXPECT(size() > off + count);
             SCN_EXPECT(count > 0);
             return span<T>(data() + off, count);
         }
 
-        SCN_CONSTEXPR span<typename std::add_const<T>::type> as_const() const
+        constexpr span<typename std::add_const<T>::type> as_const() const
         {
             return {m_ptr, m_size};
         }
@@ -356,7 +355,7 @@ namespace scn {
             // return {*this, m_ptr};
             return m_ptr;
         }
-        SCN_CONSTEXPR const_iterator _make_begin() const
+        constexpr const_iterator _make_begin() const
         {
             SCN_EXPECT(m_ptr);
             // return {*this, m_ptr};
@@ -369,7 +368,7 @@ namespace scn {
             // return {*this, m_ptr + m_size};
             return m_ptr + m_size;
         }
-        SCN_CONSTEXPR const_iterator _make_end() const
+        constexpr const_iterator _make_end() const
         {
             SCN_EXPECT(m_ptr);
             // return {*this, m_ptr + m_size};
@@ -381,17 +380,17 @@ namespace scn {
     };
 
     template <typename T>
-    SCN_CONSTEXPR span<T> make_span(T* ptr, std::size_t count) noexcept
+    constexpr span<T> make_span(T* ptr, std::size_t count) noexcept
     {
         return span<T>(ptr, count);
     }
     template <typename T>
-    SCN_CONSTEXPR span<T> make_span(T* first, T* last) noexcept
+    constexpr span<T> make_span(T* first, T* last) noexcept
     {
         return span<T>(first, last);
     }
     template <typename T>
-    SCN_CONSTEXPR span<typename T::value_type> make_span(T& container) noexcept
+    constexpr span<typename T::value_type> make_span(T& container) noexcept
     {
         using std::begin;
         using std::end;
