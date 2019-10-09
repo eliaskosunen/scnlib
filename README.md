@@ -70,6 +70,27 @@ int main() {
 }
 ```
 
+### Reading multiple values
+
+```cpp
+#include <scn/scn.h>
+
+int main() {
+    int i, j;
+    auto ret = scn::scan("123 456 foo", "{} {}", i, j);
+    // ret == true
+    // ret.value() == 2 (2 values were read)
+    // i == 123
+    // j == 456
+
+    std::string str;
+    ret = scn::scan(ret.range(), "{}", str);
+    // ret == true
+    // ret.value() == 1
+    // str == "foo"
+}
+```
+
 ### Using the `tuple`-return API
 
 ```cpp
@@ -105,6 +126,18 @@ int main() {
     }
 }
 ```
+
+## Features
+
+ - Blazing-fast parsing of values (see benchmarks)
+ - Modern C++ interface, featuring type safety (variadic templates), convenience (ranges) and customizability
+   - No << chevron >> hell
+   - Requires C++11 or newer
+ - "{python}"-like (recommended) or "%scanf"-like format string syntax
+ - Optionally header only
+ - Minimal code size increase
+ - No exceptions (supports building with `-fno-exceptions -fno-rtti` with minimal loss of functionality)
+   - Localization requires exceptions, because of the way `std::locale` is
 
 ## Installing
 
@@ -159,7 +192,7 @@ Every commit is tested with
  * gcc 5.5 and newer
  * clang 3.6 and newer
  * Visual Studio 2017 and 2019
-with very extreme warning flags (see CMakeLists.txt) and with multiple build configurations for each compiler.
+with very extreme warning flags (see cmake/flags.cmake) and with multiple build configurations for each compiler.
 
 Older compilers may work, but it is not guaranteed.
 GCC 4.x support will not be provided, as its C++11 support is too buggy.
