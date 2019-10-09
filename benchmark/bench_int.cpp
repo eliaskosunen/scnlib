@@ -88,7 +88,6 @@ static void scanint_scn_value(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
     auto range = scn::make_view(data);
-    Int i{};
     for (auto _ : state) {
         auto ret = scn::scan_value<Int>(range);
 
@@ -103,8 +102,6 @@ static void scanint_scn_value(benchmark::State& state)
                 state.SkipWithError("Benchmark errored");
                 break;
             }
-        } else {
-            i = ret.value();
         }
     }
     state.SetBytesProcessed(

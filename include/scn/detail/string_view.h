@@ -260,7 +260,7 @@ namespace scn {
         }
 
 #if SCN_HAS_STRING_VIEW
-        operator basic_string_view<value_type>() const noexcept
+        operator std::basic_string_view<value_type>() const noexcept
         {
             return {m_data.data(), m_data.size()};
         }

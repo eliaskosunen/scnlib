@@ -43,18 +43,19 @@ namespace scn {
         template <typename Context>
         error scan(user_type2& val, Context& ctx)
         {
-#if 0
-            auto args = make_args<Context>(val.val1, val.val2);
-            auto newctx = Context(ctx.stream(), "[{}, {}]", args);
-            auto r = vscan(newctx);
-            if (r) {
+            using pctx_type =
+                basic_parse_context<typename Context::locale_type>;
+            int i, j;
+            auto args = make_args<Context, pctx_type>(i, j);
+            auto newctx = Context(ctx.range(), args);
+            auto pctx = pctx_type("[{}, {}]", newctx);
+            auto ret = vscan(newctx, pctx);
+            if (ret) {
+                val.val1 = i;
+                val.val2 = j;
                 return {};
             }
-            return r.error();
-#endif
-            val.val1 = 4;
-            val.val2 = 20;
-            return {};
+            return ret.error();
         }
     };
 }  // namespace scn
