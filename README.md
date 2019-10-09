@@ -16,7 +16,7 @@ int main() {
     int i;
     // Read an integer from stdin
     // with an accompanying message
-    scn::prompt("What's your favorite number?", "{}", i);
+    scn::prompt("What's your favorite number? ", "{}", i);
     printf("Oh, cool, %d!", i);
 }
 
@@ -29,7 +29,7 @@ int main() {
 
 `scnlib` is a modern C++ library for replacing `scanf` and `std::istream`.
 This library attempts to move us ever so closer to replacing `iostream`s and C stdio altogether.
-It's (going to, eventually, be) faster than `iostream` (see Benchmarks) and type-safe, unlike `scanf`.
+It's faster than `iostream` (see Benchmarks) and type-safe, unlike `scanf`.
 Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 
 This library is the reference implementation of the ISO C++ standards proposal

@@ -20,14 +20,16 @@ before_build:
 build_script:
   - md debug_32
   - cd debug_32
-  - cmake -G "%gen%" ..
+  - if "%gen_short%" == "15" cmake -G "%gen%" ..
+  - if "%gen_short%" == "16" cmake -G "%gen%" -A Win32 ..
   - cmake --build . --config Debug -- /maxcpucount
   - ctest -C Debug -V -j %NUMBER_OF_PROCESSORS%
   - cd ..
 
   - md release_32
   - cd release_32
-  - cmake -G "%gen%" ..
+  - if "%gen_short%" == "15" cmake -G "%gen%" ..
+  - if "%gen_short%" == "16" cmake -G "%gen%" -A Win32 ..
   - cmake --build . --config Release -- /maxcpucount
   - ctest -C Release -V -j %NUMBER_OF_PROCESSORS%
   - cd ..
@@ -35,7 +37,7 @@ build_script:
   - md debug_64
   - cd debug_64
   - if "%gen_short%" == "15" cmake -G "%gen% Win64" ..
-  - if "%gen_short%" == "16" cmake -G "%gen%" -A "Win64" ..
+  - if "%gen_short%" == "16" cmake -G "%gen%" -A x64 ..
   - cmake --build . --config Debug -- /maxcpucount
   - ctest -C Debug -V -j %NUMBER_OF_PROCESSORS%
   - cd ..
@@ -43,13 +45,13 @@ build_script:
   - md release_64
   - cd release_64
   - if "%gen_short%" == "15" cmake -G "%gen% Win64" ..
-  - if "%gen_short%" == "16" cmake -G "%gen%" -A "Win64" ..
+  - if "%gen_short%" == "16" cmake -G "%gen%" -A x64 ..
   - cmake --build . --config Release -- /maxcpucount
   - ctest -C Release -V -j %NUMBER_OF_PROCESSORS%
   - cd ..
 
   - if "%gen_short%" == "16" md analysis
   - if "%gen_short%" == "16" cd analysis
-  - if "%gen_short%" == "16" cmake -G "%gen%" -A "Win64" ..
+  - if "%gen_short%" == "16" cmake -G "%gen%" -A x64 ..
   - if "%gen_short%" == "16" cmake --build . --config Debug -- /maxcpucount /p:RunCodeAnalysis=true
   - if "%gen_short%" == "16" cd ..

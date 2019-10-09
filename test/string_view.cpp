@@ -51,13 +51,6 @@ TEST_CASE("string_view")
             CHECK(it == sv.begin() + 1);
         }
     }
-#if SCN_HAS_STRING_VIEW
-    SUBCASE("std string_view")
-    {
-        scn::string_view sv = std::string_view("foo");
-        EXPECT_EQ(std::memcmp(sv.data(), "foo", 3), 0);
-    }
-#endif
 }
 
 TEST_CASE("string_view scan")

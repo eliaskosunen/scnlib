@@ -18,8 +18,10 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
+#if SCN_HAS_STRING_VIEW
 TEST_CASE("std string_view")
 {
     scn::string_view sv = std::string_view("foo");
     CHECK_EQ(std::memcmp(sv.data(), "foo", 3), 0);
 }
+#endif
