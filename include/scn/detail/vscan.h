@@ -34,6 +34,16 @@ namespace scn {
             detail::static_const<detail::default_t>::value;
     }
 
+    /**
+     * \defgroup scan_erase Type-erased scanning operations
+     *
+     * These functions are called by \ref scan and alike.
+     * The passed arguments are type-erased and passed in the context to avoid
+     * generated code size blowup.
+     */
+
+    /// @{
+
     template <typename Context, typename ParseCtx>
     scan_result_for_t<Context> vscan(Context& ctx, ParseCtx& pctx)
     {
@@ -68,37 +78,85 @@ namespace scn {
                         basic_locale_ref<char>>&,
           basic_empty_parse_context<basic_default_locale_ref<char>>&);
 
-    // overloads for file
+    // string_view&
 
-    scan_result_for_t<
-        basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
-                      basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<string_view&>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<string_view&>,
                         basic_default_locale_ref<char>>&,
           basic_parse_context<basic_default_locale_ref<char>>&);
 
-    scan_result_for_t<
-        basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
-                      basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<string_view&>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<string_view&>,
                         basic_default_locale_ref<char>>&,
           basic_empty_parse_context<basic_default_locale_ref<char>>&);
 
-    scan_result_for_t<
-        basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
-                      basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<string_view&>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<string_view&>,
                         basic_locale_ref<char>>&,
           basic_parse_context<basic_default_locale_ref<char>>&);
 
-    scan_result_for_t<
-        basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
-                      basic_default_locale_ref<char>>>
-    vscan(basic_context<detail::range_wrapper_for_t<decltype(cstdin())>,
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<string_view&>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<string_view&>,
+                        basic_locale_ref<char>>&,
+          basic_empty_parse_context<basic_default_locale_ref<char>>&);
+
+    // overloads for file
+
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<file_view>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<file_view>,
+                        basic_default_locale_ref<char>>&,
+          basic_parse_context<basic_default_locale_ref<char>>&);
+
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<file_view>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<file_view>,
+                        basic_default_locale_ref<char>>&,
+          basic_empty_parse_context<basic_default_locale_ref<char>>&);
+
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<file_view>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<file_view>,
+                        basic_locale_ref<char>>&,
+          basic_parse_context<basic_default_locale_ref<char>>&);
+
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<file_view>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<file_view>,
+                        basic_locale_ref<char>>&,
+          basic_empty_parse_context<basic_default_locale_ref<char>>&);
+
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<file_view&>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<file_view&>,
+                        basic_default_locale_ref<char>>&,
+          basic_parse_context<basic_default_locale_ref<char>>&);
+
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<file_view&>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<file_view&>,
+                        basic_default_locale_ref<char>>&,
+          basic_empty_parse_context<basic_default_locale_ref<char>>&);
+
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<file_view&>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<file_view&>,
+                        basic_locale_ref<char>>&,
+          basic_parse_context<basic_default_locale_ref<char>>&);
+
+    scan_result_for_t<basic_context<detail::range_wrapper_for_t<file_view&>,
+                                    basic_default_locale_ref<char>>>
+    vscan(basic_context<detail::range_wrapper_for_t<file_view&>,
                         basic_locale_ref<char>>&,
           basic_empty_parse_context<basic_default_locale_ref<char>>&);
 
 #endif  // !SCN_HEADER_ONLY
+
+    /// @}
 
     SCN_END_NAMESPACE
 }  // namespace scn

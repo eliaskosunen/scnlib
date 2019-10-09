@@ -35,6 +35,13 @@ namespace scn {
     template <typename CharT, typename T, typename Enable = void>
     struct scanner;
 
+    /**
+     * \ingroup convenience_scan_types
+     *
+     * Allows reading an rvalue.
+     * Stores an rvalue and returns an lvalue reference to it via `operator()`.
+     * Create one with \ref temp.
+     */
     template <typename T>
     struct temporary {
         temporary(T&& val) : value(std::move(val)) {}
@@ -46,6 +53,11 @@ namespace scn {
 
         T value;
     };
+    /**
+     * \ingroup convenience_scan_types
+     *
+     * Factory function for \ref temporary.
+     */
     template <typename T>
     temporary<T> temp(T&& val)
     {

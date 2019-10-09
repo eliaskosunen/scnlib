@@ -43,7 +43,10 @@
  *
  * \par API reference
  * \ref scanning\n
- * \ref scanning_operations
+ * \ref scanning_operations\n
+ * \ref convenience_scan_types\n
+ * \ref scan_erase\n
+ * \ref scan_low\n
  */
 
 /**

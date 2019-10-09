@@ -39,6 +39,8 @@ namespace scn {
 
     /**
      * \defgroup scanning Scanning API
+     * Core part of the public scanning API.
+     *
      * Generally, the functions in this group take a range, a format string, and
      * a list of arguments. The arguments are parsed from the range based on the
      * information given in the format string.

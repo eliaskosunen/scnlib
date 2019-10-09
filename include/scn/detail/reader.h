@@ -28,8 +28,26 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /**
+     * \defgroup scan_low Low-level parsing operations
+     *
+     * The functions in this category abstract away the input range under an
+     * unifying interface.
+     */
+
+    /// @{
+
     // read_char
 
+    /// @{
+    /**
+     * Reads a single character from the range.
+     * If `r.begin() == r.end()`, returns EOF.
+     * Dereferences the begin iterator, wrapping it in an `expected` if
+     * necessary.
+     * If the reading was successful, the range is advanced by a single
+     * character.
+     */
     template <typename WrappedRange,
               typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
     expected<detail::ranges::range_value_t<WrappedRange>> read_char(
@@ -51,12 +69,26 @@ namespace scn {
             return error(error::end_of_range, "EOF");
         }
         auto ch = *r.begin();
-        r.advance();
+        if (ch) {
+            r.advance();
+        }
         return ch;
     }
+    /// @}
 
     // read_zero_copy
 
+    /// @{
+    /**
+     * Reads up to `n` characters from `r`, and returns a `span` into the range.
+     * If `r.begin() == r.end()`, returns EOF.
+     * If the range does not satisfy `contiguous_range`, returns an empty
+     * `span`.
+     *
+     * Let `count` be `min(r.size(), n)`.
+     * Returns a span pointing to `r.data()` with the length `count`.
+     * Advances the range by `count` characters.
+     */
     template <
         typename WrappedRange,
         typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
@@ -78,15 +110,27 @@ namespace scn {
         typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
     expected<span<const typename detail::extract_char_type<
         typename WrappedRange::iterator>::type>>
-    read_zero_copy(WrappedRange&,
+    read_zero_copy(WrappedRange& r,
                    detail::ranges::range_difference_t<WrappedRange>)
     {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_range, "EOF");
+        }
         return span<const typename detail::extract_char_type<
             typename WrappedRange::iterator>::type>{};
     }
+    /// @}
 
     // read_into
 
+    /// @{
+    /**
+     * Reads `n` characters from `r` into `it`.
+     * If `r.begin() == r.end()` in the beginning or before advancing `n`
+     * characters, returns EOF. If `r` can't be advanced by `n` characters, the
+     * range is advanced by an indeterminate amout. If successful, the range is
+     * advanced by `n` characters.
+     */
     template <
         typename WrappedRange,
         typename OutputIterator,
@@ -98,6 +142,9 @@ namespace scn {
         auto s = read_zero_copy(r, n);
         if (!s) {
             return s.error();
+        }
+        if (s.value().ssize() != n) {
+            return error(error::end_of_range, "EOF");
         }
         it = std::copy(s.value().begin(), s.value().end(), it);
         return {};
@@ -150,9 +197,24 @@ namespace scn {
         }
         return {};
     }
+    /// @}
 
     // read_until_space_zero_copy
 
+    /// @{
+    /**
+     * Reads characters from `r` until a space is found (as determined by
+     * `is_space`), and returns a `span` into the range.
+     * If `r.begin() == r.end()`, returns EOF.
+     * If the range does not satisfy `contiguous_range`,
+     * returns an empty `span`.
+     *
+     * \param is_space Predicate taking a character and returning a `bool`.
+     *                 `true` means, that the given character is a space.
+     * \param keep_final_space Whether the final found space character is
+     *                         included in the returned span,
+     *                         and is advanced past.
+     */
     template <
         typename WrappedRange,
         typename Predicate,
@@ -187,14 +249,30 @@ namespace scn {
         typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
     expected<span<const typename detail::extract_char_type<
         typename WrappedRange::iterator>::type>>
-    read_until_space_zero_copy(WrappedRange&, Predicate, bool)
+    read_until_space_zero_copy(WrappedRange& r, Predicate, bool)
     {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_range, "EOF");
+        }
         return span<const typename detail::extract_char_type<
             typename WrappedRange::iterator>::type>{};
     }
+    /// @}
 
     // read_until_space
 
+    /// @{
+
+    /**
+     * Reads characters from `r` until a space is found (as determined by
+     * `is_space`) and writes them into `out`.
+     * If `r.begin() == r.end()`, returns EOF.
+     *
+     * \param is_space Predicate taking a character and returning a `bool`.
+     *                 `true` means, that the given character is a space.
+     * \param keep_final_space Whether the final found space character is
+     *                         written into `out` and is advanced past.
+     */
     template <
         typename WrappedRange,
         typename OutputIterator,
@@ -272,8 +350,22 @@ namespace scn {
         return {};
     }
 
+    /// @}
+
     // read_until_space_ranged
 
+    /// @{
+
+    /**
+     * Reads characters from `r` until a space is found (as determined by
+     * `is_space`), or `out` reaches `end`, and writes them into `out`.
+     * If `r.begin() == r.end()`, returns EOF.
+     *
+     * \param is_space Predicate taking a character and returning a `bool`.
+     *                 `true` means, that the given character is a space.
+     * \param keep_final_space Whether the final found space character is
+     *                         written into `out` and is advanced past.
+     */
     template <typename WrappedRange,
               typename OutputIterator,
               typename Sentinel,
@@ -338,8 +430,16 @@ namespace scn {
         return {};
     }
 
+    /// @}
+
     // putback_n
 
+    /// @{
+
+    /**
+     * Puts back `n` characters into `r` as if by repeatedly calling
+     * `r.advance(-1)` .
+     */
     template <
         typename WrappedRange,
         typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
@@ -367,6 +467,11 @@ namespace scn {
         }
         return {};
     }
+
+    /// @}
+
+    // scan_low
+    /// @}
 
     struct empty_parser {
         template <typename ParseCtx>
@@ -1348,6 +1453,16 @@ namespace scn {
     template <typename CharT>
     struct scanner<CharT, detail::monostate>;
 
+    /// @{
+
+    /**
+     * \ingroup scan_low
+     *
+     * Reads from the range in `ctx` as if by repeatedly calling `read_char()`,
+     * until a non-space character is found (as determined by `ctx.locale()`),
+     * or EOF is reached. That non-space character is then put back into the
+     * range.
+     */
     template <typename Context,
               typename std::enable_if<
                   !Context::range_type::is_contiguous>::type* = nullptr>
@@ -1390,6 +1505,8 @@ namespace scn {
 
         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
     }
+
+    /// @}
 
     SCN_END_NAMESPACE
 }  // namespace scn
