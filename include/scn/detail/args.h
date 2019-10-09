@@ -269,7 +269,7 @@ namespace scn {
             return val;
         }
 
-        enum : size_t { max_packed_args = sizeof(size_t) * 8 / 5 };
+        enum : std::ptrdiff_t { max_packed_args = sizeof(size_t) * 8 / 5 };
         enum : size_t {
             is_unpacked_bit = size_t{1} << (sizeof(size_t) * 8 - 1)
         };
@@ -581,7 +581,7 @@ namespace scn {
 
             SCN_EXPECT(m_values);
             if (SCN_UNLIKELY(
-                    i > static_cast<std::ptrdiff_t>(detail::max_packed_args))) {
+                    i > detail::max_packed_args)) {
                 return {};
             }
 

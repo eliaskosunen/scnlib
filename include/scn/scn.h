@@ -708,8 +708,6 @@
  *  * `SCN_COVERAGE`: Generate code coverage report
  *  * `SCN_BLOAT`: Generate bloat test target
  *  * `SCN_BUILD_FUZZING`: Build fuzzer
- *  * `SCN_BUILD_LOCALE_TESTS`: Build localized tests,
- *     needs `en_US.utf8` and `fi_FI.utf8` locales
  */
 
 /**

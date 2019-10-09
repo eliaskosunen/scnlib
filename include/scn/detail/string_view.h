@@ -25,6 +25,10 @@
 #include <cwchar>
 #include <limits>
 
+#if SCN_HAS_STRING_VIEW
+#include <string_view>
+#endif
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
@@ -89,6 +93,12 @@ namespace scn {
             : m_data(first, last)
         {
         }
+#if SCN_HAS_STRING_VIEW
+        constexpr basic_string_view(std::basic_string_view<value_type> str)
+            : m_data(str.data(), str.size())
+        {
+        }
+#endif
 
         constexpr const_iterator begin() const noexcept
         {
@@ -248,6 +258,13 @@ namespace scn {
         {
             return {s.data(), s.size()};
         }
+
+#if SCN_HAS_STRING_VIEW
+        operator basic_string_view<value_type>() const noexcept
+        {
+            return {m_data.data(), m_data.size()};
+        }
+#endif
 
     private:
         span_type m_data{};

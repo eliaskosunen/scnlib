@@ -26,7 +26,7 @@
 
 #define SCN_COMPILER(major, minor, patch) \
     ((major)*10000000 /* 10,000,000 */ + (minor)*10000 /* 10,000 */ + (patch))
-#define SCN_VERSION SCN_COMPILER(0, 0, 1)
+#define SCN_VERSION SCN_COMPILER(0, 2, 0)
 
 #ifdef __INTEL_COMPILER
 // Intel
@@ -238,6 +238,14 @@
 #define SCN_CONSTEXPR14 constexpr
 #else
 #define SCN_CONSTEXPR14 inline
+#endif
+
+// Detect string_view
+#if defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201603 && \
+    (__cplusplus >= SCN_STD_17 || SCN_MSVC_LANG >= SCN_STD_17)
+#define SCN_HAS_STRING_VIEW 1
+#else
+#define SCN_HAS_STRING_VIEW 0
 #endif
 
 // Detect [[nodiscard]]

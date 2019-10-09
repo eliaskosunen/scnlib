@@ -26,7 +26,8 @@ make_test(small-vector small_vector.cpp)
 make_test(string-view string_view.cpp)
 make_test(reader reader.cpp)
 make_test(locale locale.cpp)
-#make_test(stream stream.cpp)
+make_test(std-string-view std_string_view.cpp)
+target_compile_features(test-std-string-view PUBLIC cxx_std_17)
 
 make_test(result result.cpp)
 make_test(istream istream.cpp)
@@ -41,10 +42,6 @@ make_test(buffer buffer.cpp)
 make_test(bool boolean.cpp)
 make_test(usertype usertype.cpp)
 make_test(list list.cpp)
-
-if (SCN_BUILD_LOCALE_TESTS)
-    #make_test(locale_scan locale_scan.cpp)
-endif ()
 
 add_subdirectory(each)
 

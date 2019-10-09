@@ -31,7 +31,6 @@ option(SCN_USE_UBSAN "Compile with UndefinedBehaviorSanitizer (clang only)" OFF)
 option(SCN_USE_MSAN "Compile with MemorySanitizer (clang only)" OFF)
 
 option(SCN_BUILD_FUZZING "Build fuzzing tests" OFF)
-option(SCN_BUILD_LOCALE_TESTS "Build localized tests, needs en_US.utf8 and fi_FI.utf8 locales" OFF)
 
 file(READ include/scn/detail/config.h config_h)
 if (NOT config_h MATCHES "SCN_VERSION SCN_COMPILER\\(([0-9]+), ([0-9]+), ([0-9]+)\\)")
@@ -47,8 +46,6 @@ message(STATUS "SCN_PEDANTIC: ${SCN_PEDANTIC}")
 message(STATUS "SCN_WERROR: ${SCN_WERROR}")
 
 function (generate_library_target target_name)
-    #add_library(${target_name}
-    #    src/istream.cpp src/stream.cpp src/vscan.cpp src/locale.cpp src/visitor.cpp)
     add_library(${target_name}
         src/vscan.cpp src/locale.cpp src/reader.cpp src/file.cpp)
     target_include_directories(${target_name} PUBLIC
@@ -57,8 +54,7 @@ function (generate_library_target target_name)
     target_include_directories(${target_name} PRIVATE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
     target_compile_definitions(${target_name} PUBLIC
-        -DSCN_HEADER_ONLY=0
-        -DSCN_PREDEFINE_VSCAN_OVERLOADS=$<BOOL:${SCN_PREDEFINE_VSCAN_OVERLOADS}>)
+        -DSCN_HEADER_ONLY=0)
     target_compile_options(${target_name} PUBLIC
         $<$<CXX_COMPILER_ID:MSVC>: /bigobj>)
 
@@ -71,8 +67,7 @@ function (generate_header_only_target target_name)
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${PROJECT_SOURCE_DIR}/src>"
         "$<INSTALL_INTERFACE:include>")
     target_compile_definitions(${target_name} INTERFACE
-        -DSCN_HEADER_ONLY=1
-        -DSCN_PREDEFINE_VSCAN_OVERLOADS=$<BOOL:${SCN_PREDEFINE_VSCAN_OVERLOADS}>)
+        -DSCN_HEADER_ONLY=1)
     target_compile_features(${target_name} INTERFACE cxx_std_11)
 endfunction ()
 
