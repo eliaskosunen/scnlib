@@ -123,10 +123,12 @@ namespace scn {
                                          InputIt last,
                                          ForwardIt d_first) noexcept
             {
+                using pointer =
+                    typename std::iterator_traits<ForwardIt>::pointer;
                 auto ptr = std::memcpy(
-                    &*d_first, &*first,
+                    std::addressof(*d_first), std::addressof(*first),
                     static_cast<size_t>(std::distance(first, last)));
-                return ForwardIt(ptr);
+                return ForwardIt{static_cast<pointer>(ptr)};
             }
 
             template <typename InputIt,
@@ -156,10 +158,12 @@ namespace scn {
                                          InputIt last,
                                          ForwardIt d_first) noexcept
             {
+                using pointer =
+                    typename std::iterator_traits<ForwardIt>::pointer;
                 auto ptr = std::memcpy(
-                    &*d_first, &*first,
+                    std::addressof(*d_first), std::addressof(*first),
                     static_cast<size_t>(std::distance(first, last)));
-                return ForwardIt(ptr);
+                return ForwardIt(static_cast<pointer>(ptr));
             }
         }  // namespace small_vector_algos
 
@@ -792,19 +796,19 @@ namespace scn {
             stack_storage& _construct_stack_storage() noexcept
             {
                 m_heap = false;
-                return *::new (static_cast<void*>(std::addressof(m_storage)))
-                    stack_storage;
+                m_stack_storage = stack_storage{};
+                return m_stack_storage;
             }
             heap_storage& _construct_heap_storage() noexcept
             {
                 m_heap = true;
-                return *::new (static_cast<void*>(std::addressof(m_storage)))
-                    heap_storage;
+                m_heap_storage = heap_storage{};
+                return m_heap_storage;
             }
 
             void _destruct_stack_storage() noexcept
             {
-                _get_stack().~stack_storage();
+                //_get_stack().~stack_storage();
             }
             void _destruct_heap_storage() noexcept
             {
@@ -812,7 +816,7 @@ namespace scn {
                     delete[] static_cast<unsigned char*>(
                         static_cast<void*>(m_ptr));
                 }
-                _get_heap().~heap_storage();
+                //_get_heap().~heap_storage();
             }
 
             void _destruct_elements() noexcept
@@ -864,32 +868,29 @@ namespace scn {
 
             stack_storage& _get_stack() noexcept
             {
-                return *::scn::detail::launder(static_cast<stack_storage*>(
-                    static_cast<void*>(std::addressof(m_storage))));
+                return m_stack_storage;
             }
             const stack_storage& _get_stack() const noexcept
             {
-                return *::scn::detail::launder(
-                    static_cast<const stack_storage*>(
-                        static_cast<const void*>(std::addressof(m_storage))));
+                return m_stack_storage;
             }
 
             heap_storage& _get_heap() noexcept
             {
-                return *::scn::detail::launder(static_cast<heap_storage*>(
-                    static_cast<void*>(std::addressof(m_storage))));
+                return m_heap_storage;
             }
             const heap_storage& _get_heap() const noexcept
             {
-                return *::scn::detail::launder(static_cast<const heap_storage*>(
-                    static_cast<const void*>(std::addressof(m_storage))));
+                return m_heap_storage;
             }
 
             pointer m_ptr{nullptr};
             size_type m_size{0};
             bool m_heap;
-            alignas(stack_storage) unsigned char m_storage
-                [constexpr_max(sizeof(stack_storage), sizeof(heap_storage))];
+            union {
+                stack_storage m_stack_storage;
+                heap_storage m_heap_storage;
+            };
         };
 
         template <typename T, size_t N>
