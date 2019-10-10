@@ -1118,10 +1118,7 @@ namespace scn {
             }
             unsigned char _char_to_int(wchar_t ch) const
             {
-                if (base <= 10) {
-                    return static_cast<unsigned char>(ch - L'0');
-                }
-                if (ch <= L'9') {
+                if (ch >= L'0' && ch <= L'9') {
                     return static_cast<unsigned char>(ch - L'0');
                 }
                 SCN_GCC_PUSH
@@ -1129,7 +1126,10 @@ namespace scn {
                 if (ch >= L'a' && ch <= L'z') {
                     return 10 + static_cast<unsigned char>(ch - L'a');
                 }
-                return 10 + static_cast<unsigned char>(ch - L'A');
+                if (ch >= L'A' && ch <= L'Z') {
+                    return 10 + static_cast<unsigned char>(ch - L'A');
+                }
+                return 255;
                 SCN_GCC_POP
             }
         };
