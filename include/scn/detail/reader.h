@@ -225,10 +225,12 @@ namespace scn {
                                Predicate is_space,
                                bool keep_final_space)
     {
-        if (r.begin() == r.end()) {
+        auto it = r.begin();
+        const auto end = r.end();
+        if (it == end) {
             return error(error::end_of_range, "EOF");
         }
-        for (auto it = r.begin(); it != r.end(); ++it) {
+        for (; it != end; ++it) {
             if (is_space(*it)) {
                 auto b = r.begin();
                 r.advance_to(it);
@@ -936,14 +938,14 @@ namespace scn {
                 SCN_MSVC_POP
 
                 T tmp = 0;
-                T sign = 1;
+                bool minus_sign = false;
                 auto it = s.begin();
 
                 if (s[0] == ascii_widen<CharT>('-') ||
                     s[0] == ascii_widen<CharT>('+')) {
                     SCN_GCC_PUSH
                     SCN_GCC_IGNORE("-Wsign-conversion")
-                    sign = 1 - 2 * (s[0] == ascii_widen<CharT>('-'));
+                    minus_sign = s[0] == ascii_widen<CharT>('-');
                     ++it;
                     SCN_GCC_POP
                 }
@@ -993,31 +995,16 @@ namespace scn {
                 SCN_CLANG_IGNORE("-Wsign-compare")
 
                 SCN_ASSUME(base > 0);
-                SCN_ASSUME(sign != 0);
 
-                if (std::is_signed<T>::value) {
-                    auto r = _read_signed(
-                        tmp, sign, make_span(it, s.end()).as_const(), thsep);
-                    if (!r) {
-                        return r.error();
-                    }
-                    it = r.value();
-                    if (s.begin() == it) {
-                        return error(error::invalid_scanned_value,
-                                     "custom::read_signed");
-                    }
-                    val = tmp;
-                    return ranges::distance(s.begin(), it);
-                }
-                auto r = _read_unsigned(tmp, make_span(it, s.end()).as_const(),
-                                        thsep);
+                auto r = _read_int(tmp, minus_sign,
+                                   make_span(it, s.end()).as_const(), thsep);
                 if (!r) {
                     return r.error();
                 }
                 it = r.value();
                 if (s.begin() == it) {
                     return error(error::invalid_scanned_value,
-                                 "custom::read_unsigned");
+                                 "custom::read_int");
                 }
                 val = tmp;
                 return ranges::distance(s.begin(), it);
@@ -1027,9 +1014,9 @@ namespace scn {
             }
 
             template <typename CharT>
-            expected<typename span<const CharT>::iterator> _read_signed(
+            expected<typename span<const CharT>::iterator> _read_int(
                 T& val,
-                T sign,
+                bool minus_sign,
                 span<const CharT> buf,
                 CharT thsep) const
             {
@@ -1048,95 +1035,53 @@ namespace scn {
                 SCN_MSVC_IGNORE(4389)  // == signed/unsigned mismatch
                 SCN_MSVC_IGNORE(4244)  // lossy conversion
 
-                SCN_ASSUME(sign != 0);
-
                 using utype = typename std::make_unsigned<T>::type;
 
-                SCN_MSVC_PUSH
-                SCN_MSVC_IGNORE(4146)  // unary minus applied to unsigned
-                utype cutoff_tmp = sign == -1
-                                       ? -static_cast<unsigned long long>(
-                                             std::numeric_limits<T>::min())
-                                       : std::numeric_limits<T>::max();
-                SCN_MSVC_POP
+                const auto ubase = static_cast<utype>(base);
 
-                const auto cutlim = detail::ascii_widen<CharT>(
-                    cutoff_tmp % static_cast<utype>(base) + 48);  // 48 is '0'
-                const utype cutoff = cutoff_tmp / base;
+                constexpr auto uint_max = static_cast<utype>(-1);
+                constexpr auto int_max = static_cast<utype>(uint_max >> 1);
+                constexpr auto abs_int_min = static_cast<utype>(int_max + 1);
 
-                auto it = buf.begin();
-                for (; it != buf.end(); ++it) {
-                    if (SCN_LIKELY(is_base_digit(*it, base))) {
-                        if (SCN_UNLIKELY(val > cutoff ||
-                                         (val == cutoff && *it > cutlim))) {
-                            if (sign == 1) {
-                                return error(error::value_out_of_range,
-                                             "Out of range: integer overflow");
-                            }
-                            return error(error::value_out_of_range,
-                                         "Out of range: integer underflow");
-                        }
-                        else {
-                            val = val * base + _char_to_int(*it);
-                        }
+                utype cutoff, cutlim;
+                if (std::is_signed<T>::value) {
+                    if (minus_sign) {
+                        cutoff = abs_int_min / ubase;
+                        cutlim = abs_int_min % ubase;
                     }
                     else {
-                        if (have_thsep && *it == thsep) {
-                            continue;
-                        }
-                        break;
+                        cutoff = int_max / ubase;
+                        cutlim = int_max % ubase;
                     }
                 }
-                val = val * sign;
-                return it;
-
-                SCN_MSVC_POP
-                SCN_CLANG_POP
-                SCN_GCC_POP
-            }
-
-            template <typename CharT>
-            expected<typename span<const CharT>::iterator>
-            _read_unsigned(T& val, span<const CharT> buf, CharT thsep) const
-            {
-                SCN_GCC_PUSH
-                SCN_GCC_IGNORE("-Wconversion")
-                SCN_GCC_IGNORE("-Wsign-conversion")
-                SCN_GCC_IGNORE("-Wsign-compare")
-
-                SCN_CLANG_PUSH
-                SCN_CLANG_IGNORE("-Wconversion")
-                SCN_CLANG_IGNORE("-Wsign-conversion")
-                SCN_CLANG_IGNORE("-Wsign-compare")
-
-                SCN_MSVC_PUSH
-                SCN_MSVC_IGNORE(4018)  // > signed/unsigned mismatch
-                SCN_MSVC_IGNORE(4389)  // == signed/unsigned mismatch
-                SCN_MSVC_IGNORE(4244)  // lossy conversion
-
-                const T cutoff = std::numeric_limits<T>::max() / base;
-                const auto cutlim = detail::ascii_widen<CharT>(
-                    std::numeric_limits<T>::max() % base + '0');
+                else {
+                    cutoff = uint_max / ubase;
+                    cutlim = uint_max % ubase;
+                }
 
                 auto it = buf.begin();
-                for (; it != buf.end(); ++it) {
-                    if (SCN_LIKELY(is_base_digit(*it, base))) {
-                        if (SCN_UNLIKELY(val > cutoff ||
-                                         (val == cutoff && *it > cutlim))) {
+                const auto end = buf.end();
+                for (; it != end; ++it) {
+                    if (SCN_UNLIKELY(have_thsep && *it == thsep)) {
+                        continue;
+                    }
+
+                    const auto digit = _char_to_int(*it);
+                    if (digit >= ubase) {
+                        break;
+                    }
+                    if (SCN_UNLIKELY(val > cutoff ||
+                                     (val == cutoff && digit > cutlim))) {
+                        if (!minus_sign) {
                             return error(error::value_out_of_range,
                                          "Out of range: integer overflow");
                         }
-                        else {
-                            val = val * base + _char_to_int(*it);
-                        }
+                        return error(error::value_out_of_range,
+                                     "Out of range: integer underflow");
                     }
-                    else {
-                        if (have_thsep && *it == thsep) {
-                            continue;
-                        }
-                        break;
-                    }
+                    val = val * ubase + digit;
                 }
+                val = val * (minus_sign ? -1 : 1);
                 return it;
 
                 SCN_MSVC_POP
@@ -1144,25 +1089,47 @@ namespace scn {
                 SCN_GCC_POP
             }
 
-            template <typename CharT>
-            T _char_to_int(CharT ch) const
+            unsigned char _char_to_int(char ch) const
             {
-                static_assert(std::is_same<CharT, char>::value ||
-                                  std::is_same<CharT, wchar_t>::value,
-                              "");
+                static constexpr unsigned char digits_arr[] = {
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   255, 255,
+                    255, 255, 255, 255, 255, 10,  11,  12,  13,  14,  15,  16,
+                    17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,
+                    29,  30,  31,  32,  33,  34,  35,  255, 255, 255, 255, 255,
+                    255, 10,  11,  12,  13,  14,  15,  16,  17,  18,  19,  20,
+                    21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32,
+                    33,  34,  35,  255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255};
+                return digits_arr[static_cast<unsigned char>(ch)];
+            }
+            unsigned char _char_to_int(wchar_t ch) const
+            {
                 if (base <= 10) {
-                    return static_cast<T>(ch - ascii_widen<CharT>('0'));
+                    return static_cast<unsigned char>(ch - L'0');
                 }
-                if (ch <= ascii_widen<CharT>('9')) {
-                    return static_cast<T>(ch - ascii_widen<CharT>('0'));
+                if (ch <= L'9') {
+                    return static_cast<unsigned char>(ch - L'0');
                 }
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wconversion")
-                if (ch >= ascii_widen<CharT>('a') &&
-                    ch <= ascii_widen<CharT>('z')) {
-                    return 10 + static_cast<T>(ch - ascii_widen<CharT>('a'));
+                if (ch >= L'a' && ch <= L'z') {
+                    return 10 + static_cast<unsigned char>(ch - L'a');
                 }
-                return 10 + static_cast<T>(ch - ascii_widen<CharT>('A'));
+                return 10 + static_cast<unsigned char>(ch - L'A');
                 SCN_GCC_POP
             }
         };
@@ -1494,13 +1461,14 @@ namespace scn {
     {
         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
-        for (auto it = ctx.range().begin(); it != ctx.range().end(); ++it) {
+        const auto end = ctx.range().end();
+        for (auto it = ctx.range().begin(); it != end; ++it) {
             if (!ctx.locale().is_space(*it)) {
                 ctx.range().advance_to(it);
                 return {};
             }
         }
-        ctx.range().advance_to(ctx.range().end());
+        ctx.range().advance_to(end);
         return {};
 
         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE

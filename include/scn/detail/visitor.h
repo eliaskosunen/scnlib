@@ -205,8 +205,27 @@ namespace scn {
     template <typename Context>
     using scan_result_for_t = typename scan_result_for<Context>::type;
 
+    struct wrapped_error {
+        wrapped_error() = default;
+        wrapped_error(::scn::error e) : err(e) {}
+
+        ::scn::error error() const
+        {
+            return err;
+        }
+
+        explicit operator bool() const
+        {
+            return err.operator bool();
+        }
+
+        ::scn::error err{};
+    };
+
     template <typename Context, typename ParseCtx>
-    scan_result_for_t<Context> visit(Context& ctx, ParseCtx& pctx)
+    scan_result_for_t<Context> visit(Context& ctx,
+                                     ParseCtx& pctx,
+                                     basic_args<Context> args)
     {
         std::ptrdiff_t args_read = 0;
 
@@ -284,26 +303,27 @@ namespace scn {
                 auto arg_wrapped = [&]() -> expected<typename Context::arg_type>
                 {
                     if (id.empty()) {
-                        return ctx.next_arg(pctx);
+                        return next_arg(args, pctx);
                     }
                     if (ctx.locale().is_digit(id.front())) {
                         auto s = detail::integer_scanner<std::ptrdiff_t>{};
                         s.base = 10;
                         std::ptrdiff_t i{0};
                         auto span = make_span(id.data(), id.size()).as_const();
-                        auto ret = s._read_signed(
-                            i, 1, span, typename decltype(span)::value_type{0});
+                        auto ret =
+                            s._read_int(i, false, span,
+                                        typename decltype(span)::value_type{0});
                         if (!ret || ret.value() != span.end()) {
                             return error(error::invalid_format_string,
                                          "Failed to parse argument id from "
                                          "format string");
                         }
-                        return ctx.arg(pctx, i);
+                        return get_arg(args, pctx, i);
                     }
-                    return ctx.arg(pctx, id);
+                    return get_arg(args, pctx, id);
                 }
                 ();
-                if (!arg_wrapped) {
+                if (!arg_wrapped || !arg_wrapped.value()) {
                     return reterror(arg_wrapped.error());
                 }
                 arg = arg_wrapped.value();

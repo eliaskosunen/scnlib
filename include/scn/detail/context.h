@@ -44,15 +44,12 @@ namespace scn {
         using arg_store_type = arg_store<basic_context, Args...>;
 
         template <typename R>
-        basic_context(R&& r, args_type args)
-            : LocaleRef{}, m_range(std::forward<R>(r)), m_args(std::move(args))
+        basic_context(R&& r) : LocaleRef{}, m_range(std::forward<R>(r))
         {
         }
         template <typename R>
-        basic_context(R&& r, args_type args, LocaleRef&& loc)
-            : LocaleRef(std::move(loc)),
-              m_range(std::forward<R>(r)),
-              m_args(std::move(args))
+        basic_context(R&& r, LocaleRef&& loc)
+            : LocaleRef(std::move(loc)), m_range(std::forward<R>(r))
         {
         }
 
@@ -74,22 +71,6 @@ namespace scn {
             return m_range;
         }
 
-        template <typename ParseCtx>
-        expected<arg_type> next_arg(ParseCtx& pctx)
-        {
-            return do_get_arg(pctx.next_arg_id());
-        }
-        template <typename ParseCtx>
-        expected<arg_type> arg(ParseCtx& pctx, std::ptrdiff_t id)
-        {
-            return pctx.check_arg_id(id) ? do_get_arg(id) : arg_type{};
-        }
-        template <typename ParseCtx>
-        expected<arg_type> arg(ParseCtx&, basic_string_view<char_type>)
-        {
-            return arg_type{};
-        }
-
         LocaleRef& locale() noexcept
         {
             return static_cast<LocaleRef&>(*this);
@@ -100,19 +81,42 @@ namespace scn {
         }
 
     private:
-        expected<arg_type> do_get_arg(std::ptrdiff_t id)
-        {
-            auto a = m_args.get(id);
-            if (!a && !m_args.check_id(id - 1)) {
-                return error(error::invalid_argument,
-                             "Argument id out of range");
-            }
-            return a;
-        }
-
         range_type m_range;
-        args_type m_args;
     };
+
+    template <typename Context>
+    auto get_arg(const basic_args<Context>& args, std::ptrdiff_t id)
+        -> expected<basic_arg<Context>>
+    {
+        auto a = args.get(id);
+        if (!a) {
+            return error(error::invalid_format_string,
+                         "Argument id out of range");
+        }
+        return a;
+    }
+    template <typename Context, typename ParseCtx>
+    auto get_arg(const basic_args<Context>& args,
+                 ParseCtx& pctx,
+                 std::ptrdiff_t id) -> expected<basic_arg<Context>>
+    {
+        return pctx.check_arg_id(id) ? get_arg(args, id) : basic_arg<Context>{};
+    }
+    template <typename Context, typename ParseCtx>
+    auto get_arg(const basic_args<Context>&,
+                 ParseCtx&,
+                 basic_string_view<typename Context::char_type>)
+        -> expected<basic_arg<Context>>
+    {
+        return basic_arg<Context>{};
+    }
+
+    template <typename Context, typename ParseCtx>
+    auto next_arg(const basic_args<Context>& args, ParseCtx& pctx)
+        -> expected<basic_arg<Context>>
+    {
+        return get_arg(args, pctx.next_arg_id());
+    }
 
     SCN_END_NAMESPACE
 }  // namespace scn

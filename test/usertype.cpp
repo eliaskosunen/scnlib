@@ -47,9 +47,9 @@ namespace scn {
                 basic_parse_context<typename Context::locale_type>;
             int i, j;
             auto args = make_args<Context, pctx_type>(i, j);
-            auto newctx = Context(ctx.range(), args);
+            auto newctx = Context(ctx.range());
             auto pctx = pctx_type("[{}, {}]", newctx);
-            auto ret = vscan(newctx, pctx);
+            auto ret = vscan(newctx, pctx, {args});
             if (ret) {
                 val.val1 = i;
                 val.val2 = j;

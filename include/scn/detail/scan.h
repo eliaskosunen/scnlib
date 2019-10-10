@@ -83,9 +83,9 @@ namespace scn {
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::wrap(std::forward<Range>(r)), args);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)));
         auto pctx = parse_context_type(f, ctx);
-        return vscan(ctx, pctx);
+        return vscan(ctx, pctx, {args});
     }
 
     // scan localized
@@ -117,10 +117,10 @@ namespace scn {
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::wrap(std::forward<Range>(r)), args,
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)),
                                 {std::addressof(loc)});
         auto pctx = parse_context_type(f, ctx);
-        return vscan(ctx, pctx);
+        return vscan(ctx, pctx, {args});
     }
 
     // default format
@@ -146,9 +146,9 @@ namespace scn {
             basic_empty_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::wrap(std::forward<Range>(r)), args);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)));
         auto pctx = parse_context_type(static_cast<int>(sizeof...(Args)), ctx);
-        return vscan(ctx, pctx);
+        return vscan(ctx, pctx, {args});
     }
 
     // value
@@ -177,7 +177,7 @@ namespace scn {
 
         T value;
         auto args = make_args<context_type, parse_context_type>(value);
-        auto ctx = context_type(detail::wrap(std::forward<Range>(r)), args);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)));
 
 #if 0
         using char_type = typename context_type::char_type;
@@ -196,7 +196,7 @@ namespace scn {
         return {std::move(value), ctx.range().get_return()};
 #else
         auto pctx = parse_context_type(1, ctx);
-        auto ret = vscan(ctx, pctx);
+        auto ret = vscan(ctx, pctx, {args});
         if (!ret) {
             return {ret.error(), ret.range()};
         }
@@ -222,9 +222,9 @@ namespace scn {
             basic_scanf_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::wrap(std::forward<Range>(r)), args);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)));
         auto pctx = parse_context_type(f, ctx);
-        return vscan(ctx, pctx);
+        return vscan(ctx, pctx, {args});
     }
 
     // input
@@ -253,9 +253,9 @@ namespace scn {
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::wrap(stdin_range<CharT>()), args);
+        auto ctx = context_type(detail::wrap(stdin_range<CharT>()));
         auto pctx = parse_context_type(f, ctx);
-        return vscan(ctx, pctx);
+        return vscan(ctx, pctx, {args});
     }
 
     // prompt
@@ -289,9 +289,9 @@ namespace scn {
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::wrap(stdin_range<CharT>()), args);
+        auto ctx = context_type(detail::wrap(stdin_range<CharT>()));
         auto pctx = parse_context_type(f, ctx);
-        return vscan(ctx, pctx);
+        return vscan(ctx, pctx, {args});
     }
 
     // scanning api
@@ -312,7 +312,7 @@ namespace scn {
     namespace detail {
         template <typename WrappedRange, typename String, typename CharT>
         auto getline_impl(WrappedRange& r, String& str, CharT until)
-            -> detail::scan_result_for_range_t<WrappedRange, error>
+            -> detail::scan_result_for_range_t<WrappedRange, wrapped_error>
         {
             auto until_pred = [until](CharT ch) { return ch == until; };
             auto s = read_until_space_zero_copy(r, until_pred, true);
@@ -347,7 +347,7 @@ namespace scn {
         auto getline_impl(WrappedRange& r,
                           basic_string_view<CharT>& str,
                           CharT until)
-            -> detail::scan_result_for_range_t<WrappedRange, error>
+            -> detail::scan_result_for_range_t<WrappedRange, wrapped_error>
         {
             auto until_pred = [until](CharT ch) { return ch == until; };
             auto s = read_until_space_zero_copy(r, until_pred, true);
@@ -490,7 +490,7 @@ namespace scn {
                       detail::range_wrapper_for_t<
                           typename WrappedRange::iterator>>::type>
         auto ignore_until_impl(WrappedRange& r, CharT until)
-            -> scan_result<WrappedRange, error>
+            -> scan_result<WrappedRange, wrapped_error>
         {
             auto until_pred = [until](CharT ch) { return ch == until; };
             ignore_iterator<CharT> it{};
@@ -508,7 +508,7 @@ namespace scn {
         auto ignore_until_n_impl(WrappedRange& r,
                                  ranges::range_difference_t<WrappedRange> n,
                                  CharT until)
-            -> scan_result<WrappedRange, error>
+            -> scan_result<WrappedRange, wrapped_error>
         {
             auto until_pred = [until](CharT ch) { return ch == until; };
             ignore_iterator_n<CharT> begin{}, end{n};
@@ -570,172 +570,57 @@ namespace scn {
         return ret;
     }
 
+    template <typename Range, typename Container, typename CharT>
+    auto scan_list(Range&& r, Container& c, CharT separator)
+        -> detail::scan_result_for_range_t<Range, wrapped_error>
+    {
+        using value_type = typename Container::value_type;
+        using range_type = detail::range_wrapper_for_t<Range>;
+        using context_type = basic_context<range_type>;
+        using parse_context_type =
+            basic_empty_parse_context<typename context_type::locale_type>;
+
+        value_type value;
+        auto args = make_args<context_type, parse_context_type>(value);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)));
+
+        while (true) {
+            auto pctx = parse_context_type(1, ctx);
+            auto ret = vscan(ctx, pctx, {args});
+            if (!ret) {
+                if (ret.error() == error::end_of_range) {
+                    break;
+                }
+                return {ret.error(), ctx.range().get_return()};
+            }
+            c.push_back(std::move(value));
+
+            if (separator != 0) {
+                auto sep_ret = read_char(ctx.range());
+                if (!sep_ret) {
+                    if (sep_ret.error() == scn::error::end_of_range) {
+                        break;
+                    }
+                    return {sep_ret.error(), ctx.range().get_return()};
+                }
+                if (sep_ret.value() == separator) {
+                    continue;
+                }
+                else {
+                    return {error(error::invalid_scanned_value,
+                                  "Invalid separator character"),
+                            ctx.range().get_return()};
+                }
+            }
+        }
+        return {{}, ctx.range().get_return()};
+    }
+
     /**
      * \defgroup convenience_scan_types Convenience scannable types
      * This category has types and factory functions, that can be passed as
      * arguments to `scn::scan` (or alike), providing various functionality.
      */
-
-    // list
-
-    template <typename T, typename OutputIt>
-    struct list {
-        using value_type = T;
-        using iterator = OutputIt;
-
-        list(OutputIt i)
-            : it(std::move(i)), has_separator(false), is_separator(nullptr)
-        {
-        }
-
-        template <typename F>
-        list(OutputIt i, F f)
-            : it(std::move(i)),
-              has_separator(true),
-              is_separator(reinterpret_cast<void (*)()>(+f))
-        {
-        }
-
-        template <typename CharT>
-        auto get_separator_fn() -> bool (*)(CharT)
-        {
-            return reinterpret_cast<bool (*)(CharT)>(is_separator);
-        }
-
-        OutputIt it;
-        bool has_separator;
-
-        void (*is_separator)();
-    };
-
-    namespace detail {
-        template <typename Container, typename... A>
-        list<typename Container::value_type,
-             std::back_insert_iterator<Container>>
-        make_list(Container& c, A&&... a)
-        {
-            return {std::back_inserter(c), std::forward<A>(a)...};
-        }
-        template <typename T, typename... A>
-        list<T, std::vector<T>*> make_list(std::vector<T>& vec, A&&... a)
-        {
-            return {std::addressof(vec), std::forward<A>(a)...};
-        }
-    }  // namespace detail
-
-    /**
-     * \ingroup convenience_scan_types
-     * Allows the user to repeatedly read values of the same type.
-     * \c Container must have a member function `push_back`.
-     * Instances of its `value_type` are scanned repeatedly from the input
-     * range, and then pushed to the container.
-     *
-     * A lambda can be passed as the second argument, taking a character, and
-     * returning a bool, which tells the library whether the given character is
-     * a separator character. A separator character can appear between the
-     * elements in a list without terminating it.
-     *
-     * \code{.cpp}
-     * std::vector<int> vec{};
-     * // `int` is the container value type
-     * auto list = scn::make_list(vec, [](char ch) {
-     *     // ',' is the separator
-     *     return ch == ',';
-     * });
-     *
-     * auto ret = scn::scan("1, 2, 3", "{}", list);
-     * // ret == true
-     * // ret.value() == 1 (only a single argument, `list`, was read)
-     * // vec == {1, 2, 3}
-     * // ret.range() is empty
-     * \endcode
-     *
-     * This is also a great use case for `scn::temp`:
-     *
-     * \code{.cpp}
-     * // Same code as above, but using `scn::temp`
-     * std::vector<int> vec{};
-     * auto ret = scn::scan("1, 2, 3", "{}",
-     *     scn::temp(
-     *         scn::make_list(vec, [](char ch) {
-     *             return ch == ',';
-     *         })
-     *     )());
-     * \endcode
-     */
-    template <typename Container, typename... A>
-    auto make_list(Container& c, A&&... a)
-        -> decltype(detail::make_list(c, std::forward<A>(a)...))
-    {
-        return detail::make_list(c, std::forward<A>(a)...);
-    }
-
-    namespace detail {
-        template <typename T, typename OutputIt, typename InputIt>
-        void list_append(InputIt b, InputIt e, list<T, OutputIt>& l)
-        {
-            std::copy(b, e, l.it);
-        }
-        template <typename T, typename InputIt>
-        void list_append(InputIt b, InputIt e, list<T, std::vector<T>*>& l)
-        {
-            l.it->insert(l.it->end(), b, e);
-        }
-    }  // namespace detail
-
-    template <typename CharT, typename T, typename OutputIt>
-    struct scanner<CharT, list<T, OutputIt>> : public scanner<CharT, T> {
-        template <typename Context>
-        error scan(list<T, OutputIt>& val, Context& ctx)
-        {
-            detail::small_vector<T, 8> buf{};
-            auto is_separator = val.template get_separator_fn<CharT>();
-
-            while (true) {
-                {
-                    auto ret = skip_range_whitespace(ctx);
-                    if (!ret) {
-                        if (ret == scn::error::end_of_range) {
-                            break;
-                        }
-                        return ret;
-                    }
-                }
-
-                {
-                    T tmp{};
-                    auto ret = scanner<CharT, T>::scan(tmp, ctx);
-                    if (!ret) {
-                        if (ret == scn::error::end_of_range) {
-                            break;
-                        }
-                        return ret;
-                    }
-                    buf.push_back(tmp);
-                    *this = scanner<CharT, list<T, OutputIt>>{};
-                }
-
-                if (val.has_separator) {
-                    auto sep_ret = read_char(ctx.range());
-                    if (!sep_ret) {
-                        if (sep_ret.error() == scn::error::end_of_range) {
-                            break;
-                        }
-                        return sep_ret.error();
-                    }
-                    if (is_separator(sep_ret.value())) {
-                        continue;
-                    }
-                    else {
-                        return error(error::invalid_scanned_value,
-                                     "Invalid separator character");
-                    }
-                }
-            }
-            detail::list_append(buf.begin(), buf.end(), val);
-            return {};
-        }  // namespace scn
-    };
 
     template <typename T>
     struct discard_type {

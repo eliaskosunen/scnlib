@@ -338,7 +338,7 @@ namespace scn {
 
         friend class basic_args<Context>;
 
-        detail::value<Context> m_value{};
+        detail::value<Context> m_value;
         detail::type m_type{detail::none_type};
     };
 
@@ -580,8 +580,7 @@ namespace scn {
             }
 
             SCN_EXPECT(m_values);
-            if (SCN_UNLIKELY(
-                    i > detail::max_packed_args)) {
+            if (SCN_UNLIKELY(i > detail::max_packed_args)) {
                 return {};
             }
 

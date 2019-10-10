@@ -457,12 +457,12 @@ namespace scn {
 
             auto i = lim::max();
 
-            int digits = 0;
+            Integral digits = 0;
             while (i) {
                 i /= static_cast<Integral>(base);
                 digits++;
             }
-            return digits;
+            return static_cast<int>(digits);
         }
         template <typename Integral>
         SCN_CONSTEXPR14 int max_digits(int base) noexcept

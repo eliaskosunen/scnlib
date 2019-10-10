@@ -441,7 +441,7 @@ namespace scn {
             return *m_file;
         }
 
-        operator bool() const
+        explicit operator bool() const
         {
             return m_file != nullptr;
         }
