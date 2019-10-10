@@ -566,7 +566,9 @@ namespace scn {
 
             constexpr bool is_small() const noexcept
             {
-                return !m_heap;
+                // oh so very ub
+                return m_ptr == reinterpret_cast<const_pointer>(
+                                    std::addressof(m_stack_storage));
             }
             constexpr static bool can_be_small(size_type n) noexcept
             {
@@ -795,20 +797,20 @@ namespace scn {
         private:
             stack_storage& _construct_stack_storage() noexcept
             {
-                m_heap = false;
-                m_stack_storage = stack_storage{};
+                ::new (std::addressof(m_stack_storage)) stack_storage;
+                m_ptr = m_stack_storage.reinterpret_unconstructed_data();
                 return m_stack_storage;
             }
             heap_storage& _construct_heap_storage() noexcept
             {
-                m_heap = true;
-                m_heap_storage = heap_storage{};
+                ::new (std::addressof(m_heap_storage)) heap_storage;
+                m_ptr = nullptr;
                 return m_heap_storage;
             }
 
             void _destruct_stack_storage() noexcept
             {
-                //_get_stack().~stack_storage();
+                _get_stack().~stack_storage();
             }
             void _destruct_heap_storage() noexcept
             {
@@ -816,7 +818,7 @@ namespace scn {
                     delete[] static_cast<unsigned char*>(
                         static_cast<void*>(m_ptr));
                 }
-                //_get_heap().~heap_storage();
+                _get_heap().~heap_storage();
             }
 
             void _destruct_elements() noexcept
@@ -886,7 +888,6 @@ namespace scn {
 
             pointer m_ptr{nullptr};
             size_type m_size{0};
-            bool m_heap;
             union {
                 stack_storage m_stack_storage;
                 heap_storage m_heap_storage;
