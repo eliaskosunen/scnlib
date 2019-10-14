@@ -243,11 +243,11 @@ namespace scn {
 
         constexpr span() noexcept = default;
         constexpr span(pointer ptr, index_type count) noexcept
-            : m_ptr(ptr), m_size(count)
+            : m_ptr(ptr), m_end(ptr + count)
         {
         }
         constexpr span(pointer first, pointer last) noexcept
-            : span(first, static_cast<index_type>(last - first))
+            : m_ptr(first), m_end(last)
         {
         }
 
@@ -314,11 +314,11 @@ namespace scn {
         }
         constexpr index_type size() const noexcept
         {
-            return m_size;
+            return static_cast<index_type>(m_end - m_ptr);
         }
         constexpr ssize_type ssize() const noexcept
         {
-            return static_cast<std::ptrdiff_t>(size());
+            return m_end - m_ptr;
         }
 
         constexpr span<T> first(index_type n) const
@@ -345,7 +345,7 @@ namespace scn {
 
         constexpr span<typename std::add_const<T>::type> as_const() const
         {
-            return {m_ptr, m_size};
+            return {m_ptr, m_end};
         }
 
     private:
@@ -366,17 +366,17 @@ namespace scn {
         {
             SCN_EXPECT(m_ptr);
             // return {*this, m_ptr + m_size};
-            return m_ptr + m_size;
+            return m_end;
         }
         constexpr const_iterator _make_end() const
         {
             SCN_EXPECT(m_ptr);
             // return {*this, m_ptr + m_size};
-            return m_ptr + m_size;
+            return m_end;
         }
 
         pointer m_ptr{nullptr};
-        index_type m_size{0};
+        pointer m_end{nullptr};
     };
 
     template <typename T>

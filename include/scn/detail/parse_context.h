@@ -140,6 +140,22 @@ namespace scn {
             return s.parse(*this);
         }
 
+        bool has_arg_id()
+        {
+            SCN_EXPECT(good());
+            if (m_str.size() == 1) {
+                return true;
+            }
+            if (m_str[1] == detail::ascii_widen<char_type>('}')) {
+                advance();
+                return false;
+            }
+            if (m_str[1] == detail::ascii_widen<char_type>(':')) {
+                advance(2);
+                return false;
+            }
+            return true;
+        }
         expected<string_view_type> parse_arg_id()
         {
             SCN_EXPECT(good());
@@ -261,6 +277,10 @@ namespace scn {
             return s.parse(*this);
         }
 
+        constexpr bool has_arg_id() const
+        {
+            return false;
+        }
         constexpr expected<string_view_type> parse_arg_id() const
         {
             SCN_EXPECT(good());
@@ -349,6 +369,10 @@ namespace scn {
             return {};
         }
 
+        constexpr bool has_arg_id() const
+        {
+            return false;
+        }
         constexpr expected<string_view_type> parse_arg_id() const
         {
             SCN_EXPECT(good());

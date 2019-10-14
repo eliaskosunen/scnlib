@@ -295,16 +295,17 @@ namespace scn {
             }
             else {
                 // Scan argument
-                auto id_wrapped = pctx.parse_arg_id();
-                if (!id_wrapped) {
-                    return reterror(id_wrapped.error());
-                }
-                auto id = id_wrapped.value();
                 auto arg_wrapped = [&]() -> expected<typename Context::arg_type>
                 {
-                    if (id.empty()) {
+                    if (!pctx.has_arg_id()) {
                         return next_arg(args, pctx);
                     }
+                    auto id_wrapped = pctx.parse_arg_id();
+                    if (!id_wrapped) {
+                        return id_wrapped.error();
+                    }
+                    auto id = id_wrapped.value();
+                    SCN_ENSURE(!id.empty());
                     if (ctx.locale().is_digit(id.front())) {
                         auto s = detail::integer_scanner<std::ptrdiff_t>{};
                         s.base = 10;

@@ -571,23 +571,24 @@ namespace scn {
         arg_type do_get(std::ptrdiff_t i) const
         {
             SCN_EXPECT(i >= 0);
+
+            arg_type arg;
             if (!is_packed()) {
                 auto num_args = static_cast<std::ptrdiff_t>(max_size());
                 if (SCN_LIKELY(i < num_args)) {
-                    return m_args[i];
+                    arg = m_args[i];
                 }
-                return {};
+                return arg;
             }
 
             SCN_EXPECT(m_values);
             if (SCN_UNLIKELY(i > detail::max_packed_args)) {
-                return {};
+                return arg;
             }
 
-            arg_type arg;
             arg.m_type = type(i);
             if (arg.m_type == detail::none_type) {
-                return {};
+                return arg;
             }
             arg.m_value = m_values[i];
             return arg;
