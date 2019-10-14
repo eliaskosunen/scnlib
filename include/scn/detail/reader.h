@@ -551,7 +551,7 @@ namespace scn {
                     return {};
                 }
 
-                small_vector<char_type, 64> buf(val.size());
+                small_vector<char_type, 32> buf(val.size());
                 auto it = buf.begin();
                 auto e = read_into(ctx.range(), it, val.ssize());
                 if (!e) {

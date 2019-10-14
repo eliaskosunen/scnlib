@@ -19,7 +19,6 @@
 #define SCN_DETAIL_ARGS_H
 
 #include "parse_context.h"
-#include "small_vector.h"
 #include "util.h"
 
 #include <cstring>
@@ -46,7 +45,7 @@ namespace scn {
     struct temporary {
         temporary(T&& val) : value(std::move(val)) {}
 
-        T& operator()() &&
+        T& operator()() && noexcept
         {
             return value;
         }
@@ -111,7 +110,7 @@ namespace scn {
         };
 
         template <typename Context, typename ParseCtx, typename T>
-        error scan_custom_arg(void* arg, Context& ctx, ParseCtx& pctx)
+        error scan_custom_arg(void* arg, Context& ctx, ParseCtx& pctx) noexcept
         {
             SCN_EXPECT(arg != nullptr);
 
@@ -139,12 +138,13 @@ namespace scn {
             constexpr value() noexcept : m_empty{} {}
 
             template <typename T>
-            value(T& val) noexcept : m_value(std::addressof(val))
+            SCN_CONSTEXPR14 value(T& val) noexcept
+                : m_value(std::addressof(val))
             {
             }
 
             template <typename ParseCtx, typename T>
-            value(parse_ctx_tag<ParseCtx>, T& val)
+            value(parse_ctx_tag<ParseCtx>, T& val) noexcept
                 : m_custom(
                       custom_value{std::addressof(val),
                                    reinterpret_cast<void (*)()>(
@@ -153,21 +153,21 @@ namespace scn {
             }
 
             template <typename T>
-            T& get_as() noexcept
+            SCN_CONSTEXPR14 T& get_as() noexcept
             {
                 return *static_cast<T*>(m_value);
             }
             template <typename T>
-            const T& get_as() const noexcept
+            constexpr const T& get_as() const noexcept
             {
                 return *static_cast<const T*>(m_value);
             }
 
-            custom_value& get_custom() noexcept
+            SCN_CONSTEXPR14 custom_value& get_custom() noexcept
             {
                 return m_custom;
             }
-            const custom_value& get_custom() const noexcept
+            constexpr const custom_value& get_custom() const noexcept
             {
                 return m_custom;
             }
@@ -208,13 +208,14 @@ namespace scn {
         };
 
         template <typename Context, typename ParseCtx, typename T>
-        SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value);
+        SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value) noexcept;
 
-#define SCN_MAKE_VALUE(Tag, Type)                                       \
-    template <typename C>                                               \
-    constexpr init<C, Type, Tag> make_value(Type& val, priority_tag<1>) \
-    {                                                                   \
-        return val;                                                     \
+#define SCN_MAKE_VALUE(Tag, Type)                                     \
+    template <typename C>                                             \
+    constexpr init<C, Type, Tag> make_value(Type& val,                \
+                                            priority_tag<1>) noexcept \
+    {                                                                 \
+        return val;                                                   \
     }
 
         SCN_MAKE_VALUE(short_type, short)
@@ -239,9 +240,9 @@ namespace scn {
                        basic_string_view<typename C::char_type>)
 
         template <typename C>
-        init<C, typename C::char_type, char_type> make_value(
+        constexpr init<C, typename C::char_type, char_type> make_value(
             typename C::char_type& val,
-            priority_tag<1>)
+            priority_tag<1>) noexcept
         {
             return val;
         }
@@ -253,7 +254,7 @@ namespace scn {
                                          std::is_convertible<T, int>::value> {
         };
         template <typename C, typename T>
-        inline auto make_value(T& val, priority_tag<1>) ->
+        constexpr inline auto make_value(T& val, priority_tag<1>) noexcept ->
             typename std::enable_if<
                 std::is_enum<T>::value &&
                     convert_to_int<T, typename C::char_type>::value,
@@ -263,7 +264,7 @@ namespace scn {
         }
 
         template <typename C, typename T>
-        inline auto make_value(T& val, priority_tag<0>)
+        constexpr inline auto make_value(T& val, priority_tag<0>) noexcept
             -> init<C, T, custom_type>
         {
             return val;
@@ -304,33 +305,33 @@ namespace scn {
 
         constexpr basic_arg() = default;
 
-        explicit operator bool() const noexcept
+        constexpr explicit operator bool() const noexcept
         {
             return m_type != detail::none_type;
         }
 
-        detail::type type() const
+        constexpr detail::type type() const noexcept
         {
             return type;
         }
-        bool is_integral() const
+        constexpr bool is_integral() const noexcept
         {
             return detail::is_integral(m_type);
         }
-        bool is_arithmetic() const
+        constexpr bool is_arithmetic() const noexcept
         {
             return detail::is_arithmetic(m_type);
         }
 
     private:
-        constexpr basic_arg(detail::value<Context> v, detail::type t)
+        constexpr basic_arg(detail::value<Context> v, detail::type t) noexcept
             : m_value(v), m_type(t)
         {
         }
 
         template <typename ContextType, typename ParseCtx, typename T>
         friend SCN_CONSTEXPR14 typename ContextType::arg_type detail::make_arg(
-            T& value);
+            T& value) noexcept;
 
         template <typename Ctx, typename Visitor>
         friend SCN_CONSTEXPR14 error visit_arg(Visitor&& vis,
@@ -430,7 +431,7 @@ namespace scn {
         }
 
         template <typename Context, typename ParseCtx, typename T>
-        SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value)
+        SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value) noexcept
         {
             typename Context::arg_type arg;
             arg.m_type = get_type<Context, T>::value;
@@ -477,12 +478,13 @@ namespace scn {
             num_args + (is_packed && num_args != 0 ? 0 : 1);
 
         template <typename ParseCtx>
-        arg_store(detail::parse_ctx_tag<ParseCtx>, Args&... a)
+        SCN_CONSTEXPR14 arg_store(detail::parse_ctx_tag<ParseCtx>,
+                                  Args&... a) noexcept
             : m_data{{detail::make_arg<is_packed, Context, ParseCtx>(a)...}}
         {
         }
 
-        span<value_type> data()
+        SCN_CONSTEXPR14 span<value_type> data() noexcept
         {
             return make_span(m_data.data(),
                              static_cast<std::ptrdiff_t>(m_data.size()));
@@ -503,26 +505,27 @@ namespace scn {
     public:
         using arg_type = typename Context::arg_type;
 
-        basic_args() = default;
+        constexpr basic_args() noexcept = default;
 
         template <typename... Args>
-        basic_args(arg_store<Context, Args...>& store) : m_types(store.types)
+        SCN_CONSTEXPR14 basic_args(arg_store<Context, Args...>& store) noexcept
+            : m_types(store.types)
         {
             set_data(store.m_data.data());
         }
 
-        basic_args(span<arg_type> args)
+        SCN_CONSTEXPR14 basic_args(span<arg_type> args) noexcept
             : m_types(detail::is_unpacked_bit | args.size())
         {
             set_data(args.data());
         }
 
-        arg_type get(std::ptrdiff_t i) const
+        SCN_CONSTEXPR14 arg_type get(std::ptrdiff_t i) const noexcept
         {
             return do_get(i);
         }
 
-        bool check_id(std::ptrdiff_t i) const
+        SCN_CONSTEXPR14 bool check_id(std::ptrdiff_t i) const noexcept
         {
             if (!is_packed()) {
                 return static_cast<size_t>(i) <
@@ -532,7 +535,7 @@ namespace scn {
             return type(i) != detail::none_type;
         }
 
-        size_t max_size() const
+        constexpr size_t max_size() const noexcept
         {
             return is_packed()
                        ? static_cast<size_t>(detail::max_packed_args)
@@ -547,28 +550,29 @@ namespace scn {
             arg_type* m_args;
         };
 
-        bool is_packed() const
+        constexpr bool is_packed() const noexcept
         {
             return (m_types & detail::is_unpacked_bit) == 0;
         }
 
-        typename detail::type type(std::ptrdiff_t i) const
+        SCN_CONSTEXPR14 typename detail::type type(std::ptrdiff_t i) const
+            noexcept
         {
             size_t shift = static_cast<size_t>(i) * 5;
             return static_cast<typename detail::type>(
                 (m_types & (size_t{0x1f} << shift)) >> shift);
         }
 
-        void set_data(detail::value<Context>* values)
+        SCN_CONSTEXPR14 void set_data(detail::value<Context>* values) noexcept
         {
             m_values = values;
         }
-        void set_data(arg_type* args)
+        SCN_CONSTEXPR14 void set_data(arg_type* args) noexcept
         {
             m_args = args;
         }
 
-        arg_type do_get(std::ptrdiff_t i) const
+        SCN_CONSTEXPR14 arg_type do_get(std::ptrdiff_t i) const noexcept
         {
             SCN_EXPECT(i >= 0);
 
