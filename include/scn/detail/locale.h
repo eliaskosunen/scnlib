@@ -69,7 +69,7 @@ namespace scn {
         // Hand write to avoid C locales and thus noticeable performance losses
         inline bool is_space(char ch) noexcept
         {
-            static const detail::array<bool, 256> lookup = {
+            static constexpr detail::array<bool, 256> lookup = {
                 {false, false, false, false, false, false, false, false, false,
                  true,  true,  true,  true,  true,  false, false, false, false,
                  false, false, false, false, false, false, false, false, false,

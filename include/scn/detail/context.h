@@ -100,7 +100,9 @@ namespace scn {
                  ParseCtx& pctx,
                  std::ptrdiff_t id) -> expected<basic_arg<Context>>
     {
-        return pctx.check_arg_id(id) ? get_arg(args, id) : basic_arg<Context>{};
+        return pctx.check_arg_id(id) ? get_arg(args, id)
+                                     : error(error::invalid_format_string,
+                                             "Argument id out of range");
     }
     template <typename Context, typename ParseCtx>
     auto get_arg(const basic_args<Context>&,
@@ -108,7 +110,7 @@ namespace scn {
                  basic_string_view<typename Context::char_type>)
         -> expected<basic_arg<Context>>
     {
-        return basic_arg<Context>{};
+        return error(error::invalid_format_string, "Argument id out of range");
     }
 
     template <typename Context, typename ParseCtx>

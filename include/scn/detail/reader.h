@@ -887,15 +887,14 @@ namespace scn {
                 auto is_space_pred = [&ctx](char_type ch) {
                     return ctx.locale().is_space(ch);
                 };
-                {
+
+                if (Context::range_type::is_contiguous) {
                     auto s = read_until_space_zero_copy(ctx.range(),
                                                         is_space_pred, false);
                     if (!s) {
                         return s.error();
                     }
-                    if (s.value().size() != 0) {
-                        return do_parse_int(s.value());
-                    }
+                    return do_parse_int(s.value());
                 }
 
                 small_vector<char_type, 32> buf;
@@ -1044,6 +1043,7 @@ namespace scn {
                 constexpr auto abs_int_min = static_cast<utype>(int_max + 1);
 
                 utype cutoff, cutlim;
+                SCN_ASSUME(ubase > 0);
                 if (std::is_signed<T>::value) {
                     if (minus_sign) {
                         cutoff = abs_int_min / ubase;
@@ -1061,25 +1061,45 @@ namespace scn {
 
                 auto it = buf.begin();
                 const auto end = buf.end();
-                for (; it != end; ++it) {
-                    if (SCN_UNLIKELY(have_thsep && *it == thsep)) {
-                        continue;
-                    }
-
-                    const auto digit = _char_to_int(*it);
-                    if (digit >= ubase) {
-                        break;
-                    }
-                    if (SCN_UNLIKELY(val > cutoff ||
-                                     (val == cutoff && digit > cutlim))) {
-                        if (!minus_sign) {
-                            return error(error::value_out_of_range,
-                                         "Out of range: integer overflow");
+                if (SCN_UNLIKELY(have_thsep)) {
+                    for (; it != end; ++it) {
+                        if (*it == thsep) {
+                            continue;
                         }
-                        return error(error::value_out_of_range,
-                                     "Out of range: integer underflow");
+
+                        const auto digit = _char_to_int(*it);
+                        if (digit >= ubase) {
+                            break;
+                        }
+                        if (SCN_UNLIKELY(val > cutoff ||
+                                         (val == cutoff && digit > cutlim))) {
+                            if (!minus_sign) {
+                                return error(error::value_out_of_range,
+                                             "Out of range: integer overflow");
+                            }
+                            return error(error::value_out_of_range,
+                                         "Out of range: integer underflow");
+                        }
+                        val = val * ubase + digit;
                     }
-                    val = val * ubase + digit;
+                }
+                else {
+                    for (; it != end; ++it) {
+                        const auto digit = _char_to_int(*it);
+                        if (digit >= ubase) {
+                            break;
+                        }
+                        if (SCN_UNLIKELY(val > cutoff ||
+                                         (val == cutoff && digit > cutlim))) {
+                            if (!minus_sign) {
+                                return error(error::value_out_of_range,
+                                             "Out of range: integer overflow");
+                            }
+                            return error(error::value_out_of_range,
+                                         "Out of range: integer underflow");
+                        }
+                        val = val * ubase + digit;
+                    }
                 }
                 val = val * (minus_sign ? -1 : 1);
                 return it;
@@ -1232,15 +1252,14 @@ namespace scn {
                 auto is_space_pred = [&ctx](char_type ch) {
                     return ctx.locale().is_space(ch);
                 };
-                {
+
+                if (Context::range_type::is_contiguous) {
                     auto s = read_until_space_zero_copy(ctx.range(),
                                                         is_space_pred, false);
                     if (!s) {
                         return s.error();
                     }
-                    if (s.value().size() != 0) {
-                        return do_parse_float(s.value());
-                    }
+                    return do_parse_float(s.value());
                 }
 
                 small_vector<char_type, 32> buf;
@@ -1305,29 +1324,30 @@ namespace scn {
                 auto is_space_pred = [&ctx](char_type ch) {
                     return ctx.locale().is_space(ch);
                 };
-                auto s = read_until_space_zero_copy(ctx.range(), is_space_pred,
-                                                    false);
-                if (!s) {
-                    return s.error();
-                }
-                if (s.value().size() != 0) {
+
+                if (Context::range_type::is_contiguous) {
+                    auto s = read_until_space_zero_copy(ctx.range(),
+                                                        is_space_pred, false);
+                    if (!s) {
+                        return s.error();
+                    }
                     val = std::basic_string<char_type>{s.value().data(),
                                                        s.value().size()};
+                    return {};
                 }
-                else {
-                    std::basic_string<char_type> tmp;
-                    auto outputit = std::back_inserter(tmp);
-                    auto ret = read_until_space(ctx.range(), outputit,
-                                                is_space_pred, false);
-                    if (SCN_UNLIKELY(!ret)) {
-                        return ret;
-                    }
-                    if (SCN_UNLIKELY(tmp.empty())) {
-                        return error(error::invalid_scanned_value,
-                                     "Empty string parsed");
-                    }
-                    val = std::move(tmp);
+
+                std::basic_string<char_type> tmp;
+                auto outputit = std::back_inserter(tmp);
+                auto ret = read_until_space(ctx.range(), outputit,
+                                            is_space_pred, false);
+                if (SCN_UNLIKELY(!ret)) {
+                    return ret;
                 }
+                if (SCN_UNLIKELY(tmp.empty())) {
+                    return error(error::invalid_scanned_value,
+                                 "Empty string parsed");
+                }
+                val = std::move(tmp);
 
                 return {};
             }
@@ -1343,16 +1363,15 @@ namespace scn {
                 auto is_space_pred = [&ctx](char_type ch) {
                     return ctx.locale().is_space(ch);
                 };
+                if (!Context::range_type::is_contiguous) {
+                    return error(error::invalid_operation,
+                                 "Cannot read a string_view from a "
+                                 "non-contiguous_range");
+                }
                 auto s = read_until_space_zero_copy(ctx.range(), is_space_pred,
                                                     false);
                 if (!s) {
                     return s.error();
-                }
-                if (s.value().size() == 0) {
-                    // TODO: Compile-time error?
-                    return error(error::invalid_operation,
-                                 "Cannot read a string_view from a "
-                                 "non-contiguous_range");
                 }
                 val = basic_string_view<char_type>(s.value().data(),
                                                    s.value().size());

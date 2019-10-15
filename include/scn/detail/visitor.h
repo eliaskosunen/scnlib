@@ -324,20 +324,14 @@ namespace scn {
                     return get_arg(args, pctx, id);
                 }
                 ();
-                if (!arg_wrapped || !arg_wrapped.value()) {
+                if (!arg_wrapped) {
                     return reterror(arg_wrapped.error());
                 }
                 arg = arg_wrapped.value();
+                SCN_ENSURE(arg);
                 if (!pctx) {
                     return reterror(error(error::invalid_format_string,
                                           "Unexpected end of format argument"));
-                }
-                if (!arg) {
-                    // Mismatch between number of args and {}s
-                    return reterror(
-                        error(error::invalid_format_string,
-                              "Mismatch between number of arguments and "
-                              "'{}' in the format string"));
                 }
                 auto ret = visit_arg<Context>(
                     basic_visitor<Context, ParseCtx>(ctx, pctx), arg);

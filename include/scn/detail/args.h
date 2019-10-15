@@ -270,7 +270,11 @@ namespace scn {
             return val;
         }
 
-        enum : std::ptrdiff_t { max_packed_args = sizeof(size_t) * 8 / 5 };
+        enum : std::ptrdiff_t {
+            packed_arg_bitsize = 5,
+            packed_arg_mask = (1 << packed_arg_bitsize) - 1,
+            max_packed_args = (sizeof(size_t) * 8 - 1) / packed_arg_bitsize
+        };
         enum : size_t {
             is_unpacked_bit = size_t{1} << (sizeof(size_t) * 8 - 1)
         };
@@ -558,9 +562,9 @@ namespace scn {
         SCN_CONSTEXPR14 typename detail::type type(std::ptrdiff_t i) const
             noexcept
         {
-            size_t shift = static_cast<size_t>(i) * 5;
-            return static_cast<typename detail::type>(
-                (m_types & (size_t{0x1f} << shift)) >> shift);
+            size_t shift = static_cast<size_t>(i) * detail::packed_arg_bitsize;
+            return static_cast<typename detail::type>((m_types >> shift) &
+                                                      detail::packed_arg_mask);
         }
 
         SCN_CONSTEXPR14 void set_data(detail::value<Context>* values) noexcept
