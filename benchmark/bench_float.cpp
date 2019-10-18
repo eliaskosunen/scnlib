@@ -22,7 +22,7 @@ SCN_CLANG_IGNORE("-Wglobal-constructors")
 SCN_CLANG_IGNORE("-Wunused-template")
 SCN_CLANG_IGNORE("-Wexit-time-destructors")
 
-#define FLOAT_DATA_N (static_cast<size_t>(2 << 15))
+#define FLOAT_DATA_N (static_cast<size_t>(2 << 12))
 
 template <typename Float>
 static void scanfloat_scn(benchmark::State& state)
@@ -35,10 +35,7 @@ static void scanfloat_scn(benchmark::State& state)
 
         if (!e) {
             if (e.error() == scn::error::end_of_range) {
-                state.PauseTiming();
-                data = generate_float_data<Float>(FLOAT_DATA_N);
                 range = scn::make_view(data);
-                state.ResumeTiming();
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -64,10 +61,7 @@ static void scanfloat_scn_default(benchmark::State& state)
 
         if (!e) {
             if (e.error() == scn::error::end_of_range) {
-                state.PauseTiming();
-                data = generate_float_data<Float>(FLOAT_DATA_N);
                 range = scn::make_view(data);
-                state.ResumeTiming();
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -92,11 +86,7 @@ static void scanfloat_sstream(benchmark::State& state)
         stream >> f;
 
         if (stream.eof()) {
-            state.PauseTiming();
-            data = generate_float_data<Float>(FLOAT_DATA_N);
             stream = std::istringstream(data);
-            state.ResumeTiming();
-            continue;
         }
         if (stream.fail()) {
             state.SkipWithError("Benchmark errored");
@@ -153,10 +143,7 @@ static void scanfloat_scanf(benchmark::State& state)
 
         if (ret != 1) {
             if (ret == EOF) {
-                state.PauseTiming();
-                data = generate_float_data<Float>(FLOAT_DATA_N);
                 ptr = &data[0];
-                state.ResumeTiming();
                 continue;
             }
             state.SkipWithError("Benchmark errored");

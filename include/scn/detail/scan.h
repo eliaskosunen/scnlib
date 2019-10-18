@@ -261,7 +261,7 @@ namespace scn {
     // prompt
 
     /**
-     * Equivalent to \ref, except writes what's in `p` to `stdout`.
+     * Equivalent to \ref input, except writes what's in `p` to `stdout`.
      *
      * \code{.cpp}
      * int i{};
@@ -292,6 +292,35 @@ namespace scn {
         auto ctx = context_type(detail::wrap(stdin_range<CharT>()));
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx, {args});
+    }
+
+    /**
+     * Parses an integer into `val` in base `base` from `str`.
+     * Returns a pointer past the last character read, or an error.
+     * `str` can't be empty, and cannot have:
+     *   - preceding whitespace
+     *   - preceding `"0x"` or `"0"` (base is determined by the `base`
+     *     parameter)
+     *   - `+` sign (`-` is fine)
+     */
+    template <typename T, typename CharT>
+    expected<const CharT*> parse_integer(basic_string_view<CharT> str,
+                                         T& val,
+                                         int base = 10)
+    {
+        SCN_EXPECT(!str.empty());
+        auto s = scanner<CharT, T>{base};
+        bool minus_sign = false;
+        if (str[0] == detail::ascii_widen<CharT>('-')) {
+            minus_sign = true;
+        }
+        auto ret = s._read_int(val, minus_sign,
+                               make_span(str.data(), str.size()).as_const(),
+                               detail::ascii_widen<CharT>('\0'));
+        if (!ret) {
+            return ret.error();
+        }
+        return {ret.value()};
     }
 
     // scanning api
@@ -570,6 +599,15 @@ namespace scn {
         return ret;
     }
 
+    /**
+     * \ingroup scanning_operations
+     *
+     * Reads values repeatedly from `r` and writes them into `c`.
+     * The values read are of type `Container::value_type`, and they are written
+     * into `c` using `c.push_back`. The values must be separated by whitespace,
+     * and by a separator character `separator`, if specified. If `separator ==
+     * 0`, no separator character is expected.
+     */
     template <typename Range, typename Container, typename CharT>
     auto scan_list(Range&& r, Container& c, CharT separator)
         -> detail::scan_result_for_range_t<Range, wrapped_error>

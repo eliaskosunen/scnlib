@@ -39,10 +39,7 @@ static void return_ref(benchmark::State& state)
 
         if (!e) {
             if (e.error() == scn::error::end_of_range) {
-                state.PauseTiming();
-                data = generate_data<char>(4096);
                 range = scn::make_view(data);
-                state.ResumeTiming();
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -65,10 +62,7 @@ static void return_tuple(benchmark::State& state)
 
         if (!r) {
             if (r.error() == scn::error::end_of_range) {
-                state.PauseTiming();
-                data = generate_data<char>(4096);
                 range = scn::make_view(data);
-                state.ResumeTiming();
             }
             else {
                 state.SkipWithError("Benchmark errored");

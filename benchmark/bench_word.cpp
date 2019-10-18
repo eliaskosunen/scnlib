@@ -52,10 +52,7 @@ static void scanword_scn(benchmark::State& state)
 
         if (!e) {
             if (e.error() == scn::error::end_of_range) {
-                state.PauseTiming();
-                data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 range = scn::make_view(data);
-                state.ResumeTiming();
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -80,10 +77,7 @@ static void scanword_scn_default(benchmark::State& state)
 
         if (!e) {
             if (e.error() == scn::error::end_of_range) {
-                state.PauseTiming();
-                data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 range = scn::make_view(data);
-                state.ResumeTiming();
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -108,10 +102,7 @@ static void scanword_scn_string_view(benchmark::State& state)
 
         if (!e) {
             if (e.error() == scn::error::end_of_range) {
-                state.PauseTiming();
-                data = generate_data<Char>(static_cast<size_t>(state.range(0)));
                 range = scn::make_view(data);
-                state.ResumeTiming();
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -135,11 +126,7 @@ static void scanword_sstream(benchmark::State& state)
         stream >> str;
 
         if (stream.eof()) {
-            state.PauseTiming();
-            data = generate_data<Char>(static_cast<size_t>(state.range(0)));
             stream = std::basic_istringstream<Char>{data};
-            state.ResumeTiming();
-            continue;
         }
         if (stream.fail()) {
             state.SkipWithError("Benchmark errored");

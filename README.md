@@ -202,7 +202,7 @@ Same thing applies for VS 2015, due to its inability to handle templates.
 
 ### Run-time performance
 
-These benchmarks were run on a Ubuntu 19.04 machine running kernel version 5.0.0-15, with an Intel Core i7-8750H processor, and compiled with gcc version 8.3.0, with `-O3 -march=native`.
+These benchmarks were run on a Ubuntu 19.04 machine running kernel version 5.0.0-32, with an Intel Core i5-6600K processor, and compiled with gcc version 8.3.0, with `-O3 -march=native`.
 The source code for the benchmarks can be seen in the `benchmark` directory.
 
 Times are in nanoseconds of CPU time. Lower is better.
@@ -211,29 +211,31 @@ Times are in nanoseconds of CPU time. Lower is better.
 
 #### Reading random integers
 
-| Integer type | `scn::scan` | `std::stringstream` | % decrease with scnlib |
-| :----------- | ----------- | ------------------: | ---------------------: |
-| `int`        | 64          | 80                  | 20 %                   |
-| `long long`  | 88          | 106                 | 17 %                   |
-| `unsigned`   | 76          | 60                  | -27 %                  |
+| Integer type | `scn::scan` | `std::stringstream` | `sscanf` |
+| :----------- | ----------- | ------------------: | -------: |
+| `int`        | 44          | 71                  | 513      |
+| `long long`  | 62          | 98                  | 990      |
+| `unsigned`   | 28          | 55                  | 506      |
 
 #### Reading random floating-point numbers
 
-| Floating-point type | `scn::scan` | `std::stringstream` | % decrease with scnlib |
-| :------------------ | ----------: | ------------------: | ---------------------: |
-| `float`             | 131         | 213                 | 38 %                   |
-| `double`            | 141         | 221                 | 36 %                   |
-| `long double`       | 156         | 231                 | 32 %                   |
+| Floating-point type | `scn::scan` | `std::stringstream` | `sscanf` |
+| :------------------ | ----------: | ------------------: | -------: |
+| `float`             | 127         | 207                 | 550      |
+| `double`            | 129         | 213                 | 553      |
+| `long double`       | 139         | 224                 | 567      |
 
 #### Reading random whitespace-separated strings
 
-| Character type | `scn::scan` | `scn::scan` and `string_view` | `std::stringstream` | % decrease with scnlib       |
-| :------------- | ----------: | ----------------------------: | ------------------: | ---------------------------: |
-| `char`         | 38          | 35                            | 48                  | 21 % (27 % /w `string_view`) |
-| `wchar_t`      | 48          | 35                            | 118                 | 59 % (70 % /w `string_view`) |
+| Character type | `scn::scan` | `scn::scan` and `string_view` | `std::stringstream` | 
+| :------------- | ----------: | ----------------------------: | ------------------: | 
+| `char`         | 30          | 31                            | 48                  | 
+| `wchar_t`      | 38          | 34                            | 117                 | 
 
 You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS` and building the target `bench`.
 `SCN_BUILD_BENCHMARKS` is enabled by default if `scn` is the root CMake project, and disabled otherwise.
+
+Performance comparison benchmarks with Boost.Spirit.x3 can be found [here](https://github.com/eliaskosunen/scnlib-spirit-benchmark)
 
 ### Code size
 

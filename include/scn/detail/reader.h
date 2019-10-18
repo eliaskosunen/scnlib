@@ -121,6 +121,44 @@ namespace scn {
     }
     /// @}
 
+    // read_all_zero_copy
+
+    /// @{
+    /**
+     * Reads every character from `r`, and returns a `span` into the range.
+     * If `r.begin() == r.end()`, returns EOF.
+     * If the range does not satisfy `contiguous_range`, returns an empty
+     * `span`.
+     */
+    template <
+        typename WrappedRange,
+        typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
+    expected<span<const typename detail::extract_char_type<
+        typename WrappedRange::iterator>::type>>
+    read_all_zero_copy(WrappedRange& r)
+    {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_range, "EOF");
+        }
+        auto s = make_span(r.data(), static_cast<size_t>(r.size())).as_const();
+        r.advance(r.size());
+        return s;
+    }
+    template <
+        typename WrappedRange,
+        typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
+    expected<span<const typename detail::extract_char_type<
+        typename WrappedRange::iterator>::type>>
+    read_all_zero_copy(WrappedRange& r)
+    {
+        if (r.begin() == r.end()) {
+            return error(error::end_of_range, "EOF");
+        }
+        return span<const typename detail::extract_char_type<
+            typename WrappedRange::iterator>::type>{};
+    }
+    /// @}
+
     // read_into
 
     /// @{
@@ -889,8 +927,7 @@ namespace scn {
                 };
 
                 if (Context::range_type::is_contiguous) {
-                    auto s = read_until_space_zero_copy(ctx.range(),
-                                                        is_space_pred, false);
+                    auto s = read_all_zero_copy(ctx.range());
                     if (!s) {
                         return s.error();
                     }
@@ -1037,27 +1074,25 @@ namespace scn {
                 using utype = typename std::make_unsigned<T>::type;
 
                 const auto ubase = static_cast<utype>(base);
+                SCN_ASSUME(ubase > 0);
 
                 constexpr auto uint_max = static_cast<utype>(-1);
                 constexpr auto int_max = static_cast<utype>(uint_max >> 1);
                 constexpr auto abs_int_min = static_cast<utype>(int_max + 1);
 
-                utype cutoff, cutlim;
-                SCN_ASSUME(ubase > 0);
-                if (std::is_signed<T>::value) {
-                    if (minus_sign) {
-                        cutoff = abs_int_min / ubase;
-                        cutlim = abs_int_min % ubase;
-                    }
-                    else {
-                        cutoff = int_max / ubase;
-                        cutlim = int_max % ubase;
-                    }
-                }
-                else {
-                    cutoff = uint_max / ubase;
-                    cutlim = uint_max % ubase;
-                }
+                const auto cut = div(
+                    [&]() -> utype {
+                        if (std::is_signed<T>::value) {
+                            if (minus_sign) {
+                                return abs_int_min;
+                            }
+                            return int_max;
+                        }
+                        return uint_max;
+                    }(),
+                    ubase);
+                const auto cutoff = cut.first;
+                const auto cutlim = cut.second;
 
                 auto it = buf.begin();
                 const auto end = buf.end();
@@ -1138,16 +1173,11 @@ namespace scn {
             }
             unsigned char _char_to_int(wchar_t ch) const
             {
-                if (ch >= L'0' && ch <= L'9') {
-                    return static_cast<unsigned char>(ch - L'0');
-                }
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wconversion")
-                if (ch >= L'a' && ch <= L'z') {
-                    return 10 + static_cast<unsigned char>(ch - L'a');
-                }
-                if (ch >= L'A' && ch <= L'Z') {
-                    return 10 + static_cast<unsigned char>(ch - L'A');
+                if (ch >= std::numeric_limits<char>::min() &&
+                    ch <= std::numeric_limits<char>::max()) {
+                    return _char_to_int(static_cast<char>(ch));
                 }
                 return 255;
                 SCN_GCC_POP

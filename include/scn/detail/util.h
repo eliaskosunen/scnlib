@@ -477,6 +477,12 @@ namespace scn {
         }
 
         template <typename T>
+        constexpr std::pair<T, T> div(T l, T r) noexcept
+        {
+            return {l / r, l % r};
+        }
+
+        template <typename T>
         constexpr T* launder(T* p) noexcept
         {
 #if SCN_HAS_LAUNDER
