@@ -1,6 +1,6 @@
 # 0.2
 
-_Released 2019-10-xx_
+_Released 2019-10-18_
 
 ## Major changes
 
@@ -12,7 +12,7 @@ _Released 2019-10-xx_
 
  * Add zero-copy parsing of `string_view`s from a `contiguous_range`
    * Works like parsing a `std::string`, except the pointers of the `string_view` are directed to the input range
- * Add `list` (see #9)
+ * Add `scan_list`
  * Add experimental memory mapped file reading support
 
 ## Removals
@@ -23,6 +23,7 @@ _Released 2019-10-xx_
 
 ## Changes
 
+ * Rename `scan(locale, ...)` to `scan_localized(...)`
  * Fix UB in `small_vector` using `std::aligned_storage` and `std::aligned_union`
  * _And probably tons more that I've not written down anywhere_
 

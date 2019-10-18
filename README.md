@@ -202,6 +202,8 @@ Same thing applies for VS 2015, due to its inability to handle templates.
 
 ### Run-time performance
 
+![benchmark results](https://raw.githubusercontent.com/eliaskosunen/scnlib/master/benchmark/results.png)
+
 These benchmarks were run on a Ubuntu 19.04 machine running kernel version 5.0.0-32, with an Intel Core i5-6600K processor, and compiled with gcc version 8.3.0, with `-O3 -march=native`.
 The source code for the benchmarks can be seen in the `benchmark` directory.
 
