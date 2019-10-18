@@ -45,8 +45,7 @@ namespace scn {
      * a list of arguments. The arguments are parsed from the range based on the
      * information given in the format string.
      *
-     * The range is described further here: \ref range,
-     * and the format string here: \ref format_string.
+     * The range is described further here: \ref range.
      *
      * If the function takes a format string and a range, they must share
      * character types. Also, the format string must be convertible to
@@ -366,8 +365,8 @@ namespace scn {
             if (!e) {
                 return {std::move(e), r.get_return()};
             }
-            if (until_pred(str.back())) {
-                str.pop_back();
+            if (until_pred(tmp.back())) {
+                tmp.pop_back();
             }
             str = std::move(tmp);
             return {{}, r.get_return()};
