@@ -54,15 +54,39 @@ namespace scn {
         struct provides_buffer_access_impl : std::false_type {
         };
 
+        template <typename Range>
+        struct reconstruct_tag {
+        };
+
+        template <typename Range, typename Iterator, typename Sentinel>
+        Range reconstruct(reconstruct_tag<Range>, Iterator begin, Sentinel end)
+        {
+            return {begin, end};
+        }
+#if SCN_HAS_STRING_VIEW
+        // std::string_view is not reconstructible pre-C++20
+        template <typename CharT,
+                  typename Traits,
+                  typename Iterator,
+                  typename Sentinel>
+        std::basic_string_view<CharT, Traits> reconstruct(
+            reconstruct_tag<std::basic_string_view<CharT, Traits>>,
+            Iterator begin,
+            Sentinel end)
+        {
+            return {begin, static_cast<size_t>(ranges::distance(begin, end))};
+        }
+#endif
+
         template <typename Range, typename It>
         void write_return(const Range&, It)
         {
         }
         template <typename Range, typename It>
-        void write_return(Range&& r, It begin)
+        void write_return(Range& r, It begin)
         {
-            r = remove_cvref_t<Range>{begin,
-                                      ranges::end(std::forward<Range>(r))};
+            r = reconstruct(reconstruct_tag<remove_cvref_t<Range>>{}, begin,
+                            ranges::end(r));
         }
 
         template <typename Range>
@@ -93,7 +117,8 @@ namespace scn {
 
             remove_cvref_t<range_type> range() const
             {
-                return {m_begin, ranges::end(m_range)};
+                return reconstruct(reconstruct_tag<remove_cvref_t<Range>>{},
+                                   m_begin, ranges::end(m_range));
             }
             remove_cvref_t<range_type> get_return()
             {

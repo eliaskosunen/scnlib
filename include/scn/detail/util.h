@@ -30,17 +30,12 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-#if SCN_HAS_VOID_T
-        template <typename... Ts>
-        using void_t = std::void_t<Ts...>;
-#else
         template <typename... Ts>
         struct make_void {
             using type = void;
         };
         template <typename... Ts>
         using void_t = typename make_void<Ts...>::type;
-#endif
 
         template <typename... T>
         void valid_expr(T&&...);

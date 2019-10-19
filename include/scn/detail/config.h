@@ -107,6 +107,12 @@
 #define SCN_WINDOWS 0
 #endif
 
+#ifdef _MSVC_LANG
+#define SCN_MSVC_LANG _MSVC_LANG
+#else
+#define SCN_MSVC_LANG 0
+#endif
+
 // Warning control
 #if SCN_GCC
 #define SCN_PRAGMA_APPLY(x) _Pragma(#x)
@@ -240,7 +246,12 @@
 #define SCN_CONSTEXPR14 inline
 #endif
 
+
 // Detect string_view
+#if SCN_HAS_INCLUDE(<string_view>)
+#include <string_view>
+#endif
+
 #if defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201603 && \
     (__cplusplus >= SCN_STD_17 || SCN_MSVC_LANG >= SCN_STD_17)
 #define SCN_HAS_STRING_VIEW 1
@@ -297,17 +308,11 @@
 #endif
 
 // Detect std::launder
+#include <new>
 #if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606
 #define SCN_HAS_LAUNDER 1
 #else
 #define SCN_HAS_LAUNDER 0
-#endif
-
-// Detect void_t
-#if defined(__cpp_lib_void_t) && __cpp_lib_void_t >= 201411
-#define SCN_HAS_VOID_T 1
-#else
-#define SCN_HAS_VOID_T 0
 #endif
 
 // Detect __assume
