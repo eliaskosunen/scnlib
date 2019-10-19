@@ -223,17 +223,9 @@ namespace scn {
             private:
                 template <typename Range>
                 static range_wrapper<Range> impl(range_wrapper<Range> r,
-                                                 priority_tag<4>) noexcept
+                                                 priority_tag<3>) noexcept
                 {
                     return r;
-                }
-
-                template <typename Range>
-                static auto impl(Range&& r, priority_tag<3>) noexcept(
-                    noexcept(std::forward<Range>(r)))
-                    -> decltype(wrap(std::forward<Range>(r)))
-                {
-                    return wrap(std::forward<Range>(r));
                 }
 
                 template <typename Range>
@@ -268,11 +260,11 @@ namespace scn {
                 template <typename Range>
                 auto operator()(Range&& r) const
                     noexcept(noexcept(fn::impl(std::forward<Range>(r),
-                                               priority_tag<4>{})))
+                                               priority_tag<3>{})))
                         -> decltype(fn::impl(std::forward<Range>(r),
-                                             priority_tag<4>{}))
+                                             priority_tag<3>{}))
                 {
-                    return fn::impl(std::forward<Range>(r), priority_tag<4>{});
+                    return fn::impl(std::forward<Range>(r), priority_tag<3>{});
                 }
             };
         }  // namespace _wrap
