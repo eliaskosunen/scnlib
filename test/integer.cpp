@@ -23,7 +23,6 @@ TEST_CASE("simple")
     int i{};
     auto ret = scn::scan("42", "{}", i);
     CHECK(ret);
-    CHECK(ret.value() == 1);
     CHECK(i == 42);
     CHECK(ret.range().size() == 0);
 }
@@ -46,14 +45,12 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         auto e = do_scan<char_type>("0", "{}", i);
         CHECK(i == 0);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type i{};
         auto e = do_scan<char_type>("1", "{}", i);
         CHECK(i == 1);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
 
     {
@@ -62,14 +59,12 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
             auto e = do_scan<char_type>("-1", "{}", i);
             CHECK(i == -1);
             CHECK(e);
-            CHECK(e.value() == 1);
         }
         else {
             value_type i{};
             auto e = do_scan<char_type>("-1", "{}", i);
             REQUIRE(!e);
             CHECK(e.error().code() == scn::error::value_out_of_range);
-            CHECK(e.value() == 0);
         }
     }
 
@@ -85,14 +80,12 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
             auto e = do_scan<char_type>("2147483648", "{}", i);
             CHECK(i == 2147483648);
             CHECK(e);
-            CHECK(e.value() == 1);
         }
         else {
             value_type i{};
             auto e = do_scan<char_type>("2147483648", "{}", i);
             CHECK(!e);
             CHECK(e.error().code() == scn::error::value_out_of_range);
-            CHECK(e.value() == 0);
         }
     }
 
@@ -101,21 +94,18 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         auto e = do_scan<char_type>("1011", "{:b2}", i);
         CHECK(i == 11);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type i{};
         auto e = do_scan<char_type>("400", "{:o}", i);
         CHECK(i == 0400);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type i{};
         auto e = do_scan<char_type>("0400", "{}", i);
         CHECK(i == 0400);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
 
     const bool can_fit_badidea = [=]() { return sizeof(value_type) >= 4; }();
@@ -125,14 +115,12 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
             auto e = do_scan<char_type>("bad1dea", "{:x}", i);
             CHECK(i == 0xbad1dea);
             CHECK(e);
-            CHECK(e.value() == 1);
         }
         else {
             value_type i{};
             auto e = do_scan<char_type>("bad1dea", "{:x}", i);
             REQUIRE(!e);
             CHECK(e.error().code() == scn::error::value_out_of_range);
-            CHECK(e.value() == 0);
         }
     }
     {
@@ -141,14 +129,12 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
             auto e = do_scan<char_type>("0xbad1dea", "{}", i);
             CHECK(i == 0xbad1dea);
             CHECK(e);
-            CHECK(e.value() == 1);
         }
         else {
             value_type i{};
             auto e = do_scan<char_type>("0xbad1dea", "{}", i);
             REQUIRE(!e);
             CHECK(e.error().code() == scn::error::value_out_of_range);
-            CHECK(e.value() == 0);
         }
     }
     {
@@ -157,14 +143,12 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
             auto e = do_scan<char_type>("0xBAD1DEA", "{}", i);
             CHECK(i == 0xbad1dea);
             CHECK(e);
-            CHECK(e.value() == 1);
         }
         else {
             value_type i{};
             auto e = do_scan<char_type>("0xBAD1DEA", "{}", i);
             REQUIRE(!e);
             CHECK(e.error().code() == scn::error::value_out_of_range);
-            CHECK(e.value() == 0);
         }
     }
 
@@ -173,35 +157,30 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         auto e = do_scan<char_type>("ff", "{:b16}", i);
         CHECK(i == 0xff);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type i{};
         auto e = do_scan<char_type>("FF", "{:b16}", i);
         CHECK(i == 0xff);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type i{0};
         auto e = do_scan<char_type>("0xff", "{:b16}", i);
         CHECK(i == 0xff);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type i{0};
         auto e = do_scan<char_type>("0xFF", "{:b16}", i);
         CHECK(i == 0xff);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
 
     {
         value_type i{};
         auto e = do_scan<char_type>("text", "{}", i);
         CHECK(!e);
-        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::invalid_scanned_value);
     }
 
@@ -209,7 +188,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         value_type i{};
         auto e = do_scan<char_type>("-", "{}", i);
         CHECK(!e);
-        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::invalid_scanned_value);
         CHECK(i == 0);
     }
@@ -218,7 +196,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         value_type i{};
         auto e = do_scan<char_type>("+", "{}", i);
         CHECK(!e);
-        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::invalid_scanned_value);
         CHECK(i == 0);
     }
@@ -227,7 +204,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         value_type i{};
         auto e = do_scan<char_type>("123", "{:b}", i);
         CHECK(!e);
-        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::invalid_format_string);
         CHECK(i == 0);
     }
@@ -235,7 +211,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         value_type i{};
         auto e = do_scan<char_type>("123", "{:ba}", i);
         CHECK(!e);
-        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::invalid_format_string);
         CHECK(i == 0);
     }
@@ -243,7 +218,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         value_type i{};
         auto e = do_scan<char_type>("123", "{:b0}", i);
         CHECK(!e);
-        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::invalid_format_string);
         CHECK(i == 0);
     }
@@ -255,18 +229,15 @@ TEST_CASE("integer decimal separator")
 
     auto ret = scn::scan("100.200", scn::default_tag, i);
     CHECK(ret);
-    CHECK(ret.value() == 1);
     CHECK(i == 100);
 
     char ch{};
     auto cret = scn::scan(ret.range(), scn::default_tag, ch);
     CHECK(cret);
-    CHECK(cret.value() == 1);
     CHECK(ch == '.');
 
     auto ret2 = scn::scan(cret.range(), scn::default_tag, i);
     CHECK(ret2);
-    CHECK(ret2.value() == 1);
     CHECK(i == 200);
 }
 
@@ -276,7 +247,6 @@ TEST_CASE("integer error")
 
     auto ret = scn::scan("str", "{}", i);
     CHECK(!ret);
-    CHECK(ret.value() == 0);
     CHECK(ret.error() == scn::error::invalid_scanned_value);
     CHECK(i == 0);
 }
@@ -289,18 +259,15 @@ TEST_CASE("integer thousands separator")
     {
         auto ret = scn::scan("100,200", "{}", a);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(a == 100);
 
         char ch{};
         auto cret = scn::scan(ret.range(), scn::default_tag, ch);
         CHECK(cret);
-        CHECK(cret.value() == 1);
         CHECK(ch == ',');
 
         auto ret2 = scn::scan(cret.range(), "{}", b);
         CHECK(ret2);
-        CHECK(ret2.value() == 1);
         CHECK(b == 200);
     }
 
@@ -308,7 +275,6 @@ TEST_CASE("integer thousands separator")
     {
         auto ret = scn::scan("100,200", "{:'}", a);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(a == 100200);
     }
 }
@@ -446,7 +412,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
         auto e =
             do_scan<char_type>(std::to_string(maxval<value_type>()), "{}", i);
         CHECK(e);
-        CHECK(e.value() == 1);
         CHECK(i == maxval<value_type>());
     }
     {
@@ -454,7 +419,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
         auto e =
             do_scan<char_type>(std::to_string(minval<value_type>()), "{}", i);
         CHECK(e);
-        CHECK(e.value() == 1);
         CHECK(i == minval<value_type>());
     }
     {
@@ -462,7 +426,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
         auto e = do_scan<char_type>(std::to_string(maxval<value_type>() - 1),
                                     "{}", i);
         CHECK(e);
-        CHECK(e.value() == 1);
         CHECK(i == maxval<value_type>() - 1);
     }
     {
@@ -470,14 +433,12 @@ TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
         auto e = do_scan<char_type>(std::to_string(minval<value_type>() + 1),
                                     "{}", i);
         CHECK(e);
-        CHECK(e.value() == 1);
         CHECK(i == minval<value_type>() + 1);
     }
     {
         value_type i{};
         auto e = do_scan<char_type>(overstr<value_type>(), "{}", i);
         CHECK(!e);
-        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::value_out_of_range);
     }
     {
@@ -485,7 +446,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer range", T, integer_range_test)
             value_type i{};
             auto e = do_scan<char_type>(understr<value_type>(), "{}", i);
             CHECK(!e);
-            CHECK(e.value() == 0);
             CHECK(e.error() == scn::error::value_out_of_range);
         }
     }
@@ -551,42 +511,36 @@ TEST_CASE("integer scanf")
     {
         auto ret = scn::scanf("1", "%d", i);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(i == 1);
     }
     SUBCASE("%x")
     {
         auto ret = scn::scanf("f", "%x", i);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(i == 0xf);
     }
     SUBCASE("%o")
     {
         auto ret = scn::scanf("10", "%o", i);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(i == 010);
     }
     SUBCASE("%b2")
     {
         auto ret = scn::scanf("10", "%b2", i);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(i == 2);
     }
     SUBCASE("%i")
     {
         auto ret = scn::scanf("1", "%i", i);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(i == 1);
     }
     SUBCASE("%u")
     {
         auto ret = scn::scanf("1", "%u", u);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(u == 1);
     }
 
@@ -594,7 +548,6 @@ TEST_CASE("integer scanf")
     {
         auto ret = scn::scanf("1,000", "%'d", i);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(i == 1000);
     }
 
@@ -602,14 +555,12 @@ TEST_CASE("integer scanf")
     {
         auto ret = scn::scanf("1", "%i", u);
         CHECK(!ret);
-        CHECK(ret.value() == 0);
         CHECK(ret.error() == scn::error::invalid_format_string);
     }
     SUBCASE("%u /w signed")
     {
         auto ret = scn::scanf("1", "%u", i);
         CHECK(!ret);
-        CHECK(ret.value() == 0);
         CHECK(ret.error() == scn::error::invalid_format_string);
     }
 }
@@ -619,7 +570,6 @@ TEST_CASE("trailing")
     int i{}, j{};
     auto ret = scn::scan(";42;43;", ";{};{}", i, j);
     CHECK(ret);
-    CHECK(ret.value() == 2);
     CHECK(i == 42);
     CHECK(j == 43);
     CHECK(ret.range().size() == 1);

@@ -144,7 +144,24 @@ namespace scn {
         ParseCtx* m_pctx;
     };
 
-    template <typename Range, typename Base = result<std::ptrdiff_t>>
+    struct wrapped_error {
+        wrapped_error() = default;
+        wrapped_error(::scn::error e) : err(e) {}
+
+        ::scn::error error() const
+        {
+            return err;
+        }
+
+        explicit operator bool() const
+        {
+            return err.operator bool();
+        }
+
+        ::scn::error err{};
+    };
+
+    template <typename Range, typename Base = wrapped_error>
     class scan_result : public Base {
     public:
         using range_type = Range;
@@ -205,33 +222,13 @@ namespace scn {
     template <typename Context>
     using scan_result_for_t = typename scan_result_for<Context>::type;
 
-    struct wrapped_error {
-        wrapped_error() = default;
-        wrapped_error(::scn::error e) : err(e) {}
-
-        ::scn::error error() const
-        {
-            return err;
-        }
-
-        explicit operator bool() const
-        {
-            return err.operator bool();
-        }
-
-        ::scn::error err{};
-    };
-
     template <typename Context, typename ParseCtx>
     scan_result_for_t<Context> visit(Context& ctx,
                                      ParseCtx& pctx,
                                      basic_args<Context> args)
     {
-        std::ptrdiff_t args_read = 0;
-
-        auto reterror = [&args_read,
-                         &ctx](error e) -> scan_result_for_t<Context> {
-            return {{args_read, std::move(e)}, ctx.range().get_return()};
+        auto reterror = [&ctx](error e) -> scan_result_for_t<Context> {
+            return {std::move(e), ctx.range().get_return()};
         };
 
         auto arg = typename Context::arg_type();
@@ -343,7 +340,6 @@ namespace scn {
                     return reterror(ret);
                 }
                 // Handle next arg and bump pctx
-                ++args_read;
                 pctx.arg_handled();
                 if (pctx) {
                     pctx.advance();
@@ -356,7 +352,7 @@ namespace scn {
                                   "Format string not exhausted"));
         }
         ctx.range().set_rollback_point();
-        return {args_read, ctx.range().get_return()};
+        return {{}, ctx.range().get_return()};
     }
 
     SCN_END_NAMESPACE

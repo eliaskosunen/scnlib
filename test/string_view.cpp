@@ -62,7 +62,6 @@ TEST_CASE("string_view scan")
         CHECK(std::strncmp("thisisaword", s.data(), s.size()) == 0);
         CHECK(std::strncmp("nextword", s2.data(), s2.size()) == 0);
         CHECK(e);
-        CHECK(e.value() == 2);
     }
     {
         string_type s{};
@@ -70,21 +69,18 @@ TEST_CASE("string_view scan")
         CHECK(std::strncmp("WoRdW1th_Special<>Charact3rs!?", s.data(),
                            s.size()) == 0);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         string_type s{};
         auto e = scn::scan("foo", "{:s}", s);
         CHECK(std::strncmp("foo", s.data(), s.size()) == 0);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         string_type s{};
         auto e = scn::scan("foo", "{:a}", s);
         CHECK(s.empty());
         CHECK(!e);
-        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::invalid_format_string);
     }
 }

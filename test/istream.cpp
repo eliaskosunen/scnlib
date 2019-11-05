@@ -16,11 +16,12 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "test.h"
-
 #include <scn/istream.h>
+
 #include <istream>
 #include <sstream>
+
+#include "test.h"
 
 #if 0
 TEST_CASE("istream stream")
@@ -31,7 +32,6 @@ TEST_CASE("istream stream")
     int i{};
     auto ret = scn::scan(stream, "{}", i);
     CHECK(ret);
-    CHECK(ret.value() == 1);
     CHECK(i == 123);
 }
 
@@ -47,7 +47,6 @@ TEST_CASE("istream stream fail")
         auto stream = scn::make_stream(ss);
         auto ret = scn::scan(stream, "{}", i);
         CHECK(!ret);
-        CHECK(ret.value() == 0);
         CHECK(ret.error() == scn::error::end_of_stream);
         CHECK(i == 0);
     }
@@ -59,7 +58,6 @@ TEST_CASE("istream stream fail")
         int i{};
         auto ret = scn::scan(stream, "{}", i);
         CHECK(!ret);
-        CHECK(ret.value() == 0);
         CHECK(ret.error() == scn::error::invalid_scanned_value);
         CHECK(i == 0);
         CHECK(stream);
@@ -67,7 +65,6 @@ TEST_CASE("istream stream fail")
         std::string str{};
         ret = scn::scan(stream, "{}", str);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(str == "foo");
     }
 }
@@ -87,6 +84,6 @@ TEST_CASE("istream value")
 {
     my_type val{};
     auto ret = scn::scan("123", "{}", val);
-    CHECK(ret.value() == 1);
+    CHECK(ret);
     CHECK(val.value == 123);
 }

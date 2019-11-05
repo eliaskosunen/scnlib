@@ -18,21 +18,21 @@
 #ifndef SCN_DETAIL_SCAN_H
 #define SCN_DETAIL_SCAN_H
 
-#include "vscan.h"
-
 #include <vector>
+
+#include "vscan.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        template <typename Range, typename E = result<ptrdiff_t>>
+        template <typename Range, typename E = wrapped_error>
         struct scan_result_for_range {
             using type = scan_result<
                 typename detail::range_wrapper_for_t<Range>::return_type,
                 E>;
         };
-        template <typename Range, typename E = result<ptrdiff_t>>
+        template <typename Range, typename E = wrapped_error>
         using scan_result_for_range_t =
             typename scan_result_for_range<Range, E>::type;
     }  // namespace detail
@@ -56,7 +56,6 @@ namespace scn {
      * `scan_result<Range, result<ptrdiff_t>>`, which has the following member
      * functions:
      *  - `operator bool`: `true` when successful
-     *  - `value() -> std::ptrdiff_t`: number of arguments successfully read
      *  - `range() -> Range`
      *  - `error() -> error`
      */

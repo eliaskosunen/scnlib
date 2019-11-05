@@ -26,7 +26,6 @@ TEST_CASE("simple")
     auto r = scn::scan("42 foo 3.14", "{} {} {}", i, s, d);
 
     CHECK(r);
-    CHECK(r.value() == 3);
 
     CHECK(i == 42);
     CHECK(s == std::string{"foo"});
@@ -52,11 +51,9 @@ TEST_CASE("general")
     CHECK(s == "foobar");
     CHECK(b);
     CHECK(ret);
-    CHECK(ret.value() == 4);
 
     ret = scn::scan(ret.range(), "{}", i);
     CHECK(!ret);
-    CHECK(ret.value() == 0);
     CHECK(ret.error() == scn::error::end_of_range);
 }
 
@@ -110,7 +107,6 @@ TEST_CASE("empty format")
     auto ret = scn::scan("42 3.14 foobar true", scn::default_tag, i, d, s, b);
 
     CHECK(ret);
-    CHECK(ret.value() == 4);
     CHECK(i == 42);
     CHECK(d == doctest::Approx(3.14));
     CHECK(s == "foobar");
@@ -138,7 +134,6 @@ TEST_CASE("scanf")
                           i, d, s, b);
 
     CHECK(ret);
-    CHECK(ret.value() == 4);
     CHECK(i == 42);
     CHECK(d == doctest::Approx(3.14));
     CHECK(s == "foobar");
@@ -165,14 +160,12 @@ TEST_CASE("temporary")
     auto ret = scn::scan("42", scn::default_tag, temporary{0}());
 
     CHECK(ret);
-    CHECK(ret.value() == 1);
 }
 
 TEST_CASE("discard")
 {
     auto ret = scn::scan("123 456", scn::default_tag, scn::discard<int>());
     CHECK(ret);
-    CHECK(ret.value());
     CHECK(std::string{ret.range().data(), ret.range().size()} == " 456");
 }
 
@@ -183,7 +176,6 @@ TEST_CASE("enumerated arguments")
     auto ret = scn::scan("42 text", "{1} {0}", s, i);
 
     CHECK(ret);
-    CHECK(ret.value() == 2);
 
     CHECK(i == 42);
     CHECK(s == "text");
@@ -194,7 +186,6 @@ TEST_CASE("format string literal mismatch")
     std::string str;
     auto ret = scn::scan("abc", "z{}", str);
     CHECK(!ret);
-    CHECK(ret.value() == 0);
     CHECK(ret.error() == scn::error::invalid_scanned_value);
     CHECK(str.empty());
 }
@@ -204,13 +195,11 @@ TEST_CASE("format string argument count mismatch")
     std::string s1, s2;
     auto ret = scn::scan("foo bar baz biz whatevz", "{} {}", s1);
     CHECK(!ret);
-    CHECK(ret.value() == 1);
     CHECK(ret.error() == scn::error::invalid_format_string);
     CHECK(s1 == "foo");
 
     ret = scn::scan(ret.range(), "{}", s1, s2);
     CHECK(ret);
-    CHECK(ret.value() == 1);
     CHECK(s1 == "bar");
     CHECK(s2.empty());
 }
@@ -220,7 +209,6 @@ TEST_CASE("brace mismatch")
     std::string s1, s2;
     auto ret = scn::scan("foo bar baz biz whatevz", "{} {", s1, s2);
     CHECK(!ret);
-    CHECK(ret.value() == 1);
     CHECK(ret.error() == scn::error::invalid_format_string);
     CHECK(s1 == "foo");
 }
@@ -230,7 +218,6 @@ TEST_CASE("empty span")
     scn::span<char> s{};
     auto ret = scn::scan("abc", scn::default_tag, s);
     CHECK(ret);
-    CHECK(ret.value() == 1);
 }
 
 TEST_CASE("empty input")
@@ -238,7 +225,6 @@ TEST_CASE("empty input")
     int i{};
     auto ret = scn::scan("", "{}", i);
     CHECK(!ret);
-    CHECK(ret.value() == 0);
     CHECK(i == 0);
     CHECK(ret.error() == scn::error::end_of_range);
 }
@@ -247,7 +233,6 @@ TEST_CASE("empty format string")
     int i{};
     auto ret = scn::scan("", "", i);
     CHECK(ret);
-    CHECK(ret.value() == 0);
     CHECK(i == 0);
 }
 TEST_CASE("unpacked arguments")
@@ -258,10 +243,17 @@ TEST_CASE("unpacked arguments")
                   a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9],
                   a[10], a[11], a[12], a[13], a[14], a[15]);
     CHECK(ret);
-    CHECK(ret.value() == 16);
     for (int i = 0; i < 16; ++i) {
         CHECK(a[static_cast<size_t>(i)] == i);
     }
+}
+
+TEST_CASE("partial success = fail") {
+    int i, j;
+    auto ret = scn::scan("123 foo", "{} {}", i, j);
+    CHECK(!ret);
+    CHECK(i == 123);
+    // j is undefined
 }
 
 TEST_CASE("argument amount")
@@ -271,14 +263,12 @@ TEST_CASE("argument amount")
         int i;
         auto ret = scn::scan("0", scn::default_tag, i);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(i == 0);
     }
 #define MAKE_ARGUMENT_AMOUNT_TEST(str, n, ...)                \
     int i[n];                                                 \
     auto ret = scn::scan(str, scn::default_tag, __VA_ARGS__); \
     CHECK(ret);                                               \
-    CHECK(ret.value() == n);                                  \
     for (int j = 0; j < n; ++j) {                             \
         CHECK(i[j] == j);                                     \
     }                                                         \

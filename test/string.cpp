@@ -27,21 +27,18 @@ TEST_CASE_TEMPLATE("string test", CharT, char, wchar_t)
         CHECK(s == widen<CharT>("thisisaword"));
         CHECK(s2 == widen<CharT>("nextword"));
         CHECK(e);
-        CHECK(e.value() == 2);
     }
     {
         string_type s{};
         auto e = do_scan<CharT>("WoRdW1th_Special<>Charact3rs!?", "{}", s);
         CHECK(s == widen<CharT>("WoRdW1th_Special<>Charact3rs!?"));
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         string_type s{};
         auto e = do_scan<CharT>("foo", "{:s}", s);
         CHECK(s == widen<CharT>("foo"));
         CHECK(e);
-        CHECK(e.value());
     }
     {
         string_type s{};
@@ -101,6 +98,5 @@ TEST_CASE("string scanf")
 
     auto ret = do_scanf<char>("str", "%s", str);
     CHECK(ret);
-    CHECK(ret.value() == 1);
     CHECK(str == "str");
 }

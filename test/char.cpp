@@ -24,7 +24,6 @@ TEST_CASE("char")
     auto ret = scn::scan(" ab", "{}{}", ch1, ch2);
 
     CHECK(ret);
-    CHECK(ret.value() == 2);
     CHECK(ch1 == 'a');
     CHECK(ch2 == 'b');
 }
@@ -54,7 +53,6 @@ TEST_CASE("char scanf")
 
     auto ret = do_scanf<char>("a", "%c", ch);
     CHECK(ret);
-    CHECK(ret.value() == 1);
     CHECK(ch == 'a');
 }
 
@@ -64,21 +62,17 @@ TEST_CASE("char format string")
 
     auto ret = do_scan<char>("a", "{}", ch);
     CHECK(ret);
-    CHECK(ret.value() == 1);
     CHECK(ch == 'a');
 
     ret = do_scan<char>("a", "{:c}", ch);
     CHECK(ret);
-    CHECK(ret.value() == 1);
     CHECK(ch == 'a');
 
     ret = do_scan<char>("a", "{:", ch);
     CHECK(!ret);
-    CHECK(ret.value() == 0);
     CHECK(ret.error() == scn::error::invalid_format_string);
 
     ret = do_scan<char>("a", "{:a}", ch);
     CHECK(!ret);
-    CHECK(ret.value() == 0);
     CHECK(ret.error() == scn::error::invalid_format_string);
 }

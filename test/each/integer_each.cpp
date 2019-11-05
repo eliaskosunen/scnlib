@@ -34,7 +34,6 @@ TEST_CASE_TEMPLATE_DEFINE("integer each", T, integer_each_test)
         auto ret = scn::scan(scn::make_view(str), scn::default_tag, tmp);
 
         CHECK(ret);
-        CHECK(ret.value() == 1);
 
         CHECK(tmp == val);
     };

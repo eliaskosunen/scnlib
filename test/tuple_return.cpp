@@ -16,9 +16,9 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "test.h"
-
 #include <scn/tuple_return.h>
+
+#include "test.h"
 
 /*
 #if (defined(__cpp_structured_bindings) &&                                    \
@@ -33,7 +33,6 @@ TEST_CASE("tuple_return")
     auto [r, i, s] = scn::scan_tuple<int, std::string>("42 foo", "{} {}");
 
     CHECK(r);
-    CHECK(r.value() == 2);
 
     CHECK(i == 42);
     CHECK(s == std::string{"foo"});
@@ -44,7 +43,6 @@ TEST_CASE("tuple_return int")
     auto [r, i] = scn::scan_tuple<int>("42", scn::default_tag);
 
     CHECK(r);
-    CHECK(r.value() == 1);
 
     CHECK(i == 42);
 }
@@ -84,7 +82,6 @@ TEST_CASE("tuple_return non_default_construct")
         "42", scn::default_tag);
 
     CHECK(ret);
-    CHECK(ret.value() == 1);
 
     REQUIRE(val);
     CHECK(val->value == 42);

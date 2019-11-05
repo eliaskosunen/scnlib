@@ -16,9 +16,9 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "test.h"
-
 #include <cmath>
+
+#include "test.h"
 
 template <typename CharT, typename T>
 struct fpair {
@@ -41,49 +41,42 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         auto e = do_scan<char_type>("0", "{}", f);
         CHECK(f == 0.0);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{1.0};
         auto e = do_scan<char_type>("0.0", "{}", f);
         CHECK(f == 0.0);
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{};
         auto e = do_scan<char_type>("42", "{}", f);
         CHECK(f == doctest::Approx(42));
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{};
         auto e = do_scan<char_type>("3.14", "{}", f);
         CHECK(f == doctest::Approx(3.14));
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{};
         auto e = do_scan<char_type>("-2.22", "{}", f);
         CHECK(f == doctest::Approx(-2.22));
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{};
         auto e = do_scan<char_type>("2.0e4", "{}", f);
         CHECK(f == doctest::Approx(2.0e4));
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{};
         auto e = do_scan<char_type>("0x1.bc70a3d70a3d7p+6", "{}", f);
         CHECK(f == doctest::Approx(111.11));
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{};
@@ -91,7 +84,6 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         CHECK(std::isinf(f));
         CHECK(!std::signbit(f));
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{};
@@ -99,7 +91,6 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         CHECK(std::isinf(f));
         CHECK(std::signbit(f));
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{};
@@ -107,7 +98,6 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         CHECK(std::isnan(f));
         CHECK(!std::signbit(f));
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{};
@@ -115,7 +105,6 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         CHECK(f == 0.0);
         CHECK(std::signbit(f));
         CHECK(e);
-        CHECK(e.value() == 1);
     }
     {
         value_type f{1.0};
@@ -123,7 +112,6 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
             do_scan<char_type>("999999999999999.9999999999999e999999", "{}", f);
         CHECK(f == doctest::Approx(1.0));
         CHECK(!e);
-        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::value_out_of_range);
     }
     {
@@ -131,7 +119,6 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         auto e = do_scan<char_type>("str", "{}", f);
         CHECK(f == doctest::Approx(1.0));
         CHECK(!e);
-        CHECK(e.value() == 0);
         CHECK(e.error() == scn::error::invalid_scanned_value);
     }
 }
@@ -161,7 +148,6 @@ TEST_CASE("float error")
     double d{};
     auto ret = do_scan<char>("str", "{}", d);
     CHECK(!ret);
-    CHECK(ret.value() == 0);
     CHECK(ret.error() == scn::error::invalid_scanned_value);
     CHECK(d == doctest::Approx(0.0));
 }
@@ -174,56 +160,48 @@ TEST_CASE("float scanf")
     {
         auto ret = do_scanf<char>("1.0", "%f", d);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(d == doctest::Approx(1.0));
     }
     SUBCASE("%F")
     {
         auto ret = do_scanf<char>("1.0", "%F", d);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(d == doctest::Approx(1.0));
     }
     SUBCASE("%a")
     {
         auto ret = do_scanf<char>("1.0", "%a", d);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(d == doctest::Approx(1.0));
     }
     SUBCASE("%A")
     {
         auto ret = do_scanf<char>("1.0", "%A", d);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(d == doctest::Approx(1.0));
     }
     SUBCASE("%e")
     {
         auto ret = do_scanf<char>("1.0", "%e", d);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(d == doctest::Approx(1.0));
     }
     SUBCASE("%E")
     {
         auto ret = do_scanf<char>("1.0", "%E", d);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(d == doctest::Approx(1.0));
     }
     SUBCASE("%g")
     {
         auto ret = do_scanf<char>("1.0", "%g", d);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(d == doctest::Approx(1.0));
     }
     SUBCASE("%G")
     {
         auto ret = do_scanf<char>("1.0", "%G", d);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(d == doctest::Approx(1.0));
     }
 
@@ -231,7 +209,6 @@ TEST_CASE("float scanf")
     {
         auto ret = do_scanf<char>("str", "%f", d);
         CHECK(!ret);
-        CHECK(ret.value() == 0);
         CHECK(ret.error() == scn::error::invalid_scanned_value);
     }
 }

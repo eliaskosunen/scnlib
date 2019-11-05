@@ -16,10 +16,10 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "../test.h"
-
 #include <cwctype>
 #include <numeric>
+
+#include "../test.h"
 
 TEST_CASE("char each")
 {
@@ -37,7 +37,6 @@ TEST_CASE("char each")
         auto ret = scn::scan(scn::make_view(source), scn::default_tag, tmp);
 
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(ch == tmp);
     }
 }
@@ -58,7 +57,6 @@ TEST_CASE("wchar_t each")
         auto ret = scn::scan(scn::make_view(source), scn::default_tag, tmp);
 
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(ch == tmp);
     }
 }

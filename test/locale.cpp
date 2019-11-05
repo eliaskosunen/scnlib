@@ -223,18 +223,15 @@ TEST_CASE("basic_locale_ref")
 
         auto ret = loc.read_num(i, str);
         CHECK(ret);
-        CHECK(ret.value() == 2);
         CHECK(i == 42);
 
         ret = wloc.read_num(i, wstr);
         CHECK(ret);
-        CHECK(ret.value() == 3);
         CHECK(i == 123);
 
         str = "456 789";
         ret = loc.read_num(i, str);
         CHECK(ret);
-        CHECK(ret.value() == 3);
         CHECK(i == 456);
         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
     }
@@ -249,7 +246,6 @@ TEST_CASE("default localized scanning")
 
         auto ret = scn::scan("100,200 100.200", "{:'} {}", i, d);
         CHECK(ret);
-        CHECK(ret.value() == 2);
         CHECK(i == 100200);
         CHECK(d == doctest::Approx(100.2));
     }
@@ -263,7 +259,6 @@ TEST_CASE("default localized scanning")
             scn::scan(scn::options::builder{}.locale(std::locale("en_US")),
                       stream, "{:'l} {:l}", i, d);
         CHECK(ret);
-        CHECK(ret.value() == 2);
         CHECK(i == 100200);
         CHECK(d == doctest::Approx(100.2));
     }

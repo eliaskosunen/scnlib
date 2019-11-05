@@ -26,6 +26,5 @@ TEST_CASE("buffer")
 
     auto ret = scn::scan(scn::make_view(data), "{}", span);
     CHECK(ret);
-    CHECK(ret.value() == 1);
     CHECK(data.substr(0, 4) == s);
 }

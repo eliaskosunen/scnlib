@@ -68,7 +68,6 @@ TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
     {
         auto ret = scn::scan("[4, 20]", "{}", ut);
         CHECK(ret);
-        CHECK(ret.value() == 1);
         CHECK(ut.val1 == 4);
         CHECK(ut.val2 == 20);
     }
@@ -76,12 +75,10 @@ TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
     {
         auto ret = scn::scan("[4, 20]", "{", ut);
         CHECK(!ret);
-        CHECK(ret.value() == 0);
         CHECK(ret.error() == scn::error::invalid_format_string);
 
         ret = scn::scan(ret.range(), "{:a}", ut);
         CHECK(!ret);
-        CHECK(ret.value() == 0);
         CHECK(ret.error() == scn::error::invalid_format_string);
     }
 }
@@ -124,7 +121,6 @@ TEST_CASE("non_default_construct")
     auto ret = scn::scan("42", "{}", val);
 
     CHECK(ret);
-    CHECK(ret.value() == 1);
 
     REQUIRE(val);
     CHECK(val->value == 42);
