@@ -153,18 +153,6 @@ matrix:
           sources:
           - llvm-toolchain-trusty-3.7
           - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-3.6 STANDARD=14
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-          - clang-3.6
-          - g++-6
-          sources:
-          - llvm-toolchain-trusty-3.6
-          - llvm-toolchain-trusty-3.6-binaries
-          - ubuntu-toolchain-r-test
     - env: COMPILER=clang++ STANDARD=17
       compiler: clang
       osx_image: xcode9

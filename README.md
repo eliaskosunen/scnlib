@@ -190,7 +190,7 @@ target_link_libraries(my_program scn::scn)
 
 Every commit is tested with
  * gcc 5.5 and newer
- * clang 3.6 and newer
+ * clang 3.7 and newer
  * Visual Studio 2017 and 2019
 with very extreme warning flags (see cmake/flags.cmake) and with multiple build configurations for each compiler.
 
