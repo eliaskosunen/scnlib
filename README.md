@@ -147,7 +147,7 @@ The easiest way of integrating `scnlib` to your project would likely be to use a
 
 ```sh
 # Replace `external/scnlib` with the directory where you'd like the submodule be located
-$ git submodule add external/scnlib https://github.com/eliaskosunen/scnlib
+$ git submodule add https://github.com/eliaskosunen/scnlib external/scnlib
 ```
 
 Then just do the following in your CMakeLists.txt
