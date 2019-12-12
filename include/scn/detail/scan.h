@@ -597,6 +597,50 @@ namespace scn {
         return ret;
     }
 
+    template <typename T>
+    struct span_list_wrapper {
+        using value_type = T;
+
+        span_list_wrapper(span<T> s) : m_span(s) {}
+
+        void push_back(T val)
+        {
+            SCN_EXPECT(n < max_size());
+            m_span[n] = std::move(val);
+            ++n;
+        }
+
+        std::size_t size() const
+        {
+            return n;
+        }
+        std::size_t max_size() const
+        {
+            return m_span.size();
+        }
+
+        span<T> m_span;
+        std::size_t n{0};
+    };
+    template <typename T>
+    auto make_span_list_wrapper(T& s) -> temporary<
+        span_list_wrapper<typename decltype(make_span(s))::value_type>>
+    {
+        auto _s = make_span(s);
+        return temp(span_list_wrapper<typename decltype(_s)::value_type>(_s));
+    }
+
+    namespace detail {
+        template <typename CharT>
+        struct zero_value;
+        template <>
+        struct zero_value<char> : std::integral_constant<char, 0> {
+        };
+        template <>
+        struct zero_value<wchar_t> : std::integral_constant<wchar_t, 0> {
+        };
+    }  // namespace detail
+
     /**
      * \ingroup scanning_operations
      *
@@ -605,9 +649,16 @@ namespace scn {
      * into `c` using `c.push_back`. The values must be separated by whitespace,
      * and by a separator character `separator`, if specified. If `separator ==
      * 0`, no separator character is expected.
+     *
+     * To scan a `span`, use `span_list_wrapper`.
      */
-    template <typename Range, typename Container, typename CharT>
-    auto scan_list(Range&& r, Container& c, CharT separator)
+    template <typename Range,
+              typename Container,
+              typename CharT = typename detail::extract_char_type<
+                  detail::ranges::iterator_t<Range>>::type>
+    auto scan_list(Range&& r,
+                   Container& c,
+                   CharT separator = detail::zero_value<CharT>::value)
         -> detail::scan_result_for_range_t<Range, wrapped_error>
     {
         using value_type = typename Container::value_type;
@@ -621,6 +672,10 @@ namespace scn {
         auto ctx = context_type(detail::wrap(std::forward<Range>(r)));
 
         while (true) {
+            if (c.size() == c.max_size()) {
+                break;
+            }
+
             auto pctx = parse_context_type(1, ctx);
             auto ret = vscan(ctx, pctx, {args});
             if (!ret) {
