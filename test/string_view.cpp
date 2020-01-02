@@ -58,7 +58,8 @@ TEST_CASE("string_view scan")
     using string_type = scn::string_view;
     {
         string_type s{}, s2{};
-        auto e = scn::scan("thisisaword nextword", "{} {}", s, s2);
+        std::string_view input = "thisisaword nextword";
+        auto e = scn::scan(input, "{} {}", s, s2);
         CHECK(std::strncmp("thisisaword", s.data(), s.size()) == 0);
         CHECK(std::strncmp("nextword", s2.data(), s2.size()) == 0);
         CHECK(e);
