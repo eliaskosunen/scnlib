@@ -1345,15 +1345,17 @@ namespace scn {
                 return {};
             }
 
-            template <typename Context, typename Traits, typename Allocator>
-            error scan(std::basic_string<typename Context::char_type,
-                                         Traits,
-                                         Allocator>& val,
-                       Context& ctx)
+            template <typename Context, typename Allocator>
+            error scan(
+                std::basic_string<typename Context::char_type,
+                                  std::char_traits<typename Context::char_type>,
+                                  Allocator>& val,
+                Context& ctx)
             {
                 using char_type = typename Context::char_type;
                 using string_type =
-                    std::basic_string<char_type, Traits, Allocator>;
+                    std::basic_string<char_type, std::char_traits<char_type>,
+                                      Allocator>;
 
                 auto is_space_pred = [&ctx](char_type ch) {
                     return ctx.locale().is_space(ch);
@@ -1461,8 +1463,9 @@ namespace scn {
     struct scanner<CharT, long double>
         : public detail::float_scanner<long double> {
     };
-    template <typename CharT, typename Traits, typename Allocator>
-    struct scanner<CharT, std::basic_string<CharT, Traits, Allocator>>
+    template <typename CharT, typename Allocator>
+    struct scanner<CharT,
+                   std::basic_string<CharT, std::char_traits<CharT>, Allocator>>
         : public detail::string_scanner {
     };
     template <typename CharT>
