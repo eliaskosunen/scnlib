@@ -1345,11 +1345,15 @@ namespace scn {
                 return {};
             }
 
-            template <typename Context>
-            error scan(std::basic_string<typename Context::char_type>& val,
+            template <typename Context, typename Traits, typename Allocator>
+            error scan(std::basic_string<typename Context::char_type,
+                                         Traits,
+                                         Allocator>& val,
                        Context& ctx)
             {
                 using char_type = typename Context::char_type;
+                using string_type =
+                    std::basic_string<char_type, Traits, Allocator>;
 
                 auto is_space_pred = [&ctx](char_type ch) {
                     return ctx.locale().is_space(ch);
@@ -1361,12 +1365,11 @@ namespace scn {
                     if (!s) {
                         return s.error();
                     }
-                    val = std::basic_string<char_type>{s.value().data(),
-                                                       s.value().size()};
+                    val.assign(s.value().data(), s.value().size());
                     return {};
                 }
 
-                std::basic_string<char_type> tmp;
+                string_type tmp(val.get_allocator());
                 auto outputit = std::back_inserter(tmp);
                 auto ret = read_until_space(ctx.range(), outputit,
                                             is_space_pred, false);
@@ -1458,8 +1461,8 @@ namespace scn {
     struct scanner<CharT, long double>
         : public detail::float_scanner<long double> {
     };
-    template <typename CharT>
-    struct scanner<CharT, std::basic_string<CharT>>
+    template <typename CharT, typename Traits, typename Allocator>
+    struct scanner<CharT, std::basic_string<CharT, Traits, Allocator>>
         : public detail::string_scanner {
     };
     template <typename CharT>

@@ -28,6 +28,8 @@ make_test(reader reader.cpp)
 make_test(locale locale.cpp)
 make_test(std-string-view std_string_view.cpp)
 target_compile_features(test-std-string-view PUBLIC cxx_std_17)
+make_test(pmr-string pmr_string.cpp)
+target_compile_features(test-pmr-string PUBLIC cxx_std_17)
 
 make_test(result result.cpp)
 make_test(istream istream.cpp)

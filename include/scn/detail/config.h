@@ -246,7 +246,6 @@
 #define SCN_CONSTEXPR14 inline
 #endif
 
-
 // Detect string_view
 #if SCN_HAS_INCLUDE(<string_view>)
 #include <string_view>
