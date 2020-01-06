@@ -18,6 +18,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
+#if SCN_STD >= SCN_STD_17
 #include <memory_resource>
 
 TEST_CASE("pmr string")
@@ -28,3 +29,4 @@ TEST_CASE("pmr string")
     CHECK(ret);
     CHECK(str == "str");
 }
+#endif

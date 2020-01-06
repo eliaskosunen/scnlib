@@ -92,7 +92,6 @@
 #define SCN_STRINGIFY(x) SCN_STRINGIFY_APPLY(x)
 
 // POSIX
-
 #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 #define SCN_POSIX 1
 #else
@@ -111,6 +110,13 @@
 #define SCN_MSVC_LANG _MSVC_LANG
 #else
 #define SCN_MSVC_LANG 0
+#endif
+
+// Standard version
+#if SCN_MSVC
+#define SCN_STD SCN_MSVC_LANG
+#else
+#define SCN_STD __cplusplus
 #endif
 
 // Warning control
@@ -233,7 +239,7 @@
     SCN_MSVC >= SCN_COMPILER(19, 10, 0) ||    \
     ((SCN_GCC >= SCN_COMPILER(6, 0, 0) ||     \
       SCN_INTEL >= SCN_COMPILER(17, 0, 0)) && \
-     __cplusplus >= SCN_STD_14)
+      SCN_STD >= SCN_STD_14)
 #define SCN_HAS_RELAXED_CONSTEXPR 1
 #else
 #define SCN_HAS_RELAXED_CONSTEXPR 0
@@ -252,7 +258,7 @@
 #endif
 
 #if defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201603 && \
-    (__cplusplus >= SCN_STD_17 || SCN_MSVC_LANG >= SCN_STD_17)
+	SCN_STD >= SCN_STD_17
 #define SCN_HAS_STRING_VIEW 1
 #else
 #define SCN_HAS_STRING_VIEW 0
@@ -284,7 +290,7 @@
 
 // Detect <charconv>
 #if (defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606) || \
-    (SCN_HAS_INCLUDE(<charconv>) && __cplusplus >= SCN_STD_17)
+    (SCN_HAS_INCLUDE(<charconv>) && SCN_STD >= SCN_STD_17)
 
 #if defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= 9
 #define SCN_HAS_INTEGER_CHARCONV 1
@@ -368,7 +374,7 @@
 
 #ifndef SCN_DEPRECATED
 
-#if (SCN_HAS_CPP_ATTRIBUTE(deprecated) && __cplusplus >= 201402L) || \
+#if (SCN_HAS_CPP_ATTRIBUTE(deprecated) && SCN_STD >= 201402L) || \
     SCN_MSVC >= SCN_COMPILER(19, 0, 0)
 #define SCN_DEPRECATED [[deprecated]]
 #else
