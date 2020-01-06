@@ -57,7 +57,7 @@ or by DMing me on [Twitter](https://twitter.com/eliaskosunen).
 #include <iostream>
 #include <string_view>
 
-using namespace std::literals; // For sv
+using namespace std::string_view_literals; // For sv
 
 int main() {
     auto str = "Hello world!"sv;

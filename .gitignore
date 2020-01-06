@@ -4,3 +4,7 @@ doc/*.tmp
 benchmark/bloat/out/
 test/fuzz/corpus/*
 
+# MSVC nonsense
+out/build/*
+.vs/
+CMakeSettings.json

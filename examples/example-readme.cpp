@@ -15,18 +15,18 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "test.h"
+#include <scn/scn.h>
+#include <iostream>
+#include <string_view>
 
-#if SCN_STD >= SCN_STD_17 && SCN_HAS_INCLUDE(<memory_resource>)
-#include <memory_resource>
+using namespace std::string_view_literals; // For sv
 
-TEST_CASE("pmr string")
-{
-    std::pmr::string str{};
+int main() {
+    auto str = "Hello world!"sv;
 
-    auto ret = do_scan<char>("str", "{}", str);
-    CHECK(ret);
-    CHECK(str == "str");
+    std::string word;
+    scn::scan(str, "{}", word);
+
+    std::cout << word << '\n'; // Will output "Hello"
+    std::cout << str << '\n';  // Will output " world!"
 }
-#endif

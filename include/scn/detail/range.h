@@ -64,6 +64,7 @@ namespace scn {
             return {begin, end};
         }
 #if SCN_HAS_STRING_VIEW
+#if !SCN_MSVC
         // std::string_view is not reconstructible pre-C++20
         template <typename CharT,
                   typename Traits,
@@ -76,7 +77,22 @@ namespace scn {
         {
             return {begin, static_cast<size_t>(ranges::distance(begin, end))};
         }
+#else
+		// std::string_view cannot be constructed from its debug iterators, for whatever reason
+        template <typename CharT,
+                  typename Traits,
+                  typename Iterator,
+                  typename Sentinel>
+        std::basic_string_view<CharT, Traits> reconstruct(
+            reconstruct_tag<std::basic_string_view<CharT, Traits>>,
+            Iterator begin,
+            Sentinel end)
+        {
+			// FIXME: possible past-the-end dereference, unsure about a workaround
+            return {&*begin, static_cast<size_t>(ranges::distance(begin, end))};
+        }
 #endif
+#endif // SCN_HAS_STRING_VIEW
 
         template <typename Range, typename It>
         void write_return(const Range&, It)
