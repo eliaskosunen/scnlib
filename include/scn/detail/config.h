@@ -239,7 +239,7 @@
     SCN_MSVC >= SCN_COMPILER(19, 10, 0) ||    \
     ((SCN_GCC >= SCN_COMPILER(6, 0, 0) ||     \
       SCN_INTEL >= SCN_COMPILER(17, 0, 0)) && \
-      SCN_STD >= SCN_STD_14)
+     SCN_STD >= SCN_STD_14)
 #define SCN_HAS_RELAXED_CONSTEXPR 1
 #else
 #define SCN_HAS_RELAXED_CONSTEXPR 0
@@ -258,7 +258,7 @@
 #endif
 
 #if defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201603 && \
-	SCN_STD >= SCN_STD_17
+    SCN_STD >= SCN_STD_17
 #define SCN_HAS_STRING_VIEW 1
 #else
 #define SCN_HAS_STRING_VIEW 0

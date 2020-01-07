@@ -21,6 +21,7 @@
 #if SCN_STD >= SCN_STD_17 && SCN_HAS_INCLUDE(<memory_resource>)
 #include <memory_resource>
 
+#if defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 201603
 TEST_CASE("pmr string")
 {
     std::pmr::string str{};
@@ -29,4 +30,5 @@ TEST_CASE("pmr string")
     CHECK(ret);
     CHECK(str == "str");
 }
+#endif
 #endif
