@@ -54,6 +54,53 @@ namespace scn {
         struct provides_buffer_access_impl : std::false_type {
         };
 
+        template <typename T>
+        struct pointer_traits;
+
+        template <typename T>
+        struct pointer_traits<T*> {
+            using pointer = T*;
+            using element_type = T;
+            using difference_type = std::ptrdiff_t;
+
+            template <typename U>
+            using rebind = U*;
+
+            template <typename U = T,
+                      typename std::enable_if<!std::is_void<U>::value>::type* =
+                          nullptr>
+            static SCN_CONSTEXPR14 pointer pointer_to(U& r) noexcept
+            {
+                return std::addressof(r);
+            }
+        };
+
+        template <typename Ptr>
+        auto to_address_impl(const Ptr& p, priority_tag<1>) noexcept
+            -> decltype(pointer_traits<Ptr>::to_address(p))
+        {
+            return pointer_traits<Ptr>::to_address(p);
+        }
+
+        template <typename Ptr>
+        auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept
+            -> decltype(impl(p.operator->()))
+        {
+            return impl(p.operator->());
+        }
+
+        template <typename T>
+        constexpr T* to_address(T* p) noexcept
+        {
+            return p;
+        }
+        template <typename Ptr>
+        auto to_address(const Ptr& p) noexcept
+            -> decltype(to_address_impl(p, priority_tag<1>{}))
+        {
+            return to_address_impl(p, priority_tag<1>{});
+        }
+
         template <typename Range>
         struct reconstruct_tag {
         };
@@ -64,7 +111,6 @@ namespace scn {
             return {begin, end};
         }
 #if SCN_HAS_STRING_VIEW
-#if !SCN_MSVC
         // std::string_view is not reconstructible pre-C++20
         template <typename CharT,
                   typename Traits,
@@ -75,24 +121,12 @@ namespace scn {
             Iterator begin,
             Sentinel end)
         {
-            return {begin, static_cast<size_t>(ranges::distance(begin, end))};
+            // On MSVC, string_view can't even be constructed from its
+            // iterators!
+            return {::scn::detail::to_address(begin),
+                    static_cast<size_t>(ranges::distance(begin, end))};
         }
-#else
-		// std::string_view cannot be constructed from its debug iterators, for whatever reason
-        template <typename CharT,
-                  typename Traits,
-                  typename Iterator,
-                  typename Sentinel>
-        std::basic_string_view<CharT, Traits> reconstruct(
-            reconstruct_tag<std::basic_string_view<CharT, Traits>>,
-            Iterator begin,
-            Sentinel end)
-        {
-			// FIXME: possible past-the-end dereference, unsure about a workaround
-            return {&*begin, static_cast<size_t>(ranges::distance(begin, end))};
-        }
-#endif
-#endif // SCN_HAS_STRING_VIEW
+#endif  // SCN_HAS_STRING_VIEW
 
         template <typename Range, typename It>
         void write_return(const Range&, It)
