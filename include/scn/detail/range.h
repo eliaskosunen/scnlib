@@ -75,13 +75,17 @@ namespace scn {
             }
         };
 
+        template <typename T>
+        T* to_address_impl(T* p, priority_tag<2>) noexcept
+        {
+            return p;
+        }
         template <typename Ptr>
         auto to_address_impl(const Ptr& p, priority_tag<1>) noexcept
             -> decltype(pointer_traits<Ptr>::to_address(p))
         {
             return pointer_traits<Ptr>::to_address(p);
         }
-
         template <typename Ptr>
         auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept
             -> decltype(impl(p.operator->()))
@@ -89,16 +93,11 @@ namespace scn {
             return impl(p.operator->());
         }
 
-        template <typename T>
-        constexpr T* to_address(T* p) noexcept
-        {
-            return p;
-        }
         template <typename Ptr>
         auto to_address(const Ptr& p) noexcept
-            -> decltype(to_address_impl(p, priority_tag<1>{}))
+            -> decltype(to_address_impl(p, priority_tag<2>{}))
         {
-            return to_address_impl(p, priority_tag<1>{});
+            return to_address_impl(p, priority_tag<2>{});
         }
 
         template <typename Range>
