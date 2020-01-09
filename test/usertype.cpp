@@ -32,6 +32,7 @@ namespace scn {
         error scan(user_type& val, Context& ctx)
         {
             auto r = scn::scan(ctx.range(), "[{}, {}]", val.val1, val.val2);
+            ctx.range().advance_to(r.begin());
             if (r) {
                 return {};
             }
@@ -50,6 +51,7 @@ namespace scn {
             auto newctx = Context(ctx.range());
             auto pctx = pctx_type("[{}, {}]", newctx);
             auto ret = vscan(newctx, pctx, {args});
+            ctx.range().advance_to(ret.begin());
             if (ret) {
                 val.val1 = i;
                 val.val2 = j;
@@ -80,6 +82,16 @@ TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
         ret = scn::scan(ret.range(), "{:a}", ut);
         CHECK(!ret);
         CHECK(ret.error() == scn::error::invalid_format_string);
+    }
+    SUBCASE("mixed")
+    {
+        int i, j;
+        auto ret = scn::scan("123 [4, 20] 456", "{} {} {}", i, ut, j);
+        CHECK(ret);
+        CHECK(i == 123);
+        CHECK(ut.val1 == 4);
+        CHECK(ut.val2 == 20);
+        CHECK(j == 456);
     }
 }
 TYPE_TO_STRING(user_type);
