@@ -24,4 +24,12 @@ TEST_CASE("std string_view")
     scn::string_view sv = std::string_view("foo");
     CHECK_EQ(std::memcmp(sv.data(), "foo", 3), 0);
 }
+
+TEST_CASE("scanning std::string_view")
+{
+    std::string_view sv;
+    auto ret = scn::scan("foo", "{}", sv);
+    CHECK(ret);
+    CHECK_EQ(std::memcmp(sv.data(), "foo", 3), 0);
+}
 #endif

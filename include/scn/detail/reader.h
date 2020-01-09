@@ -1413,6 +1413,25 @@ namespace scn {
                 return {};
             }
         };
+
+#if SCN_HAS_STRING_VIEW
+        struct std_string_view_scanner : string_view_scanner {
+            template <typename Context>
+            error scan(std::basic_string_view<typename Context::char_type>& val,
+                       Context& ctx)
+            {
+                using char_type = typename Context::char_type;
+                auto sv =
+                    ::scn::basic_string_view<char_type>(val.data(), val.size());
+                auto e = string_view_scanner::scan(sv, ctx);
+                if (e) {
+                    val =
+                        std::basic_string_view<char_type>(sv.data(), sv.size());
+                }
+                return e;
+            }
+        };
+#endif
     }  // namespace detail
 
     template <typename CharT>
@@ -1472,6 +1491,12 @@ namespace scn {
     struct scanner<CharT, basic_string_view<CharT>>
         : public detail::string_view_scanner {
     };
+#if SCN_HAS_STRING_VIEW
+    template <typename CharT>
+    struct scanner<CharT, std::basic_string_view<CharT>>
+        : public detail::std_string_view_scanner {
+    };
+#endif
     template <typename CharT>
     struct scanner<CharT, detail::monostate>;
 
