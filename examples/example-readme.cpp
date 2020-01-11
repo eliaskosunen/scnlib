@@ -19,9 +19,7 @@
 
 #include <iostream>
 
-#if SCN_HAS_INCLUDE(<string_view>) && SCN_STD >= SCN_STD_17
-#include <string_view>
-
+#if SCN_HAS_STRING_VIEW
 using namespace std::string_view_literals;  // For sv
 
 int main()
@@ -35,7 +33,8 @@ int main()
     std::cout << str << '\n';   // Will output " world!"
 }
 #else
-int main() {
+int main()
+{
     std::cout << "No string_view :(\n";
 }
 #endif

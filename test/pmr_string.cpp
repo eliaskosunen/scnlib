@@ -21,7 +21,9 @@
 #if SCN_STD >= SCN_STD_17 && SCN_HAS_INCLUDE(<memory_resource>)
 #include <memory_resource>
 
-#if defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 201603
+#if defined(__cpp_lib_memory_resource) &&  \
+    __cpp_lib_memory_resource >= 201603 && \
+    (SCN_GCC < SCN_COMPILER(9, 0, 0) || SCN_GCC >= SCN_COMPILER(10, 0, 0))
 TEST_CASE("pmr string")
 {
     std::pmr::string str{};

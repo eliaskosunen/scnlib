@@ -12,4 +12,3 @@ make_example(getline)
 make_example(positional)
 
 make_example(readme)
-target_compile_features(example-readme PRIVATE cxx_std_17)

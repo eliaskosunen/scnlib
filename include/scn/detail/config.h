@@ -225,6 +225,13 @@
 #define SCN_HAS_BUILTIN(x) 0
 #endif
 
+#if SCN_HAS_INCLUDE(<version>)
+#include <version>
+#define SCN_VERSION_HEADER_INCLUDED 1
+#else
+#define SCN_VERSION_HEADER_INCLUDED 0
+#endif
+
 // Detect constexpr
 #if defined(__cpp_constexpr)
 #if __cpp_constexpr >= 201304
@@ -253,11 +260,13 @@
 #endif
 
 // Detect string_view
-#if SCN_HAS_INCLUDE(<string_view>) && SCN_STD >= SCN_STD_17
+#if SCN_HAS_INCLUDE(<string_view>) && SCN_STD >= SCN_STD_17 && \
+    !SCN_VERSION_HEADER_INCLUDED
 #include <string_view>
 #endif
 
-#if defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201603
+#if defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201603 && \
+    SCN_STD >= SCN_STD_17
 #define SCN_HAS_STRING_VIEW 1
 #else
 #define SCN_HAS_STRING_VIEW 0
@@ -288,8 +297,11 @@
 #endif
 
 // Detect <charconv>
-#if (defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606) || \
-    (SCN_HAS_INCLUDE(<charconv>) && SCN_STD >= SCN_STD_17)
+#if SCN_HAS_INCLUDE(<charconv>) && SCN_STD_17 && !SCN_VERSION_HEADER_INCLUDED
+#include <charconv>
+#endif
+
+#if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606
 
 #if defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= 9
 #define SCN_HAS_INTEGER_CHARCONV 1
@@ -312,7 +324,9 @@
 #endif
 
 // Detect std::launder
+#if !SCN_VERSION_HEADER_INCLUDED
 #include <new>
+#endif
 #if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606
 #define SCN_HAS_LAUNDER 1
 #else

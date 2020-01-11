@@ -18,13 +18,17 @@
 #ifndef SCN_DETAIL_UTIL_H
 #define SCN_DETAIL_UTIL_H
 
-#include "config.h"
-
 #include <cstddef>
 #include <limits>
 #include <new>
 #include <type_traits>
 #include <utility>
+
+#include "config.h"
+
+#if SCN_HAS_INCLUDE(<string_view>) && SCN_STD >= SCN_STD_17
+#include <string_view>
+#endif
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -575,16 +579,15 @@ namespace scn {
             return p;
         }
         template <typename Ptr>
-        auto to_address_impl(const Ptr& p, priority_tag<1>) noexcept ->
-			decltype(
-				::scn::detail::pointer_traits<Ptr>::to_address(p))
+        auto to_address_impl(const Ptr& p, priority_tag<1>) noexcept
+            -> decltype(::scn::detail::pointer_traits<Ptr>::to_address(p))
         {
             return ::scn::detail::pointer_traits<Ptr>::to_address(p);
         }
         template <typename Ptr>
-        auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept ->
-			decltype(::scn::detail::to_address_impl(p.operator->(),
-                                                  priority_tag<2>{}))
+        auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept
+            -> decltype(::scn::detail::to_address_impl(p.operator->(),
+                                                       priority_tag<2>{}))
         {
             return ::scn::detail::to_address_impl(p.operator->(),
                                                   priority_tag<2>{});
@@ -598,22 +601,23 @@ namespace scn {
             return ::scn::detail::to_address_impl(std::forward<Ptr>(p),
                                                   priority_tag<2>{});
         }
-		
-		// Workaround for MSVC _String_view_iterator
+
+        // Workaround for MSVC _String_view_iterator
 #if SCN_MSVC && SCN_HAS_STRING_VIEW
-		template <typename Traits>
+        template <typename Traits>
         struct pointer_traits<std::_String_view_iterator<Traits>> {
-			using iterator = std::_String_view_iterator<Traits>;
+            using iterator = std::_String_view_iterator<Traits>;
             using pointer = typename iterator::pointer;
             using element_type = typename iterator::value_type;
             using difference_type = typename iterator::difference_type;
 
-			static constexpr pointer to_address(const iterator& it) noexcept {
-				// operator-> of _String_view_iterator
-				// is checked for past-the-end dereference,
-				// even though operator-> isn't dereferencing anything :)))
+            static constexpr pointer to_address(const iterator& it) noexcept
+            {
+                // operator-> of _String_view_iterator
+                // is checked for past-the-end dereference,
+                // even though operator-> isn't dereferencing anything :)))
                 return it._Unwrapped();
-			}
+            }
         };
 #endif
 

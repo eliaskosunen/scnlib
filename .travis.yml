@@ -154,20 +154,28 @@ matrix:
           sources:
           - llvm-toolchain-trusty-3.7
           - ubuntu-toolchain-r-test
+    - env: COMPILER=g++-9 STANDARD=17
+      compiler: g++
+      arch: arm64
+      addons:
+        apt:
+          update: true
+          packages:
+          - g++-9
+          - cmake
+          sources:
+          - ubuntu-toolchain-r-test
     - env: COMPILER=clang++ STANDARD=17
       compiler: clang
-      osx_image: xcode9
-      os: osx
-    - env: COMPILER=g++ STANDARD=17
-      compiler: gcc
+      osx_image: xcode11.3
       os: osx
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
   - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
   - |
-    if [[ "${TRAVIS_OS_NAME}" = "linux" ]]; then
-      CMAKE_URL="http://www.cmake.org/files/v3.14/cmake-3.14.2-Linux-x86_64.tar.gz"
+    if [ "${TRAVIS_OS_NAME}" = "linux" ] && [ "${TRAVIS_CPU_ARCH}" = "amd64" ]; then
+      CMAKE_URL="http://www.cmake.org/files/3.16/cmake-3.16.2-Linux-x86_64.tar.gz"
       mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
       export PATH=${DEPS_DIR}/cmake/bin:${PATH}
       cd ${DEPS_DIR}
@@ -221,12 +229,12 @@ script:
     }
     run_build() {
       cmake -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_BUILD_TYPE=Debug -DSCN_BENCHMARKS=OFF "$@" .. || return 1
-      make -k -j || return 1
+      make VERBOSE=1 -k -j || return 1
       do_test -C Debug || return 1
       make clean || return 1
 
       cmake -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_BUILD_TYPE=Release -DSCN_BENCHMARKS=OFF "$@" .. || return 1
-      make -k -j || return 1
+      make VERBOSE=1 -k -j || return 1
       do_test -C Release || return 1
       make clean || return 1
       return 0
