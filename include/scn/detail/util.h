@@ -583,9 +583,11 @@ namespace scn {
         }
         template <typename Ptr>
         auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept ->
-			decltype(::scn::detail::to_address(p.operator->()))
+			decltype(::scn::detail::to_address_impl(p.operator->(),
+                                                  priority_tag<2>{}))
         {
-            return ::scn::detail::to_address(p.operator->());
+            return ::scn::detail::to_address_impl(p.operator->(),
+                                                  priority_tag<2>{});
         }
 
         template <typename Ptr>
