@@ -253,12 +253,11 @@
 #endif
 
 // Detect string_view
-#if SCN_HAS_INCLUDE(<string_view>)
+#if SCN_HAS_INCLUDE(<string_view>) && SCN_STD >= SCN_STD_17
 #include <string_view>
 #endif
 
-#if defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201603 && \
-    SCN_STD >= SCN_STD_17
+#if defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201603
 #define SCN_HAS_STRING_VIEW 1
 #else
 #define SCN_HAS_STRING_VIEW 0
