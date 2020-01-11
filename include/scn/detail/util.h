@@ -598,6 +598,24 @@ namespace scn {
             return ::scn::detail::to_address_impl(std::forward<Ptr>(p),
                                                   priority_tag<2>{});
         }
+		
+		// Workaround for MSVC _String_view_iterator
+#if SCN_MSVC && SCN_HAS_STRING_VIEW
+		template <typename Traits>
+        struct pointer_traits<std::_String_view_iterator<Traits>> {
+			using iterator = std::_String_view_iterator<Traits>;
+            using pointer = typename iterator::pointer;
+            using element_type = typename iterator::value_type;
+            using difference_type = typename iterator::difference_type;
+
+			static constexpr pointer to_address(const iterator& it) noexcept {
+				// operator-> of _String_view_iterator
+				// is checked for past-the-end dereference,
+				// even though operator-> isn't dereferencing anything :)))
+                return it._Unwrapped();
+			}
+        };
+#endif
 
         template <typename T>
         class SCN_TRIVIAL_ABI unique_ptr {
