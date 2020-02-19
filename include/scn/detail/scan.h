@@ -396,6 +396,19 @@ namespace scn {
                     "Cannot getline a string_view from a non-contiguous range"),
                 r.get_return()};
         }
+#if SCN_HAS_STRING_VIEW
+        template <typename WrappedRange, typename CharT>
+        auto getline_impl(WrappedRange& r,
+                          std::basic_string_view<CharT>& str,
+                          CharT until)
+            -> detail::scan_result_for_range_t<WrappedRange, wrapped_error>
+        {
+            auto sv = ::scn::basic_string_view<CharT>{};
+            auto ret = getline_impl(r, sv, until);
+            str = ::std::basic_string_view<CharT>{sv.data(), sv.size()};
+            return ret;
+        }
+#endif
     }  // namespace detail
 
     /**

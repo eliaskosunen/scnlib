@@ -84,14 +84,12 @@ int main() {
     int i, j;
     auto ret = scn::scan("123 456 foo", "{} {}", i, j);
     // ret == true
-    // ret.value() == 2 (2 values were read)
     // i == 123
     // j == 456
 
     std::string str;
     ret = scn::scan(ret.range(), "{}", str);
     // ret == true
-    // ret.value() == 1
     // str == "foo"
 }
 ```
@@ -126,7 +124,6 @@ int main() {
     if (!result) {
         // i is not touched (still unconstructed)
         // str == "foo" (range not advanced)
-        // result.value() == 0, meaning that no values were parsed (similar to scanf's return value)
         std::cout << "Integer parsing failed with message: " << result.error().msg() << '\n';
     }
 }
@@ -197,6 +194,7 @@ Every commit is tested with
  * gcc 5.5 and newer
  * clang 3.7 and newer
  * Visual Studio 2017 and 2019
+
 with very extreme warning flags (see cmake/flags.cmake) and with multiple build configurations for each compiler.
 
 Older compilers may work, but it is not guaranteed.

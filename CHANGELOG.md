@@ -1,3 +1,33 @@
+# 0.3 (TODO)
+
+_Released 2020-02-XX_
+
+Largely a bugfix release
+
+## Changes
+
+ * Remove support for partial successes
+   * If the reading of any of the arguments given to `scan` fail, the whole function fails
+   * `read`-field removed from `result`
+ * Overhaul list scanning
+   * Add `scan_list`
+
+## Fixes
+
+ * Fix issues with `std::string_view` and MSVC debug iterators (#11, #14, #18, #20)
+ * Fix some issues with scanning customized types (#15)
+ * Add missing support for custom-allocator `std::string`s (#16)
+ * Fix erroneous `git` command in README (#13)
+ * Fix README example
+ * Fix erroneous usage of library feature test macros
+
+Thanks to @nanoric and @SuperWig for bug reports!
+
+## Removals
+
+ * Remove support for non-`std::char_traits` `std::string`s
+ * Remove support for clang 3.6
+
 # 0.2
 
 _Released 2019-10-18_
