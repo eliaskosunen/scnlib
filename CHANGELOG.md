@@ -1,6 +1,6 @@
 # 0.3 (TODO)
 
-_Released 2020-02-XX_
+_Released 2020-02-19_
 
 Largely a bugfix release
 
