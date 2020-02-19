@@ -29,12 +29,33 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #elif SCN_WINDOWS
+
+#ifdef WIN32_LEAN_AND_MEAN
+#define SCN_WIN32_LEAN_DEFINED 1
+#else
 #define WIN32_LEAN_AND_MEAN
+#define SCN_WIN32_LEAN_DEFINED 0
+#endif
+
+#ifdef NOMINMAX
+#define SCN_NOMINMAX_DEFINED 1
+#else
 #define NOMINMAX
+#define SCN_NOMINMAX_DEFINED 0
+#endif
+
 #include <Windows.h>
+
+#if !SCN_NOMINMAX_DEFINED
 #undef NOMINMAX
+#endif
+
+#if !SCN_WIN32_LEAN_DEFINED
 #undef WIN32_LEAN_AND_MEAN
+#endif
+
 #endif
 
 namespace scn {
