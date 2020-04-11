@@ -58,11 +58,10 @@ namespace scn {
             byte_mapped_file& operator=(const byte_mapped_file&) = delete;
 
             byte_mapped_file(byte_mapped_file&& o) noexcept
-                : m_file(o.m_file), m_begin(o.m_begin), m_end(o.m_end)
+                : m_file(o.m_file), m_map(o.m_map)
             {
                 o.m_file = native_file_handle::invalid();
-                o.m_begin = nullptr;
-                o.m_end = nullptr;
+                o.m_map = span<char>{};
 
                 SCN_ENSURE(!o.valid());
                 SCN_ENSURE(valid());
@@ -73,12 +72,10 @@ namespace scn {
                     _destruct();
                 }
                 m_file = o.m_file;
-                m_begin = o.m_begin;
-                m_end = o.m_end;
+                m_map = o.m_map;
 
                 o.m_file = native_file_handle::invalid();
-                o.m_begin = nullptr;
-                o.m_end = nullptr;
+                o.m_map = span<char>{};
 
                 SCN_ENSURE(!o.valid());
                 SCN_ENSURE(valid());
@@ -99,19 +96,18 @@ namespace scn {
 
             iterator begin() const
             {
-                return m_begin;
+                return m_map.begin();
             }
             sentinel end() const
             {
-                return m_end;
+                return m_map.end();
             }
 
         private:
             void _destruct();
 
             native_file_handle m_file{native_file_handle::invalid().handle};
-            char* m_begin{nullptr};
-            char* m_end{nullptr};
+            span<char> m_map{};
         };
     }  // namespace detail
 

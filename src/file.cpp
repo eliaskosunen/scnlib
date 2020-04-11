@@ -87,8 +87,7 @@ namespace scn {
             }
 
             m_file.handle = fd;
-            m_begin = ptr;
-            m_end = m_begin + size;
+            m_map = span<char>{ptr, static_cast<size_t>(size)};
 #elif SCN_WINDOWS
             auto f = CreateFileA(
                 filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
@@ -110,8 +109,8 @@ namespace scn {
             }
 
             m_file.handle = f;
-            m_begin = static_cast<char*>(h);
-            m_end = static_cast<char*>(h) + size;
+            m_map =
+                span<char>{static_cast<char*>(h), static_cast<size_t>(size)};
 #else
             SCN_UNUSED(filename);
 #endif
@@ -120,10 +119,10 @@ namespace scn {
         SCN_FUNC void byte_mapped_file::_destruct()
         {
 #if SCN_POSIX
-            munmap(m_begin, static_cast<size_t>(m_end - m_begin));
+            munmap(m_map.data(), m_map.size());
             close(m_file.handle);
 #elif SCN_WINDOWS
-            CloseHandle(m_begin);
+            CloseHandle(m_map.data());
             CloseHandle(m_file.handle);
 #endif
             *this = mapped_file{};
