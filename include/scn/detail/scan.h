@@ -239,19 +239,19 @@ namespace scn {
     template <typename Format,
               typename... Args,
               typename CharT = detail::ranges::range_value_t<Format>>
-    auto input(const Format& f, Args&... a)
-        -> detail::scan_result_for_range_t<decltype(stdin_range<CharT>())>
+    auto input(const Format& f, Args&... a) -> detail::scan_result_for_range_t<
+        decltype(stdin_range<CharT>().lock())>
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
         using context_type = basic_context<
-            detail::range_wrapper_for_t<decltype(stdin_range<CharT>())>>;
+            detail::range_wrapper_for_t<decltype(stdin_range<CharT>().lock())>>;
         using parse_context_type =
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::wrap(stdin_range<CharT>()));
+        auto ctx = context_type(detail::wrap(stdin_range<CharT>().lock()));
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx, {args});
     }
@@ -273,7 +273,8 @@ namespace scn {
               typename... Args,
               typename CharT = detail::ranges::range_value_t<Format>>
     auto prompt(const CharT* p, const Format& f, Args&... a)
-        -> detail::scan_result_for_range_t<decltype(stdin_range<CharT>())>
+        -> detail::scan_result_for_range_t<
+            decltype(stdin_range<CharT>().lock())>
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -282,12 +283,12 @@ namespace scn {
         std::fputs(p, stdout);
 
         using context_type = basic_context<
-            detail::range_wrapper_for_t<decltype(stdin_range<CharT>())>>;
+            detail::range_wrapper_for_t<decltype(stdin_range<CharT>().lock())>>;
         using parse_context_type =
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::wrap(stdin_range<CharT>()));
+        auto ctx = context_type(detail::wrap(stdin_range<CharT>().lock()));
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx, {args});
     }
