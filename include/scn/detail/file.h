@@ -222,20 +222,20 @@ namespace scn {
             //}
         }
 
-        expected<CharT> _read();
+        expected<CharT> _read() const;
 
         void _sync();
 
         FILE* m_file{nullptr};
         size_t m_lock_counter{0};
-        std::basic_string<CharT> m_buffer{};
+        mutable std::basic_string<CharT> m_buffer{};
     };
 
     using file = basic_file<char>;
     using wfile = basic_file<wchar_t>;
 
     template <>
-    inline expected<char> file::_read()
+    inline expected<char> file::_read() const
     {
         SCN_EXPECT(valid());
         int tmp = std::fgetc(m_file);
@@ -254,7 +254,7 @@ namespace scn {
         return ch;
     }
     template <>
-    inline expected<wchar_t> wfile::_read()
+    inline expected<wchar_t> wfile::_read() const
     {
         SCN_EXPECT(valid());
         wint_t tmp = std::fgetwc(m_file);
@@ -346,7 +346,7 @@ namespace scn {
 
             iterator() = default;
 
-            expected<CharT> operator*()
+            expected<CharT> operator*() const
             {
                 SCN_EXPECT(m_file);
                 if (m_file->_should_read(m_current)) {
@@ -436,13 +436,13 @@ namespace scn {
         private:
             friend class basic_file_view;
 
-            iterator(basic_file_view& v, size_t c)
-                : m_file(v.m_file), m_current(c)
+            iterator(basic_file_view* v, size_t c)
+                : m_file(v->m_file), m_current(c)
             {
             }
 
             basic_file<CharT>* m_file{};
-            size_t m_current{};
+            mutable size_t m_current{};
         };
 
         basic_file_view() = default;
@@ -514,7 +514,7 @@ namespace scn {
 
         iterator begin() noexcept
         {
-            return {*this, m_begin};
+            return {this, m_begin};
         }
         iterator end() noexcept
         {
@@ -523,7 +523,7 @@ namespace scn {
 
         iterator begin() const noexcept
         {
-            return {*this, m_begin};
+            return {this, m_begin};
         }
         iterator end() const noexcept
         {
