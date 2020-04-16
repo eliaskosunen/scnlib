@@ -132,16 +132,18 @@ namespace scn {
     }  // namespace detail
 
     template <>
-    SCN_FUNC void file::_sync()
+    SCN_FUNC void file::_sync(size_t pos)
     {
-        for (auto it = m_buffer.rbegin(); it != m_buffer.rend(); ++it) {
+        for (auto it = m_buffer.rbegin(); it != m_buffer.rend() - pos - 1;
+             ++it) {
             std::ungetc(static_cast<unsigned char>(*it), m_file);
         }
     }
     template <>
-    SCN_FUNC void wfile::_sync()
+    SCN_FUNC void wfile::_sync(size_t pos)
     {
-        for (auto it = m_buffer.rbegin(); it != m_buffer.rend(); ++it) {
+        for (auto it = m_buffer.rbegin(); it != m_buffer.rend() - pos - 1;
+             ++it) {
             std::ungetwc(static_cast<wint_t>(*it), m_file);
         }
     }

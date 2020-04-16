@@ -185,11 +185,12 @@ namespace scn {
     private:
         friend class basic_file_view<CharT>;
 
-        void _release_lock()
+        void _release_lock(size_t pos)
         {
             SCN_EXPECT(is_locked());
             --m_lock_counter;
             if (!is_locked()) {
+                _sync(pos);
                 _reset();
             }
         }
@@ -224,7 +225,7 @@ namespace scn {
 
         expected<CharT> _read() const;
 
-        void _sync();
+        void _sync(size_t pos);
 
         FILE* m_file{nullptr};
         size_t m_lock_counter{0};
@@ -438,6 +439,7 @@ namespace scn {
             if (b.m_file) {
                 m_file = b.m_file;
                 m_begin = b.m_current;
+                ++m_file->m_lock_counter;
             }
         }
 
@@ -451,7 +453,7 @@ namespace scn {
         basic_file_view& operator=(const basic_file_view& o)
         {
             if (m_file) {
-                m_file->_release_lock();
+                m_file->_release_lock(m_begin);
             }
             m_file = o.m_file;
             m_begin = o.m_begin;
@@ -466,7 +468,7 @@ namespace scn {
         basic_file_view& operator=(basic_file_view&& o)
         {
             if (m_file) {
-                m_file->_release_lock();
+                m_file->_release_lock(m_begin);
             }
             m_file = o.m_file;
             m_begin = o.m_begin;
@@ -477,7 +479,7 @@ namespace scn {
         ~basic_file_view()
         {
             if (m_file) {
-                m_file->_release_lock();
+                m_file->_release_lock(m_begin);
             }
         }
 
@@ -488,7 +490,8 @@ namespace scn {
 
         void release()
         {
-            m_file->_release_lock();
+            SCN_EXPECT(m_file);
+            m_file->_release_lock(m_begin);
             m_file = nullptr;
         }
 
