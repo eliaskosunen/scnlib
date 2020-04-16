@@ -131,5 +131,20 @@ namespace scn {
 
     }  // namespace detail
 
+    template <>
+    SCN_FUNC void file::_sync()
+    {
+        for (auto it = m_buffer.rbegin(); it != m_buffer.rend(); ++it) {
+            std::ungetc(static_cast<unsigned char>(*it), m_file);
+        }
+    }
+    template <>
+    SCN_FUNC void wfile::_sync()
+    {
+        for (auto it = m_buffer.rbegin(); it != m_buffer.rend(); ++it) {
+            std::ungetwc(static_cast<wint_t>(*it), m_file);
+        }
+    }
+
     SCN_END_NAMESPACE
 }  // namespace scn

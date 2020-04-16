@@ -273,21 +273,6 @@ namespace scn {
         return ch;
     }
 
-    template <>
-    inline void file::_sync()
-    {
-        for (auto it = m_buffer.rbegin(); it != m_buffer.rend(); ++it) {
-            std::ungetc(static_cast<unsigned char>(*it), m_file);
-        }
-    }
-    template <>
-    inline void wfile::_sync()
-    {
-        for (auto it = m_buffer.rbegin(); it != m_buffer.rend(); ++it) {
-            std::ungetwc(static_cast<wint_t>(*it), m_file);
-        }
-    }
-
     template <typename CharT>
     class basic_owning_file : public basic_file<CharT> {
     public:
@@ -436,13 +421,14 @@ namespace scn {
         private:
             friend class basic_file_view;
 
-            iterator(basic_file_view* v, size_t c)
-                : m_file(v->m_file), m_current(c)
+            // eww
+            iterator(const basic_file_view* v, size_t c)
+                : m_file(const_cast<basic_file_view*>(v)->m_file), m_current(c)
             {
             }
 
             basic_file<CharT>* m_file{};
-            mutable size_t m_current{};
+            mutable size_t m_current{};  // so yucky
         };
 
         basic_file_view() = default;
