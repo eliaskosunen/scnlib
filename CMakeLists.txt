@@ -78,6 +78,8 @@ set(SCN_EXPORT_TARGETS_LIST scn scn-header-only)
 add_library(scn::scn ALIAS scn)
 add_library(scn::scn-header-only ALIAS scn-header-only)
 
+set_property(TARGET scn PROPERTY SOVERSION 0)
+
 if (SCN_TESTS)
     enable_testing()
     add_subdirectory(test)
