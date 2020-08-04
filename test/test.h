@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest.h>
+#include <doctest/doctest.h>
 #include <scn/scn.h>
 #include <algorithm>
 #include <array>
