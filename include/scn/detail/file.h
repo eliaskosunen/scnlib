@@ -89,16 +89,16 @@ namespace scn {
                 }
             }
 
-            bool valid() const
+            SCN_NODISCARD bool valid() const
             {
                 return m_file.handle != native_file_handle::invalid().handle;
             }
 
-            iterator begin() const
+            SCN_NODISCARD iterator begin() const
             {
                 return m_map.begin();
             }
-            sentinel end() const
+            SCN_NODISCARD sentinel end() const
             {
                 return m_map.end();
             }
@@ -120,11 +120,11 @@ namespace scn {
         using byte_mapped_file::byte_mapped_file;
 
         // embrace the UB
-        iterator begin() const
+        SCN_NODISCARD iterator begin() const
         {
             return reinterpret_cast<iterator>(byte_mapped_file::begin());
         }
-        sentinel end() const
+        SCN_NODISCARD sentinel end() const
         {
             return reinterpret_cast<sentinel>(byte_mapped_file::end());
         }
@@ -143,21 +143,36 @@ namespace scn {
         using view_type = basic_file_view<CharT>;
 
         basic_file() = default;
-        basic_file(FILE* f) : m_file(f) {}
+        explicit basic_file(FILE* f) : m_file(f) {}
 
         basic_file(const basic_file&) = delete;
         basic_file& operator=(const basic_file&) = delete;
 
-        basic_file(basic_file&&) = default;
-        basic_file& operator=(basic_file&&) = default;
+        basic_file(basic_file&& f) noexcept
+            : m_file(std::exchange(f.m_file, nullptr)),
+              m_lock_counter(std::exchange(f.m_lock_counter, 0)),
+              m_buffer(std::exchange(f.m_buffer, {}))
+        {
+            SCN_EXPECT(!f.is_locked());
+        }
+        basic_file& operator=(basic_file&& f) noexcept
+        {
+            SCN_EXPECT(!is_locked());
+            SCN_EXPECT(!f.is_locked());
+            m_file = std::exchange(f.m_file, nullptr);
+            m_lock_counter = std::exchange(f.m_lock_counter, 0);
+            m_buffer = std::exchange(f.m_buffer, {});
+            return *this;
+        }
 
         ~basic_file()
         {
-            //_sync();
+            _sync(m_buffer.size());
         }
 
         FILE* handle() const
         {
+            SCN_EXPECT(!is_locked());
             return m_file;
         }
 
@@ -168,17 +183,16 @@ namespace scn {
 
         FILE* set_handle(FILE* n)
         {
-            auto old = m_file;
-            m_file = n;
-            _reset();
-            return old;
+            SCN_EXPECT(!is_locked());
+            _sync(m_buffer.size());
+            m_buffer.clear();
+            return std::exchange(m_file, n);
         }
 
         view_type lock();
 
         bool is_locked() const
         {
-            SCN_EXPECT(valid());
             return m_lock_counter > 0;
         }
 
@@ -191,7 +205,7 @@ namespace scn {
             --m_lock_counter;
             if (!is_locked()) {
                 _sync(pos);
-                _reset();
+                m_buffer.clear();
             }
         }
 
@@ -210,17 +224,6 @@ namespace scn {
             SCN_EXPECT(valid());
             SCN_EXPECT(n < m_buffer.size());
             return m_buffer[n];
-        }
-
-        void _reset()
-        {
-            // if (m_buffer.size() > 1) {
-            // CharT last = m_buffer.back();
-            // m_buffer.resize(1);
-            // m_buffer[0] = last;
-            //_sync();
-            m_buffer.clear();
-            //}
         }
 
         expected<CharT> _read() const;
@@ -310,7 +313,7 @@ namespace scn {
             std::fclose(this->handle());
         }
 
-        bool is_open() const
+        SCN_NODISCARD bool is_open() const
         {
             return this->valid();
         }
@@ -460,7 +463,7 @@ namespace scn {
             ++m_file->m_lock_counter;
         }
 
-        basic_file_view(basic_file_view&& o)
+        basic_file_view(basic_file_view&& o) noexcept
             : m_file(o.m_file), m_begin(o.m_begin)
         {
             o.m_file = nullptr;
@@ -483,7 +486,7 @@ namespace scn {
             }
         }
 
-        bool is_valid() const
+        SCN_NODISCARD bool is_valid() const
         {
             return m_file;
         }
@@ -493,12 +496,6 @@ namespace scn {
             SCN_EXPECT(m_file);
             m_file->_release_lock(m_begin);
             m_file = nullptr;
-        }
-
-        void reset()
-        {
-            SCN_EXPECT(is_valid());
-            m_file->_reset();
         }
 
         iterator begin() noexcept
@@ -523,7 +520,10 @@ namespace scn {
         friend class basic_file<CharT>;
         friend class iterator;
 
-        basic_file_view(basic_file<CharT>& f) : m_file(std::addressof(f)) {}
+        explicit basic_file_view(basic_file<CharT>& f)
+            : m_file(std::addressof(f))
+        {
+        }
 
         basic_file<CharT>* m_file{nullptr};
         size_t m_begin{0};
