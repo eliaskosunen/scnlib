@@ -195,15 +195,29 @@
  * auto f = std::fopen(...);
  * // Non-owning wrapper around a FILE*
  * auto file = scn::file(f);
- * scn::scan(file, ...);
- * // scn::file does _not_ sync with the underlying FILE* by default
- * // call .sync() if you wish to use scnlib in conjunction with <cstdio>
- * file.sync();
+ * // Alternatively, use owning_file (takes similar arguments to fopen)
+ * scn::owning_file file(...);
+ * // To get a view out of a file, use .lock()
+ * // A file can be locked multiple times, but not in separate threads
+ * scn::scan(file.lock(), ...);
+ * // Locking/unlocking can be expensive, so you can do it once in block scope
+ * {
+ *   auto lock = file.lock();
+ *   scn::scan(lock, ...);
+ *   scn::scan(lock, ...);
+ *   // When the lock is released, the file is synced with <cstdio>
+ *   // You can also do this explicitly with .sync(),
+ *   // if you want to mix and match
+ *   lock.sync();
+ * }
  * // scn::file doesn't take ownership, and doesn't close
+ * // scn::owning_file does
  * std::fclose(f);
  * \endcode
  *
  * `scn::cstdin()` returns a `scn::file` pointing to `stdin`.
+ * Note, that this object is effectively a global,
+ * and needs to be `.lock()`ed in order to be used in `scn::scan`
  *
  * \section tuple Alternative tuple-based API
  *
@@ -222,8 +236,8 @@
  *
  * Reading a `std::string` with `scnlib` works the same way it does with
  * `operator>>` and `<iostream>`: the input range is read until a whitespace
- * character or EOF is found. This effectively means, that scanning a
- * `std::string` reads a word at a time.
+ * character or EOF is found. This effectively means that scanning a
+ * `std::string` reads the input range a "word" at a time.
  *
  * \code{.cpp}
  * auto source = scn::make_view("Hello world!");
@@ -851,4 +865,3 @@
  */
 
 #endif  // SCN_SCN_H
-

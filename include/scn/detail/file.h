@@ -20,6 +20,7 @@
 
 #include <cstdio>
 #include <string>
+#include <utility>
 
 #include "range.h"
 
@@ -167,7 +168,9 @@ namespace scn {
 
         ~basic_file()
         {
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
             _sync(m_buffer.size());
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
         }
 
         FILE* handle() const
