@@ -20,7 +20,6 @@
 
 #include <cstdio>
 #include <string>
-#include <utility>
 
 #include "range.h"
 
@@ -150,9 +149,9 @@ namespace scn {
         basic_file& operator=(const basic_file&) = delete;
 
         basic_file(basic_file&& f) noexcept
-            : m_file(std::exchange(f.m_file, nullptr)),
-              m_lock_counter(std::exchange(f.m_lock_counter, 0)),
-              m_buffer(std::exchange(f.m_buffer, {}))
+            : m_file(detail::exchange(f.m_file, nullptr)),
+              m_lock_counter(detail::exchange(f.m_lock_counter, size_t{0})),
+              m_buffer(detail::exchange(f.m_buffer, {}))
         {
             SCN_EXPECT(!f.is_locked());
         }
@@ -160,9 +159,9 @@ namespace scn {
         {
             SCN_EXPECT(!is_locked());
             SCN_EXPECT(!f.is_locked());
-            m_file = std::exchange(f.m_file, nullptr);
-            m_lock_counter = std::exchange(f.m_lock_counter, 0);
-            m_buffer = std::exchange(f.m_buffer, {});
+            m_file = detail::exchange(f.m_file, nullptr);
+            m_buffer = detail::exchange(f.m_buffer, {});
+            // m_lock_counter and f.m_lock_counter guaranteed to be 0
             return *this;
         }
 
@@ -189,7 +188,7 @@ namespace scn {
             SCN_EXPECT(!is_locked());
             _sync(m_buffer.size());
             m_buffer.clear();
-            return std::exchange(m_file, n);
+            return detail::exchange(m_file, n);
         }
 
         view_type lock();
