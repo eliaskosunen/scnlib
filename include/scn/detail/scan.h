@@ -660,9 +660,9 @@ namespace scn {
      *
      * Reads values repeatedly from `r` and writes them into `c`.
      * The values read are of type `Container::value_type`, and they are written
-     * into `c` using `c.push_back`. The values must be separated by whitespace,
-     * and by a separator character `separator`, if specified. If `separator ==
-     * 0`, no separator character is expected.
+     * into `c` using `c.push_back`. The values must be separated by separator
+     * character `separator`, followed by whitespace. If `separator == 0`, no
+     * separator character is expected.
      *
      * To scan a `span`, use `span_list_wrapper`.
      */
@@ -712,9 +712,74 @@ namespace scn {
                     continue;
                 }
                 else {
-                    return {error(error::invalid_scanned_value,
-                                  "Invalid separator character"),
-                            ctx.range().get_return()};
+                    // Unexpected character, assuming end
+                    break;
+                }
+            }
+        }
+        return {{}, ctx.range().get_return()};
+    }
+
+    template <typename Range,
+              typename Container,
+              typename CharT = typename detail::extract_char_type<
+                  detail::ranges::iterator_t<Range>>::type>
+    auto scan_list_until(Range&& r,
+                         Container& c,
+                         CharT until,
+                         CharT separator = detail::zero_value<CharT>::value)
+        -> detail::scan_result_for_range_t<Range, wrapped_error>
+    {
+        using value_type = typename Container::value_type;
+        using range_type = detail::range_wrapper_for_t<Range>;
+        using context_type = basic_context<range_type>;
+        using parse_context_type =
+            basic_empty_parse_context<typename context_type::locale_type>;
+
+        value_type value;
+        auto args = make_args<context_type, parse_context_type>(value);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)));
+
+        while (true) {
+            if (c.size() == c.max_size()) {
+                break;
+            }
+
+            auto pctx = parse_context_type(1, ctx);
+            auto ret = vscan(ctx, pctx, {args});
+            if (!ret) {
+                if (ret.error() == error::end_of_range) {
+                    break;
+                }
+                return {ret.error(), ctx.range().get_return()};
+            }
+            c.push_back(std::move(value));
+
+            {
+                auto next = read_char(ctx.range());
+                if (!next) {
+                    if (next.error() == scn::error::end_of_range) {
+                        break;
+                    }
+                    return {next.error(), ctx.range().get_return()};
+                }
+                if (next.value() == until) {
+                    break;
+                }
+                if (separator != 0) {
+                    if (next.value() != separator) {
+                        break;
+                    }
+                } else {
+                    if (!ctx.locale().is_space(next.value())) {
+                        break;
+                    }
+                }
+                next = read_char(ctx.range());
+                if (next.value() == until) {
+                    break;
+                } else {
+                    putback_n(ctx.range(), 1);
                 }
             }
         }
