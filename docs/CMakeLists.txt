@@ -1,5 +1,5 @@
 find_package(Doxygen)
-if (NOT Doxygen)
+if (NOT DOXYGEN_FOUND)
     message(STATUS "Target 'doc' disabled (required doxygen)")
     return()
 endif ()
@@ -26,7 +26,7 @@ add_custom_command(OUTPUT ${DOXYGEN_INDEX_FILE}
 add_custom_target(doc ALL DEPENDS ${DOXYGEN_INDEX_FILE})
 
 find_package(Sphinx)
-if (NOT Sphinx)
+if (NOT SPHINX_FOUND)
     message(STATUS "Target 'doc-sphinx' disabled (required sphinx)")
     return()
 endif ()
