@@ -1,4 +1,12 @@
-# 0.3 (TODO)
+# 0.4 (in development)
+
+_Released 2020-xx-xx_
+
+ * Move to readthedocs
+ * Rewritten file handling
+ * Add `scan_list_until`
+
+# 0.3
 
 _Released 2020-02-19_
 

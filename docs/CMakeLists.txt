@@ -23,7 +23,7 @@ add_custom_command(OUTPUT ${DOXYGEN_INDEX_FILE}
         COMMENT "Generating docs"
         VERBATIM)
 
-add_custom_target(doc ALL DEPENDS ${DOXYGEN_INDEX_FILE})
+add_custom_target(doc DEPENDS ${DOXYGEN_INDEX_FILE})
 
 find_package(Sphinx)
 if (NOT SPHINX_FOUND)
@@ -76,7 +76,7 @@ add_custom_command(OUTPUT ${SPHINX_INDEX_FILE}
         MAIN_DEPENDENCY ${SPHINX_SOURCE}/conf.py
         COMMENT "Generating documentation with Sphinx")
 
-add_custom_target(doc-sphinx ALL DEPENDS ${SPHINX_INDEX_FILE})
+add_custom_target(doc-sphinx DEPENDS ${SPHINX_INDEX_FILE})
 
 if (SCN_INSTALL)
     install(DIRECTORY ${SPHINX_BUILD}
