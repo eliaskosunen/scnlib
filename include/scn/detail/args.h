@@ -35,8 +35,6 @@ namespace scn {
     struct scanner;
 
     /**
-     * \ingroup convenience_scan_types
-     *
      * Allows reading an rvalue.
      * Stores an rvalue and returns an lvalue reference to it via `operator()`.
      * Create one with \ref temp.
@@ -53,8 +51,6 @@ namespace scn {
         T value;
     };
     /**
-     * \ingroup convenience_scan_types
-     *
      * Factory function for \ref temporary.
      */
     template <typename T>

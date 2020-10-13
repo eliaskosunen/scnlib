@@ -11,7 +11,7 @@ call ``begin()`` and ``end()`` on. For example, a ``std::string`` or a
 
 The library can't work with every range, though.
 Most importantly, it needs to be a ``view``, meaning that it doesn't own its
-elements, and is fast to copy. Examples of ``view``s are ``std::string_view`` and
+elements, and is fast to copy. Examples of ``view`` s are ``std::string_view`` and
 ``std::span``.
 
 This range can then be passed as the first parameter to ``scn::scan``:

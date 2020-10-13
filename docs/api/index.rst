@@ -7,3 +7,7 @@ API reference
 
    input_range
    scanning
+   high
+   types
+   erased
+   low

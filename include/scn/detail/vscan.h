@@ -34,16 +34,6 @@ namespace scn {
             detail::static_const<detail::default_t>::value;
     }
 
-    /**
-     * \defgroup scan_erase Type-erased scanning operations
-     *
-     * These functions are called by \ref scan and alike.
-     * The passed arguments are type-erased and passed in the context to avoid
-     * generated code size blowup.
-     */
-
-    /// @{
-
     template <typename Context, typename ParseCtx>
     scan_result_for_t<Context> vscan(Context& ctx,
                                      ParseCtx& pctx,
@@ -77,8 +67,6 @@ namespace scn {
     SCN_VSCAN_DECLARE(file_view&)
 
 #endif  // !SCN_HEADER_ONLY
-
-    /// @}
 
     SCN_END_NAMESPACE
 }  // namespace scn

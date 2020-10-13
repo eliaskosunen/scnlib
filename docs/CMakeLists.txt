@@ -63,10 +63,15 @@ add_custom_command(OUTPUT ${SPHINX_INDEX_FILE}
         ${CMAKE_CURRENT_SOURCE_DIR}/api/index.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/api/input_range.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/api/scanning.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/api/high.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/api/types.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/api/erased.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/api/low.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/rationale/index.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/rationale/argref.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/rationale/views.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/rationale/vscan.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/_static/css/custom.css
         ${DOXYGEN_INDEX_FILE}
         MAIN_DEPENDENCY ${SPHINX_SOURCE}/conf.py
         COMMENT "Generating documentation with Sphinx")

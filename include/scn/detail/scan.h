@@ -298,17 +298,6 @@ namespace scn {
     }
 
     // scanning api
-    /// @}
-
-    /**
-     * \defgroup scanning_operations Higher-level scanning operations
-     *
-     * Functions in this category return a `scan_result<Range, error>`.
-     * It has the following member functions:
-     *  - `operator bool`: `true` when successful
-     *  - `range() -> Range`
-     *  - `error() -> error`
-     */
 
     // getline
 
@@ -388,7 +377,6 @@ namespace scn {
     }  // namespace detail
 
     /**
-     * \ingroup scanning_operations
      * Read the range in \c r into \c str until \c until is found.
      *
      * \c r and \c str must share character types, which must be \c CharT.
@@ -414,7 +402,6 @@ namespace scn {
     }
 
     /**
-     * \ingroup scanning_operations
      * Equivalent to \ref getline with the last parameter set to <tt>'\\n'</tt>
      * with the appropriate character type.
      *
@@ -537,8 +524,6 @@ namespace scn {
     }  // namespace detail
 
     /**
-     * \ingroup scanning_operations
-     *
      * Advances the beginning of \c r until \c until is found.
      * The character type of \c r must be \c CharT.
      */
@@ -560,8 +545,6 @@ namespace scn {
     }
 
     /**
-     * \ingroup scanning_operations
-     *
      * Advances the beginning of \c r until \c until is found, or the beginning
      * has been advanced \c n times. The character type of \c r must be \c
      * CharT.
@@ -631,8 +614,6 @@ namespace scn {
     }  // namespace detail
 
     /**
-     * \ingroup scanning_operations
-     *
      * Reads values repeatedly from `r` and writes them into `c`.
      * The values read are of type `Container::value_type`, and they are written
      * into `c` using `c.push_back`. The values must be separated by separator
@@ -761,20 +742,12 @@ namespace scn {
         return {{}, ctx.range().get_return()};
     }
 
-    /**
-     * \defgroup convenience_scan_types Convenience scannable types
-     * This category has types and factory functions, that can be passed as
-     * arguments to `scn::scan` (or alike), providing various functionality.
-     */
-
     template <typename T>
     struct discard_type {
         discard_type() = default;
     };
 
     /**
-     * \ingroup convenience_scan_types
-     *
      * Scans an instance of `T`, but doesn't store it anywhere.
      * Uses `scn::temp` internally, so the user doesn't have to bother.
      *

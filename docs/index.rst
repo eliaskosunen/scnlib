@@ -14,7 +14,7 @@ scnlib documentation
    tutorial/index
    rationale/index
    cmake
-   api
+   api/index
 
 Introduction
 ------------
