@@ -252,7 +252,8 @@ TEST_CASE_TEMPLATE_DEFINE("small_vector", T, small_vector_test)
         CHECK(vec.is_small());
     }
 
-    SUBCASE("issue #8") {
+    SUBCASE("issue #8")
+    {
         auto vec = scn::detail::small_vector<char, 32>{};
         vec.push_back('0');
     }

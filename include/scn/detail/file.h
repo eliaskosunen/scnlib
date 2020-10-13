@@ -52,7 +52,7 @@ namespace scn {
             using sentinel = const char*;
 
             byte_mapped_file() = default;
-            byte_mapped_file(const char* filename);
+            explicit byte_mapped_file(const char* filename);
 
             byte_mapped_file(const byte_mapped_file&) = delete;
             byte_mapped_file& operator=(const byte_mapped_file&) = delete;
@@ -180,7 +180,7 @@ namespace scn {
 
         bool valid() const
         {
-            return m_file;
+            return m_file != nullptr;
         }
 
         FILE* set_handle(FILE* n)
@@ -470,7 +470,7 @@ namespace scn {
         {
             o.m_file = nullptr;
         }
-        basic_file_view& operator=(basic_file_view&& o)
+        basic_file_view& operator=(basic_file_view&& o) noexcept
         {
             if (m_file) {
                 m_file->_release_lock(m_begin);
@@ -490,7 +490,7 @@ namespace scn {
 
         SCN_NODISCARD bool is_valid() const
         {
-            return m_file;
+            return m_file != nullptr;
         }
 
         void release()

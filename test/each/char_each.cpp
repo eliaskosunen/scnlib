@@ -17,7 +17,6 @@
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cwctype>
-#include <numeric>
 
 #include "../test.h"
 
@@ -33,7 +32,7 @@ TEST_CASE("char each")
 
     for (auto ch : vec) {
         std::string source(1, ch);
-        char tmp;
+        char tmp{};
         auto ret = scn::scan(scn::make_view(source), scn::default_tag, tmp);
 
         CHECK(ret);
@@ -53,7 +52,7 @@ TEST_CASE("wchar_t each")
         }
 
         std::wstring source(1, ch);
-        wchar_t tmp;
+        wchar_t tmp{};
         auto ret = scn::scan(scn::make_view(source), scn::default_tag, tmp);
 
         CHECK(ret);

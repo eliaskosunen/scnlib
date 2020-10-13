@@ -125,7 +125,10 @@ namespace scn {
             CloseHandle(m_map.data());
             CloseHandle(m_file.handle);
 #endif
-            *this = mapped_file{};
+
+            m_file = native_file_handle{native_file_handle::invalid().handle};
+            m_map = span<char>{};
+
             SCN_ENSURE(!valid());
         }
 
@@ -135,8 +138,7 @@ namespace scn {
     SCN_FUNC void file::_sync(std::size_t pos)
     {
         for (auto it = m_buffer.rbegin();
-             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos);
-             ++it) {
+             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
             std::ungetc(static_cast<unsigned char>(*it), m_file);
         }
     }
@@ -144,8 +146,7 @@ namespace scn {
     SCN_FUNC void wfile::_sync(std::size_t pos)
     {
         for (auto it = m_buffer.rbegin();
-             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos);
-             ++it) {
+             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
             std::ungetwc(static_cast<wint_t>(*it), m_file);
         }
     }

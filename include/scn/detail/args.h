@@ -53,10 +53,12 @@ namespace scn {
     /**
      * Factory function for \ref temporary.
      */
-    template <typename T>
+    template <typename T,
+              typename std::enable_if<
+                  !std::is_lvalue_reference<T>::value>::type* = nullptr>
     temporary<T> temp(T&& val)
     {
-        return {std::move(val)};
+        return {std::forward<T>(val)};
     }
 
     namespace detail {
@@ -134,7 +136,7 @@ namespace scn {
             constexpr value() noexcept : m_empty{} {}
 
             template <typename T>
-            SCN_CONSTEXPR14 value(T& val) noexcept
+            explicit SCN_CONSTEXPR14 value(T& val) noexcept
                 : m_value(std::addressof(val))
             {
             }
@@ -266,13 +268,11 @@ namespace scn {
             return val;
         }
 
-        enum : std::ptrdiff_t {
+        enum : size_t {
             packed_arg_bitsize = 5,
             packed_arg_mask = (1 << packed_arg_bitsize) - 1,
-            max_packed_args = (sizeof(size_t) * 8 - 1) / packed_arg_bitsize
-        };
-        enum : size_t {
-            is_unpacked_bit = size_t{1} << (sizeof(size_t) * 8 - 1)
+            max_packed_args = (sizeof(size_t) * 8 - 1) / packed_arg_bitsize,
+            is_unpacked_bit = size_t{1} << (sizeof(size_t) * 8ull - 1ull)
         };
     }  // namespace detail
 
@@ -287,10 +287,7 @@ namespace scn {
 
         class handle {
         public:
-            explicit handle(detail::custom_value custom)
-                : m_custom(std::move(custom))
-            {
-            }
+            explicit handle(detail::custom_value custom) : m_custom(custom) {}
 
             template <typename ParseCtx>
             error scan(Context& ctx, ParseCtx& pctx)
@@ -555,12 +552,13 @@ namespace scn {
             return (m_types & detail::is_unpacked_bit) == 0;
         }
 
-        SCN_CONSTEXPR14 typename detail::type type(std::ptrdiff_t i) const
-            noexcept
+        SCN_CONSTEXPR14 typename detail::type type(
+            std::ptrdiff_t i) const noexcept
         {
             size_t shift = static_cast<size_t>(i) * detail::packed_arg_bitsize;
-            return static_cast<typename detail::type>((m_types >> shift) &
-                                                      detail::packed_arg_mask);
+            return static_cast<typename detail::type>(
+                (static_cast<size_t>(m_types) >> shift) &
+                detail::packed_arg_mask);
         }
 
         SCN_CONSTEXPR14 void set_data(detail::value<Context>* values) noexcept
@@ -586,7 +584,8 @@ namespace scn {
             }
 
             SCN_EXPECT(m_values);
-            if (SCN_UNLIKELY(i > detail::max_packed_args)) {
+            if (SCN_UNLIKELY(
+                    i > static_cast<std::ptrdiff_t>(detail::max_packed_args))) {
                 return arg;
             }
 

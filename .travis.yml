@@ -198,7 +198,7 @@ matrix:
           - ubuntu-toolchain-r-test
 
     - env: COMPILER=g++-10 STANDARD=17
-      compiler: g++
+      compiler: gcc
       arch: arm64
       addons:
         apt:
