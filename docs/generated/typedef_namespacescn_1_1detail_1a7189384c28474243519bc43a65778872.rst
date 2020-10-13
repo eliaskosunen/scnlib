@@ -1,0 +1,13 @@
+.. _exhale_typedef_namespacescn_1_1detail_1a7189384c28474243519bc43a65778872:
+
+Typedef scn::detail::scan_result_for_range_t
+============================================
+
+.. did not find file this was defined in
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: scn::detail::scan_result_for_range_t

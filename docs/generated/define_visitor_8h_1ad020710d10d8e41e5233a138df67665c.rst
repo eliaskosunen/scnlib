@@ -1,0 +1,13 @@
+.. _exhale_define_visitor_8h_1ad020710d10d8e41e5233a138df67665c:
+
+Define SCN_VISIT_FLOAT
+======================
+
+- Defined in :ref:`file_include_scn_detail_visitor.h`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: SCN_VISIT_FLOAT

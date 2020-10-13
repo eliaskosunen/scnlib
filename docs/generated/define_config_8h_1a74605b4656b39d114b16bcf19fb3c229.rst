@@ -1,0 +1,13 @@
+.. _exhale_define_config_8h_1a74605b4656b39d114b16bcf19fb3c229:
+
+Define SCN_MSVC_IGNORE
+======================
+
+- Defined in :ref:`file_include_scn_detail_config.h`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: SCN_MSVC_IGNORE

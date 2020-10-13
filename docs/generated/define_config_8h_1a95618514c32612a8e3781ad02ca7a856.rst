@@ -1,0 +1,13 @@
+.. _exhale_define_config_8h_1a95618514c32612a8e3781ad02ca7a856:
+
+Define SCN_MSVC_PUSH
+====================
+
+- Defined in :ref:`file_include_scn_detail_config.h`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: SCN_MSVC_PUSH

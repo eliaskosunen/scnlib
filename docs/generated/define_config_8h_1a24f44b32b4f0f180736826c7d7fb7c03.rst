@@ -1,0 +1,13 @@
+.. _exhale_define_config_8h_1a24f44b32b4f0f180736826c7d7fb7c03:
+
+Define SCN_CATCH
+================
+
+- Defined in :ref:`file_include_scn_detail_config.h`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: SCN_CATCH

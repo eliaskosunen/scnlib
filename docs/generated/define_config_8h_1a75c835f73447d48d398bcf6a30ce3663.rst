@@ -1,0 +1,13 @@
+.. _exhale_define_config_8h_1a75c835f73447d48d398bcf6a30ce3663:
+
+Define SCN_HAS_CPP_ATTRIBUTE
+============================
+
+- Defined in :ref:`file_include_scn_detail_config.h`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: SCN_HAS_CPP_ATTRIBUTE

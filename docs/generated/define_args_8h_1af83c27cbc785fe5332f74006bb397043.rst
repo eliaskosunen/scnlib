@@ -1,0 +1,13 @@
+.. _exhale_define_args_8h_1af83c27cbc785fe5332f74006bb397043:
+
+Define SCN_MAKE_VALUE
+=====================
+
+- Defined in :ref:`file_include_scn_detail_args.h`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: SCN_MAKE_VALUE

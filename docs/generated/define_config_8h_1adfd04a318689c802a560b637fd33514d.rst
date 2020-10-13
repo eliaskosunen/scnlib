@@ -1,0 +1,13 @@
+.. _exhale_define_config_8h_1adfd04a318689c802a560b637fd33514d:
+
+Define SCN_VERSION_HEADER_INCLUDED
+==================================
+
+- Defined in :ref:`file_include_scn_detail_config.h`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: SCN_VERSION_HEADER_INCLUDED

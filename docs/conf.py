@@ -52,7 +52,7 @@ release = '0.4.0-alpha'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["breathe"]
+extensions = ["breathe", "exhale"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -75,3 +75,14 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 breathe_default_project = "scnlib"
+
+exhale_args = {
+    "containmentFolder": "./generated",
+    "rootFileName": "root.rst",
+    "rootFileTitle": "scnlib API",
+    "doxygenStripFromPath": "..",
+    "createTreeView": True
+}
+
+primary_domain = 'cpp'
+highlight_language = 'cpp'

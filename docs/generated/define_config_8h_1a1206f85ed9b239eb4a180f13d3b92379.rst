@@ -1,0 +1,13 @@
+.. _exhale_define_config_8h_1a1206f85ed9b239eb4a180f13d3b92379:
+
+Define SCN_ASSERT
+=================
+
+- Defined in :ref:`file_include_scn_detail_config.h`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: SCN_ASSERT
