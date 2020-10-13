@@ -44,6 +44,29 @@ add_custom_command(OUTPUT ${SPHINX_INDEX_FILE}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/index.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/index.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/basics.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/error.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/format_string.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/ignore.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/localization.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/ranges.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/scan_value.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/scanf.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/semantics.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/strings.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/temporaries.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/tuple.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/user_types.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/wide_ranges.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/api/index.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/api/input_range.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/api/scanning.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/rationale/index.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/rationale/argref.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/rationale/views.rst
+        ${CMAKE_CURRENT_SOURCE_DIR}/rationale/vscan.rst
         ${DOXYGEN_INDEX_FILE}
         MAIN_DEPENDENCY ${SPHINX_SOURCE}/conf.py
         COMMENT "Generating documentation with Sphinx")
