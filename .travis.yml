@@ -1,5 +1,5 @@
 language: cpp
-dist: trusty
+dist: focal
 sudo: false
 os: linux
 git:
@@ -43,7 +43,6 @@ matrix:
         apt:
           update: true
           packages:
-          - libstdc++-9-dev
           - g++-8
           sources:
           - ubuntu-toolchain-r-test
@@ -58,6 +57,7 @@ matrix:
           - ubuntu-toolchain-r-test
     - env: COMPILER=g++-6 STANDARD=14
       compiler: gcc
+      dist: bionic
       addons:
         apt:
           update: true
@@ -67,6 +67,7 @@ matrix:
           - ubuntu-toolchain-r-test
     - env: COMPILER=g++-5 STANDARD=14
       compiler: gcc
+      dist: bionic
       addons:
         apt:
           update: true
@@ -82,9 +83,9 @@ matrix:
           update: true
           packages:
             - clang-11
-            - g++-6
+            - g++-9
           sources:
-            - llvm-toolchain-trusty-11
+            - llvm-toolchain-focal-11
             - ubuntu-toolchain-r-test
     - env: COMPILER=clang++-10 STANDARD=17
       compiler: clang
@@ -93,9 +94,9 @@ matrix:
           update: true
           packages:
             - clang-10
-            - g++-6
+            - g++-9
           sources:
-            - llvm-toolchain-trusty-10
+            - llvm-toolchain-focal-10
             - ubuntu-toolchain-r-test
     - env: COMPILER=clang++-9 STANDARD=17
       compiler: clang
@@ -104,45 +105,13 @@ matrix:
           update: true
           packages:
             - clang-9
-            - g++-6
+            - g++-9
           sources:
-            - llvm-toolchain-trusty-9
+            - llvm-toolchain-focal-9
             - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-8 STANDARD=17
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-          - clang-8
-          - g++-6
-          sources:
-          - llvm-toolchain-trusty-8
-          - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-7 STANDARD=17
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-          - clang-7
-          - g++-6
-          sources:
-          - llvm-toolchain-trusty-7
-          - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-6.0 STANDARD=17
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-          - clang-6.0
-          - g++-6
-          sources:
-          - llvm-toolchain-trusty-6.0
-          - ubuntu-toolchain-r-test
     - env: COMPILER=clang++-5.0 STANDARD=17
       compiler: clang
+      dist: bionic
       addons:
         apt:
           update: true
@@ -150,32 +119,11 @@ matrix:
           - clang-5.0
           - g++-6
           sources:
-          - llvm-toolchain-trusty-5.0
-          - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-4.0 STANDARD=14
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-          - clang-4.0
-          - g++-6
-          sources:
-          - llvm-toolchain-trusty-4.0
-          - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-3.9 STANDARD=14
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-          - clang-3.9
-          - g++-6
-          sources:
-          - llvm-toolchain-trusty-3.9
+          - llvm-toolchain-bionic-5.0
           - ubuntu-toolchain-r-test
     - env: COMPILER=clang++-3.8 STANDARD=14
       compiler: clang
+      dist: xenial
       addons:
         apt:
           update: true
@@ -183,10 +131,11 @@ matrix:
           - clang-3.8
           - g++-6
           sources:
-          - llvm-toolchain-trusty-3.8
+          - llvm-toolchain-xenial-3.8
           - ubuntu-toolchain-r-test
     - env: COMPILER=clang++-3.7 STANDARD=14
       compiler: clang
+      dist: trusty
       addons:
         apt:
           update: true
