@@ -76,17 +76,6 @@ matrix:
           sources:
           - ubuntu-toolchain-r-test
 
-    - env: COMPILER=clang++-11 STANDARD=17
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-            - clang-11
-            - g++-9
-          sources:
-            - llvm-toolchain-focal-11
-            - ubuntu-toolchain-r-test
     - env: COMPILER=clang++-10 STANDARD=17
       compiler: clang
       addons:
@@ -159,7 +148,7 @@ matrix:
           - ubuntu-toolchain-r-test
     - env: COMPILER=clang++ STANDARD=17
       compiler: clang
-      osx_image: xcode11.3
+      osx_image: xcode12.2
       os: osx
 
 install:

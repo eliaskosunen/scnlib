@@ -15,13 +15,16 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest.h>
-#include <scn/scn.h>
 #include <algorithm>
 #include <array>
+#include <exception>
 #include <ostream>
 #include <string>
 #include <vector>
+
+#include <scn/scn.h>
+
+#include <doctest.h>
 
 template <typename T>
 struct debug;
