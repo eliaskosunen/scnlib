@@ -4,9 +4,6 @@ add_library(tests-base INTERFACE)
 
 find_package(doctest QUIET)
 if (NOT doctest_FOUND)
-    message(STATUS "Installing doctest submodule")
-    execute_process(COMMAND git submodule update --init -- doctest
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     target_include_directories(tests-base SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/doctest)
 else()
     target_link_libraries(tests-base INTERFACE doctest::doctest)
