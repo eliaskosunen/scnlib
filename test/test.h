@@ -24,7 +24,7 @@
 
 #include <scn/scn.h>
 
-#include <doctest.h>
+#include <doctest/doctest.h>
 
 template <typename T>
 struct debug;
