@@ -87,8 +87,7 @@ namespace scn {
             }
 
             m_file.handle = fd;
-            m_begin = ptr;
-            m_end = m_begin + size;
+            m_map = span<char>{ptr, static_cast<size_t>(size)};
 #elif SCN_WINDOWS
             auto f = CreateFileA(
                 filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
@@ -110,8 +109,8 @@ namespace scn {
             }
 
             m_file.handle = f;
-            m_begin = static_cast<char*>(h);
-            m_end = static_cast<char*>(h) + size;
+            m_map =
+                span<char>{static_cast<char*>(h), static_cast<size_t>(size)};
 #else
             SCN_UNUSED(filename);
 #endif
@@ -120,76 +119,36 @@ namespace scn {
         SCN_FUNC void byte_mapped_file::_destruct()
         {
 #if SCN_POSIX
-            munmap(m_begin, static_cast<size_t>(m_end - m_begin));
+            munmap(m_map.data(), m_map.size());
             close(m_file.handle);
 #elif SCN_WINDOWS
-            CloseHandle(m_begin);
+            CloseHandle(m_map.data());
             CloseHandle(m_file.handle);
 #endif
-            *this = mapped_file{};
+
+            m_file = native_file_handle{native_file_handle::invalid().handle};
+            m_map = span<char>{};
+
             SCN_ENSURE(!valid());
         }
 
-        template <>
-        SCN_FUNC expected<char> cfile_iterator<char>::operator*() const
-        {
-            SCN_EXPECT(valid());
-            int tmp = std::fgetc(file().file());
-            if (tmp == EOF) {
-                if (std::feof(file().file()) != 0) {
-                    return error(error::end_of_range, "EOF");
-                }
-                if (std::ferror(file().file()) != 0) {
-                    return error(error::source_error, "fgetc error");
-                }
-                return error(error::unrecoverable_source_error,
-                             "Unknown fgetc error");
-            }
-            return static_cast<char>(tmp);
-        }
-        template <>
-        SCN_FUNC expected<wchar_t> cfile_iterator<wchar_t>::operator*() const
-        {
-            SCN_EXPECT(valid());
-            wint_t tmp = std::fgetwc(file().file());
-            if (tmp == WEOF) {
-                if (std::feof(file().file()) != 0) {
-                    return error(error::end_of_range, "EOF");
-                }
-                if (std::ferror(file().file()) != 0) {
-                    return error(error::source_error, "fgetc error");
-                }
-                return error(error::unrecoverable_source_error,
-                             "Unknown fgetc error");
-            }
-            return static_cast<wchar_t>(tmp);
-        }
     }  // namespace detail
 
     template <>
-    SCN_FUNC bool basic_file<char>::sync() const
+    SCN_FUNC void file::_sync(std::size_t pos)
     {
-        return m_cache.sync([&](span<char> s) {
-            for (auto it = s.rbegin(); it != s.rend(); ++it) {
-                if (std::ungetc(static_cast<unsigned char>(*it), m_file) ==
-                    EOF) {
-                    return false;
-                }
-            }
-            return true;
-        });
+        for (auto it = m_buffer.rbegin();
+             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
+            std::ungetc(static_cast<unsigned char>(*it), m_file);
+        }
     }
     template <>
-    SCN_FUNC bool basic_file<wchar_t>::sync() const
+    SCN_FUNC void wfile::_sync(std::size_t pos)
     {
-        return m_cache.sync([&](span<wchar_t> s) {
-            for (auto it = s.rbegin(); it != s.rend(); ++it) {
-                if (std::ungetwc(static_cast<wint_t>(*it), m_file) == WEOF) {
-                    return false;
-                }
-            }
-            return true;
-        });
+        for (auto it = m_buffer.rbegin();
+             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
+            std::ungetwc(static_cast<wint_t>(*it), m_file);
+        }
     }
 
     SCN_END_NAMESPACE

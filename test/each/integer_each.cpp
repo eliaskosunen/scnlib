@@ -19,7 +19,6 @@
 #include "../test.h"
 
 #include <random>
-#include <sstream>
 
 TEST_CASE_TEMPLATE_DEFINE("integer each", T, integer_each_test)
 {

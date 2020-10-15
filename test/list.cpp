@@ -39,3 +39,40 @@ TEST_CASE("comma list")
     CHECK(values.size() == cmp.size());
     CHECK(std::equal(values.begin(), values.end(), cmp.begin()));
 }
+
+TEST_CASE("list until line break")
+{
+    std::vector<int> values;
+    auto ret = scn::scan_list_until("0 1 2 3 42\n-1 1024", values, '\n');
+    CHECK(ret);
+
+    std::vector<int> cmp{0, 1, 2, 3, 42};
+    CHECK(values.size() == cmp.size());
+    CHECK(std::equal(values.begin(), values.end(), cmp.begin()));
+
+    values.clear();
+    ret = scn::scan_list_until("0 1 2 3 42 \n-1 1024", values, '\n');
+    CHECK(ret);
+
+    CHECK(values.size() == cmp.size());
+    CHECK(std::equal(values.begin(), values.end(), cmp.begin()));
+}
+
+TEST_CASE("comma list until line break")
+{
+    std::vector<int> values;
+    auto ret =
+        scn::scan_list_until("0, 1, 2, 3, 42,\n-1, 1024", values, '\n', ',');
+    CHECK(ret);
+
+    std::vector<int> cmp{0, 1, 2, 3, 42};
+    CHECK(values.size() == cmp.size());
+    CHECK(std::equal(values.begin(), values.end(), cmp.begin()));
+
+    values.clear();
+    ret = scn::scan_list_until("0, 1, 2, 3, 42\n-1, 1024", values, '\n', ',');
+    CHECK(ret);
+
+    CHECK(values.size() == cmp.size());
+    CHECK(std::equal(values.begin(), values.end(), cmp.begin()));
+}

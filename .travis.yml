@@ -1,5 +1,5 @@
 language: cpp
-dist: trusty
+dist: focal
 sudo: false
 os: linux
 git:
@@ -7,10 +7,9 @@ git:
 
 matrix:
   include:
-    - env: COMPILER=g++-8 COVERAGE=ON DOC=ON
+    - env: COMPILER=g++-8 COVERAGE=ON
       compiler: gcc
       addons:
-        ssh_known_hosts: eliaskosunen.com
         apt:
           update: true
           packages:
@@ -20,6 +19,15 @@ matrix:
           sources:
           - ubuntu-toolchain-r-test
 
+    - env: COMPILER=g++-10 STANDARD=17
+      compiler: gcc
+      addons:
+        apt:
+          update: true
+          packages:
+            - g++-10
+          sources:
+            - ubuntu-toolchain-r-test
     - env: COMPILER=g++-9 STANDARD=17
       compiler: gcc
       addons:
@@ -35,7 +43,6 @@ matrix:
         apt:
           update: true
           packages:
-          - libstdc++-9-dev
           - g++-8
           sources:
           - ubuntu-toolchain-r-test
@@ -50,6 +57,7 @@ matrix:
           - ubuntu-toolchain-r-test
     - env: COMPILER=g++-6 STANDARD=14
       compiler: gcc
+      dist: bionic
       addons:
         apt:
           update: true
@@ -59,6 +67,7 @@ matrix:
           - ubuntu-toolchain-r-test
     - env: COMPILER=g++-5 STANDARD=14
       compiler: gcc
+      dist: bionic
       addons:
         apt:
           update: true
@@ -66,41 +75,32 @@ matrix:
           - g++-5
           sources:
           - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-8 STANDARD=17
+
+    - env: COMPILER=clang++-10 STANDARD=17
       compiler: clang
       addons:
         apt:
           update: true
           packages:
-          - clang-8
-          - g++-6
+            - clang-10
+            - g++-9
           sources:
-          - llvm-toolchain-trusty-8
-          - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-7 STANDARD=17
+            - llvm-toolchain-focal-10
+            - ubuntu-toolchain-r-test
+    - env: COMPILER=clang++-9 STANDARD=17
       compiler: clang
       addons:
         apt:
           update: true
           packages:
-          - clang-7
-          - g++-6
+            - clang-9
+            - g++-9
           sources:
-          - llvm-toolchain-trusty-7
-          - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-6.0 STANDARD=17
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-          - clang-6.0
-          - g++-6
-          sources:
-          - llvm-toolchain-trusty-6.0
-          - ubuntu-toolchain-r-test
+            - llvm-toolchain-focal-9
+            - ubuntu-toolchain-r-test
     - env: COMPILER=clang++-5.0 STANDARD=17
       compiler: clang
+      dist: bionic
       addons:
         apt:
           update: true
@@ -108,32 +108,11 @@ matrix:
           - clang-5.0
           - g++-6
           sources:
-          - llvm-toolchain-trusty-5.0
-          - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-4.0 STANDARD=14
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-          - clang-4.0
-          - g++-6
-          sources:
-          - llvm-toolchain-trusty-4.0
-          - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-3.9 STANDARD=14
-      compiler: clang
-      addons:
-        apt:
-          update: true
-          packages:
-          - clang-3.9
-          - g++-6
-          sources:
-          - llvm-toolchain-trusty-3.9
+          - llvm-toolchain-bionic-5.0
           - ubuntu-toolchain-r-test
     - env: COMPILER=clang++-3.8 STANDARD=14
       compiler: clang
+      dist: xenial
       addons:
         apt:
           update: true
@@ -141,10 +120,11 @@ matrix:
           - clang-3.8
           - g++-6
           sources:
-          - llvm-toolchain-trusty-3.8
+          - llvm-toolchain-xenial-3.8
           - ubuntu-toolchain-r-test
     - env: COMPILER=clang++-3.7 STANDARD=14
       compiler: clang
+      dist: trusty
       addons:
         apt:
           update: true
@@ -154,20 +134,21 @@ matrix:
           sources:
           - llvm-toolchain-trusty-3.7
           - ubuntu-toolchain-r-test
-    - env: COMPILER=g++-9 STANDARD=17
-      compiler: g++
+
+    - env: COMPILER=g++-10 STANDARD=17
+      compiler: gcc
       arch: arm64
       addons:
         apt:
           update: true
           packages:
-          - g++-9
+          - g++-10
           - cmake
           sources:
           - ubuntu-toolchain-r-test
     - env: COMPILER=clang++ STANDARD=17
       compiler: clang
-      osx_image: xcode11.3
+      osx_image: xcode12.2
       os: osx
 
 install:
@@ -229,12 +210,12 @@ script:
     }
     run_build() {
       cmake -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_BUILD_TYPE=Debug -DSCN_BENCHMARKS=OFF "$@" .. || return 1
-      make VERBOSE=1 -k -j || return 1
+      make -k -j || return 1
       do_test -C Debug || return 1
       make clean || return 1
 
       cmake -DCMAKE_CXX_COMPILER=${CXX} -DCMAKE_BUILD_TYPE=Release -DSCN_BENCHMARKS=OFF "$@" .. || return 1
-      make VERBOSE=1 -k -j || return 1
+      make -k -j || return 1
       do_test -C Release || return 1
       make clean || return 1
       return 0
@@ -253,10 +234,6 @@ script:
       bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
     fi
 
-    if [[ -n "$DOC" ]]; then
-      make doc
-    fi
-
     if [[ -n "$COVERAGE" ]]; then
       return 0
     fi
@@ -272,18 +249,3 @@ script:
         fi
       done
     fi
-
-before_deploy:
-  - cd ${TRAVIS_BUILD_DIR}
-  - openssl aes-256-cbc -K $encrypted_78bdff7e960b_key -iv $encrypted_78bdff7e960b_iv -in deploy_rsa.enc -out /tmp/deploy_rsa -d
-  - eval "$(ssh-agent -s)"
-  - chmod 600 /tmp/deploy_rsa
-  - ssh-add /tmp/deploy_rsa
-
-deploy:
-  provider: script
-  skip_cleanup: true
-  script: rsync -r --delete-after --quiet ${TRAVIS_BUILD_DIR}/doc/html/* upload@eliaskosunen.com:/var/www/scnlib.dev/master
-  on:
-    branch: master
-    condition: "$DOC = ON"

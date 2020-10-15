@@ -37,31 +37,6 @@ namespace scn {
             typename scan_result_for_range<Range, E>::type;
     }  // namespace detail
 
-    /**
-     * \defgroup scanning Scanning API
-     * Core part of the public scanning API.
-     *
-     * Generally, the functions in this group take a range, a format string, and
-     * a list of arguments. The arguments are parsed from the range based on the
-     * information given in the format string.
-     *
-     * The range is described further here: \ref range.
-     *
-     * If the function takes a format string and a range, they must share
-     * character types. Also, the format string must be convertible to
-     * `basic_string_view<CharT>`, where `CharT` is that aforementioned
-     * character type.
-     *
-     * The majority of the functions in this category return a
-     * `scan_result<Range, result<ptrdiff_t>>`, which has the following member
-     * functions:
-     *  - `operator bool`: `true` when successful
-     *  - `range() -> Range`
-     *  - `error() -> error`
-     */
-
-    /// @{
-
     // scan
 
     /**
@@ -239,19 +214,19 @@ namespace scn {
     template <typename Format,
               typename... Args,
               typename CharT = detail::ranges::range_value_t<Format>>
-    auto input(const Format& f, Args&... a)
-        -> detail::scan_result_for_range_t<decltype(stdin_range<CharT>())>
+    auto input(const Format& f, Args&... a) -> detail::scan_result_for_range_t<
+        decltype(stdin_range<CharT>().lock())>
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
 
         using context_type = basic_context<
-            detail::range_wrapper_for_t<decltype(stdin_range<CharT>())>>;
+            detail::range_wrapper_for_t<decltype(stdin_range<CharT>().lock())>>;
         using parse_context_type =
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::wrap(stdin_range<CharT>()));
+        auto ctx = context_type(detail::wrap(stdin_range<CharT>().lock()));
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx, {args});
     }
@@ -273,7 +248,8 @@ namespace scn {
               typename... Args,
               typename CharT = detail::ranges::range_value_t<Format>>
     auto prompt(const CharT* p, const Format& f, Args&... a)
-        -> detail::scan_result_for_range_t<decltype(stdin_range<CharT>())>
+        -> detail::scan_result_for_range_t<
+            decltype(stdin_range<CharT>().lock())>
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -282,12 +258,12 @@ namespace scn {
         std::fputs(p, stdout);
 
         using context_type = basic_context<
-            detail::range_wrapper_for_t<decltype(stdin_range<CharT>())>>;
+            detail::range_wrapper_for_t<decltype(stdin_range<CharT>().lock())>>;
         using parse_context_type =
             basic_parse_context<typename context_type::locale_type>;
 
         auto args = make_args<context_type, parse_context_type>(a...);
-        auto ctx = context_type(detail::wrap(stdin_range<CharT>()));
+        auto ctx = context_type(detail::wrap(stdin_range<CharT>().lock()));
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx, {args});
     }
@@ -322,17 +298,6 @@ namespace scn {
     }
 
     // scanning api
-    /// @}
-
-    /**
-     * \defgroup scanning_operations Higher-level scanning operations
-     *
-     * Functions in this category return a `scan_result<Range, error>`.
-     * It has the following member functions:
-     *  - `operator bool`: `true` when successful
-     *  - `range() -> Range`
-     *  - `error() -> error`
-     */
 
     // getline
 
@@ -412,7 +377,6 @@ namespace scn {
     }  // namespace detail
 
     /**
-     * \ingroup scanning_operations
      * Read the range in \c r into \c str until \c until is found.
      *
      * \c r and \c str must share character types, which must be \c CharT.
@@ -438,7 +402,6 @@ namespace scn {
     }
 
     /**
-     * \ingroup scanning_operations
      * Equivalent to \ref getline with the last parameter set to <tt>'\\n'</tt>
      * with the appropriate character type.
      *
@@ -561,8 +524,6 @@ namespace scn {
     }  // namespace detail
 
     /**
-     * \ingroup scanning_operations
-     *
      * Advances the beginning of \c r until \c until is found.
      * The character type of \c r must be \c CharT.
      */
@@ -584,8 +545,6 @@ namespace scn {
     }
 
     /**
-     * \ingroup scanning_operations
-     *
      * Advances the beginning of \c r until \c until is found, or the beginning
      * has been advanced \c n times. The character type of \c r must be \c
      * CharT.
@@ -655,13 +614,11 @@ namespace scn {
     }  // namespace detail
 
     /**
-     * \ingroup scanning_operations
-     *
      * Reads values repeatedly from `r` and writes them into `c`.
      * The values read are of type `Container::value_type`, and they are written
-     * into `c` using `c.push_back`. The values must be separated by whitespace,
-     * and by a separator character `separator`, if specified. If `separator ==
-     * 0`, no separator character is expected.
+     * into `c` using `c.push_back`. The values must be separated by separator
+     * character `separator`, followed by whitespace. If `separator == 0`, no
+     * separator character is expected.
      *
      * To scan a `span`, use `span_list_wrapper`.
      */
@@ -711,20 +668,79 @@ namespace scn {
                     continue;
                 }
                 else {
-                    return {error(error::invalid_scanned_value,
-                                  "Invalid separator character"),
-                            ctx.range().get_return()};
+                    // Unexpected character, assuming end
+                    break;
                 }
             }
         }
         return {{}, ctx.range().get_return()};
     }
 
-    /**
-     * \defgroup convenience_scan_types Convenience scannable types
-     * This category has types and factory functions, that can be passed as
-     * arguments to `scn::scan` (or alike), providing various functionality.
-     */
+    template <typename Range,
+              typename Container,
+              typename CharT = typename detail::extract_char_type<
+                  detail::ranges::iterator_t<Range>>::type>
+    auto scan_list_until(Range&& r,
+                         Container& c,
+                         CharT until,
+                         CharT separator = detail::zero_value<CharT>::value)
+        -> detail::scan_result_for_range_t<Range, wrapped_error>
+    {
+        using value_type = typename Container::value_type;
+        using range_type = detail::range_wrapper_for_t<Range>;
+        using context_type = basic_context<range_type>;
+        using parse_context_type =
+            basic_empty_parse_context<typename context_type::locale_type>;
+
+        value_type value;
+        auto args = make_args<context_type, parse_context_type>(value);
+        auto ctx = context_type(detail::wrap(std::forward<Range>(r)));
+
+        while (true) {
+            if (c.size() == c.max_size()) {
+                break;
+            }
+
+            auto pctx = parse_context_type(1, ctx);
+            auto ret = vscan(ctx, pctx, {args});
+            if (!ret) {
+                if (ret.error() == error::end_of_range) {
+                    break;
+                }
+                return {ret.error(), ctx.range().get_return()};
+            }
+            c.push_back(std::move(value));
+
+            {
+                auto next = read_char(ctx.range());
+                if (!next) {
+                    if (next.error() == scn::error::end_of_range) {
+                        break;
+                    }
+                    return {next.error(), ctx.range().get_return()};
+                }
+                if (next.value() == until) {
+                    break;
+                }
+                if (separator != 0) {
+                    if (next.value() != separator) {
+                        break;
+                    }
+                } else {
+                    if (!ctx.locale().is_space(next.value())) {
+                        break;
+                    }
+                }
+                next = read_char(ctx.range());
+                if (next.value() == until) {
+                    break;
+                } else {
+                    putback_n(ctx.range(), 1);
+                }
+            }
+        }
+        return {{}, ctx.range().get_return()};
+    }
 
     template <typename T>
     struct discard_type {
@@ -732,8 +748,6 @@ namespace scn {
     };
 
     /**
-     * \ingroup convenience_scan_types
-     *
      * Scans an instance of `T`, but doesn't store it anywhere.
      * Uses `scn::temp` internally, so the user doesn't have to bother.
      *

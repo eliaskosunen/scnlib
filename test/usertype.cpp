@@ -101,7 +101,7 @@ TEST_CASE_TEMPLATE_INSTANTIATE(user_type_test, user_type, user_type2);
 struct non_default_construct {
     non_default_construct() = delete;
 
-    non_default_construct(int val) : value(val) {}
+    explicit non_default_construct(int val) : value(val) {}
 
     int value{};
 };

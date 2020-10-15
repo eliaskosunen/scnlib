@@ -16,6 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/scn.h>
+
 #include <iostream>
 #include <string>
 
@@ -24,6 +25,6 @@ int main()
     std::cout << "Hi there! What's your full name?\n";
 
     std::string name;
-    scn::getline(scn::cstdin(), name);
+    scn::getline(scn::cstdin().lock(), name);
     std::cout << "Welcome, " << name << '\n';
 }

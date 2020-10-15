@@ -28,15 +28,6 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    /**
-     * \defgroup scan_low Low-level parsing operations
-     *
-     * The functions in this category abstract away the input range under an
-     * unifying interface.
-     */
-
-    /// @{
-
     // read_char
 
     /// @{
@@ -508,9 +499,6 @@ namespace scn {
         return {};
     }
 
-    /// @}
-
-    // scan_low
     /// @}
 
     struct empty_parser {
@@ -1503,8 +1491,6 @@ namespace scn {
     /// @{
 
     /**
-     * \ingroup scan_low
-     *
      * Reads from the range in `ctx` as if by repeatedly calling `read_char()`,
      * until a non-space character is found (as determined by `ctx.locale()`),
      * or EOF is reached. That non-space character is then put back into the

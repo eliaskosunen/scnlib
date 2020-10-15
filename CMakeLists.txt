@@ -45,31 +45,38 @@ include(flags)
 message(STATUS "SCN_PEDANTIC: ${SCN_PEDANTIC}")
 message(STATUS "SCN_WERROR: ${SCN_WERROR}")
 
-function (generate_library_target target_name)
-    add_library(${target_name}
-        src/vscan.cpp src/locale.cpp src/reader.cpp src/file.cpp)
+set(SCN_SOURCES
+        ${CMAKE_CURRENT_LIST_DIR}/src/vscan.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/locale.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/reader.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/file.cpp)
+
+function(generate_library_target target_name)
+    add_library(${target_name})
+    target_sources(${target_name}
+            PRIVATE ${SCN_SOURCES})
     target_include_directories(${target_name} PUBLIC
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>)
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include>)
     target_include_directories(${target_name} PRIVATE
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
     target_compile_definitions(${target_name} PUBLIC
-        -DSCN_HEADER_ONLY=0)
+            -DSCN_HEADER_ONLY=0)
     target_compile_options(${target_name} PUBLIC
-        $<$<CXX_COMPILER_ID:MSVC>: /bigobj>)
+            $<$<CXX_COMPILER_ID:MSVC>: /bigobj>)
 
     target_compile_features(${target_name} PUBLIC cxx_std_11)
     set_private_flags(${target_name})
-endfunction ()
-function (generate_header_only_target target_name)
+endfunction()
+function(generate_header_only_target target_name)
     add_library(${target_name} INTERFACE)
     target_include_directories(${target_name} INTERFACE
-        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${PROJECT_SOURCE_DIR}/src>"
-        "$<INSTALL_INTERFACE:include>")
+            "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${PROJECT_SOURCE_DIR}/src>"
+            "$<INSTALL_INTERFACE:include>")
     target_compile_definitions(${target_name} INTERFACE
-        -DSCN_HEADER_ONLY=1)
+            -DSCN_HEADER_ONLY=1)
     target_compile_features(${target_name} INTERFACE cxx_std_11)
-endfunction ()
+endfunction()
 
 generate_library_target(scn)
 generate_header_only_target(scn-header-only)
@@ -89,7 +96,7 @@ if (SCN_BENCHMARKS)
     add_subdirectory(benchmark)
 endif ()
 if (SCN_DOCS)
-    add_subdirectory(doc)
+    add_subdirectory(docs)
 endif ()
 
 if (SCN_INSTALL)
@@ -97,42 +104,42 @@ if (SCN_INSTALL)
     include(CMakePackageConfigHelpers)
 
     write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/scnConfigVersion.cmake"
-        VERSION ${SCN_VERSION}
-        COMPATIBILITY ExactVersion)
+            "${CMAKE_CURRENT_BINARY_DIR}/scnConfigVersion.cmake"
+            VERSION ${SCN_VERSION}
+            COMPATIBILITY ExactVersion)
     configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/scnConfig.cmake"
-        @ONLY)
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.cmake.in"
+            "${CMAKE_CURRENT_BINARY_DIR}/scnConfig.cmake"
+            @ONLY)
 
     install(DIRECTORY
-        "${CMAKE_CURRENT_SOURCE_DIR}/include/"
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+            "${CMAKE_CURRENT_SOURCE_DIR}/include/"
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
     install(DIRECTORY
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn/detail")
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/"
+            DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn/detail")
 
     install(FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
-        "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/scn)
+            "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
+            "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/scn)
 
     install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/scnConfigVersion.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/scnConfig.cmake"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/scn")
+            "${CMAKE_CURRENT_BINARY_DIR}/scnConfigVersion.cmake"
+            "${CMAKE_CURRENT_BINARY_DIR}/scnConfig.cmake"
+            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/scn")
 
     export(TARGETS ${SCN_EXPORT_TARGETS_LIST}
-        NAMESPACE scn
-        FILE "${CMAKE_CURRENT_BINARY_DIR}/scnTargets.cmake")
+            NAMESPACE scn
+            FILE "${CMAKE_CURRENT_BINARY_DIR}/scnTargets.cmake")
 
     install(TARGETS ${SCN_EXPORT_TARGETS_LIST}
-        EXPORT scnTargets
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+            EXPORT scnTargets
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
     install(EXPORT scnTargets
-        NAMESPACE scn::
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/scn")
+            NAMESPACE scn::
+            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/scn")
 endif ()

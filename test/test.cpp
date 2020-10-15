@@ -143,7 +143,7 @@ TEST_CASE("scanf")
 TEST_CASE("temporary")
 {
     struct temporary {
-        temporary(int&& val) : value(std::move(val)) {}
+        explicit temporary(int&& val) : value(val) {}
         ~temporary()
         {
             CHECK(value == 42);
@@ -248,7 +248,8 @@ TEST_CASE("unpacked arguments")
     }
 }
 
-TEST_CASE("partial success = fail") {
+TEST_CASE("partial success = fail")
+{
     int i, j;
     auto ret = scn::scan("123 foo", "{} {}", i, j);
     CHECK(!ret);

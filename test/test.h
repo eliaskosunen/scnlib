@@ -15,28 +15,32 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <doctest/doctest.h>
-#include <scn/scn.h>
 #include <algorithm>
 #include <array>
+#include <exception>
 #include <ostream>
 #include <string>
 #include <vector>
+
+#include <scn/scn.h>
+
+#include <doctest/doctest.h>
 
 template <typename T>
 struct debug;
 
 template <typename CharT>
-std::basic_string<CharT> widen(std::string)
+std::basic_string<CharT> widen(const std::string&)
 {
+    return {};
 }
 template <>
-inline std::basic_string<char> widen<char>(std::string str)
+inline std::basic_string<char> widen<char>(const std::string& str)
 {
     return str;
 }
 template <>
-inline std::basic_string<wchar_t> widen<wchar_t>(std::string str)
+inline std::basic_string<wchar_t> widen<wchar_t>(const std::string& str)
 {
     return std::wstring(str.begin(), str.end());
 }
@@ -58,18 +62,19 @@ auto do_scanf(Input i, Fmt f, T&... a) -> decltype(
 
 #define DOCTEST_VALUE_PARAMETERIZED_DATA(data, data_array)                     \
     SCN_CLANG_PUSH SCN_CLANG_IGNORE("-Wexit-time-destructors") {}              \
-    static std::vector<std::string> _doctest_subcases = [&data_array]() {      \
+    static std::vector<std::string> _doctest_subcases = [&(data_array)]() {    \
         std::vector<std::string> out;                                          \
-        while (out.size() != data_array.size())                                \
+        while (out.size() != (data_array).size())                              \
             out.push_back(std::string(#data_array "[") +                       \
                           std::to_string(out.size() + 1) + "]");               \
         return out;                                                            \
     }();                                                                       \
     size_t _doctest_subcase_idx = 0;                                           \
     std::for_each(                                                             \
-        data_array.begin(), data_array.end(), [&](const decltype(data)& in) {  \
+        (data_array).begin(), (data_array).end(),                              \
+        [&](const decltype(data)& in) {                                        \
             DOCTEST_SUBCASE(_doctest_subcases[_doctest_subcase_idx++].c_str()) \
             {                                                                  \
-                data = in;                                                     \
+                (data) = in;                                                   \
             }                                                                  \
         }) SCN_CLANG_POP
