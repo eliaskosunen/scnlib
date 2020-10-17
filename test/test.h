@@ -46,18 +46,20 @@ inline std::basic_string<wchar_t> widen<wchar_t>(const std::string& str)
 }
 
 template <typename CharT, typename Input, typename Fmt, typename... T>
-auto do_scan(Input i, Fmt f, T&... a) -> decltype(
-    scn::scan(scn::make_view(widen<CharT>(i)), widen<CharT>(f).c_str(), a...))
+auto do_scan(Input&& i, Fmt f, T&... a) -> decltype(
+    scn::scan(std::forward<Input>(i), widen<CharT>(f).c_str(), a...))
 {
-    return scn::scan(scn::make_view(widen<CharT>(i)), widen<CharT>(f).c_str(),
-                     a...);
+    return scn::scan(widen<CharT>(std::forward<Input>(i)),
+                     widen<CharT>(f).c_str(), a...);
 }
 template <typename CharT, typename Input, typename Fmt, typename... T>
-auto do_scanf(Input i, Fmt f, T&... a) -> decltype(
-    scn::scanf(scn::make_view(widen<CharT>(i)), widen<CharT>(f).c_str(), a...))
+auto do_scanf(Input&& i, Fmt f, T&... a)
+    -> decltype(scn::scanf(widen<CharT>(std::forward<Input>(i)),
+                           widen<CharT>(f).c_str(),
+                           a...))
 {
-    return scn::scanf(scn::make_view(widen<CharT>(i)), widen<CharT>(f).c_str(),
-                      a...);
+    return scn::scanf(widen<CharT>(std::forward<Input>(i)),
+                      widen<CharT>(f).c_str(), a...);
 }
 
 #define DOCTEST_VALUE_PARAMETERIZED_DATA(data, data_array)                     \

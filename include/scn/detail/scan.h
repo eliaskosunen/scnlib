@@ -89,9 +89,6 @@ namespace scn {
         }
     }  // namespace detail
 
-    template <typename T>
-    struct debug;
-
     // scan
 
     /**

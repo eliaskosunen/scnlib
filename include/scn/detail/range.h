@@ -133,6 +133,8 @@ namespace scn {
 
         template <typename Range>
         class range_wrapper {
+            using range_wrapper_marker = void;
+
         public:
             using range_type = Range;
             using iterator = ranges::iterator_t<const Range>;
@@ -150,8 +152,24 @@ namespace scn {
             {
             }
 
-            range_wrapper(const range_wrapper&) = delete;
-            range_wrapper& operator=(const range_wrapper&) = delete;
+            range_wrapper(const range_wrapper& o) : m_range(o.m_range)
+            {
+                const auto n =
+                    ranges::distance(o.begin_underlying(), o.m_begin);
+                m_begin = ranges::begin(m_range.get());
+                ranges::advance(m_begin, n);
+                m_read = o.m_read;
+            }
+            range_wrapper& operator=(const range_wrapper& o)
+            {
+                const auto n =
+                    ranges::distance(o.begin_underlying(), o.m_begin);
+                m_range = o.m_range;
+                m_begin = ranges::begin(m_range.get());
+                ranges::advance(m_begin, n);
+                m_read = o.m_read;
+                return *this;
+            }
 
             range_wrapper(range_wrapper&& o) noexcept
             {
@@ -162,7 +180,18 @@ namespace scn {
                 ranges::advance(m_begin, n);
                 m_read = exchange(o.m_read, 0);
             }
-            range_wrapper& operator=(range_wrapper&& o) = delete;
+            range_wrapper& operator=(range_wrapper&& o)
+            {
+                reset_to_rollback_point();
+
+                const auto n =
+                    ranges::distance(o.begin_underlying(), o.m_begin);
+                m_range = std::move(o.m_range);
+                m_begin = ranges::begin(m_range.get());
+                ranges::advance(m_begin, n);
+                m_read = exchange(o.m_read, 0);
+                return *this;
+            }
 
             ~range_wrapper() = default;
 
@@ -284,7 +313,13 @@ namespace scn {
             struct fn {
             private:
                 template <typename Range>
-                static range_wrapper<Range> impl(range_wrapper<Range> r,
+                static range_wrapper<Range> impl(const range_wrapper<Range>& r,
+                                                 priority_tag<3>) noexcept
+                {
+                    return r;
+                }
+                template <typename Range>
+                static range_wrapper<Range> impl(range_wrapper<Range>&& r,
                                                  priority_tag<3>) noexcept
                 {
                     return r;
@@ -328,13 +363,6 @@ namespace scn {
                     return {basic_string_view<CharT>{str.data(), str.size()}};
                 }
 #endif
-                template <typename CharT, typename Allocator>
-                static auto impl(const std::vector<CharT, Allocator>& vec,
-                                 priority_tag<1>) noexcept
-                    -> range_wrapper<basic_string_view<CharT>>
-                {
-                    return {basic_string_view<CharT>{vec.data(), vec.size()}};
-                }
                 template <typename CharT>
                 static auto impl(span<const CharT> s, priority_tag<1>) noexcept
                     -> range_wrapper<basic_string_view<CharT>>
@@ -391,18 +419,34 @@ namespace scn {
     };
 
     namespace detail {
+        template <typename Base>
+        class scan_result_base_wrapper : public Base {
+        public:
+            scan_result_base_wrapper(Base&& b) : Base(std::move(b)) {}
+
+        protected:
+            void set_base(const Base& b)
+            {
+                static_cast<Base&>(*this) = b;
+            }
+            void set_base(Base&& b)
+            {
+                static_cast<Base&>(*this) = std::move(b);
+            }
+        };
+
         template <typename WrappedRange, typename Base>
-        class scan_result_base : public Base {
+        class scan_result_base : public scan_result_base_wrapper<Base> {
         public:
             using wrapped_range_type = WrappedRange;
-            using base_type = Base;
+            using base_type = scan_result_base_wrapper<Base>;
 
             using range_type = typename wrapped_range_type::range_type;
             using iterator = typename wrapped_range_type::iterator;
             using sentinel = typename wrapped_range_type::sentinel;
             using char_type = typename wrapped_range_type::char_type;
 
-            scan_result_base(base_type&& b, wrapped_range_type&& r)
+            scan_result_base(Base&& b, wrapped_range_type&& r)
                 : base_type(std::move(b)), m_range(std::move(r))
             {
             }
@@ -459,25 +503,6 @@ namespace scn {
             wrapped_range_type m_range;
         };
 
-        template <typename WrappedRange, typename UnwrappedRange, typename Base>
-        class non_reconstructed_scan_result
-            : public scan_result_base<WrappedRange, Base> {
-        public:
-            using unwrapped_range_type = UnwrappedRange;
-            using base_type = scan_result_base<WrappedRange, Base>;
-
-            non_reconstructed_scan_result(Base&& b, WrappedRange&& r)
-                : base_type(std::move(b), std::move(r))
-            {
-            }
-
-            template <typename R = unwrapped_range_type>
-            R reconstruct() const
-            {
-                return reconstruct(reconstruct_tag<R>{}, this->begin(),
-                                   this->end());
-            }
-        };
         template <typename WrappedRange, typename Base>
         class reconstructed_scan_result
             : public scan_result_base<WrappedRange, Base> {
@@ -495,6 +520,33 @@ namespace scn {
                 return this->range().range_underlying();
             }
         };
+        template <typename WrappedRange, typename UnwrappedRange, typename Base>
+        class non_reconstructed_scan_result
+            : public scan_result_base<WrappedRange, Base> {
+        public:
+            using unwrapped_range_type = UnwrappedRange;
+            using base_type = scan_result_base<WrappedRange, Base>;
+
+            non_reconstructed_scan_result(Base&& b, WrappedRange&& r)
+                : base_type(std::move(b), std::move(r))
+            {
+            }
+
+            non_reconstructed_scan_result& operator=(
+                reconstructed_scan_result<WrappedRange, Base>&& other)
+            {
+                this->set_base(other);
+                this->m_range = std::move(other).range();
+                return *this;
+            }
+
+            template <typename R = unwrapped_range_type>
+            R reconstruct() const
+            {
+                return reconstruct(reconstruct_tag<R>{}, this->begin(),
+                                   this->end());
+            }
+        };
 
         template <typename T>
         struct range_tag {
@@ -503,6 +555,20 @@ namespace scn {
         namespace _wrap_result {
             struct fn {
             private:
+                // Range = range_wrapper&
+                template <typename Error,
+                          typename Range,
+                          typename = typename std::enable_if<
+                              !std::is_lvalue_reference<Range>::value>::type>
+                static auto impl(Error e,
+                                 range_tag<range_wrapper<Range>&>,
+                                 range_wrapper<Range>&& range,
+                                 priority_tag<2>)
+                    -> reconstructed_scan_result<range_wrapper<Range>, Error>
+                {
+                    return {std::move(e), std::move(range)};
+                }
+
                 // (const) InputRange&
                 // wrapped<non-ref>
                 template <typename Error,
@@ -586,14 +652,14 @@ namespace scn {
                     noexcept(noexcept(impl(std::move(e),
                                            tag,
                                            std::move(range),
-                                           priority_tag<1>{})))
+                                           priority_tag<2>{})))
                         -> decltype(impl(std::move(e),
                                          tag,
                                          std::move(range),
-                                         priority_tag<1>{}))
+                                         priority_tag<2>{}))
                 {
                     return impl(std::move(e), tag, std::move(range),
-                                priority_tag<1>{});
+                                priority_tag<2>{});
                 }
             };
         }  // namespace _wrap_result
