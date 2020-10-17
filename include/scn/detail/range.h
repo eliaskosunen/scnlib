@@ -100,9 +100,13 @@ namespace scn {
             range_wrapper_storage() = default;
             range_wrapper_storage(const type& v) : value(std::addressof(v)) {}
 
-            const type& get() const
+            const type& get() const&
             {
                 return *value;
+            }
+            type&& get() &&
+            {
+                return std::move(*value);
             }
         };
         template <typename T>
@@ -117,9 +121,13 @@ namespace scn {
             {
             }
 
-            const T& get() const
+            const T& get() const&
             {
                 return value;
+            }
+            T&& get() &&
+            {
+                return std::move(value);
             }
         };
 
@@ -141,22 +149,6 @@ namespace scn {
                   m_begin(ranges::begin(m_range.get()))
             {
             }
-
-#if 0
-            template <typename R,
-                      typename = typename std::enable_if<
-                          std::is_same<remove_cvref_t<R>,
-                                       remove_cvref_t<Range>>::value>::type>
-            range_wrapper(range_wrapper<R>&& o) noexcept
-            {
-                const auto n =
-                    ranges::distance(o.begin_underlying(), o.m_begin);
-                m_range = std::move(o.m_range);
-                m_begin = ranges::begin(m_range.get());
-                ranges::advance(m_begin, n);
-                m_read = exchange(o.m_read, 0);
-            }
-#endif
 
             range_wrapper(const range_wrapper&) = delete;
             range_wrapper& operator=(const range_wrapper&) = delete;
@@ -207,6 +199,7 @@ namespace scn {
             {
                 return ranges::begin(m_range.get());
             }
+
             const range_type& range_underlying() const noexcept
             {
                 return m_range.get();
@@ -251,20 +244,25 @@ namespace scn {
                 m_read = 0;
             }
 
-            template <typename R = Range>
-            auto reconstruct() const -> range_wrapper<R>
+            template <typename R = Range,
+                      typename std::enable_if<std::is_same<
+                          remove_cvref_t<Range>,
+                          remove_cvref_t<R>>::value>::type* = nullptr>
+            auto rewrap() && -> range_wrapper<R>
             {
-                return {::scn::detail::reconstruct(reconstruct_tag<R>{},
-                                                   begin(), end())};
+                const auto n = ranges::distance(begin_underlying(), begin());
+                auto r = range_wrapper<R>{std::move(m_range.get())};
+                r.advance(n);
+                r.set_rollback_point();
+                return r;
             }
             template <typename R = Range,
-                      typename = typename std::enable_if<
-                          std::is_lvalue_reference<R>::value>::type,
-                      typename NoRef = typename std::remove_reference<R>::type>
-            auto reconstruct_noref() const -> range_wrapper<NoRef>
+                      typename std::enable_if<!std::is_same<
+                          remove_cvref_t<Range>,
+                          remove_cvref_t<R>>::value>::type* = nullptr>
+            auto rewrap() && -> range_wrapper<R>
             {
-                return {::scn::detail::reconstruct(reconstruct_tag<NoRef>{},
-                                                   begin(), end())};
+                return {reconstruct(reconstruct_tag<R>{}, begin(), end())};
             }
 
             // iterator value type is a character
@@ -538,7 +536,8 @@ namespace scn {
                                  priority_tag<1>)
                     -> reconstructed_scan_result<range_wrapper<NoRef>, Error>
                 {
-                    return {std::move(e), std::move(range).reconstruct_noref()};
+                    return {std::move(e),
+                            std::move(range).template rewrap<NoRef>()};
                 }
 
                 // InputRange&&
@@ -556,9 +555,8 @@ namespace scn {
                     -> reconstructed_scan_result<range_wrapper<InputRange>,
                                                  Error>
                 {
-                    return {
-                        std::move(e),
-                        std::move(range).template reconstruct<InputRange>()};
+                    return {std::move(e),
+                            std::move(range).template rewrap<InputRange>()};
                 }
 
                 // InputRange&&
@@ -574,7 +572,8 @@ namespace scn {
                                  priority_tag<0>)
                     -> reconstructed_scan_result<range_wrapper<NoRef>, Error>
                 {
-                    return {std::move(e), std::move(range).reconstruct_noref()};
+                    return {std::move(e),
+                            std::move(range).template rewrap<NoRef>()};
                 }
 
             public:
