@@ -88,16 +88,15 @@ TEST_CASE("range wrapping")
         CHECK(str == "hello");
         CHECK(ret);
         CHECK(ret.range()[0] == ' ');
-        CHECK(view[0] == ' ');
 
         int i;
         ret = scn::scan(view, "{}", i);
         CHECK(i == 42);
         CHECK(ret);
         CHECK(ret.range().empty());
-        CHECK(view.empty());
     }
 }
+#endif
 
 TEST_CASE("empty format")
 {
@@ -122,7 +121,7 @@ TEST_CASE("value")
 
     auto ret2 = scn::scan_value<int>("foo");
     CHECK(!ret2);
-    CHECK(std::string{ret2.range().data(), ret2.range().size()} == "foo");
+    CHECK(ret2.string() == "foo");
 }
 
 TEST_CASE("scanf")
@@ -167,7 +166,7 @@ TEST_CASE("discard")
 {
     auto ret = scn::scan("123 456", scn::default_tag, scn::discard<int>());
     CHECK(ret);
-    CHECK(std::string{ret.range().data(), ret.range().size()} == " 456");
+    CHECK(ret.string() == " 456");
 }
 
 TEST_CASE("enumerated arguments")
@@ -357,4 +356,3 @@ TEST_CASE("argument amount")
                                   i[14], i[15]);
     }
 }
-#endif

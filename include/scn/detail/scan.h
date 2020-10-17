@@ -114,11 +114,11 @@ namespace scn {
      * \see scan
      */
     template <typename Range, typename... Args>
-    auto scan(Range&& r, detail::default_t tag, Args&... a)
+    auto scan(Range&& r, detail::default_t, Args&... a)
         -> detail::scan_result_for_range<Range>
     {
         return detail::scan_boilerplate<basic_empty_parse_context>(
-            std::forward<Range>(r), tag, a...);
+            std::forward<Range>(r), static_cast<int>(sizeof...(Args)), a...);
     }
 
     // scan localized
@@ -188,7 +188,7 @@ namespace scn {
 
         auto pctx = parse_context_type(1, ctx);
         auto err = vscan(ctx, pctx, {args});
-        auto ret = expected<T>{err};
+        auto ret = expected<T>{value};
         if (!err) {
             ret = err;
         }

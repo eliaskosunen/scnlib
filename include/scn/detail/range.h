@@ -498,6 +498,14 @@ namespace scn {
             {
                 return {m_range.data(), m_range.size()};
             }
+            template <
+                typename R = wrapped_range_type,
+                typename = typename std::enable_if<R::is_contiguous>::type>
+            std::basic_string<char_type> string() const
+            {
+                return {m_range.data(),
+                        static_cast<std::size_t>(m_range.size())};
+            }
 
         protected:
             wrapped_range_type m_range;
