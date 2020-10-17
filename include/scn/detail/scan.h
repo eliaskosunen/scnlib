@@ -25,20 +25,44 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        template <typename Range, typename E = wrapped_error>
-        struct scan_result_for_range {
-            using type = scan_result<
-                typename detail::range_wrapper_for_t<Range>::return_type,
-                E>;
-        };
-        template <typename Range, typename E = wrapped_error>
-        using scan_result_for_range_t =
-            typename scan_result_for_range<Range, E>::type;
-    }  // namespace detail
-
     // scan
 
+    namespace detail {
+        template <typename Error, typename Range>
+        using generic_scan_result_for_range = decltype(
+            detail::wrap_result(std::declval<Error>(),
+                                std::declval<detail::range_tag<Range>>(),
+                                std::declval<range_wrapper_for_t<Range>>()));
+        template <typename Range>
+        using scan_result_for_range =
+            generic_scan_result_for_range<wrapped_error, Range>;
+    }  // namespace detail
+
+    template <typename T>
+    struct debug;
+
+    template <typename Range, typename Format, typename... Args>
+    auto scan(Range&& r, const Format& f, Args&... a)
+        -> detail::scan_result_for_range<Range>
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using range_type = detail::range_wrapper_for_t<const Range&>;
+        using context_type = basic_context<range_type>;
+        using parse_context_type =
+            basic_parse_context<typename context_type::locale_type>;
+
+        auto args = make_args<context_type, parse_context_type>(a...);
+        auto ctx = context_type(detail::wrap(r));
+        auto pctx = parse_context_type(f, ctx);
+        auto err = vscan(ctx, pctx, {args});
+        return detail::wrap_result(wrapped_error{err},
+                                   detail::range_tag<Range>{},
+                                   std::move(ctx.range()));
+    }
+
+#if 0
     /**
      * The most fundamental part of the scanning API.
      * Reads from the range in \c r according to the format string \c f.
@@ -123,6 +147,7 @@ namespace scn {
         auto pctx = parse_context_type(static_cast<int>(sizeof...(Args)), ctx);
         return vscan(ctx, pctx, {args});
     }
+
 
     // value
 
@@ -726,7 +751,8 @@ namespace scn {
                     if (next.value() != separator) {
                         break;
                     }
-                } else {
+                }
+                else {
                     if (!ctx.locale().is_space(next.value())) {
                         break;
                     }
@@ -734,7 +760,8 @@ namespace scn {
                 next = read_char(ctx.range());
                 if (next.value() == until) {
                     break;
-                } else {
+                }
+                else {
                     putback_n(ctx.range(), 1);
                 }
             }
@@ -776,6 +803,7 @@ namespace scn {
             return scanner<CharT, T>::scan(tmp, ctx);
         }
     };
+#endif
 
     SCN_END_NAMESPACE
 }  // namespace scn

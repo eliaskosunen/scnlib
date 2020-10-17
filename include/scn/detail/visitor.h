@@ -144,99 +144,15 @@ namespace scn {
         ParseCtx* m_pctx;
     };
 
-    struct wrapped_error {
-        wrapped_error() = default;
-        wrapped_error(::scn::error e) : err(e) {}
-
-        ::scn::error error() const
-        {
-            return err;
-        }
-
-        explicit operator bool() const
-        {
-            return err.operator bool();
-        }
-
-        ::scn::error err{};
-    };
-
-    template <typename Range, typename Base = wrapped_error>
-    class scan_result : public Base {
-    public:
-        using range_type = Range;
-        using base_type = Base;
-
-        template <typename R>
-        constexpr scan_result(base_type&& b, R&& r)
-            : base_type(std::move(b)), m_range(std::forward<R>(r))
-        {
-        }
-
-        range_type& range() &
-        {
-            return m_range;
-        }
-        const range_type& range() const&
-        {
-            return m_range;
-        }
-        range_type&& range() &&
-        {
-            return m_range;
-        }
-
-        auto begin() -> decltype(detail::ranges::begin(range()))
-        {
-            return detail::ranges::begin(m_range);
-        }
-        auto begin() const -> decltype(detail::ranges::begin(range()))
-        {
-            return detail::ranges::begin(m_range);
-        }
-        auto cbegin() const -> decltype(detail::ranges::cbegin(range()))
-        {
-            return detail::ranges::cbegin(m_range);
-        }
-
-        auto end() -> decltype(detail::ranges::end(range()))
-        {
-            return detail::ranges::end(m_range);
-        }
-        auto end() const -> decltype(detail::ranges::end(range()))
-        {
-            return detail::ranges::end(m_range);
-        }
-        auto cend() const -> decltype(detail::ranges::cend(range()))
-        {
-            return detail::ranges::cend(m_range);
-        }
-
-    private:
-        detail::remove_cvref_t<range_type> m_range;
-    };
-    template <typename Context>
-    struct scan_result_for {
-        using type = scan_result<typename Context::range_type::return_type>;
-    };
-    template <typename Context>
-    using scan_result_for_t = typename scan_result_for<Context>::type;
-
     template <typename Context, typename ParseCtx>
-    scan_result_for_t<Context> visit(Context& ctx,
-                                     ParseCtx& pctx,
-                                     basic_args<Context> args)
+    error visit(Context& ctx, ParseCtx& pctx, basic_args<Context> args)
     {
-        auto reterror = [&ctx](error e) -> scan_result_for_t<Context> {
-            return {std::move(e), ctx.range().get_return()};
-        };
-
         auto arg = typename Context::arg_type();
 
         {
             auto ret = skip_range_whitespace(ctx);
             if (!ret) {
-                return reterror(ret);
+                return ret;
             }
         }
 
@@ -252,9 +168,9 @@ namespace scn {
                     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                     auto rb = ctx.range().reset_to_rollback_point();
                     if (!rb) {
-                        return reterror(rb);
+                        return rb;
                     }
-                    return reterror(ret);
+                    return ret;
                 }
                 // Don't advance pctx, should_skip_ws() does it for us
                 continue;
@@ -264,8 +180,8 @@ namespace scn {
             // Brace followed by another brace, meaning a literal '{'
             if (pctx.should_read_literal()) {
                 if (SCN_UNLIKELY(!pctx)) {
-                    return reterror(error(error::invalid_format_string,
-                                          "Unexpected end of format string"));
+                    return {error::invalid_format_string,
+                            "Unexpected end of format string"};
                 }
                 // Check for any non-specifier {foo} characters
                 auto ret = read_char(ctx.range());
@@ -274,26 +190,25 @@ namespace scn {
                     auto rb = ctx.range().reset_to_rollback_point();
                     if (!rb) {
                         // Failed rollback
-                        return reterror(rb);
+                        return rb;
                     }
                     if (!ret) {
                         // Failed read
-                        return reterror(ret.error());
+                        return ret.error();
                     }
 
                     // Mismatching characters in scan string and stream
-                    return reterror(
-                        error(error::invalid_scanned_value,
-                              "Expected character from format string not "
-                              "found in the stream"));
+                    return {error::invalid_scanned_value,
+                            "Expected character from format string not "
+                            "found in the stream"};
                 }
                 // Bump pctx to next char
                 pctx.advance();
             }
             else {
                 // Scan argument
-                auto arg_wrapped = [&]() -> expected<typename Context::arg_type>
-                {
+                auto arg_wrapped =
+                    [&]() -> expected<typename Context::arg_type> {
                     if (!pctx.has_arg_id()) {
                         return next_arg(args, pctx);
                     }
@@ -319,25 +234,24 @@ namespace scn {
                         return get_arg(args, pctx, i);
                     }
                     return get_arg(args, pctx, id);
-                }
-                ();
+                }();
                 if (!arg_wrapped) {
-                    return reterror(arg_wrapped.error());
+                    return arg_wrapped.error();
                 }
                 arg = arg_wrapped.value();
                 SCN_ENSURE(arg);
                 if (!pctx) {
-                    return reterror(error(error::invalid_format_string,
-                                          "Unexpected end of format argument"));
+                    return {error::invalid_format_string,
+                            "Unexpected end of format argument"};
                 }
                 auto ret = visit_arg<Context>(
                     basic_visitor<Context, ParseCtx>(ctx, pctx), arg);
                 if (!ret) {
                     auto rb = ctx.range().reset_to_rollback_point();
                     if (!rb) {
-                        return reterror(rb);
+                        return rb;
                     }
-                    return reterror(ret);
+                    return ret;
                 }
                 // Handle next arg and bump pctx
                 pctx.arg_handled();
@@ -348,12 +262,20 @@ namespace scn {
         }
         if (pctx) {
             // Format string not exhausted
-            return reterror(error(error::invalid_format_string,
-                                  "Format string not exhausted"));
+            return {error::invalid_format_string,
+                    "Format string not exhausted"};
         }
         ctx.range().set_rollback_point();
-        return {{}, ctx.range().get_return()};
+        return {};
     }
+    /*
+    template <typename Context>
+    struct scan_result_for {
+        using type = scan_result<typename Context::range_type::return_type>;
+    };
+    template <typename Context>
+    using scan_result_for_t = typename scan_result_for<Context>::type;
+     */
 
     SCN_END_NAMESPACE
 }  // namespace scn

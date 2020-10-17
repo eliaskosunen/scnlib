@@ -430,7 +430,8 @@ namespace scn {
         };
 
         template <typename T, typename U = T>
-        T exchange(T& obj, U&& new_value) {
+        T exchange(T& obj, U&& new_value)
+        {
             T old_value = std::move(obj);
             obj = std::forward<U>(new_value);
             return old_value;
@@ -625,6 +626,51 @@ namespace scn {
                 // even though operator-> isn't dereferencing anything :)))
                 return it._Unwrapped();
             }
+        };
+#endif
+
+#if 0
+        template <typename T>
+        constexpr T& reference_wrapper_helper(T& t) noexcept
+        {
+            return t;
+        }
+        template <typename T>
+        constexpr void reference_wrapper_helper(T&&) = delete;
+
+        template <class T>
+        class reference_wrapper {
+        public:
+            using type = T;
+
+            template <class U,
+                      class = decltype(
+                          reference_wrapper_helper<T>(std::declval<U>()),
+                          typename std::enable_if<
+                              !std::is_same<reference_wrapper,
+                                            remove_cvref_t<U>>::value>::type())>
+            constexpr reference_wrapper(U&& u) noexcept(
+                noexcept(reference_wrapper_helper<T>(std::forward<U>(u))))
+                : m_ptr(std::addressof(
+                      reference_wrapper_helper<T>(std::forward<U>(u))))
+            {
+            }
+            reference_wrapper(const reference_wrapper&) noexcept = default;
+
+            reference_wrapper& operator=(const reference_wrapper& x) noexcept =
+                default;
+
+            constexpr operator T&() const noexcept
+            {
+                return *m_ptr;
+            }
+            constexpr T& get() const noexcept
+            {
+                return *m_ptr;
+            }
+
+        private:
+            T* m_ptr;
         };
 #endif
 

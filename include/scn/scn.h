@@ -20,36 +20,4 @@
 
 #include "detail/scan.h"
 
-/**
- * \mainpage
- *
- * `scnlib` is a modern C++ library for scanning values.
- * Think of it as more C++-y `scanf`, or the inverse of
- * <a href="https://fmt.dev">fmtlib</a>.
- *
- * The repository lives on
- * <a href="https://github.com/eliaskosunen/scnlib">GitHub</a>.
- * More information is available on the project's home page,
- * at https://scnlib.dev
- *
- * The library is open source,
- * licensed under the Apache License, version 2.0.\n
- * Copyright (c) 2017-2019 Elias Kosunen\n
- * For further details, see the LICENSE file.
- *
- * \subpage tutorial\n
- * \subpage cmake\n
- * \subpage rationale\n
- *
- * \par API reference
- * \ref scanning\n
- * \ref scanning_operations\n
- * \ref convenience_scan_types\n
- * \ref scan_erase\n
- * \ref scan_low\n
- */
-
-/**
- */
-
 #endif  // SCN_SCN_H
