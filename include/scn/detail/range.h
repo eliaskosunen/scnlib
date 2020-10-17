@@ -374,6 +374,8 @@ namespace scn {
                 static auto impl(const Range& r, priority_tag<0>) noexcept
                     -> range_wrapper<Range&>
                 {
+                    static_assert(ranges::range<Range>::value,
+                                  "Input needs to be a Range");
                     return {r};
                 }
 
@@ -489,14 +491,16 @@ namespace scn {
                 typename = typename std::enable_if<R::is_contiguous>::type>
             basic_string_view<char_type> string_view() const
             {
-                return {m_range.data(), m_range.size()};
+                return {m_range.data(),
+                        static_cast<std::size_t>(m_range.size())};
             }
             template <
                 typename R = wrapped_range_type,
                 typename = typename std::enable_if<R::is_contiguous>::type>
             span<char_type> span() const
             {
-                return {m_range.data(), m_range.size()};
+                return {m_range.data(),
+                        static_cast<std::size_t>(m_range.size())};
             }
             template <
                 typename R = wrapped_range_type,
@@ -666,6 +670,8 @@ namespace scn {
                                          std::move(range),
                                          priority_tag<2>{}))
                 {
+                    static_assert(ranges::range<InputRange>::value,
+                                  "Input needs to be a Range");
                     return impl(std::move(e), tag, std::move(range),
                                 priority_tag<2>{});
                 }

@@ -20,7 +20,7 @@
 
 int main()
 {
-    auto r = scn::make_view("First line\nSecond line");
+    auto r = std::string{"First line\nSecond line"};
     std::string line{};
     if (auto ret = scn::getline(r, line)) {
         std::cout << "First line was: '" << line << "'\n";
