@@ -131,10 +131,15 @@ namespace scn {
             }
         };
 
+        template <typename T>
+        using _range_wrapper_marker = typename T::range_wrapper_marker;
+
+        template <typename T>
+        struct _has_range_wrapper_marker : exists<_range_wrapper_marker, T> {
+        };
+
         template <typename Range>
         class range_wrapper {
-            using range_wrapper_marker = void;
-
         public:
             using range_type = Range;
             using iterator = ranges::iterator_t<const Range>;
@@ -145,7 +150,12 @@ namespace scn {
                 range_wrapper_storage<Range, std::is_reference<Range>::value>;
             using storage_range_type = typename storage_type::range_type;
 
-            template <typename R>
+            using range_wrapper_marker = void;
+
+            template <
+                typename R,
+                typename = typename std::enable_if<
+                    !_has_range_wrapper_marker<remove_cvref_t<R>>::value>::type>
             range_wrapper(R&& r)
                 : m_range(std::forward<R>(r)),
                   m_begin(ranges::begin(m_range.get()))
@@ -277,6 +287,27 @@ namespace scn {
                       typename std::enable_if<std::is_same<
                           remove_cvref_t<Range>,
                           remove_cvref_t<R>>::value>::type* = nullptr>
+            auto rewrap() const& -> range_wrapper<R>
+            {
+                const auto n = ranges::distance(begin_underlying(), begin());
+                auto r = range_wrapper<R>{m_range.get()};
+                r.advance(n);
+                r.set_rollback_point();
+                return r;
+            }
+            template <typename R = Range,
+                      typename std::enable_if<!std::is_same<
+                          remove_cvref_t<Range>,
+                          remove_cvref_t<R>>::value>::type* = nullptr>
+            auto rewrap() const& -> range_wrapper<R>
+            {
+                return {reconstruct(reconstruct_tag<R>{}, begin(), end())};
+            }
+
+            template <typename R = Range,
+                      typename std::enable_if<std::is_same<
+                          remove_cvref_t<Range>,
+                          remove_cvref_t<R>>::value>::type* = nullptr>
             auto rewrap() && -> range_wrapper<R>
             {
                 const auto n = ranges::distance(begin_underlying(), begin());
@@ -334,8 +365,7 @@ namespace scn {
                 }
 
                 template <typename CharT, std::size_t N>
-                static auto impl(const CharT (&str)[N],
-                                 priority_tag<1>) noexcept
+                static auto impl(CharT (&str)[N], priority_tag<1>) noexcept
                     -> range_wrapper<
                         basic_string_view<typename std::remove_cv<CharT>::type>>
                 {
@@ -575,8 +605,51 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<range_wrapper<Range>&>,
                                  range_wrapper<Range>&& range,
-                                 priority_tag<2>)
+                                 priority_tag<3>)
                     -> reconstructed_scan_result<range_wrapper<Range>, Error>
+                {
+                    return {std::move(e), std::move(range)};
+                }
+                // Range = const range_wrapper&
+                template <typename Error,
+                          typename Range,
+                          typename = typename std::enable_if<
+                              !std::is_lvalue_reference<Range>::value>::type>
+                static auto impl(Error e,
+                                 range_tag<const range_wrapper<Range>&>,
+                                 range_wrapper<Range>&& range,
+                                 priority_tag<3>)
+                    -> reconstructed_scan_result<range_wrapper<Range>, Error>
+                {
+                    return {std::move(e), std::move(range)};
+                }
+                // Range = range_wrapper&&
+                template <typename Error,
+                          typename Range,
+                          typename = typename std::enable_if<
+                              !std::is_lvalue_reference<Range>::value>::type>
+                static auto impl(Error e,
+                                 range_tag<range_wrapper<Range>>,
+                                 range_wrapper<Range>&& range,
+                                 priority_tag<3>)
+                    -> reconstructed_scan_result<range_wrapper<Range>, Error>
+                {
+                    return {std::move(e), std::move(range)};
+                }
+
+                // string literals are wonky
+                template <typename Error,
+                          typename CharT,
+                          size_t N,
+                          typename NoCvref = remove_cvref_t<CharT>>
+                static auto impl(
+                    Error e,
+                    range_tag<CharT (&)[N]>,
+                    range_wrapper<basic_string_view<NoCvref>>&& range,
+                    priority_tag<2>)
+                    -> reconstructed_scan_result<
+                        range_wrapper<basic_string_view<NoCvref>>,
+                        Error>
                 {
                     return {std::move(e), std::move(range)};
                 }
@@ -664,16 +737,16 @@ namespace scn {
                     noexcept(noexcept(impl(std::move(e),
                                            tag,
                                            std::move(range),
-                                           priority_tag<2>{})))
+                                           priority_tag<3>{})))
                         -> decltype(impl(std::move(e),
                                          tag,
                                          std::move(range),
-                                         priority_tag<2>{}))
+                                         priority_tag<3>{}))
                 {
                     static_assert(ranges::range<InputRange>::value,
                                   "Input needs to be a Range");
                     return impl(std::move(e), tag, std::move(range),
-                                priority_tag<2>{});
+                                priority_tag<3>{});
                 }
             };
         }  // namespace _wrap_result

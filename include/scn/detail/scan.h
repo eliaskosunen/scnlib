@@ -192,11 +192,13 @@ namespace scn {
 
         auto pctx = parse_context_type(1, ctx);
         auto err = vscan(ctx, pctx, {args});
-        auto ret = expected<T>{value};
         if (!err) {
-            ret = err;
+            return detail::wrap_result(expected<T>{err},
+                                       detail::range_tag<Range>{},
+                                       std::move(ctx.range()));
         }
-        return detail::wrap_result(ret, detail::range_tag<Range>{},
+        return detail::wrap_result(expected<T>{value},
+                                   detail::range_tag<Range>{},
                                    std::move(ctx.range()));
     }
 
@@ -627,12 +629,12 @@ namespace scn {
             }
 
             auto pctx = parse_context_type(1, ctx);
-            auto ret = vscan(ctx, pctx, {args});
-            if (!ret) {
-                if (ret.error() == error::end_of_range) {
+            auto err = vscan(ctx, pctx, {args});
+            if (!err) {
+                if (err == error::end_of_range) {
                     break;
                 }
-                return detail::wrap_result(wrapped_error{ret.error()},
+                return detail::wrap_result(wrapped_error{err},
                                            detail::range_tag<Range>{},
                                            std::move(ctx.range()));
             }
@@ -644,7 +646,9 @@ namespace scn {
                     if (sep_ret.error() == scn::error::end_of_range) {
                         break;
                     }
-                    return {sep_ret.error(), ctx.range().get_return()};
+                    return detail::wrap_result(wrapped_error{sep_ret.error()},
+                                               detail::range_tag<Range>{},
+                                               std::move(ctx.range()));
                 }
                 if (sep_ret.value() == separator) {
                     continue;
@@ -685,12 +689,12 @@ namespace scn {
             }
 
             auto pctx = parse_context_type(1, ctx);
-            auto ret = vscan(ctx, pctx, {args});
-            if (!ret) {
-                if (ret.error() == error::end_of_range) {
+            auto err = vscan(ctx, pctx, {args});
+            if (!err) {
+                if (err == error::end_of_range) {
                     break;
                 }
-                return detail::wrap_result(wrapped_error{ret.error()},
+                return detail::wrap_result(wrapped_error{err},
                                            detail::range_tag<Range>{},
                                            std::move(ctx.range()));
             }
