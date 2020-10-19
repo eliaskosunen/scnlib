@@ -787,7 +787,8 @@ namespace scn {
     }  // namespace detail
 
     template <typename Error = wrapped_error, typename Range>
-    auto make_result(Range&& r)
+    auto make_result(Range&& r) -> detail::
+        result_type_for_t<Error, Range, detail::range_wrapper_for_t<Range>>
     {
         return detail::wrap_result(Error{}, detail::range_tag<Range>{},
                                    detail::wrap(r));
