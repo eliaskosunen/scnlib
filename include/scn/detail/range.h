@@ -142,10 +142,12 @@ namespace scn {
         class range_wrapper {
         public:
             using range_type = Range;
-            using iterator = ranges::iterator_t<const Range>;
-            using sentinel = ranges::sentinel_t<const Range>;
+            using range_nocvref_type = remove_cvref_t<Range>;
+            using iterator = ranges::iterator_t<const range_nocvref_type>;
+            using sentinel = ranges::sentinel_t<const range_nocvref_type>;
             using char_type = typename extract_char_type<iterator>::type;
-            using difference_type = ranges::range_difference_t<Range>;
+            using difference_type =
+                ranges::range_difference_t<const range_nocvref_type>;
             using storage_type =
                 range_wrapper_storage<Range, std::is_reference<Range>::value>;
             using storage_range_type = typename storage_type::range_type;
@@ -158,7 +160,7 @@ namespace scn {
                     !_has_range_wrapper_marker<remove_cvref_t<R>>::value>::type>
             range_wrapper(R&& r)
                 : m_range(std::forward<R>(r)),
-                  m_begin(ranges::begin(m_range.get()))
+                  m_begin(ranges::cbegin(m_range.get()))
             {
             }
 
@@ -166,7 +168,7 @@ namespace scn {
             {
                 const auto n =
                     ranges::distance(o.begin_underlying(), o.m_begin);
-                m_begin = ranges::begin(m_range.get());
+                m_begin = ranges::cbegin(m_range.get());
                 ranges::advance(m_begin, n);
                 m_read = o.m_read;
             }
@@ -175,7 +177,7 @@ namespace scn {
                 const auto n =
                     ranges::distance(o.begin_underlying(), o.m_begin);
                 m_range = o.m_range;
-                m_begin = ranges::begin(m_range.get());
+                m_begin = ranges::cbegin(m_range.get());
                 ranges::advance(m_begin, n);
                 m_read = o.m_read;
                 return *this;
@@ -186,7 +188,7 @@ namespace scn {
                 const auto n =
                     ranges::distance(o.begin_underlying(), o.m_begin);
                 m_range = std::move(o.m_range);
-                m_begin = ranges::begin(m_range.get());
+                m_begin = ranges::cbegin(m_range.get());
                 ranges::advance(m_begin, n);
                 m_read = exchange(o.m_read, 0);
             }
@@ -197,7 +199,7 @@ namespace scn {
                 const auto n =
                     ranges::distance(o.begin_underlying(), o.m_begin);
                 m_range = std::move(o.m_range);
-                m_begin = ranges::begin(m_range.get());
+                m_begin = ranges::cbegin(m_range.get());
                 ranges::advance(m_begin, n);
                 m_read = exchange(o.m_read, 0);
                 return *this;
@@ -209,21 +211,21 @@ namespace scn {
             {
                 return m_begin;
             }
-            sentinel end() const
-                noexcept(noexcept(ranges::end(std::declval<const Range&>())))
+            sentinel end() const noexcept(noexcept(
+                ranges::cend(std::declval<const range_nocvref_type&>())))
             {
-                return ranges::end(m_range.get());
+                return ranges::cend(m_range.get());
             }
 
             iterator advance(difference_type n = 1) noexcept
             {
                 m_read += n;
-                if (!is_caching_range<Range>::value) {
+                if (!is_caching_range<range_nocvref_type>::value) {
                     ranges::advance(m_begin, n);
                 }
                 return m_begin;
             }
-            template <typename R = Range,
+            template <typename R = range_nocvref_type,
                       typename std::enable_if<
                           ranges::sized_range<R>::value>::type* = nullptr>
             void advance_to(iterator it) noexcept
@@ -233,10 +235,10 @@ namespace scn {
                 m_begin = it;
             }
 
-            iterator begin_underlying() const
-                noexcept(noexcept(ranges::begin(std::declval<const Range&>())))
+            iterator begin_underlying() const noexcept(noexcept(
+                ranges::cbegin(std::declval<const range_nocvref_type&>())))
             {
-                return ranges::begin(m_range.get());
+                return ranges::cbegin(m_range.get());
             }
 
             const range_type& range_underlying() const noexcept
@@ -244,7 +246,7 @@ namespace scn {
                 return m_range.get();
             }
 
-            template <typename R = Range,
+            template <typename R = range_nocvref_type,
                       typename std::enable_if<
                           ranges::contiguous_range<R>::value>::type* = nullptr>
             auto data() const
@@ -254,7 +256,7 @@ namespace scn {
             {
                 return std::addressof(*m_begin);
             }
-            template <typename R = Range,
+            template <typename R = range_nocvref_type,
                       typename std::enable_if<
                           ranges::sized_range<R>::value>::type* = nullptr>
             auto size() const noexcept(noexcept(
@@ -283,10 +285,10 @@ namespace scn {
                 m_read = 0;
             }
 
-            template <typename R = Range,
-                      typename std::enable_if<std::is_same<
-                          remove_cvref_t<Range>,
-                          remove_cvref_t<R>>::value>::type* = nullptr>
+            template <typename R = range_nocvref_type,
+                      typename std::enable_if<
+                          std::is_same<R, range_nocvref_type>::value>::type* =
+                          nullptr>
             auto rewrap() const& -> range_wrapper<R>
             {
                 const auto n = ranges::distance(begin_underlying(), begin());
@@ -295,19 +297,19 @@ namespace scn {
                 r.set_rollback_point();
                 return r;
             }
-            template <typename R = Range,
-                      typename std::enable_if<!std::is_same<
-                          remove_cvref_t<Range>,
-                          remove_cvref_t<R>>::value>::type* = nullptr>
+            template <typename R = range_nocvref_type,
+                      typename std::enable_if<
+                          !std::is_same<R, range_nocvref_type>::value>::type* =
+                          nullptr>
             auto rewrap() const& -> range_wrapper<R>
             {
                 return {reconstruct(reconstruct_tag<R>{}, begin(), end())};
             }
 
-            template <typename R = Range,
-                      typename std::enable_if<std::is_same<
-                          remove_cvref_t<Range>,
-                          remove_cvref_t<R>>::value>::type* = nullptr>
+            template <typename R = range_nocvref_type,
+                      typename std::enable_if<
+                          std::is_same<R, range_nocvref_type>::value>::type* =
+                          nullptr>
             auto rewrap() && -> range_wrapper<R>
             {
                 const auto n = ranges::distance(begin_underlying(), begin());
@@ -316,23 +318,24 @@ namespace scn {
                 r.set_rollback_point();
                 return r;
             }
-            template <typename R = Range,
-                      typename std::enable_if<!std::is_same<
-                          remove_cvref_t<Range>,
-                          remove_cvref_t<R>>::value>::type* = nullptr>
+            template <typename R = range_nocvref_type,
+                      typename std::enable_if<
+                          !std::is_same<R, range_nocvref_type>::value>::type* =
+                          nullptr>
             auto rewrap() && -> range_wrapper<R>
             {
                 return {reconstruct(reconstruct_tag<R>{}, begin(), end())};
             }
 
             // iterator value type is a character
-            static constexpr bool is_direct = is_direct_impl<Range>::value;
+            static constexpr bool is_direct =
+                is_direct_impl<range_nocvref_type>::value;
             // can call .data() and memcpy
             static constexpr bool is_contiguous =
-                is_contiguous_impl<Range>::value;
+                is_contiguous_impl<range_nocvref_type>::value;
             // provides mechanism to get a pointer to memcpy from
             static constexpr bool provides_buffer_access =
-                provides_buffer_access_impl<Range>::value;
+                provides_buffer_access_impl<range_nocvref_type>::value;
 
         private:
             storage_type m_range;
@@ -345,27 +348,27 @@ namespace scn {
             private:
                 template <typename Range>
                 static range_wrapper<Range> impl(const range_wrapper<Range>& r,
-                                                 priority_tag<3>) noexcept
+                                                 priority_tag<4>) noexcept
                 {
                     return r;
                 }
                 template <typename Range>
                 static range_wrapper<Range> impl(range_wrapper<Range>&& r,
-                                                 priority_tag<3>) noexcept
+                                                 priority_tag<4>) noexcept
                 {
                     return r;
                 }
 
                 template <typename Range>
                 static auto impl(const Range& r,
-                                 priority_tag<2>) noexcept(noexcept(r.wrap()))
+                                 priority_tag<3>) noexcept(noexcept(r.wrap()))
                     -> decltype(r.wrap())
                 {
                     return r.wrap();
                 }
 
                 template <typename CharT, std::size_t N>
-                static auto impl(CharT (&str)[N], priority_tag<1>) noexcept
+                static auto impl(CharT (&str)[N], priority_tag<2>) noexcept
                     -> range_wrapper<
                         basic_string_view<typename std::remove_cv<CharT>::type>>
                 {
@@ -379,7 +382,7 @@ namespace scn {
                     const std::basic_string<CharT,
                                             std::char_traits<CharT>,
                                             Allocator>& str,
-                    priority_tag<1>) noexcept
+                    priority_tag<2>) noexcept
                     -> range_wrapper<basic_string_view<CharT>>
                 {
                     return {basic_string_view<CharT>{str.data(), str.size()}};
@@ -394,10 +397,19 @@ namespace scn {
                 }
 #endif
                 template <typename CharT>
-                static auto impl(span<const CharT> s, priority_tag<1>) noexcept
+                static auto impl(span<const CharT> s, priority_tag<2>) noexcept
                     -> range_wrapper<basic_string_view<CharT>>
                 {
                     return {basic_string_view<CharT>{s.data(), s.size()}};
+                }
+
+                template <typename Range,
+                          typename = typename std::enable_if<
+                              ranges::view<Range>::value>::type>
+                static auto impl(const Range& r, priority_tag<1>) noexcept
+                    -> range_wrapper<Range>
+                {
+                    return {r};
                 }
 
                 template <typename Range>
@@ -413,11 +425,11 @@ namespace scn {
                 template <typename Range>
                 auto operator()(Range&& r) const
                     noexcept(noexcept(fn::impl(std::forward<Range>(r),
-                                               priority_tag<3>{})))
+                                               priority_tag<4>{})))
                         -> decltype(fn::impl(std::forward<Range>(r),
-                                             priority_tag<3>{}))
+                                             priority_tag<4>{}))
                 {
-                    return fn::impl(std::forward<Range>(r), priority_tag<3>{});
+                    return fn::impl(std::forward<Range>(r), priority_tag<4>{});
                 }
             };
         }  // namespace _wrap

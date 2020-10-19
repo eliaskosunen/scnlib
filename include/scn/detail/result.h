@@ -64,7 +64,7 @@ namespace scn {
 
         struct success_tag_t {
         };
-        static constexpr success_tag_t success_tag()
+        static constexpr success_tag_t success_tag() noexcept
         {
             return {};
         }

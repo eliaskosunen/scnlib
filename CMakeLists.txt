@@ -40,6 +40,11 @@ endif ()
 set(SCN_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
 message(STATUS "scn version: ${SCN_VERSION}")
 
+if (NOT (${CMAKE_VERSION} VERSION_LESS "3.9.0"))
+    # IPO/LTO
+    cmake_policy(SET CMP0069 NEW)
+endif ()
+
 include(sanitizers)
 include(flags)
 

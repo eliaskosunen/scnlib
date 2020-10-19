@@ -279,6 +279,23 @@ namespace scn {
         return ch;
     }
 
+    template <>
+    inline void file::_sync(std::size_t pos)
+    {
+        for (auto it = m_buffer.rbegin();
+             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
+            std::ungetc(static_cast<unsigned char>(*it), m_file);
+        }
+    }
+    template <>
+    inline void wfile::_sync(std::size_t pos)
+    {
+        for (auto it = m_buffer.rbegin();
+             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
+            std::ungetwc(static_cast<wint_t>(*it), m_file);
+        }
+    }
+
     template <typename CharT>
     class basic_owning_file : public basic_file<CharT> {
     public:
