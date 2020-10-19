@@ -39,18 +39,18 @@ std::string generate_list_data(size_t n)
 static void scanlist_scn(benchmark::State& state)
 {
     auto data = generate_list_data<int>(static_cast<size_t>(state.range(0)));
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
     std::vector<int> read;
     read.reserve(static_cast<size_t>(state.range(0)));
     for (auto _ : state) {
         scn::string_view str;
-        auto err = scn::getline(range, str, ',');
-        if (!err) {
-            if (err.error() == scn::error::end_of_range) {
+        result = scn::getline(result.range(), str, ',');
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_list_data<int>(
                     static_cast<size_t>(state.range(0)));
-                range = scn::make_view(data);
+                result = scn::make_result(data);
                 read.clear();
                 read.reserve(static_cast<size_t>(state.range(0)));
                 state.ResumeTiming();
@@ -61,7 +61,7 @@ static void scanlist_scn(benchmark::State& state)
         }
 
         int value{};
-        auto tmp = scn::scan(scn::make_view(str), scn::default_tag, value);
+        auto tmp = scn::scan_default(str, value);
         if (!tmp) {
             state.SkipWithError("");
             break;
@@ -74,32 +74,32 @@ BENCHMARK(scanlist_scn)->Arg(16)->Arg(64)->Arg(256);
 static void scanlist_scn_alt(benchmark::State& state)
 {
     auto data = generate_list_data<int>(static_cast<size_t>(state.range(0)));
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
     std::vector<int> read;
     read.reserve(static_cast<size_t>(state.range(0)));
     for (auto _ : state) {
         int value{};
-        auto d = scn::scan(range, scn::default_tag, value);
-        if (!d) {
-            state.SkipWithError(d.error().msg());
+        result = scn::scan_default(result.range(), value);
+        if (!result) {
+            state.SkipWithError(result.error().msg());
             break;
         }
         read.push_back(value);
 
         char ch{};
-        d = scn::scan(range, scn::default_tag, ch);
-        if (!d) {
-            if (d.error() == scn::error::end_of_range) {
+        result = scn::scan_default(result.range(), ch);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_list_data<int>(
                     static_cast<size_t>(state.range(0)));
-                range = scn::make_view(data);
+                result = scn::make_result(data);
                 read.clear();
                 read.reserve(static_cast<size_t>(state.range(0)));
                 state.ResumeTiming();
                 continue;
             }
-            state.SkipWithError(d.error().msg());
+            state.SkipWithError(result.error().msg());
             break;
         }
         if (ch != ',') {
@@ -113,23 +113,23 @@ BENCHMARK(scanlist_scn_alt)->Arg(16)->Arg(64)->Arg(256);
 static void scanlist_scn_list(benchmark::State& state)
 {
     auto data = generate_list_data<int>(static_cast<size_t>(state.range(0)));
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
     std::vector<int> read;
     read.reserve(static_cast<size_t>(state.range(0)));
     for (auto _ : state) {
-        auto ret = scn::scan_list(range, read, ',');
-        if (!ret) {
-            if (ret.error() == scn::error::end_of_range) {
+        result = scn::scan_list(result.range(), read, ',');
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
                 state.PauseTiming();
                 data = generate_list_data<int>(
                     static_cast<size_t>(state.range(0)));
-                range = scn::make_view(data);
+                result = scn::make_result(data);
                 read.clear();
                 read.reserve(static_cast<size_t>(state.range(0)));
                 state.ResumeTiming();
                 continue;
             }
-            state.SkipWithError(ret.error().msg());
+            state.SkipWithError(result.error().msg());
             break;
         }
     }

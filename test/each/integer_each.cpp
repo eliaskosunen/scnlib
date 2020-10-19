@@ -30,7 +30,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer each", T, integer_each_test)
         auto str = oss.str();
 
         T tmp{};
-        auto ret = scn::scan(str, scn::default_tag, tmp);
+        auto ret = scn::scan_default(str, tmp);
 
         CHECK(ret);
 

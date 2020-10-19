@@ -575,6 +575,13 @@ namespace scn {
             }
 
             non_reconstructed_scan_result& operator=(
+                const reconstructed_scan_result<WrappedRange, Base>& other)
+            {
+                this->set_base(other);
+                this->m_range = other.range();
+                return *this;
+            }
+            non_reconstructed_scan_result& operator=(
                 reconstructed_scan_result<WrappedRange, Base>&& other)
             {
                 this->set_base(other);
@@ -766,6 +773,13 @@ namespace scn {
         using result_type_for_t =
             typename result_type_for<Error, InputRange, WrappedRange>::type;
     }  // namespace detail
+
+    template <typename Error = wrapped_error, typename Range>
+    auto make_result(Range&& r)
+    {
+        return detail::wrap_result(Error{}, detail::range_tag<Range>{},
+                                   detail::wrap(r));
+    }
 
     SCN_END_NAMESPACE
 }  // namespace scn

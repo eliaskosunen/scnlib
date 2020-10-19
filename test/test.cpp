@@ -104,7 +104,7 @@ TEST_CASE("empty format")
     double d{};
     std::string s(6, '\0');
     bool b{};
-    auto ret = scn::scan("42 3.14 foobar true", scn::default_tag, i, d, s, b);
+    auto ret = scn::scan_default("42 3.14 foobar true", i, d, s, b);
 
     CHECK(ret);
     CHECK(i == 42);
@@ -157,14 +157,14 @@ TEST_CASE("temporary")
         int value;
     };
 
-    auto ret = scn::scan("42", scn::default_tag, temporary{0}());
+    auto ret = scn::scan_default("42", temporary{0}());
 
     CHECK(ret);
 }
 
 TEST_CASE("discard")
 {
-    auto ret = scn::scan("123 456", scn::default_tag, scn::discard<int>());
+    auto ret = scn::scan_default("123 456", scn::discard<int>());
     CHECK(ret);
     CHECK(ret.string() == " 456");
 }
@@ -216,7 +216,7 @@ TEST_CASE("brace mismatch")
 TEST_CASE("empty span")
 {
     scn::span<char> s{};
-    auto ret = scn::scan("abc", scn::default_tag, s);
+    auto ret = scn::scan_default("abc", s);
     CHECK(ret);
 }
 
@@ -239,7 +239,7 @@ TEST_CASE("unpacked arguments")
 {
     std::array<int, 16> a{{0}};
     auto ret =
-        scn::scan("0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15", scn::default_tag,
+        scn::scan_default("0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15",
                   a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9],
                   a[10], a[11], a[12], a[13], a[14], a[15]);
     CHECK(ret);
@@ -262,13 +262,13 @@ TEST_CASE("argument amount")
     SUBCASE("1")
     {
         int i;
-        auto ret = scn::scan("0", scn::default_tag, i);
+        auto ret = scn::scan_default("0", i);
         CHECK(ret);
         CHECK(i == 0);
     }
 #define MAKE_ARGUMENT_AMOUNT_TEST(str, n, ...)                \
     int i[n];                                                 \
-    auto ret = scn::scan(str, scn::default_tag, __VA_ARGS__); \
+    auto ret = scn::scan_default(str, __VA_ARGS__); \
     CHECK(ret);                                               \
     for (int j = 0; j < n; ++j) {                             \
         CHECK(i[j] == j);                                     \

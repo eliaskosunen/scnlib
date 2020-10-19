@@ -30,13 +30,13 @@ static void scanint_scn(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
     Int i{};
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
     for (auto _ : state) {
-        auto ret = scn::scan(range, "{}", i);
+        result = scn::scan(result.range(), "{}", i);
 
-        if (!ret) {
-            if (ret.error() == scn::error::end_of_range) {
-                range = scn::make_view(data);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result(data);
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -56,13 +56,13 @@ static void scanint_scn_default(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
     Int i{};
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
     for (auto _ : state) {
-        auto ret = scn::scan(range, scn::default_tag, i);
+        result = scn::scan_default(result.range(), i);
 
-        if (!ret) {
-            if (ret.error() == scn::error::end_of_range) {
-                range = scn::make_view(data);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result(data);
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -81,13 +81,13 @@ template <typename Int>
 static void scanint_scn_value(benchmark::State& state)
 {
     auto data = generate_int_data<Int>(INT_DATA_N);
-    auto range = scn::make_view(data);
+    auto result = scn::make_result<scn::expected<Int>>(data);
     for (auto _ : state) {
-        auto ret = scn::scan_value<Int>(range);
+        result = scn::scan_value<Int>(result.range());
 
-        if (!ret) {
-            if (ret.error() == scn::error::end_of_range) {
-                range = scn::make_view(data);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result<scn::expected<Int>>(data);
             }
             else {
                 state.SkipWithError("Benchmark errored");

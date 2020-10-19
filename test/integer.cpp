@@ -227,16 +227,16 @@ TEST_CASE("integer decimal separator")
 {
     int i{};
 
-    auto ret = scn::scan("100.200", scn::default_tag, i);
+    auto ret = scn::scan_default("100.200", i);
     CHECK(ret);
     CHECK(i == 100);
 
     char ch{};
-    auto cret = scn::scan(ret.range(), scn::default_tag, ch);
+    auto cret = scn::scan_default(ret.range(), ch);
     CHECK(cret);
     CHECK(ch == '.');
 
-    auto ret2 = scn::scan(cret.range(), scn::default_tag, i);
+    auto ret2 = scn::scan_default(cret.range(), i);
     CHECK(ret2);
     CHECK(i == 200);
 }
@@ -262,7 +262,7 @@ TEST_CASE("integer thousands separator")
         CHECK(a == 100);
 
         char ch{};
-        auto cret = scn::scan(ret.range(), scn::default_tag, ch);
+        auto cret = scn::scan_default(ret.range(), ch);
         CHECK(cret);
         CHECK(ch == ',');
 

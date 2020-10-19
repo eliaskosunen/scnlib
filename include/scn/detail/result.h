@@ -194,6 +194,7 @@ namespace scn {
         using success_type = T;
         using error_type = Error;
 
+        constexpr expected() = default;
         constexpr expected(success_type s) : m_s(s) {}
         constexpr expected(error_type e) : m_e(e) {}
 

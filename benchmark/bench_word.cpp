@@ -44,15 +44,15 @@ static void scanword_scn(benchmark::State& state)
 {
     using string_type = std::basic_string<Char>;
     string_type data = generate_data<Char>(static_cast<size_t>(state.range(0)));
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
     string_type str{};
 
     for (auto _ : state) {
-        auto e = scn::scan(range, default_format_str<Char>(), str);
+        result = scn::scan(result.range(), default_format_str<Char>(), str);
 
-        if (!e) {
-            if (e.error() == scn::error::end_of_range) {
-                range = scn::make_view(data);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result(data);
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -69,15 +69,15 @@ static void scanword_scn_default(benchmark::State& state)
 {
     using string_type = std::basic_string<Char>;
     string_type data = generate_data<Char>(static_cast<size_t>(state.range(0)));
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
     string_type str{};
 
     for (auto _ : state) {
-        auto e = scn::scan(range, scn::default_tag, str);
+        result = scn::scan_default(result.range(), str);
 
-        if (!e) {
-            if (e.error() == scn::error::end_of_range) {
-                range = scn::make_view(data);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result(data);
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -94,15 +94,15 @@ static void scanword_scn_string_view(benchmark::State& state)
 {
     using string_type = scn::basic_string_view<Char>;
     auto data = generate_data<Char>(static_cast<size_t>(state.range(0)));
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
     string_type str{};
 
     for (auto _ : state) {
-        auto e = scn::scan(range, default_format_str<Char>(), str);
+        result = scn::scan(result.range(), default_format_str<Char>(), str);
 
-        if (!e) {
-            if (e.error() == scn::error::end_of_range) {
-                range = scn::make_view(data);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result(data);
             }
             else {
                 state.SkipWithError("Benchmark errored");

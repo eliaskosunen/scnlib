@@ -28,14 +28,14 @@ template <typename Float>
 static void scanfloat_scn(benchmark::State& state)
 {
     auto data = generate_float_data<Float>(FLOAT_DATA_N);
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
     Float f{};
     for (auto _ : state) {
-        auto e = scn::scan(range, "{}", f);
+        result = scn::scan(result.range(), "{}", f);
 
-        if (!e) {
-            if (e.error() == scn::error::end_of_range) {
-                range = scn::make_view(data);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result(data);
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -54,14 +54,14 @@ template <typename Float>
 static void scanfloat_scn_default(benchmark::State& state)
 {
     auto data = generate_float_data<Float>(FLOAT_DATA_N);
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
     Float f{};
     for (auto _ : state) {
-        auto e = scn::scan(range, scn::default_tag, f);
+        result = scn::scan_default(result.range(), f);
 
-        if (!e) {
-            if (e.error() == scn::error::end_of_range) {
-                range = scn::make_view(data);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result(data);
             }
             else {
                 state.SkipWithError("Benchmark errored");

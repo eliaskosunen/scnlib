@@ -84,7 +84,7 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
         }
 
         {
-            auto ret = scn::scan(data, scn::default_tag, s);
+            auto ret = scn::scan_default(data, s);
             CHECK(s == widen<CharT>("line2"));
             CHECK(ret);
         }

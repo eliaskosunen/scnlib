@@ -31,15 +31,15 @@ SCN_GCC_IGNORE("-Wunused-function")
 static void return_ref(benchmark::State& state)
 {
     auto data = generate_data<char>(4096);
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
 
     for (auto _ : state) {
         char c{};
-        auto e = scn::scan(range, "{}", c);
+        result = scn::scan(result.range(), "{}", c);
 
-        if (!e) {
-            if (e.error() == scn::error::end_of_range) {
-                range = scn::make_view(data);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result(data);
             }
             else {
                 state.SkipWithError("Benchmark errored");
@@ -55,14 +55,15 @@ BENCHMARK(return_ref);
 static void return_tuple(benchmark::State& state)
 {
     auto data = generate_data<char>(4096);
-    auto range = scn::make_view(data);
+    auto result = scn::make_result(data);
 
     for (auto _ : state) {
-        auto [r, c] = scn::scan_tuple<char>(range, "{}");
+        auto [r, c] = scn::scan_tuple<char>(result.range(), "{}");
+        result = std::move(r);
 
-        if (!r) {
-            if (r.error() == scn::error::end_of_range) {
-                range = scn::make_view(data);
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result(data);
             }
             else {
                 state.SkipWithError("Benchmark errored");

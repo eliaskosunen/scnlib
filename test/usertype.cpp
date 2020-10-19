@@ -51,6 +51,7 @@ namespace scn {
             auto newctx = Context(ctx.range());
             auto pctx = pctx_type("[{}, {}]", newctx);
             auto err = vscan(newctx, pctx, {args});
+            ctx.range() = std::move(newctx.range());
             if (err) {
                 val.val1 = i;
                 val.val2 = j;

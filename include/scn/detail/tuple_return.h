@@ -202,12 +202,12 @@ namespace scn {
     }
 
     template <typename... Args, typename Range>
-    SCN_NODISCARD auto scan_tuple(const Range& r, detail::default_t)
+    SCN_NODISCARD auto scan_tuple_default(const Range& r)
         -> std::tuple<detail::scan_result_for_range<const Range&>, Args...>
     {
         using result = detail::scan_result_for_range<const Range&>;
         auto scanfn = [&r](Args&... a) {
-            return ::scn::scan(r, default_tag, a...);
+            return ::scn::scan_default(r, a...);
         };
         std::tuple<Args...> values{Args{}...};
         auto ret = detail::apply(scanfn, values);
@@ -218,14 +218,14 @@ namespace scn {
               typename Range,
               typename = typename std::enable_if<
                   !std::is_lvalue_reference<Range>::value>::type>
-    SCN_NODISCARD auto scan_tuple(Range&& r, detail::default_t) ->
+    SCN_NODISCARD auto scan_tuple_default(Range&& r) ->
         typename std::enable_if<
             !std::is_reference<Range>::value,
             std::tuple<detail::scan_result_for_range<Range>, Args...>>::type
     {
         using result = detail::scan_result_for_range<Range>;
         auto scanfn = [&r](Args&... a) {
-            return ::scn::scan(std::forward<Range>(r), default_tag, a...);
+            return ::scn::scan_default(std::forward<Range>(r), a...);
         };
         std::tuple<Args...> values{Args{}...};
         auto ret = detail::apply(scanfn, values);

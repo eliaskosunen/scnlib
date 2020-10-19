@@ -62,13 +62,16 @@ namespace scn {
             return m_range.end();
         }
 
-        range_type& range()
+        range_type& range() &
         {
             return m_range;
         }
-        const range_type& range() const
+        const range_type& range() const&
         {
             return m_range;
+        }
+        range_type&& range() && {
+            return std::move(m_range);
         }
 
         LocaleRef& locale() noexcept

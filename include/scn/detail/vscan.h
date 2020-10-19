@@ -25,15 +25,6 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        struct default_t {
-        };
-    }  // namespace detail
-    namespace {
-        constexpr auto& default_tag =
-            detail::static_const<detail::default_t>::value;
-    }
-
     template <typename Context, typename ParseCtx>
     error vscan(Context& ctx, ParseCtx& pctx, basic_args<Context> args)
     {

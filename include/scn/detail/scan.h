@@ -118,7 +118,7 @@ namespace scn {
      * \see scan
      */
     template <typename Range, typename... Args>
-    auto scan(Range&& r, detail::default_t, Args&... a)
+    auto scan_default(Range&& r, Args&... a)
         -> detail::scan_result_for_range<Range>
     {
         return detail::scan_boilerplate<basic_empty_parse_context>(
