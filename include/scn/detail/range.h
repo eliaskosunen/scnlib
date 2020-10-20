@@ -217,6 +217,11 @@ namespace scn {
                 return ranges::cend(m_range.get());
             }
 
+            bool empty() const
+            {
+                return begin() == end();
+            }
+
             iterator advance(difference_type n = 1) noexcept
             {
                 m_read += n;
@@ -557,6 +562,9 @@ namespace scn {
             wrapped_range_type m_range;
         };
 
+        template <typename WrappedRange, typename UnwrappedRange, typename Base>
+        class non_reconstructed_scan_result;
+
         template <typename WrappedRange, typename Base>
         class reconstructed_scan_result
             : public scan_result_base<WrappedRange, Base> {
@@ -568,6 +576,15 @@ namespace scn {
                 : base_type(std::move(b), std::move(r))
             {
             }
+
+            reconstructed_scan_result& operator=(
+                const non_reconstructed_scan_result<WrappedRange,
+                                                    unwrapped_range_type,
+                                                    Base>& other);
+            reconstructed_scan_result& operator=(
+                non_reconstructed_scan_result<WrappedRange,
+                                              unwrapped_range_type,
+                                              Base>&& other);
 
             unwrapped_range_type reconstruct() const
             {
@@ -604,10 +621,33 @@ namespace scn {
             template <typename R = unwrapped_range_type>
             R reconstruct() const
             {
-                return reconstruct(reconstruct_tag<R>{}, this->begin(),
-                                   this->end());
+                return ::scn::detail::reconstruct(reconstruct_tag<R>{},
+                                                  this->begin(), this->end());
             }
         };
+
+        template <typename WrappedRange, typename Base>
+        inline auto reconstructed_scan_result<WrappedRange, Base>::operator=(
+            const non_reconstructed_scan_result<
+                WrappedRange,
+                typename WrappedRange::range_type,
+                Base>& other) -> reconstructed_scan_result&
+        {
+            this->set_base(other);
+            this->m_range = other.range();
+            return *this;
+        }
+        template <typename WrappedRange, typename Base>
+        inline auto reconstructed_scan_result<WrappedRange, Base>::operator=(
+            non_reconstructed_scan_result<WrappedRange,
+                                          typename WrappedRange::range_type,
+                                          Base>&& other)
+            -> reconstructed_scan_result&
+        {
+            this->set_base(other);
+            this->m_range = std::move(other).range();
+            return *this;
+        }
 
         template <typename T>
         struct range_tag {

@@ -1,6 +1,5 @@
 language: cpp
 dist: focal
-sudo: false
 os: linux
 git:
   depth: 1
@@ -19,7 +18,7 @@ matrix:
           sources:
           - ubuntu-toolchain-r-test
 
-    - env: COMPILER=g++-10 STANDARD=17
+    - env: COMPILER=g++-10 STANDARD=20
       compiler: gcc
       addons:
         apt:
@@ -28,7 +27,7 @@ matrix:
             - g++-10
           sources:
             - ubuntu-toolchain-r-test
-    - env: COMPILER=g++-9 STANDARD=17
+    - env: COMPILER=g++-9 STANDARD=20
       compiler: gcc
       addons:
         apt:
@@ -37,7 +36,7 @@ matrix:
           - g++-9
           sources:
           - ubuntu-toolchain-r-test
-    - env: COMPILER=g++-8 STANDARD=17
+    - env: COMPILER=g++-8 STANDARD=20
       compiler: gcc
       addons:
         apt:
@@ -87,7 +86,7 @@ matrix:
           sources:
             - llvm-toolchain-focal-10
             - ubuntu-toolchain-r-test
-    - env: COMPILER=clang++-9 STANDARD=17
+    - env: COMPILER=clang++-9 STANDARD=20
       compiler: clang
       addons:
         apt:
@@ -135,7 +134,7 @@ matrix:
           - llvm-toolchain-trusty-3.7
           - ubuntu-toolchain-r-test
 
-    - env: COMPILER=g++-10 STANDARD=17
+    - env: COMPILER=g++-10 STANDARD=20
       compiler: gcc
       arch: arm64
       addons:
