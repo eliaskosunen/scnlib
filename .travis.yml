@@ -235,7 +235,7 @@ script:
     if [[ -z "$STANDARD" ]]; then
       run_build
     else
-      standards="11 14 17"
+      standards="11 14 17 20"
       for std in $standards; do
         run_build -DCMAKE_CXX_STANDARD=$std -DSCN_BUILD_LOCALIZED_TESTS=${LOCALE_FLAG} || exit 1
         if [[ "${std}" == "${STANDARD}" ]]; then

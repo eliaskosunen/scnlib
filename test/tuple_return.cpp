@@ -40,7 +40,7 @@ TEST_CASE("tuple_return")
 
 TEST_CASE("tuple_return int")
 {
-    auto [r, i] = scn::scan_tuple<int>("42", scn::default_tag);
+    auto [r, i] = scn::scan_tuple_default<int>("42");
 
     CHECK(r);
 
@@ -78,8 +78,8 @@ namespace scn {
 
 TEST_CASE("tuple_return non_default_construct")
 {
-    auto [ret, val] = scn::scan_tuple<scn::wrap_default<non_default_construct>>(
-        "42", scn::default_tag);
+    auto [ret, val] =
+        scn::scan_tuple_default<scn::wrap_default<non_default_construct>>("42");
 
     CHECK(ret);
 
@@ -88,4 +88,3 @@ TEST_CASE("tuple_return non_default_construct")
 }
 
 #endif
-
