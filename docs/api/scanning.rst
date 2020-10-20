@@ -21,7 +21,7 @@ functions:
  * ``range() -> Range``
  * ``error() -> error``
 
-.. doxygenfunction:: scan
+.. doxygenfunction:: scn::scan
 .. doxygenfunction:: scan_default
 .. doxygenfunction:: scan_localized
 .. doxygenfunction:: scan_value

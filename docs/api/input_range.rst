@@ -16,8 +16,7 @@ Range requirements
 
 The range must be:
  * bidirectional
- * a view
- * reconstructible
+ * default and move constructible
 
 Using C++20 concepts:
 
@@ -26,8 +25,8 @@ Using C++20 concepts:
     template <typename Range>
     concept scannable_range =
         std::ranges::bidirectional_range<Range> &&
-        std::ranges::view<Range> &&
-        std::ranges::pair-reconstructible-range<Range>;
+        std::default_constructible<Range> &&
+        std::move_constructible<Range>;
 
 Bidirectional?
 **************
@@ -41,27 +40,28 @@ Note, that both random-access and contiguous ranges are refinements of
 bidirectional ranges, and can be passed to the library. In fact, the library
 implements various optimizations for contiguous ranges.
 
-View?
-*****
+Recommended range requirements
+------------------------------
 
-A view is a range that is cheap to copy and doesn't own its elements:
-http://eel.is/c++draft/range.view.
-
-Basically no container within the standard library is a view. This means,
-that for example a ``std::string`` can't be passed to scnlib. This can be
-worked around with ``scn::make_view``, which returns a ``string_view`` for a
-``std::string``, which is a view.
+In addition, to limit unnecessary copies and possible dynamic memory allocations,
+the ranges should be passed as an lvalue, and/or be a `view`: http://eel.is/c++draft/range.view.
+Passing a non-view as an rvalue will work, but it may cause worse performance, especially with larger source ranges.
 
 .. code-block:: cpp
 
-    std::string str = ...;
-    scn::scan(scn::make_view(str), ...);
+    // okay: view
+    scn::scan(std::string_view{...}, ...);
 
-Reconstructible?
-****************
+    // okay: lvalue
+    std::string source = ...
+    scn::scan(source, ...);
 
-A reconstructible range is a range that can be constructed from a begin
-iterator and an end iterator (sentinel): http://wg21.link/p1664
+    // worse performance: non-view + rvalue
+    scn::scan(std::string{...}, ...);
+
+In order for the `.reconstruct()` member function to compile in the result object,
+the range must be a `pair-reconstructible-range` as defined by https://wg21.link/p1664r1,
+i.e. be constructible from an iterator and a sentinel.
 
 Character type
 --------------
@@ -71,5 +71,5 @@ This character type can be either ``char`` or ``wchar_t``.
 The character type is determined by the result of ``operator*`` of the range
 iterator. If dereferencing the iterator returns
 
- * ``char`` or ``wchar_t``: the character type is ``char`` or ``wchar_t``
- * ``expected<char>`` or ``expected<wchar_t>``: the character type is ``char`` or ``wchar_t``
+ * ``char`` or ``wchar_t``: the character type is ``char`` or ``wchar_t``, respectively
+ * ``expected<char>`` or ``expected<wchar_t>``: the character type is ``char`` or ``wchar_t``, respectively
