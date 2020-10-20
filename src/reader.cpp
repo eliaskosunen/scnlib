@@ -22,6 +22,7 @@
 #include <scn/detail/reader.h>
 
 #include <cerrno>
+#include <clocale>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
