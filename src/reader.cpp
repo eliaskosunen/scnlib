@@ -35,9 +35,12 @@ namespace scn {
             static expected<float> get(const char* str, size_t& chars)
             {
                 char* end{};
+                const auto loc = std::setlocale(LC_NUMERIC, nullptr);
+                std::setlocale(LC_NUMERIC, "C");
                 errno = 0;
                 float f = std::strtof(str, &end);
                 chars = static_cast<size_t>(end - str);
+                std::setlocale(LC_NUMERIC, loc);
                 if (errno == ERANGE) {
                     errno = 0;
                     return error(error::value_out_of_range,
@@ -58,9 +61,12 @@ namespace scn {
             static expected<float> get(const wchar_t* str, size_t& chars)
             {
                 wchar_t* end{};
+                const auto loc = std::setlocale(LC_NUMERIC, nullptr);
+                std::setlocale(LC_NUMERIC, "C");
                 errno = 0;
                 float f = std::wcstof(str, &end);
                 chars = static_cast<size_t>(end - str);
+                std::setlocale(LC_NUMERIC, loc);
                 if (errno == ERANGE) {
                     errno = 0;
                     return error(error::value_out_of_range,
@@ -82,9 +88,12 @@ namespace scn {
             static expected<double> get(const char* str, size_t& chars)
             {
                 char* end{};
+                const auto loc = std::setlocale(LC_NUMERIC, nullptr);
+                std::setlocale(LC_NUMERIC, "C");
                 errno = 0;
                 double d = std::strtod(str, &end);
                 chars = static_cast<size_t>(end - str);
+                std::setlocale(LC_NUMERIC, loc);
                 if (errno == ERANGE) {
                     errno = 0;
                     return error(error::value_out_of_range,
@@ -105,9 +114,12 @@ namespace scn {
             static expected<double> get(const wchar_t* str, size_t& chars)
             {
                 wchar_t* end{};
+                const auto loc = std::setlocale(LC_NUMERIC, nullptr);
+                std::setlocale(LC_NUMERIC, "C");
                 errno = 0;
                 double d = std::wcstod(str, &end);
                 chars = static_cast<size_t>(end - str);
+                std::setlocale(LC_NUMERIC, loc);
                 if (errno == ERANGE) {
                     errno = 0;
                     return error(error::value_out_of_range,
@@ -129,9 +141,12 @@ namespace scn {
             static expected<long double> get(const char* str, size_t& chars)
             {
                 char* end{};
+                const auto loc = std::setlocale(LC_NUMERIC, nullptr);
+                std::setlocale(LC_NUMERIC, "C");
                 errno = 0;
                 long double ld = std::strtold(str, &end);
                 chars = static_cast<size_t>(end - str);
+                std::setlocale(LC_NUMERIC, loc);
                 if (errno == ERANGE) {
                     errno = 0;
                     return error(error::value_out_of_range,
@@ -152,9 +167,12 @@ namespace scn {
             static expected<long double> get(const wchar_t* str, size_t& chars)
             {
                 wchar_t* end{};
+                const auto loc = std::setlocale(LC_NUMERIC, nullptr);
+                std::setlocale(LC_NUMERIC, "C");
                 errno = 0;
                 long double ld = std::wcstold(str, &end);
                 chars = static_cast<size_t>(end - str);
+                std::setlocale(LC_NUMERIC, loc);
                 if (errno == ERANGE) {
                     errno = 0;
                     return error(error::value_out_of_range,

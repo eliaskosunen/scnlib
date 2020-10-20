@@ -45,6 +45,10 @@ make_test(bool boolean.cpp)
 make_test(usertype usertype.cpp)
 make_test(list list.cpp)
 
+if (SCN_BUILD_LOCALIZED_TESTS)
+    make_test(scan-localized scan_localized.cpp)
+endif ()
+
 add_subdirectory(each)
 
 if (SCN_BUILD_FUZZING)

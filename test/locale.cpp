@@ -249,18 +249,4 @@ TEST_CASE("default localized scanning")
         CHECK(i == 100200);
         CHECK(d == doctest::Approx(100.2));
     }
-#if false
-    SUBCASE("en_US")
-    {
-        int i{};
-        double d{};
-
-        auto ret =
-            scn::scan(scn::options::builder{}.locale(std::locale("en_US")),
-                      stream, "{:'l} {:l}", i, d);
-        CHECK(ret);
-        CHECK(i == 100200);
-        CHECK(d == doctest::Approx(100.2));
-    }
-#endif
 }

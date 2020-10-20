@@ -156,13 +156,16 @@ install:
   - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
   - |
     if [ "${TRAVIS_OS_NAME}" = "linux" ] && [ "${TRAVIS_CPU_ARCH}" = "amd64" ]; then
-      CMAKE_URL="http://www.cmake.org/files/3.16/cmake-3.16.2-Linux-x86_64.tar.gz"
+      CMAKE_URL="http://www.cmake.org/files/3.16/cmake-3.16.3-Linux-x86_64.tar.gz"
       mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
       export PATH=${DEPS_DIR}/cmake/bin:${PATH}
       cd ${DEPS_DIR}
 
-      sudo locale-gen en_US
+      sudo locale-gen en_US.UTF-8
+      sudo locale-gen fi_FI.UTF-8
       sudo update-locale
+      sudo locale -a
+      export LOCALE_FLAG="ON"
 
       if [[ "${COMPILER}" = "clang++-3.7" ]]; then
         sudo apt-get clean
@@ -180,20 +183,11 @@ install:
         cd ..
         find . -name "*lcov*"
       fi
+    else
+      export LOCALE_FLAG="OFF"
     fi
-  - |
   - cd ${TRAVIS_BUILD_DIR}
   - export CXX="${COMPILER}"
-  - |
-    cd ${TRAVIS_BUILD_DIR}
-    git clone https://github.com/ericniebler/range-v3
-    cd range-v3
-    git checkout v1.0-beta
-    mkdir build
-    cd build
-    cmake -DCMAKE_CXX_COMPILER=${CXX} -DRANGE_V3_TESTS=OFF -DRANGE_V3_HEADER_CHECKS=OFF -DRANGE_V3_EXAMPLES=OFF -DRANGE_V3_PERF=OFF -DRANGE_V3_DOCS=OFF ..
-    sudo make install
-    cd ${TRAVIS_BUILD_DIR}
 
 before_script:
   - cmake --version
@@ -243,7 +237,7 @@ script:
     else
       standards="11 14 17"
       for std in $standards; do
-        run_build -DCMAKE_CXX_STANDARD=$std || exit 1
+        run_build -DCMAKE_CXX_STANDARD=$std -DSCN_BUILD_LOCALIZED_TESTS=${LOCALE_FLAG} || exit 1
         if [[ "${std}" == "${STANDARD}" ]]; then
           break
         fi

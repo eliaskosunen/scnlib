@@ -91,7 +91,7 @@ namespace scn {
 
         auto args = make_args<context_type, parse_context_type>(a...);
         auto ctx = context_type(detail::wrap(std::forward<Range>(r)),
-                                {std::addressof(loc)});
+                                locale_type{std::addressof(loc)});
         auto pctx = parse_context_type(f, ctx);
         return vscan(ctx, pctx, {args});
     }
