@@ -18,4 +18,3 @@ Tutorial
    ignore
    user_types
    temporaries
-   scanf

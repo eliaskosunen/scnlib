@@ -43,7 +43,7 @@ TEST_CASE("read_char")
         CHECK(ret.value() == '4');
 
         CHECK(range.range()[0] == '2');
-        range.advane();
+        range.advance();
 
         ret = scn::read_char(range);
         CHECK(!ret);

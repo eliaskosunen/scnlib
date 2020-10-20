@@ -21,10 +21,9 @@ functions:
  * ``range() -> Range``
  * ``error() -> error``
 
-.. doxygenfunction:: scan(Range &&r, const Format &f, Args&... a) -> detail::scan_result_for_range_t<Range>
-.. doxygenfunction:: scan(Range &&r, detail::default_t, Args&... a) -> detail::scan_result_for_range_t<Range>
+.. doxygenfunction:: scan
+.. doxygenfunction:: scan_default
 .. doxygenfunction:: scan_localized
 .. doxygenfunction:: scan_value
-.. doxygenfunction:: scanf
 .. doxygenfunction:: input
 .. doxygenfunction:: prompt

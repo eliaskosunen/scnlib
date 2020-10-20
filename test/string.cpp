@@ -91,11 +91,3 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
     }
 }
 
-TEST_CASE("string scanf")
-{
-    std::string str{};
-
-    auto ret = do_scanf<char>("str", "%s", str);
-    CHECK(ret);
-    CHECK(str == "str");
-}

@@ -135,7 +135,7 @@ int main() {
  - Modern C++ interface, featuring type safety (variadic templates), convenience (ranges) and customizability
    - No << chevron >> hell
    - Requires C++11 or newer
- - "{python}"-like (recommended) or "%scanf"-like format string syntax
+ - "{python}"-like format string syntax
  - Optionally header only
  - Minimal code size increase
  - No exceptions (supports building with `-fno-exceptions -fno-rtti` with minimal loss of functionality)

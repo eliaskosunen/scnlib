@@ -28,34 +28,6 @@ TEST_CASE("char")
     CHECK(ch2 == 'b');
 }
 
-#if 0
-TEST_CASE("getchar")
-{
-    auto stream = scn::make_stream(" ab");
-
-    auto ret = scn::getchar(stream);
-    CHECK(ret);
-    CHECK(ret.value() == ' ');
-
-    ret = scn::getchar(stream);
-    CHECK(ret);
-    CHECK(ret.value() == 'a');
-
-    ret = scn::getchar(stream);
-    CHECK(ret);
-    CHECK(ret.value() == 'b');
-}
-#endif
-
-TEST_CASE("char scanf")
-{
-    char ch{};
-
-    auto ret = do_scanf<char>("a", "%c", ch);
-    CHECK(ret);
-    CHECK(ch == 'a');
-}
-
 TEST_CASE("char format string")
 {
     char ch{};

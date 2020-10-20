@@ -148,20 +148,6 @@ namespace scn {
             loc, std::forward<Range>(r), f, a...);
     }
 
-    // scanf
-
-    /**
-     * Otherwise equivalent to \ref scan, except it uses scanf-like format
-     * string syntax, instead of the Python-like default one.
-     */
-    template <typename Range, typename Format, typename... Args>
-    auto scanf(Range&& r, const Format& f, Args&... a)
-        -> detail::scan_result_for_range<Range>
-    {
-        return detail::scan_boilerplate<basic_scanf_parse_context>(
-            std::forward<Range>(r), f, a...);
-    }
-
     // value
 
     /**

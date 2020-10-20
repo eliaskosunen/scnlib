@@ -124,22 +124,6 @@ TEST_CASE("value")
     CHECK(ret2.string() == "foo");
 }
 
-TEST_CASE("scanf")
-{
-    int i{0};
-    double d{};
-    std::string s(6, '\0');
-    bool b{};
-    auto ret = scn::scanf("test % 42 3.14 foobar true", "test %% %i %f %s %b",
-                          i, d, s, b);
-
-    CHECK(ret);
-    CHECK(i == 42);
-    CHECK(d == doctest::Approx(3.14));
-    CHECK(s == "foobar");
-    CHECK(b);
-}
-
 TEST_CASE("temporary")
 {
     struct temporary {

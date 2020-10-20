@@ -23,53 +23,6 @@
 
 #include "test.h"
 
-#if 0
-TEST_CASE("istream stream")
-{
-    std::istringstream ss("123");
-    auto stream = scn::make_stream(ss);
-
-    int i{};
-    auto ret = scn::scan(stream, "{}", i);
-    CHECK(ret);
-    CHECK(i == 123);
-}
-
-TEST_CASE("istream stream fail")
-{
-    SUBCASE("at eof")
-    {
-        int i{};
-        std::istringstream ss{};
-        ss >> i;
-        CHECK(ss.eof());
-
-        auto stream = scn::make_stream(ss);
-        auto ret = scn::scan(stream, "{}", i);
-        CHECK(!ret);
-        CHECK(ret.error() == scn::error::end_of_stream);
-        CHECK(i == 0);
-    }
-    SUBCASE("parsing failed")
-    {
-        std::istringstream ss("foo");
-        auto stream = scn::make_stream(ss);
-
-        int i{};
-        auto ret = scn::scan(stream, "{}", i);
-        CHECK(!ret);
-        CHECK(ret.error() == scn::error::invalid_scanned_value);
-        CHECK(i == 0);
-        CHECK(stream);
-
-        std::string str{};
-        ret = scn::scan(stream, "{}", str);
-        CHECK(ret);
-        CHECK(str == "foo");
-    }
-}
-#endif
-
 struct my_type {
     int value{};
 

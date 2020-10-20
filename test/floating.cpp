@@ -152,67 +152,6 @@ TEST_CASE("float error")
     CHECK(d == doctest::Approx(0.0));
 }
 
-TEST_CASE("float scanf")
-{
-    double d{};
-
-    SUBCASE("%f")
-    {
-        auto ret = do_scanf<char>("1.0", "%f", d);
-        CHECK(ret);
-        CHECK(d == doctest::Approx(1.0));
-    }
-    SUBCASE("%F")
-    {
-        auto ret = do_scanf<char>("1.0", "%F", d);
-        CHECK(ret);
-        CHECK(d == doctest::Approx(1.0));
-    }
-    SUBCASE("%a")
-    {
-        auto ret = do_scanf<char>("1.0", "%a", d);
-        CHECK(ret);
-        CHECK(d == doctest::Approx(1.0));
-    }
-    SUBCASE("%A")
-    {
-        auto ret = do_scanf<char>("1.0", "%A", d);
-        CHECK(ret);
-        CHECK(d == doctest::Approx(1.0));
-    }
-    SUBCASE("%e")
-    {
-        auto ret = do_scanf<char>("1.0", "%e", d);
-        CHECK(ret);
-        CHECK(d == doctest::Approx(1.0));
-    }
-    SUBCASE("%E")
-    {
-        auto ret = do_scanf<char>("1.0", "%E", d);
-        CHECK(ret);
-        CHECK(d == doctest::Approx(1.0));
-    }
-    SUBCASE("%g")
-    {
-        auto ret = do_scanf<char>("1.0", "%g", d);
-        CHECK(ret);
-        CHECK(d == doctest::Approx(1.0));
-    }
-    SUBCASE("%G")
-    {
-        auto ret = do_scanf<char>("1.0", "%G", d);
-        CHECK(ret);
-        CHECK(d == doctest::Approx(1.0));
-    }
-
-    SUBCASE("%f /w error")
-    {
-        auto ret = do_scanf<char>("str", "%f", d);
-        CHECK(!ret);
-        CHECK(ret.error() == scn::error::invalid_scanned_value);
-    }
-}
-
 #if SCN_CLANG >= SCN_COMPILER(3, 8, 0)
 SCN_CLANG_POP
 #endif

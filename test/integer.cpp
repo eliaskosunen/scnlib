@@ -502,69 +502,6 @@ TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_test,
                                wchar_intpair<unsigned long>,
                                wchar_intpair<unsigned long long>);
 
-TEST_CASE("integer scanf")
-{
-    int i{};
-    unsigned u{};
-
-    SUBCASE("%d")
-    {
-        auto ret = scn::scanf("1", "%d", i);
-        CHECK(ret);
-        CHECK(i == 1);
-    }
-    SUBCASE("%x")
-    {
-        auto ret = scn::scanf("f", "%x", i);
-        CHECK(ret);
-        CHECK(i == 0xf);
-    }
-    SUBCASE("%o")
-    {
-        auto ret = scn::scanf("10", "%o", i);
-        CHECK(ret);
-        CHECK(i == 010);
-    }
-    SUBCASE("%b2")
-    {
-        auto ret = scn::scanf("10", "%b2", i);
-        CHECK(ret);
-        CHECK(i == 2);
-    }
-    SUBCASE("%i")
-    {
-        auto ret = scn::scanf("1", "%i", i);
-        CHECK(ret);
-        CHECK(i == 1);
-    }
-    SUBCASE("%u")
-    {
-        auto ret = scn::scanf("1", "%u", u);
-        CHECK(ret);
-        CHECK(u == 1);
-    }
-
-    SUBCASE("%'d")
-    {
-        auto ret = scn::scanf("1,000", "%'d", i);
-        CHECK(ret);
-        CHECK(i == 1000);
-    }
-
-    SUBCASE("%i /w unsigned")
-    {
-        auto ret = scn::scanf("1", "%i", u);
-        CHECK(!ret);
-        CHECK(ret.error() == scn::error::invalid_format_string);
-    }
-    SUBCASE("%u /w signed")
-    {
-        auto ret = scn::scanf("1", "%u", i);
-        CHECK(!ret);
-        CHECK(ret.error() == scn::error::invalid_format_string);
-    }
-}
-
 TEST_CASE("trailing")
 {
     int i{}, j{};

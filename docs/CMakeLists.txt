@@ -53,7 +53,6 @@ add_custom_command(OUTPUT ${SPHINX_INDEX_FILE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/localization.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/ranges.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/scan_value.rst
-        ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/scanf.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/semantics.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/strings.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/tutorial/temporaries.rst

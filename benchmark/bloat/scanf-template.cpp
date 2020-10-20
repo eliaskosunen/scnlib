@@ -4,9 +4,14 @@
 void do_scan()
 {
     int i;
+    scanf("%d", &i);
+
     double d;
+    scanf("%lf", &d);
+
     long long ll;
-    char buf[7] = {0};
+    scanf("%lld", &ll);
+
     std::string str(13, '\0');
-    scanf("%d %lf %lld %6s %12s", &i, &d, &ll, buf, &str[0]);
+    scanf("%12s", &str[0]);
 }

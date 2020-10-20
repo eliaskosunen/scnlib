@@ -11,9 +11,6 @@ void do_scan()
     long long ll;
     std::cin >> ll;
 
-    char buf[32];
-    std::cin >> buf;
-
     std::string str;
     std::cin >> str;
 }
