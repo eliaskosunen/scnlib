@@ -15,20 +15,12 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "benchmark.h"
-
-SCN_CLANG_PUSH
-SCN_CLANG_IGNORE("-Wglobal-constructors")
-SCN_CLANG_IGNORE("-Wunused-template")
-SCN_CLANG_IGNORE("-Wunused-function")
-SCN_CLANG_IGNORE("-Wexit-time-destructors")
-
-#define INT_DATA_N (static_cast<size_t>(2 << 12))
+#include "bench_int.h"
 
 template <typename Int>
-static void scanint_scn(benchmark::State& state)
+static void scan_int_repeated_scn(benchmark::State& state)
 {
-    auto data = generate_int_data<Int>(INT_DATA_N);
+    auto data = stringified_integer_list<Int>();
     Int i{};
     auto result = scn::make_result(data);
     for (auto _ : state) {
@@ -47,14 +39,14 @@ static void scanint_scn(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_scn, int);
-BENCHMARK_TEMPLATE(scanint_scn, long long);
-BENCHMARK_TEMPLATE(scanint_scn, unsigned);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn, int);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn, long long);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn, unsigned);
 
 template <typename Int>
-static void scanint_scn_default(benchmark::State& state)
+static void scan_int_repeated_scn_default(benchmark::State& state)
 {
-    auto data = generate_int_data<Int>(INT_DATA_N);
+    auto data = stringified_integer_list<Int>();
     Int i{};
     auto result = scn::make_result(data);
     for (auto _ : state) {
@@ -73,14 +65,14 @@ static void scanint_scn_default(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_scn_default, int);
-BENCHMARK_TEMPLATE(scanint_scn_default, long long);
-BENCHMARK_TEMPLATE(scanint_scn_default, unsigned);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_default, int);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_default, long long);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_default, unsigned);
 
 template <typename Int>
-static void scanint_scn_value(benchmark::State& state)
+static void scan_int_repeated_scn_value(benchmark::State& state)
 {
-    auto data = generate_int_data<Int>(INT_DATA_N);
+    auto data = stringified_integer_list<Int>();
     auto result = scn::make_result<scn::expected<Int>>(data);
     for (auto _ : state) {
         result = scn::scan_value<Int>(result.range());
@@ -98,14 +90,13 @@ static void scanint_scn_value(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_scn_value, int);
-BENCHMARK_TEMPLATE(scanint_scn_value, long long);
-BENCHMARK_TEMPLATE(scanint_scn_value, unsigned);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, int);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, long long);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, unsigned);
 
 template <typename Int>
-static void scanint_sstream(benchmark::State& state)
-{
-    auto data = generate_int_data<Int>(INT_DATA_N);
+static void scan_int_repeated_sstream(benchmark::State& state) {
+    auto data = stringified_integer_list<Int>();
     auto stream = std::istringstream(data);
     Int i{};
     for (auto _ : state) {
@@ -122,50 +113,18 @@ static void scanint_sstream(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_sstream, int);
-BENCHMARK_TEMPLATE(scanint_sstream, long long);
-BENCHMARK_TEMPLATE(scanint_sstream, unsigned);
-
-SCN_MSVC_PUSH
-SCN_MSVC_IGNORE(4996)
-
-SCN_GCC_PUSH
-SCN_GCC_IGNORE("-Wunused-function")
-
-namespace detail {
-    static int scanf_integral(char*& ptr, int& i)
-    {
-        int n;
-        auto ret = sscanf(ptr, "%d%n", &i, &n);
-        ptr += n + 1;
-        return ret;
-    }
-    static int scanf_integral(char*& ptr, long long& i)
-    {
-        int n;
-        auto ret = sscanf(ptr, "%lld%n", &i, &n);
-        ptr += n + 1;
-        return ret;
-    }
-    static int scanf_integral(char*& ptr, unsigned& i)
-    {
-        int n;
-        auto ret = sscanf(ptr, "%u%n", &i, &n);
-        ptr += n + 1;
-        return ret;
-    }
-}  // namespace detail
-
-SCN_MSVC_POP
+BENCHMARK_TEMPLATE(scan_int_repeated_sstream, int);
+BENCHMARK_TEMPLATE(scan_int_repeated_sstream, long long);
+BENCHMARK_TEMPLATE(scan_int_repeated_sstream, unsigned);
 
 template <typename Int>
-static void scanint_scanf(benchmark::State& state)
+static void scan_int_repeated_scanf(benchmark::State& state)
 {
-    auto data = generate_int_data<Int>(INT_DATA_N);
+    auto data = stringified_integer_list<Int>();
     auto ptr = &data[0];
     Int i{};
     for (auto _ : state) {
-        auto ret = detail::scanf_integral(ptr, i);
+        auto ret = scanf_integral_n(ptr, i);
 
         if (ret != 1) {
             if (ret == EOF) {
@@ -179,9 +138,6 @@ static void scanint_scanf(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
 }
-BENCHMARK_TEMPLATE(scanint_scanf, int);
-BENCHMARK_TEMPLATE(scanint_scanf, long long);
-BENCHMARK_TEMPLATE(scanint_scanf, unsigned);
-
-SCN_GCC_POP
-SCN_CLANG_POP
+BENCHMARK_TEMPLATE(scan_int_repeated_scanf, int);
+BENCHMARK_TEMPLATE(scan_int_repeated_scanf, long long);
+BENCHMARK_TEMPLATE(scan_int_repeated_scanf, unsigned);

@@ -535,6 +535,12 @@ namespace scn {
             return {};
         }
 
+        // invalidates iterators
+        void sync() {
+            m_file->_sync(m_file->m_buffer.size());
+            m_file->m_buffer.clear();
+        }
+
     private:
         friend class basic_file<CharT>;
         friend class iterator;
@@ -564,7 +570,7 @@ namespace scn {
     template <typename CharT>
     basic_file<CharT>& stdin_range()
     {
-        static auto f = basic_file<CharT>{stdin};
+        static thread_local auto f = basic_file<CharT>{stdin};
         return f;
     }
     inline file& cstdin()

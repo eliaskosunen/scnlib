@@ -193,11 +193,7 @@ namespace scn {
     /**
      * Otherwise equivalent to \ref scan, expect reads from `stdin`.
      * Character type is determined by the format string.
-     *
-     * Does not sync with the rest `<cstdio>` (like
-     * `std::ios_base::sync_with_stdio(false)`). To use `<cstdio>` (like `fread`
-     * or `fgets`) with this function, call `cstdin().sync()` or
-     * `wcstdin().sync()` before calling `<cstdio>`.
+     * Syncs with `<cstdio>`.
      */
     template <typename Format,
               typename... Args,
@@ -260,14 +256,15 @@ namespace scn {
                                          int base = 10)
     {
         SCN_EXPECT(!str.empty());
-        auto s = scanner<CharT, T>{base};
+        auto s = detail::integer_scanner<T>{base};
         bool minus_sign = false;
+        auto sp = make_span(str.data(), str.size()).as_const();
         if (str[0] == detail::ascii_widen<CharT>('-')) {
             minus_sign = true;
+            sp = make_span(str.data() + 1, str.size() - 1).as_const();
         }
-        auto ret = s._read_int(val, minus_sign,
-                               make_span(str.data(), str.size()).as_const(),
-                               detail::ascii_widen<CharT>('\0'));
+        auto ret =
+            s._read_int(val, minus_sign, sp, detail::ascii_widen<CharT>('\0'));
         if (!ret) {
             return ret.error();
         }
@@ -278,13 +275,13 @@ namespace scn {
     expected<const CharT*> parse_float(basic_string_view<CharT> str, T& val)
     {
         SCN_EXPECT(!str.empty());
-        auto s = scanner<CharT, T>{};
+        auto s = detail::float_scanner<T>{};
         auto ret =
-            s._read_int(val, make_span(str.data(), str.size()).as_const());
+            s._read_float(val, make_span(str.data(), str.size()).as_const());
         if (!ret) {
             return ret.error();
         }
-        return {ret.value()};
+        return {str.data() + ret.value()};
     }
 
     // scanning api

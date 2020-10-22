@@ -208,12 +208,12 @@ Same thing applies for VS 2015, due to its inability to handle templates.
 
 ![benchmark results](https://raw.githubusercontent.com/eliaskosunen/scnlib/master/benchmark/results.png)
 
-These benchmarks were run on a Ubuntu 19.04 machine running kernel version 5.0.0-32, with an Intel Core i5-6600K processor, and compiled with gcc version 8.3.0, with `-O3 -march=native`.
+These benchmarks were run on a Ubuntu 20.04 machine running kernel version 5.4.0-52, with an Intel Core i5-6600K processor, and compiled with gcc version 8.3.0, with `-O3 -march=native`.
 The source code for the benchmarks can be seen in the `benchmark` directory.
 
 Times are in nanoseconds of CPU time. Lower is better.
 
-`scn::scan` is calling the `scn::scan(..., scn::default_tag, ...)` overload.
+TODO: update results
 
 #### Reading random integers
 
@@ -238,7 +238,7 @@ Times are in nanoseconds of CPU time. Lower is better.
 | `char`         | 30          | 31                            | 48                  | 
 | `wchar_t`      | 38          | 34                            | 117                 | 
 
-You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS` and building the target `bench`.
+You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS`.
 `SCN_BUILD_BENCHMARKS` is enabled by default if `scn` is the root CMake project, and disabled otherwise.
 
 Performance comparison benchmarks with Boost.Spirit.x3 can be found [here](https://github.com/eliaskosunen/scnlib-spirit-benchmark)

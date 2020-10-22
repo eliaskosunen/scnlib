@@ -152,7 +152,16 @@ TEST_CASE("float error")
     CHECK(d == doctest::Approx(0.0));
 }
 
+TEST_CASE("parse_float")
+{
+    scn::string_view source = "3.14 123";
+    double d{};
+    auto ret = scn::parse_float(source, d);
+    CHECK(ret);
+    CHECK(ret.value() == source.begin() + 4);
+    CHECK(d == doctest::Approx(3.14));
+}
+
 #if SCN_CLANG >= SCN_COMPILER(3, 8, 0)
 SCN_CLANG_POP
 #endif
-

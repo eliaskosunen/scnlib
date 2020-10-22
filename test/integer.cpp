@@ -279,6 +279,62 @@ TEST_CASE("integer thousands separator")
     }
 }
 
+TEST_CASE("parse_integer")
+{
+    SUBCASE("0")
+    {
+        scn::string_view source{"0"};
+        int i{};
+        auto ret = scn::parse_integer<int>(source, i);
+        CHECK(ret);
+        CHECK(ret.value() == source.end());
+        CHECK(i == 0);
+    }
+    SUBCASE("123")
+    {
+        scn::string_view source{"123 456"};
+        int i{};
+        auto ret = scn::parse_integer<int>(source, i);
+        CHECK(ret);
+        CHECK(ret.value() == source.begin() + 3);
+        CHECK(i == 123);
+    }
+    SUBCASE("-1024")
+    {
+        scn::string_view source{"-1024 456"};
+        int i{};
+        auto ret = scn::parse_integer<int>(source, i);
+        CHECK(ret);
+        CHECK(ret.value() == source.begin() + 5);
+        CHECK(i == -1024);
+    }
+    SUBCASE("int::max()")
+    {
+        auto oss = std::ostringstream{};
+        oss << std::numeric_limits<int>::max();
+        auto source = oss.str();
+
+        int i{};
+        auto ret = scn::parse_integer<int>(
+            scn::string_view{source.data(), source.size()}, i);
+        CHECK(ret);
+        CHECK(ret.value() == source.data() + source.size());
+        CHECK(i == std::numeric_limits<int>::max());
+    }
+    SUBCASE("int::max() in short")
+    {
+        auto oss = std::ostringstream{};
+        oss << std::numeric_limits<int>::max();
+        auto source = oss.str();
+
+        short i{};
+        auto ret = scn::parse_integer<short>(
+            scn::string_view{source.data(), source.size()}, i);
+        CHECK(!ret);
+        CHECK(ret.error().code() == scn::error::value_out_of_range);
+    }
+}
+
 template <typename T>
 T maxval()
 {

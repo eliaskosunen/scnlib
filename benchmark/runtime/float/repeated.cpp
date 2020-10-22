@@ -15,21 +15,14 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "benchmark.h"
-
-SCN_CLANG_PUSH
-SCN_CLANG_IGNORE("-Wglobal-constructors")
-SCN_CLANG_IGNORE("-Wunused-template")
-SCN_CLANG_IGNORE("-Wexit-time-destructors")
-
-#define FLOAT_DATA_N (static_cast<size_t>(2 << 12))
+#include "bench_float.h"
 
 template <typename Float>
-static void scanfloat_scn(benchmark::State& state)
+static void scan_float_repeated_scn(benchmark::State& state)
 {
-    auto data = generate_float_data<Float>(FLOAT_DATA_N);
-    auto result = scn::make_result(data);
+    auto data = stringified_float_list<Float>();
     Float f{};
+    auto result = scn::make_result(data);
     for (auto _ : state) {
         result = scn::scan(result.range(), "{}", f);
 
@@ -46,16 +39,15 @@ static void scanfloat_scn(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Float)));
 }
-BENCHMARK_TEMPLATE(scanfloat_scn, float);
-BENCHMARK_TEMPLATE(scanfloat_scn, double);
-BENCHMARK_TEMPLATE(scanfloat_scn, long double);
+BENCHMARK_TEMPLATE(scan_float_repeated_scn, float);
+BENCHMARK_TEMPLATE(scan_float_repeated_scn, double);
 
 template <typename Float>
-static void scanfloat_scn_default(benchmark::State& state)
+static void scan_float_repeated_scn_default(benchmark::State& state)
 {
-    auto data = generate_float_data<Float>(FLOAT_DATA_N);
-    auto result = scn::make_result(data);
+    auto data = stringified_float_list<Float>();
     Float f{};
+    auto result = scn::make_result(data);
     for (auto _ : state) {
         result = scn::scan_default(result.range(), f);
 
@@ -72,14 +64,36 @@ static void scanfloat_scn_default(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Float)));
 }
-BENCHMARK_TEMPLATE(scanfloat_scn_default, float);
-BENCHMARK_TEMPLATE(scanfloat_scn_default, double);
-BENCHMARK_TEMPLATE(scanfloat_scn_default, long double);
+BENCHMARK_TEMPLATE(scan_float_repeated_scn_default, float);
+BENCHMARK_TEMPLATE(scan_float_repeated_scn_default, double);
 
 template <typename Float>
-static void scanfloat_sstream(benchmark::State& state)
+static void scan_float_repeated_scn_value(benchmark::State& state)
 {
-    auto data = generate_float_data<Float>(FLOAT_DATA_N);
+    auto data = stringified_float_list<Float>();
+    auto result = scn::make_result<scn::expected<Float>>(data);
+    for (auto _ : state) {
+        result = scn::scan_value<Float>(result.range());
+
+        if (!result) {
+            if (result.error() == scn::error::end_of_range) {
+                result = scn::make_result<scn::expected<Float>>(data);
+            }
+            else {
+                state.SkipWithError("Benchmark errored");
+                break;
+            }
+        }
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+}
+BENCHMARK_TEMPLATE(scan_float_repeated_scn_value, float);
+BENCHMARK_TEMPLATE(scan_float_repeated_scn_value, double);
+
+template <typename Float>
+static void scan_float_repeated_sstream(benchmark::State& state) {
+    auto data = stringified_float_list<Float>();
     auto stream = std::istringstream(data);
     Float f{};
     for (auto _ : state) {
@@ -96,50 +110,17 @@ static void scanfloat_sstream(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Float)));
 }
-BENCHMARK_TEMPLATE(scanfloat_sstream, float);
-BENCHMARK_TEMPLATE(scanfloat_sstream, double);
-BENCHMARK_TEMPLATE(scanfloat_sstream, long double);
-
-SCN_MSVC_PUSH
-SCN_MSVC_IGNORE(4996)
-
-SCN_GCC_PUSH
-SCN_GCC_IGNORE("-Wunused-function")
-
-namespace detail {
-    static int scanf_float(char*& ptr, float& f)
-    {
-        int n;
-        auto ret = sscanf(ptr, "%f%n", &f, &n);
-        ptr += n + 1;
-        return ret;
-    }
-    static int scanf_float(char*& ptr, double& d)
-    {
-        int n;
-        auto ret = sscanf(ptr, "%lf%n", &d, &n);
-        ptr += n + 1;
-        return ret;
-    }
-    static int scanf_float(char*& ptr, long double& ld)
-    {
-        int n;
-        auto ret = sscanf(ptr, "%Lf%n", &ld, &n);
-        ptr += n + 1;
-        return ret;
-    }
-}  // namespace detail
-
-SCN_MSVC_POP
+BENCHMARK_TEMPLATE(scan_float_repeated_sstream, float);
+BENCHMARK_TEMPLATE(scan_float_repeated_sstream, double);
 
 template <typename Float>
-static void scanfloat_scanf(benchmark::State& state)
+static void scan_float_repeated_scanf(benchmark::State& state)
 {
-    auto data = generate_float_data<Float>(FLOAT_DATA_N);
+    auto data = stringified_float_list<Float>();
     auto ptr = &data[0];
     Float f{};
     for (auto _ : state) {
-        auto ret = detail::scanf_float(ptr, f);
+        auto ret = scanf_float_n(ptr, f);
 
         if (ret != 1) {
             if (ret == EOF) {
@@ -153,9 +134,5 @@ static void scanfloat_scanf(benchmark::State& state)
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Float)));
 }
-BENCHMARK_TEMPLATE(scanfloat_scanf, float);
-BENCHMARK_TEMPLATE(scanfloat_scanf, double);
-BENCHMARK_TEMPLATE(scanfloat_scanf, long double);
-
-SCN_GCC_POP
-SCN_CLANG_POP
+BENCHMARK_TEMPLATE(scan_float_repeated_scanf, float);
+BENCHMARK_TEMPLATE(scan_float_repeated_scanf, double);

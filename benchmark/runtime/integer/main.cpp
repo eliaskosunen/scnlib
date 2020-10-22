@@ -15,18 +15,9 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "benchmark.h"
-
-SCN_CLANG_PUSH
-SCN_CLANG_IGNORE("-Wglobal-constructors")
-SCN_CLANG_IGNORE("-Wunused-template")
-SCN_CLANG_IGNORE("-Wexit-time-destructors")
+#include "bench_int.h"
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wredundant-decls")
-
 BENCHMARK_MAIN();
-
 SCN_GCC_POP
-
-SCN_CLANG_POP
