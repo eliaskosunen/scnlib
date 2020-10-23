@@ -17,7 +17,6 @@ option(SCN_INSTALL "Generate install target" ${MASTER_PROJECT})
 option(SCN_PEDANTIC "Use stricter warnings" ${MASTER_PROJECT})
 
 option(SCN_COVERAGE "Enable coverage reporting" OFF)
-option(SCN_BLOAT "Generate bloat test target" OFF)
 
 option(SCN_WERROR "Halt compilation in case of a warning" OFF)
 
@@ -32,6 +31,8 @@ option(SCN_USE_MSAN "Compile with MemorySanitizer (clang only)" OFF)
 
 option(SCN_BUILD_FUZZING "Build fuzzing tests" OFF)
 option(SCN_BUILD_LOCALIZED_TESTS "Build scan_localized tests (requires locales en_US.UTF-8 and fi_FI.UTF-8)" OFF)
+option(SCN_BUILD_BLOAT "Generate bloat test target" OFF)
+option(SCN_BUILD_BUILDTIME "Generate build time test target" OFF)
 
 file(READ include/scn/detail/config.h config_h)
 if (NOT config_h MATCHES "SCN_VERSION SCN_COMPILER\\(([0-9]+), ([0-9]+), ([0-9]+)\\)")

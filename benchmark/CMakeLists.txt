@@ -15,8 +15,11 @@ if (SCN_USE_32BIT)
 endif ()
 
 add_subdirectory(runtime)
-add_subdirectory(buildtime)
 
-if (SCN_BLOAT)
+if (SCN_BUILD_BUILDTIME)
+    add_subdirectory(buildtime)
+endif ()
+
+if (SCN_BUILD_BLOAT)
     add_subdirectory(bloat)
 endif ()

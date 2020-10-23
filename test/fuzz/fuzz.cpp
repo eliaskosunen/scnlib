@@ -16,57 +16,75 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/scn.h>
-#include <iostream>
+#include <sstream>
 #include <vector>
 
 template <typename T>
-void run(const std::string& source, T& val)
+void run(scn::string_view source)
 {
-    auto wrapped = scn::wrap(source);
+    auto result = scn::make_result(source);
+    T val{};
     while (true) {
-        auto ret = scn::scan(wrapped, scn::default_tag, val);
-        wrapped = ret.range();
-        if (!ret) {
+        result = scn::scan_default(result.range(), val);
+        if (!result) {
             break;
         }
     }
 }
 
+template <typename T>
+void roundtrip(scn::string_view data)
+{
+    if (data.size() < sizeof(T)) {
+        return;
+    }
+    T original_value{};
+    std::memcpy(&original_value, data.data(), sizeof(T));
+
+    std::ostringstream oss;
+    oss << original_value;
+    auto source = std::move(oss).str();
+
+    T value{};
+    auto result = scn::scan_default(source, value);
+    if (!result) {
+        throw std::runtime_error("Failed to read");
+    }
+    if (value != original_value) {
+        throw std::runtime_error("Roundtrip failure");
+    }
+    if (!result.range().empty()) {
+        throw std::runtime_error("Unparsed input");
+    }
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-    std::string source(reinterpret_cast<const char*>(data), size);
+    scn::string_view source(reinterpret_cast<const char*>(data), size);
 
-    std::string str;
-    run(source, str);
+    run<char>(source);
+    run<int>(source);
+    run<long long>(source);
+    run<unsigned>(source);
+    run<double>(source);
+    run<std::string>(source);
+    run<scn::string_view>(source);
 
-    char ch;
-    run(source, ch);
+    roundtrip<int>(source);
+    roundtrip<long long>(source);
+    roundtrip<unsigned>(source);
+    // need to fix float roundtripping at some point
+    //roundtrip<double>(source);
 
-    int i;
-    run(source, i);
-
-    double d;
-    run(source, d);
-
-    long long ll;
-    run(source, ll);
-
-    unsigned u;
-    run(source, u);
-
-    std::vector<char> vec(32, 0);
-    auto s = scn::make_span(vec);
-    run(source, s);
-
-    // empty format string would loop forever
     if (size != 0) {
-        auto wrapped = scn::wrap(source);
+        auto result = scn::make_result(source);
         std::string str{};
-        while (wrapped.size() != 0) {
-            auto f = scn::string_view(wrapped.data(), wrapped.size());
-            auto ret = scn::scan(wrapped, f, str);
-            wrapped = ret.range();
-            if (!ret) {
+        while (!result.range().empty()) {
+            auto f =
+                scn::string_view{result.range().data(),
+                                 static_cast<size_t>(result.range().size())};
+            result = scn::scan(result.range(), f, str);
+            if (!result) {
                 break;
             }
         }
