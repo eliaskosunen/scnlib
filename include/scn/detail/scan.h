@@ -256,7 +256,8 @@ namespace scn {
                                          int base = 10)
     {
         SCN_EXPECT(!str.empty());
-        auto s = detail::integer_scanner<T>{base};
+        auto s = detail::integer_scanner<T>{};
+        s.base = base;
         bool minus_sign = false;
         auto sp = make_span(str.data(), str.size()).as_const();
         if (str[0] == detail::ascii_widen<CharT>('-')) {
