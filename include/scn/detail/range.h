@@ -484,6 +484,22 @@ namespace scn {
             }
         };
 
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
+
+        /// @{
+
+        /**
+         * Type returned by scanning functions.
+         * Contains an error (inherits from it, for \ref error, that's \ref
+         * wrapped_error), and the leftover range after scanning.
+         *
+         * The leftover range may reference the range given to the scanning
+         * function. Please take the necessary measures to make sure that the
+         * original range outlives the leftover range. Alternatively, if
+         * possible for your specific range type, call the \ref reconstruct()
+         * member function to get a new, independent range.
+         */
         template <typename WrappedRange, typename Base>
         class scan_result_base : public scan_result_base_wrapper<Base> {
         public:
@@ -500,39 +516,53 @@ namespace scn {
             {
             }
 
+            /// Beginning of the leftover range
             iterator begin() const noexcept
             {
                 return m_range.begin();
             }
+            /// End of the leftover range
             sentinel end() const
                 noexcept(noexcept(std::declval<wrapped_range_type>().end()))
             {
                 return m_range.end();
             }
 
+            /// A subrange pointing to the leftover range
             detail::ranges::subrange<iterator, sentinel> subrange() const
             {
                 return {begin(), end()};
             }
 
+            /**
+             * Leftover range.
+             * If the leftover range is used to scan a new value, this member
+             * function should be used.
+             */
             wrapped_range_type& range() &
             {
                 return m_range;
             }
+            /// \copydoc range()
             const wrapped_range_type& range() const&
             {
                 return m_range;
             }
+            /// \copydoc range()
             wrapped_range_type range() &&
             {
                 return std::move(m_range);
             }
 
-            wrapped_range_type wrap() const
-            {
-                return m_range;
-            }
-
+            /**
+             * These member functions enable more conventient use of the
+             * leftover range for non-scnlib use cases. The range must be
+             * contiguous.
+             *
+             * The lifetime semantics are as one would expect: \ref string_view
+             * and \ref scan reference the leftover range, \ref string allocates
+             * a new string, independent of the leftover range.
+             */
             template <
                 typename R = wrapped_range_type,
                 typename = typename std::enable_if<R::is_contiguous>::type>
@@ -541,6 +571,7 @@ namespace scn {
                 return {m_range.data(),
                         static_cast<std::size_t>(m_range.size())};
             }
+            /// \copydoc string_view()
             template <
                 typename R = wrapped_range_type,
                 typename = typename std::enable_if<R::is_contiguous>::type>
@@ -549,6 +580,7 @@ namespace scn {
                 return {m_range.data(),
                         static_cast<std::size_t>(m_range.size())};
             }
+            /// \copydoc string_view()
             template <
                 typename R = wrapped_range_type,
                 typename = typename std::enable_if<R::is_contiguous>::type>
@@ -560,6 +592,18 @@ namespace scn {
 
         protected:
             wrapped_range_type m_range;
+
+        private:
+            /// \publicsection
+
+            /**
+             * Reconstructs a range of the original type, independent of the
+             * leftover range, beginning from \ref begin and ending in \ref end.
+             *
+             * Compiles only if range is reconstructible.
+             */
+            template <typename R = typename WrappedRange::range_type>
+            R reconstruct() const;
         };
 
         template <typename WrappedRange, typename UnwrappedRange, typename Base>
@@ -648,6 +692,11 @@ namespace scn {
             this->m_range = std::move(other).range();
             return *this;
         }
+
+        /// @}
+
+        // -Wdocumentation-unknown-command
+        SCN_CLANG_PUSH
 
         template <typename T>
         struct range_tag {

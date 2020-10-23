@@ -98,7 +98,9 @@ namespace scn {
             return m_msg;
         }
 
-        /// Can the stream be used again
+        /// Returns `true` if, after this error, the state of the given input
+        /// range is consistent, and thus, the range can be used for new
+        /// scanning operations.
         constexpr bool is_recoverable() const noexcept
         {
             return !(m_code == unrecoverable_source_error ||
@@ -118,58 +120,6 @@ namespace scn {
     {
         return !(a == b);
     }
-
-    template <typename T, typename Error = ::scn::error>
-    class result {
-    public:
-        using success_type = T;
-        using error_type = Error;
-
-        constexpr result(success_type val) : m_value(std::move(val)) {}
-        constexpr result(success_type val, error_type err)
-            : m_value(std::move(val)), m_error(std::move(err))
-        {
-        }
-
-        SCN_CONSTEXPR14 success_type& value() & noexcept
-        {
-            return m_value;
-        }
-        constexpr const success_type& value() const& noexcept
-        {
-            return m_value;
-        }
-        SCN_CONSTEXPR14 success_type value() && noexcept
-        {
-            return m_value;
-        }
-
-        SCN_CONSTEXPR14 error_type& error() & noexcept
-        {
-            return m_error;
-        }
-        constexpr const error_type& error() const& noexcept
-        {
-            return m_error;
-        }
-        SCN_CONSTEXPR14 error_type error() && noexcept
-        {
-            return m_error;
-        }
-
-        constexpr explicit operator bool() const noexcept
-        {
-            return m_error.operator bool();
-        }
-        constexpr bool has_error() const noexcept
-        {
-            return !(operator bool());
-        }
-
-    private:
-        success_type m_value;
-        Error m_error{Error::success_tag()};
-    };
 
     /**
      * expected-like type.

@@ -62,7 +62,6 @@ add_custom_command(OUTPUT ${SPHINX_INDEX_FILE}
         ${CMAKE_CURRENT_SOURCE_DIR}/api/index.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/api/input_range.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/api/scanning.rst
-        ${CMAKE_CURRENT_SOURCE_DIR}/api/high.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/api/types.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/api/erased.rst
         ${CMAKE_CURRENT_SOURCE_DIR}/api/low.rst

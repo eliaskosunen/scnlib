@@ -98,6 +98,12 @@ namespace scn {
     /**
      * The most fundamental part of the scanning API.
      * Reads from the range in \c r according to the format string \c f.
+     *
+     * \code{.cpp}
+     * int i;
+     * scn::scan("123", "{}", i);
+     * // i == 123
+     * \endcode
      */
     template <typename Range, typename Format, typename... Args>
     auto scan(Range&& r, const Format& f, Args&... a)
@@ -111,9 +117,16 @@ namespace scn {
 
     /**
      * Equivalent to \ref scan, but with a
-     * format string with the appropriate amount of space-separated "{}"s for
+     * format string with the appropriate amount of space-separated `"{}"`s for
      * the number of arguments. Because this function doesn't have to parse the
      * format string, performance is improved.
+     *
+     * Adapted from the example for \ref scan
+     * \code{.cpp}
+     * int i;
+     * scn::scan_default("123", i);
+     * // i == 123
+     * \endcode
      *
      * \see scan
      */
@@ -129,11 +142,20 @@ namespace scn {
 
     /**
      * Read from the range in \c r using the locale in \c loc.
-     * \c loc must be a std::locale.
+     * \c loc must be a \c std::locale. The parameter is a template to avoid
+     * inclusion of `<locale>`.
      *
      * Use of this function is discouraged, due to the overhead involved with
      * locales. Note, that the other functions are completely locale-agnostic,
      * and aren't affected by changes to the global C locale.
+     *
+     * \code{.cpp}
+     * double d;
+     * scn::scan_localized(std::locale{"fi_FI"}, "3,14", "{}", d);
+     * // d == 3.14
+     * \endcode
+     *
+     * \see scan
      */
     template <typename Locale,
               typename Range,
@@ -155,6 +177,8 @@ namespace scn {
      * using an output parameter.
      *
      * The parsed value is in `ret.value()`, if `ret == true`.
+     * The return type of this function is otherwise similar to other scanning
+     * functions.
      *
      * \code{.cpp}
      * auto ret = scn::scan_value<int>("42");
@@ -242,13 +266,16 @@ namespace scn {
     // parse_integer
 
     /**
-     * Parses an integer into `val` in base `base` from `str`.
+     * Parses an integer into \c val in base \c base from \c str.
      * Returns a pointer past the last character read, or an error.
-     * `str` can't be empty, and cannot have:
+     *
+     * @param str source, can't be empty, cannot have:
      *   - preceding whitespace
-     *   - preceding `"0x"` or `"0"` (base is determined by the `base`
-     *     parameter)
-     *   - `+` sign (`-` is fine)
+     *   - preceding \c "0x" or \c "0" (base is determined by the \c base
+     * parameter)
+     *   - \c '+' sign (\c '-' is fine)
+     * @param val parsed integer, must be default-constructed
+     * @param base between [2,36]
      */
     template <typename T, typename CharT>
     expected<const CharT*> parse_integer(basic_string_view<CharT> str,
@@ -272,6 +299,13 @@ namespace scn {
         return {ret.value()};
     }
 
+    /**
+     * Parses float into \c val from \c str.
+     * Returns a pointer past the last character read, or an error.
+     *
+     * @param str source, can't be empty
+     * @param val parsed float, must be default-constructed
+     */
     template <typename T, typename CharT>
     expected<const CharT*> parse_float(basic_string_view<CharT> str, T& val)
     {
@@ -535,6 +569,25 @@ namespace scn {
             wrapped_error{err}, detail::range_tag<Range>{}, std::move(wrapped));
     }
 
+    /**
+     * Adapts a `span` into a type that can be read into using \ref scan_list.
+     * This way, potentially unnecessary dynamic memory allocations can be
+     * avoided. To use as a parameter to \ref scan_list, use
+     * \ref make_span_list_wrapper.
+     *
+     * \code{.cpp}
+     * std::vector<int> buffer(8, 0);
+     * scn::span<int> s = scn::make_span(buffer);
+     *
+     * auto wrapper = scn::span_list_wrapper<int>(s);
+     * scn::scan_list("123 456", wrapper);
+     * // s[0] == buffer[0] == 123
+     * // s[1] == buffer[1] == 456
+     * \endcode
+     *
+     * \see scan_list
+     * \see make_span_list_wrapper
+     */
     template <typename T>
     struct span_list_wrapper {
         using value_type = T;
@@ -560,6 +613,22 @@ namespace scn {
         span<T> m_span;
         std::size_t n{0};
     };
+
+    /**
+     * Adapts a contiguous buffer into a type containing a `span` that can be
+     * read into using \ref scan_list.
+     *
+     * Example adapted from \ref span_list_wrapper:
+     * \code{.cpp}
+     * std::vector<int> buffer(8, 0);
+     * scn::scan_list("123 456", scn::make_span_list_wrapper(buffer));
+     * // s[0] == buffer[0] == 123
+     * // s[1] == buffer[1] == 456
+     * \endcode
+     *
+     * \see scan_list
+     * \see span_list_wrapper
+     */
     template <typename T>
     auto make_span_list_wrapper(T& s) -> temporary<
         span_list_wrapper<typename decltype(make_span(s))::value_type>>
@@ -582,11 +651,23 @@ namespace scn {
     /**
      * Reads values repeatedly from `r` and writes them into `c`.
      * The values read are of type `Container::value_type`, and they are written
-     * into `c` using `c.push_back`. The values must be separated by separator
+     * into `c` using `c.push_back`.
+     *
+     * The values must be separated by separator
      * character `separator`, followed by whitespace. If `separator == 0`, no
      * separator character is expected.
      *
-     * To scan a `span`, use `span_list_wrapper`.
+     * The range is read, until:
+     *  - `c.max_size()` is reached, or
+     *  - range `EOF` was reached, or
+     *  - unexpected separator character was found between values.
+     *
+     * In all these cases, an error will not be returned, and the beginning of
+     * the returned range will point to the first character after the scanned
+     * list.
+     *
+     * To scan into `span`, use \ref span_list_wrapper.
+     * \ref make_span_list_wrapper
      */
     template <typename Range,
               typename Container,
@@ -647,6 +728,12 @@ namespace scn {
                                    std::move(ctx.range()));
     }
 
+    /**
+     * Otherwise equivalent to \ref scan_list, except with an additional case of
+     * stopping scanning: if `until` is found where a separator was expected.
+     *
+     * \see scan_list
+     */
     template <typename Range,
               typename Container,
               typename CharT = typename detail::extract_char_type<

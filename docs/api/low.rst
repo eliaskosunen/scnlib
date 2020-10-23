@@ -4,6 +4,8 @@ Low-level parsing operations
 
 The functions in this category abstract away the input range under an unifying interface.
 
+.. doxygenfunction:: parse_integer
+.. doxygenfunction:: parse_float
 .. doxygenfunction:: read_zero_copy
 .. doxygenfunction:: read_all_zero_copy
 .. doxygenfunction:: read_into
