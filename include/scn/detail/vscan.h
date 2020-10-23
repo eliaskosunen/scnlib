@@ -28,7 +28,7 @@ namespace scn {
     template <typename Context, typename ParseCtx>
     error vscan(Context& ctx, ParseCtx& pctx, basic_args<Context> args)
     {
-        return visit(ctx, pctx, args);
+        return visit(ctx, pctx, std::move(args));
     }
 
 #if !defined(SCN_HEADER_ONLY) || !SCN_HEADER_ONLY
