@@ -110,10 +110,10 @@ namespace scn {
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wpadded")
     template <typename CharT>
-    struct scanner<CharT, wrap_default<non_default_construct>>
+    struct scanner<CharT, optional<non_default_construct>>
         : public scanner<CharT, int> {
         template <typename Context>
-        error scan(wrap_default<non_default_construct>& val, Context& ctx)
+        error scan(optional<non_default_construct>& val, Context& ctx)
         {
             int tmp{};
             auto ret = scanner<CharT, int>::scan(tmp, ctx);
@@ -129,7 +129,7 @@ namespace scn {
 
 TEST_CASE("non_default_construct")
 {
-    scn::wrap_default<non_default_construct> val;
+    scn::optional<non_default_construct> val;
     auto ret = scn::scan("42", "{}", val);
 
     CHECK(ret);

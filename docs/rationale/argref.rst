@@ -2,8 +2,8 @@
 Why take arguments by reference?
 ================================
 
-<a href="https://github.com/eliaskosunen/scnlib/issues/2">
-Relevant GitHub issue</a>
+Relevant GitHub issue:
+https://github.com/eliaskosunen/scnlib/issues/2
 
 Another frequent complaint is how the library requires default-constructing
 your arguments, and then passing them by reference.

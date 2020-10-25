@@ -51,6 +51,7 @@ namespace scn {
             return std::wmemcmp(l, r, n);
         }
     }  // namespace detail
+
     /**
      * A view over a (sub)string.
      * Used even when std::string_view is available to avoid compatibility

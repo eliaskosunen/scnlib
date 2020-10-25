@@ -394,6 +394,8 @@ namespace scn {
 
     /**
      * Read the range in \c r into \c str until \c until is found.
+     * \c until will be skipped in parsing: it will not be pushed into \c str,
+     * and the returned range will go past it.
      *
      * \c r and \c str must share character types, which must be \c CharT.
      *
@@ -405,6 +407,19 @@ namespace scn {
      * Otherwise, clears `str` by calling `str.clear()`, and then reads the
      * range into `str` as if by repeatedly calling \c str.push_back.
      * `str.reserve` is also required to be present.
+     *
+     * \code{.cpp}
+     * auto source = "hello\nworld"
+     * std::string line;
+     * auto result = scn::getline(source, line, '\n');
+     * // line == "hello"
+     * // result.range() == "world"
+     *
+     * // Using the other overload
+     * result = scn::getline(result.range(), line);
+     * // line == "world"
+     * // result.empty() == true
+     * \endcode
      */
     template <typename Range, typename String, typename CharT>
     auto getline(Range&& r, String& str, CharT until)
@@ -614,6 +629,12 @@ namespace scn {
         std::size_t n{0};
     };
 
+    namespace detail {
+        template <typename T>
+        using span_list_wrapper_for = span_list_wrapper<typename decltype(
+            make_span(std::declval<T&>()))::value_type>;
+    }
+
     /**
      * Adapts a contiguous buffer into a type containing a `span` that can be
      * read into using \ref scan_list.
@@ -630,8 +651,8 @@ namespace scn {
      * \see span_list_wrapper
      */
     template <typename T>
-    auto make_span_list_wrapper(T& s) -> temporary<
-        span_list_wrapper<typename decltype(make_span(s))::value_type>>
+    auto make_span_list_wrapper(T& s)
+        -> temporary<detail::span_list_wrapper_for<T>>
     {
         auto _s = make_span(s);
         return temp(span_list_wrapper<typename decltype(_s)::value_type>(_s));
@@ -668,6 +689,17 @@ namespace scn {
      *
      * To scan into `span`, use \ref span_list_wrapper.
      * \ref make_span_list_wrapper
+     *
+     * \code{.cpp}
+     * std::vector<int> vec{};
+     * auto result = scn::scan_list("123 456", vec);
+     * // vec == [123, 456]
+     * // result.empty() == true
+     *
+     * result = scn::scan_list("123, 456", vec, ',');
+     * // vec == [123, 456]
+     * // result.empty() == true
+     * \endcode
      */
     template <typename Range,
               typename Container,
@@ -733,6 +765,13 @@ namespace scn {
      * stopping scanning: if `until` is found where a separator was expected.
      *
      * \see scan_list
+     *
+     * \code{.cpp}
+     * std::vector<int> vec{};
+     * auto result = scn::scan_list_until("123 456\n789", vec, '\n');
+     * // vec == [123, 456]
+     * // result.range() == "789"
+     * \endcode
      */
     template <typename Range,
               typename Container,
@@ -819,10 +858,8 @@ namespace scn {
      * \code{.cpp}
      * int i{};
      * // 123 is discarded, 456 is read into `i`
-     * auto ret = scn::scan("123 456", "{} {}",
-     *     discard<T>(), i);
-     * // ret == true
-     * // ret.value() == 2
+     * auto result = scn::scan("123 456", "{} {}", scn::discard<T>(), i);
+     * // result == true
      * // i == 456
      * \endcode
      */

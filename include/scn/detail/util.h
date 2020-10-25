@@ -629,51 +629,6 @@ namespace scn {
         };
 #endif
 
-#if 0
-        template <typename T>
-        constexpr T& reference_wrapper_helper(T& t) noexcept
-        {
-            return t;
-        }
-        template <typename T>
-        constexpr void reference_wrapper_helper(T&&) = delete;
-
-        template <class T>
-        class reference_wrapper {
-        public:
-            using type = T;
-
-            template <class U,
-                      class = decltype(
-                          reference_wrapper_helper<T>(std::declval<U>()),
-                          typename std::enable_if<
-                              !std::is_same<reference_wrapper,
-                                            remove_cvref_t<U>>::value>::type())>
-            constexpr reference_wrapper(U&& u) noexcept(
-                noexcept(reference_wrapper_helper<T>(std::forward<U>(u))))
-                : m_ptr(std::addressof(
-                      reference_wrapper_helper<T>(std::forward<U>(u))))
-            {
-            }
-            reference_wrapper(const reference_wrapper&) noexcept = default;
-
-            reference_wrapper& operator=(const reference_wrapper& x) noexcept =
-                default;
-
-            constexpr operator T&() const noexcept
-            {
-                return *m_ptr;
-            }
-            constexpr T& get() const noexcept
-            {
-                return *m_ptr;
-            }
-
-        private:
-            T* m_ptr;
-        };
-#endif
-
         template <typename T>
         class SCN_TRIVIAL_ABI unique_ptr {
         public:
@@ -948,16 +903,29 @@ namespace scn {
         SCN_CLANG_POP
     }  // namespace detail
 
+    /**
+     * A very lackluster optional implementation.
+     * Useful when scanning non-default-constructible types, especially with <tuple_return.h>:
+     *
+     * \code{.cpp}
+     * // implement scn::scanner for optional<mytype>
+     * optional<mytype> val;
+     * scn::scan(source, "{}", val);
+     *
+     * // with tuple_return:
+     * auto [result, val] = scn::scan_tuple<optional<mytype>>(source, "{}");
+     * \endcode
+     */
     template <typename T>
-    class wrap_default {
+    class optional {
     public:
         using value_type = T;
         using storage_type = detail::erased_storage<T>;
 
-        wrap_default() = default;
+        optional() = default;
 
-        wrap_default(value_type&& val) : m_storage(std::move(val)) {}
-        wrap_default& operator=(value_type&& val)
+        optional(value_type&& val) : m_storage(std::move(val)) {}
+        optional& operator=(value_type&& val)
         {
             m_storage = storage_type(std::move(val));
             return *this;

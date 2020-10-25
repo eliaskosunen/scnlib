@@ -11,10 +11,10 @@ scnlib documentation
    :maxdepth: 2
    :caption: Contents:
 
-   tutorial/index
-   rationale/index
+   manual
+   api
    cmake
-   api/index
+   rationale/index
 
 Introduction
 ------------

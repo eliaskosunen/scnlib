@@ -450,15 +450,22 @@ namespace scn {
         using range_wrapper_for_t = typename range_wrapper_for<Range>::type;
     }  // namespace detail
 
+    /**
+     * Base class for the result type returned by most scanning functions
+     * (except for \ref scan_value). \ref scan_result_base inherits either from
+     * this class or \ref expected.
+     */
     struct wrapped_error {
         wrapped_error() = default;
         wrapped_error(::scn::error e) : err(e) {}
 
+        /// Get underlying error
         ::scn::error error() const
         {
             return err;
         }
 
+        /// Did the operation succeed -- true means success
         explicit operator bool() const
         {
             return err.operator bool();
@@ -491,8 +498,9 @@ namespace scn {
 
         /**
          * Type returned by scanning functions.
-         * Contains an error (inherits from it, for \ref error, that's \ref
-         * wrapped_error), and the leftover range after scanning.
+         * Contains an error (inherits from it: for \ref error, that's \ref
+         * wrapped_error; with \ref scan_value, inherits from \ref expected),
+         * and the leftover range after scanning.
          *
          * The leftover range may reference the range given to the scanning
          * function. Please take the necessary measures to make sure that the
@@ -526,6 +534,12 @@ namespace scn {
                 noexcept(noexcept(std::declval<wrapped_range_type>().end()))
             {
                 return m_range.end();
+            }
+
+            /// Whether the leftover range is empty
+            bool empty() const noexcept(noexcept(end()))
+            {
+                return begin() == end();
             }
 
             /// A subrange pointing to the leftover range
@@ -875,6 +889,35 @@ namespace scn {
             typename result_type_for<Error, InputRange, WrappedRange>::type;
     }  // namespace detail
 
+    /**
+     * Create a result object for range \c Range.
+     * Useful if one wishes to scan from the same range in a loop.
+     *
+     * \code{.cpp}
+     * auto source = ...;
+     * auto result = make_result(source);
+     * // scan until failure (no more `int`s, or EOF)
+     * while (result) {
+     *   int i;
+     *   result = scn::scan(result.range(), "{}", i);
+     *   // use i
+     * }
+     * // see result for why we exited the loop
+     * \endcode
+     *
+     * \c Error template parameter can be used to customize the error type for
+     * the result object. By default, it's \ref wrapped_error, which is what
+     * most of the scanning functions use. For \c scan_value, use \c
+     * expected<T>:
+     *
+     * \code{.cpp}
+     * auto result = make_result<scn::expected<int>>(source);
+     * while (result) {
+     *   result = scn::scan_value<int>(result.range(), "{}");
+     *   // use result.value()
+     * }
+     * \endcode
+     */
     template <typename Error = wrapped_error, typename Range>
     auto make_result(Range&& r) -> detail::
         result_type_for_t<Error, Range, detail::range_wrapper_for_t<Range>>

@@ -37,3 +37,6 @@ These default to ``OFF``, and should only be turned on if necessary:
  * ``SCN_COVERAGE``: Generate code coverage report
  * ``SCN_BLOAT``: Generate bloat test target
  * ``SCN_BUILD_FUZZING``: Build fuzzer
+ * ``SCN_BUILD_LOCALIZED_TEST``: Build localization tests, requires en_US.UTF-8 and fi_FI.UTF-8 locales
+ * ``SCN_BUILD_BLOAT``: Build code bloat benchmarks
+ * ``SCN_BUILD_BUILDTIME``: Build build time benchmarks

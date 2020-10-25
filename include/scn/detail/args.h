@@ -52,6 +52,13 @@ namespace scn {
     };
     /**
      * Factory function for \ref temporary.
+     *
+     * Canonical use case is with \ref span:
+     * \code{.cpp}
+     * std::vector<char> buffer(32, '\0');
+     * auto result = scn::scan("123", "{}", scn::temp(scn::make_span(buffer)));
+     * // buffer == "123"
+     * \endcode
      */
     template <typename T,
               typename std::enable_if<

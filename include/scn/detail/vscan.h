@@ -25,6 +25,13 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /**
+     * In the spirit of {fmt}/`std::format` and `vformat`, `vscan` behaves
+     * similarly to \ref scan, except instead of taking a variadic argument
+     * pack, it takes an object of type `basic_args`, which type-erases the
+     * arguments to scan. This, in effect, will decrease generated code size and
+     * compile times dramatically.
+     */
     template <typename Context, typename ParseCtx>
     error vscan(Context& ctx, ParseCtx& pctx, basic_args<Context> args)
     {

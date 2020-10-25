@@ -45,7 +45,7 @@ copyright = '2020, Elias Kosunen'
 author = 'Elias Kosunen'
 
 # The full version, including alpha/beta/rc tags
-release = '0.4.0-alpha'
+release = '0.4.0-dev'
 
 # -- General configuration ---------------------------------------------------
 

@@ -56,16 +56,33 @@ TEST_CASE_TEMPLATE("getline", CharT, char, wchar_t)
         "firstline\n"
         "Second line with spaces");
 
-    SUBCASE("test")
+    using string_view_type = scn::basic_string_view<CharT>;
+
+    SUBCASE("string")
     {
         string_type s{};
-        auto ret = scn::getline(data, s);
-        CHECK(s == widen<CharT>("firstline"));
+        auto ret = scn::getline(data, s, scn::detail::ascii_widen<CharT>('\n'));
         CHECK(ret);
+        CHECK(s == widen<CharT>("firstline"));
 
         ret = scn::getline(ret.range(), s);
-        CHECK(s == widen<CharT>("Second line with spaces"));
         CHECK(ret);
+        CHECK(ret.empty());
+        CHECK(s == widen<CharT>("Second line with spaces"));
+    }
+    SUBCASE("string_view")
+    {
+        string_view_type s{};
+        auto ret = scn::getline(data, s, scn::detail::ascii_widen<CharT>('\n'));
+        CHECK(ret);
+        CHECK(string_type{s.data(), s.size()} == widen<CharT>("firstline"));
+        CHECK(!ret.empty());
+
+        ret = scn::getline(ret.range(), s);
+        CHECK(ret);
+        CHECK(string_type{s.data(), s.size()} ==
+              widen<CharT>("Second line with spaces"));
+        CHECK(ret.empty());
     }
 }
 
@@ -90,4 +107,3 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
         }
     }
 }
-
