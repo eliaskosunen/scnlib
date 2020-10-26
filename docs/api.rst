@@ -150,6 +150,197 @@ These types can be passed to scanning functions (``scn::scan`` and alike) as arg
     :members:
 .. doxygenfunction:: make_span_list_wrapper
 
+Format string
+-------------
+
+Every value to be scanned from the input range is marked with a pair of
+curly braces ``"{}"`` in the format string. Inside these braces, additional
+options can be specified. The syntax is not dissimilar from the one found in
+fmtlib.
+
+The information inside the braces consist of two parts: the index and the
+scanning options, separated by a colon ``':'``.
+
+The index part can either be empty, or be an integer.
+If the index is specified for one of the arguments, it must be set for all of
+them. The index tells the library which argument the braces correspond to.
+
+.. code-block:: cpp
+
+    int i;
+    std::string str;
+    scn::scan(range, "{1} {0}", i, str);
+    // Reads from the range in the order of:
+    //   string, whitespace, integer
+    // That's because the first format string braces have index '1', pointing to
+    // the second passed argument (indices start from 0), which is a string
+
+After the index comes a colon and the scanning options.
+The colon only has to be there if any scanning options are specified.
+
+For ``span`` s, there are no supported scanning options.
+
+Integral types
+**************
+
+There are localization specifiers:
+
+ * ``n``: Use thousands separator from the given locale
+ * ``l``: Accept characters specified as digits by the given locale. Implies ``n``
+ * (default): Use ``,`` as thousands separator and ``[0-9]`` as digits
+
+And base specifiers:
+
+ * ``d``: Decimal (base-10)
+ * ``x``: Hexadecimal (base-16)
+ * ``o``: Octal (base-8)
+ * ``b..`` Custom base; ``b`` followed by one or two digits
+   (e.g. ``b2`` for binary). Base must be between 2 and 36, inclusive
+ * (default): Detect base. ``0x``/``0X`` prefix for hexadecimal,
+   ``0`` prefix for octal, decimal by default
+ * ``i``: Detect base. Argument must be signed
+ * ``u``: Detect base. Argument must be unsigned
+
+And other options:
+
+ * ``'``: Accept thousands separator characters,
+   as specified by the given locale (only with ``custom``-scanning method)
+ * (default): Thousands separator characters aren't accepted
+
+These specifiers can be given in any order, with up to one from each
+category.
+
+Floating-point types
+********************
+
+First, there's a localization specifier:
+
+ * ``n``: Use decimal and thousands separator from the given locale
+ * (default): Use ``.`` as decimal point and ``,`` as thousands separator
+
+After that, an optional ``a``, ``A``, ``e``, ``E``, ``f``, ``F``, ``g`` or ``G`` can be
+given, which has no effect.
+
+``bool``
+********
+
+First, there are a number of specifiers that can be given, in any order:
+
+ * ``a``: Accept only ``true`` or ``false``
+ * ``n``: Accept only ``0`` or ``1``
+ * ``l``: Implies ``a``. Expect boolean text values as specified as such by the
+   given locale
+ * (default): Accept ``0``, ``1``, ``true``, and ``false``, equivalent to ``an``
+
+After that, an optional ``b`` can be given, which has no effect.
+
+Strings (``std::string``, ``string_view``)
+******************************************
+
+Only supported option is ``s``, which has no effect
+
+Characters (``char``, ``wchar_t``)
+**********************************
+
+Only supported option is ``c``, which has no effect
+
+Whitespace
+**********
+
+Any amount of whitespace in the format string tells the library to skip until
+the next non-whitespace character is found from the range. Not finding any
+whitespace from the range is not an error.
+
+Literal characters
+******************
+
+To scan literal characters and immediately discard them, just write the
+characters in the format string. ``scanf``-like ``[]``-wildcard is not supported.
+To read literal ``{`` or ``}``, write ``{{`` or ``}}``, respectively.
+
+.. code-block:: cpp
+
+    std::string bar;
+    scn::scan("foobar", "foo{}", bar);
+    // bar == "bar"
+
+Semantics of scanning a value
+-----------------------------
+
+In the beginning, with every ``scn::scan`` (or similar) call, the library
+wraps the given range in a ``scn::detail::range_wrapper``.
+This wrapper provides an uniform interface and lifetime semantics over all possible ranges.
+The arguments to scan are wrapped in a ``scn::arg_store``.
+The appropriate context and parse context types are then constructed based on these values,
+the format string, and the requested locale.
+
+These are passed to ``scn::vscan``, which then calls ``scn::visit``.
+There, the library calls ``begin()`` on the range, getting an iterator. This iterator is
+advanced until a non-whitespace character is found.
+
+After that, the format string is scanned character-by-character, until an
+unescaped ``'{'`` is found, after which the part after the ``'{'`` is parsed,
+until a ``':'`` or ``'}'`` is found. If the parser finds an argument id,
+the argument with that id is fetched from the argument list, otherwise the
+next argument is used.
+
+The ``parse()`` member function of the appropriate ``scn::scanner``
+specialization is called, which parses the parsing options-part of the format
+string argument, setting the member variables of the ``scn::scanner``
+specialization to their appropriate values.
+
+After that, the ``scan()`` member function is called. It reads the range,
+starting from the aforementioned iterator, into a buffer until the next
+whitespace character is found (except for ``char``/``wchar_t``: just a single
+character is read; and for ``span``: ``span.size()`` characters are read). That
+buffer is then parsed with the appropriate algorithm (plain copy for
+``string`` s, the method determined by the ``options`` object for ints and
+floats).
+
+If some of the characters in the buffer were not used, these characters are
+put back to the range, meaning that ``operator--`` is called on the iterator.
+
+Because how the range is read until a whitespace character, and how the
+unused part of the buffer is simply put back to the range, some interesting
+situations may arise. Please note, that the following behavior is consistent
+with both ``scanf`` and ``<iostream>``.
+
+.. code-block:: cpp
+
+    char c;
+    std::string str;
+
+    // No whitespace character after first {}, no range whitespace is skipped
+    scn::scan("abc", "{}{}", c, str);
+    // c == 'a'
+    // str == "bc"
+
+    // Not finding whitespace to skip from the range when whitespace is found in
+    // the format string isn't an error
+    scn::scan("abc", "{} {}", c, str);
+    // c == 'a'
+    // str == "bc"
+
+    // Because there are no non-whitespace characters between 'a' and the next
+    // whitespace character ' ', ``str`` is empty
+    scn::scan("a bc", "{}{}", c, str);
+    // c == 'a'
+    // str == ""
+
+    // Nothing surprising
+    scn::scan("a bc", "{} {}", c, str);
+    // c == 'a'
+    // str == "bc"
+
+Using ``scn::scan_default`` is equivalent to using ``"{}"`` in the format string
+as many times as there are arguments, separated by whitespace.
+
+.. code-block:: cpp
+
+    scn::scan_default(range, a, b);
+    // Equivalent to:
+    // scn::scan(range, "{} {}", a, b);
+
 Lower level parsing and scanning operations
 -------------------------------------------
 

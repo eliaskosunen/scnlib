@@ -537,7 +537,8 @@ namespace scn {
             }
 
             /// Whether the leftover range is empty
-            bool empty() const noexcept(noexcept(end()))
+            bool empty() const
+                noexcept(noexcept(std::declval<wrapped_range_type>().end()))
             {
                 return begin() == end();
             }

@@ -11,7 +11,7 @@ scnlib documentation
    :maxdepth: 2
    :caption: Contents:
 
-   manual
+   guide
    api
    cmake
    rationale/index
