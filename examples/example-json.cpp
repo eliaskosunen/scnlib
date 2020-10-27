@@ -16,16 +16,39 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/scn.h>
+
 #include <iostream>
+
+struct string_list {
+    std::vector<int> list;
+};
+
+template <>
+struct scn::scanner<char, string_list> : public scn::empty_parser {
+    template <typename Context>
+    error scan(string_list& val, Context& ctx)
+    {
+        auto result = scn::scan_list_until(ctx.range(), val.list, ']', ',');
+        if (!result) {
+            return result.error();
+        }
+        ctx.range() = std::move(result.range());
+        return {};
+    }
+};
 
 int main()
 {
-    auto source = std::string{"First line\nSecond line"};
-    std::string line{};
-    if (auto ret = scn::getline(source, line)) {
-        std::cout << "First line was: '" << line << "'\n";
-        if ((ret = scn::getline(ret.range(), line))) {
-            std::cout << "Second line was: '" << line << "'\n";
+    string_list val;
+    std::string source = R"([1, 2, 3])";
+    auto result = scn::scan(source, "[{}", val);
+
+    if (!result) {
+        std::cout << result.error().msg() << '\n';
+    }
+    else {
+        for (const auto& e : val.list) {
+            std::cout << e << '\n';
         }
     }
 }

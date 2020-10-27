@@ -30,8 +30,8 @@ character type.
 .. doxygenfunction:: scan_list
 .. doxygenfunction:: scan_list_until
 
-Input range
------------
+Source range
+------------
 
 Various kinds of ranges can be passed to scanning functions.
 
@@ -41,8 +41,8 @@ All of these can be passed to ``std::begin`` and ``std::end``, which then return
 This notion of ranges was standardized in C++20 with the Ranges TS.
 This library provides barebone support of this functionality.
 
-Input range requirements
-************************
+Source range requirements
+*************************
 
 Ranges passed to scanning functions must be:
  * bidirectional
@@ -91,6 +91,10 @@ Passing a non-view as an rvalue will work, but it may cause worse performance, e
 In order for the ``.reconstruct()`` member function to compile in the result object,
 the range must be a ``pair-reconstructible-range`` as defined by https://wg21.link/p1664r1,
 i.e. be constructible from an iterator and a sentinel.
+
+If the source range is contiguous, and/or its ``value_type`` is its character type,
+various fast-path optimizations are enabled inside the library implementation.
+Also, a ``string_view`` can only be scanned from such a range.
 
 Character type
 **************
@@ -153,7 +157,7 @@ These types can be passed to scanning functions (``scn::scan`` and alike) as arg
 Format string
 -------------
 
-Every value to be scanned from the input range is marked with a pair of
+Every value to be scanned from the source range is marked with a pair of
 curly braces ``"{}"`` in the format string. Inside these braces, additional
 options can be specified. The syntax is not dissimilar from the one found in
 fmtlib.
@@ -352,7 +356,7 @@ Using these functions can easily lead to unexpected behavior or UB if not used c
 .. doxygenfunction:: parse_integer
 .. doxygenfunction:: parse_float
 
-The following functions abstract away the input range in easier to understand parsing operations.
+The following functions abstract away the source range in easier to understand parsing operations.
 
 .. doxygenfunction:: read_zero_copy
 .. doxygenfunction:: read_all_zero_copy

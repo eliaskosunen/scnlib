@@ -19,22 +19,11 @@
 
 #include <iostream>
 
-#if SCN_HAS_STRING_VIEW
-using namespace std::string_view_literals;  // For sv
-
 int main()
 {
-    auto str = "Hello world!"sv;
-
     std::string word;
-    scn::scan(str, "{}", word);
+    auto result = scn::scan("Hello world!", "{}", word);
 
     std::cout << word << '\n';  // Will output "Hello"
-    std::cout << str << '\n';   // Will output " world!"
+    std::cout << result.string() << '\n';   // Will output " world!"
 }
-#else
-int main()
-{
-    std::cout << "No string_view :(\n";
-}
-#endif

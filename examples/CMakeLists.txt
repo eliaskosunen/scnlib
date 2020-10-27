@@ -10,5 +10,6 @@ make_example(3)
 make_example(tuple-return)
 make_example(getline)
 make_example(positional)
+make_example(json)
 
 make_example(readme)

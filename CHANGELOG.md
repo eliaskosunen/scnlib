@@ -2,9 +2,38 @@
 
 _Released 2020-xx-xx_
 
- * Move to readthedocs
- * Rewritten file handling
- * Add `scan_list_until`
+## Changes and removals
+
+ * Rework source range handling:
+   * Non-views are now accepted as source ranges --
+     this includes types like `std::string` and `std::vector<char>`
+   * Non-reconstructible ranges are now also accepted --
+     scanning functions no longer return a reconstructed source range.
+     The member function `.range()` can be used to scan the range again,
+     and `.reconstruct()` reconstructs the range, if possible.
+     Other helper member functions are also available.
+   * Source ranges are now either taken by const lvalue reference or rvalue reference,
+     so they are no longer modified by scanning functions.
+     To access the leftover range, use the return value of the scanning function.
+ * Rewrite file handling: TODO
+ * Remove `default_tag`, replace with `scan_default` function template
+ * Remove support for `scanf` syntax, including `scn::scanf` and `scn::basic_scanf_parse_context`.
+
+## Additions
+
+ * Add `scan_list_until`  
+
+## Fixes and minor stuff
+
+ * Fix float parsing not being locale-agnostic when global C locale was not `"C"`
+   (#24, thanks [@petrmanek (Petr Mánek)](https://github.com/petrmanek) and
+   [@amyspark](https://github.com/amyspark) for reporting)
+ * Fix `SONAME` (#32, thanks [@xvitaly (Vitaly Zaitsev)](https://github.com/xvitaly))
+ * Use system doctest and google-benchmark if available
+   (#28, #30, #31,
+   thanks [@xvitaly (Vitaly Zaitsev)](https://github.com/xvitaly), and
+   [@leha-bot (Alex)](https://github.com/leha-bot) for reporting)
+ * Move to readthedocs (https://scnlib.readthedocs.com) from https://scnlib.dev
 
 # 0.3
 
@@ -29,7 +58,7 @@ Largely a bugfix release
  * Fix README example
  * Fix erroneous usage of library feature test macros
 
-Thanks to @nanoric and @SuperWig for bug reports!
+Thanks to [@nanoric](https://github.com/nanoric) and [@SuperWig (Daniel Marshall)](https://github.com/SuperWig) for bug reports!
 
 ## Removals
 
@@ -84,9 +113,9 @@ _Released 2019-06-25_
  * Fix #8: Fix segfault when using `scn::cstdin()` or `scn::wcstdin()`,
    caused by the copy and move constructor of `small_vector` setting data pointer to `nullptr`
    if copying/moving from an empty `small_vector`.
-   (Thanks @SuperWig for reporting!)
+   (Thanks [@SuperWig (Daniel Marshall)](https://github.com/SuperWig) for reporting!)
  * Fix compilation error when using `scn::ranges::get_value`.
- * Fix a badge in README (thanks @p1v0t)
+ * Fix a badge in README (thanks [@p1v0t](https://github.com/p1v0t))
 
 # 0.1
 

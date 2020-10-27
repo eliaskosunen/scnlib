@@ -101,7 +101,7 @@ Basic usage
 A range is an object that has a beginning and an end.
 Examples of ranges are string literals, ``std::string`` and ``std::vector<char>``.
 Objects of these types, and more, can be passed to ``scn::scan``.
-To learn more about the requirements on these ranges, see the API documentation on input ranges.
+To learn more about the requirements on these ranges, see the API documentation on source ranges.
 
 After the source range, ``scn::scan`` is passed a format string.
 This is similar in nature to ``scanf``, and has virtually the same syntax as ``std::format`` and {fmt}.
@@ -326,6 +326,25 @@ using ``scn::scan`` with a format string with N space-separated ``"{}"`` s.
 ``scn::scan_value``
 *******************
 
+If you only wish to scan a single value with default options, you can avoid using output arguments by using ``scn::scan_value``.
+The return value of ``scn::scan_value<T>`` contains a ``.value()`` member function that returns a ``T`` if the operation succeeded.
+
+.. code-block:: cpp
+
+    auto result = scn::scan_value<int>("123");
+    // result == true
+    // result.value() == 123
+
+As is evident by the presence of an extra member function, the return type of ``scan_value`` is not the same as the one of ``scan``.
+The return type of ``scan`` inherits from ``scn::wrapped_error``, but the return type of ``scan_value`` inherits from ``scn::expected<T>``.
+To use ``make_result`` with ``make_value``, this needs to be taken into account:
+
+.. code-block:: cpp
+
+    auto result = scn::make_result<scn::expected<int>>(...);
+    result = scn::scan_value<int>(result.range());
+
+The return types of ``scan`` and ``scan_value`` are not compatible, and cannot be assigned to each other.
 
 Localization: ``scn::scan_localized``
 *************************************
@@ -353,26 +372,165 @@ even if ``std::locale::classic()`` was passed.
 ``scn::getline``
 ****************
 
-``scn::ignore``
-***************
+``scn::getline`` works similarly to ``std::getline``.
+It takes a range to read from, a string to read into, and optionally a delimeter character defaulting to ``'\n'``.
+
+.. code-block:: cpp
+
+    std::string line;
+    auto result = scn::getline("first\nsecond\nthird", line);
+    // result == true
+    // line == "first"
+    // result.range() == "second\nthird" (note that the delim '\n' is skipped)
+
+    // setting '\n' explicitly
+    result = scn::getline(result.range(), line, '\n');
+    // result == true
+    // line == "second"
+    // result.range() == "third"
+
+    // delim doesn't have to be '\n' or even whitespace
+    result = scn::getline(result.range(), line, 'r');
+    // result == true
+    // line == "thi"
+    // result.range() == "d"
+
+If the string to read into passed to ``scn::getline`` is a ``scn::string_view``, and the source range is contiguous,
+the ``string_view`` is modified to point into the source range.
+This increases performance (no copying or memory allocations) at the expense of lifetime safety.
+
+.. code-block:: cpp
+
+    std::string source = "foo\nbar";
+    scn::string_view line;
+    auto result = scn::getline(source, line);
+    // result == true
+    // line == "foo"
+    // result.range() == "bar"
+    // line.data() == source.data() (point to the same address -- `line` points to `source`)
+
+``scn::ignore_until`` and ``scn::ignore_until_n``
+*************************************************
+
+``scn::ignore_until_n`` is like ``std::istream::ignore``.
+It takes an integer N and a character C,
+and reads the source range until either N characters were read or character C was found from the source range.
+
+``scn::ignore_until`` works in the same way, except the only condition for stopping to read is finding the end character.
+This is effectively equivalent to passing ``std::numeric_limits<std::ptrdiff_t>::max()`` as N to ``scn::ignore_until_n``.
 
 ``scn::scan_list`` and temporaries
 **********************************
 
+To easily scan multiple values of the same type, ``scn::scan_list`` can be used.
+It takes a source range and a container to write the scanned values to.
+Its return type is similar to that of ``scn::scan``.
+
+.. code-block:: cpp
+
+    std::vector<int> list;
+    auto result = scn::scan_list("123 456 789", list);
+    // result == true
+    // list == [123, 456, 789]
+
+``scn::scan_list`` can also be passed a third argument marking a delimeter character:
+
+.. code-block:: cpp
+
+    std::vector<int> list;
+    auto result = scn::scan_list("123, 456, 789", list, ',');
+    // result == true
+    // list == [123, 456, 789]
+
+``scn::scan_list`` will read until an invalid value or delimeter is found or the source range is exhausted.
+``scn::scan_list_until`` can be used to control this behavior.
+As its third argument, it takes a character, until which it will read the source range, similar to ``getline``.
+The delimeter character argument is still the last argument and optional.
+
+.. code-block:: cpp
+
+    std::vector<int> list;
+    auto result = scn::scan_list_until("123 456 789\n123", list, '\n');
+    // result == true
+    // list == [123, 456, 789]
+    // result.range() == "123"
+
+If you've already allocated memory for the list, ``scan_list`` and ``scan_list_until`` can be passed a ``scn::span``.
+Because the container must be passed to ``scan_list`` as an lvalue reference, the ``span`` must be constructed separately,
+which can be tedious.
+The library provides some helpers for this.
+
+.. code-block:: cpp
+
+    // Doing everything explicitly
+    std::vector<int> list(64, 0);
+    auto span = scn::make_span(list);
+    auto result = scn::scan_list("123 456 789", span);
+    // result == true
+    // list == span == [123, 456, 789]
+
+    // Using scn::temp
+    // Takes an rvalue and makes it usable as an argument to scanning functions requiring an lvalue reference
+    // Useful with spans and other views
+    std::vector<int> list(64, 0);
+    auto result = scn::scan_list("123 456 789", scn::temp(scn::make_span(list)));
+    // result == true
+    // list == span == [123, 456, 789]
+
+    // Using scn::make_span_list_wrapper
+    // Takes a container and returns a span into it, already wrapped with scn::temp
+    // Effectively equivalent to the example above
+    std::vector<int> list(64, 0);
+    auto result = scn::scan_list("123 456 789", scn::make_span_list_wrapper(list));
+    // result == true
+    // list == span == [123, 456, 789]
+
+``scn::temp`` can be also utilized elsewhere
+
+.. code-block:: cpp
+
+    std::vector<char> buffer(64, 0);
+    // Reads up to 64 chars into the buffer
+    auto result = scn::scan_default(source, scn::temp(scn::make_span(buffer)));
+
 User types
 ----------
+
+TODO: UX to be improved
 
 Tuple-based scanning API
 ------------------------
 
+By including ``<scn/tuple_return.h>``, you'll get access to an alternative API,
+which returns the scanned values in a tuple instead of output parameters.
+See Rationale for why this is not the default API.
+
+These functions are slightly slower compared to their output-parameter equivalents, both in runtime and compile time.
+
+.. code-block:: cpp
+
+    #include <scn/tuple_return.h>
+
+    // Way more usable with C++17 structured bindings
+    // Can also be used without them
+    auto [result, i] = scn::scan_tuple<int>("123", "{}");
+    // result == true
+    // i == 123
+
 Miscellaneous
 -------------
 
-``string`` vs ``string_view`` vs ``span``
-*****************************************
+``string`` vs ``string_view`` vs ``span<char>``
+***********************************************
 
-Positional arguments
-********************
+Three types that at first glance might appear quite similar,
+have significant differences what comes to how they're scanned by the library.
+
+``std::string`` works very similarly to how it works with ``<iostream>``.
+
+TODO
 
 Wide ranges
 ***********
+
+TODO
