@@ -23,19 +23,23 @@ struct string_list {
     std::vector<int> list;
 };
 
-template <>
-struct scn::scanner<char, string_list> : public scn::empty_parser {
-    template <typename Context>
-    error scan(string_list& val, Context& ctx)
-    {
-        auto result = scn::scan_list_until(ctx.range(), val.list, ']', ',');
-        if (!result) {
-            return result.error();
+namespace scn {
+    SCN_BEGIN_NAMESPACE
+    template <>
+    struct scanner<char, string_list> : public scn::empty_parser {
+        template <typename Context>
+        error scan(string_list& val, Context& ctx)
+        {
+            auto result = scn::scan_list_until(ctx.range(), val.list, ']', ',');
+            if (!result) {
+                return result.error();
+            }
+            ctx.range() = std::move(result.range());
+            return {};
         }
-        ctx.range() = std::move(result.range());
-        return {};
-    }
-};
+    };
+    SCN_END_NAMESPACE
+}
 
 int main()
 {
