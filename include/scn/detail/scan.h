@@ -79,12 +79,14 @@ namespace scn {
                           "Input needs to be a Range");
 
             using range_type = detail::range_wrapper_for_t<const Range&>;
-
-            using context_type = basic_context<range_type, Locale>;
-            using parse_context_type = ParseCtx<Locale>;
+            using locale_type =
+                basic_locale_ref<typename range_type::char_type>;
+            using context_type = basic_context<range_type, locale_type>;
+            using parse_context_type = ParseCtx<locale_type>;
 
             auto args = make_args<context_type, parse_context_type>(a...);
-            auto ctx = context_type(detail::wrap(r), {std::addressof(loc)});
+            auto ctx =
+                context_type(detail::wrap(r), locale_type{std::addressof(loc)});
             auto pctx = parse_context_type(f, ctx);
             auto err = vscan(ctx, pctx, {args});
             return detail::wrap_result(wrapped_error{err},

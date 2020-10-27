@@ -21,6 +21,7 @@ _Released 2020-xx-xx_
 
 ## Additions
 
+ * Add more thorough documentation, tests, benchmarks and examples
  * Add `scan_list_until`  
 
 ## Fixes and minor stuff
