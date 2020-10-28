@@ -225,10 +225,12 @@ namespace scn {
               typename... Args,
               typename CharT = detail::ranges::range_value_t<Format>>
     auto input(const Format& f, Args&... a)
-        -> detail::scan_result_for_range<decltype(stdin_range<CharT>().lock())&>
+        -> detail::scan_result_for_range<basic_file<CharT>&>
     {
-        auto range = stdin_range<CharT>().lock();
-        return detail::scan_boilerplate<basic_parse_context>(range, f, a...);
+        auto& range = stdin_range<CharT>();
+        auto ret = detail::scan_boilerplate<basic_parse_context>(range, f, a...);
+        range.sync();
+        return ret;
     }
 
     // prompt

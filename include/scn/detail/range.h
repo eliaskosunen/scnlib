@@ -778,13 +778,10 @@ namespace scn {
                 }
 
                 // (const) InputRange&
-                // wrapped<non-ref>
+                // wrapped<any>
                 template <typename Error,
                           typename InputRange,
-                          typename InnerWrappedRange,
-                          typename =
-                              typename std::enable_if<!std::is_lvalue_reference<
-                                  InnerWrappedRange>::value>::type>
+                          typename InnerWrappedRange>
                 static auto impl(Error e,
                                  range_tag<InputRange&>,
                                  range_wrapper<InnerWrappedRange>&& range,
@@ -795,23 +792,6 @@ namespace scn {
                         Error>
                 {
                     return {std::move(e), std::move(range)};
-                }
-
-                // (const) InputRange&
-                // wrapped<ref>
-                template <typename Error,
-                          typename InputRange,
-                          typename InnerWrappedRange,
-                          typename NoRef = typename std::remove_reference<
-                              InnerWrappedRange>::type>
-                static auto impl(Error e,
-                                 range_tag<InputRange&>,
-                                 range_wrapper<InnerWrappedRange&>&& range,
-                                 priority_tag<1>)
-                    -> reconstructed_scan_result<range_wrapper<NoRef>, Error>
-                {
-                    return {std::move(e),
-                            std::move(range).template rewrap<NoRef>()};
                 }
 
                 // InputRange&&

@@ -114,6 +114,18 @@ TEST_CASE("string literal")
     CHECK(ret.range().empty());
 }
 
+TEST_CASE("mapped_file")
+{
+    auto file = scn::mapped_file{};
+    auto result = scn::make_result(file);
+    static_assert(
+        std::is_same<decltype(result),
+                     scn::detail::non_reconstructed_scan_result<
+                         scn::detail::range_wrapper<scn::string_view>,
+                         scn::mapped_file, scn::wrapped_error>>::value,
+        "");
+}
+
 #if 0
 // ranges must be default-constructible
 

@@ -103,7 +103,7 @@ namespace scn {
                 return m_map.end();
             }
 
-        private:
+        protected:
             void _destruct();
 
             native_file_handle m_file{native_file_handle::invalid().handle};
@@ -120,13 +120,27 @@ namespace scn {
         using byte_mapped_file::byte_mapped_file;
 
         // embrace the UB
-        SCN_NODISCARD iterator begin() const
+        SCN_NODISCARD iterator begin() const noexcept
         {
             return reinterpret_cast<iterator>(byte_mapped_file::begin());
         }
-        SCN_NODISCARD sentinel end() const
+        SCN_NODISCARD sentinel end() const noexcept
         {
             return reinterpret_cast<sentinel>(byte_mapped_file::end());
+        }
+
+        SCN_NODISCARD iterator data() const noexcept
+        {
+            return begin();
+        }
+        SCN_NODISCARD size_t size() const noexcept
+        {
+            return m_map.size() / sizeof(CharT);
+        }
+
+        detail::range_wrapper<basic_string_view<CharT>> wrap() const
+        {
+            return basic_string_view<CharT>{data(), size()};
         }
     };
 
@@ -134,236 +148,30 @@ namespace scn {
     using wmapped_file = basic_mapped_file<wchar_t>;
 
     template <typename CharT>
-    class basic_file_view;
-
-    template <typename CharT>
     class basic_file {
-    public:
-        using char_type = CharT;
-        using view_type = basic_file_view<CharT>;
-
-        basic_file() = default;
-        explicit basic_file(FILE* f) : m_file(f) {}
-
-        basic_file(const basic_file&) = delete;
-        basic_file& operator=(const basic_file&) = delete;
-
-        basic_file(basic_file&& f) noexcept
-            : m_file(detail::exchange(f.m_file, nullptr)),
-              m_lock_counter(detail::exchange(f.m_lock_counter, size_t{0})),
-              m_buffer(detail::exchange(f.m_buffer, {}))
-        {
-            SCN_EXPECT(!f.is_locked());
-        }
-        basic_file& operator=(basic_file&& f) noexcept
-        {
-            SCN_EXPECT(!is_locked());
-            SCN_EXPECT(!f.is_locked());
-            m_file = detail::exchange(f.m_file, nullptr);
-            m_buffer = detail::exchange(f.m_buffer, {});
-            // m_lock_counter and f.m_lock_counter guaranteed to be 0
-            return *this;
-        }
-
-        ~basic_file()
-        {
-            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-            _sync(m_buffer.size());
-            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
-        }
-
-        FILE* handle() const
-        {
-            SCN_EXPECT(!is_locked());
-            return m_file;
-        }
-
-        bool valid() const
-        {
-            return m_file != nullptr;
-        }
-
-        FILE* set_handle(FILE* n)
-        {
-            SCN_EXPECT(!is_locked());
-            _sync(m_buffer.size());
-            m_buffer.clear();
-            return detail::exchange(m_file, n);
-        }
-
-        view_type lock();
-
-        bool is_locked() const
-        {
-            return m_lock_counter > 0;
-        }
-
-    private:
-        friend class basic_file_view<CharT>;
-
-        void _release_lock(size_t pos)
-        {
-            SCN_EXPECT(is_locked());
-            --m_lock_counter;
-            if (!is_locked()) {
-                _sync(pos);
-                m_buffer.clear();
-            }
-        }
-
-        bool _is_end(size_t n) const
-        {
-            SCN_EXPECT(valid());
-            return m_buffer.size() == n;
-        }
-
-        bool _should_read(size_t n) const
-        {
-            return _is_end(n);
-        }
-        CharT _get_char_at(size_t n) const
-        {
-            SCN_EXPECT(valid());
-            SCN_EXPECT(n < m_buffer.size());
-            return m_buffer[n];
-        }
-
-        expected<CharT> _read() const;
-
-        void _sync(size_t pos);
-
-        FILE* m_file{nullptr};
-        size_t m_lock_counter{0};
-        mutable std::basic_string<CharT> m_buffer{};
-    };
-
-    using file = basic_file<char>;
-    using wfile = basic_file<wchar_t>;
-
-    template <>
-    inline expected<char> file::_read() const
-    {
-        SCN_EXPECT(valid());
-        int tmp = std::fgetc(m_file);
-        if (tmp == EOF) {
-            if (std::feof(m_file) != 0) {
-                return error(error::end_of_range, "EOF");
-            }
-            if (std::ferror(m_file) != 0) {
-                return error(error::source_error, "fgetc error");
-            }
-            return error(error::unrecoverable_source_error,
-                         "Unknown fgetc error");
-        }
-        auto ch = static_cast<char>(tmp);
-        m_buffer.push_back(ch);
-        return ch;
-    }
-    template <>
-    inline expected<wchar_t> wfile::_read() const
-    {
-        SCN_EXPECT(valid());
-        wint_t tmp = std::fgetwc(m_file);
-        if (tmp == WEOF) {
-            if (std::feof(m_file) != 0) {
-                return error(error::end_of_range, "EOF");
-            }
-            if (std::ferror(m_file) != 0) {
-                return error(error::source_error, "fgetc error");
-            }
-            return error(error::unrecoverable_source_error,
-                         "Unknown fgetc error");
-        }
-        auto ch = static_cast<wchar_t>(tmp);
-        m_buffer.push_back(ch);
-        return ch;
-    }
-
-    template <>
-    inline void file::_sync(std::size_t pos)
-    {
-        for (auto it = m_buffer.rbegin();
-             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
-            std::ungetc(static_cast<unsigned char>(*it), m_file);
-        }
-    }
-    template <>
-    inline void wfile::_sync(std::size_t pos)
-    {
-        for (auto it = m_buffer.rbegin();
-             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
-            std::ungetwc(static_cast<wint_t>(*it), m_file);
-        }
-    }
-
-    template <typename CharT>
-    class basic_owning_file : public basic_file<CharT> {
-    public:
-        using char_type = CharT;
-
-        basic_owning_file() = default;
-        basic_owning_file(const char* f, const char* mode)
-            : basic_file<CharT>(std::fopen(f, mode))
-        {
-        }
-
-        ~basic_owning_file()
-        {
-            if (is_open()) {
-                close();
-            }
-        }
-
-        bool open(const char* f, const char* mode)
-        {
-            SCN_EXPECT(!is_open());
-            auto h = std::fopen(f, mode);
-            if (h) {
-                this->set_handle(h);
-                return true;
-            }
-            else {
-                return false;
-            }
-        }
-        void close()
-        {
-            SCN_EXPECT(is_open());
-            std::fclose(this->handle());
-        }
-
-        SCN_NODISCARD bool is_open() const
-        {
-            return this->valid();
-        }
-    };
-
-    using owning_file = basic_owning_file<char>;
-    using wowning_file = basic_owning_file<wchar_t>;
-
-    template <typename CharT>
-    class basic_file_view {
     public:
         class iterator {
         public:
+            using char_type = CharT;
             using value_type = expected<CharT>;
             using reference = value_type;
             using pointer = value_type*;
             using difference_type = std::ptrdiff_t;
             using iterator_category = std::bidirectional_iterator_tag;
+            using file_type = basic_file<CharT>;
 
             iterator() = default;
 
             expected<CharT> operator*() const
             {
                 SCN_EXPECT(m_file);
-                if (m_file->_should_read(m_current)) {
-                    auto r = m_file->_read();
+                if (m_file->_is_at_end(m_current)) {
+                    auto r = m_file->_read_single();
                     if (!r) {
                         if (r.error().code() == error::end_of_range &&
-                            !m_file->_is_end(m_current)) {
+                            !m_file->_is_at_end(m_current)) {
                             ++m_current;
-                            SCN_ENSURE(m_file->_is_end(m_current));
+                            SCN_ENSURE(m_file->_is_at_end(m_current));
                         }
                     }
                     return r;
@@ -403,11 +211,11 @@ namespace scn {
                 }
                 if (!m_file && o.m_file) {
                     // lhs null, rhs potentially eof
-                    return o.m_file->_is_end(o.m_current);
+                    return o.m_file->_is_at_end(o.m_current);
                 }
                 if (!m_file && o.m_file) {
                     // rhs null, lhs potentially eof
-                    return m_file->_is_end(m_current);
+                    return m_file->_is_at_end(m_current);
                 }
                 return m_file == o.m_file && m_current == o.m_current;
             }
@@ -442,127 +250,150 @@ namespace scn {
             }
 
         private:
-            friend class basic_file_view;
+            friend class basic_file;
 
-            // eww
-            iterator(const basic_file_view* v, size_t c)
-                : m_file(const_cast<basic_file_view*>(v)->m_file), m_current(c)
-            {
-            }
+            iterator(const file_type& file) : m_file{std::addressof(file)} {}
 
-            basic_file<CharT>* m_file{};
-            mutable size_t m_current{};  // so yucky
+            const file_type* m_file{nullptr};
+            mutable size_t m_current{0};
         };
 
-        basic_file_view() = default;
+        using sentinel = iterator;
+        using char_type = CharT;
 
-        basic_file_view(iterator b, iterator)
-        {
-            if (b.m_file) {
-                m_file = b.m_file;
-                m_begin = b.m_current;
-                ++m_file->m_lock_counter;
-            }
-        }
+        basic_file() = default;
+        basic_file(FILE* f) : m_file{f} {}
 
-        basic_file_view(const basic_file_view& o)
-            : m_file(o.m_file), m_begin(o.m_begin)
-        {
-            if (m_file) {
-                ++m_file->m_lock_counter;
-            }
-        }
-        basic_file_view& operator=(const basic_file_view& o)
-        {
-            if (m_file) {
-                m_file->_release_lock(m_begin);
-            }
-            m_file = o.m_file;
-            m_begin = o.m_begin;
-            ++m_file->m_lock_counter;
-        }
+        basic_file(const basic_file&) = delete;
+        basic_file& operator=(const basic_file&) = delete;
 
-        basic_file_view(basic_file_view&& o) noexcept
-            : m_file(o.m_file), m_begin(o.m_begin)
+        basic_file(basic_file&& o)
+            : m_buffer(detail::exchange(o.m_buffer, {})),
+              m_file(detail::exchange(o.m_file, nullptr))
         {
-            o.m_file = nullptr;
         }
-        basic_file_view& operator=(basic_file_view&& o) noexcept
+        basic_file& operator=(basic_file&& o)
         {
-            if (m_file) {
-                m_file->_release_lock(m_begin);
+            if (valid()) {
+                sync();
             }
-            m_file = o.m_file;
-            m_begin = o.m_begin;
-            o.m_file = nullptr;
+            m_buffer = detail::exchange(o.m_buffer, {});
+            m_file = detail::exchange(o.m_file, nullptr);
             return *this;
         }
 
-        ~basic_file_view()
+        ~basic_file()
         {
-            if (m_file) {
-                m_file->_release_lock(m_begin);
+            if (valid()) {
+                _sync_all();
             }
         }
 
-        SCN_NODISCARD bool is_valid() const
+        bool valid() const
         {
             return m_file != nullptr;
         }
 
-        void release()
+        void sync()
         {
-            SCN_EXPECT(m_file);
-            m_file->_release_lock(m_begin);
-            m_file = nullptr;
-        }
-
-        iterator begin() noexcept
-        {
-            return {this, m_begin};
-        }
-        iterator end() noexcept
-        {
-            return {};
+            _sync_all();
+            m_buffer.clear();
         }
 
         iterator begin() const noexcept
         {
-            return {this, m_begin};
+            return {*this};
         }
-        iterator end() const noexcept
+        sentinel end() const noexcept
         {
             return {};
         }
 
-        // invalidates iterators
-        void sync() {
-            m_file->_sync(m_file->m_buffer.size());
-            m_file->m_buffer.clear();
-        }
-
     private:
-        friend class basic_file<CharT>;
         friend class iterator;
 
-        explicit basic_file_view(basic_file<CharT>& f)
-            : m_file(std::addressof(f))
+        expected<CharT> _read_single() const;
+
+        void _sync_all()
         {
+            _sync_until(m_buffer.size());
+        }
+        void _sync_until(size_t pos);
+
+        CharT _get_char_at(size_t i) const
+        {
+            SCN_EXPECT(valid());
+            SCN_EXPECT(i < m_buffer.size());
+            return m_buffer[i];
         }
 
-        basic_file<CharT>* m_file{nullptr};
-        size_t m_begin{0};
+        bool _is_at_end(size_t i) const
+        {
+            SCN_EXPECT(valid());
+            return i == m_buffer.size();
+        }
+
+        mutable std::basic_string<CharT> m_buffer{};
+        FILE* m_file{nullptr};
     };
 
-    using file_view = basic_file_view<char>;
-    using wfile_view = basic_file_view<wchar_t>;
+    using file = basic_file<char>;
+    using wfile = basic_file<wchar_t>;
 
-    template <typename CharT>
-    auto basic_file<CharT>::lock() -> view_type
+    template <>
+    inline expected<char> file::_read_single() const
     {
-        SCN_EXPECT(!is_locked());
-        m_lock_counter = 1;
-        return view_type{*this};
+        SCN_EXPECT(valid());
+        int tmp = std::fgetc(m_file);
+        if (tmp == EOF) {
+            if (std::feof(m_file) != 0) {
+                return error(error::end_of_range, "EOF");
+            }
+            if (std::ferror(m_file) != 0) {
+                return error(error::source_error, "fgetc error");
+            }
+            return error(error::unrecoverable_source_error,
+                         "Unknown fgetc error");
+        }
+        auto ch = static_cast<char>(tmp);
+        m_buffer.push_back(ch);
+        return ch;
+    }
+    template <>
+    inline expected<wchar_t> wfile::_read_single() const
+    {
+        SCN_EXPECT(valid());
+        wint_t tmp = std::fgetwc(m_file);
+        if (tmp == WEOF) {
+            if (std::feof(m_file) != 0) {
+                return error(error::end_of_range, "EOF");
+            }
+            if (std::ferror(m_file) != 0) {
+                return error(error::source_error, "fgetc error");
+            }
+            return error(error::unrecoverable_source_error,
+                         "Unknown fgetc error");
+        }
+        auto ch = static_cast<wchar_t>(tmp);
+        m_buffer.push_back(ch);
+        return ch;
+    }
+
+    template <>
+    inline void file::_sync_until(std::size_t pos)
+    {
+        for (auto it = m_buffer.rbegin();
+             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
+            std::ungetc(static_cast<unsigned char>(*it), m_file);
+        }
+    }
+    template <>
+    inline void wfile::_sync_until(std::size_t pos)
+    {
+        for (auto it = m_buffer.rbegin();
+             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
+            std::ungetwc(static_cast<wint_t>(*it), m_file);
+        }
     }
 
     SCN_CLANG_PUSH

@@ -25,6 +25,7 @@ int main()
     std::cout << "Hi there! What's your full name?\n";
 
     std::string name;
-    scn::getline(scn::cstdin().lock(), name);
+    scn::getline(scn::cstdin(), name);
+    scn::cstdin().sync();
     std::cout << "Welcome, " << name << '\n';
 }

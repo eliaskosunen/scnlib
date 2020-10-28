@@ -54,7 +54,7 @@ namespace scn {
                                          basic_default_locale_ref<char>>>);
 
     SCN_VSCAN_DECLARE(string_view)
-    SCN_VSCAN_DECLARE(file_view)
+    SCN_VSCAN_DECLARE(file&)
 
 #endif  // !SCN_HEADER_ONLY
 

@@ -175,26 +175,22 @@ namespace scn {
     private:
         SCN_CONSTEXPR14 iterator _make_begin()
         {
-            SCN_EXPECT(m_ptr);
             // return {*this, m_ptr};
             return m_ptr;
         }
         constexpr const_iterator _make_begin() const
         {
-            SCN_EXPECT(m_ptr);
             // return {*this, m_ptr};
             return m_ptr;
         }
 
         SCN_CONSTEXPR14 iterator _make_end()
         {
-            SCN_EXPECT(m_ptr);
             // return {*this, m_ptr + m_size};
             return m_end;
         }
         constexpr const_iterator _make_end() const
         {
-            SCN_EXPECT(m_ptr);
             // return {*this, m_ptr + m_size};
             return m_end;
         }

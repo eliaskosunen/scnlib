@@ -48,7 +48,7 @@ namespace scn {
     }
 
     SCN_VSCAN_DEFINE(string_view)
-    SCN_VSCAN_DEFINE(file_view)
+    SCN_VSCAN_DEFINE(file&)
 
 #endif  // !SCN_HEADER_ONLY
 
