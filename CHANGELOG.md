@@ -15,9 +15,11 @@ _Released 2020-xx-xx_
    * Source ranges are now either taken by const lvalue reference or rvalue reference,
      so they are no longer modified by scanning functions.
      To access the leftover range, use the return value of the scanning function.
- * Rewrite file handling: TODO
+ * Rewrite file handling, with hopefully way less bugs this time around
+   * Remove `file_view` and caching ranges
  * Remove `default_tag`, replace with `scan_default` function template
  * Remove support for `scanf` syntax, including `scn::scanf` and `scn::basic_scanf_parse_context`.
+ * Move Ranges implementation to the public API (out from `scn::detail::ranges`): `scn::custom_ranges`, accessible through the namespace alias `scn::ranges`
 
 ## Additions
 

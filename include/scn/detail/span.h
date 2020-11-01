@@ -28,18 +28,16 @@ namespace scn {
     template <typename T>
     class span;
 
-    namespace detail {
-        namespace ranges {
-            // iterator_category
-            using std::bidirectional_iterator_tag;
-            using std::forward_iterator_tag;
-            using std::input_iterator_tag;
-            using std::output_iterator_tag;
-            using std::random_access_iterator_tag;
-            struct contiguous_iterator_tag : random_access_iterator_tag {
-            };
-        }  // namespace ranges
-    }  // namespace detail
+    namespace custom_ranges {
+        // iterator_category
+        using std::bidirectional_iterator_tag;
+        using std::forward_iterator_tag;
+        using std::input_iterator_tag;
+        using std::output_iterator_tag;
+        using std::random_access_iterator_tag;
+        struct contiguous_iterator_tag : random_access_iterator_tag {
+        };
+    }  // namespace ranges
 
     /**
      * A view over a contiguous range.
@@ -58,8 +56,6 @@ namespace scn {
         using reference = T&;
         using const_reference = const T&;
 
-        // using iterator = detail::span_iterator<element_type>;
-        // using const_iterator = detail::span_iterator<const element_type>;
         using iterator = pointer;
         using const_iterator = const_pointer;
         using reverse_iterator = std::reverse_iterator<iterator>;

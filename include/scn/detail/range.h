@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_RANGE_H
 #define SCN_DETAIL_RANGE_H
 
-#include "ranges.h"
+#include "ranges/ranges.h"
 #include "result.h"
 
 namespace scn {
@@ -81,13 +81,6 @@ namespace scn {
         }
 #endif  // SCN_HAS_STRING_VIEW
 
-        template <typename Range>
-        struct is_caching_range_impl : std::false_type {
-        };
-        template <typename Range>
-        struct is_caching_range : is_caching_range_impl<remove_cvref_t<Range>> {
-        };
-
         template <typename T, bool>
         struct range_wrapper_storage;
         template <typename T>
@@ -135,7 +128,8 @@ namespace scn {
         using _range_wrapper_marker = typename T::range_wrapper_marker;
 
         template <typename T>
-        struct _has_range_wrapper_marker : exists<_range_wrapper_marker, T> {
+        struct _has_range_wrapper_marker
+            : ranges::detail::exists<_range_wrapper_marker, T> {
         };
 
         template <typename Range>
@@ -225,9 +219,7 @@ namespace scn {
             iterator advance(difference_type n = 1) noexcept
             {
                 m_read += n;
-                if (!is_caching_range<range_nocvref_type>::value) {
-                    ranges::advance(m_begin, n);
-                }
+                ranges::advance(m_begin, n);
                 return m_begin;
             }
             template <typename R = range_nocvref_type,
@@ -544,7 +536,7 @@ namespace scn {
             }
 
             /// A subrange pointing to the leftover range
-            detail::ranges::subrange<iterator, sentinel> subrange() const
+            ranges::subrange<iterator, sentinel> subrange() const
             {
                 return {begin(), end()};
             }

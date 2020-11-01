@@ -41,8 +41,7 @@ namespace scn {
      */
     template <typename WrappedRange,
               typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
-    expected<detail::ranges::range_value_t<WrappedRange>> read_char(
-        WrappedRange& r)
+    expected<ranges::range_value_t<WrappedRange>> read_char(WrappedRange& r)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
@@ -54,7 +53,7 @@ namespace scn {
     template <
         typename WrappedRange,
         typename std::enable_if<!WrappedRange::is_direct>::type* = nullptr>
-    detail::ranges::range_value_t<WrappedRange> read_char(WrappedRange& r)
+    ranges::range_value_t<WrappedRange> read_char(WrappedRange& r)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
@@ -85,8 +84,7 @@ namespace scn {
         typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
     expected<span<const typename detail::extract_char_type<
         typename WrappedRange::iterator>::type>>
-    read_zero_copy(WrappedRange& r,
-                   detail::ranges::range_difference_t<WrappedRange> n)
+    read_zero_copy(WrappedRange& r, ranges::range_difference_t<WrappedRange> n)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
@@ -101,8 +99,7 @@ namespace scn {
         typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
     expected<span<const typename detail::extract_char_type<
         typename WrappedRange::iterator>::type>>
-    read_zero_copy(WrappedRange& r,
-                   detail::ranges::range_difference_t<WrappedRange>)
+    read_zero_copy(WrappedRange& r, ranges::range_difference_t<WrappedRange>)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
@@ -166,7 +163,7 @@ namespace scn {
         typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
     error read_into(WrappedRange& r,
                     OutputIterator& it,
-                    detail::ranges::range_difference_t<WrappedRange> n)
+                    ranges::range_difference_t<WrappedRange> n)
     {
         auto s = read_zero_copy(r, n);
         if (!s) {
@@ -184,13 +181,12 @@ namespace scn {
                                       WrappedRange::is_direct>::type* = nullptr>
     error read_into(WrappedRange& r,
                     OutputIterator& it,
-                    detail::ranges::range_difference_t<WrappedRange> n)
+                    ranges::range_difference_t<WrappedRange> n)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
-        for (detail::ranges::range_difference_t<WrappedRange> i = 0; i < n;
-             ++i) {
+        for (ranges::range_difference_t<WrappedRange> i = 0; i < n; ++i) {
             if (r.begin() == r.end()) {
                 return error(error::end_of_range, "EOF");
             }
@@ -207,13 +203,12 @@ namespace scn {
                                 !WrappedRange::is_direct>::type* = nullptr>
     error read_into(WrappedRange& r,
                     OutputIterator& it,
-                    detail::ranges::range_difference_t<WrappedRange> n)
+                    ranges::range_difference_t<WrappedRange> n)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
-        for (detail::ranges::range_difference_t<WrappedRange> i = 0; i < n;
-             ++i) {
+        for (ranges::range_difference_t<WrappedRange> i = 0; i < n; ++i) {
             if (r.begin() == r.end()) {
                 return error(error::end_of_range, "EOF");
             }
@@ -476,22 +471,18 @@ namespace scn {
     template <
         typename WrappedRange,
         typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
-    error putback_n(WrappedRange& r,
-                    detail::ranges::range_difference_t<WrappedRange> n)
+    error putback_n(WrappedRange& r, ranges::range_difference_t<WrappedRange> n)
     {
-        SCN_EXPECT(n <=
-                   detail::ranges::distance(r.begin_underlying(), r.begin()));
+        SCN_EXPECT(n <= ranges::distance(r.begin_underlying(), r.begin()));
         r.advance(-n);
         return {};
     }
     template <
         typename WrappedRange,
         typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
-    error putback_n(WrappedRange& r,
-                    detail::ranges::range_difference_t<WrappedRange> n)
+    error putback_n(WrappedRange& r, ranges::range_difference_t<WrappedRange> n)
     {
-        for (detail::ranges::range_difference_t<WrappedRange> i = 0; i < n;
-             ++i) {
+        for (ranges::range_difference_t<WrappedRange> i = 0; i < n; ++i) {
             r.advance(-1);
             if (r.begin() == r.end()) {
                 return error(error::unrecoverable_source_error,

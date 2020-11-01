@@ -44,7 +44,7 @@ namespace scn {
         {
             static_assert(sizeof...(Args) > 0,
                           "Have to scan at least a single argument");
-            static_assert(detail::ranges::range<Range>::value,
+            static_assert(ranges::range<Range>::value,
                           "Input needs to be a Range");
 
             using range_type = detail::range_wrapper_for_t<const Range&>;
@@ -75,7 +75,7 @@ namespace scn {
         {
             static_assert(sizeof...(Args) > 0,
                           "Have to scan at least a single argument");
-            static_assert(detail::ranges::range<Range>::value,
+            static_assert(ranges::range<Range>::value,
                           "Input needs to be a Range");
 
             using range_type = detail::range_wrapper_for_t<const Range&>;
@@ -223,12 +223,13 @@ namespace scn {
      */
     template <typename Format,
               typename... Args,
-              typename CharT = detail::ranges::range_value_t<Format>>
+              typename CharT = ranges::range_value_t<Format>>
     auto input(const Format& f, Args&... a)
         -> detail::scan_result_for_range<basic_file<CharT>&>
     {
         auto& range = stdin_range<CharT>();
-        auto ret = detail::scan_boilerplate<basic_parse_context>(range, f, a...);
+        auto ret =
+            detail::scan_boilerplate<basic_parse_context>(range, f, a...);
         range.sync();
         return ret;
     }
@@ -445,9 +446,8 @@ namespace scn {
      */
     template <typename Range,
               typename String,
-              typename CharT =
-                  typename detail::extract_char_type<detail::ranges::iterator_t<
-                      detail::range_wrapper_for_t<Range>>>::type>
+              typename CharT = typename detail::extract_char_type<
+                  ranges::iterator_t<detail::range_wrapper_for_t<Range>>>::type>
     auto getline(Range&& r, String& str) -> detail::scan_result_for_range<Range>
     {
         return getline(std::forward<Range>(r), str,
@@ -573,7 +573,7 @@ namespace scn {
      */
     template <typename Range, typename CharT>
     auto ignore_until_n(Range&& r,
-                        detail::ranges::range_difference_t<Range> n,
+                        ranges::range_difference_t<Range> n,
                         CharT until) -> detail::scan_result_for_range<Range>
     {
         auto wrapped = detail::wrap(r);
@@ -708,7 +708,7 @@ namespace scn {
     template <typename Range,
               typename Container,
               typename CharT = typename detail::extract_char_type<
-                  detail::ranges::iterator_t<Range>>::type>
+                  ranges::iterator_t<Range>>::type>
     auto scan_list(Range&& r,
                    Container& c,
                    CharT separator = detail::zero_value<CharT>::value)
@@ -780,7 +780,7 @@ namespace scn {
     template <typename Range,
               typename Container,
               typename CharT = typename detail::extract_char_type<
-                  detail::ranges::iterator_t<Range>>::type>
+                  ranges::iterator_t<Range>>::type>
     auto scan_list_until(Range&& r,
                          Container& c,
                          CharT until,
