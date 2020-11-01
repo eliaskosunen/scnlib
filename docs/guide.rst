@@ -296,7 +296,45 @@ They work similarly ``scn::scan``.
     int i;
     auto result = scn::prompt("Write an integer: ", "{}", i);
 
-TODO: files are going to change before release
+To use ``scn::scan`` with ``stdin``, use ``scn::cstdin()``.
+It returns a ``scn::file&``, which is a range mapping to a ``FILE*``.
+
+.. code-block:: cpp
+
+    int i;
+    auto result = scn::scan(scn::cstdin(), "{}", i);
+
+``scn::input`` and ``scn::prompt`` sync with ``<cstdio>`` automatically,
+so if you wish to mix-and-match ``scn::input`` and ``scanf``, it's possible without any further action.
+``scn::scan`` and ``scn::cstdin()`` don't do this, but you must explicitly call ``scn::cstdin().sync()`` when synchronization is needed.
+
+.. code-block:: cpp
+
+    int i, j;
+    scn::input("{}", i);
+    std::scanf("%d", &j);
+
+    int i, j;
+    scn::scan(scn::cstdin(), "{}", i);
+    scn::cstdin().sync(); // needed here, because we wish to use <cstdio>
+    std::scanf("%d", &j);
+
+You can also scan from other file handles than ``stdin``.
+You can either use ``scn::file`` or ``scn::owning_file``, depending on if you want to handle the lifetime of the ``FILE*`` yourself, or let the library handle it, respectively.
+
+.. code-block:: cpp
+
+    auto f = std::fopen("file.txt", "r");
+    scn::file file{f};
+    f.close();
+    // file now unusable
+
+    scn::owning_file file{"file.txt", "r"};
+
+Both ``scn::file`` and ``scn::owning_file`` are valid source ranges, and can be passed to ``scn::scan`` and other scanning functions.
+``scn::owning_file`` is a child class of ``scn::file``, so ``scn::owning_file& -> scn::file&`` is a valid conversion.
+
+There's also ``scn::mapped_file`` for easier management of memory mapped files, see the API documentation for more.
 
 Other scanning functions
 ------------------------

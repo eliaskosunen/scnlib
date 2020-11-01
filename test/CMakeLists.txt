@@ -14,11 +14,12 @@ if (NOT SCN_USE_EXCEPTIONS)
 endif()
 target_link_libraries(tests-base INTERFACE scn-sanitizers)
 
+set(SCN_TEST_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/..")
 function (make_test test source)
     add_executable(test-${test} ${source})
     target_link_libraries(test-${test} PRIVATE scn tests-base)
     set_private_flags(test-${test})
-    add_test(NAME ${test} COMMAND test-${test})
+    add_test(NAME ${test} COMMAND test-${test} WORKING_DIRECTORY ${SCN_TEST_WORKING_DIRECTORY})
 endfunction()
 
 make_test(test test.cpp)
@@ -51,7 +52,9 @@ if (SCN_BUILD_LOCALIZED_TESTS)
 endif ()
 
 add_subdirectory(each)
+add_subdirectory(file)
 
 if (SCN_BUILD_FUZZING)
     add_subdirectory(fuzz)
 endif ()
+

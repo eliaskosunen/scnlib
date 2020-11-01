@@ -362,8 +362,8 @@ namespace scn {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
-        for (auto it = r.begin(); it != r.end(); ++it, (void)r.advance()) {
-            auto tmp = *it;
+        while (r.begin() != r.end()) {
+            auto tmp = *r.begin();
             if (!tmp) {
                 return tmp.error();
             }
@@ -377,6 +377,8 @@ namespace scn {
             }
             *out = ch;
             ++out;
+
+            r.advance();
         }
         return {};
     }
@@ -1550,4 +1552,3 @@ namespace scn {
 #endif
 
 #endif  // SCN_DETAIL_READER_H
-

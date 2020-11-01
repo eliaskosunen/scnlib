@@ -107,6 +107,41 @@ iterator. If dereferencing the iterator returns
  * ``char`` or ``wchar_t``: the character type is ``char`` or ``wchar_t``, respectively
  * ``expected<char>`` or ``expected<wchar_t>``: the character type is ``char`` or ``wchar_t``, respectively
 
+Note on string literals
+***********************
+
+Please note, that only string literals are ranges (``const char(&)[N]``), not pointers to a constant character (``const char*``).
+This is because:
+
+ * It's impossible to differentiate if a ``const char*`` is a null-terminated string, a pointer to a single ``char``, or a pointer to an array of ``char``.
+   For safety reasons, ``const char*`` is thus not an allowed source range type.
+ * It's how ranges in the standard are defined: a ``const char*`` cannot be passed to ``std::ranges::begin`` or ``std::ranges::end``
+   (it doesn't have a clear beginning or an end, for the reason explained above), so it's not even a range to begin with.
+
+Therefore, this code is allowed, as it uses a string literal (``const char(&)[N]``) as the source range type:
+
+.. code-block:: cpp
+
+    int i;
+    scn::scan_default("123", i);
+
+But this code isn't, as the source range type used is not a range, but a pointer to constant character (``const char*``):
+
+.. code-block:: cpp
+
+    const char* source = "123";
+    int i;
+    scn::scan_default(source, i); // compiler error
+
+This issue can be avoided by using a ``string_view``:
+
+.. code-block:: cpp
+
+    const char* source = "123";
+    int i;
+    scn::scan_default(scn::string_view{source}, i);
+    // std::string_view would also work
+
 Return type
 -----------
 
@@ -344,6 +379,29 @@ as many times as there are arguments, separated by whitespace.
     scn::scan_default(range, a, b);
     // Equivalent to:
     // scn::scan(range, "{} {}", a, b);
+
+Files
+-----
+
+.. doxygenclass:: scn::basic_file
+    :members:
+.. doxygenclass:: scn::basic_owning_file
+    :members:
+.. doxygenclass:: scn::basic_mapped_file
+    :members:
+
+.. doxygentypedef:: file
+.. doxygentypedef:: wfile
+
+.. doxygentypedef:: owning_file
+.. doxygentypedef:: owning_wfile
+
+.. doxygentypedef:: mapped_file
+.. doxygentypedef:: mapped_wfile
+
+.. doxygenfunction:: stdin_range
+.. doxygenfunction:: cstdin
+.. doxygenfunction:: wcstdin
 
 Lower level parsing and scanning operations
 -------------------------------------------

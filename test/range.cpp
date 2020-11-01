@@ -18,6 +18,9 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
+template <typename T>
+struct debug;
+
 TEST_CASE("string lvalue")
 {
     int a;
@@ -31,6 +34,9 @@ TEST_CASE("string lvalue")
                                    scn::detail::range_wrapper<scn::string_view>,
                                    std::string, scn::wrapped_error>>::value,
                   "");
+
+    // debug<decltype(ret)>{};
+    // debug<decltype(scn::make_result(ret.range()))>{};
 
     ret = scn::scan(ret.range(), "{}", a);
     CHECK(ret);

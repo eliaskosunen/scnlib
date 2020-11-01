@@ -25,6 +25,11 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    // Avoid documentation issues: without this, Doxygen will think
+    // SCN_BEGIN_NAMESPACE is a part of the vscan declaration
+    namespace dummy {
+    }
+
     /**
      * In the spirit of {fmt}/`std::format` and `vformat`, `vscan` behaves
      * similarly to \ref scan, except instead of taking a variadic argument

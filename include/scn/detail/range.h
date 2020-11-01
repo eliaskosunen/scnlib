@@ -621,15 +621,35 @@ namespace scn {
             R reconstruct() const;
         };
 
-        template <typename WrappedRange, typename UnwrappedRange, typename Base>
-        class non_reconstructed_scan_result;
-
         template <typename WrappedRange, typename Base>
-        class reconstructed_scan_result
+        class intermediary_scan_result
             : public scan_result_base<WrappedRange, Base> {
         public:
-            using unwrapped_range_type = typename WrappedRange::range_type;
             using base_type = scan_result_base<WrappedRange, Base>;
+
+            intermediary_scan_result(Base&& b, WrappedRange&& r)
+                : base_type(std::move(b), std::move(r))
+            {
+            }
+
+            template <typename R = WrappedRange>
+            void reconstruct() const
+            {
+                static_assert(
+                    dependent_false<R>::value,
+                    "Cannot call .reconstruct() on intermediary_scan_result. "
+                    "Assign this value to a previous result value returned by "
+                    "a scanning function or make_result (type: "
+                    "reconstructed_scan_result or "
+                    "non_reconstructed_scan_result) ");
+            }
+        };
+        template <typename WrappedRange, typename Base>
+        class reconstructed_scan_result
+            : public intermediary_scan_result<WrappedRange, Base> {
+        public:
+            using unwrapped_range_type = typename WrappedRange::range_type;
+            using base_type = intermediary_scan_result<WrappedRange, Base>;
 
             reconstructed_scan_result(Base&& b, WrappedRange&& r)
                 : base_type(std::move(b), std::move(r))
@@ -637,13 +657,19 @@ namespace scn {
             }
 
             reconstructed_scan_result& operator=(
-                const non_reconstructed_scan_result<WrappedRange,
-                                                    unwrapped_range_type,
-                                                    Base>& other);
+                const intermediary_scan_result<WrappedRange, Base>& other)
+            {
+                this->set_base(other);
+                this->m_range = other.range();
+                return *this;
+            }
             reconstructed_scan_result& operator=(
-                non_reconstructed_scan_result<WrappedRange,
-                                              unwrapped_range_type,
-                                              Base>&& other);
+                intermediary_scan_result<WrappedRange, Base>&& other)
+            {
+                this->set_base(other);
+                this->m_range = other.range();
+                return *this;
+            }
 
             unwrapped_range_type reconstruct() const
             {
@@ -652,10 +678,10 @@ namespace scn {
         };
         template <typename WrappedRange, typename UnwrappedRange, typename Base>
         class non_reconstructed_scan_result
-            : public scan_result_base<WrappedRange, Base> {
+            : public intermediary_scan_result<WrappedRange, Base> {
         public:
             using unwrapped_range_type = UnwrappedRange;
-            using base_type = scan_result_base<WrappedRange, Base>;
+            using base_type = intermediary_scan_result<WrappedRange, Base>;
 
             non_reconstructed_scan_result(Base&& b, WrappedRange&& r)
                 : base_type(std::move(b), std::move(r))
@@ -663,17 +689,17 @@ namespace scn {
             }
 
             non_reconstructed_scan_result& operator=(
-                const reconstructed_scan_result<WrappedRange, Base>& other)
+                const intermediary_scan_result<WrappedRange, Base>& other)
             {
                 this->set_base(other);
                 this->m_range = other.range();
                 return *this;
             }
             non_reconstructed_scan_result& operator=(
-                reconstructed_scan_result<WrappedRange, Base>&& other)
+                intermediary_scan_result<WrappedRange, Base>&& other)
             {
                 this->set_base(other);
-                this->m_range = std::move(other).range();
+                this->m_range = other.range();
                 return *this;
             }
 
@@ -684,29 +710,6 @@ namespace scn {
                                                   this->begin(), this->end());
             }
         };
-
-        template <typename WrappedRange, typename Base>
-        inline auto reconstructed_scan_result<WrappedRange, Base>::operator=(
-            const non_reconstructed_scan_result<
-                WrappedRange,
-                typename WrappedRange::range_type,
-                Base>& other) -> reconstructed_scan_result&
-        {
-            this->set_base(other);
-            this->m_range = other.range();
-            return *this;
-        }
-        template <typename WrappedRange, typename Base>
-        inline auto reconstructed_scan_result<WrappedRange, Base>::operator=(
-            non_reconstructed_scan_result<WrappedRange,
-                                          typename WrappedRange::range_type,
-                                          Base>&& other)
-            -> reconstructed_scan_result&
-        {
-            this->set_base(other);
-            this->m_range = std::move(other).range();
-            return *this;
-        }
 
         /// @}
 
@@ -720,7 +723,38 @@ namespace scn {
         namespace _wrap_result {
             struct fn {
             private:
-                // Range = range_wrapper&
+                // Range = range_wrapper<ref>&
+                template <typename Error, typename Range>
+                static auto impl(Error e,
+                                 range_tag<range_wrapper<Range&>&>,
+                                 range_wrapper<Range&>&& range,
+                                 priority_tag<4>)
+                    -> intermediary_scan_result<range_wrapper<Range&>, Error>
+                {
+                    return {std::move(e), std::move(range)};
+                }
+                // Range = const range_wrapper<ref>&
+                template <typename Error, typename Range>
+                static auto impl(Error e,
+                                 range_tag<const range_wrapper<Range&>&>,
+                                 range_wrapper<Range&>&& range,
+                                 priority_tag<4>)
+                    -> intermediary_scan_result<range_wrapper<Range&>, Error>
+                {
+                    return {std::move(e), std::move(range)};
+                }
+                // Range = range_wrapper<ref>&&
+                template <typename Error, typename Range>
+                static auto impl(Error e,
+                                 range_tag<range_wrapper<Range&>>,
+                                 range_wrapper<Range&>&& range,
+                                 priority_tag<4>)
+                    -> intermediary_scan_result<range_wrapper<Range&>, Error>
+                {
+                    return {std::move(e), std::move(range)};
+                }
+
+                // Range = range_wrapper<non-ref>&
                 template <typename Error,
                           typename Range,
                           typename = typename std::enable_if<
@@ -729,11 +763,11 @@ namespace scn {
                                  range_tag<range_wrapper<Range>&>,
                                  range_wrapper<Range>&& range,
                                  priority_tag<3>)
-                    -> reconstructed_scan_result<range_wrapper<Range>, Error>
+                    -> intermediary_scan_result<range_wrapper<Range>, Error>
                 {
                     return {std::move(e), std::move(range)};
                 }
-                // Range = const range_wrapper&
+                // Range = const range_wrapper<non-ref>&
                 template <typename Error,
                           typename Range,
                           typename = typename std::enable_if<
@@ -742,11 +776,11 @@ namespace scn {
                                  range_tag<const range_wrapper<Range>&>,
                                  range_wrapper<Range>&& range,
                                  priority_tag<3>)
-                    -> reconstructed_scan_result<range_wrapper<Range>, Error>
+                    -> intermediary_scan_result<range_wrapper<Range>, Error>
                 {
                     return {std::move(e), std::move(range)};
                 }
-                // Range = range_wrapper&&
+                // Range = range_wrapper<non-ref>&&
                 template <typename Error,
                           typename Range,
                           typename = typename std::enable_if<
@@ -755,7 +789,7 @@ namespace scn {
                                  range_tag<range_wrapper<Range>>,
                                  range_wrapper<Range>&& range,
                                  priority_tag<3>)
-                    -> reconstructed_scan_result<range_wrapper<Range>, Error>
+                    -> intermediary_scan_result<range_wrapper<Range>, Error>
                 {
                     return {std::move(e), std::move(range)};
                 }
@@ -840,16 +874,16 @@ namespace scn {
                     noexcept(noexcept(impl(std::move(e),
                                            tag,
                                            std::move(range),
-                                           priority_tag<3>{})))
+                                           priority_tag<4>{})))
                         -> decltype(impl(std::move(e),
                                          tag,
                                          std::move(range),
-                                         priority_tag<3>{}))
+                                         priority_tag<4>{}))
                 {
                     static_assert(ranges::range<InputRange>::value,
                                   "Input needs to be a Range");
                     return impl(std::move(e), tag, std::move(range),
-                                priority_tag<3>{});
+                                priority_tag<4>{});
                 }
             };
         }  // namespace _wrap_result

@@ -62,6 +62,15 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        native_file_handle native_file_handle::invalid()
+        {
+#if SCN_WINDOWS
+            return {INVALID_HANDLE_VALUE};
+#else
+            return {-1};
+#endif
+        }
+
         SCN_FUNC byte_mapped_file::byte_mapped_file(const char* filename)
         {
 #if SCN_POSIX
