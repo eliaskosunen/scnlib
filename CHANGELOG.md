@@ -19,7 +19,10 @@ _Released 2020-xx-xx_
    * Remove `file_view` and caching ranges
  * Remove `default_tag`, replace with `scan_default` function template
  * Remove support for `scanf` syntax, including `scn::scanf` and `scn::basic_scanf_parse_context`.
- * Move Ranges implementation to the public API (out from `scn::detail::ranges`): `scn::custom_ranges`, accessible through the namespace alias `scn::ranges`
+ * Improve Ranges integration:
+   * Move custom Ranges implementation to the public API (out from `scn::detail::ranges`): `scn::custom_ranges`
+   * Integrate standard library Ranges, if available: `scn::std_ranges` aliased to `std::ranges`
+   * Use stdlib Ranges, if available, fall back to custom implementation: namespace alias `scn::ranges`, control behavior with `SCN_USE_STD_RANGES`
 
 ## Additions
 

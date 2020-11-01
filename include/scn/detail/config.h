@@ -404,6 +404,24 @@
 
 #endif  // !defined(SCN_DEPRECATED)
 
+// Detect concepts
+#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
+#define SCN_HAS_CONCEPTS 1
+#else
+#define SCN_HAS_CONCEPTS 0
+#endif
+
+// Detect ranges
+#if SCN_HAS_INCLUDE(<ranges>) && SCN_STD > SCN_STD_17 && !SCN_VERSION_HEADER_INCLUDED
+#include <ranges>
+#endif
+
+#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
+#define SCN_HAS_RANGES 1
+#else
+#define SCN_HAS_RANGES 0
+#endif
+
 #define SCN_UNUSED(x) static_cast<void>(sizeof(x))
 
 #if SCN_HAS_RELAXED_CONSTEXPR

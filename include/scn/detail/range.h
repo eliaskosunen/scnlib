@@ -31,24 +31,23 @@ namespace scn {
         struct extract_char_type<
             Iterator,
             typename std::enable_if<std::is_integral<
-                ranges::iter_value_t<Iterator>>::value>::type> {
-            using type = ranges::iter_value_t<Iterator>;
+                polyfill_2a::iter_value_t<Iterator>>::value>::type> {
+            using type = polyfill_2a::iter_value_t<Iterator>;
         };
         template <typename Iterator>
         struct extract_char_type<
             Iterator,
-            void_t<typename std::enable_if<!std::is_integral<
-                       ranges::iter_value_t<Iterator>>::value>::type,
-                   typename ranges::iter_value_t<Iterator>::success_type>> {
-            using type = typename ranges::iter_value_t<Iterator>::success_type;
+            void_t<
+                typename std::enable_if<!std::is_integral<
+                    polyfill_2a::iter_value_t<Iterator>>::value>::type,
+                typename polyfill_2a::iter_value_t<Iterator>::success_type>> {
+            using type =
+                typename polyfill_2a::iter_value_t<Iterator>::success_type;
         };
 
         template <typename Range, typename = void>
         struct is_direct_impl
             : std::is_integral<ranges::range_value_t<const Range>> {
-        };
-        template <typename Range, typename = void>
-        struct is_contiguous_impl : ranges::contiguous_range<Range> {
         };
         template <typename Range, typename = void>
         struct provides_buffer_access_impl : std::false_type {
@@ -129,7 +128,7 @@ namespace scn {
 
         template <typename T>
         struct _has_range_wrapper_marker
-            : ranges::detail::exists<_range_wrapper_marker, T> {
+            : custom_ranges::detail::exists<_range_wrapper_marker, T> {
         };
 
         template <typename Range>
@@ -223,8 +222,8 @@ namespace scn {
                 return m_begin;
             }
             template <typename R = range_nocvref_type,
-                      typename std::enable_if<
-                          ranges::sized_range<R>::value>::type* = nullptr>
+                      typename std::enable_if<SCN_CHECK_CONCEPT(
+                          ranges::sized_range<R>)>::type* = nullptr>
             void advance_to(iterator it) noexcept
             {
                 const auto diff = ranges::distance(m_begin, it);
@@ -244,8 +243,8 @@ namespace scn {
             }
 
             template <typename R = range_nocvref_type,
-                      typename std::enable_if<
-                          ranges::contiguous_range<R>::value>::type* = nullptr>
+                      typename std::enable_if<SCN_CHECK_CONCEPT(
+                          ranges::contiguous_range<R>)>::type* = nullptr>
             auto data() const
                 noexcept(noexcept(*std::declval<ranges::iterator_t<const R>>()))
                     -> decltype(std::addressof(
@@ -254,8 +253,8 @@ namespace scn {
                 return std::addressof(*m_begin);
             }
             template <typename R = range_nocvref_type,
-                      typename std::enable_if<
-                          ranges::sized_range<R>::value>::type* = nullptr>
+                      typename std::enable_if<SCN_CHECK_CONCEPT(
+                          ranges::sized_range<R>)>::type* = nullptr>
             auto size() const noexcept(noexcept(
                 ranges::distance(std::declval<ranges::iterator_t<const R>>(),
                                  std::declval<ranges::sentinel_t<const R>>())))
@@ -329,7 +328,7 @@ namespace scn {
                 is_direct_impl<range_nocvref_type>::value;
             // can call .data() and memcpy
             static constexpr bool is_contiguous =
-                is_contiguous_impl<range_nocvref_type>::value;
+                SCN_CHECK_CONCEPT(ranges::contiguous_range<range_nocvref_type>);
             // provides mechanism to get a pointer to memcpy from
             static constexpr bool provides_buffer_access =
                 provides_buffer_access_impl<range_nocvref_type>::value;
@@ -402,7 +401,7 @@ namespace scn {
 
                 template <typename Range,
                           typename = typename std::enable_if<
-                              ranges::view<Range>::value>::type>
+                              SCN_CHECK_CONCEPT(ranges::view<Range>)>::type>
                 static auto impl(const Range& r, priority_tag<1>) noexcept
                     -> range_wrapper<Range>
                 {
@@ -413,7 +412,7 @@ namespace scn {
                 static auto impl(const Range& r, priority_tag<0>) noexcept
                     -> range_wrapper<Range&>
                 {
-                    static_assert(ranges::range<Range>::value,
+                    static_assert(SCN_CHECK_CONCEPT(ranges::range<Range>),
                                   "Input needs to be a Range");
                     return {r};
                 }
@@ -872,7 +871,7 @@ namespace scn {
                                          std::move(range),
                                          priority_tag<4>{}))
                 {
-                    static_assert(ranges::range<InputRange>::value,
+                    static_assert(SCN_CHECK_CONCEPT(ranges::range<InputRange>),
                                   "Input needs to be a Range");
                     return impl(std::move(e), tag, std::move(range),
                                 priority_tag<4>{});

@@ -18,12 +18,30 @@
 #ifndef SCN_DETAIL_RANGES_H
 #define SCN_DETAIL_RANGES_H
 
+#include "../config.h"
+
+#ifndef SCN_USE_STD_RANGES
+
+#if SCN_HAS_CONCEPTS && SCN_HAS_RANGES
+#define SCN_USE_STD_RANGES 1
+#else
+#define SCN_USE_STD_RANGES 0
+#endif
+
+#endif  // !defined(SCN_USE_STD_RANGES)
+
+#if SCN_USE_STD_RANGES
+#include "std_impl.h"
+#define SCN_RANGES_NAMESPACE ::scn::std_ranges
+#else
 #include "custom_impl.h"
+#define SCN_RANGES_NAMESPACE ::scn::custom_ranges
+#endif
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    namespace ranges = custom_ranges;
+    namespace ranges = SCN_RANGES_NAMESPACE;
 
     SCN_END_NAMESPACE
 }  // namespace scn

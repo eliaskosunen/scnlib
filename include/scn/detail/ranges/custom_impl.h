@@ -1578,6 +1578,15 @@ namespace scn {
         }
     }  // namespace custom_ranges
 
+    namespace polyfill_2a {
+        template <typename T>
+        using iter_value_t = ::scn::custom_ranges::iter_value_t<T>;
+        template <typename T>
+        using iter_reference_t = ::scn::custom_ranges::iter_reference_t<T>;
+        template <typename T>
+        using iter_difference_t = ::scn::custom_ranges::iter_difference_t<T>;
+    }  // namespace polyfill_2a
+
     SCN_END_NAMESPACE
 }  // namespace scn
 
@@ -1600,5 +1609,7 @@ namespace std {
 
     using ::scn::custom_ranges::get;
 }  // namespace std
+
+#define SCN_CHECK_CONCEPT(C) C::value
 
 #endif  // SCN_DETAIL_RANGES_CUSTOM_IMPL_H

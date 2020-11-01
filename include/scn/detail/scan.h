@@ -44,7 +44,7 @@ namespace scn {
         {
             static_assert(sizeof...(Args) > 0,
                           "Have to scan at least a single argument");
-            static_assert(ranges::range<Range>::value,
+            static_assert(SCN_CHECK_CONCEPT(ranges::range<Range>),
                           "Input needs to be a Range");
 
             using range_type = detail::range_wrapper_for_t<const Range&>;
@@ -75,7 +75,7 @@ namespace scn {
         {
             static_assert(sizeof...(Args) > 0,
                           "Have to scan at least a single argument");
-            static_assert(ranges::range<Range>::value,
+            static_assert(SCN_CHECK_CONCEPT(ranges::range<Range>),
                           "Input needs to be a Range");
 
             using range_type = detail::range_wrapper_for_t<const Range&>;
