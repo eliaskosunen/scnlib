@@ -28,6 +28,7 @@ namespace scn {
     public:
         using context_type = Context;
         using char_type = typename Context::char_type;
+        using arg_type = basic_arg<char_type>;
 
         basic_visitor(Context& ctx, ParseCtx& pctx)
             : m_ctx(std::addressof(ctx)), m_pctx(std::addressof(pctx))
@@ -124,8 +125,8 @@ namespace scn {
             }
             return s.scan(val, *m_ctx);
         }
-        auto visit(typename Context::arg_type::handle val,
-                   detail::priority_tag<1>) -> error
+        auto visit(typename arg_type::handle val, detail::priority_tag<1>)
+            -> error
         {
             return val.scan(*m_ctx, *m_pctx);
         }
@@ -145,9 +146,13 @@ namespace scn {
     };
 
     template <typename Context, typename ParseCtx>
-    error visit(Context& ctx, ParseCtx& pctx, basic_args<Context> args)
+    error visit(Context& ctx,
+                ParseCtx& pctx,
+                basic_args<typename Context::char_type> args)
     {
-        auto arg = typename Context::arg_type();
+        using char_type = typename Context::char_type;
+        using arg_type = basic_arg<char_type>;
+        auto arg = arg_type{};
 
         {
             auto ret = skip_range_whitespace(ctx);
@@ -207,8 +212,7 @@ namespace scn {
             }
             else {
                 // Scan argument
-                auto arg_wrapped =
-                    [&]() -> expected<typename Context::arg_type> {
+                auto arg_wrapped = [&]() -> expected<arg_type> {
                     if (!pctx.has_arg_id()) {
                         return next_arg(args, pctx);
                     }
@@ -244,7 +248,7 @@ namespace scn {
                     return {error::invalid_format_string,
                             "Unexpected end of format argument"};
                 }
-                auto ret = visit_arg<Context>(
+                auto ret = visit_arg<char_type>(
                     basic_visitor<Context, ParseCtx>(ctx, pctx), arg);
                 if (!ret) {
                     auto rb = ctx.range().reset_to_rollback_point();

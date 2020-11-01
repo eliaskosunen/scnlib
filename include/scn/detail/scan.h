@@ -56,7 +56,8 @@ namespace scn {
             auto args = make_args<context_type, parse_context_type>(a...);
             auto ctx = context_type(detail::wrap(r));
             auto pctx = parse_context_type(f, ctx);
-            auto err = vscan(ctx, pctx, {args});
+            auto err = vscan(
+                ctx, pctx, basic_args<typename context_type::char_type>{args});
             return detail::wrap_result(wrapped_error{err},
                                        detail::range_tag<Range>{},
                                        std::move(ctx.range()));
@@ -88,7 +89,8 @@ namespace scn {
             auto ctx =
                 context_type(detail::wrap(r), locale_type{std::addressof(loc)});
             auto pctx = parse_context_type(f, ctx);
-            auto err = vscan(ctx, pctx, {args});
+            auto err = vscan(
+                ctx, pctx, basic_args<typename context_type::char_type>{args});
             return detail::wrap_result(wrapped_error{err},
                                        detail::range_tag<Range>{},
                                        std::move(ctx.range()));
@@ -203,7 +205,8 @@ namespace scn {
         auto ctx = context_type(detail::wrap(r));
 
         auto pctx = parse_context_type(1, ctx);
-        auto err = vscan(ctx, pctx, {args});
+        auto err = vscan(ctx, pctx,
+                         basic_args<typename context_type::char_type>{args});
         if (!err) {
             return detail::wrap_result(expected<T>{err},
                                        detail::range_tag<Range>{},
@@ -730,7 +733,7 @@ namespace scn {
             }
 
             auto pctx = parse_context_type(1, ctx);
-            auto err = vscan(ctx, pctx, {args});
+            auto err = vscan(ctx, pctx, basic_args<CharT>{args});
             if (!err) {
                 if (err == error::end_of_range) {
                     break;
@@ -803,7 +806,7 @@ namespace scn {
             }
 
             auto pctx = parse_context_type(1, ctx);
-            auto err = vscan(ctx, pctx, {args});
+            auto err = vscan(ctx, pctx, basic_args<CharT>{args});
             if (!err) {
                 if (err == error::end_of_range) {
                     break;

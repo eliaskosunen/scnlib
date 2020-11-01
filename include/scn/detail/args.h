@@ -119,7 +119,7 @@ namespace scn {
         {
             SCN_EXPECT(arg != nullptr);
 
-            typename Context::template scanner_type<T> s;
+            scanner<typename Context::char_type, T> s;
             auto err = pctx.parse(s);
             if (!err) {
                 return err;
@@ -130,15 +130,17 @@ namespace scn {
         struct monostate {
         };
 
+        template <typename Ctx>
+        struct ctx_tag {
+        };
         template <typename ParseCtx>
         struct parse_ctx_tag {
         };
 
-        template <typename Context>
+        template <typename CharT>
         class value {
         public:
-            using char_type = typename Context::char_type;
-            using arg_type = typename Context::arg_type;
+            using char_type = CharT;
 
             constexpr value() noexcept : m_empty{} {}
 
@@ -148,12 +150,12 @@ namespace scn {
             {
             }
 
-            template <typename ParseCtx, typename T>
-            value(parse_ctx_tag<ParseCtx>, T& val) noexcept
+            template <typename Ctx, typename ParseCtx, typename T>
+            value(ctx_tag<Ctx>, parse_ctx_tag<ParseCtx>, T& val) noexcept
                 : m_custom(
                       custom_value{std::addressof(val),
                                    reinterpret_cast<void (*)()>(
-                                       &scan_custom_arg<Context, ParseCtx, T>)})
+                                       &scan_custom_arg<Ctx, ParseCtx, T>)})
             {
             }
 
@@ -185,42 +187,46 @@ namespace scn {
             };
         };
 
-        template <typename Context, typename T, type Type>
+        template <typename CharT, typename T, type Type>
         struct init {
             T* val;
             static const type type_tag = Type;
 
             constexpr init(T& v) : val(std::addressof(v)) {}
-            template <typename ParseCtx>
-            SCN_CONSTEXPR14 value<Context> get()
+            template <typename Ctx, typename ParseCtx>
+            SCN_CONSTEXPR14 value<CharT> get()
             {
                 SCN_EXPECT(val != nullptr);
-                return value<Context>(*val);
+                return value<CharT>(*val);
             }
         };
-        template <typename Context, typename T>
-        struct init<Context, T, custom_type> {
+        template <typename CharT, typename T>
+        struct init<CharT, T, custom_type> {
             T* val;
             static const type type_tag = custom_type;
 
             constexpr init(T& v) : val(std::addressof(v)) {}
-            template <typename ParseCtx>
-            SCN_CONSTEXPR14 value<Context> get()
+            template <typename Ctx, typename ParseCtx>
+            SCN_CONSTEXPR14 value<CharT> get()
             {
                 SCN_EXPECT(val != nullptr);
-                return value<Context>(parse_ctx_tag<ParseCtx>(), *val);
+                return value<CharT>(ctx_tag<Ctx>{}, parse_ctx_tag<ParseCtx>{},
+                                    *val);
             }
         };
 
-        template <typename Context, typename ParseCtx, typename T>
-        SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value) noexcept;
+        template <typename Context,
+                  typename ParseCtx,
+                  typename T,
+                  typename CharT = typename Context::char_type>
+        SCN_CONSTEXPR14 basic_arg<CharT> make_arg(T& value) noexcept;
 
-#define SCN_MAKE_VALUE(Tag, Type)                                     \
-    template <typename C>                                             \
-    constexpr init<C, Type, Tag> make_value(Type& val,                \
-                                            priority_tag<1>) noexcept \
-    {                                                                 \
-        return val;                                                   \
+#define SCN_MAKE_VALUE(Tag, Type)                                         \
+    template <typename CharT>                                             \
+    constexpr init<CharT, Type, Tag> make_value(Type& val,                \
+                                                priority_tag<1>) noexcept \
+    {                                                                     \
+        return val;                                                       \
     }
 
         SCN_MAKE_VALUE(short_type, short)
@@ -239,38 +245,21 @@ namespace scn {
         SCN_MAKE_VALUE(double_type, double)
         SCN_MAKE_VALUE(long_double_type, long double)
 
-        SCN_MAKE_VALUE(buffer_type, span<typename C::char_type>)
-        SCN_MAKE_VALUE(string_type, std::basic_string<typename C::char_type>)
-        SCN_MAKE_VALUE(string_view_type,
-                       basic_string_view<typename C::char_type>)
+        SCN_MAKE_VALUE(buffer_type, span<CharT>)
+        SCN_MAKE_VALUE(string_type, std::basic_string<CharT>)
+        SCN_MAKE_VALUE(string_view_type, basic_string_view<CharT>)
 
-        template <typename C>
-        constexpr init<C, typename C::char_type, char_type> make_value(
-            typename C::char_type& val,
+        template <typename CharT>
+        constexpr init<CharT, CharT, char_type> make_value(
+            CharT& val,
             priority_tag<1>) noexcept
         {
             return val;
         }
 
-        template <typename T, typename Char, typename Enable = void>
-        struct convert_to_int
-            : std::integral_constant<bool,
-                                     !std::is_arithmetic<T>::value &&
-                                         std::is_convertible<T, int>::value> {
-        };
-        template <typename C, typename T>
-        constexpr inline auto make_value(T& val, priority_tag<1>) noexcept ->
-            typename std::enable_if<
-                std::is_enum<T>::value &&
-                    convert_to_int<T, typename C::char_type>::value,
-                init<C, int, int_type>>::type
-        {
-            return static_cast<int>(val);
-        }
-
-        template <typename C, typename T>
+        template <typename CharT, typename T>
         constexpr inline auto make_value(T& val, priority_tag<0>) noexcept
-            -> init<C, T, custom_type>
+            -> init<CharT, T, custom_type>
         {
             return val;
         }
@@ -287,16 +276,16 @@ namespace scn {
     SCN_CLANG_IGNORE("-Wpadded")
 
     /// Type-erased scanning argument.
-    template <typename Context>
+    template <typename CharT>
     class SCN_TRIVIAL_ABI basic_arg {
     public:
-        using char_type = typename Context::char_type;
+        using char_type = CharT;
 
         class handle {
         public:
             explicit handle(detail::custom_value custom) : m_custom(custom) {}
 
-            template <typename ParseCtx>
+            template <typename Context, typename ParseCtx>
             error scan(Context& ctx, ParseCtx& pctx)
             {
                 return reinterpret_cast<error (*)(void*, Context&, ParseCtx&)>(
@@ -328,32 +317,29 @@ namespace scn {
         }
 
     private:
-        constexpr basic_arg(detail::value<Context> v, detail::type t) noexcept
+        constexpr basic_arg(detail::value<CharT> v, detail::type t) noexcept
             : m_value(v), m_type(t)
         {
         }
 
-        template <typename ContextType, typename ParseCtx, typename T>
-        friend SCN_CONSTEXPR14 typename ContextType::arg_type detail::make_arg(
-            T& value) noexcept;
+        template <typename Ctx, typename ParseCtx, typename T, typename C>
+        friend SCN_CONSTEXPR14 basic_arg<C> detail::make_arg(T& value) noexcept;
 
-        template <typename Ctx, typename Visitor>
+        template <typename C, typename Visitor>
         friend SCN_CONSTEXPR14 error visit_arg(Visitor&& vis,
-                                               typename Ctx::arg_type& arg);
+                                               basic_arg<C>& arg);
 
-        friend class basic_args<Context>;
+        friend class basic_args<CharT>;
 
-        detail::value<Context> m_value;
+        detail::value<CharT> m_value;
         detail::type m_type{detail::none_type};
     };
 
     SCN_CLANG_POP
 
-    template <typename Context, typename Visitor>
-    SCN_CONSTEXPR14 error visit_arg(Visitor&& vis,
-                                    typename Context::arg_type& arg)
+    template <typename CharT, typename Visitor>
+    SCN_CONSTEXPR14 error visit_arg(Visitor&& vis, basic_arg<CharT>& arg)
     {
-        using char_type = typename Context::char_type;
         switch (arg.m_type) {
             case detail::none_type:
                 break;
@@ -379,7 +365,7 @@ namespace scn {
             case detail::bool_type:
                 return vis(arg.m_value.template get_as<bool>());
             case detail::char_type:
-                return vis(arg.m_value.template get_as<char_type>());
+                return vis(arg.m_value.template get_as<CharT>());
 
             case detail::float_type:
                 return vis(arg.m_value.template get_as<float>());
@@ -389,18 +375,16 @@ namespace scn {
                 return vis(arg.m_value.template get_as<long double>());
 
             case detail::buffer_type:
-                return vis(arg.m_value.template get_as<span<char_type>>());
+                return vis(arg.m_value.template get_as<span<CharT>>());
             case detail::string_type:
                 return vis(
-                    arg.m_value
-                        .template get_as<std::basic_string<char_type>>());
+                    arg.m_value.template get_as<std::basic_string<CharT>>());
             case detail::string_view_type:
                 return vis(
-                    arg.m_value
-                        .template get_as<basic_string_view<char_type>>());
+                    arg.m_value.template get_as<basic_string_view<CharT>>());
 
             case detail::custom_type:
-                return vis(typename Context::arg_type::handle(
+                return vis(typename basic_arg<CharT>::handle(
                     arg.m_value.get_custom()));
 
                 SCN_CLANG_PUSH
@@ -413,78 +397,86 @@ namespace scn {
     }
 
     namespace detail {
-        template <typename Context, typename T>
+        template <typename CharT, typename T>
         struct get_type {
-            using value_type = decltype(make_value<Context>(
+            using value_type = decltype(make_value<CharT>(
                 std::declval<typename std::remove_reference<
                     typename std::remove_cv<T>::type>::type&>(),
                 std::declval<priority_tag<1>>()));
             static const type value = value_type::type_tag;
         };
 
-        template <typename Context>
+        template <typename CharT>
         constexpr size_t get_types()
         {
             return 0;
         }
-        template <typename Context, typename Arg, typename... Args>
+        template <typename CharT, typename Arg, typename... Args>
         constexpr size_t get_types()
         {
-            return static_cast<size_t>(get_type<Context, Arg>::value) |
-                   (get_types<Context, Args...>() << 5);
+            return static_cast<size_t>(get_type<CharT, Arg>::value) |
+                   (get_types<CharT, Args...>() << 5);
         }
 
-        template <typename Context, typename ParseCtx, typename T>
-        SCN_CONSTEXPR14 typename Context::arg_type make_arg(T& value) noexcept
+        template <typename Context,
+                  typename ParseCtx,
+                  typename T,
+                  typename CharT>
+        SCN_CONSTEXPR14 basic_arg<CharT> make_arg(T& value) noexcept
         {
-            typename Context::arg_type arg;
-            arg.m_type = get_type<Context, T>::value;
-            arg.m_value = make_value<Context>(value, priority_tag<1>{})
-                              .template get<ParseCtx>();
+            basic_arg<CharT> arg;
+            arg.m_type = get_type<CharT, T>::value;
+            arg.m_value = make_value<CharT>(value, priority_tag<1>{})
+                              .template get<Context, ParseCtx>();
             return arg;
         }
 
-        template <bool Packed, typename Context, typename ParseCtx, typename T>
+        template <bool Packed,
+                  typename Context,
+                  typename ParseCtx,
+                  typename T,
+                  typename CharT = typename Context::char_type>
         inline auto make_arg(T& v) ->
-            typename std::enable_if<Packed, value<Context>>::type
+            typename std::enable_if<Packed, value<CharT>>::type
         {
-            return make_value<Context>(v, priority_tag<1>{})
-                .template get<ParseCtx>();
+            return make_value<CharT>(v, priority_tag<1>{})
+                .template get<Context, ParseCtx>();
         }
         template <bool Packed, typename Context, typename ParseCtx, typename T>
-        inline auto make_arg(T& v) ->
-            typename std::enable_if<!Packed, typename Context::arg_type>::type
+        inline auto make_arg(T& v) -> typename std::
+            enable_if<!Packed, basic_arg<typename Context::char_type>>::type
         {
             return make_arg<Context, ParseCtx>(v);
         }
     }  // namespace detail
 
-    template <typename Context, typename... Args>
+    template <typename CharT, typename... Args>
     class arg_store {
         static constexpr const size_t num_args = sizeof...(Args);
         static const bool is_packed = num_args < detail::max_packed_args;
 
-        friend class basic_args<Context>;
+        friend class basic_args<CharT>;
 
         static constexpr size_t get_types()
         {
-            return is_packed ? detail::get_types<Context, Args...>()
+            return is_packed ? detail::get_types<CharT, Args...>()
                              : detail::is_unpacked_bit | num_args;
         }
 
     public:
         static constexpr size_t types = get_types();
-        using arg_type = typename Context::arg_type;
+        using arg_type = basic_arg<CharT>;
 
         using value_type = typename std::
-            conditional<is_packed, detail::value<Context>, arg_type>::type;
+            conditional<is_packed, detail::value<CharT>, arg_type>::type;
         static constexpr size_t data_size =
             num_args + (is_packed && num_args != 0 ? 0 : 1);
 
-        template <typename ParseCtx>
-        SCN_CONSTEXPR14 arg_store(detail::parse_ctx_tag<ParseCtx>,
+        template <typename Ctx, typename ParseCtx>
+        SCN_CONSTEXPR14 arg_store(detail::ctx_tag<Ctx>,
+                                  detail::parse_ctx_tag<ParseCtx>,
                                   Args&... a) noexcept
-            : m_data{{detail::make_arg<is_packed, Context, ParseCtx>(a)...}}
+            : m_data{{detail::make_arg<is_packed, Ctx, ParseCtx>(a)...}}
         {
         }
 
@@ -499,20 +491,21 @@ namespace scn {
     };
 
     template <typename Context, typename ParseCtx, typename... Args>
-    typename Context::template arg_store_type<Args...> make_args(Args&... args)
+    arg_store<typename Context::char_type, Args...> make_args(Args&... args)
     {
-        return {detail::parse_ctx_tag<ParseCtx>(), args...};
+        return {detail::ctx_tag<Context>(), detail::parse_ctx_tag<ParseCtx>(),
+                args...};
     }
 
-    template <typename Context>
+    template <typename CharT>
     class basic_args {
     public:
-        using arg_type = typename Context::arg_type;
+        using arg_type = basic_arg<CharT>;
 
         constexpr basic_args() noexcept = default;
 
         template <typename... Args>
-        SCN_CONSTEXPR14 basic_args(arg_store<Context, Args...>& store) noexcept
+        SCN_CONSTEXPR14 basic_args(arg_store<CharT, Args...>& store) noexcept
             : m_types(store.types)
         {
             set_data(store.m_data.data());
@@ -550,7 +543,7 @@ namespace scn {
     private:
         size_t m_types{0};
         union {
-            detail::value<Context>* m_values;
+            detail::value<CharT>* m_values;
             arg_type* m_args;
         };
 
@@ -568,7 +561,7 @@ namespace scn {
                 detail::packed_arg_mask);
         }
 
-        SCN_CONSTEXPR14 void set_data(detail::value<Context>* values) noexcept
+        SCN_CONSTEXPR14 void set_data(detail::value<CharT>* values) noexcept
         {
             m_values = values;
         }

@@ -38,25 +38,25 @@ namespace scn {
      * compile times dramatically.
      */
     template <typename Context, typename ParseCtx>
-    error vscan(Context& ctx, ParseCtx& pctx, basic_args<Context> args)
+    error vscan(Context& ctx,
+                ParseCtx& pctx,
+                basic_args<typename Context::char_type> args)
     {
         return visit(ctx, pctx, std::move(args));
     }
 
 #if !defined(SCN_HEADER_ONLY) || !SCN_HEADER_ONLY
 
-#define SCN_VSCAN_DECLARE(Range)                                             \
-    error vscan(basic_context<detail::range_wrapper_for_t<Range>,            \
-                              basic_default_locale_ref<char>>&,              \
-                basic_parse_context<basic_default_locale_ref<char>>&,        \
-                basic_args<basic_context<detail::range_wrapper_for_t<Range>, \
-                                         basic_default_locale_ref<char>>>);  \
-                                                                             \
-    error vscan(basic_context<detail::range_wrapper_for_t<Range>,            \
-                              basic_default_locale_ref<char>>&,              \
-                basic_empty_parse_context<basic_default_locale_ref<char>>&,  \
-                basic_args<basic_context<detail::range_wrapper_for_t<Range>, \
-                                         basic_default_locale_ref<char>>>);
+#define SCN_VSCAN_DECLARE(Range)                                            \
+    error vscan(basic_context<detail::range_wrapper_for_t<Range>,           \
+                              basic_default_locale_ref<char>>&,             \
+                basic_parse_context<basic_default_locale_ref<char>>&,       \
+                basic_args<char>);                                          \
+                                                                            \
+    error vscan(basic_context<detail::range_wrapper_for_t<Range>,           \
+                              basic_default_locale_ref<char>>&,             \
+                basic_empty_parse_context<basic_default_locale_ref<char>>&, \
+                basic_args<char>);
 
     SCN_VSCAN_DECLARE(string_view)
     SCN_VSCAN_DECLARE(file&)

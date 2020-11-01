@@ -35,13 +35,6 @@ namespace scn {
         using sentinel = typename range_type::sentinel;
         using char_type = typename range_type::char_type;
         using locale_type = LocaleRef;
-        using args_type = basic_args<basic_context>;
-        using arg_type = basic_arg<basic_context>;
-
-        template <typename T>
-        using scanner_type = scanner<char_type, T>;
-        template <typename... Args>
-        using arg_store_type = arg_store<basic_context, Args...>;
 
         template <typename R>
         basic_context(R&& r) : LocaleRef{}, m_range(std::forward<R>(r))
@@ -70,7 +63,8 @@ namespace scn {
         {
             return m_range;
         }
-        range_type&& range() && {
+        range_type&& range() &&
+        {
             return std::move(m_range);
         }
 
@@ -87,9 +81,9 @@ namespace scn {
         range_type m_range;
     };
 
-    template <typename Context>
-    auto get_arg(const basic_args<Context>& args, std::ptrdiff_t id)
-        -> expected<basic_arg<Context>>
+    template <typename CharT>
+    auto get_arg(const basic_args<CharT>& args, std::ptrdiff_t id)
+        -> expected<basic_arg<CharT>>
     {
         auto a = args.get(id);
         if (!a) {
@@ -98,27 +92,25 @@ namespace scn {
         }
         return a;
     }
-    template <typename Context, typename ParseCtx>
-    auto get_arg(const basic_args<Context>& args,
+    template <typename CharT, typename ParseCtx>
+    auto get_arg(const basic_args<CharT>& args,
                  ParseCtx& pctx,
-                 std::ptrdiff_t id) -> expected<basic_arg<Context>>
+                 std::ptrdiff_t id) -> expected<basic_arg<CharT>>
     {
         return pctx.check_arg_id(id) ? get_arg(args, id)
                                      : error(error::invalid_format_string,
                                              "Argument id out of range");
     }
-    template <typename Context, typename ParseCtx>
-    auto get_arg(const basic_args<Context>&,
-                 ParseCtx&,
-                 basic_string_view<typename Context::char_type>)
-        -> expected<basic_arg<Context>>
+    template <typename CharT, typename ParseCtx>
+    auto get_arg(const basic_args<CharT>&, ParseCtx&, basic_string_view<CharT>)
+        -> expected<basic_arg<CharT>>
     {
         return error(error::invalid_format_string, "Argument id out of range");
     }
 
-    template <typename Context, typename ParseCtx>
-    auto next_arg(const basic_args<Context>& args, ParseCtx& pctx)
-        -> expected<basic_arg<Context>>
+    template <typename CharT, typename ParseCtx>
+    auto next_arg(const basic_args<CharT>& args, ParseCtx& pctx)
+        -> expected<basic_arg<CharT>>
     {
         return get_arg(args, pctx.next_arg_id());
     }

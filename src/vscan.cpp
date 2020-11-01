@@ -26,25 +26,22 @@ namespace scn {
 
 #if !defined(SCN_HEADER_ONLY) || !SCN_HEADER_ONLY
 
-#define SCN_VSCAN_DEFINE(Range)                                          \
-    error vscan(                                                         \
-        basic_context<detail::range_wrapper_for_t<Range>,                \
-                      basic_default_locale_ref<char>>& ctx,              \
-        basic_parse_context<basic_default_locale_ref<char>>& pctx,       \
-        basic_args<basic_context<detail::range_wrapper_for_t<Range>,     \
-                                 basic_default_locale_ref<char>>> args)  \
-    {                                                                    \
-        return visit(ctx, pctx, std::move(args));                        \
-    }                                                                    \
-                                                                         \
-    error vscan(                                                         \
-        basic_context<detail::range_wrapper_for_t<Range>,                \
-                      basic_default_locale_ref<char>>& ctx,              \
-        basic_empty_parse_context<basic_default_locale_ref<char>>& pctx, \
-        basic_args<basic_context<detail::range_wrapper_for_t<Range>,     \
-                                 basic_default_locale_ref<char>>> args)  \
-    {                                                                    \
-        return visit(ctx, pctx, std::move(args));                        \
+#define SCN_VSCAN_DEFINE(Range)                                            \
+    error vscan(basic_context<detail::range_wrapper_for_t<Range>,          \
+                              basic_default_locale_ref<char>>& ctx,        \
+                basic_parse_context<basic_default_locale_ref<char>>& pctx, \
+                basic_args<char> args)                                     \
+    {                                                                      \
+        return visit(ctx, pctx, std::move(args));                          \
+    }                                                                      \
+                                                                           \
+    error vscan(                                                           \
+        basic_context<detail::range_wrapper_for_t<Range>,                  \
+                      basic_default_locale_ref<char>>& ctx,                \
+        basic_empty_parse_context<basic_default_locale_ref<char>>& pctx,   \
+        basic_args<char> args)                                             \
+    {                                                                      \
+        return visit(ctx, pctx, std::move(args));                          \
     }
 
     SCN_VSCAN_DEFINE(string_view)
