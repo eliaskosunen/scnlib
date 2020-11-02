@@ -5,10 +5,11 @@ run () {
   shift
 
   echo "$file"
-  /usr/bin/time c++ -x c++ -I../include -I../src "./benchmark/buildtime/${file}" "$@"
+  /usr/bin/time c++ -x c++ -I../include -I../src -L$(pwd) "./benchmark/buildtime/${file}" -w "$@"
 }
 
 run_tests() {
+  run empty.cpp "$@"
   run cstdio.cpp "$@"
   run iostream.cpp "$@"
   run scnlib.cpp -lscn "$@"

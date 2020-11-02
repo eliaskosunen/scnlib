@@ -541,6 +541,7 @@ namespace scn {
         {
             SCN_EXPECT(!is_open());
             this->set_handle(f);
+            return true;
         }
 
         /// Close file

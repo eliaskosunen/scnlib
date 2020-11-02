@@ -183,37 +183,10 @@ However, support will not be provided for:
 
 ### Run-time performance
 
-![benchmark results](https://raw.githubusercontent.com/eliaskosunen/scnlib/master/benchmark/results.png)
+![Benchmark results](benchmark/results.png?raw=true "Benchmark results")
 
-These benchmarks were run on a Ubuntu 20.04 machine running kernel version 5.4.0-52, with an Intel Core i5-6600K processor, and compiled with gcc version 8.3.0, with `-O3 -march=native`.
+These benchmarks were run on a Ubuntu 20.04 machine running kernel version 5.4.0-52, with an Intel Core i5-6600K processor, and compiled with gcc version 9.3.0, with `-O3 -DNDEBUG -march=native`.
 The source code for the benchmarks can be seen in the `benchmark` directory.
-
-Times are in nanoseconds of CPU time. Lower is better.
-
-TODO: update results
-
-#### Reading random integers
-
-| Integer type | `scn::scan` | `std::stringstream` | `sscanf` |
-| :----------- | ----------- | ------------------: | -------: |
-| `int`        | 44          | 71                  | 513      |
-| `long long`  | 62          | 98                  | 990      |
-| `unsigned`   | 28          | 55                  | 506      |
-
-#### Reading random floating-point numbers
-
-| Floating-point type | `scn::scan` | `std::stringstream` | `sscanf` |
-| :------------------ | ----------: | ------------------: | -------: |
-| `float`             | 127         | 207                 | 550      |
-| `double`            | 129         | 213                 | 553      |
-| `long double`       | 139         | 224                 | 567      |
-
-#### Reading random whitespace-separated strings
-
-| Character type | `scn::scan` | `scn::scan` and `string_view` | `std::stringstream` | 
-| :------------- | ----------: | ----------------------------: | ------------------: | 
-| `char`         | 30          | 31                            | 48                  | 
-| `wchar_t`      | 38          | 34                            | 117                 | 
 
 You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS`.
 `SCN_BUILD_BENCHMARKS` is enabled by default if `scn` is the root CMake project, and disabled otherwise.
@@ -228,10 +201,50 @@ $ ./benchmark/runtime/integer/bench-int
 
 Performance comparison benchmarks with Boost.Spirit.x3 can be found [here](https://github.com/eliaskosunen/scnlib-spirit-benchmark)
 
+Times are in nanoseconds of CPU time. Lower is better.
+
+#### Integer parsing (`int`)
+
+| Test   | `std::stringstream` | `sscanf` | `scn::scan` | `scn::scan_default` |
+| :----- | ------------------: | -------: | ----------: | ------------------: |
+| Test 1 | 274                 | 96.5     | 43.0        | 40.3                |
+| Test 2 | 77.7                | 526      | 68.1        | 60.5                |
+
+#### Floating-point parsing (`double`)
+
+| Test   | `std::stringstream` | `sscanf` | `scn::scan` |
+| :----- | ------------------: | -------: | ----------: |
+| Test 1 | 416                 | 164      | 167         |
+| Test 2 | 223                 | 570      | 195         |
+
+#### Reading random whitespace-separated strings
+
+| Character type | `scn::scan` | `scn::scan` and `string_view` | `std::stringstream` |
+| :------------- | ----------: | ----------------------------: | ------------------: |
+| `char`         | 40.7        | 38.0                          | 50.2                |
+| `wchar_t`      | 42.7        | 38.3                          | 122                 |
+
+#### Test 1 vs. Test 2
+
+In the above comparisons:
+
+ * "Test 1" refers to parsing a single value from a string which only contains the string representation for that value.
+   The time used for constructing parser state is included.
+   For example, the source string could be `"123"`.
+   In this case, a parser is constructed, and a value (`123`) is parsed.
+   This test is called "single" in the benchmark sources.
+ * "Test 2" refers to the average time of parsing a value from a string containing multiple string representations separated by spaces.
+   The time used for constructing parser state is not included.
+   For example, the source string could be `"123 456"`.
+   In this case, a parser is constructed before the timer is started.
+   Then, a single value is read from the source, and the source is advanced to the start of the next value.
+   The time it took to parse a single value is averaged out.
+   This test is called "repeated" in the benchmark sources.
+
 ### Code size
 
 Code size benchmarks test code bloat for nontrivial projects.
-It generates 25 translation units and reads values from stdin\* five times to simulate a medium sized project.
+It generates 25 translation units and reads values from stdin five times to simulate a medium sized project.
 The resulting executable size is shown in the following tables.
 
 The code was compiled on Ubuntu 20.04 with g++ 9.3.0.
@@ -253,48 +266,93 @@ $ make -j
 $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
 ```
 
+Sizes are in kibibytes (KiB).
+Lower is better.
+
 #### Minimized build (-Os -DNDEBUG)
 
-| Method                              | Executable size (KiB) | Stripped size (KiB) |
-| :---------------------------------- | --------------------: | ------------------: |
-| empty                               | 18                    | 14                  |
-| `scanf`                             | 23                    | 18                  |
-| `std::istream` / `std::cin`         | 25                    | 18                  |
-| `scn::input`                        | 35                    | 30                  |
-| `scn::input` (header only)          | 138                   | 98                  |
+| Method                      | Executable size | Stripped size |
+| :-------------------------- | --------------: | ------------: |
+| empty                       | 18              | 14            |
+| `scanf`                     | 23              | 18            |
+| `std::istream` / `std::cin` | 25              | 18            |
+| `scn::input`                | 35              | 30            |
+| `scn::input` (header only)  | 138             | 98            |
 
 #### Release build (-O3 -DNDEBUG)
 
-| Method                              | Executable size (KiB) | Stripped size (KiB) |
-| :---------------------------------- | --------------------: | ------------------: |
-| empty                               | 18                    | 14                  |
-| `scanf`                             | 24                    | 18                  |
-| `std::istream` / `std::cin`         | 30                    | 22                  |
-| `scn::input`                        | 41                    | 34                  |
-| `scn::input` (header only)          | 177                   | 146                 |
+| Method                      | Executable size | Stripped size |
+| :-------------------------- | --------------: | ------------: |
+| empty                       | 18              | 14            |
+| `scanf`                     | 24              | 18            |
+| `std::istream` / `std::cin` | 30              | 22            |
+| `scn::input`                | 41              | 34            |
+| `scn::input` (header only)  | 177             | 146           |
 
 #### Debug build (-g)
 
-| Method                              | Executable size (KiB) | Stripped size (KiB) |
-| :---------------------------------- | --------------------: | ------------------: |
-| empty                               | 29                    | 14                  |
-| `scanf`                             | 600                   | 18                  |
-| `std::istream` / `std::cin`         | 662                   | 22                  |
-| `scn::input`                        | 1709                  | 51                  |
-| `scn::input` (header only)          | 6858                  | 281                 |
+| Method                      | Executable size | Stripped size |
+| :-------------------------- | --------------: | ------------: |
+| empty                       | 29              | 14            |
+| `scanf`                     | 600             | 18            |
+| `std::istream` / `std::cin` | 662             | 22            |
+| `scn::input`                | 1709            | 51            |
+| `scn::input` (header only)  | 6858            | 281           |
 
 ### Build time
 
-TODO
+This test measures the time it takes to compile a binary when using different libraries.
+Note, that the time it takes to compile the library is not taken into account (unfair measurement against precompiled stdlibs).
+
+These tests were run on an Ubuntu 20.04 machine with an i5-6600K and 16 GB of RAM, using GCC 9.3.0.
+The compiler flags for a debug build were `-g`, and `-O3 -DNDEBUG` for a release build.
+
+To run these tests yourself, enable CMake flag `SCN_BUILD_BUILDTIME`.
+In order for these tests to work, `c++` must point to a gcc-compatible C++ compiler binary,
+and a POSIX-compatible `/usr/bin/time` must be present.
+
+```sh
+$ cd build
+$ cmake -DSCN_BUILD_BUILDTIME=ON ..
+$ make -j
+$ ./benchmark/buildtime/run-buildtime-tests.sh
+```
+
+#### Build time
+
+Time is in seconds of CPU time (user time + sys/kernel time).
+Lower is better.
+
+| Method                      | Debug | Release |
+| :-------------------------- | ----: | ------: |
+| empty                       | 0.03  | 0.04    |
+| `scanf`                     | 0.24  | 0.25    |
+| `std::istream` / `std::cin` | 0.29  | 0.31    |
+| `scn::input`                | 0.53  | 0.62    |
+| `scn::input` (header only)  | 1.38  | 2.54    |
+
+#### Memory consumption
+
+Memory is in mebibytes (MiB).
+Lower is better.
+
+| Method                      | Debug | Release |
+| :-------------------------- | ----: | ------: |
+| empty                       | 22.3  | 23.9    |
+| `scanf`                     | 47.0  | 46.7    |
+| `std::istream` / `std::cin` | 55.2  | 54.7    |
+| `scn::input`                | 82.9  | 83.9    |
+| `scn::input` (header only)  | 143.1 | 167.6   |
+
 
 ## Acknowledgements
 
-The contents of this library are heavily influenced by fmtlib and its derivative works.
+The contents of this library are heavily influenced by {fmt} and its derivative works.
 
 <https://github.com/fmtlib/fmt>  
 <https://fmt.dev>  
 
-fmtlib is licensed under the BSD 2-clause license.  
+{fmt} is licensed under the MIT license.  
 Copyright (c) 2012-present Victor Zverovich
 
 The ranges implementation found from this library is based on NanoRange:
