@@ -1,6 +1,6 @@
 # 0.4 (in development)
 
-_Released 2020-xx-xx_
+_Released 2020-11-xx_
 
 ## Changes and removals
 
@@ -39,6 +39,7 @@ _Released 2020-xx-xx_
    (#28, #30, #31,
    thanks [@xvitaly (Vitaly Zaitsev)](https://github.com/xvitaly), and
    [@leha-bot (Alex)](https://github.com/leha-bot) for reporting)
+ * Fix CUDA compilation (#22, thanks [@invexed (James Beach)](https://github.com/invexed) for reporting)
  * Move to readthedocs (https://scnlib.readthedocs.com) from https://scnlib.dev
 
 # 0.3

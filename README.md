@@ -115,7 +115,7 @@ int main() {
     auto result = scn::scan("foo", "{}", i);
     if (!result) {
         // i is not touched (still unconstructed)
-        // str == "foo" (range not advanced)
+        // result.range() == "foo" (range not advanced)
         std::cout << "Integer parsing failed with message: " << result.error().msg() << '\n';
     }
 }
