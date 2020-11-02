@@ -22,11 +22,11 @@
 
 TEST_CASE("file")
 {
+    scn::owning_file file{"./test/file/testfile.txt", "r"};
+    REQUIRE(file.is_open());
+
     SUBCASE("basic")
     {
-        scn::owning_file file{"./test/file/testfile.txt", "r"};
-        REQUIRE(file.is_open());
-
         int i;
         auto result = scn::scan_default(file, i);
         CHECK(result);
@@ -34,9 +34,6 @@ TEST_CASE("file")
     }
     SUBCASE("entire file")
     {
-        scn::owning_file file{"./test/file/testfile.txt", "r"};
-        REQUIRE(file.is_open());
-
         auto result = scn::make_result(file);
 
         int i;
@@ -61,9 +58,6 @@ TEST_CASE("file")
 
     SUBCASE("syncing")
     {
-        scn::owning_file file{"./test/file/testfile.txt", "r"};
-        REQUIRE(file.is_open());
-
         int i;
         auto result = scn::scan_default(file, i);
         CHECK(result);
@@ -86,9 +80,6 @@ TEST_CASE("file")
 
     SUBCASE("not syncing")
     {
-        scn::owning_file file{"./test/file/testfile.txt", "r"};
-        REQUIRE(file.is_open());
-
         int i;
         auto result = scn::scan_default(file, i);
         CHECK(result);
@@ -111,9 +102,6 @@ TEST_CASE("file")
 
     SUBCASE("error")
     {
-        scn::owning_file file{"./test/file/testfile.txt", "r"};
-        REQUIRE(file.is_open());
-
         int i;
         auto result = scn::scan_default(file, i);
         CHECK(result);
@@ -129,6 +117,60 @@ TEST_CASE("file")
         result = scn::scan_default(result.range(), word);
         CHECK(result);
         CHECK(word == "word");
+    }
+
+    SUBCASE("getline")
+    {
+        std::string line;
+        auto result = scn::getline(file, line);
+        CHECK(result);
+        CHECK(line == "123");
+
+        result = scn::getline(result.range(), line);
+        CHECK(result);
+        CHECK(line == "word another");
+
+        result = scn::getline(result.range(), line);
+        CHECK(!result);
+        CHECK(result.error().code() == scn::error::end_of_range);
+        CHECK(line == "word another");
+    }
+}
+
+TEST_CASE("mapped file")
+{
+    scn::mapped_file file{"./test/file/testfile.txt"};
+    REQUIRE(file.valid());
+
+    SUBCASE("basic")
+    {
+        int i;
+        auto result = scn::scan_default(file, i);
+        CHECK(result);
+        CHECK(i == 123);
+    }
+    SUBCASE("entire file")
+    {
+        auto result = scn::make_result(file);
+
+        int i;
+        result = scn::scan_default(result.range(), i);
+        CHECK(result);
+        CHECK(i == 123);
+
+        std::string word;
+        result = scn::scan_default(result.range(), word);
+        CHECK(result);
+        CHECK(word == "word");
+
+        result = scn::scan_default(result.range(), word);
+        CHECK(result);
+        CHECK(word == "another");
+
+        result = scn::scan_default(result.range(), word);
+        CHECK(!result);
+        CHECK(result.error().code() == scn::error::end_of_range);
+        CHECK(word == "another");
     }
 }
 

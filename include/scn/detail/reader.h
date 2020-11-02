@@ -333,17 +333,19 @@ namespace scn {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
-        for (auto it = r.begin(); it != r.end(); ++it, (void)r.advance()) {
-            const auto ch = *it;
+        while (r.begin() != r.end()) {
+            const auto ch = *r.begin();
             if (is_space(ch)) {
                 if (keep_final_space) {
                     *out = ch;
                     ++out;
+                    r.defer_advance();
                 }
                 return {};
             }
             *out = ch;
             ++out;
+            r.advance();
         }
         return {};
     }
@@ -371,6 +373,7 @@ namespace scn {
                 if (keep_final_space) {
                     *out = ch;
                     ++out;
+                    r.defer_advance();
                 }
                 return {};
             }

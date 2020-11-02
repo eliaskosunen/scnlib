@@ -435,6 +435,14 @@ namespace scn {
     {
         auto wrapped = detail::wrap(r);
         auto err = getline_impl(wrapped, str, until);
+        if (!err) {
+            auto e = wrapped.reset_to_rollback_point();
+            if (!e) {
+                err = e;
+            }
+        } else {
+            wrapped.set_rollback_point();
+        }
         return detail::wrap_result(
             wrapped_error{err}, detail::range_tag<Range>{}, std::move(wrapped));
     }
@@ -564,6 +572,8 @@ namespace scn {
             if (!e) {
                 err = e;
             }
+        } else {
+            wrapped.set_rollback_point();
         }
         return detail::wrap_result(
             wrapped_error{err}, detail::range_tag<Range>{}, std::move(wrapped));

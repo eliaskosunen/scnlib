@@ -40,3 +40,62 @@ TEST_CASE("istream value")
     CHECK(ret);
     CHECK(val.value == 123);
 }
+
+TEST_CASE("istream fail")
+{
+    my_type val{};
+    auto ret = scn::scan("foo", "{}", val);
+    CHECK(!ret);
+    CHECK(ret.error().code() == scn::error::invalid_scanned_value);
+    CHECK(val.value == 0);
+}
+
+TEST_CASE("istream eof")
+{
+    my_type val{};
+    auto ret = scn::scan("", "{}", val);
+    CHECK(!ret);
+    CHECK(ret.error().code() == scn::error::end_of_range);
+    CHECK(val.value == 0);
+}
+
+TEST_CASE("istream composite")
+{
+    auto source = std::string{"foo 123 456"};
+
+    std::string s;
+    auto ret = scn::scan_default(source, s);
+    CHECK(ret);
+    CHECK(s == "foo");
+
+    my_type val{};
+    ret = scn::scan_default(ret.range(), val);
+    CHECK(ret);
+    CHECK(val.value == 123);
+
+    int i;
+    ret = scn::scan_default(ret.range(), i);
+    CHECK(ret);
+    CHECK(i == 456);
+    CHECK(ret.empty());
+}
+TEST_CASE("istream composite error")
+{
+    auto source = std::string{"123 foo 456"};
+
+    int i;
+    auto ret = scn::scan_default(source, i);
+    CHECK(ret);
+    CHECK(i == 123);
+
+    my_type val{};
+    ret = scn::scan_default(ret.range(), val);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+    CHECK(val.value == 0);
+
+    std::string s;
+    ret = scn::scan_default(ret.range(), s);
+    CHECK(ret);
+    CHECK(s == "foo");
+}
