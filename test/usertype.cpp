@@ -32,10 +32,7 @@ namespace scn {
         error scan(user_type& val, Context& ctx)
         {
             auto r = scn::scan(ctx.range(), "[{}, {}]", val.val1, val.val2);
-            ctx.range().advance_to(r.begin());
-            if (r) {
-                return {};
-            }
+            ctx.range() = std::move(r.range());
             return r.error();
         }
     };

@@ -534,7 +534,45 @@ The library provides some helpers for this.
 User types
 ----------
 
-TODO: UX to be improved
+To scan a value of a program-defined type, specialize ``scn::scanner``
+
+.. code-block:: cpp
+
+    struct int_and_double {
+        int i;
+        double d;
+    };
+
+    template <typename CharT>
+    struct scn::scanner<CharT, int_and_double> : scn::empty_parser<CharT> {
+        template <typename Context>
+        error scan(int_and_double& val, Context& ctx)
+        {
+            auto r = scn::scan(ctx.range(), "[{}, {}]", val.i, val.d);
+            ctx.range() = std::move(r.range());
+            return r.error();
+        }
+    };
+
+    // ...
+
+    int_and_double val;
+    auto result = scn::scan("[123, 3.14]", "{}", val);
+    // result == true
+    // val.i == 123
+    // val.d == 3.14
+
+The above example inherits from ``scn::empty_parser``.
+This implements the format string functionality for this type.
+``scn::empty_parser`` is a good default choice, as it only accepts empty format strings.
+You could also inherit from other scanner types (like ``scn::scanner<CharT, int>``),
+or implement ``parse()`` by hand (see ``reader.h`` in the library source code).
+
+Alternatively, you could also include the header ``<scn/istream.h>``.
+This enables scanning of types with a ``std::istream`` compatible ``operator>>``.
+Using this functionality is discouraged, as using iostreams to scan these values presents some difficulties with error recovery,
+and will lead to worse performance.
+Specializing ``scn::scanner`` should be preferred.
 
 Tuple-based scanning API
 ------------------------
@@ -565,10 +603,49 @@ Three types that at first glance might appear quite similar,
 have significant differences what comes to how they're scanned by the library.
 
 ``std::string`` works very similarly to how it works with ``<iostream>``.
+It scans a "word": a sequence of letters separated by spaces.
+More precisely, it reads the source range into the string, until a whitespace character is found or the range reaches its end.
 
-TODO
+``span<char>`` works like ``istream.read``: it copies bytes from the range into the buffer it's pointing to.
+``string_view`` works like ``std::string``, except it doesn't copy, but changes its data pointer to point into the source stream.
+Scanning a ``string_view`` works only with contiguous ranges, and may lead to lifetime issues, but it will give you better performace (avoids copying and allocation).
+
+.. code-block:: cpp
+
+    scn::string_view source{"hello world"};
+
+    std::string str;
+    scn::scan(source, "{}", str);
+    // str == "hello"
+
+    scn::string_view sv;
+    scn::scan(source, "{}", sv);
+    // sv == "hello"
+    // sv.data() == source.data() -- sv points to source
+    // Make sure that `source` outlives `sv`
+
+    std::vector<char> buffer(5, '\0'); // 5 bytes, all zero
+    scn::span<char> s = scn::make_span(buffer);
+    scn::scan(source, "{}", s);
+    // s == buffer == "hello"
+    // Reads 5 bytes, doesn't care about whitespace
+    // No lifetime problems, the data is copied into the span/the buffer it points to
 
 Wide ranges
 ***********
 
-TODO
+Source ranges have an associated character type, either ``char`` or ``wchar_t``.
+This character type is determined by the type of deferencing an iterator into the range, which is either ``CharT`` or ``scn::expected<CharT>``.
+For most use cases, this type is ``char``. In this case, the range is said to be narrow.
+If the character type is ``wchar_t``, the range is said to be wide.
+
+The return types of scanning narrow and wide ranges are incompatible and cannot be mixed.
+
+``char``, ``std::string``, ``scn::string_view``, and ``scn::span<char>`` cannot be scanned from a wide range.
+``wchar_t``, ``std::wstring``, ``scn::wstring_view``, and ``scn::span<wchar_t>`` cannot be scanned from a narrow range.
+
+Wide ranges are useful if your source data is wide (often the case on Windows).
+Narrow ranges should be preferred if possible, however.
+
+The encoding of wide ranges is assumed to be whatever is set in the global C locale.
+The encoding must be ASCII-compatible.

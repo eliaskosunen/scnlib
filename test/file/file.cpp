@@ -158,10 +158,7 @@ namespace scn {
         error scan(int_and_string& val, Context& ctx)
         {
             auto r = scn::scan(ctx.range(), "{} {}", val.i, val.s);
-            if (r) {
-                ctx.range().advance_to(r.begin());
-                return {};
-            }
+            ctx.range() = std::move(r.range());
             return r.error();
         }
     };
@@ -172,10 +169,7 @@ namespace scn {
         error scan(two_strings& val, Context& ctx)
         {
             auto r = scn::scan(ctx.range(), "{} {}", val.first, val.second);
-            if (r) {
-                ctx.range() = std::move(r.range());
-                return {};
-            }
+            ctx.range() = std::move(r.range());
             return r.error();
         }
     };
