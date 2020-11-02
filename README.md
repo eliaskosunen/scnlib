@@ -344,26 +344,18 @@ Lower is better.
 | `scn::input`                | 82.9  | 83.9    |
 | `scn::input` (header only)  | 143.1 | 167.6   |
 
-
 ## Acknowledgements
 
-The contents of this library are heavily influenced by {fmt} and its derivative works.
-
+The contents of this library are heavily influenced by {fmt} and its derivative works.  
 <https://github.com/fmtlib/fmt>  
-<https://fmt.dev>  
 
-{fmt} is licensed under the MIT license.  
-Copyright (c) 2012-present Victor Zverovich
-
-The ranges implementation found from this library is based on NanoRange:
-
+The bundled ranges implementation found from this library is based on NanoRange:  
 <https://github.com/tcbrindle/NanoRange>
-
-NanoRange is licensed under the Boost Software License, version 1.0.  
-Copyright (c) 2018 Tristan Brindle
 
 ## License
 
 scnlib is licensed under the Apache License, version 2.0.  
 Copyright (c) 2017 Elias Kosunen  
 See LICENSE for further details
+
+See the directory `licenses/` for third-party licensing information.
