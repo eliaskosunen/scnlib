@@ -16,10 +16,9 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <scn/istream.h>
+#include <istream>
 #include "../test.h"
-
-template <typename T>
-struct debug;
 
 TEST_CASE("file")
 {
@@ -130,5 +129,137 @@ TEST_CASE("file")
         result = scn::scan_default(result.range(), word);
         CHECK(result);
         CHECK(word == "word");
+    }
+}
+
+struct int_and_string {
+    int i;
+    std::string s;
+};
+struct two_strings {
+    std::string first, second;
+};
+struct istream_int_and_string {
+    int i;
+    std::string s;
+
+    friend std::istream& operator>>(std::istream& is,
+                                    istream_int_and_string& val)
+    {
+        is >> val.i >> val.s;
+        return is;
+    }
+};
+
+namespace scn {
+    template <typename CharT>
+    struct scanner<CharT, int_and_string> : public scn::empty_parser {
+        template <typename Context>
+        error scan(int_and_string& val, Context& ctx)
+        {
+            auto r = scn::scan(ctx.range(), "{} {}", val.i, val.s);
+            if (r) {
+                ctx.range().advance_to(r.begin());
+                return {};
+            }
+            return r.error();
+        }
+    };
+
+    template <typename CharT>
+    struct scanner<CharT, two_strings> : public scn::empty_parser {
+        template <typename Context>
+        error scan(two_strings& val, Context& ctx)
+        {
+            auto r = scn::scan(ctx.range(), "{} {}", val.first, val.second);
+            if (r) {
+                ctx.range() = std::move(r.range());
+                return {};
+            }
+            return r.error();
+        }
+    };
+}  // namespace scn
+
+TEST_CASE("file usertype")
+{
+    scn::owning_file file{"./test/file/testfile.txt", "r"};
+    REQUIRE(file.is_open());
+
+    SUBCASE("int_and_string")
+    {
+        int_and_string val{};
+        auto result = scn::scan_default(file, val);
+        CHECK(result);
+        CHECK(val.i == 123);
+        CHECK(val.s == "word");
+
+        std::string s;
+        result = scn::scan_default(result.range(), s);
+        CHECK(result);
+        CHECK(s == "another");
+    }
+
+    SUBCASE("int_and_string failure")
+    {
+        int i;
+        auto result = scn::scan_default(file, i);
+        CHECK(result);
+        CHECK(i == 123);
+
+        int_and_string val{};
+        result = scn::scan_default(result.range(), val);
+        CHECK(!result);
+        CHECK(result.error().code() == scn::error::invalid_scanned_value);
+
+        std::string s;
+        result = scn::scan_default(result.range(), s);
+        CHECK(result);
+        CHECK(s == "word");
+    }
+
+    SUBCASE("two_strings")
+    {
+        two_strings val{};
+        auto result = scn::scan_default(file, val);
+        CHECK(result);
+        CHECK(val.first == "123");
+        CHECK(val.second == "word");
+
+        std::string s;
+        result = scn::scan_default(result.range(), s);
+        CHECK(result);
+        CHECK(s == "another");
+    }
+
+    SUBCASE("istream")
+    {
+        istream_int_and_string val{};
+        auto result = scn::scan_default(file, val);
+        CHECK(result);
+        CHECK(val.i == 123);
+        CHECK(val.s == "word");
+
+        std::string s;
+        result = scn::scan_default(result.range(), s);
+        CHECK(result);
+        CHECK(s == "another");
+    }
+    SUBCASE("istream failure")
+    {
+        int i;
+        auto result = scn::scan_default(file, i);
+        CHECK(result);
+        CHECK(i == 123);
+
+        istream_int_and_string val{};
+        result = scn::scan_default(result.range(), val);
+        CHECK(!result);
+        CHECK(result.error().code() == scn::error::invalid_scanned_value);
+
+        std::string s;
+        result = scn::scan_default(result.range(), s);
+        CHECK(result);
+        CHECK(s == "word");
     }
 }

@@ -230,6 +230,16 @@ namespace scn {
                 m_read += diff;
                 m_begin = it;
             }
+            template <typename R = range_nocvref_type,
+                typename std::enable_if<SCN_CHECK_CONCEPT(
+                    !ranges::sized_range<R>)>::type* = nullptr>
+            void advance_to(iterator it) noexcept
+            {
+                while (m_begin != it) {
+                    ++m_read;
+                    ++m_begin;
+                }
+            }
 
             iterator begin_underlying() const noexcept(noexcept(
                 ranges::cbegin(std::declval<const range_nocvref_type&>())))

@@ -92,6 +92,7 @@ TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
         CHECK(ut.val1 == 4);
         CHECK(ut.val2 == 20);
         CHECK(j == 456);
+        CHECK(ret.empty());
     }
 }
 TYPE_TO_STRING(user_type);

@@ -33,3 +33,5 @@ One could argue that, and that's why an alternative API, returning a ``tuple``,
 is available, in the header ``<scn/tuple_return.h>``.
 The rationale of putting it in a separate header is to avoid pulling in the
 entirety of very heavy standard headers ``<tuple>`` and ``<functional>``.
+
+TODO: flesh this section out
