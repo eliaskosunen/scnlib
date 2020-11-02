@@ -800,7 +800,8 @@ namespace scn {
         auto args = make_args<context_type, parse_context_type>(value);
         auto ctx = context_type(detail::wrap(std::forward<Range>(r)));
 
-        while (true) {
+        bool scanning = true;
+        while (scanning) {
             if (c.size() == c.max_size()) {
                 break;
             }
@@ -817,35 +818,38 @@ namespace scn {
             }
             c.push_back(std::move(value));
 
-            {
-                auto next = read_char(ctx.range());
+            bool sep_found = false;
+            while (true) {
+                auto next = read_char(ctx.range(), false);
                 if (!next) {
                     if (next.error() == scn::error::end_of_range) {
+                        scanning = false;
                         break;
                     }
                     return detail::wrap_result(wrapped_error{next.error()},
                                                detail::range_tag<Range>{},
                                                std::move(ctx.range()));
                 }
+
                 if (next.value() == until) {
+                    scanning = false;
                     break;
                 }
+
+                if (ctx.locale().is_space(next.value())) {
+                    ctx.range().advance();
+                    continue;
+                }
+
                 if (separator != 0) {
-                    if (next.value() != separator) {
+                    if (next.value() != separator || sep_found) {
                         break;
+                    } else {
+                        ctx.range().advance();
+                        sep_found = true;
                     }
-                }
-                else {
-                    if (!ctx.locale().is_space(next.value())) {
-                        break;
-                    }
-                }
-                next = read_char(ctx.range());
-                if (next.value() == until) {
+                } else {
                     break;
-                }
-                else {
-                    putback_n(ctx.range(), 1);
                 }
             }
         }

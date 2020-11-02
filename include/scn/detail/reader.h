@@ -36,30 +36,34 @@ namespace scn {
      * If `r.begin() == r.end()`, returns EOF.
      * Dereferences the begin iterator, wrapping it in an `expected` if
      * necessary.
-     * If the reading was successful, the range is advanced by a single
-     * character.
+     * If the reading was successful, and `advance` is `true`, the range is
+     * advanced by a single character.
      */
     template <typename WrappedRange,
               typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
-    expected<ranges::range_value_t<WrappedRange>> read_char(WrappedRange& r)
+    expected<ranges::range_value_t<WrappedRange>> read_char(WrappedRange& r,
+                                                            bool advance = true)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
         auto ch = *r.begin();
-        r.advance();
+        if (advance) {
+            r.advance();
+        }
         return {ch};
     }
     template <
         typename WrappedRange,
         typename std::enable_if<!WrappedRange::is_direct>::type* = nullptr>
-    ranges::range_value_t<WrappedRange> read_char(WrappedRange& r)
+    ranges::range_value_t<WrappedRange> read_char(WrappedRange& r,
+                                                  bool advance = true)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
         auto ch = *r.begin();
-        if (ch) {
+        if (advance && ch) {
             r.advance();
         }
         return ch;
