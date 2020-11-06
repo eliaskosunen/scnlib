@@ -202,11 +202,6 @@ namespace scn {
 
             iterator begin() const noexcept
             {
-                if (m_deferred_advance) {
-                    m_deferred_advance = false;
-                    ++m_read;
-                    ++m_begin;
-                }
                 return m_begin;
             }
             sentinel end() const noexcept(noexcept(
@@ -222,10 +217,6 @@ namespace scn {
 
             iterator advance(difference_type n = 1) noexcept
             {
-                if (m_deferred_advance) {
-                    ++n;
-                    m_deferred_advance = false;
-                }
                 m_read += n;
                 ranges::advance(m_begin, n);
                 return m_begin;
@@ -248,11 +239,6 @@ namespace scn {
                     ++m_read;
                     ++m_begin;
                 }
-            }
-
-            void defer_advance() noexcept
-            {
-                m_deferred_advance = true;
             }
 
             iterator begin_underlying() const noexcept(noexcept(
@@ -359,9 +345,8 @@ namespace scn {
 
         private:
             storage_type m_range;
-            mutable iterator m_begin;
+            iterator m_begin;
             mutable difference_type m_read{0};
-            mutable bool m_deferred_advance{false};
         };
 
         namespace _wrap {

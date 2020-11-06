@@ -339,7 +339,6 @@ namespace scn {
                 if (keep_final_space) {
                     *out = ch;
                     ++out;
-                    r.defer_advance();
                 }
                 return {};
             }
@@ -373,7 +372,6 @@ namespace scn {
                 if (keep_final_space) {
                     *out = ch;
                     ++out;
-                    r.defer_advance();
                 }
                 return {};
             }
