@@ -361,6 +361,7 @@ namespace scn {
             if (until_pred(tmp.back())) {
                 tmp.pop_back();
             }
+            r.advance();
             str = std::move(tmp);
             return {};
         }

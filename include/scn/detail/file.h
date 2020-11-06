@@ -193,19 +193,6 @@ namespace scn {
             iterator& operator++()
             {
                 SCN_EXPECT(m_file);
-
-                m_last_error = error{};
-                if (m_file->_is_at_end(m_current + 1)) {
-                    auto r = m_file->_read_single();
-                    if (!r) {
-                        m_last_error = r.error();
-                        if (m_last_error.code() == error::end_of_range &&
-                            !m_file->_is_at_end(m_current)) {
-                            ++m_current;
-                        }
-                        return *this;
-                    }
-                }
                 ++m_current;
                 return *this;
             }
@@ -235,6 +222,20 @@ namespace scn {
 
             bool operator==(const iterator& o) const
             {
+                if (m_file && (m_file == o.m_file || !o.m_file)) {
+                    if (m_file->_is_at_end(m_current) &&
+                        m_last_error.code() != error::end_of_range) {
+                        m_last_error = error{};
+                        auto r = m_file->_read_single();
+                        if (!r) {
+                            m_last_error = r.error();
+                            return !o.m_file ||
+                                   m_current == o.m_current ||
+                                   o.m_last_error.code() == error::end_of_range;
+                        }
+                    }
+                }
+
                 // null file == null file
                 if (!m_file && !o.m_file) {
                     return true;
