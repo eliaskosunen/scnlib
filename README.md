@@ -160,6 +160,17 @@ add_executable(my_program ...)
 target_link_libraries(my_program scn::scn)
 ```
 
+Alternatively, if you have `scnlib` downloaded somewhere, or maybe even bundled inside your project (like a git submodule),
+you can use `add_subdirectory`:
+
+```cmake
+add_subdirectory(path/to/scnlib)
+
+# like above
+add_executable(my_program ...)
+target_link_libraries(my_program scn::scn)
+```
+
 See docs for usage without CMake.
 
 ## Compiler support
