@@ -98,28 +98,43 @@ namespace scn {
             m_file.handle = fd;
             m_map = span<char>{ptr, static_cast<size_t>(size)};
 #elif SCN_WINDOWS
-            auto f = CreateFileA(
-                filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
+            auto f = ::CreateFileA(
+                filename, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
             if (f == INVALID_HANDLE_VALUE) {
                 return;
             }
 
-            auto size = GetFileSize(f, NULL);
-            if (size == INVALID_FILE_SIZE) {
-                CloseHandle(f);
+            LARGE_INTEGER _size;
+            if (::GetFileSizeEx(f, &_size) == 0) {
+                ::CloseHandle(f);
+                return;
+            }
+            auto size = static_cast<size_t>(_size.QuadPart);
+
+            auto h = ::CreateFileMappingA(
+                f, nullptr, PAGE_READONLY,
+#ifdef _WIN64
+                static_cast<DWORD>(size >> 32ull),
+#else
+                DWORD{0},
+#endif
+                static_cast<DWORD>(size & 0xffffffffull), nullptr);
+            if (h == INVALID_HANDLE_VALUE || h == nullptr) {
+                ::CloseHandle(f);
                 return;
             }
 
-            auto h = CreateFileMappingA(f, NULL, PAGE_READONLY, 0, size, NULL);
-            if (h == NULL) {
-                CloseHandle(f);
+            auto start = ::MapViewOfFile(h, FILE_MAP_READ, 0, 0, size);
+            if (!start) {
+                ::CloseHandle(h);
+                ::CloseHandle(f);
                 return;
             }
 
             m_file.handle = f;
-            m_map =
-                span<char>{static_cast<char*>(h), static_cast<size_t>(size)};
+            m_map_handle.handle = h;
+            m_map = span<char>{static_cast<char*>(start), size};
 #else
             SCN_UNUSED(filename);
 #endif
@@ -131,11 +146,12 @@ namespace scn {
             munmap(m_map.data(), m_map.size());
             close(m_file.handle);
 #elif SCN_WINDOWS
-            CloseHandle(m_map.data());
-            CloseHandle(m_file.handle);
+            ::CloseHandle(m_map_handle.handle);
+            ::CloseHandle(m_file.handle);
+            m_map_handle = native_file_handle::invalid();
 #endif
 
-            m_file = native_file_handle{native_file_handle::invalid().handle};
+            m_file = native_file_handle::invalid();
             m_map = span<char>{};
 
             SCN_ENSURE(!valid());

@@ -18,8 +18,6 @@
 #ifndef SCN_DETAIL_SCAN_H
 #define SCN_DETAIL_SCAN_H
 
-#include <vector>
-
 #include "vscan.h"
 
 namespace scn {
@@ -86,8 +84,10 @@ namespace scn {
             using parse_context_type = ParseCtx<locale_type>;
 
             auto args = make_args<context_type, parse_context_type>(a...);
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
             auto ctx =
                 context_type(detail::wrap(r), locale_type{std::addressof(loc)});
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
             auto pctx = parse_context_type(f, ctx);
             auto err = vscan(
                 ctx, pctx, basic_args<typename context_type::char_type>{args});

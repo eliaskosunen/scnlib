@@ -1,0 +1,54 @@
+name: coverage
+
+on: [push, pull_request]
+
+env:
+  APT_INSTALL: sudo apt-get install -yq --no-install-suggests --no-install-recommends --force-yes
+
+jobs:
+  codecov:
+    runs-on: ubuntu-latest
+    env:
+      CXX: g++-8
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Create Build Environment
+        run: |
+          sudo locale-gen en_US.UTF-8
+          sudo locale-gen fi_FI.UTF-8
+          sudo update-locale
+          sudo locale -a
+          mkdir ${{ runner.workspace }}/lcov
+          mkdir ${{ runner.workspace }}/build
+
+      - name: Setup lcov
+        working-directory: ${{ runner.workspace }}/lcov
+        shell: bash
+        run: |
+          wget http://downloads.sourceforge.net/ltp/lcov-1.14.tar.gz
+          tar xvfz lcov-1.14.tar.gz
+          make -C lcov-1.14
+          cd ..
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_COVERAGE=ON -DSCN_BENCHMARKS=OFF $GITHUB_WORKSPACE
+          make -k -j
+
+      - name: Generate Coverage Report
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          ctest
+
+      - name: Upload Coverage Report
+        working-directory: ${{ runner.workspace }}/build
+        shell: bash
+        run: |
+          ${{ runner.workspace }}/lcov/lcov-1.14/bin/lcov --gcov-tool /usr/bin/gcov-8 --directory . --capture --output-file coverage.info
+          ${{ runner.workspace }}/lcov/lcov-1.14/bin/lcov --gcov-tool /usr/bin/gcov-8 --remove coverage.info '/usr/*' '${{ runner.workspace }}/test/doctest/*' --output-file coverage.info
+          ${{ runner.workspace }}/lcov/lcov-1.14/bin/lcov --gcov-tool /usr/bin/gcov-8 --list coverage.info
+          bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"

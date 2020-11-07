@@ -729,7 +729,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<range_wrapper<Range&>&>,
                                  range_wrapper<Range&>&& range,
-                                 priority_tag<4>)
+                                 priority_tag<4>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range&>, Error>
                 {
                     return {std::move(e), std::move(range)};
@@ -739,7 +739,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<const range_wrapper<Range&>&>,
                                  range_wrapper<Range&>&& range,
-                                 priority_tag<4>)
+                                 priority_tag<4>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range&>, Error>
                 {
                     return {std::move(e), std::move(range)};
@@ -749,7 +749,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<range_wrapper<Range&>>,
                                  range_wrapper<Range&>&& range,
-                                 priority_tag<4>)
+                                 priority_tag<4>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range&>, Error>
                 {
                     return {std::move(e), std::move(range)};
@@ -763,7 +763,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<range_wrapper<Range>&>,
                                  range_wrapper<Range>&& range,
-                                 priority_tag<3>)
+                                 priority_tag<3>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range>, Error>
                 {
                     return {std::move(e), std::move(range)};
@@ -776,7 +776,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<const range_wrapper<Range>&>,
                                  range_wrapper<Range>&& range,
-                                 priority_tag<3>)
+                                 priority_tag<3>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range>, Error>
                 {
                     return {std::move(e), std::move(range)};
@@ -789,7 +789,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<range_wrapper<Range>>,
                                  range_wrapper<Range>&& range,
-                                 priority_tag<3>)
+                                 priority_tag<3>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range>, Error>
                 {
                     return {std::move(e), std::move(range)};
@@ -804,7 +804,7 @@ namespace scn {
                     Error e,
                     range_tag<CharT (&)[N]>,
                     range_wrapper<basic_string_view<NoCvref>>&& range,
-                    priority_tag<2>)
+                    priority_tag<2>) noexcept
                     -> reconstructed_scan_result<
                         range_wrapper<basic_string_view<NoCvref>>,
                         Error>
@@ -820,7 +820,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<InputRange&>,
                                  range_wrapper<InnerWrappedRange>&& range,
-                                 priority_tag<1>)
+                                 priority_tag<1>) noexcept
                     -> non_reconstructed_scan_result<
                         range_wrapper<InnerWrappedRange>,
                         typename std::remove_const<InputRange>::type,
@@ -840,7 +840,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<InputRange>,
                                  range_wrapper<InnerWrappedRange>&& range,
-                                 priority_tag<0>)
+                                 priority_tag<0>) noexcept
                     -> reconstructed_scan_result<range_wrapper<InputRange>,
                                                  Error>
                 {
@@ -858,7 +858,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<InputRange>,
                                  range_wrapper<InnerWrappedRange&>&& range,
-                                 priority_tag<0>)
+                                 priority_tag<0>) noexcept
                     -> reconstructed_scan_result<range_wrapper<NoRef>, Error>
                 {
                     return {std::move(e),
