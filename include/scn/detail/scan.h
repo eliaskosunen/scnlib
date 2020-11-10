@@ -18,8 +18,6 @@
 #ifndef SCN_DETAIL_SCAN_H
 #define SCN_DETAIL_SCAN_H
 
-#include <vector>
-
 #include "vscan.h"
 
 namespace scn {

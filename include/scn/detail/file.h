@@ -51,11 +51,13 @@ namespace scn {
             byte_mapped_file& operator=(const byte_mapped_file&) = delete;
 
             byte_mapped_file(byte_mapped_file&& o) noexcept
-                : m_file(o.m_file), m_map(o.m_map)
+                : m_map(exchange(o.m_map, span<char>{})),
+                  m_file(exchange(o.m_file, native_file_handle::invalid()))
             {
-                o.m_file = native_file_handle::invalid();
-                o.m_map = span<char>{};
-
+#if SCN_WINDOWS
+                m_map_handle = exchange(o.m_map_handle,
+                                        native_file_handle::invalid());
+#endif
                 SCN_ENSURE(!o.valid());
                 SCN_ENSURE(valid());
             }
@@ -64,11 +66,14 @@ namespace scn {
                 if (valid()) {
                     _destruct();
                 }
-                m_file = o.m_file;
-                m_map = o.m_map;
 
-                o.m_file = native_file_handle::invalid();
-                o.m_map = span<char>{};
+                m_map = exchange(o.m_map, span<char>{});
+                m_file =
+                    exchange(o.m_file, native_file_handle::invalid());
+#if SCN_WINDOWS
+                m_map_handle = exchange(o.m_map_handle,
+                                        native_file_handle::invalid());
+#endif
 
                 SCN_ENSURE(!o.valid());
                 SCN_ENSURE(valid());
@@ -99,8 +104,11 @@ namespace scn {
         protected:
             void _destruct();
 
-            native_file_handle m_file{native_file_handle::invalid().handle};
             span<char> m_map{};
+            native_file_handle m_file{native_file_handle::invalid().handle};
+#if SCN_WINDOWS
+            native_file_handle m_map_handle{native_file_handle::invalid().handle};
+#endif
         };
     }  // namespace detail
 

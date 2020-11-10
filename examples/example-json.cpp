@@ -18,6 +18,7 @@
 #include <scn/scn.h>
 
 #include <iostream>
+#include <vector>
 
 struct string_list {
     std::vector<int> list;
