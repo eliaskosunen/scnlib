@@ -3,7 +3,6 @@
 ![Linux](https://github.com/eliaskosunen/scnlib/workflows/linux/badge.svg?branch=master)
 ![macOS](https://github.com/eliaskosunen/scnlib/workflows/macos/badge.svg?branch=master)
 ![Windows](https://github.com/eliaskosunen/scnlib/workflows/windows/badge.svg?branch=master)
-[![Codecov Coverage](https://codecov.io/gh/eliaskosunen/scnlib/branch/master/graph/badge.svg)](https://codecov.io/gh/eliaskosunen/scnlib)
 [![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver)](https://github.com/eliaskosunen/scnlib/releases)
 [![License](https://img.shields.io/github/license/eliaskosunen/scnlib.svg)](https://github.com/eliaskosunen/scnlib/blob/master/LICENSE)
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)
@@ -35,13 +34,9 @@ Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 This library is the reference implementation of the ISO C++ standards proposal
 [P1729 "Text Parsing"](https://wg21.link/p1729).
 
-This library is currently of pre-release quality (version 0.3).
-It is usable in its present state, but do not expect a bug-free experience.
-Additionally, I reserve the right to change the interfaces in incompatible ways 
-in future minor version releases (e.g. 0.4).
-
-The next release of this library will be 0.4.
-After that, unless significant design flaws can be found,
+This library is currently of pre-release quality (version 0.4),
+but its interface and behavior should remain relatively stable.
+Unless significant design flaws can be found,
 the next major release will be 1.0-rc1.
 1.0 will be released when an rc-version will prove itself reasonably bug-free.
 

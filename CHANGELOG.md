@@ -1,6 +1,6 @@
-# 0.4 (in development)
+# 0.4
 
-_Released 2020-11-xx_
+_Released 2020-11-13_
 
 ## Changes and removals
 
@@ -17,6 +17,7 @@ _Released 2020-11-xx_
      To access the leftover range, use the return value of the scanning function.
  * Rewrite file handling, with hopefully way less bugs this time around
    * Remove `file_view` and caching ranges
+   * Move memory mapped files to the public API
  * Remove `default_tag`, replace with `scan_default` function template
  * Remove support for `scanf` syntax, including `scn::scanf` and `scn::basic_scanf_parse_context`.
  * Improve Ranges integration:
@@ -41,6 +42,7 @@ _Released 2020-11-xx_
    [@leha-bot (Alex)](https://github.com/leha-bot) for reporting)
  * Fix CUDA compilation (#22, thanks [@invexed (James Beach)](https://github.com/invexed) for reporting)
  * Move to readthedocs (https://scnlib.readthedocs.com) from https://scnlib.dev
+ * Move to GitHub Actions from Travis and Appveyor
 
 # 0.3
 
