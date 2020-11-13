@@ -112,9 +112,15 @@ namespace scn {
             }
             auto size = static_cast<size_t>(_size.QuadPart);
 
-            auto h = ::CreateFileMappingA(f, nullptr, PAGE_READONLY, 0, size,
-                                          nullptr);
-            if (h == INVALID_HANDLE_VALUE) {
+            auto h = ::CreateFileMappingA(
+                f, nullptr, PAGE_READONLY,
+#ifdef _WIN64
+                static_cast<DWORD>(size >> 32ull),
+#else
+                DWORD{0},
+#endif
+                static_cast<DWORD>(size & 0xffffffffull), nullptr);
+            if (h == INVALID_HANDLE_VALUE || h == nullptr) {
                 ::CloseHandle(f);
                 return;
             }
@@ -128,8 +134,7 @@ namespace scn {
 
             m_file.handle = f;
             m_map_handle.handle = h;
-            m_map =
-                span<char>{static_cast<char*>(start), size};
+            m_map = span<char>{static_cast<char*>(start), size};
 #else
             SCN_UNUSED(filename);
 #endif

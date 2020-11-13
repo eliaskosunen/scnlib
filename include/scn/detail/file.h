@@ -55,8 +55,8 @@ namespace scn {
                   m_file(exchange(o.m_file, native_file_handle::invalid()))
             {
 #if SCN_WINDOWS
-                m_map_handle = exchange(o.m_map_handle,
-                                        native_file_handle::invalid());
+                m_map_handle =
+                    exchange(o.m_map_handle, native_file_handle::invalid());
 #endif
                 SCN_ENSURE(!o.valid());
                 SCN_ENSURE(valid());
@@ -68,11 +68,10 @@ namespace scn {
                 }
 
                 m_map = exchange(o.m_map, span<char>{});
-                m_file =
-                    exchange(o.m_file, native_file_handle::invalid());
+                m_file = exchange(o.m_file, native_file_handle::invalid());
 #if SCN_WINDOWS
-                m_map_handle = exchange(o.m_map_handle,
-                                        native_file_handle::invalid());
+                m_map_handle =
+                    exchange(o.m_map_handle, native_file_handle::invalid());
 #endif
 
                 SCN_ENSURE(!o.valid());
@@ -107,7 +106,8 @@ namespace scn {
             span<char> m_map{};
             native_file_handle m_file{native_file_handle::invalid().handle};
 #if SCN_WINDOWS
-            native_file_handle m_map_handle{native_file_handle::invalid().handle};
+            native_file_handle m_map_handle{
+                native_file_handle::invalid().handle};
 #endif
         };
     }  // namespace detail
@@ -155,7 +155,7 @@ namespace scn {
             return {data(), size()};
         }
 
-        detail::range_wrapper<basic_string_view<CharT>> wrap() const
+        detail::range_wrapper<basic_string_view<CharT>> wrap() const noexcept
         {
             return basic_string_view<CharT>{data(), size()};
         }
@@ -237,8 +237,7 @@ namespace scn {
                         auto r = m_file->_read_single();
                         if (!r) {
                             m_last_error = r.error();
-                            return !o.m_file ||
-                                   m_current == o.m_current ||
+                            return !o.m_file || m_current == o.m_current ||
                                    o.m_last_error.code() == error::end_of_range;
                         }
                     }

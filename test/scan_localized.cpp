@@ -25,8 +25,8 @@ TEST_CASE("C locale")
     auto ret = scn::scan("3.14 3,14", "{} {}", a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ",14");
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
 }
 
 TEST_CASE("Changing C locale")
@@ -36,8 +36,8 @@ TEST_CASE("Changing C locale")
     auto ret = scn::scan("3.14 3,14", "{} {}", a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ",14");
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
     a = b = 0;
 
     // C locale change not affecting behavior
@@ -45,8 +45,8 @@ TEST_CASE("Changing C locale")
     ret = scn::scan("3.14 3,14", "{} {}", a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ",14");
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
 
     std::setlocale(LC_NUMERIC, "C");
 }
@@ -58,8 +58,8 @@ TEST_CASE("Changing global C++ locale")
     auto ret = scn::scan("3.14 3,14", "{} {}", a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ",14");
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
     a = b = 0;
 
     // Global C++ locale change not affecting behavior
@@ -67,8 +67,8 @@ TEST_CASE("Changing global C++ locale")
     ret = scn::scan("3.14 3,14", "{} {}", a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ",14");
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
 
     std::locale::global(std::locale::classic());
 }
@@ -81,24 +81,24 @@ TEST_CASE("Using scan_localized without {:l}")
         scn::scan_localized(std::locale::classic(), "3.14 3,14", "{} {}", a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ",14");
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
     a = b = 0;
 
     ret = scn::scan_localized(std::locale("en_US.UTF-8"), "3.14 3,14", "{} {}",
                               a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ",14");
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
     a = b = 0;
 
     ret = scn::scan_localized(std::locale("fi_FI.UTF-8"), "3.14 3,14", "{} {}",
                               a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ",14");
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
 }
 
 TEST_CASE("Using scan_localized with {:l}")
@@ -109,8 +109,8 @@ TEST_CASE("Using scan_localized with {:l}")
                                    "{:l} {:l}", a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ",14");
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
     a = b = 0;
 
     // On my machine, with en_US locale enabled, stringstreams don't allow
@@ -120,16 +120,16 @@ TEST_CASE("Using scan_localized with {:l}")
                               a, b);
     CHECK(ret);
     CHECK(ret.begin() == ret.end());
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
     a = b = 0;
 
     ret = scn::scan_localized(std::locale("fi_FI.UTF-8"), "3,14 3.14",
                               "{:l} {:l}", a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ".14");
-    CHECK(a == doctest::Approx(3.14f));
-    CHECK(b == doctest::Approx(3.0f));
+    CHECK(a == doctest::Approx(3.14));
+    CHECK(b == doctest::Approx(3.0));
 }
 
 TEST_CASE_TEMPLATE("bool localized", CharT, char, wchar_t)

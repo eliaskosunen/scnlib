@@ -22,6 +22,7 @@
 #include "util.h"
 
 #include <cstring>
+#include <string>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

@@ -1513,15 +1513,19 @@ namespace scn {
             struct fn {
             private:
                 template <typename I, typename S>
-                static SCN_CONSTEXPR14 auto impl(I i, S s) ->
-                    typename std::enable_if<sized_sentinel_for<S, I>::value,
-                                            iter_difference_t<I>>::type
+                static SCN_CONSTEXPR14 auto impl(I i,
+                                                 S s) noexcept(noexcept(s - i))
+                    -> typename std::enable_if<sized_sentinel_for<S, I>::value,
+                                               iter_difference_t<I>>::type
                 {
                     return s - i;
                 }
 
                 template <typename I, typename S>
-                static SCN_CONSTEXPR14 auto impl(I i, S s) ->
+                static SCN_CONSTEXPR14 auto impl(I i, S s) noexcept(
+                    noexcept(i != s,
+                             ++i,
+                             ++std::declval<iter_difference_t<I>&>())) ->
                     typename std::enable_if<!sized_sentinel_for<S, I>::value,
                                             iter_difference_t<I>>::type
                 {
@@ -1534,7 +1538,8 @@ namespace scn {
                 }
 
                 template <typename R>
-                static SCN_CONSTEXPR14 auto impl(R&& r) ->
+                static SCN_CONSTEXPR14 auto impl(R&& r) noexcept(
+                    noexcept(::scn::custom_ranges::size(r))) ->
                     typename std::enable_if<
                         sized_range<R>::value,
                         iter_difference_t<iterator_t<R>>>::type
@@ -1544,7 +1549,9 @@ namespace scn {
                 }
 
                 template <typename R>
-                static SCN_CONSTEXPR14 auto impl(R&& r) ->
+                static SCN_CONSTEXPR14 auto impl(R&& r) noexcept(
+                    noexcept(fn::impl(::scn::custom_ranges::begin(r),
+                                      ::scn::custom_ranges::end(r)))) ->
                     typename std::enable_if<
                         !sized_range<R>::value,
                         iter_difference_t<iterator_t<R>>>::type
@@ -1555,7 +1562,9 @@ namespace scn {
 
             public:
                 template <typename I, typename S>
-                SCN_CONSTEXPR14 auto operator()(I first, S last) const ->
+                SCN_CONSTEXPR14 auto operator()(I first, S last) const
+                    noexcept(noexcept(fn::impl(std::move(first),
+                                               std::move(last)))) ->
                     typename std::enable_if<sentinel_for<S, I>::value,
                                             iter_difference_t<I>>::type
                 {
@@ -1563,7 +1572,8 @@ namespace scn {
                 }
 
                 template <typename R>
-                SCN_CONSTEXPR14 auto operator()(R&& r) const ->
+                SCN_CONSTEXPR14 auto operator()(R&& r) const
+                    noexcept(noexcept(fn::impl(std::forward<R>(r)))) ->
                     typename std::enable_if<
                         range<R>::value,
                         iter_difference_t<iterator_t<R>>>::type
@@ -1592,18 +1602,16 @@ namespace scn {
 
 namespace std {
     template <typename I, typename S, ::scn::custom_ranges::subrange_kind K>
-    class tuple_size<::scn::custom_ranges::subrange<I, S, K>>
+    struct tuple_size<::scn::custom_ranges::subrange<I, S, K>>
         : public integral_constant<size_t, 2> {
     };
 
     template <typename I, typename S, ::scn::custom_ranges::subrange_kind K>
-    class tuple_element<0, ::scn::custom_ranges::subrange<I, S, K>> {
-    public:
+    struct tuple_element<0, ::scn::custom_ranges::subrange<I, S, K>> {
         using type = I;
     };
     template <typename I, typename S, ::scn::custom_ranges::subrange_kind K>
-    class tuple_element<1, ::scn::custom_ranges::subrange<I, S, K>> {
-    public:
+    struct tuple_element<1, ::scn::custom_ranges::subrange<I, S, K>> {
         using type = S;
     };
 

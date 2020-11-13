@@ -43,7 +43,7 @@ function (get_warning_flags flags)
             /D_SCL_SECURE_NO_WARNINGS
             /D_CRT_SECURE_NO_WARNINGS
             /wd4324 # padding
-            /std:c++latest /permissive->
+            /permissive->
 
             PARENT_SCOPE)
 endfunction ()

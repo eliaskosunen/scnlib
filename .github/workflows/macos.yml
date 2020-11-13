@@ -1,0 +1,34 @@
+name: macos
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest]
+        std: [11, 14, 17, 20]
+        build_type: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Create Build Environment
+        run: mkdir ${{ runner.workspace }}/build
+
+      - name: Configure
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                -DSCN_WERROR=ON $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: make -k -j
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest -C ${{ matrix.build_type }} --output-on-failure
