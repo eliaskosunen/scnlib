@@ -1,7 +1,8 @@
 # scnlib
 
-[![Travis CI Build Status](https://travis-ci.com/eliaskosunen/scnlib.svg?branch=master)](https://travis-ci.com/eliaskosunen/scnlib)
-[![Appveyor CI Build Status](https://ci.appveyor.com/api/projects/status/ex0q59kt5h8yciqa/branch/master?svg=true)](https://ci.appveyor.com/project/eliaskosunen/scnlib/branch/master)
+![Linux](https://github.com/eliaskosunen/scnlib/workflows/linux/badge.svg?branch=master)
+![macOS](https://github.com/eliaskosunen/scnlib/workflows/macos/badge.svg?branch=master)
+![Windows](https://github.com/eliaskosunen/scnlib/workflows/windows/badge.svg?branch=master)
 [![Codecov Coverage](https://codecov.io/gh/eliaskosunen/scnlib/branch/master/graph/badge.svg)](https://codecov.io/gh/eliaskosunen/scnlib)
 [![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver)](https://github.com/eliaskosunen/scnlib/releases)
 [![License](https://img.shields.io/github/license/eliaskosunen/scnlib.svg)](https://github.com/eliaskosunen/scnlib/blob/master/LICENSE)
