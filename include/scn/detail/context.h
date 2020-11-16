@@ -33,12 +33,12 @@ namespace scn {
         using locale_type = LocaleRef;
 
         template <typename R>
-        basic_context(R&& r) : LocaleRef{}, m_range(std::forward<R>(r))
+        basic_context(R&& r) : LocaleRef{}, m_range(SCN_FWD(r))
         {
         }
         template <typename R>
         basic_context(R&& r, LocaleRef&& loc)
-            : LocaleRef(std::move(loc)), m_range(std::forward<R>(r))
+            : LocaleRef(SCN_MOVE(loc)), m_range(SCN_FWD(r))
         {
         }
 
@@ -61,7 +61,7 @@ namespace scn {
         }
         range_type&& range() &&
         {
-            return std::move(m_range);
+            return SCN_MOVE(m_range);
         }
 
         LocaleRef& locale() noexcept

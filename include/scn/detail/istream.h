@@ -106,8 +106,8 @@ namespace scn {
         struct is_std_streamable<
             CharT,
             T,
-            void_t<decltype(std::declval<test_std_stream<CharT>&>() >>
-                            std::declval<T&>())>> : std::true_type {
+            void_t<decltype(SCN_DECLVAL(test_std_stream<CharT>&) >>
+                            SCN_DECLVAL(T&))>> : std::true_type {
         };
     }  // namespace detail
 

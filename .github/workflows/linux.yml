@@ -24,13 +24,15 @@ jobs:
           - cxx: g++-8
             os: ubuntu-20.04
             std: 20
+            install_cmd: ${APT_INSTALL} g++-8
           # gcc 7
           - cxx: g++-7
             os: ubuntu-20.04
             std: 17
+            install_cmd: ${APT_INSTALL} g++-7
           # gcc 6
           - cxx: g++-6
-            os: ubuntu-16.04
+            os: ubuntu-18.04
             std: 14
             install_cmd: ${APT_INSTALL} g++-6
           # gcc 5
@@ -42,14 +44,17 @@ jobs:
           - cxx: clang++-10
             os: ubuntu-20.04
             std: 20
+            install_cmd: ${APT_INSTALL} clang-10
           # clang 9
           - cxx: clang++-9
             os: ubuntu-20.04
             std: 20
+            install_cmd: ${APT_INSTALL} clang-9
           # clang 6.0
           - cxx: clang++-6.0
-            os: ubuntu-16.04
+            os: ubuntu-20.04
             std: 17
+            install_cmd: ${APT_INSTALL} clang-6.0
 
     steps:
       - uses: actions/checkout@v2
@@ -77,21 +82,24 @@ jobs:
           run_cmake() {
             cmake -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_WERROR=ON \
                   "$@" \
-                  $GITHUB_WORKSPACE
+                  $GITHUB_WORKSPACE || return 1
+            return 0
           }
           run_test() {
-            ctest --output-on-failure "$@"
+            ctest --output-on-failure "$@" || return 1
+            return 0
           }
           run_build() {
-            run_cmake -DCMAKE_BUILD_TYPE=Debug "$@"
-            make -k -j
-            run_test -C Debug
-            make clean
+            run_cmake -DCMAKE_BUILD_TYPE=Debug "$@" || return 1
+            make -k -j || return 1
+            run_test -C Debug || return 1
+            make clean || return 1
 
-            run_cmake -DCMAKE_BUILD_TYPE=Release "$@"
-            make -k -j
-            run_test -C Release
-            make clean
+            run_cmake -DCMAKE_BUILD_TYPE=Release "$@" || return 1
+            make -k -j || return 1
+            run_test -C Release || return 1
+            make clean || return 1
+            return 0
           }
 
           standards="11 14 17 20"

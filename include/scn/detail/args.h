@@ -22,7 +22,10 @@
 #include "result.h"
 #include "util.h"
 
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wnoexcept")
 #include <string>
+SCN_GCC_POP
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -34,7 +37,7 @@ namespace scn {
      */
     template <typename T>
     struct temporary {
-        temporary(T&& val) : value(std::move(val)) {}
+        temporary(T&& val) : value(SCN_MOVE(val)) {}
 
         T& operator()() && noexcept
         {
@@ -58,7 +61,7 @@ namespace scn {
                   !std::is_lvalue_reference<T>::value>::type* = nullptr>
     temporary<T> temp(T&& val)
     {
-        return {std::forward<T>(val)};
+        return {SCN_FWD(val)};
     }
 
     namespace detail {
@@ -393,9 +396,9 @@ namespace scn {
         template <typename CharT, typename T>
         struct get_type {
             using value_type = decltype(make_value<CharT>(
-                std::declval<typename std::remove_reference<
-                    typename std::remove_cv<T>::type>::type&>(),
-                std::declval<priority_tag<1>>()));
+                SCN_DECLVAL(typename std::remove_reference<
+                            typename std::remove_cv<T>::type>::type&),
+                SCN_DECLVAL(priority_tag<1>)));
             static const type value = value_type::type_tag;
         };
 

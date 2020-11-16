@@ -178,8 +178,8 @@ namespace scn {
         auto scanfn = [&r, &f](Args&... a) { return ::scn::scan(r, f, a...); };
         std::tuple<Args...> values{Args{}...};
         auto ret = detail::apply(scanfn, values);
-        return std::tuple_cat(std::tuple<result>{std::move(ret)},
-                              std::move(values));
+        return std::tuple_cat(std::tuple<result>{SCN_MOVE(ret)},
+                              SCN_MOVE(values));
     }
     template <typename... Args,
               typename Range,
@@ -197,8 +197,8 @@ namespace scn {
         };
         std::tuple<Args...> values{Args{}...};
         auto ret = detail::apply(scanfn, values);
-        return std::tuple_cat(std::tuple<result>{std::move(ret)},
-                              std::move(values));
+        return std::tuple_cat(std::tuple<result>{SCN_MOVE(ret)},
+                              SCN_MOVE(values));
     }
 
     template <typename... Args, typename Range>
@@ -211,8 +211,8 @@ namespace scn {
         };
         std::tuple<Args...> values{Args{}...};
         auto ret = detail::apply(scanfn, values);
-        return std::tuple_cat(std::tuple<result>{std::move(ret)},
-                              std::move(values));
+        return std::tuple_cat(std::tuple<result>{SCN_MOVE(ret)},
+                              SCN_MOVE(values));
     }
     template <typename... Args,
               typename Range,
@@ -229,8 +229,8 @@ namespace scn {
         };
         std::tuple<Args...> values{Args{}...};
         auto ret = detail::apply(scanfn, values);
-        return std::tuple_cat(std::tuple<result>{std::move(ret)},
-                              std::move(values));
+        return std::tuple_cat(std::tuple<result>{SCN_MOVE(ret)},
+                              SCN_MOVE(values));
     }
 
     SCN_END_NAMESPACE

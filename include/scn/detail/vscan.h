@@ -18,9 +18,7 @@
 #ifndef SCN_DETAIL_VSCAN_H
 #define SCN_DETAIL_VSCAN_H
 
-#include "args.h"
 #include "file.h"
-#include "string_view.h"
 #include "visitor.h"
 
 namespace scn {

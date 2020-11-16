@@ -1365,7 +1365,7 @@ namespace scn {
                     return error(error::invalid_scanned_value,
                                  "Empty string parsed");
                 }
-                val = std::move(tmp);
+                val = SCN_MOVE(tmp);
 
                 return {};
             }

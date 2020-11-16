@@ -20,9 +20,13 @@
 
 #include "util.h"
 
+#include <cstdint>
 #include <cstring>
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wnoexcept")
 #include <iterator>
-#include <new>
+SCN_GCC_POP
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -758,7 +762,7 @@ namespace scn {
             template <typename... Args>
             reference emplace_back(Args&&... args)
             {
-                ::new (_prepare_push_back()) T(std::forward<Args>(args)...);
+                ::new (_prepare_push_back()) T(SCN_FWD(args)...);
                 m_size = size() + 1;
                 return back();
             }
@@ -788,7 +792,7 @@ namespace scn {
 
             SCN_CONSTEXPR14 void swap(small_vector& other) noexcept
             {
-                small_vector tmp{std::move(other)};
+                small_vector tmp{SCN_MOVE(other)};
                 other = std::move(*this);
                 *this = std::move(tmp);
             }

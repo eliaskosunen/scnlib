@@ -421,7 +421,8 @@
 
 #define SCN_MOVE(x) \
     (static_cast<typename std::remove_reference<decltype(x)>::type&&>(x))
-#define SCN_FWD(x) (static_cast<decltype(x)>(x))
+#define SCN_FWD(x) static_cast<decltype(x)>(x)
+#define SCN_DECLVAL(T) static_cast<T(*)()>(nullptr)()
 
 #define SCN_BEGIN_NAMESPACE inline namespace v0 {
 #define SCN_END_NAMESPACE }

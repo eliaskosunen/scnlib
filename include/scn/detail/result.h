@@ -20,8 +20,6 @@
 
 #include "util.h"
 
-#include <type_traits>
-
 namespace scn {
     SCN_BEGIN_NAMESPACE
     SCN_CLANG_PUSH

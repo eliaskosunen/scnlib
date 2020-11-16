@@ -24,6 +24,10 @@
 #include <new>
 #include <utility>
 
+#if SCN_MSVC
+#include "string_view.h"
+#endif
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 

@@ -18,7 +18,6 @@
 #ifndef SCN_DETAIL_VISITOR_H
 #define SCN_DETAIL_VISITOR_H
 
-#include "args.h"
 #include "reader.h"
 
 namespace scn {
@@ -39,7 +38,7 @@ namespace scn {
         template <typename T>
         auto operator()(T&& val) -> error
         {
-            return visit(std::forward<T>(val), detail::priority_tag<1>{});
+            return visit(SCN_FWD(val), detail::priority_tag<1>{});
         }
 
     private:

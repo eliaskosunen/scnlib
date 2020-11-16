@@ -15,14 +15,18 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+
+#include <scn/scn.h>
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wnoexcept")
 #include <algorithm>
 #include <array>
 #include <exception>
 #include <ostream>
 #include <string>
 #include <vector>
-
-#include <scn/scn.h>
+SCN_GCC_POP
 
 #include <doctest/doctest.h>
 

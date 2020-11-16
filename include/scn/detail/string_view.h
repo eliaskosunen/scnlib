@@ -22,6 +22,7 @@
 
 #include <cstring>
 #include <cstdint>
+#include <cwchar>
 
 #if SCN_HAS_STRING_VIEW
 #include <string_view>
@@ -116,19 +117,19 @@ namespace scn {
             return m_data.cend();
         }
 
-        constexpr const_iterator rbegin() const noexcept
+        constexpr const_reverse_iterator rbegin() const noexcept
         {
             return crbegin();
         }
-        constexpr const_iterator crbegin() const noexcept
+        constexpr const_reverse_iterator crbegin() const noexcept
         {
             return m_data.crbegin();
         }
-        constexpr const_iterator rend() const noexcept
+        constexpr const_reverse_iterator rend() const noexcept
         {
             return crend();
         }
-        constexpr const_iterator crend() const noexcept
+        constexpr const_reverse_iterator crend() const noexcept
         {
             return m_data.crend();
         }

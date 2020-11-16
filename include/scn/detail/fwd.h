@@ -20,6 +20,8 @@
 
 #include "config.h"
 
+#include <cstddef>
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 

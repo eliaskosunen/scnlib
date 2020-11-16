@@ -44,10 +44,9 @@ namespace scn {
 
             template <typename T>
             constexpr typename std::decay<T>::type decay_copy(T&& t) noexcept(
-                noexcept(static_cast<typename std::decay<T>::type>(
-                    std::forward<T>(t))))
+                noexcept(static_cast<typename std::decay<T>::type>(SCN_FWD(t))))
             {
-                return std::forward<T>(t);
+                return SCN_FWD(t);
             }
 
             struct nonesuch {
@@ -96,7 +95,7 @@ namespace scn {
 
             template <typename R, typename... Args>
             using test_requires_t =
-                decltype(test_requires<R, Args...>(std::declval<R&>()));
+                decltype(test_requires<R, Args...>(SCN_DECLVAL(R&)));
 
             template <typename R, typename... Args>
             struct _requires : exists<test_requires_t, R, Args...> {
@@ -144,8 +143,8 @@ namespace scn {
 
             template <typename T, typename U>
             using cond_res_t =
-                decltype(std::declval<bool>() ? std::declval<T (&)()>()()
-                                              : std::declval<U (&)()>()());
+                decltype(SCN_DECLVAL(bool) ? std::declval<T (&)()>()()
+                                           : std::declval<U (&)()>()());
 
             template <typename T, typename U>
             struct simple_common_reference {
@@ -345,7 +344,7 @@ namespace scn {
 
             template <typename T, typename U>
             using ternary_return_t = typename std::decay<decltype(
-                false ? std::declval<T>() : std::declval<U>())>::type;
+                false ? SCN_DECLVAL(T) : SCN_DECLVAL(U))>::type;
 
             template <typename, typename, typename = void>
             struct binary_common_type {

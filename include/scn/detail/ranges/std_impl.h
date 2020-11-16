@@ -21,11 +21,16 @@
 #include "../config.h"
 
 #if SCN_HAS_CONCEPTS && SCN_HAS_RANGES
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wnoexcept")
 #include <iterator>
 #include <ranges>
+SCN_GCC_POP
+
+#include "util.h"
 
 #include "../string_view.h"
-#include "util.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
