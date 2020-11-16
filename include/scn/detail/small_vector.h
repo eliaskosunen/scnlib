@@ -22,7 +22,6 @@
 
 #include <cstring>
 #include <iterator>
-#include <limits>
 #include <new>
 
 namespace scn {

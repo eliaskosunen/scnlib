@@ -18,22 +18,14 @@
 #ifndef SCN_DETAIL_ARGS_H
 #define SCN_DETAIL_ARGS_H
 
-#include "parse_context.h"
+#include "fwd.h"
+#include "result.h"
 #include "util.h"
 
-#include <cstring>
 #include <string>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
-
-    template <typename Context>
-    class basic_arg;
-    template <typename Context>
-    class basic_args;
-
-    template <typename CharT, typename T, typename Enable = void>
-    struct scanner;
 
     /**
      * Allows reading an rvalue.

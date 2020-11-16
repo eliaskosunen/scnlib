@@ -19,6 +19,9 @@
 #define SCN_READER_CPP
 #endif
 
+#include <scn/detail/args.h>
+#include <scn/detail/range.h>
+
 #include <scn/detail/reader.h>
 
 #include <cerrno>

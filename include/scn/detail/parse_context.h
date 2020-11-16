@@ -18,8 +18,8 @@
 #ifndef SCN_DETAIL_PARSE_CONTEXT_H
 #define SCN_DETAIL_PARSE_CONTEXT_H
 
+#include "locale.h"
 #include "result.h"
-#include "string_view.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

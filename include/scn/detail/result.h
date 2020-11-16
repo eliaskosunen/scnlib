@@ -20,6 +20,8 @@
 
 #include "util.h"
 
+#include <type_traits>
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
     SCN_CLANG_PUSH
@@ -126,7 +128,7 @@ namespace scn {
      * For situations where there can be a value in case of success or an error
      * code.
      */
-    template <typename T, typename Error = ::scn::error, typename Enable = void>
+    template <typename T, typename Error, typename Enable>
     class expected;
 
     /**
@@ -171,7 +173,7 @@ namespace scn {
         }
         SCN_CONSTEXPR14 success_type value() && noexcept
         {
-            return std::move(m_s);
+            return SCN_MOVE(m_s);
         }
 
         SCN_CONSTEXPR14 error_type& error() noexcept
@@ -203,7 +205,7 @@ namespace scn {
         using success_storage = detail::erased_storage<T>;
         using error_type = Error;
 
-        expected(success_type s) : m_s(std::move(s)) {}
+        expected(success_type s) : m_s(SCN_MOVE(s)) {}
         constexpr expected(error_type e) : m_e(e) {}
 
         constexpr bool has_value() const noexcept

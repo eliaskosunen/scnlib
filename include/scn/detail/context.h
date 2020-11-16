@@ -19,15 +19,11 @@
 #define SCN_DETAIL_CONTEXT_H
 
 #include "args.h"
-#include "locale.h"
-#include "range.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    template <typename WrappedRange,
-              typename LocaleRef =
-                  basic_default_locale_ref<typename WrappedRange::char_type>>
+    template <typename WrappedRange, typename LocaleRef>
     class basic_context : public LocaleRef {
     public:
         using range_type = WrappedRange;

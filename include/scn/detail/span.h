@@ -18,15 +18,12 @@
 #ifndef SCN_DETAIL_SPAN_H
 #define SCN_DETAIL_SPAN_H
 
-#include "config.h"
+#include "fwd.h"
 
 #include <iterator>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
-
-    template <typename T>
-    class span;
 
     namespace custom_ranges {
         // iterator_category

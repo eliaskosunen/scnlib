@@ -18,6 +18,7 @@
 #ifndef SCN_DETAIL_VISITOR_H
 #define SCN_DETAIL_VISITOR_H
 
+#include "args.h"
 #include "reader.h"
 
 namespace scn {
@@ -272,14 +273,6 @@ namespace scn {
         ctx.range().set_rollback_point();
         return {};
     }
-    /*
-    template <typename Context>
-    struct scan_result_for {
-        using type = scan_result<typename Context::range_type::return_type>;
-    };
-    template <typename Context>
-    using scan_result_for_t = typename scan_result_for<Context>::type;
-     */
 
     SCN_END_NAMESPACE
 }  // namespace scn

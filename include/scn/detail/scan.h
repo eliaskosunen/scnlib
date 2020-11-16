@@ -18,7 +18,12 @@
 #ifndef SCN_DETAIL_SCAN_H
 #define SCN_DETAIL_SCAN_H
 
+#include "context.h"
+#include "parse_context.h"
+#include "small_vector.h"
 #include "vscan.h"
+
+#include "reader.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -441,7 +446,8 @@ namespace scn {
             if (!e) {
                 err = e;
             }
-        } else {
+        }
+        else {
             wrapped.set_rollback_point();
         }
         return detail::wrap_result(
@@ -573,7 +579,8 @@ namespace scn {
             if (!e) {
                 err = e;
             }
-        } else {
+        }
+        else {
             wrapped.set_rollback_point();
         }
         return detail::wrap_result(
@@ -855,11 +862,13 @@ namespace scn {
                 if (separator != 0) {
                     if (next.value() != separator || sep_found) {
                         break;
-                    } else {
+                    }
+                    else {
                         ctx.range().advance();
                         sep_found = true;
                     }
-                } else {
+                }
+                else {
                     break;
                 }
             }

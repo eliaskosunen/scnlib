@@ -298,8 +298,8 @@ namespace scn {
         private:
             friend class basic_file;
 
-            iterator(const file_type& file, size_t i)
-                : m_file{std::addressof(file)}, m_current{i}
+            iterator(const file_type& f, size_t i)
+                : m_file{std::addressof(f)}, m_current{i}
             {
             }
 

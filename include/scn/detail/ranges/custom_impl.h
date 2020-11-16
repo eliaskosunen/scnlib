@@ -23,10 +23,12 @@
 #ifndef SCN_DETAIL_RANGES_CUSTOM_IMPL_H
 #define SCN_DETAIL_RANGES_CUSTOM_IMPL_H
 
-#include "../string_view.h"
 #include "util.h"
 
+#include "../string_view.h"
+
 #include <iterator>
+#include <utility>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

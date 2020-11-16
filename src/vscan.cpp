@@ -19,7 +19,12 @@
 #define SCN_VSCAN_CPP
 #endif
 
+#include <scn/detail/small_vector.h>
 #include <scn/detail/vscan.h>
+
+#include <scn/detail/context.h>
+#include <scn/detail/parse_context.h>
+#include <scn/detail/visitor.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -32,7 +37,7 @@ namespace scn {
                 basic_parse_context<basic_default_locale_ref<char>>& pctx, \
                 basic_args<char> args)                                     \
     {                                                                      \
-        return visit(ctx, pctx, std::move(args));                          \
+        return visit(ctx, pctx, SCN_MOVE(args));                           \
     }                                                                      \
                                                                            \
     error vscan(                                                           \
@@ -41,7 +46,7 @@ namespace scn {
         basic_empty_parse_context<basic_default_locale_ref<char>>& pctx,   \
         basic_args<char> args)                                             \
     {                                                                      \
-        return visit(ctx, pctx, std::move(args));                          \
+        return visit(ctx, pctx, SCN_MOVE(args));                           \
     }
 
     SCN_VSCAN_DEFINE(string_view)

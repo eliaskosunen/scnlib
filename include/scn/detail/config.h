@@ -227,9 +227,6 @@
 
 #if SCN_HAS_INCLUDE(<version>)
 #include <version>
-#define SCN_VERSION_HEADER_INCLUDED 1
-#else
-#define SCN_VERSION_HEADER_INCLUDED 0
 #endif
 
 // Detect constexpr
@@ -260,11 +257,6 @@
 #endif
 
 // Detect string_view
-#if SCN_HAS_INCLUDE(<string_view>) && SCN_STD >= SCN_STD_17 && \
-    !SCN_VERSION_HEADER_INCLUDED
-#include <string_view>
-#endif
-
 #if defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201603 && \
     SCN_STD >= SCN_STD_17
 #define SCN_HAS_STRING_VIEW 1
@@ -297,10 +289,6 @@
 #endif
 
 // Detect <charconv>
-#if SCN_HAS_INCLUDE(<charconv>) && SCN_STD_17 && !SCN_VERSION_HEADER_INCLUDED
-#include <charconv>
-#endif
-
 #if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606
 
 #if defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= 9
@@ -324,9 +312,6 @@
 #endif
 
 // Detect std::launder
-#if !SCN_VERSION_HEADER_INCLUDED
-#include <new>
-#endif
 #if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606
 #define SCN_HAS_LAUNDER 1
 #else
@@ -412,10 +397,6 @@
 #endif
 
 // Detect ranges
-#if SCN_HAS_INCLUDE(<ranges>) && SCN_STD > SCN_STD_17 && !SCN_VERSION_HEADER_INCLUDED
-#include <ranges>
-#endif
-
 #if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
 #define SCN_HAS_RANGES 1
 #else
@@ -437,6 +418,10 @@
 #define SCN_EXPECT(cond)
 #define SCN_ENSURE(cond)
 #endif
+
+#define SCN_MOVE(x) \
+    (static_cast<typename std::remove_reference<decltype(x)>::type&&>(x))
+#define SCN_FWD(x) (static_cast<decltype(x)>(x))
 
 #define SCN_BEGIN_NAMESPACE inline namespace v0 {
 #define SCN_END_NAMESPACE }

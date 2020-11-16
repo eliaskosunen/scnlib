@@ -19,11 +19,9 @@
 #define SCN_DETAIL_STRING_VIEW_H
 
 #include "span.h"
-#include "util.h"
 
 #include <cstring>
-#include <cwchar>
-#include <limits>
+#include <cstdint>
 
 #if SCN_HAS_STRING_VIEW
 #include <string_view>
@@ -168,7 +166,7 @@ namespace scn {
         }
         constexpr size_type max_size() const noexcept
         {
-            return std::numeric_limits<size_type>::max() - 1;
+            return SIZE_MAX - 1;
         }
         SCN_NODISCARD constexpr bool empty() const noexcept
         {

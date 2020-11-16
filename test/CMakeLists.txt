@@ -24,6 +24,7 @@ endfunction()
 
 make_test(test test.cpp)
 make_test(empty empty.cpp)
+make_test(fwd fwd.cpp)
 
 make_test(util util.cpp)
 make_test(small-vector small_vector.cpp)

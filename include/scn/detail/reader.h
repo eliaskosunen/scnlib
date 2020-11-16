@@ -21,9 +21,6 @@
 #include "args.h"
 #include "locale.h"
 #include "range.h"
-#include "result.h"
-#include "small_vector.h"
-#include "span.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -552,7 +549,7 @@ namespace scn {
             }
         };
 
-        struct buffer_scanner : public empty_parser {
+        struct buffer_scanner : public ::scn::empty_parser {
             template <typename Context>
             error scan(span<typename Context::char_type>& val, Context& ctx)
             {

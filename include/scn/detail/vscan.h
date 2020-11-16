@@ -18,8 +18,9 @@
 #ifndef SCN_DETAIL_VSCAN_H
 #define SCN_DETAIL_VSCAN_H
 
-#include "context.h"
+#include "args.h"
 #include "file.h"
+#include "string_view.h"
 #include "visitor.h"
 
 namespace scn {
@@ -42,7 +43,7 @@ namespace scn {
                 ParseCtx& pctx,
                 basic_args<typename Context::char_type> args)
     {
-        return visit(ctx, pctx, std::move(args));
+        return visit(ctx, pctx, SCN_MOVE(args));
     }
 
 #if !defined(SCN_HEADER_ONLY) || !SCN_HEADER_ONLY
