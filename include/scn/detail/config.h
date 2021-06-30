@@ -289,22 +289,17 @@
 #endif
 
 // Detect <charconv>
-#if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606
 
-#if defined(_GLIBCXX_RELEASE) && _GLIBCXX_RELEASE >= 9
-#define SCN_HAS_INTEGER_CHARCONV 1
-#define SCN_HAS_FLOAT_CHARCONV 0
+#if defined(_GLIBCXX_RELEASE) && __cplusplus >= SCN_STD_17
+#define SCN_HAS_INTEGER_CHARCONV (_GLIBCXX_RELEASE >= 9)
+#define SCN_HAS_FLOAT_CHARCONV (_GLIBCXX_RELEASE >= 11)
 #elif SCN_MSVC >= SCN_COMPILER(19, 14, 0)
 #define SCN_HAS_INTEGER_CHARCONV 1
-
-#if SCN_MSVC >= SCN_COMPILER(19, 21, 0)
+#define SCN_HAS_FLOAT_CHARCONV (SCN_MSVC >= SCN_COMPILER(19, 21, 0))
+#elif defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606
+#define SCN_HAS_INTEGER_CHARCONV 1
 #define SCN_HAS_FLOAT_CHARCONV 1
-#else
-#define SCN_HAS_FLOAT_CHARCONV 0
-#endif
-
 #endif  // _GLIBCXX_RELEASE
-#endif  // __cpp_lib_to_chars
 
 #ifndef SCN_HAS_INTEGER_CHARCONV
 #define SCN_HAS_INTEGER_CHARCONV 0
