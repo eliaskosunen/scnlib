@@ -78,7 +78,7 @@ int main() {
     // j == 456
 
     std::string str;
-    ret = scn::scan(ret.range(), "{}", str);
+    ret = scn::scan(result.range(), "{}", str);
     // result == true
     // str == "foo"
 }
