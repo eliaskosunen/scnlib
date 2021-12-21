@@ -12,6 +12,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # gcc 11
+          - cxx: g++-11
+            os: ubuntu-20.04
+            std: 20
+            install_cmd: ${APT_INSTALL} g++-11
           # gcc 10
           - cxx: g++-10
             os: ubuntu-20.04
@@ -37,19 +42,19 @@ jobs:
             install_cmd: ${APT_INSTALL} g++-6
           # gcc 5
           - cxx: g++-5
-            os: ubuntu-16.04
+            os: ubuntu-18.04
             std: 14
+            install_cmd: ${APT_INSTALL} g++-5
 
+          # clang 12
+          - cxx: clang++-12
+            os: ubuntu-20.04
+            std: 20
           # clang 10
           - cxx: clang++-10
             os: ubuntu-20.04
             std: 20
             install_cmd: ${APT_INSTALL} clang-10
-          # clang 9
-          - cxx: clang++-9
-            os: ubuntu-20.04
-            std: 20
-            install_cmd: ${APT_INSTALL} clang-9
           # clang 6.0
           - cxx: clang++-6.0
             os: ubuntu-20.04
