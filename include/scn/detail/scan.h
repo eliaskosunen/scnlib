@@ -744,14 +744,16 @@ namespace scn {
         value_type value;
         auto args = make_args<context_type, parse_context_type>(value);
         auto ctx = context_type(detail::wrap(r));
+        auto pctx = parse_context_type(1, ctx);
+        auto cargs = basic_args<CharT>{args};
 
         while (true) {
             if (c.size() == c.max_size()) {
                 break;
             }
 
-            auto pctx = parse_context_type(1, ctx);
-            auto err = vscan(ctx, pctx, basic_args<CharT>{args});
+            pctx.reset_args_left(1);
+            auto err = vscan(ctx, pctx, cargs);
             if (!err) {
                 if (err == error::end_of_range) {
                     break;

@@ -267,6 +267,13 @@ namespace scn {
             return string_view_type{};
         }
 
+        void reset_args_left(int n)
+        {
+            m_args_left = n;
+            detail::basic_parse_context_base<
+                typename Locale::char_type>::m_next_arg_id = 0;
+        }
+
     private:
         int m_args_left;
         bool m_should_skip_ws{false};
