@@ -4,14 +4,19 @@
 #include <scn/scn.h>
 
 SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wpadded")
+SCN_CLANG_IGNORE("-Wpadded")
 SCN_CLANG_IGNORE("-Wweak-vtables")
 SCN_CLANG_IGNORE("-Wglobal-constructors")
 SCN_CLANG_IGNORE("-Wused-but-marked-unused")
 SCN_CLANG_IGNORE("-Wexit-time-destructors")
 
+// -Wsuggest-override requires clang >= 11
+#if SCN_CLANG >= SCN_COMPILER(11, 0, 0)
+SCN_CLANG_IGNORE("-Wsuggest-override")
+#endif
+
 SCN_GCC_PUSH
-    SCN_GCC_IGNORE("-Wswitch-default")
+SCN_GCC_IGNORE("-Wswitch-default")
 SCN_GCC_IGNORE("-Wredundant-decls")
 
 #include <benchmark/benchmark.h>
