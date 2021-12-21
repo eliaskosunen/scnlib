@@ -27,6 +27,65 @@ TEST_CASE("simple")
     CHECK(ret.range().size() == 0);
 }
 
+TEST_CASE("short ranges")
+{
+    // range is (inclusive) from -32768 to 32767
+    short i{};
+
+    auto ret = scn::scan("32767", "{}", i);
+    CHECK(ret);
+    CHECK(i == 32767);
+    CHECK(ret.range().size() == 0);
+
+    ret = scn::scan("32768", "{}", i);
+    CHECK(!ret);
+    CHECK(i == 32767);
+    CHECK(ret.error().code() == scn::error::value_out_of_range);
+
+    ret = scn::scan("-32768", "{}", i);
+    CHECK(ret);
+    CHECK(i == -32768);
+    CHECK(ret.range().size() == 0);
+
+    ret = scn::scan("-32769", "{}", i);
+    CHECK(!ret);
+    CHECK(i == -32768);
+    CHECK(ret.error().code() == scn::error::value_out_of_range);
+
+    // range is (inclusive) from 0 to 65535
+    unsigned short u{};
+
+    ret = scn::scan("32767", "{}", u);
+    CHECK(ret);
+    CHECK(u == 32767);
+    CHECK(ret.range().size() == 0);
+
+    ret = scn::scan("32768", "{}", u);
+    CHECK(ret);
+    CHECK(u == 32768);
+    CHECK(ret.range().size() == 0);
+
+    ret = scn::scan("-32768", "{}", u);
+    CHECK(!ret);
+    CHECK(u == 32768);
+    CHECK(ret.error().code() == scn::error::value_out_of_range);
+
+    ret = scn::scan("-32769", "{}", u);
+    CHECK(!ret);
+    CHECK(u == 32768);
+    CHECK(ret.error().code() == scn::error::value_out_of_range);
+
+    ret = scn::scan("65535", "{}", u);
+    CHECK(ret);
+    CHECK(u == 65535);
+    CHECK(ret.range().size() == 0);
+
+    ret = scn::scan("65536", "{}", u);
+    CHECK(!ret);
+    CHECK(u == 65535);
+    CHECK(ret.error().code() == scn::error::value_out_of_range);
+}
+
 template <typename CharT, typename T>
 struct intpair {
     using char_type = CharT;

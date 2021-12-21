@@ -1079,6 +1079,7 @@ namespace scn {
 
                 auto it = buf.begin();
                 const auto end = buf.end();
+                utype tmp = 0;
                 if (SCN_UNLIKELY(have_thsep)) {
                     for (; it != end; ++it) {
                         if (*it == thsep) {
@@ -1089,8 +1090,8 @@ namespace scn {
                         if (digit >= ubase) {
                             break;
                         }
-                        if (SCN_UNLIKELY(val > cutoff ||
-                                         (val == cutoff && digit > cutlim))) {
+                        if (SCN_UNLIKELY(tmp > cutoff ||
+                                         (tmp == cutoff && digit > cutlim))) {
                             if (!minus_sign) {
                                 return error(error::value_out_of_range,
                                              "Out of range: integer overflow");
@@ -1098,7 +1099,7 @@ namespace scn {
                             return error(error::value_out_of_range,
                                          "Out of range: integer underflow");
                         }
-                        val = val * ubase + digit;
+                        tmp = tmp * ubase + digit;
                     }
                 }
                 else {
@@ -1107,8 +1108,8 @@ namespace scn {
                         if (digit >= ubase) {
                             break;
                         }
-                        if (SCN_UNLIKELY(val > cutoff ||
-                                         (val == cutoff && digit > cutlim))) {
+                        if (SCN_UNLIKELY(tmp > cutoff ||
+                                         (tmp == cutoff && digit > cutlim))) {
                             if (!minus_sign) {
                                 return error(error::value_out_of_range,
                                              "Out of range: integer overflow");
@@ -1116,10 +1117,27 @@ namespace scn {
                             return error(error::value_out_of_range,
                                          "Out of range: integer underflow");
                         }
-                        val = val * ubase + digit;
+                        tmp = tmp * ubase + digit;
                     }
                 }
-                val = val * (minus_sign ? -1 : 1);
+                if (minus_sign) {
+                    // special case: signed int minimum's absolute value can't
+                    // be represented with the same type
+                    //
+                    // For example, short int -- range is [-32768, 32767], 32768
+                    // can't be represented
+                    //
+                    // In that case, -static_cast<T>(tmp) would trigger UB
+                    if (SCN_UNLIKELY(tmp == abs_int_min)) {
+                        val = std::numeric_limits<T>::min();
+                    }
+                    else {
+                        val = -static_cast<T>(tmp);
+                    }
+                }
+                else {
+                    val = static_cast<T>(tmp);
+                }
                 return it;
 
                 SCN_MSVC_POP
