@@ -1,5 +1,6 @@
 "{}"
 "{{"
+"{{}"
 "}}"
 "0123456789"
 "a b c d e f g h i j k l m n o p q r s t u v w x y z"
@@ -18,3 +19,9 @@
 "\x00"
 "a\x00b"
 "\x0a"
+# epäjärjestelmällistyttämättömyydelläänsäkäänköhän
+"ep\xc3\xa4j\xc3\xa4rjestelm\xc3\xa4llistytt\xc3\xa4m\xc3\xa4tt\xc3\xb6myydell\xc3\xa4\xc3\xa4ns\xc3\xa4k\xc3\xa4\xc3\xa4nk\xc3\xb6h\xc3\xa4n"
+# slightly smiling face
+"\xf0\x9f\x99\x82"
+# Nǐ hǎo
+"\xe4\xbd\xa0\xe5\xa5\xbd"

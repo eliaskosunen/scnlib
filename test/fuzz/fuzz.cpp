@@ -19,8 +19,8 @@
 #include <sstream>
 #include <vector>
 
-template <typename T>
-void run(scn::string_view source)
+template <typename T, typename C>
+void run(scn::basic_string_view<C> source)
 {
     auto result = scn::make_result(source);
     T val{};
@@ -58,35 +58,100 @@ void roundtrip(scn::string_view data)
     }
 }
 
+#define SCN_FUZZ_RUN_BASIC(source, Char)                      \
+    do {                                                      \
+        run<Char>(source);                                    \
+        run<bool>(source);                                    \
+        run<short>(source);                                   \
+        run<int>(source);                                     \
+        run<long>(source);                                    \
+        run<long long>(source);                               \
+        run<unsigned short>(source);                          \
+        run<unsigned int>(source);                            \
+        run<unsigned long>(source);                           \
+        run<unsigned long long>(source);                      \
+        run<float>(source);                                   \
+        run<double>(source);                                  \
+        run<long double>(source);                             \
+        run<std::basic_string<Char>>(source);                 \
+        run<scn::basic_string_view<Char>>(source);            \
+    } while (false)
+
+#define SCN_FUZZ_RUN_ROUNDTRIP(source, Char)                      \
+    do {                                                      \
+        run<Char>(source);                                    \
+        run<bool>(source);                                    \
+        run<short>(source);                                   \
+        run<int>(source);                                     \
+        run<long>(source);                                    \
+        run<long long>(source);                               \
+        run<unsigned short>(source);                          \
+        run<unsigned int>(source);                            \
+        run<unsigned long>(source);                           \
+        run<unsigned long long>(source);                      \
+        run<std::basic_string<Char>>(source);                 \
+        run<scn::basic_string_view<Char>>(source);            \
+    } while (false)
+
+#define SCN_FUZZ_RUN_FORMAT(source, Char)                    \
+    do {                                                     \
+        auto result = scn::make_result(source);              \
+        std::basic_string<Char> str{};                       \
+        while (!result.range().empty()) {                    \
+            auto f = scn::basic_string_view<Char>{           \
+                result.range().data(),                       \
+                static_cast<size_t>(result.range().size())}; \
+            result = scn::scan(result.range(), f, str);      \
+            if (!result) {                                   \
+                break;                                       \
+            }                                                \
+        }                                                    \
+    } while (false)
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
+    // a b c d
     scn::string_view source(reinterpret_cast<const char*>(data), size);
 
-    run<char>(source);
-    run<int>(source);
-    run<long long>(source);
-    run<unsigned>(source);
-    run<double>(source);
-    run<std::string>(source);
-    run<scn::string_view>(source);
+    // ab cd
+    const auto wdata1_size = size < sizeof(wchar_t) ? 1 : (size / sizeof(wchar_t));
+    std::wstring wdata1(wdata1_size, 0);
+    std::memcpy(reinterpret_cast<char*>(&wdata1[0]), data, size);
+    scn::wstring_view wsource1(wdata1.data(), wdata1.size());
 
-    roundtrip<int>(source);
-    roundtrip<long long>(source);
-    roundtrip<unsigned>(source);
-    // need to fix float roundtripping at some point
-    //roundtrip<double>(source);
+    // a b c d
+    std::wstring wdata2(size, 0);
+    std::copy(data, data + size, &wdata2[0]);
+    scn::wstring_view wsource2(wdata2.data(), size);
 
+    {
+        SCN_FUZZ_RUN_BASIC(source, char);
+        SCN_FUZZ_RUN_ROUNDTRIP(source, char);
+    }
+
+    {
+        SCN_FUZZ_RUN_BASIC(wsource1, wchar_t);
+        SCN_FUZZ_RUN_ROUNDTRIP(wsource1, wchar_t);
+    }
+
+    {
+        SCN_FUZZ_RUN_BASIC(wsource2, wchar_t);
+        SCN_FUZZ_RUN_ROUNDTRIP(wsource2, wchar_t);
+    }
+
+    // format string
     if (size != 0) {
-        auto result = scn::make_result(source);
-        std::string str{};
-        while (!result.range().empty()) {
-            auto f =
-                scn::string_view{result.range().data(),
-                                 static_cast<size_t>(result.range().size())};
-            result = scn::scan(result.range(), f, str);
-            if (!result) {
-                break;
-            }
+        // narrow
+        {
+            SCN_FUZZ_RUN_FORMAT(source, char);
+        }
+        // wide1
+        {
+            SCN_FUZZ_RUN_FORMAT(wsource1, wchar_t);
+        }
+        // wide2
+        {
+            SCN_FUZZ_RUN_FORMAT(wsource2, wchar_t);
         }
     }
 
