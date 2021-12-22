@@ -55,7 +55,7 @@ endif ()
 add_subdirectory(each)
 add_subdirectory(file)
 
-if (SCN_BUILD_FUZZING)
+if (SCN_BUILD_FUZZING OR SCN_INCLUDE_FUZZING)
     add_subdirectory(fuzz)
 endif ()
 

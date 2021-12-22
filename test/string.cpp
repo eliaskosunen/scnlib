@@ -106,4 +106,25 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
             CHECK(ret);
         }
     }
+
+    SUBCASE("not found")
+    {
+        auto ret = scn::ignore_until(data, 0x33);  // '3'
+        CHECK(ret);
+        CHECK(ret.range().size() == 0);
+    }
+
+    SUBCASE("empty range")
+    {
+        string_type s{};
+        auto ret = scn::ignore_until(s, 0x0a);
+        CHECK(!ret);
+        CHECK(ret.error().code() == scn::error::end_of_range);
+
+        scn::basic_string_view<CharT> sv{};
+        auto result = scn::make_result(sv);
+        ret = scn::ignore_until(result.range(), 0x00);
+        CHECK(!ret);
+        CHECK(ret.error().code() == scn::error::end_of_range);
+    }
 }
