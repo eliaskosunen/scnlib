@@ -9,6 +9,8 @@ SCN_CLANG_IGNORE("-Wweak-vtables")
 SCN_CLANG_IGNORE("-Wglobal-constructors")
 SCN_CLANG_IGNORE("-Wused-but-marked-unused")
 SCN_CLANG_IGNORE("-Wexit-time-destructors")
+SCN_CLANG_IGNORE("-Wshift-sign-overflow")
+SCN_CLANG_IGNORE("-Wzero-as-null-pointer-constant")
 
 // -Wsuggest-override requires clang >= 11
 #if SCN_CLANG >= SCN_COMPILER(11, 0, 0)
