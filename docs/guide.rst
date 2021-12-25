@@ -544,7 +544,7 @@ To scan a value of a program-defined type, specialize ``scn::scanner``
     };
 
     template <typename CharT>
-    struct scn::scanner<CharT, int_and_double> : scn::empty_parser<CharT> {
+    struct scn::scanner<CharT, int_and_double> : scn::empty_parser {
         template <typename Context>
         error scan(int_and_double& val, Context& ctx)
         {
