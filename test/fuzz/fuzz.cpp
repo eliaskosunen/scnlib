@@ -121,7 +121,6 @@ void roundtrip(scn::basic_string_view<C> data)
         run_getline<Char>(source);                      \
         run_ignore<Char>(source);                       \
         run_list<Char>(source);                         \
-        run_list<bool>(source);                         \
         run_list<short>(source);                        \
         run_list<int>(source);                          \
         run_list<long>(source);                         \
@@ -171,7 +170,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 
     // ab cd
     const auto wdata1_size =
-        size < sizeof(wchar_t) ? 1 : (size / sizeof(wchar_t));
+        size < sizeof(wchar_t) ? 0 : (size / sizeof(wchar_t));
     std::wstring wdata1(wdata1_size, 0);
     std::memcpy(reinterpret_cast<char*>(&wdata1[0]), data, size);
     scn::wstring_view wsource1(wdata1.data(), wdata1.size());

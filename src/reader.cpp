@@ -36,6 +36,38 @@ namespace scn {
         template <typename CharT, typename T>
         struct read_float_impl;
 
+        template <typename T, typename CharT, typename F>
+        expected<T> read_float_cstd(F&& f_strtod,
+                                    const CharT* str,
+                                    size_t& chars)
+        {
+            // Get current C locale
+            const auto loc = std::setlocale(LC_NUMERIC, nullptr);
+            // For whatever reason, this cannot be stored in the heap if
+            // setlocale hasn't been called before, or msan errors with
+            // 'use-of-unitialized-value' when resetting the locale back.
+            // POSIX specifies that the content of loc may not be static, so we
+            // need to save it ourselves
+            char locbuf[256] = {0};
+            std::strcpy(locbuf, loc);
+
+            std::setlocale(LC_NUMERIC, "C");
+
+            CharT* end{};
+            errno = 0;
+            T f = f_strtod(str, &end);
+            chars = static_cast<size_t>(end - str);
+            auto err = errno;
+            // Reset locale
+            std::setlocale(LC_NUMERIC, locbuf);
+            errno = 0;
+            if (err == ERANGE) {
+                return error(error::value_out_of_range,
+                             "Floating-point value out of range");
+            }
+            return f;
+        }
+
 #if SCN_HAS_FLOAT_CHARCONV
         template <typename T>
         struct read_float_impl<char, T> {
@@ -62,22 +94,14 @@ namespace scn {
         struct read_float_impl<char, float> {
             static expected<float> get(const char* str, size_t& chars)
             {
-                char* end{};
-                const auto loc = std::string{std::setlocale(LC_NUMERIC, nullptr)};
-                std::setlocale(LC_NUMERIC, "C");
-                errno = 0;
-                float f = std::strtof(str, &end);
-                chars = static_cast<size_t>(end - str);
-                std::setlocale(LC_NUMERIC, loc.c_str());
-                if (errno == ERANGE) {
-                    errno = 0;
-                    return error(error::value_out_of_range,
-                                 "strtof range error");
+                auto f = read_float_cstd<float>(strtof, str, chars);
+                if (!f) {
+                    return f;
                 }
                 SCN_GCC_PUSH
                 // bogus warning, == with 0.0 is safe
                 SCN_GCC_IGNORE("-Wfloat-equal")
-                if (f == 0.0f && end == str) {
+                if (f.value() == 0.0f && chars == 0) {
                     return error(error::invalid_scanned_value, "strtof");
                 }
                 SCN_GCC_POP
@@ -89,22 +113,14 @@ namespace scn {
         struct read_float_impl<char, double> {
             static expected<double> get(const char* str, size_t& chars)
             {
-                char* end{};
-                const auto loc = std::string{std::setlocale(LC_NUMERIC, nullptr)};
-                std::setlocale(LC_NUMERIC, "C");
-                errno = 0;
-                double d = std::strtod(str, &end);
-                chars = static_cast<size_t>(end - str);
-                std::setlocale(LC_NUMERIC, loc.c_str());
-                if (errno == ERANGE) {
-                    errno = 0;
-                    return error(error::value_out_of_range,
-                                 "strtod range error");
+                auto d = read_float_cstd<double>(strtod, str, chars);
+                if (!d) {
+                    return d;
                 }
                 SCN_GCC_PUSH
                 // bogus warning, == with 0.0 is safe
                 SCN_GCC_IGNORE("-Wfloat-equal")
-                if (d == 0.0 && end == str) {
+                if (d.value() == 0.0 && chars == 0) {
                     return error(error::invalid_scanned_value, "strtod");
                 }
                 SCN_GCC_POP
@@ -116,22 +132,14 @@ namespace scn {
         struct read_float_impl<char, long double> {
             static expected<long double> get(const char* str, size_t& chars)
             {
-                char* end{};
-                const auto loc = std::string{std::setlocale(LC_NUMERIC, nullptr)};
-                std::setlocale(LC_NUMERIC, "C");
-                errno = 0;
-                long double ld = std::strtold(str, &end);
-                chars = static_cast<size_t>(end - str);
-                std::setlocale(LC_NUMERIC, loc.c_str());
-                if (errno == ERANGE) {
-                    errno = 0;
-                    return error(error::value_out_of_range,
-                                 "strtold range error");
+                auto ld = read_float_cstd<long double>(strtold, str, chars);
+                if (!ld) {
+                    return ld;
                 }
                 SCN_GCC_PUSH
                 // bogus warning, == with 0.0 is safe
                 SCN_GCC_IGNORE("-Wfloat-equal")
-                if (ld == 0.0l && end == str) {
+                if (ld.value() == 0.0l && chars == 0) {
                     return error(error::invalid_scanned_value, "strtold");
                 }
                 SCN_GCC_POP
@@ -144,22 +152,14 @@ namespace scn {
         struct read_float_impl<wchar_t, float> {
             static expected<float> get(const wchar_t* str, size_t& chars)
             {
-                wchar_t* end{};
-                const auto loc = std::string{std::setlocale(LC_NUMERIC, nullptr)};
-                std::setlocale(LC_NUMERIC, "C");
-                errno = 0;
-                float f = std::wcstof(str, &end);
-                chars = static_cast<size_t>(end - str);
-                std::setlocale(LC_NUMERIC, loc.c_str());
-                if (errno == ERANGE) {
-                    errno = 0;
-                    return error(error::value_out_of_range,
-                                 "wcstof range error");
+                auto f = read_float_cstd<float>(wcstof, str, chars);
+                if (!f) {
+                    return f;
                 }
                 SCN_GCC_PUSH
                 // bogus warning, == with 0.0 is safe
                 SCN_GCC_IGNORE("-Wfloat-equal")
-                if (f == 0.0f && end == str) {
+                if (f.value() == 0.0f && chars == 0) {
                     return error(error::invalid_scanned_value, "wcstof");
                 }
                 SCN_GCC_POP
@@ -170,22 +170,14 @@ namespace scn {
         struct read_float_impl<wchar_t, double> {
             static expected<double> get(const wchar_t* str, size_t& chars)
             {
-                wchar_t* end{};
-                const auto loc = std::string{std::setlocale(LC_NUMERIC, nullptr)};
-                std::setlocale(LC_NUMERIC, "C");
-                errno = 0;
-                double d = std::wcstod(str, &end);
-                chars = static_cast<size_t>(end - str);
-                std::setlocale(LC_NUMERIC, loc.c_str());
-                if (errno == ERANGE) {
-                    errno = 0;
-                    return error(error::value_out_of_range,
-                                 "wcstod range error");
+                auto d = read_float_cstd<double>(wcstod, str, chars);
+                if (!d) {
+                    return d;
                 }
                 SCN_GCC_PUSH
                 // bogus warning, == with 0.0 is safe
                 SCN_GCC_IGNORE("-Wfloat-equal")
-                if (d == 0.0 && end == str) {
+                if (d.value() == 0.0 && chars == 0) {
                     return error(error::invalid_scanned_value, "wcstod");
                 }
                 SCN_GCC_POP
@@ -196,22 +188,14 @@ namespace scn {
         struct read_float_impl<wchar_t, long double> {
             static expected<long double> get(const wchar_t* str, size_t& chars)
             {
-                wchar_t* end{};
-                const auto loc = std::string{std::setlocale(LC_NUMERIC, nullptr)};
-                std::setlocale(LC_NUMERIC, "C");
-                errno = 0;
-                long double ld = std::wcstold(str, &end);
-                chars = static_cast<size_t>(end - str);
-                std::setlocale(LC_NUMERIC, loc.c_str());
-                if (errno == ERANGE) {
-                    errno = 0;
-                    return error(error::value_out_of_range,
-                                 "wcstold range error");
+                auto ld = read_float_cstd<long double>(wcstold, str, chars);
+                if (!ld) {
+                    return ld;
                 }
                 SCN_GCC_PUSH
                 // bogus warning, == with 0.0 is safe
                 SCN_GCC_IGNORE("-Wfloat-equal")
-                if (ld == 0.0l && end == str) {
+                if (ld.value() == 0.0l && chars == 0) {
                     return error(error::invalid_scanned_value, "wcstold");
                 }
                 SCN_GCC_POP
