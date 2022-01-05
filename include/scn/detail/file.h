@@ -449,60 +449,13 @@ namespace scn {
     using wfile = basic_file<wchar_t>;
 
     template <>
-    inline expected<char> file::_read_single() const
-    {
-        SCN_EXPECT(valid());
-        int tmp = std::fgetc(m_file);
-        if (tmp == EOF) {
-            if (std::feof(m_file) != 0) {
-                return error(error::end_of_range, "EOF");
-            }
-            if (std::ferror(m_file) != 0) {
-                return error(error::source_error, "fgetc error");
-            }
-            return error(error::unrecoverable_source_error,
-                         "Unknown fgetc error");
-        }
-        auto ch = static_cast<char>(tmp);
-        m_buffer.push_back(ch);
-        return ch;
-    }
+    expected<char> file::_read_single() const;
     template <>
-    inline expected<wchar_t> wfile::_read_single() const
-    {
-        SCN_EXPECT(valid());
-        wint_t tmp = std::fgetwc(m_file);
-        if (tmp == WEOF) {
-            if (std::feof(m_file) != 0) {
-                return error(error::end_of_range, "EOF");
-            }
-            if (std::ferror(m_file) != 0) {
-                return error(error::source_error, "fgetc error");
-            }
-            return error(error::unrecoverable_source_error,
-                         "Unknown fgetc error");
-        }
-        auto ch = static_cast<wchar_t>(tmp);
-        m_buffer.push_back(ch);
-        return ch;
-    }
-
+    expected<wchar_t> wfile::_read_single() const;
     template <>
-    inline void file::_sync_until(std::size_t pos)
-    {
-        for (auto it = m_buffer.rbegin();
-             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
-            std::ungetc(static_cast<unsigned char>(*it), m_file);
-        }
-    }
+    void file::_sync_until(size_t);
     template <>
-    inline void wfile::_sync_until(std::size_t pos)
-    {
-        for (auto it = m_buffer.rbegin();
-             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
-            std::ungetwc(static_cast<wint_t>(*it), m_file);
-        }
-    }
+    void wfile::_sync_until(size_t);
 
     /**
      * A child class for basic_file, handling fopen, fclose, and lifetimes with

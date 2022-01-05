@@ -159,5 +159,61 @@ namespace scn {
 
     }  // namespace detail
 
+    template <>
+    SCN_FUNC expected<char> file::_read_single() const
+    {
+        SCN_EXPECT(valid());
+        int tmp = std::fgetc(m_file);
+        if (tmp == EOF) {
+            if (std::feof(m_file) != 0) {
+                return error(error::end_of_range, "EOF");
+            }
+            if (std::ferror(m_file) != 0) {
+                return error(error::source_error, "fgetc error");
+            }
+            return error(error::unrecoverable_source_error,
+                         "Unknown fgetc error");
+        }
+        auto ch = static_cast<char>(tmp);
+        m_buffer.push_back(ch);
+        return ch;
+    }
+    template <>
+    SCN_FUNC expected<wchar_t> wfile::_read_single() const
+    {
+        SCN_EXPECT(valid());
+        wint_t tmp = std::fgetwc(m_file);
+        if (tmp == WEOF) {
+            if (std::feof(m_file) != 0) {
+                return error(error::end_of_range, "EOF");
+            }
+            if (std::ferror(m_file) != 0) {
+                return error(error::source_error, "fgetc error");
+            }
+            return error(error::unrecoverable_source_error,
+                         "Unknown fgetc error");
+        }
+        auto ch = static_cast<wchar_t>(tmp);
+        m_buffer.push_back(ch);
+        return ch;
+    }
+
+    template <>
+    SCN_FUNC void file::_sync_until(std::size_t pos)
+    {
+        for (auto it = m_buffer.rbegin();
+             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
+            std::ungetc(static_cast<unsigned char>(*it), m_file);
+        }
+    }
+    template <>
+    SCN_FUNC void wfile::_sync_until(std::size_t pos)
+    {
+        for (auto it = m_buffer.rbegin();
+             it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
+            std::ungetwc(static_cast<wint_t>(*it), m_file);
+        }
+    }
+
     SCN_END_NAMESPACE
 }  // namespace scn
