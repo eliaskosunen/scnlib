@@ -36,8 +36,10 @@ namespace scn {
         template <typename CharT, typename T>
         struct read_float_impl;
 
+#if SCN_GCC >= SCN_COMPILER(7, 0, 0)
         SCN_GCC_PUSH
         SCN_GCC_IGNORE("-Wnoexcept-type")
+#endif
         template <typename T, typename CharT, typename F>
         expected<T> read_float_cstd(F&& f_strtod,
                                     const CharT* str,
@@ -69,7 +71,9 @@ namespace scn {
             }
             return f;
         }
+#if SCN_GCC >= SCN_COMPILER(7, 0, 0)
         SCN_GCC_POP
+#endif
 
 #if SCN_HAS_FLOAT_CHARCONV
         template <typename T>
