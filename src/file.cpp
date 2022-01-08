@@ -159,6 +159,94 @@ namespace scn {
 
     }  // namespace detail
 
+    namespace detail {
+        template <typename CharT>
+        struct basic_file_iterator_access {
+            using iterator = typename basic_file<CharT>::iterator;
+
+            basic_file_iterator_access(const iterator& it) : self(it) {}
+
+            expected<CharT> deref() const
+            {
+                SCN_EXPECT(self.m_file);
+
+                if (self.m_file->m_buffer.empty()) {
+                    // no chars have been read
+                    return self.m_file->_read_single();
+                }
+                if (!self.m_last_error) {
+                    // last read failed
+                    return self.m_last_error;
+                }
+                return self.m_file->_get_char_at(self.m_current);
+            }
+
+            bool eq(const iterator& o) const
+            {
+                if (self.m_file && (self.m_file == o.m_file || !o.m_file)) {
+                    if (self.m_file->_is_at_end(self.m_current) &&
+                        self.m_last_error.code() != error::end_of_range) {
+                        self.m_last_error = error{};
+                        auto r = self.m_file->_read_single();
+                        if (!r) {
+                            self.m_last_error = r.error();
+                            return !o.m_file || self.m_current == o.m_current ||
+                                   o.m_last_error.code() == error::end_of_range;
+                        }
+                    }
+                }
+
+                // null file == null file
+                if (!self.m_file && !o.m_file) {
+                    return true;
+                }
+                // null file == eof file
+                if (!self.m_file && o.m_file) {
+                    // lhs null, rhs potentially eof
+                    return o.m_last_error.code() == error::end_of_range;
+                }
+                // eof file == null file
+                if (self.m_file && !o.m_file) {
+                    // rhs null, lhs potentially eof
+                    return self.m_last_error.code() == error::end_of_range;
+                }
+                // eof file == eof file
+                if (self.m_last_error == o.m_last_error &&
+                    self.m_last_error.code() == error::end_of_range) {
+                    return true;
+                }
+
+                return self.m_file == o.m_file && self.m_current == o.m_current;
+            }
+
+            const iterator& self;
+        };
+    }  // namespace detail
+
+    template <>
+    SCN_FUNC expected<char> basic_file<char>::iterator::operator*() const
+    {
+        return detail::basic_file_iterator_access<char>(*this).deref();
+    }
+    template <>
+    SCN_FUNC expected<wchar_t> basic_file<wchar_t>::iterator::operator*() const
+    {
+        return detail::basic_file_iterator_access<wchar_t>(*this).deref();
+    }
+
+    template <>
+    SCN_FUNC bool basic_file<char>::iterator::operator==(
+        const basic_file<char>::iterator& o) const
+    {
+        return detail::basic_file_iterator_access<char>(*this).eq(o);
+    }
+    template <>
+    SCN_FUNC bool basic_file<wchar_t>::iterator::operator==(
+        const basic_file<wchar_t>::iterator& o) const
+    {
+        return detail::basic_file_iterator_access<wchar_t>(*this).eq(o);
+    }
+
     template <>
     SCN_FUNC expected<char> file::_read_single() const
     {

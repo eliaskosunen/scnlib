@@ -164,14 +164,26 @@ namespace scn {
     using mapped_file = basic_mapped_file<char>;
     using mapped_wfile = basic_mapped_file<wchar_t>;
 
+    namespace detail {
+        template <typename CharT>
+        struct basic_file_access;
+        template <typename CharT>
+        struct basic_file_iterator_access;
+    }  // namespace detail
+
     /**
      * Range mapping to a C FILE*.
      * Not copyable or reconstructible.
      */
     template <typename CharT>
     class basic_file {
+        friend struct detail::basic_file_access<CharT>;
+        friend struct detail::basic_file_iterator_access<CharT>;
+
     public:
         class iterator {
+            friend struct detail::basic_file_iterator_access<CharT>;
+
         public:
             using char_type = CharT;
             using value_type = expected<CharT>;
@@ -183,20 +195,7 @@ namespace scn {
 
             iterator() = default;
 
-            expected<CharT> operator*() const
-            {
-                SCN_EXPECT(m_file);
-
-                if (m_file->m_buffer.empty()) {
-                    // no chars have been read
-                    return m_file->_read_single();
-                }
-                if (!m_last_error) {
-                    // last read failed
-                    return m_last_error;
-                }
-                return m_file->_get_char_at(m_current);
-            }
+            expected<CharT> operator*() const;
 
             iterator& operator++()
             {
@@ -228,43 +227,8 @@ namespace scn {
                 return tmp;
             }
 
-            bool operator==(const iterator& o) const
-            {
-                if (m_file && (m_file == o.m_file || !o.m_file)) {
-                    if (m_file->_is_at_end(m_current) &&
-                        m_last_error.code() != error::end_of_range) {
-                        m_last_error = error{};
-                        auto r = m_file->_read_single();
-                        if (!r) {
-                            m_last_error = r.error();
-                            return !o.m_file || m_current == o.m_current ||
-                                   o.m_last_error.code() == error::end_of_range;
-                        }
-                    }
-                }
+            bool operator==(const iterator& o) const;
 
-                // null file == null file
-                if (!m_file && !o.m_file) {
-                    return true;
-                }
-                // null file == eof file
-                if (!m_file && o.m_file) {
-                    // lhs null, rhs potentially eof
-                    return o.m_last_error.code() == error::end_of_range;
-                }
-                // eof file == null file
-                if (m_file && !o.m_file) {
-                    // rhs null, lhs potentially eof
-                    return m_last_error.code() == error::end_of_range;
-                }
-                // eof file == eof file
-                if (m_last_error == o.m_last_error &&
-                    m_last_error.code() == error::end_of_range) {
-                    return true;
-                }
-
-                return m_file == o.m_file && m_current == o.m_current;
-            }
             bool operator!=(const iterator& o) const
             {
                 return !operator==(o);
@@ -447,6 +411,15 @@ namespace scn {
 
     using file = basic_file<char>;
     using wfile = basic_file<wchar_t>;
+
+    template <>
+    expected<char> file::iterator::operator*() const;
+    template <>
+    expected<wchar_t> wfile::iterator::operator*() const;
+    template <>
+    bool file::iterator::operator==(const file::iterator&) const;
+    template <>
+    bool wfile::iterator::operator==(const wfile::iterator&) const;
 
     template <>
     expected<char> file::_read_single() const;

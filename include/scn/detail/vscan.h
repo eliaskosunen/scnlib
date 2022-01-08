@@ -29,6 +29,7 @@ namespace scn {
     namespace dummy {
     }
 
+#if 0
     /**
      * In the spirit of {fmt}/`std::format` and `vformat`, `vscan` behaves
      * similarly to \ref scan, except instead of taking a variadic argument
@@ -37,28 +38,131 @@ namespace scn {
      * compile times dramatically.
      */
     template <typename Context, typename ParseCtx>
-    error vscan(Context& ctx,
-                ParseCtx& pctx,
-                basic_args<typename Context::char_type> args)
+    error vscan(Context& ctx, ParseCtx& pctx)
     {
-        return visit(ctx, pctx, SCN_MOVE(args));
+        return visit(ctx, pctx);
+    }
+#endif
+    template <typename WrappedRange>
+    struct vscan_result {
+        error err;
+        WrappedRange range;
+    };
+
+    namespace detail {
+        template <typename CharT>
+        constexpr int to_format(int i)
+        {
+            return i;
+        }
+        template <typename CharT, typename T>
+        constexpr basic_string_view<CharT> to_format(T&& f)
+        {
+            return basic_string_view<CharT>(SCN_FWD(f));
+        }
+
+        template <template <typename> class ParseCtx,
+                  typename WrappedRange,
+                  typename Format,
+                  typename CharT = typename WrappedRange::char_type>
+        vscan_result<WrappedRange> vscan_boilerplate(WrappedRange&& r,
+                                                     const Format& fmt,
+                                                     basic_args<CharT> args)
+        {
+            using context_type = basic_context<WrappedRange>;
+            using parse_context_type =
+                ParseCtx<basic_default_locale_ref<CharT>>;
+
+            auto ctx = context_type(SCN_MOVE(r));
+            auto pctx = parse_context_type(fmt, ctx);
+            auto err = visit(ctx, pctx, SCN_MOVE(args));
+            return {err, SCN_MOVE(ctx.range())};
+        }
+
+        template <template <typename> class ParseCtx,
+                  typename WrappedRange,
+                  typename Format,
+                  typename CharT = typename WrappedRange::char_type>
+        vscan_result<WrappedRange> vscan_boilerplate_localized(
+            WrappedRange&& r,
+            basic_locale_ref<CharT>&& loc,
+            const Format& fmt,
+            basic_args<CharT> args)
+        {
+            using locale_type = basic_locale_ref<CharT>;
+            using context_type = basic_context<WrappedRange, locale_type>;
+            using parse_context_type = ParseCtx<locale_type>;
+
+            auto ctx =
+                context_type(SCN_MOVE(r), locale_type{std::addressof(loc)});
+            auto pctx = parse_context_type(fmt, ctx);
+            auto err = visit(ctx, pctx, SCN_MOVE(args));
+            return {err, SCN_MOVE(ctx.range())};
+        }
+    }  // namespace detail
+
+    template <typename WrappedRange,
+              typename CharT = typename WrappedRange::char_type>
+    vscan_result<WrappedRange> vscan(WrappedRange&& range,
+                                     basic_string_view<CharT> fmt,
+                                     basic_args<CharT> args)
+    {
+        return detail::vscan_boilerplate<basic_parse_context>(
+            SCN_MOVE(range), fmt, SCN_MOVE(args));
+    }
+
+    template <typename WrappedRange,
+              typename CharT = typename WrappedRange::char_type>
+    vscan_result<WrappedRange> vscan(WrappedRange&& range,
+                                     int n_args,
+                                     basic_args<CharT> args)
+    {
+        return detail::vscan_boilerplate<basic_empty_parse_context>(
+            SCN_MOVE(range), n_args, SCN_MOVE(args));
+    }
+
+    template <typename WrappedRange,
+              typename CharT = typename WrappedRange::char_type>
+    vscan_result<WrappedRange> vscan_localized(WrappedRange&& range,
+                                               basic_locale_ref<CharT>&& loc,
+                                               basic_string_view<CharT> fmt,
+                                               basic_args<CharT> args)
+    {
+        return detail::vscan_boilerplate_localized<basic_parse_context>(
+            SCN_MOVE(range), SCN_MOVE(loc), fmt, SCN_MOVE(args));
+    }
+
+    template <typename WrappedRange,
+              typename CharT = typename WrappedRange::char_type>
+    vscan_result<WrappedRange> vscan_localized(WrappedRange&& range,
+                                               basic_locale_ref<CharT>&& loc,
+                                               int n_args,
+                                               basic_args<CharT> args)
+    {
+        return detail::vscan_boilerplate_localized<basic_empty_parse_context>(
+            SCN_MOVE(range), SCN_MOVE(loc), n_args, SCN_MOVE(args));
     }
 
 #if !defined(SCN_HEADER_ONLY) || !SCN_HEADER_ONLY
 
-#define SCN_VSCAN_DECLARE(Range)                                            \
-    error vscan(basic_context<detail::range_wrapper_for_t<Range>,           \
-                              basic_default_locale_ref<char>>&,             \
-                basic_parse_context<basic_default_locale_ref<char>>&,       \
-                basic_args<char>);                                          \
-                                                                            \
-    error vscan(basic_context<detail::range_wrapper_for_t<Range>,           \
-                              basic_default_locale_ref<char>>&,             \
-                basic_empty_parse_context<basic_default_locale_ref<char>>&, \
-                basic_args<char>);
+#define SCN_VSCAN_DECLARE(Range, WrappedAlias, CharAlias)                     \
+    namespace detail {                                                        \
+        namespace vscan_macro {                                               \
+            using WrappedAlias = typename detail::range_wrapper_for_t<Range>; \
+            using CharAlias = typename WrappedAlias::char_type;               \
+        }                                                                     \
+    }                                                                         \
+    vscan_result<detail::vscan_macro::WrappedAlias> vscan(                    \
+        detail::vscan_macro::WrappedAlias&&,                                  \
+        basic_string_view<detail::vscan_macro::CharAlias>,                    \
+        basic_args<detail::vscan_macro::CharAlias>);                          \
+                                                                              \
+    vscan_result<detail::vscan_macro::WrappedAlias> vscan(                    \
+        detail::vscan_macro::WrappedAlias&&, int,                             \
+        basic_args<detail::vscan_macro::CharAlias>)
 
-    SCN_VSCAN_DECLARE(string_view)
-    SCN_VSCAN_DECLARE(file&)
+    SCN_VSCAN_DECLARE(string_view, string_view_wrapped, string_view_char);
+    SCN_VSCAN_DECLARE(file&, file_ref_wrapped, file_ref_char);
 
 #endif  // !SCN_HEADER_ONLY
 

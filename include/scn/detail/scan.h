@@ -30,10 +30,10 @@ namespace scn {
 
     namespace detail {
         template <typename Error, typename Range>
-        using generic_scan_result_for_range = decltype(
-            detail::wrap_result(SCN_DECLVAL(Error),
-                                SCN_DECLVAL(detail::range_tag<Range>),
-                                SCN_DECLVAL(range_wrapper_for_t<Range>)));
+        using generic_scan_result_for_range = decltype(detail::wrap_result(
+            SCN_DECLVAL(Error),
+            SCN_DECLVAL(detail::range_tag<Range>),
+            SCN_DECLVAL(range_wrapper_for_t<Range>)));
         template <typename Range>
         using scan_result_for_range =
             generic_scan_result_for_range<wrapped_error, Range>;
@@ -55,15 +55,15 @@ namespace scn {
             using context_type = basic_context<range_type>;
             using parse_context_type =
                 ParseCtx<typename context_type::locale_type>;
+            using char_type = typename range_type::char_type;
 
+            auto range = detail::wrap(SCN_FWD(r));
             auto args = make_args<context_type, parse_context_type>(a...);
-            auto ctx = context_type(detail::wrap(r));
-            auto pctx = parse_context_type(f, ctx);
-            auto err = vscan(
-                ctx, pctx, basic_args<typename context_type::char_type>{args});
-            return detail::wrap_result(wrapped_error{err},
+            auto ret = vscan(SCN_MOVE(range), detail::to_format<char_type>(f),
+                             basic_args<char_type>(args));
+            return detail::wrap_result(wrapped_error{ret.err},
                                        detail::range_tag<Range>{},
-                                       SCN_MOVE(ctx.range()));
+                                       SCN_MOVE(ret.range));
         }
 
         template <template <typename> class ParseCtx,
@@ -85,20 +85,20 @@ namespace scn {
             using range_type = detail::range_wrapper_for_t<const Range&>;
             using locale_type =
                 basic_locale_ref<typename range_type::char_type>;
-            using context_type = basic_context<range_type, locale_type>;
-            using parse_context_type = ParseCtx<locale_type>;
 
+            using context_type = basic_context<range_type>;
+            using parse_context_type =
+                ParseCtx<typename context_type::locale_type>;
+            using char_type = typename range_type::char_type;
+
+            auto range = detail::wrap(SCN_FORWARD(r));
             auto args = make_args<context_type, parse_context_type>(a...);
-            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-            auto ctx =
-                context_type(detail::wrap(r), locale_type{std::addressof(loc)});
-            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
-            auto pctx = parse_context_type(f, ctx);
-            auto err = vscan(
-                ctx, pctx, basic_args<typename context_type::char_type>{args});
-            return detail::wrap_result(wrapped_error{err},
+            auto ret = vscan_localized(
+                SCN_MOVE(range), locale_type{std::addressof(loc)},
+                detail::to_format<char_type>(f), basic_args<char_type>(args));
+            return detail::wrap_result(wrapped_error{ret.err},
                                        detail::range_tag<Range>{},
-                                       SCN_MOVE(ctx.range()));
+                                       SCN_MOVE(ret.range));
         }
     }  // namespace detail
 
@@ -118,8 +118,8 @@ namespace scn {
     auto scan(Range&& r, const Format& f, Args&... a)
         -> detail::scan_result_for_range<Range>
     {
-        return detail::scan_boilerplate<basic_parse_context>(
-            std::forward<Range>(r), f, a...);
+        return detail::scan_boilerplate<basic_parse_context>(SCN_FWD(r), f,
+                                                             a...);
     }
 
     // default format
@@ -210,7 +210,7 @@ namespace scn {
         auto ctx = context_type(detail::wrap(r));
 
         auto pctx = parse_context_type(1, ctx);
-        auto err = vscan(ctx, pctx,
+        auto err = visit(ctx, pctx,
                          basic_args<typename context_type::char_type>{args});
         if (!err) {
             return detail::wrap_result(expected<T>{err},
@@ -656,8 +656,9 @@ namespace scn {
 
     namespace detail {
         template <typename T>
-        using span_list_wrapper_for = span_list_wrapper<typename decltype(
-            make_span(SCN_DECLVAL(T&)))::value_type>;
+        using span_list_wrapper_for =
+            span_list_wrapper<typename decltype(make_span(
+                SCN_DECLVAL(T&)))::value_type>;
     }
 
     /**
@@ -753,7 +754,7 @@ namespace scn {
             }
 
             pctx.reset_args_left(1);
-            auto err = vscan(ctx, pctx, cargs);
+            auto err = visit(ctx, pctx, cargs);
             if (!err) {
                 if (err == error::end_of_range) {
                     break;
@@ -827,7 +828,7 @@ namespace scn {
             }
 
             auto pctx = parse_context_type(1, ctx);
-            auto err = vscan(ctx, pctx, basic_args<CharT>{args});
+            auto err = visit(ctx, pctx, basic_args<CharT>{args});
             if (!err) {
                 if (err == error::end_of_range) {
                     break;

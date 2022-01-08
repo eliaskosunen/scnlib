@@ -31,26 +31,26 @@ namespace scn {
 
 #if !defined(SCN_HEADER_ONLY) || !SCN_HEADER_ONLY
 
-#define SCN_VSCAN_DEFINE(Range)                                            \
-    error vscan(basic_context<detail::range_wrapper_for_t<Range>,          \
-                              basic_default_locale_ref<char>>& ctx,        \
-                basic_parse_context<basic_default_locale_ref<char>>& pctx, \
-                basic_args<char> args)                                     \
-    {                                                                      \
-        return visit(ctx, pctx, SCN_MOVE(args));                           \
-    }                                                                      \
-                                                                           \
-    error vscan(                                                           \
-        basic_context<detail::range_wrapper_for_t<Range>,                  \
-                      basic_default_locale_ref<char>>& ctx,                \
-        basic_empty_parse_context<basic_default_locale_ref<char>>& pctx,   \
-        basic_args<char> args)                                             \
-    {                                                                      \
-        return visit(ctx, pctx, SCN_MOVE(args));                           \
+#define SCN_VSCAN_DEFINE(Range, WrappedAlias, CharAlias)             \
+    vscan_result<detail::vscan_macro::WrappedAlias> vscan(           \
+        detail::vscan_macro::WrappedAlias&& range,                   \
+        basic_string_view<detail::vscan_macro::CharAlias> fmt,       \
+        basic_args<detail::vscan_macro::CharAlias> args)             \
+    {                                                                \
+        return detail::vscan_boilerplate<basic_parse_context>(       \
+            SCN_MOVE(range), fmt, SCN_MOVE(args));                   \
+    }                                                                \
+                                                                     \
+    vscan_result<detail::vscan_macro::WrappedAlias> vscan(           \
+        detail::vscan_macro::WrappedAlias&& range, int n_args,       \
+        basic_args<detail::vscan_macro::CharAlias> args)             \
+    {                                                                \
+        return detail::vscan_boilerplate<basic_empty_parse_context>( \
+            SCN_MOVE(range), n_args, SCN_MOVE(args));                \
     }
 
-    SCN_VSCAN_DEFINE(string_view)
-    SCN_VSCAN_DEFINE(file&)
+    SCN_VSCAN_DEFINE(string_view, string_view_wrapped, string_view_char)
+    SCN_VSCAN_DEFINE(file&, file_ref_wrapped, file_ref_char)
 
 #endif  // !SCN_HEADER_ONLY
 
