@@ -93,8 +93,7 @@ namespace scn {
             using context_type = basic_context<WrappedRange, locale_type>;
             using parse_context_type = ParseCtx<locale_type>;
 
-            auto ctx =
-                context_type(SCN_MOVE(r), locale_type{std::addressof(loc)});
+            auto ctx = context_type(SCN_MOVE(r), SCN_MOVE(loc));
             auto pctx = parse_context_type(fmt, ctx);
             auto err = visit(ctx, pctx, SCN_MOVE(args));
             return {err, SCN_MOVE(ctx.range())};

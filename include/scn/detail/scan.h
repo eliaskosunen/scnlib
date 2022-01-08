@@ -91,7 +91,7 @@ namespace scn {
                 ParseCtx<typename context_type::locale_type>;
             using char_type = typename range_type::char_type;
 
-            auto range = detail::wrap(SCN_FORWARD(r));
+            auto range = detail::wrap(SCN_FWD(r));
             auto args = make_args<context_type, parse_context_type>(a...);
             auto ret = vscan_localized(
                 SCN_MOVE(range), locale_type{std::addressof(loc)},
