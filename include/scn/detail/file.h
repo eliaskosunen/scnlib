@@ -328,10 +328,10 @@ namespace scn {
          * Calls sync(), if necessary, before resetting.
          * @return The old handle
          */
-        FILE* set_handle(FILE* f)
+        FILE* set_handle(FILE* f, bool allow_sync = true)
         {
             auto old = m_file;
-            if (old) {
+            if (old && allow_sync) {
                 sync();
             }
             m_file = f;
@@ -461,19 +461,27 @@ namespace scn {
         bool open(const char* f, const char* mode)
         {
             SCN_EXPECT(!is_open());
+
             auto h = std::fopen(f, mode);
-            if (h) {
+            if (!h) {
+                return false;
+            }
+
+            const bool is_wide = sizeof(CharT) > 1;
+            auto ret = std::fwide(h, is_wide ? 1 : -1);
+            if ((is_wide && ret > 0) || (!is_wide && ret < 0) || ret == 0) {
                 this->set_handle(h);
                 return true;
             }
-            else {
-                return false;
-            }
+            return false;
         }
         /// Steal ownership
         bool open(FILE* f)
         {
             SCN_EXPECT(!is_open());
+            if (std::ferror(f) != 0) {
+                return false;
+            }
             this->set_handle(f);
             return true;
         }
@@ -482,7 +490,9 @@ namespace scn {
         void close()
         {
             SCN_EXPECT(is_open());
+            this->sync();
             std::fclose(this->handle());
+            this->set_handle(nullptr, false);
         }
 
         /// Is the file open

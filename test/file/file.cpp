@@ -20,10 +20,19 @@
 #include <istream>
 #include "../test.h"
 
-TEST_CASE("file")
+static void do_fgets(char* str, size_t count, std::FILE* f) {
+    std::fgets(str, static_cast<int>(count), f);
+}
+static void do_fgets(wchar_t* str, size_t count, std::FILE* f) {
+    std::fgetws(str, static_cast<int>(count), f);
+}
+
+TEST_CASE_TEMPLATE("file", CharT, char, wchar_t)
 {
-    scn::owning_file file{"./test/file/testfile.txt", "r"};
+    scn::basic_owning_file<CharT> file{"./test/file/testfile.txt", "r"};
     REQUIRE(file.is_open());
+
+    using string_type = std::basic_string<CharT>;
 
     SUBCASE("basic")
     {
@@ -41,19 +50,19 @@ TEST_CASE("file")
         CHECK(result);
         CHECK(i == 123);
 
-        std::string word;
+        string_type word;
         result = scn::scan_default(result.range(), word);
         CHECK(result);
-        CHECK(word == "word");
+        CHECK(word == widen<CharT>("word"));
 
         result = scn::scan_default(result.range(), word);
         CHECK(result);
-        CHECK(word == "another");
+        CHECK(word == widen<CharT>("another"));
 
         result = scn::scan_default(result.range(), word);
         CHECK(!result);
         CHECK(result.error().code() == scn::error::end_of_range);
-        CHECK(word == "another");
+        CHECK(word == widen<CharT>("another"));
     }
 
     SUBCASE("syncing")
@@ -64,18 +73,19 @@ TEST_CASE("file")
         CHECK(i == 123);
         file.sync();
 
-        std::string word;
+        string_type word;
         result = scn::scan_default(file, word);
         CHECK(result);
-        CHECK(word == "word");
+        CHECK(word == widen<CharT>("word"));
         file.sync();
 
-        std::string cmp{"another"};
-        word.clear();
-        word.resize(cmp.size());
-        auto n = std::fread(&word[0], 1, word.size(), file.handle());
-        CHECK(n == cmp.size());
-        CHECK(word == cmp);
+        word = widen<CharT>("another");
+
+        std::vector<CharT> buf(word.size() + 1, 0);
+        do_fgets(buf.data(), buf.size(), file.handle());
+        CHECK(word == string_type{buf.data()});
+        CHECK(std::ferror(file.handle()) == 0);
+        CHECK(std::feof(file.handle()) == 0);
     }
 
     SUBCASE("not syncing")
@@ -86,18 +96,18 @@ TEST_CASE("file")
         CHECK(i == 123);
 
         // syncing required to use original `file`
-        std::string word;
+        string_type word;
         result = scn::scan_default(file, word);
         CHECK(result);
-        CHECK(word == "123");
+        CHECK(word == widen<CharT>("123"));
 
         // syncing required to use the file handle
-        std::string cmp{"word"};
-        word.clear();
-        word.resize(cmp.size());
-        auto n = std::fread(&word[0], 1, word.size(), file.handle());
-        CHECK(n == cmp.size());
-        CHECK(word == cmp);
+        word = widen<CharT>("word");
+        std::vector<CharT> buf(word.size() + 1, 0);
+        do_fgets(buf.data(), buf.size(), file.handle());
+        CHECK(word == string_type{buf.data()});
+        CHECK(std::ferror(file.handle()) == 0);
+        CHECK(std::feof(file.handle()) == 0);
     }
 
     SUBCASE("error")
@@ -113,27 +123,27 @@ TEST_CASE("file")
         CHECK(i == 123);
 
         // can still read again
-        std::string word;
+        string_type word;
         result = scn::scan_default(result.range(), word);
         CHECK(result);
-        CHECK(word == "word");
+        CHECK(word == widen<CharT>("word"));
     }
 
     SUBCASE("getline")
     {
-        std::string line;
+        string_type line;
         auto result = scn::getline(file, line);
         CHECK(result);
-        CHECK(line == "123");
+        CHECK(line == widen<CharT>("123"));
 
         result = scn::getline(result.range(), line);
         CHECK(result);
-        CHECK(line == "word another");
+        CHECK(line == widen<CharT>("word another"));
 
         result = scn::getline(result.range(), line);
         CHECK(!result);
         CHECK(result.error().code() == scn::error::end_of_range);
-        CHECK(line == "word another");
+        CHECK(line == widen<CharT>("word another"));
     }
 }
 
