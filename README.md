@@ -190,7 +190,7 @@ However, support will not be provided for:
 
 ### Run-time performance
 
-![Benchmark results](benchmark/results.png?raw=true "Benchmark results")
+![Benchmark results](benchmark/runtime/results.png?raw=true "Benchmark results")
 
 These benchmarks were run on a Ubuntu 20.04 machine running kernel version 5.4.0-52, with an Intel Core i5-6600K processor, and compiled with gcc version 9.3.0, with `-O3 -DNDEBUG -march=native`.
 The source code for the benchmarks can be seen in the `benchmark` directory.
@@ -248,11 +248,12 @@ In the above comparisons:
    The time it took to parse a single value is averaged out.
    This test is called "repeated" in the benchmark sources.
 
-### Code size
+### Executable size
 
-Code size benchmarks test code bloat for nontrivial projects.
+Executable size benchmarks test generated code bloat for nontrivial projects.
 It generates 25 translation units and reads values from stdin five times to simulate a medium sized project.
-The resulting executable size is shown in the following tables.
+The resulting executable size is shown in the following tables and graphs.
+The "stripped size" metric shows the size of the executable after running `strip`.
 
 The code was compiled on Ubuntu 20.04 with g++ 9.3.0.
 `scnlib` is linked dynamically to level out the playing field compared to already dynamically linked `libc` and `libstdc++`.
@@ -263,11 +264,11 @@ To run these tests yourself:
 ```sh
 $ cd build
 # For Debug
-$ cmake -DCMAKE_BUILD_TYPE=Debug -DSCN_BLOAT=ON -DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
+$ cmake -DCMAKE_BUILD_TYPE=Debug -DSCN_BUILD_BLOAT=ON -DSCN_BUILD_BUILDTIME=OFF -DSCN_TESTS=OFF -DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
 # For Release
-$ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_BLOAT=ON -DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
+$ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_BUILD_BLOAT=ON -DSCN_BUILD_BUILDTIME=OFF -DSCN_TESTS=OFF DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
 # For Minimized Release
-$ cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_BLOAT=ON -DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
+$ cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_BUILD_BLOAT=ON -DSCN_BUILD_BUILDTIME=OFF -DSCN_TESTS=OFF DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
 
 $ make -j
 $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
@@ -278,33 +279,45 @@ Lower is better.
 
 #### Minimized build (-Os -DNDEBUG)
 
-| Method                      | Executable size | Stripped size |
-| :-------------------------- | --------------: | ------------: |
-| empty                       | 18              | 14            |
-| `scanf`                     | 23              | 18            |
-| `std::istream` / `std::cin` | 25              | 18            |
-| `scn::input`                | 35              | 30            |
-| `scn::input` (header only)  | 138             | 98            |
+| Method                          | Executable size | Stripped size |
+| :------------------------------ | --------------: | ------------: |
+| empty                           |            16.0 |          14.0 |
+| `std::scanf`                    |            17.8 |          14.2 |
+| `std::istream`                  |            19.4 |          14.2 |
+| `scn::input`                    |            19.1 |          14.2 |
+| `scn::input` (header-only)      |            41.4 |          30.2 |
+| `scn::scan_value`               |            35.9 |          26.2 |
+| `scn::scan_value` (header-only) |            32.0 |          22.2 |
+
+![Benchmark results](benchmark/bloat/results_minsizerel.png?raw=true "Benchmark results")
 
 #### Release build (-O3 -DNDEBUG)
 
-| Method                      | Executable size | Stripped size |
-| :-------------------------- | --------------: | ------------: |
-| empty                       | 18              | 14            |
-| `scanf`                     | 24              | 18            |
-| `std::istream` / `std::cin` | 30              | 22            |
-| `scn::input`                | 41              | 34            |
-| `scn::input` (header only)  | 177             | 146           |
+| Method                          | Executable size | Stripped size |
+| :------------------------------ | --------------: | ------------: |
+| empty                           |            16.0 |          14.0 |
+| `std::scanf`                    |            17.7 |          14.2 |
+| `std::istream`                  |            19.4 |          14.2 |
+| `scn::input`                    |            19.1 |          14.2 |
+| `scn::input` (header-only)      |            53.8 |          42.2 |
+| `scn::scan_value`               |            39.3 |          30.2 |
+| `scn::scan_value` (header-only) |            43.8 |          34.2 |
+
+![Benchmark results](benchmark/bloat/results_release.png?raw=true "Benchmark results")
 
 #### Debug build (-g)
 
-| Method                      | Executable size | Stripped size |
-| :-------------------------- | --------------: | ------------: |
-| empty                       | 29              | 14            |
-| `scanf`                     | 600             | 18            |
-| `std::istream` / `std::cin` | 662             | 22            |
-| `scn::input`                | 1709            | 51            |
-| `scn::input` (header only)  | 6858            | 281           |
+| Method                          | Executable size | Stripped size |
+| :------------------------------ | --------------: | ------------: |
+| empty                           |            35.9 |          14.0 |
+| `std::scanf`                    |             614 |          18.2 |
+| `std::istream`                  |             688 |          26.2 |
+| `scn::input`                    |            1425 |          42.3 |
+| `scn::input` (header-only)      |            4703 |           202 |
+| `scn::scan_value`               |            3622 |           134 |
+| `scn::scan_value` (header-only) |            4778 |           186 |
+
+![Benchmark results](benchmark/bloat/results_debug.png?raw=true "Benchmark results")
 
 ### Build time
 
@@ -332,11 +345,11 @@ Lower is better.
 
 | Method                      | Debug | Release |
 | :-------------------------- | ----: | ------: |
-| empty                       | 0.03  | 0.04    |
-| `scanf`                     | 0.24  | 0.25    |
-| `std::istream` / `std::cin` | 0.29  | 0.31    |
-| `scn::input`                | 0.53  | 0.62    |
-| `scn::input` (header only)  | 1.38  | 2.54    |
+| empty                       | 0.04  | 0.04    |
+| `scanf`                     | 0.25  | 0.23    |
+| `std::istream` / `std::cin` | 0.31  | 0.29    |
+| `scn::input`                | 0.50  | 0.48    |
+| `scn::input` (header only)  | 1.34  | 2.48    |
 
 #### Memory consumption
 
@@ -345,11 +358,11 @@ Lower is better.
 
 | Method                      | Debug | Release |
 | :-------------------------- | ----: | ------: |
-| empty                       | 22.3  | 23.9    |
-| `scanf`                     | 47.0  | 46.7    |
-| `std::istream` / `std::cin` | 55.2  | 54.7    |
-| `scn::input`                | 82.9  | 83.9    |
-| `scn::input` (header only)  | 143.1 | 167.6   |
+| empty                       | 22.2  | 23.8    |
+| `scanf`                     | 46.9  | 46.7    |
+| `std::istream` / `std::cin` | 55.1  | 54.8    |
+| `scn::input`                | 78.0  | 75.6    |
+| `scn::input` (header only)  | 140   | 166     |
 
 ## Acknowledgements
 
