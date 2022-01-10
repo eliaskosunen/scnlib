@@ -102,9 +102,9 @@ namespace scn {
 
     template <typename WrappedRange,
               typename CharT = typename WrappedRange::char_type>
-    vscan_result<WrappedRange> vscan(WrappedRange&& range,
+    vscan_result<WrappedRange> vscan(WrappedRange range,
                                      basic_string_view<CharT> fmt,
-                                     basic_args<CharT> args)
+                                     basic_args<CharT>&& args)
     {
         return detail::vscan_boilerplate<basic_parse_context>(
             SCN_MOVE(range), fmt, SCN_MOVE(args));
@@ -112,9 +112,9 @@ namespace scn {
 
     template <typename WrappedRange,
               typename CharT = typename WrappedRange::char_type>
-    vscan_result<WrappedRange> vscan(WrappedRange&& range,
+    vscan_result<WrappedRange> vscan(WrappedRange range,
                                      int n_args,
-                                     basic_args<CharT> args)
+                                     basic_args<CharT>&& args)
     {
         return detail::vscan_boilerplate<basic_empty_parse_context>(
             SCN_MOVE(range), n_args, SCN_MOVE(args));
@@ -122,10 +122,10 @@ namespace scn {
 
     template <typename WrappedRange,
               typename CharT = typename WrappedRange::char_type>
-    vscan_result<WrappedRange> vscan_localized(WrappedRange&& range,
+    vscan_result<WrappedRange> vscan_localized(WrappedRange range,
                                                basic_locale_ref<CharT>&& loc,
                                                basic_string_view<CharT> fmt,
-                                               basic_args<CharT> args)
+                                               basic_args<CharT>&& args)
     {
         return detail::vscan_boilerplate_localized<basic_parse_context>(
             SCN_MOVE(range), SCN_MOVE(loc), fmt, SCN_MOVE(args));
@@ -133,10 +133,10 @@ namespace scn {
 
     template <typename WrappedRange,
               typename CharT = typename WrappedRange::char_type>
-    vscan_result<WrappedRange> vscan_localized(WrappedRange&& range,
+    vscan_result<WrappedRange> vscan_localized(WrappedRange range,
                                                basic_locale_ref<CharT>&& loc,
                                                int n_args,
-                                               basic_args<CharT> args)
+                                               basic_args<CharT>&& args)
     {
         return detail::vscan_boilerplate_localized<basic_empty_parse_context>(
             SCN_MOVE(range), SCN_MOVE(loc), n_args, SCN_MOVE(args));
@@ -154,11 +154,11 @@ namespace scn {
     vscan_result<detail::vscan_macro::WrappedAlias> vscan(                    \
         detail::vscan_macro::WrappedAlias&&,                                  \
         basic_string_view<detail::vscan_macro::CharAlias>,                    \
-        basic_args<detail::vscan_macro::CharAlias>);                          \
+        basic_args<detail::vscan_macro::CharAlias>&&);                        \
                                                                               \
     vscan_result<detail::vscan_macro::WrappedAlias> vscan(                    \
         detail::vscan_macro::WrappedAlias&&, int,                             \
-        basic_args<detail::vscan_macro::CharAlias>)
+        basic_args<detail::vscan_macro::CharAlias>&&)
 
     SCN_VSCAN_DECLARE(string_view, string_view_wrapped, string_view_char);
     SCN_VSCAN_DECLARE(file&, file_ref_wrapped, file_ref_char);

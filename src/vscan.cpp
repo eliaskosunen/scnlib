@@ -35,7 +35,7 @@ namespace scn {
     vscan_result<detail::vscan_macro::WrappedAlias> vscan(           \
         detail::vscan_macro::WrappedAlias&& range,                   \
         basic_string_view<detail::vscan_macro::CharAlias> fmt,       \
-        basic_args<detail::vscan_macro::CharAlias> args)             \
+        basic_args<detail::vscan_macro::CharAlias>&& args)           \
     {                                                                \
         return detail::vscan_boilerplate<basic_parse_context>(       \
             SCN_MOVE(range), fmt, SCN_MOVE(args));                   \
@@ -43,7 +43,7 @@ namespace scn {
                                                                      \
     vscan_result<detail::vscan_macro::WrappedAlias> vscan(           \
         detail::vscan_macro::WrappedAlias&& range, int n_args,       \
-        basic_args<detail::vscan_macro::CharAlias> args)             \
+        basic_args<detail::vscan_macro::CharAlias>&& args)           \
     {                                                                \
         return detail::vscan_boilerplate<basic_empty_parse_context>( \
             SCN_MOVE(range), n_args, SCN_MOVE(args));                \

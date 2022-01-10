@@ -93,9 +93,12 @@ namespace scn {
 
             auto range = detail::wrap(SCN_FWD(r));
             auto args = make_args<context_type, parse_context_type>(a...);
-            auto ret = vscan_localized(
-                SCN_MOVE(range), locale_type{std::addressof(loc)},
-                detail::to_format<char_type>(f), basic_args<char_type>(args));
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+            auto locale = locale_type{std::addressof(loc)};
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+            auto ret = vscan_localized(SCN_MOVE(range), SCN_MOVE(locale),
+                                       detail::to_format<char_type>(f),
+                                       basic_args<char_type>(args));
             return detail::wrap_result(wrapped_error{ret.err},
                                        detail::range_tag<Range>{},
                                        SCN_MOVE(ret.range));
