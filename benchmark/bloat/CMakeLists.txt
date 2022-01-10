@@ -52,6 +52,6 @@ target_link_libraries(bloat-scnlib-value-header-only scn-header-only)
 
 add_custom_target(bloat-prepare ALL
     COMMAND ${CMAKE_COMMAND} -E copy
-    "${CMAKE_CURRENT_LIST_DIR}/bloat-test.py" "${CMAKE_CURRENT_LIST_DIR}/run-bloat-tests.py"
+    "${CMAKE_CURRENT_LIST_DIR}/bloat_test.py" "${CMAKE_CURRENT_LIST_DIR}/run-bloat-tests.py"
     "${CMAKE_BINARY_DIR}/benchmark/bloat"
     COMMENT "Copying bloat test scripts")

@@ -62,7 +62,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        native_file_handle native_file_handle::invalid()
+        SCN_FUNC native_file_handle native_file_handle::invalid()
         {
 #if SCN_WINDOWS
             return {INVALID_HANDLE_VALUE};
