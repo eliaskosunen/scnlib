@@ -20,11 +20,11 @@
 #include <istream>
 #include "../test.h"
 
-static void do_fgets(char* str, size_t count, std::FILE* f) {
-    std::fgets(str, static_cast<int>(count), f);
+static bool do_fgets(char* str, size_t count, std::FILE* f) {
+    return std::fgets(str, static_cast<int>(count), f) != nullptr;
 }
-static void do_fgets(wchar_t* str, size_t count, std::FILE* f) {
-    std::fgetws(str, static_cast<int>(count), f);
+static bool do_fgets(wchar_t* str, size_t count, std::FILE* f) {
+    return std::fgetws(str, static_cast<int>(count), f) != nullptr;
 }
 
 TEST_CASE_TEMPLATE("file", CharT, char, wchar_t)
@@ -82,7 +82,8 @@ TEST_CASE_TEMPLATE("file", CharT, char, wchar_t)
         word = widen<CharT>("another");
 
         std::vector<CharT> buf(word.size() + 1, 0);
-        do_fgets(buf.data(), buf.size(), file.handle());
+        bool fgets_ret = do_fgets(buf.data(), buf.size(), file.handle());
+        CHECK(fgets_ret);
         CHECK(word == string_type{buf.data()});
         CHECK(std::ferror(file.handle()) == 0);
         CHECK(std::feof(file.handle()) == 0);
@@ -104,7 +105,8 @@ TEST_CASE_TEMPLATE("file", CharT, char, wchar_t)
         // syncing required to use the file handle
         word = widen<CharT>("word");
         std::vector<CharT> buf(word.size() + 1, 0);
-        do_fgets(buf.data(), buf.size(), file.handle());
+        bool fgets_ret = do_fgets(buf.data(), buf.size(), file.handle());
+        CHECK(fgets_ret);
         CHECK(word == string_type{buf.data()});
         CHECK(std::ferror(file.handle()) == 0);
         CHECK(std::feof(file.handle()) == 0);
