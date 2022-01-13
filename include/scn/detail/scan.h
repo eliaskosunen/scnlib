@@ -335,6 +335,24 @@ namespace scn {
         return {str.data() + ret.value()};
     }
 
+    template <typename WrappedRange,
+              typename LocaleRef,
+              typename Format,
+              typename... Args>
+    error scan_usertype(basic_context<WrappedRange, LocaleRef>& ctx,
+                        const Format& f,
+                        Args&... a)
+    {
+        static_assert(sizeof...(Args) > 0,
+                      "Have to scan at least a single argument");
+
+        using char_type = typename WrappedRange::char_type;
+        auto args = make_args<basic_context<WrappedRange, LocaleRef>,
+                              basic_parse_context<LocaleRef>>(a...);
+        return vscan_usertype(ctx, detail::to_format<char_type>(f),
+                              basic_args<char_type>(args));
+    }
+
     // scanning api
 
     // getline

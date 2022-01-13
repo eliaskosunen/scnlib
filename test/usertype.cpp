@@ -24,6 +24,9 @@ struct user_type {
 struct user_type2 {
     int val1{}, val2{};
 };
+struct user_type3 {
+    int val1{}, val2{};
+};
 
 namespace scn {
     template <typename CharT>
@@ -31,15 +34,24 @@ namespace scn {
         template <typename Context>
         error scan(user_type& val, Context& ctx)
         {
-            auto r = scn::scan(ctx.range(), "[{}, {}]", val.val1, val.val2);
-            ctx.range() = std::move(r.range());
-            return r.error();
+            return scan_usertype(ctx, "[{}, {}]", val.val1, val.val2);
         }
     };
     template <typename CharT>
     struct scanner<CharT, user_type2> : public scn::empty_parser {
         template <typename Context>
         error scan(user_type2& val, Context& ctx)
+        {
+            using pctx_type =
+                basic_parse_context<typename Context::locale_type>;
+            auto args = make_args<Context, pctx_type>(val.val1, val.val2);
+            return vscan_usertype(ctx, "[{}, {}]", {args});
+        }
+    };
+    template <typename CharT>
+    struct scanner<CharT, user_type3> : public scn::empty_parser {
+        template <typename Context>
+        error scan(user_type3& val, Context& ctx)
         {
             using pctx_type =
                 basic_parse_context<typename Context::locale_type>;
@@ -94,7 +106,11 @@ TEST_CASE_TEMPLATE_DEFINE("user type", T, user_type_test)
 }
 TYPE_TO_STRING(user_type);
 TYPE_TO_STRING(user_type2);
-TEST_CASE_TEMPLATE_INSTANTIATE(user_type_test, user_type, user_type2);
+TYPE_TO_STRING(user_type3);
+TEST_CASE_TEMPLATE_INSTANTIATE(user_type_test,
+                               user_type,
+                               user_type2,
+                               user_type3);
 
 struct non_default_construct {
     non_default_construct() = delete;

@@ -64,7 +64,7 @@ namespace scn {
         }
 #if SCN_HAS_STRING_VIEW
         // std::string_view is not reconstructible pre-C++20
-        template <typename CharTdetail::range_wrapper_for_t,
+        template <typename CharT,
                   typename Traits,
                   typename Iterator,
                   typename Sentinel>

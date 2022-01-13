@@ -143,22 +143,40 @@ namespace scn {
             SCN_MOVE(range), SCN_MOVE(loc), n_args, SCN_MOVE(args));
     }
 
+    template <typename WrappedRange,
+              typename LocaleRef,
+              typename CharT = typename WrappedRange::char_type>
+    error vscan_usertype(basic_context<WrappedRange, LocaleRef>& ctx,
+                         basic_string_view<CharT> f,
+                         basic_args<CharT>&& args)
+    {
+        auto pctx = basic_parse_context<LocaleRef>(f, ctx);
+        return visit(ctx, pctx, SCN_MOVE(args));
+    }
+
 #if !defined(SCN_HEADER_ONLY) || !SCN_HEADER_ONLY
 
-#define SCN_VSCAN_DECLARE(Range, WrappedAlias, CharAlias)       \
-    namespace detail {                                          \
-        namespace vscan_macro {                                 \
-            using WrappedAlias = range_wrapper_for_t<Range>;    \
-            using CharAlias = typename WrappedAlias::char_type; \
-        }                                                       \
-    }                                                           \
-    vscan_result<detail::vscan_macro::WrappedAlias> vscan(      \
-        detail::vscan_macro::WrappedAlias&&,                    \
-        basic_string_view<detail::vscan_macro::CharAlias>,      \
-        basic_args<detail::vscan_macro::CharAlias>&&);          \
-                                                                \
-    vscan_result<detail::vscan_macro::WrappedAlias> vscan(      \
-        detail::vscan_macro::WrappedAlias&&, int,               \
+#define SCN_VSCAN_DECLARE(Range, WrappedAlias, CharAlias)               \
+    namespace detail {                                                  \
+        namespace vscan_macro {                                         \
+            using WrappedAlias = range_wrapper_for_t<Range>;            \
+            using CharAlias = typename WrappedAlias::char_type;         \
+        }                                                               \
+    }                                                                   \
+    vscan_result<detail::vscan_macro::WrappedAlias> vscan(              \
+        detail::vscan_macro::WrappedAlias&&,                            \
+        basic_string_view<detail::vscan_macro::CharAlias>,              \
+        basic_args<detail::vscan_macro::CharAlias>&&);                  \
+                                                                        \
+    vscan_result<detail::vscan_macro::WrappedAlias> vscan(              \
+        detail::vscan_macro::WrappedAlias&&, int,                       \
+        basic_args<detail::vscan_macro::CharAlias>&&);                  \
+                                                                        \
+    error vscan_usertype(                                               \
+        basic_context<                                                  \
+            detail::vscan_macro::WrappedAlias,                          \
+            basic_default_locale_ref<detail::vscan_macro::CharAlias>>&, \
+        basic_string_view<detail::vscan_macro::CharAlias>,              \
         basic_args<detail::vscan_macro::CharAlias>&&)
 
     SCN_VSCAN_DECLARE(string_view, string_view_wrapped, string_view_char);
