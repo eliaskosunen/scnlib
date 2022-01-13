@@ -50,7 +50,7 @@ namespace scn {
             static_assert(SCN_CHECK_CONCEPT(ranges::range<Range>),
                           "Input needs to be a Range");
 
-            using range_type = range_wrapper_for_t<const Range&>;
+            using range_type = range_wrapper_for_t<Range>;
 
             using context_type = basic_context<range_type>;
             using parse_context_type =
@@ -82,7 +82,7 @@ namespace scn {
             static_assert(SCN_CHECK_CONCEPT(ranges::range<Range>),
                           "Input needs to be a Range");
 
-            using range_type = range_wrapper_for_t<const Range&>;
+            using range_type = range_wrapper_for_t<Range>;
             using locale_type =
                 basic_locale_ref<typename range_type::char_type>;
 
