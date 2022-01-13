@@ -64,7 +64,7 @@ namespace scn {
         }
 #if SCN_HAS_STRING_VIEW
         // std::string_view is not reconstructible pre-C++20
-        template <typename CharT,
+        template <typename CharTdetail::range_wrapper_for_t,
                   typename Traits,
                   typename Iterator,
                   typename Sentinel>
@@ -98,7 +98,7 @@ namespace scn {
             }
             type&& get() && noexcept
             {
-                return SCN_MOVE(*value);
+                return *value;
             }
         };
         template <typename T>
@@ -119,7 +119,7 @@ namespace scn {
             }
             T&& get() && noexcept
             {
-                return SCN_MOVE(value);
+                return value;
             }
         };
 
@@ -270,9 +270,9 @@ namespace scn {
             auto size() const noexcept(noexcept(
                 ranges::distance(SCN_DECLVAL(ranges::iterator_t<const R>),
                                  SCN_DECLVAL(ranges::sentinel_t<const R>))))
-                -> decltype(
-                    ranges::distance(SCN_DECLVAL(ranges::iterator_t<const R>),
-                                     SCN_DECLVAL(ranges::sentinel_t<const R>)))
+                -> decltype(ranges::distance(
+                    SCN_DECLVAL(ranges::iterator_t<const R>),
+                    SCN_DECLVAL(ranges::sentinel_t<const R>)))
             {
                 return ranges::distance(m_begin, end());
             }
@@ -439,17 +439,19 @@ namespace scn {
                 }
             };
         }  // namespace _wrap
-        namespace {
-            static constexpr auto& wrap = static_const<_wrap::fn>::value;
-        }
+    }      // namespace detail
 
-        template <typename Range>
-        struct range_wrapper_for {
-            using type = decltype(wrap(SCN_DECLVAL(Range)));
-        };
-        template <typename Range>
-        using range_wrapper_for_t = typename range_wrapper_for<Range>::type;
-    }  // namespace detail
+    namespace {
+        static constexpr auto& wrap =
+            detail::static_const<detail::_wrap::fn>::value;
+    }
+
+    template <typename Range>
+    struct range_wrapper_for {
+        using type = decltype(wrap(SCN_DECLVAL(Range)));
+    };
+    template <typename Range>
+    using range_wrapper_for_t = typename range_wrapper_for<Range>::type;
 
     /**
      * Base class for the result type returned by most scanning functions
@@ -938,11 +940,11 @@ namespace scn {
      * \endcode
      */
     template <typename Error = wrapped_error, typename Range>
-    auto make_result(Range&& r) -> detail::
-        result_type_for_t<Error, Range, detail::range_wrapper_for_t<Range>>
+    auto make_result(Range&& r)
+        -> detail::result_type_for_t<Error, Range, range_wrapper_for_t<Range>>
     {
         return detail::wrap_result(Error{}, detail::range_tag<Range>{},
-                                   detail::wrap(r));
+                                   wrap(r));
     }
 
     SCN_END_NAMESPACE

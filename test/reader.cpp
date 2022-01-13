@@ -22,7 +22,7 @@ TEST_CASE("read_char")
 {
     SUBCASE("direct")
     {
-        auto range = scn::detail::wrap("42");
+        auto range = scn::wrap("42");
         auto ret = scn::read_char(range);
         CHECK(ret);
         CHECK(ret.value() == '4');
@@ -37,7 +37,7 @@ TEST_CASE("read_char")
 #if 0
     SUBCASE("indirect")
     {
-        auto range = scn::detail::wrap("42");
+        auto range = scn::wrap("42");
         auto ret = scn::read_char(range);
         CHECK(ret);
         CHECK(ret.value() == '4');
@@ -56,7 +56,7 @@ TEST_CASE("read_zero_copy")
 {
     SUBCASE("contiguous")
     {
-        auto range = scn::detail::wrap("123");
+        auto range = scn::wrap("123");
         auto ret = scn::read_zero_copy(range, 2);
         CHECK(ret);
         CHECK(ret.value().size() == 2);
@@ -76,7 +76,7 @@ TEST_CASE("read_into")
 {
     SUBCASE("contiguous")
     {
-        auto range = scn::detail::wrap("123");
+        auto range = scn::wrap("123");
         std::vector<char> data{};
         auto it = std::back_inserter(data);
         auto ret = scn::read_into(range, it, 2);
@@ -101,7 +101,7 @@ TEST_CASE("read_until_space_zero_copy")
 {
     SUBCASE("contiguous & no final space")
     {
-        auto range = scn::detail::wrap("123 456");
+        auto range = scn::wrap("123 456");
         auto ret = scn::read_until_space_zero_copy(
             range, [](char ch) { return ch == ' '; }, false);
         CHECK(ret);
@@ -126,7 +126,7 @@ TEST_CASE("read_until_space_zero_copy")
 
     SUBCASE("contiguous & keep final space")
     {
-        auto range = scn::detail::wrap("123 456");
+        auto range = scn::wrap("123 456");
         auto ret = scn::read_until_space_zero_copy(
             range, [](char ch) { return ch == ' '; }, true);
         CHECK(ret);
