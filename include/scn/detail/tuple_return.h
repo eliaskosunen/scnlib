@@ -185,7 +185,6 @@ namespace scn {
      * To scan a non-default-constructible value, use \c scn::optional
      *
      * @param r Input range
-     * @param f
      * @return Tuple, where the first element is the scan result, and the
      * remaining elements are the scanned values.
      */

@@ -342,7 +342,7 @@ namespace scn {
      *
      * Example use:
      *
-     * \code cpp
+     * \code{.cpp}
      * // Type has two integers, and its textual representation is
      * // "[val1, val2]"
      * struct user_type {
@@ -363,7 +363,6 @@ namespace scn {
      * @param ctx Context given to the scanning function
      * @param f Format string to parse
      * @param a Member types (etc) to parse
-     * @return
      */
     template <typename WrappedRange,
               typename LocaleRef,
