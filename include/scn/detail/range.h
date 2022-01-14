@@ -534,6 +534,9 @@ namespace scn {
             }
             SCN_GCC_PUSH
             SCN_GCC_IGNORE("-Wnoexcept")
+            // Mitigate problem where Doxygen would think that SCN_GCC_PUSH was
+            // a part of the definition of end()
+        public:
             /// End of the leftover range
             sentinel end() const
                 noexcept(noexcept(SCN_DECLVAL(wrapped_range_type).end()))
@@ -548,7 +551,8 @@ namespace scn {
                 return begin() == end();
             }
             SCN_GCC_POP
-
+            // See above at SCN_GCC_PUSH
+        public:
             /// A subrange pointing to the leftover range
             ranges::subrange<iterator, sentinel> subrange() const
             {

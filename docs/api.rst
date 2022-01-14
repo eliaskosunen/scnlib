@@ -406,13 +406,37 @@ Files
 Lower level parsing and scanning operations
 -------------------------------------------
 
-.. doxygenfunction:: vscan
+``vscan``
+*********
+
+.. doxygenfunction:: vscan(WrappedRange range, basic_string_view<CharT> fmt, basic_args<CharT> &&args) -> vscan_result<WrappedRange>
+.. doxygenfunction:: vscan(WrappedRange range, int n_args, basic_args<CharT> &&args) -> vscan_result<WrappedRange>
+.. doxygenfunction:: vscan_localized(WrappedRange range, basic_locale_ref<CharT> &&loc, basic_string_view<CharT> fmt, basic_args<CharT> &&args) -> vscan_result<WrappedRange>
+.. doxygenfunction:: vscan_localized(WrappedRange range, basic_locale_ref<CharT> &&loc, int n_args, basic_args<CharT> &&args) -> vscan_result<WrappedRange>
+.. doxygenfunction:: visit(Context &ctx, ParseCtx &pctx, basic_args<typename Context::char_type> args) -> error
+
+Low-level parsing
+*****************
 
 ``parse_integer`` and ``parse_float`` will provide super-fast parsing from a string, at the expense of some safety and usability guarantees.
 Using these functions can easily lead to unexpected behavior or UB if not used correctly and proper precautions are not taken.
 
 .. doxygenfunction:: parse_integer
 .. doxygenfunction:: parse_float
+
+Scanner
+*******
+
+Values are eventually scanned using a ``scn::scanner``.
+
+.. doxygenclass:: scn::empty_parser
+    :members:
+
+.. doxygenfunction:: scan_usertype
+.. doxygenfunction:: vscan_usertype
+
+Low-level range reading
+***********************
 
 The following functions abstract away the source range in easier to understand parsing operations.
 

@@ -290,7 +290,7 @@ namespace scn {
      *   - preceding \c "0x" or \c "0" (base is determined by the \c base
      * parameter)
      *   - \c '+' sign (\c '-' is fine)
-     * @param val parsed integer, must be default-constructed
+     * @param val parsed integer, must be value-constructed
      * @param base between [2,36]
      */
     template <typename T, typename CharT>
@@ -320,7 +320,7 @@ namespace scn {
      * Returns a pointer past the last character read, or an error.
      *
      * @param str source, can't be empty
-     * @param val parsed float, must be default-constructed
+     * @param val parsed float, must be value-constructed
      */
     template <typename T, typename CharT>
     expected<const CharT*> parse_float(basic_string_view<CharT> str, T& val)
@@ -335,6 +335,36 @@ namespace scn {
         return {str.data() + ret.value()};
     }
 
+    /**
+     * A convenience function for creating scanners for user-provided types.
+     *
+     * Wraps \ref vscan_usertype
+     *
+     * Example use:
+     *
+     * \code cpp
+     * // Type has two integers, and its textual representation is
+     * // "[val1, val2]"
+     * struct user_type {
+     *     int val1;
+     *     int val2;
+     * };
+     *
+     * template <typename CharT>
+     * struct scn::scanner<CharT, user_type> : public scn::empty_parser {
+     *     template <typename Context>
+     *     error scan(user_type& val, Context& ctx)
+     *     {
+     *         return scan_usertype(ctx, "[{}, {}]", val.val1, val.val2);
+     *     }
+     * };
+     * \endcode
+     *
+     * @param ctx Context given to the scanning function
+     * @param f Format string to parse
+     * @param a Member types (etc) to parse
+     * @return
+     */
     template <typename WrappedRange,
               typename LocaleRef,
               typename Format,
