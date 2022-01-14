@@ -580,40 +580,62 @@ namespace scn {
             }
 
             /**
-             * These member functions enable more conventient use of the
-             * leftover range for non-scnlib use cases. The range must be
-             * contiguous.
+             * \defgroup range_as_range Contiguous leftover range convertors
              *
-             * The lifetime semantics are as one would expect: \ref string_view
-             * and \ref scan reference the leftover range, \ref string allocates
-             * a new string, independent of the leftover range.
+             * These member functions enable more convenient use of the
+             * leftover range for non-scnlib use cases. The range must be
+             * contiguous. The leftover range is not advanced, and can still be
+             * used.
+             *
+             * @{
+             */
+
+            /**
+             * \ingroup range_as_range
+             * Return a view into the leftover range as a \c string_view.
+             * Operations done to the leftover range after a call to this may
+             * cause issues with iterator invalidation. The returned range will
+             * reference to the leftover range, so be wary of
+             * use-after-free-problems.
              */
             template <
                 typename R = wrapped_range_type,
                 typename = typename std::enable_if<R::is_contiguous>::type>
-            basic_string_view<char_type> string_view() const
+            basic_string_view<char_type> range_as_string_view() const
             {
                 return {m_range.data(),
                         static_cast<std::size_t>(m_range.size())};
             }
-            /// \copydoc string_view()
+            /**
+             * \ingroup range_as_range
+             * Return a view into the leftover range as a \c span.
+             * Operations done to the leftover range after a call to this may
+             * cause issues with iterator invalidation. The returned range will
+             * reference to the leftover range, so be wary of
+             * use-after-free-problems.
+             */
             template <
                 typename R = wrapped_range_type,
                 typename = typename std::enable_if<R::is_contiguous>::type>
-            span<char_type> span() const
+            span<const char_type> range_as_span() const
             {
                 return {m_range.data(),
                         static_cast<std::size_t>(m_range.size())};
             }
-            /// \copydoc string_view()
+            /**
+             * \ingroup range_as_range
+             * Return the leftover range as a string. The contents are copied
+             * into the string, so using this will not lead to lifetime issues.
+             */
             template <
                 typename R = wrapped_range_type,
                 typename = typename std::enable_if<R::is_contiguous>::type>
-            std::basic_string<char_type> string() const
+            std::basic_string<char_type> range_as_string() const
             {
                 return {m_range.data(),
                         static_cast<std::size_t>(m_range.size())};
             }
+            /// @}
 
         protected:
             wrapped_range_type m_range;

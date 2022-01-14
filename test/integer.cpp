@@ -625,5 +625,5 @@ TEST_CASE("trailing")
     CHECK(i == 42);
     CHECK(j == 43);
     CHECK(ret.range().size() == 1);
-    CHECK(ret.string_view()[0] == ';');
+    CHECK(ret.range_as_string_view()[0] == ';');
 }

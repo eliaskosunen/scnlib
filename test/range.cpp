@@ -69,7 +69,7 @@ TEST_CASE("string_view lvalue")
     auto ret = scn::scan(source, "{}", a);
     CHECK(ret);
     CHECK(a == 123);
-    CHECK(ret.string() == " 456");
+    CHECK(ret.range_as_string() == " 456");
     static_assert(
         std::is_same<decltype(ret),
                      scn::detail::non_reconstructed_scan_result<
@@ -88,7 +88,7 @@ TEST_CASE("string_view rvalue")
     auto ret = scn::scan(scn::string_view{"123 456"}, "{}", a);
     CHECK(ret);
     CHECK(a == 123);
-    CHECK(ret.string() == " 456");
+    CHECK(ret.range_as_string() == " 456");
     static_assert(std::is_same<decltype(ret),
                                scn::detail::reconstructed_scan_result<
                                    scn::detail::range_wrapper<scn::string_view>,
@@ -107,7 +107,7 @@ TEST_CASE("string literal")
     auto ret = scn::scan("123 456", "{}", a);
     CHECK(ret);
     CHECK(a == 123);
-    CHECK(ret.string() == " 456");
+    CHECK(ret.range_as_string() == " 456");
     static_assert(std::is_same<decltype(ret),
                                scn::detail::reconstructed_scan_result<
                                    scn::detail::range_wrapper<scn::string_view>,

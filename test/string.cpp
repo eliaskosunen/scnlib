@@ -97,7 +97,7 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
         {
             auto ret = scn::ignore_until(data, 0x0a);  // '\n'
             CHECK(ret);
-            data.assign(ret.string());
+            data.assign(ret.range_as_string());
         }
 
         {

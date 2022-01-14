@@ -25,5 +25,5 @@ int main()
     auto result = scn::scan("Hello world!", "{}", word);
 
     std::cout << word << '\n';  // Will output "Hello"
-    std::cout << result.string() << '\n';   // Will output " world!"
+    std::cout << result.range_as_string() << '\n';   // Will output " world!"
 }

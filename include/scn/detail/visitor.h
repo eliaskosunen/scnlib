@@ -132,7 +132,7 @@ namespace scn {
         }
         auto visit(detail::monostate, detail::priority_tag<0>) -> error
         {
-            return error(error::invalid_operation, "Cannot scan a monostate");
+            return {error::invalid_operation, "Cannot scan a monostate"};
         }
 
         template <typename Scanner>

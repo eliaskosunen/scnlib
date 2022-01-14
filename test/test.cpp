@@ -121,7 +121,7 @@ TEST_CASE("value")
 
     auto ret2 = scn::scan_value<int>("foo");
     CHECK(!ret2);
-    CHECK(ret2.string() == "foo");
+    CHECK(ret2.range_as_string() == "foo");
 }
 
 TEST_CASE("temporary")
@@ -150,7 +150,7 @@ TEST_CASE("discard")
 {
     auto ret = scn::scan_default("123 456", scn::discard<int>());
     CHECK(ret);
-    CHECK(ret.string() == " 456");
+    CHECK(ret.range_as_string() == " 456");
 }
 
 TEST_CASE("enumerated arguments")
