@@ -204,17 +204,17 @@ namespace scn {
         auto range = wrap(SCN_FWD(r));
         auto scanfn = [&range, &f](Args&... a) {
             auto args = make_args<context_type, parse_context_type>(a...);
-            auto ret =
-                vscan(SCN_MOVE(range), detail::to_format<char_type>(f), {args});
-            return detail::wrap_result(wrapped_error{ret.err},
-                                       detail::range_tag<Range>{},
-                                       SCN_MOVE(ret.range));
+            return vscan(SCN_MOVE(range), detail::to_format<char_type>(f),
+                         {args});
         };
 
         std::tuple<Args...> values{Args{}...};
         auto ret = detail::apply(scanfn, values);
-        return std::tuple_cat(std::tuple<result>{SCN_MOVE(ret)},
-                              SCN_MOVE(values));
+        return std::tuple_cat(
+            std::tuple<result>{detail::wrap_result(wrapped_error{ret.err},
+                                                   detail::range_tag<Range>{},
+                                                   SCN_MOVE(ret.range))},
+            SCN_MOVE(values));
     }
 
     template <typename... Args, typename Range>
@@ -231,17 +231,17 @@ namespace scn {
         auto range = wrap(SCN_FWD(r));
         auto scanfn = [&range](Args&... a) {
             auto args = make_args<context_type, parse_context_type>(a...);
-            auto ret = vscan(SCN_MOVE(range), static_cast<int>(sizeof...(Args)),
-                             {args});
-            return detail::wrap_result(wrapped_error{ret.err},
-                                       detail::range_tag<Range>{},
-                                       SCN_MOVE(ret.range));
+            return vscan(SCN_MOVE(range), static_cast<int>(sizeof...(Args)),
+                         {args});
         };
 
         std::tuple<Args...> values{Args{}...};
         auto ret = detail::apply(scanfn, values);
-        return std::tuple_cat(std::tuple<result>{SCN_MOVE(ret)},
-                              SCN_MOVE(values));
+        return std::tuple_cat(
+            std::tuple<result>{detail::wrap_result(wrapped_error{ret.err},
+                                                   detail::range_tag<Range>{},
+                                                   SCN_MOVE(ret.range))},
+            SCN_MOVE(values));
     }
 
     SCN_END_NAMESPACE

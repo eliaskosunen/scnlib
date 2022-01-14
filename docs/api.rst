@@ -449,6 +449,12 @@ The following functions abstract away the source range in easier to understand p
 .. doxygenfunction:: putback_n
 .. doxygenfunction:: skip_range_whitespace
 
+Tuple scanning
+--------------
+
+.. doxygenfunction:: scan_tuple
+.. doxygenfunction:: scan_tuple_default
+
 Utility types
 -------------
 
