@@ -35,9 +35,6 @@ TEST_CASE("string lvalue")
                                    std::string, scn::wrapped_error>>::value,
                   "");
 
-    // debug<decltype(ret)>{};
-    // debug<decltype(scn::make_result(ret.range()))>{};
-
     ret = scn::scan(ret.range(), "{}", a);
     CHECK(ret);
     CHECK(a == 456);
@@ -50,11 +47,11 @@ TEST_CASE("string rvalue")
     CHECK(ret);
     CHECK(a == 123);
     CHECK(ret.reconstruct() == " 456");
-    static_assert(
-        std::is_same<decltype(ret), scn::detail::reconstructed_scan_result<
-                                        scn::detail::range_wrapper<std::string>,
-                                        scn::wrapped_error>>::value,
-        "");
+    static_assert(std::is_same<decltype(ret),
+                               scn::detail::non_reconstructed_scan_result<
+                                   scn::detail::range_wrapper<std::string>,
+                                   std::string, scn::wrapped_error>>::value,
+                  "");
 
     ret = scn::scan(ret.range(), "{}", a);
     CHECK(ret);
@@ -70,12 +67,11 @@ TEST_CASE("string_view lvalue")
     CHECK(ret);
     CHECK(a == 123);
     CHECK(ret.range_as_string() == " 456");
-    static_assert(
-        std::is_same<decltype(ret),
-                     scn::detail::non_reconstructed_scan_result<
-                         scn::detail::range_wrapper<scn::string_view>,
-                         scn::string_view, scn::wrapped_error>>::value,
-        "");
+    static_assert(std::is_same<decltype(ret),
+                               scn::detail::reconstructed_scan_result<
+                                   scn::detail::range_wrapper<scn::string_view>,
+                                   scn::wrapped_error>>::value,
+                  "");
 
     ret = scn::scan(ret.range(), "{}", a);
     CHECK(ret);

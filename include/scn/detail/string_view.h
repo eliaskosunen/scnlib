@@ -20,8 +20,8 @@
 
 #include "span.h"
 
-#include <cstring>
 #include <cstdint>
+#include <cstring>
 #include <cwchar>
 
 #if SCN_HAS_STRING_VIEW

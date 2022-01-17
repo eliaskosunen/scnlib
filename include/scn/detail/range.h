@@ -57,7 +57,12 @@ namespace scn {
         struct reconstruct_tag {
         };
 
-        template <typename Range, typename Iterator, typename Sentinel>
+        template <
+            typename Range,
+            typename Iterator,
+            typename Sentinel,
+            typename = typename std::enable_if<
+                std::is_constructible<Range, Iterator, Sentinel>::value>::type>
         Range reconstruct(reconstruct_tag<Range>, Iterator begin, Sentinel end)
         {
             return {begin, end};
@@ -293,6 +298,15 @@ namespace scn {
                 m_read = 0;
             }
 
+            template <typename R>
+            auto reconstruct_and_rewrap() && -> range_wrapper<R>
+            {
+                auto reconstructed =
+                    reconstruct(reconstruct_tag<R>{}, begin(), end());
+                return {SCN_MOVE(reconstructed)};
+            }
+
+#if 0
             template <typename R = range_nocvref_type,
                       typename std::enable_if<
                           std::is_same<R, range_nocvref_type>::value>::type* =
@@ -334,6 +348,7 @@ namespace scn {
             {
                 return {reconstruct(reconstruct_tag<R>{}, begin(), end())};
             }
+#endif
 
             // iterator value type is a character
             static constexpr bool is_direct =
@@ -364,15 +379,14 @@ namespace scn {
                 static range_wrapper<Range> impl(range_wrapper<Range>&& r,
                                                  priority_tag<4>) noexcept
                 {
-                    return r;
+                    return SCN_MOVE(r);
                 }
 
                 template <typename Range>
-                static auto impl(const Range& r,
-                                 priority_tag<3>) noexcept(noexcept(r.wrap()))
-                    -> decltype(r.wrap())
+                static auto impl(Range&& r, priority_tag<3>) noexcept(
+                    noexcept(SCN_FWD(r).wrap())) -> decltype(SCN_FWD(r).wrap())
                 {
-                    return r.wrap();
+                    return SCN_FWD(r).wrap();
                 }
 
                 template <typename CharT, std::size_t N>
@@ -395,6 +409,21 @@ namespace scn {
                 {
                     return {basic_string_view<CharT>{str.data(), str.size()}};
                 }
+                template <typename CharT, typename Allocator>
+                static auto impl(
+                    std::basic_string<CharT,
+                                      std::char_traits<CharT>,
+                                      Allocator>&& str,
+                    priority_tag<2>) noexcept(std::
+                                                  is_nothrow_move_constructible<
+                                                      decltype(str)>::value)
+                    -> range_wrapper<std::basic_string<CharT,
+                                                       std::char_traits<CharT>,
+                                                       Allocator>>
+                {
+                    return {SCN_MOVE(str)};
+                }
+
 #if SCN_HAS_STRING_VIEW
                 template <typename CharT>
                 static auto impl(const std::basic_string_view<CharT>& str,
@@ -404,8 +433,9 @@ namespace scn {
                     return {basic_string_view<CharT>{str.data(), str.size()}};
                 }
 #endif
-                template <typename CharT>
-                static auto impl(span<const CharT> s, priority_tag<2>) noexcept
+                template <typename T,
+                          typename CharT = typename std::remove_const<T>::type>
+                static auto impl(span<T> s, priority_tag<2>) noexcept
                     -> range_wrapper<basic_string_view<CharT>>
                 {
                     return {basic_string_view<CharT>{s.data(), s.size()}};
@@ -414,7 +444,7 @@ namespace scn {
                 template <typename Range,
                           typename = typename std::enable_if<
                               SCN_CHECK_CONCEPT(ranges::view<Range>)>::type>
-                static auto impl(const Range& r, priority_tag<1>) noexcept
+                static auto impl(Range r, priority_tag<1>) noexcept
                     -> range_wrapper<Range>
                 {
                     return {r};
@@ -427,6 +457,16 @@ namespace scn {
                     static_assert(SCN_CHECK_CONCEPT(ranges::range<Range>),
                                   "Input needs to be a Range");
                     return {r};
+                }
+                template <typename Range,
+                          typename = typename std::enable_if<
+                              !std::is_reference<Range>::value>::type>
+                static auto impl(Range&& r, priority_tag<0>) noexcept
+                    -> range_wrapper<Range>
+                {
+                    static_assert(SCN_CHECK_CONCEPT(ranges::range<Range>),
+                                  "Input needs to be a Range");
+                    return {SCN_MOVE(r)};
                 }
 
             public:
@@ -760,7 +800,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<range_wrapper<Range&>&>,
                                  range_wrapper<Range&>&& range,
-                                 priority_tag<4>) noexcept
+                                 priority_tag<5>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range&>, Error>
                 {
                     return {SCN_MOVE(e), SCN_MOVE(range)};
@@ -770,7 +810,7 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<const range_wrapper<Range&>&>,
                                  range_wrapper<Range&>&& range,
-                                 priority_tag<4>) noexcept
+                                 priority_tag<5>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range&>, Error>
                 {
                     return {SCN_MOVE(e), SCN_MOVE(range)};
@@ -780,47 +820,38 @@ namespace scn {
                 static auto impl(Error e,
                                  range_tag<range_wrapper<Range&>>,
                                  range_wrapper<Range&>&& range,
-                                 priority_tag<4>) noexcept
+                                 priority_tag<5>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range&>, Error>
                 {
                     return {SCN_MOVE(e), SCN_MOVE(range)};
                 }
 
                 // Range = range_wrapper<non-ref>&
-                template <typename Error,
-                          typename Range,
-                          typename = typename std::enable_if<
-                              !std::is_lvalue_reference<Range>::value>::type>
+                template <typename Error, typename Range>
                 static auto impl(Error e,
                                  range_tag<range_wrapper<Range>&>,
                                  range_wrapper<Range>&& range,
-                                 priority_tag<3>) noexcept
+                                 priority_tag<4>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range>, Error>
                 {
                     return {SCN_MOVE(e), SCN_MOVE(range)};
                 }
                 // Range = const range_wrapper<non-ref>&
-                template <typename Error,
-                          typename Range,
-                          typename = typename std::enable_if<
-                              !std::is_lvalue_reference<Range>::value>::type>
+                template <typename Error, typename Range>
                 static auto impl(Error e,
                                  range_tag<const range_wrapper<Range>&>,
                                  range_wrapper<Range>&& range,
-                                 priority_tag<3>) noexcept
+                                 priority_tag<4>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range>, Error>
                 {
                     return {SCN_MOVE(e), SCN_MOVE(range)};
                 }
                 // Range = range_wrapper<non-ref>&&
-                template <typename Error,
-                          typename Range,
-                          typename = typename std::enable_if<
-                              !std::is_lvalue_reference<Range>::value>::type>
+                template <typename Error, typename Range>
                 static auto impl(Error e,
                                  range_tag<range_wrapper<Range>>,
                                  range_wrapper<Range>&& range,
-                                 priority_tag<3>) noexcept
+                                 priority_tag<4>) noexcept
                     -> intermediary_scan_result<range_wrapper<Range>, Error>
                 {
                     return {SCN_MOVE(e), SCN_MOVE(range)};
@@ -830,20 +861,46 @@ namespace scn {
                 template <typename Error,
                           typename CharT,
                           size_t N,
-                          typename NoCvref = remove_cvref_t<CharT>>
+                          typename NoCVRef = remove_cvref_t<CharT>>
                 static auto impl(
                     Error e,
                     range_tag<CharT (&)[N]>,
-                    range_wrapper<basic_string_view<NoCvref>>&& range,
-                    priority_tag<2>) noexcept
+                    range_wrapper<basic_string_view<NoCVRef>>&& range,
+                    priority_tag<3>) noexcept
                     -> reconstructed_scan_result<
-                        range_wrapper<basic_string_view<NoCvref>>,
+                        range_wrapper<basic_string_view<NoCVRef>>,
                         Error>
                 {
-                    return {SCN_MOVE(e), SCN_MOVE(range)};
+                    return {SCN_MOVE(e), SCN_MOVE(range)
+                                             .template reconstruct_and_rewrap<
+                                                 basic_string_view<NoCVRef>>()};
                 }
 
-                // (const) InputRange&
+                // (const) InputRange&: View + Reconstructible
+                // wrapped<any>
+                template <typename Error,
+                          typename InputRange,
+                          typename InnerWrappedRange,
+                          typename InputRangeNoConst =
+                              typename std::remove_const<InputRange>::type,
+                          typename = typename std::enable_if<SCN_CHECK_CONCEPT(
+                              ranges::view<InputRangeNoConst>)>::type>
+                static auto impl(Error e,
+                                 range_tag<InputRange&>,
+                                 range_wrapper<InnerWrappedRange>&& range,
+                                 priority_tag<2>) noexcept
+                    -> reconstructed_scan_result<
+                        decltype(SCN_MOVE(range)
+                                     .template reconstruct_and_rewrap<
+                                         InputRangeNoConst>()),
+                        Error>
+                {
+                    return {SCN_MOVE(e), SCN_MOVE(range)
+                                             .template reconstruct_and_rewrap<
+                                                 InputRangeNoConst>()};
+                }
+
+                // (const) InputRange&: other
                 // wrapped<any>
                 template <typename Error,
                           typename InputRange,
@@ -860,25 +917,48 @@ namespace scn {
                     return {SCN_MOVE(e), SCN_MOVE(range)};
                 }
 
-                // InputRange&&
+                // InputRange&&: View + Reconstructible
                 // wrapped<non-ref>
                 template <typename Error,
                           typename InputRange,
                           typename InnerWrappedRange,
-                          typename =
-                              typename std::enable_if<!std::is_lvalue_reference<
-                                  InnerWrappedRange>::value>::type>
+                          typename InputRangeNoConst =
+                              typename std::remove_const<InputRange>::type,
+                          typename = typename std::enable_if<SCN_CHECK_CONCEPT(
+                              ranges::view<InputRangeNoConst>)>::type>
+                static auto impl(Error e,
+                                 range_tag<InputRange>,
+                                 range_wrapper<InnerWrappedRange>&& range,
+                                 priority_tag<1>) noexcept
+                    -> reconstructed_scan_result<
+                        decltype(SCN_MOVE(range)
+                                     .template reconstruct_and_rewrap<
+                                         InputRangeNoConst>()),
+                        Error>
+                {
+                    return {SCN_MOVE(e), SCN_MOVE(range)
+                                             .template reconstruct_and_rewrap<
+                                                 InputRangeNoConst>()};
+                }
+
+                // InputRange&&: other
+                // wrapped<non-ref>
+                template <typename Error,
+                          typename InputRange,
+                          typename InnerWrappedRange>
                 static auto impl(Error e,
                                  range_tag<InputRange>,
                                  range_wrapper<InnerWrappedRange>&& range,
                                  priority_tag<0>) noexcept
-                    -> reconstructed_scan_result<range_wrapper<InputRange>,
-                                                 Error>
+                    -> non_reconstructed_scan_result<
+                        range_wrapper<InputRange>,
+                        typename std::remove_const<InputRange>::type,
+                        Error>
                 {
-                    return {SCN_MOVE(e),
-                            SCN_MOVE(range).template rewrap<InputRange>()};
+                    return {SCN_MOVE(e), SCN_MOVE(range)};
                 }
 
+#if 0
                 // InputRange&&
                 // wrapped<ref>
                 template <typename Error,
@@ -893,8 +973,10 @@ namespace scn {
                     -> reconstructed_scan_result<range_wrapper<NoRef>, Error>
                 {
                     return {SCN_MOVE(e),
-                            SCN_MOVE(range).template rewrap<NoRef>()};
+                            SCN_MOVE(range)
+                                .template rewrap_and_reconstruct<NoRef>()};
                 }
+#endif
 
             public:
                 template <typename Error,
@@ -906,16 +988,16 @@ namespace scn {
                     noexcept(noexcept(impl(SCN_MOVE(e),
                                            tag,
                                            SCN_MOVE(range),
-                                           priority_tag<4>{})))
+                                           priority_tag<5>{})))
                         -> decltype(impl(SCN_MOVE(e),
                                          tag,
                                          SCN_MOVE(range),
-                                         priority_tag<4>{}))
+                                         priority_tag<5>{}))
                 {
                     static_assert(SCN_CHECK_CONCEPT(ranges::range<InputRange>),
                                   "Input needs to be a Range");
                     return impl(SCN_MOVE(e), tag, SCN_MOVE(range),
-                                priority_tag<4>{});
+                                priority_tag<5>{});
                 }
             };
         }  // namespace _wrap_result

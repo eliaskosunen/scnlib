@@ -44,6 +44,11 @@ namespace scn {
         using iter_reference_t = ::std::iter_reference_t<T>;
         template <typename T>
         using iter_difference_t = ::std::iter_difference_t<T>;
+
+        template <typename I>
+        concept bidirectional_iterator = std::bidirectional_iterator<I>;
+        template <typename I>
+        concept random_access_iterator = std::random_access_iterator<I>;
     }  // namespace polyfill_2a
 
     SCN_END_NAMESPACE

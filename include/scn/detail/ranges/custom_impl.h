@@ -123,8 +123,8 @@ namespace scn {
                     std::is_integral<decltype(SCN_DECLVAL(const T&) -
                                               SCN_DECLVAL(const T&))>::value>::
                     type>
-                : with_difference_type<typename std::make_signed<decltype(
-                      SCN_DECLVAL(T) - SCN_DECLVAL(T))>::type> {
+                : with_difference_type<typename std::make_signed<
+                      decltype(SCN_DECLVAL(T) - SCN_DECLVAL(T))>::type> {
             };
         }  // namespace detail
 
@@ -316,8 +316,8 @@ namespace scn {
                 static SCN_CONSTEXPR14 auto
                 impl(T& t, detail::priority_tag<1>) noexcept(noexcept(
                     ::scn::custom_ranges::detail::decay_copy(t.begin())))
-                    -> decltype(
-                        ::scn::custom_ranges::detail::decay_copy(t.begin()))
+                    -> decltype(::scn::custom_ranges::detail::decay_copy(
+                        t.begin()))
                 {
                     return ::scn::custom_ranges::detail::decay_copy(t.begin());
                 }
@@ -383,13 +383,13 @@ namespace scn {
                           typename S =
                               decltype(::scn::custom_ranges::detail::decay_copy(
                                   SCN_DECLVAL(T&).end())),
-                          typename I = decltype(
-                              ::scn::custom_ranges::begin(SCN_DECLVAL(T&)))>
+                          typename I = decltype(::scn::custom_ranges::begin(
+                              SCN_DECLVAL(T&)))>
                 static constexpr auto
                 impl(T& t, detail::priority_tag<1>) noexcept(
                     noexcept(::scn::custom_ranges::detail::decay_copy(t.end())))
-                    -> decltype(
-                        ::scn::custom_ranges::detail::decay_copy(t.end()))
+                    -> decltype(::scn::custom_ranges::detail::decay_copy(
+                        t.end()))
                 {
                     return ::scn::custom_ranges::detail::decay_copy(t.end());
                 }
@@ -398,8 +398,8 @@ namespace scn {
                           typename S =
                               decltype(::scn::custom_ranges::detail::decay_copy(
                                   end(SCN_DECLVAL(T)))),
-                          typename I = decltype(
-                              ::scn::custom_ranges::begin(SCN_DECLVAL(T)))>
+                          typename I = decltype(::scn::custom_ranges::begin(
+                              SCN_DECLVAL(T)))>
                 static constexpr auto
                 impl(T& t, detail::priority_tag<0>) noexcept(noexcept(
                     ::scn::custom_ranges::detail::decay_copy(end(SCN_FWD(t)))))
@@ -438,8 +438,8 @@ namespace scn {
                 template <typename T>
                 constexpr auto operator()(const T&& t) const noexcept(noexcept(
                     ::scn::custom_ranges::begin(static_cast<const T&&>(t))))
-                    -> decltype(
-                        ::scn::custom_ranges::begin(static_cast<const T&&>(t)))
+                    -> decltype(::scn::custom_ranges::begin(
+                        static_cast<const T&&>(t)))
                 {
                     return ::scn::custom_ranges::begin(
                         static_cast<const T&&>(t));
@@ -464,8 +464,8 @@ namespace scn {
                 template <typename T>
                 constexpr auto operator()(const T&& t) const noexcept(noexcept(
                     ::scn::custom_ranges::end(static_cast<const T&&>(t))))
-                    -> decltype(
-                        ::scn::custom_ranges::end(static_cast<const T&&>(t)))
+                    -> decltype(::scn::custom_ranges::end(
+                        static_cast<const T&&>(t)))
                 {
                     return ::scn::custom_ranges::end(static_cast<const T&&>(t));
                 }
@@ -555,14 +555,19 @@ namespace scn {
                                            range_reference_t<const T>>,
                               std::true_type>::type>::type>::type {
             };
+            template <typename T>
+            struct view_impl
+                : std::integral_constant<
+                      bool,
+                      std::is_copy_constructible<T>::value &&
+                          std::is_default_constructible<T>::value &&
+                          detail::enable_view_helper<T>::value> {
+            };
         }  // namespace detail
         template <typename T>
-        struct view
-            : std::integral_constant<
-                  bool,
-                  range<T>::value && std::is_copy_constructible<T>::value &&
-                      std::is_default_constructible<T>::value &&
-                      detail::enable_view_helper<T>::value> {
+        struct view : std::conditional<range<T>::value,
+                                       detail::view_impl<T>,
+                                       std::false_type>::type {
         };
 
         // data
@@ -620,8 +625,8 @@ namespace scn {
                 impl(T&& t, detail::priority_tag<0>) noexcept(
                     noexcept(::scn::custom_ranges::begin(SCN_FWD(t)))) ->
                     typename std::enable_if<
-                        _is_object_pointer<decltype(
-                            ::scn::custom_ranges::begin(SCN_FWD(t)))>::value,
+                        _is_object_pointer<decltype(::scn::custom_ranges::begin(
+                            SCN_FWD(t)))>::value,
                         decltype(::scn::custom_ranges::begin(SCN_FWD(t)))>::type
                 {
                     return ::scn::custom_ranges::begin(SCN_FWD(t));
@@ -706,10 +711,10 @@ namespace scn {
                 }
 
                 template <typename T,
-                          typename I = decltype(
-                              ::scn::custom_ranges::begin(SCN_DECLVAL(T))),
-                          typename S = decltype(
-                              ::scn::custom_ranges::end(SCN_DECLVAL(T))),
+                          typename I = decltype(::scn::custom_ranges::begin(
+                              SCN_DECLVAL(T))),
+                          typename S = decltype(::scn::custom_ranges::end(
+                              SCN_DECLVAL(T))),
                           typename D =
                               decltype(::scn::custom_ranges::detail::decay_copy(
                                   SCN_DECLVAL(S) - SCN_DECLVAL(I)))>
@@ -763,8 +768,8 @@ namespace scn {
                 }
 
                 template <typename T,
-                          typename I = decltype(
-                              ::scn::custom_ranges::begin(SCN_DECLVAL(T)))>
+                          typename I = decltype(::scn::custom_ranges::begin(
+                              SCN_DECLVAL(T)))>
                 static constexpr auto
                 impl(T&& t, detail::priority_tag<0>) noexcept(
                     noexcept(::scn::custom_ranges::begin(t) ==
@@ -862,15 +867,15 @@ namespace scn {
             }
 
             template <typename R = D,
-                      typename = decltype(
-                          ::scn::custom_ranges::empty(SCN_DECLVAL(R&)))>
+                      typename = decltype(::scn::custom_ranges::empty(
+                          SCN_DECLVAL(R&)))>
             SCN_CONSTEXPR14 explicit operator bool()
             {
                 return !::scn::custom_ranges::empty(derived());
             }
             template <typename R = D,
-                      typename = decltype(
-                          ::scn::custom_ranges::empty(SCN_DECLVAL(const R&)))>
+                      typename = decltype(::scn::custom_ranges::empty(
+                          SCN_DECLVAL(const R&)))>
             constexpr explicit operator bool() const
             {
                 return !::scn::custom_ranges::empty(derived());
@@ -919,9 +924,11 @@ namespace scn {
                     sized_sentinel_for<sentinel_t<const R>,
                                        iterator_t<const R>>::value>::type* =
                     nullptr>
-            constexpr auto size() const -> decltype(
-                ::scn::custom_ranges::end(static_cast<const R&>(*this)) -
-                ::scn::custom_ranges::begin(static_cast<const R&>(*this)))
+            constexpr auto size() const
+                -> decltype(::scn::custom_ranges::end(
+                                static_cast<const R&>(*this)) -
+                            ::scn::custom_ranges::begin(
+                                static_cast<const R&>(*this)))
             {
                 return ::scn::custom_ranges::end(derived()) -
                        ::scn::custom_ranges::begin(derived());
@@ -1090,11 +1097,11 @@ namespace scn {
 
             template <typename R, typename I, typename S, subrange_kind K>
             struct subrange_range_constructor_constraint_helper
-                : decltype(
-                      subrange_range_constructor_constraint_helper_fn<R,
-                                                                      I,
-                                                                      S,
-                                                                      K>(0)) {
+                : decltype(subrange_range_constructor_constraint_helper_fn<R,
+                                                                           I,
+                                                                           S,
+                                                                           K>(
+                      0)) {
             };
 
             template <typename R>
@@ -1245,20 +1252,25 @@ namespace scn {
                           R,
                           subrange<iterator_t<R>, sentinel_t<R>>>::value> {
         };
+    }  // namespace custom_ranges
 
+    namespace polyfill_2a {
         // bidir iterator
         namespace detail {
             struct bidirectional_iterator_concept {
                 template <typename I>
-                auto _test_requires(I i) -> decltype(
-                    requires_expr<std::is_same<decltype(i--), I>::value>{});
+                auto _test_requires(I i)
+                    -> decltype(custom_ranges::detail::requires_expr<
+                                std::is_same<decltype(i--), I>::value>{});
                 template <typename>
                 static auto test(long) -> std::false_type;
                 template <typename I>
                 static auto test(int) -> typename std::enable_if<
-                    std::is_base_of<bidirectional_iterator_tag,
-                                    iterator_category_t<I>>::value &&
-                        _requires<bidirectional_iterator_concept, I>::value,
+                    std::is_base_of<
+                        custom_ranges::bidirectional_iterator_tag,
+                        custom_ranges::iterator_category_t<I>>::value &&
+                        custom_ranges::detail::
+                            _requires<bidirectional_iterator_concept, I>::value,
                     std::true_type>::type;
             };
         }  // namespace detail
@@ -1273,34 +1285,37 @@ namespace scn {
                 template <typename I>
                 auto _test_requires(I i,
                                     const I j,
-                                    const iter_difference_t<I> n)
+                                    const custom_ranges::iter_difference_t<I> n)
                     -> decltype(valid_expr(
                         j + n,
-                        requires_expr<
+                        custom_ranges::detail::requires_expr<
                             std::is_same<decltype(j + n), I>::value>{},
                         n + j,
 #ifndef _MSC_VER
-                        requires_expr<
+                        custom_ranges::detail::requires_expr<
                             std::is_same<decltype(n + j), I>::value>{},
 #endif
                         j - n,
-                        requires_expr<
+                        custom_ranges::detail::requires_expr<
                             std::is_same<decltype(j - n), I>::value>{},
                         j[n],
-                        requires_expr<
-                            std::is_same<decltype(j[n]),
-                                         iter_reference_t<I>>::value>{},
-                        requires_expr<std::is_convertible<decltype(i < j),
-                                                          bool>::value>{}));
+                        custom_ranges::detail::requires_expr<std::is_same<
+                            decltype(j[n]),
+                            custom_ranges::iter_reference_t<I>>::value>{},
+                        custom_ranges::detail::requires_expr<
+                            std::is_convertible<decltype(i < j),
+                                                bool>::value>{}));
                 template <typename>
                 static auto test(long) -> std::false_type;
                 template <typename I>
                 static auto test(int) -> typename std::enable_if<
                     bidirectional_iterator<I>::value &&
-                        std::is_base_of<random_access_iterator_tag,
-                                        iterator_category_t<I>>::value &&
-                        sized_sentinel_for<I, I>::value &&
-                        _requires<random_access_iterator_concept, I>::value,
+                        std::is_base_of<
+                            custom_ranges::random_access_iterator_tag,
+                            custom_ranges::iterator_category_t<I>>::value &&
+                        custom_ranges::sized_sentinel_for<I, I>::value &&
+                        custom_ranges::detail::
+                            _requires<random_access_iterator_concept, I>::value,
                     std::true_type>::type;
             };
         }  // namespace detail
@@ -1308,7 +1323,9 @@ namespace scn {
         struct random_access_iterator
             : decltype(detail::random_access_iterator_concept::test<I>(0)) {
         };
+    }  // namespace polyfill_2a
 
+    namespace custom_ranges {
         // advance
         namespace _advance {
             struct fn {
@@ -1319,9 +1336,10 @@ namespace scn {
                     return t < T{0} ? -t : t;
                 }
 
-                template <typename R,
-                          typename std::enable_if<random_access_iterator<
-                              R>::value>::type* = nullptr>
+                template <
+                    typename R,
+                    typename std::enable_if<polyfill_2a::random_access_iterator<
+                        R>::value>::type* = nullptr>
                 static SCN_CONSTEXPR14 void impl(R& r, iter_difference_t<R> n)
                 {
                     r += n;
@@ -1330,8 +1348,9 @@ namespace scn {
                 template <
                     typename I,
                     typename std::enable_if<
-                        bidirectional_iterator<I>::value &&
-                        !random_access_iterator<I>::value>::type* = nullptr>
+                        polyfill_2a::bidirectional_iterator<I>::value &&
+                        !polyfill_2a::random_access_iterator<I>::value>::type* =
+                        nullptr>
                 static SCN_CONSTEXPR14 void impl(I& i, iter_difference_t<I> n)
                 {
                     constexpr auto zero = iter_difference_t<I>{0};
@@ -1348,9 +1367,11 @@ namespace scn {
                     }
                 }
 
-                template <typename I,
-                          typename std::enable_if<!bidirectional_iterator<
-                              I>::value>::type* = nullptr>
+                template <
+                    typename I,
+                    typename std::enable_if<
+                        !polyfill_2a::bidirectional_iterator<I>::value>::type* =
+                        nullptr>
                 static SCN_CONSTEXPR14 void impl(I& i, iter_difference_t<I> n)
                 {
                     while (n-- > iter_difference_t<I>{0}) {
@@ -1415,7 +1436,7 @@ namespace scn {
                     typename I,
                     typename S,
                     typename std::enable_if<
-                        bidirectional_iterator<I>::value &&
+                        polyfill_2a::bidirectional_iterator<I>::value &&
                         !sized_sentinel_for<S, I>::value>::type* = nullptr>
                 static SCN_CONSTEXPR14 auto impl(I& i,
                                                  iter_difference_t<I> n,
@@ -1445,7 +1466,7 @@ namespace scn {
                     typename I,
                     typename S,
                     typename std::enable_if<
-                        !bidirectional_iterator<I>::value &&
+                        !polyfill_2a::bidirectional_iterator<I>::value &&
                         !sized_sentinel_for<S, I>::value>::type* = nullptr>
                 static SCN_CONSTEXPR14 auto impl(I& i,
                                                  iter_difference_t<I> n,
@@ -1496,6 +1517,8 @@ namespace scn {
         }
 
         // distance
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Wnoexcept")
         namespace _distance {
             struct fn {
             private:
@@ -1571,7 +1594,8 @@ namespace scn {
             constexpr auto& distance =
                 detail::static_const<_distance::fn>::value;
         }
-    }  // namespace custom_ranges
+        SCN_GCC_POP  // -Wnoexcept
+    }                // namespace custom_ranges
 
     namespace polyfill_2a {
         template <typename T>

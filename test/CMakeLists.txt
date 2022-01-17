@@ -34,6 +34,7 @@ make_test(range range.cpp)
 make_test(locale locale.cpp)
 make_test(std-string-view std_string_view.cpp)
 make_test(pmr-string pmr_string.cpp)
+make_test(wrap wrap.cpp)
 
 make_test(result result.cpp)
 make_test(istream istream.cpp)
