@@ -2,9 +2,6 @@ name: coverage
 
 on: [push, pull_request]
 
-env:
-  APT_INSTALL: sudo apt-get install -yq --no-install-suggests --no-install-recommends --force-yes
-
 jobs:
   codecov:
     runs-on: ubuntu-latest
@@ -32,24 +29,23 @@ jobs:
           wget http://downloads.sourceforge.net/ltp/lcov-1.14.tar.gz
           tar xvfz lcov-1.14.tar.gz
           make -C lcov-1.14
-          cd ..
+          sudo make -C lcov-1.14 install
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_COVERAGE=ON -DSCN_BENCHMARKS=OFF $GITHUB_WORKSPACE
+          cmake -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_COVERAGE=ON -DSCN_BENCHMARKS=OFF -DSCN_EXAMPLES=OFF $GITHUB_WORKSPACE
           make -k -j
 
       - name: Generate Coverage Report
         working-directory: ${{ runner.workspace }}/build
         run: |
           ctest
+          lcov --gcov-tool /usr/bin/gcov-8 --directory . --capture --output-file coverage.info
+          lcov --gcov-tool /usr/bin/gcov-8 --remove coverage.info '/usr/*' 'test/*' --output-file coverage.info
+          lcov --gcov-tool /usr/bin/gcov-8 --list coverage.info
 
       - name: Upload Coverage Report
-        working-directory: ${{ runner.workspace }}/build
-        shell: bash
-        run: |
-          ${{ runner.workspace }}/lcov/lcov-1.14/bin/lcov --gcov-tool /usr/bin/gcov-8 --directory . --capture --output-file coverage.info
-          ${{ runner.workspace }}/lcov/lcov-1.14/bin/lcov --gcov-tool /usr/bin/gcov-8 --remove coverage.info '/usr/*' '${{ runner.workspace }}/test/doctest/*' 'test/doctest/*' --output-file coverage.info
-          ${{ runner.workspace }}/lcov/lcov-1.14/bin/lcov --gcov-tool /usr/bin/gcov-8 --list coverage.info
-          bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
+        uses: codecov/codecov-action@v2
+        with:
+          directory: ${{ runner.workspace }}/build
