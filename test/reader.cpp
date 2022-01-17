@@ -186,22 +186,6 @@ TEST_CASE("read_char")
     }
 }
 
-static_assert(
-    !SCN_CHECK_CONCEPT(scn::ranges::contiguous_range<std::deque<char>>),
-    "std::deque<> can't be contiguous");
-static std::deque<char> get_deque(const std::string& content = "123")
-{
-    std::deque<char> src{};
-    for (auto ch : content) {
-        src.push_back(ch);
-    }
-    return src;
-}
-static std::deque<char> get_empty_deque()
-{
-    return {};
-}
-
 TEST_CASE("read_zero_copy")
 {
     SUBCASE("contiguous")
@@ -282,15 +266,18 @@ TEST_CASE("read_into")
         CHECK(data[0] == '1');
         CHECK(data[1] == '2');
 
-        CHECK(*range.begin() == '3');
-        range.advance();
+        data.clear();
+        ret = scn::read_into(range, it, 2);
+        CHECK(!ret);
+        CHECK(ret == scn::error::end_of_range);
+        CHECK(data.size() == 1);
+        CHECK(data[0] == '3');
 
         ret = scn::read_into(range, it, 1);
         CHECK(!ret);
         CHECK(ret == scn::error::end_of_range);
-        CHECK(data.size() == 2);
-        CHECK(data[0] == '1');
-        CHECK(data[1] == '2');
+        CHECK(data.size() == 1);
+        CHECK(data[0] == '3');
     }
 
     SUBCASE("direct")
@@ -304,15 +291,18 @@ TEST_CASE("read_into")
         CHECK(data[0] == '1');
         CHECK(data[1] == '2');
 
-        CHECK(*range.begin() == '3');
-        range.advance();
+        data.clear();
+        ret = scn::read_into(range, it, 2);
+        CHECK(!ret);
+        CHECK(ret == scn::error::end_of_range);
+        CHECK(data.size() == 1);
+        CHECK(data[0] == '3');
 
         ret = scn::read_into(range, it, 1);
         CHECK(!ret);
         CHECK(ret == scn::error::end_of_range);
-        CHECK(data.size() == 2);
-        CHECK(data[0] == '1');
-        CHECK(data[1] == '2');
+        CHECK(data.size() == 1);
+        CHECK(data[0] == '3');
     }
 
     SUBCASE("indirect")
@@ -326,15 +316,18 @@ TEST_CASE("read_into")
         CHECK(data[0] == '1');
         CHECK(data[1] == '2');
 
-        CHECK((*range.begin()).value() == '3');
-        range.advance();
+        data.clear();
+        ret = scn::read_into(range, it, 2);
+        CHECK(!ret);
+        CHECK(ret == scn::error::end_of_range);
+        CHECK(data.size() == 1);
+        CHECK(data[0] == '3');
 
         ret = scn::read_into(range, it, 1);
         CHECK(!ret);
         CHECK(ret == scn::error::end_of_range);
-        CHECK(data.size() == 2);
-        CHECK(data[0] == '1');
-        CHECK(data[1] == '2');
+        CHECK(data.size() == 1);
+        CHECK(data[0] == '3');
     }
 }
 

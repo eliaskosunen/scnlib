@@ -28,3 +28,14 @@ TEST_CASE("buffer")
     CHECK(ret);
     CHECK(data.substr(0, 4) == s);
 }
+
+TEST_CASE("non-contiguous")
+{
+    auto source = get_deque("123");
+    std::string dest(3, '\0');
+    auto span = scn::make_span(dest);
+
+    auto ret = scn::scan(source, "{}", span);
+    CHECK(ret);
+    CHECK(dest == "123");
+}

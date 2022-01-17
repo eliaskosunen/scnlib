@@ -166,14 +166,16 @@ namespace scn {
                     OutputIterator& it,
                     ranges::range_difference_t<WrappedRange> n)
     {
-        auto s = read_zero_copy(r, n);
+        auto chars_to_read = detail::min(n, r.size());
+        const bool incomplete = chars_to_read != n;
+        auto s = read_zero_copy(r, chars_to_read);
         if (!s) {
             return s.error();
         }
-        if (s.value().ssize() != n) {
+        it = std::copy(s.value().begin(), s.value().end(), it);
+        if (incomplete) {
             return error(error::end_of_range, "EOF");
         }
-        it = std::copy(s.value().begin(), s.value().end(), it);
         return {};
     }
     template <typename WrappedRange,
@@ -578,7 +580,6 @@ namespace scn {
                 if (!e) {
                     return e;
                 }
-                buf.erase(it);
                 std::memcpy(val.begin(), buf.begin(),
                             buf.size() * sizeof(char_type));
                 return {};

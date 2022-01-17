@@ -15,13 +15,13 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-
 #include <scn/scn.h>
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wnoexcept")
 #include <algorithm>
 #include <array>
+#include <deque>
 #include <exception>
 #include <ostream>
 #include <string>
@@ -71,6 +71,19 @@ auto do_scan_localized(const Locale& loc, Input&& i, Fmt f, T&... a)
 {
     return scn::scan_localized(loc, widen<CharT>(std::forward<Input>(i)),
                                widen<CharT>(f).c_str(), a...);
+}
+
+inline std::deque<char> get_deque(const std::string& content = "123")
+{
+    std::deque<char> src{};
+    for (auto ch : content) {
+        src.push_back(ch);
+    }
+    return src;
+}
+inline std::deque<char> get_empty_deque()
+{
+    return {};
 }
 
 #define DOCTEST_VALUE_PARAMETERIZED_DATA(data, data_array)                     \

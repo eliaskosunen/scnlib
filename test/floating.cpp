@@ -143,6 +143,15 @@ TEST_CASE_TEMPLATE_INSTANTIATE(floating_test,
                                wchar_fpair<double>,
                                wchar_fpair<long double>);
 
+TEST_CASE("non-contiguous")
+{
+    auto src = get_deque("3.14");
+    double f{0.0};
+    auto ret = scn::scan(src, "{}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(3.14));
+}
+
 TEST_CASE("float error")
 {
     double d{};
