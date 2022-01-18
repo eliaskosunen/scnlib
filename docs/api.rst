@@ -409,10 +409,9 @@ Lower level parsing and scanning operations
 ``vscan``
 *********
 
-.. doxygenfunction:: vscan(WrappedRange range, basic_string_view<CharT> fmt, basic_args<CharT> &&args) -> vscan_result<WrappedRange>
-.. doxygenfunction:: vscan(WrappedRange range, int n_args, basic_args<CharT> &&args) -> vscan_result<WrappedRange>
-.. doxygenfunction:: vscan_localized(WrappedRange range, basic_locale_ref<CharT> &&loc, basic_string_view<CharT> fmt, basic_args<CharT> &&args) -> vscan_result<WrappedRange>
-.. doxygenfunction:: vscan_localized(WrappedRange range, basic_locale_ref<CharT> &&loc, int n_args, basic_args<CharT> &&args) -> vscan_result<WrappedRange>
+.. doxygenfunction:: vscan
+.. doxygenfunction:: vscan_default
+.. doxygenfunction:: vscan_localized
 .. doxygenfunction:: visit(Context &ctx, ParseCtx &pctx, basic_args<typename Context::char_type> args) -> error
 
 Low-level parsing

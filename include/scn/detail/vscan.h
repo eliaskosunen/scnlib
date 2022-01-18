@@ -156,7 +156,7 @@ namespace scn {
     }
 
     /**
-     * \see scan_localized
+     * \see scan_usertype
      * \see vscan
      */
     template <typename WrappedRange,
