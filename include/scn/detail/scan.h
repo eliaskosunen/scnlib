@@ -425,22 +425,21 @@ namespace scn {
                            basic_string_view<CharT>& str,
                            CharT until)
         {
+            static_assert(
+                WrappedRange::is_contiguous,
+                "Cannot getline a string_view from a non-contiguous range");
             auto until_pred = [until](CharT ch) { return ch == until; };
             auto s = read_until_space_zero_copy(r, until_pred, true);
             if (!s) {
                 return s.error();
             }
-            if (s.value().size() != 0) {
-                auto size = s.value().size();
-                if (until_pred(s.value()[size - 1])) {
-                    --size;
-                }
-                str = basic_string_view<CharT>{s.value().data(), size};
-                return {};
+            SCN_ASSERT(s.value().size(), "");
+            auto size = s.value().size();
+            if (until_pred(s.value()[size - 1])) {
+                --size;
             }
-            // TODO: Compile-time error?
-            return {error::invalid_operation,
-                    "Cannot getline a string_view from a non-contiguous range"};
+            str = basic_string_view<CharT>{s.value().data(), size};
+            return {};
         }
 #if SCN_HAS_STRING_VIEW
         template <typename WrappedRange, typename CharT>
@@ -458,8 +457,8 @@ namespace scn {
 
     /**
      * Read the range in \c r into \c str until \c until is found.
-     * \c until will be skipped in parsing: it will not be pushed into \c str,
-     * and the returned range will go past it.
+     * \c until will be skipped in parsing: it will not be pushed into \c
+     * str, and the returned range will go past it.
      *
      * \c r and \c str must share character types, which must be \c CharT.
      *
@@ -505,8 +504,8 @@ namespace scn {
     }
 
     /**
-     * Equivalent to \ref getline with the last parameter set to <tt>'\\n'</tt>
-     * with the appropriate character type.
+     * Equivalent to \ref getline with the last parameter set to
+     * <tt>'\\n'</tt> with the appropriate character type.
      *
      * In other words, reads `r` into `str` until <tt>'\\n'</tt> is found.
      *
@@ -638,9 +637,9 @@ namespace scn {
     }
 
     /**
-     * Advances the beginning of \c r until \c until is found, or the beginning
-     * has been advanced \c n times. The character type of \c r must be \c
-     * CharT.
+     * Advances the beginning of \c r until \c until is found, or the
+     * beginning has been advanced \c n times. The character type of \c r
+     * must be \c CharT.
      */
     template <typename Range, typename CharT>
     auto ignore_until_n(Range&& r,
@@ -660,10 +659,10 @@ namespace scn {
     }
 
     /**
-     * Adapts a `span` into a type that can be read into using \ref scan_list.
-     * This way, potentially unnecessary dynamic memory allocations can be
-     * avoided. To use as a parameter to \ref scan_list, use
-     * \ref make_span_list_wrapper.
+     * Adapts a `span` into a type that can be read into using \ref
+     * scan_list. This way, potentially unnecessary dynamic memory
+     * allocations can be avoided. To use as a parameter to \ref scan_list,
+     * use \ref make_span_list_wrapper.
      *
      * \code{.cpp}
      * std::vector<int> buffer(8, 0);
@@ -712,8 +711,8 @@ namespace scn {
     }
 
     /**
-     * Adapts a contiguous buffer into a type containing a `span` that can be
-     * read into using \ref scan_list.
+     * Adapts a contiguous buffer into a type containing a `span` that can
+     * be read into using \ref scan_list.
      *
      * Example adapted from \ref span_list_wrapper:
      * \code{.cpp}
@@ -747,21 +746,21 @@ namespace scn {
 
     /**
      * Reads values repeatedly from `r` and writes them into `c`.
-     * The values read are of type `Container::value_type`, and they are written
-     * into `c` using `c.push_back`.
+     * The values read are of type `Container::value_type`, and they are
+     * written into `c` using `c.push_back`.
      *
      * The values must be separated by separator
-     * character `separator`, followed by whitespace. If `separator == 0`, no
-     * separator character is expected.
+     * character `separator`, followed by whitespace. If `separator == 0`,
+     * no separator character is expected.
      *
      * The range is read, until:
      *  - `c.max_size()` is reached, or
      *  - range `EOF` was reached, or
      *  - unexpected separator character was found between values.
      *
-     * In all these cases, an error will not be returned, and the beginning of
-     * the returned range will point to the first character after the scanned
-     * list.
+     * In all these cases, an error will not be returned, and the beginning
+     * of the returned range will point to the first character after the
+     * scanned list.
      *
      * To scan into `span`, use \ref span_list_wrapper.
      * \ref make_span_list_wrapper
@@ -839,8 +838,9 @@ namespace scn {
     }
 
     /**
-     * Otherwise equivalent to \ref scan_list, except with an additional case of
-     * stopping scanning: if `until` is found where a separator was expected.
+     * Otherwise equivalent to \ref scan_list, except with an additional
+     * case of stopping scanning: if `until` is found where a separator was
+     * expected.
      *
      * \see scan_list
      *

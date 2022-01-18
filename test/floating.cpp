@@ -143,6 +143,53 @@ TEST_CASE_TEMPLATE_INSTANTIATE(floating_test,
                                wchar_fpair<double>,
                                wchar_fpair<long double>);
 
+TEST_CASE("format string")
+{
+    double f{0.0};
+
+    auto ret = scn::scan("1.0", "{:a}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(1.0));
+
+    ret = scn::scan("2.0", "{:A}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(2.0));
+
+    ret = scn::scan("3.0", "{:b}", f);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(f == doctest::Approx(2.0));
+
+    ret = scn::scan("4.0", "{:d}", f);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(f == doctest::Approx(2.0));
+
+    ret = scn::scan("5.0", "{:e}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(5.0));
+
+    ret = scn::scan("6.0", "{:E}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(6.0));
+
+    ret = scn::scan("7.0", "{:f}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(7.0));
+
+    ret = scn::scan("8.0", "{:F}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(8.0));
+
+    ret = scn::scan("9.0", "{:g}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(9.0));
+
+    ret = scn::scan("10.0", "{:G}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(10.0));
+}
+
 TEST_CASE("non-contiguous")
 {
     auto src = get_deque("3.14");

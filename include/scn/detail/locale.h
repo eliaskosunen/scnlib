@@ -99,9 +99,7 @@ namespace scn {
                  false, false, false, false, false, false, false, false, false,
                  false, false, false, false, false, false, false, false, false,
                  false, false, false, false}};
-            const auto i =
-                static_cast<unsigned char>((ch < 0) ? (ch + 256) : ch);
-            return lookup[static_cast<size_t>(i)];
+            return lookup[static_cast<size_t>(ch)];
         }
         constexpr inline bool is_space(wchar_t ch) noexcept
         {

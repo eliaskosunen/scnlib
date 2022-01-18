@@ -130,9 +130,10 @@ namespace scn {
         {
             return val.scan(*m_ctx, *m_pctx);
         }
-        auto visit(detail::monostate, detail::priority_tag<0>) -> error
+        [[noreturn]] auto visit(detail::monostate, detail::priority_tag<0>)
+            -> error
         {
-            return {error::invalid_operation, "Cannot scan a monostate"};
+            SCN_UNREACHABLE;
         }
 
         template <typename Scanner>

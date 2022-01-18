@@ -184,3 +184,55 @@ TEST_CASE_TEMPLATE("bool localized", CharT, char, wchar_t)
         CHECK(e.error().code() == scn::error::invalid_format_string);
     }
 }
+
+TEST_CASE("integer ranges")
+{
+    short a, b;
+    auto ret =
+        scn::scan_localized(std::locale::classic(), "1 2", "{} {:l}", a, b);
+    CHECK(ret);
+    CHECK(a == 1);
+    CHECK(b == 2);
+    CHECK(ret.range().empty());
+    a = b = 0;
+
+    ret =
+        scn::scan_localized(std::locale{"en_US.UTF-8"}, "1 2", "{} {:l}", a, b);
+    CHECK(ret);
+    CHECK(a == 1);
+    CHECK(b == 2);
+    CHECK(ret.range().empty());
+    a = b = 0;
+
+    ret =
+        scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "1 2", "{} {:l}", a, b);
+    CHECK(ret);
+    CHECK(a == 1);
+    CHECK(b == 2);
+    CHECK(ret.range().empty());
+    a = b = 0;
+
+    ret = scn::scan_localized(std::locale::classic(), "99999 99999", "{} {:l}",
+                              a, b);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(a == 0);
+    CHECK(b == 0);
+    a = b = 0;
+
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "99999 99999",
+                              "{} {:l}", a, b);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(a == 0);
+    CHECK(b == 0);
+    a = b = 0;
+
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "99999 99999",
+                              "{} {:l}", a, b);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(a == 0);
+    CHECK(b == 0);
+    a = b = 0;
+}

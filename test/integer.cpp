@@ -86,6 +86,28 @@ TEST_CASE("short ranges")
     CHECK(ret.error().code() == scn::error::value_out_of_range);
 }
 
+TEST_CASE("format string") {
+    int i{};
+    auto ret = scn::scan("1", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 1);
+
+    ret = scn::scan("2", "{:u}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(i == 1);
+
+    unsigned u{};
+    ret = scn::scan("3", "{:i}", u);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(u == 0);
+
+    ret = scn::scan("4", "{:u}", u);
+    CHECK(ret);
+    CHECK(u == 4);
+}
+
 template <typename CharT, typename T>
 struct intpair {
     using char_type = CharT;
