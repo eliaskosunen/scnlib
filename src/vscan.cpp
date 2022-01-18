@@ -37,16 +37,16 @@ namespace scn {
         basic_string_view<detail::vscan_macro::CharAlias> fmt,                 \
         basic_args<detail::vscan_macro::CharAlias>&& args)                     \
     {                                                                          \
-        return detail::vscan_boilerplate<basic_parse_context>(                 \
-            SCN_MOVE(range), fmt, SCN_MOVE(args));                             \
+        return detail::vscan_boilerplate(SCN_MOVE(range), fmt,                 \
+                                         SCN_MOVE(args));                      \
     }                                                                          \
                                                                                \
-    vscan_result<detail::vscan_macro::WrappedAlias> vscan(                     \
+    vscan_result<detail::vscan_macro::WrappedAlias> vscan_default(             \
         detail::vscan_macro::WrappedAlias&& range, int n_args,                 \
         basic_args<detail::vscan_macro::CharAlias>&& args)                     \
     {                                                                          \
-        return detail::vscan_boilerplate<basic_empty_parse_context>(           \
-            SCN_MOVE(range), n_args, SCN_MOVE(args));                          \
+        return detail::vscan_boilerplate_default(SCN_MOVE(range), n_args,      \
+                                                 SCN_MOVE(args));              \
     }                                                                          \
                                                                                \
     error vscan_usertype(                                                      \

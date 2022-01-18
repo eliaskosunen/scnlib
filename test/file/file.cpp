@@ -20,10 +20,12 @@
 #include <istream>
 #include "../test.h"
 
-static bool do_fgets(char* str, size_t count, std::FILE* f) {
+static bool do_fgets(char* str, size_t count, std::FILE* f)
+{
     return std::fgets(str, static_cast<int>(count), f) != nullptr;
 }
-static bool do_fgets(wchar_t* str, size_t count, std::FILE* f) {
+static bool do_fgets(wchar_t* str, size_t count, std::FILE* f)
+{
     return std::fgetws(str, static_cast<int>(count), f) != nullptr;
 }
 
@@ -211,9 +213,7 @@ namespace scn {
         template <typename Context>
         error scan(int_and_string& val, Context& ctx)
         {
-            auto r = scn::scan(ctx.range(), "{} {}", val.i, val.s);
-            ctx.range() = std::move(r.range());
-            return r.error();
+            return scn::scan_usertype(ctx, "{} {}", val.i, val.s);
         }
     };
 

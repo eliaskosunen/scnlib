@@ -38,10 +38,7 @@ namespace scn {
         using scan_result_for_range =
             generic_scan_result_for_range<wrapped_error, Range>;
 
-        template <template <typename> class ParseCtx,
-                  typename Range,
-                  typename Format,
-                  typename... Args>
+        template <typename Range, typename Format, typename... Args>
         auto scan_boilerplate(Range&& r, const Format& f, Args&... a)
             -> detail::scan_result_for_range<Range>
         {
@@ -54,7 +51,7 @@ namespace scn {
 
             using context_type = basic_context<range_type>;
             using parse_context_type =
-                ParseCtx<typename context_type::locale_type>;
+                basic_parse_context<typename context_type::locale_type>;
             using char_type = typename range_type::char_type;
 
             auto range = wrap(SCN_FWD(r));
@@ -66,8 +63,33 @@ namespace scn {
                                        SCN_MOVE(ret.range));
         }
 
-        template <template <typename> class ParseCtx,
-                  typename Locale,
+        template <typename Range, typename... Args>
+        auto scan_boilerplate_default(Range&& r, Args&... a)
+            -> detail::scan_result_for_range<Range>
+        {
+            static_assert(sizeof...(Args) > 0,
+                          "Have to scan at least a single argument");
+            static_assert(SCN_CHECK_CONCEPT(ranges::range<Range>),
+                          "Input needs to be a Range");
+
+            using range_type = range_wrapper_for_t<Range>;
+
+            using context_type = basic_context<range_type>;
+            using parse_context_type =
+                basic_empty_parse_context<typename context_type::locale_type>;
+            using char_type = typename range_type::char_type;
+
+            auto range = wrap(SCN_FWD(r));
+            auto args = make_args<context_type, parse_context_type>(a...);
+            auto ret = vscan_default(SCN_MOVE(range),
+                                     static_cast<int>(sizeof...(Args)),
+                                     basic_args<char_type>(args));
+            return detail::wrap_result(wrapped_error{ret.err},
+                                       detail::range_tag<Range>{},
+                                       SCN_MOVE(ret.range));
+        }
+
+        template <typename Locale,
                   typename Range,
                   typename Format,
                   typename... Args>
@@ -88,7 +110,7 @@ namespace scn {
 
             using context_type = basic_context<range_type>;
             using parse_context_type =
-                ParseCtx<typename context_type::locale_type>;
+                basic_parse_context<typename context_type::locale_type>;
             using char_type = typename range_type::char_type;
 
             auto range = wrap(SCN_FWD(r));
@@ -121,8 +143,7 @@ namespace scn {
     auto scan(Range&& r, const Format& f, Args&... a)
         -> detail::scan_result_for_range<Range>
     {
-        return detail::scan_boilerplate<basic_parse_context>(SCN_FWD(r), f,
-                                                             a...);
+        return detail::scan_boilerplate(SCN_FWD(r), f, a...);
     }
 
     // default format
@@ -146,8 +167,7 @@ namespace scn {
     auto scan_default(Range&& r, Args&... a)
         -> detail::scan_result_for_range<Range>
     {
-        return detail::scan_boilerplate<basic_empty_parse_context>(
-            std::forward<Range>(r), static_cast<int>(sizeof...(Args)), a...);
+        return detail::scan_boilerplate_default(std::forward<Range>(r), a...);
     }
 
     // scan localized
@@ -178,8 +198,8 @@ namespace scn {
                         const Format& f,
                         Args&... a) -> detail::scan_result_for_range<Range>
     {
-        return detail::scan_boilerplate_localized<basic_parse_context>(
-            loc, std::forward<Range>(r), f, a...);
+        return detail::scan_boilerplate_localized(loc, std::forward<Range>(r),
+                                                  f, a...);
     }
 
     // value
@@ -239,8 +259,7 @@ namespace scn {
         -> detail::scan_result_for_range<basic_file<CharT>&>
     {
         auto& range = stdin_range<CharT>();
-        auto ret =
-            detail::scan_boilerplate<basic_parse_context>(range, f, a...);
+        auto ret = detail::scan_boilerplate(range, f, a...);
         range.sync();
         return ret;
     }
@@ -378,7 +397,7 @@ namespace scn {
         using char_type = typename WrappedRange::char_type;
         auto args = make_args<basic_context<WrappedRange, LocaleRef>,
                               basic_parse_context<LocaleRef>>(a...);
-        return vscan_usertype(ctx, detail::to_format<char_type>(f),
+        return vscan_usertype(ctx, basic_string_view<char_type>(f),
                               basic_args<char_type>(args));
     }
 

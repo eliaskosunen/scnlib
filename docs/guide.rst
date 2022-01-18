@@ -534,7 +534,10 @@ The library provides some helpers for this.
 User types
 ----------
 
-To scan a value of a program-defined type, specialize ``scn::scanner``
+To scan a value of a program-defined type, specialize ``scn::scanner``.
+There's a helper function for this purpose, ``scn::scan_usertype``.
+In addition to other already familiar parameters, it takes a scanning context
+that it uses to scan the value, instead of a source range.
 
 .. code-block:: cpp
 
@@ -548,9 +551,7 @@ To scan a value of a program-defined type, specialize ``scn::scanner``
         template <typename Context>
         error scan(int_and_double& val, Context& ctx)
         {
-            auto r = scn::scan(ctx.range(), "[{}, {}]", val.i, val.d);
-            ctx.range() = std::move(r.range());
-            return r.error();
+            return scn::scan_usertype(ctx, "[{}, {}]", val.i, val.d);
         }
     };
 
@@ -568,11 +569,23 @@ This implements the format string functionality for this type.
 You could also inherit from other scanner types (like ``scn::scanner<CharT, int>``),
 or implement ``parse()`` by hand (see ``reader.h`` in the library source code).
 
+Should you need more direct control, you could use the scanning functions, like ``scn::scan`` directly.
+In this case, make sure to assign the returned range into the scanning context.
+This is because these scanning functions create their own internal context that does not sync with the caller.
+
+.. code-block:: cpp
+
+    // This is equivalent to the scanner::scan implementation above
+    auto r = scn::scan(ctx.range(), "[{}, {}]", val.i, val.d);
+    ctx.range() = std::move(r.range());
+    return r.error();
+
 Alternatively, you could also include the header ``<scn/istream.h>``.
 This enables scanning of types with a ``std::istream`` compatible ``operator>>``.
 Using this functionality is discouraged, as using iostreams to scan these values presents some difficulties with error recovery,
 and will lead to worse performance.
-Specializing ``scn::scanner`` should be preferred.
+
+Specializing ``scn::scanner`` should be preferred over relying on ``<scn/istream.h>``.
 
 Tuple-based scanning API
 ------------------------
@@ -607,6 +620,7 @@ It scans a "word": a sequence of letters separated by spaces.
 More precisely, it reads the source range into the string, until a whitespace character is found or the range reaches its end.
 
 ``span<char>`` works like ``istream.read``: it copies bytes from the range into the buffer it's pointing to.
+
 ``string_view`` works like ``std::string``, except it doesn't copy, but changes its data pointer to point into the source stream.
 Scanning a ``string_view`` works only with contiguous ranges, and may lead to lifetime issues, but it will give you better performace (avoids copying and allocation).
 
