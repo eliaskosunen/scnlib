@@ -16,7 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #if defined(SCN_HEADER_ONLY) && SCN_HEADER_ONLY
-#define SCN_READER_CPP
+#define SCN_READER_FLOAT_CPP
 #endif
 
 #include <scn/detail/args.h>

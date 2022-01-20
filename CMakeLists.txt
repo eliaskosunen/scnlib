@@ -55,7 +55,8 @@ message(STATUS "SCN_WERROR: ${SCN_WERROR}")
 set(SCN_SOURCES
         ${CMAKE_CURRENT_LIST_DIR}/src/vscan.cpp
         ${CMAKE_CURRENT_LIST_DIR}/src/locale.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/reader.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/reader_float.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/reader_int.cpp
         ${CMAKE_CURRENT_LIST_DIR}/src/file.cpp)
 
 function(generate_library_target target_name)
