@@ -106,10 +106,10 @@ bool consistency_scanf(std::string& source, const std::string& fmt, T& val)
     size_t nchar{0};
     auto f = fmt + "%n";
 
-    SCN_GCC_PUSH
-    SCN_GCC_IGNORE("-Wformat-nonliteral")
+    SCN_GCC_COMPAT_PUSH
+    SCN_GCC_COMPAT_IGNORE("-Wformat-nonliteral")
     int nargs = std::sscanf(source.c_str(), f.c_str(), &val, &nchar);
-    SCN_GCC_POP
+    SCN_GCC_COMPAT_POP
 
     source = source.substr(nchar);
     return nargs == 1;
