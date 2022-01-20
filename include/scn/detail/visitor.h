@@ -228,9 +228,7 @@ namespace scn {
                         s.base = 10;
                         std::ptrdiff_t i{0};
                         auto span = make_span(id.data(), id.size()).as_const();
-                        auto ret =
-                            s._read_int(i, false, span,
-                                        typename decltype(span)::value_type{0});
+                        auto ret = s._read_int(i, false, span);
                         if (!ret || ret.value() != span.end()) {
                             return error(error::invalid_format_string,
                                          "Failed to parse argument id from "

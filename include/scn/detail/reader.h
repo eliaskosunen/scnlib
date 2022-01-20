@@ -888,8 +888,7 @@ namespace scn {
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     }
                     else {
-                        ret = _parse_int(tmp, s,
-                                         ctx.locale().thousands_separator());
+                        ret = _parse_int(tmp, s);
                     }
 
                     if (!ret) {
@@ -906,27 +905,17 @@ namespace scn {
                     return {};
                 };
 
-                auto is_space_pred = [&ctx](char_type ch) {
-                    return ctx.locale().is_space(ch);
-                };
-
-                if (Context::range_type::is_contiguous) {
-                    auto s = read_all_zero_copy(ctx.range());
-                    if (!s) {
-                        return s.error();
-                    }
-                    return do_parse_int(s.value());
-                }
-
-                small_vector<char_type, 32> buf;
-                auto outputit = std::back_inserter(buf);
-                auto e = read_until_space(ctx.range(), outputit, is_space_pred,
-                                          false);
-                if (!e && buf.empty()) {
+                std::basic_string<char_type> buf{};
+                span<const char_type> bufspan{};
+                auto e = _read_for_int(
+                    ctx, buf, bufspan,
+                    std::integral_constant<
+                        bool, Context::range_type::is_contiguous>{});
+                if (!e) {
                     return e;
                 }
 
-                return do_parse_int(make_span(buf).as_const());
+                return do_parse_int(bufspan.as_const());
             }
 
             enum localized_type : uint8_t {
@@ -938,10 +927,83 @@ namespace scn {
             uint8_t localized{0};
             bool have_thsep{false};
 
+            template <typename Context, typename Buf, typename CharT>
+            error _read_for_int(Context& ctx,
+                                Buf& buf,
+                                span<const CharT>& s,
+                                std::false_type)
+            {
+                auto is_space_pred = [&ctx](CharT ch) {
+                    return ctx.locale().is_space(ch);
+                };
+
+                auto do_read = [&](Buf& b) -> error {
+                    auto outputit = std::back_inserter(b);
+                    auto e = read_until_space(ctx.range(), outputit,
+                                              is_space_pred, false);
+                    if (!e && b.empty()) {
+                        return e;
+                    }
+                    return {};
+                };
+
+                if (SCN_LIKELY(!have_thsep)) {
+                    auto e = do_read(buf);
+                    if (!e) {
+                        return e;
+                    }
+                    s = make_span(buf.data(), buf.size()).as_const();
+                    return {};
+                }
+
+                Buf tmp;
+                auto e = do_read(tmp);
+                if (!e) {
+                    return e;
+                }
+                auto thsep = ctx.locale().thousands_separator();
+
+                auto it = tmp.begin();
+                for (; it != tmp.end(); ++it) {
+                    if (*it == thsep) {
+                        for (auto it2 = it; ++it2 != tmp.end();) {
+                            *it++ = SCN_MOVE(*it2);
+                        }
+                        break;
+                    }
+                }
+
+                auto n =
+                    static_cast<std::size_t>(std::distance(tmp.begin(), it));
+                if (n == 0) {
+                    return {error::invalid_scanned_value,
+                            "Only a thousands separator found"};
+                }
+
+                buf = SCN_MOVE(tmp);
+                s = make_span(buf.data(), n).as_const();
+                return {};
+            }
+
+            template <typename Context, typename Buf, typename CharT>
+            error _read_for_int(Context& ctx,
+                                Buf& buf,
+                                span<const CharT>& s,
+                                std::true_type)
+            {
+                if (SCN_UNLIKELY(have_thsep)) {
+                    return _read_for_int(ctx, buf, s, std::false_type{});
+                }
+                auto ret = read_all_zero_copy(ctx.range());
+                if (!ret) {
+                    return ret.error();
+                }
+                s = ret.value();
+                return {};
+            }
+
             template <typename CharT>
-            expected<std::ptrdiff_t> _parse_int(T& val,
-                                                span<const CharT> s,
-                                                CharT thsep)
+            expected<std::ptrdiff_t> _parse_int(T& val, span<const CharT> s)
             {
                 SCN_MSVC_PUSH
                 SCN_MSVC_IGNORE(4244)
@@ -1017,7 +1079,7 @@ namespace scn {
                 SCN_ASSUME(base > 0);
 
                 auto r = _read_int(tmp, minus_sign,
-                                   make_span(it, s.end()).as_const(), thsep);
+                                   make_span(it, s.end()).as_const());
                 if (!r) {
                     return r.error();
                 }
@@ -1034,11 +1096,8 @@ namespace scn {
             }
 
             template <typename CharT>
-            expected<typename span<const CharT>::iterator> _read_int(
-                T& val,
-                bool minus_sign,
-                span<const CharT> buf,
-                CharT thsep) const
+            expected<typename span<const CharT>::iterator>
+            _read_int(T& val, bool minus_sign, span<const CharT> buf) const
             {
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wconversion")
@@ -1081,45 +1140,21 @@ namespace scn {
                 auto it = buf.begin();
                 const auto end = buf.end();
                 utype tmp = 0;
-                if (SCN_UNLIKELY(have_thsep)) {
-                    for (; it != end; ++it) {
-                        if (*it == thsep) {
-                            continue;
-                        }
-
-                        const auto digit = _char_to_int(*it);
-                        if (digit >= ubase) {
-                            break;
-                        }
-                        if (SCN_UNLIKELY(tmp > cutoff ||
-                                         (tmp == cutoff && digit > cutlim))) {
-                            if (!minus_sign) {
-                                return error(error::value_out_of_range,
-                                             "Out of range: integer overflow");
-                            }
-                            return error(error::value_out_of_range,
-                                         "Out of range: integer underflow");
-                        }
-                        tmp = tmp * ubase + digit;
+                for (; it != end; ++it) {
+                    const auto digit = _char_to_int(*it);
+                    if (digit >= ubase) {
+                        break;
                     }
-                }
-                else {
-                    for (; it != end; ++it) {
-                        const auto digit = _char_to_int(*it);
-                        if (digit >= ubase) {
-                            break;
-                        }
-                        if (SCN_UNLIKELY(tmp > cutoff ||
-                                         (tmp == cutoff && digit > cutlim))) {
-                            if (!minus_sign) {
-                                return error(error::value_out_of_range,
-                                             "Out of range: integer overflow");
-                            }
+                    if (SCN_UNLIKELY(tmp > cutoff ||
+                                     (tmp == cutoff && digit > cutlim))) {
+                        if (!minus_sign) {
                             return error(error::value_out_of_range,
-                                         "Out of range: integer underflow");
+                                         "Out of range: integer overflow");
                         }
-                        tmp = tmp * ubase + digit;
+                        return error(error::value_out_of_range,
+                                     "Out of range: integer underflow");
                     }
+                    tmp = tmp * ubase + digit;
                 }
                 if (minus_sign) {
                     // special case: signed int minimum's absolute value can't

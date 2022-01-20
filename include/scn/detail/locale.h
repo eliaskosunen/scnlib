@@ -276,14 +276,14 @@ namespace scn {
 
         bool is_space(char_type ch) const
         {
-            if (SCN_LIKELY(is_default())) {
+            if (is_default()) {
                 return detail::is_space(ch);
             }
             return _is_space(ch);
         }
         bool is_digit(char_type ch) const
         {
-            if (SCN_LIKELY(is_default())) {
+            if (is_default()) {
                 return detail::is_digit(ch);
             }
             return _is_digit(ch);

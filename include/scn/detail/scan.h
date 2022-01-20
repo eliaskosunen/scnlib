@@ -326,8 +326,7 @@ namespace scn {
             minus_sign = true;
             sp = make_span(str.data() + 1, str.size() - 1).as_const();
         }
-        auto ret =
-            s._read_int(val, minus_sign, sp, detail::ascii_widen<CharT>('\0'));
+        auto ret = s._read_int(val, minus_sign, sp);
         if (!ret) {
             return ret.error();
         }
