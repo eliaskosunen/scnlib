@@ -3,8 +3,7 @@ name: linux
 on: [push, pull_request]
 
 env:
-  APT_INSTALL: sudo apt-get install -yq --no-install-suggests --no-install-recommends \
-    --allow-unauthenticated --allow-downgrades --allow-change-held-packages
+  APT_INSTALL: sudo apt-get install -yq --no-install-suggests --no-install-recommends --allow-unauthenticated --allow-downgrades --allow-change-held-packages
 
 jobs:
   build:
