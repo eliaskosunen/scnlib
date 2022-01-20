@@ -36,21 +36,6 @@ namespace scn {
         template <typename CharT, typename T>
         struct read_float_impl;
 
-        template <typename T>
-        struct zero_value;
-        template <>
-        struct zero_value<float> {
-            static constexpr float value = 0.0f;
-        };
-        template <>
-        struct zero_value<double> {
-            static constexpr double value = 0.0;
-        };
-        template <>
-        struct zero_value<long double> {
-            static constexpr long double value = 0.0l;
-        };
-
 #if SCN_GCC >= SCN_COMPILER(7, 0, 0)
         SCN_GCC_PUSH
         SCN_GCC_IGNORE("-Wnoexcept-type")

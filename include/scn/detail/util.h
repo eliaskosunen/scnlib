@@ -105,6 +105,21 @@ namespace scn {
         }
 
         template <typename T>
+        struct zero_value;
+        template <>
+        struct zero_value<float> {
+            static constexpr float value = 0.0f;
+        };
+        template <>
+        struct zero_value<double> {
+            static constexpr double value = 0.0;
+        };
+        template <>
+        struct zero_value<long double> {
+            static constexpr long double value = 0.0l;
+        };
+
+        template <typename T>
         constexpr T* launder(T* p) noexcept
         {
 #if SCN_HAS_LAUNDER

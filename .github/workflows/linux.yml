@@ -95,11 +95,13 @@ jobs:
             return 0
           }
           run_build() {
+            echo Debug "$@"
             run_cmake -DCMAKE_BUILD_TYPE=Debug "$@" || return 1
             make -k -j || return 1
             run_test -C Debug || return 1
             make clean || return 1
 
+            echo Release "$@"
             run_cmake -DCMAKE_BUILD_TYPE=Release "$@" || return 1
             make -k -j || return 1
             run_test -C Release || return 1

@@ -125,7 +125,7 @@ namespace scn {
                 return error(error::value_out_of_range,
                              "Scanned number out of range: overflow");
             }
-            if (val == T{0.0}) {
+            if (val == zero_value<T>::value) {
                 return error(error::value_out_of_range,
                              "Scanned number out of range: underflow");
             }
