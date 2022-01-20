@@ -172,10 +172,10 @@ See docs for usage without CMake.
 ## Compiler support
 
 Every commit is tested with
- * gcc 5.5 and newer (until v10)
- * clang 6.0 and newer (until v10)
- * Visual Studio 2017 and 2019
- * gcc 10 on ARM, and clang on macOS
+ * gcc 5.5 and newer (until v11)
+ * clang 6.0 and newer (until v13)
+ * Visual Studio 2019 and 2022
+ * clang 12 on macOS Catalina
 
 with very extreme warning flags (see cmake/flags.cmake) and with multiple build configurations for each compiler.
 
@@ -185,6 +185,13 @@ However, support will not be provided for:
 
  * GCC 4.9 (or earlier): C++11 support is too buggy
  * VS 2015 (or earlier): unable to handle templates
+
+VS 2017 is not tested, as GitHub Actions has deprecated the support for it.
+The last commit tested and verified to work with VS 2017 is 32be3f9.
+
+The code is only tested on amd64 machines (both win32 and win64 on Windows),
+because that's the only architecture GitHub Actions has runners for.
+The last commit tested and verified to work with arm64 is 7b93942.
 
 ## Benchmarks
 

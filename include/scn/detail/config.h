@@ -92,10 +92,16 @@
 #define SCN_STRINGIFY(x) SCN_STRINGIFY_APPLY(x)
 
 // POSIX
-#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#if defined(__unix__) || defined(__APPLE__)
 #define SCN_POSIX 1
 #else
 #define SCN_POSIX 0
+#endif
+
+#if defined(__APPLE__)
+#define SCN_APPLE 1
+#else
+#define SCN_APPLE 0
 #endif
 
 // Windows

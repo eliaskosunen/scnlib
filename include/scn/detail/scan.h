@@ -327,7 +327,7 @@ namespace scn {
             sp = make_span(str.data() + 1, str.size() - 1).as_const();
         }
         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-        auto ret = s.template _parse_int_impl(val, minus_sign, sp);
+        auto ret = s._parse_int_impl(val, minus_sign, sp);
         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
         if (!ret) {
             return ret.error();

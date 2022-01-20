@@ -366,6 +366,7 @@ TEST_CASE("consistency")
 
     SUBCASE("unexpected char")
     {
+#if !SCN_APPLE
         {
             std::string source{"1foo bar"};
             double d{};
@@ -374,6 +375,7 @@ TEST_CASE("consistency")
             CHECK(d == doctest::Approx(1.0));
             CHECK(source == "foo bar");
         }
+#endif
         {
             std::string source{"1foo bar"};
             double d{};

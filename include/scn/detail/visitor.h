@@ -229,7 +229,7 @@ namespace scn {
                         std::ptrdiff_t i{0};
                         auto span = make_span(id.data(), id.size()).as_const();
                         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-                        auto ret = s.template _parse_int_impl(i, false, span);
+                        auto ret = s._parse_int_impl(i, false, span);
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                         if (!ret || ret.value() != span.end()) {
                             return error(error::invalid_format_string,

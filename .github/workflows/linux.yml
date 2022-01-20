@@ -3,7 +3,8 @@ name: linux
 on: [push, pull_request]
 
 env:
-  APT_INSTALL: sudo apt-get install -yq --no-install-suggests --no-install-recommends --force-yes
+  APT_INSTALL: sudo apt-get install -yq --no-install-suggests --no-install-recommends \
+    --allow-unauthenticated --allow-downgrades --allow-change-held-packages
 
 jobs:
   build:
@@ -32,9 +33,8 @@ jobs:
             install_cmd: ${APT_INSTALL} g++-8
           # gcc 7
           - cxx: g++-7
-            os: ubuntu-20.04
+            os: ubuntu-18.04
             std: 17
-            install_cmd: ${APT_INSTALL} g++-7
           # gcc 6
           - cxx: g++-6
             os: ubuntu-18.04
@@ -46,6 +46,14 @@ jobs:
             std: 14
             install_cmd: ${APT_INSTALL} g++-5
 
+          # clang 13
+          - cxx: clang++-13
+            os: ubuntu-20.04
+            std: 20
+            install_cmd: |
+              wget -O - https://apt.llvm.org/llvm.sh
+              chmod +x llvm.sh
+              sudo ./llvm.sh 13
           # clang 12
           - cxx: clang++-12
             os: ubuntu-20.04
@@ -54,7 +62,6 @@ jobs:
           - cxx: clang++-10
             os: ubuntu-20.04
             std: 20
-            install_cmd: ${APT_INSTALL} clang-10
           # clang 6.0
           - cxx: clang++-6.0
             os: ubuntu-20.04
@@ -68,13 +75,19 @@ jobs:
 
       - name: Create Build Environment
         run: |
+          mkdir ${{ runner.workspace }}/install
+          cd ${{ runner.workspace }}/install
+          
           sudo locale-gen en_US.UTF-8
           sudo locale-gen fi_FI.UTF-8
           sudo update-locale
           sudo locale -a
+          
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt-get --allow-unauthenticated -yq update
           ${{ matrix.install_cmd }}
+          
+          cd ${{ runner.workspace }}
           mkdir ${{ runner.workspace }}/build
 
       - name: Build
@@ -116,4 +129,3 @@ jobs:
               break
             fi
           done
-
