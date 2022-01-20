@@ -33,9 +33,6 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        template <typename CharT, typename T>
-        struct read_float_impl;
-
 #if SCN_GCC >= SCN_COMPILER(7, 0, 0)
         SCN_GCC_PUSH
         SCN_GCC_IGNORE("-Wnoexcept-type")
@@ -95,6 +92,61 @@ namespace scn {
         SCN_GCC_POP
 #endif
 
+        template <typename CharT, typename T>
+        struct read_float_cstd_impl;
+
+        template <>
+        struct read_float_cstd_impl<char, float> {
+            static expected<float> get(const char* str, size_t& chars)
+            {
+                return read_float_cstd<float>(strtof, HUGE_VALF, str, chars);
+            }
+        };
+
+        template <>
+        struct read_float_cstd_impl<char, double> {
+            static expected<double> get(const char* str, size_t& chars)
+            {
+                return read_float_cstd<double>(strtod, HUGE_VAL, str, chars);
+            }
+        };
+
+        template <>
+        struct read_float_cstd_impl<char, long double> {
+            static expected<long double> get(const char* str, size_t& chars)
+            {
+                return read_float_cstd<long double>(strtold, HUGE_VALL, str,
+                                                    chars);
+            }
+        };
+
+        template <>
+        struct read_float_cstd_impl<wchar_t, float> {
+            static expected<float> get(const wchar_t* str, size_t& chars)
+            {
+                return read_float_cstd<float>(wcstof, HUGE_VALF, str, chars);
+            }
+        };
+        template <>
+        struct read_float_cstd_impl<wchar_t, double> {
+            static expected<double> get(const wchar_t* str, size_t& chars)
+            {
+                return read_float_cstd<double>(wcstod, HUGE_VAL, str, chars);
+            }
+        };
+        template <>
+        struct read_float_cstd_impl<wchar_t, long double> {
+            static expected<long double> get(const wchar_t* str, size_t& chars)
+            {
+                return read_float_cstd<long double>(wcstold, HUGE_VALL, str,
+                                                    chars);
+            }
+        };
+
+        template <typename CharT, typename T>
+        struct read_float_impl;
+
+        // Use <charconv> if possible
 #if SCN_HAS_FLOAT_CHARCONV
         template <typename T>
         struct read_float_impl<char, T> {
@@ -109,60 +161,29 @@ namespace scn {
                     return error(error::invalid_scanned_value, "from_chars");
                 }
                 if (result.ec == std::errc::result_out_of_range) {
-                    return error(error::value_out_of_range,
-                                 "strtof range error");
+                    // Out of range, may be subnormal -> fall back to strtod
+                    // On gcc std::from_chars doesn't parse subnormals
+                    return read_float_cstd_impl<char, T>::get(str, chars);
                 }
                 chars = static_cast<size_t>(result.ptr - str);
                 return value;
             }
         };
 #else
-        template <>
-        struct read_float_impl<char, float> {
-            static expected<float> get(const char* str, size_t& chars)
+        template <typename T>
+        struct read_float_impl<char, T> {
+            static expected<T> get(const char* str, size_t& chars)
             {
-                return read_float_cstd<float>(strtof, HUGE_VALF, str, chars);
-            }
-        };
-
-        template <>
-        struct read_float_impl<char, double> {
-            static expected<double> get(const char* str, size_t& chars)
-            {
-                return read_float_cstd<double>(strtod, HUGE_VAL, str, chars);
-            }
-        };
-
-        template <>
-        struct read_float_impl<char, long double> {
-            static expected<long double> get(const char* str, size_t& chars)
-            {
-                return read_float_cstd<long double>(strtold, HUGE_VALL, str,
-                                                    chars);
+                return read_float_cstd_impl<char, T>::get(str, chars);
             }
         };
 #endif  // <charconv>
 
-        template <>
-        struct read_float_impl<wchar_t, float> {
-            static expected<float> get(const wchar_t* str, size_t& chars)
+        template <typename T>
+        struct read_float_impl<wchar_t, T> {
+            static expected<T> get(const wchar_t* str, size_t& chars)
             {
-                return read_float_cstd<float>(wcstof, HUGE_VALF, str, chars);
-            }
-        };
-        template <>
-        struct read_float_impl<wchar_t, double> {
-            static expected<double> get(const wchar_t* str, size_t& chars)
-            {
-                return read_float_cstd<double>(wcstod, HUGE_VAL, str, chars);
-            }
-        };
-        template <>
-        struct read_float_impl<wchar_t, long double> {
-            static expected<long double> get(const wchar_t* str, size_t& chars)
-            {
-                return read_float_cstd<long double>(wcstold, HUGE_VALL, str,
-                                                    chars);
+                return read_float_cstd_impl<wchar_t, T>::get(str, chars);
             }
         };
 

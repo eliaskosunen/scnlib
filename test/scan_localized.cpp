@@ -289,17 +289,17 @@ TEST_CASE("float ranges")
     // Under +1.2 * 10^-38 (min normal 32bit IEEE-754)
     ret = scn::scan_localized(std::locale::classic(), "1.2e-40", "{:l}", f);
     CHECK(ret);
-    CHECK(f == doctest::Approx(1.2e-40f));
+    CHECK(f == doctest::Approx(1.2e-40));
     f = 1.0;
 
     ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "1.2e-40", "{:l}", f);
     CHECK(ret);
-    CHECK(f == doctest::Approx(1.2e-40f));
+    CHECK(f == doctest::Approx(1.2e-40));
     f = 1.0;
 
     ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "1,2e-40", "{:l}", f);
     CHECK(ret);
-    CHECK(f == doctest::Approx(1.2e-40f));
+    CHECK(f == doctest::Approx(1.2e-40));
     f = 1.0;
 
     // Under +1.4 * 10^-45 (min subnormal 32bit IEEE-754)
