@@ -86,7 +86,8 @@ TEST_CASE("short ranges")
     CHECK(ret.error().code() == scn::error::value_out_of_range);
 }
 
-TEST_CASE("format string") {
+TEST_CASE("format string")
+{
     int i{};
     auto ret = scn::scan("1", "{:i}", i);
     CHECK(ret);
@@ -648,4 +649,115 @@ TEST_CASE("trailing")
     CHECK(j == 43);
     CHECK(ret.range().size() == 1);
     CHECK(ret.range_as_string_view()[0] == ';');
+}
+
+TEST_CASE("consistency")
+{
+    SUBCASE("simple")
+    {
+        {
+            std::string source{"123 456"};
+            int i{};
+            auto ret = consistency_iostream(source, i);
+            CHECK(ret);
+            CHECK(i == 123);
+            CHECK(source == " 456");
+        }
+        {
+            std::string source{"123 456"};
+            int i{};
+            auto ret = consistency_scanf(source, "%d", i);
+            CHECK(ret);
+            CHECK(i == 123);
+            CHECK(source == " 456");
+        }
+        {
+            int i{};
+            auto ret = scn::scan("123 456", "{}", i);
+            CHECK(ret);
+            CHECK(i == 123);
+            CHECK(ret.range_as_string() == " 456");
+        }
+    }
+
+    SUBCASE("preceding whitespace")
+    {
+        {
+            std::string source{" \n123 456"};
+            int i{};
+            auto ret = consistency_iostream(source, i);
+            CHECK(ret);
+            CHECK(i == 123);
+            CHECK(source == " 456");
+        }
+        {
+            std::string source{" \n123 456"};
+            int i{};
+            auto ret = consistency_scanf(source, "%d", i);
+            CHECK(ret);
+            CHECK(i == 123);
+            CHECK(source == " 456");
+        }
+        {
+            int i{};
+            auto ret = scn::scan(" \n123 456", "{}", i);
+            CHECK(ret);
+            CHECK(i == 123);
+            CHECK(ret.range_as_string() == " 456");
+        }
+    }
+
+    SUBCASE("unexpected float")
+    {
+        {
+            std::string source{"1.23 456"};
+            int i{};
+            auto ret = consistency_iostream(source, i);
+            CHECK(ret);
+            CHECK(i == 1);
+            CHECK(source == ".23 456");
+        }
+        {
+            std::string source{"1.23 456"};
+            int i{};
+            auto ret = consistency_scanf(source, "%d", i);
+            CHECK(ret);
+            CHECK(i == 1);
+            CHECK(source == ".23 456");
+        }
+        {
+            int i{};
+            auto ret = scn::scan("1.23 456", "{}", i);
+            CHECK(ret);
+            CHECK(i == 1);
+            CHECK(ret.range_as_string() == ".23 456");
+        }
+    }
+
+    SUBCASE("unexpected char")
+    {
+        {
+            std::string source{"1foo bar"};
+            int i{};
+            auto ret = consistency_iostream(source, i);
+            CHECK(ret);
+            CHECK(i == 1);
+            CHECK(source == "foo bar");
+        }
+        {
+            std::string source{"1foo bar"};
+            int i{};
+            auto ret = consistency_scanf(source, "%d", i);
+            CHECK(ret);
+            CHECK(i == 1);
+            CHECK(source == "foo bar");
+        }
+        {
+            int i{};
+            auto ret = scn::scan("1foo bar", "{}", i);
+            CHECK(ret);
+            CHECK(i == 1);
+            CHECK(ret.range_as_string() == "foo bar");
+        }
+    }
 }

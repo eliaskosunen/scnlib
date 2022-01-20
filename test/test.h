@@ -86,6 +86,35 @@ inline std::deque<char> get_empty_deque()
     return {};
 }
 
+template <typename T>
+bool consistency_iostream(std::string& source, T& val)
+{
+    std::istringstream ss{source};
+    ss >> val;
+    bool res = !(ss.fail() || ss.bad());
+
+    source.clear();
+    auto in_avail = ss.rdbuf()->in_avail();
+    source.resize(static_cast<size_t>(in_avail));
+    ss.rdbuf()->sgetn(&source[0], in_avail);
+
+    return res;
+}
+template <typename T>
+bool consistency_scanf(std::string& source, const std::string& fmt, T& val)
+{
+    size_t nchar{0};
+    auto f = fmt + "%n";
+
+    SCN_GCC_PUSH
+    SCN_GCC_IGNORE("-Wformat-nonliteral")
+    int nargs = std::sscanf(source.c_str(), f.c_str(), &val, &nchar);
+    SCN_GCC_POP
+
+    source = source.substr(nchar);
+    return nargs == 1;
+}
+
 #define DOCTEST_VALUE_PARAMETERIZED_DATA(data, data_array)                     \
     SCN_CLANG_PUSH SCN_CLANG_IGNORE("-Wexit-time-destructors") {}              \
     static std::vector<std::string> _doctest_subcases = [&(data_array)]() {    \

@@ -249,6 +249,10 @@ TEST_CASE("format string")
     CHECK(f == doctest::Approx(10.0));
 }
 
+#if SCN_CLANG >= SCN_COMPILER(3, 8, 0)
+SCN_CLANG_POP
+#endif
+
 TEST_CASE("non-contiguous")
 {
     auto src = get_deque("3.14");
@@ -277,6 +281,113 @@ TEST_CASE("parse_float")
     CHECK(d == doctest::Approx(3.14));
 }
 
-#if SCN_CLANG >= SCN_COMPILER(3, 8, 0)
-SCN_CLANG_POP
-#endif
+TEST_CASE("consistency")
+{
+    SUBCASE("simple")
+    {
+        {
+            std::string source{"3.14 2.73"};
+            double d{};
+            auto ret = consistency_iostream(source, d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(3.14));
+            CHECK(source == " 2.73");
+        }
+        {
+            std::string source{"3.14 2.73"};
+            double d{};
+            auto ret = consistency_scanf(source, "%lg", d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(3.14));
+            CHECK(source == " 2.73");
+        }
+        {
+            double d{};
+            auto ret = scn::scan("3.14 2.73", "{}", d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(3.14));
+            CHECK(ret.range_as_string() == " 2.73");
+        }
+    }
+
+    SUBCASE("preceding whitespace")
+    {
+        {
+            std::string source{" \n3.14 2.73"};
+            double d{};
+            auto ret = consistency_iostream(source, d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(3.14));
+            CHECK(source == " 2.73");
+        }
+        {
+            std::string source{" \n3.14 2.73"};
+            double d{};
+            auto ret = consistency_scanf(source, "%lg", d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(3.14));
+            CHECK(source == " 2.73");
+        }
+        {
+            double d{};
+            auto ret = scn::scan(" \n3.14 2.73", "{}", d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(3.14));
+            CHECK(ret.range_as_string() == " 2.73");
+        }
+    }
+
+    SUBCASE("unexpected comma")
+    {
+        {
+            std::string source{"1,23 456"};
+            double d{};
+            auto ret = consistency_iostream(source, d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(1.0));
+            CHECK(source == ",23 456");
+        }
+        {
+            std::string source{"1,23 456"};
+            double d{};
+            auto ret = consistency_scanf(source, "%lg", d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(1.0));
+            CHECK(source == ",23 456");
+        }
+        {
+            double d{};
+            auto ret = scn::scan("1,23 456", "{}", d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(1.0));
+            CHECK(ret.range_as_string() == ",23 456");
+        }
+    }
+
+    SUBCASE("unexpected char")
+    {
+        {
+            std::string source{"1foo bar"};
+            double d{};
+            auto ret = consistency_iostream(source, d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(1.0));
+            CHECK(source == "foo bar");
+        }
+        {
+            std::string source{"1foo bar"};
+            double d{};
+            auto ret = consistency_scanf(source, "%lg", d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(1.0));
+            CHECK(source == "foo bar");
+        }
+        {
+            double d{};
+            auto ret = scn::scan("1foo bar", "{}", d);
+            CHECK(ret);
+            CHECK(d == doctest::Approx(1.0));
+            CHECK(ret.range_as_string() == "foo bar");
+        }
+    }
+}
