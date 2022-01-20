@@ -20,6 +20,7 @@
 
 #include "util_min.h"
 
+#include <cmath>
 #include <limits>
 #include <new>
 #include <utility>
@@ -77,6 +78,33 @@ namespace scn {
         }
 
         template <typename T>
+        bool float_eq(T a, T b, T tolerance = std::numeric_limits<T>::epsilon())
+        {
+            T diff = std::abs(a - b);
+            if (diff <= tolerance) {
+                return true;
+            }
+            return diff < std::fmax(std::abs(a), std::abs(b)) * tolerance;
+        }
+        template <typename T>
+        bool float_eq_zero(T a, T tolerance = std::numeric_limits<T>::epsilon())
+        {
+            return std::abs(a) < tolerance;
+        }
+        template <typename T>
+        bool float_eq_within(T a, T b, std::size_t interval = 1)
+        {
+            T min_a =
+                a - (a - std::nextafter(a, std::numeric_limits<T>::lowest())) *
+                        interval;
+            T max_a =
+                a + (std::nextafter(a, std::numeric_limits<T>::max()) - a) *
+                        interval;
+
+            return min_a <= b && max_a >= b;
+        }
+
+        template <typename T>
         constexpr T* launder(T* p) noexcept
         {
 #if SCN_HAS_LAUNDER
@@ -85,7 +113,6 @@ namespace scn {
             return p;
 #endif
         }
-
 
         template <typename CharT>
         bool is_base_digit(CharT ch, int base)

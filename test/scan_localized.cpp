@@ -187,52 +187,134 @@ TEST_CASE_TEMPLATE("bool localized", CharT, char, wchar_t)
 
 TEST_CASE("integer ranges")
 {
-    short a, b;
-    auto ret =
-        scn::scan_localized(std::locale::classic(), "1 2", "{} {:l}", a, b);
+    short a;
+    auto ret = scn::scan_localized(std::locale::classic(), "1", "{:l}", a);
     CHECK(ret);
     CHECK(a == 1);
-    CHECK(b == 2);
     CHECK(ret.range().empty());
-    a = b = 0;
+    a = 0;
 
-    ret =
-        scn::scan_localized(std::locale{"en_US.UTF-8"}, "1 2", "{} {:l}", a, b);
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "1", "{:l}", a);
     CHECK(ret);
     CHECK(a == 1);
-    CHECK(b == 2);
     CHECK(ret.range().empty());
-    a = b = 0;
+    a = 0;
 
-    ret =
-        scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "1 2", "{} {:l}", a, b);
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "1", "{:l}", a);
     CHECK(ret);
     CHECK(a == 1);
-    CHECK(b == 2);
     CHECK(ret.range().empty());
-    a = b = 0;
+    a = 0;
 
-    ret = scn::scan_localized(std::locale::classic(), "99999 99999", "{} {:l}",
-                              a, b);
+    ret = scn::scan_localized(std::locale::classic(), "99999", "{:l}", a);
     CHECK(!ret);
     CHECK(ret.error() == scn::error::value_out_of_range);
     CHECK(a == 0);
-    CHECK(b == 0);
-    a = b = 0;
+    a = 0;
 
-    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "99999 99999",
-                              "{} {:l}", a, b);
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "99999", "{:l}", a);
     CHECK(!ret);
     CHECK(ret.error() == scn::error::value_out_of_range);
     CHECK(a == 0);
-    CHECK(b == 0);
-    a = b = 0;
+    a = 0;
 
-    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "99999 99999",
-                              "{} {:l}", a, b);
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "99999", "{:l}", a);
     CHECK(!ret);
     CHECK(ret.error() == scn::error::value_out_of_range);
     CHECK(a == 0);
-    CHECK(b == 0);
-    a = b = 0;
+    a = 0;
+
+    ret = scn::scan_localized(std::locale::classic(), "-99999", "{:l}", a);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(a == 0);
+    a = 0;
+
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "-99999", "{:l}", a);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(a == 0);
+    a = 0;
+
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "-99999", "{:l}", a);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(a == 0);
+    a = 0;
+}
+
+TEST_CASE("float ranges")
+{
+    float f{1.0};
+    auto ret = scn::scan_localized(std::locale::classic(), "0.0", "{:l}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(0.0));
+    f = 1.0;
+
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "0.0", "{:l}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(0.0));
+    f = 1.0;
+
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "0,0", "{:l}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(0.0));
+    f = 1.0;
+
+    // Over +3.4 * 10^38 (max 32bit IEEE-754)
+    ret = scn::scan_localized(std::locale::classic(),
+                              "9999999999999999999999999999999999999999.999",
+                              "{:l}", f);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(f == doctest::Approx(1.0));
+    f = 1.0;
+
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"},
+                              "9999999999999999999999999999999999999999.999",
+                              "{:l}", f);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(f == doctest::Approx(1.0));
+    f = 1.0;
+
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"},
+                              "9999999999999999999999999999999999999999,999",
+                              "{:l}", f);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(f == doctest::Approx(1.0));
+    f = 1.0;
+
+    // Under +1.2 * 10^-38 (min normal 32bit IEEE-754)
+    ret = scn::scan_localized(std::locale::classic(), "1.2e-40", "{:l}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(1.2e-40f));
+    f = 1.0;
+
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "1.2e-40", "{:l}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(1.2e-40f));
+    f = 1.0;
+
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "1,2e-40", "{:l}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(1.2e-40f));
+    f = 1.0;
+
+    // Under +1.4 * 10^-45 (min subnormal 32bit IEEE-754)
+    ret = scn::scan_localized(std::locale::classic(), "1.4e-46", "{:l}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(0.0));
+    f = 1.0;
+
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "1.4e-46", "{:l}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(0.0));
+    f = 1.0;
+
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "1,4e-46", "{:l}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(0.0));
+    f = 1.0;
 }

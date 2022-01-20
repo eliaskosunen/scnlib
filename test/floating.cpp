@@ -143,6 +143,65 @@ TEST_CASE_TEMPLATE_INSTANTIATE(floating_test,
                                wchar_fpair<double>,
                                wchar_fpair<long double>);
 
+TEST_CASE("ranges")
+{
+    float f{1.0};
+
+    auto ret = scn::scan("0.0", "{}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(0.0));
+    f = 1.0;
+
+    // Barely in range
+    ret = scn::scan("3.0e38", "{}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(3.0e38f));
+    f = 1.0;
+
+    // Over max (3.4e38)
+    ret = scn::scan("3.4e39", "{}", f);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(f == doctest::Approx(1.0));
+    f = 1.0;
+
+    // Barely in range
+    ret = scn::scan("-3.0e38", "{}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(-3.0e38f));
+    f = 1.0;
+
+    // Under lowest (-3.4e38)
+    ret = scn::scan("-3.4e39", "{}", f);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::value_out_of_range);
+    CHECK(f == doctest::Approx(1.0));
+    f = 1.0;
+
+    // Barely normal
+    ret = scn::scan("1.0e-37", "{}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(1.0e-37));
+    f = 1.0;
+
+    // Subnormal (under 1.2e-38)
+    ret = scn::scan("1.2e-39", "{}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(1.2e-39));
+    f = 1.0;
+
+    // Close to min subnormal (1.4e-45)
+    ret = scn::scan("1.5e-45", "{}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(1.5e-45));
+    f = 1.0;
+
+    // Under min subnormal
+    ret = scn::scan("1.0e-45", "{}", f);
+    CHECK(ret);
+    CHECK(f == doctest::Approx(0.0));
+}
+
 TEST_CASE("format string")
 {
     double f{0.0};

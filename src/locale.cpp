@@ -118,10 +118,18 @@ namespace scn {
             typename std::enable_if<std::is_floating_point<T>::value,
                                     error>::type
         {
-            if (std::isinf(val)) {
+            SCN_GCC_COMPAT_PUSH
+            SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
+            if (val == std::numeric_limits<T>::max() ||
+                val == -std::numeric_limits<T>::max()) {
                 return error(error::value_out_of_range,
-                             "Scanned number out of range");
+                             "Scanned number out of range: overflow");
             }
+            if (val == T{0.0}) {
+                return error(error::value_out_of_range,
+                             "Scanned number out of range: underflow");
+            }
+            SCN_GCC_COMPAT_POP
             return error(error::invalid_scanned_value,
                          "Localized number read failed");
         }

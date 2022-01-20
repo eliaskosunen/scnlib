@@ -158,6 +158,16 @@
 #define SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 #endif
 
+#if SCN_GCC_COMPAT && defined(SCN_PRAGMA_APPLY)
+#define SCN_GCC_COMPAT_PUSH SCN_PRAGMA_APPLY(GCC diagnostic push)
+#define SCN_GCC_COMPAT_POP SCN_PRAGMA_APPLY(GCC diagnostic pop)
+#define SCN_GCC_COMPAT_IGNORE(x) SCN_PRAGMA_APPLY(GCC diagnostic ignored x)
+#else
+#define SCN_GCC_COMPAT_PUSH
+#define SCN_GCC_COMPAT_POP
+#define SCN_GCC_COMPAT_IGNORE(x)
+#endif
+
 #if SCN_MSVC
 #define SCN_MSVC_PUSH __pragma(warning(push))
 #define SCN_MSVC_POP __pragma(warning(pop))
