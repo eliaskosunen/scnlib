@@ -1,0 +1,31 @@
+name: Alpine Linux (Docker)
+
+on: [push, pull_request]
+
+jobs:
+  alpine:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - name: Start Docker
+        run: |
+          docker run -w /src -dit --name alpine -v $PWD:/src alpine:3.15
+          echo 'docker exec alpine "$@";' > alpine.sh
+          chmod +x alpine.sh
+
+      - name: Install dependencies
+        run: |
+          ./alpine.sh apk update
+          ./alpine.sh apk add build-base cmake g++ linux-headers git bash
+
+      - name: Run CMake
+        run: ./alpine.sh cmake -S /src -B build -DSCN_TESTS=ON -DSCN_BENCHMARKS=ON -DSCN_EXAMPLES=ON -DSCN_PEDANTIC=ON
+
+      - name: Build
+        run: ./alpine.sh cmake --build build
+
+      - name: Run tests
+        run: ./alpine.sh bash -c "cd build && ctest --output-on-failure"

@@ -1,4 +1,4 @@
-name: coverage
+name: Code coverage
 
 on: [push, pull_request]
 
