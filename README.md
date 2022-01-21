@@ -187,11 +187,13 @@ However, support will not be provided for:
  * VS 2015 (or earlier): unable to handle templates
 
 VS 2017 is not tested, as GitHub Actions has deprecated the support for it.
-The last commit tested and verified to work with VS 2017 is 32be3f94dd0370c6aad29531bd44eeb51eaf524e.
+The last commit tested and verified to work with VS 2017 is
+[32be3f9](https://github.com/eliaskosunen/scnlib/commit/32be3f9).
 
 The code is only tested on amd64 machines (both win32 and win64 on Windows),
 because that's the only architecture GitHub Actions has runners for.
-The last commit tested and verified to work with arm64 is 7b93942ac335c7a87fa8094c01ea6a01821ce6c3.
+The last commit tested and verified to work with arm64 is
+[7b93942](https://github.com/eliaskosunen/scnlib/commit/7b93942).
 
 ## Benchmarks
 

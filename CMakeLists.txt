@@ -34,6 +34,8 @@ option(SCN_BUILD_LOCALIZED_TESTS "Build scan_localized tests (requires locales e
 option(SCN_BUILD_BLOAT "Generate bloat test target" OFF)
 option(SCN_BUILD_BUILDTIME "Generate build time test target" OFF)
 
+option(SCN_USE_BUNDLED_FAST_FLOAT "Use lemire/fast_float bundled with scnlib" ON)
+
 file(READ include/scn/detail/config.h config_h)
 if (NOT config_h MATCHES "SCN_VERSION SCN_COMPILER\\(([0-9]+), ([0-9]+), ([0-9]+)\\)")
     message(FATAL_ERROR "Cannot get SCN_VERSION from config.h")
@@ -51,6 +53,8 @@ include(flags)
 
 message(STATUS "SCN_PEDANTIC: ${SCN_PEDANTIC}")
 message(STATUS "SCN_WERROR: ${SCN_WERROR}")
+
+add_subdirectory(src)
 
 set(SCN_SOURCES
         ${CMAKE_CURRENT_LIST_DIR}/src/vscan.cpp
@@ -72,9 +76,16 @@ function(generate_library_target target_name)
             -DSCN_HEADER_ONLY=0)
     target_compile_options(${target_name} PUBLIC
             $<$<CXX_COMPILER_ID:MSVC>: /bigobj>)
-
     target_compile_features(${target_name} PUBLIC cxx_std_11)
     set_private_flags(${target_name})
+
+    if (SCN_USE_BUNDLED_FAST_FLOAT)
+        target_include_directories(${target_name} PRIVATE
+                $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/deps/fast_float/single_include>)
+    else ()
+        target_link_libraries(${target_name} INTERFACE
+                fast_float)
+    endif ()
 endfunction()
 function(generate_header_only_target target_name)
     add_library(${target_name} INTERFACE)
@@ -84,12 +95,21 @@ function(generate_header_only_target target_name)
     target_compile_definitions(${target_name} INTERFACE
             -DSCN_HEADER_ONLY=1)
     target_compile_features(${target_name} INTERFACE cxx_std_11)
+
+    if (SCN_USE_BUNDLED_FAST_FLOAT)
+        target_include_directories(${target_name} INTERFACE
+                $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/deps/fast_float/single_include>)
+    else ()
+        target_link_libraries(${target_name} INTERFACE
+                fast_float)
+    endif ()
 endfunction()
 
 generate_library_target(scn)
 generate_header_only_target(scn-header-only)
 
-set(SCN_EXPORT_TARGETS_LIST scn scn-header-only)
+set(SCN_EXPORT_TARGETS_LIST
+        scn scn-header-only)
 add_library(scn::scn ALIAS scn)
 add_library(scn::scn-header-only ALIAS scn-header-only)
 
