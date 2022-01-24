@@ -31,11 +31,19 @@
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
+SCN_GCC_IGNORE("-Wnoexcept")
+SCN_GCC_IGNORE("-Wshift-count-overflow")
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wold-style-cast")
-SCN_CLANG_IGNORE("-Wextra-semi-stmt")
+
+#if SCN_CLANG >= SCN_COMPILER(13, 0, 0)
 SCN_CLANG_IGNORE("-Wreserved-identifier")
+#endif
+
+#if SCN_CLANG >= SCN_COMPILER(10, 0, 0)
+SCN_CLANG_IGNORE("-Wextra-semi-stmt")
+#endif
 
 #include "fast_float/include/fast_float/fast_float.h"
 
