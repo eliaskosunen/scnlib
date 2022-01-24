@@ -33,6 +33,7 @@ SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
 SCN_GCC_IGNORE("-Wnoexcept")
 SCN_GCC_IGNORE("-Wshift-count-overflow")
+SCN_GCC_IGNORE("-Wsign-conversion")
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wold-style-cast")

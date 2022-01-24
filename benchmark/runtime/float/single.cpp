@@ -40,6 +40,7 @@ static void scan_float_single_scn(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scan_float_single_scn, float);
 BENCHMARK_TEMPLATE(scan_float_single_scn, double);
+BENCHMARK_TEMPLATE(scan_float_single_scn, long double);
 
 template <typename Float>
 static void scan_float_single_scn_default(benchmark::State& state)
@@ -64,6 +65,7 @@ static void scan_float_single_scn_default(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scan_float_single_scn_default, float);
 BENCHMARK_TEMPLATE(scan_float_single_scn_default, double);
+BENCHMARK_TEMPLATE(scan_float_single_scn_default, long double);
 
 template <typename Float>
 static void scan_float_single_scn_value(benchmark::State& state)
@@ -87,6 +89,7 @@ static void scan_float_single_scn_value(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scan_float_single_scn_value, float);
 BENCHMARK_TEMPLATE(scan_float_single_scn_value, double);
+BENCHMARK_TEMPLATE(scan_float_single_scn_value, long double);
 
 template <typename Float>
 static void scan_float_single_scn_parse(benchmark::State& state)
@@ -112,6 +115,7 @@ static void scan_float_single_scn_parse(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scan_float_single_scn_parse, float);
 BENCHMARK_TEMPLATE(scan_float_single_scn_parse, double);
+BENCHMARK_TEMPLATE(scan_float_single_scn_parse, long double);
 
 template <typename Float>
 static void scan_float_single_sstream(benchmark::State& state)
@@ -137,6 +141,7 @@ static void scan_float_single_sstream(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scan_float_single_sstream, float);
 BENCHMARK_TEMPLATE(scan_float_single_sstream, double);
+BENCHMARK_TEMPLATE(scan_float_single_sstream, long double);
 
 template <typename Float>
 static void scan_float_single_scanf(benchmark::State& state)
@@ -160,3 +165,4 @@ static void scan_float_single_scanf(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scan_float_single_scanf, float);
 BENCHMARK_TEMPLATE(scan_float_single_scanf, double);
+BENCHMARK_TEMPLATE(scan_float_single_scanf, long double);
