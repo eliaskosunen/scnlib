@@ -45,7 +45,7 @@ SCN_CLANG_IGNORE("-Wreserved-identifier")
 SCN_CLANG_IGNORE("-Wextra-semi-stmt")
 #endif
 
-#include "fast_float/include/fast_float/fast_float.h"
+#include <fast_float/fast_float.h>
 
 SCN_CLANG_POP
 SCN_GCC_POP
