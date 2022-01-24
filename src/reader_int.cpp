@@ -63,30 +63,33 @@ namespace scn {
                              "Expected number after sign");
             }
 
-            if (*it == ascii_widen<CharT>('0')) {
-                ++it;
-                if (it == s.end()) {
-                    val = 0;
-                    return ranges::distance(s.begin(), it);
-                }
-                if (*it == ascii_widen<CharT>('x') ||
-                    *it == ascii_widen<CharT>('X')) {
-                    if (SCN_UNLIKELY(base != 0 && base != 16)) {
-                        val = 0;
-                        return ranges::distance(s.begin(), it);
-                    }
+            // Format string was 'b__' -> detect base
+            if (SCN_UNLIKELY(base == 0)) {
+                if (*it == ascii_widen<CharT>('0')) {
                     ++it;
-                    if (SCN_UNLIKELY(it == s.end())) {
-                        --it;
+                    if (it == s.end()) {
                         val = 0;
                         return ranges::distance(s.begin(), it);
                     }
-                    if (base == 0) {
-                        base = 16;
+                    if (*it == ascii_widen<CharT>('x') ||
+                        *it == ascii_widen<CharT>('X')) {
+                        if (SCN_UNLIKELY(base != 0 && base != 16)) {
+                            val = 0;
+                            return ranges::distance(s.begin(), it);
+                        }
+                        ++it;
+                        if (SCN_UNLIKELY(it == s.end())) {
+                            --it;
+                            val = 0;
+                            return ranges::distance(s.begin(), it);
+                        }
+                        if (base == 0) {
+                            base = 16;
+                        }
                     }
-                }
-                else if (base == 0) {
-                    base = 8;
+                    else if (base == 0) {
+                        base = 8;
+                    }
                 }
             }
             if (base == 0) {

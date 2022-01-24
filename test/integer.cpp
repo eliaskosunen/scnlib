@@ -185,7 +185,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     }
     {
         value_type i{};
-        auto e = do_scan<char_type>("0400", "{}", i);
+        auto e = do_scan<char_type>("0400", "{:i}", i);
         CHECK(i == 0400);
         CHECK(e);
     }
@@ -208,7 +208,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     {
         if (can_fit_badidea) {
             value_type i{};
-            auto e = do_scan<char_type>("0xbad1dea", "{}", i);
+            auto e = do_scan<char_type>("0xbad1dea", "{:i}", i);
             CHECK(i == 0xbad1dea);
             CHECK(e);
         }

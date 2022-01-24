@@ -226,7 +226,8 @@ There are localization specifiers:
 
  * ``n``: Use thousands separator from the given locale
  * ``l``: Accept characters specified as digits by the given locale. Implies ``n``
- * (default): Use ``,`` as thousands separator and ``[0-9]`` as digits
+ * (default): Use ``,`` as thousands separator
+   (not accepted by default, though, use ``'`` to also parse thousands separators) and ``[0-9]`` as digits
 
 And base specifiers:
 
@@ -235,15 +236,16 @@ And base specifiers:
  * ``o``: Octal (base-8)
  * ``b..`` Custom base; ``b`` followed by one or two digits
    (e.g. ``b2`` for binary). Base must be between 2 and 36, inclusive
- * (default): Detect base. ``0x``/``0X`` prefix for hexadecimal,
-   ``0`` prefix for octal, decimal by default
- * ``i``: Detect base. Argument must be signed
- * ``u``: Detect base. Argument must be unsigned
+ * ``i`` and ``u``: Detect base.
+   ``0x``/``0X`` prefix for hexadecimal,
+   ``0`` prefix for octal, decimal otherwise.
+   Argument must be signed (``i``) or unsigned (``u``), respectively.
+ * (default): Decimal (base-10)
 
 And other options:
 
  * ``'``: Accept thousands separator characters,
-   as specified by the given locale (only with ``custom``-scanning method)
+   as specified by the given locale
  * (default): Thousands separator characters aren't accepted
 
 These specifiers can be given in any order, with up to one from each
