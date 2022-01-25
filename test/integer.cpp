@@ -40,7 +40,7 @@ TEST_CASE("short ranges")
     ret = scn::scan("32768", "{}", i);
     CHECK(!ret);
     CHECK(i == 32767);
-    CHECK(ret.error().code() == scn::error::value_out_of_range);
+    CHECK(ret.error() == scn::error::value_out_of_range);
 
     ret = scn::scan("-32768", "{}", i);
     CHECK(ret);
@@ -50,7 +50,7 @@ TEST_CASE("short ranges")
     ret = scn::scan("-32769", "{}", i);
     CHECK(!ret);
     CHECK(i == -32768);
-    CHECK(ret.error().code() == scn::error::value_out_of_range);
+    CHECK(ret.error() == scn::error::value_out_of_range);
 
     // range is (inclusive) from 0 to 65535
     unsigned short u{};
@@ -68,12 +68,12 @@ TEST_CASE("short ranges")
     ret = scn::scan("-32768", "{}", u);
     CHECK(!ret);
     CHECK(u == 32768);
-    CHECK(ret.error().code() == scn::error::value_out_of_range);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
 
     ret = scn::scan("-32769", "{}", u);
     CHECK(!ret);
     CHECK(u == 32768);
-    CHECK(ret.error().code() == scn::error::value_out_of_range);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
 
     ret = scn::scan("65535", "{}", u);
     CHECK(ret);
@@ -83,30 +83,187 @@ TEST_CASE("short ranges")
     ret = scn::scan("65536", "{}", u);
     CHECK(!ret);
     CHECK(u == 65535);
-    CHECK(ret.error().code() == scn::error::value_out_of_range);
+    CHECK(ret.error() == scn::error::value_out_of_range);
 }
 
 TEST_CASE("format string")
 {
     int i{};
-    auto ret = scn::scan("1", "{:i}", i);
+
+    // Default = d, decimal
+    auto ret = scn::scan("1", "{:d}", i);
     CHECK(ret);
     CHECK(i == 1);
 
+    // u = unsigned, negative numbers not allowed
     ret = scn::scan("2", "{:u}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_format_string);
-    CHECK(i == 1);
-
-    unsigned u{};
-    ret = scn::scan("3", "{:i}", u);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_format_string);
-    CHECK(u == 0);
-
-    ret = scn::scan("4", "{:u}", u);
     CHECK(ret);
-    CHECK(u == 4);
+    CHECK(i == 2);
+
+    // negative number with 'u'
+    ret = scn::scan("-3", "{:u}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+    CHECK(i == 2);
+
+    // i base detect
+    ret = scn::scan("4", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 4);
+
+    // Starts with 0b -> binary
+    ret = scn::scan("0b101", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 5);
+
+    // Starts with 0B -> binary
+    ret = scn::scan("0b110", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 6);
+
+    // Starts with 0o -> octal
+    ret = scn::scan("0o7", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 7);
+
+    // Starts with 0O -> octal
+    ret = scn::scan("0O10", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+
+    // Starts with 0 -> octal
+    ret = scn::scan("011", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 9);
+
+    // Starts with 0 -> octal
+    ret = scn::scan("012", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 10);
+
+    // Starts with 0x -> hex
+    ret = scn::scan("0xb", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 11);
+
+    // Starts with 0X -> hex
+    ret = scn::scan("0XC", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 12);
+
+    // Hex case irrelevant
+    ret = scn::scan("0xD", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 13);
+
+    // Hex case irrelevant
+    ret = scn::scan("0Xe", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 14);
+
+    // Just 0
+    ret = scn::scan("0", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 0);
+
+    // Again, decimal by default
+    ret = scn::scan("15", "{:i}", i);
+    CHECK(ret);
+    CHECK(i == 15);
+
+    // b = binary
+    ret = scn::scan("10000", "{:b}", i);
+    CHECK(ret);
+    CHECK(i == 16);
+
+    // allow 0b prefix
+    ret = scn::scan("0b10001", "{:b}", i);
+    CHECK(ret);
+    CHECK(i == 17);
+
+    // allow 0B prefix
+    ret = scn::scan("0b10010", "{:b}", i);
+    CHECK(ret);
+    CHECK(i == 18);
+
+    // o = octal
+    ret = scn::scan("23", "{:o}", i);
+    CHECK(ret);
+    CHECK(i == 19);
+
+    // allow 0o prefix
+    ret = scn::scan("0o24", "{:o}", i);
+    CHECK(ret);
+    CHECK(i == 20);
+
+    // allow 0O prefix
+    ret = scn::scan("0O25", "{:o}", i);
+    CHECK(ret);
+    CHECK(i == 21);
+
+    // allow 0 prefix
+    ret = scn::scan("026", "{:o}", i);
+    CHECK(ret);
+    CHECK(i == 22);
+
+    // x = hex
+    ret = scn::scan("17", "{:x}", i);
+    CHECK(ret);
+    CHECK(i == 23);
+
+    // allow 0x prefix
+    ret = scn::scan("0x18", "{:x}", i);
+    CHECK(ret);
+    CHECK(i == 24);
+
+    // allow 0X prefix
+    ret = scn::scan("0x19", "{:x}", i);
+    CHECK(ret);
+    CHECK(i == 25);
+
+    // B2 == binary
+    ret = scn::scan("11010", "{:B2}", i);
+    CHECK(ret);
+    CHECK(i == 26);
+
+    // B02 -> fail
+    ret = scn::scan("11010", "{:B02}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(i == 26);
+
+    // Don't allow prefix with B__ -> 0 only parsed
+    ret = scn::scan("0b11010", "{:B2}", i);
+    CHECK(ret);
+    CHECK(ret.range_as_string() == "b11010");
+    CHECK(i == 0);
+
+    // B3 == ternary
+    ret = scn::scan("1000", "{:B3}", i);
+    CHECK(ret);
+    CHECK(i == 27);
+
+    // B36 == base-36
+    ret = scn::scan("S", "{:B36}", i);
+    CHECK(ret);
+    CHECK(i == 28);
+
+    // B36 == base-36
+    ret = scn::scan("t", "{:B36}", i);
+    CHECK(ret);
+    CHECK(i == 29);
+
+    // Base over 36, 2 digits
+    ret = scn::scan("10001", "{:B37}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(i == 29);
+
+    // Base over 36, 3 digits
+    ret = scn::scan("10001", "{:B100}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(i == 29);
 }
 
 template <typename CharT, typename T>
@@ -146,7 +303,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
             value_type i{};
             auto e = do_scan<char_type>("-1", "{}", i);
             REQUIRE(!e);
-            CHECK(e.error().code() == scn::error::value_out_of_range);
+            CHECK(e.error() == scn::error::invalid_scanned_value);
         }
     }
 
@@ -167,13 +324,13 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
             value_type i{};
             auto e = do_scan<char_type>("2147483648", "{}", i);
             CHECK(!e);
-            CHECK(e.error().code() == scn::error::value_out_of_range);
+            CHECK(e.error() == scn::error::value_out_of_range);
         }
     }
 
     {
         value_type i{};
-        auto e = do_scan<char_type>("1011", "{:b2}", i);
+        auto e = do_scan<char_type>("1011", "{:B2}", i);
         CHECK(i == 11);
         CHECK(e);
     }
@@ -202,7 +359,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
             value_type i{};
             auto e = do_scan<char_type>("bad1dea", "{:x}", i);
             REQUIRE(!e);
-            CHECK(e.error().code() == scn::error::value_out_of_range);
+            CHECK(e.error() == scn::error::value_out_of_range);
         }
     }
     {
@@ -214,49 +371,49 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         }
         else {
             value_type i{};
-            auto e = do_scan<char_type>("0xbad1dea", "{}", i);
+            auto e = do_scan<char_type>("0xbad1dea", "{:i}", i);
             REQUIRE(!e);
-            CHECK(e.error().code() == scn::error::value_out_of_range);
+            CHECK(e.error() == scn::error::value_out_of_range);
         }
     }
     {
         if (can_fit_badidea) {
             value_type i{};
-            auto e = do_scan<char_type>("0xBAD1DEA", "{}", i);
+            auto e = do_scan<char_type>("0xBAD1DEA", "{:i}", i);
             CHECK(i == 0xbad1dea);
             CHECK(e);
         }
         else {
             value_type i{};
-            auto e = do_scan<char_type>("0xBAD1DEA", "{}", i);
-            REQUIRE(!e);
-            CHECK(e.error().code() == scn::error::value_out_of_range);
+            auto e = do_scan<char_type>("0xBAD1DEA", "{:i}", i);
+            CHECK(!e);
+            CHECK(e.error() == scn::error::value_out_of_range);
         }
     }
 
     {
         value_type i{};
-        auto e = do_scan<char_type>("ff", "{:b16}", i);
+        auto e = do_scan<char_type>("ff", "{:B16}", i);
         CHECK(i == 0xff);
         CHECK(e);
     }
     {
         value_type i{};
-        auto e = do_scan<char_type>("FF", "{:b16}", i);
+        auto e = do_scan<char_type>("FF", "{:B16}", i);
         CHECK(i == 0xff);
         CHECK(e);
     }
     {
         value_type i{0};
-        auto e = do_scan<char_type>("0xff", "{:b16}", i);
-        CHECK(i == 0xff);
+        auto e = do_scan<char_type>("0xff", "{:B16}", i);
         CHECK(e);
+        CHECK(i == 0);
     }
     {
         value_type i{0};
-        auto e = do_scan<char_type>("0xFF", "{:b16}", i);
-        CHECK(i == 0xff);
+        auto e = do_scan<char_type>("0xFF", "{:B16}", i);
         CHECK(e);
+        CHECK(i == 0);
     }
 
     {
@@ -266,7 +423,7 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
         CHECK(e.error() == scn::error::invalid_scanned_value);
     }
 
-    if (std::is_signed<value_type>::value) {
+    {
         value_type i{};
         auto e = do_scan<char_type>("-", "{}", i);
         CHECK(!e);
@@ -284,21 +441,21 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
 
     {
         value_type i{};
-        auto e = do_scan<char_type>("123", "{:b}", i);
+        auto e = do_scan<char_type>("123", "{:B}", i);
         CHECK(!e);
         CHECK(e.error() == scn::error::invalid_format_string);
         CHECK(i == 0);
     }
     {
         value_type i{};
-        auto e = do_scan<char_type>("123", "{:ba}", i);
+        auto e = do_scan<char_type>("123", "{:Ba}", i);
         CHECK(!e);
         CHECK(e.error() == scn::error::invalid_format_string);
         CHECK(i == 0);
     }
     {
         value_type i{};
-        auto e = do_scan<char_type>("123", "{:b0}", i);
+        auto e = do_scan<char_type>("123", "{:B0}", i);
         CHECK(!e);
         CHECK(e.error() == scn::error::invalid_format_string);
         CHECK(i == 0);
@@ -413,7 +570,7 @@ TEST_CASE("parse_integer")
         auto ret = scn::parse_integer<short>(
             scn::string_view{source.data(), source.size()}, i);
         CHECK(!ret);
-        CHECK(ret.error().code() == scn::error::value_out_of_range);
+        CHECK(ret.error() == scn::error::value_out_of_range);
     }
 }
 

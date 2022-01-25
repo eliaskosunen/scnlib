@@ -730,60 +730,64 @@ namespace scn {
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {
-                // {}: base detect, not localized
-                // n: localized decimal/thousand separator
-                // l: n + localized digits
-                // d: decimal, o: octal, x: hex, b[1-36]: base
                 using char_type = typename ParseCtx::char_type;
                 pctx.arg_begin();
                 if (SCN_UNLIKELY(!pctx)) {
-                    return error(error::invalid_format_string,
-                                 "Unexpected format string end");
+                    return {error::invalid_format_string,
+                            "Unexpected format string end"};
                 }
 
                 bool base_set = false;
-                bool loc_set = false;
+                bool L_set = false;
+                bool n_set = false;
+                bool thsep_set = false;
+
                 for (auto ch = pctx.next(); pctx && !pctx.check_arg_end();
                      pctx.advance(), ch = pctx.next()) {
                     if (!base_set) {
                         if (ch == detail::ascii_widen<char_type>('d')) {
+                            // Decimal
                             base = 10;
                             base_set = true;
                             continue;
                         }
                         else if (ch == detail::ascii_widen<char_type>('x')) {
+                            // Hex
                             base = 16;
+                            format_options |= allow_base_prefix;
                             base_set = true;
                             continue;
                         }
                         else if (ch == detail::ascii_widen<char_type>('o')) {
+                            // Octal
                             base = 8;
+                            format_options |= allow_base_prefix;
                             base_set = true;
                             continue;
                         }
                         else if (ch == detail::ascii_widen<char_type>('i')) {
-                            if (std::is_unsigned<T>::value) {
-                                return error(
-                                    error::invalid_format_string,
-                                    "'i' format specifier expects signed "
-                                    "integer argument");
-                            }
+                            // Detect base
                             base = 0;
+                            format_options |= allow_base_prefix;
                             base_set = true;
                             continue;
                         }
                         else if (ch == detail::ascii_widen<char_type>('u')) {
-                            if (std::is_signed<T>::value) {
-                                return error(
-                                    error::invalid_format_string,
-                                    "'u' format specifier expects unsigned "
-                                    "integer argument");
-                            }
-                            base = 0;
+                            // Decimal, unsigned
+                            base = 10;
+                            format_options |= only_unsigned;
                             base_set = true;
                             continue;
                         }
                         else if (ch == detail::ascii_widen<char_type>('b')) {
+                            // Binary
+                            base = 2;
+                            format_options |= allow_base_prefix;
+                            base_set = true;
+                            continue;
+                        }
+                        else if (ch == detail::ascii_widen<char_type>('B')) {
+                            // Custom base
                             pctx.advance();
                             if (SCN_UNLIKELY(!pctx)) {
                                 return error(error::invalid_format_string,
@@ -802,57 +806,60 @@ namespace scn {
                             int tmp = 0;
                             if (ch < zero || ch > nine) {
                                 return error(error::invalid_format_string,
-                                             "Invalid character after 'b', "
+                                             "Invalid character after 'B', "
                                              "expected digit");
                             }
                             tmp = pctx.next() - zero;
                             if (tmp < 1) {
                                 return error(
                                     error::invalid_format_string,
-                                    "Invalid base, must be between 1 and 36");
+                                    "Invalid base, must be between 2 and 36");
                             }
 
                             pctx.advance();
                             ch = pctx.next();
 
                             if (pctx.check_arg_end()) {
-                                base = tmp;
+                                base = static_cast<uint8_t>(tmp);
+                                base_set = true;
                                 break;
                             }
                             if (ch < zero || ch > nine) {
                                 return error(error::invalid_format_string,
-                                             "Invalid character after 'b', "
+                                             "Invalid character after 'B', "
                                              "expected digit");
                             }
                             tmp *= 10;
                             tmp += ch - zero;
-                            if (tmp < 1 || tmp > 36) {
+                            if (tmp < 2 || tmp > 36) {
                                 return error(
                                     error::invalid_format_string,
-                                    "Invalid base, must be between 1 and 36");
+                                    "Invalid base, must be between 2 and 36");
                             }
-                            base = tmp;
+                            base = static_cast<uint8_t>(tmp);
                             base_set = true;
                             continue;
                         }
                     }
 
-                    if (!loc_set) {
-                        if (ch == detail::ascii_widen<char_type>('l')) {
-                            localized = thousands_separator | digits;
-                            loc_set = true;
-                            continue;
-                        }
-                        else if (ch == detail::ascii_widen<char_type>('n')) {
-                            localized = thousands_separator;
-                            loc_set = true;
+                    if (!L_set) {
+                        if (ch == detail::ascii_widen<char_type>('L')) {
+                            format_options |= localized;
+                            L_set = true;
                             continue;
                         }
                     }
-
-                    if (!have_thsep) {
+                    if (!n_set) {
+                        if (ch == detail::ascii_widen<char_type>('n')) {
+                            format_options |= localized_digits;
+                            n_set = true;
+                            continue;
+                        }
+                    }
+                    if (!thsep_set) {
                         if (ch == detail::ascii_widen<char_type>('\'')) {
-                            have_thsep = true;
+                            format_options |= allow_thsep;
+                            thsep_set = true;
                             continue;
                         }
                     }
@@ -861,7 +868,12 @@ namespace scn {
                                  "Unexpected character in format string");
                 }
 
-                if (localized && (base != 0 && base != 10)) {
+                if (!base_set) {
+                    base = 10;
+                    base_set = true;
+                    format_options |= allow_base_prefix;
+                }
+                if ((format_options & localized_digits) != 0 && base != 10) {
                     return error(
                         error::invalid_format_string,
                         "Localized integers can only be scanned in base 10");
@@ -881,7 +893,8 @@ namespace scn {
                 auto do_parse_int = [&](span<const char_type> s) -> error {
                     T tmp = 0;
                     expected<std::ptrdiff_t> ret{0};
-                    if (SCN_UNLIKELY((localized & digits) != 0)) {
+                    if (SCN_UNLIKELY((format_options & localized_digits) !=
+                                     0)) {
                         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                         std::basic_string<char_type> str(s.data(), s.size());
                         ret = ctx.locale().read_num(tmp, str);
@@ -920,14 +933,24 @@ namespace scn {
                 return do_parse_int(bufspan.as_const());
             }
 
-            enum localized_type : uint8_t {
-                thousands_separator = 1,
-                digits = 2
+            enum format_options_type : uint8_t {
+                // "L" option -> use supplied locale
+                localized = 1,
+                // "n" option -> localized digits and digit grouping
+                localized_digits = 2,
+                // "'" option -> accept thsep
+                // if "L" use locale, default=','
+                allow_thsep = 4,
+                // "u" option -> don't allow sign
+                only_unsigned = 8,
+                // Allow base prefix (e.g. 0B and 0x)
+                allow_base_prefix = 16
             };
+            uint8_t format_options{0};
 
-            int base{0};
-            uint8_t localized{0};
-            bool have_thsep{false};
+            // 0 = detect base
+            // Otherwise [2,36]
+            uint8_t base{0};
 
             template <typename Context, typename Buf, typename CharT>
             error _read_source(Context& ctx,
@@ -949,7 +972,7 @@ namespace scn {
                     return {};
                 };
 
-                if (SCN_LIKELY(!have_thsep)) {
+                if (SCN_LIKELY((format_options & allow_thsep) == 0)) {
                     auto e = do_read(buf);
                     if (!e) {
                         return e;
@@ -963,7 +986,10 @@ namespace scn {
                 if (!e) {
                     return e;
                 }
-                auto thsep = ctx.locale().thousands_separator();
+                auto thsep =
+                    ((format_options & localized) != 0)
+                        ? ctx.locale().thousands_separator()
+                        : locale_defaults<CharT>::thousands_separator();
 
                 auto it = tmp.begin();
                 for (; it != tmp.end(); ++it) {
@@ -993,7 +1019,7 @@ namespace scn {
                                span<const CharT>& s,
                                std::true_type)
             {
-                if (SCN_UNLIKELY(have_thsep)) {
+                if (SCN_UNLIKELY((format_options & allow_thsep) != 0)) {
                     return _read_source(ctx, buf, s, std::false_type{});
                 }
                 auto ret = read_all_zero_copy(ctx.range());

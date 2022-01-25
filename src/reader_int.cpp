@@ -38,7 +38,7 @@ namespace scn {
 
             if (std::is_unsigned<T>::value) {
                 if (s[0] == detail::ascii_widen<CharT>('-')) {
-                    return error(error::value_out_of_range,
+                    return error(error::invalid_scanned_value,
                                  "Unexpected sign '-' when scanning an "
                                  "unsigned integer");
                 }
@@ -50,50 +50,108 @@ namespace scn {
             bool minus_sign = false;
             auto it = s.begin();
 
-            if (s[0] == ascii_widen<CharT>('-') ||
-                s[0] == ascii_widen<CharT>('+')) {
-                SCN_GCC_PUSH
-                SCN_GCC_IGNORE("-Wsign-conversion")
-                minus_sign = s[0] == ascii_widen<CharT>('-');
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wsign-conversion")
+            if (s[0] == ascii_widen<CharT>('-')) {
+                if (SCN_UNLIKELY((format_options & only_unsigned) != 0)) {
+                    // 'u' option -> negative values disallowed
+                    return error(error::invalid_scanned_value,
+                                 "Parsed negative value when type was 'u'");
+                }
+                minus_sign = true;
                 ++it;
-                SCN_GCC_POP
             }
+            else if (s[0] == ascii_widen<CharT>('+')) {
+                ++it;
+            }
+            SCN_GCC_POP
             if (SCN_UNLIKELY(it == s.end())) {
                 return error(error::invalid_scanned_value,
                              "Expected number after sign");
             }
 
-            // Format string was 'b__' -> detect base
-            if (SCN_UNLIKELY(base == 0)) {
+            // Format string was 'i' or empty -> detect base
+            // or
+            // allow_base_prefix (skip 0x etc.)
+            if (SCN_UNLIKELY(base == 0 ||
+                             (format_options & allow_base_prefix) != 0)) {
+                // If base can be detected, it should start with '0'
                 if (*it == ascii_widen<CharT>('0')) {
                     ++it;
                     if (it == s.end()) {
+                        // It's really just 0
                         val = 0;
                         return ranges::distance(s.begin(), it);
                     }
                     if (*it == ascii_widen<CharT>('x') ||
                         *it == ascii_widen<CharT>('X')) {
-                        if (SCN_UNLIKELY(base != 0 && base != 16)) {
-                            val = 0;
-                            return ranges::distance(s.begin(), it);
-                        }
+                        // Hex: 0x or 0X
                         ++it;
                         if (SCN_UNLIKELY(it == s.end())) {
+                            // 0x/0X not a valid number
                             --it;
                             val = 0;
                             return ranges::distance(s.begin(), it);
                         }
                         if (base == 0) {
+                            // Detect base
                             base = 16;
+                        }
+                        else if (base != 16) {
+                            // Invalid prefix for base
+                            return error(error::invalid_scanned_value,
+                                         "Invalid base prefix");
+                        }
+                    }
+                    else if (*it == ascii_widen<CharT>('b') ||
+                             *it == ascii_widen<CharT>('B')) {
+                        // Binary: 0b or 0b
+                        ++it;
+                        if (SCN_UNLIKELY(it == s.end())) {
+                            // 0b/0B not a valid number
+                            --it;
+                            val = 0;
+                            return ranges::distance(s.begin(), it);
+                        }
+                        if (base == 0) {
+                            // Detect base
+                            base = 2;
+                        }
+                        else if (base != 2) {
+                            // Invalid prefix for base
+                            return error(error::invalid_scanned_value,
+                                         "Invalid base prefix");
+                        }
+                    }
+                    else if (*it == ascii_widen<CharT>('o') ||
+                             *it == ascii_widen<CharT>('O')) {
+                        // Octal: 0o or 0O
+                        ++it;
+                        if (SCN_UNLIKELY(it == s.end())) {
+                            // 0o/0O not a valid number
+                            --it;
+                            val = 0;
+                            return ranges::distance(s.begin(), it);
+                        }
+                        if (base == 0) {
+                            // Detect base
+                            base = 8;
+                        }
+                        else if (base != 8) {
+                            // Invalid prefix for base
+                            return error(error::invalid_scanned_value,
+                                         "Invalid base prefix");
                         }
                     }
                     else if (base == 0) {
+                        // Starting with only 0 -> octal
                         base = 8;
                     }
                 }
-            }
-            if (base == 0) {
-                base = 10;
+                if (base == 0) {
+                    // None detected, default to 10
+                    base = 10;
+                }
             }
 
             SCN_GCC_PUSH
