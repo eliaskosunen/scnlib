@@ -42,8 +42,7 @@ TEST_CASE("general")
     std::string s(6, '\0');
     auto span = scn::make_span(&s[0], &s[0] + s.size());
     bool b{};
-    auto ret = scn::scan(data, "test {{}} {} {} {} {:a}", i, d,
-                         span, b);
+    auto ret = scn::scan(data, "test {{}} {} {} {} {:a}", i, d, span, b);
 
     CHECK(data == copy);
     CHECK(i == 42);
@@ -222,10 +221,9 @@ TEST_CASE("empty format string")
 TEST_CASE("unpacked arguments")
 {
     std::array<int, 16> a{{0}};
-    auto ret =
-        scn::scan_default("0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15",
-                  a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9],
-                  a[10], a[11], a[12], a[13], a[14], a[15]);
+    auto ret = scn::scan_default(
+        "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15", a[0], a[1], a[2], a[3], a[4],
+        a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12], a[13], a[14], a[15]);
     CHECK(ret);
     for (int i = 0; i < 16; ++i) {
         CHECK(a[static_cast<size_t>(i)] == i);
@@ -250,14 +248,14 @@ TEST_CASE("argument amount")
         CHECK(ret);
         CHECK(i == 0);
     }
-#define MAKE_ARGUMENT_AMOUNT_TEST(str, n, ...)                \
-    int i[n];                                                 \
+#define MAKE_ARGUMENT_AMOUNT_TEST(str, n, ...)      \
+    int i[n];                                       \
     auto ret = scn::scan_default(str, __VA_ARGS__); \
-    CHECK(ret);                                               \
-    for (int j = 0; j < n; ++j) {                             \
-        CHECK(i[j] == j);                                     \
-    }                                                         \
-    do {                                                      \
+    CHECK(ret);                                     \
+    for (int j = 0; j < n; ++j) {                   \
+        CHECK(i[j] == j);                           \
+    }                                               \
+    do {                                            \
     } while (false)
     SUBCASE("2")
     {

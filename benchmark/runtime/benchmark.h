@@ -25,7 +25,8 @@ SCN_GCC_IGNORE("-Wredundant-decls")
 
 #include <random>
 
-inline std::mt19937_64& get_rng() {
+inline std::mt19937_64& get_rng()
+{
     static std::random_device rd;
     static std::seed_seq seed{rd(), rd(), rd(), rd(), rd(), rd(), rd(), rd()};
     static std::mt19937_64 rng(seed);

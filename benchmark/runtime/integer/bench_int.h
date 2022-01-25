@@ -43,7 +43,7 @@ std::vector<std::string> stringified_integers_list(size_t n = INT_DATA_N)
 
 template <typename Int>
 std::string stringified_integer_list(size_t n = INT_DATA_N,
-                                            const char* delim = " ")
+                                     const char* delim = " ")
 {
     static std::uniform_int_distribution<Int> dist(
         std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max());

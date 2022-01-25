@@ -18,7 +18,8 @@
 #include <scn/scn.h>
 #include <iostream>
 
-int main() {
+int main()
+{
     int i;
     scn::prompt("Hi there! What's your favorite number? ", "{}", i);
     std::cout << "Ooh, " << i << ", interesting!\n";

@@ -1,4 +1,4 @@
-function (make_example name)
+function(make_example name)
     add_executable(example-${name} example-${name}.cpp)
     target_link_libraries(example-${name} PRIVATE scn)
     set_private_flags(example-${name})

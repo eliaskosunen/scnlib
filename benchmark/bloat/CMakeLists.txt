@@ -1,4 +1,4 @@
-function (generate_bloat_test_files template outdir sources)
+function(generate_bloat_test_files template outdir sources)
     set(bloat_test_main "${CMAKE_CURRENT_LIST_DIR}/${outdir}/bloat_test_main.cpp")
     set(bloat_test_header "${CMAKE_CURRENT_LIST_DIR}/${outdir}/bloat_test_all.h")
 
@@ -14,7 +14,7 @@ function (generate_bloat_test_files template outdir sources)
 
         file(APPEND ${bloat_test_main} "do_scan${i}();\n")
         file(APPEND ${bloat_test_header} "void do_scan${i}();\n")
-    endforeach()
+    endforeach ()
 
     file(APPEND ${bloat_test_main} "return 0;\n}")
     set(${sources} ${source_files_list} PARENT_SCOPE)
@@ -51,7 +51,7 @@ add_executable(bloat-scnlib-value-header-only ${bloat-scnlib-value-sources})
 target_link_libraries(bloat-scnlib-value-header-only scn-header-only)
 
 add_custom_target(bloat-prepare ALL
-    COMMAND ${CMAKE_COMMAND} -E copy
-    "${CMAKE_CURRENT_LIST_DIR}/bloat_test.py" "${CMAKE_CURRENT_LIST_DIR}/run-bloat-tests.py"
-    "${CMAKE_BINARY_DIR}/benchmark/bloat"
-    COMMENT "Copying bloat test scripts")
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_LIST_DIR}/bloat_test.py" "${CMAKE_CURRENT_LIST_DIR}/run-bloat-tests.py"
+        "${CMAKE_BINARY_DIR}/benchmark/bloat"
+        COMMENT "Copying bloat test scripts")

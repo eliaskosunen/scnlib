@@ -7,7 +7,7 @@ if (NOT benchmark_FOUND)
     set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE INTERNAL "")
 
     add_subdirectory(google-benchmark EXCLUDE_FROM_ALL)
-endif()
+endif ()
 
 if (SCN_USE_32BIT)
     target_compile_options(benchmark PUBLIC -m32)

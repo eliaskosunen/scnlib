@@ -21,4 +21,3 @@
 #include "detail/tuple_return.h"
 
 #endif  // SCN_TUPLE_RETURN_H
-

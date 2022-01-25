@@ -34,7 +34,7 @@ namespace scn {
         using std::random_access_iterator_tag;
         struct contiguous_iterator_tag : random_access_iterator_tag {
         };
-    }  // namespace ranges
+    }  // namespace custom_ranges
 
     /**
      * A view over a contiguous range.

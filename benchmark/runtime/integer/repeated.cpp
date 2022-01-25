@@ -95,7 +95,8 @@ BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, long long);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, unsigned);
 
 template <typename Int>
-static void scan_int_repeated_sstream(benchmark::State& state) {
+static void scan_int_repeated_sstream(benchmark::State& state)
+{
     auto data = stringified_integer_list<Int>();
     auto stream = std::istringstream(data);
     Int i{};

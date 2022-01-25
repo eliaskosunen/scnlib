@@ -17,13 +17,13 @@
 
 #include <scn/fwd.h>
 
-struct user_type {};
+struct user_type {
+};
 
 namespace scn {
     template <typename CharT>
-    struct scanner<CharT, user_type> {};
-}
+    struct scanner<CharT, user_type> {
+    };
+}  // namespace scn
 
-int main()
-{
-}
+int main() {}

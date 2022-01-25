@@ -89,7 +89,7 @@
 #endif  // #ifdef __GNUC__
 
 #define SCN_STRINGIFY_APPLY(x) #x
-#define SCN_STRINGIFY(x) SCN_STRINGIFY_APPLY(x)
+#define SCN_STRINGIFY(x)       SCN_STRINGIFY_APPLY(x)
 
 // POSIX
 #if defined(__unix__) || defined(__APPLE__)
@@ -129,10 +129,10 @@
 #if SCN_GCC
 #define SCN_PRAGMA_APPLY(x) _Pragma(#x)
 
-#define SCN_GCC_PUSH _Pragma("GCC diagnostic push")
-#define SCN_GCC_POP _Pragma("GCC diagnostic pop")
+#define SCN_GCC_PUSH        _Pragma("GCC diagnostic push")
+#define SCN_GCC_POP         _Pragma("GCC diagnostic pop")
 
-#define SCN_GCC_IGNORE(x) SCN_PRAGMA_APPLY(GCC diagnostic ignored x)
+#define SCN_GCC_IGNORE(x)   SCN_PRAGMA_APPLY(GCC diagnostic ignored x)
 #else
 #define SCN_GCC_PUSH
 #define SCN_GCC_POP
@@ -142,8 +142,8 @@
 #if SCN_CLANG
 #define SCN_PRAGMA_APPLY(x) _Pragma(#x)
 
-#define SCN_CLANG_PUSH _Pragma("clang diagnostic push")
-#define SCN_CLANG_POP _Pragma("clang diagnostic pop")
+#define SCN_CLANG_PUSH      _Pragma("clang diagnostic push")
+#define SCN_CLANG_POP       _Pragma("clang diagnostic pop")
 
 #define SCN_CLANG_IGNORE(x) SCN_PRAGMA_APPLY(clang diagnostic ignored x)
 
@@ -165,8 +165,8 @@
 #endif
 
 #if SCN_GCC_COMPAT && defined(SCN_PRAGMA_APPLY)
-#define SCN_GCC_COMPAT_PUSH SCN_PRAGMA_APPLY(GCC diagnostic push)
-#define SCN_GCC_COMPAT_POP SCN_PRAGMA_APPLY(GCC diagnostic pop)
+#define SCN_GCC_COMPAT_PUSH      SCN_PRAGMA_APPLY(GCC diagnostic push)
+#define SCN_GCC_COMPAT_POP       SCN_PRAGMA_APPLY(GCC diagnostic pop)
 #define SCN_GCC_COMPAT_IGNORE(x) SCN_PRAGMA_APPLY(GCC diagnostic ignored x)
 #else
 #define SCN_GCC_COMPAT_PUSH
@@ -175,8 +175,8 @@
 #endif
 
 #if SCN_MSVC
-#define SCN_MSVC_PUSH __pragma(warning(push))
-#define SCN_MSVC_POP __pragma(warning(pop))
+#define SCN_MSVC_PUSH      __pragma(warning(push))
+#define SCN_MSVC_POP       __pragma(warning(pop))
 
 #define SCN_MSVC_IGNORE(x) __pragma(warning(disable : x))
 #else
@@ -206,15 +206,15 @@
 #endif
 
 #if SCN_HAS_EXCEPTIONS
-#define SCN_TRY try
+#define SCN_TRY      try
 #define SCN_CATCH(x) catch (x)
 #define SCN_THROW(x) throw x
-#define SCN_RETHROW throw
+#define SCN_RETHROW  throw
 #else
-#define SCN_TRY if (true)
+#define SCN_TRY      if (true)
 #define SCN_CATCH(x) if (false)
 #define SCN_THROW(x) ::std::abort()
-#define SCN_RETHROW ::std::abort()
+#define SCN_RETHROW  ::std::abort()
 #endif
 
 #ifdef __has_include
@@ -308,18 +308,18 @@
 
 #if defined(_GLIBCXX_RELEASE) && __cplusplus >= SCN_STD_17
 #define SCN_HAS_INTEGER_CHARCONV (_GLIBCXX_RELEASE >= 9)
-#define SCN_HAS_FLOAT_CHARCONV (_GLIBCXX_RELEASE >= 11)
+#define SCN_HAS_FLOAT_CHARCONV   (_GLIBCXX_RELEASE >= 11)
 #elif SCN_MSVC >= SCN_COMPILER(19, 14, 0)
 #define SCN_HAS_INTEGER_CHARCONV 1
-#define SCN_HAS_FLOAT_CHARCONV (SCN_MSVC >= SCN_COMPILER(19, 21, 0))
+#define SCN_HAS_FLOAT_CHARCONV   (SCN_MSVC >= SCN_COMPILER(19, 21, 0))
 #elif defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606
 #define SCN_HAS_INTEGER_CHARCONV 1
-#define SCN_HAS_FLOAT_CHARCONV 1
+#define SCN_HAS_FLOAT_CHARCONV   1
 #endif  // _GLIBCXX_RELEASE
 
 #ifndef SCN_HAS_INTEGER_CHARCONV
 #define SCN_HAS_INTEGER_CHARCONV 0
-#define SCN_HAS_FLOAT_CHARCONV 0
+#define SCN_HAS_FLOAT_CHARCONV   0
 #endif
 
 // Detect std::launder
@@ -374,10 +374,10 @@
 #endif
 
 #if SCN_HAS_BUILTIN_EXPECT
-#define SCN_LIKELY(x) __builtin_expect(!!(x), 1)
+#define SCN_LIKELY(x)   __builtin_expect(!!(x), 1)
 #define SCN_UNLIKELY(x) __builtin_expect(!!(x), 0)
 #else
-#define SCN_LIKELY(x) (x)
+#define SCN_LIKELY(x)   (x)
 #define SCN_UNLIKELY(x) (x)
 #endif
 
@@ -432,10 +432,10 @@
 
 #define SCN_MOVE(x) \
     static_cast<typename std::remove_reference<decltype(x)>::type&&>(x)
-#define SCN_FWD(x) static_cast<decltype(x)&&>(x)
-#define SCN_DECLVAL(T) static_cast<T (*)()>(nullptr)()
+#define SCN_FWD(x)          static_cast<decltype(x)&&>(x)
+#define SCN_DECLVAL(T)      static_cast<T (*)()>(nullptr)()
 
 #define SCN_BEGIN_NAMESPACE inline namespace v0 {
-#define SCN_END_NAMESPACE }
+#define SCN_END_NAMESPACE   }
 
 #endif  // SCN_DETAIL_CONFIG_H

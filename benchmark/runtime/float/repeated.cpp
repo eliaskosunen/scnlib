@@ -94,7 +94,8 @@ BENCHMARK_TEMPLATE(scan_float_repeated_scn_value, double);
 BENCHMARK_TEMPLATE(scan_float_repeated_scn_value, long double);
 
 template <typename Float>
-static void scan_float_repeated_sstream(benchmark::State& state) {
+static void scan_float_repeated_sstream(benchmark::State& state)
+{
     auto data = stringified_float_list<Float>();
     auto stream = std::istringstream(data);
     Float f{};

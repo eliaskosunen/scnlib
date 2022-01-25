@@ -40,7 +40,7 @@ namespace scn {
         }
     };
     SCN_END_NAMESPACE
-}
+}  // namespace scn
 
 int main()
 {

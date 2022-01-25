@@ -1,2 +1,1 @@
-void do_scan() {
-}
+void do_scan() {}

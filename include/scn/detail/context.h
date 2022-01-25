@@ -33,14 +33,12 @@ namespace scn {
         using locale_type = LocaleRef;
 
         template <typename R>
-        basic_context(R&& r)
-            : LocaleRef{}, m_range(SCN_FWD(r))
+        basic_context(R&& r) : LocaleRef{}, m_range(SCN_FWD(r))
         {
         }
         template <typename R>
         basic_context(R&& r, LocaleRef&& loc)
-            : LocaleRef(SCN_MOVE(loc)),
-              m_range(SCN_FWD(r))
+            : LocaleRef(SCN_MOVE(loc)), m_range(SCN_FWD(r))
         {
         }
 
