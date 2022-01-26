@@ -869,9 +869,13 @@ namespace scn {
                 }
 
                 if (!base_set) {
+                    // Default to i
                     base = 10;
                     base_set = true;
-                    format_options |= allow_base_prefix;
+                }
+                if ((format_options & localized_digits) != 0) {
+                    // n implies L
+                    format_options |= localized;
                 }
                 if ((format_options & localized_digits) != 0 && base != 10) {
                     return error(
