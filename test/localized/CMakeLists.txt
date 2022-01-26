@@ -1,0 +1,6 @@
+make_test(localized-locale locale.cpp)
+make_test(localized-int integer.cpp)
+make_test(localized-float float.cpp)
+make_test(localized-bool bool.cpp)
+make_test(localized-string string.cpp)
+make_test(localized-char char.cpp)

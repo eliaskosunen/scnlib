@@ -58,20 +58,6 @@ auto do_scan(Input&& i, Fmt f, T&... a)
     return scn::scan(widen<CharT>(std::forward<Input>(i)),
                      widen<CharT>(f).c_str(), a...);
 }
-template <typename CharT,
-          typename Locale,
-          typename Input,
-          typename Fmt,
-          typename... T>
-auto do_scan_localized(const Locale& loc, Input&& i, Fmt f, T&... a)
-    -> decltype(scn::scan_localized(loc,
-                                    widen<CharT>(std::forward<Input>(i)),
-                                    widen<CharT>(f).c_str(),
-                                    a...))
-{
-    return scn::scan_localized(loc, widen<CharT>(std::forward<Input>(i)),
-                               widen<CharT>(f).c_str(), a...);
-}
 
 inline std::deque<char> get_deque(const std::string& content = "123")
 {

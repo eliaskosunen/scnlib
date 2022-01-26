@@ -50,7 +50,7 @@ make_test(usertype usertype.cpp)
 make_test(list list.cpp)
 
 if (SCN_BUILD_LOCALIZED_TESTS)
-    make_test(scan-localized scan_localized.cpp)
+    add_subdirectory(localized)
 endif ()
 
 add_subdirectory(each)
