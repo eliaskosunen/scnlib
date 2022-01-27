@@ -109,17 +109,17 @@ TEST_CASE("basic_default_locale_ref")
 
     SUBCASE("read_num")
     {
-        std::string str;
-        std::wstring wstr;
+        std::string str{"123"};
+        std::wstring wstr{L"456"};
         int i{};
 
-        auto ret = loc.read_num(i, str);
-        CHECK(!ret);
-        CHECK(ret.error() == scn::error::invalid_operation);
+        auto ret = loc.read_num(i, str, 0);
+        CHECK(ret);
+        CHECK(i == 123);
 
-        ret = wloc.read_num(i, wstr);
-        CHECK(!ret);
-        CHECK(ret.error() == scn::error::invalid_operation);
+        ret = wloc.read_num(i, wstr, 0);
+        CHECK(ret);
+        CHECK(i == 456);
     }
 }
 
@@ -221,16 +221,16 @@ TEST_CASE("basic_locale_ref")
         std::wstring wstr{L"123"};
         int i{};
 
-        auto ret = loc.read_num(i, str);
+        auto ret = loc.read_num(i, str, 0);
         CHECK(ret);
         CHECK(i == 42);
 
-        ret = wloc.read_num(i, wstr);
+        ret = wloc.read_num(i, wstr, 0);
         CHECK(ret);
         CHECK(i == 123);
 
         str = "456 789";
-        ret = loc.read_num(i, str);
+        ret = loc.read_num(i, str, 0);
         CHECK(ret);
         CHECK(i == 456);
         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE

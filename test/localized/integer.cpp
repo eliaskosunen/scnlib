@@ -93,11 +93,10 @@ TEST_CASE("Option L")
     CHECK(i == 1);
     i = 0;
 
-    // {:L} without locale -> error
+    // {:L} without locale -> use global C++ locale
     ret = scn::scan("1", "{:L}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_format_string);
-    CHECK(i == 0);
+    CHECK(ret);
+    CHECK(i == 1);
     i = 0;
 }
 
@@ -124,33 +123,33 @@ TEST_CASE("Option n")
     CHECK(i == 1);
     i = 0;
 
-    // {:n} without locale -> error
+    // {:n} without locale -> use global C++ locale
     ret = scn::scan("1", "{:n}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_format_string);
-    CHECK(i == 0);
+    CHECK(ret);
+    CHECK(i == 1);
     i = 0;
 }
 
 TEST_CASE("thsep")
 {
     int i{};
+    auto en = std::locale{"en_US.UTF-8"};
     auto fi = std::locale{"fi_FI.UTF-8"};
 
     // {:'L} with locale -> locale thsep, built-in parser
-    auto ret = scn::scan_localized(fi, "100.200", "{:'L}", i);
+    auto ret = scn::scan_localized(en, "100,200", "{:'L}", i);
     CHECK(ret);
     CHECK(i == 100200);
     i = 0;
 
     // {:'n} with locale -> locale thsep, use iostreams
-    ret = scn::scan_localized(fi, "100.200", "{:'n}", i);
+    ret = scn::scan_localized(en, "100,200", "{:'n}", i);
     CHECK(ret);
     CHECK(i == 100200);
     i = 0;
 
     // {:'Ln} == {:'n}
-    ret = scn::scan_localized(fi, "100.200", "{:'Ln}", i);
+    ret = scn::scan_localized(en, "100,200", "{:'Ln}", i);
     CHECK(ret);
     CHECK(i == 100200);
     i = 0;
@@ -161,15 +160,14 @@ TEST_CASE("thsep")
     CHECK(i == 100200);
     i = 0;
 
-    // {:'L} without locale -> error
+    // {:'L} without locale -> use global locale
     ret = scn::scan("100,200", "{:'L}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_format_string);
-    CHECK(i == 0);
+    CHECK(ret);
+    CHECK(i == 100200);
     i = 0;
 }
 
-TEST_CASE("base")
+TEST_CASE("base L")
 {
     int i{};
     auto en = std::locale{"en_US.UTF-8"};
@@ -224,15 +222,13 @@ TEST_CASE("base")
     CHECK(i == 16);
     i = 0;
 
-    // i base detect -> binary -> fail
+    // i base detect -> binary
     ret = scn::scan_localized(en, "0b10", "{:Li}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_scanned_value);
-    CHECK(i == 0);
+    CHECK(ret);
+    CHECK(i == 2);
     i = 0;
     ret = scn::scan_localized(fi, "0b10", "{:Li}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_scanned_value);
+    CHECK(ret);
     CHECK(i == 2);
     i = 0;
 
@@ -246,16 +242,14 @@ TEST_CASE("base")
     CHECK(i == 8);
     i = 0;
 
-    // i base detect -> octal 0o -> fail
+    // i base detect -> octal 0o
     ret = scn::scan_localized(en, "0o10", "{:Li}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_scanned_value);
-    CHECK(i == 0);
+    CHECK(ret);
+    CHECK(i == 8);
     i = 0;
     ret = scn::scan_localized(fi, "0o10", "{:Li}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_scanned_value);
-    CHECK(i == 0);
+    CHECK(ret);
+    CHECK(i == 8);
     i = 0;
 
     // i base detect -> hex
@@ -268,28 +262,24 @@ TEST_CASE("base")
     CHECK(i == 16);
     i = 0;
 
-    // b with prefix -> fail
+    // b with prefix
     ret = scn::scan_localized(en, "0b10", "{:Lb}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_scanned_value);
-    CHECK(i == 0);
+    CHECK(ret);
+    CHECK(i == 2);
     i = 0;
     ret = scn::scan_localized(fi, "0b10", "{:Lb}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_scanned_value);
-    CHECK(i == 0);
+    CHECK(ret);
+    CHECK(i == 2);
     i = 0;
 
-    // b without prefix -> fail
+    // b without prefix
     ret = scn::scan_localized(en, "10", "{:Lb}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_scanned_value);
-    CHECK(i == 0);
+    CHECK(ret);
+    CHECK(i == 2);
     i = 0;
     ret = scn::scan_localized(fi, "10", "{:Lb}", i);
-    CHECK(!ret);
-    CHECK(ret.error() == scn::error::invalid_scanned_value);
-    CHECK(i == 0);
+    CHECK(ret);
+    CHECK(i == 2);
     i = 0;
 
     // u - signed -> fail
@@ -324,13 +314,179 @@ TEST_CASE("base")
     CHECK(i == 10);
     i = 0;
 
-    // B__ -> fail
-    ret = scn::scan_localized(en, "10", "{:LB10}", i);
+    // B__
+    ret = scn::scan_localized(en, "10", "{:LB11}", i);
+    CHECK(ret);
+    CHECK(i == 11);
+    i = 0;
+    ret = scn::scan_localized(fi, "10", "{:LB11}", i);
+    CHECK(ret);
+    CHECK(i == 11);
+    i = 0;
+}
+
+TEST_CASE("base n")
+{
+    int i{};
+    auto en = std::locale{"en_US.UTF-8"};
+    auto fi = std::locale{"fi_FI.UTF-8"};
+
+    // o with prefix
+    auto ret = scn::scan_localized(en, "010", "{:no}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+    i = 0;
+    ret = scn::scan_localized(fi, "010", "{:no}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+    i = 0;
+
+    // 0o prefix
+    ret = scn::scan_localized(en, "0o10", "{:no}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+    i = 0;
+    ret = scn::scan_localized(fi, "0o10", "{:no}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+    i = 0;
+
+    // o without prefix
+    ret = scn::scan_localized(en, "10", "{:no}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+    i = 0;
+    ret = scn::scan_localized(fi, "10", "{:no}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+    i = 0;
+
+    // x with prefix
+    ret = scn::scan_localized(en, "0x10", "{:nx}", i);
+    CHECK(ret);
+    CHECK(i == 16);
+    i = 0;
+    ret = scn::scan_localized(fi, "0x10", "{:nx}", i);
+    CHECK(ret);
+    CHECK(i == 16);
+    i = 0;
+
+    // x without prefix
+    ret = scn::scan_localized(en, "10", "{:nx}", i);
+    CHECK(ret);
+    CHECK(i == 16);
+    i = 0;
+    ret = scn::scan_localized(fi, "10", "{:nx}", i);
+    CHECK(ret);
+    CHECK(ret);
+    CHECK(i == 16);
+    i = 0;
+
+    // i base detect -> binary -> fail
+    ret = scn::scan_localized(en, "0b10", "{:ni}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+    CHECK(i == 0);
+    i = 0;
+    ret = scn::scan_localized(fi, "0b10", "{:ni}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+    CHECK(i == 0);
+    i = 0;
+
+    // i base detect -> octal
+    ret = scn::scan_localized(en, "010", "{:ni}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+    i = 0;
+    ret = scn::scan_localized(fi, "010", "{:ni}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+    i = 0;
+
+    // i base detect -> octal 0o
+    ret = scn::scan_localized(en, "0o10", "{:ni}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+    i = 0;
+    ret = scn::scan_localized(fi, "0o10", "{:ni}", i);
+    CHECK(ret);
+    CHECK(i == 8);
+    i = 0;
+
+    // i base detect -> hex
+    ret = scn::scan_localized(en, "0x10", "{:ni}", i);
+    CHECK(ret);
+    CHECK(i == 16);
+    i = 0;
+    ret = scn::scan_localized(fi, "0x10", "{:ni}", i);
+    CHECK(ret);
+    CHECK(i == 16);
+    i = 0;
+
+    // b with prefix -> fail
+    ret = scn::scan_localized(en, "0b10", "{:nb}", i);
     CHECK(!ret);
     CHECK(ret.error() == scn::error::invalid_format_string);
     CHECK(i == 0);
     i = 0;
-    ret = scn::scan_localized(fi, "10", "{:LB10}", i);
+    ret = scn::scan_localized(fi, "0b10", "{:nb}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(i == 0);
+    i = 0;
+
+    // b without prefix -> fail
+    ret = scn::scan_localized(en, "10", "{:nb}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(i == 0);
+    i = 0;
+    ret = scn::scan_localized(fi, "10", "{:nb}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(i == 0);
+    i = 0;
+
+    // u - signed -> fail
+    ret = scn::scan_localized(en, "-10", "{:nu}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+    CHECK(i == 0);
+    i = 0;
+    ret = scn::scan_localized(fi, "-10", "{:nu}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
+    CHECK(i == 0);
+    i = 0;
+
+    // u + signed
+    ret = scn::scan_localized(en, "+10", "{:nu}", i);
+    CHECK(ret);
+    CHECK(i == 10);
+    i = 0;
+    ret = scn::scan_localized(fi, "+10", "{:nu}", i);
+    CHECK(ret);
+    CHECK(i == 10);
+    i = 0;
+
+    // u, no sign
+    ret = scn::scan_localized(en, "10", "{:nu}", i);
+    CHECK(ret);
+    CHECK(i == 10);
+    i = 0;
+    ret = scn::scan_localized(fi, "10", "{:nu}", i);
+    CHECK(ret);
+    CHECK(i == 10);
+    i = 0;
+
+    // B__ -> fail
+    ret = scn::scan_localized(en, "10", "{:nB11}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_format_string);
+    CHECK(i == 0);
+    i = 0;
+    ret = scn::scan_localized(fi, "10", "{:nB11}", i);
     CHECK(!ret);
     CHECK(ret.error() == scn::error::invalid_format_string);
     CHECK(i == 0);

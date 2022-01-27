@@ -877,10 +877,11 @@ namespace scn {
                     // n implies L
                     format_options |= localized;
                 }
-                if ((format_options & localized_digits) != 0 && base != 10) {
-                    return error(
-                        error::invalid_format_string,
-                        "Localized integers can only be scanned in base 10");
+                if ((format_options & localized_digits) != 0 &&
+                    (base != 0 && base != 10 && base != 8 && base != 16)) {
+                    return error(error::invalid_format_string,
+                                 "Localized integers can only be scanned in "
+                                 "bases 8, 10 and 16");
                 }
                 if (!pctx.check_arg_end()) {
                     return error(error::invalid_format_string,
@@ -900,8 +901,41 @@ namespace scn {
                     if (SCN_UNLIKELY((format_options & localized_digits) !=
                                      0)) {
                         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-                        std::basic_string<char_type> str(s.data(), s.size());
-                        ret = ctx.locale().read_num(tmp, str);
+                        int b{base};
+                        auto r = parse_base_prefix<char_type>(s, b);
+                        if (!r) {
+                            return r.error();
+                        }
+                        if (b == -1) {
+                            // -1 means we read a '0'
+                            tmp = 0;
+                            return {};
+                        }
+                        if (b != 10 && base != b && base != 0) {
+                            return error(error::invalid_scanned_value,
+                                         "Invalid base prefix");
+                        }
+                        if (base == 0) {
+                            base = static_cast<uint8_t>(b);
+                        }
+                        if (base != 8 && base != 10 && base != 16) {
+                            return error(error::invalid_scanned_value,
+                                         "Localized values have to be in base "
+                                         "8, 10 or 16");
+                        }
+
+                        auto it = r.value();
+                        std::basic_string<char_type> str(to_address(it),
+                                                         s.size());
+                        ret = ctx.locale().read_num(tmp, str,
+                                                    static_cast<int>(base));
+
+                        if (tmp < T{0} &&
+                            (format_options & only_unsigned) != 0) {
+                            return error(
+                                error::invalid_scanned_value,
+                                "Parsed negative value when type was 'u'");
+                        }
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     }
                     else {
@@ -962,14 +996,25 @@ namespace scn {
                                span<const CharT>& s,
                                std::false_type)
             {
-                auto is_space_pred = [&ctx](CharT ch) {
-                    return ctx.locale().is_space(ch);
-                };
-
                 auto do_read = [&](Buf& b) -> error {
                     auto outputit = std::back_inserter(b);
-                    auto e = read_until_space(ctx.range(), outputit,
-                                              is_space_pred, false);
+                    if ((format_options & localized) == 0) {
+                        const auto& loc = ctx.locale().as_locale_ref();
+                        auto e = read_until_space(
+                            ctx.range(), outputit,
+                            [&](const CharT& ch) { return loc.is_space(ch); },
+                            false);
+                        if (!e && b.empty()) {
+                            return e;
+                        }
+                        return {};
+                    }
+                    auto e = read_until_space(
+                        ctx.range(), outputit,
+                        [&](const CharT& ch) {
+                            return ctx.locale().is_space(ch);
+                        },
+                        false);
                     if (!e && b.empty()) {
                         return e;
                     }
@@ -1033,6 +1078,11 @@ namespace scn {
                 s = ret.value();
                 return {};
             }
+
+            template <typename CharT>
+            expected<typename span<const CharT>::iterator> parse_base_prefix(
+                span<const CharT> s,
+                int& b) const;
 
             template <typename CharT>
             expected<std::ptrdiff_t> _parse_int(T& val, span<const CharT> s);
@@ -1157,7 +1207,7 @@ namespace scn {
                     if (SCN_UNLIKELY(localized)) {
                         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                         std::basic_string<char_type> str(s.data(), s.size());
-                        ret = ctx.locale().read_num(tmp, str);
+                        ret = ctx.locale().read_num(tmp, str, 0);
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     }
                     else {
@@ -1402,10 +1452,10 @@ namespace scn {
     /// @{
 
     /**
-     * Reads from the range in `ctx` as if by repeatedly calling `read_char()`,
-     * until a non-space character is found (as determined by `ctx.locale()`),
-     * or EOF is reached. That non-space character is then put back into the
-     * range.
+     * Reads from the range in `ctx` as if by repeatedly calling
+     * `read_char()`, until a non-space character is found (as determined by
+     * `ctx.locale()`), or EOF is reached. That non-space character is then
+     * put back into the range.
      */
     template <typename Context,
               typename std::enable_if<

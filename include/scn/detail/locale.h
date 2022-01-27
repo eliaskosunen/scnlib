@@ -214,6 +214,11 @@ namespace scn {
 
         constexpr basic_default_locale_ref() = default;
 
+        basic_locale_ref<CharT> as_locale_ref() const
+        {
+            return {nullptr};
+        }
+
         constexpr bool is_space(char_type ch) const
         {
             return detail::is_space(ch);
@@ -251,10 +256,11 @@ namespace scn {
         }
 
         template <typename T>
-        expected<std::ptrdiff_t> read_num(T&, const string_type&)
+        expected<std::ptrdiff_t> read_num(T& val,
+                                          const string_type& buf,
+                                          int base) const
         {
-            return error(error::invalid_operation,
-                         "No read_num with basic_default_locale_ref");
+            return basic_locale_ref<CharT>{}.read_num(val, buf, base);
         }
     };
 
@@ -268,6 +274,15 @@ namespace scn {
         basic_locale_ref() = default;
         basic_locale_ref(std::nullptr_t) : basic_locale_ref() {}
         explicit basic_locale_ref(const void* loc);
+
+        basic_locale_ref<CharT>& as_locale_ref()
+        {
+            return *this;
+        }
+        const basic_locale_ref<CharT>& as_locale_ref() const
+        {
+            return *this;
+        }
 
         constexpr const void* get_ptr() const
         {
@@ -323,7 +338,9 @@ namespace scn {
         }
 
         template <typename T>
-        expected<std::ptrdiff_t> read_num(T& val, const string_type& buf);
+        expected<std::ptrdiff_t> read_num(T& val,
+                                          const string_type& buf,
+                                          int base) const;
 
         constexpr bool is_default() const noexcept
         {
