@@ -22,27 +22,39 @@ TEST_CASE_TEMPLATE("boolean", CharT, char, wchar_t)
 {
     {
         bool b{};
-        auto e = do_scan<CharT>("true", "{:a}", b);
+        auto e = do_scan<CharT>("true", "{}", b);
         CHECK(b);
         CHECK(e);
     }
     {
         bool b{};
-        auto e = do_scan<CharT>("false", "{:a}", b);
+        auto e = do_scan<CharT>("false", "{}", b);
         CHECK(!b);
         CHECK(e);
     }
     {
         bool b{};
-        auto e = do_scan<CharT>("bool", "{:a}", b);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::invalid_scanned_value);
+        auto e = do_scan<CharT>("true", "{:s}", b);
+        CHECK(b);
+        CHECK(e);
     }
     {
         bool b{};
-        auto e = do_scan<CharT>("0", "{:a}", b);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::invalid_scanned_value);
+        auto e = do_scan<CharT>("false", "{:s}", b);
+        CHECK(!b);
+        CHECK(e);
+    }
+    {
+        bool b{};
+        auto e = do_scan<CharT>("bool", "{:s}", b);
+        CHECK(!e);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
+    }
+    {
+        bool b{};
+        auto e = do_scan<CharT>("0", "{:s}", b);
+        CHECK(!e);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
     }
     {
         bool b{};
@@ -58,14 +70,44 @@ TEST_CASE_TEMPLATE("boolean", CharT, char, wchar_t)
     }
     {
         bool b{};
+        auto e = do_scan<CharT>("0", "{:i}", b);
+        CHECK(!b);
+        CHECK(e);
+    }
+    {
+        bool b{};
+        auto e = do_scan<CharT>("1", "{:i}", b);
+        CHECK(b);
+        CHECK(e);
+    }
+    {
+        bool b{};
+        auto e = do_scan<CharT>("0", "{:L}", b);
+        CHECK(!b);
+        CHECK(e);
+    }
+    {
+        bool b{};
+        auto e = do_scan<CharT>("1", "{:L}", b);
+        CHECK(b);
+        CHECK(e);
+    }
+    {
+        bool b{};
         auto e = do_scan<CharT>("2", "{}", b);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::invalid_scanned_value);
+        CHECK(!e);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
     }
     {
         bool b{};
         auto e = do_scan<CharT>("true", "{:n}", b);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::invalid_scanned_value);
+        CHECK(b);
+        CHECK(e);
+    }
+    {
+        bool b{};
+        auto e = do_scan<CharT>("0", "{:n}", b);
+        CHECK(!b);
+        CHECK(e);
     }
 }

@@ -120,10 +120,10 @@ All are case insensitive
 ## bool
 
 * `L`: Accept locale values
-* `s`: Only accept string values (`true` and `false` + possible locale values with `L`)
-* `i`: Only accept int values `0` and `1`
+* `s`: Accept string values (`true` and `false` + possible locale values with `L`)
+* `i`: Accept int values `0` and `1`
 * `n`: `i` + localized digits ???
-* (default): Accept `0`, `1`, `true` and `false`
+* (default): `s` + `i`: Accept `0`, `1`, `true` and `false`
 
 ## chars
 
