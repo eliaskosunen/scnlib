@@ -561,6 +561,12 @@ namespace scn {
             return {};
         }
 
+        template <typename ParseCtx>
+        static error null_each(ParseCtx&, bool&)
+        {
+            return {};
+        }
+
         template <typename ParseCtx,
                   typename F,
                   typename CharT = typename ParseCtx::char_type>
@@ -578,18 +584,18 @@ namespace scn {
 
             for (auto ch = pctx.next(); pctx && !pctx.check_arg_end();
                  ch = pctx.next()) {
-                bool next = false;
-                for (std::size_t i = 0; i < options.size() && !next; ++i) {
+                bool parsed = false;
+                for (std::size_t i = 0; i < options.size() && !parsed; ++i) {
                     if (ch == options[i]) {
                         if (SCN_UNLIKELY(flags[i])) {
                             return {error::invalid_format_string,
                                     "Repeat flag in format string"};
                         }
                         flags[i] = true;
-                        next = true;
+                        parsed = true;
                     }
                 }
-                if (next) {
+                if (parsed) {
                     pctx.advance();
                     if (!pctx || pctx.check_arg_end()) {
                         break;
@@ -597,12 +603,11 @@ namespace scn {
                     continue;
                 }
 
-                bool parsed_custom;
-                e = each(pctx, parsed_custom);
+                e = each(pctx, parsed);
                 if (!e) {
                     return e;
                 }
-                if (parsed_custom) {
+                if (parsed) {
                     if (!pctx || pctx.check_arg_end()) {
                         break;
                     }
@@ -610,12 +615,11 @@ namespace scn {
                 }
                 ch = pctx.next();
 
-                bool parsed_common;
-                e = parse_common_each(pctx, parsed_common);
+                e = parse_common_each(pctx, parsed);
                 if (!e) {
                     return e;
                 }
-                if (!parsed_common) {
+                if (!parsed) {
                     return {error::invalid_format_string,
                             "Invalid character in format string"};
                 }
@@ -634,26 +638,17 @@ namespace scn {
     };
 
     namespace detail {
-        struct char_scanner {
+        struct char_scanner : common_parser {
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {
                 using char_type = typename ParseCtx::char_type;
 
-                pctx.arg_begin();
-                if (SCN_UNLIKELY(!pctx)) {
-                    return error(error::invalid_format_string,
-                                 "Unexpected format string end");
-                }
-                if (pctx.next() == detail::ascii_widen<char_type>('c')) {
-                    pctx.advance();
-                }
-                if (!pctx.check_arg_end()) {
-                    return error(error::invalid_format_string,
-                                 "Expected argument end");
-                }
-                pctx.arg_end();
-                return {};
+                auto c_flag = detail::ascii_widen<char_type>('c');
+                bool c_set{};
+                return parse_common(pctx, span<const char_type>{&c_flag, 1},
+                                    span<bool>{&c_set, 1},
+                                    null_each<ParseCtx>);
             }
 
             template <typename Context>
