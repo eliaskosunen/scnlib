@@ -348,7 +348,8 @@ namespace scn {
         SCN_EXPECT(!str.empty());
         auto s = detail::float_scanner<T>{};
         auto ret =
-            s._read_float(val, make_span(str.data(), str.size()).as_const());
+            s._read_float(val, make_span(str.data(), str.size()).as_const(),
+                          detail::ascii_widen<CharT>('.'));
         if (!ret) {
             return ret.error();
         }

@@ -62,6 +62,13 @@ namespace scn {
             }
             return str[0] == '0' && (str[1] == 'x' || str[1] == 'X');
         }
+        static bool is_hexfloat(const wchar_t* str, std::size_t len) noexcept
+        {
+            if (len < 3) {
+                return false;
+            }
+            return str[0] == L'0' && (str[1] == L'x' || str[1] == L'X');
+        }
 
         namespace cstd {
 #if SCN_GCC >= SCN_COMPILER(7, 0, 0)
@@ -72,7 +79,8 @@ namespace scn {
             expected<T> impl(F&& f_strtod,
                              T huge_value,
                              const CharT* str,
-                             size_t& chars)
+                             size_t& chars,
+                             uint8_t options)
             {
                 // Get current C locale
                 const auto loc = std::setlocale(LC_NUMERIC, nullptr);
@@ -117,6 +125,13 @@ namespace scn {
                     }
                     // Subnormals cause ERANGE but a value is still returned
                 }
+
+                if (is_hexfloat(str, detail::strlen(str)) &&
+                    (options & detail::float_scanner<T>::allow_hex) == 0) {
+                    return error(error::invalid_scanned_value,
+                                 "Hexfloats not allowed by the format string");
+                }
+
                 SCN_GCC_COMPAT_POP
                 return f;
             }
@@ -129,48 +144,61 @@ namespace scn {
 
             template <>
             struct read<char, float> {
-                static expected<float> get(const char* str, size_t& chars)
+                static expected<float> get(const char* str,
+                                           size_t& chars,
+                                           uint8_t options)
                 {
-                    return impl<float>(strtof, HUGE_VALF, str, chars);
+                    return impl<float>(strtof, HUGE_VALF, str, chars, options);
                 }
             };
 
             template <>
             struct read<char, double> {
-                static expected<double> get(const char* str, size_t& chars)
+                static expected<double> get(const char* str,
+                                            size_t& chars,
+                                            uint8_t options)
                 {
-                    return impl<double>(strtod, HUGE_VAL, str, chars);
+                    return impl<double>(strtod, HUGE_VAL, str, chars, options);
                 }
             };
 
             template <>
             struct read<char, long double> {
-                static expected<long double> get(const char* str, size_t& chars)
+                static expected<long double> get(const char* str,
+                                                 size_t& chars,
+                                                 uint8_t options)
                 {
-                    return impl<long double>(strtold, HUGE_VALL, str, chars);
+                    return impl<long double>(strtold, HUGE_VALL, str, chars,
+                                             options);
                 }
             };
 
             template <>
             struct read<wchar_t, float> {
-                static expected<float> get(const wchar_t* str, size_t& chars)
+                static expected<float> get(const wchar_t* str,
+                                           size_t& chars,
+                                           uint8_t options)
                 {
-                    return impl<float>(wcstof, HUGE_VALF, str, chars);
+                    return impl<float>(wcstof, HUGE_VALF, str, chars, options);
                 }
             };
             template <>
             struct read<wchar_t, double> {
-                static expected<double> get(const wchar_t* str, size_t& chars)
+                static expected<double> get(const wchar_t* str,
+                                            size_t& chars,
+                                            uint8_t options)
                 {
-                    return impl<double>(wcstod, HUGE_VAL, str, chars);
+                    return impl<double>(wcstod, HUGE_VAL, str, chars, options);
                 }
             };
             template <>
             struct read<wchar_t, long double> {
                 static expected<long double> get(const wchar_t* str,
-                                                 size_t& chars)
+                                                 size_t& chars,
+                                                 uint8_t options)
                 {
-                    return impl<long double>(wcstold, HUGE_VALL, str, chars);
+                    return impl<long double>(wcstold, HUGE_VALL, str, chars,
+                                             options);
                 }
             };
         }  // namespace cstd
@@ -179,13 +207,31 @@ namespace scn {
 #if SCN_HAS_FLOAT_CHARCONV
             template <typename T>
             struct read {
-                static expected<T> get(const char* str, size_t& chars)
+                static expected<T> get(const char* str,
+                                       size_t& chars,
+                                       uint8_t options)
                 {
                     const auto len = std::strlen(str);
-                    auto flags = std::chars_format::general;
-                    if (is_hexfloat(str, len)) {
+                    std::chars_format flags{};
+                    if (((options & detail::float_scanner<T>::allow_hex) !=
+                         0) &&
+                        is_hexfloat(str, len)) {
                         str += 2;
                         flags = std::chars_format::hex;
+                    }
+                    else {
+                        if ((options & detail::float_scanner<T>::allow_fixed) !=
+                            0) {
+                            flags |= std::chars_format::fixed;
+                        }
+                        if ((options &
+                             detail::float_scanner<T>::allow_scientific) != 0) {
+                            flags |= std::chars_format::scientific;
+                        }
+                    }
+                    if (flags == static_cast<std::chars_format>(0)) {
+                        return error{error::invalid_scanned_value,
+                                     "Expected a hexfloat"};
                     }
 
                     T value{};
@@ -198,7 +244,7 @@ namespace scn {
                     if (result.ec == std::errc::result_out_of_range) {
                         // Out of range, may be subnormal -> fall back to strtod
                         // On gcc std::from_chars doesn't parse subnormals
-                        return cstd::read<char, T>::get(str, chars);
+                        return cstd::read<char, T>::get(str, chars, options);
                     }
                     chars = static_cast<size_t>(result.ptr - str);
                     return value;
@@ -207,10 +253,12 @@ namespace scn {
 #else
             template <typename T>
             struct read {
-                static expected<T> get(const char* str, size_t& chars)
+                static expected<T> get(const char* str,
+                                       size_t& chars,
+                                       uint8_t optional)
                 {
                     // Fall straight back to strtod
-                    return cstd::read<char, T>::get(str, chars);
+                    return cstd::read<char, T>::get(str, chars, options);
                 }
             };
 #endif
@@ -218,17 +266,34 @@ namespace scn {
 
         namespace fast_float {
             template <typename T>
-            expected<T> impl(const char* str, size_t& chars)
+            expected<T> impl(const char* str,
+                             size_t& chars,
+                             uint8_t options,
+                             char locale_decimal_point)
             {
                 const auto len = std::strlen(str);
-                if (is_hexfloat(str, len)) {
+                if (((options & detail::float_scanner<T>::allow_hex) != 0) &&
+                    is_hexfloat(str, len)) {
                     // fast_float doesn't support hexfloats
-                    return from_chars::read<T>::get(str, chars);
+                    return from_chars::read<T>::get(str, chars, options);
                 }
 
                 T value{};
-                const auto result =
-                    ::fast_float::from_chars(str, str + len, value);
+                ::fast_float::parse_options flags{};
+                if ((options & detail::float_scanner<T>::allow_fixed) != 0) {
+                    flags.format = ::fast_float::fixed;
+                }
+                if ((options & detail::float_scanner<T>::allow_scientific) !=
+                    0) {
+                    flags.format = static_cast<::fast_float::chars_format>(
+                        flags.format | ::fast_float::scientific);
+                }
+                if ((options & detail::float_scanner<T>::localized) != 0) {
+                    flags.decimal_point = locale_decimal_point;
+                }
+
+                const auto result = ::fast_float::from_chars_advanced(
+                    str, str + len, value, flags);
                 if (result.ec == std::errc::invalid_argument) {
                     return error(error::invalid_scanned_value, "fast_float");
                 }
@@ -241,7 +306,7 @@ namespace scn {
                     if (!(len >= 3 && (str[0] == 'i' || str[0] == 'I'))) {
                         // Input was not actually infinity ->
                         // invalid result, fall back to from_chars
-                        return from_chars::read<T>::get(str, chars);
+                        return from_chars::read<T>::get(str, chars, options);
                     }
                 }
                 chars = static_cast<size_t>(result.ptr - str);
@@ -253,25 +318,37 @@ namespace scn {
 
             template <>
             struct read<float> {
-                static expected<float> get(const char* str, size_t& chars)
+                static expected<float> get(const char* str,
+                                           size_t& chars,
+                                           uint8_t options,
+                                           char locale_decimal_point)
                 {
-                    return impl<float>(str, chars);
+                    return impl<float>(str, chars, options,
+                                       locale_decimal_point);
                 }
             };
             template <>
             struct read<double> {
-                static expected<double> get(const char* str, size_t& chars)
+                static expected<double> get(const char* str,
+                                            size_t& chars,
+                                            uint8_t options,
+                                            char locale_decimal_points)
                 {
-                    return impl<double>(str, chars);
+                    return impl<double>(str, chars, options,
+                                        locale_decimal_points);
                 }
             };
             template <>
             struct read<long double> {
-                static expected<long double> get(const char* str, size_t& chars)
+                static expected<long double> get(const char* str,
+                                                 size_t& chars,
+                                                 uint8_t options,
+                                                 char)
                 {
                     // Fallback to strtod
                     // fast_float doesn't support long double
-                    return cstd::read<char, long double>::get(str, chars);
+                    return cstd::read<char, long double>::get(str, chars,
+                                                              options);
                 }
             };
         }  // namespace fast_float
@@ -281,19 +358,27 @@ namespace scn {
 
         template <typename T>
         struct read<char, T> {
-            static expected<T> get(const char* str, size_t& chars)
+            static expected<T> get(const char* str,
+                                   size_t& chars,
+                                   uint8_t options,
+                                   char locale_decimal_points)
             {
                 // char -> default to fast_float,
                 // fallback to strtod if necessary
-                return read_float::fast_float::read<T>::get(str, chars);
+                return read_float::fast_float::read<T>::get(
+                    str, chars, options, locale_decimal_points);
             }
         };
         template <typename T>
         struct read<wchar_t, T> {
-            static expected<T> get(const wchar_t* str, size_t& chars)
+            static expected<T> get(const wchar_t* str,
+                                   size_t& chars,
+                                   uint8_t options,
+                                   wchar_t)
             {
                 // wchar_t -> straight to strtod
-                return read_float::cstd::read<wchar_t, T>::get(str, chars);
+                return read_float::cstd::read<wchar_t, T>::get(str, chars,
+                                                               options);
             }
         };
     }  // namespace read_float
@@ -301,8 +386,10 @@ namespace scn {
     namespace detail {
         template <typename T>
         template <typename CharT>
-        expected<T> float_scanner<T>::_read_float_impl(const CharT* str,
-                                                       size_t& chars)
+        expected<T> float_scanner<T>::_read_float_impl(
+            const CharT* str,
+            size_t& chars,
+            CharT locale_decimal_point)
         {
             // Parsing algorithm to use:
             // If CharT == wchar_t -> strtod
@@ -313,25 +400,30 @@ namespace scn {
             //   2. std::from_chars
             //      fallback if not available (C++17) or float is subnormal
             //   3. std::strtod
-            return read_float::read<CharT, T>::get(str, chars);
+            return read_float::read<CharT, T>::get(str, chars, format_options,
+                                                   locale_decimal_point);
         }
 
-        template expected<float> float_scanner<float>::_read_float_impl(
-            const char*,
-            size_t&);
-        template expected<double> float_scanner<double>::_read_float_impl(
-            const char*,
-            size_t&);
+        template expected<float>
+        float_scanner<float>::_read_float_impl(const char*, size_t&, char);
+        template expected<double>
+        float_scanner<double>::_read_float_impl(const char*, size_t&, char);
         template expected<long double>
-        float_scanner<long double>::_read_float_impl(const char*, size_t&);
+        float_scanner<long double>::_read_float_impl(const char*,
+                                                     size_t&,
+                                                     char);
         template expected<float> float_scanner<float>::_read_float_impl(
             const wchar_t*,
-            size_t&);
+            size_t&,
+            wchar_t);
         template expected<double> float_scanner<double>::_read_float_impl(
             const wchar_t*,
-            size_t&);
+            size_t&,
+            wchar_t);
         template expected<long double>
-        float_scanner<long double>::_read_float_impl(const wchar_t*, size_t&);
+        float_scanner<long double>::_read_float_impl(const wchar_t*,
+                                                     size_t&,
+                                                     wchar_t);
     }  // namespace detail
 
     SCN_END_NAMESPACE

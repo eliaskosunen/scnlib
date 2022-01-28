@@ -1101,66 +1101,95 @@ namespace scn {
         };
 
         template <typename T>
-        struct float_scanner {
+        struct float_scanner : common_parser {
             static_assert(std::is_floating_point<T>::value, "");
 
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {
-                // {}: not localized
-                // l: localized
                 using char_type = typename ParseCtx::char_type;
-                pctx.arg_begin();
-                if (SCN_UNLIKELY(!pctx)) {
-                    return error(error::invalid_format_string,
-                                 "Unexpected format string end");
+
+                array<char_type, 10> options{
+                    {// hex
+                     ascii_widen<char_type>('a'), ascii_widen<char_type>('A'),
+                     // scientific
+                     ascii_widen<char_type>('e'), ascii_widen<char_type>('E'),
+                     // fixed
+                     ascii_widen<char_type>('f'), ascii_widen<char_type>('F'),
+                     // general
+                     ascii_widen<char_type>('g'), ascii_widen<char_type>('G'),
+                     // localized digits
+                     ascii_widen<char_type>('n'),
+                     // thsep
+                     ascii_widen<char_type>('\'')}};
+                bool flags[10] = {false};
+
+                auto e = parse_common(
+                    pctx, span<const char_type>{options.begin(), options.end()},
+                    span<bool>{flags, 10}, null_each<ParseCtx>);
+                if (!e) {
+                    return e;
                 }
 
-                if (pctx.check_arg_end()) {
-                    pctx.arg_end();
-                    return {};
+                if (flags[0] && flags[1]) {
+                    return {error::invalid_format_string,
+                            "Can't have both 'a' and 'A' flags with floats"};
+                }
+                if (flags[2] && flags[3]) {
+                    return {error::invalid_format_string,
+                            "Can't have both 'e' and 'E' flags with floats"};
+                }
+                if (flags[4] && flags[5]) {
+                    return {error::invalid_format_string,
+                            "Can't have both 'f' and 'F' flags with floats"};
+                }
+                if (flags[6] && flags[7]) {
+                    return {error::invalid_format_string,
+                            "Can't have both 'g' and 'G' flags with floats"};
                 }
 
-                if (pctx.next() == detail::ascii_widen<char_type>('l')) {
-                    localized = true;
-                    pctx.advance();
+                bool set_hex = flags[0] || flags[1];
+                bool set_scientific = flags[2] || flags[3];
+                bool set_fixed = flags[4] || flags[5];
+                bool set_general = flags[6] || flags[7];
+                if (set_general && set_fixed) {
+                    return {error::invalid_format_string,
+                            "General float already implies fixed"};
+                }
+                if (set_general && set_scientific) {
+                    return {error::invalid_format_string,
+                            "General float already implies scientific"};
                 }
 
-                if (pctx.check_arg_end()) {
-                    pctx.arg_end();
-                    return {};
+                format_options = 0;
+                if (set_hex) {
+                    format_options |= allow_hex;
+                }
+                if (set_scientific) {
+                    format_options |= allow_scientific;
+                }
+                if (set_fixed) {
+                    format_options |= allow_fixed;
+                }
+                if (set_general) {
+                    format_options |= allow_fixed | allow_scientific;
+                }
+                if (format_options == 0) {
+                    format_options |=
+                        allow_fixed | allow_scientific | allow_hex;
                 }
 
-                if (pctx.next() == detail::ascii_widen<char_type>('a')) {
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<char_type>('A')) {
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<char_type>('e')) {
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<char_type>('E')) {
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<char_type>('f')) {
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<char_type>('F')) {
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<char_type>('g')) {
-                    pctx.advance();
-                }
-                else if (pctx.next() == detail::ascii_widen<char_type>('G')) {
-                    pctx.advance();
+                // 'n'
+                if (flags[8]) {
+                    common_options |= localized;
+                    format_options |= localized_digits;
                 }
 
-                if (!pctx.check_arg_end()) {
-                    return error(error::invalid_format_string,
-                                 "Expected argument end");
+                // thsep
+                if (flags[9]) {
+                    format_options |= allow_thsep;
                 }
-                pctx.arg_end();
+
                 return {};
             }
 
@@ -1171,14 +1200,24 @@ namespace scn {
                 auto do_parse_float = [&](span<const char_type> s) -> error {
                     T tmp = 0;
                     expected<std::ptrdiff_t> ret{0};
-                    if (SCN_UNLIKELY(localized)) {
+                    if (SCN_UNLIKELY((format_options & localized_digits) != 0 ||
+                                     ((common_options & localized) != 0 &&
+                                      (format_options & allow_hex) != 0))) {
+                        // 'n' OR ('L' AND 'a')
+                        // because none of our parsers support BOTH hexfloats
+                        // and custom (localized) decimal points
                         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                         std::basic_string<char_type> str(s.data(), s.size());
-                        ret = ctx.locale().read_num(tmp, str, 0);
+                        ret =
+                            ctx.locale().as_locale_ref().read_num(tmp, str, 0);
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     }
                     else {
-                        ret = _read_float(tmp, s);
+                        ret = _read_float(
+                            tmp, s,
+                            (common_options & localized) != 0
+                                ? ctx.locale().as_locale_ref().decimal_point()
+                                : locale_defaults<char_type>::decimal_point());
                     }
 
                     if (!ret) {
@@ -1219,15 +1258,25 @@ namespace scn {
                 return do_parse_float(make_span(buf).as_const());
             }
 
-            bool localized{false};
+            enum format_options_type {
+                allow_hex = 1,
+                allow_scientific = 2,
+                allow_fixed = 4,
+                localized_digits = 8,
+                allow_thsep = 16
+            };
+            uint8_t format_options{allow_hex | allow_scientific | allow_fixed};
 
             template <typename CharT>
-            expected<std::ptrdiff_t> _read_float(T& val, span<const CharT> s)
+            expected<std::ptrdiff_t> _read_float(T& val,
+                                                 span<const CharT> s,
+                                                 CharT locale_decimal_point)
             {
                 size_t chars{};
                 std::basic_string<CharT> str(s.data(), s.size());
                 SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-                auto ret = _read_float_impl(str.data(), chars);
+                auto ret =
+                    _read_float_impl(str.data(), chars, locale_decimal_point);
                 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 if (!ret) {
                     return ret.error();
@@ -1237,7 +1286,9 @@ namespace scn {
             }
 
             template <typename CharT>
-            expected<T> _read_float_impl(const CharT* str, size_t& chars);
+            expected<T> _read_float_impl(const CharT* str,
+                                         size_t& chars,
+                                         CharT locale_decimal_point);
         };
 
         struct bool_scanner : common_parser {
@@ -1446,7 +1497,7 @@ namespace scn {
                 }
                 if (SCN_UNLIKELY(tmp.empty())) {
                     return {error::invalid_scanned_value,
-                                 "Empty string parsed"};
+                            "Empty string parsed"};
                 }
                 val = SCN_MOVE(tmp);
 

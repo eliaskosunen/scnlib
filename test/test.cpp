@@ -42,7 +42,7 @@ TEST_CASE("general")
     std::string s(6, '\0');
     auto span = scn::make_span(&s[0], &s[0] + s.size());
     bool b{};
-    auto ret = scn::scan(data, "test {{}} {} {} {} {:a}", i, d, span, b);
+    auto ret = scn::scan(data, "test {{}} {} {} {} {}", i, d, span, b);
 
     CHECK(data == copy);
     CHECK(i == 42);
