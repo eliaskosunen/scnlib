@@ -647,8 +647,7 @@ namespace scn {
                 auto c_flag = detail::ascii_widen<char_type>('c');
                 bool c_set{};
                 return parse_common(pctx, span<const char_type>{&c_flag, 1},
-                                    span<bool>{&c_set, 1},
-                                    null_each<ParseCtx>);
+                                    span<bool>{&c_set, 1}, null_each<ParseCtx>);
             }
 
             template <typename Context>
@@ -1375,25 +1374,16 @@ namespace scn {
             expected<T> _read_float_impl(const CharT* str, size_t& chars);
         };
 
-        struct string_scanner {
+        struct string_scanner : common_parser {
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {
                 using char_type = typename ParseCtx::char_type;
-                pctx.arg_begin();
-                if (SCN_UNLIKELY(!pctx)) {
-                    return error(error::invalid_format_string,
-                                 "Unexpected format string end");
-                }
-                if (pctx.next() == detail::ascii_widen<char_type>('s')) {
-                    pctx.advance();
-                }
-                if (!pctx.check_arg_end()) {
-                    return error(error::invalid_format_string,
-                                 "Expected argument end");
-                }
-                pctx.arg_end();
-                return {};
+
+                auto c_flag = detail::ascii_widen<char_type>('s');
+                bool c_set{};
+                return parse_common(pctx, span<const char_type>{&c_flag, 1},
+                                    span<bool>{&c_set, 1}, null_each<ParseCtx>);
             }
 
             template <typename Context, typename Allocator>
@@ -1450,9 +1440,9 @@ namespace scn {
                     return ctx.locale().is_space(ch);
                 };
                 if (!Context::range_type::is_contiguous) {
-                    return error(error::invalid_operation,
-                                 "Cannot read a string_view from a "
-                                 "non-contiguous_range");
+                    return {error::invalid_operation,
+                            "Cannot read a string_view from a "
+                            "non-contiguous_range"};
                 }
                 auto s = read_until_space_zero_copy(ctx.range(), is_space_pred,
                                                     false);
