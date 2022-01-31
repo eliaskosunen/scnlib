@@ -255,7 +255,7 @@ namespace scn {
             struct read {
                 static expected<T> get(const char* str,
                                        size_t& chars,
-                                       uint8_t optional)
+                                       uint8_t options)
                 {
                     // Fall straight back to strtod
                     return cstd::read<char, T>::get(str, chars, options);
