@@ -89,7 +89,7 @@ namespace scn {
                 // 'use-of-unitialized-value' when resetting the locale back.
                 // POSIX specifies that the content of loc may not be static, so
                 // we need to save it ourselves
-                char locbuf[256] = {0};
+                char locbuf[64] = {0};
                 std::strcpy(locbuf, loc);
 
                 std::setlocale(LC_NUMERIC, "C");

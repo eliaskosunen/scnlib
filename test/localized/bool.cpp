@@ -23,50 +23,56 @@ TEST_CASE_TEMPLATE("bool localized", CharT, char, wchar_t)
     auto locale = std::locale("en_US.UTF-8");
     {
         bool b{};
-        auto e = do_scan_localized<CharT>(locale, "true", "{:la}", b);
+        auto e = do_scan_localized<CharT>(locale, "true", "{:L}", b);
         CHECK(b);
         CHECK(e);
     }
     {
         bool b{};
-        auto e = do_scan_localized<CharT>(locale, "false", "{:la}", b);
+        auto e = do_scan_localized<CharT>(locale, "false", "{:L}", b);
         CHECK(!b);
         CHECK(e);
     }
     {
         bool b{};
-        auto e = do_scan_localized<CharT>(locale, "bool", "{:la}", b);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::invalid_scanned_value);
+        auto e = do_scan_localized<CharT>(locale, "bool", "{:L}", b);
+        CHECK(!e);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
     }
     {
         bool b{};
-        auto e = do_scan_localized<CharT>(locale, "0", "{:la}", b);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::invalid_scanned_value);
+        auto e = do_scan_localized<CharT>(locale, "0", "{:Ls}", b);
+        CHECK(!e);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
     }
     {
         bool b{};
-        auto e = do_scan_localized<CharT>(locale, "0", "{:l}", b);
+        auto e = do_scan_localized<CharT>(locale, "0", "{:L}", b);
         CHECK(!b);
         CHECK(e);
     }
     {
         bool b{};
-        auto e = do_scan_localized<CharT>(locale, "1", "{:l}", b);
+        auto e = do_scan_localized<CharT>(locale, "1", "{:L}", b);
         CHECK(b);
         CHECK(e);
     }
     {
         bool b{};
-        auto e = do_scan_localized<CharT>(locale, "2", "{:l}", b);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::invalid_scanned_value);
+        auto e = do_scan_localized<CharT>(locale, "2", "{:L}", b);
+        CHECK(!e);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
     }
     {
         bool b{};
-        auto e = do_scan_localized<CharT>(locale, "true", "{:ln}", b);
-        REQUIRE(!e);
-        CHECK(e.error().code() == scn::error::invalid_format_string);
+        auto e = do_scan_localized<CharT>(locale, "true", "{:Li}", b);
+        CHECK(!e);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
+    }
+    {
+        bool b{};
+        auto e = do_scan_localized<CharT>(locale, "1", "{:Ln}", b);
+        CHECK(e);
+        CHECK(b);
     }
 }

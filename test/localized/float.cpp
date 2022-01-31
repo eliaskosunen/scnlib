@@ -20,7 +20,7 @@
 
 TEST_CASE("Using scan_localized without {:L}")
 {
-    // no {:l} -> default behavior
+    // no {:L} -> default behavior
     float a, b;
     auto ret =
         scn::scan_localized(std::locale::classic(), "3.14 3,14", "{} {}", a, b);
@@ -48,10 +48,10 @@ TEST_CASE("Using scan_localized without {:L}")
 
 TEST_CASE("Using scan_localized with {:L}")
 {
-    // {:l} -> localized behavior
+    // {:L} -> localized behavior
     float a, b;
     auto ret = scn::scan_localized(std::locale::classic(), "3.14 3,14",
-                                   "{:l} {:l}", a, b);
+                                   "{:L} {:L}", a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ",14");
     CHECK(a == doctest::Approx(3.14));
@@ -61,7 +61,7 @@ TEST_CASE("Using scan_localized with {:L}")
     // On my machine, with en_US locale enabled, stringstreams don't allow
     // parsing '3,14' as a float by stopping at the ',' character and returning
     // '3'.
-    ret = scn::scan_localized(std::locale("en_US.UTF-8"), "3.14 3", "{:l} {:l}",
+    ret = scn::scan_localized(std::locale("en_US.UTF-8"), "3.14 3", "{:L} {:L}",
                               a, b);
     CHECK(ret);
     CHECK(ret.begin() == ret.end());
@@ -70,7 +70,7 @@ TEST_CASE("Using scan_localized with {:L}")
     a = b = 0;
 
     ret = scn::scan_localized(std::locale("fi_FI.UTF-8"), "3,14 3.14",
-                              "{:l} {:l}", a, b);
+                              "{:L} {:L}", a, b);
     CHECK(ret);
     CHECK(std::string{ret.begin(), ret.end()} == ".14");
     CHECK(a == doctest::Approx(3.14));
@@ -80,17 +80,17 @@ TEST_CASE("Using scan_localized with {:L}")
 TEST_CASE("float ranges")
 {
     float f{1.0};
-    auto ret = scn::scan_localized(std::locale::classic(), "0.0", "{:l}", f);
+    auto ret = scn::scan_localized(std::locale::classic(), "0.0", "{:L}", f);
     CHECK(ret);
     CHECK(f == doctest::Approx(0.0));
     f = 1.0;
 
-    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "0.0", "{:l}", f);
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "0.0", "{:L}", f);
     CHECK(ret);
     CHECK(f == doctest::Approx(0.0));
     f = 1.0;
 
-    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "0,0", "{:l}", f);
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "0,0", "{:L}", f);
     CHECK(ret);
     CHECK(f == doctest::Approx(0.0));
     f = 1.0;
@@ -98,7 +98,7 @@ TEST_CASE("float ranges")
     // Over +3.4 * 10^38 (max 32bit IEEE-754)
     ret = scn::scan_localized(std::locale::classic(),
                               "9999999999999999999999999999999999999999.999",
-                              "{:l}", f);
+                              "{:L}", f);
     CHECK(!ret);
     CHECK(ret.error() == scn::error::value_out_of_range);
     CHECK(f == doctest::Approx(1.0));
@@ -106,7 +106,7 @@ TEST_CASE("float ranges")
 
     ret = scn::scan_localized(std::locale{"en_US.UTF-8"},
                               "9999999999999999999999999999999999999999.999",
-                              "{:l}", f);
+                              "{:L}", f);
     CHECK(!ret);
     CHECK(ret.error() == scn::error::value_out_of_range);
     CHECK(f == doctest::Approx(1.0));
@@ -114,40 +114,40 @@ TEST_CASE("float ranges")
 
     ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"},
                               "9999999999999999999999999999999999999999,999",
-                              "{:l}", f);
+                              "{:L}", f);
     CHECK(!ret);
     CHECK(ret.error() == scn::error::value_out_of_range);
     CHECK(f == doctest::Approx(1.0));
     f = 1.0;
 
     // Under +1.2 * 10^-38 (min normal 32bit IEEE-754)
-    ret = scn::scan_localized(std::locale::classic(), "1.2e-40", "{:l}", f);
+    ret = scn::scan_localized(std::locale::classic(), "1.2e-40", "{:L}", f);
     CHECK(ret);
     CHECK(f == doctest::Approx(1.2e-40));
     f = 1.0;
 
-    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "1.2e-40", "{:l}", f);
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "1.2e-40", "{:L}", f);
     CHECK(ret);
     CHECK(f == doctest::Approx(1.2e-40));
     f = 1.0;
 
-    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "1,2e-40", "{:l}", f);
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "1,2e-40", "{:L}", f);
     CHECK(ret);
     CHECK(f == doctest::Approx(1.2e-40));
     f = 1.0;
 
     // Under +1.4 * 10^-45 (min subnormal 32bit IEEE-754)
-    ret = scn::scan_localized(std::locale::classic(), "1.4e-46", "{:l}", f);
+    ret = scn::scan_localized(std::locale::classic(), "1.4e-46", "{:L}", f);
     CHECK(ret);
     CHECK(f == doctest::Approx(0.0));
     f = 1.0;
 
-    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "1.4e-46", "{:l}", f);
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "1.4e-46", "{:L}", f);
     CHECK(ret);
     CHECK(f == doctest::Approx(0.0));
     f = 1.0;
 
-    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "1,4e-46", "{:l}", f);
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "1,4e-46", "{:L}", f);
     CHECK(ret);
     CHECK(f == doctest::Approx(0.0));
     f = 1.0;
