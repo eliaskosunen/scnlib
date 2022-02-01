@@ -33,10 +33,12 @@ namespace scn {
 
     namespace detail {
         template <typename CharT>
-        std::locale get_locale(const basic_locale_ref<CharT>& ref)
+        const std::locale& get_locale(const basic_locale_ref<CharT>& ref)
         {
+            static std::locale global_locale;
             if (ref.is_default()) {
-                return std::locale();
+                global_locale = std::locale{};
+                return global_locale;
             }
             return *static_cast<const std::locale*>(ref.get_ptr());
         }
@@ -71,6 +73,52 @@ namespace scn {
                   .thousands_sep())
     {
         SCN_EXPECT(loc != nullptr);
+    }
+
+    template <typename CharT>
+    bool basic_locale_ref<CharT>::is_alpha(CharT ch) const
+    {
+        return std::isalpha(ch, detail::get_locale(*this));
+    }
+    template <typename CharT>
+    bool basic_locale_ref<CharT>::is_blank(CharT ch) const
+    {
+        return std::isblank(ch, detail::get_locale(*this));
+    }
+    template <typename CharT>
+    bool basic_locale_ref<CharT>::is_cntrl(CharT ch) const
+    {
+        return std::iscntrl(ch, detail::get_locale(*this));
+    }
+    template <typename CharT>
+    bool basic_locale_ref<CharT>::is_graph(CharT ch) const
+    {
+        return std::isgraph(ch, detail::get_locale(*this));
+    }
+    template <typename CharT>
+    bool basic_locale_ref<CharT>::is_lower(CharT ch) const
+    {
+        return std::islower(ch, detail::get_locale(*this));
+    }
+    template <typename CharT>
+    bool basic_locale_ref<CharT>::is_print(CharT ch) const
+    {
+        return std::isprint(ch, detail::get_locale(*this));
+    }
+    template <typename CharT>
+    bool basic_locale_ref<CharT>::is_punct(CharT ch) const
+    {
+        return std::ispunct(ch, detail::get_locale(*this));
+    }
+    template <typename CharT>
+    bool basic_locale_ref<CharT>::is_upper(CharT ch) const
+    {
+        return std::isupper(ch, detail::get_locale(*this));
+    }
+    template <typename CharT>
+    bool basic_locale_ref<CharT>::is_xdigit(CharT ch) const
+    {
+        return std::isxdigit(ch, detail::get_locale(*this));
     }
 
     template <typename CharT>

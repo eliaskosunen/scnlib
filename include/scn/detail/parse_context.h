@@ -120,6 +120,16 @@ namespace scn {
             return m_str.front();
         }
 
+        constexpr std::size_t chars_left() const noexcept
+        {
+            return m_str.size();
+        }
+        constexpr char_type peek(std::size_t n = 1) const noexcept
+        {
+            SCN_EXPECT(n < chars_left());
+            return m_str[n];
+        }
+
         constexpr bool check_arg_begin() const
         {
             return next() == detail::ascii_widen<char_type>('{');
@@ -133,6 +143,11 @@ namespace scn {
         SCN_CONSTEXPR14 void arg_end() const noexcept {}
 
         SCN_CONSTEXPR14 void arg_handled() const noexcept {}
+
+        const locale_type& locale() const
+        {
+            return m_locale;
+        }
 
         template <typename Scanner>
         error parse(Scanner& s)
@@ -233,6 +248,17 @@ namespace scn {
             SCN_UNREACHABLE;
         }
 
+        std::size_t chars_left() const noexcept
+        {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
+        }
+        char_type peek(std::ptrdiff_t = 1) const noexcept
+        {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
+        }
+
         constexpr bool check_arg_begin() const
         {
             return true;
@@ -249,6 +275,11 @@ namespace scn {
         {
             m_should_skip_ws = true;
             --m_args_left;
+        }
+
+        const locale_type& locale() const
+        {
+            return m_locale;
         }
 
         template <typename Scanner>

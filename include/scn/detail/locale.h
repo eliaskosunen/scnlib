@@ -228,6 +228,23 @@ namespace scn {
             return detail::is_digit(ch);
         }
 
+#define SCN_DEFINE_LOCALE_DEFAULT_FUNC(f) \
+    bool f(char_type) const               \
+    {                                     \
+        SCN_EXPECT(false);                \
+        SCN_UNREACHABLE;                  \
+    }
+        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_alpha)
+        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_blank)
+        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_cntrl)
+        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_graph)
+        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_lower)
+        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_print)
+        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_punct)
+        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_upper)
+        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_xdigit)
+#undef SCN_DEFINE_LOCALE_DEFAULT_FUNC
+
         constexpr char_type decimal_point() const
         {
             return defaults::decimal_point();
@@ -303,6 +320,16 @@ namespace scn {
             }
             return _is_digit(ch);
         }
+
+        bool is_alpha(char_type) const;
+        bool is_blank(char_type) const;
+        bool is_cntrl(char_type) const;
+        bool is_graph(char_type) const;
+        bool is_lower(char_type) const;
+        bool is_print(char_type) const;
+        bool is_punct(char_type) const;
+        bool is_upper(char_type) const;
+        bool is_xdigit(char_type) const;
 
         constexpr char_type decimal_point() const
         {

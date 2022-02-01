@@ -71,3 +71,13 @@
 "\xf0\x9f\x99\x82"
 # Nǐ hǎo
 "\xe4\xbd\xa0\xe5\xa5\xbd"
+# string format [set]
+"[]"
+"{[]}"
+"{:[abc]}"
+"{:[\\x]}"
+"{:[:alpha:]}"
+"{:L[:alpha:]}"
+"{:[a-zA-Z0-9-]}"
+"{:[\x01]}"
+"{:[\\x01]}"

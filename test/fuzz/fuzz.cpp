@@ -148,20 +148,20 @@ void roundtrip(scn::basic_string_view<C> data)
         roundtrip<unsigned long long>(source); \
     } while (false)
 
-#define SCN_FUZZ_RUN_FORMAT(source, Char)                    \
-    do {                                                     \
-        auto result = scn::make_result(source);              \
-        std::basic_string<Char> str{};                       \
-        while (!result.range().empty()) {                    \
-            auto f = scn::basic_string_view<Char>{           \
-                result.range().data(),                       \
-                static_cast<size_t>(result.range().size())}; \
-            result = scn::scan(result.range(), f, str);      \
-            if (!result) {                                   \
-                break;                                       \
-            }                                                \
-        }                                                    \
-    } while (false)
+#define SCN_FUZZ_RUN_FORMAT_TYPE(source, Char, T) \
+    do {                                          \
+        T value{};                                \
+        scn::scan(source, source, value);         \
+    } while (false);
+
+#define SCN_FUZZ_RUN_FORMAT(source, Char)                            \
+    SCN_FUZZ_RUN_FORMAT_TYPE(source, Char, Char);                    \
+    SCN_FUZZ_RUN_FORMAT_TYPE(source, Char, int);                     \
+    SCN_FUZZ_RUN_FORMAT_TYPE(source, Char, bool);                    \
+    SCN_FUZZ_RUN_FORMAT_TYPE(source, Char, unsigned);                \
+    SCN_FUZZ_RUN_FORMAT_TYPE(source, Char, double);                  \
+    SCN_FUZZ_RUN_FORMAT_TYPE(source, Char, std::basic_string<Char>); \
+    SCN_FUZZ_RUN_FORMAT_TYPE(source, Char, scn::basic_string_view<Char>);
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
