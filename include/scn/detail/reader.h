@@ -175,7 +175,7 @@ namespace scn {
         }
         it = std::copy(s.value().begin(), s.value().end(), it);
         if (incomplete) {
-            return error(error::end_of_range, "EOF");
+            return {error::end_of_range, "EOF"};
         }
         return {};
     }
@@ -188,11 +188,11 @@ namespace scn {
                     ranges::range_difference_t<WrappedRange> n)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_range, "EOF");
+            return {error::end_of_range, "EOF"};
         }
         for (ranges::range_difference_t<WrappedRange> i = 0; i < n; ++i) {
             if (r.begin() == r.end()) {
-                return error(error::end_of_range, "EOF");
+                return {error::end_of_range, "EOF"};
             }
             *it = *r.begin();
             ++it;
@@ -210,11 +210,11 @@ namespace scn {
                     ranges::range_difference_t<WrappedRange> n)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_range, "EOF");
+            return {error::end_of_range, "EOF"};
         }
         for (ranges::range_difference_t<WrappedRange> i = 0; i < n; ++i) {
             if (r.begin() == r.end()) {
-                return error(error::end_of_range, "EOF");
+                return {error::end_of_range, "EOF"};
             }
             auto tmp = *r.begin();
             if (!tmp) {
@@ -331,7 +331,7 @@ namespace scn {
                            bool keep_final_space)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_range, "EOF");
+            return {error::end_of_range, "EOF"};
         }
         while (r.begin() != r.end()) {
             const auto ch = *r.begin();
@@ -360,7 +360,7 @@ namespace scn {
                            bool keep_final_space)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_range, "EOF");
+            return {error::end_of_range, "EOF"};
         }
         while (r.begin() != r.end()) {
             auto tmp = *r.begin();
@@ -411,7 +411,7 @@ namespace scn {
                                   bool keep_final_space)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_range, "EOF");
+            return {error::end_of_range, "EOF"};
         }
         for (auto it = r.begin(); it != r.end() && out != end;
              ++it, (void)r.advance()) {
@@ -441,7 +441,7 @@ namespace scn {
                                   bool keep_final_space)
     {
         if (r.begin() == r.end()) {
-            return error(error::end_of_range, "EOF");
+            return {error::end_of_range, "EOF"};
         }
         for (auto it = r.begin(); it != r.end() && out != end;
              ++it, (void)r.advance()) {
@@ -490,8 +490,7 @@ namespace scn {
         for (ranges::range_difference_t<WrappedRange> i = 0; i < n; ++i) {
             r.advance(-1);
             if (r.begin() == r.end()) {
-                return error(error::unrecoverable_source_error,
-                             "Putback failed");
+                return {error::unrecoverable_source_error, "Putback failed"};
             }
         }
         return {};
@@ -505,12 +504,11 @@ namespace scn {
         {
             pctx.arg_begin();
             if (SCN_UNLIKELY(!pctx)) {
-                return error(error::invalid_format_string,
-                             "Unexpected format string end");
+                return {error::invalid_format_string,
+                        "Unexpected format string end"};
             }
             if (!pctx.check_arg_end()) {
-                return error(error::invalid_format_string,
-                             "Expected argument end");
+                return {error::invalid_format_string, "Expected argument end"};
             }
             pctx.arg_end();
             return {};
@@ -554,7 +552,7 @@ namespace scn {
         template <typename ParseCtx>
         error parse_common_end(ParseCtx& pctx)
         {
-            if (!pctx.check_arg_end()) {
+            if (!pctx || !pctx.check_arg_end()) {
                 return {error::invalid_format_string, "Expected argument end"};
             }
 
@@ -703,7 +701,8 @@ namespace scn {
 
         template <typename T>
         struct integer_scanner : common_parser {
-            static_assert(std::is_integral<T>::value, "");
+            static_assert(std::is_integral<T>::value,
+                          "integer_scanner requires an integral type");
 
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
@@ -743,13 +742,17 @@ namespace scn {
                         }
 
                         p.advance();
-                        ch = p.next();
-
+                        if (!p) {
+                            return {error::invalid_format_string,
+                                    "Unexpected end of format string"};
+                        }
                         if (p.check_arg_end()) {
                             custom_base = static_cast<uint8_t>(tmp);
                             parsed = true;
                             return {};
                         }
+                        ch = p.next();
+
                         if (ch < zero || ch > nine) {
                             return {error::invalid_format_string,
                                     "Invalid character after 'B', "
@@ -882,16 +885,16 @@ namespace scn {
                             return {};
                         }
                         if (b != 10 && base != b && base != 0) {
-                            return error(error::invalid_scanned_value,
-                                         "Invalid base prefix");
+                            return {error::invalid_scanned_value,
+                                    "Invalid base prefix"};
                         }
                         if (base == 0) {
                             base = static_cast<uint8_t>(b);
                         }
                         if (base != 8 && base != 10 && base != 16) {
-                            return error(error::invalid_scanned_value,
-                                         "Localized values have to be in base "
-                                         "8, 10 or 16");
+                            return {error::invalid_scanned_value,
+                                    "Localized values have to be in base "
+                                    "8, 10 or 16"};
                         }
 
                         auto it = r.value();
@@ -902,9 +905,8 @@ namespace scn {
 
                         if (tmp < T{0} &&
                             (format_options & only_unsigned) != 0) {
-                            return error(
-                                error::invalid_scanned_value,
-                                "Parsed negative value when type was 'u'");
+                            return {error::invalid_scanned_value,
+                                    "Parsed negative value when type was 'u'"};
                         }
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     }
@@ -1061,7 +1063,7 @@ namespace scn {
                 bool minus_sign,
                 span<const CharT> buf) const;
 
-            unsigned char _char_to_int(char ch) const
+            SCN_NODISCARD unsigned char _char_to_int(char ch) const
             {
                 static constexpr unsigned char digits_arr[] = {
                     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -1088,7 +1090,7 @@ namespace scn {
                     255, 255, 255, 255};
                 return digits_arr[static_cast<unsigned char>(ch)];
             }
-            unsigned char _char_to_int(wchar_t ch) const
+            SCN_NODISCARD unsigned char _char_to_int(wchar_t ch) const
             {
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wconversion")
@@ -1103,7 +1105,8 @@ namespace scn {
 
         template <typename T>
         struct float_scanner : common_parser {
-            static_assert(std::is_floating_point<T>::value, "");
+            static_assert(std::is_floating_point<T>::value,
+                          "float_scanner requires a floating point type");
 
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
@@ -1469,6 +1472,13 @@ namespace scn {
 
             void accept_char_range(char first, char last)
             {
+                if (first < 0 || last < 0) {
+                    const auto ufirst = static_cast<unsigned char>(first);
+                    const auto ulast = static_cast<unsigned char>(last);
+                    SCN_EXPECT(ufirst <= ulast);
+                    return accept_char_range(static_cast<wchar_t>(ufirst),
+                                             static_cast<wchar_t>(ulast));
+                }
                 SCN_EXPECT(first <= last);
                 ++last;
                 get_option(flag::use_chars) = true;
@@ -1494,7 +1504,7 @@ namespace scn {
             {
                 using char_type = CharT;
                 SCN_EXPECT(pctx.next() == ascii_widen<char_type>('-'));
-                if (pctx.chars_left() >= 1 &&
+                if (pctx.can_peek() &&
                     pctx.peek() == ascii_widen<char_type>(']')) {
                     // Just a '-'
                     accept_char(begin);
@@ -1515,17 +1525,49 @@ namespace scn {
                                 CharT begin = 0)
             {
                 using char_type = CharT;
-                if (allow_range && pctx.chars_left() >= 1 &&
+                if (allow_range && pctx.can_peek() &&
                     pctx.peek() == ascii_widen<char_type>('-')) {
                     const auto ch = pctx.next();
                     pctx.advance();
                     return parse_range(pctx, ch);
                 }
-                if (!allow_range) {
-                    accept_char_range(begin, pctx.next());
+                const auto ch = pctx.next();
+                if (ch >= 0 && ch <= 0x7f) {
+                    if (!allow_range) {
+                        if (static_cast<
+                                typename std::make_unsigned<char_type>::type>(
+                                ch) <
+                            static_cast<
+                                typename std::make_unsigned<char_type>::type>(
+                                begin)) {
+                            return {error::invalid_format_string,
+                                    "Last char in [set] range is less than the "
+                                    "first"};
+                        }
+                        accept_char_range(begin, ch);
+                    }
+                    else {
+                        accept_char(pctx.next());
+                    }
                 }
                 else {
-                    accept_char(pctx.next());
+                    if (!allow_range) {
+                        if (static_cast<
+                                typename std::make_unsigned<char_type>::type>(
+                                ch) <
+                            static_cast<
+                                typename std::make_unsigned<char_type>::type>(
+                                begin)) {
+                            return {error::invalid_format_string,
+                                    "Last char in [set] range is less than the "
+                                    "first"};
+                        }
+                        set_extra_ranges.push_back(set_range::range(begin, ch));
+                    }
+                    else {
+                        set_extra_ranges.push_back(set_range::single(ch));
+                    }
+                    get_option(flag::use_ranges) = true;
                 }
                 return {};
             }
@@ -1535,18 +1577,22 @@ namespace scn {
                 using char_type = typename ParseCtx::char_type;
                 SCN_EXPECT(pctx.next() == ascii_widen<char_type>(':'));
                 pctx.advance();
+                if (!pctx || pctx.check_arg_end()) {
+                    return {error::invalid_format_string,
+                            "Unexpected end of format string argument"};
+                }
                 if (pctx.next() == ascii_widen<char_type>(']')) {
                     return {
                         error::invalid_format_string,
                         "Unexpected end of [set] in format string after ':'"};
                 }
-                if (!pctx || pctx.check_arg_end()) {
-                    return {error::invalid_format_string,
-                            "Unexpected end of format string argument"};
-                }
 
                 std::basic_string<char_type> buf;
                 while (true) {
+                    if (!pctx || pctx.check_arg_end()) {
+                        return {error::invalid_format_string,
+                                "Unexpected end of format string argument"};
+                    }
                     auto ch = pctx.next();
                     if (ch == ascii_widen<char_type>(':')) {
                         break;
@@ -1555,10 +1601,6 @@ namespace scn {
                         return {error::invalid_format_string,
                                 "Unexpected end of [set] :specifier:, did you "
                                 "forget a terminating colon?"};
-                    }
-                    if (!pctx || pctx.check_arg_end()) {
-                        return {error::invalid_format_string,
-                                "Unexpected end of format string argument"};
                     }
                     buf.push_back(ch);
                     pctx.advance();
@@ -1681,7 +1723,7 @@ namespace scn {
                             "\\x option in format string out of range"};
                 }
 
-                if (allow_range && pctx.chars_left() >= 1 &&
+                if (allow_range && pctx.can_peek() &&
                     pctx.peek() == ascii_widen<char_type>('-')) {
                     pctx.advance();
                     return parse_range(pctx, static_cast<char_type>(i));
@@ -1709,7 +1751,7 @@ namespace scn {
                             "Unexpected end of format string argument"};
                 }
                 if (pctx.next() == ascii_widen<char_type>(']') &&
-                    pctx.chars_left() >= 1 &&
+                    pctx.can_peek() &&
                     pctx.peek() == ascii_widen<char_type>('}')) {
                     return {error::invalid_format_string,
                             "Unexpected end of [set] in format string"};
@@ -1807,11 +1849,15 @@ namespace scn {
             {
                 using char_type = typename ParseCtx::char_type;
                 SCN_EXPECT(pctx.next() == ascii_widen<char_type>('['));
+
                 pctx.advance();
+                if (!pctx || pctx.check_arg_end()) {
+                    return {error::invalid_format_string,
+                            "Unexpected end of format string argument"};
+                }
 
                 get_option(flag::enabled) = true;
                 parsed = true;
-
                 if (pctx.next() == ascii_widen<char_type>(']')) {
                     // end of range
                     get_option(flag::accept_all) = true;
@@ -2155,134 +2201,134 @@ namespace scn {
                 last = 0xaf
             };
 
-            bool& get_option(char ch)
+            SCN_CONSTEXPR14 bool& get_option(char ch)
             {
                 SCN_EXPECT(ch >= 0 && ch <= 0x7f);
                 return set_options[static_cast<size_t>(ch)];
             }
-            bool get_option(char ch) const
+            SCN_NODISCARD SCN_CONSTEXPR14 bool get_option(char ch) const
             {
                 SCN_EXPECT(ch >= 0 && ch <= 0x7f);
                 return set_options[static_cast<size_t>(ch)];
             }
 
-            bool& get_option(specifier s)
+            SCN_CONSTEXPR14 bool& get_option(specifier s)
             {
                 return set_options[static_cast<size_t>(s)];
             }
-            bool get_option(specifier s) const
+            SCN_NODISCARD SCN_CONSTEXPR14 bool get_option(specifier s) const
             {
                 return set_options[static_cast<size_t>(s)];
             }
 
-            bool& get_option(flag f)
+            SCN_CONSTEXPR14 bool& get_option(flag f)
             {
                 return set_options[static_cast<size_t>(f)];
             }
-            bool get_option(flag f) const
+            SCN_NODISCARD SCN_CONSTEXPR14 bool get_option(flag f) const
             {
                 return set_options[static_cast<size_t>(f)];
             }
 
-            bool enabled() const
+            SCN_NODISCARD SCN_CONSTEXPR14 bool enabled() const
             {
                 return get_option(flag::enabled);
             }
 
         private:
-            const char* alnum_str(char)
+            SCN_NODISCARD static constexpr const char* alnum_str(char)
             {
                 return "alnum";
             }
-            const wchar_t* alnum_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* alnum_str(wchar_t)
             {
                 return L"alnum";
             }
-            const char* alpha_str(char)
+            SCN_NODISCARD static constexpr const char* alpha_str(char)
             {
                 return "alpha";
             }
-            const wchar_t* alpha_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* alpha_str(wchar_t)
             {
                 return L"alpha";
             }
-            const char* blank_str(char)
+            SCN_NODISCARD static constexpr const char* blank_str(char)
             {
                 return "blank";
             }
-            const wchar_t* blank_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* blank_str(wchar_t)
             {
                 return L"blank";
             }
-            const char* cntrl_str(char)
+            SCN_NODISCARD static constexpr const char* cntrl_str(char)
             {
                 return "cntrl";
             }
-            const wchar_t* cntrl_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* cntrl_str(wchar_t)
             {
                 return L"cntrl";
             }
-            const char* digit_str(char)
+            SCN_NODISCARD static constexpr const char* digit_str(char)
             {
                 return "digit";
             }
-            const wchar_t* digit_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* digit_str(wchar_t)
             {
                 return L"digit";
             }
-            const char* graph_str(char)
+            SCN_NODISCARD static constexpr const char* graph_str(char)
             {
                 return "graph";
             }
-            const wchar_t* graph_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* graph_str(wchar_t)
             {
                 return L"graph";
             }
-            const char* lower_str(char)
+            SCN_NODISCARD static constexpr const char* lower_str(char)
             {
                 return "lower";
             }
-            const wchar_t* lower_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* lower_str(wchar_t)
             {
                 return L"lower";
             }
-            const char* print_str(char)
+            SCN_NODISCARD static constexpr const char* print_str(char)
             {
                 return "print";
             }
-            const wchar_t* print_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* print_str(wchar_t)
             {
                 return L"print";
             }
-            const char* punct_str(char)
+            SCN_NODISCARD static constexpr const char* punct_str(char)
             {
                 return "punct";
             }
-            const wchar_t* punct_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* punct_str(wchar_t)
             {
                 return L"punct";
             }
-            const char* space_str(char)
+            SCN_NODISCARD static constexpr const char* space_str(char)
             {
                 return "space";
             }
-            const wchar_t* space_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* space_str(wchar_t)
             {
                 return L"space";
             }
-            const char* upper_str(char)
+            SCN_NODISCARD static constexpr const char* upper_str(char)
             {
                 return "upper";
             }
-            const wchar_t* upper_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* upper_str(wchar_t)
             {
                 return L"upper";
             }
-            const char* xdigit_str(char)
+            SCN_NODISCARD static constexpr const char* xdigit_str(char)
             {
                 return "xdigit";
             }
-            const wchar_t* xdigit_str(wchar_t)
+            SCN_NODISCARD static constexpr const wchar_t* xdigit_str(wchar_t)
             {
                 return L"xdigit";
             }
@@ -2294,26 +2340,31 @@ namespace scn {
 
             struct set_range {
                 uint64_t begin;
-                uint64_t end;
+                uint64_t end;  // inclusive
 
                 static set_range single(char ch)
                 {
-                    return {static_cast<uint64_t>(ch),
-                            static_cast<uint64_t>(ch + 1)};
+                    const auto uch = static_cast<unsigned char>(ch);
+                    return {static_cast<uint64_t>(uch),
+                            static_cast<uint64_t>(uch)};
                 }
                 static set_range single(wchar_t ch)
                 {
                     return {static_cast<uint64_t>(ch),
-                            static_cast<uint64_t>(ch + 1)};
+                            static_cast<uint64_t>(ch)};
                 }
 
                 static set_range range(char begin, char end)
                 {
-                    return {static_cast<uint64_t>(begin),
-                            static_cast<uint64_t>(end)};
+                    const auto ubegin = static_cast<unsigned char>(begin);
+                    const auto uend = static_cast<unsigned char>(end);
+                    SCN_EXPECT(ubegin <= uend);
+                    return {static_cast<uint64_t>(ubegin),
+                            static_cast<uint64_t>(uend)};
                 }
                 static set_range range(wchar_t begin, wchar_t end)
                 {
+                    SCN_EXPECT(begin < end);
                     return {static_cast<uint64_t>(begin),
                             static_cast<uint64_t>(end)};
                 }

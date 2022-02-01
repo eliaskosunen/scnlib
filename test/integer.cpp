@@ -25,6 +25,17 @@ TEST_CASE("simple")
     CHECK(ret);
     CHECK(i == 42);
     CHECK(ret.range().size() == 0);
+
+    ret = scn::scan_default("0", i);
+    CHECK(ret);
+    CHECK(i == 0);
+    CHECK(ret.range().empty());
+    i = 1;
+
+    auto wret = scn::scan_default(L"0", i);
+    CHECK(wret);
+    CHECK(i == 0);
+    CHECK(wret.range().empty());
 }
 
 TEST_CASE("short ranges")

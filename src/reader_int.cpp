@@ -39,7 +39,7 @@ namespace scn {
                     // It's really just 0
                     // Return it to begininng, where '0' is
                     b = -1;
-                    return s.begin();
+                    return it;
                 }
                 if (*it == ascii_widen<CharT>('x') ||
                     *it == ascii_widen<CharT>('X')) {
@@ -167,7 +167,7 @@ namespace scn {
                 if (b == -1) {
                     // -1 means we read a '0'
                     val = 0;
-                    return ranges::distance(s.begin(), it);
+                    return ranges::distance(s.begin(), r.value());
                 }
                 if (b != 10 && base != b && base != 0) {
                     return error(error::invalid_scanned_value,

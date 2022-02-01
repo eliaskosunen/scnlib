@@ -33,12 +33,10 @@ namespace scn {
 
     namespace detail {
         template <typename CharT>
-        const std::locale& get_locale(const basic_locale_ref<CharT>& ref)
+        std::locale get_locale(const basic_locale_ref<CharT>& ref)
         {
-            static std::locale global_locale;
             if (ref.is_default()) {
-                global_locale = std::locale{};
-                return global_locale;
+                return {};
             }
             return *static_cast<const std::locale*>(ref.get_ptr());
         }

@@ -71,8 +71,18 @@
 "\xf0\x9f\x99\x82"
 # Nǐ hǎo
 "\xe4\xbd\xa0\xe5\xa5\xbd"
+# format string
+"{}"
+"{1}"
+"{-1}"
+"{:s}"
+"{:d}"
+"{:B2}"
+"{:B222}"
+"{:\x02}"
 # string format [set]
 "[]"
+"{[]"
 "{[]}"
 "{:[abc]}"
 "{:[\\x]}"

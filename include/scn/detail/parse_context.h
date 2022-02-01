@@ -124,18 +124,23 @@ namespace scn {
         {
             return m_str.size();
         }
+        constexpr bool can_peek() const noexcept {
+            return chars_left() > 1;
+        }
         constexpr char_type peek(std::size_t n = 1) const noexcept
         {
             SCN_EXPECT(n < chars_left());
             return m_str[n];
         }
 
-        constexpr bool check_arg_begin() const
+        SCN_CONSTEXPR14 bool check_arg_begin() const
         {
+            SCN_EXPECT(good());
             return next() == detail::ascii_widen<char_type>('{');
         }
-        constexpr bool check_arg_end() const
+        SCN_CONSTEXPR14 bool check_arg_end() const
         {
+            SCN_EXPECT(good());
             return next() == detail::ascii_widen<char_type>('}');
         }
 
@@ -252,6 +257,9 @@ namespace scn {
         {
             SCN_EXPECT(false);
             SCN_UNREACHABLE;
+        }
+        constexpr bool can_peek() const noexcept {
+            return false;
         }
         char_type peek(std::ptrdiff_t = 1) const noexcept
         {
