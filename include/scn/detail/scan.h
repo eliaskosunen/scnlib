@@ -101,7 +101,7 @@ namespace scn {
 
             auto args = make_args_for_localized(range, format, locale, a...);
             auto ret =
-                vscan_localized(SCN_MOVE(range), SCN_MOVE(locale), {args});
+                vscan_localized(SCN_MOVE(range), SCN_MOVE(locale), format, {args});
             return detail::wrap_result(wrapped_error{ret.err},
                                        detail::range_tag<Range>{},
                                        SCN_MOVE(ret.range));
