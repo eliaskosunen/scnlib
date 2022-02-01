@@ -63,7 +63,7 @@ namespace scn {
         struct parse_context_template_for_format;
     }
 
-    // reader.h
+    // reader/common.h
 
     template <typename CharT, typename T, typename Enable = void>
     struct scanner;

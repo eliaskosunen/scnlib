@@ -425,9 +425,9 @@
 #define SCN_EXPECT(cond) SCN_ASSERT(cond, "Precondition violation")
 #define SCN_ENSURE(cond) SCN_ASSERT(cond, "Postcondition violation")
 #else
-#define SCN_ASSERT(cond, msg)
-#define SCN_EXPECT(cond)
-#define SCN_ENSURE(cond)
+#define SCN_ASSERT(cond, msg) SCN_UNUSED(cond)
+#define SCN_EXPECT(cond)      SCN_UNUSED(cond)
+#define SCN_ENSURE(cond)      SCN_UNUSED(cond)
 #endif
 
 #define SCN_MOVE(x) \

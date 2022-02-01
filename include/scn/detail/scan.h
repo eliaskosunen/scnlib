@@ -23,7 +23,7 @@
 #include "small_vector.h"
 #include "vscan.h"
 
-#include "reader.h"
+#include "reader/common.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

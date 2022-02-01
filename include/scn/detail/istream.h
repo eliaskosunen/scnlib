@@ -20,7 +20,7 @@
 
 #include "small_vector.h"
 
-#include "reader.h"
+#include "reader/common.h"
 #include "result.h"
 #include "util.h"
 
