@@ -302,7 +302,7 @@ namespace scn {
             return *this;
         }
 
-        constexpr const void* get_ptr() const
+        SCN_NODISCARD constexpr const void* get_ptr() const
         {
             return m_locale;
         }
@@ -371,7 +371,7 @@ namespace scn {
                                           const string_type& buf,
                                           int base) const;
 
-        constexpr bool is_default() const noexcept
+        SCN_NODISCARD constexpr bool is_default() const noexcept
         {
             return m_locale == nullptr;
         }

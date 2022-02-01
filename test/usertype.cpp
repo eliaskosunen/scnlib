@@ -57,7 +57,7 @@ namespace scn {
                 basic_parse_context<typename Context::locale_type>;
             int i, j;
             auto args = make_args<Context, pctx_type>(i, j);
-            auto newctx = Context(ctx.range());
+            auto newctx = Context(ctx.range(), detail::dummy_type{});
             auto pctx = pctx_type("[{}, {}]", newctx);
             auto err = visit(newctx, pctx, {args});
             ctx.range() = std::move(newctx.range());

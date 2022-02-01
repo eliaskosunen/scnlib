@@ -126,14 +126,14 @@ namespace scn {
 
             if (!(stream >> val)) {
                 if (stream.eof()) {
-                    return error(error::end_of_range, "EOF");
+                    return {error::end_of_range, "EOF"};
                 }
                 if (stream.bad()) {
-                    return error(error::unrecoverable_source_error,
-                                 "Bad std::istream after reading");
+                    return {error::unrecoverable_source_error,
+                                 "Bad std::istream after reading"};
                 }
-                return error(error::invalid_scanned_value,
-                             "Failed to read with std::istream");
+                return {error::invalid_scanned_value,
+                             "Failed to read with std::istream"};
             }
             return {};
         }

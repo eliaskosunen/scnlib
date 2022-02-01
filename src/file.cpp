@@ -79,7 +79,7 @@ namespace scn {
                 return;
             }
 
-            struct stat s;
+            struct stat s{};
             int status = fstat(fd, &s);
             if (status == -1) {
                 close(fd);
@@ -166,7 +166,7 @@ namespace scn {
 
             basic_file_iterator_access(const iterator& it) : self(it) {}
 
-            expected<CharT> deref() const
+            SCN_NODISCARD expected<CharT> deref() const
             {
                 SCN_EXPECT(self.m_file);
 
@@ -181,7 +181,7 @@ namespace scn {
                 return self.m_file->_get_char_at(self.m_current);
             }
 
-            bool eq(const iterator& o) const
+            SCN_NODISCARD bool eq(const iterator& o) const
             {
                 if (self.m_file && (self.m_file == o.m_file || !o.m_file)) {
                     if (self.m_file->_is_at_end(self.m_current) &&
@@ -287,7 +287,7 @@ namespace scn {
     }
 
     template <>
-    SCN_FUNC void file::_sync_until(std::size_t pos)
+    SCN_FUNC void file::_sync_until(std::size_t pos) noexcept
     {
         for (auto it = m_buffer.rbegin();
              it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {
@@ -295,7 +295,7 @@ namespace scn {
         }
     }
     template <>
-    SCN_FUNC void wfile::_sync_until(std::size_t pos)
+    SCN_FUNC void wfile::_sync_until(std::size_t pos) noexcept
     {
         for (auto it = m_buffer.rbegin();
              it != m_buffer.rend() - static_cast<std::ptrdiff_t>(pos); ++it) {

@@ -95,7 +95,10 @@ namespace scn {
             const type* value{nullptr};
 
             range_wrapper_storage() = default;
-            range_wrapper_storage(const type& v) : value(std::addressof(v)) {}
+            range_wrapper_storage(const type& v, dummy_type)
+                : value(std::addressof(v))
+            {
+            }
 
             const type& get() const& noexcept
             {
@@ -114,7 +117,7 @@ namespace scn {
 
             range_wrapper_storage() = default;
             template <typename U>
-            range_wrapper_storage(U&& v) : value(SCN_FWD(v))
+            range_wrapper_storage(U&& v, dummy_type) : value(SCN_FWD(v))
             {
             }
 
@@ -157,7 +160,8 @@ namespace scn {
                 typename = typename std::enable_if<
                     !_has_range_wrapper_marker<remove_cvref_t<R>>::value>::type>
             range_wrapper(R&& r)
-                : m_range(SCN_FWD(r)), m_begin(ranges::cbegin(m_range.get()))
+                : m_range(SCN_FWD(r), dummy_type{}),
+                  m_begin(ranges::cbegin(m_range.get()))
             {
             }
 
@@ -189,7 +193,7 @@ namespace scn {
                 ranges::advance(m_begin, n);
                 m_read = exchange(o.m_read, 0);
             }
-            range_wrapper& operator=(range_wrapper&& o)
+            range_wrapper& operator=(range_wrapper&& o) noexcept
             {
                 reset_to_rollback_point();
 
@@ -287,8 +291,8 @@ namespace scn {
                 for (; m_read != 0; --m_read) {
                     --m_begin;
                     if (m_begin == end()) {
-                        return error(error::unrecoverable_source_error,
-                                     "Putback failed");
+                        return {error::unrecoverable_source_error,
+                                "Putback failed"};
                     }
                 }
                 return {};
@@ -503,7 +507,7 @@ namespace scn {
         wrapped_error(::scn::error e) : err(e) {}
 
         /// Get underlying error
-        ::scn::error error() const
+        SCN_NODISCARD ::scn::error error() const
         {
             return err;
         }

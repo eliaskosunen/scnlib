@@ -230,7 +230,7 @@ namespace scn {
 
         T value;
         auto args = make_args<context_type, parse_context_type>(value);
-        auto ctx = context_type(wrap(r));
+        auto ctx = context_type(wrap(r), detail::dummy_type{});
 
         auto pctx = parse_context_type(1, ctx);
         auto err = visit(ctx, pctx,
@@ -555,12 +555,25 @@ namespace scn {
 
             constexpr ignore_iterator() = default;
 
+            SCN_CONSTEXPR14 ignore_iterator& operator=(CharT) noexcept
+            {
+                return *this;
+            }
             constexpr const ignore_iterator& operator=(CharT) const noexcept
             {
                 return *this;
             }
 
+            SCN_CONSTEXPR14 ignore_iterator& operator*() noexcept
+            {
+                return *this;
+            }
             constexpr const ignore_iterator& operator*() const noexcept
+            {
+                return *this;
+            }
+
+            SCN_CONSTEXPR14 ignore_iterator& operator++() noexcept
             {
                 return *this;
             }
@@ -711,11 +724,11 @@ namespace scn {
             ++n;
         }
 
-        std::size_t size() const
+        SCN_NODISCARD constexpr std::size_t size() const noexcept
         {
             return n;
         }
-        std::size_t max_size() const
+        SCN_NODISCARD constexpr std::size_t max_size() const noexcept
         {
             return m_span.size();
         }
@@ -814,7 +827,7 @@ namespace scn {
 
         value_type value;
         auto args = make_args<context_type, parse_context_type>(value);
-        auto ctx = context_type(wrap(r));
+        auto ctx = context_type(wrap(r), detail::dummy_type{});
         auto pctx = parse_context_type(1, ctx);
         auto cargs = basic_args<CharT>{args};
 
@@ -890,7 +903,8 @@ namespace scn {
 
         value_type value;
         auto args = make_args<context_type, parse_context_type>(value);
-        auto ctx = context_type(wrap(std::forward<Range>(r)));
+        auto ctx =
+            context_type(wrap(std::forward<Range>(r)), detail::dummy_type{});
 
         bool scanning = true;
         while (scanning) {

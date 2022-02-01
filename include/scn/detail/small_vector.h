@@ -171,7 +171,7 @@ namespace scn {
         }  // namespace small_vector_algos
 
         class small_vector_base {
-            uint64_t _next_pow2_64(uint64_t x)
+            static SCN_CONSTEXPR14 uint64_t _next_pow2_64(uint64_t x) noexcept
             {
                 --x;
                 x |= (x >> 1);
@@ -182,7 +182,7 @@ namespace scn {
                 x |= (x >> 32);
                 return x + 1;
             }
-            uint32_t _next_pow2_32(uint32_t x)
+            static SCN_CONSTEXPR14 uint32_t _next_pow2_32(uint32_t x) noexcept
             {
                 --x;
                 x |= (x >> 1);
@@ -224,20 +224,22 @@ namespace scn {
                 return ::scn::detail::launder(reinterpret_unconstructed_data());
             }
 
-            T* reinterpret_unconstructed_data()
+            SCN_NODISCARD T* reinterpret_unconstructed_data()
             {
                 return static_cast<T*>(static_cast<void*>(data));
             }
-            const T* reinterpret_unconstructed_data() const
+            SCN_NODISCARD const T* reinterpret_unconstructed_data() const
             {
                 return static_cast<const T*>(static_cast<const void*>(data));
             }
 
-            unsigned char* get_unconstructed_data()
+            SCN_NODISCARD SCN_CONSTEXPR14 unsigned char*
+            get_unconstructed_data()
             {
                 return data;
             }
-            const unsigned char* get_unconstructed_data() const
+            SCN_NODISCARD constexpr const unsigned char*
+            get_unconstructed_data() const
             {
                 return data;
             }
@@ -542,19 +544,19 @@ namespace scn {
                 _destruct();
             }
 
-            pointer data() noexcept
+            SCN_NODISCARD SCN_CONSTEXPR14 pointer data() noexcept
             {
                 return m_ptr;
             }
-            const_pointer data() const noexcept
+            SCN_NODISCARD constexpr const_pointer data() const noexcept
             {
                 return m_ptr;
             }
-            size_type size() const noexcept
+            SCN_NODISCARD constexpr size_type size() const noexcept
             {
                 return m_size;
             }
-            size_type capacity() const noexcept
+            SCN_NODISCARD size_type capacity() const noexcept
             {
                 if (SCN_LIKELY(is_small())) {
                     return StackN;
@@ -562,12 +564,12 @@ namespace scn {
                 return _get_heap().cap;
             }
 
-            bool empty() const noexcept
+            SCN_NODISCARD constexpr bool empty() const noexcept
             {
                 return size() == 0;
             }
 
-            constexpr bool is_small() const noexcept
+            SCN_NODISCARD bool is_small() const noexcept
             {
                 // oh so very ub
                 return m_ptr == reinterpret_cast<const_pointer>(
@@ -663,6 +665,7 @@ namespace scn {
                 return rend();
             }
 
+            SCN_NODISCARD
             constexpr size_type max_size() const noexcept
             {
                 return std::numeric_limits<size_type>::max();

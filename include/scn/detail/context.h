@@ -33,7 +33,8 @@ namespace scn {
         using locale_type = LocaleRef;
 
         template <typename R>
-        basic_context(R&& r) : LocaleRef{}, m_range(SCN_FWD(r))
+        basic_context(R&& r, detail::dummy_type)
+            : LocaleRef{}, m_range(SCN_FWD(r))
         {
         }
         template <typename R>
@@ -76,6 +77,20 @@ namespace scn {
     private:
         range_type m_range;
     };
+
+    template <typename WrappedRange,
+              typename CharT = typename WrappedRange::char_type>
+    basic_context<WrappedRange, basic_default_locale_ref<CharT>> make_context(
+        WrappedRange&& r)
+    {
+        return {SCN_MOVE(r), detail::dummy_type{}};
+    }
+    template <typename WrappedRange, typename LocaleRef>
+    basic_context<WrappedRange, LocaleRef> make_context(WrappedRange&& r,
+                                                        LocaleRef&& loc)
+    {
+        return {SCN_MOVE(r), SCN_MOVE(loc)};
+    }
 
     template <typename CharT>
     auto get_arg(const basic_args<CharT>& args, std::ptrdiff_t id)

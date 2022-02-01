@@ -58,7 +58,7 @@ namespace scn {
             using parse_context_type =
                 basic_parse_context<basic_default_locale_ref<CharT>>;
 
-            auto ctx = context_type(SCN_MOVE(r));
+            auto ctx = context_type(SCN_MOVE(r), dummy_type{});
             auto pctx = parse_context_type(fmt, ctx);
             auto err = visit(ctx, pctx, SCN_MOVE(args));
             return {err, SCN_MOVE(ctx.range())};
@@ -75,7 +75,7 @@ namespace scn {
             using parse_context_type =
                 basic_empty_parse_context<basic_default_locale_ref<CharT>>;
 
-            auto ctx = context_type(SCN_MOVE(r));
+            auto ctx = context_type(SCN_MOVE(r), detail::dummy_type{});
             auto pctx = parse_context_type(n_args, ctx);
             auto err = visit(ctx, pctx, SCN_MOVE(args));
             return {err, SCN_MOVE(ctx.range())};

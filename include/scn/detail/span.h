@@ -129,11 +129,11 @@ namespace scn {
         {
             return m_ptr;
         }
-        constexpr index_type size() const noexcept
+        SCN_NODISCARD constexpr index_type size() const noexcept
         {
             return static_cast<index_type>(m_end - m_ptr);
         }
-        constexpr ssize_type ssize() const noexcept
+        SCN_NODISCARD constexpr ssize_type ssize() const noexcept
         {
             return m_end - m_ptr;
         }

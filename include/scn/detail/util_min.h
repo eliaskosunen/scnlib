@@ -59,6 +59,9 @@ namespace scn {
         struct priority_tag<0> {
         };
 
+        struct dummy_type {
+        };
+
         template <typename T>
         struct dependent_false : std::false_type {
         };
@@ -131,9 +134,7 @@ namespace scn {
             }
             unique_ptr& operator=(unique_ptr&& p) noexcept
             {
-                if (m_ptr) {
-                    delete m_ptr;
-                }
+                delete m_ptr;
                 m_ptr = p.m_ptr;
                 p.m_ptr = nullptr;
                 return *this;
@@ -141,9 +142,7 @@ namespace scn {
 
             ~unique_ptr() noexcept
             {
-                if (m_ptr) {
-                    delete m_ptr;
-                }
+                delete m_ptr;
             }
 
             constexpr explicit operator bool() const noexcept
@@ -244,7 +243,7 @@ namespace scn {
                 return m_data;
             }
 
-            constexpr size_type size() const noexcept
+            SCN_NODISCARD constexpr size_type size() const noexcept
             {
                 return N;
             }

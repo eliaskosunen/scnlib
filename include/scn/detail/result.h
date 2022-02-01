@@ -89,11 +89,11 @@ namespace scn {
         constexpr operator enum code() const noexcept { return m_code; }
 
         /// Get error code
-        constexpr enum code code() const noexcept
+        SCN_NODISCARD constexpr enum code code() const noexcept
         {
             return m_code;
         }
-        constexpr const char* msg() const noexcept
+        SCN_NODISCARD constexpr const char* msg() const noexcept
         {
             return m_msg;
         }
@@ -101,7 +101,7 @@ namespace scn {
         /// Returns `true` if, after this error, the state of the given input
         /// range is consistent, and thus, the range can be used for new
         /// scanning operations.
-        constexpr bool is_recoverable() const noexcept
+        SCN_NODISCARD constexpr bool is_recoverable() const noexcept
         {
             return !(m_code == unrecoverable_source_error ||
                      m_code == unrecoverable_internal_error);
@@ -148,7 +148,7 @@ namespace scn {
         constexpr expected(success_type s) : m_s(s) {}
         constexpr expected(error_type e) : m_e(e) {}
 
-        constexpr bool has_value() const noexcept
+        SCN_NODISCARD constexpr bool has_value() const noexcept
         {
             return m_e == error::good;
         }
@@ -206,7 +206,7 @@ namespace scn {
         expected(success_type s) : m_s(SCN_MOVE(s)) {}
         constexpr expected(error_type e) : m_e(e) {}
 
-        constexpr bool has_value() const noexcept
+        SCN_NODISCARD constexpr bool has_value() const noexcept
         {
             return m_e == error::good;
         }

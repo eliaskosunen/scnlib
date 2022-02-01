@@ -289,12 +289,12 @@ namespace scn {
         basic_file(const basic_file&) = delete;
         basic_file& operator=(const basic_file&) = delete;
 
-        basic_file(basic_file&& o)
+        basic_file(basic_file&& o) noexcept
             : m_buffer(detail::exchange(o.m_buffer, {})),
               m_file(detail::exchange(o.m_file, nullptr))
         {
         }
-        basic_file& operator=(basic_file&& o)
+        basic_file& operator=(basic_file&& o) noexcept
         {
             if (valid()) {
                 sync();
@@ -328,7 +328,7 @@ namespace scn {
          * Calls sync(), if necessary, before resetting.
          * @return The old handle
          */
-        FILE* set_handle(FILE* f, bool allow_sync = true)
+        FILE* set_handle(FILE* f, bool allow_sync = true) noexcept
         {
             auto old = m_file;
             if (old && allow_sync) {
@@ -339,7 +339,7 @@ namespace scn {
         }
 
         /// Whether the file has been opened
-        bool valid() const
+        constexpr bool valid() const noexcept
         {
             return m_file != nullptr;
         }
@@ -366,7 +366,7 @@ namespace scn {
          * result = scn::scan(file, ...);
          * \endcode
          */
-        void sync()
+        void sync() noexcept
         {
             _sync_all();
             m_buffer.clear();
@@ -386,11 +386,11 @@ namespace scn {
 
         expected<CharT> _read_single() const;
 
-        void _sync_all()
+        void _sync_all() noexcept
         {
             _sync_until(m_buffer.size());
         }
-        void _sync_until(size_t pos);
+        void _sync_until(size_t pos) noexcept;
 
         CharT _get_char_at(size_t i) const
         {
@@ -426,9 +426,9 @@ namespace scn {
     template <>
     expected<wchar_t> wfile::_read_single() const;
     template <>
-    void file::_sync_until(size_t);
+    void file::_sync_until(size_t) noexcept;
     template <>
-    void wfile::_sync_until(size_t);
+    void wfile::_sync_until(size_t) noexcept;
 
     /**
      * A child class for basic_file, handling fopen, fclose, and lifetimes with

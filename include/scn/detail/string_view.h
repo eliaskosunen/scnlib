@@ -157,15 +157,15 @@ namespace scn {
             return m_data.data();
         }
 
-        constexpr size_type size() const noexcept
+        SCN_NODISCARD constexpr size_type size() const noexcept
         {
             return static_cast<size_type>(m_data.size());
         }
-        constexpr size_type length() const noexcept
+        SCN_NODISCARD constexpr size_type length() const noexcept
         {
             return size();
         }
-        constexpr size_type max_size() const noexcept
+        SCN_NODISCARD constexpr size_type max_size() const noexcept
         {
             return SIZE_MAX - 1;
         }

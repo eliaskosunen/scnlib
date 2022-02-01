@@ -265,7 +265,7 @@ namespace scn {
                 _destruct();
             }
 
-            constexpr bool has_value() const noexcept
+            SCN_NODISCARD constexpr bool has_value() const noexcept
             {
                 return m_ptr != nullptr;
             }
@@ -330,8 +330,6 @@ namespace scn {
             alignas(T) storage_type m_data{};
             pointer m_ptr{nullptr};
         };
-
-        SCN_CLANG_POP
     }  // namespace detail
 
     /**
@@ -363,7 +361,7 @@ namespace scn {
             return *this;
         }
 
-        constexpr bool has_value() const noexcept
+        SCN_NODISCARD constexpr bool has_value() const noexcept
         {
             return m_storage.operator bool();
         }
