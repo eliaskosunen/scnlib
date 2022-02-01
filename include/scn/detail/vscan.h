@@ -41,10 +41,15 @@ namespace scn {
         {
             return i;
         }
-        template <typename CharT, typename T>
-        constexpr basic_string_view<CharT> to_format(T&& f)
+        template <typename T>
+        constexpr auto to_format(T&& f) -> decltype(string_view{SCN_FWD(f)})
         {
-            return basic_string_view<CharT>(SCN_FWD(f));
+            return {SCN_FWD(f)};
+        }
+        template <typename T>
+        constexpr auto to_format(T&& f) -> decltype(wstring_view{SCN_FWD(f)})
+        {
+            return {SCN_FWD(f)};
         }
 
         template <typename WrappedRange,
@@ -54,12 +59,8 @@ namespace scn {
             basic_string_view<CharT> fmt,
             basic_args<CharT> args)
         {
-            using context_type = basic_context<WrappedRange>;
-            using parse_context_type =
-                basic_parse_context<basic_default_locale_ref<CharT>>;
-
-            auto ctx = context_type(SCN_MOVE(r), dummy_type{});
-            auto pctx = parse_context_type(fmt, ctx);
+            auto ctx = make_context(SCN_MOVE(r));
+            auto pctx = make_parse_context(fmt, ctx);
             auto err = visit(ctx, pctx, SCN_MOVE(args));
             return {err, SCN_MOVE(ctx.range())};
         }
@@ -71,12 +72,8 @@ namespace scn {
             int n_args,
             basic_args<CharT> args)
         {
-            using context_type = basic_context<WrappedRange>;
-            using parse_context_type =
-                basic_empty_parse_context<basic_default_locale_ref<CharT>>;
-
-            auto ctx = context_type(SCN_MOVE(r), detail::dummy_type{});
-            auto pctx = parse_context_type(n_args, ctx);
+            auto ctx = make_context(SCN_MOVE(r));
+            auto pctx = make_parse_context(n_args, ctx);
             auto err = visit(ctx, pctx, SCN_MOVE(args));
             return {err, SCN_MOVE(ctx.range())};
         }
@@ -90,12 +87,8 @@ namespace scn {
             const Format& fmt,
             basic_args<CharT> args)
         {
-            using locale_type = basic_locale_ref<CharT>;
-            using context_type = basic_context<WrappedRange, locale_type>;
-            using parse_context_type = basic_parse_context<locale_type>;
-
-            auto ctx = context_type(SCN_MOVE(r), SCN_MOVE(loc));
-            auto pctx = parse_context_type(fmt, ctx);
+            auto ctx = make_context(SCN_MOVE(r), SCN_MOVE(loc));
+            auto pctx = make_parse_context(fmt, ctx);
             auto err = visit(ctx, pctx, SCN_MOVE(args));
             return {err, SCN_MOVE(ctx.range())};
         }
@@ -166,7 +159,7 @@ namespace scn {
                          basic_string_view<CharT> f,
                          basic_args<CharT>&& args)
     {
-        auto pctx = basic_parse_context<LocaleRef>(f, ctx);
+        auto pctx = make_parse_context(f, ctx);
         return visit(ctx, pctx, SCN_MOVE(args));
     }
 

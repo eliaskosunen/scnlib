@@ -58,6 +58,11 @@ namespace scn {
     template <typename Locale>
     class basic_empty_parse_context;
 
+    namespace detail {
+        template <typename T>
+        struct parse_context_template_for_format;
+    }
+
     // reader.h
 
     template <typename CharT, typename T, typename Enable = void>

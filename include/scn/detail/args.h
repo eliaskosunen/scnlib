@@ -170,7 +170,8 @@ namespace scn {
             {
                 return m_custom;
             }
-            SCN_NODISCARD constexpr const custom_value& get_custom() const noexcept
+            SCN_NODISCARD constexpr const custom_value& get_custom()
+                const noexcept
             {
                 return m_custom;
             }
@@ -492,6 +493,39 @@ namespace scn {
         return {detail::ctx_tag<Context>(), detail::parse_ctx_tag<ParseCtx>(),
                 args...};
     }
+    template <typename WrappedRange,
+              typename Format,
+              typename... Args,
+              typename CharT = typename WrappedRange::char_type>
+    arg_store<CharT, Args...> make_args_for(WrappedRange&,
+                                            Format,
+                                            Args&... args)
+    {
+        using locale_type = basic_default_locale_ref<CharT>;
+        using context_type = basic_context<WrappedRange, locale_type>;
+        using parse_context_type =
+            typename detail::parse_context_template_for_format<
+                Format>::template type<locale_type>;
+        return {detail::ctx_tag<context_type>(),
+                detail::parse_ctx_tag<parse_context_type>(), args...};
+    }
+    template <typename WrappedRange,
+              typename Format,
+              typename Locale,
+              typename... Args,
+              typename CharT = typename WrappedRange::char_type>
+    arg_store<CharT, Args...> make_args_for_localized(WrappedRange&,
+                                                      Format,
+                                                      Locale&,
+                                                      Args&... args)
+    {
+        using context_type = basic_context<WrappedRange, Locale>;
+        using parse_context_type =
+            typename detail::parse_context_template_for_format<
+                Format>::template type<Locale>;
+        return {detail::ctx_tag<context_type>(),
+                detail::parse_ctx_tag<parse_context_type>(), args...};
+    }
 
     template <typename CharT>
     class basic_args {
@@ -518,7 +552,8 @@ namespace scn {
             return do_get(i);
         }
 
-        SCN_NODISCARD SCN_CONSTEXPR14 bool check_id(std::ptrdiff_t i) const noexcept
+        SCN_NODISCARD SCN_CONSTEXPR14 bool check_id(
+            std::ptrdiff_t i) const noexcept
         {
             if (!is_packed()) {
                 return static_cast<size_t>(i) <
