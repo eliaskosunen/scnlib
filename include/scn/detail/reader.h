@@ -1858,6 +1858,17 @@ namespace scn {
 
                 get_option(flag::enabled) = true;
                 parsed = true;
+
+                if (pctx.next() == ascii_widen<char_type>('^')) {
+                    // inverted
+                    get_option(flag::inverted) = true;
+                    pctx.advance();
+                    if (!pctx || pctx.check_arg_end()) {
+                        return {error::invalid_format_string,
+                                "Unexpected end of format string argument"};
+                    }
+                }
+
                 if (pctx.next() == ascii_widen<char_type>(']')) {
                     // end of range
                     get_option(flag::accept_all) = true;
@@ -2100,69 +2111,57 @@ namespace scn {
 
                 if (get_option(flag::use_specifiers)) {
                     SCN_EXPECT(localized);  // ensured by sanitize()
-                    if (get_option(specifier::alnum) && loc.is_alnum(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::alnum) && loc.is_alnum(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::alpha) && loc.is_alpha(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::alpha) && loc.is_alpha(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::blank) && loc.is_blank(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::blank) && loc.is_blank(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::cntrl) && loc.is_cntrl(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::cntrl) && loc.is_cntrl(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::digit) && loc.is_digit(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::digit) && loc.is_digit(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::graph) && loc.is_graph(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::graph) && loc.is_graph(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::lower) && loc.is_lower(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::lower) && loc.is_lower(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::print) && loc.is_print(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::print) && loc.is_print(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::punct) && loc.is_punct(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::punct) && loc.is_punct(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::space) && loc.is_space(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::space) && loc.is_space(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::upper) && loc.is_upper(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::upper) && loc.is_upper(ch)) {
+                        return not_inverted;
                     }
-                    if (get_option(specifier::xdigit) && loc.is_xdigit(ch) &&
-                        not_inverted) {
-                        return true;
+                    if (get_option(specifier::xdigit) && loc.is_xdigit(ch)) {
+                        return not_inverted;
                     }
                 }
                 if (get_option(flag::use_chars) && (ch >= 0 && ch <= 0x7f)) {
-                    if (get_option(static_cast<char>(ch)) && not_inverted) {
-                        return true;
+                    if (get_option(static_cast<char>(ch))) {
+                        return not_inverted;
                     }
                 }
                 if (get_option(flag::use_ranges)) {
                     const auto c = static_cast<uint64_t>(ch);
                     for (const auto& e : set_extra_ranges) {
-                        if (c >= e.begin && c < e.end && not_inverted) {
-                            return true;
+                        if (c >= e.begin && c < e.end) {
+                            return not_inverted;
                         }
                     }
                 }
-                return false;
+                return !not_inverted;
             }
 
             enum class specifier : size_t {

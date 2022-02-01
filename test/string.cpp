@@ -400,6 +400,43 @@ TEST_CASE("set parse")
         CHECK(scanner.set_parser.get_option('c'));
         CHECK(!scanner.set_parser.get_option('A'));
         CHECK(!scanner.set_parser.get_option('d'));
+
+        auto loc = pctx.locale();
+        CHECK(scanner.set_parser.check_character('a', false, loc));
+        CHECK(scanner.set_parser.check_character('b', false, loc));
+        CHECK(scanner.set_parser.check_character('c', false, loc));
+        CHECK(!scanner.set_parser.check_character('A', false, loc));
+        CHECK(!scanner.set_parser.check_character('d', false, loc));
+    }
+
+    SUBCASE("^abc")
+    {
+        scanner_type scanner{};
+        auto pctx = make_parse_ctx("[^abc]}");
+        auto e = scanner.parse(pctx);
+        CHECK(e);
+        CHECK(pctx.check_arg_end());
+        CHECK(scanner.set_parser.get_option(set_parser_type::flag::enabled));
+        CHECK(scanner.set_parser.get_option(set_parser_type::flag::use_chars));
+        CHECK(scanner.set_parser.get_option(set_parser_type::flag::inverted));
+        CHECK(!scanner.set_parser.get_option(
+            set_parser_type::flag::use_specifiers));
+        CHECK(
+            !scanner.set_parser.get_option(set_parser_type::specifier::alpha));
+        CHECK(scanner.set_parser.get_option('a'));
+        CHECK(scanner.set_parser.get_option('b'));
+        CHECK(scanner.set_parser.get_option('c'));
+        CHECK(!scanner.set_parser.get_option('A'));
+        CHECK(!scanner.set_parser.get_option('d'));
+        CHECK(!scanner.set_parser.get_option('^'));
+
+        auto loc = pctx.locale();
+        CHECK(!scanner.set_parser.check_character('a', false, loc));
+        CHECK(!scanner.set_parser.check_character('b', false, loc));
+        CHECK(!scanner.set_parser.check_character('c', false, loc));
+        CHECK(scanner.set_parser.check_character('A', false, loc));
+        CHECK(scanner.set_parser.check_character('d', false, loc));
+        CHECK(scanner.set_parser.check_character('^', false, loc));
     }
 
     SUBCASE("-")
@@ -497,5 +534,16 @@ TEST_CASE("set parse")
         CHECK(!scanner.set_parser.get_option('-'));
         CHECK(!scanner.set_parser.get_option('d'));
         CHECK(!scanner.set_parser.get_option('D'));
+
+        auto loc = pctx.locale();
+        CHECK(scanner.set_parser.check_character('a', false, loc));
+        CHECK(scanner.set_parser.check_character('b', false, loc));
+        CHECK(scanner.set_parser.check_character('c', false, loc));
+        CHECK(scanner.set_parser.check_character('A', false, loc));
+        CHECK(scanner.set_parser.check_character('B', false, loc));
+        CHECK(scanner.set_parser.check_character('C', false, loc));
+        CHECK(!scanner.set_parser.check_character('-', false, loc));
+        CHECK(!scanner.set_parser.check_character('d', false, loc));
+        CHECK(!scanner.set_parser.check_character('D', false, loc));
     }
 }

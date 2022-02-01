@@ -74,6 +74,11 @@ namespace scn {
     }
 
     template <typename CharT>
+    bool basic_locale_ref<CharT>::is_alnum(CharT ch) const
+    {
+        return std::isalnum(ch, detail::get_locale(*this));
+    }
+    template <typename CharT>
     bool basic_locale_ref<CharT>::is_alpha(CharT ch) const
     {
         return std::isalpha(ch, detail::get_locale(*this));

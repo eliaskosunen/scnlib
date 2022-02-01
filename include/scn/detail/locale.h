@@ -234,6 +234,7 @@ namespace scn {
         SCN_EXPECT(false);                \
         SCN_UNREACHABLE;                  \
     }
+        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_alnum)
         SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_alpha)
         SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_blank)
         SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_cntrl)
@@ -321,6 +322,7 @@ namespace scn {
             return _is_digit(ch);
         }
 
+        bool is_alnum(char_type) const;
         bool is_alpha(char_type) const;
         bool is_blank(char_type) const;
         bool is_cntrl(char_type) const;
