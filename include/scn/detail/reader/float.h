@@ -132,16 +132,15 @@ namespace scn {
                         // and custom (localized) decimal points
                         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                         std::basic_string<char_type> str(s.data(), s.size());
-                        ret =
-                            ctx.locale().as_locale_ref().read_num(tmp, str, 0);
+                        ret = ctx.locale().get_localized().read_num(tmp, str, 0);
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     }
                     else {
                         ret = _read_float(
                             tmp, s,
-                            (common_options & localized) != 0
-                                ? ctx.locale().as_locale_ref().decimal_point()
-                                : locale_defaults<char_type>::decimal_point());
+                            ctx.locale()
+                                .get((common_options & localized) != 0)
+                                .decimal_point());
                     }
 
                     if (!ret) {
@@ -158,9 +157,8 @@ namespace scn {
                     return {};
                 };
 
-                auto is_space_pred = [&ctx](char_type ch) {
-                    return ctx.locale().is_space(ch);
-                };
+                auto is_space_pred = make_is_space_predicate(
+                    ctx.locale(), (common_options & localized) != 0);
 
                 if (Context::range_type::is_contiguous) {
                     auto s = read_until_space_zero_copy(ctx.range(),

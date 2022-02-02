@@ -53,12 +53,11 @@ namespace scn {
         template <typename Context>
         error scan(user_type3& val, Context& ctx)
         {
-            using pctx_type =
-                basic_parse_context<typename Context::locale_type>;
             int i, j;
-            auto args = make_args<Context, pctx_type>(i, j);
-            auto newctx = Context(ctx.range(), detail::dummy_type{});
-            auto pctx = pctx_type("[{}, {}]", newctx);
+            auto format = string_view{"[{}, {}]"};
+            auto newctx = make_context(ctx.range());
+            auto pctx = make_parse_context(format, newctx.locale());
+            auto args = make_args_for(newctx.range(), format, i, j);
             auto err = visit(newctx, pctx, {args});
             ctx.range() = std::move(newctx.range());
             if (err) {

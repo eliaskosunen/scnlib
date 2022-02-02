@@ -156,7 +156,7 @@ namespace scn {
         auto arg = arg_type{};
 
         {
-            auto ret = skip_range_whitespace(ctx);
+            auto ret = skip_range_whitespace(ctx, false);
             if (!ret) {
                 return ret;
             }
@@ -166,7 +166,7 @@ namespace scn {
             if (pctx.should_skip_ws()) {
                 // Skip whitespace from format string and from stream
                 // EOF is not an error
-                auto ret = skip_range_whitespace(ctx);
+                auto ret = skip_range_whitespace(ctx, false);
                 if (SCN_UNLIKELY(!ret)) {
                     if (ret == error::end_of_range) {
                         break;
@@ -223,7 +223,7 @@ namespace scn {
                     }
                     auto id = id_wrapped.value();
                     SCN_ENSURE(!id.empty());
-                    if (ctx.locale().is_digit(id.front())) {
+                    if (ctx.locale().get_static().is_digit(id.front())) {
                         auto s = detail::integer_scanner<std::ptrdiff_t>{};
                         s.base = 10;
                         std::ptrdiff_t i{0};

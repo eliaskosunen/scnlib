@@ -281,8 +281,10 @@ namespace scn {
                 scanner.format_options = integer_scanner<int>::only_unsigned;
                 scanner.base = 16;
                 int i;
+                SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                 auto res =
                     scanner._parse_int(i, scn::make_span(str, 2).as_const());
+                SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 if (!res) {
                     return {error::invalid_format_string,
                             "Failed to parse \\x in format string"};
@@ -681,42 +683,56 @@ namespace scn {
                 if (get_option(flag::use_specifiers)) {
                     SCN_EXPECT(localized);  // ensured by sanitize()
                     SCN_UNUSED(localized);
-                    if (get_option(specifier::alnum) && loc.is_alnum(ch)) {
+                    SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+                    if (get_option(specifier::alnum) &&
+                        loc.get_localized().is_alnum(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::alpha) && loc.is_alpha(ch)) {
+                    if (get_option(specifier::alpha) &&
+                        loc.get_localized().is_alpha(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::blank) && loc.is_blank(ch)) {
+                    if (get_option(specifier::blank) &&
+                        loc.get_localized().is_blank(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::cntrl) && loc.is_cntrl(ch)) {
+                    if (get_option(specifier::cntrl) &&
+                        loc.get_localized().is_cntrl(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::digit) && loc.is_digit(ch)) {
+                    if (get_option(specifier::digit) &&
+                        loc.get_localized().is_digit(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::graph) && loc.is_graph(ch)) {
+                    if (get_option(specifier::graph) &&
+                        loc.get_localized().is_graph(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::lower) && loc.is_lower(ch)) {
+                    if (get_option(specifier::lower) &&
+                        loc.get_localized().is_lower(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::print) && loc.is_print(ch)) {
+                    if (get_option(specifier::print) &&
+                        loc.get_localized().is_print(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::punct) && loc.is_punct(ch)) {
+                    if (get_option(specifier::punct) &&
+                        loc.get_localized().is_punct(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::space) && loc.is_space(ch)) {
+                    if (get_option(specifier::space) &&
+                        loc.get_localized().is_space(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::upper) && loc.is_upper(ch)) {
+                    if (get_option(specifier::upper) &&
+                        loc.get_localized().is_upper(ch)) {
                         return not_inverted;
                     }
-                    if (get_option(specifier::xdigit) && loc.is_xdigit(ch)) {
+                    if (get_option(specifier::xdigit) &&
+                        loc.get_localized().is_xdigit(ch)) {
                         return not_inverted;
                     }
+                    SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 }
                 if (get_option(flag::use_chars) && (ch >= 0 && ch <= 0x7f)) {
                     if (get_option(static_cast<char>(ch))) {
@@ -908,7 +924,9 @@ namespace scn {
             array<bool, 0xb0> set_options{{false}};
 
             struct set_range {
-                constexpr set_range(uint64_t b, uint64_t e) : begin(b), end(e) {}
+                constexpr set_range(uint64_t b, uint64_t e) : begin(b), end(e)
+                {
+                }
 
                 uint64_t begin{};
                 uint64_t end{};  // inclusive
@@ -984,14 +1002,25 @@ namespace scn {
                                   Allocator>& val,
                 Context& ctx)
             {
-                using char_type = typename Context::char_type;
-                using string_type =
-                    std::basic_string<char_type, std::char_traits<char_type>,
-                                      Allocator>;
+                if (set_parser.enabled()) {
+                    return {error::invalid_operation, "Unimplemented"};
+                }
+                return scan_word(ctx, val);
+            }
 
-                auto is_space_pred = [&ctx](char_type ch) {
-                    return ctx.locale().is_space(ch);
-                };
+            template <typename Context, typename Allocator>
+            error scan_word(
+                Context& ctx,
+                std::basic_string<typename Context::char_type,
+                                  std::char_traits<typename Context::char_type>,
+                                  Allocator>& val)
+            {
+                using string_type = std::basic_string<
+                    typename Context::char_type,
+                    std::char_traits<typename Context::char_type>, Allocator>;
+
+                auto is_space_pred = make_is_space_predicate(
+                    ctx.locale(), (common_options & localized) != 0);
 
                 if (Context::range_type::is_contiguous) {
                     auto s = read_until_space_zero_copy(ctx.range(),
@@ -1025,13 +1054,14 @@ namespace scn {
         struct string_view_scanner : string_scanner {
         public:
             template <typename Context>
-            error scan(basic_string_view<typename Context::char_type>& val,
-                       Context& ctx)
+            error scan_word(Context& ctx,
+                            basic_string_view<typename Context::char_type>& val)
             {
                 using char_type = typename Context::char_type;
-                auto is_space_pred = [&ctx](char_type ch) {
-                    return ctx.locale().is_space(ch);
-                };
+
+                auto is_space_pred = make_is_space_predicate(
+                    ctx.locale(), (common_options & localized) != 0);
+
                 if (!Context::range_type::is_contiguous) {
                     return {error::invalid_operation,
                             "Cannot read a string_view from a "
@@ -1045,6 +1075,13 @@ namespace scn {
                 val = basic_string_view<char_type>(s.value().data(),
                                                    s.value().size());
                 return {};
+            }
+
+            template <typename Context>
+            error scan(basic_string_view<typename Context::char_type>& val,
+                       Context& ctx)
+            {
+                return scan_word(ctx, val);
             }
         };
 

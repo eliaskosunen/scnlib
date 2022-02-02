@@ -225,8 +225,8 @@ namespace scn {
                         auto it = r.value();
                         std::basic_string<char_type> str(to_address(it),
                                                          s.size());
-                        ret = ctx.locale().read_num(tmp, str,
-                                                    static_cast<int>(base));
+                        ret = ctx.locale().get_localized().read_num(
+                            tmp, str, static_cast<int>(base));
 
                         if (tmp < T{0} &&
                             (format_options & only_unsigned) != 0) {
@@ -293,26 +293,14 @@ namespace scn {
             {
                 auto do_read = [&](Buf& b) -> error {
                     auto outputit = std::back_inserter(b);
-                    if ((common_options & localized) == 0) {
-                        const auto& loc = ctx.locale().as_locale_ref();
-                        auto e = read_until_space(
-                            ctx.range(), outputit,
-                            [&](const CharT& ch) { return loc.is_space(ch); },
-                            false);
-                        if (!e && b.empty()) {
-                            return e;
-                        }
-                        return {};
-                    }
-                    auto e = read_until_space(
-                        ctx.range(), outputit,
-                        [&](const CharT& ch) {
-                            return ctx.locale().is_space(ch);
-                        },
-                        false);
+                    auto is_space_pred = make_is_space_predicate(
+                        ctx.locale(), (common_options & localized) != 0);
+                    auto e = read_until_space(ctx.range(), outputit,
+                                              is_space_pred, false);
                     if (!e && b.empty()) {
                         return e;
                     }
+
                     return {};
                 };
 
@@ -330,10 +318,9 @@ namespace scn {
                 if (!e) {
                     return e;
                 }
-                auto thsep =
-                    ((common_options & localized) != 0)
-                        ? ctx.locale().thousands_separator()
-                        : locale_defaults<CharT>::thousands_separator();
+                auto thsep = ctx.locale()
+                                 .get((common_options & localized) != 0)
+                                 .thousands_separator();
 
                 auto it = tmp.begin();
                 for (; it != tmp.end(); ++it) {

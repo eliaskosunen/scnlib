@@ -28,38 +28,6 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        template <typename CharT>
-        class truename_falsename_storage {
-        public:
-            using char_type = CharT;
-            using string_type = std::basic_string<char_type>;
-            using string_view_type = basic_string_view<char_type>;
-
-            truename_falsename_storage(const void* loc);
-
-            constexpr const string_type& get_true_str() const
-            {
-                return m_truename;
-            }
-            constexpr const string_type& get_false_str() const
-            {
-                return m_falsename;
-            }
-
-            constexpr string_view_type get_true_view() const
-            {
-                return string_view_type(m_truename.data(), m_truename.size());
-            }
-            constexpr string_view_type get_false_view() const
-            {
-                return string_view_type(m_falsename.data(), m_falsename.size());
-            }
-
-        private:
-            string_type m_truename;
-            string_type m_falsename;
-        };
-
         constexpr bool has_zero(uint64_t v)
         {
             return (v - UINT64_C(0x0101010101010101)) & ~v &
@@ -204,194 +172,389 @@ namespace scn {
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wpadded")
 
-    template <typename CharT>
-    class basic_default_locale_ref {
-    public:
-        using char_type = CharT;
-        using string_type = std::basic_string<char_type>;
-        using string_view_type = basic_string_view<char_type>;
-        using defaults = detail::locale_defaults<char_type>;
+    // scn::scan:
+    //   - no L flag -> use hard-coded defaults, akin to "C"
+    //     locale_ref.default() -> default_locale_ref
+    //   - L flag -> use global C++ locale
+    //     locale_ref.localized() -> custom_locale_ref (global C++)
+    // scn::scan_localized:
+    //   - no L flag -> use hard-coded defaults, akin to "C"
+    //     locale_ref.default() -> default_locale_ref
+    //   - L flag -> use given C++ locale
+    //     locale_ref.localized() -> custom_locale_ref (given locale)
 
-        constexpr basic_default_locale_ref() = default;
+    namespace detail {
+        // constexpr locale
+        template <typename CharT>
+        struct basic_static_locale_ref {
+            using char_type = CharT;
+            using string_view_type = basic_string_view<char_type>;
+            using defaults = locale_defaults<char_type>;
 
-        basic_locale_ref<CharT> as_locale_ref() const
-        {
-            return {nullptr};
-        }
+            static constexpr bool is_static = true;
 
-        constexpr bool is_space(char_type ch) const
-        {
-            return detail::is_space(ch);
-        }
-        constexpr bool is_digit(char_type ch) const
-        {
-            return detail::is_digit(ch);
-        }
+            constexpr basic_static_locale_ref() = default;
 
-#define SCN_DEFINE_LOCALE_DEFAULT_FUNC(f) \
-    bool f(char_type) const               \
-    {                                     \
-        SCN_EXPECT(false);                \
-        SCN_UNREACHABLE;                  \
+            static constexpr bool is_space(char_type ch)
+            {
+                return detail::is_space(ch);
+            }
+            static constexpr bool is_digit(char_type ch)
+            {
+                return detail::is_digit(ch);
+            }
+
+            static constexpr char_type decimal_point()
+            {
+                return defaults::decimal_point();
+            }
+            static constexpr char_type thousands_separator()
+            {
+                return defaults::thousands_separator();
+            }
+
+            static constexpr string_view_type truename()
+            {
+                return defaults::truename();
+            }
+            static constexpr string_view_type falsename()
+            {
+                return defaults::falsename();
+            }
+
+            static CharT widen(char ch)
+            {
+                return detail::default_widen<CharT>::widen(ch);
+            }
+            static char narrow(CharT ch, char def)
+            {
+                return detail::default_narrow<CharT>::narrow(ch, def);
+            }
+        };
+
+        // base class
+        template <typename CharT>
+        class basic_locale_ref_impl_base {
+        public:
+            using char_type = CharT;
+            using string_type = std::basic_string<char_type>;
+            using string_view_type = basic_string_view<char_type>;
+
+            static constexpr bool is_static = false;
+
+            basic_locale_ref_impl_base() = default;
+
+            basic_locale_ref_impl_base(const basic_locale_ref_impl_base&) =
+                default;
+            basic_locale_ref_impl_base(basic_locale_ref_impl_base&&) = default;
+            basic_locale_ref_impl_base& operator=(
+                const basic_locale_ref_impl_base&) = default;
+            basic_locale_ref_impl_base& operator=(
+                basic_locale_ref_impl_base&&) = default;
+
+#define SCN_DEFINE_LOCALE_REF_CTYPE(f) \
+    bool is_##f(char_type ch) const    \
+    {                                  \
+        return do_is_##f(ch);          \
     }
-        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_alnum)
-        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_alpha)
-        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_blank)
-        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_cntrl)
-        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_graph)
-        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_lower)
-        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_print)
-        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_punct)
-        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_upper)
-        SCN_DEFINE_LOCALE_DEFAULT_FUNC(is_xdigit)
-#undef SCN_DEFINE_LOCALE_DEFAULT_FUNC
+            SCN_DEFINE_LOCALE_REF_CTYPE(space)
+            SCN_DEFINE_LOCALE_REF_CTYPE(digit)
+            // SCN_DEFINE_LOCALE_REF_CTYPE(alnum)
+            // SCN_DEFINE_LOCALE_REF_CTYPE(alpha)
+            // SCN_DEFINE_LOCALE_REF_CTYPE(blank)
+            // SCN_DEFINE_LOCALE_REF_CTYPE(cntrl)
+            // SCN_DEFINE_LOCALE_REF_CTYPE(graph)
+            // SCN_DEFINE_LOCALE_REF_CTYPE(lower)
+            // SCN_DEFINE_LOCALE_REF_CTYPE(print)
+            // SCN_DEFINE_LOCALE_REF_CTYPE(punct)
+            // SCN_DEFINE_LOCALE_REF_CTYPE(upper)
+            // SCN_DEFINE_LOCALE_REF_CTYPE(xdigit)
+#undef SCN_DEFINE_LOCALE_REF_CTYPE
 
-        constexpr char_type decimal_point() const
-        {
-            return defaults::decimal_point();
-        }
-        constexpr char_type thousands_separator() const
-        {
-            return defaults::thousands_separator();
-        }
+            char_type decimal_point() const
+            {
+                return do_decimal_point();
+            }
+            char_type thousands_separator() const
+            {
+                return do_thousands_separator();
+            }
 
-        constexpr string_view_type truename() const
-        {
-            return defaults::truename();
-        }
-        constexpr string_view_type falsename() const
-        {
-            return defaults::falsename();
-        }
+            string_view_type truename() const
+            {
+                return do_truename();
+            }
+            string_view_type falsename() const
+            {
+                return do_falsename();
+            }
 
-        CharT widen(char ch) const
-        {
-            return detail::default_widen<CharT>::widen(ch);
-        }
-        char narrow(CharT ch, char def) const
-        {
-            return detail::default_narrow<CharT>::narrow(ch, def);
-        }
+        protected:
+            ~basic_locale_ref_impl_base() = default;
 
-        template <typename T>
-        expected<std::ptrdiff_t> read_num(T& val,
-                                          const string_type& buf,
-                                          int base) const
-        {
-            return basic_locale_ref<CharT>{}.read_num(val, buf, base);
-        }
-    };
+        private:
+#define SCN_DECLARE_LOCALE_REF_CTYPE_DO(f) \
+    virtual bool do_is_##f(char_type) const = 0;
+            SCN_DECLARE_LOCALE_REF_CTYPE_DO(space)
+            SCN_DECLARE_LOCALE_REF_CTYPE_DO(digit)
+            // SCN_DECLARE_LOCALE_REF_CTYPE_DO(alnum)
+            // SCN_DECLARE_LOCALE_REF_CTYPE_DO(alpha)
+            // SCN_DECLARE_LOCALE_REF_CTYPE_DO(blank)
+            // SCN_DECLARE_LOCALE_REF_CTYPE_DO(cntrl)
+            // SCN_DECLARE_LOCALE_REF_CTYPE_DO(graph)
+            // SCN_DECLARE_LOCALE_REF_CTYPE_DO(lower)
+            // SCN_DECLARE_LOCALE_REF_CTYPE_DO(print)
+            // SCN_DECLARE_LOCALE_REF_CTYPE_DO(punct)
+            // SCN_DECLARE_LOCALE_REF_CTYPE_DO(upper)
+            // SCN_DECLARE_LOCALE_REF_CTYPE_DO(xdigit)
+#undef SCN_DECLARE_LOCALE_REF_CTYPE_DO
+
+            virtual char_type do_decimal_point() const = 0;
+            virtual char_type do_thousands_separator() const = 0;
+            virtual string_view_type do_truename() const = 0;
+            virtual string_view_type do_falsename() const = 0;
+        };
+
+        // hardcoded "C", using static_locale_ref
+        template <typename CharT>
+        class basic_default_locale_ref final
+            : public basic_locale_ref_impl_base<CharT> {
+            using base = basic_locale_ref_impl_base<CharT>;
+
+        public:
+            using char_type = typename base::char_type;
+            using string_view_type = typename base::string_view_type;
+
+            basic_default_locale_ref() = default;
+
+        private:
+            using static_type = basic_static_locale_ref<char_type>;
+
+            bool do_is_space(char_type ch) const override
+            {
+                return static_type::is_space(ch);
+            }
+            bool do_is_digit(char_type ch) const override
+            {
+                return static_type::is_digit(ch);
+            }
+
+            char_type do_decimal_point() const override
+            {
+                return static_type::decimal_point();
+            }
+            char_type do_thousands_separator() const override
+            {
+                return static_type::thousands_separator();
+            }
+            string_view_type do_truename() const override
+            {
+                return static_type::truename();
+            }
+            string_view_type do_falsename() const override
+            {
+                return static_type::falsename();
+            }
+        };
+
+        // custom
+        template <typename CharT>
+        class basic_custom_locale_ref final
+            : public basic_locale_ref_impl_base<CharT> {
+            using base = basic_locale_ref_impl_base<CharT>;
+
+        public:
+            using char_type = typename base::char_type;
+            using string_type = typename base::string_type;
+            using string_view_type = typename base::string_view_type;
+
+            basic_custom_locale_ref();
+            basic_custom_locale_ref(const void* locale);
+
+            basic_custom_locale_ref(const basic_custom_locale_ref&) = delete;
+            basic_custom_locale_ref& operator=(const basic_custom_locale_ref&) =
+                delete;
+
+            basic_custom_locale_ref(basic_custom_locale_ref&&);
+            basic_custom_locale_ref& operator=(basic_custom_locale_ref&&);
+
+            ~basic_custom_locale_ref();
+
+            const void* get_locale() const
+            {
+                return m_locale;
+            }
+
+#define SCN_DEFINE_CUSTOM_LOCALE_CTYPE(f) bool is_##f(char_type) const;
+            SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alnum)
+            SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alpha)
+            SCN_DEFINE_CUSTOM_LOCALE_CTYPE(blank)
+            SCN_DEFINE_CUSTOM_LOCALE_CTYPE(cntrl)
+            SCN_DEFINE_CUSTOM_LOCALE_CTYPE(graph)
+            SCN_DEFINE_CUSTOM_LOCALE_CTYPE(lower)
+            SCN_DEFINE_CUSTOM_LOCALE_CTYPE(print)
+            SCN_DEFINE_CUSTOM_LOCALE_CTYPE(punct)
+            SCN_DEFINE_CUSTOM_LOCALE_CTYPE(upper)
+            SCN_DEFINE_CUSTOM_LOCALE_CTYPE(xdigit)
+#undef SCN_DEFINE_CUSTOM_LOCALE_CTYPE
+
+            template <typename T>
+            expected<std::ptrdiff_t> read_num(T& val,
+                                              const string_type& buf,
+                                              int base) const;
+
+        private:
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+            bool do_is_space(char_type ch) const override;
+            bool do_is_digit(char_type ch) const override;
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+
+            char_type do_decimal_point() const override
+            {
+                return m_decimal_point;
+            }
+            char_type do_thousands_separator() const override
+            {
+                return m_thousands_separator;
+            }
+            string_view_type do_truename() const override
+            {
+                return string_view_type{m_truename.data(), m_truename.size()};
+            }
+            string_view_type do_falsename() const override
+            {
+                return string_view_type{m_falsename.data(), m_falsename.size()};
+            }
+
+            void _initialize();
+
+            string_type m_truename{};
+            string_type m_falsename{};
+            const void* m_locale{nullptr};
+            void* m_global_locale{nullptr};
+            char_type m_decimal_point{};
+            char_type m_thousands_separator{};
+        };
+    }  // namespace detail
 
     template <typename CharT>
     class basic_locale_ref {
     public:
         using char_type = CharT;
-        using string_type = std::basic_string<char_type>;
-        using string_view_type = basic_string_view<char_type>;
+        using impl_base = detail::basic_locale_ref_impl_base<char_type>;
+        using static_type = detail::basic_static_locale_ref<char_type>;
+        using default_type = detail::basic_default_locale_ref<char_type>;
+        using custom_type = detail::basic_custom_locale_ref<char_type>;
 
-        basic_locale_ref() = default;
-        basic_locale_ref(std::nullptr_t) : basic_locale_ref() {}
-        explicit basic_locale_ref(const void* loc);
+        // default
+        constexpr basic_locale_ref() = default;
+        // nullptr = global
+        constexpr basic_locale_ref(const void* p) : m_payload(p) {}
 
-        basic_locale_ref<CharT>& as_locale_ref()
+        basic_locale_ref clone() const
         {
-            return *this;
-        }
-        const basic_locale_ref<CharT>& as_locale_ref() const
-        {
-            return *this;
-        }
-
-        SCN_NODISCARD constexpr const void* get_ptr() const
-        {
-            return m_locale;
+            return {m_payload};
         }
 
-        bool is_space(char_type ch) const
+        constexpr bool has_custom() const
         {
-            if (is_default()) {
-                return detail::is_space(ch);
+            return m_payload != nullptr;
+        }
+
+        // hardcoded "C", constexpr, should be preferred whenever possible
+        constexpr static_type get_static() const
+        {
+            return {};
+        }
+
+        // hardcoded "C", not constexpr
+        default_type& get_default()
+        {
+            return m_default;
+        }
+        const default_type& get_default() const
+        {
+            return m_default;
+        }
+
+        // global locale or given locale
+        custom_type& get_localized()
+        {
+            _construct_custom();
+            return *m_custom;
+        }
+        const custom_type& get_localized() const
+        {
+            _construct_custom();
+            return *m_custom;
+        }
+
+        custom_type* get_localized_unsafe()
+        {
+            return m_custom.get();
+        }
+        const custom_type* get_localized_unsafe() const
+        {
+            return m_custom.get();
+        }
+
+        // virtual interface
+        impl_base& get(bool localized)
+        {
+            if (localized) {
+                return get_localized();
             }
-            return _is_space(ch);
+            return get_default();
         }
-        bool is_digit(char_type ch) const
+        const impl_base& get(bool localized) const
         {
-            if (is_default()) {
-                return detail::is_digit(ch);
+            if (localized) {
+                return get_localized();
             }
-            return _is_digit(ch);
+            return get_default();
         }
 
-        bool is_alnum(char_type) const;
-        bool is_alpha(char_type) const;
-        bool is_blank(char_type) const;
-        bool is_cntrl(char_type) const;
-        bool is_graph(char_type) const;
-        bool is_lower(char_type) const;
-        bool is_print(char_type) const;
-        bool is_punct(char_type) const;
-        bool is_upper(char_type) const;
-        bool is_xdigit(char_type) const;
-
-        constexpr char_type decimal_point() const
+        void prepare_localized() const
         {
-            return m_decimal_point;
+            _construct_custom();
         }
-        constexpr char_type thousands_separator() const
+        void reset_locale(const void* payload)
         {
-            return m_thousands_separator;
-        }
-
-        constexpr string_view_type truename() const
-        {
-            return string_view_type(m_truename.data(), m_truename.size());
-        }
-        constexpr string_view_type falsename() const
-        {
-            return string_view_type(m_falsename.data(), m_falsename.size());
-        }
-
-        CharT widen(char ch) const
-        {
-            if (SCN_LIKELY(is_default())) {
-                return detail::default_widen<CharT>::widen(ch);
-            }
-            return _widen(ch);
-        }
-        char narrow(CharT ch, char def) const
-        {
-            if (SCN_LIKELY(is_default())) {
-                return detail::default_narrow<CharT>::narrow(ch, def);
-            }
-            return _narrow(ch, def);
-        }
-
-        template <typename T>
-        expected<std::ptrdiff_t> read_num(T& val,
-                                          const string_type& buf,
-                                          int base) const;
-
-        SCN_NODISCARD constexpr bool is_default() const noexcept
-        {
-            return m_locale == nullptr;
+            m_custom.reset();
+            m_payload = payload;
+            _construct_custom();
         }
 
     private:
-        bool _is_space(char_type) const;
-        bool _is_digit(char_type) const;
-        CharT _widen(char ch) const;
-        char _narrow(char_type ch, char def) const;
+        void _construct_custom() const
+        {
+            if (m_custom) {
+                // already constructed
+                return;
+            }
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+            m_custom = detail::make_unique<custom_type>(m_payload);
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+        }
 
-        using defaults = detail::locale_defaults<char_type>;
-
-        const void* m_locale{nullptr};
-        detail::unique_ptr<detail::truename_falsename_storage<char_type>>
-            m_truefalse_storage{nullptr};
-        string_view_type m_truename{defaults::truename()};
-        string_view_type m_falsename{defaults::falsename()};
-        char_type m_decimal_point{defaults::decimal_point()};
-        char_type m_thousands_separator{defaults::thousands_separator()};
+        mutable detail::unique_ptr<custom_type> m_custom{nullptr};
+        const void* m_payload{nullptr};
+        default_type m_default{};
     };
+
+    template <typename CharT, typename Locale>
+    basic_locale_ref<CharT> make_locale_ref(const Locale& loc)
+    {
+        return {std::addressof(loc)};
+    }
+    template <typename CharT>
+    basic_locale_ref<CharT> make_default_locale_ref()
+    {
+        return {};
+    }
+
+    using locale_ref = basic_locale_ref<char>;
+    using wlocale_ref = basic_locale_ref<wchar_t>;
 
     SCN_CLANG_POP
     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE

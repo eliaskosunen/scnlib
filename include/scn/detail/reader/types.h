@@ -133,11 +133,11 @@ namespace scn {
                 using char_type = typename Context::char_type;
 
                 if ((format_options & allow_string) != 0) {
-                    auto truename = locale_defaults<char_type>::truename();
-                    auto falsename = locale_defaults<char_type>::falsename();
+                    auto truename = ctx.locale().get_static().truename();
+                    auto falsename = ctx.locale().get_static().falsename();
                     if ((common_options & localized) != 0) {
-                        truename = ctx.locale().as_locale_ref().truename();
-                        falsename = ctx.locale().as_locale_ref().falsename();
+                        truename = ctx.locale().get_localized().truename();
+                        falsename = ctx.locale().get_localized().falsename();
                     }
                     const auto max_len =
                         detail::max(truename.size(), falsename.size());
@@ -145,12 +145,10 @@ namespace scn {
                     buf.reserve(max_len);
 
                     auto tmp_it = std::back_inserter(buf);
-                    auto e = read_until_space(
-                        ctx.range(), tmp_it,
-                        [&ctx](char_type ch) {
-                            return ctx.locale().is_space(ch);
-                        },
-                        false);
+                    auto is_space_pred = make_is_space_predicate(
+                        ctx.locale(), (common_options & localized) != 0);
+                    auto e = read_until_space(ctx.range(), tmp_it,
+                                              is_space_pred, false);
                     if (!e) {
                         return e;
                     }

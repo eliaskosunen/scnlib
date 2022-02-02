@@ -142,7 +142,9 @@ namespace scn {
 
             ~unique_ptr() noexcept
             {
+                SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                 delete m_ptr;
+                SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
             }
 
             constexpr explicit operator bool() const noexcept
@@ -180,7 +182,9 @@ namespace scn {
         template <typename T, typename... Args>
         unique_ptr<T> make_unique(Args&&... a)
         {
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
             return unique_ptr<T>(new T(SCN_FWD(a)...));
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
         }
 
         template <typename T, std::size_t N>

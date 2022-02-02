@@ -33,127 +33,122 @@ namespace scn {
 
     namespace detail {
         template <typename CharT>
-        std::locale get_locale(const basic_locale_ref<CharT>& ref)
+        const std::locale& to_locale(const basic_custom_locale_ref<CharT>& l)
         {
-            if (ref.is_default()) {
-                return {};
-            }
-            return *static_cast<const std::locale*>(ref.get_ptr());
+            SCN_EXPECT(l.get_locale());
+            return *static_cast<const std::locale*>(l.get_locale());
         }
 
         template <typename CharT>
-        truename_falsename_storage<CharT>::truename_falsename_storage(
-            const void* loc)
-            : m_truename(std::use_facet<std::numpunct<CharT>>(
-                             *static_cast<const std::locale*>(loc))
-                             .truename()),
-              m_falsename(std::use_facet<std::numpunct<CharT>>(
-                              *static_cast<const std::locale*>(loc))
-                              .falsename())
+        basic_custom_locale_ref<CharT>::basic_custom_locale_ref()
         {
-            SCN_EXPECT(loc != nullptr);
+            m_global_locale = new std::locale{};
+            _initialize();
         }
-    }  // namespace detail
+        template <typename CharT>
+        basic_custom_locale_ref<CharT>::basic_custom_locale_ref(
+            const void* locale)
+            : m_locale(locale)
+        {
+            if (!locale) {
+                m_global_locale = new std::locale{};
+                m_locale = m_global_locale;
+            }
+            _initialize();
+        }
 
-    template <typename CharT>
-    basic_locale_ref<CharT>::basic_locale_ref(const void* loc)
-        : m_locale(loc),
-          m_truefalse_storage(
-              detail::make_unique<detail::truename_falsename_storage<CharT>>(
-                  loc)),
-          m_truename(m_truefalse_storage->get_true_view()),
-          m_falsename(m_truefalse_storage->get_false_view()),
-          m_decimal_point(
-              std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
-                  .decimal_point()),
-          m_thousands_separator(
-              std::use_facet<std::numpunct<CharT>>(detail::get_locale(*this))
-                  .thousands_sep())
-    {
-        SCN_EXPECT(loc != nullptr);
-    }
+        template <typename CharT>
+        void basic_custom_locale_ref<CharT>::_initialize()
+        {
+            const auto& facet =
+                std::use_facet<std::numpunct<CharT>>(to_locale(*this));
+            m_truename = facet.truename();
+            m_falsename = facet.falsename();
+            m_decimal_point = facet.decimal_point();
+            m_thousands_separator = facet.thousands_sep();
+        }
 
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::is_alnum(CharT ch) const
-    {
-        return std::isalnum(ch, detail::get_locale(*this));
-    }
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::is_alpha(CharT ch) const
-    {
-        return std::isalpha(ch, detail::get_locale(*this));
-    }
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::is_blank(CharT ch) const
-    {
-        // For some reason, there's no isblank in libc++
-        // return std::isblank(ch, detail::get_locale(*this));
+        template <typename CharT>
+        basic_custom_locale_ref<CharT>::basic_custom_locale_ref(
+            basic_custom_locale_ref&& o)
+        {
+            if (o.m_global_locale) {
+                m_global_locale = o.m_global_locale;
+                m_locale = m_global_locale;
+                o.m_global_locale = nullptr;
+                o.m_locale = nullptr;
+            }
+            else {
+                m_locale = o.m_locale;
+                o.m_locale = nullptr;
+            }
+            _initialize();
+        }
+        template <typename CharT>
+        auto basic_custom_locale_ref<CharT>::operator=(
+            basic_custom_locale_ref&& o) -> basic_custom_locale_ref&
+        {
+            delete static_cast<std::locale*>(m_global_locale);
 
-        return std::use_facet<std::ctype<CharT>>(detail::get_locale(*this))
-            .is(std::ctype_base::blank, ch);
-    }
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::is_cntrl(CharT ch) const
-    {
-        return std::iscntrl(ch, detail::get_locale(*this));
-    }
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::is_graph(CharT ch) const
-    {
-        return std::isgraph(ch, detail::get_locale(*this));
-    }
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::is_lower(CharT ch) const
-    {
-        return std::islower(ch, detail::get_locale(*this));
-    }
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::is_print(CharT ch) const
-    {
-        return std::isprint(ch, detail::get_locale(*this));
-    }
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::is_punct(CharT ch) const
-    {
-        return std::ispunct(ch, detail::get_locale(*this));
-    }
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::is_upper(CharT ch) const
-    {
-        return std::isupper(ch, detail::get_locale(*this));
-    }
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::is_xdigit(CharT ch) const
-    {
-        return std::isxdigit(ch, detail::get_locale(*this));
-    }
+            if (o.m_global_locale) {
+                m_global_locale = o.m_global_locale;
+                m_locale = m_global_locale;
+                o.m_global_locale = nullptr;
+                o.m_locale = nullptr;
+            }
+            else {
+                m_locale = o.m_locale;
+                o.m_locale = nullptr;
+            }
+            _initialize();
 
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::_is_space(CharT ch) const
-    {
-        return std::isspace(ch, detail::get_locale(*this));
-    }
-    template <typename CharT>
-    bool basic_locale_ref<CharT>::_is_digit(CharT ch) const
-    {
-        return std::isdigit(ch, detail::get_locale(*this));
-    }
+            return *this;
+        }
 
-    template <typename CharT>
-    CharT basic_locale_ref<CharT>::_widen(char ch) const
-    {
-        return std::use_facet<std::ctype<CharT>>(detail::get_locale(*this))
-            .widen(ch);
-    }
+        template <typename CharT>
+        basic_custom_locale_ref<CharT>::~basic_custom_locale_ref()
+        {
+            delete static_cast<std::locale*>(m_global_locale);
+        }
 
-    template <typename CharT>
-    char basic_locale_ref<CharT>::_narrow(char_type ch, char def) const
-    {
-        return std::use_facet<std::ctype<CharT>>(detail::get_locale(*this))
-            .narrow(ch, def);
-    }
+        template <typename CharT>
+        bool basic_custom_locale_ref<CharT>::do_is_space(char_type ch) const
+        {
+            return std::isspace(ch, to_locale(*this));
+        }
+        template <typename CharT>
+        bool basic_custom_locale_ref<CharT>::do_is_digit(char_type ch) const
+        {
+            return std::isdigit(ch, to_locale(*this));
+        }
 
-    namespace detail {
+#define SCN_DEFINE_CUSTOM_LOCALE_CTYPE(f)                           \
+    template <typename CharT>                                       \
+    bool basic_custom_locale_ref<CharT>::is_##f(char_type ch) const \
+    {                                                               \
+        return std::is##f(ch, to_locale(*this));                    \
+    }
+        SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alnum)
+        SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alpha)
+        SCN_DEFINE_CUSTOM_LOCALE_CTYPE(cntrl)
+        SCN_DEFINE_CUSTOM_LOCALE_CTYPE(graph)
+        SCN_DEFINE_CUSTOM_LOCALE_CTYPE(lower)
+        SCN_DEFINE_CUSTOM_LOCALE_CTYPE(print)
+        SCN_DEFINE_CUSTOM_LOCALE_CTYPE(punct)
+        SCN_DEFINE_CUSTOM_LOCALE_CTYPE(upper)
+        SCN_DEFINE_CUSTOM_LOCALE_CTYPE(xdigit)
+#undef SCN_DEFINE_CUSTOM_LOCALE_CTYPE
+
+        template <typename CharT>
+        bool basic_custom_locale_ref<CharT>::is_blank(char_type ch) const
+        {
+            // For some reason, there's no isblank in libc++
+            // return std::isblank(ch, to_locale(*this));
+
+            return std::use_facet<std::ctype<CharT>>(to_locale(*this))
+                .is(std::ctype_base::blank, ch);
+        }
+
         template <typename T>
         auto read_num_check_range(T val) ->
             typename std::enable_if<std::is_integral<T>::value, error>::type
@@ -191,10 +186,11 @@ namespace scn {
         }
 
         template <typename T, typename CharT>
-        expected<std::ptrdiff_t> read_num(T& val,
-                                          const std::locale& loc,
-                                          const std::basic_string<CharT>& buf,
-                                          int base)
+        expected<std::ptrdiff_t> do_read_num(
+            T& val,
+            const std::locale& loc,
+            const std::basic_string<CharT>& buf,
+            int base)
         {
 #if SCN_HAS_EXCEPTIONS
             std::basic_istringstream<CharT> ss(buf);
@@ -227,112 +223,114 @@ namespace scn {
                          "exceptions enabled");
 #endif
         }
-    }  // namespace detail
 
-    template <typename CharT>
-    template <typename T>
-    expected<std::ptrdiff_t> basic_locale_ref<CharT>::read_num(
-        T& val,
-        const string_type& buf,
-        int base) const
-    {
-        return detail::read_num<T, CharT>(val, detail::get_locale(*this), buf,
-                                          base);
-    }
+        template <typename CharT>
+        template <typename T>
+        expected<std::ptrdiff_t> basic_custom_locale_ref<CharT>::read_num(
+            T& val,
+            const string_type& buf,
+            int b) const
+        {
+            return do_read_num<T, CharT>(val, to_locale(*this), buf, b);
+        }
 
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wpadded")
-    template class basic_locale_ref<char>;
-    template class basic_locale_ref<wchar_t>;
-    SCN_CLANG_POP
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wpadded")
+        SCN_CLANG_IGNORE("-Wweak-template-vtables")
+        template class basic_custom_locale_ref<char>;
+        template class basic_custom_locale_ref<wchar_t>;
+        SCN_CLANG_POP
 
-    template expected<std::ptrdiff_t> basic_locale_ref<char>::read_num<short>(
-        short&,
-        const string_type&,
-        int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<char>::read_num<int>(int&, const string_type&, int) const;
-    template expected<std::ptrdiff_t> basic_locale_ref<char>::read_num<long>(
-        long&,
-        const string_type&,
-        int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<char>::read_num<long long>(long long&,
-                                                const string_type&,
-                                                int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<char>::read_num<unsigned short>(unsigned short&,
-                                                     const string_type&,
-                                                     int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<char>::read_num<unsigned int>(unsigned int&,
-                                                   const string_type&,
-                                                   int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<char>::read_num<unsigned long>(unsigned long&,
-                                                    const string_type&,
-                                                    int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<char>::read_num<unsigned long long>(unsigned long long&,
-                                                         const string_type&,
-                                                         int) const;
-    template expected<std::ptrdiff_t> basic_locale_ref<char>::read_num<float>(
-        float&,
-        const string_type&,
-        int) const;
-    template expected<std::ptrdiff_t> basic_locale_ref<char>::read_num<double>(
-        double&,
-        const string_type&,
-        int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<char>::read_num<long double>(long double&,
-                                                  const string_type&,
-                                                  int) const;
-
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<wchar_t>::read_num<short>(short&,
-                                               const string_type&,
-                                               int) const;
-    template expected<std::ptrdiff_t> basic_locale_ref<wchar_t>::read_num<int>(
-        int&,
-        const string_type&,
-        int) const;
-    template expected<std::ptrdiff_t> basic_locale_ref<wchar_t>::read_num<long>(
-        long&,
-        const string_type&,
-        int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<wchar_t>::read_num<long long>(long long&,
-                                                   const string_type&,
-                                                   int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<wchar_t>::read_num<unsigned short>(unsigned short&,
-                                                        const string_type&,
-                                                        int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<wchar_t>::read_num<unsigned int>(unsigned int&,
-                                                      const string_type&,
-                                                      int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<wchar_t>::read_num<unsigned long>(unsigned long&,
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<char>::read_num<short>(short&,
                                                        const string_type&,
                                                        int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<wchar_t>::read_num<unsigned long long>(unsigned long long&,
-                                                            const string_type&,
-                                                            int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<wchar_t>::read_num<float>(float&,
-                                               const string_type&,
-                                               int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<wchar_t>::read_num<double>(double&,
-                                                const string_type&,
-                                                int) const;
-    template expected<std::ptrdiff_t>
-    basic_locale_ref<wchar_t>::read_num<long double>(long double&,
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<char>::read_num<int>(int&,
                                                      const string_type&,
                                                      int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<char>::read_num<long>(long&,
+                                                      const string_type&,
+                                                      int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<char>::read_num<long long>(long long&,
+                                                           const string_type&,
+                                                           int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            char>::read_num<unsigned short>(unsigned short&,
+                                            const string_type&,
+                                            int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            char>::read_num<unsigned int>(unsigned int&,
+                                          const string_type&,
+                                          int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            char>::read_num<unsigned long>(unsigned long&,
+                                           const string_type&,
+                                           int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            char>::read_num<unsigned long long>(unsigned long long&,
+                                                const string_type&,
+                                                int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<char>::read_num<float>(float&,
+                                                       const string_type&,
+                                                       int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<char>::read_num<double>(double&,
+                                                        const string_type&,
+                                                        int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<char>::read_num<long double>(long double&,
+                                                             const string_type&,
+                                                             int) const;
+
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<wchar_t>::read_num<short>(short&,
+                                                          const string_type&,
+                                                          int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<wchar_t>::read_num<int>(int&,
+                                                        const string_type&,
+                                                        int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<wchar_t>::read_num<long>(long&,
+                                                         const string_type&,
+                                                         int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            wchar_t>::read_num<long long>(long long&,
+                                          const string_type&,
+                                          int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            wchar_t>::read_num<unsigned short>(unsigned short&,
+                                               const string_type&,
+                                               int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            wchar_t>::read_num<unsigned int>(unsigned int&,
+                                             const string_type&,
+                                             int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            wchar_t>::read_num<unsigned long>(unsigned long&,
+                                              const string_type&,
+                                              int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            wchar_t>::read_num<unsigned long long>(unsigned long long&,
+                                                   const string_type&,
+                                                   int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<wchar_t>::read_num<float>(float&,
+                                                          const string_type&,
+                                                          int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<wchar_t>::read_num<double>(double&,
+                                                           const string_type&,
+                                                           int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            wchar_t>::read_num<long double>(long double&,
+                                            const string_type&,
+                                            int) const;
+    }  // namespace detail
 
     SCN_END_NAMESPACE
 }  // namespace scn

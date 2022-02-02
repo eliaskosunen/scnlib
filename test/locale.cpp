@@ -18,10 +18,10 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
-TEST_CASE("basic_default_locale_ref")
+TEST_CASE("static locale")
 {
-    scn::basic_default_locale_ref<char> loc{};
-    scn::basic_default_locale_ref<wchar_t> wloc{};
+    scn::detail::basic_static_locale_ref<char> loc{};
+    scn::detail::basic_static_locale_ref<wchar_t> wloc{};
 
     SUBCASE("space")
     {
@@ -106,28 +106,13 @@ TEST_CASE("basic_default_locale_ref")
 
         CHECK(wloc.narrow(1024, 0) == 0);
     }
-
-    SUBCASE("read_num")
-    {
-        std::string str{"123"};
-        std::wstring wstr{L"456"};
-        int i{};
-
-        auto ret = loc.read_num(i, str, 0);
-        CHECK(ret);
-        CHECK(i == 123);
-
-        ret = wloc.read_num(i, wstr, 0);
-        CHECK(ret);
-        CHECK(i == 456);
-    }
 }
 
-TEST_CASE("basic_locale_ref")
+TEST_CASE("custom locale")
 {
     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-    scn::basic_locale_ref<char> loc{&std::locale::classic()};
-    scn::basic_locale_ref<wchar_t> wloc{&std::locale::classic()};
+    scn::detail::basic_custom_locale_ref<char> loc{&std::locale::classic()};
+    scn::detail::basic_custom_locale_ref<wchar_t> wloc{&std::locale::classic()};
     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
     SUBCASE("space")
@@ -203,6 +188,7 @@ TEST_CASE("basic_locale_ref")
                  0);
     }
 
+#if 0
     SUBCASE("widen & narrow")
     {
         CHECK(loc.widen('a') == 'a');
@@ -213,6 +199,7 @@ TEST_CASE("basic_locale_ref")
 
         CHECK(wloc.narrow(1024, 0) == 0);
     }
+#endif
 
     SUBCASE("read_num")
     {

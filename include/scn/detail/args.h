@@ -501,28 +501,10 @@ namespace scn {
                                             Format,
                                             Args&... args)
     {
-        using locale_type = basic_default_locale_ref<CharT>;
-        using context_type = basic_context<WrappedRange, locale_type>;
+        using context_type = basic_context<WrappedRange>;
         using parse_context_type =
             typename detail::parse_context_template_for_format<
-                Format>::template type<locale_type>;
-        return {detail::ctx_tag<context_type>(),
-                detail::parse_ctx_tag<parse_context_type>(), args...};
-    }
-    template <typename WrappedRange,
-              typename Format,
-              typename Locale,
-              typename... Args,
-              typename CharT = typename WrappedRange::char_type>
-    arg_store<CharT, Args...> make_args_for_localized(WrappedRange&,
-                                                      Format,
-                                                      Locale&,
-                                                      Args&... args)
-    {
-        using context_type = basic_context<WrappedRange, Locale>;
-        using parse_context_type =
-            typename detail::parse_context_template_for_format<
-                Format>::template type<Locale>;
+                Format>::template type<typename context_type::char_type>;
         return {detail::ctx_tag<context_type>(),
                 detail::parse_ctx_tag<parse_context_type>(), args...};
     }

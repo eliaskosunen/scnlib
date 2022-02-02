@@ -131,10 +131,9 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
 
 TEST_CASE("set parse")
 {
-    scn::basic_default_locale_ref<char> locale{};
+    scn::locale_ref locale{};
     auto make_parse_ctx = [&](scn::string_view str) {
-        return scn::basic_parse_context<scn::basic_default_locale_ref<char>>{
-            str, locale};
+        return scn::make_parse_context(str, locale);
     };
 
     using scanner_type = scn::detail::string_scanner;
@@ -401,7 +400,7 @@ TEST_CASE("set parse")
         CHECK(!scanner.set_parser.get_option('A'));
         CHECK(!scanner.set_parser.get_option('d'));
 
-        auto loc = pctx.locale();
+        const auto& loc = pctx.locale();
         CHECK(scanner.set_parser.check_character('a', false, loc));
         CHECK(scanner.set_parser.check_character('b', false, loc));
         CHECK(scanner.set_parser.check_character('c', false, loc));
@@ -430,7 +429,7 @@ TEST_CASE("set parse")
         CHECK(!scanner.set_parser.get_option('d'));
         CHECK(!scanner.set_parser.get_option('^'));
 
-        auto loc = pctx.locale();
+        const auto& loc = pctx.locale();
         CHECK(!scanner.set_parser.check_character('a', false, loc));
         CHECK(!scanner.set_parser.check_character('b', false, loc));
         CHECK(!scanner.set_parser.check_character('c', false, loc));
@@ -535,7 +534,7 @@ TEST_CASE("set parse")
         CHECK(!scanner.set_parser.get_option('d'));
         CHECK(!scanner.set_parser.get_option('D'));
 
-        auto loc = pctx.locale();
+        const auto& loc = pctx.locale();
         CHECK(scanner.set_parser.check_character('a', false, loc));
         CHECK(scanner.set_parser.check_character('b', false, loc));
         CHECK(scanner.set_parser.check_character('c', false, loc));

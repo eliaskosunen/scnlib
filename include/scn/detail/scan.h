@@ -89,19 +89,16 @@ namespace scn {
             static_assert(SCN_CHECK_CONCEPT(ranges::range<Range>),
                           "Input needs to be a Range");
 
-            using range_type = range_wrapper_for_t<Range>;
-            using locale_type =
-                basic_locale_ref<typename range_type::char_type>;
-
             auto range = wrap(SCN_FWD(r));
             auto format = detail::to_format(f);
             SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-            auto locale = locale_type{std::addressof(loc)};
+            auto locale =
+                make_locale_ref<typename decltype(range)::char_type>(loc);
             SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
-            auto args = make_args_for_localized(range, format, locale, a...);
-            auto ret =
-                vscan_localized(SCN_MOVE(range), SCN_MOVE(locale), format, {args});
+            auto args = make_args_for(range, format, a...);
+            auto ret = vscan_localized(SCN_MOVE(range), SCN_MOVE(locale),
+                                       format, {args});
             return detail::wrap_result(wrapped_error{ret.err},
                                        detail::range_tag<Range>{},
                                        SCN_MOVE(ret.range));
@@ -208,7 +205,7 @@ namespace scn {
         auto range = wrap(SCN_FWD(r));
         auto args = make_args_for(range, 1, value);
         auto ctx = make_context(SCN_MOVE(range));
-        auto pctx = make_parse_context(1, ctx);
+        auto pctx = make_parse_context(1, ctx.locale());
 
         auto err = visit(ctx, pctx, {args});
         if (!err) {
@@ -361,11 +358,8 @@ namespace scn {
      * @param f Format string to parse
      * @param a Member types (etc) to parse
      */
-    template <typename WrappedRange,
-              typename LocaleRef,
-              typename Format,
-              typename... Args>
-    error scan_usertype(basic_context<WrappedRange, LocaleRef>& ctx,
+    template <typename WrappedRange, typename Format, typename... Args>
+    error scan_usertype(basic_context<WrappedRange>& ctx,
                         const Format& f,
                         Args&... a)
     {
@@ -373,8 +367,8 @@ namespace scn {
                       "Have to scan at least a single argument");
 
         using char_type = typename WrappedRange::char_type;
-        auto args = make_args<basic_context<WrappedRange, LocaleRef>,
-                              basic_parse_context<LocaleRef>>(a...);
+        auto args = make_args<basic_context<WrappedRange>,
+                              basic_parse_context<char_type>>(a...);
         return vscan_usertype(ctx, basic_string_view<char_type>(f), {args});
     }
 
@@ -800,7 +794,7 @@ namespace scn {
         auto range = wrap(SCN_FWD(r));
         auto args = make_args_for(range, 1, value);
         auto ctx = make_context(SCN_MOVE(range));
-        auto pctx = make_parse_context(1, ctx);
+        auto pctx = make_parse_context(1, ctx.locale());
         auto cargs = basic_args<CharT>{args};
 
         while (true) {
@@ -880,7 +874,7 @@ namespace scn {
                 break;
             }
 
-            auto pctx = make_parse_context(1, ctx);
+            auto pctx = make_parse_context(1, ctx.locale());
             auto err = visit(ctx, pctx, basic_args<CharT>{args});
             if (!err) {
                 if (err == error::end_of_range) {
@@ -910,7 +904,7 @@ namespace scn {
                     break;
                 }
 
-                if (ctx.locale().is_space(next.value())) {
+                if (ctx.locale().get_static().is_space(next.value())) {
                     ctx.range().advance();
                     continue;
                 }

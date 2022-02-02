@@ -45,23 +45,16 @@ namespace scn {
 
             std::ptrdiff_t m_next_arg_id{0};
         };
-        template <typename Char>
-        class basic_parse_context_base : public parse_context_base {
-        public:
-            using parse_context_base::check_arg_id;
-            SCN_CONSTEXPR14 void check_arg_id(basic_string_view<Char>) {}
-        };
     }  // namespace detail
 
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wpadded")
 
-    template <typename Locale>
-    class basic_parse_context
-        : public detail::basic_parse_context_base<typename Locale::char_type> {
+    template <typename CharT>
+    class basic_parse_context : public detail::parse_context_base {
     public:
-        using locale_type = Locale;
-        using char_type = typename Locale::char_type;
+        using char_type = CharT;
+        using locale_type = basic_locale_ref<CharT>;
         using string_view_type = basic_string_view<char_type>;
         using iterator = typename string_view_type::iterator;
 
@@ -74,7 +67,7 @@ namespace scn {
         bool should_skip_ws()
         {
             bool skip = false;
-            while (*this && m_locale.is_space(next())) {
+            while (*this && m_locale.get_static().is_space(next())) {
                 skip = true;
                 advance();
             }
@@ -145,6 +138,9 @@ namespace scn {
             return next() == detail::ascii_widen<char_type>('}');
         }
 
+        using parse_context_base::check_arg_id;
+        SCN_CONSTEXPR14 void check_arg_id(basic_string_view<CharT>) {}
+
         SCN_CONSTEXPR14 void arg_begin() const noexcept {}
         SCN_CONSTEXPR14 void arg_end() const noexcept {}
 
@@ -208,15 +204,14 @@ namespace scn {
         locale_type& m_locale;
     };
 
-    template <typename Locale>
-    class basic_empty_parse_context
-        : public detail::basic_parse_context_base<typename Locale::char_type> {
+    template <typename CharT>
+    class basic_empty_parse_context : public detail::parse_context_base {
     public:
-        using locale_type = Locale;
-        using char_type = typename Locale::char_type;
+        using char_type = CharT;
+        using locale_type = basic_locale_ref<char_type>;
         using string_view_type = basic_string_view<char_type>;
 
-        constexpr basic_empty_parse_context(int args, Locale& loc)
+        constexpr basic_empty_parse_context(int args, locale_type& loc)
             : m_args_left(args), m_locale(loc)
         {
         }
@@ -278,6 +273,9 @@ namespace scn {
             return true;
         }
 
+        using parse_context_base::check_arg_id;
+        SCN_CONSTEXPR14 void check_arg_id(basic_string_view<CharT>) {}
+
         SCN_CONSTEXPR14 void arg_begin() const noexcept {}
         SCN_CONSTEXPR14 void arg_end() const noexcept {}
 
@@ -311,8 +309,7 @@ namespace scn {
         void reset_args_left(int n)
         {
             m_args_left = n;
-            detail::basic_parse_context_base<
-                typename Locale::char_type>::m_next_arg_id = 0;
+            parse_context_base::m_next_arg_id = 0;
         }
 
     private:
@@ -322,37 +319,38 @@ namespace scn {
     };
 
     namespace detail {
-        template <typename Locale, typename CharT = typename Locale::char_type>
-        basic_parse_context<Locale> make_parse_context_impl(
+        template <typename CharT>
+        basic_parse_context<CharT> make_parse_context_impl(
             basic_string_view<CharT> f,
-            Locale& loc)
+            basic_locale_ref<CharT>& loc)
         {
             return {f, loc};
         }
-        template <typename Locale, typename CharT = typename Locale::char_type>
-        basic_empty_parse_context<Locale> make_parse_context_impl(int i,
-                                                                  Locale& loc)
+        template <typename CharT>
+        basic_empty_parse_context<CharT> make_parse_context_impl(
+            int i,
+            basic_locale_ref<CharT>& loc)
         {
             return {i, loc};
         }
 
         template <typename CharT>
         struct parse_context_template_for_format<basic_string_view<CharT>> {
-            template <typename Locale>
-            using type = basic_parse_context<Locale>;
+            template <typename T>
+            using type = basic_parse_context<T>;
         };
         template <>
         struct parse_context_template_for_format<int> {
-            template <typename Locale>
-            using type = basic_empty_parse_context<Locale>;
+            template <typename CharT>
+            using type = basic_empty_parse_context<CharT>;
         };
     }  // namespace detail
 
-    template <typename F, typename Context>
-    auto make_parse_context(F f, Context& ctx)
-        -> decltype(detail::make_parse_context_impl(f, ctx.locale()))
+    template <typename F, typename CharT>
+    auto make_parse_context(F f, basic_locale_ref<CharT>& locale)
+        -> decltype(detail::make_parse_context_impl(f, locale))
     {
-        return detail::make_parse_context_impl(f, ctx.locale());
+        return detail::make_parse_context_impl(f, locale);
     }
 
     SCN_CLANG_POP

@@ -23,23 +23,18 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    template <typename WrappedRange, typename LocaleRef>
-    class basic_context : public LocaleRef {
+    template <typename WrappedRange>
+    class basic_context {
     public:
         using range_type = WrappedRange;
         using iterator = typename range_type::iterator;
         using sentinel = typename range_type::sentinel;
         using char_type = typename range_type::char_type;
-        using locale_type = LocaleRef;
+        using locale_type = basic_locale_ref<char_type>;
 
-        template <typename R>
-        basic_context(R&& r, detail::dummy_type)
-            : LocaleRef{}, m_range(SCN_FWD(r))
-        {
-        }
-        template <typename R>
-        basic_context(R&& r, LocaleRef&& loc)
-            : LocaleRef(SCN_MOVE(loc)), m_range(SCN_FWD(r))
+        basic_context(range_type&& r) : m_range(SCN_MOVE(r)) {}
+        basic_context(range_type&& r, locale_type&& loc)
+            : m_range(SCN_MOVE(r)), m_locale(SCN_MOVE(loc))
         {
         }
 
@@ -52,44 +47,43 @@ namespace scn {
             return m_range.end();
         }
 
-        range_type& range() &
+        range_type& range() & noexcept
         {
             return m_range;
         }
-        const range_type& range() const&
+        const range_type& range() const& noexcept
         {
             return m_range;
         }
-        range_type range() &&
+        range_type range() && noexcept
         {
             return m_range;
         }
 
-        LocaleRef& locale() noexcept
+        locale_type& locale() noexcept
         {
-            return static_cast<LocaleRef&>(*this);
+            return m_locale;
         }
-        const LocaleRef& locale() const noexcept
+        const locale_type& locale() const noexcept
         {
-            return static_cast<const LocaleRef&>(*this);
+            return m_locale;
         }
 
     private:
         range_type m_range;
+        locale_type m_locale{};
     };
 
     template <typename WrappedRange,
               typename CharT = typename WrappedRange::char_type>
-    basic_context<WrappedRange, basic_default_locale_ref<CharT>> make_context(
-        WrappedRange&& r)
+    basic_context<WrappedRange> make_context(WrappedRange r)
     {
-        return {SCN_MOVE(r), detail::dummy_type{}};
+        return {SCN_MOVE(r)};
     }
     template <typename WrappedRange, typename LocaleRef>
-    basic_context<WrappedRange, LocaleRef> make_context(WrappedRange&& r,
-                                                        LocaleRef&& loc)
+    basic_context<WrappedRange> make_context(WrappedRange r, LocaleRef&& loc)
     {
-        return {SCN_MOVE(r), SCN_MOVE(loc)};
+        return {SCN_MOVE(r), SCN_FWD(loc)};
     }
 
     template <typename CharT>

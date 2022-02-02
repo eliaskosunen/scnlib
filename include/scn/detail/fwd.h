@@ -40,22 +40,18 @@ namespace scn {
     // locale.h
 
     template <typename CharT>
-    class basic_default_locale_ref;
-    template <typename CharT>
     class basic_locale_ref;
 
     // context.h
 
-    template <typename WrappedRange,
-              typename LocaleRef =
-                  basic_default_locale_ref<typename WrappedRange::char_type>>
+    template <typename WrappedRange>
     class basic_context;
 
     // parse_context.h
 
-    template <typename Locale>
+    template <typename CharT>
     class basic_parse_context;
-    template <typename Locale>
+    template <typename CharT>
     class basic_empty_parse_context;
 
     namespace detail {

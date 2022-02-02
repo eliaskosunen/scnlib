@@ -496,6 +496,57 @@ namespace scn {
 
     /// @}
 
+    namespace detail {
+        template <typename CharT>
+        struct is_space_predicate {
+            using char_type = CharT;
+            using locale_type = basic_locale_ref<char_type>;
+
+            SCN_CONSTEXPR14 is_space_predicate(const locale_type& l,
+                                               bool localized)
+                : m_locale{nullptr}, m_fn{localized ? localized_call : call}
+            {
+                if (localized) {
+                    l.prepare_localized();
+                }
+                m_locale = l.get_localized_unsafe();
+            }
+
+            bool operator()(char_type ch) const
+            {
+                SCN_EXPECT(m_fn);
+                return m_fn(m_locale, ch);
+            }
+
+        private:
+            using static_locale_type = typename locale_type::static_type;
+            using custom_locale_type = typename locale_type::custom_type;
+            const custom_locale_type* m_locale;
+
+            constexpr static bool call(const custom_locale_type*, char_type ch)
+            {
+                return static_locale_type::is_space(ch);
+            }
+            static bool localized_call(const custom_locale_type* locale,
+                                       char_type ch)
+            {
+                SCN_EXPECT(locale != nullptr);
+                return locale->is_space(ch);
+            }
+
+            using fn_type = bool (*)(const custom_locale_type*, char_type);
+            fn_type m_fn{nullptr};
+        };
+
+        template <typename CharT>
+        is_space_predicate<CharT> make_is_space_predicate(
+            const basic_locale_ref<CharT>& locale,
+            bool localized)
+        {
+            return {locale, localized};
+        }
+    }  // namespace detail
+
     /// @{
 
     /**
@@ -507,8 +558,10 @@ namespace scn {
     template <typename Context,
               typename std::enable_if<
                   !Context::range_type::is_contiguous>::type* = nullptr>
-    error skip_range_whitespace(Context& ctx) noexcept
+    error skip_range_whitespace(Context& ctx, bool localized) noexcept
     {
+        auto is_space_pred =
+            detail::make_is_space_predicate(ctx.locale(), localized);
         while (true) {
             SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
@@ -516,7 +569,7 @@ namespace scn {
             if (SCN_UNLIKELY(!ch)) {
                 return ch.error();
             }
-            if (!ctx.locale().is_space(ch.value())) {
+            if (!is_space_pred(ch.value())) {
                 auto pb = putback_n(ctx.range(), 1);
                 if (SCN_UNLIKELY(!pb)) {
                     return pb;
@@ -531,13 +584,14 @@ namespace scn {
     template <typename Context,
               typename std::enable_if<
                   Context::range_type::is_contiguous>::type* = nullptr>
-    error skip_range_whitespace(Context& ctx) noexcept
+    error skip_range_whitespace(Context& ctx, bool localized) noexcept
     {
         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-
+        auto is_space_pred =
+            detail::make_is_space_predicate(ctx.locale(), localized);
         const auto end = ctx.range().end();
         for (auto it = ctx.range().begin(); it != end; ++it) {
-            if (!ctx.locale().is_space(*it)) {
+            if (!is_space_pred(*it)) {
                 ctx.range().advance_to(it);
                 return {};
             }
