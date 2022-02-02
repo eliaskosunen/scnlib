@@ -908,8 +908,10 @@ namespace scn {
             array<bool, 0xb0> set_options{{false}};
 
             struct set_range {
-                uint64_t begin{0};
-                uint64_t end{0};  // inclusive
+                constexpr set_range(uint64_t b, uint64_t e) : begin(b), end(e) {}
+
+                uint64_t begin{};
+                uint64_t end{};  // inclusive
 
                 static set_range single(char ch)
                 {

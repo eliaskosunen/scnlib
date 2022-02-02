@@ -202,7 +202,7 @@ namespace scn {
                 SCN_EXPECT(i < size());
                 return m_data[i];
             }
-            constexpr const_reference operator[](size_type i) const
+            SCN_CONSTEXPR14 const_reference operator[](size_type i) const
             {
                 SCN_EXPECT(i < size());
                 return m_data[i];

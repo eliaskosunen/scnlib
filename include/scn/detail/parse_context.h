@@ -128,7 +128,7 @@ namespace scn {
         {
             return chars_left() > 1;
         }
-        constexpr char_type peek(std::size_t n = 1) const noexcept
+        SCN_CONSTEXPR14 char_type peek(std::size_t n = 1) const noexcept
         {
             SCN_EXPECT(n < chars_left());
             return m_str[n];
@@ -302,7 +302,7 @@ namespace scn {
         {
             return false;
         }
-        constexpr expected<string_view_type> parse_arg_id() const
+        SCN_CONSTEXPR14 expected<string_view_type> parse_arg_id() const
         {
             SCN_EXPECT(good());
             return string_view_type{};

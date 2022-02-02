@@ -86,7 +86,11 @@ namespace scn {
     template <typename CharT>
     bool basic_locale_ref<CharT>::is_blank(CharT ch) const
     {
-        return std::isblank(ch, detail::get_locale(*this));
+        // For some reason, there's no isblank in libc++
+        // return std::isblank(ch, detail::get_locale(*this));
+
+        return std::use_facet<std::ctype<CharT>>(detail::get_locale(*this))
+            .is(std::ctype_base::blank, ch);
     }
     template <typename CharT>
     bool basic_locale_ref<CharT>::is_cntrl(CharT ch) const
