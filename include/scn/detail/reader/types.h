@@ -52,7 +52,13 @@ namespace scn {
             }
         };
 
-        struct buffer_scanner : public ::scn::empty_parser {
+        struct buffer_scanner : public common_parser {
+            template <typename ParseCtx>
+            error parse(ParseCtx& pctx)
+            {
+                return parse_common(pctx, {}, {}, null_each<ParseCtx>);
+            }
+
             template <typename Context>
             error scan(span<typename Context::char_type>& val, Context& ctx)
             {

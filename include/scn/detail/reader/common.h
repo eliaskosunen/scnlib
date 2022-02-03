@@ -736,8 +736,18 @@ namespace scn {
             return parse_common_end(pctx);
         }
 
-        enum common_options_type {
-            localized = 1,  // 'L'
+        size_t field_width{0};
+        size_t field_precision{0};
+        char32_t fill_char{0};
+        enum common_options_type : uint8_t {
+            localized = 1,                // 'L',
+            aligned_left = 2,             // '<'
+            aligned_right = 4,            // '>'
+            aligned_center = 8,           // '^'
+            assignment_suppression = 16,  // '*'
+            width_set = 32,               // width
+            precision_set = 64,           // .precision
+            all_common_options = 127
         };
         uint8_t common_options{0};
     };

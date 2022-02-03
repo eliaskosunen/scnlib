@@ -1,4 +1,5 @@
-`[[fill]align][sign][0][width][.precision][type]`
+`[[fill]align][*][width][L][type]`  
+`*` 
 
 # type
 
@@ -32,7 +33,8 @@ otherwise, match non-whitespace charaters, according to locale
 | `\w`       | Letters, numbers, underscore (`alnum` + `_`) | `[a-zA-Z0-9_]`                  |
 | `\s`       | Whitespace (`space`)                         | space, `\t\n\v\f\r`             |
 | `\d`       | Digits (`digit`)                             | `[0-9]`                         |
-| `\x__`     | Hex character (Range 0x00 to 0x7F)           |                                 |
+| `\x__`     | Hex character (2 chars, range 0x00 to 0x7F)  |                                 |
+| `\U______` | Unicode codepoint (6 chars, hex)             |                                 |
 
 `l`, `w`, `s`, `d` can be inverted with capitalization: `L`, `W`, `S`, `D`, respectively.  
 `^` can also be used for inverting, which must be the first character in the set.
