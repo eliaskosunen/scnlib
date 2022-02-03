@@ -1009,28 +1009,34 @@ namespace scn {
                 Context& ctx)
             {
                 if (set_parser.enabled()) {
-                    return {error::invalid_operation, "Unimplemented"};
+                    bool loc = (common_options & localized) != 0;
+                    auto pred = [&](typename Context::char_type ch) {
+                        return set_parser.check_character(ch, loc,
+                                                          ctx.locale());
+                    };
+                    return do_scan(ctx, val, pred);
                 }
-                return scan_word(ctx, val);
+
+                auto is_space_pred = make_is_space_predicate(
+                    ctx.locale(), (common_options & localized) != 0);
+                return do_scan(ctx, val, is_space_pred);
             }
 
-            template <typename Context, typename Allocator>
-            error scan_word(
+            template <typename Context, typename Allocator, typename Pred>
+            error do_scan(
                 Context& ctx,
                 std::basic_string<typename Context::char_type,
                                   std::char_traits<typename Context::char_type>,
-                                  Allocator>& val)
+                                  Allocator>& val,
+                Pred&& predicate)
             {
                 using string_type = std::basic_string<
                     typename Context::char_type,
                     std::char_traits<typename Context::char_type>, Allocator>;
 
-                auto is_space_pred = make_is_space_predicate(
-                    ctx.locale(), (common_options & localized) != 0);
-
                 if (Context::range_type::is_contiguous) {
-                    auto s = read_until_space_zero_copy(ctx.range(),
-                                                        is_space_pred, false);
+                    auto s = read_until_space_zero_copy(
+                        ctx.range(), SCN_FWD(predicate), false);
                     if (!s) {
                         return s.error();
                     }
@@ -1041,7 +1047,7 @@ namespace scn {
                 string_type tmp(val.get_allocator());
                 auto outputit = std::back_inserter(tmp);
                 auto ret = read_until_space(ctx.range(), outputit,
-                                            is_space_pred, false);
+                                            SCN_FWD(predicate), false);
                 if (SCN_UNLIKELY(!ret)) {
                     return ret;
                 }
@@ -1060,34 +1066,44 @@ namespace scn {
         struct string_view_scanner : string_scanner {
         public:
             template <typename Context>
-            error scan_word(Context& ctx,
-                            basic_string_view<typename Context::char_type>& val)
+            error scan(basic_string_view<typename Context::char_type>& val,
+                       Context& ctx)
             {
-                using char_type = typename Context::char_type;
-
-                auto is_space_pred = make_is_space_predicate(
-                    ctx.locale(), (common_options & localized) != 0);
-
                 if (!Context::range_type::is_contiguous) {
                     return {error::invalid_operation,
                             "Cannot read a string_view from a "
                             "non-contiguous_range"};
                 }
-                auto s = read_until_space_zero_copy(ctx.range(), is_space_pred,
-                                                    false);
+
+                if (set_parser.enabled()) {
+                    bool loc = (common_options & localized) != 0;
+                    auto pred = [&](typename Context::char_type ch) {
+                        return set_parser.check_character(ch, loc,
+                                                          ctx.locale());
+                    };
+                    return do_scan(ctx, val, pred);
+                }
+
+                auto is_space_pred = make_is_space_predicate(
+                    ctx.locale(), (common_options & localized) != 0);
+                return do_scan(ctx, val, is_space_pred);
+            }
+
+            template <typename Context, typename Pred>
+            error do_scan(Context& ctx,
+                          basic_string_view<typename Context::char_type>& val,
+                          Pred&& predicate)
+            {
+                SCN_EXPECT(Context::range_type::is_contiguous);
+
+                auto s = read_until_space_zero_copy(ctx.range(),
+                                                    SCN_FWD(predicate), false);
                 if (!s) {
                     return s.error();
                 }
-                val = basic_string_view<char_type>(s.value().data(),
-                                                   s.value().size());
+                val = basic_string_view<typename Context::char_type>(
+                    s.value().data(), s.value().size());
                 return {};
-            }
-
-            template <typename Context>
-            error scan(basic_string_view<typename Context::char_type>& val,
-                       Context& ctx)
-            {
-                return scan_word(ctx, val);
             }
         };
 
