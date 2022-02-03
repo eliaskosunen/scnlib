@@ -1016,8 +1016,8 @@ namespace scn {
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
                     auto pred = [&](typename Context::char_type ch) {
-                        return set_parser.check_character(ch, loc,
-                                                          ctx.locale());
+                        return !set_parser.check_character(ch, loc,
+                                                           ctx.locale());
                     };
                     return do_scan(ctx, val, pred);
                 }
@@ -1049,6 +1049,10 @@ namespace scn {
                         ctx.range(), SCN_FWD(predicate), false);
                     if (!s) {
                         return s.error();
+                    }
+                    if (s.value().size() == 0) {
+                        return {error::invalid_scanned_value,
+                                "Empty string parsed"};
                     }
                     val.assign(s.value().data(), s.value().size());
                     return {};
@@ -1088,8 +1092,8 @@ namespace scn {
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
                     auto pred = [&](typename Context::char_type ch) {
-                        return set_parser.check_character(ch, loc,
-                                                          ctx.locale());
+                        return !set_parser.check_character(ch, loc,
+                                                           ctx.locale());
                     };
                     return do_scan(ctx, val, pred);
                 }
@@ -1115,6 +1119,10 @@ namespace scn {
                                                     SCN_FWD(predicate), false);
                 if (!s) {
                     return s.error();
+                }
+                if (s.value().size() == 0) {
+                    return {error::invalid_scanned_value,
+                            "Empty string parsed"};
                 }
                 val = basic_string_view<typename Context::char_type>(
                     s.value().data(), s.value().size());

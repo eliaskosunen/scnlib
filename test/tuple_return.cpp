@@ -58,14 +58,13 @@ struct non_default_construct {
 namespace scn {
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wpadded")
-    template <typename CharT>
-    struct scanner<CharT, optional<non_default_construct>>
-        : public scanner<CharT, int> {
+    template <>
+    struct scanner<optional<non_default_construct>> : public scanner<int> {
         template <typename Context>
         error scan(optional<non_default_construct>& val, Context& ctx)
         {
             int tmp{};
-            auto ret = scanner<CharT, int>::scan(tmp, ctx);
+            auto ret = scanner<int>::scan(tmp, ctx);
             if (!ret) {
                 return ret;
             }

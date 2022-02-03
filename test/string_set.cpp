@@ -435,3 +435,36 @@ TEST_CASE("set parse")
         CHECK(!scanner.set_parser.check_character('D', false, loc));
     }
 }
+
+TEST_CASE("set scanning")
+{
+    SUBCASE("simple")
+    {
+        std::string str;
+        auto ret = scn::scan("foo", "{:[a-z]}", str);
+        CHECK(ret);
+        CHECK(ret.range().empty());
+        CHECK(str == "foo");
+    }
+
+    SUBCASE("preceding whitespace")
+    {
+        std::string str;
+        auto ret = scn::scan(" foo", "{:[\\S]}", str);
+        CHECK(!ret);
+        CHECK(ret.error() == scn::error::invalid_scanned_value);
+        CHECK(str.empty());
+        str.clear();
+
+        ret = scn::scan(" foo", " {:[\\S]}", str);
+        CHECK(ret);
+        CHECK(str == "foo");
+        str.clear();
+
+        std::string w;
+        ret = scn::scan(" foo", "{:[\\s]}{:[\\S]}", w, str);
+        CHECK(ret);
+        CHECK(w == " ");
+        CHECK(str == "foo");
+    }
+}
