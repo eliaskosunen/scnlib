@@ -585,7 +585,7 @@ namespace scn {
                 SCN_EXPECT(pos < size());
                 return *(begin() + pos);
             }
-            constexpr const_reference operator[](size_type pos) const
+            SCN_CONSTEXPR14 const_reference operator[](size_type pos) const
             {
                 SCN_EXPECT(pos < size());
                 return *(begin() + pos);
@@ -596,7 +596,7 @@ namespace scn {
                 SCN_EXPECT(!empty());
                 return *begin();
             }
-            constexpr const_reference front() const
+            SCN_CONSTEXPR14 const_reference front() const
             {
                 SCN_EXPECT(!empty());
                 return *begin();
@@ -607,7 +607,7 @@ namespace scn {
                 SCN_EXPECT(!empty());
                 return *(end() - 1);
             }
-            constexpr const_reference back() const
+            SCN_CONSTEXPR14 const_reference back() const
             {
                 SCN_EXPECT(!empty());
                 return *(end() - 1);

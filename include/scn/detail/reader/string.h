@@ -788,12 +788,18 @@ namespace scn {
 
             SCN_CONSTEXPR14 bool& get_option(char ch)
             {
+                SCN_GCC_PUSH
+                SCN_GCC_IGNORE("-Wtype-limits")
                 SCN_EXPECT(ch >= 0 && ch <= 0x7f);
+                SCN_GCC_POP
                 return set_options[static_cast<size_t>(ch)];
             }
             SCN_NODISCARD SCN_CONSTEXPR14 bool get_option(char ch) const
             {
+                SCN_GCC_PUSH
+                SCN_GCC_IGNORE("-Wtype-limits")
                 SCN_EXPECT(ch >= 0 && ch <= 0x7f);
+                SCN_GCC_POP
                 return set_options[static_cast<size_t>(ch)];
             }
 
