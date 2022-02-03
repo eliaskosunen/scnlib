@@ -114,13 +114,22 @@ namespace scn {
         error scan_custom_arg(void* arg, Context& ctx, ParseCtx& pctx) noexcept
         {
             SCN_EXPECT(arg != nullptr);
+            scanner<T> s;
 
-            scanner<typename Context::char_type, T> s;
             auto err = pctx.parse(s);
             if (!err) {
                 return err;
             }
-            return s.scan(*static_cast<T*>(arg), ctx);
+
+            if (s.skip_preceding_whitespace()) {
+                err = skip_range_whitespace(ctx, false);
+                if (!err) {
+                    return err;
+                }
+            }
+
+            auto& val = *static_cast<T*>(arg);
+            return s.scan(val, ctx);
         }
 
         struct monostate {

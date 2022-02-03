@@ -61,8 +61,19 @@ namespace scn {
 
     // reader/common.h
 
-    template <typename CharT, typename T, typename Enable = void>
+    template <typename T, typename Enable = void>
     struct scanner;
+
+    // defined here to avoid including <scn.h> if the user wants to create a
+    // scanner for their own type
+    struct parser_base {
+        static constexpr bool skip_preceding_whitespace()
+        {
+            return true;
+        }
+    };
+    struct empty_parser;
+    struct common_parser;
 
     // result.h
 

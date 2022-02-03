@@ -24,6 +24,11 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
     namespace detail {
         struct char_scanner : common_parser {
+            static constexpr bool skip_preceding_whitespace()
+            {
+                return false;
+            }
+
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {

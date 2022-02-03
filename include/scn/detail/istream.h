@@ -111,18 +111,23 @@ namespace scn {
         };
     }  // namespace detail
 
-    template <typename CharT, typename T>
-    struct scanner<CharT,
-                   T,
+    template <typename T>
+    struct scanner<T,
                    typename std::enable_if<
-                       detail::is_std_streamable<CharT, T>::value>::type>
+                       detail::is_std_streamable<char, T>::value ||
+                       detail::is_std_streamable<wchar_t, T>::value>::type>
         : public empty_parser {
         template <typename Context>
         error scan(T& val, Context& ctx)
         {
+            static_assert(detail::is_std_streamable<typename Context::char_type,
+                                                    T>::value,
+                          "Type can not be read from a basic_istream of this "
+                          "character type");
             detail::range_streambuf<typename Context::range_type> streambuf(
                 ctx.range());
-            std::basic_istream<CharT> stream(std::addressof(streambuf));
+            std::basic_istream<typename Context::char_type> stream(
+                std::addressof(streambuf));
 
             if (!(stream >> val)) {
                 if (stream.eof()) {
@@ -130,10 +135,10 @@ namespace scn {
                 }
                 if (stream.bad()) {
                     return {error::unrecoverable_source_error,
-                                 "Bad std::istream after reading"};
+                            "Bad std::istream after reading"};
                 }
                 return {error::invalid_scanned_value,
-                             "Failed to read with std::istream"};
+                        "Failed to read with std::istream"};
             }
             return {};
         }

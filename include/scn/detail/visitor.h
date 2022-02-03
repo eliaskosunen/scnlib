@@ -23,6 +23,31 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    namespace detail {
+        template <typename Scanner,
+                  typename T,
+                  typename Context,
+                  typename ParseCtx>
+        error visitor_boilerplate(T& val, Context& ctx, ParseCtx& pctx)
+        {
+            Scanner scanner;
+
+            auto err = pctx.parse(scanner);
+            if (!err) {
+                return err;
+            }
+
+            if (scanner.skip_preceding_whitespace()) {
+                err = skip_range_whitespace(ctx, false);
+                if (!err) {
+                    return err;
+                }
+            }
+
+            return scanner.scan(val, ctx);
+        }
+    }  // namespace detail
+
     template <typename Context, typename ParseCtx>
     class basic_visitor {
     public:
@@ -44,41 +69,25 @@ namespace scn {
     private:
         auto visit(char_type& val, detail::priority_tag<1>) -> error
         {
-            detail::char_scanner s;
-            auto err = parse(s);
-            if (!err) {
-                return err;
-            }
-            return s.scan(val, *m_ctx);
+            return detail::visitor_boilerplate<detail::char_scanner>(
+                val, *m_ctx, *m_pctx);
         }
         auto visit(span<char_type>& val, detail::priority_tag<1>) -> error
         {
-            detail::buffer_scanner s;
-            auto err = parse(s);
-            if (!err) {
-                return err;
-            }
-            return s.scan(val, *m_ctx);
+            return detail::visitor_boilerplate<detail::buffer_scanner>(
+                val, *m_ctx, *m_pctx);
         }
         auto visit(bool& val, detail::priority_tag<1>) -> error
         {
-            detail::bool_scanner s;
-            auto err = parse(s);
-            if (!err) {
-                return err;
-            }
-            return s.scan(val, *m_ctx);
+            return detail::visitor_boilerplate<detail::bool_scanner>(
+                val, *m_ctx, *m_pctx);
         }
 
-#define SCN_VISIT_INT(T)                         \
-    error visit(T& val, detail::priority_tag<0>) \
-    {                                            \
-        detail::integer_scanner<T> s;            \
-        auto err = parse(s);                     \
-        if (!err) {                              \
-            return err;                          \
-        }                                        \
-        return s.scan(val, *m_ctx);              \
+#define SCN_VISIT_INT(T)                                                \
+    error visit(T& val, detail::priority_tag<0>)                        \
+    {                                                                   \
+        return detail::visitor_boilerplate<detail::integer_scanner<T>>( \
+            val, *m_ctx, *m_pctx);                                      \
     }
         SCN_VISIT_INT(short)
         SCN_VISIT_INT(int)
@@ -90,15 +99,11 @@ namespace scn {
         SCN_VISIT_INT(unsigned long long)
 #undef SCN_VISIT_INT
 
-#define SCN_VISIT_FLOAT(T)                       \
-    error visit(T& val, detail::priority_tag<1>) \
-    {                                            \
-        detail::float_scanner<T> s;              \
-        auto err = parse(s);                     \
-        if (!err) {                              \
-            return err;                          \
-        }                                        \
-        return s.scan(val, *m_ctx);              \
+#define SCN_VISIT_FLOAT(T)                                            \
+    error visit(T& val, detail::priority_tag<1>)                      \
+    {                                                                 \
+        return detail::visitor_boilerplate<detail::float_scanner<T>>( \
+            val, *m_ctx, *m_pctx);                                    \
     }
         SCN_VISIT_FLOAT(float)
         SCN_VISIT_FLOAT(double)
@@ -108,22 +113,14 @@ namespace scn {
         auto visit(std::basic_string<char_type>& val, detail::priority_tag<1>)
             -> error
         {
-            detail::string_scanner s;
-            auto err = parse(s);
-            if (!err) {
-                return err;
-            }
-            return s.scan(val, *m_ctx);
+            return detail::visitor_boilerplate<detail::string_scanner>(
+                val, *m_ctx, *m_pctx);
         }
         auto visit(basic_string_view<char_type>& val, detail::priority_tag<1>)
             -> error
         {
-            detail::string_view_scanner s;
-            auto err = parse(s);
-            if (!err) {
-                return err;
-            }
-            return s.scan(val, *m_ctx);
+            return detail::visitor_boilerplate<detail::string_view_scanner>(
+                val, *m_ctx, *m_pctx);
         }
         auto visit(typename arg_type::handle val, detail::priority_tag<1>)
             -> error
@@ -134,12 +131,6 @@ namespace scn {
             -> error
         {
             SCN_UNREACHABLE;
-        }
-
-        template <typename Scanner>
-        error parse(Scanner& s)
-        {
-            return m_pctx->parse(s);
         }
 
         Context* m_ctx;
@@ -155,12 +146,14 @@ namespace scn {
         using arg_type = basic_arg<char_type>;
         auto arg = arg_type{};
 
+#if 0
         {
             auto ret = skip_range_whitespace(ctx, false);
             if (!ret) {
                 return ret;
             }
         }
+#endif
 
         while (pctx) {
             if (pctx.should_skip_ws()) {

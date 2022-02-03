@@ -786,7 +786,7 @@ namespace scn {
                 last = 0xaf
             };
 
-            SCN_CONSTEXPR14 bool& get_option(char ch)
+            bool& get_option(char ch)
             {
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wtype-limits")
@@ -794,7 +794,7 @@ namespace scn {
                 SCN_GCC_POP
                 return set_options[static_cast<size_t>(ch)];
             }
-            SCN_NODISCARD SCN_CONSTEXPR14 bool get_option(char ch) const
+            SCN_NODISCARD bool get_option(char ch) const
             {
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wtype-limits")
@@ -803,25 +803,25 @@ namespace scn {
                 return set_options[static_cast<size_t>(ch)];
             }
 
-            SCN_CONSTEXPR14 bool& get_option(specifier s)
+            bool& get_option(specifier s)
             {
                 return set_options[static_cast<size_t>(s)];
             }
-            SCN_NODISCARD SCN_CONSTEXPR14 bool get_option(specifier s) const
+            SCN_NODISCARD bool get_option(specifier s) const
             {
                 return set_options[static_cast<size_t>(s)];
             }
 
-            SCN_CONSTEXPR14 bool& get_option(flag f)
+            bool& get_option(flag f)
             {
                 return set_options[static_cast<size_t>(f)];
             }
-            SCN_NODISCARD SCN_CONSTEXPR14 bool get_option(flag f) const
+            SCN_NODISCARD bool get_option(flag f) const
             {
                 return set_options[static_cast<size_t>(f)];
             }
 
-            SCN_NODISCARD SCN_CONSTEXPR14 bool enabled() const
+            SCN_NODISCARD bool enabled() const
             {
                 return get_option(flag::enabled);
             }
@@ -969,6 +969,11 @@ namespace scn {
         };
 
         struct string_scanner : common_parser {
+            static constexpr bool skip_preceding_whitespace()
+            {
+                return false;
+            }
+
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {
@@ -1015,6 +1020,11 @@ namespace scn {
                                                           ctx.locale());
                     };
                     return do_scan(ctx, val, pred);
+                }
+
+                auto e = skip_range_whitespace(ctx, false);
+                if (!e) {
+                    return e;
                 }
 
                 auto is_space_pred = make_is_space_predicate(
@@ -1082,6 +1092,11 @@ namespace scn {
                                                           ctx.locale());
                     };
                     return do_scan(ctx, val, pred);
+                }
+
+                auto e = skip_range_whitespace(ctx, false);
+                if (!e) {
+                    return e;
                 }
 
                 auto is_space_pred = make_is_space_predicate(

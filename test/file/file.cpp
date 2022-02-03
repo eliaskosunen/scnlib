@@ -208,8 +208,8 @@ struct istream_int_and_string {
 };
 
 namespace scn {
-    template <typename CharT>
-    struct scanner<CharT, int_and_string> : public scn::empty_parser {
+    template <>
+    struct scanner<int_and_string> : public scn::empty_parser {
         template <typename Context>
         error scan(int_and_string& val, Context& ctx)
         {
@@ -217,8 +217,8 @@ namespace scn {
         }
     };
 
-    template <typename CharT>
-    struct scanner<CharT, two_strings> : public scn::empty_parser {
+    template <>
+    struct scanner<two_strings> : public scn::empty_parser {
         template <typename Context>
         error scan(two_strings& val, Context& ctx)
         {

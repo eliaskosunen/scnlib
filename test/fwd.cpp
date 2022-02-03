@@ -21,8 +21,8 @@ struct user_type {
 };
 
 namespace scn {
-    template <typename CharT>
-    struct scanner<CharT, user_type> {
+    template <>
+    struct scanner<user_type> : parser_base {
     };
 }  // namespace scn
 

@@ -950,13 +950,13 @@ namespace scn {
         return temp(discard_type<T>{})();
     }
 
-    template <typename CharT, typename T>
-    struct scanner<CharT, discard_type<T>> : public scanner<CharT, T> {
+    template <typename T>
+    struct scanner<discard_type<T>> : public scanner<T> {
         template <typename Context>
         error scan(discard_type<T>&, Context& ctx)
         {
             T tmp;
-            return scanner<CharT, T>::scan(tmp, ctx);
+            return scanner<T>::scan(tmp, ctx);
         }
     };
 

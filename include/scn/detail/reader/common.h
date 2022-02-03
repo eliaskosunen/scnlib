@@ -508,8 +508,8 @@ namespace scn {
             {
                 if (localized) {
                     l.prepare_localized();
+                    m_locale = l.get_localized_unsafe();
                 }
-                m_locale = l.get_localized_unsafe();
             }
 
             bool operator()(char_type ch) const
@@ -604,7 +604,7 @@ namespace scn {
 
     /// @}
 
-    struct empty_parser {
+    struct empty_parser : parser_base {
         template <typename ParseCtx>
         error parse(ParseCtx& pctx)
         {
@@ -621,7 +621,7 @@ namespace scn {
         }
     };
 
-    struct common_parser {
+    struct common_parser : parser_base {
         template <typename ParseCtx>
         error parse_common_begin(ParseCtx& pctx)
         {

@@ -121,6 +121,7 @@ namespace scn {
             error scan(T& val, Context& ctx)
             {
                 using char_type = typename Context::char_type;
+
                 auto do_parse_float = [&](span<const char_type> s) -> error {
                     T tmp = 0;
                     expected<std::ptrdiff_t> ret{0};

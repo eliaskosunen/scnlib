@@ -20,12 +20,19 @@
 
 TEST_CASE("char")
 {
-    char ch1{}, ch2{};
-    auto ret = scn::scan(" ab", "{}{}", ch1, ch2);
+    char ch[3] = {};
+    auto ret = scn::scan(" ab", "{}{}{}", ch[0], ch[1], ch[2]);
 
     CHECK(ret);
-    CHECK(ch1 == 'a');
-    CHECK(ch2 == 'b');
+    CHECK(ch[0] == ' ');
+    CHECK(ch[1] == 'a');
+    CHECK(ch[2] == 'b');
+    std::fill(ch, ch + 3, 0);
+
+    ret = scn::scan(" ab", " {}{}", ch[0], ch[1]);
+    CHECK(ret);
+    CHECK(ch[0] == 'a');
+    CHECK(ch[1] == 'b');
 }
 
 TEST_CASE("char format string")

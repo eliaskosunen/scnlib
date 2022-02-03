@@ -29,71 +29,71 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    template <typename CharT>
-    struct scanner<CharT, CharT> : public detail::char_scanner {
+    template <>
+    struct scanner<char> : public detail::char_scanner {
+    };
+    template <>
+    struct scanner<wchar_t> : public detail::char_scanner {
     };
     template <typename CharT>
-    struct scanner<CharT, span<CharT>> : public detail::buffer_scanner {
+    struct scanner<span<CharT>> : public detail::buffer_scanner {
     };
-    template <typename CharT>
-    struct scanner<CharT, bool> : public detail::bool_scanner {
+    template <>
+    struct scanner<bool> : public detail::bool_scanner {
     };
-    template <typename CharT>
-    struct scanner<CharT, short> : public detail::integer_scanner<short> {
+    template <>
+    struct scanner<short> : public detail::integer_scanner<short> {
     };
-    template <typename CharT>
-    struct scanner<CharT, int> : public detail::integer_scanner<int> {
+    template <>
+    struct scanner<int> : public detail::integer_scanner<int> {
     };
-    template <typename CharT>
-    struct scanner<CharT, long> : public detail::integer_scanner<long> {
+    template <>
+    struct scanner<long> : public detail::integer_scanner<long> {
     };
-    template <typename CharT>
-    struct scanner<CharT, long long>
-        : public detail::integer_scanner<long long> {
+    template <>
+    struct scanner<long long> : public detail::integer_scanner<long long> {
     };
-    template <typename CharT>
-    struct scanner<CharT, unsigned short>
+    template <>
+    struct scanner<unsigned short>
         : public detail::integer_scanner<unsigned short> {
     };
-    template <typename CharT>
-    struct scanner<CharT, unsigned int>
+    template <>
+    struct scanner<unsigned int>
         : public detail::integer_scanner<unsigned int> {
     };
-    template <typename CharT>
-    struct scanner<CharT, unsigned long>
+    template <>
+    struct scanner<unsigned long>
         : public detail::integer_scanner<unsigned long> {
     };
-    template <typename CharT>
-    struct scanner<CharT, unsigned long long>
+    template <>
+    struct scanner<unsigned long long>
         : public detail::integer_scanner<unsigned long long> {
     };
-    template <typename CharT>
-    struct scanner<CharT, float> : public detail::float_scanner<float> {
+    template <>
+    struct scanner<float> : public detail::float_scanner<float> {
     };
-    template <typename CharT>
-    struct scanner<CharT, double> : public detail::float_scanner<double> {
+    template <>
+    struct scanner<double> : public detail::float_scanner<double> {
     };
-    template <typename CharT>
-    struct scanner<CharT, long double>
-        : public detail::float_scanner<long double> {
+    template <>
+    struct scanner<long double> : public detail::float_scanner<long double> {
     };
     template <typename CharT, typename Allocator>
-    struct scanner<CharT,
-                   std::basic_string<CharT, std::char_traits<CharT>, Allocator>>
+    struct scanner<std::basic_string<CharT, std::char_traits<CharT>, Allocator>>
         : public detail::string_scanner {
     };
     template <typename CharT>
-    struct scanner<CharT, basic_string_view<CharT>>
+    struct scanner<basic_string_view<CharT>>
         : public detail::string_view_scanner {
     };
 #if SCN_HAS_STRING_VIEW
     template <typename CharT>
-    struct scanner<CharT, std::basic_string_view<CharT>>
+    struct scanner<std::basic_string_view<CharT>>
         : public detail::std_string_view_scanner {
     };
 #endif
-    template <typename CharT>
-    struct scanner<CharT, detail::monostate>;
+    template <>
+    struct scanner<detail::monostate>;
 
     SCN_END_NAMESPACE
 }  // namespace scn
