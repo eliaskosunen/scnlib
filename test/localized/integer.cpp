@@ -117,12 +117,6 @@ TEST_CASE("Option n")
     CHECK(i == 1);
     i = 0;
 
-    // {:nL} == {:Ln}
-    ret = scn::scan_localized(fi, "1", "{:nL}", i);
-    CHECK(ret);
-    CHECK(i == 1);
-    i = 0;
-
     // {:n} without locale -> use global C++ locale
     ret = scn::scan("1", "{:n}", i);
     CHECK(ret);
@@ -136,20 +130,20 @@ TEST_CASE("thsep")
     auto en = std::locale{"en_US.UTF-8"};
     auto fi = std::locale{"fi_FI.UTF-8"};
 
-    // {:'L} with locale -> locale thsep, built-in parser
-    auto ret = scn::scan_localized(en, "100,200", "{:'L}", i);
+    // {:L'} with locale -> locale thsep, built-in parser
+    auto ret = scn::scan_localized(en, "100,200", "{:L'}", i);
     CHECK(ret);
     CHECK(i == 100200);
     i = 0;
 
-    // {:'n} with locale -> locale thsep, use iostreams
-    ret = scn::scan_localized(en, "100,200", "{:'n}", i);
+    // {:n'} with locale -> locale thsep, use iostreams
+    ret = scn::scan_localized(en, "100,200", "{:n'}", i);
     CHECK(ret);
     CHECK(i == 100200);
     i = 0;
 
-    // {:'Ln} == {:'n}
-    ret = scn::scan_localized(en, "100,200", "{:'Ln}", i);
+    // {:Ln'} == {:n'}
+    ret = scn::scan_localized(en, "100,200", "{:Ln'}", i);
     CHECK(ret);
     CHECK(i == 100200);
     i = 0;
@@ -160,8 +154,8 @@ TEST_CASE("thsep")
     CHECK(i == 100200);
     i = 0;
 
-    // {:'L} without locale -> use global locale
-    ret = scn::scan("100,200", "{:'L}", i);
+    // {:L'} without locale -> use global locale
+    ret = scn::scan("100,200", "{:L'}", i);
     CHECK(ret);
     CHECK(i == 100200);
     i = 0;

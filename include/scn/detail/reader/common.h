@@ -542,10 +542,10 @@ namespace scn {
                 SCN_EXPECT(locale != nullptr);
                 return locale->is_space(ch);
             }
-            constexpr static bool call_counting(const custom_locale_type*,
-                                                char_type ch,
-                                                size_t& i,
-                                                size_t max)
+            SCN_CONSTEXPR14 static bool call_counting(const custom_locale_type*,
+                                                      char_type ch,
+                                                      size_t& i,
+                                                      size_t max)
             {
                 if (i == max) {
                     return true;
