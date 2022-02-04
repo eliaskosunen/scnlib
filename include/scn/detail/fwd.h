@@ -71,9 +71,14 @@ namespace scn {
         {
             return true;
         }
+        static constexpr bool support_align_and_fill()
+        {
+            return false;
+        }
     };
     struct empty_parser;
     struct common_parser;
+    struct common_parser_default;
 
     namespace detail {
         template <typename T>

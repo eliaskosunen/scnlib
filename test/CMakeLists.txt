@@ -38,6 +38,7 @@ make_test(wrap wrap.cpp)
 
 make_test(result result.cpp)
 make_test(istream istream.cpp)
+make_test(format format.cpp)
 make_test(tuple-return tuple_return.cpp)
 
 make_test(char char.cpp)

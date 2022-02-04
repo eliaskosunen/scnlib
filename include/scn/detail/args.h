@@ -19,6 +19,7 @@
 #define SCN_DETAIL_ARGS_H
 
 #include "fwd.h"
+#include "reader/common.h"
 #include "result.h"
 #include "util.h"
 
@@ -113,23 +114,8 @@ namespace scn {
         template <typename Context, typename ParseCtx, typename T>
         error scan_custom_arg(void* arg, Context& ctx, ParseCtx& pctx) noexcept
         {
-            SCN_EXPECT(arg != nullptr);
-            scanner<T> s;
-
-            auto err = pctx.parse(s);
-            if (!err) {
-                return err;
-            }
-
-            if (s.skip_preceding_whitespace()) {
-                err = skip_range_whitespace(ctx, false);
-                if (!err) {
-                    return err;
-                }
-            }
-
-            auto& val = *static_cast<T*>(arg);
-            return s.scan(val, ctx);
+            return visitor_boilerplate<scanner<T>>(*static_cast<T*>(arg), ctx,
+                                                   pctx);
         }
 
         struct monostate {

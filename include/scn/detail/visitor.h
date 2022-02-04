@@ -23,31 +23,6 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        template <typename Scanner,
-                  typename T,
-                  typename Context,
-                  typename ParseCtx>
-        error visitor_boilerplate(T& val, Context& ctx, ParseCtx& pctx)
-        {
-            Scanner scanner;
-
-            auto err = pctx.parse(scanner);
-            if (!err) {
-                return err;
-            }
-
-            if (scanner.skip_preceding_whitespace()) {
-                err = skip_range_whitespace(ctx, false);
-                if (!err) {
-                    return err;
-                }
-            }
-
-            return scanner.scan(val, ctx);
-        }
-    }  // namespace detail
-
     template <typename Context, typename ParseCtx>
     class basic_visitor {
     public:

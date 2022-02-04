@@ -631,6 +631,11 @@ namespace scn {
     };
 
     struct common_parser : parser_base {
+        static constexpr bool support_align_and_fill()
+        {
+            return true;
+        }
+
         template <typename ParseCtx>
         error parse_common_begin(ParseCtx& pctx)
         {
@@ -690,11 +695,53 @@ namespace scn {
                 return {};
             };
 
-            if (pctx.locale().get_static().is_digit(ch)) {
-                if ((common_options & width_set) != 0) {
-                    return {error::invalid_format_string,
-                            "Repeat 'width' flag in format string"};
+            auto get_align_char = [&](char_type c) -> common_options_type {
+                if (c == detail::ascii_widen<char_type>('<')) {
+                    return aligned_left;
                 }
+                if (c == detail::ascii_widen<char_type>('>')) {
+                    return aligned_right;
+                }
+                if (c == detail::ascii_widen<char_type>('^')) {
+                    return aligned_center;
+                }
+                return common_options_none;
+            };
+            auto parse_align = [&](common_options_type align, char_type fill) {
+                if (align != common_options_none) {
+                    common_options |= align;
+                }
+                fill_char = static_cast<char32_t>(fill);
+            };
+
+            common_options_type align{};
+            bool align_set = false;
+            if (pctx.chars_left() > 1 &&
+                ch != detail::ascii_widen<char_type>('[')) {
+                const auto peek = pctx.peek();
+                align = get_align_char(peek);
+                if (align != common_options_none) {
+                    parse_align(align, ch);
+
+                    auto e = next_char();
+                    SCN_ENSURE(e);
+                    if (!next_char()) {
+                        return {};
+                    }
+                    align_set = true;
+                }
+            }
+            if (!align_set) {
+                align = get_align_char(ch);
+                if (align != common_options_none) {
+                    parse_align(align, detail::ascii_widen<char_type>(' '));
+                    if (!next_char()) {
+                        return {};
+                    }
+                }
+            }
+
+            if (pctx.locale().get_static().is_digit(ch)) {
                 common_options |= width_set;
 
                 size_t w{};
@@ -730,10 +777,6 @@ namespace scn {
                 }
             }
             if (ch == detail::ascii_widen<char_type>('L')) {
-                if (SCN_UNLIKELY((common_options & localized) != 0)) {
-                    return {error::invalid_format_string,
-                            "Repeat 'L' flag in format string"};
-                }
                 common_options |= localized;
 
                 if (!next_char()) {
@@ -849,17 +892,34 @@ namespace scn {
             return parse_common(pctx, {}, {}, null_type_cb<ParseCtx>);
         }
 
+        constexpr bool is_aligned_left() const noexcept
+        {
+            return (common_options & aligned_left) != 0 ||
+                   (common_options & aligned_center) != 0;
+        }
+        constexpr bool is_aligned_right() const noexcept
+        {
+            return (common_options & aligned_right) != 0 ||
+                   (common_options & aligned_center) != 0;
+        }
+        template <typename CharT>
+        constexpr CharT get_fill_char() const noexcept
+        {
+            return static_cast<CharT>(fill_char);
+        }
+
         size_t field_width{0};
         size_t field_precision{0};
         char32_t fill_char{0};
         enum common_options_type : uint8_t {
+            common_options_none = 0,
             localized = 1,       // 'L',
             aligned_left = 2,    // '<'
             aligned_right = 4,   // '>'
             aligned_center = 8,  // '^'
             width_set = 16,      // width
             precision_set = 32,  // .precision
-            all_common_options = 63
+            common_options_all = 63,
         };
         uint8_t common_options{0};
     };
@@ -871,6 +931,120 @@ namespace scn {
             return parse_default(pctx);
         }
     };
+
+    namespace detail {
+        template <typename Context,
+                  typename std::enable_if<
+                      !Context::range_type::is_contiguous>::type* = nullptr>
+        error scan_alignment(Context& ctx,
+                             typename Context::char_type fill) noexcept
+        {
+            while (true) {
+                SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+
+                auto ch = read_char(ctx.range());
+                if (SCN_UNLIKELY(!ch)) {
+                    return ch.error();
+                }
+                if (ch.value() != fill) {
+                    auto pb = putback_n(ctx.range(), 1);
+                    if (SCN_UNLIKELY(!pb)) {
+                        return pb;
+                    }
+                    break;
+                }
+
+                SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+            }
+            return {};
+        }
+        template <typename Context,
+                  typename std::enable_if<
+                      Context::range_type::is_contiguous>::type* = nullptr>
+        error scan_alignment(Context& ctx,
+                             typename Context::char_type fill) noexcept
+        {
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+            const auto end = ctx.range().end();
+            for (auto it = ctx.range().begin(); it != end; ++it) {
+                if (*it != fill) {
+                    ctx.range().advance_to(it);
+                    return {};
+                }
+            }
+            ctx.range().advance_to(end);
+            return {};
+
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+        }
+
+        template <typename Scanner, typename = void>
+        struct scanner_supports_alignment : std::false_type {
+        };
+        template <typename Scanner>
+        struct scanner_supports_alignment<
+            Scanner,
+            typename std::enable_if<Scanner::support_align_and_fill()>::type>
+            : std::true_type {
+        };
+
+        template <typename Context, typename Scanner>
+        error skip_alignment(Context& ctx,
+                             Scanner& scanner,
+                             bool left,
+                             std::true_type)
+        {
+            if (left && !scanner.is_aligned_left()) {
+                return {};
+            }
+            if (!left && !scanner.is_aligned_right()) {
+                return {};
+            }
+            return scan_alignment(
+                ctx,
+                scanner.template get_fill_char<typename Context::char_type>());
+        }
+        template <typename Context, typename Scanner>
+        error skip_alignment(Context&, Scanner&, bool, std::false_type)
+        {
+            return {};
+        }
+
+        template <typename Scanner,
+                  typename T,
+                  typename Context,
+                  typename ParseCtx>
+        error visitor_boilerplate(T& val, Context& ctx, ParseCtx& pctx)
+        {
+            Scanner scanner;
+
+            auto err = pctx.parse(scanner);
+            if (!err) {
+                return err;
+            }
+
+            if (scanner.skip_preceding_whitespace()) {
+                err = skip_range_whitespace(ctx, false);
+                if (!err) {
+                    return err;
+                }
+            }
+
+            err = skip_alignment(ctx, scanner, false,
+                                 scanner_supports_alignment<Scanner>{});
+            if (!err) {
+                return err;
+            }
+
+            err = scanner.scan(val, ctx);
+            if (!err) {
+                return err;
+            }
+
+            return skip_alignment(ctx, scanner, true,
+                                  scanner_supports_alignment<Scanner>{});
+        }
+    }  // namespace detail
 
     SCN_END_NAMESPACE
 }  // namespace scn
