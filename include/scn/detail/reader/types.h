@@ -69,6 +69,10 @@ namespace scn {
                     return {};
                 }
 
+                auto size = val.ssize();
+                if (field_width != 0) {
+                    size = min(size, static_cast<std::ptrdiff_t>(field_width));
+                }
                 auto s = read_zero_copy(ctx.range(), val.ssize());
                 if (!s) {
                     return s.error();
@@ -158,7 +162,8 @@ namespace scn {
 
                     auto tmp_it = std::back_inserter(buf);
                     auto is_space_pred = make_is_space_predicate(
-                        ctx.locale(), (common_options & localized) != 0);
+                        ctx.locale(), (common_options & localized) != 0,
+                        field_width);
                     auto e = read_until_space(ctx.range(), tmp_it,
                                               is_space_pred, false);
                     if (!e) {

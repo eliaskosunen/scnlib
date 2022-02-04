@@ -1028,7 +1028,8 @@ namespace scn {
                 }
 
                 auto is_space_pred = make_is_space_predicate(
-                    ctx.locale(), (common_options & localized) != 0);
+                    ctx.locale(), (common_options & localized) != 0,
+                    field_width);
                 return do_scan(ctx, val, is_space_pred);
             }
 
@@ -1104,7 +1105,8 @@ namespace scn {
                 }
 
                 auto is_space_pred = make_is_space_predicate(
-                    ctx.locale(), (common_options & localized) != 0);
+                    ctx.locale(), (common_options & localized) != 0,
+                    field_width);
                 return do_scan(ctx, val, is_space_pred);
             }
 

@@ -159,7 +159,7 @@ namespace scn {
                 };
 
                 auto is_space_pred = make_is_space_predicate(
-                    ctx.locale(), (common_options & localized) != 0);
+                    ctx.locale(), (common_options & localized) != 0, field_width);
 
                 if (Context::range_type::is_contiguous) {
                     auto s = read_until_space_zero_copy(ctx.range(),

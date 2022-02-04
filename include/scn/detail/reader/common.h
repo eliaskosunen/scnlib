@@ -503,8 +503,11 @@ namespace scn {
             using locale_type = basic_locale_ref<char_type>;
 
             SCN_CONSTEXPR14 is_space_predicate(const locale_type& l,
-                                               bool localized)
-                : m_locale{nullptr}, m_fn{localized ? localized_call : call}
+                                               bool localized,
+                                               size_t width)
+                : m_locale{nullptr},
+                  m_width{width},
+                  m_fn{get_fn(localized, width != 0)}
             {
                 if (localized) {
                     l.prepare_localized();
@@ -512,38 +515,80 @@ namespace scn {
                 }
             }
 
-            bool operator()(char_type ch) const
+            bool operator()(char_type ch)
             {
                 SCN_EXPECT(m_fn);
-                return m_fn(m_locale, ch);
+                return m_fn(m_locale, ch, m_i, m_width);
             }
 
         private:
             using static_locale_type = typename locale_type::static_type;
             using custom_locale_type = typename locale_type::custom_type;
             const custom_locale_type* m_locale;
+            size_t m_width{0}, m_i{0};
 
-            constexpr static bool call(const custom_locale_type*, char_type ch)
+            constexpr static bool call(const custom_locale_type*,
+                                       char_type ch,
+                                       size_t&,
+                                       size_t)
             {
                 return static_locale_type::is_space(ch);
             }
             static bool localized_call(const custom_locale_type* locale,
-                                       char_type ch)
+                                       char_type ch,
+                                       size_t&,
+                                       size_t)
             {
                 SCN_EXPECT(locale != nullptr);
                 return locale->is_space(ch);
             }
+            constexpr static bool call_counting(const custom_locale_type*,
+                                                char_type ch,
+                                                size_t& i,
+                                                size_t max)
+            {
+                if (i == max) {
+                    return true;
+                }
+                ++i;
+                return static_locale_type::is_space(ch);
+            }
+            static bool localized_call_counting(
+                const custom_locale_type* locale,
+                char_type ch,
+                size_t& i,
+                size_t max)
+            {
+                SCN_EXPECT(locale != nullptr);
+                if (i == max) {
+                    return true;
+                }
+                ++i;
+                return locale->is_space(ch);
+            }
 
-            using fn_type = bool (*)(const custom_locale_type*, char_type);
+            using fn_type = bool (*)(const custom_locale_type*,
+                                     char_type,
+                                     size_t&,
+                                     size_t);
             fn_type m_fn{nullptr};
+
+            static SCN_CONSTEXPR14 fn_type get_fn(bool localized, bool counting)
+            {
+                if (localized) {
+                    return counting ? localized_call_counting : localized_call;
+                }
+                return counting ? call_counting : call;
+            }
         };
 
         template <typename CharT>
         is_space_predicate<CharT> make_is_space_predicate(
             const basic_locale_ref<CharT>& locale,
-            bool localized)
+            bool localized,
+            size_t width = 0)
         {
-            return {locale, localized};
+            return {locale, localized, width};
         }
     }  // namespace detail
 
@@ -750,31 +795,7 @@ namespace scn {
                     return e;
                 }
                 field_width = w;
-
-                if (!next_char()) {
-                    return {};
-                }
-            }
-            if (ch == detail::ascii_widen<char_type>('.')) {
-                auto e = next_char();
-                if (!e) {
-                    return e;
-                }
-                if (!pctx.locale().get_static().is_digit(ch)) {
-                    return {error::invalid_format_string,
-                            "Invalid precision flag in format string"};
-                }
-
-                size_t p{};
-                e = parse_number(p);
-                if (!e) {
-                    return e;
-                }
-                field_precision = p;
-
-                if (!next_char()) {
-                    return {};
-                }
+                return {};
             }
             if (ch == detail::ascii_widen<char_type>('L')) {
                 common_options |= localized;
@@ -819,12 +840,12 @@ namespace scn {
                 return e;
             }
 
+            if (!pctx) {
+                return {error::invalid_format_string,
+                        "Unexpected end of format string"};
+            }
             if (pctx.check_arg_end()) {
                 return {};
-            }
-            e = check_end(pctx);
-            if (!e) {
-                return e;
             }
 
             e = parse_common_flags(pctx);
@@ -832,12 +853,12 @@ namespace scn {
                 return e;
             }
 
+            if (!pctx) {
+                return {error::invalid_format_string,
+                        "Unexpected end of format string"};
+            }
             if (pctx.check_arg_end()) {
                 return {};
-            }
-            e = check_end(pctx);
-            if (!e) {
-                return e;
             }
 
             for (auto ch = pctx.next(); pctx && !pctx.check_arg_end();
@@ -909,7 +930,6 @@ namespace scn {
         }
 
         size_t field_width{0};
-        size_t field_precision{0};
         char32_t fill_char{0};
         enum common_options_type : uint8_t {
             common_options_none = 0,
@@ -918,8 +938,7 @@ namespace scn {
             aligned_right = 4,   // '>'
             aligned_center = 8,  // '^'
             width_set = 16,      // width
-            precision_set = 32,  // .precision
-            common_options_all = 63,
+            common_options_all = 31,
         };
         uint8_t common_options{0};
     };

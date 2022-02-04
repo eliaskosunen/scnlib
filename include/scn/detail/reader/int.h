@@ -294,7 +294,8 @@ namespace scn {
                 auto do_read = [&](Buf& b) -> error {
                     auto outputit = std::back_inserter(b);
                     auto is_space_pred = make_is_space_predicate(
-                        ctx.locale(), (common_options & localized) != 0);
+                        ctx.locale(), (common_options & localized) != 0,
+                        field_width);
                     auto e = read_until_space(ctx.range(), outputit,
                                               is_space_pred, false);
                     if (!e && b.empty()) {
@@ -353,7 +354,10 @@ namespace scn {
                 if (SCN_UNLIKELY((format_options & allow_thsep) != 0)) {
                     return _read_source(ctx, buf, s, std::false_type{});
                 }
-                auto ret = read_all_zero_copy(ctx.range());
+                auto ret = read_zero_copy(
+                    ctx.range(), field_width != 0
+                                     ? static_cast<std::ptrdiff_t>(field_width)
+                                     : ctx.range().size());
                 if (!ret) {
                     return ret.error();
                 }

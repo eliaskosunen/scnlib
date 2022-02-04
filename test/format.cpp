@@ -94,3 +94,39 @@ TEST_CASE("align + fill")
         CHECK(a.ch == 'a');
     }
 }
+
+TEST_CASE("width")
+{
+    SUBCASE("string over")
+    {
+        std::string str;
+        auto e = scn::scan("foo", "{:2}", str);
+        CHECK(e);
+        CHECK(e.range_as_string() == "o");
+        CHECK(str == "fo");
+    }
+    SUBCASE("string under")
+    {
+        std::string str;
+        auto e = scn::scan("foo", "{:4}", str);
+        CHECK(e);
+        CHECK(e.empty());
+        CHECK(str == "foo");
+    }
+    SUBCASE("int over")
+    {
+        int i;
+        auto e = scn::scan("123", "{:2}", i);
+        CHECK(e);
+        CHECK(e.range_as_string() == "3");
+        CHECK(i == 12);
+    }
+    SUBCASE("int under")
+    {
+        int i;
+        auto e = scn::scan("123", "{:4}", i);
+        CHECK(e);
+        CHECK(e.empty());
+        CHECK(i == 123);
+    }
+}
