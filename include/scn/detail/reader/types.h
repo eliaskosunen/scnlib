@@ -53,51 +53,6 @@ namespace scn {
             }
         };
 
-        struct buffer_scanner : public common_parser {
-            template <typename ParseCtx>
-            error parse(ParseCtx& pctx)
-            {
-                return parse_common(pctx, {}, {}, null_type_cb<ParseCtx>);
-            }
-
-            template <typename Context>
-            error scan(span<typename Context::char_type>& val, Context& ctx)
-            {
-                using char_type = typename Context::char_type;
-
-                if (val.size() == 0) {
-                    return {};
-                }
-
-                auto size = val.ssize();
-                if (field_width != 0) {
-                    size = min(size, static_cast<std::ptrdiff_t>(field_width));
-                }
-                auto s = read_zero_copy(ctx.range(), val.ssize());
-                if (!s) {
-                    return s.error();
-                }
-                if (s.value().size() != 0) {
-                    if (s.value().size() != val.size()) {
-                        return {error::end_of_range, "EOF"};
-                    }
-                    std::memcpy(val.begin(), s.value().begin(),
-                                s.value().size() * sizeof(char_type));
-                    return {};
-                }
-
-                small_vector<char_type, 32> buf(val.size());
-                auto it = buf.begin();
-                auto e = read_into(ctx.range(), it, val.ssize());
-                if (!e) {
-                    return e;
-                }
-                std::memcpy(val.begin(), buf.begin(),
-                            buf.size() * sizeof(char_type));
-                return {};
-            }
-        };
-
         struct bool_scanner : common_parser {
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)

@@ -35,9 +35,6 @@ namespace scn {
     template <>
     struct scanner<wchar_t> : public detail::char_scanner {
     };
-    template <typename CharT>
-    struct scanner<span<CharT>> : public detail::buffer_scanner {
-    };
     template <>
     struct scanner<bool> : public detail::bool_scanner {
     };
@@ -81,6 +78,9 @@ namespace scn {
     template <typename CharT, typename Allocator>
     struct scanner<std::basic_string<CharT, std::char_traits<CharT>, Allocator>>
         : public detail::string_scanner {
+    };
+    template <typename CharT>
+    struct scanner<span<CharT>> : public detail::span_scanner {
     };
     template <typename CharT>
     struct scanner<basic_string_view<CharT>>

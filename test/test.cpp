@@ -200,7 +200,8 @@ TEST_CASE("empty span")
 {
     scn::span<char> s{};
     auto ret = scn::scan_default("abc", s);
-    CHECK(ret);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_scanned_value);
 }
 
 TEST_CASE("empty input")

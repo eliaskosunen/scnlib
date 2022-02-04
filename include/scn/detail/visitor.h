@@ -49,7 +49,7 @@ namespace scn {
         }
         auto visit(span<char_type>& val, detail::priority_tag<1>) -> error
         {
-            return detail::visitor_boilerplate<detail::buffer_scanner>(
+            return detail::visitor_boilerplate<detail::span_scanner>(
                 val, *m_ctx, *m_pctx);
         }
         auto visit(bool& val, detail::priority_tag<1>) -> error

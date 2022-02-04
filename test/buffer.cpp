@@ -21,12 +21,13 @@
 TEST_CASE("buffer")
 {
     std::string data{"data moredata"};
-    std::string s(4, '\0');
+    std::string s(6, '\0');
     auto span = scn::make_span(s);
 
     auto ret = scn::scan(data, "{}", span);
     CHECK(ret);
-    CHECK(data.substr(0, 4) == s);
+    CHECK(span.size() == 4);
+    CHECK(data.substr(0, 4) == s.substr(0, 4));
 }
 
 TEST_CASE("non-contiguous")

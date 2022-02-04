@@ -1078,6 +1078,74 @@ namespace scn {
             set_parser_type set_parser;
         };
 
+        struct span_scanner : public string_scanner {
+            template <typename Context>
+            error scan(span<typename Context::char_type>& val, Context& ctx)
+            {
+                if (val.size() == 0) {
+                    return {error::invalid_scanned_value,
+                            "Cannot scan into an empty span"};
+                }
+
+                if (set_parser.enabled()) {
+                    bool loc = (common_options & localized) != 0;
+                    auto pred = [&](typename Context::char_type ch) {
+                        return !set_parser.check_character(ch, loc,
+                                                           ctx.locale());
+                    };
+                    return do_scan(ctx, val, pred);
+                }
+
+                auto e = skip_range_whitespace(ctx, false);
+                if (!e) {
+                    return e;
+                }
+
+                auto is_space_pred = make_is_space_predicate(
+                    ctx.locale(), (common_options & localized) != 0,
+                    field_width != 0 ? min(field_width, val.size())
+                                     : val.size());
+                return do_scan(ctx, val, is_space_pred);
+            }
+
+            template <typename Context, typename Pred>
+            error do_scan(Context& ctx,
+                          span<typename Context::char_type>& val,
+                          Pred&& predicate)
+            {
+                if (Context::range_type::is_contiguous) {
+                    auto s = read_until_space_zero_copy(
+                        ctx.range(), SCN_FWD(predicate), false);
+                    if (!s) {
+                        return s.error();
+                    }
+                    if (s.value().size() == 0) {
+                        return {error::invalid_scanned_value,
+                                "Empty string parsed"};
+                    }
+                    std::copy(s.value().begin(), s.value().end(), val.begin());
+                    val = val.first(s.value().size());
+                    return {};
+                }
+
+                std::basic_string<typename Context::char_type> tmp;
+                auto outputit = std::back_inserter(tmp);
+                auto ret = read_until_space(ctx.range(), outputit,
+                                            SCN_FWD(predicate), false);
+                if (SCN_UNLIKELY(!ret)) {
+                    return ret;
+                }
+                if (SCN_UNLIKELY(tmp.empty())) {
+                    return {error::invalid_scanned_value,
+                            "Empty string parsed"};
+                }
+                std::copy(tmp.begin(), tmp.end(), val.begin());
+                val = val.first(tmp.size());
+
+                return {};
+            }
+        };
+
         struct string_view_scanner : string_scanner {
         public:
             template <typename Context>
