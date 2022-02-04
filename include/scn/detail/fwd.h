@@ -75,6 +75,11 @@ namespace scn {
     struct empty_parser;
     struct common_parser;
 
+    namespace detail {
+        template <typename T>
+        struct simple_integer_scanner;
+    }
+
     // result.h
 
     class SCN_TRIVIAL_ABI error;

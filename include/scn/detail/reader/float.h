@@ -50,7 +50,7 @@ namespace scn {
 
                 auto e = parse_common(
                     pctx, span<const char_type>{options.begin(), options.end()},
-                    span<bool>{flags, 10}, null_each<ParseCtx>);
+                    span<bool>{flags, 10}, null_type_cb<ParseCtx>);
                 if (!e) {
                     return e;
                 }

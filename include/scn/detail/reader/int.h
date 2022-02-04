@@ -424,6 +424,22 @@ namespace scn {
         template struct integer_scanner<unsigned int>;
         template struct integer_scanner<unsigned long>;
         template struct integer_scanner<unsigned long long>;
+
+        template <typename T>
+        template <typename CharT>
+        expected<typename span<const CharT>::iterator>
+        simple_integer_scanner<T>::scan(span<const CharT> buf, T& val, int base)
+        {
+            integer_scanner<T> s{};
+            s.base = static_cast<uint8_t>(base);
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+            auto n = s._parse_int(val, buf);
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+            if (!n) {
+                return n.error();
+            }
+            return buf.begin() + n.value();
+        }
     }  // namespace detail
     SCN_END_NAMESPACE
 }  // namespace scn

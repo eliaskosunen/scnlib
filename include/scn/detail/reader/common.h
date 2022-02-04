@@ -604,6 +604,15 @@ namespace scn {
 
     /// @}
 
+    namespace detail {
+        template <typename T>
+        struct simple_integer_scanner {
+            template <typename CharT>
+            static expected<typename span<const CharT>::iterator>
+            scan(span<const CharT> buf, T& val, int base = 10);
+        };
+    }  // namespace detail
+
     struct empty_parser : parser_base {
         template <typename ParseCtx>
         error parse(ParseCtx& pctx)
@@ -634,21 +643,101 @@ namespace scn {
         }
 
         template <typename ParseCtx>
-        error parse_common_each(ParseCtx& pctx, bool& parsed)
+        error check_end(ParseCtx& pctx)
         {
-            using char_type = typename ParseCtx::char_type;
-            auto ch = pctx.next();
-            parsed = false;
+            if (!pctx || pctx.check_arg_end()) {
+                return {error::invalid_format_string,
+                        "Unexpected end of format string argument"};
+            }
+            return {};
+        }
 
-            if ((common_options & localized) == 0) {
-                if (ch == detail::ascii_widen<char_type>('L')) {
-                    if (SCN_UNLIKELY((common_options & localized) != 0)) {
-                        return {error::invalid_format_string,
-                                "Repeat 'L' flag in format string"};
+        template <typename ParseCtx>
+        error parse_common_flags(ParseCtx& pctx)
+        {
+            SCN_EXPECT(check_end(pctx));
+            using char_type = typename ParseCtx::char_type;
+
+            auto ch = pctx.next();
+            auto next_char = [&]() -> error {
+                pctx.advance();
+                auto e = check_end(pctx);
+                if (!e) {
+                    return e;
+                }
+                ch = pctx.next();
+                return {};
+            };
+            auto parse_number = [&](size_t& n) -> error {
+                SCN_EXPECT(pctx.locale().get_static().is_digit(ch));
+
+                auto it = pctx.begin();
+                for (; it != pctx.end(); ++it) {
+                    if (!pctx.locale().get_static().is_digit(*it)) {
+                        break;
                     }
-                    common_options |= localized;
-                    parsed = true;
-                    pctx.advance();
+                }
+                auto buf = make_span(pctx.begin(), it);
+
+                auto s = detail::simple_integer_scanner<size_t>{};
+                auto res = s.scan(buf.as_const(), n, 10);
+                if (!res) {
+                    return res.error();
+                }
+
+                for (it = pctx.begin(); it != res.value();
+                     pctx.advance(), it = pctx.begin()) {}
+                return {};
+            };
+
+            if (pctx.locale().get_static().is_digit(ch)) {
+                if ((common_options & width_set) != 0) {
+                    return {error::invalid_format_string,
+                            "Repeat 'width' flag in format string"};
+                }
+                common_options |= width_set;
+
+                size_t w{};
+                auto e = parse_number(w);
+                if (!e) {
+                    return e;
+                }
+                field_width = w;
+
+                if (!next_char()) {
+                    return {};
+                }
+            }
+            if (ch == detail::ascii_widen<char_type>('.')) {
+                auto e = next_char();
+                if (!e) {
+                    return e;
+                }
+                if (!pctx.locale().get_static().is_digit(ch)) {
+                    return {error::invalid_format_string,
+                            "Invalid precision flag in format string"};
+                }
+
+                size_t p{};
+                e = parse_number(p);
+                if (!e) {
+                    return e;
+                }
+                field_precision = p;
+
+                if (!next_char()) {
+                    return {};
+                }
+            }
+            if (ch == detail::ascii_widen<char_type>('L')) {
+                if (SCN_UNLIKELY((common_options & localized) != 0)) {
+                    return {error::invalid_format_string,
+                            "Repeat 'L' flag in format string"};
+                }
+                common_options |= localized;
+
+                if (!next_char()) {
+                    return {};
                 }
             }
 
@@ -667,7 +756,7 @@ namespace scn {
         }
 
         template <typename ParseCtx>
-        static error null_each(ParseCtx&, bool&)
+        static error null_type_cb(ParseCtx&, bool&)
         {
             return {};
         }
@@ -676,13 +765,34 @@ namespace scn {
                   typename F,
                   typename CharT = typename ParseCtx::char_type>
         error parse_common(ParseCtx& pctx,
-                           span<const CharT> options,
-                           span<bool> flags,
-                           F&& each)
+                           span<const CharT> type_options,
+                           span<bool> type_flags,
+                           F&& type_cb)
         {
-            SCN_EXPECT(options.size() == flags.size());
+            SCN_EXPECT(type_options.size() == type_flags.size());
 
             auto e = parse_common_begin(pctx);
+            if (!e) {
+                return e;
+            }
+
+            if (pctx.check_arg_end()) {
+                return {};
+            }
+            e = check_end(pctx);
+            if (!e) {
+                return e;
+            }
+
+            e = parse_common_flags(pctx);
+            if (!e) {
+                return e;
+            }
+
+            if (pctx.check_arg_end()) {
+                return {};
+            }
+            e = check_end(pctx);
             if (!e) {
                 return e;
             }
@@ -690,13 +800,14 @@ namespace scn {
             for (auto ch = pctx.next(); pctx && !pctx.check_arg_end();
                  ch = pctx.next()) {
                 bool parsed = false;
-                for (std::size_t i = 0; i < options.size() && !parsed; ++i) {
-                    if (ch == options[i]) {
-                        if (SCN_UNLIKELY(flags[i])) {
+                for (std::size_t i = 0; i < type_options.size() && !parsed;
+                     ++i) {
+                    if (ch == type_options[i]) {
+                        if (SCN_UNLIKELY(type_flags[i])) {
                             return {error::invalid_format_string,
                                     "Repeat flag in format string"};
                         }
-                        flags[i] = true;
+                        type_flags[i] = true;
                         parsed = true;
                     }
                 }
@@ -708,7 +819,7 @@ namespace scn {
                     continue;
                 }
 
-                e = each(pctx, parsed);
+                e = type_cb(pctx, parsed);
                 if (!e) {
                     return e;
                 }
@@ -720,10 +831,6 @@ namespace scn {
                 }
                 ch = pctx.next();
 
-                e = parse_common_each(pctx, parsed);
-                if (!e) {
-                    return e;
-                }
                 if (!parsed) {
                     return {error::invalid_format_string,
                             "Invalid character in format string"};
@@ -736,20 +843,33 @@ namespace scn {
             return parse_common_end(pctx);
         }
 
+        template <typename ParseCtx>
+        error parse_default(ParseCtx& pctx)
+        {
+            return parse_common(pctx, {}, {}, null_type_cb<ParseCtx>);
+        }
+
         size_t field_width{0};
         size_t field_precision{0};
         char32_t fill_char{0};
         enum common_options_type : uint8_t {
-            localized = 1,                // 'L',
-            aligned_left = 2,             // '<'
-            aligned_right = 4,            // '>'
-            aligned_center = 8,           // '^'
-            assignment_suppression = 16,  // '*'
-            width_set = 32,               // width
-            precision_set = 64,           // .precision
-            all_common_options = 127
+            localized = 1,       // 'L',
+            aligned_left = 2,    // '<'
+            aligned_right = 4,   // '>'
+            aligned_center = 8,  // '^'
+            width_set = 16,      // width
+            precision_set = 32,  // .precision
+            all_common_options = 63
         };
         uint8_t common_options{0};
+    };
+
+    struct common_parser_default : common_parser {
+        template <typename ParseCtx>
+        error parse(ParseCtx& pctx)
+        {
+            return parse_default(pctx);
+        }
     };
 
     SCN_END_NAMESPACE

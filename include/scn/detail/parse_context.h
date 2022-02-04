@@ -127,6 +127,15 @@ namespace scn {
             return m_str[n];
         }
 
+        SCN_CONSTEXPR14 iterator begin() const noexcept
+        {
+            return m_str.begin();
+        }
+        SCN_CONSTEXPR14 iterator end() const noexcept
+        {
+            return m_str.end();
+        }
+
         SCN_CONSTEXPR14 bool check_arg_begin() const
         {
             SCN_EXPECT(good());

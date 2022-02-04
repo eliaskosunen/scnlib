@@ -37,7 +37,8 @@ namespace scn {
                 auto c_flag = detail::ascii_widen<char_type>('c');
                 bool c_set{};
                 return parse_common(pctx, span<const char_type>{&c_flag, 1},
-                                    span<bool>{&c_set, 1}, null_each<ParseCtx>);
+                                    span<bool>{&c_set, 1},
+                                    null_type_cb<ParseCtx>);
             }
 
             template <typename Context>
@@ -56,7 +57,7 @@ namespace scn {
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {
-                return parse_common(pctx, {}, {}, null_each<ParseCtx>);
+                return parse_common(pctx, {}, {}, null_type_cb<ParseCtx>);
             }
 
             template <typename Context>
@@ -110,7 +111,7 @@ namespace scn {
                 bool flags[3] = {false};
                 auto e = parse_common(
                     pctx, span<const char_type>{options.begin(), options.end()},
-                    span<bool>{flags, 3}, null_each<ParseCtx>);
+                    span<bool>{flags, 3}, null_type_cb<ParseCtx>);
 
                 if (!e) {
                     return e;
