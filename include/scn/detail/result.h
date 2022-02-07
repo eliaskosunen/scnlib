@@ -34,7 +34,7 @@ namespace scn {
         /// Error code
         enum code : char {
             /// No error
-            good,
+            good = 0,
             /// EOF
             end_of_range,
             /// Format string was invalid
@@ -49,6 +49,8 @@ namespace scn {
             value_out_of_range,
             /// Invalid argument given to operation
             invalid_argument,
+            /// Source range has invalid (utf-8) encoding
+            invalid_encoding,
             /// This operation is only possible with exceptions enabled
             exceptions_required,
             /// The source range emitted an error.
