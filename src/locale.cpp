@@ -234,6 +234,8 @@ namespace scn {
             return do_read_num<T, CharT>(val, to_locale(*this), buf, b);
         }
 
+#if SCN_INCLUDE_SOURCE_DEFINITIONS
+
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wpadded")
         SCN_CLANG_IGNORE("-Wweak-template-vtables")
@@ -330,6 +332,8 @@ namespace scn {
             wchar_t>::read_num<long double>(long double&,
                                             const string_type&,
                                             int) const;
+#endif
+
     }  // namespace detail
 
     SCN_END_NAMESPACE

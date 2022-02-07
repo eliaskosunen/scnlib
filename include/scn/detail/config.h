@@ -438,4 +438,10 @@
 #define SCN_BEGIN_NAMESPACE inline namespace v0 {
 #define SCN_END_NAMESPACE   }
 
+#if defined(SCN_HEADER_ONLY)
+#define SCN_INCLUDE_SOURCE_DEFINITIONS !SCN_HEADER_ONLY
+#else
+#define SCN_INCLUDE_SOURCE_DEFINITIONS 1
+#endif
+
 #endif  // SCN_DETAIL_CONFIG_H

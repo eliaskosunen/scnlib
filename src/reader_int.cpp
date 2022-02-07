@@ -298,6 +298,8 @@ namespace scn {
             SCN_GCC_POP
         }
 
+#if SCN_INCLUDE_SOURCE_DEFINITIONS
+
 #define SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(CharT, T)             \
     template expected<std::ptrdiff_t> integer_scanner<T>::_parse_int( \
         T& val, span<const CharT> s);                                 \
@@ -319,6 +321,8 @@ namespace scn {
 
         SCN_DEFINE_INTEGER_SCANNER_MEMBERS(char)
         SCN_DEFINE_INTEGER_SCANNER_MEMBERS(wchar_t)
+
+#endif
 
     }  // namespace detail
 

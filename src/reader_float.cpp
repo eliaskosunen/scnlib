@@ -404,6 +404,8 @@ namespace scn {
                                                    locale_decimal_point);
         }
 
+#if SCN_INCLUDE_SOURCE_DEFINITIONS
+
         template expected<float>
         float_scanner<float>::_read_float_impl(const char*, size_t&, char);
         template expected<double>
@@ -424,6 +426,7 @@ namespace scn {
         float_scanner<long double>::_read_float_impl(const wchar_t*,
                                                      size_t&,
                                                      wchar_t);
+#endif
     }  // namespace detail
 
     SCN_END_NAMESPACE

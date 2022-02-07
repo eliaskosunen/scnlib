@@ -29,7 +29,7 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-#if !defined(SCN_HEADER_ONLY) || !SCN_HEADER_ONLY
+#if SCN_INCLUDE_SOURCE_DEFINITIONS
 
 #define SCN_VSCAN_DEFINE(Range, WrappedAlias, CharAlias)                  \
     vscan_result<detail::vscan_macro::WrappedAlias> vscan(                \
@@ -75,7 +75,7 @@ namespace scn {
     SCN_VSCAN_DEFINE(file&, file_ref_wrapped, file_ref_char)
     SCN_VSCAN_DEFINE(wfile&, wfile_ref_wrapped, wfile_ref_char)
 
-#endif  // !SCN_HEADER_ONLY
+#endif
 
     SCN_END_NAMESPACE
 }  // namespace scn
