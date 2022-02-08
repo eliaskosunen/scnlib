@@ -141,8 +141,8 @@ namespace scn {
         }
 
         namespace detail {
-            SCN_CONSTEXPR14 inline bool is_overlong_sequence(code_point cp,
-                                                             std::ptrdiff_t len)
+            SCN_CONSTEXPR14 bool is_overlong_sequence(code_point cp,
+                                                      std::ptrdiff_t len)
             {
                 if (cp < 0x80) {
                     if (len != 1) {
@@ -197,7 +197,7 @@ namespace scn {
                 }
 
                 c = static_cast<uint32_t>((c << 6u) & 0x7ffu) +
-                    static_cast<uint32_t>((*it) & 0x3fu);
+                    (static_cast<uint32_t>(*it) & 0x3fu);
                 cp = make_code_point(c);
 
                 return {};
@@ -221,7 +221,7 @@ namespace scn {
                     return e;
                 }
 
-                c += (*it) & 0x3fu;
+                c += static_cast<uint32_t>(*it) & 0x3fu;
                 cp = make_code_point(c);
 
                 return {};
@@ -252,7 +252,7 @@ namespace scn {
                     return e;
                 }
 
-                c += (*it) & 0x3fu;
+                c += static_cast<uint32_t>(*it) & 0x3fu;
                 cp = make_code_point(c);
 
                 return {};

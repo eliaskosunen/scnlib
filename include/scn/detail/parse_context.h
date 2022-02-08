@@ -97,7 +97,7 @@ namespace scn {
         {
             return ch == next();
         }
-        constexpr bool check_literal(span<const char_type> ch) const
+        SCN_CONSTEXPR14 bool check_literal(span<const char_type> ch) const
         {
             if (chars_left() < ch.size()) {
                 return false;

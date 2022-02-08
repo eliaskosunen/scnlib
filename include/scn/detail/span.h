@@ -20,7 +20,10 @@
 
 #include "fwd.h"
 
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wnoexcept")
 #include <iterator>
+SCN_GCC_POP
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
