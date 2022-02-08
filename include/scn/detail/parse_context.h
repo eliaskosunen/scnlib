@@ -54,6 +54,10 @@ namespace scn {
     class basic_parse_context : public detail::parse_context_base {
     public:
         using char_type = CharT;
+        using cp_type =
+            typename std::conditional<std::is_same<CharT, char>::value,
+                                      utf8::code_point,
+                                      char_type>::type;
         using locale_type = basic_locale_ref<CharT>;
         using string_view_type = basic_string_view<char_type>;
         using iterator = typename string_view_type::iterator;
@@ -92,6 +96,18 @@ namespace scn {
         constexpr bool check_literal(char_type ch) const
         {
             return ch == next();
+        }
+        constexpr bool check_literal(span<const char_type> ch) const
+        {
+            if (chars_left() < ch.size()) {
+                return false;
+            }
+            for (size_t i = 0; i < ch.size(); ++i) {
+                if (ch[i] != m_str[i]) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         constexpr bool good() const
@@ -241,6 +257,9 @@ namespace scn {
         {
             return false;
         }
+        constexpr bool check_literal(span<const char_type>) const {
+            return false;
+        }
 
         constexpr bool good() const
         {
@@ -319,6 +338,7 @@ namespace scn {
         {
             m_args_left = n;
             parse_context_base::m_next_arg_id = 0;
+            m_should_skip_ws = false;
         }
 
     private:

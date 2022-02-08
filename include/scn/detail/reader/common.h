@@ -20,11 +20,12 @@
 
 #include "../locale.h"
 #include "../range.h"
+#include "../utf8.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    // read_char
+    // read_code_unit
 
     /// @{
     /**
@@ -37,8 +38,9 @@ namespace scn {
      */
     template <typename WrappedRange,
               typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
-    expected<ranges::range_value_t<WrappedRange>> read_char(WrappedRange& r,
-                                                            bool advance = true)
+    expected<ranges::range_value_t<WrappedRange>> read_code_unit(
+        WrappedRange& r,
+        bool advance = true)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
@@ -52,8 +54,8 @@ namespace scn {
     template <
         typename WrappedRange,
         typename std::enable_if<!WrappedRange::is_direct>::type* = nullptr>
-    ranges::range_value_t<WrappedRange> read_char(WrappedRange& r,
-                                                  bool advance = true)
+    ranges::range_value_t<WrappedRange> read_code_unit(WrappedRange& r,
+                                                       bool advance = true)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
@@ -65,6 +67,163 @@ namespace scn {
         return ch;
     }
     /// @}
+
+    // putback_n
+
+    /// @{
+
+    /**
+     * Puts back `n` characters into `r` as if by repeatedly calling
+     * `r.advance(-1)` .
+     */
+    template <
+        typename WrappedRange,
+        typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
+    error putback_n(WrappedRange& r, ranges::range_difference_t<WrappedRange> n)
+    {
+        SCN_EXPECT(n <= ranges::distance(r.begin_underlying(), r.begin()));
+        r.advance(-n);
+        return {};
+    }
+    template <
+        typename WrappedRange,
+        typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
+    error putback_n(WrappedRange& r, ranges::range_difference_t<WrappedRange> n)
+    {
+        for (ranges::range_difference_t<WrappedRange> i = 0; i < n; ++i) {
+            r.advance(-1);
+            if (r.begin() == r.end()) {
+                return {error::unrecoverable_source_error, "Putback failed"};
+            }
+        }
+        return {};
+    }
+
+    /// @}
+
+    // read_code_point
+
+    namespace detail {
+        // contiguous && direct
+        template <typename WrappedRange>
+        expected<utf8::code_point> read_code_point_impl(WrappedRange& r,
+                                                        span<char>& buf,
+                                                        std::true_type)
+        {
+            if (r.begin() == r.end()) {
+                return error(error::end_of_range, "EOF");
+            }
+            char first = *r.begin();
+            int len = utf8::get_sequence_length(first);
+            if (SCN_UNLIKELY(len == 0 || r.size() < len)) {
+                return error(error::invalid_encoding,
+                             "Invalid utf8 code point");
+            }
+            if (len == 1) {
+                r.advance();
+                buf[0] = first;
+                buf = buf.first(1);
+                return {utf8::make_code_point(first)};
+            }
+
+            auto end = r.begin() + len;
+            utf8::code_point cp{};
+            auto ret = parse_code_point(r.begin(), end, cp);
+            if (!ret) {
+                return ret.error();
+            }
+            std::memcpy(buf.data(), r.data(), static_cast<size_t>(len));
+            buf = buf.first(static_cast<size_t>(len));
+            r.advance(len);
+            return {cp};
+        }
+
+        template <typename WrappedRange>
+        expected<utf8::code_point> read_code_point_impl(WrappedRange& r,
+                                                        span<char>& buf,
+                                                        std::false_type)
+        {
+            auto first = read_code_unit(r, false);
+            if (!first) {
+                return first.error();
+            }
+            auto len =
+                static_cast<size_t>(utf8::get_sequence_length(first.value()));
+            if (SCN_UNLIKELY(len == 0)) {
+                return error(error::invalid_encoding,
+                             "Invalid utf8 code point");
+            }
+            if (len == 1) {
+                r.advance();
+                buf = buf.first(1);
+                return {utf8::make_code_point(first.value())};
+            }
+
+            size_t index = 1;
+
+            auto parse = [&]() -> expected<utf8::code_point> {
+                utf8::code_point cp{};
+                auto ret =
+                    utf8::parse_code_point(buf.begin(), buf.begin() + len, cp);
+                if (!ret) {
+                    auto err = putback_n(r, static_cast<std::ptrdiff_t>(len));
+                    if (!err) {
+                        return err;
+                    }
+                    return ret.error();
+                }
+                buf = buf.first(len);
+                return {cp};
+            };
+            auto advance = [&]() -> error {
+                auto ret = read_code_unit(r, false);
+                if (!ret) {
+                    return ret.error();
+                }
+                buf[index] = ret.value();
+                ++index;
+                return {};
+            };
+
+            while (index < 4) {
+                auto e = advance();
+                if (!e) {
+                    return e;
+                }
+                if (index == len) {
+                    return parse();
+                }
+            }
+            SCN_ENSURE(false);
+            SCN_UNREACHABLE;
+        }
+    }  // namespace detail
+
+    template <
+        typename WrappedRange,
+        typename std::enable_if<std::is_same<typename WrappedRange::char_type,
+                                             char>::value>::type* = nullptr>
+    expected<utf8::code_point> read_code_point(WrappedRange& r, span<char>& buf)
+    {
+        SCN_EXPECT(buf.size() >= 4);
+        return detail::read_code_point_impl(
+            r, buf,
+            std::integral_constant<bool, WrappedRange::is_contiguous>{});
+    }
+    template <
+        typename WrappedRange,
+        typename std::enable_if<std::is_same<typename WrappedRange::char_type,
+                                             wchar_t>::value>::type* = nullptr>
+    expected<wchar_t> read_code_point(WrappedRange& r, span<wchar_t>& buf)
+    {
+        SCN_EXPECT(buf.size() >= 1);
+        auto ret = read_code_unit(r, true);
+        if (ret) {
+            buf[0] = ret.value();
+            buf = buf.first(1);
+        }
+        return ret;
+    }
 
     // read_zero_copy
 
@@ -225,6 +384,54 @@ namespace scn {
     }
     /// @}
 
+    namespace detail {
+        template <typename WrappedRange, typename Predicate>
+        expected<span<const typename WrappedRange::char_type>>
+        read_until_pred_contiguous(WrappedRange& r,
+                                   Predicate&& pred,
+                                   bool pred_result_to_stop,
+                                   bool keep_final)
+        {
+            using span_type = span<const typename WrappedRange::char_type>;
+
+            if (r.begin() == r.end()) {
+                return error(error::end_of_range, "EOF");
+            }
+
+            if (!pred.is_multibyte()) {
+                for (auto it = r.begin(); it != r.end(); ++it) {
+                    if (pred(make_span(&*it, 1)) == pred_result_to_stop) {
+                        auto begin = r.data();
+                        auto end = keep_final ? it + 1 : it;
+                        r.advance_to(end);
+                        return span_type{begin, to_address(end)};
+                    }
+                }
+            }
+            else {
+                for (auto it = r.begin(); it != r.end(); ++it) {
+                    auto len = utf8::get_sequence_length(*it);
+                    if (ranges::distance(it, r.end()) < len) {
+                        return error{error::invalid_encoding,
+                                     "Invalid utf8 code point"};
+                    }
+                    auto span =
+                        make_span(to_address(it), static_cast<size_t>(len));
+                    if (pred(span) == pred_result_to_stop) {
+                        auto begin = r.data();
+                        auto end = keep_final ? it + len : it;
+                        r.advance_to(end);
+                        return span_type{begin, to_address(end)};
+                    }
+                }
+            }
+            auto begin = r.data();
+            auto end = r.data() + r.size();
+            r.advance_to(r.end());
+            return span_type{begin, end};
+        }
+    }  // namespace detail
+
     // read_until_space_zero_copy
 
     /// @{
@@ -245,31 +452,13 @@ namespace scn {
         typename WrappedRange,
         typename Predicate,
         typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
-    expected<span<const typename detail::extract_char_type<
-        typename WrappedRange::iterator>::type>>
+    expected<span<const typename WrappedRange::char_type>>
     read_until_space_zero_copy(WrappedRange& r,
-                               Predicate is_space,
+                               Predicate&& is_space,
                                bool keep_final_space)
     {
-        auto it = r.begin();
-        const auto end = r.end();
-        if (it == end) {
-            return error(error::end_of_range, "EOF");
-        }
-        for (; it != end; ++it) {
-            if (is_space(*it)) {
-                auto b = r.begin();
-                r.advance_to(it);
-                if (keep_final_space) {
-                    ++it;
-                    r.advance();
-                }
-                return {{&*b, &*it}};
-            }
-        }
-        auto b = r.begin();
-        r.advance_to(r.end());
-        return {{&*b, &*(r.end() - 1) + 1}};
+        return detail::read_until_pred_contiguous(r, SCN_FWD(is_space), true,
+                                                  keep_final_space);
     }
     template <
         typename WrappedRange,
@@ -277,7 +466,7 @@ namespace scn {
         typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
     expected<span<const typename detail::extract_char_type<
         typename WrappedRange::iterator>::type>>
-    read_until_space_zero_copy(WrappedRange& r, Predicate, bool)
+    read_until_space_zero_copy(WrappedRange& r, Predicate&&, bool)
     {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
@@ -288,6 +477,70 @@ namespace scn {
     /// @}
 
     // read_until_space
+
+    namespace detail {
+
+        template <typename WrappedRange,
+                  typename Predicate,
+                  typename OutputIt,
+                  typename OutputItCmp>
+        error read_until_pred_non_contiguous(WrappedRange& r,
+                                             Predicate&& pred,
+                                             bool pred_result_to_stop,
+                                             OutputIt& out,
+                                             OutputItCmp out_cmp,
+                                             bool keep_final)
+        {
+            if (r.begin() == r.end()) {
+                return {error::end_of_range, "EOF"};
+            }
+
+            if (!pred.is_multibyte()) {
+                for (auto it = r.begin(); it != r.end() && out_cmp(out);
+                     ++it, (void)r.advance()) {
+                    auto cu = read_code_unit(r, false);
+                    if (!cu) {
+                        return cu.error();
+                    }
+                    if (pred(make_span(&cu.value(), 1).as_const()) ==
+                        pred_result_to_stop) {
+                        if (keep_final) {
+                            *out = cu.value();
+                            ++out;
+                        }
+                        return {};
+                    }
+                    *out = cu.value();
+                    ++out;
+                }
+            }
+            else {
+                using char_type = typename WrappedRange::char_type;
+                unsigned char buf = {0};
+                while (r.begin() != r.end() && out_cmp(out)) {
+                    auto bufspan =
+                        span<char_type>(reinterpret_cast<char_type*>(buf),
+                                        4 / sizeof(char_type));
+                    auto cp = read_code_point(r, bufspan);
+                    if (!cp) {
+                        return cp.error();
+                    }
+                    if (pred(bufspan.as_const()) == pred_result_to_stop) {
+                        if (keep_final) {
+                            out =
+                                std::copy(bufspan.begin(), bufspan.end(), out);
+                            return {};
+                        }
+                        else {
+                            return putback_n(r, 1);
+                        }
+                    }
+                    out = std::copy(bufspan.begin(), bufspan.end(), out);
+                }
+            }
+            return {};
+        }
+    }  // namespace detail
 
     /// @{
 
@@ -308,77 +561,30 @@ namespace scn {
         typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
     error read_until_space(WrappedRange& r,
                            OutputIterator& out,
-                           Predicate is_space,
+                           Predicate&& is_space,
                            bool keep_final_space)
     {
-        auto s = read_until_space_zero_copy(r, is_space, keep_final_space);
+        auto s =
+            read_until_space_zero_copy(r, SCN_FWD(is_space), keep_final_space);
         if (!s) {
             return s.error();
         }
         out = std::copy(s.value().begin(), s.value().end(), out);
         return {};
     }
-    template <typename WrappedRange,
-              typename OutputIterator,
-              typename Predicate,
-              typename std::enable_if<!WrappedRange::is_contiguous &&
-                                      WrappedRange::is_direct>::type* = nullptr>
-    error read_until_space(WrappedRange& r,
-                           OutputIterator& out,
-                           Predicate is_space,
-                           bool keep_final_space)
-    {
-        if (r.begin() == r.end()) {
-            return {error::end_of_range, "EOF"};
-        }
-        while (r.begin() != r.end()) {
-            const auto ch = *r.begin();
-            if (is_space(ch)) {
-                if (keep_final_space) {
-                    *out = ch;
-                    ++out;
-                }
-                return {};
-            }
-            *out = ch;
-            ++out;
-            r.advance();
-        }
-        return {};
-    }
     template <
         typename WrappedRange,
         typename OutputIterator,
         typename Predicate,
-        typename std::enable_if<!WrappedRange::is_contiguous &&
-                                !WrappedRange::is_direct>::type* = nullptr>
+        typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
     error read_until_space(WrappedRange& r,
                            OutputIterator& out,
-                           Predicate is_space,
+                           Predicate&& is_space,
                            bool keep_final_space)
     {
-        if (r.begin() == r.end()) {
-            return {error::end_of_range, "EOF"};
-        }
-        while (r.begin() != r.end()) {
-            auto tmp = *r.begin();
-            if (!tmp) {
-                return tmp.error();
-            }
-            auto ch = tmp.value();
-            if (is_space(ch)) {
-                if (keep_final_space) {
-                    *out = ch;
-                    ++out;
-                }
-                return {};
-            }
-            *out = ch;
-            ++out;
-
-            r.advance();
-        }
-        return {};
+        return detail::read_until_pred_non_contiguous(
+            r, SCN_FWD(is_space), true, out,
+            [](const OutputIterator&) { return true; }, keep_final_space);
     }
 
     /// @}
@@ -400,98 +606,17 @@ namespace scn {
     template <typename WrappedRange,
               typename OutputIterator,
               typename Sentinel,
-              typename Predicate,
-              typename std::enable_if<WrappedRange::is_direct>::type* = nullptr>
+              typename Predicate>
     error read_until_space_ranged(WrappedRange& r,
                                   OutputIterator& out,
                                   Sentinel end,
-                                  Predicate is_space,
+                                  Predicate&& is_space,
                                   bool keep_final_space)
     {
-        if (r.begin() == r.end()) {
-            return {error::end_of_range, "EOF"};
-        }
-        for (auto it = r.begin(); it != r.end() && out != end;
-             ++it, (void)r.advance()) {
-            const auto ch = *it;
-            if (is_space(ch)) {
-                if (keep_final_space) {
-                    *out = ch;
-                    ++out;
-                }
-                return {};
-            }
-            *out = ch;
-            ++out;
-        }
-        return {};
-    }
-    template <
-        typename WrappedRange,
-        typename OutputIterator,
-        typename Sentinel,
-        typename Predicate,
-        typename std::enable_if<!WrappedRange::is_direct>::type* = nullptr>
-    error read_until_space_ranged(WrappedRange& r,
-                                  OutputIterator& out,
-                                  Sentinel end,
-                                  Predicate is_space,
-                                  bool keep_final_space)
-    {
-        if (r.begin() == r.end()) {
-            return {error::end_of_range, "EOF"};
-        }
-        for (auto it = r.begin(); it != r.end() && out != end;
-             ++it, (void)r.advance()) {
-            auto tmp = *it;
-            if (!tmp) {
-                return tmp.error();
-            }
-            auto ch = tmp.value();
-            if (is_space(ch)) {
-                if (keep_final_space) {
-                    *out = ch;
-                    ++out;
-                }
-                return {};
-            }
-            *out = ch;
-            ++out;
-        }
-        return {};
-    }
-
-    /// @}
-
-    // putback_n
-
-    /// @{
-
-    /**
-     * Puts back `n` characters into `r` as if by repeatedly calling
-     * `r.advance(-1)` .
-     */
-    template <
-        typename WrappedRange,
-        typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
-    error putback_n(WrappedRange& r, ranges::range_difference_t<WrappedRange> n)
-    {
-        SCN_EXPECT(n <= ranges::distance(r.begin_underlying(), r.begin()));
-        r.advance(-n);
-        return {};
-    }
-    template <
-        typename WrappedRange,
-        typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
-    error putback_n(WrappedRange& r, ranges::range_difference_t<WrappedRange> n)
-    {
-        for (ranges::range_difference_t<WrappedRange> i = 0; i < n; ++i) {
-            r.advance(-1);
-            if (r.begin() == r.end()) {
-                return {error::unrecoverable_source_error, "Putback failed"};
-            }
-        }
-        return {};
+        return detail::read_until_pred_non_contiguous(
+            r, SCN_FWD(is_space), true, out,
+            [&end](const OutputIterator& it) { return it != end; },
+            keep_final_space);
     }
 
     /// @}
@@ -515,10 +640,19 @@ namespace scn {
                 }
             }
 
-            bool operator()(char_type ch)
+            bool operator()(span<const char_type> ch)
             {
                 SCN_EXPECT(m_fn);
                 return m_fn(m_locale, ch, m_i, m_width);
+            }
+
+            constexpr bool is_localized() const
+            {
+                return m_locale != nullptr;
+            }
+            constexpr bool is_multibyte() const
+            {
+                return is_localized() && sizeof(CharT) != 1;
             }
 
         private:
@@ -528,14 +662,14 @@ namespace scn {
             size_t m_width{0}, m_i{0};
 
             constexpr static bool call(const custom_locale_type*,
-                                       char_type ch,
+                                       span<const char_type> ch,
                                        size_t&,
                                        size_t)
             {
                 return static_locale_type::is_space(ch);
             }
             static bool localized_call(const custom_locale_type* locale,
-                                       char_type ch,
+                                       span<const char_type> ch,
                                        size_t&,
                                        size_t)
             {
@@ -543,7 +677,7 @@ namespace scn {
                 return locale->is_space(ch);
             }
             SCN_CONSTEXPR14 static bool call_counting(const custom_locale_type*,
-                                                      char_type ch,
+                                                      span<const char_type> ch,
                                                       size_t& i,
                                                       size_t max)
             {
@@ -555,7 +689,7 @@ namespace scn {
             }
             static bool localized_call_counting(
                 const custom_locale_type* locale,
-                char_type ch,
+                span<const char_type> ch,
                 size_t& i,
                 size_t max)
             {
@@ -568,7 +702,7 @@ namespace scn {
             }
 
             using fn_type = bool (*)(const custom_locale_type*,
-                                     char_type,
+                                     span<const char_type>,
                                      size_t&,
                                      size_t);
             fn_type m_fn{nullptr};
@@ -590,14 +724,41 @@ namespace scn {
         {
             return {locale, localized, width};
         }
+
+        template <typename CharT>
+        struct basic_skipws_iterator {
+            using value_type = void;
+            using reference = void;
+            using pointer = void;
+            using size_type = size_t;
+            using difference_type = std::ptrdiff_t;
+            using iterator_category = std::output_iterator_tag;
+
+            constexpr basic_skipws_iterator() = default;
+
+            basic_skipws_iterator& operator=(CharT)
+            {
+                return *this;
+            }
+            basic_skipws_iterator& operator*()
+            {
+                return *this;
+            }
+            basic_skipws_iterator& operator++()
+            {
+                return *this;
+            }
+        };
     }  // namespace detail
+
+    // skip_range_whitespace
 
     /// @{
 
     /**
      * Reads from the range in `ctx` as if by repeatedly calling
-     * `read_char()`, until a non-space character is found (as determined by
-     * `ctx.locale()`), or EOF is reached. That non-space character is then
+     * `read_code_point()`, until a non-space character is found (as determined
+     * by `ctx.locale()`), or EOF is reached. That non-space character is en
      * put back into the range.
      */
     template <typename Context,
@@ -607,44 +768,21 @@ namespace scn {
     {
         auto is_space_pred =
             detail::make_is_space_predicate(ctx.locale(), localized);
-        while (true) {
-            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-
-            auto ch = read_char(ctx.range());
-            if (SCN_UNLIKELY(!ch)) {
-                return ch.error();
-            }
-            if (!is_space_pred(ch.value())) {
-                auto pb = putback_n(ctx.range(), 1);
-                if (SCN_UNLIKELY(!pb)) {
-                    return pb;
-                }
-                break;
-            }
-
-            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
-        }
-        return {};
+        auto it = detail::basic_skipws_iterator<typename Context::char_type>{};
+        return detail::read_until_pred_non_contiguous(
+            ctx.range(), is_space_pred, false, it,
+            [](decltype(it)) { return true; }, false);
     }
     template <typename Context,
               typename std::enable_if<
                   Context::range_type::is_contiguous>::type* = nullptr>
     error skip_range_whitespace(Context& ctx, bool localized) noexcept
     {
-        SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
         auto is_space_pred =
             detail::make_is_space_predicate(ctx.locale(), localized);
-        const auto end = ctx.range().end();
-        for (auto it = ctx.range().begin(); it != end; ++it) {
-            if (!is_space_pred(*it)) {
-                ctx.range().advance_to(it);
-                return {};
-            }
-        }
-        ctx.range().advance_to(end);
-        return {};
-
-        SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+        return detail::read_until_pred_contiguous(ctx.range(), is_space_pred,
+                                                  false, false)
+            .error();
     }
 
     /// @}
@@ -961,7 +1099,7 @@ namespace scn {
             while (true) {
                 SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
 
-                auto ch = read_char(ctx.range());
+                auto ch = read_code_unit(ctx.range());
                 if (SCN_UNLIKELY(!ch)) {
                     return ch.error();
                 }

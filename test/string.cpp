@@ -107,7 +107,7 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
     {
         string_type s{};
         {
-            auto ret = scn::ignore_until(data, 0x0a);  // '\n'
+            auto ret = scn::ignore_until(data, CharT{0x0a});  // '\n'
             CHECK(ret);
             data.assign(ret.range_as_string());
         }
@@ -121,7 +121,7 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
 
     SUBCASE("not found")
     {
-        auto ret = scn::ignore_until(data, 0x33);  // '3'
+        auto ret = scn::ignore_until(data, CharT{0x33});  // '3'
         CHECK(ret);
         CHECK(ret.range().size() == 0);
     }
@@ -129,13 +129,13 @@ TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)
     SUBCASE("empty range")
     {
         string_type s{};
-        auto ret = scn::ignore_until(s, 0x0a);
+        auto ret = scn::ignore_until(s, CharT{0x0a});
         CHECK(!ret);
         CHECK(ret.error().code() == scn::error::end_of_range);
 
         scn::basic_string_view<CharT> sv{};
         auto result = scn::make_result(sv);
-        ret = scn::ignore_until(result.range(), 0x00);
+        ret = scn::ignore_until(result.range(), CharT{0x00});
         CHECK(!ret);
         CHECK(ret.error().code() == scn::error::end_of_range);
     }

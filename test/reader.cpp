@@ -148,39 +148,39 @@ static indirect_range<char> get_indirect(const std::string& content)
     return src;
 }
 
-TEST_CASE("read_char")
+TEST_CASE("read_code_unit")
 {
     SUBCASE("direct")
     {
         auto range = scn::wrap("42");
-        auto ret = scn::read_char(range, false);
+        auto ret = scn::read_code_unit(range, false);
         CHECK(ret);
         CHECK(ret.value() == '4');
 
-        ret = scn::read_char(range);
+        ret = scn::read_code_unit(range);
         CHECK(ret.value() == '4');
 
         CHECK(*range.begin() == '2');
         range.advance();
 
-        ret = scn::read_char(range);
+        ret = scn::read_code_unit(range);
         CHECK(!ret);
         CHECK(ret.error() == scn::error::end_of_range);
     }
     SUBCASE("indirect")
     {
         auto range = scn::wrap(get_indirect("42"));
-        auto ret = scn::read_char(range, false);
+        auto ret = scn::read_code_unit(range, false);
         CHECK(ret);
         CHECK(ret.value() == '4');
 
-        ret = scn::read_char(range);
+        ret = scn::read_code_unit(range);
         CHECK(ret.value() == '4');
 
         CHECK((*range.begin()).value() == '2');
         range.advance();
 
-        ret = scn::read_char(range);
+        ret = scn::read_code_unit(range);
         CHECK(!ret);
         CHECK(ret.error() == scn::error::end_of_range);
     }
@@ -331,17 +331,28 @@ TEST_CASE("read_into")
     }
 }
 
-static bool pred_is_space(char ch)
-{
-    return ch == ' ';
-}
+struct is_space_pred {
+    constexpr bool operator()(scn::span<const char> ch)
+    {
+        return ch[0] == ' ';
+    }
+    static constexpr bool is_localized()
+    {
+        return false;
+    }
+    static constexpr bool is_multibyte()
+    {
+        return false;
+    }
+};
 
 TEST_CASE("read_until_space_zero_copy no final space")
 {
     SUBCASE("contiguous")
     {
         auto range = scn::wrap("123 456");
-        auto ret = scn::read_until_space_zero_copy(range, pred_is_space, false);
+        auto ret =
+            scn::read_until_space_zero_copy(range, is_space_pred{}, false);
         CHECK(ret);
         CHECK(ret.value().size() == 3);
         CHECK(ret.value()[0] == '1');
@@ -351,7 +362,7 @@ TEST_CASE("read_until_space_zero_copy no final space")
         CHECK(*range.begin() == ' ');
         range.advance();
 
-        ret = scn::read_until_space_zero_copy(range, pred_is_space, false);
+        ret = scn::read_until_space_zero_copy(range, is_space_pred{}, false);
         CHECK(ret);
         CHECK(ret.value().size() == 3);
         CHECK(ret.value()[0] == '4');
@@ -364,12 +375,13 @@ TEST_CASE("read_until_space_zero_copy no final space")
     SUBCASE("non-contiguous")
     {
         auto range = scn::wrap(get_deque("123 456"));
-        auto ret = scn::read_until_space_zero_copy(range, pred_is_space, false);
+        auto ret =
+            scn::read_until_space_zero_copy(range, is_space_pred{}, false);
         CHECK(ret);
         CHECK(ret.value().size() == 0);
 
         range.advance(7);
-        ret = scn::read_until_space_zero_copy(range, pred_is_space, false);
+        ret = scn::read_until_space_zero_copy(range, is_space_pred{}, false);
         CHECK(!ret);
         CHECK(ret.error() == scn::error::end_of_range);
     }
@@ -380,7 +392,8 @@ TEST_CASE("read_until_space_zero_copy keep final space")
     SUBCASE("contiguous")
     {
         auto range = scn::wrap("123 456");
-        auto ret = scn::read_until_space_zero_copy(range, pred_is_space, true);
+        auto ret =
+            scn::read_until_space_zero_copy(range, is_space_pred{}, true);
         CHECK(ret);
         CHECK(ret.value().size() == 4);
         CHECK(ret.value()[0] == '1');
@@ -388,7 +401,7 @@ TEST_CASE("read_until_space_zero_copy keep final space")
         CHECK(ret.value()[2] == '3');
         CHECK(ret.value()[3] == ' ');
 
-        ret = scn::read_until_space_zero_copy(range, pred_is_space, true);
+        ret = scn::read_until_space_zero_copy(range, is_space_pred{}, true);
         CHECK(ret);
         CHECK(ret.value().size() == 3);
         CHECK(ret.value()[0] == '4');
@@ -401,12 +414,13 @@ TEST_CASE("read_until_space_zero_copy keep final space")
     SUBCASE("non-contiguous")
     {
         auto range = scn::wrap(get_deque("123 456"));
-        auto ret = scn::read_until_space_zero_copy(range, pred_is_space, true);
+        auto ret =
+            scn::read_until_space_zero_copy(range, is_space_pred{}, true);
         CHECK(ret);
         CHECK(ret.value().size() == 0);
 
         range.advance(7);
-        ret = scn::read_until_space_zero_copy(range, pred_is_space, true);
+        ret = scn::read_until_space_zero_copy(range, is_space_pred{}, true);
         CHECK(!ret);
         CHECK(ret.error() == scn::error::end_of_range);
     }

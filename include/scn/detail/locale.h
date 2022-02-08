@@ -19,7 +19,7 @@
 #define SCN_DETAIL_LOCALE_H
 
 #include "result.h"
-#include "string_view.h"
+#include "utf8.h"
 
 #include <cwchar>
 #include <string>
@@ -73,6 +73,10 @@ namespace scn {
         {
             return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
         }
+        constexpr inline bool is_space(utf8::code_point cp) noexcept
+        {
+            return cp == 0x20 || (cp >= 0x09 && cp <= 0x0d);
+        }
 
         constexpr inline bool is_digit(char ch) noexcept
         {
@@ -82,48 +86,10 @@ namespace scn {
         {
             return ch >= L'0' && ch <= L'9';
         }
-
-        template <typename CharT>
-        struct default_widen;
-        template <>
-        struct default_widen<char> {
-            static constexpr char widen(char ch) noexcept
-            {
-                return ch;
-            }
-        };
-        template <>
-        struct default_widen<wchar_t> {
-            static wchar_t widen(char ch)
-            {
-                auto ret = std::btowc(static_cast<int>(ch));
-                if (ret == WEOF) {
-                    return static_cast<wchar_t>(-1);
-                }
-                return static_cast<wchar_t>(ret);
-            }
-        };
-
-        template <typename CharT>
-        struct default_narrow;
-        template <>
-        struct default_narrow<char> {
-            static constexpr char narrow(char ch, char) noexcept
-            {
-                return ch;
-            }
-        };
-        template <>
-        struct default_narrow<wchar_t> {
-            static char narrow(wchar_t ch, char def)
-            {
-                auto ret = std::wctob(static_cast<wint_t>(ch));
-                if (ret == EOF) {
-                    return def;
-                }
-                return static_cast<char>(ret);
-            }
-        };
+        constexpr inline bool is_digit(utf8::code_point cp) noexcept
+        {
+            return cp >= '0' && cp <= '9';
+        }
 
         template <typename CharT>
         struct locale_defaults;
@@ -185,15 +151,15 @@ namespace scn {
 
     namespace detail {
         // constexpr locale
-        template <typename CharT>
-        struct basic_static_locale_ref {
+        template <typename CharT, typename SV, typename Def>
+        struct basic_static_locale_ref_base {
             using char_type = CharT;
-            using string_view_type = basic_string_view<char_type>;
-            using defaults = locale_defaults<char_type>;
+            using string_view_type = SV;
+            using defaults = Def;
 
             static constexpr bool is_static = true;
 
-            constexpr basic_static_locale_ref() = default;
+            constexpr basic_static_locale_ref_base() = default;
 
             static constexpr bool is_space(char_type ch)
             {
@@ -202,6 +168,17 @@ namespace scn {
             static constexpr bool is_digit(char_type ch)
             {
                 return detail::is_digit(ch);
+            }
+
+            static SCN_CONSTEXPR14 bool is_space(span<const char_type> ch)
+            {
+                SCN_EXPECT(ch.size() >= 1);
+                return detail::is_space(ch[0]);
+            }
+            static SCN_CONSTEXPR14 bool is_digit(span<const char_type> ch)
+            {
+                SCN_EXPECT(ch.size() >= 1);
+                return detail::is_digit(ch[0]);
             }
 
             static constexpr char_type decimal_point()
@@ -221,15 +198,18 @@ namespace scn {
             {
                 return defaults::falsename();
             }
-
-            static CharT widen(char ch)
-            {
-                return detail::default_widen<CharT>::widen(ch);
-            }
-            static char narrow(CharT ch, char def)
-            {
-                return detail::default_narrow<CharT>::narrow(ch, def);
-            }
+        };
+        template <typename CharT>
+        struct basic_static_locale_ref
+            : basic_static_locale_ref_base<CharT,
+                                           basic_string_view<CharT>,
+                                           locale_defaults<CharT>> {
+        };
+        template <>
+        struct basic_static_locale_ref<utf8::code_point>
+            : basic_static_locale_ref_base<utf8::code_point,
+                                           string_view,
+                                           locale_defaults<char>> {
         };
 
         // base class
@@ -252,11 +232,16 @@ namespace scn {
             basic_locale_ref_impl_base& operator=(
                 basic_locale_ref_impl_base&&) = default;
 
-#define SCN_DEFINE_LOCALE_REF_CTYPE(f) \
-    bool is_##f(char_type ch) const    \
-    {                                  \
-        return do_is_##f(ch);          \
+#define SCN_DEFINE_LOCALE_REF_CTYPE(f)          \
+    bool is_##f(char_type ch) const             \
+    {                                           \
+        return do_is_##f(ch);                   \
+    }                                           \
+    bool is_##f(span<const char_type> ch) const \
+    {                                           \
+        return do_is_##f(ch);                   \
     }
+
             SCN_DEFINE_LOCALE_REF_CTYPE(space)
             SCN_DEFINE_LOCALE_REF_CTYPE(digit)
             // SCN_DEFINE_LOCALE_REF_CTYPE(alnum)
@@ -293,8 +278,9 @@ namespace scn {
             ~basic_locale_ref_impl_base() = default;
 
         private:
-#define SCN_DECLARE_LOCALE_REF_CTYPE_DO(f) \
-    virtual bool do_is_##f(char_type) const = 0;
+#define SCN_DECLARE_LOCALE_REF_CTYPE_DO(f)       \
+    virtual bool do_is_##f(char_type) const = 0; \
+    virtual bool do_is_##f(span<const char_type>) const = 0;
             SCN_DECLARE_LOCALE_REF_CTYPE_DO(space)
             SCN_DECLARE_LOCALE_REF_CTYPE_DO(digit)
             // SCN_DECLARE_LOCALE_REF_CTYPE_DO(alnum)
@@ -335,6 +321,15 @@ namespace scn {
                 return static_type::is_space(ch);
             }
             bool do_is_digit(char_type ch) const override
+            {
+                return static_type::is_digit(ch);
+            }
+
+            bool do_is_space(span<const char_type> ch) const override
+            {
+                return static_type::is_space(ch);
+            }
+            bool do_is_digit(span<const char_type> ch) const override
             {
                 return static_type::is_digit(ch);
             }
@@ -385,7 +380,20 @@ namespace scn {
                 return m_locale;
             }
 
-#define SCN_DEFINE_CUSTOM_LOCALE_CTYPE(f) bool is_##f(char_type) const;
+            // narrow: locale multibyte -> locale wide
+            // wide: identity
+            error convert_to_wide(const CharT* from_begin,
+                                  const CharT* from_end,
+                                  const CharT*& from_next,
+                                  wchar_t* to_begin,
+                                  wchar_t* to_end,
+                                  wchar_t*& to_next) const;
+            expected<wchar_t> convert_to_wide(const CharT* from_begin,
+                                              const CharT* from_end) const;
+
+#define SCN_DEFINE_CUSTOM_LOCALE_CTYPE(f) \
+    bool is_##f(char_type) const;         \
+    bool is_##f(span<const char_type>) const;
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alnum)
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alpha)
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(blank)
@@ -407,6 +415,9 @@ namespace scn {
             SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
             bool do_is_space(char_type ch) const override;
             bool do_is_digit(char_type ch) const override;
+
+            bool do_is_space(span<const char_type> ch) const override;
+            bool do_is_digit(span<const char_type> ch) const override;
             SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
             char_type do_decimal_point() const override

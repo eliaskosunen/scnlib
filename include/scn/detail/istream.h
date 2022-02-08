@@ -53,7 +53,7 @@ namespace scn {
                     return m_ch;
                 }
 
-                auto ret = read_char(*m_range);
+                auto ret = read_code_unit(*m_range);
                 if (!ret) {
                     // error
                     // m_ch is already eof

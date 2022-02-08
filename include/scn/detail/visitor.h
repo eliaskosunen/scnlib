@@ -121,15 +121,6 @@ namespace scn {
         using arg_type = basic_arg<char_type>;
         auto arg = arg_type{};
 
-#if 0
-        {
-            auto ret = skip_range_whitespace(ctx, false);
-            if (!ret) {
-                return ret;
-            }
-        }
-#endif
-
         while (pctx) {
             if (pctx.should_skip_ws()) {
                 // Skip whitespace from format string and from stream
@@ -158,9 +149,12 @@ namespace scn {
                             "Unexpected end of format string"};
                 }
                 // Check for any non-specifier {foo} characters
-                auto ret = read_char(ctx.range());
+                unsigned char buf[4] = {0};
+                auto bufspan = span<char_type>(
+                    reinterpret_cast<char_type*>(buf), 4 / sizeof(char_type));
+                auto ret = read_code_point(ctx.range(), bufspan);
                 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
-                if (!ret || !pctx.check_literal(ret.value())) {
+                if (!ret || !pctx.check_literal(bufspan.as_const())) {
                     auto rb = ctx.range().reset_to_rollback_point();
                     if (!rb) {
                         // Failed rollback

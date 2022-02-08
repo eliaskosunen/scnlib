@@ -15,26 +15,27 @@ otherwise, match non-whitespace charaters, according to locale
 
 `[` _set_ `]`:
 
-| Specifier  | Description                                  | Default behavior                |
-|:-----------|:---------------------------------------------|:--------------------------------|
-| `:alnum:`  | Alphanumeric characters                      | `[a-zA-Z0-9]`                   |
-| `:alpha:`  | Letters                                      | `[a-zA-Z]`                      |
-| `:blank:`  | Blank characters                             | space and `\t`                  |
-| `:cntrl:`  | Control characters                           | `\x0` to `\x1F` and `\x7F`      |
-| `:digit:`  | Digits                                       | `[0-9]`                         |
-| `:graph:`  | Graphic characters                           | NOT (`\x0` to `\x20` OR `\x7F`) |
-| `:lower:`  | Lowercase letters                            | `[a-z]`                         |
-| `:print:`  | Printable characters (`graph` + space)       | NOT (`\x0` to `\x1F` OR `\x7F`) |
-| `:punct:`  | Punctuation characters                       | `std::ispunct`                  |
-| `:space:`  | Whitespace                                   | space, `\t\n\v\f\r`             |
-| `:upper:`  | Uppercase letters                            | `[A-Z]`                         |
-| `:xdigit:` | Hexadecimal digits                           | `[0-9a-fA-F]`                   |
-| `\l`       | Letters (`:alpha:`)                          | `[a-zA-Z]`                      |
-| `\w`       | Letters, numbers, underscore (`alnum` + `_`) | `[a-zA-Z0-9_]`                  |
-| `\s`       | Whitespace (`space`)                         | space, `\t\n\v\f\r`             |
-| `\d`       | Digits (`digit`)                             | `[0-9]`                         |
-| `\x__`     | Hex character (2 chars, range 0x00 to 0x7F)  |                                 |
-| `\U______` | Unicode codepoint (6 chars, hex)             |                                 |
+| Specifier     | Description                                  | Default behavior                |
+|:--------------|:---------------------------------------------|:--------------------------------|
+| `:alnum:`     | Alphanumeric characters                      | `[a-zA-Z0-9]`                   |
+| `:alpha:`     | Letters                                      | `[a-zA-Z]`                      |
+| `:blank:`     | Blank characters                             | space and `\t`                  |
+| `:cntrl:`     | Control characters                           | `\x0` to `\x1F` and `\x7F`      |
+| `:digit:`     | Digits                                       | `[0-9]`                         |
+| `:graph:`     | Graphic characters                           | NOT (`\x0` to `\x20` OR `\x7F`) |
+| `:lower:`     | Lowercase letters                            | `[a-z]`                         |
+| `:print:`     | Printable characters (`graph` + space)       | NOT (`\x0` to `\x1F` OR `\x7F`) |
+| `:punct:`     | Punctuation characters                       | `std::ispunct`                  |
+| `:space:`     | Whitespace                                   | space, `\t\n\v\f\r`             |
+| `:upper:`     | Uppercase letters                            | `[A-Z]`                         |
+| `:xdigit:`    | Hexadecimal digits                           | `[0-9a-fA-F]`                   |
+| `\l`          | Letters (`:alpha:`)                          | `[a-zA-Z]`                      |
+| `\w`          | Letters, numbers, underscore (`alnum` + `_`) | `[a-zA-Z0-9_]`                  |
+| `\s`          | Whitespace (`space`)                         | space, `\t\n\v\f\r`             |
+| `\d`          | Digits (`digit`)                             | `[0-9]`                         |
+| `\x__`        | Hex character (2 chars, range 0x00 to 0x7F)  |                                 |
+| `\u____`      | Unicode codepoint (4 chars, hex)             |                                 |
+| `\U________`  | Unicode codepoint (8 chars, hex)             |                                 |
 
 `l`, `w`, `s`, `d` can be inverted with capitalization: `L`, `W`, `S`, `D`, respectively.  
 `^` can also be used for inverting, which must be the first character in the set.

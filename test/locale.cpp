@@ -95,17 +95,6 @@ TEST_CASE("static locale")
                               wloc.falsename().size()),
                  0);
     }
-
-    SUBCASE("widen & narrow")
-    {
-        CHECK(loc.widen('a') == 'a');
-        CHECK(wloc.widen('a') == L'a');
-
-        CHECK(loc.narrow('a', 0) == 'a');
-        CHECK(wloc.narrow(L'a', 0) == 'a');
-
-        CHECK(wloc.narrow(1024, 0) == 0);
-    }
 }
 
 TEST_CASE("custom locale")

@@ -1006,6 +1006,28 @@ namespace scn {
                 return {};
             }
 
+            template <typename Context>
+            struct pred {
+                Context& ctx;
+                set_parser_type& set_parser;
+                bool localized;
+
+                bool operator()(
+                    span<const typename Context::char_type> ch) const
+                {
+                    return !set_parser.check_character(ch[0], localized,
+                                                       ctx.locale());
+                }
+                bool is_localized() const
+                {
+                    return localized;
+                }
+                static constexpr bool is_multibyte()
+                {
+                    return sizeof(typename Context::char_type) == 1;
+                }
+            };
+
             template <typename Context, typename Allocator>
             error scan(
                 std::basic_string<typename Context::char_type,
@@ -1015,11 +1037,8 @@ namespace scn {
             {
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
-                    auto pred = [&](typename Context::char_type ch) {
-                        return !set_parser.check_character(ch, loc,
-                                                           ctx.locale());
-                    };
-                    return do_scan(ctx, val, pred);
+                    return do_scan(ctx, val,
+                                   pred<Context>{ctx, set_parser, loc});
                 }
 
                 auto e = skip_range_whitespace(ctx, false);
@@ -1089,11 +1108,9 @@ namespace scn {
 
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
-                    auto pred = [&](typename Context::char_type ch) {
-                        return !set_parser.check_character(ch, loc,
-                                                           ctx.locale());
-                    };
-                    return do_scan(ctx, val, pred);
+                    return do_scan(
+                        ctx, val,
+                        string_scanner::pred<Context>{ctx, set_parser, loc});
                 }
 
                 auto e = skip_range_whitespace(ctx, false);
@@ -1160,11 +1177,9 @@ namespace scn {
 
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
-                    auto pred = [&](typename Context::char_type ch) {
-                        return !set_parser.check_character(ch, loc,
-                                                           ctx.locale());
-                    };
-                    return do_scan(ctx, val, pred);
+                    return do_scan(
+                        ctx, val,
+                        string_scanner::pred<Context>{ctx, set_parser, loc});
                 }
 
                 auto e = skip_range_whitespace(ctx, false);

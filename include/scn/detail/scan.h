@@ -377,17 +377,56 @@ namespace scn {
     // getline
 
     namespace detail {
+        template <typename CharT>
+        struct until_pred {
+            CharT until;
+
+            constexpr bool operator()(span<const CharT> ch) const
+            {
+                return ch[0] == until;
+            }
+            static constexpr bool is_localized()
+            {
+                return false;
+            }
+            static constexpr bool is_multibyte()
+            {
+                return false;
+            }
+        };
+        template <>
+        struct until_pred<utf8::code_point> {
+            using cp_type = utf8::code_point;
+            cp_type until;
+
+            bool operator()(span<const char> ch) const
+            {
+                cp_type cp;
+                auto e = utf8::parse_code_point(ch.begin(), ch.end(), cp);
+                SCN_ENSURE(e);
+                return cp == until;
+            }
+            static constexpr bool is_localized()
+            {
+                return true;
+            }
+            static constexpr bool is_multibyte()
+            {
+                return true;
+            }
+        };
+
         template <typename WrappedRange, typename String, typename CharT>
         error getline_impl(WrappedRange& r, String& str, CharT until)
         {
-            auto until_pred = [until](CharT ch) { return ch == until; };
-            auto s = read_until_space_zero_copy(r, until_pred, true);
+            auto pred = until_pred<CharT>{until};
+            auto s = read_until_space_zero_copy(r, pred, true);
             if (!s) {
                 return s.error();
             }
             if (s.value().size() != 0) {
                 auto size = s.value().size();
-                if (until_pred(s.value()[size - 1])) {
+                if (pred(s.value().last(1))) {
                     --size;
                 }
                 str.clear();
@@ -399,11 +438,11 @@ namespace scn {
 
             String tmp;
             auto out = std::back_inserter(tmp);
-            auto e = read_until_space(r, out, until_pred, true);
+            auto e = read_until_space(r, out, until_pred<CharT>{until}, true);
             if (!e) {
                 return e;
             }
-            if (until_pred(tmp.back())) {
+            if (pred(span<const CharT>(&*(tmp.end() - 1), 1))) {
                 tmp.pop_back();
             }
             r.advance();
@@ -418,14 +457,14 @@ namespace scn {
             static_assert(
                 WrappedRange::is_contiguous,
                 "Cannot getline a string_view from a non-contiguous range");
-            auto until_pred = [until](CharT ch) { return ch == until; };
-            auto s = read_until_space_zero_copy(r, until_pred, true);
+            auto pred = until_pred<CharT>{until};
+            auto s = read_until_space_zero_copy(r, pred, true);
             if (!s) {
                 return s.error();
             }
             SCN_ASSERT(s.value().size(), "");
             auto size = s.value().size();
-            if (until_pred(s.value()[size - 1])) {
+            if (pred(s.value().last(1))) {
                 --size;
             }
             str = basic_string_view<CharT>{s.value().data(), size};
@@ -597,9 +636,8 @@ namespace scn {
                 range_wrapper_for_t<typename WrappedRange::iterator>>::type>
         error ignore_until_impl(WrappedRange& r, CharT until)
         {
-            auto until_pred = [until](CharT ch) { return ch == until; };
             ignore_iterator<CharT> it{};
-            return read_until_space(r, it, until_pred, false);
+            return read_until_space(r, it, until_pred<CharT>{until}, false);
         }
 
         template <
@@ -610,9 +648,9 @@ namespace scn {
                                   ranges::range_difference_t<WrappedRange> n,
                                   CharT until)
         {
-            auto until_pred = [until](CharT ch) { return ch == until; };
             ignore_iterator_n<CharT> begin{}, end{n};
-            return read_until_space_ranged(r, begin, end, until_pred, false);
+            return read_until_space_ranged(r, begin, end,
+                                           until_pred<CharT>{until}, false);
         }
     }  // namespace detail
 
@@ -745,6 +783,22 @@ namespace scn {
         template <>
         struct zero_value<wchar_t> : std::integral_constant<wchar_t, 0> {
         };
+
+        template <typename WrappedRange, typename CharT>
+        expected<CharT> read_single(WrappedRange& r, CharT)
+        {
+            return read_code_unit(r);
+        }
+        template <typename WrappedRange>
+        expected<utf8::code_point> read_single(WrappedRange& r,
+                                               utf8::code_point)
+        {
+            using char_type = typename WrappedRange::char_type;
+            unsigned char buf[4] = {0};
+            auto bufspan = span<char_type>(reinterpret_cast<char_type*>(buf),
+                                           4 / sizeof(char_type));
+            return read_code_unit(r, bufspan);
+        }
     }  // namespace detail
 
     /**
@@ -781,21 +835,23 @@ namespace scn {
      */
     template <typename Range,
               typename Container,
-              typename CharT = typename detail::extract_char_type<
+              typename Separator = typename detail::extract_char_type<
                   ranges::iterator_t<Range>>::type>
     auto scan_list(Range&& r,
                    Container& c,
-                   CharT separator = detail::zero_value<CharT>::value)
+                   Separator separator = detail::zero_value<Separator>::value)
         -> detail::scan_result_for_range<Range>
     {
         using value_type = typename Container::value_type;
         value_type value;
 
         auto range = wrap(SCN_FWD(r));
+        using char_type = typename decltype(range)::char_type;
+
         auto args = make_args_for(range, 1, value);
         auto ctx = make_context(SCN_MOVE(range));
         auto pctx = make_parse_context(1, ctx.locale());
-        auto cargs = basic_args<CharT>{args};
+        auto cargs = basic_args<char_type>{args};
 
         while (true) {
             if (c.size() == c.max_size()) {
@@ -815,7 +871,7 @@ namespace scn {
             c.push_back(SCN_MOVE(value));
 
             if (separator != 0) {
-                auto sep_ret = read_char(ctx.range());
+                auto sep_ret = detail::read_single(ctx.range(), separator);
                 if (!sep_ret) {
                     if (sep_ret.error() == scn::error::end_of_range) {
                         break;
@@ -853,18 +909,20 @@ namespace scn {
      */
     template <typename Range,
               typename Container,
-              typename CharT = typename detail::extract_char_type<
+              typename Separator = typename detail::extract_char_type<
                   ranges::iterator_t<Range>>::type>
     auto scan_list_until(Range&& r,
                          Container& c,
-                         CharT until,
-                         CharT separator = detail::zero_value<CharT>::value)
+                         Separator until,
+                         Separator separator = detail::zero_value<Separator>::value)
         -> detail::scan_result_for_range<Range>
     {
         using value_type = typename Container::value_type;
         value_type value;
 
         auto range = wrap(SCN_FWD(r));
+        using char_type = typename decltype(range)::char_type;
+
         auto args = make_args_for(range, 1, value);
         auto ctx = make_context(SCN_MOVE(range));
 
@@ -875,7 +933,7 @@ namespace scn {
             }
 
             auto pctx = make_parse_context(1, ctx.locale());
-            auto err = visit(ctx, pctx, basic_args<CharT>{args});
+            auto err = visit(ctx, pctx, basic_args<char_type>{args});
             if (!err) {
                 if (err == error::end_of_range) {
                     break;
@@ -888,7 +946,7 @@ namespace scn {
 
             bool sep_found = false;
             while (true) {
-                auto next = read_char(ctx.range(), false);
+                auto next = read_code_unit(ctx.range(), false);
                 if (!next) {
                     if (next.error() == scn::error::end_of_range) {
                         scanning = false;
