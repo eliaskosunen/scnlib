@@ -103,12 +103,25 @@ namespace scn {
 
     // read_code_point
 
+    template <typename CharT, typename CP>
+    struct read_code_point_result {
+        span<const CharT> chars;
+        CP cp;
+    };
+
     namespace detail {
+        using narrow_read_code_point_result_type =
+            read_code_point_result<char, utf8::code_point>;
+        using wide_read_code_point_result_type =
+            read_code_point_result<wchar_t, wchar_t>;
+
         // contiguous && direct
         template <typename WrappedRange>
-        expected<utf8::code_point> read_code_point_impl(WrappedRange& r,
-                                                        span<char>& buf,
-                                                        std::true_type)
+        expected<narrow_read_code_point_result_type> read_code_point_impl(
+            WrappedRange& r,
+            span<char>,
+            bool parse_code_point,
+            std::true_type)
         {
             if (r.begin() == r.end()) {
                 return error(error::end_of_range, "EOF");
@@ -120,28 +133,31 @@ namespace scn {
                              "Invalid utf8 code point");
             }
             if (len == 1) {
+                auto s = make_span(r.data(), 1).as_const();
                 r.advance();
-                buf[0] = first;
-                buf = buf.first(1);
-                return {utf8::make_code_point(first)};
+                return narrow_read_code_point_result_type{
+                    s, utf8::make_code_point(first)};
             }
 
-            auto end = r.begin() + len;
             utf8::code_point cp{};
-            auto ret = parse_code_point(r.begin(), end, cp);
-            if (!ret) {
-                return ret.error();
+            if (parse_code_point) {
+                auto ret =
+                    utf8::parse_code_point(r.begin(), r.begin() + len, cp);
+                if (!ret) {
+                    return ret.error();
+                }
             }
-            std::memcpy(buf.data(), r.data(), static_cast<size_t>(len));
-            buf = buf.first(static_cast<size_t>(len));
+            auto s = make_span(r.data(), static_cast<size_t>(len)).as_const();
             r.advance(len);
-            return {cp};
+            return narrow_read_code_point_result_type{s, cp};
         }
 
         template <typename WrappedRange>
-        expected<utf8::code_point> read_code_point_impl(WrappedRange& r,
-                                                        span<char>& buf,
-                                                        std::false_type)
+        expected<narrow_read_code_point_result_type> read_code_point_impl(
+            WrappedRange& r,
+            span<char> writebuf,
+            bool parse_code_point,
+            std::false_type)
         {
             auto first = read_code_unit(r, false);
             if (!first) {
@@ -154,33 +170,38 @@ namespace scn {
                              "Invalid utf8 code point");
             }
             if (len == 1) {
+                writebuf[0] = first.value();
                 r.advance();
-                buf = buf.first(1);
-                return {utf8::make_code_point(first.value())};
+                return narrow_read_code_point_result_type{
+                    make_span(writebuf.data(), 1).as_const(),
+                    utf8::make_code_point(first.value())};
             }
 
             size_t index = 1;
 
-            auto parse = [&]() -> expected<utf8::code_point> {
+            auto parse = [&]() -> expected<narrow_read_code_point_result_type> {
                 utf8::code_point cp{};
-                auto ret =
-                    utf8::parse_code_point(buf.begin(), buf.begin() + len, cp);
-                if (!ret) {
-                    auto err = putback_n(r, static_cast<std::ptrdiff_t>(len));
-                    if (!err) {
-                        return err;
+                if (parse_code_point) {
+                    auto ret = utf8::parse_code_point(
+                        writebuf.data(), writebuf.data() + len, cp);
+                    if (!ret) {
+                        auto err =
+                            putback_n(r, static_cast<std::ptrdiff_t>(len));
+                        if (!err) {
+                            return err;
+                        }
+                        return ret.error();
                     }
-                    return ret.error();
                 }
-                buf = buf.first(len);
-                return {cp};
+                auto s = make_span(writebuf.data(), len).as_const();
+                return narrow_read_code_point_result_type{s, cp};
             };
             auto advance = [&]() -> error {
                 auto ret = read_code_unit(r, false);
                 if (!ret) {
                     return ret.error();
                 }
-                buf[index] = ret.value();
+                writebuf[index] = ret.value();
                 ++index;
                 return {};
             };
@@ -201,28 +222,45 @@ namespace scn {
 
     template <
         typename WrappedRange,
+        typename BufValueT,
         typename std::enable_if<std::is_same<typename WrappedRange::char_type,
                                              char>::value>::type* = nullptr>
-    expected<utf8::code_point> read_code_point(WrappedRange& r, span<char>& buf)
+    expected<detail::narrow_read_code_point_result_type> read_code_point(
+        WrappedRange& r,
+        span<BufValueT> writebuf,
+        bool parse_code_point)
     {
-        SCN_EXPECT(buf.size() >= 4);
+        SCN_EXPECT(writebuf.size() * sizeof(BufValueT) >= 4);
         return detail::read_code_point_impl(
-            r, buf,
+            r,
+            make_span(reinterpret_cast<char*>(writebuf.data()),
+                      writebuf.size() * sizeof(BufValueT)),
+            parse_code_point,
             std::integral_constant<bool, WrappedRange::is_contiguous>{});
     }
     template <
         typename WrappedRange,
+        typename BufValueT,
         typename std::enable_if<std::is_same<typename WrappedRange::char_type,
                                              wchar_t>::value>::type* = nullptr>
-    expected<wchar_t> read_code_point(WrappedRange& r, span<wchar_t>& buf)
+    expected<detail::wide_read_code_point_result_type> read_code_point(
+        WrappedRange& r,
+        span<BufValueT> writebuf,
+        bool parse_code_point)
     {
-        SCN_EXPECT(buf.size() >= 1);
+        SCN_UNUSED(parse_code_point);
+        SCN_EXPECT(writebuf.size() * sizeof(BufValueT) >= 4);
+
+        auto buf = make_span(reinterpret_cast<wchar_t*>(writebuf.data()),
+                             writebuf.size() * sizeof(BufValueT));
         auto ret = read_code_unit(r, true);
-        if (ret) {
-            buf[0] = ret.value();
-            buf = buf.first(1);
+        if (!ret) {
+            return ret.error();
         }
-        return ret;
+        buf[0] = ret.value();
+        buf = buf.first(1);
+        return detail::wide_read_code_point_result_type{buf.as_const(),
+                                                        ret.value()};
     }
 
     // read_zero_copy
@@ -515,27 +553,24 @@ namespace scn {
                 }
             }
             else {
-                using char_type = typename WrappedRange::char_type;
-                unsigned char buf = {0};
+                unsigned char buf[4] = {0};
                 while (r.begin() != r.end() && out_cmp(out)) {
-                    auto bufspan =
-                        span<char_type>(reinterpret_cast<char_type*>(buf),
-                                        4 / sizeof(char_type));
-                    auto cp = read_code_point(r, bufspan);
+                    auto cp = read_code_point(r, make_span(buf, 4), false);
                     if (!cp) {
                         return cp.error();
                     }
-                    if (pred(bufspan.as_const()) == pred_result_to_stop) {
+                    if (pred(cp.value().chars) == pred_result_to_stop) {
                         if (keep_final) {
-                            out =
-                                std::copy(bufspan.begin(), bufspan.end(), out);
+                            out = std::copy(cp.value().chars.begin(),
+                                            cp.value().chars.end(), out);
                             return {};
                         }
                         else {
                             return putback_n(r, 1);
                         }
                     }
-                    out = std::copy(bufspan.begin(), bufspan.end(), out);
+                    out = std::copy(cp.value().chars.begin(),
+                                    cp.value().chars.end(), out);
                 }
             }
             return {};

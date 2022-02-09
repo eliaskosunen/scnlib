@@ -64,13 +64,11 @@ namespace scn {
                 }
 
                 unsigned char buf[4] = {0};
-                auto bufspan = span<char_type>(
-                    reinterpret_cast<char_type*>(buf), 4 / sizeof(char_type));
-                auto cp = read_code_point(ctx.range(), bufspan);
+                auto cp = read_code_point(ctx.range(), make_span(buf, 4), true);
                 if (!cp) {
                     return cp.error();
                 }
-                val = cp.value();
+                val = cp.value().cp;
                 return {};
             }
         };
@@ -202,22 +200,20 @@ namespace scn {
                     }
 
                     unsigned char buf[4] = {0};
-                    auto bufspan =
-                        span<char_type>(reinterpret_cast<char_type*>(buf),
-                                        4 / sizeof(char_type));
-                    auto cp = read_code_point(ctx.range(), bufspan);
+                    auto cp =
+                        read_code_point(ctx.range(), make_span(buf, 4), true);
                     if (!cp) {
                         return cp.error();
                     }
-                    if (cp.value() == detail::ascii_widen<char_type>('0')) {
+                    if (cp.value().cp == detail::ascii_widen<char_type>('0')) {
                         val = false;
                         return {};
                     }
-                    if (cp.value() == detail::ascii_widen<char_type>('1')) {
+                    if (cp.value().cp == detail::ascii_widen<char_type>('1')) {
                         val = true;
                         return {};
                     }
-                    auto pb = putback_n(ctx.range(), bufspan.ssize());
+                    auto pb = putback_n(ctx.range(), cp.value().chars.ssize());
                     if (!pb) {
                         return pb;
                     }

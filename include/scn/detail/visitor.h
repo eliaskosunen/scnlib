@@ -150,11 +150,10 @@ namespace scn {
                 }
                 // Check for any non-specifier {foo} characters
                 unsigned char buf[4] = {0};
-                auto bufspan = span<char_type>(
-                    reinterpret_cast<char_type*>(buf), 4 / sizeof(char_type));
-                auto ret = read_code_point(ctx.range(), bufspan);
+                auto ret =
+                    read_code_point(ctx.range(), make_span(buf, 4), false);
                 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
-                if (!ret || !pctx.check_literal(bufspan.as_const())) {
+                if (!ret || !pctx.check_literal(ret.value().chars)) {
                     auto rb = ctx.range().reset_to_rollback_point();
                     if (!rb) {
                         // Failed rollback
