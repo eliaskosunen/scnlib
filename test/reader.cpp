@@ -332,7 +332,7 @@ TEST_CASE("read_into")
 }
 
 struct is_space_pred {
-    constexpr bool operator()(scn::span<const char> ch) const
+    bool operator()(scn::span<const char> ch) const
     {
         return ch[0] == ' ';
     }
