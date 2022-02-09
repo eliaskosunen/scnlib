@@ -381,6 +381,12 @@ The contents of this library are heavily influenced by {fmt} and its derivative 
 The bundled ranges implementation found from this library is based on NanoRange:  
 <https://github.com/tcbrindle/NanoRange>
 
+The default floating-point parsing algorithm used by this library is implemented by fast_float:  
+<https://github.com/fastfloat/fast_float>
+
+The design of this library is also inspired  by the Python `parse` library:  
+<https://github.com/r1chardj0n3s/parse>
+
 ## License
 
 scnlib is licensed under the Apache License, version 2.0.  
