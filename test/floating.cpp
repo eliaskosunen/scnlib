@@ -253,11 +253,12 @@ TEST_CASE("format string")
 SCN_CLANG_POP
 #endif
 
-TEST_CASE("non-contiguous")
+TEST_CASE_TEMPLATE("non-contiguous", CharT, char, wchar_t)
 {
-    auto src = get_deque("3.14");
+    auto src = get_deque<CharT>(widen<CharT>("3.14"));
     double f{0.0};
-    auto ret = scn::scan(src, "{}", f);
+    auto format = widen<CharT>("{}");
+    auto ret = scn::scan(src, format, f);
     CHECK(ret);
     CHECK(f == doctest::Approx(3.14));
 }

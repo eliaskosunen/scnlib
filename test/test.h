@@ -28,7 +28,9 @@ SCN_GCC_IGNORE("-Wnoexcept")
 #include <vector>
 SCN_GCC_POP
 
+#ifndef SCN_SKIP_DOCTEST
 #include <doctest/doctest.h>
+#endif
 
 template <typename T>
 struct debug;
@@ -59,17 +61,159 @@ auto do_scan(Input&& i, Fmt f, T&... a)
                      widen<CharT>(f).c_str(), a...);
 }
 
-inline std::deque<char> get_deque(const std::string& content = "123")
+template <typename CharT>
+std::deque<CharT> get_deque(
+    const std::basic_string<CharT>& content = widen<CharT>("123"))
 {
-    std::deque<char> src{};
+    std::deque<CharT> src{};
     for (auto ch : content) {
         src.push_back(ch);
     }
     return src;
 }
-inline std::deque<char> get_empty_deque()
+template <typename CharT>
+std::deque<CharT> get_empty_deque()
 {
     return {};
+}
+
+template <typename CharT>
+struct indirect_range {
+    using value_type = scn::expected<CharT>;
+    using reference = scn::expected<CharT>;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+
+    struct iterator {
+        using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
+        using value_type = scn::expected<CharT>;
+        using reference = scn::expected<CharT>;
+        using pointer = scn::expected<CharT>*;
+        using iterator_category = std::bidirectional_iterator_tag;
+
+        iterator() noexcept = default;
+        iterator(const indirect_range& r, difference_type i) noexcept
+            : range(&r), index(i)
+        {
+        }
+
+        scn::expected<CharT> operator*() const
+        {
+            return range->operator[](static_cast<size_type>(index));
+        }
+        const scn::expected<CharT>* operator->() const
+        {
+            return &range->storage[static_cast<size_type>(index)];
+        }
+
+        iterator& operator++() noexcept
+        {
+            ++index;
+            return *this;
+        }
+        iterator operator++(int) noexcept
+        {
+            auto tmp = *this;
+            operator++();
+            return tmp;
+        }
+
+        iterator& operator--() noexcept
+        {
+            --index;
+            return *this;
+        }
+        iterator operator--(int) noexcept
+        {
+            auto tmp = *this;
+            operator--();
+            return tmp;
+        }
+
+        bool operator==(const iterator& o) const noexcept
+        {
+            if (_is_end() && o._is_end()) {
+                return true;
+            }
+            return range == o.range && index == o.index;
+        }
+        bool operator!=(const iterator& o) const noexcept
+        {
+            return !operator==(o);
+        }
+
+        bool _is_end() const noexcept
+        {
+            if (!range) {
+                return true;
+            }
+            if (static_cast<size_t>(index) == range->size()) {
+                return true;
+            }
+            return false;
+        }
+
+        const indirect_range* range{nullptr};
+        difference_type index{0};
+    };
+    using const_iterator = iterator;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+    using storage_type = std::vector<scn::expected<CharT>>;
+
+    indirect_range() = default;
+    indirect_range(iterator begin, iterator end)
+    {
+        for (; begin != end; ++begin) {
+            push_back(*begin);
+        }
+    }
+
+    void push_back(scn::expected<CharT> val)
+    {
+        storage.push_back(val);
+    }
+
+    const_iterator begin() const noexcept
+    {
+        return {*this, 0};
+    }
+    const_iterator end() const noexcept
+    {
+        return {*this, static_cast<difference_type>(size())};
+    }
+
+    size_type size() const noexcept
+    {
+        return storage.size();
+    }
+
+    scn::expected<CharT> operator[](size_type i) const
+    {
+        return storage[i];
+    }
+
+    storage_type storage;
+};
+static_assert(SCN_CHECK_CONCEPT(scn::polyfill_2a::bidirectional_iterator<
+                                indirect_range<char>::iterator>),
+              "indirect_range::iterator is a BidirectionalIterator");
+static_assert(SCN_CHECK_CONCEPT(scn::ranges::range<indirect_range<char>>),
+              "indirect_range is a Range");
+static_assert(!scn::detail::is_direct_impl<indirect_range<char>>::value,
+              "indirect_range is not direct");
+
+template <typename CharT>
+indirect_range<CharT> get_indirect(const std::basic_string<CharT>& content)
+{
+    indirect_range<CharT> src;
+    for (auto ch : content) {
+        src.push_back({ch});
+    }
+    src.push_back(scn::error{scn::error::end_of_range, "EOF"});
+    return src;
 }
 
 template <typename T>

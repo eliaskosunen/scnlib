@@ -19,6 +19,24 @@
 #include <sstream>
 #include <vector>
 
+#define SCN_SKIP_DOCTEST
+#include "../test.h"
+
+template <typename CharT>
+struct default_format_string;
+template <>
+struct default_format_string<char> {
+    static const char* value;
+};
+template <>
+struct default_format_string<wchar_t> {
+    static const wchar_t* value;
+};
+const char* default_format_string<char>::value = "{}";
+const wchar_t* default_format_string<wchar_t>::value = L"{}";
+
+std::locale global_locale{};
+
 template <typename T, typename C>
 void run(scn::basic_string_view<C> source)
 {
@@ -27,6 +45,30 @@ void run(scn::basic_string_view<C> source)
         T val{};
         while (true) {
             result = scn::scan_default(result.range(), val);
+            if (!result) {
+                break;
+            }
+        }
+    }
+
+    {
+        auto result = scn::make_result(source);
+        T val{};
+        while (true) {
+            result =
+                scn::scan(result.range(), default_format_string<C>::value, val);
+            if (!result) {
+                break;
+            }
+        }
+    }
+
+    {
+        auto result = scn::make_result(source);
+        T val{};
+        while (true) {
+            result = scn::scan_localized(global_locale, result.range(),
+                                         default_format_string<C>::value, val);
             if (!result) {
                 break;
             }
@@ -88,17 +130,159 @@ void roundtrip(scn::basic_string_view<C> data)
     oss << original_value;
     auto source = std::move(oss).str();
 
-    T value{};
-    auto result = scn::scan_default(source, value);
-    if (!result) {
-        throw std::runtime_error("Failed to read");
+#define SCAN_BOILERPLATE_BEFORE T value{};
+#define SCAN_BOILERPLATE_AFTER                         \
+    if (!result) {                                     \
+        throw std::runtime_error("Failed to read");    \
+    }                                                  \
+    if (value != original_value) {                     \
+        throw std::runtime_error("Roundtrip failure"); \
+    }                                                  \
+    if (!result.range().empty()) {                     \
+        throw std::runtime_error("Unparsed input");    \
     }
-    if (value != original_value) {
-        throw std::runtime_error("Roundtrip failure");
+#define SCAN_BOILERPLATE_AFTER_INDIRECT                                  \
+    if (!result) {                                                       \
+        throw std::runtime_error("Failed to read");                      \
+    }                                                                    \
+    if (value != original_value) {                                       \
+        throw std::runtime_error("Roundtrip failure");                   \
+    }                                                                    \
+    if (result.range().size() != 1 && result.range().begin()->error()) { \
+        throw std::runtime_error("Unparsed input");                      \
     }
-    if (!result.range().empty()) {
-        throw std::runtime_error("Unparsed input");
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan_default(source, value);
+        SCAN_BOILERPLATE_AFTER
     }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan(source, default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan_localized(
+            global_locale, source, default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    using string_type = std::basic_string<C>;
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan_default(string_type{source}, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan(string_type{source},
+                                default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result =
+            scn::scan_localized(global_locale, string_type{source},
+                                default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    using string_view_type = scn::basic_string_view<C>;
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan_default(
+            string_view_type{source.data(), source.size()}, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan(string_view_type{source.data(), source.size()},
+                                default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan_localized(
+            global_locale, string_view_type{source.data(), source.size()},
+            default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan_default(get_indirect<C>(source), value);
+        SCAN_BOILERPLATE_AFTER_INDIRECT
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan(get_indirect<C>(source),
+                                default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER_INDIRECT
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result =
+            scn::scan_localized(global_locale, get_indirect<C>(source),
+                                default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER_INDIRECT
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto r = get_indirect<C>(source);
+        auto result = scn::scan_default(r, value);
+        SCAN_BOILERPLATE_AFTER_INDIRECT
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto r = get_indirect<C>(source);
+        auto result = scn::scan(r, default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER_INDIRECT
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto r = get_indirect<C>(source);
+        auto result = scn::scan_localized(
+            global_locale, r, default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER_INDIRECT
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan_default(get_deque<C>(source), value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result = scn::scan(get_deque<C>(source),
+                                default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto result =
+            scn::scan_localized(global_locale, get_deque<C>(source),
+                                default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto r = get_deque<C>(source);
+        auto result = scn::scan_default(r, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto r = get_deque<C>(source);
+        auto result = scn::scan(r, default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+    {
+        SCAN_BOILERPLATE_BEFORE
+        auto r = get_deque<C>(source);
+        auto result = scn::scan_localized(
+            global_locale, r, default_format_string<C>::value, value);
+        SCAN_BOILERPLATE_AFTER
+    }
+#undef SCAN_BOILERPLATE_BEFORE
+#undef SCAN_BOILERPLATE_AFTER
+#undef SCAN_BOILERPLATE_AFTER_INDIRECT
 }
 
 #define SCN_FUZZ_RUN_BASIC(source, Char)                \
@@ -148,10 +332,11 @@ void roundtrip(scn::basic_string_view<C> data)
         roundtrip<unsigned long long>(source); \
     } while (false)
 
-#define SCN_FUZZ_RUN_FORMAT_TYPE(source, Char, T) \
-    do {                                          \
-        T value{};                                \
-        scn::scan(source, source, value);         \
+#define SCN_FUZZ_RUN_FORMAT_TYPE(source, Char, T)                  \
+    do {                                                           \
+        T value{};                                                 \
+        scn::scan(source, source, value);                          \
+        scn::scan_localized(std::locale{}, source, source, value); \
     } while (false);
 
 #define SCN_FUZZ_RUN_FORMAT(source, Char)                            \

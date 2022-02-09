@@ -52,6 +52,11 @@ namespace scn {
         {
             return {SCN_FWD(f)};
         }
+        template <typename CharT>
+        basic_string_view<CharT> to_format(const std::basic_string<CharT>& str)
+        {
+            return {str.data(), str.size()};
+        }
 
         template <typename WrappedRange,
                   typename CharT = typename WrappedRange::char_type>
@@ -187,7 +192,7 @@ namespace scn {
         basic_string_view<detail::vscan_macro::CharAlias>,                  \
         basic_args<detail::vscan_macro::CharAlias>&&);                      \
                                                                             \
-    error vscan_usertype(basic_context<detail::vscan_macro::WrappedAlias>&,  \
+    error vscan_usertype(basic_context<detail::vscan_macro::WrappedAlias>&, \
                          basic_string_view<detail::vscan_macro::CharAlias>, \
                          basic_args<detail::vscan_macro::CharAlias>&&)
 
