@@ -130,3 +130,27 @@ TEST_CASE("width")
         CHECK(i == 123);
     }
 }
+
+TEST_CASE("utf8 literal")
+{
+    SUBCASE("code points")
+    {
+        scn::utf8::code_point a, b;
+        auto e = scn::scan("åäö", "{}ä{}", a, b);
+        CHECK(e);
+        CHECK(e.empty());
+        CHECK(a == 0xe5);
+        CHECK(b == 0xf6);
+    }
+    SUBCASE("code units")
+    {
+        char a1, a2, b1, b2;
+        auto e = scn::scan("åäö", "{}{}ä{}{}", a1, a2, b1, b2);
+        CHECK(e);
+        CHECK(e.empty());
+        CHECK(a1 == static_cast<char>(0xc3));
+        CHECK(a2 == static_cast<char>(0xa5));
+        CHECK(b1 == static_cast<char>(0xc3));
+        CHECK(b2 == static_cast<char>(0xb6));
+    }
+}

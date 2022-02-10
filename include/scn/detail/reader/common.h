@@ -881,14 +881,14 @@ namespace scn {
             SCN_EXPECT(check_end(pctx));
             using char_type = typename ParseCtx::char_type;
 
-            auto ch = pctx.next();
+            auto ch = pctx.next_char();
             auto next_char = [&]() -> error {
-                pctx.advance();
+                pctx.advance_char();
                 auto e = check_end(pctx);
                 if (!e) {
                     return e;
                 }
-                ch = pctx.next();
+                ch = pctx.next_char();
                 return {};
             };
             auto parse_number = [&](size_t& n) -> error {
@@ -909,7 +909,7 @@ namespace scn {
                 }
 
                 for (it = pctx.begin(); it != res.value();
-                     pctx.advance(), it = pctx.begin()) {}
+                     pctx.advance_char(), it = pctx.begin()) {}
                 return {};
             };
 
@@ -936,7 +936,7 @@ namespace scn {
             bool align_set = false;
             if (pctx.chars_left() > 1 &&
                 ch != detail::ascii_widen<char_type>('[')) {
-                const auto peek = pctx.peek();
+                const auto peek = pctx.peek_char();
                 align = get_align_char(peek);
                 if (align != common_options_none) {
                     parse_align(align, ch);
@@ -1034,8 +1034,8 @@ namespace scn {
                 return {};
             }
 
-            for (auto ch = pctx.next(); pctx && !pctx.check_arg_end();
-                 ch = pctx.next()) {
+            for (auto ch = pctx.next_char(); pctx && !pctx.check_arg_end();
+                 ch = pctx.next_char()) {
                 bool parsed = false;
                 for (std::size_t i = 0; i < type_options.size() && !parsed;
                      ++i) {
@@ -1049,7 +1049,7 @@ namespace scn {
                     }
                 }
                 if (parsed) {
-                    pctx.advance();
+                    pctx.advance_char();
                     if (!pctx || pctx.check_arg_end()) {
                         break;
                     }
@@ -1066,7 +1066,7 @@ namespace scn {
                     }
                     continue;
                 }
-                ch = pctx.next();
+                ch = pctx.next_char();
 
                 if (!parsed) {
                     return {error::invalid_format_string,

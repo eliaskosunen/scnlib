@@ -308,6 +308,22 @@ namespace scn {
             return e;
         }
 
+        template <typename I, typename S>
+        SCN_CONSTEXPR14 expected<std::ptrdiff_t> code_point_distance(I begin,
+                                                                     S end)
+        {
+            std::ptrdiff_t dist{};
+            code_point cp{};
+            for (; begin < end; ++dist) {
+                auto e = detail::validate_next(begin, end, cp);
+                if (!e) {
+                    return e;
+
+                }
+            }
+            return {dist};
+        }
+
     }  // namespace utf8
 
     SCN_END_NAMESPACE

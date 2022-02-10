@@ -30,6 +30,14 @@ namespace scn {
                 get_option(ch) = true;
                 get_option(flag::use_chars) = true;
             }
+            void accept_char(utf8::code_point cp)
+            {
+                if (cp >= 0 && cp <= 0x7f) {
+                    return accept_char(static_cast<char>(cp));
+                }
+                set_extra_ranges.push_back(set_range::single(cp));
+                get_option(flag::use_ranges) = true;
+            }
             void accept_char(wchar_t ch)
             {
                 if (ch >= 0 && ch <= 0x7f) {
@@ -41,19 +49,26 @@ namespace scn {
 
             void accept_char_range(char first, char last)
             {
-                if (first < 0 || last < 0) {
-                    const auto ufirst = static_cast<unsigned char>(first);
-                    const auto ulast = static_cast<unsigned char>(last);
-                    SCN_EXPECT(ufirst <= ulast);
-                    return accept_char_range(static_cast<wchar_t>(ufirst),
-                                             static_cast<wchar_t>(ulast));
-                }
+                SCN_EXPECT(first >= 0);
+                SCN_EXPECT(last >= 0);
                 SCN_EXPECT(first <= last);
-                ++last;
                 get_option(flag::use_chars) = true;
                 for (; first != last; ++first) {
                     get_option(first) = true;
                 }
+                SCN_ENSURE(first == last);
+                get_option(last) = true;
+            }
+            void accept_char_range(utf8::code_point first,
+                                   utf8::code_point last)
+            {
+                SCN_EXPECT(first <= last);
+                if (first >= 0 && last <= 0x7f) {
+                    return accept_char_range(static_cast<char>(first),
+                                             static_cast<char>(last));
+                }
+                set_extra_ranges.push_back(set_range::range(first, last));
+                get_option(flag::use_ranges) = true;
             }
             void accept_char_range(wchar_t first, wchar_t last)
             {
@@ -62,25 +77,24 @@ namespace scn {
                     return accept_char_range(static_cast<char>(first),
                                              static_cast<char>(last));
                 }
-                ++last;
                 set_extra_ranges.push_back(set_range::range(first, last));
                 get_option(flag::use_ranges) = true;
             }
 
             template <typename ParseCtx,
-                      typename CharT = typename ParseCtx::char_type>
-            error parse_range(ParseCtx& pctx, CharT begin)
+                      typename CpT = typename ParseCtx::cp_type>
+            error parse_range(ParseCtx& pctx, CpT begin)
             {
-                using char_type = CharT;
-                SCN_EXPECT(pctx.next() == ascii_widen<char_type>('-'));
-                if (pctx.can_peek() &&
-                    pctx.peek() == ascii_widen<char_type>(']')) {
+                using char_type = typename ParseCtx::char_type;
+                SCN_EXPECT(pctx.next_char() == ascii_widen<char_type>('-'));
+                if (pctx.can_peek_char() &&
+                    pctx.peek_char() == ascii_widen<char_type>(']')) {
                     // Just a '-'
                     accept_char(begin);
                     accept_char(ascii_widen<char_type>('-'));
                     return {};
                 }
-                pctx.advance();
+                pctx.advance_char();
                 if (!pctx || pctx.check_arg_end()) {
                     return {error::invalid_format_string,
                             "Unexpected end of format string argument"};
@@ -88,24 +102,38 @@ namespace scn {
                 return parse_next_char(pctx, false, begin);
             }
             template <typename ParseCtx,
-                      typename CharT = typename ParseCtx::char_type>
+                      typename CpT = typename ParseCtx::cp_type>
             error parse_literal(ParseCtx& pctx,
                                 bool allow_range,
-                                CharT begin = 0)
+                                CpT begin = static_cast<CpT>(0))
             {
-                using char_type = CharT;
-                if (allow_range && pctx.can_peek() &&
-                    pctx.peek() == ascii_widen<char_type>('-')) {
-                    const auto ch = pctx.next();
-                    pctx.advance();
-                    return parse_range(pctx, ch);
+                using char_type = typename ParseCtx::char_type;
+                if (allow_range && pctx.can_peek_cp()) {
+                    auto e = pctx.peek_cp();
+                    if (!e) {
+                        return e.error();
+                    }
+                    if (e.value() == ascii_widen<char_type>('-')) {
+                        const auto cp = pctx.next_cp();
+                        if (!cp) {
+                            return cp.error();
+                        }
+                        auto err = pctx.advance_cp();
+                        if (!err) {
+                            return err;
+                        }
+                        return parse_range(pctx, cp.value());
+                    }
                 }
-                const auto ch = pctx.next();
-                if (ch >= 0 && ch <= 0x7f) {
+                const auto cp = pctx.next_cp();
+                if (!cp) {
+                    return cp.error();
+                }
+                if (cp.value() >= 0 && cp.value() <= 0x7f) {
                     if (!allow_range) {
                         if (static_cast<
                                 typename std::make_unsigned<char_type>::type>(
-                                ch) <
+                                cp.value()) <
                             static_cast<
                                 typename std::make_unsigned<char_type>::type>(
                                 begin)) {
@@ -113,17 +141,17 @@ namespace scn {
                                     "Last char in [set] range is less than the "
                                     "first"};
                         }
-                        accept_char_range(begin, ch);
+                        accept_char_range(begin, cp.value());
                     }
                     else {
-                        accept_char(pctx.next());
+                        accept_char(cp.value());
                     }
                 }
                 else {
                     if (!allow_range) {
                         if (static_cast<
                                 typename std::make_unsigned<char_type>::type>(
-                                ch) <
+                                cp.value()) <
                             static_cast<
                                 typename std::make_unsigned<char_type>::type>(
                                 begin)) {
@@ -131,10 +159,12 @@ namespace scn {
                                     "Last char in [set] range is less than the "
                                     "first"};
                         }
-                        set_extra_ranges.push_back(set_range::range(begin, ch));
+                        set_extra_ranges.push_back(
+                            set_range::range(begin, cp.value()));
                     }
                     else {
-                        set_extra_ranges.push_back(set_range::single(ch));
+                        set_extra_ranges.push_back(
+                            set_range::single(cp.value()));
                     }
                     get_option(flag::use_ranges) = true;
                 }
@@ -144,13 +174,13 @@ namespace scn {
             error parse_colon_specifier(ParseCtx& pctx)
             {
                 using char_type = typename ParseCtx::char_type;
-                SCN_EXPECT(pctx.next() == ascii_widen<char_type>(':'));
-                pctx.advance();
+                SCN_EXPECT(pctx.next_char() == ascii_widen<char_type>(':'));
+                pctx.advance_char();
                 if (!pctx || pctx.check_arg_end()) {
                     return {error::invalid_format_string,
                             "Unexpected end of format string argument"};
                 }
-                if (pctx.next() == ascii_widen<char_type>(']')) {
+                if (pctx.next_char() == ascii_widen<char_type>(']')) {
                     return {
                         error::invalid_format_string,
                         "Unexpected end of [set] in format string after ':'"};
@@ -162,7 +192,7 @@ namespace scn {
                         return {error::invalid_format_string,
                                 "Unexpected end of format string argument"};
                     }
-                    auto ch = pctx.next();
+                    auto ch = pctx.next_char();
                     if (ch == ascii_widen<char_type>(':')) {
                         break;
                     }
@@ -172,10 +202,10 @@ namespace scn {
                                 "forget a terminating colon?"};
                     }
                     buf.push_back(ch);
-                    pctx.advance();
+                    pctx.advance_char();
                 }
 
-                auto ch = pctx.next();
+                auto ch = pctx.next_char();
                 if (buf == alnum_str(ch)) {
                     get_option(specifier::alnum) = true;
                     get_option(flag::use_specifiers) = true;
@@ -241,41 +271,41 @@ namespace scn {
                         "Invalid :specifier: in [set]"};
             }
             template <typename ParseCtx,
-                      typename CharT = typename ParseCtx::char_type>
+                      typename CpT = typename ParseCtx::cp_type>
             error parse_backslash_hex(ParseCtx& pctx,
                                       bool allow_range,
-                                      CharT begin = 0)
+                                      CpT begin = static_cast<CpT>(0))
             {
-                using char_type = CharT;
-                SCN_EXPECT(pctx.next() == ascii_widen<char_type>('x'));
+                using char_type = typename ParseCtx::char_type;
+                SCN_EXPECT(pctx.next_char() == ascii_widen<char_type>('x'));
 
                 char_type str[2] = {0};
 
-                pctx.advance();
+                pctx.advance_char();
                 if (!pctx || pctx.check_arg_end()) {
                     return {error::invalid_format_string,
                             "Unexpected end of format string argument "
                             "after '\\x'"};
                 }
-                if (pctx.next() == ascii_widen<char_type>(']')) {
+                if (pctx.next_char() == ascii_widen<char_type>(']')) {
                     return {error::invalid_format_string,
                             "Unexpected end of [set] in format string "
                             "after '\\x'"};
                 }
-                str[0] = pctx.next();
+                str[0] = pctx.next_char();
 
-                pctx.advance();
+                pctx.advance_char();
                 if (!pctx || pctx.check_arg_end()) {
                     return {error::invalid_format_string,
                             "Unexpected end of format string argument "
                             "after '\\x'"};
                 }
-                if (pctx.next() == ascii_widen<char_type>(']')) {
+                if (pctx.next_char() == ascii_widen<char_type>(']')) {
                     return {error::invalid_format_string,
                             "Unexpected end of [set] in format string "
                             "after '\\x'"};
                 }
-                str[1] = pctx.next();
+                str[1] = pctx.next_char();
 
                 auto scanner = integer_scanner<int>{};
                 scanner.format_options = integer_scanner<int>::only_unsigned;
@@ -294,100 +324,100 @@ namespace scn {
                             "\\x option in format string out of range"};
                 }
 
-                if (allow_range && pctx.can_peek() &&
-                    pctx.peek() == ascii_widen<char_type>('-')) {
-                    pctx.advance();
-                    return parse_range(pctx, static_cast<char_type>(i));
+                if (allow_range && pctx.can_peek_char() &&
+                    pctx.peek_char() == ascii_widen<char_type>('-')) {
+                    pctx.advance_char();
+                    return parse_range(pctx, static_cast<CpT>(i));
                 }
                 if (!allow_range) {
-                    accept_char_range(begin, static_cast<char_type>(i));
+                    accept_char_range(begin, static_cast<CpT>(i));
                 }
                 else {
-                    accept_char(static_cast<char_type>(i));
+                    accept_char(static_cast<CpT>(i));
                 }
                 return {};
             }
             template <typename ParseCtx,
-                      typename CharT = typename ParseCtx::char_type>
+                      typename CpT = typename ParseCtx::cp_type>
             error parse_backslash_specifier(ParseCtx& pctx,
                                             bool allow_range,
-                                            CharT begin = 0)
+                                            CpT begin = static_cast<CpT>(0))
             {
-                using char_type = CharT;
-                SCN_EXPECT(pctx.next() == ascii_widen<char_type>('\\'));
-                pctx.advance();
+                using char_type = typename ParseCtx::char_type;
+                SCN_EXPECT(pctx.next_char() == ascii_widen<char_type>('\\'));
+                pctx.advance_char();
 
                 if (!pctx || pctx.check_arg_end()) {
                     return {error::invalid_format_string,
                             "Unexpected end of format string argument"};
                 }
-                if (pctx.next() == ascii_widen<char_type>(']') &&
-                    pctx.can_peek() &&
-                    pctx.peek() == ascii_widen<char_type>('}')) {
+                if (pctx.next_char() == ascii_widen<char_type>(']') &&
+                    pctx.can_peek_char() &&
+                    pctx.peek_char() == ascii_widen<char_type>('}')) {
                     return {error::invalid_format_string,
                             "Unexpected end of [set] in format string"};
                 }
 
-                if (pctx.next() == ascii_widen<char_type>('\\')) {
+                if (pctx.next_char() == ascii_widen<char_type>('\\')) {
                     // Literal "\\"
-                    accept_char(pctx.next());
+                    accept_char(pctx.next_char());
                     return {};
                 }
 
                 // specifiers
-                if (pctx.next() == ascii_widen<char_type>('l')) {
+                if (pctx.next_char() == ascii_widen<char_type>('l')) {
                     // \l
                     get_option(specifier::letters) = true;
                     get_option(flag::use_specifiers) = true;
                     return {};
                 }
-                if (pctx.next() == ascii_widen<char_type>('L')) {
+                if (pctx.next_char() == ascii_widen<char_type>('L')) {
                     // \L
                     get_option(specifier::inverted_letters) = true;
                     get_option(flag::use_specifiers) = true;
                     return {};
                 }
 
-                if (pctx.next() == ascii_widen<char_type>('w')) {
+                if (pctx.next_char() == ascii_widen<char_type>('w')) {
                     // \w
                     get_option(specifier::alnum_underscore) = true;
                     get_option(flag::use_specifiers) = true;
                     return {};
                 }
-                if (pctx.next() == ascii_widen<char_type>('W')) {
+                if (pctx.next_char() == ascii_widen<char_type>('W')) {
                     // \W
                     get_option(specifier::inverted_alnum_underscore) = true;
                     get_option(flag::use_specifiers) = true;
                     return {};
                 }
 
-                if (pctx.next() == ascii_widen<char_type>('s')) {
+                if (pctx.next_char() == ascii_widen<char_type>('s')) {
                     // \s
                     get_option(specifier::whitespace) = true;
                     get_option(flag::use_specifiers) = true;
                     return {};
                 }
-                if (pctx.next() == ascii_widen<char_type>('S')) {
+                if (pctx.next_char() == ascii_widen<char_type>('S')) {
                     // \S
                     get_option(specifier::inverted_whitespace) = true;
                     get_option(flag::use_specifiers) = true;
                     return {};
                 }
 
-                if (pctx.next() == ascii_widen<char_type>('d')) {
+                if (pctx.next_char() == ascii_widen<char_type>('d')) {
                     // \d
                     get_option(specifier::numbers) = true;
                     get_option(flag::use_specifiers) = true;
                     return {};
                 }
-                if (pctx.next() == ascii_widen<char_type>('D')) {
+                if (pctx.next_char() == ascii_widen<char_type>('D')) {
                     // \D
                     get_option(specifier::inverted_numbers) = true;
                     get_option(flag::use_specifiers) = true;
                     return {};
                 }
 
-                if (pctx.next() == ascii_widen<char_type>('x')) {
+                if (pctx.next_char() == ascii_widen<char_type>('x')) {
                     // \x__
                     return parse_backslash_hex(pctx, allow_range, begin);
                 }
@@ -396,13 +426,13 @@ namespace scn {
                 return parse_literal(pctx, true);
             }
             template <typename ParseCtx,
-                      typename CharT = typename ParseCtx::char_type>
+                      typename CpT = typename ParseCtx::cp_type>
             error parse_next_char(ParseCtx& pctx,
                                   bool allow_range,
-                                  CharT begin = 0)
+                                  CpT begin = static_cast<CpT>(0))
             {
-                using char_type = CharT;
-                const auto ch = pctx.next();
+                using char_type = typename ParseCtx::char_type;
+                const auto ch = pctx.next_char();
                 if (ch == ascii_widen<char_type>('\\')) {
                     return parse_backslash_specifier(pctx, allow_range, begin);
                 }
@@ -419,9 +449,9 @@ namespace scn {
             error parse_set(ParseCtx& pctx, bool& parsed)
             {
                 using char_type = typename ParseCtx::char_type;
-                SCN_EXPECT(pctx.next() == ascii_widen<char_type>('['));
+                SCN_EXPECT(pctx.next_char() == ascii_widen<char_type>('['));
 
-                pctx.advance();
+                pctx.advance_char();
                 if (!pctx || pctx.check_arg_end()) {
                     return {error::invalid_format_string,
                             "Unexpected end of format string argument"};
@@ -430,20 +460,20 @@ namespace scn {
                 get_option(flag::enabled) = true;
                 parsed = true;
 
-                if (pctx.next() == ascii_widen<char_type>('^')) {
+                if (pctx.next_char() == ascii_widen<char_type>('^')) {
                     // inverted
                     get_option(flag::inverted) = true;
-                    pctx.advance();
+                    pctx.advance_char();
                     if (!pctx || pctx.check_arg_end()) {
                         return {error::invalid_format_string,
                                 "Unexpected end of format string argument"};
                     }
                 }
 
-                if (pctx.next() == ascii_widen<char_type>(']')) {
+                if (pctx.next_char() == ascii_widen<char_type>(']')) {
                     // end of range
                     get_option(flag::accept_all) = true;
-                    pctx.advance();
+                    pctx.advance_char();
                     return {};
                 }
 
@@ -453,7 +483,7 @@ namespace scn {
                                 "Unexpected end of format string argument"};
                     }
 
-                    const auto ch = pctx.next();
+                    const auto ch = pctx.next_char();
                     if (ch == ascii_widen<char_type>(']')) {
                         break;
                     }
@@ -463,9 +493,16 @@ namespace scn {
                         return err;
                     }
 
-                    pctx.advance();
+                    err = pctx.advance_cp();
+                    if (!err) {
+                        pctx.advance_char();
+                    }
                 }
-                pctx.advance();
+                auto err = pctx.advance_cp();
+                if (!err) {
+                    pctx.advance_char();
+                }
+
                 return {};
             }
 
@@ -740,9 +777,9 @@ namespace scn {
                     }
                 }
                 if (get_option(flag::use_ranges)) {
-                    const auto c = static_cast<uint64_t>(ch);
+                    const auto c = static_cast<uint32_t>(ch);
                     for (const auto& e : set_extra_ranges) {
-                        if (c >= e.begin && c < e.end) {
+                        if (c >= e.begin && c <= e.end) {
                             return not_inverted;
                         }
                     }
@@ -930,38 +967,36 @@ namespace scn {
             array<bool, 0xb0> set_options{{false}};
 
             struct set_range {
-                constexpr set_range(uint64_t b, uint64_t e) : begin(b), end(e)
+                constexpr set_range(uint32_t b, uint32_t e) : begin(b), end(e)
                 {
                 }
 
-                uint64_t begin{};
-                uint64_t end{};  // inclusive
+                uint32_t begin{};
+                uint32_t end{};  // inclusive
 
-                static set_range single(char ch)
+                static set_range single(utf8::code_point cp)
                 {
-                    const auto uch = static_cast<unsigned char>(ch);
-                    return {static_cast<uint64_t>(uch),
-                            static_cast<uint64_t>(uch)};
+                    return {static_cast<uint32_t>(cp),
+                            static_cast<uint32_t>(cp)};
                 }
                 static set_range single(wchar_t ch)
                 {
-                    return {static_cast<uint64_t>(ch),
-                            static_cast<uint64_t>(ch)};
+                    return {static_cast<uint32_t>(ch),
+                            static_cast<uint32_t>(ch)};
                 }
 
-                static set_range range(char begin, char end)
+                static set_range range(utf8::code_point begin,
+                                       utf8::code_point end)
                 {
-                    const auto ubegin = static_cast<unsigned char>(begin);
-                    const auto uend = static_cast<unsigned char>(end);
-                    SCN_EXPECT(ubegin <= uend);
-                    return {static_cast<uint64_t>(ubegin),
-                            static_cast<uint64_t>(uend)};
+                    SCN_EXPECT(begin <= end);
+                    return {static_cast<uint32_t>(begin),
+                            static_cast<uint32_t>(end)};
                 }
                 static set_range range(wchar_t begin, wchar_t end)
                 {
-                    SCN_EXPECT(begin < end);
-                    return {static_cast<uint64_t>(begin),
-                            static_cast<uint64_t>(end)};
+                    SCN_EXPECT(begin <= end);
+                    return {static_cast<uint32_t>(begin),
+                            static_cast<uint32_t>(end)};
                 }
             };
             // Used if set_options[use_ranges] = true
@@ -983,7 +1018,7 @@ namespace scn {
                 bool s_set{};
 
                 auto each = [&](ParseCtx& p, bool& parsed) -> error {
-                    if (p.next() == ascii_widen<char_type>('[')) {
+                    if (p.next_char() == ascii_widen<char_type>('[')) {
                         if (set_parser.get_option(
                                 set_parser_type::flag::enabled)) {
                             return {error::invalid_format_string,

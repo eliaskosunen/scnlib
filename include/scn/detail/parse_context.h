@@ -43,6 +43,58 @@ namespace scn {
         protected:
             parse_context_base() = default;
 
+            static SCN_CONSTEXPR14 expected<utf8::code_point> next_cp_impl(
+                const string_view& sv)
+            {
+                utf8::code_point cp{};
+                auto it = utf8::parse_code_point(sv.begin(), sv.end(), cp);
+                if (!it) {
+                    return it.error();
+                }
+                return {cp};
+            }
+            static SCN_CONSTEXPR14 expected<wchar_t> next_cp_impl(
+                const wstring_view& sv)
+            {
+                return sv.front();
+            }
+
+            static SCN_CONSTEXPR14 error advance_cp_impl(string_view& sv)
+            {
+                utf8::code_point cp{};
+                auto it = utf8::parse_code_point(sv.begin(), sv.end(), cp);
+                if (!it) {
+                    return it.error();
+                }
+                sv.remove_prefix(static_cast<size_t>(it.value() - sv.begin()));
+                return {};
+            }
+            static constexpr error advance_cp_impl(wstring_view& sv)
+            {
+                sv.remove_prefix(1);
+                return {};
+            }
+
+            static SCN_CONSTEXPR14 expected<utf8::code_point> peek_cp_impl(
+                const string_view& sv)
+            {
+                utf8::code_point cp{};
+                auto it = utf8::parse_code_point(sv.begin(), sv.end(), cp);
+                if (!it) {
+                    return it.error();
+                }
+                it = utf8::parse_code_point(it.value(), sv.end(), cp);
+                if (!it) {
+                    return it.error();
+                }
+                return {cp};
+            }
+            static SCN_CONSTEXPR14 expected<wchar_t> peek_cp_impl(
+                const wstring_view& sv)
+            {
+                return {sv[1]};
+            }
+
             std::ptrdiff_t m_next_arg_id{0};
         };
     }  // namespace detail
@@ -71,33 +123,34 @@ namespace scn {
         bool should_skip_ws()
         {
             bool skip = false;
-            while (*this && m_locale.get_static().is_space(next())) {
+            while (*this && m_locale.get_static().is_space(next_char())) {
                 skip = true;
-                advance();
+                advance_char();
             }
             return skip;
         }
         bool should_read_literal()
         {
             const auto brace = detail::ascii_widen<char_type>('{');
-            if (next() != brace) {
-                if (next() == detail::ascii_widen<char_type>('}')) {
-                    advance();
+            if (next_char() != brace) {
+                if (next_char() == detail::ascii_widen<char_type>('}')) {
+                    advance_char();
                 }
                 return true;
             }
             if (SCN_UNLIKELY(m_str.size() > 1 &&
                              *(m_str.begin() + 1) == brace)) {
-                advance();
+                advance_char();
                 return true;
             }
             return false;
         }
-        constexpr bool check_literal(char_type ch) const
+        SCN_NODISCARD constexpr bool check_literal(char_type ch) const
         {
-            return ch == next();
+            return ch == next_char();
         }
-        SCN_CONSTEXPR14 bool check_literal(span<const char_type> ch) const
+        SCN_NODISCARD SCN_CONSTEXPR14 bool check_literal(
+            span<const char_type> ch) const
         {
             if (chars_left() < ch.size()) {
                 return false;
@@ -109,6 +162,15 @@ namespace scn {
             }
             return true;
         }
+        SCN_NODISCARD SCN_CONSTEXPR14 expected<bool> check_literal_cp(
+            cp_type cp) const
+        {
+            auto next = next_cp();
+            if (!next) {
+                return next.error();
+            }
+            return cp == next.value();
+        }
 
         constexpr bool good() const
         {
@@ -119,28 +181,59 @@ namespace scn {
             return good();
         }
 
-        SCN_CONSTEXPR14 void advance(std::ptrdiff_t n = 1) noexcept
-        {
-            SCN_EXPECT(good());
-            m_str.remove_prefix(static_cast<std::size_t>(n));
-        }
-        constexpr char_type next() const
+        constexpr char_type next_char() const
         {
             return m_str.front();
+        }
+        SCN_NODISCARD SCN_CONSTEXPR14 expected<cp_type> next_cp() const
+        {
+            return next_cp_impl(m_str);
         }
 
         constexpr std::size_t chars_left() const noexcept
         {
             return m_str.size();
         }
-        constexpr bool can_peek() const noexcept
+        SCN_NODISCARD SCN_CONSTEXPR14 expected<std::size_t> cp_left()
+            const noexcept
+        {
+            auto d = utf8::code_point_distance(m_str.begin(), m_str.end());
+            if (!d) {
+                return d.error();
+            }
+            return {static_cast<std::size_t>(d.value())};
+        }
+
+        SCN_CONSTEXPR14 void advance_char(std::ptrdiff_t n = 1) noexcept
+        {
+            SCN_EXPECT(chars_left() >= static_cast<std::size_t>(n));
+            m_str.remove_prefix(static_cast<std::size_t>(n));
+        }
+        SCN_NODISCARD SCN_CONSTEXPR14 error advance_cp() noexcept
+        {
+            SCN_EXPECT(cp_left() && cp_left().value() >= 1);
+            return advance_cp_impl(m_str);
+        }
+
+        constexpr bool can_peek_char(std::size_t n = 1) const noexcept
+        {
+            return chars_left() > n;
+        }
+        SCN_NODISCARD SCN_CONSTEXPR14 expected<bool> can_peek_cp()
+            const noexcept
         {
             return chars_left() > 1;
         }
-        SCN_CONSTEXPR14 char_type peek(std::size_t n = 1) const noexcept
+
+        SCN_CONSTEXPR14 char_type peek_char(std::size_t n = 1) const noexcept
         {
             SCN_EXPECT(n < chars_left());
             return m_str[n];
+        }
+        SCN_NODISCARD SCN_CONSTEXPR14 expected<cp_type> peek_cp() const noexcept
+        {
+            SCN_EXPECT(can_peek_cp());
+            return peek_cp_impl(m_str);
         }
 
         SCN_CONSTEXPR14 iterator begin() const noexcept
@@ -155,12 +248,12 @@ namespace scn {
         SCN_CONSTEXPR14 bool check_arg_begin() const
         {
             SCN_EXPECT(good());
-            return next() == detail::ascii_widen<char_type>('{');
+            return next_char() == detail::ascii_widen<char_type>('{');
         }
         SCN_CONSTEXPR14 bool check_arg_end() const
         {
             SCN_EXPECT(good());
-            return next() == detail::ascii_widen<char_type>('}');
+            return next_char() == detail::ascii_widen<char_type>('}');
         }
 
         using parse_context_base::check_arg_id;
@@ -189,11 +282,11 @@ namespace scn {
                 return true;
             }
             if (m_str[1] == detail::ascii_widen<char_type>('}')) {
-                advance();
+                advance_char();
                 return false;
             }
             if (m_str[1] == detail::ascii_widen<char_type>(':')) {
-                advance(2);
+                advance_char(2);
                 return false;
             }
             return true;
@@ -201,20 +294,20 @@ namespace scn {
         expected<string_view_type> parse_arg_id()
         {
             SCN_EXPECT(good());
-            advance();
+            advance_char();
             if (SCN_UNLIKELY(!good())) {
                 return error(error::invalid_format_string,
                              "Unexpected end of format argument");
             }
             auto it = m_str.begin();
-            for (std::ptrdiff_t i = 0; good(); ++i, (void)advance()) {
+            for (std::ptrdiff_t i = 0; good(); ++i, (void)advance_char()) {
                 if (check_arg_end()) {
                     return string_view_type{
                         it,
                         static_cast<typename string_view_type::size_type>(i)};
                 }
-                if (next() == detail::ascii_widen<char_type>(':')) {
-                    advance();
+                if (next_char() == detail::ascii_widen<char_type>(':')) {
+                    advance_char();
                     return string_view_type{
                         it,
                         static_cast<typename string_view_type::size_type>(i)};
@@ -233,6 +326,10 @@ namespace scn {
     class basic_empty_parse_context : public detail::parse_context_base {
     public:
         using char_type = CharT;
+        using cp_type =
+            typename std::conditional<std::is_same<CharT, char>::value,
+                                      utf8::code_point,
+                                      char_type>::type;
         using locale_type = basic_locale_ref<char_type>;
         using string_view_type = basic_string_view<char_type>;
 
@@ -257,7 +354,12 @@ namespace scn {
         {
             return false;
         }
-        constexpr bool check_literal(span<const char_type>) const {
+        constexpr bool check_literal(span<const char_type>) const
+        {
+            return false;
+        }
+        constexpr bool check_literal_cp(cp_type) const
+        {
             return false;
         }
 
@@ -270,8 +372,18 @@ namespace scn {
             return good();
         }
 
-        SCN_CONSTEXPR14 void advance(std::ptrdiff_t = 1) const noexcept {}
-        char_type next() const
+        SCN_CONSTEXPR14 void advance_char(std::ptrdiff_t = 1) const noexcept {}
+        SCN_CONSTEXPR14 error advance_cp() const noexcept
+        {
+            return {};
+        }
+
+        char_type next_char() const
+        {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
+        }
+        expected<std::pair<cp_type, std::ptrdiff_t>> next_cp() const
         {
             SCN_EXPECT(false);
             SCN_UNREACHABLE;
@@ -282,11 +394,27 @@ namespace scn {
             SCN_EXPECT(false);
             SCN_UNREACHABLE;
         }
-        constexpr bool can_peek() const noexcept
+        std::size_t cp_left() const noexcept
+        {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
+        }
+
+        constexpr bool can_peek_char() const noexcept
         {
             return false;
         }
-        char_type peek(std::ptrdiff_t = 1) const noexcept
+        constexpr bool can_peek_cp() const noexcept
+        {
+            return false;
+        }
+
+        char_type peek_char(std::ptrdiff_t = 1) const noexcept
+        {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
+        }
+        expected<cp_type> peek_cp() const noexcept
         {
             SCN_EXPECT(false);
             SCN_UNREACHABLE;

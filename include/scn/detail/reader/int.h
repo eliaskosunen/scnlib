@@ -37,11 +37,11 @@ namespace scn {
                 int custom_base = 0;
                 auto each = [&](ParseCtx& p, bool& parsed) -> error {
                     parsed = false;
-                    auto ch = pctx.next();
+                    auto ch = pctx.next_char();
 
                     if (ch == detail::ascii_widen<char_type>('B')) {
                         // Custom base
-                        p.advance();
+                        p.advance_char();
                         if (SCN_UNLIKELY(!p)) {
                             return {error::invalid_format_string,
                                     "Unexpected format string end"};
@@ -50,7 +50,7 @@ namespace scn {
                             return {error::invalid_format_string,
                                     "Unexpected argument end"};
                         }
-                        ch = p.next();
+                        ch = p.next_char();
 
                         const auto zero = detail::ascii_widen<char_type>('0'),
                                    nine = detail::ascii_widen<char_type>('9');
@@ -60,13 +60,13 @@ namespace scn {
                                     "Invalid character after 'B', "
                                     "expected digit"};
                         }
-                        tmp = p.next() - zero;
+                        tmp = p.next_char() - zero;
                         if (tmp < 1) {
                             return {error::invalid_format_string,
                                     "Invalid base, must be between 2 and 36"};
                         }
 
-                        p.advance();
+                        p.advance_char();
                         if (!p) {
                             return {error::invalid_format_string,
                                     "Unexpected end of format string"};
@@ -76,7 +76,7 @@ namespace scn {
                             parsed = true;
                             return {};
                         }
-                        ch = p.next();
+                        ch = p.next_char();
 
                         if (ch < zero || ch > nine) {
                             return {error::invalid_format_string,
@@ -91,7 +91,7 @@ namespace scn {
                         }
                         custom_base = static_cast<uint8_t>(tmp);
                         parsed = true;
-                        pctx.advance();
+                        pctx.advance_char();
                         return {};
                     }
 

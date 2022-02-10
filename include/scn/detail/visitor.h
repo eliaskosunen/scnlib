@@ -170,7 +170,10 @@ namespace scn {
                             "found in the stream"};
                 }
                 // Bump pctx to next char
-                pctx.advance();
+                auto e = pctx.advance_cp();
+                if (!e) {
+                    return e;
+                }
             }
             else {
                 // Scan argument
@@ -222,7 +225,10 @@ namespace scn {
                 // Handle next arg and bump pctx
                 pctx.arg_handled();
                 if (pctx) {
-                    pctx.advance();
+                    auto e = pctx.advance_cp();
+                    if (!e) {
+                        return e;
+                    }
                 }
             }
         }
