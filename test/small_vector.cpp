@@ -267,3 +267,108 @@ TEST_CASE_TEMPLATE_INSTANTIATE(small_vector_test,
                                long long,
                                unsigned long long,
                                non_default_constructible);
+
+TEST_CASE("issue with set_parser")
+{
+    SUBCASE("original")
+    {
+        struct type {
+            uint32_t a, b;
+        };
+        scn::detail::small_vector<type, 1> vec;
+
+        vec.push_back(type{0x11111111, 0x22222222});
+        CHECK(vec.size() == 1);
+        CHECK(vec[0].a == 0x11111111);
+        CHECK(vec[0].b == 0x22222222);
+
+        vec.push_back(type{0x44444444, 0x88888888});
+        CHECK(vec.size() == 2);
+        CHECK(vec[0].a == 0x11111111);
+        CHECK(vec[0].b == 0x22222222);
+        CHECK(vec[1].a == 0x44444444);
+        CHECK(vec[1].b == 0x88888888);
+    }
+    SUBCASE("smaller types")
+    {
+        struct type {
+            unsigned char a, b;
+        };
+        scn::detail::small_vector<type, 1> vec;
+
+        vec.push_back(type{0x11, 0x22});
+        CHECK(vec.size() == 1);
+        CHECK(vec[0].a == 0x11);
+        CHECK(vec[0].b == 0x22);
+
+        vec.push_back(type{0x44, 0x88});
+        CHECK(vec.size() == 2);
+        CHECK(vec[0].a == 0x11);
+        CHECK(vec[0].b == 0x22);
+        CHECK(vec[1].a == 0x44);
+        CHECK(vec[1].b == 0x88);
+    }
+    SUBCASE("uint16_t")
+    {
+        scn::detail::small_vector<uint16_t, 1> vec;
+
+        vec.push_back(0x1111);
+        CHECK(vec.size() == 1);
+        CHECK(vec[0] == 0x1111);
+
+        vec.push_back(0x4444);
+        CHECK(vec.size() == 2);
+        CHECK(vec[0] == 0x1111);
+        CHECK(vec[1] == 0x4444);
+    }
+    SUBCASE("bytes")
+    {
+        scn::detail::small_vector<unsigned char, 1> vec;
+
+        vec.push_back(0x11);
+        CHECK(vec.size() == 1);
+        CHECK(vec[0] == 0x11);
+
+        vec.push_back(0x44);
+        CHECK(vec.size() == 2);
+        CHECK(vec[1] == 0x44);
+    }
+    SUBCASE("all in stack")
+    {
+        struct type {
+            unsigned char a, b;
+        };
+        scn::detail::small_vector<type, 2> vec;
+
+        vec.push_back(type{0x11, 0x22});
+        CHECK(vec.size() == 1);
+        CHECK(vec[0].a == 0x11);
+        CHECK(vec[0].b == 0x22);
+
+        vec.push_back(type{0x44, 0x88});
+        CHECK(vec.size() == 2);
+        CHECK(vec[0].a == 0x11);
+        CHECK(vec[0].b == 0x22);
+        CHECK(vec[1].a == 0x44);
+        CHECK(vec[1].b == 0x88);
+    }
+    SUBCASE("all in heap")
+    {
+        struct type {
+            unsigned char a, b;
+        };
+        scn::detail::small_vector<type, 0> vec;
+
+        vec.push_back(type{0x11, 0x22});
+        CHECK(vec.size() == 1);
+        CHECK(vec[0].a == 0x11);
+        CHECK(vec[0].b == 0x22);
+
+        vec.push_back(type{0x44, 0x88});
+        CHECK(vec.size() == 2);
+        CHECK(vec[0].a == 0x11);
+        CHECK(vec[0].b == 0x22);
+        CHECK(vec[1].a == 0x44);
+        CHECK(vec[1].b == 0x88);
+    }
+}
