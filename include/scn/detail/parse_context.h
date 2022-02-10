@@ -69,7 +69,7 @@ namespace scn {
                 sv.remove_prefix(static_cast<size_t>(it.value() - sv.begin()));
                 return {};
             }
-            static constexpr error advance_cp_impl(wstring_view& sv)
+            static SCN_CONSTEXPR14 error advance_cp_impl(wstring_view& sv)
             {
                 sv.remove_prefix(1);
                 return {};
