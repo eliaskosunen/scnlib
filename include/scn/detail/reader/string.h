@@ -277,51 +277,76 @@ namespace scn {
                                       CpT begin = static_cast<CpT>(0))
             {
                 using char_type = typename ParseCtx::char_type;
-                SCN_EXPECT(pctx.next_char() == ascii_widen<char_type>('x'));
+                SCN_EXPECT(pctx.next_char() == ascii_widen<char_type>('x') ||
+                           pctx.next_char() == ascii_widen<char_type>('u') ||
+                           pctx.next_char() == ascii_widen<char_type>('U'));
 
-                char_type str[2] = {0};
+                const char_type flag_char = pctx.next_char();
+                const int chars = [flag_char]() {
+                    auto ch = static_cast<char>(flag_char);
+                    if (ch == 'x') {
+                        return 2;
+                    }
+                    if (ch == 'u') {
+                        return 4;
+                    }
+                    if (ch == 'U') {
+                        return 8;
+                    }
+                    SCN_ENSURE(false);
+                    SCN_UNREACHABLE;
+                }();
 
-                pctx.advance_char();
-                if (!pctx || pctx.check_arg_end()) {
-                    return {error::invalid_format_string,
-                            "Unexpected end of format string argument "
-                            "after '\\x'"};
+                char_type str[8] = {0};
+                for (int i = 0; i < chars; ++i) {
+                    pctx.advance_char();
+                    if (!pctx || pctx.check_arg_end()) {
+                        return {error::invalid_format_string,
+                                "Unexpected end of format string argument "
+                                "after '\\x', '\\u', or '\\U'"};
+                    }
+                    if (pctx.next_char() == ascii_widen<char_type>(']')) {
+                        return {error::invalid_format_string,
+                                "Unexpected end of [set] in format string "
+                                "after '\\x', '\\u', or '\\U'"};
+                    }
+                    str[i] = pctx.next_char();
                 }
-                if (pctx.next_char() == ascii_widen<char_type>(']')) {
-                    return {error::invalid_format_string,
-                            "Unexpected end of [set] in format string "
-                            "after '\\x'"};
-                }
-                str[0] = pctx.next_char();
 
-                pctx.advance_char();
-                if (!pctx || pctx.check_arg_end()) {
-                    return {error::invalid_format_string,
-                            "Unexpected end of format string argument "
-                            "after '\\x'"};
-                }
-                if (pctx.next_char() == ascii_widen<char_type>(']')) {
-                    return {error::invalid_format_string,
-                            "Unexpected end of [set] in format string "
-                            "after '\\x'"};
-                }
-                str[1] = pctx.next_char();
-
-                auto scanner = integer_scanner<int>{};
-                scanner.format_options = integer_scanner<int>::only_unsigned;
+                auto scanner = integer_scanner<uint64_t>{};
+                scanner.format_options =
+                    integer_scanner<uint64_t>::only_unsigned;
                 scanner.base = 16;
-                int i;
+                uint64_t i;
                 SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-                auto res =
-                    scanner._parse_int(i, scn::make_span(str, 2).as_const());
+                auto res = scanner._parse_int(
+                    i,
+                    scn::make_span(str, static_cast<size_t>(chars)).as_const());
                 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 if (!res) {
                     return {error::invalid_format_string,
-                            "Failed to parse \\x in format string"};
+                            "Failed to parse '\\x', '\\u', or '\\U' flag in "
+                            "format string"};
                 }
-                if (i < 0 || i > 0x7f) {
+                const uint64_t min = 0;
+                const uint64_t max = [chars]() {
+                    if (chars == 2) {
+                        // \x
+                        return uint64_t{0x7f};
+                    }
+                    if (chars == 4) {
+                        return uint64_t{0xffff};
+                    }
+                    if (chars == 8) {
+                        return uint64_t{0xffffffff};
+                    }
+                    SCN_ENSURE(false);
+                    SCN_UNREACHABLE;
+                }();
+                if (i < min || i > max) {
                     return {error::invalid_format_string,
-                            "\\x option in format string out of range"};
+                            "'\\x', '\\u', or '\\U' option in format string "
+                            "out of range"};
                 }
 
                 if (allow_range && pctx.can_peek_char() &&
@@ -417,8 +442,10 @@ namespace scn {
                     return {};
                 }
 
-                if (pctx.next_char() == ascii_widen<char_type>('x')) {
-                    // \x__
+                if (pctx.next_char() == ascii_widen<char_type>('x') ||
+                    pctx.next_char() == ascii_widen<char_type>('u') ||
+                    pctx.next_char() == ascii_widen<char_type>('U')) {
+                    // \x__, \u____, or \U________
                     return parse_backslash_hex(pctx, allow_range, begin);
                 }
 
@@ -1046,20 +1073,30 @@ namespace scn {
                 Context& ctx;
                 set_parser_type& set_parser;
                 bool localized;
+                bool multibyte;
 
-                bool operator()(
-                    span<const typename Context::char_type> ch) const
+                bool operator()(span<const char> ch) const
                 {
+                    SCN_EXPECT(ch.size() >= 1);
+                    utf8::code_point cp{};
+                    auto it = utf8::parse_code_point(ch.begin(), ch.end(), cp);
+                    SCN_ENSURE(it);
+                    return !set_parser.check_character(cp, localized,
+                                                       ctx.locale());
+                }
+                bool operator()(span<const wchar_t> ch) const
+                {
+                    SCN_EXPECT(ch.size() == 1);
                     return !set_parser.check_character(ch[0], localized,
                                                        ctx.locale());
                 }
-                bool is_localized() const
+                constexpr bool is_localized() const
                 {
                     return localized;
                 }
-                static constexpr bool is_multibyte()
+                constexpr bool is_multibyte() const
                 {
-                    return sizeof(typename Context::char_type) == 1;
+                    return multibyte;
                 }
             };
 
@@ -1072,8 +1109,11 @@ namespace scn {
             {
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
+                    bool mb = set_parser.get_option(
+                                  set_parser_type::flag::use_ranges) &&
+                              sizeof(typename Context::char_type) == 1;
                     return do_scan(ctx, val,
-                                   pred<Context>{ctx, set_parser, loc});
+                                   pred<Context>{ctx, set_parser, loc, mb});
                 }
 
                 auto e = skip_range_whitespace(ctx, false);
@@ -1143,9 +1183,12 @@ namespace scn {
 
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
-                    return do_scan(
-                        ctx, val,
-                        string_scanner::pred<Context>{ctx, set_parser, loc});
+                    bool mb = set_parser.get_option(
+                                  set_parser_type::flag::use_ranges) &&
+                              sizeof(typename Context::char_type) == 1;
+                    return do_scan(ctx, val,
+                                   string_scanner::pred<Context>{
+                                       ctx, set_parser, loc, mb});
                 }
 
                 auto e = skip_range_whitespace(ctx, false);
@@ -1212,9 +1255,12 @@ namespace scn {
 
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
-                    return do_scan(
-                        ctx, val,
-                        string_scanner::pred<Context>{ctx, set_parser, loc});
+                    bool mb = set_parser.get_option(
+                                  set_parser_type::flag::use_ranges) &&
+                              sizeof(typename Context::char_type) == 1;
+                    return do_scan(ctx, val,
+                                   string_scanner::pred<Context>{
+                                       ctx, set_parser, loc, mb});
                 }
 
                 auto e = skip_range_whitespace(ctx, false);

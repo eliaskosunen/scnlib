@@ -447,7 +447,7 @@ namespace scn {
                 }
             }
             else {
-                for (auto it = r.begin(); it != r.end(); ++it) {
+                for (auto it = r.begin(); it != r.end(); ) {
                     auto len = utf8::get_sequence_length(*it);
                     if (ranges::distance(it, r.end()) < len) {
                         return error{error::invalid_encoding,
@@ -461,6 +461,7 @@ namespace scn {
                         r.advance_to(end);
                         return span_type{begin, to_address(end)};
                     }
+                    it += len;
                 }
             }
             auto begin = r.data();

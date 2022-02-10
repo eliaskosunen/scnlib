@@ -467,4 +467,19 @@ TEST_CASE("set scanning")
         CHECK(w == " ");
         CHECK(str == "foo");
     }
+
+    SUBCASE("ÅÄÖ") {
+        std::string str;
+        auto ret = scn::scan("ÅÄO", "{:[ÅÄÖ]}", str);
+        CHECK(ret);
+        CHECK(ret.range_as_string() == "O");
+        CHECK(str == "ÅÄ");
+        str = "";
+
+        ret = scn::scan("ÅÄO", "{:[\\u00c5\\u00C4\\U000000D6]}", str);
+        CHECK(ret);
+        CHECK(ret.range_as_string() == "O");
+        CHECK(str == "ÅÄ");
+        str = "";
+    }
 }

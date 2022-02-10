@@ -391,9 +391,10 @@ namespace scn {
             expected<wchar_t> convert_to_wide(const CharT* from_begin,
                                               const CharT* from_end) const;
 
-#define SCN_DEFINE_CUSTOM_LOCALE_CTYPE(f) \
-    bool is_##f(char_type) const;         \
-    bool is_##f(span<const char_type>) const;
+#define SCN_DEFINE_CUSTOM_LOCALE_CTYPE(f)     \
+    bool is_##f(char_type) const;             \
+    bool is_##f(span<const char_type>) const; \
+    bool is_##f(utf8::code_point) const;
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alnum)
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alpha)
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(blank)
@@ -405,6 +406,12 @@ namespace scn {
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(upper)
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(xdigit)
 #undef SCN_DEFINE_CUSTOM_LOCALE_CTYPE
+
+            bool is_space(utf8::code_point) const;
+            using base::is_space;
+
+            bool is_digit(utf8::code_point) const;
+            using base::is_digit;
 
             template <typename T>
             expected<std::ptrdiff_t> read_num(T& val,
