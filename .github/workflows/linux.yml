@@ -96,34 +96,16 @@ jobs:
           MAX_STD: ${{ matrix.std }}
         shell: bash
         run: |
-          run_cmake() {
-            cmake -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_WERROR=ON \
-                  "$@" \
-                  $GITHUB_WORKSPACE || return 1
-            return 0
-          }
-          run_test() {
-            ctest --output-on-failure "$@" || return 1
-            return 0
-          }
-          run_build() {
-            echo Debug "$@"
-            run_cmake -DCMAKE_BUILD_TYPE=Debug "$@" || return 1
-            make -k -j || return 1
-            run_test -C Debug || return 1
-            make clean || return 1
-
-            echo Release "$@"
-            run_cmake -DCMAKE_BUILD_TYPE=Release "$@" || return 1
-            make -k -j || return 1
-            run_test -C Release || return 1
-            make clean || return 1
-            return 0
-          }
-
           standards="11 14 17 20"
           for std in $standards; do
-            run_build -DCMAKE_CXX_STANDARD=$std
+            echo "$@"
+            cmake -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_WERROR=ON -DCMAKE_BUILD_TYPE=Debug \
+                  -DCMAKE_CXX_STANDARD=$std \
+                  "$@" $GITHUB_WORKSPACE
+            make -k -j
+            ctest --output-on-failure
+            make clean
+
             if [[ "${std}" == "${MAX_STD}" ]]; then
               break
             fi
