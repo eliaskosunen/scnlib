@@ -45,7 +45,11 @@ namespace scn {
                                     const T& value,
                                     std::true_type) noexcept
             {
-                auto dist = static_cast<size_t>(std::distance(first, last));
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
+                const auto dist =
+                    static_cast<size_t>(std::distance(first, last)) *
+                    sizeof(value_type);
                 std::memset(&*first, static_cast<unsigned char>(value), dist);
             }
             template <typename ForwardIt, typename T>
@@ -67,11 +71,11 @@ namespace scn {
                                     ForwardIt last,
                                     const T& value) noexcept
             {
-                return uninitialized_fill(
-                    first, last, value, std::integral_constant < bool,
-                    std::is_trivially_copyable<T>::value&&
-                            std::is_pointer<ForwardIt>::value &&
-                        sizeof(T) == 1 > {});
+                constexpr bool B = std::is_trivially_copyable<T>::value &&
+                                   std::is_pointer<ForwardIt>::value &&
+                                   sizeof(T) == 1;
+                return uninitialized_fill(first, last, value,
+                                          std::integral_constant<bool, B>{});
             }
 
             template <typename ForwardIt>
@@ -126,11 +130,14 @@ namespace scn {
                                          InputIt last,
                                          ForwardIt d_first) noexcept
             {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
                 using pointer =
                     typename std::iterator_traits<ForwardIt>::pointer;
                 auto ptr = std::memcpy(
                     std::addressof(*d_first), std::addressof(*first),
-                    static_cast<size_t>(std::distance(first, last)));
+                    static_cast<size_t>(std::distance(first, last)) *
+                        sizeof(value_type));
                 return ForwardIt{static_cast<pointer>(ptr)};
             }
 
@@ -161,11 +168,14 @@ namespace scn {
                                          InputIt last,
                                          ForwardIt d_first) noexcept
             {
+                using value_type =
+                    typename std::iterator_traits<ForwardIt>::value_type;
                 using pointer =
                     typename std::iterator_traits<ForwardIt>::pointer;
                 auto ptr = std::memcpy(
                     std::addressof(*d_first), std::addressof(*first),
-                    static_cast<size_t>(std::distance(first, last)));
+                    static_cast<size_t>(std::distance(first, last)) *
+                        sizeof(value_type));
                 return ForwardIt(static_cast<pointer>(ptr));
             }
         }  // namespace small_vector_algos
