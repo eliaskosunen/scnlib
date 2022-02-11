@@ -78,11 +78,21 @@ namespace scn {
             static SCN_CONSTEXPR14 expected<utf8::code_point> peek_cp_impl(
                 const string_view& sv)
             {
+                if (sv.size() < 2) {
+                    return error{error::end_of_range,
+                                 "End of format string, cannot peek"};
+                }
+
                 utf8::code_point cp{};
                 auto it = utf8::parse_code_point(sv.begin(), sv.end(), cp);
                 if (!it) {
                     return it.error();
                 }
+                if (it.value() == sv.end()) {
+                    return error{error::end_of_range,
+                                 "End of format string, cannot peek"};
+                }
+
                 it = utf8::parse_code_point(it.value(), sv.end(), cp);
                 if (!it) {
                     return it.error();
@@ -92,6 +102,10 @@ namespace scn {
             static SCN_CONSTEXPR14 expected<wchar_t> peek_cp_impl(
                 const wstring_view& sv)
             {
+                if (sv.size() < 2) {
+                    return error{error::end_of_range,
+                                 "End of format string, cannot peek"};
+                }
                 return {sv[1]};
             }
 
@@ -211,18 +225,12 @@ namespace scn {
         }
         SCN_NODISCARD SCN_CONSTEXPR14 error advance_cp() noexcept
         {
-            SCN_EXPECT(cp_left() && cp_left().value() >= 1);
             return advance_cp_impl(m_str);
         }
 
         constexpr bool can_peek_char(std::size_t n = 1) const noexcept
         {
             return chars_left() > n;
-        }
-        SCN_NODISCARD SCN_CONSTEXPR14 expected<bool> can_peek_cp()
-            const noexcept
-        {
-            return chars_left() > 1;
         }
 
         SCN_CONSTEXPR14 char_type peek_char(std::size_t n = 1) const noexcept
@@ -232,7 +240,6 @@ namespace scn {
         }
         SCN_NODISCARD SCN_CONSTEXPR14 expected<cp_type> peek_cp() const noexcept
         {
-            SCN_EXPECT(can_peek_cp());
             return peek_cp_impl(m_str);
         }
 

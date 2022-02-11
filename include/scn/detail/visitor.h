@@ -170,9 +170,8 @@ namespace scn {
                             "found in the stream"};
                 }
                 // Bump pctx to next char
-                auto e = pctx.advance_cp();
-                if (!e) {
-                    return e;
+                if (!pctx.advance_cp()) {
+                    pctx.advance_char();
                 }
             }
             else {

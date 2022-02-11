@@ -108,12 +108,12 @@ namespace scn {
                                 CpT begin = static_cast<CpT>(0))
             {
                 using char_type = typename ParseCtx::char_type;
-                if (allow_range && pctx.can_peek_cp()) {
+                if (allow_range) {
                     auto e = pctx.peek_cp();
-                    if (!e) {
+                    if (!e && e.error().code() != error::end_of_range) {
                         return e.error();
                     }
-                    if (e.value() == ascii_widen<char_type>('-')) {
+                    if (e && e.value() == ascii_widen<char_type>('-')) {
                         const auto cp = pctx.next_cp();
                         if (!cp) {
                             return cp.error();
@@ -1080,7 +1080,11 @@ namespace scn {
                     SCN_EXPECT(ch.size() >= 1);
                     utf8::code_point cp{};
                     auto it = utf8::parse_code_point(ch.begin(), ch.end(), cp);
-                    SCN_ENSURE(it);
+                    if (!it) {
+                        // todo: is this really a good idea
+                        return !set_parser.check_character(ch[0], localized,
+                                                           ctx.locale());
+                    }
                     return !set_parser.check_character(cp, localized,
                                                        ctx.locale());
                 }
