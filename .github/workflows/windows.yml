@@ -10,7 +10,6 @@ jobs:
       matrix:
         os: [windows-2019, windows-2022]
         platform: [Win32, x64]
-        build_type: [Debug, Release]
 
     steps:
       - uses: actions/checkout@v2
@@ -24,13 +23,13 @@ jobs:
         shell: bash
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          cmake -DCMAKE_BUILD_TYPE=Debug \
                 -A ${{ matrix.platform }} $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config ${{ matrix.build_type }}
+        run: cmake --build . --config Debug
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
-        run: ctest -C ${{ matrix.build_type }} --output-on-failure
+        run: ctest -C Debug --output-on-failure
