@@ -414,6 +414,13 @@
 #define SCN_HAS_RANGES 0
 #endif
 
+// Detect char8_t
+#if defined(__cpp_char8_t) && __cpp_char8_t >= 201811L
+#define SCN_HAS_CHAR8 1
+#else
+#define SCN_HAS_CHAR8 0
+#endif
+
 #define SCN_UNUSED(x) static_cast<void>(sizeof(x))
 
 #if SCN_HAS_RELAXED_CONSTEXPR

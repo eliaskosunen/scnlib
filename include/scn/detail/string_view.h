@@ -40,15 +40,28 @@ namespace scn {
         {
             return std::wcslen(s);
         }
-
-        inline int memcmp(const char* l, const char* r, size_t n) noexcept
+        inline size_t strlen(const char16_t* s) noexcept
         {
-            return std::memcmp(l, r, n);
+            SCN_EXPECT(s);
+            auto end = s;
+            for (; *end != u'\0'; ++end)
+                ;
+            return static_cast<size_t>(end - s);
         }
-        inline int memcmp(const wchar_t* l, const wchar_t* r, size_t n) noexcept
+        inline size_t strlen(const char32_t* s) noexcept
         {
-            return std::wmemcmp(l, r, n);
+            SCN_EXPECT(s);
+            auto end = s;
+            for (; *end != U'\0'; ++end)
+                ;
+            return static_cast<size_t>(end - s);
         }
+#if SCN_HAS_CHAR8
+        inline size_t strlen(const char8_t* s) noexcept
+        {
+            return std::strlen(static_cast<const char*>(s));
+        }
+#endif
     }  // namespace detail
 
     /**
@@ -96,6 +109,35 @@ namespace scn {
 #if SCN_HAS_STRING_VIEW
         constexpr basic_string_view(std::basic_string_view<value_type> str)
             : m_data(str.data(), str.size())
+        {
+        }
+#endif
+
+        template <typename T = char16_t,
+                  typename std::enable_if<std::is_same<T, char16_t>::value &&
+                                          std::is_same<CharT, wchar_t>::value &&
+                                          sizeof(char16_t) ==
+                                              sizeof(wchar_t)>::type* = nullptr>
+        constexpr basic_string_view(const T* s)
+            : basic_string_view(static_cast<const wchar_t*>(s))
+        {
+        }
+        template <typename T = char32_t,
+                  typename std::enable_if<std::is_same<T, char32_t>::value &&
+                                          std::is_same<CharT, wchar_t>::value &&
+                                          sizeof(char32_t) ==
+                                              sizeof(wchar_t)>::type* = nullptr>
+        constexpr basic_string_view(const T* s)
+            : basic_string_view(static_cast<const wchar_t*>(s))
+        {
+        }
+#if SCN_HAS_CHAR8
+        template <typename T = char32_t,
+                  typename std::enable_if<
+                      std::is_same<T, char8_t>::value &&
+                      std::is_same<CharT, char>::value>::type* = nullptr>
+        constexpr basic_string_view(const T* s)
+            : basic_string_view(static_cast<const char*>(s))
         {
         }
 #endif
@@ -205,49 +247,6 @@ namespace scn {
             SCN_EXPECT(pos <= size());
             auto n = detail::min(count, size() - pos);
             return m_data.subspan(pos, n);
-        }
-
-        int compare(basic_string_view v) const noexcept
-        {
-            auto n = detail::min(size(), v.size());
-            auto cmp = memcmp(data(), v.data(), n);
-            if (cmp == 0) {
-                if (size() == v.size()) {
-                    return 0;
-                }
-                if (size() > v.size()) {
-                    return 1;
-                }
-                return -1;
-            }
-            return cmp;
-        }
-        int compare(size_type pos1, size_type count1, basic_string_view v) const
-        {
-            return substr(pos1, count1).compare(v);
-        }
-        int compare(size_type pos1,
-                    size_type count1,
-                    basic_string_view v,
-                    size_type pos2,
-                    size_type count2) const
-        {
-            return substr(pos1, count1).compare(v.substr(pos2, count2));
-        }
-        int compare(const_pointer s) const
-        {
-            return compare(basic_string_view(s));
-        }
-        int compare(size_type pos1, size_type count1, const_pointer s) const
-        {
-            return substr(pos1, count1).compare(basic_string_view(s));
-        }
-        int compare(size_type pos1,
-                    size_type count1,
-                    const_pointer s,
-                    size_type count2) const
-        {
-            return substr(pos1, count1).compare(basic_string_view(s, count2));
         }
 
 #if SCN_HAS_STRING_VIEW

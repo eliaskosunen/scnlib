@@ -18,16 +18,19 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
 
+constexpr auto zero = scn::make_code_point(0);
+
 TEST_CASE("utf8")
 {
-    constexpr auto zero = scn::make_code_point(0);
     constexpr auto latin_small_letter_a = scn::make_code_point(0x61);  // a
     constexpr auto latin_small_letter_a_with_diaeresis =
         scn::make_code_point(0xe4);                           // ä, 2 bytes
     constexpr auto euro_sign = scn::make_code_point(0x20ac);  // €, 3 bytes
+    constexpr auto slightly_smiling_face =
+        scn::make_code_point(0x1f642);  // 🙂, 4 bytes
 
-    scn::string_view str{"aä€"};
-    CHECK(str.length() == 6);
+    scn::string_view str{"aä€🙂"};
+    CHECK(str.length() == 10);
 
     scn::code_point cp{};
     auto ret = scn::parse_code_point(str.begin(), str.end(), cp);
@@ -44,6 +47,63 @@ TEST_CASE("utf8")
 
     ret = scn::parse_code_point(str.begin() + 3, str.end(), cp);
     CHECK(ret);
-    CHECK(ret.value() == str.end());
+    CHECK(ret.value() == str.begin() + 6);
     CHECK(cp == euro_sign);
+    cp = zero;
+
+    ret = scn::parse_code_point(str.begin() + 6, str.end(), cp);
+    CHECK(ret);
+    CHECK(ret.value() == str.begin() + 10);
+    CHECK(cp == slightly_smiling_face);
+    cp = zero;
+}
+
+TEST_CASE("invalid utf8")
+{
+    scn::code_point cp{};
+
+    // partial code point: 0xc1 would be the first byte in a 2-byte code point
+    scn::string_view str{"\xc1"};
+    auto ret = scn::parse_code_point(str.begin(), str.end(), cp);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_encoding);
+    cp = zero;
+
+    // partial code point: 0xf0 would mean 4 code units, only 3 given
+    str = "\xf1\x81\x81";
+    ret = scn::parse_code_point(str.begin(), str.end(), cp);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_encoding);
+    cp = zero;
+
+    // trailing code point: 0x81 can't be a leading code unit
+    str = "\x81";
+    ret = scn::parse_code_point(str.begin(), str.end(), cp);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_encoding);
+    cp = zero;
+
+    // invalid leading code unit: 0xf9 = 11111001b (5 bytes?)
+    str = "\xf9\x81\x81\x81\x81";
+    ret = scn::parse_code_point(str.begin(), str.end(), cp);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_encoding);
+    cp = zero;
+
+    // overlong sequence
+    str = "\xf0\x82\x82\xac";
+    ret = scn::parse_code_point(str.begin(), str.end(), cp);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_encoding);
+    cp = zero;
+
+    // surrogate U+D800
+    // 1101 100000 000000 ->
+    // 11101101 10100000 10000000 ->
+    // 0xed 0xa0 0x80
+    str = "\xed\xa0\x80";
+    ret = scn::parse_code_point(str.begin(), str.end(), cp);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::invalid_encoding);
+    cp = zero;
 }

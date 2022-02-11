@@ -31,6 +31,12 @@ namespace scn {
     namespace detail {
         namespace utf8 {
             template <typename Octet>
+            constexpr bool is_trail(Octet o)
+            {
+                return (mask8(o) >> 6) == 2;
+            }
+
+            template <typename Octet>
             SCN_CONSTEXPR14 int get_sequence_length(Octet ch)
             {
                 uint8_t lead = detail::mask8(ch);
@@ -232,7 +238,7 @@ namespace scn {
             }
 
         }  // namespace utf8
-    }  // namespace detail
+    }      // namespace detail
 
     SCN_END_NAMESPACE
 }  // namespace scn

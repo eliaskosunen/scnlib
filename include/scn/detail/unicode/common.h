@@ -82,12 +82,6 @@ namespace scn {
         {
             return static_cast<uint16_t>(0xffff & v);
         }
-
-        template <typename Octet>
-        constexpr bool is_trail(Octet o)
-        {
-            return (mask8(o) >> 6) == 2;
-        }
         template <typename U16>
         constexpr bool is_lead_surrogate(U16 cp)
         {

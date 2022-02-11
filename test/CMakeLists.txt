@@ -36,6 +36,7 @@ make_test(std-string-view std_string_view.cpp)
 make_test(pmr-string pmr_string.cpp)
 make_test(wrap wrap.cpp)
 make_test(utf8 utf8.cpp)
+make_test(utf16 utf16.cpp)
 
 make_test(result result.cpp)
 make_test(istream istream.cpp)
