@@ -384,6 +384,9 @@ The bundled ranges implementation found from this library is based on NanoRange:
 The default floating-point parsing algorithm used by this library is implemented by fast_float:  
 <https://github.com/fastfloat/fast_float>
 
+The Unicode-related parts of this library are based on utfcpp:  
+<https://github.com/nemtrif/utfcpp>
+
 The design of this library is also inspired  by the Python `parse` library:  
 <https://github.com/r1chardj0n3s/parse>
 

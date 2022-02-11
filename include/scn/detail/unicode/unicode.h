@@ -14,6 +14,12 @@
 //
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
+//
+// The contents of this file are based on utfcpp:
+//     https://github.com/nemtrif/utfcpp
+//     Copyright (c) 2006 Nemanja Trifunovic
+//     Distributed under the Boost Software License, version 1.0
+
 
 #ifndef SCN_DETAIL_UNICODE_UNICODE_H
 #define SCN_DETAIL_UNICODE_UNICODE_H
