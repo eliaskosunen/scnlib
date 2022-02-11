@@ -18,6 +18,7 @@
 #ifndef SCN_DETAIL_UNICODE_UNICODE_H
 #define SCN_DETAIL_UNICODE_UNICODE_H
 
+#include "utf16.h"
 #include "utf8.h"
 
 namespace scn {
@@ -57,6 +58,14 @@ namespace scn {
         SCN_CONSTEXPR14 expected<I> parse_code_point(I begin,
                                                      S end,
                                                      code_point& cp,
+                                                     utf16_tag)
+        {
+            return utf16::parse_code_point(begin, end, cp);
+        }
+        template <typename I, typename S>
+        SCN_CONSTEXPR14 expected<I> parse_code_point(I begin,
+                                                     S end,
+                                                     code_point& cp,
                                                      utf32_tag)
         {
             SCN_EXPECT(begin != end);
@@ -80,6 +89,11 @@ namespace scn {
             return utf8::get_sequence_length(a);
         }
         template <typename T>
+        SCN_CONSTEXPR14 int get_sequence_length(T a, utf16_tag)
+        {
+            return utf16::get_sequence_length(a);
+        }
+        template <typename T>
         SCN_CONSTEXPR14 int get_sequence_length(T, utf32_tag)
         {
             return 1;
@@ -99,6 +113,13 @@ namespace scn {
                                                                      utf8_tag)
         {
             return utf8::code_point_distance(begin, end);
+        }
+        template <typename I, typename S>
+        SCN_CONSTEXPR14 expected<std::ptrdiff_t> code_point_distance(I begin,
+                                                                     S end,
+                                                                     utf16_tag)
+        {
+            return utf16::code_point_distance(begin, end);
         }
         template <typename I, typename S>
         SCN_CONSTEXPR14 expected<std::ptrdiff_t> code_point_distance(I begin,
