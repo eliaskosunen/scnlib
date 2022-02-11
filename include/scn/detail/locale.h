@@ -19,7 +19,7 @@
 #define SCN_DETAIL_LOCALE_H
 
 #include "result.h"
-#include "utf8.h"
+#include "unicode/unicode.h"
 
 #include <cwchar>
 #include <string>
@@ -73,7 +73,7 @@ namespace scn {
         {
             return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
         }
-        constexpr inline bool is_space(utf8::code_point cp) noexcept
+        constexpr inline bool is_space(code_point cp) noexcept
         {
             return cp == 0x20 || (cp >= 0x09 && cp <= 0x0d);
         }
@@ -86,7 +86,7 @@ namespace scn {
         {
             return ch >= L'0' && ch <= L'9';
         }
-        constexpr inline bool is_digit(utf8::code_point cp) noexcept
+        constexpr inline bool is_digit(code_point cp) noexcept
         {
             return cp >= '0' && cp <= '9';
         }
@@ -206,8 +206,8 @@ namespace scn {
                                            locale_defaults<CharT>> {
         };
         template <>
-        struct basic_static_locale_ref<utf8::code_point>
-            : basic_static_locale_ref_base<utf8::code_point,
+        struct basic_static_locale_ref<code_point>
+            : basic_static_locale_ref_base<code_point,
                                            string_view,
                                            locale_defaults<char>> {
         };
@@ -394,7 +394,7 @@ namespace scn {
 #define SCN_DEFINE_CUSTOM_LOCALE_CTYPE(f)     \
     bool is_##f(char_type) const;             \
     bool is_##f(span<const char_type>) const; \
-    bool is_##f(utf8::code_point) const;
+    bool is_##f(code_point) const;
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alnum)
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alpha)
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(blank)
@@ -407,10 +407,10 @@ namespace scn {
             SCN_DEFINE_CUSTOM_LOCALE_CTYPE(xdigit)
 #undef SCN_DEFINE_CUSTOM_LOCALE_CTYPE
 
-            bool is_space(utf8::code_point) const;
+            bool is_space(code_point) const;
             using base::is_space;
 
-            bool is_digit(utf8::code_point) const;
+            bool is_digit(code_point) const;
             using base::is_digit;
 
             template <typename T>

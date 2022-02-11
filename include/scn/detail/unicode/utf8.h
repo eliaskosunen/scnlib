@@ -15,132 +15,35 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_UTF8_H
-#define SCN_DETAIL_UTF8_H
+#ifndef SCN_DETAIL_UNICODE_UTF8_H
+#define SCN_DETAIL_UNICODE_UTF8_H
 
-#include "string_view.h"
+#include "common.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    namespace utf8 {
-        enum class code_point : uint32_t {};
-
-        template <typename T>
-        constexpr bool operator==(code_point a, T b)
-        {
-            return static_cast<uint32_t>(a) == static_cast<uint32_t>(b);
-        }
-        template <typename T>
-        constexpr bool operator!=(code_point a, T b)
-        {
-            return static_cast<uint32_t>(a) != static_cast<uint32_t>(b);
-        }
-        template <typename T>
-        constexpr bool operator<(code_point a, T b)
-        {
-            return static_cast<uint32_t>(a) < static_cast<uint32_t>(b);
-        }
-        template <typename T>
-        constexpr bool operator>(code_point a, T b)
-        {
-            return static_cast<uint32_t>(a) > static_cast<uint32_t>(b);
-        }
-        template <typename T>
-        constexpr bool operator<=(code_point a, T b)
-        {
-            return static_cast<uint32_t>(a) <= static_cast<uint32_t>(b);
-        }
-        template <typename T>
-        constexpr bool operator>=(code_point a, T b)
-        {
-            return static_cast<uint32_t>(a) >= static_cast<uint32_t>(b);
-        }
-
-        namespace detail {
-            static constexpr const uint16_t lead_surrogate_min = 0xd800;
-            static constexpr const uint16_t lead_surrogate_max = 0xdbff;
-            static constexpr const uint16_t trail_surrogate_min = 0xdc00;
-            static constexpr const uint16_t trail_surrogate_max = 0xdfff;
-            static constexpr const uint16_t lead_offset =
-                lead_surrogate_min - (0x10000u >> 10);
-            static constexpr const uint32_t surrogate_offset =
-                0x10000u - (lead_surrogate_min << 10) - trail_surrogate_min;
-            static constexpr const uint32_t code_point_max = 0x10ffff;
-
+    namespace detail {
+        namespace utf8 {
             template <typename Octet>
-            constexpr uint8_t mask8(Octet o)
+            SCN_CONSTEXPR14 int get_sequence_length(Octet ch)
             {
-                return static_cast<uint8_t>(0xff & o);
-            }
-            template <typename U16>
-            constexpr uint16_t mask16(U16 v)
-            {
-                return static_cast<uint16_t>(0xffff & v);
+                uint8_t lead = detail::mask8(ch);
+                if (lead < 0x80) {
+                    return 1;
+                }
+                else if ((lead >> 5) == 6) {
+                    return 2;
+                }
+                else if ((lead >> 4) == 0xe) {
+                    return 3;
+                }
+                else if ((lead >> 3) == 0x1e) {
+                    return 4;
+                }
+                return 0;
             }
 
-            template <typename Octet>
-            constexpr bool is_trail(Octet o)
-            {
-                return (mask8(o) >> 6) == 2;
-            }
-            template <typename U16>
-            constexpr bool is_lead_surrogate(U16 cp)
-            {
-                return cp >= lead_surrogate_min && cp <= lead_surrogate_max;
-            }
-            template <typename U16>
-            constexpr bool is_trail_surrogate(U16 cp)
-            {
-                return cp >= trail_surrogate_min && cp <= trail_surrogate_max;
-            }
-            template <typename U16>
-            constexpr bool is_surrogate(U16 cp)
-            {
-                return cp >= lead_surrogate_min && cp <= trail_surrogate_max;
-            }
-
-            constexpr inline bool is_code_point_valid(code_point cp)
-            {
-                return cp <= code_point_max && !is_surrogate(cp);
-            }
-        }  // namespace detail
-
-        template <typename T>
-        constexpr code_point make_code_point(T ch)
-        {
-            return static_cast<code_point>(ch);
-        }
-
-        constexpr inline bool is_entire_code_point(code_point cp)
-        {
-            return detail::is_code_point_valid(cp);
-        }
-        constexpr inline bool is_ascii_code_point(code_point cp)
-        {
-            return cp <= 0x7f;
-        }
-
-        template <typename Octet>
-        SCN_CONSTEXPR14 int get_sequence_length(Octet ch)
-        {
-            uint8_t lead = detail::mask8(ch);
-            if (lead < 0x80) {
-                return 1;
-            }
-            else if ((lead >> 5) == 6) {
-                return 2;
-            }
-            else if ((lead >> 4) == 0xe) {
-                return 3;
-            }
-            else if ((lead >> 3) == 0x1e) {
-                return 4;
-            }
-            return 0;
-        }
-
-        namespace detail {
             SCN_CONSTEXPR14 bool is_overlong_sequence(code_point cp,
                                                       std::ptrdiff_t len)
             {
@@ -286,45 +189,45 @@ namespace scn {
                 if (!e) {
                     return e;
                 }
-                if (!is_code_point_valid(cp) || is_overlong_sequence(cp, len)) {
+                if (!is_valid_code_point(cp) || is_overlong_sequence(cp, len)) {
                     return {error::invalid_encoding, "Invalid utf8 code point"};
                 }
                 ++it;
                 return {};
             }
-        }  // namespace detail
 
-        template <typename I, typename S>
-        SCN_CONSTEXPR14 expected<I> parse_code_point(I begin,
-                                                     S end,
-                                                     code_point& cp)
-        {
-            code_point c{};
-            auto e = detail::validate_next(begin, end, c);
-            if (e) {
-                cp = c;
-                return {begin};
-            }
-            return e;
-        }
-
-        template <typename I, typename S>
-        SCN_CONSTEXPR14 expected<std::ptrdiff_t> code_point_distance(I begin,
-                                                                     S end)
-        {
-            std::ptrdiff_t dist{};
-            code_point cp{};
-            for (; begin < end; ++dist) {
-                auto e = detail::validate_next(begin, end, cp);
-                if (!e) {
-                    return e;
-
+            template <typename I, typename S>
+            SCN_CONSTEXPR14 expected<I> parse_code_point(I begin,
+                                                         S end,
+                                                         code_point& cp)
+            {
+                code_point c{};
+                auto e = validate_next(begin, end, c);
+                if (e) {
+                    cp = c;
+                    return {begin};
                 }
+                return e;
             }
-            return {dist};
-        }
 
-    }  // namespace utf8
+            template <typename I, typename S>
+            SCN_CONSTEXPR14 expected<std::ptrdiff_t> code_point_distance(
+                I begin,
+                S end)
+            {
+                std::ptrdiff_t dist{};
+                code_point cp{};
+                for (; begin < end; ++dist) {
+                    auto e = validate_next(begin, end, cp);
+                    if (!e) {
+                        return e;
+                    }
+                }
+                return {dist};
+            }
+
+        }  // namespace utf8
+    }  // namespace detail
 
     SCN_END_NAMESPACE
 }  // namespace scn

@@ -20,7 +20,7 @@
 
 #include "../locale.h"
 #include "../range.h"
-#include "../utf8.h"
+#include "../unicode/unicode.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -111,7 +111,7 @@ namespace scn {
 
     namespace detail {
         using narrow_read_code_point_result_type =
-            read_code_point_result<char, utf8::code_point>;
+            read_code_point_result<char, code_point>;
         using wide_read_code_point_result_type =
             read_code_point_result<wchar_t, wchar_t>;
 
@@ -120,14 +120,14 @@ namespace scn {
         expected<narrow_read_code_point_result_type> read_code_point_impl(
             WrappedRange& r,
             span<char>,
-            bool parse_code_point,
+            bool do_parse,
             std::true_type)
         {
             if (r.begin() == r.end()) {
                 return error(error::end_of_range, "EOF");
             }
             char first = *r.begin();
-            int len = utf8::get_sequence_length(first);
+            int len = ::scn::get_sequence_length(first);
             if (SCN_UNLIKELY(len == 0 || r.size() < len)) {
                 return error(error::invalid_encoding,
                              "Invalid utf8 code point");
@@ -136,13 +136,12 @@ namespace scn {
                 auto s = make_span(r.data(), 1).as_const();
                 r.advance();
                 return narrow_read_code_point_result_type{
-                    s, utf8::make_code_point(first)};
+                    s, make_code_point(first)};
             }
 
-            utf8::code_point cp{};
-            if (parse_code_point) {
-                auto ret =
-                    utf8::parse_code_point(r.begin(), r.begin() + len, cp);
+            code_point cp{};
+            if (do_parse) {
+                auto ret = parse_code_point(r.begin(), r.begin() + len, cp);
                 if (!ret) {
                     return ret.error();
                 }
@@ -156,7 +155,7 @@ namespace scn {
         expected<narrow_read_code_point_result_type> read_code_point_impl(
             WrappedRange& r,
             span<char> writebuf,
-            bool parse_code_point,
+            bool do_parse,
             std::false_type)
         {
             auto first = read_code_unit(r, false);
@@ -164,7 +163,7 @@ namespace scn {
                 return first.error();
             }
             auto len =
-                static_cast<size_t>(utf8::get_sequence_length(first.value()));
+                static_cast<size_t>(::scn::get_sequence_length(first.value()));
             if (SCN_UNLIKELY(len == 0)) {
                 return error(error::invalid_encoding,
                              "Invalid utf8 code point");
@@ -174,16 +173,16 @@ namespace scn {
                 r.advance();
                 return narrow_read_code_point_result_type{
                     make_span(writebuf.data(), 1).as_const(),
-                    utf8::make_code_point(first.value())};
+                    make_code_point(first.value())};
             }
 
             size_t index = 1;
 
             auto parse = [&]() -> expected<narrow_read_code_point_result_type> {
-                utf8::code_point cp{};
-                if (parse_code_point) {
-                    auto ret = utf8::parse_code_point(
-                        writebuf.data(), writebuf.data() + len, cp);
+                code_point cp{};
+                if (do_parse) {
+                    auto ret = parse_code_point(writebuf.data(),
+                                                writebuf.data() + len, cp);
                     if (!ret) {
                         auto err =
                             putback_n(r, static_cast<std::ptrdiff_t>(len));
@@ -447,8 +446,8 @@ namespace scn {
                 }
             }
             else {
-                for (auto it = r.begin(); it != r.end(); ) {
-                    auto len = utf8::get_sequence_length(*it);
+                for (auto it = r.begin(); it != r.end();) {
+                    auto len = ::scn::get_sequence_length(*it);
                     if (ranges::distance(it, r.end()) < len) {
                         return error{error::invalid_encoding,
                                      "Invalid utf8 code point"};

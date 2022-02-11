@@ -20,6 +20,4 @@
 
 #include "detail/scan.h"
 
-#include "detail/utf8.h"
-
 #endif  // SCN_SCN_H

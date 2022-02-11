@@ -135,7 +135,7 @@ TEST_CASE("utf8 literal")
 {
     SUBCASE("code points")
     {
-        scn::utf8::code_point a, b;
+        scn::code_point a, b;
         auto e = scn::scan("åäö", "{}ä{}", a, b);
         CHECK(e);
         CHECK(e.empty());

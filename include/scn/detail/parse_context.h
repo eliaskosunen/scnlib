@@ -43,11 +43,11 @@ namespace scn {
         protected:
             parse_context_base() = default;
 
-            static SCN_CONSTEXPR14 expected<utf8::code_point> next_cp_impl(
+            static SCN_CONSTEXPR14 expected<code_point> next_cp_impl(
                 const string_view& sv)
             {
-                utf8::code_point cp{};
-                auto it = utf8::parse_code_point(sv.begin(), sv.end(), cp);
+                code_point cp{};
+                auto it = parse_code_point(sv.begin(), sv.end(), cp);
                 if (!it) {
                     return it.error();
                 }
@@ -61,8 +61,8 @@ namespace scn {
 
             static SCN_CONSTEXPR14 error advance_cp_impl(string_view& sv)
             {
-                utf8::code_point cp{};
-                auto it = utf8::parse_code_point(sv.begin(), sv.end(), cp);
+                code_point cp{};
+                auto it = parse_code_point(sv.begin(), sv.end(), cp);
                 if (!it) {
                     return it.error();
                 }
@@ -75,7 +75,7 @@ namespace scn {
                 return {};
             }
 
-            static SCN_CONSTEXPR14 expected<utf8::code_point> peek_cp_impl(
+            static SCN_CONSTEXPR14 expected<code_point> peek_cp_impl(
                 const string_view& sv)
             {
                 if (sv.size() < 2) {
@@ -83,8 +83,8 @@ namespace scn {
                                  "End of format string, cannot peek"};
                 }
 
-                utf8::code_point cp{};
-                auto it = utf8::parse_code_point(sv.begin(), sv.end(), cp);
+                code_point cp{};
+                auto it = parse_code_point(sv.begin(), sv.end(), cp);
                 if (!it) {
                     return it.error();
                 }
@@ -93,7 +93,7 @@ namespace scn {
                                  "End of format string, cannot peek"};
                 }
 
-                it = utf8::parse_code_point(it.value(), sv.end(), cp);
+                it = parse_code_point(it.value(), sv.end(), cp);
                 if (!it) {
                     return it.error();
                 }
@@ -122,7 +122,7 @@ namespace scn {
         using char_type = CharT;
         using cp_type =
             typename std::conditional<std::is_same<CharT, char>::value,
-                                      utf8::code_point,
+                                      code_point,
                                       char_type>::type;
         using locale_type = basic_locale_ref<CharT>;
         using string_view_type = basic_string_view<char_type>;
@@ -211,7 +211,7 @@ namespace scn {
         SCN_NODISCARD SCN_CONSTEXPR14 expected<std::size_t> cp_left()
             const noexcept
         {
-            auto d = utf8::code_point_distance(m_str.begin(), m_str.end());
+            auto d = code_point_distance(m_str.begin(), m_str.end());
             if (!d) {
                 return d.error();
             }
@@ -335,7 +335,7 @@ namespace scn {
         using char_type = CharT;
         using cp_type =
             typename std::conditional<std::is_same<CharT, char>::value,
-                                      utf8::code_point,
+                                      code_point,
                                       char_type>::type;
         using locale_type = basic_locale_ref<char_type>;
         using string_view_type = basic_string_view<char_type>;

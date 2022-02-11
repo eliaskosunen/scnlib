@@ -36,7 +36,7 @@ namespace scn {
     struct scanner<wchar_t> : public detail::char_scanner {
     };
     template <>
-    struct scanner<utf8::code_point> : public detail::code_point_scanner {
+    struct scanner<code_point> : public detail::code_point_scanner {
     };
     template <>
     struct scanner<bool> : public detail::bool_scanner {

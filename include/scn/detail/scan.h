@@ -395,14 +395,14 @@ namespace scn {
             }
         };
         template <>
-        struct until_pred<utf8::code_point> {
-            using cp_type = utf8::code_point;
+        struct until_pred<code_point> {
+            using cp_type = code_point;
             cp_type until;
 
             bool operator()(span<const char> ch) const
             {
                 cp_type cp;
-                auto e = utf8::parse_code_point(ch.begin(), ch.end(), cp);
+                auto e = parse_code_point(ch.begin(), ch.end(), cp);
                 SCN_ENSURE(e);
                 return cp == until;
             }
@@ -790,8 +790,7 @@ namespace scn {
             return read_code_unit(r);
         }
         template <typename WrappedRange>
-        expected<utf8::code_point> read_single(WrappedRange& r,
-                                               utf8::code_point)
+        expected<code_point> read_single(WrappedRange& r, code_point)
         {
             using char_type = typename WrappedRange::char_type;
             unsigned char buf[4] = {0};
@@ -911,10 +910,11 @@ namespace scn {
               typename Container,
               typename Separator = typename detail::extract_char_type<
                   ranges::iterator_t<Range>>::type>
-    auto scan_list_until(Range&& r,
-                         Container& c,
-                         Separator until,
-                         Separator separator = detail::zero_value<Separator>::value)
+    auto scan_list_until(
+        Range&& r,
+        Container& c,
+        Separator until,
+        Separator separator = detail::zero_value<Separator>::value)
         -> detail::scan_result_for_range<Range>
     {
         using value_type = typename Container::value_type;

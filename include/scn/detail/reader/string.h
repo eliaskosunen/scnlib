@@ -30,7 +30,7 @@ namespace scn {
                 get_option(ch) = true;
                 get_option(flag::use_chars) = true;
             }
-            void accept_char(utf8::code_point cp)
+            void accept_char(code_point cp)
             {
                 if (cp >= 0 && cp <= 0x7f) {
                     return accept_char(static_cast<char>(cp));
@@ -59,8 +59,7 @@ namespace scn {
                 SCN_ENSURE(first == last);
                 get_option(last) = true;
             }
-            void accept_char_range(utf8::code_point first,
-                                   utf8::code_point last)
+            void accept_char_range(code_point first, code_point last)
             {
                 SCN_EXPECT(first <= last);
                 if (first >= 0 && last <= 0x7f) {
@@ -1001,7 +1000,7 @@ namespace scn {
                 uint32_t begin{};
                 uint32_t end{};  // inclusive
 
-                static set_range single(utf8::code_point cp)
+                static set_range single(code_point cp)
                 {
                     return {static_cast<uint32_t>(cp),
                             static_cast<uint32_t>(cp)};
@@ -1012,8 +1011,7 @@ namespace scn {
                             static_cast<uint32_t>(ch)};
                 }
 
-                static set_range range(utf8::code_point begin,
-                                       utf8::code_point end)
+                static set_range range(code_point begin, code_point end)
                 {
                     SCN_EXPECT(begin <= end);
                     return {static_cast<uint32_t>(begin),
@@ -1078,8 +1076,8 @@ namespace scn {
                 bool operator()(span<const char> ch) const
                 {
                     SCN_EXPECT(ch.size() >= 1);
-                    utf8::code_point cp{};
-                    auto it = utf8::parse_code_point(ch.begin(), ch.end(), cp);
+                    code_point cp{};
+                    auto it = parse_code_point(ch.begin(), ch.end(), cp);
                     if (!it) {
                         // todo: is this really a good idea
                         return !set_parser.check_character(ch[0], localized,

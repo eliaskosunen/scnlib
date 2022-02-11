@@ -55,7 +55,7 @@ namespace scn {
 
         struct code_point_scanner : char_scanner {
             template <typename Context>
-            error scan(utf8::code_point& val, Context& ctx)
+            error scan(code_point& val, Context& ctx)
             {
                 using char_type = typename Context::char_type;
                 if (!std::is_same<char_type, char>::value) {

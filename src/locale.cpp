@@ -244,33 +244,33 @@ namespace scn {
             return std::isdigit(ch[0], locale);
         }
 
-#define SCN_DEFINE_CUSTOM_LOCALE_CTYPE(f)                                  \
-    template <typename CharT>                                              \
-    bool basic_custom_locale_ref<CharT>::is_##f(char_type ch) const        \
-    {                                                                      \
-        return std::is##f(ch, to_locale(*this));                           \
-    }                                                                      \
-    template <typename CharT>                                              \
-    bool basic_custom_locale_ref<CharT>::is_##f(utf8::code_point cp) const \
-    {                                                                      \
-        return std::is##f(static_cast<wchar_t>(cp), to_locale(*this));     \
-    }                                                                      \
-    template <typename CharT>                                              \
-    bool basic_custom_locale_ref<CharT>::is_##f(span<const char_type> ch)  \
-        const                                                              \
-    {                                                                      \
-        const auto& locale = to_locale(*this);                             \
-        if (sizeof(CharT) == 1) {                                          \
-            SCN_EXPECT(ch.size() >= 1);                                    \
-            auto wch = convert_to_wide_impl(locale, ch.data(),             \
-                                            ch.data() + ch.size());        \
-            if (!wch) {                                                    \
-                return false;                                              \
-            }                                                              \
-            return std::is##f(wch.value(), locale);                        \
-        }                                                                  \
-        SCN_EXPECT(ch.size() == 1);                                        \
-        return std::is##f(ch[0], locale);                                  \
+#define SCN_DEFINE_CUSTOM_LOCALE_CTYPE(f)                                 \
+    template <typename CharT>                                             \
+    bool basic_custom_locale_ref<CharT>::is_##f(char_type ch) const       \
+    {                                                                     \
+        return std::is##f(ch, to_locale(*this));                          \
+    }                                                                     \
+    template <typename CharT>                                             \
+    bool basic_custom_locale_ref<CharT>::is_##f(code_point cp) const      \
+    {                                                                     \
+        return std::is##f(static_cast<wchar_t>(cp), to_locale(*this));    \
+    }                                                                     \
+    template <typename CharT>                                             \
+    bool basic_custom_locale_ref<CharT>::is_##f(span<const char_type> ch) \
+        const                                                             \
+    {                                                                     \
+        const auto& locale = to_locale(*this);                            \
+        if (sizeof(CharT) == 1) {                                         \
+            SCN_EXPECT(ch.size() >= 1);                                   \
+            auto wch = convert_to_wide_impl(locale, ch.data(),            \
+                                            ch.data() + ch.size());       \
+            if (!wch) {                                                   \
+                return false;                                             \
+            }                                                             \
+            return std::is##f(wch.value(), locale);                       \
+        }                                                                 \
+        SCN_EXPECT(ch.size() == 1);                                       \
+        return std::is##f(ch[0], locale);                                 \
     }
         SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alnum)
         SCN_DEFINE_CUSTOM_LOCALE_CTYPE(alpha)
@@ -284,12 +284,12 @@ namespace scn {
 #undef SCN_DEFINE_CUSTOM_LOCALE_CTYPE
 
         template <typename CharT>
-        bool basic_custom_locale_ref<CharT>::is_space(utf8::code_point cp) const
+        bool basic_custom_locale_ref<CharT>::is_space(code_point cp) const
         {
             return std::isspace(static_cast<wchar_t>(cp), to_locale(*this));
         }
         template <typename CharT>
-        bool basic_custom_locale_ref<CharT>::is_digit(utf8::code_point cp) const
+        bool basic_custom_locale_ref<CharT>::is_digit(code_point cp) const
         {
             return std::isdigit(static_cast<wchar_t>(cp), to_locale(*this));
         }
@@ -302,7 +302,7 @@ namespace scn {
                 .is(std::ctype_base::blank, ch);
         }
         template <typename CharT>
-        bool basic_custom_locale_ref<CharT>::is_blank(utf8::code_point ch) const
+        bool basic_custom_locale_ref<CharT>::is_blank(code_point ch) const
         {
             return std::use_facet<std::ctype<wchar_t>>(to_locale(*this))
                 .is(std::ctype_base::blank, static_cast<wchar_t>(ch));
