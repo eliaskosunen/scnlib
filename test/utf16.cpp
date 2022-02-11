@@ -29,6 +29,8 @@ TEST_CASE("utf16")
     constexpr auto slightly_smiling_face =
         scn::make_code_point(0x1f642);  // 🙂, 2 code units
 
+    CHECK(sizeof(char16_t) == 2);
+
     scn::basic_string_view<char16_t> str = u"aä€🙂";
     CHECK(str.length() == 5);
 

@@ -59,7 +59,7 @@ namespace scn {
 #if SCN_HAS_CHAR8
         inline size_t strlen(const char8_t* s) noexcept
         {
-            return std::strlen(static_cast<const char*>(s));
+            return std::strlen(reinterpret_cast<const char*>(s));
         }
 #endif
     }  // namespace detail
@@ -119,7 +119,7 @@ namespace scn {
                                           sizeof(char16_t) ==
                                               sizeof(wchar_t)>::type* = nullptr>
         constexpr basic_string_view(const T* s)
-            : basic_string_view(static_cast<const wchar_t*>(s))
+            : basic_string_view(reinterpret_cast<const wchar_t*>(s))
         {
         }
         template <typename T = char32_t,
@@ -128,16 +128,16 @@ namespace scn {
                                           sizeof(char32_t) ==
                                               sizeof(wchar_t)>::type* = nullptr>
         constexpr basic_string_view(const T* s)
-            : basic_string_view(static_cast<const wchar_t*>(s))
+            : basic_string_view(reinterpret_cast<const wchar_t*>(s))
         {
         }
 #if SCN_HAS_CHAR8
-        template <typename T = char32_t,
+        template <typename T = char8_t,
                   typename std::enable_if<
                       std::is_same<T, char8_t>::value &&
                       std::is_same<CharT, char>::value>::type* = nullptr>
         constexpr basic_string_view(const T* s)
-            : basic_string_view(static_cast<const char*>(s))
+            : basic_string_view(reinterpret_cast<const char*>(s))
         {
         }
 #endif
