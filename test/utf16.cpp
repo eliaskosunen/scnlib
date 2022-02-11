@@ -29,10 +29,10 @@ TEST_CASE("utf16")
     constexpr auto slightly_smiling_face =
         scn::make_code_point(0x1f642);  // 🙂, 2 code units
 
-    CHECK(sizeof(char16_t) == 2);
-
-    scn::basic_string_view<char16_t> str = u"aä€🙂";
-    CHECK(str.length() == 5);
+    // MSVC is buggy, need to do this manually
+    // data == u"aä€🙂"
+    char16_t data[] = {0x61, 0xe4, 0x20ac, 0xd83d, 0xde42};
+    scn::basic_string_view<char16_t> str{data, 5};
 
     scn::code_point cp{};
     auto ret = scn::parse_code_point(str.begin(), str.end(), cp);
