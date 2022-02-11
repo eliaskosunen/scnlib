@@ -80,9 +80,8 @@ namespace scn {
                 get_option(flag::use_ranges) = true;
             }
 
-            template <typename ParseCtx,
-                      typename CpT = typename ParseCtx::cp_type>
-            error parse_range(ParseCtx& pctx, CpT begin)
+            template <typename ParseCtx>
+            error parse_range(ParseCtx& pctx, code_point begin)
             {
                 using char_type = typename ParseCtx::char_type;
                 SCN_EXPECT(pctx.next_char() == ascii_widen<char_type>('-'));
@@ -100,11 +99,10 @@ namespace scn {
                 }
                 return parse_next_char(pctx, false, begin);
             }
-            template <typename ParseCtx,
-                      typename CpT = typename ParseCtx::cp_type>
+            template <typename ParseCtx>
             error parse_literal(ParseCtx& pctx,
                                 bool allow_range,
-                                CpT begin = static_cast<CpT>(0))
+                                code_point begin = make_code_point(0))
             {
                 using char_type = typename ParseCtx::char_type;
                 if (allow_range) {
@@ -269,11 +267,10 @@ namespace scn {
                 return {error::invalid_format_string,
                         "Invalid :specifier: in [set]"};
             }
-            template <typename ParseCtx,
-                      typename CpT = typename ParseCtx::cp_type>
+            template <typename ParseCtx>
             error parse_backslash_hex(ParseCtx& pctx,
                                       bool allow_range,
-                                      CpT begin = static_cast<CpT>(0))
+                                      code_point begin = make_code_point(0))
             {
                 using char_type = typename ParseCtx::char_type;
                 SCN_EXPECT(pctx.next_char() == ascii_widen<char_type>('x') ||
@@ -351,21 +348,21 @@ namespace scn {
                 if (allow_range && pctx.can_peek_char() &&
                     pctx.peek_char() == ascii_widen<char_type>('-')) {
                     pctx.advance_char();
-                    return parse_range(pctx, static_cast<CpT>(i));
+                    return parse_range(pctx, make_code_point(i));
                 }
                 if (!allow_range) {
-                    accept_char_range(begin, static_cast<CpT>(i));
+                    accept_char_range(begin, make_code_point(i));
                 }
                 else {
-                    accept_char(static_cast<CpT>(i));
+                    accept_char(make_code_point(i));
                 }
                 return {};
             }
-            template <typename ParseCtx,
-                      typename CpT = typename ParseCtx::cp_type>
-            error parse_backslash_specifier(ParseCtx& pctx,
-                                            bool allow_range,
-                                            CpT begin = static_cast<CpT>(0))
+            template <typename ParseCtx>
+            error parse_backslash_specifier(
+                ParseCtx& pctx,
+                bool allow_range,
+                code_point begin = make_code_point(0))
             {
                 using char_type = typename ParseCtx::char_type;
                 SCN_EXPECT(pctx.next_char() == ascii_widen<char_type>('\\'));
@@ -451,11 +448,10 @@ namespace scn {
                 // Literal, e.g. \: -> :
                 return parse_literal(pctx, true);
             }
-            template <typename ParseCtx,
-                      typename CpT = typename ParseCtx::cp_type>
+            template <typename ParseCtx>
             error parse_next_char(ParseCtx& pctx,
                                   bool allow_range,
-                                  CpT begin = static_cast<CpT>(0))
+                                  code_point begin = make_code_point(0))
             {
                 using char_type = typename ParseCtx::char_type;
                 const auto ch = pctx.next_char();
@@ -1113,7 +1109,7 @@ namespace scn {
                     bool loc = (common_options & localized) != 0;
                     bool mb = set_parser.get_option(
                                   set_parser_type::flag::use_ranges) &&
-                              sizeof(typename Context::char_type) == 1;
+                              is_multichar_type(typename Context::char_type{});
                     return do_scan(ctx, val,
                                    pred<Context>{ctx, set_parser, loc, mb});
                 }

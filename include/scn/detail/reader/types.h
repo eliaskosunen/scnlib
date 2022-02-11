@@ -57,12 +57,6 @@ namespace scn {
             template <typename Context>
             error scan(code_point& val, Context& ctx)
             {
-                using char_type = typename Context::char_type;
-                if (!std::is_same<char_type, char>::value) {
-                    return {error::invalid_operation,
-                            "Can only scan a code_point from a narrow range"};
-                }
-
                 unsigned char buf[4] = {0};
                 auto cp = read_code_point(ctx.range(), make_span(buf, 4), true);
                 if (!cp) {

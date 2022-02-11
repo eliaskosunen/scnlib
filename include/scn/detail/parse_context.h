@@ -43,72 +43,6 @@ namespace scn {
         protected:
             parse_context_base() = default;
 
-            static SCN_CONSTEXPR14 expected<code_point> next_cp_impl(
-                const string_view& sv)
-            {
-                code_point cp{};
-                auto it = parse_code_point(sv.begin(), sv.end(), cp);
-                if (!it) {
-                    return it.error();
-                }
-                return {cp};
-            }
-            static SCN_CONSTEXPR14 expected<wchar_t> next_cp_impl(
-                const wstring_view& sv)
-            {
-                return sv.front();
-            }
-
-            static SCN_CONSTEXPR14 error advance_cp_impl(string_view& sv)
-            {
-                code_point cp{};
-                auto it = parse_code_point(sv.begin(), sv.end(), cp);
-                if (!it) {
-                    return it.error();
-                }
-                sv.remove_prefix(static_cast<size_t>(it.value() - sv.begin()));
-                return {};
-            }
-            static SCN_CONSTEXPR14 error advance_cp_impl(wstring_view& sv)
-            {
-                sv.remove_prefix(1);
-                return {};
-            }
-
-            static SCN_CONSTEXPR14 expected<code_point> peek_cp_impl(
-                const string_view& sv)
-            {
-                if (sv.size() < 2) {
-                    return error{error::end_of_range,
-                                 "End of format string, cannot peek"};
-                }
-
-                code_point cp{};
-                auto it = parse_code_point(sv.begin(), sv.end(), cp);
-                if (!it) {
-                    return it.error();
-                }
-                if (it.value() == sv.end()) {
-                    return error{error::end_of_range,
-                                 "End of format string, cannot peek"};
-                }
-
-                it = parse_code_point(it.value(), sv.end(), cp);
-                if (!it) {
-                    return it.error();
-                }
-                return {cp};
-            }
-            static SCN_CONSTEXPR14 expected<wchar_t> peek_cp_impl(
-                const wstring_view& sv)
-            {
-                if (sv.size() < 2) {
-                    return error{error::end_of_range,
-                                 "End of format string, cannot peek"};
-                }
-                return {sv[1]};
-            }
-
             std::ptrdiff_t m_next_arg_id{0};
         };
     }  // namespace detail
@@ -120,10 +54,6 @@ namespace scn {
     class basic_parse_context : public detail::parse_context_base {
     public:
         using char_type = CharT;
-        using cp_type =
-            typename std::conditional<std::is_same<CharT, char>::value,
-                                      code_point,
-                                      char_type>::type;
         using locale_type = basic_locale_ref<CharT>;
         using string_view_type = basic_string_view<char_type>;
         using iterator = typename string_view_type::iterator;
@@ -177,7 +107,7 @@ namespace scn {
             return true;
         }
         SCN_NODISCARD SCN_CONSTEXPR14 expected<bool> check_literal_cp(
-            cp_type cp) const
+            code_point cp) const
         {
             auto next = next_cp();
             if (!next) {
@@ -199,9 +129,14 @@ namespace scn {
         {
             return m_str.front();
         }
-        SCN_NODISCARD SCN_CONSTEXPR14 expected<cp_type> next_cp() const
+        SCN_NODISCARD SCN_CONSTEXPR14 expected<code_point> next_cp() const
         {
-            return next_cp_impl(m_str);
+            code_point cp{};
+            auto it = parse_code_point(m_str.begin(), m_str.end(), cp);
+            if (!it) {
+                return it.error();
+            }
+            return {cp};
         }
 
         constexpr std::size_t chars_left() const noexcept
@@ -225,7 +160,14 @@ namespace scn {
         }
         SCN_NODISCARD SCN_CONSTEXPR14 error advance_cp() noexcept
         {
-            return advance_cp_impl(m_str);
+            code_point cp{};
+            auto it = parse_code_point(m_str.begin(), m_str.end(), cp);
+            if (!it) {
+                return it.error();
+            }
+            m_str.remove_prefix(
+                static_cast<size_t>(it.value() - m_str.begin()));
+            return {};
         }
 
         constexpr bool can_peek_char(std::size_t n = 1) const noexcept
@@ -238,9 +180,29 @@ namespace scn {
             SCN_EXPECT(n < chars_left());
             return m_str[n];
         }
-        SCN_NODISCARD SCN_CONSTEXPR14 expected<cp_type> peek_cp() const noexcept
+        SCN_NODISCARD SCN_CONSTEXPR14 expected<code_point> peek_cp()
+            const noexcept
         {
-            return peek_cp_impl(m_str);
+            if (m_str.size() < 2) {
+                return error{error::end_of_range,
+                             "End of format string, cannot peek"};
+            }
+
+            code_point cp{};
+            auto it = parse_code_point(m_str.begin(), m_str.end(), cp);
+            if (!it) {
+                return it.error();
+            }
+            if (it.value() == m_str.end()) {
+                return error{error::end_of_range,
+                             "End of format string, cannot peek"};
+            }
+
+            it = parse_code_point(it.value(), m_str.end(), cp);
+            if (!it) {
+                return it.error();
+            }
+            return {cp};
         }
 
         SCN_CONSTEXPR14 iterator begin() const noexcept
@@ -333,10 +295,6 @@ namespace scn {
     class basic_empty_parse_context : public detail::parse_context_base {
     public:
         using char_type = CharT;
-        using cp_type =
-            typename std::conditional<std::is_same<CharT, char>::value,
-                                      code_point,
-                                      char_type>::type;
         using locale_type = basic_locale_ref<char_type>;
         using string_view_type = basic_string_view<char_type>;
 
@@ -365,7 +323,7 @@ namespace scn {
         {
             return false;
         }
-        constexpr bool check_literal_cp(cp_type) const
+        constexpr bool check_literal_cp(code_point) const
         {
             return false;
         }
@@ -390,7 +348,7 @@ namespace scn {
             SCN_EXPECT(false);
             SCN_UNREACHABLE;
         }
-        expected<std::pair<cp_type, std::ptrdiff_t>> next_cp() const
+        expected<std::pair<code_point, std::ptrdiff_t>> next_cp() const
         {
             SCN_EXPECT(false);
             SCN_UNREACHABLE;
@@ -421,7 +379,7 @@ namespace scn {
             SCN_EXPECT(false);
             SCN_UNREACHABLE;
         }
-        expected<cp_type> peek_cp() const noexcept
+        expected<code_point> peek_cp() const noexcept
         {
             SCN_EXPECT(false);
             SCN_UNREACHABLE;

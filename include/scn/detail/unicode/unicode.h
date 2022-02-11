@@ -24,14 +24,44 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        inline constexpr bool is_wide_multichar()
+        {
+            return sizeof(wchar_t) == 2;
+        }
+
+        inline constexpr bool is_multichar_type(char)
+        {
+            return true;
+        }
+        inline constexpr bool is_multichar_type(wchar_t)
+        {
+            return is_wide_multichar();
+        }
+
+        using utf8_tag = std::integral_constant<size_t, 1>;
+        using utf16_tag = std::integral_constant<size_t, 2>;
+        using utf32_tag = std::integral_constant<size_t, 4>;
+
+#define SCN_MAKE_UTF_TAG(CharT) \
+    std::integral_constant<size_t, sizeof(CharT)> {}
+
         template <typename I, typename S>
-        SCN_CONSTEXPR14 expected<I> parse_code_point(
-            I begin,
-            S end,
-            code_point& cp,
-            std::integral_constant<size_t, 1>)
+        SCN_CONSTEXPR14 expected<I> parse_code_point(I begin,
+                                                     S end,
+                                                     code_point& cp,
+                                                     utf8_tag)
         {
             return utf8::parse_code_point(begin, end, cp);
+        }
+        template <typename I, typename S>
+        SCN_CONSTEXPR14 expected<I> parse_code_point(I begin,
+                                                     S end,
+                                                     code_point& cp,
+                                                     utf32_tag)
+        {
+            SCN_EXPECT(begin != end);
+            cp = make_code_point(*begin);
+            return {++begin};
         }
     }  // namespace detail
 
@@ -40,22 +70,17 @@ namespace scn {
     {
         return detail::parse_code_point(
             begin, end, cp,
-            std::integral_constant<size_t, sizeof(typename std::iterator_traits<
-                                                  I>::value_type)>{});
+            SCN_MAKE_UTF_TAG(typename std::iterator_traits<I>::value_type));
     }
 
     namespace detail {
         template <typename T>
-        SCN_CONSTEXPR14 int get_sequence_length(
-            T a,
-            std::integral_constant<size_t, 1>)
+        SCN_CONSTEXPR14 int get_sequence_length(T a, utf8_tag)
         {
             return utf8::get_sequence_length(a);
         }
         template <typename T>
-        SCN_CONSTEXPR14 int get_sequence_length(
-            T,
-            std::integral_constant<size_t, 4>)
+        SCN_CONSTEXPR14 int get_sequence_length(T, utf32_tag)
         {
             return 1;
         }
@@ -64,16 +89,23 @@ namespace scn {
     template <typename T>
     SCN_CONSTEXPR14 int get_sequence_length(T a)
     {
-        return detail::get_sequence_length(
-            a, std::integral_constant<size_t, sizeof(T)>{});
+        return detail::get_sequence_length(a, SCN_MAKE_UTF_TAG(T));
     }
 
     namespace detail {
         template <typename I, typename S>
-        SCN_CONSTEXPR14 expected<std::ptrdiff_t>
-        code_point_distance(I begin, S end, std::integral_constant<size_t, 1>)
+        SCN_CONSTEXPR14 expected<std::ptrdiff_t> code_point_distance(I begin,
+                                                                     S end,
+                                                                     utf8_tag)
         {
             return utf8::code_point_distance(begin, end);
+        }
+        template <typename I, typename S>
+        SCN_CONSTEXPR14 expected<std::ptrdiff_t> code_point_distance(I begin,
+                                                                     S end,
+                                                                     utf32_tag)
+        {
+            return {end - begin};
         }
     }  // namespace detail
 
@@ -82,9 +114,10 @@ namespace scn {
     {
         return detail::code_point_distance(
             begin, end,
-            std::integral_constant<
-                size_t, sizeof(std::iterator_traits<I>::value_type)>{});
+            SCN_MAKE_UTF_TAG(typename std::iterator_traits<I>::value_type));
     }
+
+#undef SCN_MAKE_UTF_TAG
 
     SCN_END_NAMESPACE
 }  // namespace scn

@@ -103,40 +103,33 @@ namespace scn {
 
     // read_code_point
 
-    template <typename CharT, typename CP>
+    template <typename CharT>
     struct read_code_point_result {
         span<const CharT> chars;
-        CP cp;
+        code_point cp;
     };
 
     namespace detail {
-        using narrow_read_code_point_result_type =
-            read_code_point_result<char, code_point>;
-        using wide_read_code_point_result_type =
-            read_code_point_result<wchar_t, wchar_t>;
-
         // contiguous && direct
-        template <typename WrappedRange>
-        expected<narrow_read_code_point_result_type> read_code_point_impl(
+        template <typename CharT, typename WrappedRange>
+        expected<read_code_point_result<CharT>> read_code_point_impl(
             WrappedRange& r,
-            span<char>,
+            span<CharT>,
             bool do_parse,
             std::true_type)
         {
             if (r.begin() == r.end()) {
                 return error(error::end_of_range, "EOF");
             }
-            char first = *r.begin();
+            CharT first = *r.begin();
             int len = ::scn::get_sequence_length(first);
             if (SCN_UNLIKELY(len == 0 || r.size() < len)) {
-                return error(error::invalid_encoding,
-                             "Invalid utf8 code point");
+                return error(error::invalid_encoding, "Invalid code point");
             }
             if (len == 1) {
                 auto s = make_span(r.data(), 1).as_const();
                 r.advance();
-                return narrow_read_code_point_result_type{
-                    s, make_code_point(first)};
+                return read_code_point_result<CharT>{s, make_code_point(first)};
             }
 
             code_point cp{};
@@ -148,13 +141,13 @@ namespace scn {
             }
             auto s = make_span(r.data(), static_cast<size_t>(len)).as_const();
             r.advance(len);
-            return narrow_read_code_point_result_type{s, cp};
+            return read_code_point_result<CharT>{s, cp};
         }
 
-        template <typename WrappedRange>
-        expected<narrow_read_code_point_result_type> read_code_point_impl(
+        template <typename CharT, typename WrappedRange>
+        expected<read_code_point_result<CharT>> read_code_point_impl(
             WrappedRange& r,
-            span<char> writebuf,
+            span<CharT> writebuf,
             bool do_parse,
             std::false_type)
         {
@@ -165,20 +158,19 @@ namespace scn {
             auto len =
                 static_cast<size_t>(::scn::get_sequence_length(first.value()));
             if (SCN_UNLIKELY(len == 0)) {
-                return error(error::invalid_encoding,
-                             "Invalid utf8 code point");
+                return error(error::invalid_encoding, "Invalid code point");
             }
             if (len == 1) {
                 writebuf[0] = first.value();
                 r.advance();
-                return narrow_read_code_point_result_type{
+                return read_code_point_result<CharT>{
                     make_span(writebuf.data(), 1).as_const(),
                     make_code_point(first.value())};
             }
 
             size_t index = 1;
 
-            auto parse = [&]() -> expected<narrow_read_code_point_result_type> {
+            auto parse = [&]() -> expected<read_code_point_result<CharT>> {
                 code_point cp{};
                 if (do_parse) {
                     auto ret = parse_code_point(writebuf.data(),
@@ -193,7 +185,7 @@ namespace scn {
                     }
                 }
                 auto s = make_span(writebuf.data(), len).as_const();
-                return narrow_read_code_point_result_type{s, cp};
+                return read_code_point_result<CharT>{s, cp};
             };
             auto advance = [&]() -> error {
                 auto ret = read_code_unit(r, false);
@@ -219,47 +211,20 @@ namespace scn {
         }
     }  // namespace detail
 
-    template <
-        typename WrappedRange,
-        typename BufValueT,
-        typename std::enable_if<std::is_same<typename WrappedRange::char_type,
-                                             char>::value>::type* = nullptr>
-    expected<detail::narrow_read_code_point_result_type> read_code_point(
-        WrappedRange& r,
-        span<BufValueT> writebuf,
-        bool parse_code_point)
+    template <typename WrappedRange, typename BufValueT>
+    expected<read_code_point_result<typename WrappedRange::char_type>>
+    read_code_point(WrappedRange& r,
+                    span<BufValueT> writebuf,
+                    bool do_parse_code_point)
     {
         SCN_EXPECT(writebuf.size() * sizeof(BufValueT) >= 4);
-        return detail::read_code_point_impl(
+        using char_type = typename WrappedRange::char_type;
+        return detail::read_code_point_impl<char_type>(
             r,
-            make_span(reinterpret_cast<char*>(writebuf.data()),
-                      writebuf.size() * sizeof(BufValueT)),
-            parse_code_point,
+            make_span(reinterpret_cast<char_type*>(writebuf.data()),
+                      writebuf.size() * sizeof(BufValueT) / sizeof(char_type)),
+            do_parse_code_point,
             std::integral_constant<bool, WrappedRange::is_contiguous>{});
-    }
-    template <
-        typename WrappedRange,
-        typename BufValueT,
-        typename std::enable_if<std::is_same<typename WrappedRange::char_type,
-                                             wchar_t>::value>::type* = nullptr>
-    expected<detail::wide_read_code_point_result_type> read_code_point(
-        WrappedRange& r,
-        span<BufValueT> writebuf,
-        bool parse_code_point)
-    {
-        SCN_UNUSED(parse_code_point);
-        SCN_EXPECT(writebuf.size() * sizeof(BufValueT) >= 4);
-
-        auto buf = make_span(reinterpret_cast<wchar_t*>(writebuf.data()),
-                             writebuf.size() * sizeof(BufValueT));
-        auto ret = read_code_unit(r, true);
-        if (!ret) {
-            return ret.error();
-        }
-        buf[0] = ret.value();
-        buf = buf.first(1);
-        return detail::wide_read_code_point_result_type{buf.as_const(),
-                                                        ret.value()};
     }
 
     // read_zero_copy
@@ -687,7 +652,7 @@ namespace scn {
             }
             constexpr bool is_multibyte() const
             {
-                return is_localized() && sizeof(CharT) != 1;
+                return is_localized() && is_multichar_type(CharT{});
             }
 
         private:
