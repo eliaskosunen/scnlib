@@ -414,7 +414,7 @@ Lower level parsing and scanning operations
 .. doxygenfunction:: vscan
 .. doxygenfunction:: vscan_default
 .. doxygenfunction:: vscan_localized
-.. doxygenfunction:: visit(Context &ctx, ParseCtx &pctx, basic_args<typename Context::char_type> args) -> error
+.. doxygenfunction:: template<typename Context, typename ParseCtx> visit(Context &ctx, ParseCtx &pctx, basic_args<typename Context::char_type> args) -> error
 
 Low-level parsing
 *****************
@@ -441,6 +441,10 @@ Low-level range reading
 
 The following functions abstract away the source range in easier to understand parsing operations.
 
+.. doxygenfunction:: read_code_unit
+.. doxygenstruct:: scn::read_code_point_result
+    :members:
+.. doxygenfunction:: read_code_point
 .. doxygenfunction:: read_zero_copy
 .. doxygenfunction:: read_all_zero_copy
 .. doxygenfunction:: read_into
