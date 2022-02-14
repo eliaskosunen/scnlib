@@ -414,7 +414,7 @@ Lower level parsing and scanning operations
 .. doxygenfunction:: vscan
 .. doxygenfunction:: vscan_default
 .. doxygenfunction:: vscan_localized
-.. doxygenfunction:: template<typename Context, typename ParseCtx> visit(Context &ctx, ParseCtx &pctx, basic_args<typename Context::char_type> args) -> error
+.. doxygenfunction:: visit(Context &ctx, ParseCtx &pctx, basic_args<typename Context::char_type> args) -> error
 
 Low-level parsing
 *****************
@@ -430,7 +430,13 @@ Scanner
 
 Values are eventually scanned using a ``scn::scanner``.
 
-.. doxygenclass:: scn::empty_parser
+.. doxygenstruct:: scn::parser_base
+    :members:
+.. doxygenstruct:: scn::empty_parser
+    :members:
+.. doxygenstruct:: scn::common_parser
+    :members:
+.. doxygenstruct:: scn::common_parser_default
     :members:
 
 .. doxygenfunction:: scan_usertype

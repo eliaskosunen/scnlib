@@ -989,7 +989,7 @@ namespace scn {
 
     /**
      * A very simple parser base class, which only accepts empty format string
-     * specifiers, e.g. `{}`, `{:}` or `{1:}.
+     * specifiers, e.g. `{}`, `{:}` or `{1:}`.
      */
     struct empty_parser : parser_base {
         template <typename ParseCtx>
@@ -1204,12 +1204,12 @@ namespace scn {
          *
          * `type_options.size() == type_flags.size()` must be `true`.
          * `pctx` must be valid, and must start at the format string argument
-         * specifiers, e.g. in the case of "{1:foo}" -> `pctx == "foo}"
+         * specifiers, e.g. in the case of `"{1:foo}"` -> `pctx == "foo}"`
          *
          * \param pctx Format string to parse
          * \param type_options A span of characters, where each character
          * corresponds to a valid type flag. For example, for characters, this
-         * span would be `['c']`
+         * span would be \c ['c']
          * \param type_flags A span of bools, where the values will be set to
          * `true`, if a corresponding type flag from `type_options` was found.
          * Should be initialized to all-`false`, as a `false` value will not be

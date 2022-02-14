@@ -1,4 +1,4 @@
-name: Alpine Linux (Docker)
+name: Alpine
 
 on: [ push, pull_request ]
 
