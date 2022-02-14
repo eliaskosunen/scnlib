@@ -32,9 +32,18 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        template <typename CharT>
         struct locale_data {
+            using char_type = CharT;
+            using string_type = std::basic_string<char_type>;
+
             std::locale global_locale{std::locale()};
             std::locale classic_locale{std::locale::classic()};
+
+            string_type truename{};
+            string_type falsename{};
+            char_type decimal_point{};
+            char_type thousands_separator{};
         };
 
         template <typename CharT>
@@ -44,10 +53,14 @@ namespace scn {
             return *static_cast<const std::locale*>(l.get_locale());
         }
 
+        // Buggy on gcc 5 and 6
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Wmaybe-uninitialized")
+
         template <typename CharT>
         basic_custom_locale_ref<CharT>::basic_custom_locale_ref()
         {
-            auto data = new locale_data{};
+            auto data = new locale_data<CharT>{};
             m_data = data;
             m_locale = &data->global_locale;
             _initialize();
@@ -57,58 +70,53 @@ namespace scn {
             const void* locale)
             : m_locale(locale)
         {
+            auto data = new locale_data<CharT>{};
+            m_data = data;
             if (!locale) {
-                m_data = new locale_data{};
-                m_locale = &static_cast<locale_data*>(m_data)->global_locale;
+                m_locale = &data->global_locale;
             }
             _initialize();
         }
+
+        SCN_GCC_POP
 
         template <typename CharT>
         void basic_custom_locale_ref<CharT>::_initialize()
         {
             const auto& facet =
                 std::use_facet<std::numpunct<CharT>>(to_locale(*this));
-            m_truename = facet.truename();
-            m_falsename = facet.falsename();
-            m_decimal_point = facet.decimal_point();
-            m_thousands_separator = facet.thousands_sep();
+
+            auto& data = *static_cast<locale_data<CharT>*>(m_data);
+            data.truename = facet.truename();
+            data.falsename = facet.falsename();
+            data.decimal_point = facet.decimal_point();
+            data.thousands_separator = facet.thousands_sep();
         }
 
         template <typename CharT>
         basic_custom_locale_ref<CharT>::basic_custom_locale_ref(
             basic_custom_locale_ref&& o)
         {
-            if (o.m_data) {
-                m_data = o.m_data;
-                m_locale = o.m_locale;
+            m_data = o.m_data;
+            m_locale = o.m_locale;
 
-                o.m_data = nullptr;
-                o.m_locale = nullptr;
-            }
-            else {
-                m_locale = o.m_locale;
-                o.m_locale = nullptr;
-            }
+            o.m_data = nullptr;
+            o.m_locale = nullptr;
+
             _initialize();
         }
         template <typename CharT>
         auto basic_custom_locale_ref<CharT>::operator=(
             basic_custom_locale_ref&& o) -> basic_custom_locale_ref&
         {
-            delete static_cast<locale_data*>(m_data);
+            delete static_cast<locale_data<CharT>*>(m_data);
 
-            if (o.m_data) {
-                m_data = o.m_data;
-                m_locale = o.m_locale;
+            m_data = o.m_data;
+            m_locale = o.m_locale;
 
-                o.m_data = nullptr;
-                o.m_locale = nullptr;
-            }
-            else {
-                m_locale = o.m_locale;
-                o.m_locale = nullptr;
-            }
+            o.m_data = nullptr;
+            o.m_locale = nullptr;
+
             _initialize();
 
             return *this;
@@ -117,7 +125,7 @@ namespace scn {
         template <typename CharT>
         basic_custom_locale_ref<CharT>::~basic_custom_locale_ref()
         {
-            delete static_cast<locale_data*>(m_data);
+            delete static_cast<locale_data<CharT>*>(m_data);
         }
 
         template <typename CharT>
@@ -132,14 +140,14 @@ namespace scn {
         template <typename CharT>
         void basic_custom_locale_ref<CharT>::convert_to_classic()
         {
-            SCN_EXPECT(m_data);
-            m_locale = &static_cast<locale_data*>(m_data)->classic_locale;
+            m_locale =
+                &static_cast<locale_data<CharT>*>(m_data)->classic_locale;
         }
         template <typename CharT>
         void basic_custom_locale_ref<CharT>::convert_to_global()
         {
             SCN_EXPECT(m_data);
-            m_locale = &static_cast<locale_data*>(m_data)->global_locale;
+            m_locale = &static_cast<locale_data<CharT>*>(m_data)->global_locale;
         }
 
         template <typename CharT>
@@ -151,6 +159,36 @@ namespace scn {
         bool basic_custom_locale_ref<CharT>::do_is_digit(char_type ch) const
         {
             return std::isdigit(ch, to_locale(*this));
+        }
+
+        template <typename CharT>
+        auto basic_custom_locale_ref<CharT>::do_decimal_point() const
+            -> char_type
+        {
+            return static_cast<locale_data<CharT>*>(m_data)->decimal_point;
+        }
+        template <typename CharT>
+        auto basic_custom_locale_ref<CharT>::do_thousands_separator() const
+            -> char_type
+        {
+            return static_cast<locale_data<CharT>*>(m_data)
+                ->thousands_separator;
+        }
+        template <typename CharT>
+        auto basic_custom_locale_ref<CharT>::do_truename() const
+            -> string_view_type
+        {
+            const auto& str =
+                static_cast<locale_data<CharT>*>(m_data)->truename;
+            return {str.data(), str.size()};
+        }
+        template <typename CharT>
+        auto basic_custom_locale_ref<CharT>::do_falsename() const
+            -> string_view_type
+        {
+            const auto& str =
+                static_cast<locale_data<CharT>*>(m_data)->falsename;
+            return {str.data(), str.size()};
         }
 
         static inline error convert_to_wide_impl(const std::locale& locale,

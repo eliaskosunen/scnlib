@@ -432,31 +432,15 @@ namespace scn {
             bool do_is_digit(span<const char_type> ch) const override;
             SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
-            char_type do_decimal_point() const override
-            {
-                return m_decimal_point;
-            }
-            char_type do_thousands_separator() const override
-            {
-                return m_thousands_separator;
-            }
-            string_view_type do_truename() const override
-            {
-                return string_view_type{m_truename.data(), m_truename.size()};
-            }
-            string_view_type do_falsename() const override
-            {
-                return string_view_type{m_falsename.data(), m_falsename.size()};
-            }
+            char_type do_decimal_point() const override;
+            char_type do_thousands_separator() const override;
+            string_view_type do_truename() const override;
+            string_view_type do_falsename() const override;
 
             void _initialize();
 
-            string_type m_truename{};
-            string_type m_falsename{};
             const void* m_locale{nullptr};
             void* m_data{nullptr};
-            char_type m_decimal_point{};
-            char_type m_thousands_separator{};
         };
     }  // namespace detail
 
