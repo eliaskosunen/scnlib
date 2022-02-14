@@ -1,6 +1,6 @@
 name: macOS
 
-on: [push, pull_request]
+on: [ push, pull_request ]
 
 jobs:
   build:
@@ -8,9 +8,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest]
-        std: [11, 14, 17, 20]
-        cxx: [clang++, g++-11]
+        os: [ macos-latest ]
+        std: [ 11, 14, 17, 20 ]
+        cxx: [ clang++, g++-11 ]
     steps:
       - uses: actions/checkout@v2
         with:
