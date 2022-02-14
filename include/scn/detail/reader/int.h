@@ -29,6 +29,8 @@ namespace scn {
             static_assert(std::is_integral<T>::value,
                           "integer_scanner requires an integral type");
 
+            friend struct simple_integer_scanner<T>;
+
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {
@@ -285,6 +287,7 @@ namespace scn {
             // Otherwise [2,36]
             uint8_t base{0};
 
+        private:
             template <typename Context, typename Buf, typename CharT>
             error _read_source(Context& ctx,
                                Buf& buf,
@@ -432,10 +435,17 @@ namespace scn {
         template <typename T>
         template <typename CharT>
         expected<typename span<const CharT>::iterator>
-        simple_integer_scanner<T>::scan(span<const CharT> buf, T& val, int base)
+        simple_integer_scanner<T>::scan(span<const CharT> buf,
+                                        T& val,
+                                        int base,
+                                        uint16_t flags)
         {
+            SCN_EXPECT(buf.size() != 0);
+
             integer_scanner<T> s{};
             s.base = static_cast<uint8_t>(base);
+            s.format_options = flags & 0xffu;
+            s.common_options = static_cast<uint8_t>(flags >> 8u);
             SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
             auto n = s._parse_int(val, buf);
             SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
@@ -443,6 +453,32 @@ namespace scn {
                 return n.error();
             }
             return buf.begin() + n.value();
+        }
+        template <typename T>
+        template <typename CharT>
+        expected<typename span<const CharT>::iterator>
+        simple_integer_scanner<T>::scan_lower(span<const CharT> buf,
+                                              T& val,
+                                              int base,
+                                              uint16_t flags)
+        {
+            SCN_EXPECT(buf.size() != 0);
+            SCN_EXPECT(base > 0);
+
+            integer_scanner<T> s{};
+            s.base = static_cast<uint8_t>(base);
+            s.format_options = flags & 0xffu;
+            s.common_options = static_cast<uint8_t>(flags >> 8u);
+
+            bool minus_sign = false;
+            if (buf[0] == ascii_widen<CharT>('-')) {
+                buf = buf.subspan(1);
+                minus_sign = true;
+            }
+
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+            return s._parse_int_impl(val, minus_sign, buf);
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
         }
     }  // namespace detail
     SCN_END_NAMESPACE

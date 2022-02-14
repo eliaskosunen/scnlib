@@ -24,9 +24,14 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
     namespace detail {
         template <typename T>
+        struct float_scanner_access;
+
+        template <typename T>
         struct float_scanner : common_parser {
             static_assert(std::is_floating_point<T>::value,
                           "float_scanner requires a floating point type");
+
+            friend struct float_scanner_access<T>;
 
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
@@ -130,10 +135,12 @@ namespace scn {
                                       (format_options & allow_hex) != 0))) {
                         // 'n' OR ('L' AND 'a')
                         // because none of our parsers support BOTH hexfloats
-                        // and custom (localized) decimal points
+                        // and custom (localized) decimal points,
+                        // so we have to fall back on iostreams
                         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                         std::basic_string<char_type> str(s.data(), s.size());
-                        ret = ctx.locale().get_localized().read_num(tmp, str, 0);
+                        ret =
+                            ctx.locale().get_localized().read_num(tmp, str, 0);
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     }
                     else {
@@ -159,7 +166,8 @@ namespace scn {
                 };
 
                 auto is_space_pred = make_is_space_predicate(
-                    ctx.locale(), (common_options & localized) != 0, field_width);
+                    ctx.locale(), (common_options & localized) != 0,
+                    field_width);
 
                 if (Context::range_type::is_contiguous) {
                     auto s = read_until_space_zero_copy(ctx.range(),
@@ -190,6 +198,7 @@ namespace scn {
             };
             uint8_t format_options{allow_hex | allow_scientific | allow_fixed};
 
+        private:
             template <typename CharT>
             expected<std::ptrdiff_t> _read_float(T& val,
                                                  span<const CharT> s,
@@ -218,6 +227,12 @@ namespace scn {
         template struct float_scanner<float>;
         template struct float_scanner<double>;
         template struct float_scanner<long double>;
+
+        template <typename T>
+        struct float_scanner_access : public float_scanner<T> {
+            using float_scanner<T>::_read_float;
+            using float_scanner<T>::_read_float_impl;
+        };
     }  // namespace detail
     SCN_END_NAMESPACE
 }  // namespace scn

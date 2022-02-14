@@ -291,16 +291,10 @@ namespace scn {
                                          int base = 10)
     {
         SCN_EXPECT(!str.empty());
-        auto s = detail::integer_scanner<T>{};
-        s.base = static_cast<uint8_t>(base);
-        bool minus_sign = false;
-        auto sp = make_span(str.data(), str.size()).as_const();
-        if (str[0] == detail::ascii_widen<CharT>('-')) {
-            minus_sign = true;
-            sp = make_span(str.data() + 1, str.size() - 1).as_const();
-        }
+        auto s = detail::simple_integer_scanner<T>{};
         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-        auto ret = s._parse_int_impl(val, minus_sign, sp);
+        auto ret =
+            s.scan_lower(span<const CharT>(str.data(), str.size()), val, base);
         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
         if (!ret) {
             return ret.error();
@@ -319,7 +313,7 @@ namespace scn {
     expected<const CharT*> parse_float(basic_string_view<CharT> str, T& val)
     {
         SCN_EXPECT(!str.empty());
-        auto s = detail::float_scanner<T>{};
+        auto s = detail::float_scanner_access<T>{};
         auto ret =
             s._read_float(val, make_span(str.data(), str.size()).as_const(),
                           detail::ascii_widen<CharT>('.'));
@@ -344,8 +338,8 @@ namespace scn {
      *     int val2;
      * };
      *
-     * template <typename CharT>
-     * struct scn::scanner<CharT, user_type> : public scn::empty_parser {
+     * template <>
+     * struct scn::scanner<user_type> : public scn::empty_parser {
      *     template <typename Context>
      *     error scan(user_type& val, Context& ctx)
      *     {
@@ -354,9 +348,9 @@ namespace scn {
      * };
      * \endcode
      *
-     * @param ctx Context given to the scanning function
-     * @param f Format string to parse
-     * @param a Member types (etc) to parse
+     * \param ctx Context given to the scanning function
+     * \param f Format string to parse
+     * \param a Member types (etc) to parse
      */
     template <typename WrappedRange, typename Format, typename... Args>
     error scan_usertype(basic_context<WrappedRange>& ctx,

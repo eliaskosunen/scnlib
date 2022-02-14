@@ -1,9 +1,12 @@
 # scnlib
 
-[![Linux builds](https://github.com/eliaskosunen/scnlib/workflows/linux/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml)
-[![macOS builds](https://github.com/eliaskosunen/scnlib/workflows/macos/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml)
-[![Windows builds](https://github.com/eliaskosunen/scnlib/workflows/windows/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml)
+[![Ubuntu 20 builds](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-20.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-20.yml)
+[![Ubuntu 18 builds](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-18.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-18.yml)
+[![macOS builds](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml)
+[![Windows builds](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml)
+[![Alpine builds](https://github.com/eliaskosunen/scnlib/actions/workflows/alpine.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/alpine.yml)
 [![Code Coverage](https://codecov.io/gh/eliaskosunen/scnlib/branch/master/graph/badge.svg?token=LyWrDluna1)](https://codecov.io/gh/eliaskosunen/scnlib)
+
 [![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver)](https://github.com/eliaskosunen/scnlib/releases)
 [![License](https://img.shields.io/github/license/eliaskosunen/scnlib.svg)](https://github.com/eliaskosunen/scnlib/blob/master/LICENSE)
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)

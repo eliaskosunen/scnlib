@@ -33,7 +33,8 @@ namespace scn {
 
     namespace detail {
         struct locale_data {
-            std::locale global_locale;
+            std::locale global_locale{std::locale()};
+            std::locale classic_locale{std::locale::classic()};
         };
 
         template <typename CharT>
@@ -46,7 +47,9 @@ namespace scn {
         template <typename CharT>
         basic_custom_locale_ref<CharT>::basic_custom_locale_ref()
         {
-            m_global_locale = new std::locale{};
+            auto data = new locale_data{};
+            m_data = data;
+            m_locale = &data->global_locale;
             _initialize();
         }
         template <typename CharT>
@@ -55,8 +58,8 @@ namespace scn {
             : m_locale(locale)
         {
             if (!locale) {
-                m_global_locale = new std::locale{};
-                m_locale = m_global_locale;
+                m_data = new locale_data{};
+                m_locale = &static_cast<locale_data*>(m_data)->global_locale;
             }
             _initialize();
         }
@@ -76,10 +79,11 @@ namespace scn {
         basic_custom_locale_ref<CharT>::basic_custom_locale_ref(
             basic_custom_locale_ref&& o)
         {
-            if (o.m_global_locale) {
-                m_global_locale = o.m_global_locale;
-                m_locale = m_global_locale;
-                o.m_global_locale = nullptr;
+            if (o.m_data) {
+                m_data = o.m_data;
+                m_locale = o.m_locale;
+
+                o.m_data = nullptr;
                 o.m_locale = nullptr;
             }
             else {
@@ -92,12 +96,13 @@ namespace scn {
         auto basic_custom_locale_ref<CharT>::operator=(
             basic_custom_locale_ref&& o) -> basic_custom_locale_ref&
         {
-            delete static_cast<std::locale*>(m_global_locale);
+            delete static_cast<locale_data*>(m_data);
 
-            if (o.m_global_locale) {
-                m_global_locale = o.m_global_locale;
-                m_locale = m_global_locale;
-                o.m_global_locale = nullptr;
+            if (o.m_data) {
+                m_data = o.m_data;
+                m_locale = o.m_locale;
+
+                o.m_data = nullptr;
                 o.m_locale = nullptr;
             }
             else {
@@ -112,7 +117,29 @@ namespace scn {
         template <typename CharT>
         basic_custom_locale_ref<CharT>::~basic_custom_locale_ref()
         {
-            delete static_cast<std::locale*>(m_global_locale);
+            delete static_cast<locale_data*>(m_data);
+        }
+
+        template <typename CharT>
+        auto basic_custom_locale_ref<CharT>::make_classic()
+            -> basic_custom_locale_ref
+        {
+            basic_custom_locale_ref loc{};
+            loc.convert_to_classic();
+            return loc;
+        }
+
+        template <typename CharT>
+        void basic_custom_locale_ref<CharT>::convert_to_classic()
+        {
+            SCN_EXPECT(m_data);
+            m_locale = &static_cast<locale_data*>(m_data)->classic_locale;
+        }
+        template <typename CharT>
+        void basic_custom_locale_ref<CharT>::convert_to_global()
+        {
+            SCN_EXPECT(m_data);
+            m_locale = &static_cast<locale_data*>(m_data)->global_locale;
         }
 
         template <typename CharT>

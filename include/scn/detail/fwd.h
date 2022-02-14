@@ -66,16 +66,34 @@ namespace scn {
 
     // defined here to avoid including <scn.h> if the user wants to create a
     // scanner for their own type
+    /**
+     * Base class for all scanners.
+     * User-defined scanner must derive from this type.
+     */
     struct parser_base {
+        /**
+         * Returns `true` if `skip_range_whitespace()` is to be called before
+         * scanning this value.
+         *
+         * Defaults to `true`. Is `false` for chars, code points and strings
+         * when using set scanning.
+         */
         static constexpr bool skip_preceding_whitespace()
         {
             return true;
         }
+        /**
+         * Returns `true` if this scanner supports parsing align and fill
+         * specifiers from the format string, and then scanning them.
+         *
+         * Defaults to `false`, `true` for all scnlib-defined scanners.
+         */
         static constexpr bool support_align_and_fill()
         {
             return false;
         }
     };
+
     struct empty_parser;
     struct common_parser;
     struct common_parser_default;

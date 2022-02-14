@@ -375,10 +375,15 @@ namespace scn {
 
             ~basic_custom_locale_ref();
 
+            static basic_custom_locale_ref make_classic();
+
             const void* get_locale() const
             {
                 return m_locale;
             }
+
+            void convert_to_global();
+            void convert_to_classic();
 
             // narrow: locale multibyte -> locale wide
             // wide: identity
@@ -449,7 +454,7 @@ namespace scn {
             string_type m_truename{};
             string_type m_falsename{};
             const void* m_locale{nullptr};
-            void* m_global_locale{nullptr};
+            void* m_data{nullptr};
             char_type m_decimal_point{};
             char_type m_thousands_separator{};
         };
@@ -505,6 +510,10 @@ namespace scn {
         {
             _construct_custom();
             return *m_custom;
+        }
+
+        custom_type make_localized_classic() const {
+            return custom_type::make_classic();
         }
 
         custom_type* get_localized_unsafe()

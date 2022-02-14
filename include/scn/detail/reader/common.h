@@ -760,11 +760,21 @@ namespace scn {
     /// @}
 
     namespace detail {
+        /**
+         * Predicate to pass to read_until_space etc.
+         */
         template <typename CharT>
         struct is_space_predicate {
             using char_type = CharT;
             using locale_type = basic_locale_ref<char_type>;
 
+            /**
+             * \param l Locale to use, fetched from `ctx.locale()`
+             * \param localized If `true`, use `l.get_custom()`, otherwise use
+             * `l.get_static()`.
+             * \param width If `width != 0`, limit the number of code
+             * units to be read
+             */
             SCN_CONSTEXPR14 is_space_predicate(const locale_type& l,
                                                bool localized,
                                                size_t width)
@@ -778,16 +788,33 @@ namespace scn {
                 }
             }
 
+            /**
+             * Returns `true` if `ch` is a code point according to the supplied
+             * locale, using either the static or custom locale, depending on
+             * the `localized` parameter given to the constructor.
+             *
+             * Returns also `true` if the maximum width, as determined by the
+             * `width` parameter given to the constructor, was reached.
+             */
             bool operator()(span<const char_type> ch)
             {
                 SCN_EXPECT(m_fn);
+                SCN_EXPECT(ch.size() >= 1);
                 return m_fn(m_locale, ch, m_i, m_width);
             }
 
+            /**
+             * Returns `true`, if `*this` uses the custom locale for classifying
+             * space characters
+             */
             constexpr bool is_localized() const
             {
                 return m_locale != nullptr;
             }
+            /**
+             * Returns `true` if a space character can encompass multiple code
+             * units
+             */
             constexpr bool is_multibyte() const
             {
                 return is_localized() && is_multichar_type(CharT{});
@@ -819,10 +846,11 @@ namespace scn {
                                                       size_t& i,
                                                       size_t max)
             {
-                if (i == max) {
+                SCN_EXPECT(i <= max);
+                if (i == max || i + ch.size() > max) {
                     return true;
                 }
-                ++i;
+                i += ch.size();
                 return static_locale_type::is_space(ch);
             }
             static bool localized_call_counting(
@@ -832,10 +860,11 @@ namespace scn {
                 size_t max)
             {
                 SCN_EXPECT(locale != nullptr);
-                if (i == max) {
+                SCN_EXPECT(i <= max);
+                if (i == max || i + ch.size() > max) {
                     return true;
                 }
-                ++i;
+                i += ch.size();
                 return locale->is_space(ch);
             }
 
@@ -943,11 +972,25 @@ namespace scn {
         template <typename T>
         struct simple_integer_scanner {
             template <typename CharT>
-            static expected<typename span<const CharT>::iterator>
-            scan(span<const CharT> buf, T& val, int base = 10);
+            static expected<typename span<const CharT>::iterator> scan(
+                span<const CharT> buf,
+                T& val,
+                int base = 10,
+                uint16_t flags = 0);
+
+            template <typename CharT>
+            static expected<typename span<const CharT>::iterator> scan_lower(
+                span<const CharT> buf,
+                T& val,
+                int base = 10,
+                uint16_t flags = 0);
         };
     }  // namespace detail
 
+    /**
+     * A very simple parser base class, which only accepts empty format string
+     * specifiers, e.g. `{}`, `{:}` or `{1:}.
+     */
     struct empty_parser : parser_base {
         template <typename ParseCtx>
         error parse(ParseCtx& pctx)
@@ -965,12 +1008,23 @@ namespace scn {
         }
     };
 
+    /**
+     * Provides a framework for building a format string parser.
+     * Does not provide a `parse()` member function, so not a parser on to its
+     * own.
+     */
     struct common_parser : parser_base {
         static constexpr bool support_align_and_fill()
         {
             return true;
         }
 
+    protected:
+        /**
+         * Parse the beginning of the argument.
+         * Returns `error::invalid_format_string` if `!pctx` (the format string
+         * ended)
+         */
         template <typename ParseCtx>
         error parse_common_begin(ParseCtx& pctx)
         {
@@ -982,6 +1036,10 @@ namespace scn {
             return {};
         }
 
+        /**
+         * Returns `error::invalid_format_string` if the format string or the
+         * argument has ended.
+         */
         template <typename ParseCtx>
         error check_end(ParseCtx& pctx)
         {
@@ -992,6 +1050,12 @@ namespace scn {
             return {};
         }
 
+        /**
+         * Parse alignment, fill, width, and localization flags, and populate
+         * appropriate member variables.
+         *
+         * Returns `error::invalid_format_string` if an error occurred.
+         */
         template <typename ParseCtx>
         error parse_common_flags(ParseCtx& pctx)
         {
@@ -1049,6 +1113,7 @@ namespace scn {
                 fill_char = static_cast<char32_t>(fill);
             };
 
+            // align and fill
             common_options_type align{};
             bool align_set = false;
             if (pctx.chars_left() > 1 &&
@@ -1056,6 +1121,9 @@ namespace scn {
                 const auto peek = pctx.peek_char();
                 align = get_align_char(peek);
                 if (align != common_options_none) {
+                    // Arg is like "{:_x}", where _ is some fill character, and
+                    // x is an alignment flag
+                    // -> we have both alignment and fill
                     parse_align(align, ch);
 
                     auto e = next_char();
@@ -1069,6 +1137,8 @@ namespace scn {
             if (!align_set) {
                 align = get_align_char(ch);
                 if (align != common_options_none) {
+                    // Arg is like "{:x}", where x is an alignment flag
+                    // -> we have alignment with default fill (space ' ')
                     parse_align(align, detail::ascii_widen<char_type>(' '));
                     if (!next_char()) {
                         return {};
@@ -1076,6 +1146,7 @@ namespace scn {
                 }
             }
 
+            // digit -> width
             if (pctx.locale().get_static().is_digit(ch)) {
                 common_options |= width_set;
 
@@ -1087,6 +1158,7 @@ namespace scn {
                 field_width = w;
                 return {};
             }
+            // L -> localized
             if (ch == detail::ascii_widen<char_type>('L')) {
                 common_options |= localized;
 
@@ -1098,6 +1170,11 @@ namespace scn {
             return {};
         }
 
+        /**
+         * Parse argument end.
+         *
+         * Returns `error::invalid_format_string` if argument end was not found.
+         */
         template <typename ParseCtx>
         error parse_common_end(ParseCtx& pctx)
         {
@@ -1109,12 +1186,39 @@ namespace scn {
             return {};
         }
 
+        /**
+         * A null callback to pass to `parse_common`, doing nothing and
+         * returning `error::good`.
+         */
         template <typename ParseCtx>
         static error null_type_cb(ParseCtx&, bool&)
         {
             return {};
         }
 
+    public:
+        /**
+         * Parse a format string argument, using `parse_common_begin`,
+         * `parse_common_flags`, `parse_common_end`, and the supplied type
+         * flags.
+         *
+         * `type_options.size() == type_flags.size()` must be `true`.
+         * `pctx` must be valid, and must start at the format string argument
+         * specifiers, e.g. in the case of "{1:foo}" -> `pctx == "foo}"
+         *
+         * \param pctx Format string to parse
+         * \param type_options A span of characters, where each character
+         * corresponds to a valid type flag. For example, for characters, this
+         * span would be `['c']`
+         * \param type_flags A span of bools, where the values will be set to
+         * `true`, if a corresponding type flag from `type_options` was found.
+         * Should be initialized to all-`false`, as a `false` value will not be
+         * written.
+         * \param type_cb A callback to call, if none of the `type_options`
+         * matched. Must have the signature `(ParseCtx& pctx, bool& parsed) ->
+         * error`., where `parsed` is set to `true`, if the flag at
+         * `pctx.next_char()` was parsed and advanced past.
+         */
         template <typename ParseCtx,
                   typename F,
                   typename CharT = typename ParseCtx::char_type>
@@ -1197,6 +1301,9 @@ namespace scn {
             return parse_common_end(pctx);
         }
 
+        /**
+         * Invoke `parse_common()` with default options (no type flags)
+         */
         template <typename ParseCtx>
         error parse_default(ParseCtx& pctx)
         {
@@ -1233,6 +1340,10 @@ namespace scn {
         uint8_t common_options{0};
     };
 
+    /**
+     * Derives from `common_parser`, and implements `parse()` with
+     * `parse_default()`
+     */
     struct common_parser_default : common_parser {
         template <typename ParseCtx>
         error parse(ParseCtx& pctx)
@@ -1319,6 +1430,12 @@ namespace scn {
             return {};
         }
 
+        /**
+         * Scan argument in `val`, from `ctx`, using `Scanner` and `pctx`.
+         *
+         * Parses `pctx` for `Scanner`, skips whitespace and alignment if
+         * necessary, and scans the argument into `val`.
+         */
         template <typename Scanner,
                   typename T,
                   typename Context,
