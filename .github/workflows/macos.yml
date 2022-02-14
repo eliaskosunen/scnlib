@@ -27,7 +27,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: make -k -j
+        run: make -k -j3
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build

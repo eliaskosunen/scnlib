@@ -47,6 +47,6 @@ jobs:
           cmake -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_WERROR=ON -DCMAKE_BUILD_TYPE=Debug \
                 -DCMAKE_CXX_STANDARD=$STD \
                 $GITHUB_WORKSPACE
-          make -k -j
+          make -k -j2
           ctest --output-on-failure
           make clean

@@ -35,7 +35,7 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_COVERAGE=ON -DSCN_BENCHMARKS=OFF -DSCN_EXAMPLES=OFF $GITHUB_WORKSPACE
-          make -k -j
+          make -k -j2
 
       - name: Generate Coverage Report
         working-directory: ${{ runner.workspace }}/build
