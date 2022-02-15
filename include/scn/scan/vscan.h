@@ -18,9 +18,9 @@
 #ifndef SCN_DETAIL_VSCAN_H
 #define SCN_DETAIL_VSCAN_H
 
-#include "context.h"
-#include "file.h"
-#include "visitor.h"
+#include "../detail/context.h"
+#include "../detail/file.h"
+#include "../detail/visitor.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

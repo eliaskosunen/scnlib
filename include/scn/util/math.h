@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_UTIL_MATH_H
 #define SCN_DETAIL_UTIL_MATH_H
 
-#include "../fwd.h"
+#include "../detail/fwd.h"
 
 #include <cmath>
 #include <limits>

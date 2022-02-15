@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_ISTREAM_H
 #define SCN_DETAIL_ISTREAM_H
 
-#include "reader/common.h"
+#include "../reader/common.h"
 #include "result.h"
 
 #include <istream>

@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_TUPLE_RETURN_H
 #define SCN_DETAIL_TUPLE_RETURN_H
 
-#include "scan.h"
+#include "scn/scan/scan.h"
 
 #include <functional>
 #include <tuple>

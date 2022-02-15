@@ -19,7 +19,7 @@
 #define SCN_VSCAN_CPP
 #endif
 
-#include <scn/detail/vscan.h>
+#include <scn/scan/vscan.h>
 
 #include <scn/detail/context.h>
 #include <scn/detail/parse_context.h>

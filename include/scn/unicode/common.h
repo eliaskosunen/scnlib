@@ -23,7 +23,7 @@
 #ifndef SCN_DETAIL_UNICODE_COMMON_H
 #define SCN_DETAIL_UNICODE_COMMON_H
 
-#include "../fwd.h"
+#include "../detail/fwd.h"
 
 #include <cstdint>
 

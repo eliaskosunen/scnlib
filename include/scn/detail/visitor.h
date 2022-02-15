@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_VISITOR_H
 #define SCN_DETAIL_VISITOR_H
 
-#include "reader/reader.h"
+#include "../reader/reader.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

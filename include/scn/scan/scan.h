@@ -18,12 +18,12 @@
 #ifndef SCN_DETAIL_SCAN_H
 #define SCN_DETAIL_SCAN_H
 
-#include "context.h"
-#include "parse_context.h"
-#include "reader/common.h"
-#include "result.h"
-#include "util/optional.h"
-#include "vscan.h"
+#include "../detail/context.h"
+#include "../detail/parse_context.h"
+#include "../reader/common.h"
+#include "../detail/result.h"
+#include "../util/optional.h"
+#include "../scan/vscan.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

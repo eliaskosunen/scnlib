@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_UTIL_ARRAY_H
 #define SCN_DETAIL_UTIL_ARRAY_H
 
-#include "../fwd.h"
+#include "../detail/fwd.h"
 
 #include <cstdint>
 

@@ -19,9 +19,9 @@
 #define SCN_DETAIL_RANGE_H
 
 #include "error.h"
-#include "ranges/ranges.h"
-#include "util/algorithm.h"
-#include "util/memory.h"
+#include "../ranges/ranges.h"
+#include "../util/algorithm.h"
+#include "../util/memory.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

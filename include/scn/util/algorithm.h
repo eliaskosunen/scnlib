@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_UTIL_ALGORITHM_H
 #define SCN_DETAIL_UTIL_ALGORITHM_H
 
-#include "../fwd.h"
+#include "../detail/fwd.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

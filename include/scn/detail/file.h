@@ -22,7 +22,7 @@
 #include <string>
 
 #include "range.h"
-#include "util/algorithm.h"
+#include "../util/algorithm.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

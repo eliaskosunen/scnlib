@@ -23,7 +23,7 @@
 #ifndef SCN_DETAIL_UNICODE_UTF16_H
 #define SCN_DETAIL_UNICODE_UTF16_H
 
-#include "../error.h"
+#include "../detail/error.h"
 #include "../util/expected.h"
 #include "common.h"
 

@@ -18,10 +18,10 @@
 #ifndef SCN_DETAIL_LOCALE_H
 #define SCN_DETAIL_LOCALE_H
 
-#include "unicode/unicode.h"
-#include "util/array.h"
-#include "util/string_view.h"
-#include "util/unique_ptr.h"
+#include "../unicode/unicode.h"
+#include "../util/array.h"
+#include "../util/string_view.h"
+#include "../util/unique_ptr.h"
 
 #include <cwchar>
 #include <string>

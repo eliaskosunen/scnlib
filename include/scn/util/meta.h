@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_UTIL_META_H
 #define SCN_DETAIL_UTIL_META_H
 
-#include "../fwd.h"
+#include "../detail/fwd.h"
 
 #include <type_traits>
 

@@ -18,6 +18,6 @@
 #ifndef SCN_SCN_H
 #define SCN_SCN_H
 
-#include "detail/scan.h"
+#include "scn/scan/scan.h"
 
 #endif  // SCN_SCN_H

@@ -19,7 +19,7 @@
 #define SCN_DETAIL_PARSE_CONTEXT_H
 
 #include "locale.h"
-#include "util/expected.h"
+#include "../util/expected.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

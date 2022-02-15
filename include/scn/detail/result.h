@@ -20,7 +20,7 @@
 
 #include "error.h"
 #include "range.h"
-#include "util/expected.h"
+#include "../util/expected.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

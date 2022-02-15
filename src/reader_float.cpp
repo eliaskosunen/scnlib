@@ -20,7 +20,7 @@
 #endif
 
 #include <scn/detail/args.h>
-#include <scn/detail/reader/float.h>
+#include <scn/reader/float.h>
 
 #include <cerrno>
 #include <clocale>

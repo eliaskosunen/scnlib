@@ -20,7 +20,7 @@
 #endif
 
 #include <scn/detail/args.h>
-#include <scn/detail/reader/int.h>
+#include <scn/reader/int.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

@@ -24,7 +24,7 @@
 #include "string.h"
 #include "types.h"
 
-#include "../args.h"
+#include "../detail/args.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

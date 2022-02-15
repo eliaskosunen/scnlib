@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_RANGES_STD_IMPL_H
 #define SCN_DETAIL_RANGES_STD_IMPL_H
 
-#include "../config.h"
+#include "../detail/config.h"
 
 #if SCN_HAS_CONCEPTS && SCN_HAS_RANGES
 

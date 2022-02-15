@@ -18,9 +18,9 @@
 #ifndef SCN_DETAIL_READER_COMMON_H
 #define SCN_DETAIL_READER_COMMON_H
 
-#include "../error.h"
-#include "../locale.h"
-#include "../range.h"
+#include "../detail/error.h"
+#include "../detail/locale.h"
+#include "../detail/range.h"
 #include "../unicode/unicode.h"
 #include "../util/algorithm.h"
 

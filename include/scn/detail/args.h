@@ -18,8 +18,8 @@
 #ifndef SCN_DETAIL_ARGS_H
 #define SCN_DETAIL_ARGS_H
 
-#include "reader/common.h"
-#include "util/array.h"
+#include "../reader/common.h"
+#include "../util/array.h"
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wnoexcept")
