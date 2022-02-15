@@ -81,7 +81,8 @@ namespace scn {
             // other integral types
             bool_type,
             char_type,
-            last_integer_type = char_type,
+            code_point_type,
+            last_integer_type = code_point_type,
             // floats
             float_type,
             double_type,
@@ -92,7 +93,8 @@ namespace scn {
             string_type,
             string_view_type,
 
-            custom_type
+            custom_type,
+            last_type = custom_type
         };
 
         constexpr bool is_integral(type t) noexcept
@@ -128,11 +130,8 @@ namespace scn {
         struct parse_ctx_tag {
         };
 
-        template <typename CharT>
         class value {
         public:
-            using char_type = CharT;
-
             constexpr value() noexcept : m_empty{} {}
 
             template <typename T>
@@ -186,10 +185,10 @@ namespace scn {
 
             constexpr init(T& v) : val(std::addressof(v)) {}
             template <typename Ctx, typename ParseCtx>
-            SCN_CONSTEXPR14 value<CharT> get()
+            SCN_CONSTEXPR14 value get()
             {
                 SCN_EXPECT(val != nullptr);
-                return value<CharT>(*val);
+                return value{*val};
             }
         };
         template <typename CharT, typename T>
@@ -199,11 +198,10 @@ namespace scn {
 
             constexpr init(T& v) : val(std::addressof(v)) {}
             template <typename Ctx, typename ParseCtx>
-            SCN_CONSTEXPR14 value<CharT> get()
+            SCN_CONSTEXPR14 value get()
             {
                 SCN_EXPECT(val != nullptr);
-                return value<CharT>(ctx_tag<Ctx>{}, parse_ctx_tag<ParseCtx>{},
-                                    *val);
+                return {ctx_tag<Ctx>{}, parse_ctx_tag<ParseCtx>{}, *val};
             }
         };
 
@@ -232,6 +230,7 @@ namespace scn {
         SCN_MAKE_VALUE(ulong_long_type, unsigned long long)
 
         SCN_MAKE_VALUE(bool_type, bool)
+        SCN_MAKE_VALUE(code_point_type, code_point)
 
         SCN_MAKE_VALUE(float_type, float)
         SCN_MAKE_VALUE(double_type, double)
@@ -309,7 +308,7 @@ namespace scn {
         }
 
     private:
-        constexpr basic_arg(detail::value<CharT> v, detail::type t) noexcept
+        constexpr basic_arg(detail::value v, detail::type t) noexcept
             : m_value(v), m_type(t)
         {
         }
@@ -323,7 +322,7 @@ namespace scn {
 
         friend class basic_args<CharT>;
 
-        detail::value<CharT> m_value;
+        detail::value m_value;
         detail::type m_type{detail::none_type};
     };
 
@@ -358,6 +357,8 @@ namespace scn {
                 return vis(arg.m_value.template get_as<bool>());
             case detail::char_type:
                 return vis(arg.m_value.template get_as<CharT>());
+            case detail::code_point_type:
+                return vis(arg.m_value.template get_as<code_point>());
 
             case detail::float_type:
                 return vis(arg.m_value.template get_as<float>());
@@ -429,7 +430,7 @@ namespace scn {
                   typename T,
                   typename CharT = typename Context::char_type>
         inline auto make_arg(T& v) ->
-            typename std::enable_if<Packed, value<CharT>>::type
+            typename std::enable_if<Packed, value>::type
         {
             return make_value<CharT>(v, priority_tag<1>{})
                 .template get<Context, ParseCtx>();
@@ -459,8 +460,8 @@ namespace scn {
         static constexpr size_t types = get_types();
         using arg_type = basic_arg<CharT>;
 
-        using value_type = typename std::
-            conditional<is_packed, detail::value<CharT>, arg_type>::type;
+        using value_type =
+            typename std::conditional<is_packed, detail::value, arg_type>::type;
         static constexpr size_t data_size =
             num_args + (is_packed && num_args != 0 ? 0 : 1);
 
@@ -551,7 +552,7 @@ namespace scn {
     private:
         size_t m_types{0};
         union {
-            detail::value<CharT>* m_values;
+            detail::value* m_values;
             arg_type* m_args;
         };
 
@@ -569,7 +570,7 @@ namespace scn {
                 detail::packed_arg_mask);
         }
 
-        SCN_CONSTEXPR14 void set_data(detail::value<CharT>* values) noexcept
+        SCN_CONSTEXPR14 void set_data(detail::value* values) noexcept
         {
             m_values = values;
         }

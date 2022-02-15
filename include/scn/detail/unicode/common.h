@@ -28,6 +28,9 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /**
+     * A Unicode code point
+     */
     enum class code_point : uint32_t {};
 
     template <typename T>
@@ -110,10 +113,19 @@ namespace scn {
         return static_cast<code_point>(ch);
     }
 
+    /**
+     * Returns `true`, if `cp` is valid, e.g. is less than or equal to the
+     * maximum value for a code point (U+10FFFF), and is not a surrogate (U+D800
+     * to U+DFFF).
+     */
     constexpr inline bool is_valid_code_point(code_point cp)
     {
         return detail::is_code_point_valid(cp);
     }
+    /**
+     * Returns `true` if `cp` can be encoded in ASCII as-is (is between U+0 and
+     * U+7F)
+     */
     constexpr inline bool is_ascii_code_point(code_point cp)
     {
         return cp <= 0x7f;

@@ -20,7 +20,6 @@
 //     Copyright (c) 2006 Nemanja Trifunovic
 //     Distributed under the Boost Software License, version 1.0
 
-
 #ifndef SCN_DETAIL_UNICODE_UNICODE_H
 #define SCN_DETAIL_UNICODE_UNICODE_H
 
@@ -80,6 +79,22 @@ namespace scn {
         }
     }  // namespace detail
 
+    /**
+     * Parses a Unicode code point from the range at `[begin, end)`, and writes
+     * it into `cp`.
+     *
+     * The encoding is determined by the size of the value type of the range.
+     * Let `n = sizeof(typename std::iterator_traits<I>::value_type)`.
+     * If `n == 1` -> UTF-8. If `n == 2` -> UTF-16. If `n == 4` -> UTF-32.
+     *
+     * `begin != end` must be `true`.
+     *
+     * On error, `cp` is not written into.
+     *
+     * \return On success, returns an iterator one-past the last code unit used
+     * to parse `cp`. If the code point is encoded incorrectly, returns
+     * `error::invalid_encoding`.
+     */
     template <typename I, typename S>
     SCN_CONSTEXPR14 expected<I> parse_code_point(I begin, S end, code_point& cp)
     {
@@ -106,6 +121,19 @@ namespace scn {
         }
     }  // namespace detail
 
+    /**
+     * Returns the length of the code point starting from code unit `a` in code
+     * units.
+     *
+     * For information on how the encoding is determined, see \ref
+     * parse_code_point().
+     *
+     * \param a The first code unit in a code point.
+     *
+     * \return Length of the code point starting from `a`, in code units
+     * If the code point is encoded incorrectly, or this code unit is not the
+     * first code unit in a code point, returns 0.
+     */
     template <typename T>
     SCN_CONSTEXPR14 int get_sequence_length(T a)
     {
@@ -136,6 +164,16 @@ namespace scn {
         }
     }  // namespace detail
 
+    /**
+     * Get the distance between two code points, in code points.
+     *
+     * `end >= begin` must be `true`.
+     * `begin` and `end` must both point to the first code units in a code
+     * point.
+     *
+     * \return The distance between `begin` and `end`, in code points. If the
+     * string was encoded incorrectly, returns `error::invalid_encoding`.
+     */
     template <typename I, typename S>
     SCN_CONSTEXPR14 expected<std::ptrdiff_t> code_point_distance(I begin, S end)
     {
