@@ -192,8 +192,7 @@ namespace scn {
             SCN_ASSUME(base > 0);
 
             SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-            auto r = _parse_int_impl(tmp, minus_sign,
-                                     make_span(it, s.end()).as_const());
+            auto r = _parse_int_impl(tmp, minus_sign, make_span(it, s.end()));
             SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
             if (!r) {
                 return r.error();

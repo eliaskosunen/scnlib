@@ -316,9 +316,8 @@ namespace scn {
     {
         SCN_EXPECT(!str.empty());
         auto s = detail::float_scanner_access<T>{};
-        auto ret =
-            s._read_float(val, make_span(str.data(), str.size()).as_const(),
-                          detail::ascii_widen<CharT>('.'));
+        auto ret = s._read_float(val, make_span(str.data(), str.size()),
+                                 detail::ascii_widen<CharT>('.'));
         if (!ret) {
             return ret.error();
         }
@@ -791,7 +790,7 @@ namespace scn {
         expected<code_point> read_single(WrappedRange& r, code_point)
         {
             unsigned char buf[4] = {0};
-            auto ret = read_code_point(r, make_span(buf, 4).as_const(), true);
+            auto ret = read_code_point(r, make_span(buf, 4), true);
             if (!ret) {
                 return ret.error();
             }

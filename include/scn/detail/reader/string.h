@@ -18,8 +18,8 @@
 #ifndef SCN_DETAIL_READER_STRING_H
 #define SCN_DETAIL_READER_STRING_H
 
-#include "common.h"
 #include "../util/small_vector.h"
+#include "common.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

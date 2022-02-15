@@ -26,6 +26,10 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        /**
+         * Implementation of `std::array` without including `<array>` (can be
+         * heavy-ish)
+         */
         template <typename T, std::size_t N>
         struct array {
             static_assert(N > 0, "zero-sized array not supported");

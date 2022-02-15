@@ -24,20 +24,29 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        /**
+         * Implementation of `std::exchange` for C++11
+         */
         template <typename T, typename U = T>
-        T exchange(T& obj, U&& new_value)
+        SCN_CONSTEXPR14 T exchange(T& obj, U&& new_value)
         {
             T old_value = SCN_MOVE(obj);
             obj = SCN_FWD(new_value);
             return old_value;
         }
 
+        /**
+         * Implementation of `std::max` without including `<algorithm>`
+         */
         template <typename T>
         constexpr T max(T a, T b) noexcept
         {
             return (a < b) ? b : a;
         }
 
+        /**
+         * Implementation of `std::min_element` without including `<algorithm>`
+         */
         template <typename It>
         SCN_CONSTEXPR14 It min_element(It first, It last)
         {
@@ -55,6 +64,9 @@ namespace scn {
             return smallest;
         }
 
+        /**
+         * Implementation of `std::min` without including `<algorithm>`
+         */
         template <typename T>
         constexpr T min(T a, T b) noexcept
         {

@@ -114,10 +114,10 @@ namespace scn {
             }
         };
 
-        SCN_CLANG_POP // -Wpadded
+        SCN_CLANG_POP  // -Wpadded
 
-        template <typename T>
-        struct basic_stack_storage<T, 0> {
+            template <typename T>
+            struct basic_stack_storage<T, 0> {
             T* data{nullptr};
 
             T* reinterpret_data()
@@ -162,6 +162,10 @@ namespace scn {
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wpadded")
 
+        /**
+         * A contiguous container, that stores its values in the stack, if
+         * `size() <= StackN`
+         */
         template <typename T, size_t StackN>
         class small_vector : protected small_vector_base {
         public:
@@ -775,8 +779,8 @@ namespace scn {
             l.swap(r);
         }
 
-        SCN_CLANG_POP // -Wpadded
-    }  // namespace detail
+        SCN_CLANG_POP  // -Wpadded
+    }                  // namespace detail
 
     SCN_END_NAMESPACE
 }  // namespace scn

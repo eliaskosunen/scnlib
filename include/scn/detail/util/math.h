@@ -53,49 +53,33 @@ namespace scn {
             }
             return static_cast<int>(digits);
         }
+
+        /**
+         * Returns the maximum number of digits that an integer in base `base`
+         * can have, including the sign.
+         *
+         * If `base == 0`, uses `2` (longest), and adds 2 to the result, to
+         * accommodate for a base prefix (e.g. `0x`)
+         */
         template <typename Integral>
         SCN_CONSTEXPR14 int max_digits(int base) noexcept
         {
-            auto b = base == 0 ? 8 : base;
+            auto b = base == 0 ? 2 : base;
             auto d = _max_digits<Integral>(b) +
                      (std::is_signed<Integral>::value ? 1 : 0);
             if (base == 0) {
-                return d + 2;  // accommondate for 0x/0o
+                return d + 2;  // accommodate for 0x/0o
             }
             return d;
         }
 
+        /**
+         * Implementation of `std::div`, which is constexpr pre-C++23
+         */
         template <typename T>
         constexpr std::pair<T, T> div(T l, T r) noexcept
         {
             return {l / r, l % r};
-        }
-
-        template <typename T>
-        bool float_eq(T a, T b, T tolerance = std::numeric_limits<T>::epsilon())
-        {
-            T diff = std::abs(a - b);
-            if (diff <= tolerance) {
-                return true;
-            }
-            return diff < std::fmax(std::abs(a), std::abs(b)) * tolerance;
-        }
-        template <typename T>
-        bool float_eq_zero(T a, T tolerance = std::numeric_limits<T>::epsilon())
-        {
-            return std::abs(a) < tolerance;
-        }
-        template <typename T>
-        bool float_eq_within(T a, T b, std::size_t interval = 1)
-        {
-            T min_a =
-                a - (a - std::nextafter(a, std::numeric_limits<T>::lowest())) *
-                        interval;
-            T max_a =
-                a + (std::nextafter(a, std::numeric_limits<T>::max()) - a) *
-                        interval;
-
-            return min_a <= b && max_a >= b;
         }
 
         template <typename T>
@@ -113,6 +97,9 @@ namespace scn {
             static constexpr long double value = 0.0l;
         };
 
+        /**
+         * Returns `true` if `ch` is a digit for an integer in base `base`.
+         */
         template <typename CharT>
         bool is_base_digit(CharT ch, int base)
         {

@@ -18,7 +18,7 @@
 #ifndef SCN_DETAIL_UTIL_SPAN_H
 #define SCN_DETAIL_UTIL_SPAN_H
 
-#include "../fwd.h"
+#include "memory.h"
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wnoexcept")
@@ -62,22 +62,45 @@ namespace scn {
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
         constexpr span() noexcept = default;
-        constexpr span(pointer ptr, index_type count) noexcept
-            : m_ptr(ptr), m_end(ptr + count)
+
+        template <typename I,
+                  typename = decltype(detail::to_address(SCN_DECLVAL(I)))>
+        SCN_CONSTEXPR14 span(I begin, index_type count) noexcept
+            : m_ptr(detail::to_address(begin)),
+              m_end(detail::to_address(begin) + count)
         {
         }
-        constexpr span(pointer first, pointer last) noexcept
-            : m_ptr(first), m_end(last)
+
+        template <typename I,
+                  typename S,
+                  typename = decltype(detail::to_address(SCN_DECLVAL(I)),
+                                      detail::to_address(SCN_DECLVAL(S)))>
+        SCN_CONSTEXPR14 span(I first, S last) noexcept
+            : m_ptr(detail::to_address(first)), m_end(detail::to_address(last))
+        {
+        }
+
+        template <typename U = typename std::add_const<T>::type,
+                  typename E = element_type,
+                  typename = typename std::enable_if<
+                      std::is_same<E, value_type>::value>::type>
+        constexpr span(span<U> other) : m_ptr(other.m_ptr), m_end(other.m_end)
+        {
+        }
+
+        template <size_t N>
+        constexpr span(element_type (&arr)[N]) noexcept
+            : m_ptr(&arr), m_end(&arr + N)
         {
         }
 
         SCN_CONSTEXPR14 iterator begin() noexcept
         {
-            return _make_begin();
+            return m_ptr;
         }
         SCN_CONSTEXPR14 iterator end() noexcept
         {
-            return _make_end();
+            return m_end;
         }
         SCN_CONSTEXPR14 reverse_iterator rbegin() noexcept
         {
@@ -90,11 +113,11 @@ namespace scn {
 
         constexpr const_iterator begin() const noexcept
         {
-            return _make_begin();
+            return m_ptr;
         }
         constexpr const_iterator end() const noexcept
         {
-            return _make_end();
+            return m_end;
         }
         constexpr const_reverse_iterator rbegin() const noexcept
         {
@@ -107,11 +130,11 @@ namespace scn {
 
         constexpr const_iterator cbegin() const noexcept
         {
-            return _make_begin();
+            return m_ptr;
         }
         constexpr const_iterator cend() const noexcept
         {
-            return _make_end();
+            return m_end;
         }
         constexpr const_reverse_iterator crbegin() const noexcept
         {
@@ -164,56 +187,49 @@ namespace scn {
             return span<T>(data() + off, count);
         }
 
+        constexpr operator span<typename std::add_const<T>::type>() const
+        {
+            return {m_ptr, m_end};
+        }
         constexpr span<typename std::add_const<T>::type> as_const() const
         {
             return {m_ptr, m_end};
         }
 
     private:
-        SCN_CONSTEXPR14 iterator _make_begin()
-        {
-            // return {*this, m_ptr};
-            return m_ptr;
-        }
-        constexpr const_iterator _make_begin() const
-        {
-            // return {*this, m_ptr};
-            return m_ptr;
-        }
-
-        SCN_CONSTEXPR14 iterator _make_end()
-        {
-            // return {*this, m_ptr + m_size};
-            return m_end;
-        }
-        constexpr const_iterator _make_end() const
-        {
-            // return {*this, m_ptr + m_size};
-            return m_end;
-        }
-
         pointer m_ptr{nullptr};
         pointer m_end{nullptr};
     };
 
-    template <typename T>
-    constexpr span<T> make_span(T* ptr, std::size_t count) noexcept
+    template <typename I,
+              typename S,
+              typename Ptr = decltype(detail::to_address(SCN_DECLVAL(I))),
+              typename SPtr = decltype(detail::to_address(SCN_DECLVAL(S))),
+              typename ValueT = typename detail::remove_reference<
+                  typename std::remove_pointer<Ptr>::type>::type>
+    SCN_CONSTEXPR14 auto make_span(I first, S last) noexcept -> span<ValueT>
     {
-        return span<T>(ptr, count);
+        return {first, last};
     }
-    template <typename T>
-    constexpr span<T> make_span(T* first, T* last) noexcept
+    template <typename I,
+              typename Ptr = decltype(detail::to_address(SCN_DECLVAL(I))),
+              typename ValueT = typename detail::remove_reference<
+                  typename std::remove_pointer<Ptr>::type>::type>
+    SCN_CONSTEXPR14 auto make_span(I first, std::size_t len) noexcept
+        -> span<ValueT>
     {
-        return span<T>(first, last);
+        return {first, len};
     }
+
     template <typename T>
-    constexpr span<typename T::value_type> make_span(T& container) noexcept
+    SCN_CONSTEXPR14 span<typename T::value_type> make_span(
+        T& container) noexcept
     {
         using std::begin;
         using std::end;
         return span<typename T::value_type>(
-            std::addressof(*begin(container)),
-            std::addressof(*(end(container) - 1)) + 1);
+            detail::to_address(begin(container)),
+            detail::to_address(end(container)));
     }
 
     SCN_END_NAMESPACE

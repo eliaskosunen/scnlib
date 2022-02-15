@@ -187,7 +187,7 @@ namespace scn {
                     return e;
                 }
 
-                return do_parse_float(make_span(buf).as_const());
+                return do_parse_float(make_span(buf));
             }
 
             enum format_options_type {

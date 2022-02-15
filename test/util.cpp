@@ -43,9 +43,12 @@ TEST_CASE("max_digits")
     CHECK(scn::detail::max_digits<unsigned>(4) == 16);
     CHECK(scn::detail::max_digits<long long>(4) == 33);
 
-    CHECK(scn::detail::max_digits<int>(0) == 14);
-    CHECK(scn::detail::max_digits<unsigned>(0) == 13);
-    CHECK(scn::detail::max_digits<long long>(0) == 24);
+    CHECK(scn::detail::max_digits<int>(0) ==
+          scn::detail::max_digits<int>(2) + 2);
+    CHECK(scn::detail::max_digits<unsigned>(0) ==
+          scn::detail::max_digits<unsigned>(2) + 2);
+    CHECK(scn::detail::max_digits<long long>(0) ==
+          scn::detail::max_digits<long long>(2) + 2);
 }
 
 TEST_CASE("ascii_widen")

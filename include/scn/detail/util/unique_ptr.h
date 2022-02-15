@@ -26,6 +26,10 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        /**
+         * `std::unique_ptr` implementation with [[clang::trivial_abi]], without
+         * including `<memory>`
+         */
         template <typename T>
         class SCN_TRIVIAL_ABI unique_ptr {
         public:

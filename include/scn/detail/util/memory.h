@@ -51,25 +51,26 @@ namespace scn {
             template <typename U = T,
                       typename std::enable_if<!std::is_void<U>::value>::type* =
                           nullptr>
-            static SCN_CONSTEXPR14 pointer pointer_to(U& r) noexcept
+            static constexpr pointer pointer_to(U& r) noexcept
             {
-                return std::addressof(r);
+                return &r;
             }
         };
 
         template <typename T>
-        T* to_address_impl(T* p, priority_tag<2>) noexcept
+        constexpr T* to_address_impl(T* p, priority_tag<2>) noexcept
         {
             return p;
         }
         template <typename Ptr>
-        auto to_address_impl(const Ptr& p, priority_tag<1>) noexcept
+        SCN_CONSTEXPR14 auto to_address_impl(const Ptr& p,
+                                             priority_tag<1>) noexcept
             -> decltype(::scn::detail::pointer_traits<Ptr>::to_address(p))
         {
             return ::scn::detail::pointer_traits<Ptr>::to_address(p);
         }
         template <typename Ptr>
-        auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept
+        constexpr auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept
             -> decltype(::scn::detail::to_address_impl(p.operator->(),
                                                        priority_tag<2>{}))
         {
@@ -78,7 +79,7 @@ namespace scn {
         }
 
         template <typename Ptr>
-        auto to_address(Ptr&& p) noexcept
+        constexpr auto to_address(Ptr&& p) noexcept
             -> decltype(::scn::detail::to_address_impl(SCN_FWD(p),
                                                        priority_tag<2>{}))
         {

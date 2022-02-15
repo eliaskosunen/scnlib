@@ -18,8 +18,8 @@
 #ifndef SCN_DETAIL_READER_INT_H
 #define SCN_DETAIL_READER_INT_H
 
-#include "common.h"
 #include "../util/math.h"
+#include "common.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -268,7 +268,7 @@ namespace scn {
                     return e;
                 }
 
-                return do_parse_int(bufspan.as_const());
+                return do_parse_int(bufspan);
             }
 
             enum format_options_type : uint8_t {
@@ -314,7 +314,7 @@ namespace scn {
                     if (!e) {
                         return e;
                     }
-                    s = make_span(buf.data(), buf.size()).as_const();
+                    s = make_span(buf.data(), buf.size());
                     return {};
                 }
 
@@ -345,7 +345,7 @@ namespace scn {
                 }
 
                 buf = SCN_MOVE(tmp);
-                s = make_span(buf.data(), n).as_const();
+                s = make_span(buf.data(), n);
                 return {};
             }
 

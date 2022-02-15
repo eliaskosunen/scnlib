@@ -161,7 +161,7 @@ namespace scn {
             }
             if (len == 1) {
                 // Single-char code point
-                auto s = make_span(r.data(), 1).as_const();
+                auto s = make_span(r.data(), 1);
                 r.advance();
                 return read_code_point_result<CharT>{s, make_code_point(first)};
             }
@@ -177,7 +177,7 @@ namespace scn {
                     return ret.error();
                 }
             }
-            auto s = make_span(r.data(), static_cast<size_t>(len)).as_const();
+            auto s = make_span(r.data(), static_cast<size_t>(len));
             r.advance(len);
             return read_code_point_result<CharT>{s, cp};
         }
@@ -205,7 +205,7 @@ namespace scn {
                 // Single-char code point
                 writebuf[0] = first.value();
                 return read_code_point_result<CharT>{
-                    make_span(writebuf.data(), 1).as_const(),
+                    make_span(writebuf.data(), 1),
                     make_code_point(first.value())};
             }
 
@@ -225,7 +225,7 @@ namespace scn {
                         return ret.error();
                     }
                 }
-                auto s = make_span(writebuf.data(), len).as_const();
+                auto s = make_span(writebuf.data(), len);
                 return read_code_point_result<CharT>{s, cp};
             };
             auto advance = [&]() -> error {
@@ -330,7 +330,7 @@ namespace scn {
             return error(error::end_of_range, "EOF");
         }
         const auto n_to_read = detail::min(r.size(), n);
-        auto s = make_span(r.data(), static_cast<size_t>(n_to_read)).as_const();
+        auto s = make_span(r.data(), static_cast<size_t>(n_to_read));
         r.advance(n_to_read);
         return s;
     }
@@ -377,7 +377,7 @@ namespace scn {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
-        auto s = make_span(r.data(), static_cast<size_t>(r.size())).as_const();
+        auto s = make_span(r.data(), static_cast<size_t>(r.size()));
         r.advance(r.size());
         return s;
     }
@@ -627,7 +627,7 @@ namespace scn {
                     if (!cu) {
                         return cu.error();
                     }
-                    if (pred(make_span(&cu.value(), 1).as_const()) ==
+                    if (pred(make_span(&cu.value(), 1)) ==
                         pred_result_to_stop) {
                         if (keep_final) {
                             *out = cu.value();
@@ -1086,7 +1086,7 @@ namespace scn {
                 auto buf = make_span(pctx.begin(), it);
 
                 auto s = detail::simple_integer_scanner<size_t>{};
-                auto res = s.scan(buf.as_const(), n, 10);
+                auto res = s.scan(buf, n, 10);
                 if (!res) {
                     return res.error();
                 }
