@@ -21,8 +21,12 @@
 #include "meta.h"
 
 #include <cstring>
-#include <iterator>
 #include <new>
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wnoexcept")
+#include <iterator>
+SCN_GCC_POP
 
 #if SCN_MSVC && SCN_HAS_STRING_VIEW
 #include <string_view>

@@ -583,7 +583,7 @@ namespace scn {
     using locale_ref = basic_locale_ref<char>;
     using wlocale_ref = basic_locale_ref<wchar_t>;
 
-    SCN_CLANG_POP
+    SCN_CLANG_POP // -Wpadded
     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
     SCN_END_NAMESPACE
 }  // namespace scn

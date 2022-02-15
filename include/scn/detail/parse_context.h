@@ -556,7 +556,7 @@ namespace scn {
         return detail::make_parse_context_impl(f, locale);
     }
 
-    SCN_CLANG_POP
+    SCN_CLANG_POP // -Wpadded
 
     SCN_END_NAMESPACE
 }  // namespace scn

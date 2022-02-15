@@ -37,6 +37,10 @@ namespace scn {
     template <typename T>
     struct temporary;
 
+    // error.h
+
+    class error;
+
     // locale.h
 
     template <typename CharT>
@@ -103,40 +107,10 @@ namespace scn {
         struct simple_integer_scanner;
     }
 
-    // result.h
-
-    class SCN_TRIVIAL_ABI error;
-
-    template <typename T, typename Error = ::scn::error, typename Enable = void>
-    class expected;
-
-    // small_vector.h
-
-    template <typename T, std::size_t StackN>
-    class small_vector;
-
-    // span.h
-
-    template <typename T>
-    class span;
-
-    // string_view.h
-
-    template <typename CharT>
-    class basic_string_view;
-
-    using string_view = basic_string_view<char>;
-    using wstring_view = basic_string_view<wchar_t>;
-
     // visitor.h
 
     template <typename Context, typename ParseCtx>
     class basic_visitor;
-
-    // util.h
-
-    template <typename T>
-    class optional;
 
     // file.h
 
@@ -147,20 +121,64 @@ namespace scn {
     template <typename CharT>
     class basic_owning_file;
 
-    using mapped_file = basic_mapped_file<char>;
-    using file = basic_file<char>;
-    using owning_file = basic_owning_file<char>;
-
-    using mapped_wfile = basic_mapped_file<wchar_t>;
-    using wfile = basic_file<wchar_t>;
-    using owning_wfile = basic_owning_file<wchar_t>;
-
     // scan.h
 
     template <typename T>
     struct span_list_wrapper;
     template <typename T>
     struct discard_type;
+
+    // util/array.h
+
+    namespace detail {
+        template <typename T, std::size_t N>
+        struct array;
+    }
+
+    // util/expected.h
+
+    template <typename T, typename Error = ::scn::error, typename Enable = void>
+    class expected;
+
+    // util/memory.h
+
+    namespace detail {
+        template <typename T>
+        struct pointer_traits;
+
+        template <typename T>
+        class erased_storage;
+
+    }  // namespace detail
+
+    // util/optional.h
+
+    template <typename T>
+    class optional;
+
+    // util/small_vector.h
+
+    namespace detail {
+        template <typename T, size_t StackN>
+        class small_vector;
+    }
+
+    // util/span.h
+
+    template <typename T>
+    class span;
+
+    // util/string_view.h
+
+    template <typename CharT>
+    class basic_string_view;
+
+    // util/unique_ptr.h
+
+    namespace detail {
+        template <typename T>
+        class unique_ptr;
+    }
 
     // for SCN_MOVE
     namespace detail {

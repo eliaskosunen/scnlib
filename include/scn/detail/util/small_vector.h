@@ -114,7 +114,7 @@ namespace scn {
             }
         };
 
-        SCN_CLANG_POP
+        SCN_CLANG_POP // -Wpadded
 
         template <typename T>
         struct basic_stack_storage<T, 0> {
@@ -775,7 +775,7 @@ namespace scn {
             l.swap(r);
         }
 
-        SCN_CLANG_POP
+        SCN_CLANG_POP // -Wpadded
     }  // namespace detail
 
     SCN_END_NAMESPACE
