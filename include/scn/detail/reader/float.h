@@ -18,6 +18,7 @@
 #ifndef SCN_DETAIL_READER_FLOAT_H
 #define SCN_DETAIL_READER_FLOAT_H
 
+#include "../util/small_vector.h"
 #include "common.h"
 
 namespace scn {

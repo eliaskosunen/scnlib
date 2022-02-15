@@ -23,7 +23,9 @@
 #ifndef SCN_DETAIL_UNICODE_COMMON_H
 #define SCN_DETAIL_UNICODE_COMMON_H
 
-#include "../string_view.h"
+#include "../fwd.h"
+
+#include <cstdint>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

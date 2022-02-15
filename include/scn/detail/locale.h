@@ -18,8 +18,10 @@
 #ifndef SCN_DETAIL_LOCALE_H
 #define SCN_DETAIL_LOCALE_H
 
-#include "result.h"
 #include "unicode/unicode.h"
+#include "util/array.h"
+#include "util/string_view.h"
+#include "util/unique_ptr.h"
 
 #include <cwchar>
 #include <string>
@@ -32,6 +34,19 @@ namespace scn {
         {
             return (v - UINT64_C(0x0101010101010101)) & ~v &
                    UINT64_C(0x8080808080808080);
+        }
+
+        template <typename CharT>
+        CharT ascii_widen(char ch);
+        template <>
+        constexpr char ascii_widen(char ch)
+        {
+            return ch;
+        }
+        template <>
+        constexpr wchar_t ascii_widen(char ch)
+        {
+            return static_cast<wchar_t>(ch);
         }
 
         // Hand write to avoid C locales and thus noticeable performance losses
@@ -496,7 +511,8 @@ namespace scn {
             return *m_custom;
         }
 
-        custom_type make_localized_classic() const {
+        custom_type make_localized_classic() const
+        {
             return custom_type::make_classic();
         }
 

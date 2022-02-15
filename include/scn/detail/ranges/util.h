@@ -23,7 +23,7 @@
 #ifndef SCN_DETAIL_RANGES_UTIL_H
 #define SCN_DETAIL_RANGES_UTIL_H
 
-#include "../util.h"
+#include "../util/meta.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

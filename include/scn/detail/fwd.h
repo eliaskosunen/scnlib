@@ -162,6 +162,22 @@ namespace scn {
     template <typename T>
     struct discard_type;
 
+    // for SCN_MOVE
+    namespace detail {
+        template <typename T>
+        struct remove_reference {
+            using type = T;
+        };
+        template <typename T>
+        struct remove_reference<T&> {
+            using type = T;
+        };
+        template <typename T>
+        struct remove_reference<T&&> {
+            using type = T;
+        };
+    }  // namespace detail
+
     SCN_END_NAMESPACE
 }  // namespace scn
 

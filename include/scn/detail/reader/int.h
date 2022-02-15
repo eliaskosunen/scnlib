@@ -19,6 +19,7 @@
 #define SCN_DETAIL_READER_INT_H
 
 #include "common.h"
+#include "../util/math.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

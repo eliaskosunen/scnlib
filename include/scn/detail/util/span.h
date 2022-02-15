@@ -15,10 +15,10 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_SPAN_H
-#define SCN_DETAIL_SPAN_H
+#ifndef SCN_DETAIL_UTIL_SPAN_H
+#define SCN_DETAIL_UTIL_SPAN_H
 
-#include "fwd.h"
+#include "../fwd.h"
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wnoexcept")

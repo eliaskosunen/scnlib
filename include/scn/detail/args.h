@@ -18,10 +18,8 @@
 #ifndef SCN_DETAIL_ARGS_H
 #define SCN_DETAIL_ARGS_H
 
-#include "fwd.h"
 #include "reader/common.h"
-#include "result.h"
-#include "util.h"
+#include "util/array.h"
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wnoexcept")

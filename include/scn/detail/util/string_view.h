@@ -15,9 +15,10 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_STRING_VIEW_H
-#define SCN_DETAIL_STRING_VIEW_H
+#ifndef SCN_DETAIL_UTIL_STRING_VIEW_H
+#define SCN_DETAIL_UTIL_STRING_VIEW_H
 
+#include "algorithm.h"
 #include "span.h"
 
 #include <cstdint>
@@ -34,11 +35,11 @@ namespace scn {
     namespace detail {
         inline size_t strlen(const char* s) noexcept
         {
-            return std::strlen(s);
+            return ::std::strlen(s);
         }
         inline size_t strlen(const wchar_t* s) noexcept
         {
-            return std::wcslen(s);
+            return ::std::wcslen(s);
         }
         inline size_t strlen(const char16_t* s) noexcept
         {

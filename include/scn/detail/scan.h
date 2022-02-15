@@ -20,10 +20,10 @@
 
 #include "context.h"
 #include "parse_context.h"
-#include "small_vector.h"
-#include "vscan.h"
-
 #include "reader/common.h"
+#include "result.h"
+#include "util/optional.h"
+#include "vscan.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

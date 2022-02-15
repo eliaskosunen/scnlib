@@ -19,7 +19,6 @@
 #define SCN_VSCAN_CPP
 #endif
 
-#include <scn/detail/small_vector.h>
 #include <scn/detail/vscan.h>
 
 #include <scn/detail/context.h>
