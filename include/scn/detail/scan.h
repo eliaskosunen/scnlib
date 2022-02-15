@@ -118,7 +118,7 @@ namespace scn {
      * \endcode
      */
     template <typename Range, typename Format, typename... Args>
-    auto scan(Range&& r, const Format& f, Args&... a)
+    SCN_NODISCARD auto scan(Range&& r, const Format& f, Args&... a)
         -> detail::scan_result_for_range<Range>
     {
         return detail::scan_boilerplate(SCN_FWD(r), f, a...);
@@ -142,7 +142,7 @@ namespace scn {
      * \see scan
      */
     template <typename Range, typename... Args>
-    auto scan_default(Range&& r, Args&... a)
+    SCN_NODISCARD auto scan_default(Range&& r, Args&... a)
         -> detail::scan_result_for_range<Range>
     {
         return detail::scan_boilerplate_default(std::forward<Range>(r), a...);
@@ -171,10 +171,11 @@ namespace scn {
               typename Range,
               typename Format,
               typename... Args>
-    auto scan_localized(const Locale& loc,
-                        Range&& r,
-                        const Format& f,
-                        Args&... a) -> detail::scan_result_for_range<Range>
+    SCN_NODISCARD auto scan_localized(const Locale& loc,
+                                      Range&& r,
+                                      const Format& f,
+                                      Args&... a)
+        -> detail::scan_result_for_range<Range>
     {
         return detail::scan_boilerplate_localized(loc, std::forward<Range>(r),
                                                   f, a...);
@@ -198,7 +199,7 @@ namespace scn {
      * \endcode
      */
     template <typename T, typename Range>
-    auto scan_value(Range&& r)
+    SCN_NODISCARD auto scan_value(Range&& r)
         -> detail::generic_scan_result_for_range<expected<T>, Range>
     {
         T value;
@@ -228,7 +229,7 @@ namespace scn {
     template <typename Format,
               typename... Args,
               typename CharT = ranges::range_value_t<Format>>
-    auto input(const Format& f, Args&... a)
+    SCN_NODISCARD auto input(const Format& f, Args&... a)
         -> detail::scan_result_for_range<basic_file<CharT>&>
     {
         auto& range = stdin_range<CharT>();
@@ -262,7 +263,7 @@ namespace scn {
      * \endcode
      */
     template <typename CharT, typename Format, typename... Args>
-    auto prompt(const CharT* p, const Format& f, Args&... a)
+    SCN_NODISCARD auto prompt(const CharT* p, const Format& f, Args&... a)
         -> decltype(input(f, a...))
     {
         SCN_EXPECT(p != nullptr);
@@ -286,9 +287,8 @@ namespace scn {
      * @param base between [2,36]
      */
     template <typename T, typename CharT>
-    expected<const CharT*> parse_integer(basic_string_view<CharT> str,
-                                         T& val,
-                                         int base = 10)
+    SCN_NODISCARD expected<const CharT*>
+    parse_integer(basic_string_view<CharT> str, T& val, int base = 10)
     {
         SCN_EXPECT(!str.empty());
         auto s = detail::simple_integer_scanner<T>{};
@@ -310,7 +310,9 @@ namespace scn {
      * @param val parsed float, must be value-constructed
      */
     template <typename T, typename CharT>
-    expected<const CharT*> parse_float(basic_string_view<CharT> str, T& val)
+    SCN_NODISCARD expected<const CharT*> parse_float(
+        basic_string_view<CharT> str,
+        T& val)
     {
         SCN_EXPECT(!str.empty());
         auto s = detail::float_scanner_access<T>{};
@@ -353,9 +355,9 @@ namespace scn {
      * \param a Member types (etc) to parse
      */
     template <typename WrappedRange, typename Format, typename... Args>
-    error scan_usertype(basic_context<WrappedRange>& ctx,
-                        const Format& f,
-                        Args&... a)
+    SCN_NODISCARD error scan_usertype(basic_context<WrappedRange>& ctx,
+                                      const Format& f,
+                                      Args&... a)
     {
         static_assert(sizeof...(Args) > 0,
                       "Have to scan at least a single argument");
@@ -508,7 +510,7 @@ namespace scn {
      * \endcode
      */
     template <typename Range, typename String, typename CharT>
-    auto getline(Range&& r, String& str, CharT until)
+    SCN_NODISCARD auto getline(Range&& r, String& str, CharT until)
         -> detail::scan_result_for_range<Range>
     {
         auto wrapped = wrap(SCN_FWD(r));
@@ -538,7 +540,8 @@ namespace scn {
               typename String,
               typename CharT = typename detail::extract_char_type<
                   ranges::iterator_t<range_wrapper_for_t<Range>>>::type>
-    auto getline(Range&& r, String& str) -> detail::scan_result_for_range<Range>
+    SCN_NODISCARD auto getline(Range&& r, String& str)
+        -> detail::scan_result_for_range<Range>
     {
         return getline(std::forward<Range>(r), str,
                        detail::ascii_widen<CharT>('\n'));
@@ -653,7 +656,7 @@ namespace scn {
      * The character type of \c r must be \c CharT.
      */
     template <typename Range, typename CharT>
-    auto ignore_until(Range&& r, CharT until)
+    SCN_NODISCARD auto ignore_until(Range&& r, CharT until)
         -> detail::scan_result_for_range<Range>
     {
         auto wrapped = wrap(SCN_FWD(r));
@@ -677,9 +680,10 @@ namespace scn {
      * must be \c CharT.
      */
     template <typename Range, typename CharT>
-    auto ignore_until_n(Range&& r,
-                        ranges::range_difference_t<Range> n,
-                        CharT until) -> detail::scan_result_for_range<Range>
+    SCN_NODISCARD auto ignore_until_n(Range&& r,
+                                      ranges::range_difference_t<Range> n,
+                                      CharT until)
+        -> detail::scan_result_for_range<Range>
     {
         auto wrapped = wrap(SCN_FWD(r));
         auto err = detail::ignore_until_n_impl(wrapped, n, until);
@@ -786,11 +790,12 @@ namespace scn {
         template <typename WrappedRange>
         expected<code_point> read_single(WrappedRange& r, code_point)
         {
-            using char_type = typename WrappedRange::char_type;
             unsigned char buf[4] = {0};
-            auto bufspan = span<char_type>(reinterpret_cast<char_type*>(buf),
-                                           4 / sizeof(char_type));
-            return read_code_unit(r, bufspan);
+            auto ret = read_code_point(r, make_span(buf, 4).as_const(), true);
+            if (!ret) {
+                return ret.error();
+            }
+            return ret.value().cp;
         }
     }  // namespace detail
 
@@ -830,9 +835,10 @@ namespace scn {
               typename Container,
               typename Separator = typename detail::extract_char_type<
                   ranges::iterator_t<Range>>::type>
-    auto scan_list(Range&& r,
-                   Container& c,
-                   Separator separator = detail::zero_value<Separator>::value)
+    SCN_NODISCARD auto scan_list(
+        Range&& r,
+        Container& c,
+        Separator separator = detail::zero_value<Separator>::value)
         -> detail::scan_result_for_range<Range>
     {
         using value_type = typename Container::value_type;
@@ -904,7 +910,7 @@ namespace scn {
               typename Container,
               typename Separator = typename detail::extract_char_type<
                   ranges::iterator_t<Range>>::type>
-    auto scan_list_until(
+    SCN_NODISCARD auto scan_list_until(
         Range&& r,
         Container& c,
         Separator until,

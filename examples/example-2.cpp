@@ -24,6 +24,10 @@ int main()
     std::cout << "Hi there! What's your first name?\n";
 
     std::string name;
-    scn::input("{}", name);
+    auto ret = scn::input("{}", name);
+    if (!ret) {
+        return 1;
+    }
+
     std::cout << "Welcome, " << name << '\n';
 }

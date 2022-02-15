@@ -21,6 +21,9 @@
 int main()
 {
     int i;
-    scn::prompt("Hi there! What's your favorite number? ", "{}", i);
+    auto ret = scn::prompt("Hi there! What's your favorite number? ", "{}", i);
+    if (!ret) {
+        return 1;
+    }
     std::cout << "Ooh, " << i << ", interesting!\n";
 }

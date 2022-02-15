@@ -139,6 +139,9 @@ namespace scn {
             : custom_ranges::detail::exists<_range_wrapper_marker, T> {
         };
 
+        /**
+         * Wraps a source range for more consistent behavior
+         */
         template <typename Range>
         class range_wrapper {
         public:
@@ -221,17 +224,30 @@ namespace scn {
             }
             SCN_GCC_POP
 
+            /**
+             * Returns `true` if `begin() == end()`.
+             */
             bool empty() const
             {
                 return begin() == end();
             }
 
+            /**
+             * Advance the begin iterator by `n` characters.
+             */
             iterator advance(difference_type n = 1) noexcept
             {
                 m_read += n;
                 ranges::advance(m_begin, n);
                 return m_begin;
             }
+
+            /// @{
+            /**
+             * Advance the begin iterator, until it's equal to `it`.
+             * Assumes that `it` is reachable by repeatedly incrementing begin,
+             * will hang otherwise.
+             */
             template <typename R = range_nocvref_type,
                       typename std::enable_if<SCN_CHECK_CONCEPT(
                           ranges::sized_range<R>)>::type* = nullptr>
@@ -251,18 +267,32 @@ namespace scn {
                     ++m_begin;
                 }
             }
+            /// @}
 
+            /**
+             * Returns the begin iterator of the underlying source range, is not
+             * necessarily equal to `begin()`.
+             */
             iterator begin_underlying() const noexcept(noexcept(
                 ranges::cbegin(SCN_DECLVAL(const range_nocvref_type&))))
             {
                 return ranges::cbegin(m_range.get());
             }
 
+            /**
+             * Returns the underlying source range.
+             * Note that `range_underlying().begin()` may not be equal to
+             * `begin()`.
+             */
             const range_type& range_underlying() const noexcept
             {
                 return m_range.get();
             }
 
+            /**
+             * Returns a pointer to the beginning of the range.
+             * `*this` must be contiguous.
+             */
             template <typename R = range_nocvref_type,
                       typename std::enable_if<SCN_CHECK_CONCEPT(
                           ranges::contiguous_range<R>)>::type* = nullptr>
@@ -273,6 +303,10 @@ namespace scn {
             {
                 return std::addressof(*m_begin);
             }
+            /**
+             * Returns `end() - begin()`.
+             * `*this` must be sized.
+             */
             template <typename R = range_nocvref_type,
                       typename std::enable_if<SCN_CHECK_CONCEPT(
                           ranges::sized_range<R>)>::type* = nullptr>
@@ -286,6 +320,14 @@ namespace scn {
                 return ranges::distance(m_begin, end());
             }
 
+            /**
+             * Reset `begin()` to the rollback point, as if by repeatedly
+             * calling `operator--()` on the begin iterator.
+             *
+             * Returns `error::unrecoverable_source_error` on failure.
+             *
+             * \see set_rollback_point()
+             */
             error reset_to_rollback_point()
             {
                 for (; m_read != 0; --m_read) {
@@ -297,11 +339,20 @@ namespace scn {
                 }
                 return {};
             }
+            /**
+             * Sets the rollback point equal to the current `begin()` iterator.
+             *
+             * \see reset_to_rollback_point()
+             */
             void set_rollback_point()
             {
                 m_read = 0;
             }
 
+            /**
+             * Construct a new source range from `begin()` and `end()`, and wrap
+             * it in a new `range_wrapper`.
+             */
             template <typename R>
             auto reconstruct_and_rewrap() && -> range_wrapper<R>
             {
@@ -310,57 +361,26 @@ namespace scn {
                 return {SCN_MOVE(reconstructed)};
             }
 
-#if 0
-            template <typename R = range_nocvref_type,
-                      typename std::enable_if<
-                          std::is_same<R, range_nocvref_type>::value>::type* =
-                          nullptr>
-            auto rewrap() const& -> range_wrapper<R>
-            {
-                const auto n = ranges::distance(begin_underlying(), begin());
-                auto r = range_wrapper<R>{m_range.get()};
-                r.advance(n);
-                r.set_rollback_point();
-                return r;
-            }
-            template <typename R = range_nocvref_type,
-                      typename std::enable_if<
-                          !std::is_same<R, range_nocvref_type>::value>::type* =
-                          nullptr>
-            auto rewrap() const& -> range_wrapper<R>
-            {
-                return {reconstruct(reconstruct_tag<R>{}, begin(), end())};
-            }
-
-            template <typename R = range_nocvref_type,
-                      typename std::enable_if<
-                          std::is_same<R, range_nocvref_type>::value>::type* =
-                          nullptr>
-            auto rewrap() && -> range_wrapper<R>
-            {
-                const auto n = ranges::distance(begin_underlying(), begin());
-                auto r = range_wrapper<R>{SCN_MOVE(m_range.get())};
-                r.advance(n);
-                r.set_rollback_point();
-                return r;
-            }
-            template <typename R = range_nocvref_type,
-                      typename std::enable_if<
-                          !std::is_same<R, range_nocvref_type>::value>::type* =
-                          nullptr>
-            auto rewrap() && -> range_wrapper<R>
-            {
-                return {reconstruct(reconstruct_tag<R>{}, begin(), end())};
-            }
-#endif
-
-            // iterator value type is a character
+            /**
+             * `true` if `value_type` is a character type (`char` or `wchar_t`)
+             * `false` if it's an `expected` containing a character
+             */
             static constexpr bool is_direct =
                 is_direct_impl<range_nocvref_type>::value;
             // can call .data() and memcpy
+            /**
+             * `true` if `this->data()` can be called, and `memcpy` can be
+             * performed on it.
+             */
             static constexpr bool is_contiguous =
                 SCN_CHECK_CONCEPT(ranges::contiguous_range<range_nocvref_type>);
-            // provides mechanism to get a pointer to memcpy from
+            /**
+             * `true` if the range provides a way to access a contiguous buffer
+             * on it, which may not provide the entire source data, e.g. a
+             * `span` of `span`s (vectored I/O).
+             *
+             * Unimplemented, TODO
+             */
             static constexpr bool provides_buffer_access =
                 provides_buffer_access_impl<range_nocvref_type>::value;
 
@@ -486,6 +506,9 @@ namespace scn {
     }      // namespace detail
 
     namespace {
+        /**
+         * Create a `range_wrapper` for any supported source range.
+         */
         static constexpr auto& wrap =
             detail::static_const<detail::_wrap::fn>::value;
     }
@@ -607,6 +630,8 @@ namespace scn {
              * Leftover range.
              * If the leftover range is used to scan a new value, this member
              * function should be used.
+             *
+             * \see range_wrapper
              */
             wrapped_range_type& range() &
             {

@@ -21,7 +21,8 @@ void empty_test();
 void empty_test()
 {
     std::string word;
-    scn::scan("Hello world!", "{}", word);
+    auto ret = scn::scan("Hello world!", "{}", word);
+    SCN_ENSURE(ret);
 }
 
 int main()

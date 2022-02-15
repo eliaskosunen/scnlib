@@ -64,6 +64,11 @@ namespace scn {
         {
         }
 
+        /**
+         * Returns `true`, if `next_char()` is a whitespace character according
+         * to the static locale. This means, that `skip_range_whitespace()`
+         * should be called on the source range.
+         */
         bool should_skip_ws()
         {
             bool skip = false;
@@ -73,6 +78,15 @@ namespace scn {
             }
             return skip;
         }
+        /**
+         * Returns `true`, if a character equal to `next_char()` should be read
+         * from the source range.
+         *
+         * If `*this` currently points to an escaped
+         * brace character `"{{"` or `"}}"`, skips the first brace, so that
+         * after this function is called, `next_char()` returns the character
+         * that should be read.
+         */
         bool should_read_literal()
         {
             const auto brace = detail::ascii_widen<char_type>('{');
@@ -89,10 +103,18 @@ namespace scn {
             }
             return false;
         }
+        /**
+         * Returns `true` if `ch` is equal to `next_char()`
+         */
         SCN_NODISCARD constexpr bool check_literal(char_type ch) const
         {
             return ch == next_char();
         }
+        /**
+         * Returns `true` if the code units contained in `ch` are equal to the
+         * code units starting from `pctx.begin()`. If `chars_left() <
+         * ch.size()`, returns `false`.
+         */
         SCN_NODISCARD SCN_CONSTEXPR14 bool check_literal(
             span<const char_type> ch) const
         {
@@ -106,6 +128,11 @@ namespace scn {
             }
             return true;
         }
+        /**
+         * Returns `true` if `cp` is equal to the value returned by `next_cp()`.
+         * If `next_cp()` errored, returns that error
+         * (`error::invalid_encoding`).
+         */
         SCN_NODISCARD SCN_CONSTEXPR14 expected<bool> check_literal_cp(
             code_point cp) const
         {
@@ -116,6 +143,9 @@ namespace scn {
             return cp == next.value();
         }
 
+        /**
+         * Returns `true` if there are characters left in `*this`.
+         */
         constexpr bool good() const
         {
             return !m_str.empty();
@@ -125,10 +155,19 @@ namespace scn {
             return good();
         }
 
+        /**
+         * Returns the next character (= code unit) in `*this`.
+         * `good()` must be `true`.
+         */
         constexpr char_type next_char() const
         {
             return m_str.front();
         }
+        /**
+         * Returns the next code point in `*this`.
+         * If the code point is encoded incorrectly, returns
+         * `error::invalid_encoding`.
+         */
         SCN_NODISCARD SCN_CONSTEXPR14 expected<code_point> next_cp() const
         {
             code_point cp{};
@@ -139,10 +178,17 @@ namespace scn {
             return {cp};
         }
 
+        /**
+         * Returns the number of chars (= code units) left in `*this`.
+         */
         constexpr std::size_t chars_left() const noexcept
         {
             return m_str.size();
         }
+        /**
+         * Returns the number of code points left in `*this`. If `*this`
+         * contains invalid encoding, returns `error::invalid_encoding`.
+         */
         SCN_NODISCARD SCN_CONSTEXPR14 expected<std::size_t> cp_left()
             const noexcept
         {
@@ -153,11 +199,19 @@ namespace scn {
             return {static_cast<std::size_t>(d.value())};
         }
 
+        /**
+         * Advances `*this` by `n` characters (= code units). `*this` must have
+         * at least `n` characters left.
+         */
         SCN_CONSTEXPR14 void advance_char(std::ptrdiff_t n = 1) noexcept
         {
             SCN_EXPECT(chars_left() >= static_cast<std::size_t>(n));
             m_str.remove_prefix(static_cast<std::size_t>(n));
         }
+        /**
+         * Advances `*this` by a single code point. If the code point is encoded
+         * incorrectly, returns `error::invalid_encoding`.
+         */
         SCN_NODISCARD SCN_CONSTEXPR14 error advance_cp() noexcept
         {
             code_point cp{};
@@ -170,16 +224,34 @@ namespace scn {
             return {};
         }
 
+        /**
+         * Returns `true`, if `*this` has over `n` characters (= code units)
+         * left, so that `peek_char()` with the same `n` parameter can be
+         * called.
+         */
         constexpr bool can_peek_char(std::size_t n = 1) const noexcept
         {
             return chars_left() > n;
         }
 
+        /**
+         * Returns the character (= code unit) `n` characters past the current
+         * character, so that `peek_char(0)` is equivalent to `next_char()`.
+         * `n <= chars_left()` must be `true`.
+         */
         SCN_CONSTEXPR14 char_type peek_char(std::size_t n = 1) const noexcept
         {
-            SCN_EXPECT(n < chars_left());
+            SCN_EXPECT(n <= chars_left());
             return m_str[n];
         }
+        /**
+         * Returns the code point past the current code point (`next_cp()`).
+         *
+         * If there is no code point to peek (the current code point is the last
+         * one in `*this`), returns `error::end_of_range`.
+         * If `*this` contains invalid encoding, returns
+         * `error::invalid_encoding`.
+         */
         SCN_NODISCARD SCN_CONSTEXPR14 expected<code_point> peek_cp()
             const noexcept
         {
@@ -214,11 +286,17 @@ namespace scn {
             return m_str.end();
         }
 
+        /**
+         * Returns `true`, if `next_char() == '{'`
+         */
         SCN_CONSTEXPR14 bool check_arg_begin() const
         {
             SCN_EXPECT(good());
             return next_char() == detail::ascii_widen<char_type>('{');
         }
+        /**
+         * Returns `true`, if `next_char() == '}'`
+         */
         SCN_CONSTEXPR14 bool check_arg_end() const
         {
             SCN_EXPECT(good());
@@ -238,6 +316,9 @@ namespace scn {
             return m_locale;
         }
 
+        /**
+         * Parse `*this` using `s`
+         */
         template <typename Scanner>
         error parse(Scanner& s)
         {
