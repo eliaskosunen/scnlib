@@ -104,6 +104,59 @@ namespace scn {
     }
 
     namespace detail {
+        template <typename I, typename S>
+        SCN_CONSTEXPR14 expected<I> encode_code_point(I begin,
+                                                      S end,
+                                                      code_point cp,
+                                                      utf8_tag)
+        {
+            return utf8::encode_code_point(begin, end, cp);
+        }
+        template <typename I, typename S>
+        SCN_CONSTEXPR14 expected<I> encode_code_point(I begin,
+                                                      S end,
+                                                      code_point cp,
+                                                      utf16_tag)
+        {
+            return utf16::encode_code_point(begin, end, cp);
+        }
+        template <typename I, typename S>
+        SCN_CONSTEXPR14 expected<I> encode_code_point(I begin,
+                                                      S end,
+                                                      code_point cp,
+                                                      utf32_tag)
+        {
+            SCN_EXPECT(begin + 1 >= end);
+            *begin++ = static_cast<uint32_t>(cp);
+            return {begin};
+        }
+    }  // namespace detail
+
+    /**
+     * Writes the code point `cp` into `begin`, using the encoding determined by
+     * the type of `begin`.
+     *
+     * For more information on how the encoding is determined, see \ref
+     * parse_code_point().
+     *
+     * `end` must be reachable from `begin`, and must have enough room to encode
+     * the code point (4 code units for UTF-8, 2 for UTF-16, and 1 for UTF-32).
+     *
+     * \param begin Beginning of the range to write the result to
+     * \param end End of the range to write the result to
+     * \param cp Code point to encode
+     * \return On success, one-past the last code unit written.
+     * If `cp` was not a valid code point, returns `error::invalid_encoding`.
+     */
+    template <typename I, typename S>
+    SCN_CONSTEXPR14 expected<I> encode_code_point(I begin, S end, code_point cp)
+    {
+        return detail::encode_code_point(
+            begin, end, cp,
+            SCN_MAKE_UTF_TAG(typename std::iterator_traits<I>::value_type));
+    }
+
+    namespace detail {
         template <typename T>
         SCN_CONSTEXPR14 int get_sequence_length(T a, utf8_tag)
         {

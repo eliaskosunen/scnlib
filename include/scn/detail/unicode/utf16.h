@@ -91,6 +91,31 @@ namespace scn {
             }
 
             template <typename I, typename S>
+            SCN_CONSTEXPR14 expected<I> encode_code_point(I begin,
+                                                          S end,
+                                                          code_point cp)
+            {
+                SCN_EXPECT(begin + 2 <= end);
+
+                if (!is_valid_code_point(cp)) {
+                    return error(error::invalid_encoding,
+                                 "Invalid code point, cannot encode in UTF-16");
+                }
+
+                if (cp > 0xffffu) {
+                    *begin++ = static_cast<uint16_t>(
+                        (static_cast<uint32_t>(cp) >> 10u) + lead_offset);
+                    *begin++ = static_cast<uint16_t>(
+                        (static_cast<uint32_t>(cp) & 0x3ffu) +
+                        trail_surrogate_min);
+                }
+                else {
+                    *begin++ = static_cast<uint16_t>(cp);
+                }
+                return {begin};
+            }
+
+            template <typename I, typename S>
             SCN_CONSTEXPR14 expected<std::ptrdiff_t> code_point_distance(
                 I begin,
                 S end)

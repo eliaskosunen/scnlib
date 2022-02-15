@@ -223,6 +223,55 @@ namespace scn {
                 return e;
             }
 
+            template <typename I>
+            I append(code_point cp, I it)
+            {
+                SCN_EXPECT(is_code_point_valid(cp));
+
+                if (cp < 0x80) {
+                    *(it++) = static_cast<uint8_t>(cp);
+                }
+                else if (cp < 0x800) {
+                    *(it++) = static_cast<uint8_t>(
+                        (static_cast<uint32_t>(cp) >> 6u) | 0xc0u);
+                    *(it++) = static_cast<uint8_t>(
+                        (static_cast<uint32_t>(cp) & 0x3fu) | 0x80u);
+                }
+                else if (cp < 0x10000) {
+                    *(it++) = static_cast<uint8_t>(
+                        (static_cast<uint32_t>(cp) >> 12u) | 0xe0u);
+                    *(it++) = static_cast<uint8_t>(
+                        ((static_cast<uint32_t>(cp) >> 6u) & 0x3fu) | 0x80u);
+                    *(it++) = static_cast<uint8_t>(
+                        (static_cast<uint32_t>(cp) & 0x3fu) | 0x80u);
+                }
+                else {
+                    *(it++) = static_cast<uint8_t>(
+                        (static_cast<uint32_t>(cp) >> 18u) | 0xf0u);
+                    *(it++) = static_cast<uint8_t>(
+                        ((static_cast<uint32_t>(cp) >> 12u) & 0x3fu) | 0x80u);
+                    *(it++) = static_cast<uint8_t>(
+                        ((static_cast<uint32_t>(cp) >> 6u) & 0x3fu) | 0x80u);
+                    *(it++) = static_cast<uint8_t>(
+                        (static_cast<uint32_t>(cp) & 0x3fu) | 0x80u);
+                }
+                return it;
+            }
+
+            template <typename I, typename S>
+            SCN_CONSTEXPR14 expected<I> encode_code_point(I begin,
+                                                          S end,
+                                                          code_point cp)
+            {
+                SCN_EXPECT(begin + 4 <= end);
+
+                if (!is_code_point_valid(cp)) {
+                    return error(error::invalid_encoding,
+                                 "Invalid code point, cannot encode in UTF-8");
+                }
+                return {append(cp, begin)};
+            }
+
             template <typename I, typename S>
             SCN_CONSTEXPR14 expected<std::ptrdiff_t> code_point_distance(
                 I begin,

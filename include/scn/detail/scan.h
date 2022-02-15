@@ -374,45 +374,44 @@ namespace scn {
     namespace detail {
         template <typename CharT>
         struct until_pred {
-            CharT until;
+            array<CharT, 4> until;
+            size_t size;
 
-            constexpr bool operator()(span<const CharT> ch) const
+            constexpr until_pred(CharT ch) : until({{ch}}), size(1) {}
+            until_pred(code_point cp)
             {
-                return ch[0] == until;
+                auto ret = encode_code_point(until.begin(), until.end(), cp);
+                SCN_ENSURE(ret);
+                size = ret.value() - until.begin();
+            }
+
+            SCN_CONSTEXPR14 bool operator()(span<const CharT> ch) const
+            {
+                if (ch.size() != size) {
+                    return false;
+                }
+                for (size_t i = 0; i < ch.size(); ++i) {
+                    if (ch[i] != until[i]) {
+                        return false;
+                    }
+                }
+                return true;
             }
             static constexpr bool is_localized()
             {
                 return false;
             }
-            static constexpr bool is_multibyte()
+            constexpr bool is_multibyte() const
             {
-                return false;
-            }
-        };
-        template <>
-        struct until_pred<code_point> {
-            using cp_type = code_point;
-            cp_type until;
-
-            bool operator()(span<const char> ch) const
-            {
-                cp_type cp;
-                auto e = parse_code_point(ch.begin(), ch.end(), cp);
-                SCN_ENSURE(e);
-                return cp == until;
-            }
-            static constexpr bool is_localized()
-            {
-                return true;
-            }
-            static constexpr bool is_multibyte()
-            {
-                return true;
+                return size != 1;
             }
         };
 
-        template <typename WrappedRange, typename String, typename CharT>
-        error getline_impl(WrappedRange& r, String& str, CharT until)
+        template <typename WrappedRange,
+                  typename String,
+                  typename Until,
+                  typename CharT = typename WrappedRange::char_type>
+        error getline_impl(WrappedRange& r, String& str, Until until)
         {
             auto pred = until_pred<CharT>{until};
             auto s = read_until_space_zero_copy(r, pred, true);
@@ -444,10 +443,12 @@ namespace scn {
             str = SCN_MOVE(tmp);
             return {};
         }
-        template <typename WrappedRange, typename CharT>
+        template <typename WrappedRange,
+                  typename Until,
+                  typename CharT = typename WrappedRange::char_type>
         error getline_impl(WrappedRange& r,
                            basic_string_view<CharT>& str,
-                           CharT until)
+                           Until until)
         {
             static_assert(
                 WrappedRange::is_contiguous,
@@ -466,10 +467,12 @@ namespace scn {
             return {};
         }
 #if SCN_HAS_STRING_VIEW
-        template <typename WrappedRange, typename CharT>
+        template <typename WrappedRange,
+                  typename Until,
+                  typename CharT = typename WrappedRange::char_type>
         auto getline_impl(WrappedRange& r,
                           std::basic_string_view<CharT>& str,
-                          CharT until) -> error
+                          Until until) -> error
         {
             auto sv = ::scn::basic_string_view<CharT>{};
             auto ret = getline_impl(r, sv, until);
@@ -508,8 +511,8 @@ namespace scn {
      * // result.empty() == true
      * \endcode
      */
-    template <typename Range, typename String, typename CharT>
-    SCN_NODISCARD auto getline(Range&& r, String& str, CharT until)
+    template <typename Range, typename String, typename Until>
+    SCN_NODISCARD auto getline(Range&& r, String& str, Until until)
         -> detail::scan_result_for_range<Range>
     {
         auto wrapped = wrap(SCN_FWD(r));
@@ -626,23 +629,21 @@ namespace scn {
             difference_type i{0};
         };
 
-        template <
-            typename WrappedRange,
-            typename CharT = typename detail::extract_char_type<
-                range_wrapper_for_t<typename WrappedRange::iterator>>::type>
-        error ignore_until_impl(WrappedRange& r, CharT until)
+        template <typename WrappedRange,
+                  typename Until,
+                  typename CharT = typename WrappedRange::char_type>
+        error ignore_until_impl(WrappedRange& r, Until until)
         {
             ignore_iterator<CharT> it{};
             return read_until_space(r, it, until_pred<CharT>{until}, false);
         }
 
-        template <
-            typename WrappedRange,
-            typename CharT = typename detail::extract_char_type<
-                range_wrapper_for_t<typename WrappedRange::iterator>>::type>
+        template <typename WrappedRange,
+                  typename Until,
+                  typename CharT = typename WrappedRange::char_type>
         error ignore_until_n_impl(WrappedRange& r,
                                   ranges::range_difference_t<WrappedRange> n,
-                                  CharT until)
+                                  Until until)
         {
             ignore_iterator_n<CharT> begin{}, end{n};
             return read_until_space_ranged(r, begin, end,
@@ -652,10 +653,9 @@ namespace scn {
 
     /**
      * Advances the beginning of \c r until \c until is found.
-     * The character type of \c r must be \c CharT.
      */
-    template <typename Range, typename CharT>
-    SCN_NODISCARD auto ignore_until(Range&& r, CharT until)
+    template <typename Range, typename Until>
+    SCN_NODISCARD auto ignore_until(Range&& r, Until until)
         -> detail::scan_result_for_range<Range>
     {
         auto wrapped = wrap(SCN_FWD(r));
@@ -678,10 +678,10 @@ namespace scn {
      * beginning has been advanced \c n times. The character type of \c r
      * must be \c CharT.
      */
-    template <typename Range, typename CharT>
+    template <typename Range, typename Until>
     SCN_NODISCARD auto ignore_until_n(Range&& r,
                                       ranges::range_difference_t<Range> n,
-                                      CharT until)
+                                      Until until)
         -> detail::scan_result_for_range<Range>
     {
         auto wrapped = wrap(SCN_FWD(r));
