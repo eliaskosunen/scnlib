@@ -18,6 +18,9 @@
 #ifndef SCN_SCN_H
 #define SCN_SCN_H
 
-#include "scn/scan/scan.h"
+#include "scan/scan.h"
+#include "scan/getline.h"
+#include "scan/ignore.h"
+#include "scan/list.h"
 
 #endif  // SCN_SCN_H

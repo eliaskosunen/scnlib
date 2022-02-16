@@ -15,10 +15,10 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_TUPLE_RETURN_H
-#define SCN_DETAIL_TUPLE_RETURN_H
+#ifndef SCN_TUPLE_RETURN_UTIL_H
+#define SCN_TUPLE_RETURN_UTIL_H
 
-#include "scn/scan/scan.h"
+#include "../util/meta.h"
 
 #include <functional>
 #include <tuple>
@@ -169,79 +169,6 @@ namespace scn {
                     typename std::remove_reference<Tuple>::type>::value>{});
         }
     }  // namespace detail
-
-    /**
-     * Alternative interface for scanning, returning values as a tuple, instead
-     * of taking them by reference.
-     *
-     * It's highly recommended to use this interface only with C++17 or later,
-     * as structured bindings make it way more ergonomic.
-     *
-     * Compared to the regular scan interface, the performance of this interface
-     * is the same (generated code is virtually identical with optimizations
-     * enabled), but the compile time is slower.
-     *
-     * Values scanned by this function still need to be default-constructible.
-     * To scan a non-default-constructible value, use \c scn::optional
-     *
-     * @param r Input range
-     * @return Tuple, where the first element is the scan result, and the
-     * remaining elements are the scanned values.
-     */
-    template <typename... Args, typename Range, typename Format>
-    SCN_NODISCARD auto scan_tuple(Range&& r, Format f)
-        -> std::tuple<detail::scan_result_for_range<Range>, Args...>
-    {
-        using result = detail::scan_result_for_range<Range>;
-        using range_type = typename result::wrapped_range_type;
-
-        using context_type = basic_context<range_type>;
-        using parse_context_type =
-            basic_parse_context<typename context_type::locale_type>;
-        using char_type = typename range_type::char_type;
-
-        auto range = wrap(SCN_FWD(r));
-        auto scanfn = [&range, &f](Args&... a) {
-            auto args = make_args<context_type, parse_context_type>(a...);
-            return vscan(SCN_MOVE(range), basic_string_view<char_type>(f),
-                         {args});
-        };
-
-        std::tuple<Args...> values{Args{}...};
-        auto ret = detail::apply(scanfn, values);
-        return std::tuple_cat(
-            std::tuple<result>{detail::wrap_result(wrapped_error{ret.err},
-                                                   detail::range_tag<Range>{},
-                                                   SCN_MOVE(ret.range))},
-            SCN_MOVE(values));
-    }
-
-    template <typename... Args, typename Range>
-    SCN_NODISCARD auto scan_tuple_default(Range&& r)
-        -> std::tuple<detail::scan_result_for_range<Range>, Args...>
-    {
-        using result = detail::scan_result_for_range<Range>;
-        using range_type = typename result::wrapped_range_type;
-
-        using context_type = basic_context<range_type>;
-        using parse_context_type =
-            basic_empty_parse_context<typename context_type::locale_type>;
-
-        auto range = wrap(SCN_FWD(r));
-        auto scanfn = [&range](Args&... a) {
-            auto args = make_args<context_type, parse_context_type>(a...);
-            return vscan_default(SCN_MOVE(range),
-                                 static_cast<int>(sizeof...(Args)), {args});
-        };
-
-        std::tuple<Args...> values{Args{}...};
-        auto ret = detail::apply(scanfn, values);
-        return std::tuple_cat(
-            std::tuple<result>{detail::wrap_result(wrapped_error{ret.err},
-                                                   detail::range_tag<Range>{},
-                                                   SCN_MOVE(ret.range))},
-            SCN_MOVE(values));
-    }
 
     SCN_END_NAMESPACE
 }  // namespace scn

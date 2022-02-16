@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_UTIL_OPTIONAL_H
-#define SCN_DETAIL_UTIL_OPTIONAL_H
+#ifndef SCN_UTIL_OPTIONAL_H
+#define SCN_UTIL_OPTIONAL_H
 
 #include "memory.h"
 

@@ -18,6 +18,6 @@
 #ifndef SCN_ISTREAM_H
 #define SCN_ISTREAM_H
 
-#include "detail/istream.h"
+#include "scan/istream.h"
 
 #endif  // SCN_ISTREAM_H

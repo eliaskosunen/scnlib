@@ -15,11 +15,11 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_ISTREAM_H
-#define SCN_DETAIL_ISTREAM_H
+#ifndef SCN_SCAN_ISTREAM_H
+#define SCN_SCAN_ISTREAM_H
 
 #include "../reader/common.h"
-#include "result.h"
+#include "../detail/result.h"
 
 #include <istream>
 

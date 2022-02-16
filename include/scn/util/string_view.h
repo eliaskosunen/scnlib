@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_UTIL_STRING_VIEW_H
-#define SCN_DETAIL_UTIL_STRING_VIEW_H
+#ifndef SCN_UTIL_STRING_VIEW_H
+#define SCN_UTIL_STRING_VIEW_H
 
 #include "algorithm.h"
 #include "span.h"
@@ -267,4 +267,4 @@ namespace scn {
     SCN_END_NAMESPACE
 }  // namespace scn
 
-#endif  // SCN_DETAIL_STRING_VIEW_H
+#endif  // SCN_STRING_VIEW_H

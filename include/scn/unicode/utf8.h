@@ -20,8 +20,8 @@
 //     Copyright (c) 2006 Nemanja Trifunovic
 //     Distributed under the Boost Software License, version 1.0
 
-#ifndef SCN_DETAIL_UNICODE_UTF8_H
-#define SCN_DETAIL_UNICODE_UTF8_H
+#ifndef SCN_UNICODE_UTF8_H
+#define SCN_UNICODE_UTF8_H
 
 #include "../detail/error.h"
 #include "../util/expected.h"

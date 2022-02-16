@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_READER_COMMON_H
-#define SCN_DETAIL_READER_COMMON_H
+#ifndef SCN_READER_COMMON_H
+#define SCN_READER_COMMON_H
 
 #include "../detail/error.h"
 #include "../detail/locale.h"

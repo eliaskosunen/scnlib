@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_RANGES_STD_IMPL_H
-#define SCN_DETAIL_RANGES_STD_IMPL_H
+#ifndef SCN_RANGES_STD_IMPL_H
+#define SCN_RANGES_STD_IMPL_H
 
 #include "../detail/config.h"
 
@@ -64,4 +64,4 @@ namespace std::ranges {
 #define SCN_CHECK_CONCEPT(C) C
 #endif
 
-#endif  // SCN_DETAIL_RANGES_STD_IMPL_H
+#endif  // SCN_RANGES_STD_IMPL_H

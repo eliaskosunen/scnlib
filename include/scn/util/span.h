@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_UTIL_SPAN_H
-#define SCN_DETAIL_UTIL_SPAN_H
+#ifndef SCN_UTIL_SPAN_H
+#define SCN_UTIL_SPAN_H
 
 #include "memory.h"
 
@@ -235,4 +235,4 @@ namespace scn {
     SCN_END_NAMESPACE
 }  // namespace scn
 
-#endif  // SCN_DETAIL_SPAN_H
+#endif  // SCN_SPAN_H

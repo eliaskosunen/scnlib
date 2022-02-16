@@ -20,8 +20,8 @@
 //     Copyright (c) 2018 Tristan Brindle
 //     Distributed under the Boost Software License, Version 1.0
 
-#ifndef SCN_DETAIL_RANGES_CUSTOM_IMPL_H
-#define SCN_DETAIL_RANGES_CUSTOM_IMPL_H
+#ifndef SCN_RANGES_CUSTOM_IMPL_H
+#define SCN_RANGES_CUSTOM_IMPL_H
 
 #include "util.h"
 
@@ -1629,4 +1629,4 @@ namespace std {
 
 #define SCN_CHECK_CONCEPT(C) C::value
 
-#endif  // SCN_DETAIL_RANGES_CUSTOM_IMPL_H
+#endif  // SCN_RANGES_CUSTOM_IMPL_H

@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_READER_INT_H
-#define SCN_DETAIL_READER_INT_H
+#ifndef SCN_READER_INT_H
+#define SCN_READER_INT_H
 
 #include "../util/math.h"
 #include "common.h"

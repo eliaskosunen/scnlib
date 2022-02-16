@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_UTIL_SMALL_VECTOR_H
-#define SCN_DETAIL_UTIL_SMALL_VECTOR_H
+#ifndef SCN_UTIL_SMALL_VECTOR_H
+#define SCN_UTIL_SMALL_VECTOR_H
 
 #include "math.h"
 #include "memory.h"
@@ -785,4 +785,4 @@ namespace scn {
     SCN_END_NAMESPACE
 }  // namespace scn
 
-#endif  // SCN_DETAIL_SMALL_VECTOR_H
+#endif  // SCN_SMALL_VECTOR_H

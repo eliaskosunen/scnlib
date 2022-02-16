@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_RANGES_H
-#define SCN_DETAIL_RANGES_H
+#ifndef SCN_RANGES_RANGES_H
+#define SCN_RANGES_RANGES_H
 
 #include "../detail/config.h"
 
@@ -46,4 +46,4 @@ namespace scn {
     SCN_END_NAMESPACE
 }  // namespace scn
 
-#endif  // SCN_DETAIL_RANGES_H
+#endif  // SCN_RANGES_RANGES_H

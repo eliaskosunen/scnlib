@@ -18,6 +18,6 @@
 #ifndef SCN_TUPLE_RETURN_H
 #define SCN_TUPLE_RETURN_H
 
-#include "detail/tuple_return.h"
+#include "tuple_return/tuple_return.h"
 
 #endif  // SCN_TUPLE_RETURN_H

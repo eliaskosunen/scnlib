@@ -20,8 +20,8 @@
 //     Copyright (c) 2018 Tristan Brindle
 //     Distributed under the Boost Software License, Version 1.0
 
-#ifndef SCN_DETAIL_RANGES_UTIL_H
-#define SCN_DETAIL_RANGES_UTIL_H
+#ifndef SCN_RANGES_UTIL_H
+#define SCN_RANGES_UTIL_H
 
 #include "../util/meta.h"
 
@@ -343,8 +343,9 @@ namespace scn {
             };
 
             template <typename T, typename U>
-            using ternary_return_t = typename std::decay<decltype(
-                false ? SCN_DECLVAL(T) : SCN_DECLVAL(U))>::type;
+            using ternary_return_t =
+                typename std::decay<decltype(false ? SCN_DECLVAL(T)
+                                                   : SCN_DECLVAL(U))>::type;
 
             template <typename, typename, typename = void>
             struct binary_common_type {
@@ -415,4 +416,4 @@ namespace scn {
     SCN_END_NAMESPACE
 }  // namespace scn
 
-#endif  // SCN_DETAIL_RANGES_UTIL_H
+#endif  // SCN_RANGES_UTIL_H

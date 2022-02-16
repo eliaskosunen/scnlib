@@ -15,12 +15,14 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_VSCAN_H
-#define SCN_DETAIL_VSCAN_H
+#ifndef SCN_SCAN_VSCAN_H
+#define SCN_SCAN_VSCAN_H
 
 #include "../detail/context.h"
 #include "../detail/file.h"
+#include "../detail/parse_context.h"
 #include "../detail/visitor.h"
+#include "common.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -37,27 +39,6 @@ namespace scn {
     };
 
     namespace detail {
-        template <typename CharT>
-        constexpr int to_format(int i)
-        {
-            return i;
-        }
-        template <typename T>
-        constexpr auto to_format(T&& f) -> decltype(string_view{SCN_FWD(f)})
-        {
-            return {SCN_FWD(f)};
-        }
-        template <typename T>
-        constexpr auto to_format(T&& f) -> decltype(wstring_view{SCN_FWD(f)})
-        {
-            return {SCN_FWD(f)};
-        }
-        template <typename CharT>
-        basic_string_view<CharT> to_format(const std::basic_string<CharT>& str)
-        {
-            return {str.data(), str.size()};
-        }
-
         template <typename WrappedRange,
                   typename CharT = typename WrappedRange::char_type>
         vscan_result<WrappedRange> vscan_boilerplate(
@@ -212,4 +193,4 @@ namespace scn {
 #include "vscan.cpp"
 #endif
 
-#endif  // SCN_DETAIL_VSCAN_H
+#endif  // SCN_SCAN_VSCAN_H

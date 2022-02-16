@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_READER_STRING_H
-#define SCN_DETAIL_READER_STRING_H
+#ifndef SCN_READER_STRING_H
+#define SCN_READER_STRING_H
 
 #include "../util/small_vector.h"
 #include "common.h"
