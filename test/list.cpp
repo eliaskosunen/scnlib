@@ -21,7 +21,7 @@
 TEST_CASE("list")
 {
     std::vector<int> values;
-    auto ret = scn::scan_list("0 1 2 3 42 -1 1024", values, '\0');
+    auto ret = scn::scan_list("0 1 2 3 42 -1 1024", values);
     CHECK(ret);
 
     std::vector<int> cmp{0, 1, 2, 3, 42, -1, 1024};
@@ -32,7 +32,8 @@ TEST_CASE("list")
 TEST_CASE("comma list")
 {
     std::vector<int> values;
-    auto ret = scn::scan_list("0, 1, 2, 3, 42, -1, 1024", values, ',');
+    auto ret = scn::scan_list_ex("0, 1, 2, 3, 42, -1, 1024", values,
+                                 scn::list_separator(','));
     CHECK(ret);
 
     std::vector<int> cmp{0, 1, 2, 3, 42, -1, 1024};
@@ -43,7 +44,8 @@ TEST_CASE("comma list")
 TEST_CASE("list until line break")
 {
     std::vector<int> values;
-    auto ret = scn::scan_list_until("0 1 2 3 42\n-1 1024", values, '\n');
+    auto ret =
+        scn::scan_list_ex("0 1 2 3 42\n-1 1024", values, scn::list_until('\n'));
     CHECK(ret);
 
     std::vector<int> cmp{0, 1, 2, 3, 42};
@@ -51,7 +53,8 @@ TEST_CASE("list until line break")
     CHECK(std::equal(values.begin(), values.end(), cmp.begin()));
 
     values.clear();
-    ret = scn::scan_list_until("0 1 2 3 42 \n-1 1024", values, '\n');
+    ret = scn::scan_list_ex("0 1 2 3 42 \n-1 1024", values,
+                            scn::list_until('\n'));
     CHECK(ret);
 
     CHECK(values.size() == cmp.size());
@@ -61,8 +64,8 @@ TEST_CASE("list until line break")
 TEST_CASE("comma list until line break")
 {
     std::vector<int> values;
-    auto ret =
-        scn::scan_list_until("0, 1, 2, 3, 42,\n-1, 1024", values, '\n', ',');
+    auto ret = scn::scan_list_ex("0, 1, 2, 3, 42,\n-1, 1024", values,
+                                 scn::list_separator_and_until(',', '\n'));
     CHECK(ret);
 
     std::vector<int> cmp{0, 1, 2, 3, 42};
@@ -70,7 +73,8 @@ TEST_CASE("comma list until line break")
     CHECK(std::equal(values.begin(), values.end(), cmp.begin()));
 
     values.clear();
-    ret = scn::scan_list_until("0, 1, 2, 3, 42\n-1, 1024", values, '\n', ',');
+    ret = scn::scan_list_ex("0, 1, 2, 3, 42\n-1, 1024", values,
+                            scn::list_separator_and_until(',', '\n'));
     CHECK(ret);
 
     CHECK(values.size() == cmp.size());

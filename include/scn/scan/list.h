@@ -98,50 +98,210 @@ namespace scn {
         return temp(span_list_wrapper<typename decltype(_s)::value_type>(_s));
     }
 
-    namespace detail {
-        template <typename CharT>
-        struct zero_value;
-        template <>
-        struct zero_value<char> : std::integral_constant<char, 0> {
-        };
-        template <>
-        struct zero_value<wchar_t> : std::integral_constant<wchar_t, 0> {
-        };
+    /**
+     * Used to customize `scan_list_ex()`.
+     *
+     * \tparam CharT Can be a code unit type (`char` or `wchar_t`, depending on
+     * the source range), or `code_point`.
+     *
+     * `list_separator`, `list_until` and `list_separator_and_until` can be used
+     * to create a value of this type, taking advantage of template argument
+     * deduction (no need to hand-specify `CharT`).
+     */
+    template <typename CharT>
+    struct scan_list_options {
+        /**
+         * If set, up to one separator character can be accepted between values,
+         * which may be surrounded by whitespace.
+         */
+        optional<CharT> separator{};
+        /**
+         * If set, reading the list is stopped if this character is found
+         * between values.
+         *
+         * In that case, it is advanced over, and no error is returned.
+         */
+        optional<CharT> until{};
+    };
 
+    /**
+     * Create a `scan_list_options` for `scan_list_ex`, by using `ch` as the
+     * separator character.
+     */
+    template <typename CharT>
+    scan_list_options<CharT> list_separator(CharT ch)
+    {
+        return {optional<CharT>{ch}, nullopt};
+    }
+    /**
+     * Create a `scan_list_options` for `scan_list_ex`, by using `ch` as the
+     * until-character.
+     */
+    template <typename CharT>
+    scan_list_options<CharT> list_until(CharT ch)
+    {
+        return {nullopt, optional<CharT>{ch}};
+    }
+    /**
+     * Create a `scan_list_options` for `scan_list_ex`, by using `sep` as the
+     * separator, and `until` as the until-character.
+     */
+    template <typename CharT>
+    scan_list_options<CharT> list_separator_and_until(CharT sep, CharT until)
+    {
+        return {optional<CharT>{sep}, optional<CharT>{until}};
+    }
+
+    namespace detail {
         template <typename WrappedRange, typename CharT>
-        expected<CharT> read_single(WrappedRange& r, CharT)
+        expected<CharT> check_separator(WrappedRange& r, size_t& n, CharT)
         {
-            return read_code_unit(r);
+            auto ret = read_code_unit(r);
+            if (!ret) {
+                return ret.error();
+            }
+            n = 1;
+            return ret.value();
         }
         template <typename WrappedRange>
-        expected<code_point> read_single(WrappedRange& r, code_point)
+        expected<code_point> check_separator(WrappedRange& r,
+                                             size_t& n,
+                                             code_point)
         {
             unsigned char buf[4] = {0};
             auto ret = read_code_point(r, make_span(buf, 4), true);
             if (!ret) {
                 return ret.error();
             }
+            n = ret.value().chars.size();
             return ret.value().cp;
+        }
+
+        template <typename Context, typename Container, typename Separator>
+        auto scan_list_impl(Context& ctx,
+                            bool localized,
+                            Container& c,
+                            scan_list_options<Separator> options) -> error
+        {
+            using char_type = typename Context::char_type;
+            using value_type = typename Container::value_type;
+            value_type value;
+
+            auto args = make_args_for(ctx.range(), 1, value);
+
+            bool scanning = true;
+            while (scanning) {
+                if (c.size() == c.max_size()) {
+                    break;
+                }
+
+                // read value
+                auto pctx = make_parse_context(1, ctx.locale(), localized);
+                auto err = visit(ctx, pctx, basic_args<char_type>{args});
+                if (!err) {
+                    if (err == error::end_of_range) {
+                        break;
+                    }
+                    return err;
+                }
+                c.push_back(SCN_MOVE(value));
+
+                auto next = static_cast<Separator>(0);
+                size_t n{0};
+
+                auto read_next = [&]() -> error {
+                    auto ret = check_separator(ctx.range(), n,
+                                               static_cast<Separator>(0));
+                    if (!ret) {
+                        if (ret.error() == error::end_of_range) {
+                            scanning = false;
+                            return {};
+                        }
+                        return ret.error();
+                    }
+                    next = ret.value();
+
+                    err =
+                        putback_n(ctx.range(), static_cast<std::ptrdiff_t>(n));
+                    if (!err) {
+                        return err;
+                    }
+
+                    return {};
+                };
+
+                bool sep_found = false;
+                while (true) {
+                    // read until
+                    if (options.until) {
+                        err = read_next();
+                        if (!err) {
+                            return err;
+                        }
+                        if (!scanning) {
+                            break;
+                        }
+
+                        if (next == options.until.get()) {
+                            scanning = false;
+                            break;
+                        }
+                    }
+
+                    // read sep
+                    if (options.separator && !sep_found) {
+                        err = read_next();
+                        if (!err) {
+                            return err;
+                        }
+                        if (!scanning) {
+                            break;
+                        }
+
+                        if (next == options.separator.get()) {
+                            // skip to next char
+                            ctx.range().advance(static_cast<std::ptrdiff_t>(n));
+                            continue;
+                        }
+                    }
+
+                    err = read_next();
+                    if (!err) {
+                        return err;
+                    }
+
+                    if (ctx.locale().get_static().is_space(next)) {
+                        // skip ws
+                        ctx.range().advance(static_cast<std::ptrdiff_t>(n));
+                    }
+                    else {
+                        break;
+                    }
+                }
+            }
+
+            return {};
         }
     }  // namespace detail
 
     /**
      * Reads values repeatedly from `r` and writes them into `c`.
+     *
      * The values read are of type `Container::value_type`, and they are
      * written into `c` using `c.push_back`.
-     *
-     * The values must be separated by separator
-     * character `separator`, followed by whitespace. If `separator == 0`,
-     * no separator character is expected.
+     * The values are separated by whitespace.
      *
      * The range is read, until:
      *  - `c.max_size()` is reached, or
-     *  - range `EOF` was reached, or
-     *  - unexpected separator character was found between values.
+     *  - range `EOF` is reached
      *
-     * In all these cases, an error will not be returned, and the beginning
+     * In these cases, an error will not be returned, and the beginning
      * of the returned range will point to the first character after the
      * scanned list.
+     *
+     * If an invalid value is scanned, `error::invalid_scanned_value` is
+     * returned, but the values already in `vec` will remain there. The range is
+     * put back to the state it was before reading the invalid value.
      *
      * To scan into `span`, use \ref span_list_wrapper.
      * \ref make_span_list_wrapper
@@ -152,162 +312,97 @@ namespace scn {
      * // vec == [123, 456]
      * // result.empty() == true
      *
-     * result = scn::scan_list("123, 456", vec, ',');
+     * vec.clear();
+     * result = scn::scan_list("123 456 abc", vec);
      * // vec == [123, 456]
-     * // result.empty() == true
+     * // result.error() == invalid_scanned_value
+     * // result.range() == " abc"
      * \endcode
+     *
+     * \param r Range to read from
+     * \param c Container to write values to, using `c.push_back()`.
+     * `Container::value_type` will be used to determine the type of the values
+     * to read.
      */
-    template <typename Range,
-              typename Container,
-              typename Separator = typename detail::extract_char_type<
-                  ranges::iterator_t<Range>>::type>
-    SCN_NODISCARD auto scan_list(
-        Range&& r,
-        Container& c,
-        Separator separator = detail::zero_value<Separator>::value)
+    template <typename Range, typename Container>
+    SCN_NODISCARD auto scan_list(Range&& r, Container& c)
         -> detail::scan_result_for_range<Range>
     {
-        using value_type = typename Container::value_type;
-        value_type value;
-
         auto range = wrap(SCN_FWD(r));
-        using char_type = typename decltype(range)::char_type;
-
-        auto args = make_args_for(range, 1, value);
         auto ctx = make_context(SCN_MOVE(range));
-        auto pctx = make_parse_context(1, ctx.locale());
-        auto cargs = basic_args<char_type>{args};
+        using char_type = typename decltype(ctx)::char_type;
 
-        while (true) {
-            if (c.size() == c.max_size()) {
-                break;
-            }
+        auto err = detail::scan_list_impl(ctx, false, c,
+                                          scan_list_options<char_type>{});
 
-            pctx.reset_args_left(1);
-            auto err = visit(ctx, pctx, cargs);
-            if (!err) {
-                if (err == error::end_of_range) {
-                    break;
-                }
-                return detail::wrap_result(wrapped_error{err},
-                                           detail::range_tag<Range>{},
-                                           SCN_MOVE(ctx.range()));
-            }
-            c.push_back(SCN_MOVE(value));
-
-            if (separator != 0) {
-                auto sep_ret = detail::read_single(ctx.range(), separator);
-                if (!sep_ret) {
-                    if (sep_ret.error() == scn::error::end_of_range) {
-                        break;
-                    }
-                    return detail::wrap_result(wrapped_error{sep_ret.error()},
-                                               detail::range_tag<Range>{},
-                                               SCN_MOVE(ctx.range()));
-                }
-                if (sep_ret.value() == separator) {
-                    continue;
-                }
-                else {
-                    // Unexpected character, assuming end
-                    break;
-                }
-            }
-        }
-        return detail::wrap_result(wrapped_error{}, detail::range_tag<Range>{},
+        return detail::wrap_result(wrapped_error{err},
+                                   detail::range_tag<Range>{},
                                    SCN_MOVE(ctx.range()));
     }
 
     /**
-     * Otherwise equivalent to \ref scan_list, except with an additional
-     * case of stopping scanning: if `until` is found where a separator was
-     * expected.
+     * Otherwise equivalent to `scan_list()`, except can react to additional
+     * characters, based on `options`.
      *
-     * \see scan_list
+     * See `scan_list_options` for more information.
+     *
+     * \param options Options to use
      *
      * \code{.cpp}
      * std::vector<int> vec{};
-     * auto result = scn::scan_list_until("123 456\n789", vec, '\n');
+     * auto result = scn::scan_list_ex("123, 456", vec,
+     *                                 scn::list_separator(','));
      * // vec == [123, 456]
-     * // result.range() == "789"
+     * // result.empty() == true
      * \endcode
+     *
+     * \see scan_list
+     * \see scan_list_options
      */
-    template <typename Range,
-              typename Container,
-              typename Separator = typename detail::extract_char_type<
-                  ranges::iterator_t<Range>>::type>
-    SCN_NODISCARD auto scan_list_until(
-        Range&& r,
-        Container& c,
-        Separator until,
-        Separator separator = detail::zero_value<Separator>::value)
+    template <typename Range, typename Container, typename CharT>
+    SCN_NODISCARD auto scan_list_ex(Range&& r,
+                                    Container& c,
+                                    scan_list_options<CharT> options)
         -> detail::scan_result_for_range<Range>
     {
-        using value_type = typename Container::value_type;
-        value_type value;
-
         auto range = wrap(SCN_FWD(r));
-        using char_type = typename decltype(range)::char_type;
-
-        auto args = make_args_for(range, 1, value);
         auto ctx = make_context(SCN_MOVE(range));
 
-        bool scanning = true;
-        while (scanning) {
-            if (c.size() == c.max_size()) {
-                break;
-            }
+        auto err = detail::scan_list_impl(ctx, false, c, options);
 
-            auto pctx = make_parse_context(1, ctx.locale());
-            auto err = visit(ctx, pctx, basic_args<char_type>{args});
-            if (!err) {
-                if (err == error::end_of_range) {
-                    break;
-                }
-                return detail::wrap_result(wrapped_error{err},
-                                           detail::range_tag<Range>{},
-                                           SCN_MOVE(ctx.range()));
-            }
-            c.push_back(SCN_MOVE(value));
+        return detail::wrap_result(wrapped_error{err},
+                                   detail::range_tag<Range>{},
+                                   SCN_MOVE(ctx.range()));
+    }
 
-            bool sep_found = false;
-            while (true) {
-                auto next = read_code_unit(ctx.range(), false);
-                if (!next) {
-                    if (next.error() == scn::error::end_of_range) {
-                        scanning = false;
-                        break;
-                    }
-                    return detail::wrap_result(wrapped_error{next.error()},
-                                               detail::range_tag<Range>{},
-                                               SCN_MOVE(ctx.range()));
-                }
+    /**
+     * Otherwise equivalent to `scan_list_ex()`, except uses `loc` to scan the
+     * values.
+     *
+     * \param loc Locale to use for scanning. Must be a `std::locale`.
+     *
+     * \see scan_list_ex()
+     * \see scan_localized()
+     */
+    template <typename Locale,
+              typename Range,
+              typename Container,
+              typename CharT>
+    SCN_NODISCARD auto scan_list_localized(const Locale& loc,
+                                           Range&& r,
+                                           Container& c,
+                                           scan_list_options<CharT> options)
+        -> detail::scan_result_for_range<Range>
+    {
+        auto range = wrap(SCN_FWD(r));
+        using char_type = typename decltype(range)::char_type;
+        auto locale = make_locale_ref<char_type>(loc);
+        auto ctx = make_context(SCN_MOVE(range), SCN_MOVE(locale));
 
-                if (next.value() == until) {
-                    scanning = false;
-                    break;
-                }
+        auto err = detail::scan_list_impl(ctx, true, c, options);
 
-                if (ctx.locale().get_static().is_space(next.value())) {
-                    ctx.range().advance();
-                    continue;
-                }
-
-                if (separator != 0) {
-                    if (next.value() != separator || sep_found) {
-                        break;
-                    }
-                    else {
-                        ctx.range().advance();
-                        sep_found = true;
-                    }
-                }
-                else {
-                    break;
-                }
-            }
-        }
-        return detail::wrap_result(wrapped_error{}, detail::range_tag<Range>{},
+        return detail::wrap_result(wrapped_error{err},
+                                   detail::range_tag<Range>{},
                                    SCN_MOVE(ctx.range()));
     }
 

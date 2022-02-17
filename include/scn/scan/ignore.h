@@ -147,8 +147,10 @@ namespace scn {
 
     /**
      * Advances the beginning of \c r until \c until is found, or the
-     * beginning has been advanced \c n times. The character type of \c r
-     * must be \c CharT.
+     * beginning has been advanced \c n times.
+     *
+     * `Until` can be the `r` character type (`char` or `wchar_t`), or
+     * `code_point`.
      */
     template <typename Range, typename Until>
     SCN_NODISCARD auto ignore_until_n(Range&& r,

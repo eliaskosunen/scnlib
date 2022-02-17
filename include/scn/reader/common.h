@@ -1303,6 +1303,11 @@ namespace scn {
             return parse_common_end(pctx);
         }
 
+        void make_localized()
+        {
+            common_options |= localized;
+        }
+
         /**
          * Invoke `parse_common()` with default options (no type flags)
          */

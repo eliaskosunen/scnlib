@@ -18,8 +18,8 @@
 #ifndef SCN_DETAIL_PARSE_CONTEXT_H
 #define SCN_DETAIL_PARSE_CONTEXT_H
 
-#include "locale.h"
 #include "../util/expected.h"
+#include "locale.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -379,8 +379,10 @@ namespace scn {
         using locale_type = basic_locale_ref<char_type>;
         using string_view_type = basic_string_view<char_type>;
 
-        constexpr basic_empty_parse_context(int args, locale_type& loc)
-            : m_args_left(args), m_locale(loc)
+        constexpr basic_empty_parse_context(int args,
+                                            locale_type& loc,
+                                            bool localized = false)
+            : m_locale(loc), m_args_left(args), m_localized(localized)
         {
         }
 
@@ -493,8 +495,11 @@ namespace scn {
         }
 
         template <typename Scanner>
-        constexpr error parse(Scanner&) const
+        constexpr error parse(Scanner& s) const
         {
+            if (m_localized) {
+                s.make_localized();
+            }
             return {};
         }
 
@@ -516,25 +521,28 @@ namespace scn {
         }
 
     private:
-        int m_args_left;
-        bool m_should_skip_ws{false};
         locale_type& m_locale;
+        int m_args_left;
+        bool m_localized;
+        bool m_should_skip_ws{false};
     };
 
     namespace detail {
         template <typename CharT>
         basic_parse_context<CharT> make_parse_context_impl(
             basic_string_view<CharT> f,
-            basic_locale_ref<CharT>& loc)
+            basic_locale_ref<CharT>& loc,
+            bool)
         {
             return {f, loc};
         }
         template <typename CharT>
         basic_empty_parse_context<CharT> make_parse_context_impl(
             int i,
-            basic_locale_ref<CharT>& loc)
+            basic_locale_ref<CharT>& loc,
+            bool localized)
         {
-            return {i, loc};
+            return {i, loc, localized};
         }
 
         template <typename CharT>
@@ -547,18 +555,27 @@ namespace scn {
             template <typename CharT>
             using type = basic_empty_parse_context<CharT>;
         };
+
+        template <typename F, typename CharT>
+        auto make_parse_context(F f,
+                                basic_locale_ref<CharT>& locale,
+                                bool localized)
+            -> decltype(make_parse_context_impl(f, locale, localized))
+        {
+            return make_parse_context_impl(f, locale, localized);
+        }
     }  // namespace detail
 
     template <typename F, typename CharT>
     auto make_parse_context(F f, basic_locale_ref<CharT>& locale)
-        -> decltype(detail::make_parse_context_impl(f, locale))
+        -> decltype(detail::make_parse_context_impl(f, locale, false))
     {
-        return detail::make_parse_context_impl(f, locale);
+        return detail::make_parse_context_impl(f, locale, false);
     }
 
-    SCN_CLANG_POP // -Wpadded
+    SCN_CLANG_POP  // -Wpadded
 
-    SCN_END_NAMESPACE
+        SCN_END_NAMESPACE
 }  // namespace scn
 
 #endif  // SCN_DETAIL_PARSE_CONTEXT_H

@@ -49,7 +49,7 @@ namespace scn {
 
             String tmp;
             auto out = std::back_inserter(tmp);
-            auto e = read_until_space(r, out, until_pred<CharT>{until}, true);
+            auto e = read_until_space(r, out, pred, true);
             if (!e) {
                 return e;
             }
@@ -104,8 +104,6 @@ namespace scn {
      * \c until will be skipped in parsing: it will not be pushed into \c
      * str, and the returned range will go past it.
      *
-     * \c r and \c str must share character types, which must be \c CharT.
-     *
      * If `str` is convertible to a `basic_string_view`:
      *  - And if `r` is a `contiguous_range`:
      *    - `str` is set to point inside `r` with the appropriate length
@@ -113,7 +111,10 @@ namespace scn {
      *
      * Otherwise, clears `str` by calling `str.clear()`, and then reads the
      * range into `str` as if by repeatedly calling \c str.push_back.
-     * `str.reserve` is also required to be present.
+     * `str.reserve()` is also required to be present.
+     *
+     * `Until` can either be the same as `r` character type (`char` or
+     * `wchar_t`), or `code_point`.
      *
      * \code{.cpp}
      * auto source = "hello\nworld"

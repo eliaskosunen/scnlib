@@ -23,12 +23,11 @@ character type.
 .. doxygenfunction:: scan_value
 .. doxygenfunction:: input
 .. doxygenfunction:: prompt
-.. doxygenfunction:: getline(Range &&r, String &str, CharT until) -> detail::scan_result_for_range<Range>
+
+.. doxygenfunction:: getline(Range &&r, String &str, Until until) -> detail::scan_result_for_range<Range>
 .. doxygenfunction:: getline(Range &&r, String &str) -> detail::scan_result_for_range<Range>
 .. doxygenfunction:: ignore_until
 .. doxygenfunction:: ignore_until_n
-.. doxygenfunction:: scan_list
-.. doxygenfunction:: scan_list_until
 
 Source range
 ------------
@@ -173,6 +172,19 @@ Error types
     :members:
 .. doxygenclass:: scn::expected
     :members:
+
+Lists
+-----
+
+.. doxygenfunction:: scan_list
+.. doxygenfunction:: scan_list_ex
+.. doxygenfunction:: scan_list_localized
+
+.. doxygenstruct:: scn::scan_list_options
+    :members:
+.. doxygenfunction:: list_separator
+.. doxygenfunction:: list_until
+.. doxygenfunction:: list_separator_and_until
 
 Convenience scan types
 ----------------------

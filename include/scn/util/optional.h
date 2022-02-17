@@ -23,6 +23,12 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    struct nullopt_t {
+    };
+    namespace {
+        static constexpr auto& nullopt = detail::static_const<nullopt_t>::value;
+    }
+
     /**
      * A very lackluster optional implementation.
      * Useful when scanning non-default-constructible types, especially with
@@ -44,9 +50,10 @@ namespace scn {
         using storage_type = detail::erased_storage<T>;
 
         optional() = default;
+        optional(nullopt_t) : m_storage{} {}
 
-        optional(value_type&& val) : m_storage(SCN_MOVE(val)) {}
-        optional& operator=(value_type&& val)
+        optional(value_type val) : m_storage(SCN_MOVE(val)) {}
+        optional& operator=(value_type val)
         {
             m_storage = storage_type(SCN_MOVE(val));
             return *this;

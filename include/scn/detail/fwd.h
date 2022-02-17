@@ -96,6 +96,8 @@ namespace scn {
         {
             return false;
         }
+
+        static constexpr void make_localized() {}
     };
 
     struct empty_parser;

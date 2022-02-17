@@ -31,7 +31,8 @@ namespace scn {
         template <typename Context>
         error scan(string_list& val, Context& ctx)
         {
-            auto result = scn::scan_list_until(ctx.range(), val.list, ']', ',');
+            auto result = scn::scan_list_ex(
+                ctx.range(), val.list, scn::list_separator_and_until(',', ']'));
             if (!result) {
                 return result.error();
             }
