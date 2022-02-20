@@ -169,9 +169,8 @@ Or with ``sscanf``:
     std::sscanf("0 1 2", "%d %d", &a, &b);
 
     // Not really possible with scanf!
-    // Using a fixed size buffer
-    char buf[6] = {0};
-    std::sscanf("hello world", "%5s", buf);
+    char buf[16] = {0};
+    std::sscanf("hello world", "%15s", buf);
     // buf == "hello"
 
 Error handling and return values
@@ -183,6 +182,9 @@ The library compiles with ``-fno-exceptions -fno-rtti`` and is perfectly usable 
 Instead, it uses return values to signal errors.
 This return value is truthy if the operation succeeded.
 Using the ``.error()`` member function more information about the error can be gathered.
+
+``scn::scan`` and others are marked with ``[[nodiscard]]``-attributes,
+so not checking the return value will cause a compiler warning.
 
 If an error occurs, the arguments that were not scanned are not written to.
 Beware of using possibly uninitialized variables.
@@ -243,7 +245,7 @@ The result type has some additional useful member functions.
 These include:
 
  * ``.empty()``: returns ``true`` if the leftover range is empty, meaning that there are definitely no values to scan from the source range any more.
- * ``.string()``, ``.string_view()``, and ``.span()``: like ``.reconstruct()``, except they work for every contiguous range, and return a value of the type specified in the function name
+ * ``.range_as_string()``, ``.range_as_string_view()``, and ``.range_as_span()``: like ``.reconstruct()``, except they work for every contiguous range, and return a value of the type specified in the function name
 
 See the API documentation for more details.
 
@@ -471,24 +473,26 @@ Its return type is similar to that of ``scn::scan``.
     // result == true
     // list == [123, 456, 789]
 
-``scn::scan_list`` can also be passed a third argument marking a delimeter character:
+For more customization, ``scn::scan_list_ex`` can be used.
+It takes a third parameter, of type ``scn::scan_list_options``, which can set a delimeter and an until-character.
+For easier use, factory functions ``scn::list_delimeter``, ``scn::list_until``, and ``scn::list_delimeter_and_until`` exist.
+
+The delimeter character can be set to skip a character, like a comma, between list items.
 
 .. code-block:: cpp
 
     std::vector<int> list;
-    auto result = scn::scan_list("123, 456, 789", list, ',');
+    auto result = scn::scan_list_ex("123, 456, 789", list, scn::list_delimeter(','));
     // result == true
     // list == [123, 456, 789]
 
-``scn::scan_list`` will read until an invalid value or delimeter is found or the source range is exhausted.
-``scn::scan_list_until`` can be used to control this behavior.
-As its third argument, it takes a character, until which it will read the source range, similar to ``getline``.
-The delimeter character argument is still the last argument and optional.
+``scn::scan_list`` will read until an invalid value or delimeter is found, or the source range is exhausted.
+Reading can also be stopped by setting an until-character.
 
 .. code-block:: cpp
 
     std::vector<int> list;
-    auto result = scn::scan_list_until("123 456 789\n123", list, '\n');
+    auto result = scn::scan_list_ex("123 456 789\n123", list, scn::list_until('\n'));
     // result == true
     // list == [123, 456, 789]
     // result.range() == "123"
@@ -546,8 +550,8 @@ that it uses to scan the value, instead of a source range.
         double d;
     };
 
-    template <typename CharT>
-    struct scn::scanner<CharT, int_and_double> : scn::empty_parser {
+    template <>
+    struct scn::scanner<int_and_double> : scn::empty_parser {
         template <typename Context>
         error scan(int_and_double& val, Context& ctx)
         {
@@ -566,8 +570,9 @@ that it uses to scan the value, instead of a source range.
 The above example inherits from ``scn::empty_parser``.
 This implements the format string functionality for this type.
 ``scn::empty_parser`` is a good default choice, as it only accepts empty format strings.
-You could also inherit from other scanner types (like ``scn::scanner<CharT, int>``),
+You could also inherit from other scanner types (like ``scn::scanner<int>``),
 or implement ``parse()`` by hand (see ``reader.h`` in the library source code).
+There's also ``scn::common_parser`` and ``scn::common_parser_default``, see the API documentation for more information on those.
 
 Should you need more direct control, you could use the scanning functions, like ``scn::scan`` directly.
 In this case, make sure to assign the returned range into the scanning context.
@@ -660,6 +665,24 @@ The return types of scanning narrow and wide ranges are incompatible and cannot 
 
 Wide ranges are useful if your source data is wide (often the case on Windows).
 Narrow ranges should be preferred if possible, however.
+
+Character encoding
+******************
+
+The library assumes, that all narrow ranges are UTF-8, and all wide ranges are UTF-16 or UTF-32, depending on ``sizeof(wchar_t)``.
+This holds, whether or not a ``std::locale`` is used.
+
+To scan a Unicode code point, use ``scn::code_point``:
+
+.. code-block::cpp
+
+    // Assumed to be UTF-8 (because it's narrow)
+    auto source = "ä";
+    // source == [0xc3, 0xa4, 0x0]
+    scn::code_point cp{};
+    auto result = scn::scan("ä", "{}", cp);
+    // result.empty() == true
+    // cp == 0xe4 (ä is U+00E4)
 
 The encoding of wide ranges is assumed to be whatever is set in the global C locale.
 The encoding must be ASCII-compatible.

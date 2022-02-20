@@ -229,86 +229,78 @@ them. The index tells the library which argument the braces correspond to.
 After the index comes a colon and the scanning options.
 The colon only has to be there if any scanning options are specified.
 
-For ``span`` s, there are no supported scanning options.
+The format of the format specifiers are as follows. ``[foo]`` means an optional flag.
 
-Integral types
+::
+
+    [[fill]align][width][L][type]
+
+Fill and align
 **************
 
-There are localization specifiers:
+Values to be parsed can be aligned in the source, using fill characters.
+For example, an integer could be aligned in a field using asterisks, like ``"****42****"``.
+This can be parsed without extra trickery, by specifying the fill character ``*``, and center alignment ``^``:
 
- * ``n``: Use thousands separator from the given locale
- * ``l``: Accept characters specified as digits by the given locale. Implies ``n``
- * (default): Use ``,`` as thousands separator
-   (not accepted by default, though, use ``'`` to also parse thousands separators) and ``[0-9]`` as digits
+.. code-block:: cpp
 
-And base specifiers:
+    int i;
+    auto ret = scn::scan("*****42*****", "{:*^}", i);
+    // i == 42
+    // ret.empty() == true
 
- * ``d``: Decimal (base-10)
- * ``x``: Hexadecimal (base-16)
- * ``o``: Octal (base-8)
- * ``b..`` Custom base; ``b`` followed by one or two digits
-   (e.g. ``b2`` for binary). Base must be between 2 and 36, inclusive
- * ``i`` and ``u``: Detect base.
-   ``0x``/``0X`` prefix for hexadecimal,
-   ``0`` prefix for octal, decimal otherwise.
-   Argument must be signed (``i``) or unsigned (``u``), respectively.
- * (default): Decimal (base-10)
+The fill character can be any character other than ``}``.
+If no fill character is given, a space is used.
 
-And other options:
+Supported alignment options are:
 
- * ``'``: Accept thousands separator characters,
-   as specified by the given locale
- * (default): Thousands separator characters aren't accepted
+ * ``<``: for left-alignment (value is in the left of the field, fill characters come after it)
+ * ``>``: for right-alignment
+ * ``^``: for center-alignment -- fill characters both before and after the value.
 
-These specifiers can be given in any order, with up to one from each
-category.
+Width
+*****
 
-Floating-point types
-********************
+Width specifies the maximum number of characters (= code units) that can be read from the source stream.
+Width can be any unsigned integer.
 
-First, there's a localization specifier:
+.. code-block:: cpp
 
- * ``n``: Use decimal and thousands separator from the given locale
- * (default): Use ``.`` as decimal point and ``,`` as thousands separator
+    std::string str{};
+    auto ret = scn::scan("abcde", "{:3}", s);
+    // str == "123"
+    // ret.range() == "45"
 
-After that, an optional ``a``, ``A``, ``e``, ``E``, ``f``, ``F``, ``g`` or ``G`` can be
-given, which has no effect.
+Localized
+*********
 
-``bool``
-********
+Specifying the ``L``-flag will cause the library to use localized scanning for this value.
+If a locale was passed to the scanning function (for example, with ``scn::scan_localized``), it will be used.
+Otherwise, the global C++ locale will be used (``std::locale{}``, set with ``std::locale::global()``).
 
-First, there are a number of specifiers that can be given, in any order:
+.. code-block:: cpp
 
- * ``a``: Accept only ``true`` or ``false``
- * ``n``: Accept only ``0`` or ``1``
- * ``l``: Implies ``a``. Expect boolean text values as specified as such by the
-   given locale
- * (default): Accept ``0``, ``1``, ``true``, and ``false``, equivalent to ``an``
+    double d{};
 
-After that, an optional ``b`` can be given, which has no effect.
+    // uses global locale ("C", because std::locale::global() hasn't been called)
+    auto ret = scn::scan("3.14", "{:L}", d);
+    // ret.empty() == true
+    // d == 3.14
 
-Strings (``std::string``, ``string_view``)
-******************************************
+    // uses the passed-in locale
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "3,14", "{:L}", d);
+    // ret.empty() == true
+    // d == 3.14
 
-Only supported option is ``s``, which has no effect
+Type
+****
 
-Characters (``char``, ``wchar_t``)
-**********************************
-
-Only supported option is ``c``, which has no effect
-
-Whitespace
-**********
-
-Any amount of whitespace in the format string tells the library to skip until
-the next non-whitespace character is found from the range. Not finding any
-whitespace from the range is not an error.
 
 Literal characters
 ******************
 
 To scan literal characters and immediately discard them, just write the
-characters in the format string. ``scanf``-like ``[]``-wildcard is not supported.
+characters in the format string.
 To read literal ``{`` or ``}``, write ``{{`` or ``}}``, respectively.
 
 .. code-block:: cpp
