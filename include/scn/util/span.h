@@ -229,7 +229,7 @@ namespace scn {
         using std::end;
         return span<typename T::value_type>(
             detail::to_address(begin(container)),
-            detail::to_address(end(container)));
+            detail::to_address(end(container) - 1) + 1);
     }
 
     SCN_END_NAMESPACE

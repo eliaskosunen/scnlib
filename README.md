@@ -38,10 +38,8 @@ Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 This library is the reference implementation of the ISO C++ standards proposal
 [P1729 "Text Parsing"](https://wg21.link/p1729).
 
-This library is currently of pre-release quality (version 0.4),
-but its interface and behavior should remain relatively stable.
-Unless significant design flaws can be found,
-the next major release will be 1.0-rc1.
+This library is currently of pre-release quality (version 1.0-rc1),
+but it's close to being stable.
 1.0 will be released when an rc-version will prove itself reasonably bug-free.
 
 ## Documentation

@@ -1,6 +1,6 @@
-# 1.0-rc1 (not released)
+# 1.0-rc1
 
-_Released 2022-xx-xx_
+_Released 2022-02-21_
 
 ## Additions
 
