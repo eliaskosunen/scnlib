@@ -226,6 +226,8 @@ namespace scn {
             }
             SCN_GCC_POP
 
+            struct dummy {};
+
             /**
              * Returns `true` if `begin() == end()`.
              */

@@ -77,7 +77,7 @@ namespace scn {
 
     /**
      * Adapts a contiguous buffer into a type containing a `span` that can
-     * be read into using \ref scan_list.
+     * be read into using \ref scn::scan_list.
      *
      * Example adapted from \ref span_list_wrapper:
      * \code{.cpp}
@@ -324,6 +324,11 @@ namespace scn {
      * `Container::value_type` will be used to determine the type of the values
      * to read.
      */
+#if SCN_DOXYGEN
+    template <typename Range, typename Container>
+    auto scan_list(Range&& r, Container& c)
+        -> detail::scan_result_for_range<Range>;
+#else
     template <typename Range, typename Container>
     SCN_NODISCARD auto scan_list(Range&& r, Container& c)
         -> detail::scan_result_for_range<Range>
@@ -339,6 +344,7 @@ namespace scn {
                                    detail::range_tag<Range>{},
                                    SCN_MOVE(ctx.range()));
     }
+#endif
 
     /**
      * Otherwise equivalent to `scan_list()`, except can react to additional
@@ -346,6 +352,8 @@ namespace scn {
      *
      * See `scan_list_options` for more information.
      *
+     * \param r Range to scan from
+     * \param c Container to write read values into
      * \param options Options to use
      *
      * \code{.cpp}
@@ -359,6 +367,11 @@ namespace scn {
      * \see scan_list
      * \see scan_list_options
      */
+#if SCN_DOXYGEN
+    template <typename Range, typename Container, typename CharT>
+    auto scan_list_ex(Range&& r, Container& c, scan_list_options<CharT> options)
+        -> detail::scan_result_for_range<Range>;
+#else
     template <typename Range, typename Container, typename CharT>
     SCN_NODISCARD auto scan_list_ex(Range&& r,
                                     Container& c,
@@ -374,16 +387,31 @@ namespace scn {
                                    detail::range_tag<Range>{},
                                    SCN_MOVE(ctx.range()));
     }
+#endif
 
     /**
      * Otherwise equivalent to `scan_list_ex()`, except uses `loc` to scan the
      * values.
      *
      * \param loc Locale to use for scanning. Must be a `std::locale`.
+     * \param r Range to scan from
+     * \param c Container to write read values into
+     * \param options Options to use
      *
      * \see scan_list_ex()
      * \see scan_localized()
      */
+#if SCN_DOXYGEN
+    template <typename Locale,
+              typename Range,
+              typename Container,
+              typename CharT>
+    auto scan_list_localized(const Locale& loc,
+                             Range&& r,
+                             Container& c,
+                             scan_list_options<CharT> options)
+        -> detail::scan_result_for_range<Range>;
+#else
     template <typename Locale,
               typename Range,
               typename Container,
@@ -405,6 +433,7 @@ namespace scn {
                                    detail::range_tag<Range>{},
                                    SCN_MOVE(ctx.range()));
     }
+#endif
 
     SCN_END_NAMESPACE
 }  // namespace scn

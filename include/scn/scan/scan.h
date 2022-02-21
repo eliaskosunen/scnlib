@@ -96,6 +96,8 @@ namespace scn {
 
     // scan
 
+    // For some reason, Doxygen dislikes SCN_NODISCARD
+
     /**
      * The most fundamental part of the scanning API.
      * Reads from the range in \c r according to the format string \c f.
@@ -106,12 +108,18 @@ namespace scn {
      * // i == 123
      * \endcode
      */
+#if SCN_DOXYGEN
+    template <typename Range, typename Format, typename... Args>
+    auto scan(Range&& r, const Format& f, Args&... a)
+        -> detail::scan_result_for_range<Range>;
+#else
     template <typename Range, typename Format, typename... Args>
     SCN_NODISCARD auto scan(Range&& r, const Format& f, Args&... a)
         -> detail::scan_result_for_range<Range>
     {
         return detail::scan_boilerplate(SCN_FWD(r), f, a...);
     }
+#endif
 
     // default format
 
@@ -130,12 +138,18 @@ namespace scn {
      *
      * \see scan
      */
+#if SCN_DOXYGEN
+    template <typename Range, typename... Args>
+    auto scan_default(Range&& r, Args&... a)
+        -> detail::scan_result_for_range<Range>;
+#else
     template <typename Range, typename... Args>
     SCN_NODISCARD auto scan_default(Range&& r, Args&... a)
         -> detail::scan_result_for_range<Range>
     {
         return detail::scan_boilerplate_default(std::forward<Range>(r), a...);
     }
+#endif
 
     // scan localized
 
@@ -144,9 +158,10 @@ namespace scn {
      * \c loc must be a \c std::locale. The parameter is a template to avoid
      * inclusion of `<locale>`.
      *
-     * Use of this function is discouraged, due to the overhead involved with
-     * locales. Note, that the other functions are completely locale-agnostic,
-     * and aren't affected by changes to the global C locale.
+     * Use of this function is discouraged, due to the overhead involved
+     * with locales. Note, that the other functions are completely
+     * locale-agnostic, and aren't affected by changes to the global C
+     * locale.
      *
      * \code{.cpp}
      * double d;
@@ -156,6 +171,16 @@ namespace scn {
      *
      * \see scan
      */
+#if SCN_DOXYGEN
+    template <typename Locale,
+              typename Range,
+              typename Format,
+              typename... Args>
+    auto scan_localized(const Locale& loc,
+                        Range&& r,
+                        const Format& f,
+                        Args&... a) -> detail::scan_result_for_range<Range>;
+#else
     template <typename Locale,
               typename Range,
               typename Format,
@@ -169,6 +194,7 @@ namespace scn {
         return detail::scan_boilerplate_localized(loc, std::forward<Range>(r),
                                                   f, a...);
     }
+#endif
 
     // value
 
@@ -187,6 +213,11 @@ namespace scn {
      * }
      * \endcode
      */
+#if SCN_DOXYGEN
+    template <typename T, typename Range>
+    auto scan_value(Range&& r)
+        -> detail::generic_scan_result_for_range<expected<T>, Range>;
+#else
     template <typename T, typename Range>
     SCN_NODISCARD auto scan_value(Range&& r)
         -> detail::generic_scan_result_for_range<expected<T>, Range>
@@ -207,6 +238,7 @@ namespace scn {
                                    detail::range_tag<Range>{},
                                    SCN_MOVE(ctx.range()));
     }
+#endif
 
     // input
 
@@ -218,6 +250,10 @@ namespace scn {
     template <typename Format,
               typename... Args,
               typename CharT = ranges::range_value_t<Format>>
+#if SCN_DOXYGEN
+    auto input(const Format& f, Args&... a)
+        -> detail::scan_result_for_range<basic_file<CharT>&>;
+#else
     SCN_NODISCARD auto input(const Format& f, Args&... a)
         -> detail::scan_result_for_range<basic_file<CharT>&>
     {
@@ -226,6 +262,7 @@ namespace scn {
         range.sync();
         return ret;
     }
+#endif
 
     // prompt
 
@@ -251,15 +288,21 @@ namespace scn {
      * //   scn::input("{}", i);
      * \endcode
      */
+#if SCN_DOXYGEN
+    template <typename CharT, typename Format, typename... Args>
+    auto prompt(const CharT* p, const Format& f, Args&... a)
+        -> detail::scan_result_for_range<basic_file<CharT>&>;
+#else
     template <typename CharT, typename Format, typename... Args>
     SCN_NODISCARD auto prompt(const CharT* p, const Format& f, Args&... a)
-        -> decltype(input(f, a...))
+        -> detail::scan_result_for_range<basic_file<CharT>&>
     {
         SCN_EXPECT(p != nullptr);
         detail::put_stdout(p);
 
         return input(f, a...);
     }
+#endif
 
     // parse_integer
 
@@ -275,6 +318,12 @@ namespace scn {
      * @param val parsed integer, must be value-constructed
      * @param base between [2,36]
      */
+#if SCN_DOXYGEN
+    template <typename T, typename CharT>
+    expected<const CharT*> parse_integer(basic_string_view<CharT> str,
+                                         T& val,
+                                         int base = 10);
+#else
     template <typename T, typename CharT>
     SCN_NODISCARD expected<const CharT*>
     parse_integer(basic_string_view<CharT> str, T& val, int base = 10)
@@ -290,6 +339,7 @@ namespace scn {
         }
         return {ret.value()};
     }
+#endif
 
     /**
      * Parses float into \c val from \c str.
@@ -298,6 +348,10 @@ namespace scn {
      * @param str source, can't be empty
      * @param val parsed float, must be value-constructed
      */
+#if SCN_DOXYGEN
+    template <typename T, typename CharT>
+    expected<const CharT*> parse_float(basic_string_view<CharT> str, T& val);
+#else
     template <typename T, typename CharT>
     SCN_NODISCARD expected<const CharT*> parse_float(
         basic_string_view<CharT> str,
@@ -312,6 +366,7 @@ namespace scn {
         }
         return {str.data() + ret.value()};
     }
+#endif
 
     /**
      * A convenience function for creating scanners for user-provided types.
@@ -342,6 +397,12 @@ namespace scn {
      * \param f Format string to parse
      * \param a Member types (etc) to parse
      */
+#if SCN_DOXYGEN
+    template <typename WrappedRange, typename Format, typename... Args>
+    error scan_usertype(basic_context<WrappedRange>& ctx,
+                        const Format& f,
+                        Args&... a);
+#else
     template <typename WrappedRange, typename Format, typename... Args>
     SCN_NODISCARD error scan_usertype(basic_context<WrappedRange>& ctx,
                                       const Format& f,
@@ -355,6 +416,7 @@ namespace scn {
                               basic_parse_context<char_type>>(a...);
         return vscan_usertype(ctx, basic_string_view<char_type>(f), {args});
     }
+#endif
 
     SCN_END_NAMESPACE
 }  // namespace scn

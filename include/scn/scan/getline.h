@@ -129,6 +129,11 @@ namespace scn {
      * // result.empty() == true
      * \endcode
      */
+#if SCN_DOXYGEN
+    template <typename Range, typename String, typename Until>
+    auto getline(Range&& r, String& str, Until until)
+        -> detail::scan_result_for_range<Range>;
+#else
     template <typename Range, typename String, typename Until>
     SCN_NODISCARD auto getline(Range&& r, String& str, Until until)
         -> detail::scan_result_for_range<Range>
@@ -147,6 +152,7 @@ namespace scn {
         return detail::wrap_result(
             wrapped_error{err}, detail::range_tag<Range>{}, SCN_MOVE(wrapped));
     }
+#endif
 
     /**
      * Equivalent to \ref getline with the last parameter set to
@@ -156,6 +162,14 @@ namespace scn {
      *
      * The character type is determined by `r`.
      */
+#if SCN_DOXYGEN
+    template <typename Range,
+              typename String,
+              typename CharT = typename detail::extract_char_type<
+                  ranges::iterator_t<range_wrapper_for_t<Range>>>::type>
+    auto getline(Range&& r, String& str)
+        -> detail::scan_result_for_range<Range>;
+#else
     template <typename Range,
               typename String,
               typename CharT = typename detail::extract_char_type<
@@ -166,6 +180,7 @@ namespace scn {
         return getline(std::forward<Range>(r), str,
                        detail::ascii_widen<CharT>('\n'));
     }
+#endif
 
     SCN_END_NAMESPACE
 }  // namespace scn

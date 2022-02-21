@@ -126,6 +126,11 @@ namespace scn {
     /**
      * Advances the beginning of \c r until \c until is found.
      */
+#if SCN_DOXYGEN
+    template <typename Range, typename Until>
+    auto ignore_until(Range&& r, Until until)
+        -> detail::scan_result_for_range<Range>;
+#else
     template <typename Range, typename Until>
     SCN_NODISCARD auto ignore_until(Range&& r, Until until)
         -> detail::scan_result_for_range<Range>
@@ -144,6 +149,7 @@ namespace scn {
         return detail::wrap_result(
             wrapped_error{err}, detail::range_tag<Range>{}, SCN_MOVE(wrapped));
     }
+#endif
 
     /**
      * Advances the beginning of \c r until \c until is found, or the
@@ -152,6 +158,12 @@ namespace scn {
      * `Until` can be the `r` character type (`char` or `wchar_t`), or
      * `code_point`.
      */
+#if SCN_DOXYGEN
+    template <typename Range, typename Until>
+    auto ignore_until_n(Range&& r,
+                        ranges::range_difference_t<Range> n,
+                        Until until) -> detail::scan_result_for_range<Range>;
+#else
     template <typename Range, typename Until>
     SCN_NODISCARD auto ignore_until_n(Range&& r,
                                       ranges::range_difference_t<Range> n,
@@ -169,6 +181,7 @@ namespace scn {
         return detail::wrap_result(
             wrapped_error{err}, detail::range_tag<Range>{}, SCN_MOVE(wrapped));
     }
+#endif
 
     SCN_END_NAMESPACE
 }  // namespace scn

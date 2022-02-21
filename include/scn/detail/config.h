@@ -245,6 +245,12 @@
 #include <version>
 #endif
 
+#if defined(_SCN_DOXYGEN) && _SCN_DOXYGEN
+#define SCN_DOXYGEN 1
+#else
+#define SCN_DOXYGEN 0
+#endif
+
 // Detect constexpr
 #if defined(__cpp_constexpr)
 #if __cpp_constexpr >= 201304
@@ -266,7 +272,7 @@
 #endif
 #endif
 
-#if SCN_HAS_RELAXED_CONSTEXPR
+#if SCN_HAS_RELAXED_CONSTEXPR || SCN_DOXYGEN
 #define SCN_CONSTEXPR14 constexpr
 #else
 #define SCN_CONSTEXPR14 inline
@@ -285,7 +291,7 @@
     (SCN_MSVC >= SCN_COMPILER(19, 11, 0) && SCN_MSVC_LANG >= SCN_STD_17) || \
     ((SCN_GCC >= SCN_COMPILER(7, 0, 0) ||                                   \
       SCN_INTEL >= SCN_COMPILER(18, 0, 0)) &&                               \
-     __cplusplus >= SCN_STD_17)
+     __cplusplus >= SCN_STD_17) && !SCN_DOXYGEN
 #define SCN_NODISCARD [[nodiscard]]
 #else
 #define SCN_NODISCARD /*nodiscard*/
@@ -384,7 +390,7 @@
 #ifndef SCN_DEPRECATED
 
 #if (SCN_HAS_CPP_ATTRIBUTE(deprecated) && SCN_STD >= 201402L) || \
-    SCN_MSVC >= SCN_COMPILER(19, 0, 0)
+    SCN_MSVC >= SCN_COMPILER(19, 0, 0) || SCN_DOXYGEN
 #define SCN_DEPRECATED [[deprecated]]
 #else
 

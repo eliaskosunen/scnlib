@@ -18,17 +18,17 @@
 #ifndef SCN_DETAIL_RESULT_H
 #define SCN_DETAIL_RESULT_H
 
+#include "../util/expected.h"
 #include "error.h"
 #include "range.h"
-#include "../util/expected.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     /**
      * Base class for the result type returned by most scanning functions
-     * (except for \ref scan_value). \ref scan_result_base inherits either from
-     * this class or \ref expected.
+     * (except for \ref scan_value). \ref scn::detail::scan_result_base inherits
+     * either from this class or \ref expected.
      */
     struct wrapped_error {
         wrapped_error() = default;

@@ -24,24 +24,34 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    /**
-     * Alternative interface for scanning, returning values as a tuple, instead
-     * of taking them by reference.
-     *
-     * It's highly recommended to use this interface only with C++17 or later,
-     * as structured bindings make it way more ergonomic.
-     *
-     * Compared to the regular scan interface, the performance of this interface
-     * is the same (generated code is virtually identical with optimizations
-     * enabled), but the compile time is slower.
-     *
-     * Values scanned by this function still need to be default-constructible.
-     * To scan a non-default-constructible value, use \c scn::optional
-     *
-     * \param r Input range
-     * \return Tuple, where the first element is the scan result, and the
-     * remaining elements are the scanned values.
-     */
+    namespace dummy {
+    }
+
+/**
+ * Alternative interface for scanning, returning values as a tuple, instead
+ * of taking them by reference.
+ *
+ * It's highly recommended to use this interface only with C++17 or later,
+ * as structured bindings make it way more ergonomic.
+ *
+ * Compared to the regular scan interface, the performance of this interface
+ * is the same (generated code is virtually identical with optimizations
+ * enabled), but the compile time is slower.
+ *
+ * Values scanned by this function still need to be default-constructible.
+ * To scan a non-default-constructible value, use \c scn::optional
+ *
+ * \param r Input range
+ * \param f Format string to use
+ *
+ * \return Tuple, where the first element is the scan result, and the
+ * remaining elements are the scanned values.
+ */
+#if SCN_DOXYGEN
+    template <typename... Args, typename Range, typename Format>
+    auto scan_tuple(Range&& r, Format f)
+        -> std::tuple<detail::scan_result_for_range<Range>, Args...>;
+#else
     template <typename... Args, typename Range, typename Format>
     SCN_NODISCARD auto scan_tuple(Range&& r, Format f)
         -> std::tuple<detail::scan_result_for_range<Range>, Args...>
@@ -69,7 +79,16 @@ namespace scn {
                                                    SCN_MOVE(ret.range))},
             SCN_MOVE(values));
     }
+#endif
 
+    /**
+     * Equivalent to `scan_tuple`, except uses `vscan_default` under the hood.
+     */
+#if SCN_DOXYGEN
+    template <typename... Args, typename Range>
+    auto scan_tuple_default(Range&& r)
+        -> std::tuple<detail::scan_result_for_range<Range>, Args...>;
+#else
     template <typename... Args, typename Range>
     SCN_NODISCARD auto scan_tuple_default(Range&& r)
         -> std::tuple<detail::scan_result_for_range<Range>, Args...>
@@ -96,6 +115,7 @@ namespace scn {
                                                    SCN_MOVE(ret.range))},
             SCN_MOVE(values));
     }
+#endif
 
     SCN_END_NAMESPACE
 }  // namespace scn

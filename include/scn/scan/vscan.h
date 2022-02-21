@@ -90,6 +90,8 @@ namespace scn {
      *
      * \param range Source range that has been wrapped with `detail::wrap`, and
      * passed in as an rvalue.
+     * \param fmt Format string to use
+     * \param args Type-erased values to read
      */
     template <typename WrappedRange,
               typename CharT = typename WrappedRange::char_type>
@@ -103,7 +105,10 @@ namespace scn {
     /**
      * To be used with `scan_default`
      *
+     * \param range Source range that has been wrapped with `detail::wrap`, and
+     * passed in as an rvalue.
      * \param n_args Number of arguments in args
+     * \param args Type-erased values to read
      *
      * \see vscan
      */
@@ -121,6 +126,10 @@ namespace scn {
      * To be used with `scan_localized`
      *
      * \param loc Locale to use
+     * \param range Source range that has been wrapped with `detail::wrap`, and
+     * passed in as an rvalue.
+     * \param fmt Format string to use
+     * \param args Type-erased values to read
      *
      * \see vscan
      */

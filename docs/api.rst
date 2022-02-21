@@ -141,6 +141,12 @@ This issue can be avoided by using a ``string_view``:
     scn::scan_default(scn::string_view{source}, i);
     // std::string_view would also work
 
+Range wrapper
+*************
+
+.. doxygenclass:: scn::detail::range_wrapper
+    :members:
+
 Return type
 -----------
 
@@ -292,9 +298,217 @@ Otherwise, the global C++ locale will be used (``std::locale{}``, set with ``std
     // ret.empty() == true
     // d == 3.14
 
+Itself, the ``L`` flag has an effect with floats, where it affects the accepted decimal separator.
+In conjunction with other flags (``n`` and ``'``) it can have additional effects.
+
 Type
 ****
 
+The type flag can be used to further specify how the value is to be parsed, what values are accepted, and how they are interpreted.
+The accepted flags and their meanings depend on the actual type to be scanned.
+
+Type: int
+*********
+
+For integral types (``short``, ``int``, ``long``, ``long long`` + ``unsigned`` versions),
+the flags are organized in three categories.
+Up to one from each category can be present in the format string.
+
+First category:
+
+ * ``b``: Binary, optional prefix ``0b`` or ``0B`` accepted
+ * ``Bnn``: (``B`` followed by two digits): custom base, ``n`` in range 2-36 (inclusive), no base prefix accepted
+ * ``d``: Decimal, no base prefix accepted
+ * ``i``: Integer, detect base by prefix: ``0b``/``0B`` for binary, ``0o``/``0O``/``0`` for octal, ``0x``/``0X`` for hex, decimal otherwise
+ * ``u``: Unsigned decimal, no sign or base prefix accepted (even for signed types)
+ * ``o``: Octal, optional prefix ``0o``, ``0O`` or ``0`` accepted
+ * ``x``: Hex, optional prefix ``0x`` or ``0X`` accepted
+ * (default): ``d``
+
+Second category:
+
+ * ``n``: Accept digits as specified by the supplied locale, implies ``L``
+ * (default): Only digits ``[0-9]`` are accepted, no custom digits
+
+Third category:
+
+ * ``'``: Accept thousands separators: default to ``,``, use locale if ``L`` set
+ * (default): Only digits ``[0-9]`` are accepted, no thousands separator
+
+Type: float
+***********
+
+For floats (``float``, ``double`` and ``long double``), there are also three categories,
+where up to one from each category can be present in the format string.
+
+First category:
+
+ * ``a`` and ``A``: Hex float accepted (e.g. ``0x1f.0p2``)
+ * ``e`` and ``E``: Scientific format accepted (``123.456e2``)
+ * ``f`` and ``F``: Fixed-precision format accepted (``123.456``)
+ * ``g`` and ``G``: General format (implies ``e`` AND ``f``)
+ * (default): Accept all (implies ``e`` AND ``f`` AND ``a``)
+
+Second category:
+
+ * ``n``: Accept digits as specified by the supplied locale, implies ``L``
+ * (default): Only digits ``[0-9]`` are accepted, no custom digits
+
+Third category:
+
+ * ``'``: Accept thousands separators: default to ``,``, use locale if ``L`` set
+ * (default): Only digits ``[0-9]`` are accepted, no thousands separator
+
+Type: string
+************
+
+For strings (``std::basic_string``, ``scn::/std::basic_string_view``, ``scn::span``), the supported options are as follows:
+
+ * ``s``: Accept any non-whitespace characters (if ``L`` is set, use the supplied locale, otherwise use ``std::isspace`` with ``"C"`` locale). Skips leading whitespace.
+ * ``[`` *set* ``]``: Accept any characters as specified by _set_, further information below. Does not skip leading whitespace.
+ * (default): ``s``
+
+*set* can consist of literal characters (``[abc]`` only accepts ``a``, ``b``, and ``c``),
+ranges of literal characters (``[a-z]`` only accepts characters from ``a`` to ``z``),
+or specifiers, that are detailed in the table below.
+
+Literals can also be specified as hex values:
+
+ * ``\xnn``: ``\x`` followed by two hexadecimal digits -> hex value
+ * ``\unnnn``: ``\u`` followed by four hexadecimal digits -> Unicode code point
+ * ``\Unnnnnnnn``: ``\U`` followed by eight hexadecimal digits -> Unicode code point (max value ``0x10FFFF``)
+
+.. list-table:: Specifiers
+    :widths: 20 40 40
+    :header-rows: 1
+
+    * - Specifier
+      - Description
+      - Accepted characters
+    * - ``:alnum:``
+      - Alphanumeric characters
+      - ``std::isalnum``
+    * - ``:alpha:``
+      - Letters
+      - ``std::isalpha``
+    * - ``:blank:``
+      - Blank characters
+      - ``std::isblank`` (space and ``\t``)
+    * - ``:cntrl:``
+      - Control characters
+      - ``std::iscntrl`` (``0x0`` to ``0x1f``, and ``0x7f``)
+    * - ``:digit:``
+      - Digits
+      - ``std::isdigit``
+    * - ``:graph:``
+      - "Graphic" characters
+      - ``std::isgraph``
+    * - ``:lower:``
+      - Lowercase letters
+      - ``std::islower``
+    * - ``:print:``
+      - Printable characters
+      - ``std::isprint`` (``std::isgraph`` + space)
+    * - ``:punct:``
+      - Punctuation characters
+      - ``std::ispunct``
+    * - ``:space:``
+      - Whitespace characters
+      - ``std::isspace``
+    * - ``:upper:``
+      - Uppercase letters
+      - ``std::isupper``
+    * - ``:xdigit:``
+      - Hexadecimal digits
+      - ``std::isxdigit``
+    * - ``\l``
+      - Letters
+      - ``std::isalpha`` (= ``:alpha:``)
+    * - ``\w``
+      - Letters, numbers, and underscore
+      - ``std::isalnum`` + ``_`` (= ``:alnum:`` + ``_``)
+    * - ``\s``
+      - Whitespace
+      - ``std::isspace`` (= ``:space:``)
+    * - ``\d``
+      - Digits
+      - ``std::isdigit`` (= ``:digit:``)
+
+``\l``, ``\w``, ``\s`` and ``\d`` can be inverted with capitalization: ``\L``, ``\W``, ``\S`` and ``\D``, respectively.
+
+If the first character in the set is ``^``, all options are inverted.
+
+``\:``, ``\]``, ``\\^``, ``\\`` specify literal ``:``, ``]``, ``^``, and ``\``, respectively.
+
+``-`` ranges accept any value numerically between the two ends,
+e.g. ``[A-z]`` accepts every ascii value between ``0x41`` and ``0x7a``, including characters like ``[``, ``\``, and ``]``.
+``[a-Z]`` is an error, because the range end must be greater or equal to its beginning.
+
+If the ``L`` flag is used, the supplied locale is used.
+If not, the ``<cctype>`` detailed in the above table is used, with the ``"C"`` locale.
+
+.. list-table:: Example format strings
+    :widths: 50 50
+    :header-rows: 1
+
+    * - Format string
+      - Accepted characters
+    * - ``"{:[abc]}"``
+      - ``a``, ``b`` and ``c``
+    * - ``"{:[a-z]}"``
+      - ``std::islower``
+    * - ``"{:[a-z-]}"``
+      - ``std::islower`` + ``-``
+    * - ``"{:[a-z\n]}"`` (1)
+      - ``std::islower`` + ``\n``
+    * - ``"{:[a-z\\\\]}"`` (2)
+      - ``std::islower`` + ``\``
+    * - ``"{:[a-zA-Z0-9]}"``
+      - ``std::isalnum``
+    * - ``"{:[^a-zA-Z0-9]}"``
+      - ``!std::isalnum``
+    * - ``"{:[:alnum:]}"``
+      - ``std::isalnum``
+    * - ``"{:[^:alnum:]}"``
+      - ``!std::isalnum``
+    * - ``"{:[\\w]}"`` (3)
+      - ``std::isalnum`` + ``_``
+    * - ``"{:[^\\w]}"``
+      - NOT ``std::isalnum)`` + ``_``
+    * - ``"{:[\\W]}"``
+      - NOT ``std::isalnum`` + ``_``
+    * - ``"{:[^\\W]}"``
+      - ``std::isalnum`` + ``_``
+
+(1): ``\n`` means literal line break 0x0a
+
+(2): Note the quadruple backslash: ``\\\\`` is turned into ``[0x5c 0x5c]`` (two backslash characters) in the actual string by C++,
+which, in turn, is interpreted as an escaped backslash by scnlib.
+Just a double backslash ``\\]`` would lead to the closing square parenthesis being escaped, and the format string being invalid.
+
+(3): Same as above: ``\\w`` means the format string specifier ``\w``, literal ``\w`` would be an invalid C++ escape sequence.
+
+Type: bool
+**********
+
+Any number of flags accepted
+
+ * ``s``: Accept string values (``true`` and ``false`` AND possible locale values, if using ``L``)
+ * ``i``: Accept int values (``0`` and ``1``)
+ * ``n``: ``i``, except accepts localized digits, implies ``L``
+ * (default): ``s`` + ``i``: Accept ``0``, ``1``, ``true``, ``false``, and possible locale string values if using ``L``
+
+Type: char and code_point
+*************************
+
+Only flag ``c`` accepted, does not affect behavior.
+
+Note, that with chars and ``code_point``, leading whitespace is not skipped.
+
+Type: pointer
+*************
+
+Only flag ``p`` accepted, does not affect behavior.
 
 Literal characters
 ******************
@@ -313,13 +527,13 @@ Semantics of scanning a value
 -----------------------------
 
 In the beginning, with every ``scn::scan`` (or similar) call, the library
-wraps the given range in a ``scn::detail::range_wrapper``.
+wraps the given range in a ``scn::detail::range_wrapper``, using ``scn::wrap``.
 This wrapper provides an uniform interface and lifetime semantics over all possible ranges.
 The arguments to scan are wrapped in a ``scn::arg_store``.
-The appropriate context and parse context types are then constructed based on these values,
-the format string, and the requested locale.
+These are then passed, alongside the format string, to ``scn::vscan`` (or similar).
 
-These are passed to ``scn::vscan``, which then calls ``scn::visit``.
+The appropriate context and parse context types are then constructed based on these values,
+the format string, and the requested locale, and ``scn::visit`` is called.
 There, the library calls ``begin()`` on the range, getting an iterator. This iterator is
 advanced until a non-whitespace character is found.
 
@@ -338,9 +552,7 @@ After that, the ``scan()`` member function is called. It reads the range,
 starting from the aforementioned iterator, into a buffer until the next
 whitespace character is found (except for ``char``/``wchar_t``: just a single
 character is read; and for ``span``: ``span.size()`` characters are read). That
-buffer is then parsed with the appropriate algorithm (plain copy for
-``string`` s, the method determined by the ``options`` object for ints and
-floats).
+buffer is then parsed with the appropriate algorithm.
 
 If some of the characters in the buffer were not used, these characters are
 put back to the range, meaning that ``operator--`` is called on the iterator.
@@ -352,6 +564,8 @@ with both ``scanf`` and ``<iostream>``.
 
 .. code-block:: cpp
 
+    // chars do not skip leading whitespace by default
+    // strings do
     char c;
     std::string str;
 
@@ -366,11 +580,15 @@ with both ``scanf`` and ``<iostream>``.
     // c == 'a'
     // str == "bc"
 
-    // Because there are no non-whitespace characters between 'a' and the next
-    // whitespace character ' ', ``str`` is empty
+    // string scanners skip leading whitespace
     scn::scan("a bc", "{}{}", c, str);
     // c == 'a'
-    // str == ""
+    // str == "bc"
+
+    // char scanners do not
+    scn::scan("ab c", "{}{}", str, c);
+    // str == "ab"
+    // c == ' '
 
     // Nothing surprising
     scn::scan("a bc", "{} {}", c, str);
@@ -418,7 +636,7 @@ Lower level parsing and scanning operations
 .. doxygenfunction:: vscan
 .. doxygenfunction:: vscan_default
 .. doxygenfunction:: vscan_localized
-.. doxygenfunction:: visit(Context &ctx, ParseCtx &pctx, basic_args<typename Context::char_type> args) -> error
+.. doxygenfunction:: visit(Context &ctx, ParseCtx &pctx, basic_args<typename Context::char_type> args)
 
 Low-level parsing
 *****************
