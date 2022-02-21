@@ -385,6 +385,9 @@ Literals can also be specified as hex values:
     * - Specifier
       - Description
       - Accepted characters
+    * - ``:all:``
+      - All characters
+      - ``true``
     * - ``:alnum:``
       - Alphanumeric characters
       - ``std::isalnum``
@@ -510,6 +513,12 @@ Type: pointer
 
 Only flag ``p`` accepted, does not affect behavior.
 
+Whitespace
+**********
+
+Any amount of whitespace in the format string tells the library to skip until the next non-whitespace character is found from the range.
+Not finding any whitespace from the range is not an error.
+
 Literal characters
 ******************
 
@@ -630,12 +639,18 @@ Files
 Lower level parsing and scanning operations
 -------------------------------------------
 
+.. doxygenfunction:: make_scan_result
+.. doxygenfunction:: make_args_for
+
 ``vscan``
 *********
 
 .. doxygenfunction:: vscan
 .. doxygenfunction:: vscan_default
 .. doxygenfunction:: vscan_localized
+.. doxygenstruct:: vscan_result
+    :members:
+
 .. doxygenfunction:: visit(Context &ctx, ParseCtx &pctx, basic_args<typename Context::char_type> args)
 
 Low-level parsing

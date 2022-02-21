@@ -625,6 +625,10 @@ namespace scn {
                 }
 
                 auto ch = pctx.next_char();
+                if (buf == all_str(ch)) {
+                    get_option(flag::accept_all) = true;
+                    return {};
+                }
                 if (buf == alnum_str(ch)) {
                     get_option(specifier::alnum) = true;
                     get_option(flag::use_specifiers) = true;
@@ -883,6 +887,14 @@ namespace scn {
                 return parse_literal(pctx, allow_range, begin);
             }
 
+            SCN_NODISCARD static constexpr const char* all_str(char)
+            {
+                return "all";
+            }
+            SCN_NODISCARD static constexpr const wchar_t* all_str(wchar_t)
+            {
+                return L"all";
+            }
             SCN_NODISCARD static constexpr const char* alnum_str(char)
             {
                 return "alnum";

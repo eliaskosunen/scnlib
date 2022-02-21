@@ -25,6 +25,35 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    namespace dummy {
+    }
+
+    /**
+     * \tparam OriginalRange The type of the range passed to the scanning function
+     * \param result Return value of `vscan`
+     * \return Result object
+     *
+     * \code{.cpp}
+     * template <typename Range, typename... Args>
+     * auto scan(Range&& r, string_view f, Args&... a) {
+     *     auto range = scn::wrap(std::forward<Range>(r));
+     *     auto args = scn::make_args_for(range, f, a...);
+     *     auto ret = scn::vscan(std::move(range), f, {args});
+     *     return scn::make_scan_result<Range>(std::move(ret));
+     * }
+     * \endcode
+     */
+    template <typename OriginalRange,
+              typename Error = wrapped_error,
+              typename WrappedRange>
+    auto make_scan_result(vscan_result<WrappedRange> result)
+        -> detail::scan_result_for_range<OriginalRange>
+    {
+        return detail::wrap_result(Error{result.err},
+                                   detail::range_tag<OriginalRange>{},
+                                   SCN_MOVE(result.range));
+    }
+
     namespace detail {
         template <typename Range, typename Format, typename... Args>
         auto scan_boilerplate(Range&& r, const Format& f, Args&... a)
@@ -39,9 +68,7 @@ namespace scn {
             auto format = detail::to_format(f);
             auto args = make_args_for(range, format, a...);
             auto ret = vscan(SCN_MOVE(range), format, {args});
-            return detail::wrap_result(wrapped_error{ret.err},
-                                       detail::range_tag<Range>{},
-                                       SCN_MOVE(ret.range));
+            return make_scan_result<Range>(SCN_MOVE(ret));
         }
 
         template <typename Range, typename... Args>
@@ -57,9 +84,7 @@ namespace scn {
             auto format = static_cast<int>(sizeof...(Args));
             auto args = make_args_for(range, format, a...);
             auto ret = vscan_default(SCN_MOVE(range), format, {args});
-            return detail::wrap_result(wrapped_error{ret.err},
-                                       detail::range_tag<Range>{},
-                                       SCN_MOVE(ret.range));
+            return make_scan_result<Range>(SCN_MOVE(ret));
         }
 
         template <typename Locale,
@@ -87,9 +112,7 @@ namespace scn {
             auto args = make_args_for(range, format, a...);
             auto ret = vscan_localized(SCN_MOVE(range), SCN_MOVE(locale),
                                        format, {args});
-            return detail::wrap_result(wrapped_error{ret.err},
-                                       detail::range_tag<Range>{},
-                                       SCN_MOVE(ret.range));
+            return make_scan_result<Range>(SCN_MOVE(ret));
         }
 
     }  // namespace detail

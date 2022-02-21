@@ -8,6 +8,7 @@ scnlib documentation
 
    guide
    api
+   migration/migration_1_0
    cmake
    rationale/index
 

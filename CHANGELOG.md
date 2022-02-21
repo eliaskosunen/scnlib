@@ -1,3 +1,49 @@
+# 1.0-rc1 (not released)
+
+_Released 2022-xx-xx_
+
+## Additions
+
+ * Unicode support
+   * Ranges and format strings are assumed to be UTF-8 (narrow), UTF-16 (wide, Windows), or UTF-32 (wide, POSIX), regardless of locale
+   * Add `scn::code_point`, which can be passed as a delimeter to `scn::getline`, `scn::scan_list` and others
+   * Locales rewritten
+ * Add `lemire/fast_float` as a dependency, and use it for parsing floats if possible
+ * Add `scn::scan_usertype` and `scn::vscan_usertype`
+ * Add `<scn/fwd.h>` header file
+
+## Changes
+
+ * Redesigned format strings
+   * Alignment, fill, width flags
+   * Position-dependent `L`
+   * Reworked integer and float parsing flags (new defaults)
+   * String set parsing
+   * Add `scn::common_parser`
+   * Redesigned whitespace skipping
+ * `scn::buffer_scanner` -> `scn::span_scanner`, spans are more like strings now when scanned
+ * Massive folder and file reorganization
+ * Rewritten list scanning
+ * `result::string_view()`, `::span()`, `::string()` -> `result::range_as_*()`
+ * `read_char()` -> `read_code_unit()`
+ * Decrease generated code sizes by redesigning vscan, and adding more vscan definitions
+   * Move `scn::wrap` to the public interface
+   * Add `scn::make_args_for`, `scn::make_context`, and `scn::make_parse_context`
+ * `[[nodiscard]]` added where necessary
+
+## Fixes and minor stuff
+
+ * Update bloat benchmarks
+ * Add a lot more tests
+ * Update GitHub workflows: add gcc11, clang12, msvc2022, gcc on macOS, and Alpine, remove clang9
+ * Radically increase fuzzing coverage, fix bugs found with it
+ * Fix typo in README example (#41, #44, thanks [@andreasbuykx (Andreas Buykx)](https://github.com/andreasbuykx) and [@phoebe-leong](https://github.com/phoebe-leong))
+ * Fix leftover typo in docs/guide (#49, thanks [@danra (Dan Raviv)](https://github.com/danra))
+ * New .clang-format file
+ * Tweaks to README badges
+ * Update submodules
+ * Numerous bug fixes
+
 # 0.4
 
 _Released 2020-11-13_

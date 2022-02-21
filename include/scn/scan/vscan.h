@@ -32,6 +32,9 @@ namespace scn {
     namespace dummy {
     }
 
+    /**
+     * Type returned by `vscan` and others
+     */
     template <typename WrappedRange>
     struct vscan_result {
         error err;

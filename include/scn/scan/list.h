@@ -122,6 +122,12 @@ namespace scn {
          * In that case, it is advanced over, and no error is returned.
          */
         optional<CharT> until{};
+
+        scan_list_options() = default;
+        scan_list_options(optional<CharT> s, optional<CharT> u)
+            : separator(SCN_MOVE(s)), until(SCN_MOVE(u))
+        {
+        }
     };
 
     /**

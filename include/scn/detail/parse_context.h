@@ -495,7 +495,7 @@ namespace scn {
         }
 
         template <typename Scanner>
-        constexpr error parse(Scanner& s) const
+        SCN_CONSTEXPR14 error parse(Scanner& s) const
         {
             if (m_localized) {
                 s.make_localized();
