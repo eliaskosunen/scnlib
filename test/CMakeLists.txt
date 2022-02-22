@@ -1,3 +1,11 @@
+if (SCN_BUILD_FUZZING OR SCN_INCLUDE_FUZZING)
+    add_subdirectory(fuzz)
+endif ()
+
+if (NOT SCN_TESTS)
+    return()
+endif ()
+
 include(CTest)
 
 add_library(tests-base INTERFACE)
@@ -59,8 +67,4 @@ endif ()
 
 add_subdirectory(each)
 add_subdirectory(file)
-
-if (SCN_BUILD_FUZZING OR SCN_INCLUDE_FUZZING)
-    add_subdirectory(fuzz)
-endif ()
 

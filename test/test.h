@@ -176,6 +176,19 @@ struct indirect_range {
         storage.push_back(val);
     }
 
+    void set(std::vector<scn::expected<CharT>>&& o)
+    {
+        storage = SCN_MOVE(o);
+    }
+    std::vector<scn::expected<CharT>> extract() &&
+    {
+        return storage;
+    }
+    std::vector<scn::expected<CharT>>& get()
+    {
+        return storage;
+    }
+
     const_iterator begin() const noexcept
     {
         return {*this, 0};
@@ -190,7 +203,7 @@ struct indirect_range {
         return storage.size();
     }
 
-    scn::expected<CharT> operator[](size_type i) const
+    const scn::expected<CharT>& operator[](size_type i) const
     {
         return storage[i];
     }

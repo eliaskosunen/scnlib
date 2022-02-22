@@ -275,6 +275,9 @@ namespace scn {
                     if (!err) {
                         return err;
                     }
+                    if (!scanning) {
+                        break;
+                    }
 
                     if (ctx.locale().get_static().is_space(next)) {
                         // skip ws

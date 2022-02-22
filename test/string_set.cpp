@@ -434,6 +434,100 @@ TEST_CASE("set parse")
         CHECK(!scanner.set_parser.check_character('d', false, loc));
         CHECK(!scanner.set_parser.check_character('D', false, loc));
     }
+
+    SUBCASE(":all:")
+    {
+        scanner_type scanner{};
+        auto pctx = make_parse_ctx("[:all:]}");
+        auto e = scanner.parse(pctx);
+        CHECK(e);
+        CHECK(pctx.check_arg_end());
+        CHECK(scanner.set_parser.get_option(set_parser_type::flag::accept_all));
+
+        const auto& loc = pctx.locale();
+        CHECK(scanner.set_parser.check_character('a', false, loc));
+        CHECK(scanner.set_parser.check_character('Z', false, loc));
+        CHECK(scanner.set_parser.check_character('0', false, loc));
+        CHECK(scanner.set_parser.check_character('-', false, loc));
+        CHECK(scanner.set_parser.check_character(char{0x7f}, false, loc));
+    }
+    SUBCASE("\\s\\S = all")
+    {
+        scanner_type scanner{};
+        auto pctx = make_parse_ctx("[\\s\\S]}");
+        auto e = scanner.parse(pctx);
+        CHECK(e);
+        CHECK(pctx.check_arg_end());
+        CHECK(scanner.set_parser.get_option(set_parser_type::flag::accept_all));
+    }
+    SUBCASE("\\x00-\\x7f = not all") {
+        scanner_type scanner{};
+        auto pctx = make_parse_ctx("[\\x00-\\x7f]}");
+        auto e = scanner.parse(pctx);
+        CHECK(e);
+        CHECK(pctx.check_arg_end());
+        CHECK(!scanner.set_parser.get_option(set_parser_type::flag::accept_all));
+    }
+
+    SUBCASE(":alnum:") {
+        scanner_type scanner{};
+        auto pctx = make_parse_ctx("[:alnum:]}");
+        auto e = scanner.parse(pctx);
+        CHECK(e);
+        CHECK(pctx.check_arg_end());
+
+        const auto& loc = pctx.locale();
+        CHECK(scanner.set_parser.check_character('a', false, loc));
+        CHECK(scanner.set_parser.check_character('Z', false, loc));
+        CHECK(scanner.set_parser.check_character('0', false, loc));
+        CHECK(!scanner.set_parser.check_character('-', false, loc));
+    }
+    SUBCASE(":punct:") {
+        scanner_type scanner{};
+        auto pctx = make_parse_ctx("[:punct:]}");
+        auto e = scanner.parse(pctx);
+        CHECK(e);
+        CHECK(pctx.check_arg_end());
+
+        const auto& loc = pctx.locale();
+        CHECK(scanner.set_parser.check_character('.', false, loc));
+        CHECK(scanner.set_parser.check_character(',', false, loc));
+        CHECK(scanner.set_parser.check_character('-', false, loc));
+        CHECK(!scanner.set_parser.check_character('a', false, loc));
+        CHECK(!scanner.set_parser.check_character('Z', false, loc));
+        CHECK(!scanner.set_parser.check_character('0', false, loc));
+    }
+    SUBCASE(":xdigit:") {
+        scanner_type scanner{};
+        auto pctx = make_parse_ctx("[:xdigit:]}");
+        auto e = scanner.parse(pctx);
+        CHECK(e);
+        CHECK(pctx.check_arg_end());
+
+        const auto& loc = pctx.locale();
+        CHECK(scanner.set_parser.check_character('a', false, loc));
+        CHECK(scanner.set_parser.check_character('F', false, loc));
+        CHECK(scanner.set_parser.check_character('0', false, loc));
+        CHECK(scanner.set_parser.check_character('9', false, loc));
+        CHECK(!scanner.set_parser.check_character('x', false, loc));
+        CHECK(!scanner.set_parser.check_character('g', false, loc));
+        CHECK(!scanner.set_parser.check_character('-', false, loc));
+    }
+    SUBCASE("\\l") {
+        scanner_type scanner{};
+        auto pctx = make_parse_ctx("[\\l]}");
+        auto e = scanner.parse(pctx);
+        CHECK(e);
+        CHECK(pctx.check_arg_end());
+
+        const auto& loc = pctx.locale();
+        CHECK(scanner.set_parser.check_character('a', false, loc));
+        CHECK(scanner.set_parser.check_character('F', false, loc));
+        CHECK(scanner.set_parser.check_character('Z', false, loc));
+        CHECK(!scanner.set_parser.check_character('0', false, loc));
+        CHECK(!scanner.set_parser.check_character('9', false, loc));
+        CHECK(!scanner.set_parser.check_character('-', false, loc));
+    }
 }
 
 TEST_CASE("set scanning")
@@ -468,7 +562,8 @@ TEST_CASE("set scanning")
         CHECK(str == "foo");
     }
 
-    SUBCASE("ÅÄÖ") {
+    SUBCASE("ÅÄÖ")
+    {
         std::string str;
         auto ret = scn::scan("ÅÄO", "{:[ÅÄÖ]}", str);
         CHECK(ret);

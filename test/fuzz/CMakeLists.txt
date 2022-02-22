@@ -1,6 +1,17 @@
-add_executable(fuzz-test fuzz.cpp)
-
-target_link_libraries(fuzz-test PUBLIC scn)
+add_library(fuzz-base INTERFACE)
+target_link_libraries(fuzz-base INTERFACE scn)
 if (SCN_BUILD_FUZZING)
-    target_link_libraries(fuzz-test PUBLIC scn-fuzzer)
-endif()
+    target_link_libraries(fuzz-base INTERFACE scn-fuzzer)
+endif ()
+
+function(add_fuzzer name)
+    add_executable(fuzz-${name} fuzz_${name}.cpp)
+    target_link_libraries(fuzz-${name} PUBLIC fuzz-base)
+endfunction()
+
+add_fuzzer(basic)
+add_fuzzer(deque)
+add_fuzzer(getline)
+add_fuzzer(format)
+add_fuzzer(indirect)
+add_fuzzer(roundtrip)

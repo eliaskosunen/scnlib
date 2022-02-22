@@ -117,8 +117,9 @@ set_property(TARGET scn PROPERTY SOVERSION 0)
 
 if (SCN_TESTS)
     enable_testing()
-    add_subdirectory(test)
 endif ()
+add_subdirectory(test)
+
 if (SCN_EXAMPLES)
     add_subdirectory(examples)
 endif ()

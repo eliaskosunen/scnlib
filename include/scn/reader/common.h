@@ -34,6 +34,7 @@ namespace scn {
         expected<typename WrappedRange::char_type>
         read_code_unit_impl(WrappedRange& r, bool advance, std::true_type)
         {
+            SCN_EXPECT(r.begin() < r.end());
             auto ch = *r.begin();
             if (advance) {
                 r.advance();
@@ -44,6 +45,7 @@ namespace scn {
         expected<typename WrappedRange::char_type>
         read_code_unit_impl(WrappedRange& r, bool advance, std::false_type)
         {
+            SCN_EXPECT(r.begin() != r.end());
             auto ch = *r.begin();
             if (advance && ch) {
                 r.advance();
@@ -170,10 +172,6 @@ namespace scn {
             if (do_parse) {
                 auto ret = parse_code_point(r.begin(), r.begin() + len, cp);
                 if (!ret) {
-                    auto pb = putback_n(r, len);
-                    if (!pb) {
-                        return pb;
-                    }
                     return ret.error();
                 }
             }

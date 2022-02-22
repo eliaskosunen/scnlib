@@ -215,7 +215,6 @@ namespace scn {
                             get_option(specifier::xdigit) = false;
                         }
                         if (get_option(specifier::letters)) {
-                            do_digit();
                             do_upper();
                             do_lower();
                             get_option(specifier::letters) = false;

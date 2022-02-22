@@ -508,11 +508,6 @@ Only flag ``c`` accepted, does not affect behavior.
 
 Note, that with chars and ``code_point``, leading whitespace is not skipped.
 
-Type: pointer
-*************
-
-Only flag ``p`` accepted, does not affect behavior.
-
 Whitespace
 **********
 

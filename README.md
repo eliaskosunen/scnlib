@@ -205,12 +205,12 @@ The last commit tested and verified to work with arm64 is
 These benchmarks were run on a Ubuntu 20.04 machine running kernel version 5.4.0-52, with an Intel Core i5-6600K processor, and compiled with gcc version 9.3.0, with `-O3 -DNDEBUG -march=native`.
 The source code for the benchmarks can be seen in the `benchmark` directory.
 
-You can run the benchmarks yourself by enabling `SCN_BUILD_BENCHMARKS`.
-`SCN_BUILD_BENCHMARKS` is enabled by default if `scn` is the root CMake project, and disabled otherwise.
+You can run the benchmarks yourself by enabling `SCN_BENCHMARKS`.
+`SCN_BENCHMARKS` is enabled by default if `scn` is the root CMake project, and disabled otherwise.
 
 ```sh
 $ cd build
-$ cmake -DCMAKE_BUILD_TYPE=Release -DSCN_BUILD_BENCHMARKS=ON -DSCN_NATIVE_ARCH=ON -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON ..
+$ cmake -DCMAKE_BUILD_TYPE=Release -DSCN_BENCHMARKS=ON -DSCN_USE_NATIVE_ARCH=ON -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON ..
 $ make -j
 # choose benchmark to run in ./benchmark/runtime/*/bench-*
 $ ./benchmark/runtime/integer/bench-int
