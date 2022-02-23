@@ -192,25 +192,16 @@ namespace scn {
             return {str.data(), str.size()};
         }
 
-        static inline error convert_to_wide_impl(const std::locale& locale,
-                                                 const char* from_begin,
-                                                 const char* from_end,
-                                                 const char*& from_next,
-                                                 wchar_t* to_begin,
-                                                 wchar_t* to_end,
-                                                 wchar_t*& to_next)
+        static inline error convert_to_wide_impl(const std::locale&,
+                                                 const char*,
+                                                 const char*,
+                                                 const char*&,
+                                                 wchar_t*,
+                                                 wchar_t*,
+                                                 wchar_t*&)
         {
-            auto& facet =
-                std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(
-                    locale);
-            std::mbstate_t state{};
-            auto result = facet.in(state, from_begin, from_end, from_next,
-                                   to_begin, to_end, to_next);
-            SCN_ENSURE(result != std::codecvt_base::noconv);
-            if (result != std::codecvt_base::ok) {
-                return {error::invalid_encoding, "Invalid encoding"};
-            }
-            return {};
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
         }
         static inline error convert_to_wide_impl(const std::locale&,
                                                  const wchar_t*,
@@ -238,26 +229,12 @@ namespace scn {
         }
 
         static inline expected<wchar_t> convert_to_wide_impl(
-            const std::locale& locale,
-            const char* from_begin,
-            const char* from_end)
+            const std::locale&,
+            const char*,
+            const char*)
         {
-            auto& facet =
-                std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(
-                    locale);
-            std::mbstate_t state{};
-            wchar_t to{};
-            const char* from_next{};
-            wchar_t* to_next{};
-            auto result = facet.in(state, from_begin, from_end, from_next, &to,
-                                   (&to) + 1, to_next);
-            SCN_ENSURE(result != std::codecvt_base::noconv);
-            SCN_ENSURE(from_next == from_end);
-            SCN_ENSURE(to_next == (&to) + 1);
-            if (result != std::codecvt_base::ok) {
-                return error{error::invalid_encoding, "Invalid encoding"};
-            }
-            return {to};
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
         }
         static inline expected<wchar_t> convert_to_wide_impl(const std::locale&,
                                                              const wchar_t*,
@@ -282,12 +259,10 @@ namespace scn {
             const auto& locale = to_locale(*this);
             if (sizeof(CharT) == 1) {
                 SCN_EXPECT(ch.size() >= 1);
-                auto wch = convert_to_wide_impl(locale, ch.data(),
-                                                ch.data() + ch.size());
-                if (!wch) {
-                    return false;
-                }
-                return std::isspace(wch.value(), locale);
+                code_point cp{};
+                auto it = parse_code_point(ch.begin(), ch.end(), cp);
+                SCN_EXPECT(it);
+                return is_digit(cp);
             }
             SCN_EXPECT(ch.size() == 1);
             return std::isspace(ch[0], locale);
@@ -299,12 +274,10 @@ namespace scn {
             const auto& locale = to_locale(*this);
             if (sizeof(CharT) == 1) {
                 SCN_EXPECT(ch.size() >= 1);
-                auto wch = convert_to_wide_impl(locale, ch.data(),
-                                                ch.data() + ch.size());
-                if (!wch) {
-                    return false;
-                }
-                return std::isdigit(wch.value(), locale);
+                code_point cp{};
+                auto it = parse_code_point(ch.begin(), ch.end(), cp);
+                SCN_EXPECT(it);
+                return is_digit(cp);
             }
             SCN_EXPECT(ch.size() == 1);
             return std::isdigit(ch[0], locale);
@@ -328,12 +301,10 @@ namespace scn {
         const auto& locale = to_locale(*this);                            \
         if (sizeof(CharT) == 1) {                                         \
             SCN_EXPECT(ch.size() >= 1);                                   \
-            auto wch = convert_to_wide_impl(locale, ch.data(),            \
-                                            ch.data() + ch.size());       \
-            if (!wch) {                                                   \
-                return false;                                             \
-            }                                                             \
-            return std::is##f(wch.value(), locale);                       \
+            code_point cp{};                                              \
+            auto it = parse_code_point(ch.begin(), ch.end(), cp);         \
+            SCN_EXPECT(it);                                               \
+            return is_##f(cp);                                            \
         }                                                                 \
         SCN_EXPECT(ch.size() == 1);                                       \
         return std::is##f(ch[0], locale);                                 \
@@ -380,13 +351,10 @@ namespace scn {
             const auto& locale = to_locale(*this);
             if (sizeof(CharT) == 1) {
                 SCN_EXPECT(ch.size() >= 1);
-                auto wch = convert_to_wide_impl(locale, ch.data(),
-                                                ch.data() + ch.size());
-                if (!wch) {
-                    return false;
-                }
-                return std::use_facet<std::ctype<wchar_t>>(locale).is(
-                    std::ctype_base::blank, wch.value());
+                code_point cp{};
+                auto it = parse_code_point(ch.begin(), ch.end(), cp);
+                SCN_EXPECT(it);
+                return is_blank(cp);
             }
             SCN_EXPECT(ch.size() == 1);
             return std::use_facet<std::ctype<CharT>>(locale).is(

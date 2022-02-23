@@ -82,7 +82,7 @@ namespace scn_fuzz {
     std::wstring& populate_string(scn::wstring_view sv)
     {
         globals::wstring_buffer.resize(sv.size());
-        std::copy(sv.begin(), sv.end(), globals::string_buffer.begin());
+        std::copy(sv.begin(), sv.end(), globals::wstring_buffer.begin());
         return globals::wstring_buffer;
     }
 

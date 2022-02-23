@@ -395,7 +395,10 @@ namespace scn {
             template <typename R = Range>
             bool _advance_check(std::ptrdiff_t n, std::true_type)
             {
+                SCN_CLANG_PUSH
+                SCN_CLANG_IGNORE("-Wzero-as-null-pointer-constant")
                 return m_begin + n <= end();
+                SCN_CLANG_POP
             }
             template <typename R = Range>
             bool _advance_check(std::ptrdiff_t, std::false_type)

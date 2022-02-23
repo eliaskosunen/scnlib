@@ -156,7 +156,7 @@ namespace scn {
                 // Check for any non-specifier {foo} characters
                 unsigned char buf[4] = {0};
                 auto ret =
-                    read_code_point(ctx.range(), make_span(buf, 4), false);
+                    read_code_point(ctx.range(), make_span(buf, 4));
                 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 if (!ret || !pctx.check_literal(ret.value().chars)) {
                     auto rb = ctx.range().reset_to_rollback_point();

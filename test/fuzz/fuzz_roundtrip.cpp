@@ -62,14 +62,27 @@ void do_roundtrip(const T& original_value, const Source& s)
     }
 }
 
+template <typename T, typename Source>
+T blip_for_roundtrip(Source data)
+{
+    char buffer[10] = {0};
+    char* end = buffer;
+    for (auto it = data.begin(); it != data.end() && end != buffer + 10;
+         ++it, ++end) {
+        *end = static_cast<char>(*it);
+    }
+
+    T value{};
+    std::memcpy(&value, buffer, sizeof(T));
+    return value;
+}
+
 template <typename CharT, typename T, typename Source>
 void roundtrip_for_type(Source data)
 {
-    if (data.size() < sizeof(T)) {
-        return;
-    }
-    T original_value{};
-    std::memcpy(&original_value, data.data(), sizeof(T));
+    SCN_EXPECT(data.size() >= sizeof(T));
+
+    auto original_value = blip_for_roundtrip<T>(data);
 
     std::basic_ostringstream<CharT> oss;
     oss << original_value;
@@ -106,7 +119,7 @@ void roundtrip_for_source(Source source)
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-    if (size > scn_fuzz::globals::max_input_bytes || size == 0) {
+    if (size != sizeof(long long)) {
         return 0;
     }
 
@@ -115,7 +128,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     scn_fuzz::populate_views(data, size, sv, wsv1, wsv2);
 
     roundtrip_for_source(sv);
-    roundtrip_for_source(wsv1);
     roundtrip_for_source(wsv2);
 
     return 0;

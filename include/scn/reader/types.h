@@ -58,7 +58,7 @@ namespace scn {
             error scan(code_point& val, Context& ctx)
             {
                 unsigned char buf[4] = {0};
-                auto cp = read_code_point(ctx.range(), make_span(buf, 4), true);
+                auto cp = read_code_point(ctx.range(), make_span(buf, 4));
                 if (!cp) {
                     return cp.error();
                 }
@@ -195,7 +195,7 @@ namespace scn {
 
                     unsigned char buf[4] = {0};
                     auto cp =
-                        read_code_point(ctx.range(), make_span(buf, 4), true);
+                        read_code_point(ctx.range(), make_span(buf, 4));
                     if (!cp) {
                         return cp.error();
                     }
