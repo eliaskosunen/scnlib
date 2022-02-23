@@ -18,10 +18,10 @@
 #ifndef SCN_DETAIL_RANGE_H
 #define SCN_DETAIL_RANGE_H
 
-#include "error.h"
 #include "../ranges/ranges.h"
 #include "../util/algorithm.h"
 #include "../util/memory.h"
+#include "error.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -226,7 +226,8 @@ namespace scn {
             }
             SCN_GCC_POP
 
-            struct dummy {};
+            struct dummy {
+            };
 
             /**
              * Returns `true` if `begin() == end()`.
@@ -241,6 +242,8 @@ namespace scn {
              */
             iterator advance(difference_type n = 1) noexcept
             {
+                SCN_EXPECT(_advance_check(
+                    n, std::integral_constant<bool, is_contiguous>{}));
                 m_read += n;
                 ranges::advance(m_begin, n);
                 return m_begin;
@@ -389,6 +392,17 @@ namespace scn {
                 provides_buffer_access_impl<range_nocvref_type>::value;
 
         private:
+            template <typename R = Range>
+            bool _advance_check(std::ptrdiff_t n, std::true_type)
+            {
+                return m_begin + n <= end();
+            }
+            template <typename R = Range>
+            bool _advance_check(std::ptrdiff_t, std::false_type)
+            {
+                return true;
+            }
+
             storage_type m_range;
             iterator m_begin;
             mutable difference_type m_read{0};

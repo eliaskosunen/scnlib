@@ -56,7 +56,6 @@ namespace scn {
             if (pred(span<const CharT>(&*(tmp.end() - 1), 1))) {
                 tmp.pop_back();
             }
-            r.advance();
             str = SCN_MOVE(tmp);
             return {};
         }
@@ -177,8 +176,7 @@ namespace scn {
     SCN_NODISCARD auto getline(Range&& r, String& str)
         -> detail::scan_result_for_range<Range>
     {
-        return getline(std::forward<Range>(r), str,
-                       detail::ascii_widen<CharT>('\n'));
+        return getline(SCN_FWD(r), str, detail::ascii_widen<CharT>('\n'));
     }
 #endif
 

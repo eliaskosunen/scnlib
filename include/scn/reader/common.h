@@ -34,7 +34,11 @@ namespace scn {
         expected<typename WrappedRange::char_type>
         read_code_unit_impl(WrappedRange& r, bool advance, std::true_type)
         {
+            SCN_CLANG_PUSH
+            // clang 10 behaves weirdly
+            SCN_CLANG_IGNORE("-Wzero-as-null-pointer-constant")
             SCN_EXPECT(r.begin() < r.end());
+            SCN_CLANG_POP
             auto ch = *r.begin();
             if (advance) {
                 r.advance();
@@ -619,8 +623,7 @@ namespace scn {
             }
 
             if (!pred.is_multibyte()) {
-                for (auto it = r.begin(); it != r.end() && out_cmp(out);
-                     ++it, (void)r.advance()) {
+                while (r.begin() != r.end() && out_cmp(out)) {
                     auto cu = read_code_unit(r, false);
                     if (!cu) {
                         return cu.error();
@@ -628,11 +631,13 @@ namespace scn {
                     if (pred(make_span(&cu.value(), 1)) ==
                         pred_result_to_stop) {
                         if (keep_final) {
+                            r.advance();
                             *out = cu.value();
                             ++out;
                         }
                         return {};
                     }
+                    r.advance();
                     *out = cu.value();
                     ++out;
                 }
@@ -651,7 +656,7 @@ namespace scn {
                             return {};
                         }
                         else {
-                            return putback_n(r, 1);
+                            return putback_n(r, cp.value().chars.ssize());
                         }
                     }
                     out = std::copy(cp.value().chars.begin(),
