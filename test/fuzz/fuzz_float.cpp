@@ -17,28 +17,16 @@
 
 #include "fuzz.h"
 
-template <typename T, typename Source>
-void run_for_type(Source source)
-{
-    T value{};
-    auto result = scn::scan(source, source, value);
-    result = scn::scan_localized(scn_fuzz::globals::global_locale, source,
-                                 source, value);
-}
-template <typename Source>
-void run(Source source)
-{
-    using char_type = typename Source::value_type;
-
-    run_for_type<char_type>(source);
-    run_for_type<scn::code_point>(source);
-    run_for_type<int>(source);
-    run_for_type<unsigned>(source);
-    run_for_type<double>(source);
-    run_for_type<bool>(source);
-    run_for_type<std::basic_string<char_type>>(source);
-    run_for_type<scn::basic_string_view<char_type>>(source);
-}
+namespace scn_fuzz {
+    template <typename CharT, typename Source>
+    void do_basic_run_for_source(Source& source,
+                                 format_strings_view<CharT> format_strings)
+    {
+        do_basic_run_for_type<CharT, float>(source, format_strings);
+        do_basic_run_for_type<CharT, double>(source, format_strings);
+        do_basic_run_for_type<CharT, long double>(source, format_strings);
+    }
+}  // namespace scn_fuzz
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
@@ -50,9 +38,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     scn::wstring_view wsv1, wsv2;
     scn_fuzz::populate_views(data, size, sv, wsv1, wsv2);
 
-    run(sv);
-    run(wsv1);
-    run(wsv2);
+    auto f = scn_fuzz::get_format_strings<char>("{}", "{:L}", "{:a}", "{:E}",
+                                                "{:f}", "{:G}", "{:'}");
+    scn_fuzz::do_basic_run(sv, f);
+
+    auto wf = scn_fuzz::get_format_strings<wchar_t>(
+        L"{}", L"{:L}", L"{:a}", L"{:E}", L"{:f}", L"{:G}", L"{:'}");
+    scn_fuzz::do_basic_run(wsv1, wf);
+    scn_fuzz::do_basic_run(wsv2, wf);
 
     return 0;
 }

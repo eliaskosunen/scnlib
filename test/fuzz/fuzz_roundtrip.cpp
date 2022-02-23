@@ -44,7 +44,8 @@ void do_roundtrip(const T& original_value, const Source& s)
 {
     {
         T value{};
-        auto result = scn::scan(s, default_format_string<CharT>::value, value);
+        auto result =
+            scn::scan(s, scn_fuzz::default_format_string<CharT>::value, value);
         check_roundtrip(value, original_value, result);
     }
     {
@@ -55,7 +56,8 @@ void do_roundtrip(const T& original_value, const Source& s)
     {
         T value{};
         auto result = scn::scan_localized(
-            global_locale, s, default_format_string<CharT>::value, value);
+            scn_fuzz::globals::global_locale, s,
+            scn_fuzz::default_format_string<CharT>::value, value);
         check_roundtrip(value, original_value, result);
     }
 }
@@ -79,12 +81,12 @@ void roundtrip_for_type(Source data)
         scn::basic_string_view<CharT>(source_str.data(), source_str.size());
     do_roundtrip<CharT>(original_value, source_sv);
 
-    auto& source_deque = populate_deque(source_sv);
+    auto& source_deque = scn_fuzz::populate_deque(source_sv);
     do_roundtrip<CharT>(original_value, source_deque);
 
-    auto& source_indirect = populate_indirect(source_sv);
+    auto& source_indirect = scn_fuzz::populate_indirect(source_sv);
     do_roundtrip<CharT>(original_value, source_indirect);
-    reset_indirect(SCN_MOVE(source_indirect));
+    scn_fuzz::reset_indirect(SCN_MOVE(source_indirect));
 }
 
 template <typename Source>
@@ -104,13 +106,13 @@ void roundtrip_for_source(Source source)
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-    if (size > max_input_bytes || size == 0) {
+    if (size > scn_fuzz::globals::max_input_bytes || size == 0) {
         return 0;
     }
 
     scn::string_view sv;
     scn::wstring_view wsv1, wsv2;
-    populate_views(data, size, sv, wsv1, wsv2);
+    scn_fuzz::populate_views(data, size, sv, wsv1, wsv2);
 
     roundtrip_for_source(sv);
     roundtrip_for_source(wsv1);

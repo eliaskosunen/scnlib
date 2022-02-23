@@ -32,7 +32,7 @@ void run_getline_and_ignore(const Source& source)
     if (source.size() < 4) {
         return;
     }
-    CharT until = unwrap_expected(source[source.size() / 2]);
+    CharT until = scn_fuzz::unwrap_expected(source[source.size() / 2]);
     scn::ignore_until(source, until);
 }
 
@@ -44,26 +44,26 @@ void run(Source data)
     auto source_sv = data;
     run_getline_and_ignore<char_type>(source_sv);
 
-    auto& source_str = populate_string(source_sv);
+    auto& source_str = scn_fuzz::populate_string(source_sv);
     run_getline_and_ignore<char_type>(source_str);
 
-    auto& source_deque = populate_deque(source_sv);
+    auto& source_deque = scn_fuzz::populate_deque(source_sv);
     run_getline_and_ignore<char_type>(source_deque);
 
-    auto& source_indirect = populate_indirect(source_sv);
+    auto& source_indirect = scn_fuzz::populate_indirect(source_sv);
     run_getline_and_ignore<char_type>(source_indirect);
-    reset_indirect(SCN_MOVE(source_indirect));
+    scn_fuzz::reset_indirect(SCN_MOVE(source_indirect));
 }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-    if (size > max_input_bytes || size == 0) {
+    if (size > scn_fuzz::globals::max_input_bytes || size == 0) {
         return 0;
     }
 
     scn::string_view sv;
     scn::wstring_view wsv1, wsv2;
-    populate_views(data, size, sv, wsv1, wsv2);
+    scn_fuzz::populate_views(data, size, sv, wsv1, wsv2);
 
     run(sv);
     run(wsv1);

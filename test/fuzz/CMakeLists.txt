@@ -9,9 +9,9 @@ function(add_fuzzer name)
     target_link_libraries(fuzz-${name} PUBLIC fuzz-base)
 endfunction()
 
-add_fuzzer(basic)
-add_fuzzer(deque)
-add_fuzzer(getline)
+add_fuzzer(roundtrip) # use int
+add_fuzzer(int)
+add_fuzzer(float)
+add_fuzzer(types)
+add_fuzzer(getline) # use types
 add_fuzzer(format)
-add_fuzzer(indirect)
-add_fuzzer(roundtrip)
