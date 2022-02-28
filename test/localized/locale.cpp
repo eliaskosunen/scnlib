@@ -97,6 +97,7 @@ TEST_CASE("custom_locale_ref")
 
     SUBCASE("basic value operations")
     {
+        SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
         auto loc = scn::detail::basic_custom_locale_ref<char>();
         CHECK(to_locale(loc.get_locale()).name() == "C");
         CHECK(to_locale(loc.get_locale()).name() ==
@@ -112,5 +113,6 @@ TEST_CASE("custom_locale_ref")
 
         auto other2 = SCN_MOVE(loc);
         CHECK(to_locale(other2.get_locale()) == enus);
+        SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
     }
 }
