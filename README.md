@@ -216,30 +216,28 @@ $ make -j
 $ ./benchmark/runtime/integer/bench-int
 ```
 
-Performance comparison benchmarks with Boost.Spirit.x3 can be found [here](https://github.com/eliaskosunen/scnlib-spirit-benchmark)
-
 Times are in nanoseconds of CPU time. Lower is better.
 
 #### Integer parsing (`int`)
 
 | Test   | `std::stringstream` | `sscanf` | `scn::scan` | `scn::scan_default` |
-| :----- | ------------------: | -------: | ----------: | ------------------: |
-| Test 1 | 274                 | 96.5     | 43.0        | 40.3                |
-| Test 2 | 77.7                | 526      | 68.1        | 60.5                |
+| :----- |--------------------:|---------:|------------:|--------------------:|
+| Test 1 |                 344 |      127 |        65.1 |                55.3 |
+| Test 2 |                81.2 |      651 |        68.3 |                64.8 |
 
 #### Floating-point parsing (`double`)
 
-| Test   | `std::stringstream` | `sscanf` | `scn::scan` |
-| :----- | ------------------: | -------: | ----------: |
-| Test 1 | 416                 | 164      | 167         |
-| Test 2 | 223                 | 570      | 195         |
+| Test   | `std::stringstream` | `sscanf` | `scn::scan` | `scn::scan_default` |
+| :----- |--------------------:|---------:|------------:|--------------------:|
+| Test 1 |                 612 |      211 |        69.5 |                69.1 |
+| Test 2 |                 200 |      510 |        83.4 |                75.3 |
 
 #### Reading random whitespace-separated strings
 
-| Character type | `scn::scan` | `scn::scan` and `string_view` | `std::stringstream` |
-| :------------- | ----------: | ----------------------------: | ------------------: |
-| `char`         | 40.7        | 38.0                          | 50.2                |
-| `wchar_t`      | 42.7        | 38.3                          | 122                 |
+| Character type | `std::stringstream` | `scn::scan` | `scn::scan` and `string_view` |
+| :------------- |--------------------:|------------:|------------------------------:|
+| `char`         |                63.3 |        56.9 |                          51.0 |
+| `wchar_t`      |                 157 |        58.8 |                          62.8 |
 
 #### Test 1 vs. Test 2
 
