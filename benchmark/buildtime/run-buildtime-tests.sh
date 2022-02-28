@@ -5,7 +5,7 @@ run () {
   shift
 
   echo "$file"
-  /usr/bin/time c++ -x c++ -I../include -I../src -L$(pwd) "./benchmark/buildtime/${file}" -w "$@"
+  /usr/bin/time c++ -x c++ -I../include -I../src -I../src/deps/fast_float/single_include -L$(pwd) "./benchmark/buildtime/${file}" -w "$@"
 }
 
 run_tests() {

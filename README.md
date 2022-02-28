@@ -334,7 +334,7 @@ Lower is better.
 This test measures the time it takes to compile a binary when using different libraries.
 Note, that the time it takes to compile the library is not taken into account (unfair measurement against precompiled stdlibs).
 
-These tests were run on an Ubuntu 20.04 machine with an i5-6600K and 16 GB of RAM, using GCC 9.3.0.
+These tests were run on an Ubuntu 21.10 machine with an i7-8565U and 40 GB of RAM, using GCC 11.2.0.
 The compiler flags for a debug build were `-g`, and `-O3 -DNDEBUG` for a release build.
 
 To run these tests yourself, enable CMake flag `SCN_BUILD_BUILDTIME`.
@@ -354,12 +354,12 @@ Time is in seconds of CPU time (user time + sys/kernel time).
 Lower is better.
 
 | Method                      | Debug | Release |
-| :-------------------------- | ----: | ------: |
-| empty                       | 0.04  | 0.04    |
-| `scanf`                     | 0.25  | 0.23    |
-| `std::istream` / `std::cin` | 0.31  | 0.29    |
-| `scn::input`                | 0.50  | 0.48    |
-| `scn::input` (header only)  | 1.34  | 2.48    |
+| :-------------------------- |------:|--------:|
+| empty                       |  0.07 |    0.03 |
+| `scanf`                     |  0.20 |    0.19 |
+| `std::istream` / `std::cin` |  0.26 |    0.24 |
+| `scn::input`                |  0.55 |    0.54 |
+| `scn::input` (header only)  |  1.88 |    3.69 |
 
 #### Memory consumption
 
@@ -367,12 +367,12 @@ Memory is in mebibytes (MiB).
 Lower is better.
 
 | Method                      | Debug | Release |
-| :-------------------------- | ----: | ------: |
-| empty                       | 22.2  | 23.8    |
-| `scanf`                     | 46.9  | 46.7    |
-| `std::istream` / `std::cin` | 55.1  | 54.8    |
-| `scn::input`                | 78.0  | 75.6    |
-| `scn::input` (header only)  | 140   | 166     |
+| :-------------------------- |------:|--------:|
+| empty                       |  17.4 |    20.3 |
+| `scanf`                     |  49.1 |    49.7 |
+| `std::istream` / `std::cin` |  60.8 |    60.8 |
+| `scn::input`                |  96.0 |    92.7 |
+| `scn::input` (header only)  |   217 |     247 |
 
 ## Acknowledgements
 
