@@ -29,9 +29,8 @@ namespace scn {
     }
 
     /**
-     * \tparam OriginalRange The type of the range passed to the scanning function
-     * \param result Return value of `vscan`
-     * \return Result object
+     * \tparam OriginalRange The type of the range passed to the scanning
+     * function \param result Return value of `vscan` \return Result object
      *
      * \code{.cpp}
      * template <typename Range, typename... Args>
@@ -248,18 +247,15 @@ namespace scn {
         T value;
         auto range = wrap(SCN_FWD(r));
         auto args = make_args_for(range, 1, value);
-        auto ctx = make_context(SCN_MOVE(range));
-        auto pctx = make_parse_context(1, ctx.locale());
-
-        auto err = visit(ctx, pctx, {args});
-        if (!err) {
-            return detail::wrap_result(expected<T>{err},
+        auto ret = vscan_default(SCN_MOVE(range), 1, {args});
+        if (ret.err) {
+            return detail::wrap_result(expected<T>{value},
                                        detail::range_tag<Range>{},
-                                       SCN_MOVE(ctx.range()));
+                                       SCN_MOVE(ret.range));
         }
-        return detail::wrap_result(expected<T>{value},
+        return detail::wrap_result(expected<T>{ret.err},
                                    detail::range_tag<Range>{},
-                                   SCN_MOVE(ctx.range()));
+                                   SCN_MOVE(ret.range));
     }
 #endif
 

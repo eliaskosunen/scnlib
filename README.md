@@ -265,7 +265,7 @@ It generates 25 translation units and reads values from stdin five times to simu
 The resulting executable size is shown in the following tables and graphs.
 The "stripped size" metric shows the size of the executable after running `strip`.
 
-The code was compiled on Ubuntu 20.04 with g++ 9.3.0.
+The code was compiled on Ubuntu 21.10 with g++ 11.2.0.
 `scnlib` is linked dynamically to level out the playing field compared to already dynamically linked `libc` and `libstdc++`.
 See the directory `benchmark/bloat` for more information, e.g. templates for each TU.
 
@@ -274,11 +274,11 @@ To run these tests yourself:
 ```sh
 $ cd build
 # For Debug
-$ cmake -DCMAKE_BUILD_TYPE=Debug -DSCN_BUILD_BLOAT=ON -DSCN_BUILD_BUILDTIME=OFF -DSCN_TESTS=OFF -DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
+$ cmake -DCMAKE_BUILD_TYPE=Debug -DSCN_BUILD_BLOAT=ON -DSCN_BUILD_BUILDTIME=OFF -DSCN_TESTS=OFF -DSCN_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
 # For Release
-$ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_BUILD_BLOAT=ON -DSCN_BUILD_BUILDTIME=OFF -DSCN_TESTS=OFF DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
+$ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_BUILD_BLOAT=ON -DSCN_BUILD_BUILDTIME=OFF -DSCN_TESTS=OFF -DSCN_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
 # For Minimized Release
-$ cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_BUILD_BLOAT=ON -DSCN_BUILD_BUILDTIME=OFF -DSCN_TESTS=OFF DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
+$ cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_BUILD_BLOAT=ON -DSCN_BUILD_BUILDTIME=OFF -DSCN_TESTS=OFF -DSCN_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON -DSCN_INSTALL=OFF ..
 
 $ make -j
 $ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat
@@ -291,13 +291,13 @@ Lower is better.
 
 | Method                          | Executable size | Stripped size |
 | :------------------------------ | --------------: | ------------: |
-| empty                           |            16.0 |          14.0 |
-| `std::scanf`                    |            17.8 |          14.2 |
-| `std::istream`                  |            19.4 |          14.2 |
-| `scn::input`                    |            19.1 |          14.2 |
-| `scn::input` (header-only)      |            41.4 |          30.2 |
-| `scn::scan_value`               |            35.9 |          26.2 |
-| `scn::scan_value` (header-only) |            32.0 |          22.2 |
+| empty                           |            15.4 |          14.0 |
+| `std::scanf`                    |            17.0 |          14.2 |
+| `std::istream`                  |            18.6 |          14.2 |
+| `scn::input`                    |            18.4 |          14.2 |
+| `scn::input` (header-only)      |             120 |          94.3 |
+| `scn::scan_value`               |            18.1 |          14.2 |
+| `scn::scan_value` (header-only) |             100 |          78.3 |
 
 ![Benchmark results](benchmark/bloat/results_minsizerel.png?raw=true "Benchmark results")
 
@@ -305,13 +305,13 @@ Lower is better.
 
 | Method                          | Executable size | Stripped size |
 | :------------------------------ | --------------: | ------------: |
-| empty                           |            16.0 |          14.0 |
-| `std::scanf`                    |            17.7 |          14.2 |
-| `std::istream`                  |            19.4 |          14.2 |
-| `scn::input`                    |            19.1 |          14.2 |
-| `scn::input` (header-only)      |            53.8 |          42.2 |
-| `scn::scan_value`               |            39.3 |          30.2 |
-| `scn::scan_value` (header-only) |            43.8 |          34.2 |
+| empty                           |            15.4 |          14.0 |
+| `std::scanf`                    |            17.0 |          14.2 |
+| `std::istream`                  |            18.6 |          14.2 |
+| `scn::input`                    |            18.2 |          14.2 |
+| `scn::input` (header-only)      |             161 |           138 |
+| `scn::scan_value`               |            18.6 |          14.2 |
+| `scn::scan_value` (header-only) |             124 |           106 |
 
 ![Benchmark results](benchmark/bloat/results_release.png?raw=true "Benchmark results")
 
@@ -319,13 +319,13 @@ Lower is better.
 
 | Method                          | Executable size | Stripped size |
 | :------------------------------ | --------------: | ------------: |
-| empty                           |            35.9 |          14.0 |
-| `std::scanf`                    |             614 |          18.2 |
-| `std::istream`                  |             688 |          26.2 |
-| `scn::input`                    |            1425 |          42.3 |
-| `scn::input` (header-only)      |            4703 |           202 |
-| `scn::scan_value`               |            3622 |           134 |
-| `scn::scan_value` (header-only) |            4778 |           186 |
+| empty                           |            27.5 |          14.0 |
+| `std::scanf`                    |             605 |          22.2 |
+| `std::istream`                  |             651 |          26.2 |
+| `scn::input`                    |            1633 |          94.3 |
+| `scn::input` (header-only)      |           10533 |          1010 |
+| `scn::scan_value`               |            1765 |          90.3 |
+| `scn::scan_value` (header-only) |            9289 |           698 |
 
 ![Benchmark results](benchmark/bloat/results_debug.png?raw=true "Benchmark results")
 
