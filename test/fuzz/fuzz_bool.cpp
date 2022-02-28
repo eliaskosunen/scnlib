@@ -22,11 +22,7 @@ namespace scn_fuzz {
     void do_basic_run_for_source(Source& source,
                                  format_strings_view<CharT> format_strings)
     {
-        do_basic_run_for_type<CharT, int>(source, format_strings);
-        do_basic_run_for_type<CharT, unsigned>(source, format_strings);
-        do_basic_run_for_type<CharT, long long>(source, format_strings);
-        do_basic_run_for_type<CharT, unsigned long long>(source,
-                                                         format_strings);
+        do_basic_run_for_type<CharT, bool>(source, format_strings);
     }
 }  // namespace scn_fuzz
 
@@ -40,14 +36,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     scn::wstring_view wsv1, wsv2;
     scn_fuzz::populate_views(data, size, sv, wsv1, wsv2);
 
-    auto f = scn_fuzz::get_format_strings<char>(
-        "{}", "{:i}", "{:d}", "{:L}", "{:x}", "{:b}", "{:o}", "{:B36}", "{:n}",
-        "{:'}", "{:'L}");
+    auto f = scn_fuzz::get_format_strings<char>("{}", "{:s}", "{:i}", "{:L}");
     scn_fuzz::do_basic_run(sv, f);
 
-    auto wf = scn_fuzz::get_format_strings<wchar_t>(
-        L"{}", L"{:i}", L"{:d}", L"{:L}", L"{:x}", L"{:b}", L"{:o}", L"{:B36}",
-        L"{:n}", L"{:'}", L"{:'L}");
+    auto wf =
+        scn_fuzz::get_format_strings<wchar_t>(L"{}", L"{:s}", L"{:i}", L"{:L}");
     scn_fuzz::do_basic_run(wsv1, wf);
     scn_fuzz::do_basic_run(wsv2, wf);
 

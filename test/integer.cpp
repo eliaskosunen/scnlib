@@ -929,3 +929,19 @@ TEST_CASE("consistency")
         }
     }
 }
+
+TEST_CASE("deque + L")
+{
+    auto source = get_deque<char>("123");
+    int i{};
+    auto ret = scn::scan(source, "{:L}", i);
+    CHECK(ret);
+    CHECK(i == 123);
+    CHECK(ret.range().empty());
+    i = 0;
+
+    ret = scn::scan(ret.range(), "{:L}", i);
+    CHECK(!ret);
+    CHECK(ret.error() == scn::error::end_of_range);
+    CHECK(i == 0);
+}

@@ -505,6 +505,15 @@ namespace scn {
                     }
                     auto span =
                         make_span(to_address(it), static_cast<size_t>(len));
+                    code_point cp{};
+                    auto i = parse_code_point(span.begin(), span.end(), cp);
+                    if (!i) {
+                        return i.error();
+                    }
+                    if (i.value() != span.end()) {
+                        return error{error::invalid_encoding,
+                                     "Invalid utf8 code point"};
+                    }
                     if (pred(span) == pred_result_to_stop) {
                         auto begin = r.data();
                         auto end = keep_final ? it + len : it;

@@ -262,7 +262,7 @@ namespace scn {
                 code_point cp{};
                 auto it = parse_code_point(ch.begin(), ch.end(), cp);
                 SCN_EXPECT(it);
-                return is_digit(cp);
+                return is_space(cp);
             }
             SCN_EXPECT(ch.size() == 1);
             return std::isspace(ch[0], locale);

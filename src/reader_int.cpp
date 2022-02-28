@@ -116,6 +116,8 @@ namespace scn {
             T& val,
             span<const CharT> s)
         {
+            SCN_EXPECT(s.size() > 0);
+
             SCN_MSVC_PUSH
             SCN_MSVC_IGNORE(4244)
             SCN_MSVC_IGNORE(4127)  // conditional expression is constant

@@ -22,9 +22,6 @@ namespace scn_fuzz {
     void do_basic_run_for_source(Source& source,
                                  format_strings_view<CharT> format_strings)
     {
-        do_basic_run_for_type<CharT, bool>(source, format_strings);
-        do_basic_run_for_type<CharT, CharT>(source, format_strings);
-        do_basic_run_for_type<CharT, scn::code_point>(source, format_strings);
         do_basic_run_for_type<CharT, std::basic_string<CharT>>(source,
                                                                format_strings);
         do_basic_run_for_type<CharT, scn::basic_string_view<CharT>>(
@@ -42,12 +39,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     scn::wstring_view wsv1, wsv2;
     scn_fuzz::populate_views(data, size, sv, wsv1, wsv2);
 
-    auto f = scn_fuzz::get_format_strings<char>("{}", "{:L}", "{:s}", "{:b}",
-                                                "{:c}", "{:[:alpha:]}");
+    auto f = scn_fuzz::get_format_strings<char>("{}", "{:L}", "{:s}",
+                                                "{:[:alpha:]}");
     scn_fuzz::do_basic_run(sv, f);
 
-    auto wf = scn_fuzz::get_format_strings<wchar_t>(L"{}", L"{:s}", L"{:b}",
-                                                    L"{:c}", L"{:[:alpha:]}");
+    auto wf = scn_fuzz::get_format_strings<wchar_t>(L"{}", L"{:L}", L"{:s}",
+                                                    L"{:[:alpha:]}");
     scn_fuzz::do_basic_run(wsv1, wf);
     scn_fuzz::do_basic_run(wsv2, wf);
 

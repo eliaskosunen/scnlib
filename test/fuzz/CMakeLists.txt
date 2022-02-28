@@ -12,6 +12,14 @@ endfunction()
 add_fuzzer(roundtrip) # use int
 add_fuzzer(int)
 add_fuzzer(float)
-add_fuzzer(types)
-add_fuzzer(getline) # use types
+add_fuzzer(bool)
+add_fuzzer(char)
+add_fuzzer(string)
+add_fuzzer(getline) # use string
 add_fuzzer(format)
+
+add_custom_target(fuzz-prepare ALL
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_LIST_DIR}/run-fuzz.sh"
+        "${CMAKE_BINARY_DIR}/test/fuzz"
+        COMMENT "Copying fuzz scripts")
