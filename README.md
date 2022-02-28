@@ -202,7 +202,7 @@ The last commit tested and verified to work with arm64 is
 
 ![Benchmark results](benchmark/runtime/results.png?raw=true "Benchmark results")
 
-These benchmarks were run on a Ubuntu 20.04 machine running kernel version 5.4.0-52, with an Intel Core i5-6600K processor, and compiled with gcc version 9.3.0, with `-O3 -DNDEBUG -march=native`.
+These benchmarks were run on a Ubuntu 21.10 machine running kernel version 5.13.0-30, with an Intel Core i7-8565U processor, and compiled with gcc version 11.2.0, with `-O3 -DNDEBUG -march=native`.
 The source code for the benchmarks can be seen in the `benchmark` directory.
 
 You can run the benchmarks yourself by enabling `SCN_BENCHMARKS`.

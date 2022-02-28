@@ -96,6 +96,20 @@ TEST_CASE_TEMPLATE("getline", CharT, char, wchar_t)
               widen<CharT>("Second line with spaces"));
         CHECK(ret.empty());
     }
+    SUBCASE("non-contiguous")
+    {
+        string_type s{};
+        auto source = get_deque<CharT>(data);
+        auto ret =
+            scn::getline(source, s, scn::detail::ascii_widen<CharT>('\n'));
+        CHECK(ret);
+        CHECK(s == widen<CharT>("firstline"));
+
+        ret = scn::getline(ret.range(), s);
+        CHECK(ret);
+        CHECK(ret.empty());
+        CHECK(s == widen<CharT>("Second line with spaces"));
+    }
 }
 
 TEST_CASE_TEMPLATE("ignore", CharT, char, wchar_t)

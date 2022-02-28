@@ -1,3 +1,12 @@
+# 1.0
+
+_Released 2022-02-28_
+
+ * Fix bugs
+ * Reorganize and expand fuzzing, making it oss-fuzz ready
+ * Expand test suite with more localized tests
+ * Update benchmark results
+
 # 1.0-rc1
 
 _Released 2022-02-21_

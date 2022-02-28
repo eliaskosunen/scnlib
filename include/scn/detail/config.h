@@ -26,7 +26,7 @@
 
 #define SCN_COMPILER(major, minor, patch) \
     ((major)*10000000 /* 10,000,000 */ + (minor)*10000 /* 10,000 */ + (patch))
-#define SCN_VERSION SCN_COMPILER(0, 4, 0)
+#define SCN_VERSION SCN_COMPILER(1, 0, 0)
 
 #ifdef __INTEL_COMPILER
 // Intel
@@ -450,7 +450,7 @@
 #define SCN_FWD(x)          static_cast<decltype(x)&&>(x)
 #define SCN_DECLVAL(T)      static_cast<T (*)()>(nullptr)()
 
-#define SCN_BEGIN_NAMESPACE inline namespace v0 {
+#define SCN_BEGIN_NAMESPACE inline namespace v1 {
 #define SCN_END_NAMESPACE   }
 
 #if defined(SCN_HEADER_ONLY)
