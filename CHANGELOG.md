@@ -6,6 +6,7 @@ _Released 2022-02-28_
  * Reorganize and expand fuzzing, making it oss-fuzz ready
  * Expand test suite with more localized tests
  * Update benchmark results
+ * Update submodules
 
 # 1.0-rc1
 

@@ -7,9 +7,9 @@
 [![Alpine builds](https://github.com/eliaskosunen/scnlib/actions/workflows/alpine.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/alpine.yml)
 [![Code Coverage](https://codecov.io/gh/eliaskosunen/scnlib/branch/master/graph/badge.svg?token=LyWrDluna1)](https://codecov.io/gh/eliaskosunen/scnlib)
 
-[![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver)](https://github.com/eliaskosunen/scnlib/releases)
+[![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver&display_name=tag)](https://github.com/eliaskosunen/scnlib/releases)
 [![License](https://img.shields.io/github/license/eliaskosunen/scnlib.svg)](https://github.com/eliaskosunen/scnlib/blob/master/LICENSE)
-[![C++ Standard](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20-blue.svg)
+[![C++ Standard](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20%2F23-blue.svg)](https://img.shields.io/badge/C%2B%2B-11%2F14%2F17%2F20%2F23-blue.svg)
 
 ```cpp
 #include <scn/scn.h>
@@ -38,9 +38,11 @@ Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 This library is the reference implementation of the ISO C++ standards proposal
 [P1729 "Text Parsing"](https://wg21.link/p1729).
 
-This library is currently of pre-release quality (version 1.0-rc1),
-but it's close to being stable.
-1.0 will be released when an rc-version will prove itself reasonably bug-free.
+The library is currently deemed production-ready, and should be reasonably bug-free;
+it's tested and fuzzed extensively.
+
+The master-branch of the repository targets the next minor release (v1.1), and is backwards-compatible.
+The dev-branch targets the next major release (v2.0), and may contain backwards-incompatible changes, and may have lacking documentation.
 
 ## Documentation
 
@@ -129,6 +131,7 @@ int main() {
  - Minimal code size increase (see benchmarks)
  - No exceptions (supports building with `-fno-exceptions -fno-rtti` with minimal loss of functionality)
    - Localization requires exceptions, because of the way `std::locale` is
+ - Unicode-aware
 
 ## Installing
 
