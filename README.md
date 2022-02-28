@@ -239,6 +239,12 @@ Times are in nanoseconds of CPU time. Lower is better.
 | `char`         |                63.3 |        56.9 |                          51.0 |
 | `wchar_t`      |                 157 |        58.8 |                          62.8 |
 
+#### Conclusions
+
+`scn::scan` is faster than the standard library offerings in all cases, sometimes over 8x faster.
+
+Using `scn::scan_default` can sometimes have a slight performance benefit over `scn::scan`.
+
 #### Test 1 vs. Test 2
 
 In the above comparisons:
@@ -327,6 +333,15 @@ Lower is better.
 
 ![Benchmark results](benchmark/bloat/results_debug.png?raw=true "Benchmark results")
 
+#### Conclusions
+
+When using optimizing build options, scnlib provides equal binary size to `<iostream>`, and a ~10% increase compared to `scanf`.
+If using `strip`, these differences go away.
+
+On Debug mode, scnlib is ~3x bigger compared to `<iostream>` and `scanf`.
+
+Header-only mode makes executable size ~6-7x bigger.
+
 ### Build time
 
 This test measures the time it takes to compile a binary when using different libraries.
@@ -371,6 +386,12 @@ Lower is better.
 | `std::istream` / `std::cin` |  60.8 |    60.8 |
 | `scn::input`                |  96.0 |    92.7 |
 | `scn::input` (header only)  |   217 |     247 |
+
+#### Conclusions
+
+scnlib takes about 2x longer to compile compared to `<iostream>`, and uses about 70% more memory.
+
+Header-only mode can make compilation up to 7x slower, and use up to 3x as much memory.
 
 ## Acknowledgements
 
