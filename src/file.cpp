@@ -19,8 +19,8 @@
 #define SCN_FILE_CPP
 #endif
 
-#include <scn/detail/file.h>
 #include <scn/detail/error.h>
+#include <scn/detail/file.h>
 #include <scn/util/expected.h>
 
 #include <cstdio>
@@ -81,7 +81,8 @@ namespace scn {
                 return;
             }
 
-            struct stat s{};
+            struct stat s {
+            };
             int status = fstat(fd, &s);
             if (status == -1) {
                 close(fd);
@@ -187,7 +188,8 @@ namespace scn {
             {
                 if (self.m_file && (self.m_file == o.m_file || !o.m_file)) {
                     if (self.m_file->_is_at_end(self.m_current) &&
-                        self.m_last_error.code() != error::end_of_range) {
+                        self.m_last_error.code() != error::end_of_range &&
+                        !o.m_file) {
                         self.m_last_error = error{};
                         auto r = self.m_file->_read_single();
                         if (!r) {
