@@ -17,3 +17,51 @@
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "test.h"
+
+TEST_CASE("basic")
+{
+    std::string a, b;
+    auto ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "abc åäö",
+                                   "{:L} {}", a, b);
+    CHECK(ret);
+    CHECK(a == "abc");
+    CHECK(b == "åäö");
+
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "abc åäö", "{:L} {}",
+                              a, b);
+    CHECK(ret);
+    CHECK(a == "abc");
+    CHECK(b == "åäö");
+}
+
+TEST_CASE(":alpha:")
+{
+    std::string str;
+    auto ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "aä",
+                                   "{:[:alpha:]}", str);
+    CHECK(ret);
+    CHECK(str == "a");
+    CHECK(ret.range_as_string() == "ä");
+    str.clear();
+
+    ret = scn::scan_localized(std::locale{"en_US.UTF-8"}, "aä", "{:L[:alpha:]}",
+                              str);
+    CHECK(ret);
+    CHECK(str == "aä");
+    CHECK(ret.range().empty());
+    str.clear();
+
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "aä", "{:[:alpha:]}",
+                              str);
+    CHECK(ret);
+    CHECK(str == "a");
+    CHECK(ret.range_as_string() == "ä");
+    str.clear();
+
+    ret = scn::scan_localized(std::locale{"fi_FI.UTF-8"}, "aä", "{:L[:alpha:]}",
+                              str);
+    CHECK(ret);
+    CHECK(str == "aä");
+    CHECK(ret.empty());
+    str.clear();
+}

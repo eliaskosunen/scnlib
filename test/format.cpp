@@ -68,6 +68,14 @@ TEST_CASE("align")
         CHECK(e.range_as_string() == "b");
         CHECK(a.ch == 'a');
     }
+    SUBCASE("center, non-contiguous")
+    {
+        auto e = scn::scan(get_deque<char>("   a   b"), "{:^}", a);
+        CHECK(e);
+        CHECK(e.range().size() == 1);
+        CHECK(*e.range().begin() == 'b');
+        CHECK(a.ch == 'a');
+    }
 }
 TEST_CASE("align + fill")
 {

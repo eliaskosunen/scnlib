@@ -1079,8 +1079,8 @@ namespace scn {
             {
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
-                    bool mb = set_parser.get_option(
-                                  set_parser_type::flag::use_ranges) &&
+                    bool mb = (loc || set_parser.get_option(
+                                          set_parser_type::flag::use_ranges)) &&
                               is_multichar_type(typename Context::char_type{});
                     return do_scan(ctx, val,
                                    pred<Context>{ctx, set_parser, loc, mb});
@@ -1190,9 +1190,9 @@ namespace scn {
 
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
-                    bool mb = set_parser.get_option(
-                                  set_parser_type::flag::use_ranges) &&
-                              sizeof(typename Context::char_type) == 1;
+                    bool mb = (loc || set_parser.get_option(
+                                          set_parser_type::flag::use_ranges)) &&
+                              is_multichar_type(typename Context::char_type{});
                     return do_scan(ctx, val,
                                    string_scanner::pred<Context>{
                                        ctx, set_parser, loc, mb});
@@ -1263,9 +1263,9 @@ namespace scn {
 
                 if (set_parser.enabled()) {
                     bool loc = (common_options & localized) != 0;
-                    bool mb = set_parser.get_option(
-                                  set_parser_type::flag::use_ranges) &&
-                              sizeof(typename Context::char_type) == 1;
+                    bool mb = (loc || set_parser.get_option(
+                                          set_parser_type::flag::use_ranges)) &&
+                              is_multichar_type(typename Context::char_type{});
                     return do_scan(ctx, val,
                                    string_scanner::pred<Context>{
                                        ctx, set_parser, loc, mb});

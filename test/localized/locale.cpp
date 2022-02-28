@@ -88,3 +88,29 @@ TEST_CASE("Changing global C++ locale")
 
     std::locale::global(std::locale::classic());
 }
+
+TEST_CASE("custom_locale_ref")
+{
+    auto to_locale = [](const void* l) {
+        return *static_cast<const std::locale*>(l);
+    };
+
+    SUBCASE("basic value operations")
+    {
+        auto loc = scn::detail::basic_custom_locale_ref<char>();
+        CHECK(to_locale(loc.get_locale()).name() == "C");
+        CHECK(to_locale(loc.get_locale()).name() ==
+              to_locale(loc.make_classic().get_locale()).name());
+        loc.convert_to_global();
+        CHECK(to_locale(loc.get_locale()).name() ==
+              to_locale(loc.make_classic().get_locale()).name());
+
+        auto enus = std::locale{"en_US.UTF-8"};
+        auto other = scn::detail::basic_custom_locale_ref<char>(&enus);
+        loc = SCN_MOVE(other);
+        CHECK(to_locale(loc.get_locale()) == enus);
+
+        auto other2 = SCN_MOVE(loc);
+        CHECK(to_locale(other2.get_locale()) == enus);
+    }
+}

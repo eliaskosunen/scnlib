@@ -58,6 +58,49 @@ TEST_CASE("utf8")
     cp = zero;
 }
 
+TEST_CASE("read_code_point")
+{
+    unsigned char buf[4] = {0};
+    auto bufspan = scn::make_span(buf, 4);
+
+    SUBCASE("non-contiguous")
+    {
+        auto range = scn::wrap(get_deque<char>("aä€🙂"));
+        CHECK(range.size() == 10);
+
+        auto ret = scn::read_code_point(range, bufspan);
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().chars[0] == 'a');
+        CHECK(ret.value().cp == scn::make_code_point('a'));
+        CHECK(range.size() == 9);
+
+        ret = scn::read_code_point(range, bufspan);
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 2);
+        CHECK(ret.value().chars[0] == static_cast<char>(0xc3));
+        CHECK(ret.value().chars[1] == static_cast<char>(0xa4));
+        CHECK(ret.value().cp == scn::make_code_point(0xe4));
+        CHECK(range.size() == 7);
+
+        ret = scn::read_code_point(range, bufspan);
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 3);
+        CHECK(ret.value().cp == scn::make_code_point(0x20ac));
+        CHECK(range.size() == 4);
+
+        ret = scn::read_code_point(range, bufspan);
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 4);
+        CHECK(ret.value().cp == scn::make_code_point(0x1f642));
+        CHECK(range.empty());
+
+        ret = scn::read_code_point(range, bufspan);
+        CHECK(!ret);
+        CHECK(ret.error() == scn::error::end_of_range);
+    }
+}
+
 TEST_CASE("invalid utf8")
 {
     scn::code_point cp{};

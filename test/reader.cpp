@@ -288,3 +288,26 @@ TEST_CASE_TEMPLATE("read_until_space_zero_copy keep final space",
         CHECK(ret.error() == scn::error::end_of_range);
     }
 }
+
+TEST_CASE("putback_n")
+{
+    SUBCASE("contiguous")
+    {
+        auto range = scn::wrap("abc");
+        range.advance(2);
+
+        auto e = scn::putback_n(range, 2);
+        CHECK(e);
+        CHECK(range.data() == std::string{"abc"});
+    }
+    SUBCASE("non-contiguous")
+    {
+        auto range = scn::wrap(get_deque<char>("abc"));
+        range.advance(2);
+
+        auto e = scn::putback_n(range, 2);
+        CHECK(e);
+        CHECK(range.size() == 3);
+        CHECK(*range.begin() == 'a');
+    }
+}
