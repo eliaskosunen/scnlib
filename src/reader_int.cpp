@@ -347,15 +347,19 @@ namespace scn {
     template expected<typename span<const CharT>::iterator>           \
     integer_scanner<T>::parse_base_prefix(span<const CharT>, int&) const;
 
-#define SCN_DEFINE_INTEGER_SCANNER_MEMBERS(Char)                  \
-    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, short)          \
-    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, int)            \
-    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, long)           \
-    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, long long)      \
-    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, unsigned short) \
-    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, unsigned int)   \
-    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, unsigned long)  \
-    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, unsigned long long)
+#define SCN_DEFINE_INTEGER_SCANNER_MEMBERS(Char)                      \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, signed char)        \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, short)              \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, int)                \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, long)               \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, long long)          \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, unsigned char)      \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, unsigned short)     \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, unsigned int)       \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, unsigned long)      \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, unsigned long long) \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, char)               \
+    SCN_DEFINE_INTEGER_SCANNER_MEMBERS_IMPL(Char, wchar_t)
 
         SCN_DEFINE_INTEGER_SCANNER_MEMBERS(char)
         SCN_DEFINE_INTEGER_SCANNER_MEMBERS(wchar_t)

@@ -77,6 +77,18 @@ T blip_for_roundtrip(Source data)
     return value;
 }
 
+template <typename T, typename = void>
+struct widen_to_64;
+template <typename T>
+struct widen_to_64<T, typename std::enable_if<std::is_signed<T>::value>::type> {
+    using type = long long;
+};
+template <typename T>
+struct widen_to_64<T,
+                   typename std::enable_if<std::is_unsigned<T>::value>::type> {
+    using type = unsigned long long;
+};
+
 template <typename CharT, typename T, typename Source>
 void roundtrip_for_type(Source data)
 {
@@ -85,7 +97,7 @@ void roundtrip_for_type(Source data)
     auto original_value = blip_for_roundtrip<T>(data);
 
     std::basic_ostringstream<CharT> oss;
-    oss << original_value;
+    oss << static_cast<typename widen_to_64<T>::type>(original_value);
 
     auto source_str = SCN_MOVE(oss).str();
     do_roundtrip<CharT>(original_value, source_str);
@@ -107,10 +119,12 @@ void roundtrip_for_source(Source source)
 {
     using char_type = typename Source::value_type;
 
+    roundtrip_for_type<char_type, signed char>(source);
     roundtrip_for_type<char_type, short>(source);
     roundtrip_for_type<char_type, int>(source);
     roundtrip_for_type<char_type, long>(source);
     roundtrip_for_type<char_type, long long>(source);
+    roundtrip_for_type<char_type, unsigned char>(source);
     roundtrip_for_type<char_type, unsigned short>(source);
     roundtrip_for_type<char_type, unsigned int>(source);
     roundtrip_for_type<char_type, unsigned long>(source);

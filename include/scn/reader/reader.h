@@ -30,16 +30,19 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     template <>
-    struct scanner<char> : public detail::char_scanner {
-    };
-    template <>
-    struct scanner<wchar_t> : public detail::char_scanner {
-    };
-    template <>
     struct scanner<code_point> : public detail::code_point_scanner {
     };
     template <>
     struct scanner<bool> : public detail::bool_scanner {
+    };
+    template <>
+    struct scanner<char> : public detail::integer_scanner<char> {
+    };
+    template <>
+    struct scanner<wchar_t> : public detail::integer_scanner<wchar_t> {
+    };
+    template <>
+    struct scanner<signed char> : public detail::integer_scanner<signed char> {
     };
     template <>
     struct scanner<short> : public detail::integer_scanner<short> {
@@ -52,6 +55,10 @@ namespace scn {
     };
     template <>
     struct scanner<long long> : public detail::integer_scanner<long long> {
+    };
+    template <>
+    struct scanner<unsigned char>
+        : public detail::integer_scanner<unsigned char> {
     };
     template <>
     struct scanner<unsigned short>

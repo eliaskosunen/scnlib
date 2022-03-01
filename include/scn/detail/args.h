@@ -67,11 +67,13 @@ namespace scn {
         enum type {
             none_type = 0,
             // signed integer
+            schar_type,
             short_type,
             int_type,
             long_type,
             long_long_type,
             // unsigned integer
+            uchar_type,
             ushort_type,
             uint_type,
             ulong_type,
@@ -217,11 +219,13 @@ namespace scn {
         return val;                                                       \
     }
 
+        SCN_MAKE_VALUE(schar_type, signed char)
         SCN_MAKE_VALUE(short_type, short)
         SCN_MAKE_VALUE(int_type, int)
         SCN_MAKE_VALUE(long_type, long)
         SCN_MAKE_VALUE(long_long_type, long long)
 
+        SCN_MAKE_VALUE(uchar_type, unsigned char)
         SCN_MAKE_VALUE(ushort_type, unsigned short)
         SCN_MAKE_VALUE(uint_type, unsigned)
         SCN_MAKE_VALUE(ulong_type, unsigned long)
@@ -333,6 +337,8 @@ namespace scn {
             case detail::none_type:
                 break;
 
+            case detail::schar_type:
+                return vis(arg.m_value.template get_as<signed char>());
             case detail::short_type:
                 return vis(arg.m_value.template get_as<short>());
             case detail::int_type:
@@ -342,6 +348,8 @@ namespace scn {
             case detail::long_long_type:
                 return vis(arg.m_value.template get_as<long long>());
 
+            case detail::uchar_type:
+                return vis(arg.m_value.template get_as<unsigned char>());
             case detail::ushort_type:
                 return vis(arg.m_value.template get_as<unsigned short>());
             case detail::uint_type:

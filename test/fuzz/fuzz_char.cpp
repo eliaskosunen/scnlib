@@ -40,7 +40,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     auto f = scn_fuzz::get_format_strings<char>("{}", "{:L}", "{:c}");
     scn_fuzz::do_basic_run(sv, f);
 
-    auto wf = scn_fuzz::get_format_strings<wchar_t>(L"{}", L"{:s}", L"{:c}");
+    auto wf = scn_fuzz::get_format_strings<wchar_t>(L"{}", L"{:L}", L"{:c}");
     scn_fuzz::do_basic_run(wsv1, wf);
     scn_fuzz::do_basic_run(wsv2, wf);
 

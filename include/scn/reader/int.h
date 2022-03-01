@@ -32,10 +32,19 @@ namespace scn {
 
             friend struct simple_integer_scanner<T>;
 
+            bool skip_preceding_whitespace()
+            {
+                // if format_options == single_code_unit,
+                // then we're scanning a char -> don't skip
+                return format_options != single_code_unit;
+            }
+
             template <typename ParseCtx>
             error parse(ParseCtx& pctx)
             {
                 using char_type = typename ParseCtx::char_type;
+
+                format_options = 0;
 
                 int custom_base = 0;
                 auto each = [&](ParseCtx& p, bool& parsed) -> error {
@@ -101,7 +110,7 @@ namespace scn {
                     return {};
                 };
 
-                array<char_type, 8> options{{// decimal
+                array<char_type, 9> options{{// decimal
                                              ascii_widen<char_type>('d'),
                                              // binary
                                              ascii_widen<char_type>('b'),
@@ -113,15 +122,17 @@ namespace scn {
                                              ascii_widen<char_type>('i'),
                                              // unsigned decimal
                                              ascii_widen<char_type>('u'),
+                                             // code unit
+                                             ascii_widen<char_type>('c'),
                                              // localized digits
                                              ascii_widen<char_type>('n'),
                                              // thsep
                                              ascii_widen<char_type>('\'')}};
-                bool flags[8] = {false};
+                bool flags[9] = {false};
 
                 auto e = parse_common(
                     pctx, span<const char_type>{options.begin(), options.end()},
-                    span<bool>{flags, 8}, each);
+                    span<bool>{flags, 9}, each);
                 if (!e) {
                     return e;
                 }
@@ -136,8 +147,15 @@ namespace scn {
                             "'x', 'B') allowed"};
                 }
                 else if (base_flags_set == 0) {
-                    // Default to 'd'
-                    base = 10;
+                    // Default:
+                    //   'c' for CharT
+                    //   'd' otherwise
+                    if (std::is_same<T, typename ParseCtx::char_type>::value) {
+                        format_options = single_code_unit;
+                    }
+                    else {
+                        base = 10;
+                    }
                 }
                 else if (custom_base != 0) {
                     // B__
@@ -173,7 +191,7 @@ namespace scn {
                 }
 
                 // n set, implies L
-                if (flags[6]) {
+                if (flags[7]) {
                     common_options |= localized;
                     format_options |= localized_digits;
                 }
@@ -185,8 +203,20 @@ namespace scn {
                 }
 
                 // thsep flag
-                if (flags[7]) {
+                if (flags[8]) {
                     format_options |= allow_thsep;
+                }
+
+                // 'c' flag -> no other options allowed
+                if (flags[6]) {
+                    if (!(format_options == 0 ||
+                          format_options == single_code_unit) ||
+                        base_flags_set != 0) {
+                        return {error::invalid_format_string,
+                                "'c' flag cannot be used in conjunction with "
+                                "any other flags"};
+                    }
+                    format_options = single_code_unit;
                 }
 
                 return {};
@@ -258,6 +288,40 @@ namespace scn {
                     return {};
                 };
 
+                if (format_options == single_code_unit) {
+                    SCN_MSVC_PUSH
+                    SCN_MSVC_IGNORE(4127) // conditional expression is constant
+                    if (sizeof(T) < sizeof(char_type)) {
+                        // sizeof(char_type) > 1 -> wide range
+                        // Code unit might not fit
+                        return error{error::invalid_operation,
+                                     "Cannot read this type as a code unit "
+                                     "from a wide range"};
+                    }
+                    SCN_MSVC_POP
+                    auto ch = read_code_unit(ctx.range());
+                    if (!ch) {
+                        return ch.error();
+                    }
+                    val = static_cast<T>(ch.value());
+                    return {};
+                }
+
+                SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4127)  // conditional expression is constant
+                if ((std::is_same<T, char>::value ||
+                     std::is_same<T, wchar_t>::value) &&
+                    !std::is_same<T, char_type>::value) {
+                    // T is a character type, but not char_type:
+                    // Trying to read a char from a wide range, or wchar_t from
+                    // a narrow one
+                    // Reading a code unit is allowed, however
+                    return error{error::invalid_operation,
+                                 "Cannot read a char from a wide range, or a "
+                                 "wchar_t from a narrow one"};
+                }
+                SCN_MSVC_POP
+
                 std::basic_string<char_type> buf{};
                 span<const char_type> bufspan{};
                 auto e = _read_source(
@@ -280,15 +344,29 @@ namespace scn {
                 // "u" option -> don't allow sign
                 only_unsigned = 4,
                 // Allow base prefix (e.g. 0B and 0x)
-                allow_base_prefix = 8
+                allow_base_prefix = 8,
+                // "c" option -> scan a code unit
+                single_code_unit = 16,
             };
-            uint8_t format_options{0};
+            uint8_t format_options{default_format_options()};
 
             // 0 = detect base
             // Otherwise [2,36]
             uint8_t base{0};
 
         private:
+            static SCN_CONSTEXPR14 uint8_t default_format_options()
+            {
+                SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4127)  // conditional expression is constant
+                if (std::is_same<T, char>::value ||
+                    std::is_same<T, wchar_t>::value) {
+                    return single_code_unit;
+                }
+                return 0;
+                SCN_MSVC_POP
+            }
+
             template <typename Context, typename Buf, typename CharT>
             error _read_source(Context& ctx,
                                Buf& buf,
@@ -385,14 +463,18 @@ namespace scn {
         };
 
         // instantiate
+        template struct integer_scanner<signed char>;
         template struct integer_scanner<short>;
         template struct integer_scanner<int>;
         template struct integer_scanner<long>;
         template struct integer_scanner<long long>;
+        template struct integer_scanner<unsigned char>;
         template struct integer_scanner<unsigned short>;
         template struct integer_scanner<unsigned int>;
         template struct integer_scanner<unsigned long>;
         template struct integer_scanner<unsigned long long>;
+        template struct integer_scanner<char>;
+        template struct integer_scanner<wchar_t>;
 
         template <typename T>
         template <typename CharT>

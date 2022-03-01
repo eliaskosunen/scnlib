@@ -174,3 +174,23 @@ TEST_CASE("wide code point")
     CHECK(ret.range().empty());
     cp = scn::code_point{};
 }
+
+TEST_CASE("signed + unsigned char")
+{
+    signed char s1, s2, s3;
+
+    auto ret =
+        scn::scan_localized(std::locale{}, " -1 2", "{}{:c}{:c}", s1, s2, s3);
+    CHECK(ret);
+    CHECK(s1 == -1);
+    CHECK(s2 == ' ');
+    CHECK(s3 == '2');
+
+    unsigned char u1, u2, u3;
+    ret = scn::scan_localized(std::locale{}, " 1 2", "{:L}{:Lc}{:Lc}", u1, u2,
+                              u3);
+    CHECK(ret);
+    CHECK(u1 == 1);
+    CHECK(u2 == ' ');
+    CHECK(u3 == '2');
+}

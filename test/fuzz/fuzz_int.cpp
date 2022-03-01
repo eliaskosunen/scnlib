@@ -22,6 +22,8 @@ namespace scn_fuzz {
     void do_basic_run_for_source(Source& source,
                                  format_strings_view<CharT> format_strings)
     {
+        do_basic_run_for_type<CharT, signed char>(source, format_strings);
+        do_basic_run_for_type<CharT, unsigned char>(source, format_strings);
         do_basic_run_for_type<CharT, int>(source, format_strings);
         do_basic_run_for_type<CharT, unsigned>(source, format_strings);
         do_basic_run_for_type<CharT, long long>(source, format_strings);

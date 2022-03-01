@@ -23,7 +23,7 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
     namespace detail {
-        struct char_scanner : common_parser {
+        struct code_point_scanner : common_parser {
             static constexpr bool skip_preceding_whitespace()
             {
                 return false;
@@ -41,19 +41,6 @@ namespace scn {
                                     null_type_cb<ParseCtx>);
             }
 
-            template <typename Context>
-            error scan(typename Context::char_type& val, Context& ctx)
-            {
-                auto ch = read_code_unit(ctx.range());
-                if (!ch) {
-                    return ch.error();
-                }
-                val = ch.value();
-                return {};
-            }
-        };
-
-        struct code_point_scanner : char_scanner {
             template <typename Context>
             error scan(code_point& val, Context& ctx)
             {
@@ -194,8 +181,7 @@ namespace scn {
                     }
 
                     unsigned char buf[4] = {0};
-                    auto cp =
-                        read_code_point(ctx.range(), make_span(buf, 4));
+                    auto cp = read_code_point(ctx.range(), make_span(buf, 4));
                     if (!cp) {
                         return cp.error();
                     }

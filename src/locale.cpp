@@ -228,10 +228,9 @@ namespace scn {
                                         from_next, to_begin, to_end, to_next);
         }
 
-        static inline expected<wchar_t> convert_to_wide_impl(
-            const std::locale&,
-            const char*,
-            const char*)
+        static inline expected<wchar_t> convert_to_wide_impl(const std::locale&,
+                                                             const char*,
+                                                             const char*)
         {
             SCN_EXPECT(false);
             SCN_UNREACHABLE;
@@ -398,6 +397,69 @@ namespace scn {
         }
 
         template <typename T, typename CharT>
+        error do_read_num_impl(T& val, std::basic_istringstream<CharT>& ss)
+        {
+            ss >> val;
+            return {};
+        }
+        template <typename CharT>
+        error do_read_num_impl(CharT& val, std::basic_istringstream<CharT>& ss)
+        {
+            long long tmp;
+            if (!(ss >> tmp)) {
+                return {};
+            }
+            if (tmp > std::numeric_limits<CharT>::max()) {
+                return {error::value_out_of_range,
+                        "Scanned number out of range: overflow"};
+            }
+            if (tmp < std::numeric_limits<CharT>::min()) {
+                return {error::value_out_of_range,
+                        "Scanned number out of range: underflow"};
+            }
+            val = static_cast<CharT>(tmp);
+            return {};
+        }
+        template <typename CharT>
+        error do_read_num_impl(signed char& val,
+                               std::basic_istringstream<CharT>& ss)
+        {
+            int tmp;
+            if (!(ss >> tmp)) {
+                return {};
+            }
+            if (tmp > std::numeric_limits<signed char>::max()) {
+                return {error::value_out_of_range,
+                        "Scanned number out of range: overflow"};
+            }
+            if (tmp < std::numeric_limits<signed char>::min()) {
+                return {error::value_out_of_range,
+                        "Scanned number out of range: underflow"};
+            }
+            val = static_cast<signed char>(tmp);
+            return {};
+        }
+        template <typename CharT>
+        error do_read_num_impl(unsigned char& val,
+                               std::basic_istringstream<CharT>& ss)
+        {
+            int tmp;
+            if (!(ss >> tmp)) {
+                return {};
+            }
+            if (tmp > std::numeric_limits<unsigned char>::max()) {
+                return {error::value_out_of_range,
+                        "Scanned number out of range: overflow"};
+            }
+            if (tmp < 0) {
+                return {error::value_out_of_range,
+                        "Scanned number out of range: underflow"};
+            }
+            val = static_cast<unsigned char>(tmp);
+            return {};
+        }
+
+        template <typename T, typename CharT>
         expected<std::ptrdiff_t> do_read_num(
             T& val,
             const std::locale& loc,
@@ -411,10 +473,13 @@ namespace scn {
 
             try {
                 T tmp;
-                ss >> tmp;
+                auto e = do_read_num_impl(tmp, ss);
                 if (ss.bad()) {
                     return error(error::unrecoverable_internal_error,
                                  "Localized stringstream is bad");
+                }
+                if (!e) {
+                    return e;
                 }
                 if (ss.fail()) {
                     return read_num_check_range(tmp);
@@ -434,6 +499,25 @@ namespace scn {
                          "Localized number reading is only supported with "
                          "exceptions enabled");
 #endif
+        }
+
+        template <>
+        expected<std::ptrdiff_t> do_read_num(wchar_t&,
+                                             const std::locale&,
+                                             const std::string&,
+                                             int)
+        {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
+        }
+        template <>
+        expected<std::ptrdiff_t> do_read_num(char&,
+                                             const std::locale&,
+                                             const std::wstring&,
+                                             int)
+        {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
         }
 
         template <typename CharT>
@@ -456,6 +540,10 @@ namespace scn {
         SCN_CLANG_POP
 
         template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<char>::read_num<signed char>(signed char&,
+                                                             const string_type&,
+                                                             int) const;
+        template expected<std::ptrdiff_t>
         basic_custom_locale_ref<char>::read_num<short>(short&,
                                                        const string_type&,
                                                        int) const;
@@ -471,6 +559,10 @@ namespace scn {
         basic_custom_locale_ref<char>::read_num<long long>(long long&,
                                                            const string_type&,
                                                            int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            char>::read_num<unsigned char>(unsigned char&,
+                                           const string_type&,
+                                           int) const;
         template expected<std::ptrdiff_t> basic_custom_locale_ref<
             char>::read_num<unsigned short>(unsigned short&,
                                             const string_type&,
@@ -488,6 +580,14 @@ namespace scn {
                                                 const string_type&,
                                                 int) const;
         template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<char>::read_num<char>(char&,
+                                                      const string_type&,
+                                                      int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<char>::read_num<wchar_t>(wchar_t&,
+                                                         const string_type&,
+                                                         int) const;
+        template expected<std::ptrdiff_t>
         basic_custom_locale_ref<char>::read_num<float>(float&,
                                                        const string_type&,
                                                        int) const;
@@ -500,6 +600,10 @@ namespace scn {
                                                              const string_type&,
                                                              int) const;
 
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            wchar_t>::read_num<signed char>(signed char&,
+                                            const string_type&,
+                                            int) const;
         template expected<std::ptrdiff_t>
         basic_custom_locale_ref<wchar_t>::read_num<short>(short&,
                                                           const string_type&,
@@ -516,6 +620,10 @@ namespace scn {
             wchar_t>::read_num<long long>(long long&,
                                           const string_type&,
                                           int) const;
+        template expected<std::ptrdiff_t> basic_custom_locale_ref<
+            wchar_t>::read_num<unsigned char>(unsigned char&,
+                                              const string_type&,
+                                              int) const;
         template expected<std::ptrdiff_t> basic_custom_locale_ref<
             wchar_t>::read_num<unsigned short>(unsigned short&,
                                                const string_type&,
@@ -544,6 +652,14 @@ namespace scn {
             wchar_t>::read_num<long double>(long double&,
                                             const string_type&,
                                             int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<wchar_t>::read_num<char>(char&,
+                                                         const string_type&,
+                                                         int) const;
+        template expected<std::ptrdiff_t>
+        basic_custom_locale_ref<wchar_t>::read_num<wchar_t>(wchar_t&,
+                                                            const string_type&,
+                                                            int) const;
 #endif
 
     }  // namespace detail

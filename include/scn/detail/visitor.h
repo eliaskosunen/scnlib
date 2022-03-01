@@ -42,11 +42,6 @@ namespace scn {
         }
 
     private:
-        auto visit(char_type& val, detail::priority_tag<1>) -> error
-        {
-            return detail::visitor_boilerplate<detail::char_scanner>(
-                val, *m_ctx, *m_pctx);
-        }
         auto visit(code_point& val, detail::priority_tag<1>) -> error
         {
             return detail::visitor_boilerplate<detail::code_point_scanner>(
@@ -69,14 +64,17 @@ namespace scn {
         return detail::visitor_boilerplate<detail::integer_scanner<T>>( \
             val, *m_ctx, *m_pctx);                                      \
     }
+        SCN_VISIT_INT(signed char)
         SCN_VISIT_INT(short)
         SCN_VISIT_INT(int)
         SCN_VISIT_INT(long)
         SCN_VISIT_INT(long long)
+        SCN_VISIT_INT(unsigned char)
         SCN_VISIT_INT(unsigned short)
         SCN_VISIT_INT(unsigned int)
         SCN_VISIT_INT(unsigned long)
         SCN_VISIT_INT(unsigned long long)
+        SCN_VISIT_INT(char_type)
 #undef SCN_VISIT_INT
 
 #define SCN_VISIT_FLOAT(T)                                            \
@@ -155,8 +153,7 @@ namespace scn {
                 }
                 // Check for any non-specifier {foo} characters
                 unsigned char buf[4] = {0};
-                auto ret =
-                    read_code_point(ctx.range(), make_span(buf, 4));
+                auto ret = read_code_point(ctx.range(), make_span(buf, 4));
                 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 if (!ret || !pctx.check_literal(ret.value().chars)) {
                     auto rb = ctx.range().reset_to_rollback_point();

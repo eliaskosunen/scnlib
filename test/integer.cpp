@@ -347,14 +347,14 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
     }
     {
         value_type i{};
-        auto e = do_scan<char_type>("400", "{:o}", i);
-        CHECK(i == 0400);
+        auto e = do_scan<char_type>("10", "{:o}", i);
+        CHECK(i == 010);
         CHECK(e);
     }
     {
         value_type i{};
-        auto e = do_scan<char_type>("0400", "{:i}", i);
-        CHECK(i == 0400);
+        auto e = do_scan<char_type>("010", "{:i}", i);
+        CHECK(i == 010);
         CHECK(e);
     }
 
@@ -404,25 +404,25 @@ TEST_CASE_TEMPLATE_DEFINE("integer", T, integer_test)
 
     {
         value_type i{};
-        auto e = do_scan<char_type>("ff", "{:B16}", i);
-        CHECK(i == 0xff);
+        auto e = do_scan<char_type>("2f", "{:B16}", i);
+        CHECK(i == 0x2f);
         CHECK(e);
     }
     {
         value_type i{};
-        auto e = do_scan<char_type>("FF", "{:B16}", i);
-        CHECK(i == 0xff);
+        auto e = do_scan<char_type>("2F", "{:B16}", i);
+        CHECK(i == 0x2f);
         CHECK(e);
     }
     {
         value_type i{0};
-        auto e = do_scan<char_type>("0xff", "{:B16}", i);
+        auto e = do_scan<char_type>("0x2f", "{:B16}", i);
         CHECK(e);
         CHECK(i == 0);
     }
     {
         value_type i{0};
-        auto e = do_scan<char_type>("0xFF", "{:B16}", i);
+        auto e = do_scan<char_type>("0x2F", "{:B16}", i);
         CHECK(e);
         CHECK(i == 0);
     }
@@ -762,48 +762,66 @@ using char_intpair = intpair<char, T>;
 template <typename T>
 using wchar_intpair = intpair<wchar_t, T>;
 
+TYPE_TO_STRING(char_intpair<signed char>);
 TYPE_TO_STRING(char_intpair<short>);
 TYPE_TO_STRING(char_intpair<int>);
 TYPE_TO_STRING(char_intpair<long>);
 TYPE_TO_STRING(char_intpair<long long>);
+TYPE_TO_STRING(char_intpair<unsigned char>);
 TYPE_TO_STRING(char_intpair<unsigned short>);
 TYPE_TO_STRING(char_intpair<unsigned int>);
 TYPE_TO_STRING(char_intpair<unsigned long>);
 TYPE_TO_STRING(char_intpair<unsigned long long>);
+TYPE_TO_STRING(wchar_intpair<signed char>);
+TYPE_TO_STRING(wchar_intpair<short>);
 TYPE_TO_STRING(wchar_intpair<int>);
 TYPE_TO_STRING(wchar_intpair<long>);
 TYPE_TO_STRING(wchar_intpair<long long>);
+TYPE_TO_STRING(wchar_intpair<unsigned char>);
+TYPE_TO_STRING(wchar_intpair<unsigned short>);
 TYPE_TO_STRING(wchar_intpair<unsigned int>);
 TYPE_TO_STRING(wchar_intpair<unsigned long>);
 TYPE_TO_STRING(wchar_intpair<unsigned long long>);
 
 TEST_CASE_TEMPLATE_INSTANTIATE(integer_test,
+                               char_intpair<signed char>,
                                char_intpair<short>,
                                char_intpair<int>,
                                char_intpair<long>,
                                char_intpair<long long>,
+                               char_intpair<unsigned char>,
                                char_intpair<unsigned short>,
                                char_intpair<unsigned int>,
                                char_intpair<unsigned long>,
                                char_intpair<unsigned long long>,
+                               wchar_intpair<signed char>,
+                               wchar_intpair<short>,
                                wchar_intpair<int>,
                                wchar_intpair<long>,
                                wchar_intpair<long long>,
+                               wchar_intpair<unsigned char>,
+                               wchar_intpair<unsigned short>,
                                wchar_intpair<unsigned int>,
                                wchar_intpair<unsigned long>,
                                wchar_intpair<unsigned long long>);
 TEST_CASE_TEMPLATE_INSTANTIATE(integer_range_test,
+                               char_intpair<signed char>,
                                char_intpair<short>,
                                char_intpair<int>,
                                char_intpair<long>,
                                char_intpair<long long>,
+                               char_intpair<unsigned char>,
                                char_intpair<unsigned short>,
                                char_intpair<unsigned int>,
                                char_intpair<unsigned long>,
                                char_intpair<unsigned long long>,
+                               wchar_intpair<signed char>,
+                               wchar_intpair<short>,
                                wchar_intpair<int>,
                                wchar_intpair<long>,
                                wchar_intpair<long long>,
+                               wchar_intpair<unsigned char>,
+                               wchar_intpair<unsigned short>,
                                wchar_intpair<unsigned int>,
                                wchar_intpair<unsigned long>,
                                wchar_intpair<unsigned long long>);
@@ -944,4 +962,12 @@ TEST_CASE("deque + L")
     CHECK(!ret);
     CHECK(ret.error() == scn::error::end_of_range);
     CHECK(i == 0);
+}
+
+TEST_CASE("signed char, -3") {
+    signed char sch{};
+    auto ret = scn::scan("-3", "{}", sch);
+    CHECK(ret);
+    CHECK(sch == -3);
+    CHECK(ret.range().empty());
 }
