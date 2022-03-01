@@ -48,6 +48,10 @@ if (NOT (${CMAKE_VERSION} VERSION_LESS "3.9.0"))
     cmake_policy(SET CMP0069 NEW)
 endif ()
 
+if (NOT SCN_USE_BUNDLED_FAST_FLOAT)
+    find_package(FastFloat REQUIRED)
+endif ()
+
 include(sanitizers)
 include(flags)
 
@@ -84,7 +88,7 @@ function(generate_library_target target_name)
                 $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/deps/fast_float/single_include>)
     else ()
         target_link_libraries(${target_name} INTERFACE
-                fast_float)
+                FastFloat::fast_float)
     endif ()
 endfunction()
 function(generate_header_only_target target_name)
@@ -101,7 +105,7 @@ function(generate_header_only_target target_name)
                 $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/deps/fast_float/single_include>)
     else ()
         target_link_libraries(${target_name} INTERFACE
-                fast_float)
+                FastFloat::fast_float)
     endif ()
 endfunction()
 
