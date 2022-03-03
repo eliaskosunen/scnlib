@@ -48,6 +48,10 @@ if (NOT (${CMAKE_VERSION} VERSION_LESS "3.9.0"))
     cmake_policy(SET CMP0069 NEW)
 endif ()
 
+if (NOT SCN_USE_BUNDLED_FAST_FLOAT)
+    find_package(FastFloat REQUIRED)
+endif ()
+
 include(sanitizers)
 include(flags)
 
@@ -69,7 +73,7 @@ function(generate_library_target target_name)
             PRIVATE ${SCN_SOURCES})
     target_include_directories(${target_name} PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-            $<INSTALL_INTERFACE:include>)
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
     target_include_directories(${target_name} PRIVATE
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
     target_compile_definitions(${target_name} PUBLIC
@@ -84,14 +88,14 @@ function(generate_library_target target_name)
                 $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/deps/fast_float/single_include>)
     else ()
         target_link_libraries(${target_name} INTERFACE
-                fast_float)
+                FastFloat::fast_float)
     endif ()
 endfunction()
 function(generate_header_only_target target_name)
     add_library(${target_name} INTERFACE)
     target_include_directories(${target_name} INTERFACE
             "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include;${PROJECT_SOURCE_DIR}/src>"
-            "$<INSTALL_INTERFACE:include>")
+            "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
     target_compile_definitions(${target_name} INTERFACE
             -DSCN_HEADER_ONLY=1)
     target_compile_features(${target_name} INTERFACE cxx_std_11)
@@ -101,7 +105,7 @@ function(generate_header_only_target target_name)
                 $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/deps/fast_float/single_include>)
     else ()
         target_link_libraries(${target_name} INTERFACE
-                fast_float)
+                FastFloat::fast_float)
     endif ()
 endfunction()
 
