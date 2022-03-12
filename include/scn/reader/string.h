@@ -461,9 +461,12 @@ namespace scn {
             }
             void accept_char(wchar_t ch)
             {
+                SCN_GCC_COMPAT_PUSH
+                SCN_GCC_COMPAT_IGNORE("-Wtype-limits")
                 if (ch >= 0 && ch <= 0x7f) {
                     return accept_char(static_cast<char>(ch));
                 }
+                SCN_GCC_COMPAT_POP
                 set_extra_ranges.push_back(set_range::single(ch));
                 get_option(flag::use_ranges) = true;
             }
@@ -493,10 +496,13 @@ namespace scn {
             void accept_char_range(wchar_t first, wchar_t last)
             {
                 SCN_EXPECT(first <= last);
+                SCN_GCC_COMPAT_PUSH
+                SCN_GCC_COMPAT_IGNORE("-Wtype-limits")
                 if (first >= 0 && last <= 0x7f) {
                     return accept_char_range(static_cast<char>(first),
                                              static_cast<char>(last));
                 }
+                SCN_GCC_COMPAT_POP
                 set_extra_ranges.push_back(set_range::range(first, last));
                 get_option(flag::use_ranges) = true;
             }

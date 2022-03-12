@@ -152,7 +152,7 @@ namespace scn {
                             "Unexpected end of format string"};
                 }
                 // Check for any non-specifier {foo} characters
-                unsigned char buf[4] = {0};
+                alignas(typename Context::char_type) unsigned char buf[4] = {0};
                 auto ret = read_code_point(ctx.range(), make_span(buf, 4));
                 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 if (!ret || !pctx.check_literal(ret.value().chars)) {

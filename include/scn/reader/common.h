@@ -278,11 +278,14 @@ namespace scn {
     {
         SCN_EXPECT(writebuf.size() * sizeof(BufValueT) >= 4);
         using char_type = typename WrappedRange::char_type;
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Wcast-align")  // taken care of by the caller
         return detail::read_code_point_impl<char_type>(
             r,
             make_span(reinterpret_cast<char_type*>(writebuf.data()),
                       writebuf.size() * sizeof(BufValueT) / sizeof(char_type)),
             std::integral_constant<bool, WrappedRange::is_contiguous>{});
+        SCN_GCC_POP
     }
 
     // read_zero_copy

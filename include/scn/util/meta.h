@@ -65,6 +65,10 @@ namespace scn {
         template <typename T>
         struct dependent_false : std::false_type {
         };
+
+        template <typename T>
+        using integer_type_for_char = typename std::
+            conditional<std::is_signed<T>::value, int, unsigned>::type;
     }  // namespace detail
 
     SCN_END_NAMESPACE

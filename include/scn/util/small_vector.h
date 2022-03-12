@@ -114,12 +114,23 @@ namespace scn {
             }
         };
 
-        SCN_CLANG_POP  // -Wpadded
+        // -Wpadded
+        SCN_CLANG_POP
 
-            template <typename T>
-            struct basic_stack_storage<T, 0> {
-            T* data{nullptr};
+        template <typename T>
+        constexpr T constexpr_max(T val)
+        {
+            return val;
+        }
+        template <typename T, typename... Ts>
+        constexpr T constexpr_max(T val, Ts... a)
+        {
+            return val > constexpr_max(a...) ? val : constexpr_max(a...);
+        }
 
+        template <typename T>
+        struct alignas(constexpr_max(alignof(T),
+                                     alignof(T*))) basic_stack_storage<T, 0> {
             T* reinterpret_data()
             {
                 return nullptr;
@@ -147,17 +158,6 @@ namespace scn {
                 return nullptr;
             }
         };
-
-        template <typename T>
-        constexpr T constexpr_max(T val)
-        {
-            return val;
-        }
-        template <typename T, typename... Ts>
-        constexpr T constexpr_max(T val, Ts... a)
-        {
-            return val > constexpr_max(a...) ? val : constexpr_max(a...);
-        }
 
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wpadded")

@@ -66,13 +66,14 @@ namespace scn {
 
                         const auto zero = detail::ascii_widen<char_type>('0'),
                                    nine = detail::ascii_widen<char_type>('9');
-                        int tmp = 0;
+                        integer_type_for_char<char_type> tmp = 0;
                         if (ch < zero || ch > nine) {
                             return {error::invalid_format_string,
                                     "Invalid character after 'B', "
                                     "expected digit"};
                         }
-                        tmp = p.next_char() - zero;
+                        tmp = static_cast<integer_type_for_char<char_type>>(
+                            p.next_char() - zero);
                         if (tmp < 1) {
                             return {error::invalid_format_string,
                                     "Invalid base, must be between 2 and 36"};
@@ -96,7 +97,8 @@ namespace scn {
                                     "expected digit"};
                         }
                         tmp *= 10;
-                        tmp += ch - zero;
+                        tmp += static_cast<integer_type_for_char<char_type>>(
+                            ch - zero);
                         if (tmp < 2 || tmp > 36) {
                             return {error::invalid_format_string,
                                     "Invalid base, must be between 2 and 36"};
@@ -290,7 +292,7 @@ namespace scn {
 
                 if (format_options == single_code_unit) {
                     SCN_MSVC_PUSH
-                    SCN_MSVC_IGNORE(4127) // conditional expression is constant
+                    SCN_MSVC_IGNORE(4127)  // conditional expression is constant
                     if (sizeof(T) < sizeof(char_type)) {
                         // sizeof(char_type) > 1 -> wide range
                         // Code unit might not fit
