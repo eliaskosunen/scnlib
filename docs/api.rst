@@ -307,33 +307,36 @@ Type
 The type flag can be used to further specify how the value is to be parsed, what values are accepted, and how they are interpreted.
 The accepted flags and their meanings depend on the actual type to be scanned.
 
-Type: int
-*********
+Type: integral
+**************
 
-For integral types (``short``, ``int``, ``long``, ``long long`` + ``unsigned`` versions),
-the flags are organized in three categories.
+For integral types the flags are organized in three categories.
 Up to one from each category can be present in the format string.
 
 First category:
 
  * ``b``: Binary, optional prefix ``0b`` or ``0B`` accepted
  * ``Bnn``: (``B`` followed by two digits): custom base, ``n`` in range 2-36 (inclusive), no base prefix accepted
+ * ``c``: Read a code unit (do not skip preceding whitespace)
  * ``d``: Decimal, no base prefix accepted
  * ``i``: Integer, detect base by prefix: ``0b``/``0B`` for binary, ``0o``/``0O``/``0`` for octal, ``0x``/``0X`` for hex, decimal otherwise
  * ``u``: Unsigned decimal, no sign or base prefix accepted (even for signed types)
  * ``o``: Octal, optional prefix ``0o``, ``0O`` or ``0`` accepted
  * ``x``: Hex, optional prefix ``0x`` or ``0X`` accepted
- * (default): ``d``
+ * (default): ``d`` if type is not ``char`` or ``wchar_t``, ``c`` otherwise
 
-Second category:
+Second category (if the first category was not ``c``):
 
  * ``n``: Accept digits as specified by the supplied locale, implies ``L``
  * (default): Only digits ``[0-9]`` are accepted, no custom digits
 
-Third category:
+Third category (if the first category was not ``c``):
 
  * ``'``: Accept thousands separators: default to ``,``, use locale if ``L`` set
  * (default): Only digits ``[0-9]`` are accepted, no thousands separator
+
+Types considered 'integral', are the types specified by ``std::is_integral``, except for ``bool``, ``char8_t``, ``char16_t``, and ``char32_t``.
+This includes signed and unsigned variants of ``char``, ``short``, ``int``, ``long``, ``long long``, and ``wchar_t``.
 
 Type: float
 ***********
@@ -501,12 +504,12 @@ Any number of flags accepted
  * ``n``: ``i``, except accepts localized digits, implies ``L``
  * (default): ``s`` + ``i``: Accept ``0``, ``1``, ``true``, ``false``, and possible locale string values if using ``L``
 
-Type: char and code_point
-*************************
+Type: code_point
+****************
 
 Only flag ``c`` accepted, does not affect behavior.
 
-Note, that with chars and ``code_point``, leading whitespace is not skipped.
+Note, ``code_point``, leading whitespace is not skipped.
 
 Whitespace
 **********

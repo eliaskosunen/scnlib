@@ -971,3 +971,11 @@ TEST_CASE("signed char, -3") {
     CHECK(sch == -3);
     CHECK(ret.range().empty());
 }
+
+TEST_CASE("int as c") {
+    int i{};
+    auto ret = scn::scan("1", "{:c}", i);
+    CHECK(ret);
+    CHECK(i == '1');
+    CHECK(ret.range().empty());
+}
