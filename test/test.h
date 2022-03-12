@@ -247,12 +247,17 @@ template <typename T>
 bool consistency_scanf(std::string& source, const std::string& fmt, T& val)
 {
     size_t nchar{0};
-    auto f = fmt + "%n";
+    auto f = fmt + "%zn";
 
     SCN_GCC_COMPAT_PUSH
     SCN_GCC_COMPAT_IGNORE("-Wformat-nonliteral")
     int nargs = std::sscanf(source.c_str(), f.c_str(), &val, &nchar);
     SCN_GCC_COMPAT_POP
+
+    if (nargs == EOF) {
+        return false;
+    }
+    SCN_ENSURE(nchar <= source.size());
 
     source = source.substr(nchar);
     return nargs == 1;
