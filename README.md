@@ -41,7 +41,7 @@ This library is the reference implementation of the ISO C++ standards proposal
 The library is currently deemed production-ready, and should be reasonably bug-free;
 it's tested and fuzzed extensively.
 
-The master-branch of the repository targets the next minor release (v1.1), and is backwards-compatible.
+The master-branch of the repository targets the next minor release (v1.2), and is backwards-compatible.
 The dev-branch targets the next major release (v2.0), and may contain backwards-incompatible changes, and may have lacking documentation.
 
 ## Documentation

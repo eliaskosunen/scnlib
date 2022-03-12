@@ -1,3 +1,25 @@
+# 1.1
+
+_Released 2022-03-12_
+
+ * Add support for scanning 8-bit integers (`(un)signed char`, `(u)int8_t`),
+   and characters (`char`, `wchar_t`) as integers
+
+```cpp
+int8_t i1, i2;
+char c1, c2;
+auto ret = scn::scan("1 2 3 4", "{} {:c} {} {:i}", i1, i2, i3, i4);
+// ret == true
+// i1 == 1
+// i2 == '2'
+// c1 == '3'
+// c2 == 4
+```
+
+ * Fix usage of external fast_float in CMake (#53, thanks [@xvitaly (Vitaly Zaitsev)](https://github.com/xvitaly))
+ * Fix tests on big endian architectures (#54)
+ * Fix alignment issues with `small_vector` on 32-bit architectures
+
 # 1.0
 
 _Released 2022-02-28_

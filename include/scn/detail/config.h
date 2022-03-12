@@ -26,7 +26,7 @@
 
 #define SCN_COMPILER(major, minor, patch) \
     ((major)*10000000 /* 10,000,000 */ + (minor)*10000 /* 10,000 */ + (patch))
-#define SCN_VERSION SCN_COMPILER(1, 0, 0)
+#define SCN_VERSION SCN_COMPILER(1, 1, 0)
 
 #ifdef __INTEL_COMPILER
 // Intel
