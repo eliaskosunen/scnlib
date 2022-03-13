@@ -128,6 +128,38 @@ TEST_CASE("mapped_file")
         "");
 }
 
+TEST_CASE("get_buffer")
+{
+    std::string first{"123"}, second{"456"};
+    std::vector<scn::span<const char>> buf{scn::make_span(first),
+                                           scn::make_span(second)};
+    auto spanbuf{scn::make_span(buf)};
+
+    auto ret = scn::detail::get_buffer(spanbuf, spanbuf[0].begin());
+    CHECK(ret.data() == first.data());
+    CHECK(ret.size() == 3);
+
+    ret = scn::detail::get_buffer(spanbuf, spanbuf[0].begin() + 1);
+    CHECK(ret.data() == first.data() + 1);
+    CHECK(ret.size() == 2);
+
+    ret = scn::detail::get_buffer(spanbuf, spanbuf[0].end());
+    CHECK(ret.data() == second.data());
+    CHECK(ret.size() == 3);
+
+    ret = scn::detail::get_buffer(spanbuf, spanbuf[1].begin());
+    CHECK(ret.data() == second.data());
+    CHECK(ret.size() == 3);
+
+    ret = scn::detail::get_buffer(spanbuf, spanbuf[1].end());
+    CHECK(ret.data() == nullptr);
+    CHECK(ret.size() == 0);
+
+    ret = scn::detail::get_buffer(spanbuf, spanbuf[0].begin(), 2);
+    CHECK(ret.data() == first.data());
+    CHECK(ret.size() == 2);
+}
+
 #if 0
 // ranges must be default-constructible
 

@@ -22,6 +22,7 @@
 #include "../util/algorithm.h"
 #include "../util/memory.h"
 #include "error.h"
+#include "vectored.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -82,9 +83,6 @@ namespace scn {
         template <typename Range, typename = void>
         struct is_direct_impl
             : std::is_integral<ranges::range_value_t<const Range>> {
-        };
-        template <typename Range, typename = void>
-        struct provides_buffer_access_impl : std::false_type {
         };
 
         template <typename Range>
@@ -359,6 +357,20 @@ namespace scn {
                 return ranges::distance(m_begin, end());
             }
 
+            template <typename R = range_nocvref_type,
+                      typename std::enable_if<provides_buffer_access_impl<
+                          R>::value>::type* = nullptr>
+            span<const char_type> get_buffer_and_advance(
+                size_t max_size = std::numeric_limits<size_t>::max())
+            {
+                auto buf = get_buffer(m_range.get(), begin(), max_size);
+                if (buf.size() == 0) {
+                    return buf;
+                }
+                advance(buf.ssize());
+                return buf;
+            }
+
             /**
              * Reset `begin()` to the rollback point, as if by repeatedly
              * calling `operator--()` on the begin iterator.
@@ -419,10 +431,8 @@ namespace scn {
                 SCN_CHECK_CONCEPT(ranges::contiguous_range<range_nocvref_type>);
             /**
              * `true` if the range provides a way to access a contiguous buffer
-             * on it, which may not provide the entire source data, e.g. a
-             * `span` of `span`s (vectored I/O).
-             *
-             * Unimplemented, TODO
+             * on it (`detail::get_buffer()`), which may not provide the entire
+             * source data, e.g. a `span` of `span`s (vectored I/O).
              */
             static constexpr bool provides_buffer_access =
                 provides_buffer_access_impl<range_nocvref_type>::value;

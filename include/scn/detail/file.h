@@ -387,6 +387,20 @@ namespace scn {
             return {};
         }
 
+        span<const CharT> get_buffer(iterator it,
+                                     size_t max_size) const noexcept
+        {
+            if (!it.m_file) {
+                return {};
+            }
+            const auto begin =
+                m_buffer.begin() + static_cast<std::ptrdiff_t>(it.m_current);
+            const auto end_diff = detail::min(
+                max_size,
+                static_cast<size_t>(ranges::distance(begin, m_buffer.end())));
+            return {begin, begin + static_cast<std::ptrdiff_t>(end_diff)};
+        }
+
     private:
         friend class iterator;
 

@@ -150,33 +150,63 @@ namespace scn {
     namespace detail {
         // contiguous && direct
         template <typename CharT, typename WrappedRange>
-        expected<read_code_point_result<CharT>>
-        read_code_point_impl(WrappedRange& r, span<CharT>, std::true_type)
+        expected<read_code_point_result<CharT>> read_code_point_impl(
+            WrappedRange& r,
+            span<CharT> writebuf,
+            std::true_type)
         {
             if (r.begin() == r.end()) {
                 return error(error::end_of_range, "EOF");
             }
 
-            CharT first = *r.begin();
-            int len = ::scn::get_sequence_length(first);
-            if (SCN_UNLIKELY(len == 0 || r.size() < len)) {
+            auto sbuf = r.get_buffer_and_advance(4 / sizeof(CharT));
+            if (sbuf.size() == 0) {
+                auto ret = read_code_unit(r, true);
+                if (!ret) {
+                    return ret.error();
+                }
+                sbuf = writebuf.first(1);
+                writebuf[0] = ret.value();
+            }
+            int len = ::scn::get_sequence_length(sbuf[0]);
+            if (SCN_UNLIKELY(len == 0)) {
                 return error(error::invalid_encoding, "Invalid code point");
+            }
+            if (sbuf.ssize() > len) {
+                auto e = putback_n(r, sbuf.ssize() - len);
+                if (!e) {
+                    return e;
+                }
+                sbuf = sbuf.first(static_cast<size_t>(len));
             }
             if (len == 1) {
                 // Single-char code point
-                auto s = make_span(r.data(), 1);
-                r.advance();
-                return read_code_point_result<CharT>{s, make_code_point(first)};
+                return read_code_point_result<CharT>{sbuf.first(1),
+                                                     make_code_point(sbuf[0])};
+            }
+            while (sbuf.ssize() < len) {
+                auto ret = read_code_unit(r, true);
+                if (!ret) {
+                    auto e = putback_n(r, sbuf.ssize());
+                    if (!e) {
+                        return e;
+                    }
+                    if (ret.error().code() == error::end_of_range) {
+                        return error(error::invalid_encoding,
+                                     "Invalid code point");
+                    }
+                    return ret.error();
+                }
+                sbuf = make_span(writebuf.begin(), sbuf.size() + 1);
+                writebuf[sbuf.size() - 1] = ret.value();
             }
 
             code_point cp{};
-            auto ret = parse_code_point(r.begin(), r.begin() + len, cp);
+            auto ret = parse_code_point(sbuf.begin(), sbuf.end(), cp);
             if (!ret) {
                 return ret.error();
             }
-            auto s = make_span(r.data(), static_cast<size_t>(len));
-            r.advance(len);
-            return read_code_point_result<CharT>{s, cp};
+            return read_code_point_result<CharT>{sbuf, cp};
         }
 
         template <typename CharT, typename WrappedRange>
@@ -284,7 +314,8 @@ namespace scn {
             r,
             make_span(reinterpret_cast<char_type*>(writebuf.data()),
                       writebuf.size() * sizeof(BufValueT) / sizeof(char_type)),
-            std::integral_constant<bool, WrappedRange::is_contiguous>{});
+            std::integral_constant<bool,
+                                   WrappedRange::provides_buffer_access>{});
         SCN_GCC_POP
     }
 

@@ -56,6 +56,111 @@ TEST_CASE_TEMPLATE("read_code_unit", CharT, char, wchar_t)
     }
 }
 
+TEST_CASE("read_code_point")
+{
+    unsigned char buf[4] = {0};
+
+    SUBCASE("contiguous")
+    {
+        auto range = scn::wrap("aäa");
+
+        auto ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().chars[0] == 'a');
+        CHECK(ret.value().cp == scn::make_code_point(0x61));
+        CHECK(!range.empty());
+
+        ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 2);
+        CHECK(ret.value().cp == scn::make_code_point(0xe4));
+        CHECK(!range.empty());
+
+        ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().chars[0] == 'a');
+        CHECK(ret.value().cp == scn::make_code_point(0x61));
+        CHECK(range.empty());
+    }
+    SUBCASE("non-direct")
+    {
+        auto range = scn::wrap(get_indirect<char>("aäa"));
+
+        auto ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().chars[0] == 'a');
+        CHECK(ret.value().cp == scn::make_code_point(0x61));
+        CHECK(!range.empty());
+
+        ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 2);
+        CHECK(ret.value().cp == scn::make_code_point(0xe4));
+        CHECK(!range.empty());
+
+        ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().chars[0] == 'a');
+        CHECK(ret.value().cp == scn::make_code_point(0x61));
+        CHECK(range.size() == 1);
+        CHECK(range.begin()->error().code() == scn::error::code::end_of_range);
+    }
+
+    SUBCASE("wide contiguous")
+    {
+        auto range = scn::wrap(L"aäa");
+
+        auto ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().chars[0] == L'a');
+        CHECK(ret.value().cp == scn::make_code_point(0x61));
+        CHECK(!range.empty());
+
+        ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().cp == scn::make_code_point(0xe4));
+        CHECK(!range.empty());
+
+        ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().chars[0] == L'a');
+        CHECK(ret.value().cp == scn::make_code_point(0x61));
+        CHECK(range.empty());
+    }
+    SUBCASE("wide non-direct")
+    {
+        auto range = scn::wrap(get_indirect<wchar_t>(L"aäa"));
+
+        auto ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().chars[0] == L'a');
+        CHECK(ret.value().cp == scn::make_code_point(0x61));
+        CHECK(!range.empty());
+
+        ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().cp == scn::make_code_point(0xe4));
+        CHECK(!range.empty());
+
+        ret = scn::read_code_point(range, scn::make_span(buf, 4));
+        CHECK(ret);
+        CHECK(ret.value().chars.size() == 1);
+        CHECK(ret.value().chars[0] == L'a');
+        CHECK(ret.value().cp == scn::make_code_point(0x61));
+        CHECK(range.size() == 1);
+        CHECK(range.begin()->error().code() == scn::error::code::end_of_range);
+    }
+}
+
 TEST_CASE_TEMPLATE("read_zero_copy", CharT, char, wchar_t)
 {
     SUBCASE("contiguous")
