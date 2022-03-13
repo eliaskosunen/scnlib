@@ -196,8 +196,8 @@ The last commit tested and verified to work with VS 2017 is
 
 The code is only tested on amd64 machines (both win32 and win64 on Windows),
 because that's the only architecture GitHub Actions has runners for.
-The last commit tested and verified to work with arm64 is
-[7b93942](https://github.com/eliaskosunen/scnlib/commit/7b93942) (v0.4).
+The last commit tested and verified to work with both 32-bit and 64-bit ARM and PPC is
+[0621443](https://github.com/eliaskosunen/scnlib/commit/0621443) (v1.1).
 
 ## Benchmarks
 
