@@ -339,9 +339,9 @@ namespace scn {
      * If the range does not satisfy `contiguous_range`, returns an empty
      * `span`.
      */
-    template <
-        typename WrappedRange,
-        typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
+    template <typename WrappedRange,
+              typename std::enable_if<
+                  WrappedRange::provides_buffer_access>::type* = nullptr>
     expected<span<const typename detail::extract_char_type<
         typename WrappedRange::iterator>::type>>
     read_zero_copy(WrappedRange& r, ranges::range_difference_t<WrappedRange> n)
@@ -349,14 +349,11 @@ namespace scn {
         if (r.begin() == r.end()) {
             return error(error::end_of_range, "EOF");
         }
-        const auto n_to_read = detail::min(r.size(), n);
-        auto s = make_span(r.data(), static_cast<size_t>(n_to_read));
-        r.advance(n_to_read);
-        return s;
+        return r.get_buffer_and_advance(static_cast<size_t>(n));
     }
-    template <
-        typename WrappedRange,
-        typename std::enable_if<!WrappedRange::is_contiguous>::type* = nullptr>
+    template <typename WrappedRange,
+              typename std::enable_if<
+                  !WrappedRange::provides_buffer_access>::type* = nullptr>
     expected<span<const typename detail::extract_char_type<
         typename WrappedRange::iterator>::type>>
     read_zero_copy(WrappedRange& r, ranges::range_difference_t<WrappedRange>)
@@ -418,6 +415,24 @@ namespace scn {
 
     // read_into
 
+    namespace detail {
+        template <typename WrappedRange, typename OutputIterator>
+        error read_into_impl(WrappedRange& r,
+                             OutputIterator& it,
+                             ranges::range_difference_t<WrappedRange> n)
+        {
+            for (; n != 0; --n) {
+                auto ret = read_code_unit(r, false);
+                if (!ret) {
+                    return ret.error();
+                }
+                *it = ret.value();
+                r.advance();
+            }
+            return {};
+        }
+    }  // namespace detail
+
     /// @{
 
     /**
@@ -438,30 +453,37 @@ namespace scn {
      * Any error returned by `read_code_unit()` if one
      * occurred.
      */
-    template <
-        typename WrappedRange,
-        typename OutputIterator,
-        typename std::enable_if<WrappedRange::is_contiguous>::type* = nullptr>
+    template <typename WrappedRange,
+              typename OutputIterator,
+              typename std::enable_if<
+                  WrappedRange::provides_buffer_access>::type* = nullptr>
     error read_into(WrappedRange& r,
                     OutputIterator& it,
                     ranges::range_difference_t<WrappedRange> n)
     {
-        auto chars_to_read = detail::min(n, r.size());
-        const bool incomplete = chars_to_read != n;
-        auto s = read_zero_copy(r, chars_to_read);
-        if (!s) {
-            return s.error();
+        while (n != 0) {
+            if (r.begin() == r.end()) {
+                return {error::end_of_range, "EOF"};
+            }
+            auto s = read_zero_copy(r, n);
+            if (!s) {
+                return s.error();
+            }
+            if (s.value().size() == 0) {
+                break;
+            }
+            it = std::copy(s.value().begin(), s.value().end(), it);
+            n -= s.value().ssize();
         }
-        it = std::copy(s.value().begin(), s.value().end(), it);
-        if (incomplete) {
-            return {error::end_of_range, "EOF"};
+        if (n != 0) {
+            return detail::read_into_impl(r, it, n);
         }
         return {};
     }
     template <typename WrappedRange,
               typename OutputIterator,
-              typename std::enable_if<!WrappedRange::is_contiguous &&
-                                      WrappedRange::is_direct>::type* = nullptr>
+              typename std::enable_if<
+                  !WrappedRange::provides_buffer_access>::type* = nullptr>
     error read_into(WrappedRange& r,
                     OutputIterator& it,
                     ranges::range_difference_t<WrappedRange> n)
@@ -469,40 +491,7 @@ namespace scn {
         if (r.begin() == r.end()) {
             return {error::end_of_range, "EOF"};
         }
-        for (ranges::range_difference_t<WrappedRange> i = 0; i < n; ++i) {
-            if (r.begin() == r.end()) {
-                return {error::end_of_range, "EOF"};
-            }
-            *it = *r.begin();
-            ++it;
-            r.advance();
-        }
-        return {};
-    }
-    template <
-        typename WrappedRange,
-        typename OutputIterator,
-        typename std::enable_if<!WrappedRange::is_contiguous &&
-                                !WrappedRange::is_direct>::type* = nullptr>
-    error read_into(WrappedRange& r,
-                    OutputIterator& it,
-                    ranges::range_difference_t<WrappedRange> n)
-    {
-        if (r.begin() == r.end()) {
-            return {error::end_of_range, "EOF"};
-        }
-        for (ranges::range_difference_t<WrappedRange> i = 0; i < n; ++i) {
-            if (r.begin() == r.end()) {
-                return {error::end_of_range, "EOF"};
-            }
-            auto tmp = *r.begin();
-            if (!tmp) {
-                return tmp.error();
-            }
-            *it = tmp.value();
-            r.advance();
-        }
-        return {};
+        return detail::read_into_impl(r, it, n);
     }
     /// @}
 
@@ -535,7 +524,7 @@ namespace scn {
                     auto len = ::scn::get_sequence_length(*it);
                     if (len == 0 || ranges::distance(it, r.end()) < len) {
                         return error{error::invalid_encoding,
-                                     "Invalid utf8 code point"};
+                                     "Invalid code point"};
                     }
                     auto span =
                         make_span(to_address(it), static_cast<size_t>(len));
@@ -546,7 +535,7 @@ namespace scn {
                     }
                     if (i.value() != span.end()) {
                         return error{error::invalid_encoding,
-                                     "Invalid utf8 code point"};
+                                     "Invalid code point"};
                     }
                     if (pred(span) == pred_result_to_stop) {
                         auto begin = r.data();
@@ -633,6 +622,147 @@ namespace scn {
     // read_until_space
 
     namespace detail {
+        template <typename WrappedRange,
+                  typename Predicate,
+                  typename OutputIt,
+                  typename OutputItCmp>
+        error read_until_pred_buffer(WrappedRange& r,
+                                     Predicate&& pred,
+                                     bool pred_result_to_stop,
+                                     OutputIt& out,
+                                     OutputItCmp out_cmp,
+                                     bool keep_final,
+                                     bool& done,
+                                     std::true_type)
+        {
+            if (!pred.is_multibyte()) {
+                while (r.begin() != r.end() && !done) {
+                    auto s = r.get_buffer_and_advance();
+                    for (auto it = s.begin(); it != s.end() && out_cmp(out);
+                         ++it) {
+                        if (pred(make_span(&*it, 1)) == pred_result_to_stop) {
+                            if (keep_final) {
+                                *out = *it;
+                                ++out;
+                            }
+                            auto e =
+                                putback_n(r, ranges::distance(it, s.end()));
+                            if (!e) {
+                                return e;
+                            }
+                            done = true;
+                            break;
+                        }
+                        *out = *it;
+                        ++out;
+                    }
+                    if (!done && out_cmp(out)) {
+                        auto ret = read_code_unit(r, false);
+                        if (!ret) {
+                            if (ret.error() == error::end_of_range) {
+                                return {};
+                            }
+                            return ret.error();
+                        }
+                        if (pred(make_span(&ret.value(), 1)) ==
+                            pred_result_to_stop) {
+                            if (keep_final) {
+                                r.advance();
+                                *out = ret.value();
+                                ++out;
+                            }
+                            done = true;
+                            break;
+                        }
+                        r.advance();
+                        *out = ret.value();
+                        ++out;
+                    }
+                }
+            }
+            else {
+                while (r.begin() != r.end() && !done) {
+                    auto s = r.get_buffer_and_advance();
+                    for (auto it = s.begin(); it != s.end() && out_cmp(out);) {
+                        auto len = ::scn::get_sequence_length(*it);
+                        if (len == 0) {
+                            return error{error::invalid_encoding,
+                                         "Invalid code point"};
+                        }
+                        if (ranges::distance(it, s.end()) < len) {
+                            auto e = putback_n(r, len);
+                            if (!e) {
+                                return e;
+                            }
+                            break;
+                        }
+                        auto cpspan = make_span(it, static_cast<size_t>(len));
+                        code_point cp{};
+                        auto i =
+                            parse_code_point(cpspan.begin(), cpspan.end(), cp);
+                        if (!i) {
+                            return i.error();
+                        }
+                        if (i.value() != cpspan.end()) {
+                            return error{error::invalid_encoding,
+                                         "Invalid code point"};
+                        }
+                        if (pred(cpspan) == pred_result_to_stop) {
+                            if (keep_final) {
+                                out = std::copy(cpspan.begin(), cpspan.end(),
+                                                out);
+                            }
+                            done = true;
+                            break;
+                        }
+                        out = std::copy(cpspan.begin(), cpspan.end(), out);
+                    }
+
+                    if (!done && out_cmp(out)) {
+                        alignas(typename WrappedRange::char_type) unsigned char
+                            buf[4] = {0};
+                        auto cpret = read_code_point(r, make_span(buf, 4));
+                        if (!cpret) {
+                            if (cpret.error() == error::end_of_range) {
+                                return {};
+                            }
+                            return cpret.error();
+                        }
+                        if (pred(cpret.value().chars) == pred_result_to_stop) {
+                            if (keep_final) {
+                                out = std::copy(cpret.value().chars.begin(),
+                                                cpret.value().chars.end(), out);
+                            }
+                            else {
+                                return putback_n(r,
+                                                 cpret.value().chars.ssize());
+                            }
+                            done = true;
+                            break;
+                        }
+                        out = std::copy(cpret.value().chars.begin(),
+                                        cpret.value().chars.end(), out);
+                    }
+                }
+            }
+            return {};
+        }
+        template <typename WrappedRange,
+                  typename Predicate,
+                  typename OutputIt,
+                  typename OutputItCmp>
+        error read_until_pred_buffer(WrappedRange&,
+                                     Predicate&&,
+                                     bool,
+                                     OutputIt&,
+                                     OutputItCmp,
+                                     bool,
+                                     bool& done,
+                                     std::false_type)
+        {
+            done = false;
+            return {};
+        }
 
         template <typename WrappedRange,
                   typename Predicate,
@@ -647,6 +777,21 @@ namespace scn {
         {
             if (r.begin() == r.end()) {
                 return {error::end_of_range, "EOF"};
+            }
+
+            {
+                bool done = false;
+                auto e = read_until_pred_buffer(
+                    r, pred, pred_result_to_stop, out, out_cmp, keep_final,
+                    done,
+                    std::integral_constant<
+                        bool, WrappedRange::provides_buffer_access>{});
+                if (!e) {
+                    return e;
+                }
+                if (done) {
+                    return {};
+                }
             }
 
             if (!pred.is_multibyte()) {

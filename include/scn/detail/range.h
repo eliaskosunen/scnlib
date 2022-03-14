@@ -32,8 +32,7 @@ namespace scn {
             struct fn {
             private:
                 template <typename Iterator>
-                static auto
-                impl(Iterator& it, priority_tag<1>) noexcept(
+                static auto impl(Iterator& it, priority_tag<1>) noexcept(
                     noexcept(it.reset_begin_iterator()))
                     -> decltype(it.reset_begin_iterator())
                 {
@@ -340,6 +339,8 @@ namespace scn {
             {
                 return std::addressof(*m_begin);
             }
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wnoexcept")
             /**
              * Returns `end() - begin()`.
              * `*this` must be sized.
@@ -356,6 +357,9 @@ namespace scn {
             {
                 return ranges::distance(m_begin, end());
             }
+            SCN_GCC_POP
+            struct dummy2 {
+            };
 
             template <typename R = range_nocvref_type,
                       typename std::enable_if<provides_buffer_access_impl<
@@ -400,7 +404,8 @@ namespace scn {
                 m_read = 0;
             }
 
-            void reset_begin_iterator() {
+            void reset_begin_iterator()
+            {
                 detail::reset_begin_iterator(m_begin);
             }
 

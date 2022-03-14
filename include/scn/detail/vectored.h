@@ -61,25 +61,20 @@ namespace scn {
                     return {begin, _get_end(begin, buf_it->end(), max_size)};
                 }
 
-                template <typename CharT>
-                static SCN_CONSTEXPR14
-                    span<typename std::add_const<CharT>::type>
-                    impl(span<CharT> s,
-                         typename span<CharT>::iterator begin,
-                         size_t max_size,
-                         priority_tag<2>) noexcept
+                template <
+                    typename Range,
+                    typename std::enable_if<SCN_CHECK_CONCEPT(
+                        ranges::contiguous_range<Range>)>::type* = nullptr>
+                static SCN_CONSTEXPR14 span<typename std::add_const<
+                    ranges::range_value_t<const Range>>::type>
+                impl(const Range& s,
+                     ranges::iterator_t<const Range> begin,
+                     size_t max_size,
+                     priority_tag<2>) noexcept
                 {
-                    return {begin, _get_end(begin, s.end(), max_size)};
-                }
-                template <typename CharT>
-                static SCN_CONSTEXPR14 span<const CharT> impl(
-                    basic_string_view<CharT> s,
-                    typename basic_string_view<CharT>::iterator begin,
-                    size_t max_size,
-                    priority_tag<2>) noexcept
-                {
-                    return span<const CharT>(
-                        begin, _get_end(begin, s.end(), max_size));
+                    return {to_address(begin),
+                            _get_end(to_address(begin),
+                                     to_address(s.end() - 1) + 1, max_size)};
                 }
 
                 template <typename Range, typename It>
@@ -123,15 +118,20 @@ namespace scn {
                 }
 
                 template <typename Range, typename It>
-                SCN_CONSTEXPR14 auto
-                operator()(const Range& r, It begin) const noexcept(noexcept(
-                    operator()(r, begin, std::numeric_limits<size_t>::max())))
-                    -> decltype(operator()(r,
-                                           begin,
-                                           std::numeric_limits<size_t>::max()))
+                SCN_CONSTEXPR14 auto operator()(const Range& r, It begin) const
+                    noexcept(
+                        noexcept(fn::impl(r,
+                                          begin,
+                                          std::numeric_limits<size_t>::max(),
+                                          priority_tag<3>{})))
+                        -> decltype(fn::impl(r,
+                                             begin,
+                                             std::numeric_limits<size_t>::max(),
+                                             priority_tag<3>{}))
                 {
-                    return operator()(r, begin,
-                                      std::numeric_limits<size_t>::max());
+                    return fn::impl(r, begin,
+                                    std::numeric_limits<size_t>::max(),
+                                    priority_tag<3>{});
                 }
             };
         }  // namespace _get_buffer

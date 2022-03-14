@@ -56,6 +56,8 @@ TEST_CASE_TEMPLATE("read_code_unit", CharT, char, wchar_t)
     }
 }
 
+// assumes wchar_t = utf-32
+#if SCN_POSIX
 TEST_CASE("read_code_point")
 {
     unsigned char buf[4] = {0};
@@ -107,7 +109,7 @@ TEST_CASE("read_code_point")
         CHECK(ret.value().chars[0] == 'a');
         CHECK(ret.value().cp == scn::make_code_point(0x61));
         CHECK(range.size() == 1);
-        CHECK(range.begin()->error().code() == scn::error::code::end_of_range);
+        CHECK(range.begin()->error().code() == scn::error::end_of_range);
     }
 
     SUBCASE("wide contiguous")
@@ -157,9 +159,10 @@ TEST_CASE("read_code_point")
         CHECK(ret.value().chars[0] == L'a');
         CHECK(ret.value().cp == scn::make_code_point(0x61));
         CHECK(range.size() == 1);
-        CHECK(range.begin()->error().code() == scn::error::code::end_of_range);
+        CHECK(range.begin()->error().code() == scn::error::end_of_range);
     }
 }
+#endif
 
 TEST_CASE_TEMPLATE("read_zero_copy", CharT, char, wchar_t)
 {
