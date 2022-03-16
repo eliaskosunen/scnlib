@@ -1,3 +1,21 @@
+# 1.1.1
+
+_Released 2022-03-16_
+
+ * Fix issue with values being skipped when using files and `file.sync()` (#56)
+   * Every call to `file.sync()` needs to be accompanied by a call to `reset_begin_iterator()` to the result object
+   * This is a temporary fix, permanent fix coming in v2.0.0
+ 
+```cpp
+int i;
+auto ret = scn::scan(scn::cstdin(), "{}", i);
+scn::cstdin().sync();
+ret.range().reset_begin_iterator();
+
+// Not necessary with input and prompt
+ret = scn::input("{}", i);
+```
+
 # 1.1
 
 _Released 2022-03-12_

@@ -279,6 +279,7 @@ namespace scn {
         auto& range = stdin_range<CharT>();
         auto ret = detail::scan_boilerplate(range, f, a...);
         range.sync();
+        ret.range().reset_begin_iterator();
         return ret;
     }
 #endif

@@ -21,8 +21,8 @@
 #include <cstdio>
 #include <string>
 
-#include "range.h"
 #include "../util/algorithm.h"
+#include "range.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -258,6 +258,11 @@ namespace scn {
             bool operator>=(const iterator& o) const
             {
                 return !operator<(o);
+            }
+
+            void reset_begin_iterator() const noexcept
+            {
+                m_current = 0;
             }
 
         private:
