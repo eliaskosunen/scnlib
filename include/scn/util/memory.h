@@ -87,6 +87,32 @@ namespace scn {
                                                   priority_tag<2>{});
         }
 
+#if SCN_WINDOWS
+        template <typename I, typename B, typename E>
+        SCN_CONSTEXPR14 auto to_address_safe(I&& p, B begin, E end) noexcept
+            -> decltype(to_address(SCN_FWD(p)))
+        {
+            if (p >= begin && p < end) {
+                return to_address(SCN_FWD(p));
+            }
+            if (begin == end) {
+                return to_address(SCN_FWD(p));
+            }
+            if (p == end) {
+                return to_address(SCN_FWD(p) - 1) + 1;
+            }
+            SCN_ENSURE(false);
+            SCN_UNREACHABLE;
+        }
+#else
+        template <typename I, typename B, typename E>
+        SCN_CONSTEXPR14 auto to_address_safe(I&& p, B, E) noexcept
+            -> decltype(to_address(SCN_FWD(p)))
+        {
+            return to_address(SCN_FWD(p));
+        }
+#endif
+
         // Workaround for MSVC _String_view_iterator
 #if SCN_MSVC && SCN_HAS_STRING_VIEW
         template <typename Traits>

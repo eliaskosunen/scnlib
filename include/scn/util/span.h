@@ -76,7 +76,8 @@ namespace scn {
                   typename = decltype(detail::to_address(SCN_DECLVAL(I)),
                                       detail::to_address(SCN_DECLVAL(S)))>
         SCN_CONSTEXPR14 span(I first, S last) noexcept
-            : m_ptr(detail::to_address(first)), m_end(detail::to_address(last))
+            : m_ptr(detail::to_address(first)),
+              m_end(detail::to_address_safe(last, first, last))
         {
         }
 
@@ -229,7 +230,8 @@ namespace scn {
         using std::end;
         return span<typename T::value_type>(
             detail::to_address(begin(container)),
-            detail::to_address(end(container) - 1) + 1);
+            detail::to_address_safe(end(container), begin(container),
+                                    end(container)));
     }
 
     SCN_END_NAMESPACE

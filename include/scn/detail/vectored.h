@@ -72,9 +72,11 @@ namespace scn {
                      size_t max_size,
                      priority_tag<2>) noexcept
                 {
+                    auto b = ranges::begin(s);
+                    auto e = ranges::end(s);
                     return {to_address(begin),
                             _get_end(to_address(begin),
-                                     to_address(s.end() - 1) + 1, max_size)};
+                                     to_address_safe(e, b, e), max_size)};
                 }
 
                 template <typename Range, typename It>

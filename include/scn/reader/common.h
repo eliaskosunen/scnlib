@@ -515,7 +515,8 @@ namespace scn {
                         auto begin = r.data();
                         auto end = keep_final ? it + 1 : it;
                         r.advance_to(end);
-                        return span_type{begin, to_address(end)};
+                        return span_type{
+                            begin, to_address_safe(end, r.begin(), r.end())};
                     }
                 }
             }
@@ -527,7 +528,8 @@ namespace scn {
                                      "Invalid code point"};
                     }
                     auto span =
-                        make_span(to_address(it), static_cast<size_t>(len));
+                        make_span(to_address_safe(it, r.begin(), r.end()),
+                                  static_cast<size_t>(len));
                     code_point cp{};
                     auto i = parse_code_point(span.begin(), span.end(), cp);
                     if (!i) {
@@ -541,7 +543,8 @@ namespace scn {
                         auto begin = r.data();
                         auto end = keep_final ? it + len : it;
                         r.advance_to(end);
-                        return span_type{begin, to_address(end)};
+                        return span_type{
+                            begin, to_address_safe(end, r.begin(), r.end())};
                     }
                     it += len;
                 }
