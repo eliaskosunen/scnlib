@@ -1,3 +1,9 @@
+# 1.1.2
+
+_Released 2022-03-19_
+
+ * Change `SCN_VERSION` to report the correct version number: 1.1.0 -> 1.1.2 (#57)
+
 # 1.1.1
 
 _Released 2022-03-16_
