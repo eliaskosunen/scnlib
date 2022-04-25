@@ -196,7 +196,11 @@
 #define SCN_HAS_EXCEPTIONS 1
 #endif
 #if !defined(SCN_HAS_EXCEPTIONS) && defined(_HAS_EXCEPTIONS)
+#if _HAS_EXCEPTIONS
 #define SCN_HAS_EXCEPTIONS 1
+#else
+#define SCN_HAS_EXCEPTIONS 0
+#endif
 #endif
 #if !defined(SCN_HAS_EXCEPTIONS) && !defined(_CPPUNWIND)
 #define SCN_HAS_EXCEPTIONS 0
