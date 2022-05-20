@@ -282,6 +282,15 @@
 #define SCN_CONSTEXPR14 inline
 #endif
 
+
+// Detect if constexpr
+#if (defined(__cpp_if_constexpr) && __cpp_if_constexpr >= 201606) || \
+    ((SCN_MSVC >= SCN_COMPILER(19, 11, 0) && SCN_MSVC_LANG >= SCN_STD_17))
+#define SCN_CONSTEXPRIF constexpr
+#else
+#define SCN_CONSTEXPRIF
+#endif
+
 // Detect string_view
 #if defined(__cpp_lib_string_view) && __cpp_lib_string_view >= 201603 && \
     SCN_STD >= SCN_STD_17
