@@ -256,7 +256,7 @@ namespace scn {
             span<const char_type> ch) const
         {
             const auto& locale = to_locale(*this);
-            if (sizeof(CharT) == 1) {
+            if SCN_CONSTEXPRIF (sizeof(CharT) == 1) {
                 SCN_EXPECT(ch.size() >= 1);
                 code_point cp{};
                 auto it = parse_code_point(ch.begin(), ch.end(), cp);
@@ -271,7 +271,7 @@ namespace scn {
             span<const char_type> ch) const
         {
             const auto& locale = to_locale(*this);
-            if (sizeof(CharT) == 1) {
+            if SCN_CONSTEXPRIF (sizeof(CharT) == 1) {
                 SCN_EXPECT(ch.size() >= 1);
                 code_point cp{};
                 auto it = parse_code_point(ch.begin(), ch.end(), cp);
@@ -298,7 +298,7 @@ namespace scn {
         const                                                             \
     {                                                                     \
         const auto& locale = to_locale(*this);                            \
-        if (sizeof(CharT) == 1) {                                         \
+        if SCN_CONSTEXPRIF (sizeof(CharT) == 1) {                                         \
             SCN_EXPECT(ch.size() >= 1);                                   \
             code_point cp{};                                              \
             auto it = parse_code_point(ch.begin(), ch.end(), cp);         \
@@ -348,7 +348,7 @@ namespace scn {
             span<const char_type> ch) const
         {
             const auto& locale = to_locale(*this);
-            if (sizeof(CharT) == 1) {
+            if SCN_CONSTEXPRIF (sizeof(CharT) == 1) {
                 SCN_EXPECT(ch.size() >= 1);
                 code_point cp{};
                 auto it = parse_code_point(ch.begin(), ch.end(), cp);
