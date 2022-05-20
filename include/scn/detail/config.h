@@ -35,9 +35,9 @@
                  __INTEL_COMPILER % 10)
 #elif defined(_MSC_VER) && defined(_MSC_FULL_VER)
 // MSVC
-#if _MSC_VER == _MSC_FULL_VER / 10000
+#if _MSC_VER == _MSC_FULL_VER / 100000
 #define SCN_MSVC \
-    SCN_COMPILER(_MSC_VER / 100, _MSC_VER % 100, _MSC_FULL_VER % 10000)
+    SCN_COMPILER(_MSC_VER / 100, _MSC_VER % 100, _MSC_FULL_VER % 100000)
 #else
 #define SCN_MSVC                                                \
     SCN_COMPILER(_MSC_VER / 100, (_MSC_FULL_VER / 100000) % 10, \
