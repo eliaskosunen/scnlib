@@ -273,6 +273,7 @@ namespace scn {
             SCN_MSVC_IGNORE(4018)  // > signed/unsigned mismatch
             SCN_MSVC_IGNORE(4389)  // == signed/unsigned mismatch
             SCN_MSVC_IGNORE(4244)  // lossy conversion
+            SCN_MSVC_IGNORE(4146)  // result still unsigned
 
             using utype = typename std::make_unsigned<T>::type;
 
