@@ -205,7 +205,7 @@ namespace scn {
         }  // namespace cstd
 
         namespace from_chars {
-#if SCN_HAS_FLOAT_CHARCONV
+#if SCN_HAS_FLOAT_CHARCONV && SCN_USE_FROM_CHARS
             template <typename T>
             struct read {
                 static expected<T> get(const char* str,
@@ -243,9 +243,14 @@ namespace scn {
                                      "from_chars");
                     }
                     if (result.ec == std::errc::result_out_of_range) {
-                        // Out of range, may be subnormal -> fall back to strtod
+                        // Out of range -> may be subnormal
                         // On gcc std::from_chars doesn't parse subnormals
+#if SCN_USE_CSTD
+                        // fall back to cstd
                         return cstd::read<char, T>::get(str, chars, options);
+#else
+                        return error(error::value_out_of_range, "from_chars");
+#endif
                     }
                     chars = static_cast<size_t>(result.ptr - str);
                     return value;
@@ -276,7 +281,11 @@ namespace scn {
                 if (((options & detail::float_scanner<T>::allow_hex) != 0) &&
                     is_hexfloat(str, len)) {
                     // fast_float doesn't support hexfloats
+#if (SCN_USE_FROM_CHARS || SCN_USE_CSTD)
                     return from_chars::read<T>::get(str, chars, options);
+#else
+                    return error(error::invalid_format_string, "fast_float");
+#endif
                 }
 
                 T value{};
@@ -307,9 +316,13 @@ namespace scn {
                     // fast_float represents very large or small values as inf
                     // But, it also parses "inf", which from_chars does not
                     if (!(len >= 3 && (str[0] == 'i' || str[0] == 'I'))) {
-                        // Input was not actually infinity ->
-                        // invalid result, fall back to from_chars
+                        // Input was not actually infinity -> invalid result
+#if (SCN_USE_FROM_CHARS || SCN_USE_CSTD)
+                        // fall back to from_chars
                         return from_chars::read<T>::get(str, chars, options);
+#else
+                        return error(error::value_out_of_range, "fast_float");
+#endif
                     }
                 }
                 chars = static_cast<size_t>(result.ptr - str);

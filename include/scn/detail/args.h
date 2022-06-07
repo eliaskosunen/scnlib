@@ -113,9 +113,37 @@ namespace scn {
             void (*scan)();
         };
 
+        template<typename T, typename CharT>
+        struct type_enabled { static constexpr bool value = SCN_TYPE_CUSTOM; };
+
+        template<typename CharT> struct type_enabled<signed char, CharT> { static constexpr bool value = SCN_TYPE_SCHAR; };
+        template<typename CharT> struct type_enabled<short, CharT> { static constexpr bool value = SCN_TYPE_SHORT; };
+        template<typename CharT> struct type_enabled<int, CharT> { static constexpr bool value = SCN_TYPE_INT; };
+        template<typename CharT> struct type_enabled<long, CharT> { static constexpr bool value = SCN_TYPE_LONG; };
+        template<typename CharT> struct type_enabled<long long, CharT> { static constexpr bool value = SCN_TYPE_LONG_LONG; };
+        template<typename CharT> struct type_enabled<unsigned char, CharT> { static constexpr bool value = SCN_TYPE_UCHAR; };
+        template<typename CharT> struct type_enabled<unsigned short, CharT> { static constexpr bool value = SCN_TYPE_USHORT; };
+        template<typename CharT> struct type_enabled<unsigned int, CharT> { static constexpr bool value = SCN_TYPE_UINT; };
+        template<typename CharT> struct type_enabled<unsigned long, CharT> { static constexpr bool value = SCN_TYPE_ULONG; };
+        template<typename CharT> struct type_enabled<unsigned long long, CharT> { static constexpr bool value = SCN_TYPE_ULONG_LONG; };
+        template<typename CharT> struct type_enabled<bool, CharT> { static constexpr bool value = SCN_TYPE_BOOL; };
+        template<typename CharT> struct type_enabled<CharT, CharT> { static constexpr bool value = SCN_TYPE_CHAR; };
+        template<typename CharT> struct type_enabled<code_point, CharT> { static constexpr bool value = SCN_TYPE_CODE_POINT; };
+        template<typename CharT> struct type_enabled<float, CharT> { static constexpr bool value = SCN_TYPE_FLOAT; };
+        template<typename CharT> struct type_enabled<double, CharT> { static constexpr bool value = SCN_TYPE_DOUBLE; };
+        template<typename CharT> struct type_enabled<long double, CharT> { static constexpr bool value = SCN_TYPE_LONG_DOUBLE; };
+        template<typename CharT> struct type_enabled<span<CharT>, CharT> { static constexpr bool value = SCN_TYPE_BUFFER; };
+        template<typename CharT> struct type_enabled<std::basic_string<CharT>, CharT> { static constexpr bool value = SCN_TYPE_STRING; };
+        template<typename CharT> struct type_enabled<basic_string_view<CharT>, CharT> { static constexpr bool value = SCN_TYPE_STRING_VIEW; };
+#if SCN_HAS_STRING_VIEW
+        template<typename CharT> struct type_enabled<std::basic_string_view<CharT>, CharT> { static constexpr bool value = SCN_TYPE_STRING_VIEW; };
+#endif
+
         template <typename Context, typename ParseCtx, typename T>
         error scan_custom_arg(void* arg, Context& ctx, ParseCtx& pctx) noexcept
         {
+            static_assert(type_enabled<T, typename ParseCtx::char_type>::value, "arg type is disabled");
+
             return visitor_boilerplate<scanner<T>>(*static_cast<T*>(arg), ctx,
                                                    pctx);
         }
@@ -337,55 +365,89 @@ namespace scn {
             case detail::none_type:
                 break;
 
+#if SCN_TYPE_SCHAR
             case detail::schar_type:
                 return vis(arg.m_value.template get_as<signed char>());
+#endif
+#if SCN_TYPE_SHORT
             case detail::short_type:
                 return vis(arg.m_value.template get_as<short>());
+#endif
+#if SCN_TYPE_INT
             case detail::int_type:
                 return vis(arg.m_value.template get_as<int>());
+#endif
+#if SCN_TYPE_LONG
             case detail::long_type:
                 return vis(arg.m_value.template get_as<long>());
+#endif
+#if SCN_TYPE_LONG_LONG
             case detail::long_long_type:
                 return vis(arg.m_value.template get_as<long long>());
-
+#endif
+#if SCN_TYPE_UCHAR
             case detail::uchar_type:
                 return vis(arg.m_value.template get_as<unsigned char>());
+#endif
+#if SCN_TYPE_USHORT
             case detail::ushort_type:
                 return vis(arg.m_value.template get_as<unsigned short>());
+#endif
+#if SCN_TYPE_UINT
             case detail::uint_type:
                 return vis(arg.m_value.template get_as<unsigned int>());
+#endif
+#if SCN_TYPE_ULONG
             case detail::ulong_type:
                 return vis(arg.m_value.template get_as<unsigned long>());
+#endif
+#if SCN_TYPE_ULONG_LONG
             case detail::ulong_long_type:
                 return vis(arg.m_value.template get_as<unsigned long long>());
-
+#endif
+#if SCN_TYPE_BOOL
             case detail::bool_type:
                 return vis(arg.m_value.template get_as<bool>());
+#endif
+#if SCN_TYPE_CHAR
             case detail::char_type:
                 return vis(arg.m_value.template get_as<CharT>());
+#endif
+#if SCN_TYPE_CODE_POINT
             case detail::code_point_type:
                 return vis(arg.m_value.template get_as<code_point>());
-
+#endif
+#if SCN_TYPE_FLOAT
             case detail::float_type:
                 return vis(arg.m_value.template get_as<float>());
+#endif
+#if SCN_TYPE_DOUBLE
             case detail::double_type:
                 return vis(arg.m_value.template get_as<double>());
+#endif
+#if SCN_TYPE_LONG_DOUBLE
             case detail::long_double_type:
                 return vis(arg.m_value.template get_as<long double>());
-
+#endif
+#if SCN_TYPE_BUFFER
             case detail::buffer_type:
                 return vis(arg.m_value.template get_as<span<CharT>>());
+#endif
+#if SCN_TYPE_STRING
             case detail::string_type:
                 return vis(
                     arg.m_value.template get_as<std::basic_string<CharT>>());
+#endif
+#if SCN_TYPE_STRING_VIEW
             case detail::string_view_type:
                 return vis(
                     arg.m_value.template get_as<basic_string_view<CharT>>());
-
+#endif
+#if SCN_TYPE_CUSTOM
             case detail::custom_type:
                 return vis(typename basic_arg<CharT>::handle(
                     arg.m_value.get_custom()));
-
+#endif
                 SCN_CLANG_PUSH
                 SCN_CLANG_IGNORE("-Wcovered-switch-default")
             default:
@@ -403,6 +465,8 @@ namespace scn {
                             typename std::remove_cv<T>::type>::type&),
                 SCN_DECLVAL(priority_tag<1>)));
             static const type value = value_type::type_tag;
+
+            static_assert(type_enabled<T, CharT>::value, "arg type is disabled");
         };
 
         template <typename CharT>
