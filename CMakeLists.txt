@@ -36,6 +36,30 @@ option(SCN_BUILD_BUILDTIME "Generate build time test target" OFF)
 
 option(SCN_USE_BUNDLED_FAST_FLOAT "Use lemire/fast_float bundled with scnlib" ON)
 
+option(SCN_TYPE_SCHAR "Enable schar" ON)
+option(SCN_TYPE_SHORT "Enable short" ON)
+option(SCN_TYPE_INT "Enable int" ON)
+option(SCN_TYPE_LONG "Enable long" ON)
+option(SCN_TYPE_LONG_LONG "Enable long long" ON)
+option(SCN_TYPE_UCHAR "Enable uchar" ON)
+option(SCN_TYPE_USHORT "Enable ushort" ON)
+option(SCN_TYPE_UINT "Enable uint" ON)
+option(SCN_TYPE_ULONG "Enable ulong" ON)
+option(SCN_TYPE_ULONG_LONG "Enable ulong long" ON)
+option(SCN_TYPE_BOOL "Enable bool" ON)
+option(SCN_TYPE_CHAR "Enable char" ON)
+option(SCN_TYPE_CODE_POINT "Enable code_point" ON)
+option(SCN_TYPE_FLOAT "Enable float" ON)
+option(SCN_TYPE_DOUBLE "Enable double" ON)
+option(SCN_TYPE_LONG_DOUBLE "Enable long double" ON)
+option(SCN_TYPE_BUFFER "Enable span" ON)
+option(SCN_TYPE_STRING "Enable std::string" ON)
+option(SCN_TYPE_STRING_VIEW "Enable string_view" ON)
+option(SCN_TYPE_CUSTOM "Enable user types" ON)
+
+option(SCN_USE_FROM_CHARS "Fall back to std::from_chars" ON)
+option(SCN_USE_CSTD "Fall back to strtod" ON)
+
 file(READ include/scn/detail/config.h config_h)
 if (NOT config_h MATCHES "SCN_VERSION SCN_COMPILER\\(([0-9]+), ([0-9]+), ([0-9]+)\\)")
     message(FATAL_ERROR "Cannot get SCN_VERSION from config.h")
@@ -83,6 +107,52 @@ function(generate_library_target target_name)
     target_compile_features(${target_name} PUBLIC cxx_std_11)
     set_private_flags(${target_name})
 
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_SCHAR=$<IF:$<BOOL:${SCN_TYPE_SCHAR}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_SHORT=$<IF:$<BOOL:${SCN_TYPE_SHORT}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_INT=$<IF:$<BOOL:${SCN_TYPE_INT}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_LONG=$<IF:$<BOOL:${SCN_TYPE_LONG}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_LONG_LONG=$<IF:$<BOOL:${SCN_TYPE_LONG_LONG}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_UCHAR=$<IF:$<BOOL:${SCN_TYPE_UCHAR}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_USHORT=$<IF:$<BOOL:${SCN_TYPE_USHORT}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_UINT=$<IF:$<BOOL:${SCN_TYPE_UINT}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_ULONG=$<IF:$<BOOL:${SCN_TYPE_ULONG}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_ULONG_LONG=$<IF:$<BOOL:${SCN_TYPE_ULONG_LONG}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_BOOL=$<IF:$<BOOL:${SCN_TYPE_BOOL}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_CHAR=$<IF:$<BOOL:${SCN_TYPE_CHAR}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_CODE_POINT=$<IF:$<BOOL:${SCN_TYPE_CODE_POINT}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_FLOAT=$<IF:$<BOOL:${SCN_TYPE_FLOAT}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_DOUBLE=$<IF:$<BOOL:${SCN_TYPE_DOUBLE}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_LONG_DOUBLE=$<IF:$<BOOL:${SCN_TYPE_LONG_DOUBLE}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_BUFFER=$<IF:$<BOOL:${SCN_TYPE_BUFFER}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_STRING=$<IF:$<BOOL:${SCN_TYPE_STRING}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_STRING_VIEW=$<IF:$<BOOL:${SCN_TYPE_STRING_VIEW}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_TYPE_CUSTOM=$<IF:$<BOOL:${SCN_TYPE_CUSTOM}>,1,0>)
+
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_USE_FROM_CHARS=$<IF:$<BOOL:${SCN_USE_FROM_CHARS}>,1,0>)
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_USE_CSTD=$<IF:$<BOOL:${SCN_USE_CSTD}>,1,0>)
+
     if (SCN_USE_BUNDLED_FAST_FLOAT)
         target_include_directories(${target_name} PRIVATE
                 $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/deps/fast_float/single_include>)
@@ -99,6 +169,52 @@ function(generate_header_only_target target_name)
     target_compile_definitions(${target_name} INTERFACE
             -DSCN_HEADER_ONLY=1)
     target_compile_features(${target_name} INTERFACE cxx_std_11)
+
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_SCHAR=$<IF:$<BOOL:${SCN_TYPE_SCHAR}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_SHORT=$<IF:$<BOOL:${SCN_TYPE_SHORT}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_INT=$<IF:$<BOOL:${SCN_TYPE_INT}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_LONG=$<IF:$<BOOL:${SCN_TYPE_LONG}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_LONG_LONG=$<IF:$<BOOL:${SCN_TYPE_LONG_LONG}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_UCHAR=$<IF:$<BOOL:${SCN_TYPE_UCHAR}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_USHORT=$<IF:$<BOOL:${SCN_TYPE_USHORT}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_UINT=$<IF:$<BOOL:${SCN_TYPE_UINT}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_ULONG=$<IF:$<BOOL:${SCN_TYPE_ULONG}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_ULONG_LONG=$<IF:$<BOOL:${SCN_TYPE_ULONG_LONG}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_BOOL=$<IF:$<BOOL:${SCN_TYPE_BOOL}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_CHAR=$<IF:$<BOOL:${SCN_TYPE_CHAR}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_CODE_POINT=$<IF:$<BOOL:${SCN_TYPE_CODE_POINT}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_FLOAT=$<IF:$<BOOL:${SCN_TYPE_FLOAT}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_DOUBLE=$<IF:$<BOOL:${SCN_TYPE_DOUBLE}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_LONG_DOUBLE=$<IF:$<BOOL:${SCN_TYPE_LONG_DOUBLE}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_BUFFER=$<IF:$<BOOL:${SCN_TYPE_BUFFER}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_STRING=$<IF:$<BOOL:${SCN_TYPE_STRING}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_STRING_VIEW=$<IF:$<BOOL:${SCN_TYPE_STRING_VIEW}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_TYPE_CUSTOM=$<IF:$<BOOL:${SCN_TYPE_CUSTOM}>,1,0>)
+
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_USE_FROM_CHARS=$<IF:$<BOOL:${SCN_USE_FROM_CHARS}>,1,0>)
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_USE_CSTD=$<IF:$<BOOL:${SCN_USE_CSTD}>,1,0>)
 
     if (SCN_USE_BUNDLED_FAST_FLOAT)
         target_include_directories(${target_name} INTERFACE
