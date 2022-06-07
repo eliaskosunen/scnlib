@@ -470,6 +470,15 @@ namespace scn {
 
         // default
         constexpr basic_locale_ref() = default;
+
+        // hardcoded "C", constexpr, should be preferred whenever possible
+        constexpr static_type get_static() const
+        {
+            return {};
+        }
+
+#if !SCN_USE_STATIC_LOCALE
+
         // nullptr = global
         constexpr basic_locale_ref(const void* p) : m_payload(p) {}
 
@@ -481,12 +490,6 @@ namespace scn {
         constexpr bool has_custom() const
         {
             return m_payload != nullptr;
-        }
-
-        // hardcoded "C", constexpr, should be preferred whenever possible
-        constexpr static_type get_static() const
-        {
-            return {};
         }
 
         // hardcoded "C", not constexpr
@@ -567,6 +570,7 @@ namespace scn {
         mutable detail::unique_ptr<custom_type> m_custom{nullptr};
         const void* m_payload{nullptr};
         default_type m_default{};
+#endif
     };
 
     template <typename CharT, typename Locale>

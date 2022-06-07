@@ -129,9 +129,23 @@ namespace scn {
                 using char_type = typename Context::char_type;
 
                 auto do_parse_float = [&](span<const char_type> s) -> error {
+                    SCN_EXPECT(!s.empty());
                     T tmp = 0;
                     expected<std::ptrdiff_t> ret{0};
                     int sign_offset{};
+                    bool has_negative_sign = false;
+                    if (s[0] == char_type{'+'}) {
+                        sign_offset = 1;
+                    }
+                    else if (s[0] == char_type{'-'}) {
+                        has_negative_sign = true;
+                        sign_offset = 1;
+                    }
+#if SCN_USE_STATIC_LOCALE
+                    ret =
+                        _read_float(tmp, s.subspan(sign_offset),
+                                    ctx.locale().get_static().decimal_point());
+#else
                     if (SCN_UNLIKELY((format_options & localized_digits) != 0 ||
                                      ((common_options & localized) != 0 &&
                                       (format_options & allow_hex) != 0))) {
@@ -140,32 +154,25 @@ namespace scn {
                         // and custom (localized) decimal points,
                         // so we have to fall back on iostreams
                         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-                        std::basic_string<char_type> str(s.data(), s.size());
+                        std::basic_string<char_type> str(
+                            s.data() + sign_offset, s.size() - sign_offset);
                         ret =
                             ctx.locale().get_localized().read_num(tmp, str, 0);
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     }
                     else {
-                        SCN_EXPECT(!s.empty());
-                        bool has_negative_sign = false;
-                        if (s[0] == char_type{'+'}) {
-                            sign_offset = 1;
-                        }
-                        else if (s[0] == char_type{'-'}) {
-                            has_negative_sign = true;
-                            sign_offset = 1;
-                        }
                         ret = _read_float(
                             tmp, s.subspan(sign_offset),
                             ctx.locale()
                                 .get((common_options & localized) != 0)
                                 .decimal_point());
-                        if (has_negative_sign) {
-                            SCN_EXPECT(std::isnan(tmp) ||
-                                       tmp >= static_cast<T>(0.0));
-                            tmp = -tmp;
-                        }
                     }
+                    if (has_negative_sign) {
+                        SCN_EXPECT(std::isnan(tmp) ||
+                                   tmp >= static_cast<T>(0.0));
+                        tmp = -tmp;
+                    }
+#endif
 
                     if (!ret) {
                         return ret.error();

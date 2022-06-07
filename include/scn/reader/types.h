@@ -107,10 +107,12 @@ namespace scn {
                 if ((format_options & allow_string) != 0) {
                     auto truename = ctx.locale().get_static().truename();
                     auto falsename = ctx.locale().get_static().falsename();
+#if !SCN_USE_STATIC_LOCALE
                     if ((common_options & localized) != 0) {
                         truename = ctx.locale().get_localized().truename();
                         falsename = ctx.locale().get_localized().falsename();
                     }
+#endif
                     const auto max_len =
                         detail::max(truename.size(), falsename.size());
                     std::basic_string<char_type> buf;
@@ -155,6 +157,7 @@ namespace scn {
                 }
 
                 if ((format_options & allow_int) != 0) {
+#if !SCN_USE_STATIC_LOCALE
                     if ((format_options & localized_digits) != 0) {
                         int i{};
                         auto s = integer_scanner<int>{};
@@ -179,6 +182,7 @@ namespace scn {
                         }
                         return {};
                     }
+#endif
 
                     unsigned char buf[4] = {0};
                     auto cp = read_code_point(ctx.range(), make_span(buf, 4));
