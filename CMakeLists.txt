@@ -59,6 +59,7 @@ option(SCN_DISABLE_TYPE_CUSTOM "Disable scanning of user types" OFF)
 
 option(SCN_DISABLE_FROM_CHARS "Disallow falling back on std::from_chars when scanning floating-point values" OFF)
 option(SCN_DISABLE_STRTOD "Disallow falling back on std::strtod when scanning floating-point values" OFF)
+option(SCN_USE_STATIC_LOCALE "Disable all localization" OFF)
 
 file(READ include/scn/detail/config.h config_h)
 if (NOT config_h MATCHES "SCN_VERSION SCN_COMPILER\\(([0-9]+), ([0-9]+), ([0-9]+)\\)")
@@ -107,6 +108,9 @@ function(generate_library_target target_name)
     target_compile_features(${target_name} PUBLIC cxx_std_11)
     set_private_flags(${target_name})
 
+    target_compile_definitions(${target_name} PUBLIC
+        -DSCN_USE_STATIC_LOCALE=$<IF:$<BOOL:${SCN_USE_STATIC_LOCALE}>,1,0>)
+
     if (SCN_USE_BUNDLED_FAST_FLOAT)
         target_include_directories(${target_name} PRIVATE
                 $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/deps/fast_float/single_include>)
@@ -123,6 +127,9 @@ function(generate_header_only_target target_name)
     target_compile_definitions(${target_name} INTERFACE
             -DSCN_HEADER_ONLY=1)
     target_compile_features(${target_name} INTERFACE cxx_std_11)
+
+    target_compile_definitions(${target_name} INTERFACE
+        -DSCN_USE_STATIC_LOCALE=$<IF:$<BOOL:${SCN_USE_STATIC_LOCALE}>,1,0>)
 
     if (SCN_USE_BUNDLED_FAST_FLOAT)
         target_include_directories(${target_name} INTERFACE
