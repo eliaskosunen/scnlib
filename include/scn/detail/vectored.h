@@ -139,7 +139,7 @@ namespace scn {
         }  // namespace _get_buffer
 
         namespace {
-            static constexpr auto& get_buffer =
+            inline static constexpr auto& get_buffer =
                 detail::static_const<_get_buffer::fn>::value;
         }  // namespace
 
