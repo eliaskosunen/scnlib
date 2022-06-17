@@ -581,7 +581,7 @@ namespace scn {
         /**
          * Create a `range_wrapper` for any supported source range.
          */
-        static constexpr auto& wrap =
+        inline static constexpr auto& wrap =
             detail::static_const<detail::_wrap::fn>::value;
     }  // namespace
 
