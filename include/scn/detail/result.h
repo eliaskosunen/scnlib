@@ -536,7 +536,7 @@ namespace scn {
             };
         }  // namespace _wrap_result
         namespace {
-            static constexpr auto& wrap_result =
+            inline static constexpr auto& wrap_result =
                 static_const<_wrap_result::fn>::value;
         }
 
