@@ -1,0 +1,8 @@
+get_filename_component(SCN_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}" PATH)
+include(CMakeFindDependencyMacro)
+
+if(NOT TARGET scn::scn)
+    include("${SCN_CMAKE_DIR}/scnTargets.cmake")
+endif()
+
+set(SCN_LIBRARIES scn::scn)

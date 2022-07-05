@@ -1,15 +1,18 @@
-function(make_example name)
-    add_executable(example-${name} example-${name}.cpp)
-    target_link_libraries(example-${name} PRIVATE scn)
-    set_private_flags(example-${name})
-endfunction()
+if (NOT SCN_EXAMPLES)
+    return()
+endif()
 
-make_example(1)
-make_example(2)
-make_example(3)
-make_example(tuple-return)
-make_example(getline)
-make_example(positional)
-make_example(json)
+add_library(scn_examples_base INTERFACE)
+target_link_libraries(scn_examples_base INTERFACE scn_sanitizers)
 
-make_example(readme)
+add_executable(scn_example_1 example_1.cpp)
+target_link_libraries(scn_example_1 scn::scn scn_examples_base)
+
+add_executable(scn_example_2 example_2.cpp)
+target_link_libraries(scn_example_2 scn::scn scn_examples_base)
+
+add_executable(scn_example_3 example_3.cpp)
+target_link_libraries(scn_example_3 scn::scn scn_examples_base)
+
+add_executable(scn_example_4 example_4.cpp)
+target_link_libraries(scn_example_4 scn::scn scn_examples_base)

@@ -41,11 +41,11 @@ if rtd_build:
 # -- Project information -----------------------------------------------------
 
 project = 'scnlib'
-copyright = '2020, Elias Kosunen'
+copyright = '2017, Elias Kosunen'
 author = 'Elias Kosunen'
 
 # The full version, including alpha/beta/rc tags
-release = '0.4.0-dev'
+release = '2.0.0-dev'
 
 # -- General configuration ---------------------------------------------------
 

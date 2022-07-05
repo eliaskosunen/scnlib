@@ -1,6 +1,6 @@
 name: Windows
 
-on: [ push, pull_request ]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -13,22 +13,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{ runner.workspace }}/build
 
-      - name: Configure
+      - name: Run CMake
         shell: bash
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake -DCMAKE_BUILD_TYPE=Debug \
-                -A ${{ matrix.platform }} $GITHUB_WORKSPACE
+          cmake -A ${{ matrix.platform }} $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config Debug
+        run: cmake --build . --config Debug --parallel
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build

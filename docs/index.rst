@@ -2,16 +2,6 @@
 scnlib documentation
 ====================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   guide
-   api
-   migration/migration_1_0
-   cmake
-   rationale/index
-
 Introduction
 ------------
 
@@ -27,6 +17,16 @@ The repository lives on the `scnlib GitHub`_.
 
 .. _fmtlib: https://fmt.dev/
 .. _scnlib GitHub: https://github.com/eliaskosunen/scnlib
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   guide
+   api
+   cmake
+   migration/migration_2_0
+   rationale/index
 
 Indices and tables
 ------------------

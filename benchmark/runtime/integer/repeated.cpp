@@ -15,25 +15,32 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "bench_int.h"
+#include <benchmark/benchmark.h>
+
+#include "int_bench.h"
+
+#include <charconv>
 
 template <typename Int>
 static void scan_int_repeated_scn(benchmark::State& state)
 {
-    auto data = stringified_integer_list<Int>();
-    Int i{};
-    auto result = scn::make_result(data);
+    auto data = get_integer_string<Int>();
+    auto range = scn::scan_map_input_range(data);
     for (auto _ : state) {
-        result = scn::scan(result.range(), "{}", i);
+        auto [result, i] = scn::scan<Int>(range, "{}");
 
         if (!result) {
-            if (result.error() == scn::error::end_of_range) {
-                result = scn::make_result(data);
+            if (result.error() == scn::scan_error::end_of_range) {
+                range = scn::scan_map_input_range(data);
             }
             else {
-                state.SkipWithError("Benchmark errored");
+                state.SkipWithError("Scan error");
                 break;
             }
+        }
+        else {
+            benchmark::DoNotOptimize(i);
+            range = SCN_MOVE(result.range());
         }
     }
     state.SetBytesProcessed(
@@ -44,47 +51,25 @@ BENCHMARK_TEMPLATE(scan_int_repeated_scn, long long);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn, unsigned);
 
 template <typename Int>
-static void scan_int_repeated_scn_default(benchmark::State& state)
+static void scan_int_repeated_scn_value(benchmark::State& state)
 {
-    auto data = stringified_integer_list<Int>();
-    Int i{};
-    auto result = scn::make_result(data);
+    auto data = get_integer_string<Int>();
+    auto range = scn::scan_map_input_range(data);
     for (auto _ : state) {
-        result = scn::scan_default(result.range(), i);
+        auto [result, i] = scn::scan_value<Int>(range);
 
         if (!result) {
-            if (result.error() == scn::error::end_of_range) {
-                result = scn::make_result(data);
+            if (result.error() == scn::scan_error::end_of_range) {
+                range = scn::scan_map_input_range(data);
             }
             else {
-                state.SkipWithError("Benchmark errored");
+                state.SkipWithError("Scan error");
                 break;
             }
         }
-    }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
-}
-BENCHMARK_TEMPLATE(scan_int_repeated_scn_default, int);
-BENCHMARK_TEMPLATE(scan_int_repeated_scn_default, long long);
-BENCHMARK_TEMPLATE(scan_int_repeated_scn_default, unsigned);
-
-template <typename Int>
-static void scan_int_repeated_scn_value(benchmark::State& state)
-{
-    auto data = stringified_integer_list<Int>();
-    auto result = scn::make_result<scn::expected<Int>>(data);
-    for (auto _ : state) {
-        result = scn::scan_value<Int>(result.range());
-
-        if (!result) {
-            if (result.error() == scn::error::end_of_range) {
-                result = scn::make_result<scn::expected<Int>>(data);
-            }
-            else {
-                state.SkipWithError("Benchmark errored");
-                break;
-            }
+        else {
+            benchmark::DoNotOptimize(i);
+            range = SCN_MOVE(result.range());
         }
     }
     state.SetBytesProcessed(
@@ -97,17 +82,17 @@ BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, unsigned);
 template <typename Int>
 static void scan_int_repeated_sstream(benchmark::State& state)
 {
-    auto data = stringified_integer_list<Int>();
+    auto data = get_integer_string<Int>();
     auto stream = std::istringstream(data);
-    Int i{};
     for (auto _ : state) {
+        Int i{};
         stream >> i;
 
         if (stream.eof()) {
             stream = std::istringstream(data);
         }
-        if (stream.fail()) {
-            state.SkipWithError("Benchmark errored");
+        else if (stream.fail()) {
+            state.SkipWithError("Scan error");
             break;
         }
     }
@@ -121,20 +106,23 @@ BENCHMARK_TEMPLATE(scan_int_repeated_sstream, unsigned);
 template <typename Int>
 static void scan_int_repeated_scanf(benchmark::State& state)
 {
-    auto data = stringified_integer_list<Int>();
-    auto ptr = &data[0];
-    Int i{};
-    for (auto _ : state) {
-        auto ret = scanf_integral_n(ptr, i);
+    auto data = get_integer_string<Int>();
+    const char* ptr = data.data();
 
+    for (auto _ : state) {
+        Int i{};
+
+        auto ret = sscanf_integral_n(ptr, i);
         if (ret != 1) {
             if (ret == EOF) {
-                ptr = &data[0];
+                ptr = data.data();
                 continue;
             }
-            state.SkipWithError("Benchmark errored");
+
+            state.SkipWithError("Scan error");
             break;
         }
+        benchmark::DoNotOptimize(i);
     }
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Int)));
@@ -142,3 +130,32 @@ static void scan_int_repeated_scanf(benchmark::State& state)
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, long long);
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, unsigned);
+
+template <typename Int>
+static void scan_int_repeated_charconv(benchmark::State& state)
+{
+    auto data = get_integer_string<Int>();
+    const char* ptr = data.data();
+
+    for (auto _ : state) {
+        Int i{};
+
+        for (; std::isspace(*ptr) != 0; ++ptr) {}
+        if (ptr == data.data() + data.size()) {
+            ptr = data.data();
+        }
+
+        auto ret = std::from_chars(ptr, data.data() + data.size(), i);
+        if (ret.ec != std::errc{}) {
+            state.SkipWithError("Scan error");
+            break;
+        }
+        ptr = ret.ptr;
+        benchmark::DoNotOptimize(i);
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+}
+BENCHMARK_TEMPLATE(scan_int_repeated_charconv, int);
+BENCHMARK_TEMPLATE(scan_int_repeated_charconv, long long);
+BENCHMARK_TEMPLATE(scan_int_repeated_charconv, unsigned);

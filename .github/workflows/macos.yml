@@ -1,34 +1,33 @@
 name: macOS
 
-on: [ push, pull_request ]
+on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-12
     strategy:
       fail-fast: false
       matrix:
-        os: [ macos-latest ]
-        std: [ 11, 14, 17, 20 ]
-        cxx: [ clang++, g++-11 ]
+        cxx: [ clang++, g++-11, g++-12 ]
+        std: [ 17, 20 ]
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
+      - uses: action/checkout@v2
 
       - name: Create Build Environment
         run: mkdir ${{ runner.workspace }}/build
 
-      - name: Configure
+      - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
+        env:
+          - CXX: ${{ matrix.cxx }}
+          - STD: ${{ matrix.std }}
         run: |
-          cmake -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
-                -DSCN_WERROR=ON $GITHUB_WORKSPACE
+          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=$STD $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: make -k -j3
+        run: cmake --build . --parallel
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
-        run: ctest -C ${{ matrix.build_type }} --output-on-failure
+        run: ctest --output-on-failure

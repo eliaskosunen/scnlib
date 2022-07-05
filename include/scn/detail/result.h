@@ -15,581 +15,313 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_RESULT_H
-#define SCN_DETAIL_RESULT_H
+#pragma once
 
-#include "../util/expected.h"
-#include "error.h"
-#include "range.h"
+#include <scn/detail/args.h>
+#include <scn/detail/error.h>
+#include <scn/detail/input_map.h>
+
+#include <tuple>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    /**
-     * Base class for the result type returned by most scanning functions
-     * (except for \ref scan_value). \ref scn::detail::scan_result_base inherits
-     * either from this class or \ref expected.
-     */
-    struct wrapped_error {
-        wrapped_error() = default;
-        wrapped_error(::scn::error e) : err(e) {}
+    template <typename Range>
+    struct vscan_result {
+        using iterator = ranges::iterator_t<Range>;
+        using sentinel = ranges::sentinel_t<Range>;
 
-        /// Get underlying error
-        SCN_NODISCARD ::scn::error error() const
-        {
-            return err;
-        }
-
-        /// Did the operation succeed -- true means success
-        explicit operator bool() const
-        {
-            return err.operator bool();
-        }
-
-        ::scn::error err{};
+        std::conditional_t<detail::is_erased_range_or_subrange<Range>::value,
+                           Range,
+                           ranges::subrange<iterator, sentinel>>
+            range;
+        scan_error error;
     };
 
     namespace detail {
-        template <typename Base>
-        class scan_result_base_wrapper : public Base {
-        public:
-            scan_result_base_wrapper(Base&& b) : Base(SCN_MOVE(b)) {}
-
-        protected:
-            void set_base(const Base& b)
-            {
-                static_cast<Base&>(*this) = b;
-            }
-            void set_base(Base&& b)
-            {
-                static_cast<Base&>(*this) = SCN_MOVE(b);
-            }
-        };
-
-        SCN_CLANG_PUSH
-        SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
-
-        /// @{
-
-        /**
-         * Type returned by scanning functions.
-         * Contains an error (inherits from it: for \ref error, that's \ref
-         * wrapped_error; with \ref scan_value, inherits from \ref expected),
-         * and the leftover range after scanning.
-         *
-         * The leftover range may reference the range given to the scanning
-         * function. Please take the necessary measures to make sure that the
-         * original range outlives the leftover range. Alternatively, if
-         * possible for your specific range type, call the \ref reconstruct()
-         * member function to get a new, independent range.
-         */
-        template <typename WrappedRange, typename Base>
-        class scan_result_base : public scan_result_base_wrapper<Base> {
-        public:
-            using wrapped_range_type = WrappedRange;
-            using base_type = scan_result_base_wrapper<Base>;
-
-            using range_type = typename wrapped_range_type::range_type;
-            using iterator = typename wrapped_range_type::iterator;
-            using sentinel = typename wrapped_range_type::sentinel;
-            using char_type = typename wrapped_range_type::char_type;
-
-            scan_result_base(Base&& b, wrapped_range_type&& r)
-                : base_type(SCN_MOVE(b)), m_range(SCN_MOVE(r))
-            {
-            }
-
-            /// Beginning of the leftover range
-            iterator begin() const noexcept
-            {
-                return m_range.begin();
-            }
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Wnoexcept")
-            // Mitigate problem where Doxygen would think that SCN_GCC_PUSH was
-            // a part of the definition of end()
-        public:
-            /// End of the leftover range
-            sentinel end() const
-                noexcept(noexcept(SCN_DECLVAL(wrapped_range_type).end()))
-            {
-                return m_range.end();
-            }
-
-            /// Whether the leftover range is empty
-            bool empty() const
-                noexcept(noexcept(SCN_DECLVAL(wrapped_range_type).end()))
-            {
-                return begin() == end();
-            }
-            SCN_GCC_POP
-            // See above at SCN_GCC_PUSH
-        public:
-            /// A subrange pointing to the leftover range
-            ranges::subrange<iterator, sentinel> subrange() const
-            {
-                return {begin(), end()};
-            }
-
-            /**
-             * Leftover range.
-             * If the leftover range is used to scan a new value, this member
-             * function should be used.
-             *
-             * \see range_wrapper
-             */
-            wrapped_range_type& range() &
-            {
-                return m_range;
-            }
-            /// \copydoc range()
-            const wrapped_range_type& range() const&
-            {
-                return m_range;
-            }
-            /// \copydoc range()
-            wrapped_range_type range() &&
-            {
-                return SCN_MOVE(m_range);
-            }
-
-            /**
-             * \defgroup range_as_range Contiguous leftover range convertors
-             *
-             * These member functions enable more convenient use of the
-             * leftover range for non-scnlib use cases. The range must be
-             * contiguous. The leftover range is not advanced, and can still be
-             * used.
-             *
-             * @{
-             */
-
-            /**
-             * \ingroup range_as_range
-             * Return a view into the leftover range as a \c string_view.
-             * Operations done to the leftover range after a call to this may
-             * cause issues with iterator invalidation. The returned range will
-             * reference to the leftover range, so be wary of
-             * use-after-free-problems.
-             */
-            template <
-                typename R = wrapped_range_type,
-                typename = typename std::enable_if<R::is_contiguous>::type>
-            basic_string_view<char_type> range_as_string_view() const
-            {
-                return {m_range.data(),
-                        static_cast<std::size_t>(m_range.size())};
-            }
-            /**
-             * \ingroup range_as_range
-             * Return a view into the leftover range as a \c span.
-             * Operations done to the leftover range after a call to this may
-             * cause issues with iterator invalidation. The returned range will
-             * reference to the leftover range, so be wary of
-             * use-after-free-problems.
-             */
-            template <
-                typename R = wrapped_range_type,
-                typename = typename std::enable_if<R::is_contiguous>::type>
-            span<const char_type> range_as_span() const
-            {
-                return {m_range.data(),
-                        static_cast<std::size_t>(m_range.size())};
-            }
-            /**
-             * \ingroup range_as_range
-             * Return the leftover range as a string. The contents are copied
-             * into the string, so using this will not lead to lifetime issues.
-             */
-            template <
-                typename R = wrapped_range_type,
-                typename = typename std::enable_if<R::is_contiguous>::type>
-            std::basic_string<char_type> range_as_string() const
-            {
-                return {m_range.data(),
-                        static_cast<std::size_t>(m_range.size())};
-            }
-            /// @}
-
-        protected:
-            wrapped_range_type m_range;
-
-        private:
-            /// \publicsection
-
-            /**
-             * Reconstructs a range of the original type, independent of the
-             * leftover range, beginning from \ref begin and ending in \ref end.
-             *
-             * Compiles only if range is reconstructible.
-             */
-            template <typename R = typename WrappedRange::range_type>
-            R reconstruct() const;
-        };
-
-        template <typename WrappedRange, typename Base>
-        class intermediary_scan_result
-            : public scan_result_base<WrappedRange, Base> {
-        public:
-            using base_type = scan_result_base<WrappedRange, Base>;
-
-            intermediary_scan_result(Base&& b, WrappedRange&& r)
-                : base_type(SCN_MOVE(b), SCN_MOVE(r))
-            {
-            }
-
-            template <typename R = WrappedRange>
-            void reconstruct() const
-            {
-                static_assert(
-                    dependent_false<R>::value,
-                    "Cannot call .reconstruct() on intermediary_scan_result. "
-                    "Assign this value to a previous result value returned by "
-                    "a scanning function or make_result (type: "
-                    "reconstructed_scan_result or "
-                    "non_reconstructed_scan_result) ");
-            }
-        };
-        template <typename WrappedRange, typename Base>
-        class reconstructed_scan_result
-            : public intermediary_scan_result<WrappedRange, Base> {
-        public:
-            using unwrapped_range_type = typename WrappedRange::range_type;
-            using base_type = intermediary_scan_result<WrappedRange, Base>;
-
-            reconstructed_scan_result(Base&& b, WrappedRange&& r)
-                : base_type(SCN_MOVE(b), SCN_MOVE(r))
-            {
-            }
-
-            reconstructed_scan_result& operator=(
-                const intermediary_scan_result<WrappedRange, Base>& other)
-            {
-                this->set_base(other);
-                this->m_range = other.range();
-                return *this;
-            }
-            reconstructed_scan_result& operator=(
-                intermediary_scan_result<WrappedRange, Base>&& other)
-            {
-                this->set_base(other);
-                this->m_range = other.range();
-                return *this;
-            }
-
-            unwrapped_range_type reconstruct() const
-            {
-                return this->range().range_underlying();
-            }
-        };
-        template <typename WrappedRange, typename UnwrappedRange, typename Base>
-        class non_reconstructed_scan_result
-            : public intermediary_scan_result<WrappedRange, Base> {
-        public:
-            using unwrapped_range_type = UnwrappedRange;
-            using base_type = intermediary_scan_result<WrappedRange, Base>;
-
-            non_reconstructed_scan_result(Base&& b, WrappedRange&& r)
-                : base_type(SCN_MOVE(b), SCN_MOVE(r))
-            {
-            }
-
-            non_reconstructed_scan_result& operator=(
-                const intermediary_scan_result<WrappedRange, Base>& other)
-            {
-                this->set_base(other);
-                this->m_range = other.range();
-                return *this;
-            }
-            non_reconstructed_scan_result& operator=(
-                intermediary_scan_result<WrappedRange, Base>&& other)
-            {
-                this->set_base(other);
-                this->m_range = other.range();
-                return *this;
-            }
-
-            template <typename R = unwrapped_range_type>
-            R reconstruct() const
-            {
-                return ::scn::detail::reconstruct(reconstruct_tag<R>{},
-                                                  this->begin(), this->end());
-            }
-        };
-
-        /// @}
-
-        // -Wdocumentation-unknown-command
-        SCN_CLANG_PUSH
-
-        template <typename T>
-        struct range_tag {
-        };
-
-        namespace _wrap_result {
-            struct fn {
-            private:
-                // Range = range_wrapper<ref>&
-                template <typename Error, typename Range>
-                static auto impl(Error e,
-                                 range_tag<range_wrapper<Range&>&>,
-                                 range_wrapper<Range&>&& range,
-                                 priority_tag<5>) noexcept
-                    -> intermediary_scan_result<range_wrapper<Range&>, Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)};
-                }
-                // Range = const range_wrapper<ref>&
-                template <typename Error, typename Range>
-                static auto impl(Error e,
-                                 range_tag<const range_wrapper<Range&>&>,
-                                 range_wrapper<Range&>&& range,
-                                 priority_tag<5>) noexcept
-                    -> intermediary_scan_result<range_wrapper<Range&>, Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)};
-                }
-                // Range = range_wrapper<ref>&&
-                template <typename Error, typename Range>
-                static auto impl(Error e,
-                                 range_tag<range_wrapper<Range&>>,
-                                 range_wrapper<Range&>&& range,
-                                 priority_tag<5>) noexcept
-                    -> intermediary_scan_result<range_wrapper<Range&>, Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)};
-                }
-
-                // Range = range_wrapper<non-ref>&
-                template <typename Error, typename Range>
-                static auto impl(Error e,
-                                 range_tag<range_wrapper<Range>&>,
-                                 range_wrapper<Range>&& range,
-                                 priority_tag<4>) noexcept
-                    -> intermediary_scan_result<range_wrapper<Range>, Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)};
-                }
-                // Range = const range_wrapper<non-ref>&
-                template <typename Error, typename Range>
-                static auto impl(Error e,
-                                 range_tag<const range_wrapper<Range>&>,
-                                 range_wrapper<Range>&& range,
-                                 priority_tag<4>) noexcept
-                    -> intermediary_scan_result<range_wrapper<Range>, Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)};
-                }
-                // Range = range_wrapper<non-ref>&&
-                template <typename Error, typename Range>
-                static auto impl(Error e,
-                                 range_tag<range_wrapper<Range>>,
-                                 range_wrapper<Range>&& range,
-                                 priority_tag<4>) noexcept
-                    -> intermediary_scan_result<range_wrapper<Range>, Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)};
-                }
-
-                // string literals are wonky
-                template <typename Error,
-                          typename CharT,
-                          size_t N,
-                          typename NoCVRef = remove_cvref_t<CharT>>
-                static auto impl(
-                    Error e,
-                    range_tag<CharT (&)[N]>,
-                    range_wrapper<basic_string_view<NoCVRef>>&& range,
-                    priority_tag<3>) noexcept
-                    -> reconstructed_scan_result<
-                        range_wrapper<basic_string_view<NoCVRef>>,
-                        Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)
-                                             .template reconstruct_and_rewrap<
-                                                 basic_string_view<NoCVRef>>()};
-                }
-
-                // (const) InputRange&: View + Reconstructible
-                // wrapped<any>
-                template <typename Error,
-                          typename InputRange,
-                          typename InnerWrappedRange,
-                          typename InputRangeNoConst =
-                              typename std::remove_const<InputRange>::type,
-                          typename = typename std::enable_if<SCN_CHECK_CONCEPT(
-                              ranges::view<InputRangeNoConst>)>::type>
-                static auto impl(Error e,
-                                 range_tag<InputRange&>,
-                                 range_wrapper<InnerWrappedRange>&& range,
-                                 priority_tag<2>) noexcept
-                    -> reconstructed_scan_result<
-                        decltype(SCN_MOVE(range)
-                                     .template reconstruct_and_rewrap<
-                                         InputRangeNoConst>()),
-                        Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)
-                                             .template reconstruct_and_rewrap<
-                                                 InputRangeNoConst>()};
-                }
-
-                // (const) InputRange&: other
-                // wrapped<any>
-                template <typename Error,
-                          typename InputRange,
-                          typename InnerWrappedRange>
-                static auto impl(Error e,
-                                 range_tag<InputRange&>,
-                                 range_wrapper<InnerWrappedRange>&& range,
-                                 priority_tag<1>) noexcept
-                    -> non_reconstructed_scan_result<
-                        range_wrapper<InnerWrappedRange>,
-                        typename std::remove_const<InputRange>::type,
-                        Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)};
-                }
-
-                // InputRange&&: View + Reconstructible
-                // wrapped<non-ref>
-                template <typename Error,
-                          typename InputRange,
-                          typename InnerWrappedRange,
-                          typename InputRangeNoConst =
-                              typename std::remove_const<InputRange>::type,
-                          typename = typename std::enable_if<SCN_CHECK_CONCEPT(
-                              ranges::view<InputRangeNoConst>)>::type>
-                static auto impl(Error e,
-                                 range_tag<InputRange>,
-                                 range_wrapper<InnerWrappedRange>&& range,
-                                 priority_tag<1>) noexcept
-                    -> reconstructed_scan_result<
-                        decltype(SCN_MOVE(range)
-                                     .template reconstruct_and_rewrap<
-                                         InputRangeNoConst>()),
-                        Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)
-                                             .template reconstruct_and_rewrap<
-                                                 InputRangeNoConst>()};
-                }
-
-                // InputRange&&: other
-                // wrapped<non-ref>
-                template <typename Error,
-                          typename InputRange,
-                          typename InnerWrappedRange>
-                static auto impl(Error e,
-                                 range_tag<InputRange>,
-                                 range_wrapper<InnerWrappedRange>&& range,
-                                 priority_tag<0>) noexcept
-                    -> non_reconstructed_scan_result<
-                        range_wrapper<InputRange>,
-                        typename std::remove_const<InputRange>::type,
-                        Error>
-                {
-                    return {SCN_MOVE(e), SCN_MOVE(range)};
-                }
-
-#if 0
-                    // InputRange&&
-                // wrapped<ref>
-                template <typename Error,
-                          typename InputRange,
-                          typename InnerWrappedRange,
-                          typename NoRef = typename std::remove_reference<
-                              InnerWrappedRange>::type>
-                static auto impl(Error e,
-                                 range_tag<InputRange>,
-                                 range_wrapper<InnerWrappedRange&>&& range,
-                                 priority_tag<0>) noexcept
-                    -> reconstructed_scan_result<range_wrapper<NoRef>, Error>
-                {
-                    return {SCN_MOVE(e),
-                            SCN_MOVE(range)
-                                .template rewrap_and_reconstruct<NoRef>()};
-                }
-#endif
-
-            public:
-                template <typename Error,
-                          typename InputRange,
-                          typename InnerWrappedRange>
-                auto operator()(Error e,
-                                range_tag<InputRange> tag,
-                                range_wrapper<InnerWrappedRange>&& range) const
-                    noexcept(noexcept(impl(SCN_MOVE(e),
-                                           tag,
-                                           SCN_MOVE(range),
-                                           priority_tag<5>{})))
-                        -> decltype(impl(SCN_MOVE(e),
-                                         tag,
-                                         SCN_MOVE(range),
-                                         priority_tag<5>{}))
-                {
-                    static_assert(SCN_CHECK_CONCEPT(ranges::range<InputRange>),
-                                  "Input needs to be a Range");
-                    return impl(SCN_MOVE(e), tag, SCN_MOVE(range),
-                                priority_tag<5>{});
-                }
-            };
-        }  // namespace _wrap_result
-        namespace {
-            static constexpr auto& wrap_result =
-                static_const<_wrap_result::fn>::value;
+        template <typename CharT, typename Source>
+        std::basic_string_view<CharT> map_scan_result_range(
+            const Source&,
+            const vscan_result<std::basic_string_view<CharT>>& result)
+            SCN_NOEXCEPT_P(
+                std::is_nothrow_constructible_v<std::basic_string_view<CharT>,
+                                                const CharT*,
+                                                std::size_t>)
+        {
+            return {result.range.data(),
+                    static_cast<std::size_t>(result.range.size())};
         }
 
-        template <typename Error, typename InputRange, typename WrappedRange>
-        struct result_type_for {
-            using type =
-                decltype(wrap_result(SCN_DECLVAL(Error &&),
-                                     SCN_DECLVAL(range_tag<InputRange>),
-                                     SCN_DECLVAL(WrappedRange&&)));
-        };
-        template <typename Error, typename InputRange, typename WrappedRange>
-        using result_type_for_t =
-            typename result_type_for<Error, InputRange, WrappedRange>::type;
+        template <typename CharT, typename Source>
+        basic_istreambuf_subrange<CharT> map_scan_result_range(
+            const Source&,
+            const vscan_result<basic_istreambuf_subrange<CharT>>& result)
+            SCN_NOEXCEPT_P(
+                std::is_nothrow_constructible_v<
+                    basic_istreambuf_subrange<CharT>,
+                    ranges::iterator_t<basic_istreambuf_subrange<CharT>>&,
+                    ranges::sentinel_t<basic_istreambuf_subrange<CharT>>&>)
+        {
+            return {result.range.begin(), result.range.end()};
+        }
+
+        template <typename CharT, typename Source>
+        auto map_scan_result_range(
+            const Source& source,
+            const vscan_result<basic_erased_subrange<CharT>>& result)
+        {
+            if constexpr (is_erased_range_or_subrange<Source>::value) {
+                return result.range;
+            }
+            else {
+                using iterator = ranges::iterator_t<const Source&>;
+                using sentinel = ranges::sentinel_t<const Source&>;
+                constexpr ranges::subrange_kind kind =
+                    ranges::sized_range<const Source&>
+                        ? ranges::subrange_kind::sized
+                        : ranges::subrange_kind::unsized;
+
+                return ranges::subrange<iterator, sentinel, kind>{
+                    ranges::next(ranges::begin(source),
+                                 result.range.begin().distance_from_begin()),
+                    ranges::end(source)};
+            }
+        }
     }  // namespace detail
 
-    /**
-     * Create a result object for range \c Range.
-     * Useful if one wishes to scan from the same range in a loop.
-     *
-     * \code{.cpp}
-     * auto source = ...;
-     * auto result = make_result(source);
-     * // scan until failure (no more `int`s, or EOF)
-     * while (result) {
-     *   int i;
-     *   result = scn::scan(result.range(), "{}", i);
-     *   // use i
-     * }
-     * // see result for why we exited the loop
-     * \endcode
-     *
-     * \c Error template parameter can be used to customize the error type for
-     * the result object. By default, it's \ref wrapped_error, which is what
-     * most of the scanning functions use. For \c scan_value, use \c
-     * expected<T>:
-     *
-     * \code{.cpp}
-     * auto result = make_result<scn::expected<int>>(source);
-     * while (result) {
-     *   result = scn::scan_value<int>(result.range(), "{}");
-     *   // use result.value()
-     * }
-     * \endcode
-     */
-    template <typename Error = wrapped_error, typename Range>
-    auto make_result(Range&& r)
-        -> detail::result_type_for_t<Error, Range, range_wrapper_for_t<Range>>
-    {
-        return detail::wrap_result(Error{}, detail::range_tag<Range>{},
-                                   wrap(r));
-    }
+    template <typename ResultMappedRange>
+    class scan_result {
+    public:
+        using range_type = ResultMappedRange;
+
+        scan_result() = default;
+
+        template <typename Range,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<range_type, Range>>>
+        explicit scan_result(Range&& r) : m_range(SCN_FWD(r))
+        {
+        }
+
+        template <typename Range,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<range_type, Range>>>
+        scan_result(Range&& r, scan_error e)
+            : m_range(SCN_FWD(r)), m_error(SCN_MOVE(e))
+        {
+        }
+
+        template <typename Range,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<range_type, Range>>>
+        scan_result(const scan_result<Range>& o)
+            : m_range(o.range()), m_error(o.error())
+        {
+        }
+        template <typename Range,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<range_type, Range>>>
+        scan_result(scan_result<Range>&& o)
+            : m_range(SCN_MOVE(o.range())), m_error(SCN_MOVE(o.error()))
+        {
+        }
+
+        constexpr explicit operator bool() const
+        {
+            return m_error.operator bool();
+        }
+        SCN_NODISCARD constexpr bool good() const
+        {
+            return operator bool();
+        }
+
+        SCN_NODISCARD constexpr scan_error error() const
+        {
+            return m_error;
+        }
+
+        range_type& range() & SCN_NOEXCEPT
+        {
+            return m_range;
+        }
+        const range_type& range() const& SCN_NOEXCEPT
+        {
+            return m_range;
+        }
+        range_type range() && SCN_NOEXCEPT
+        {
+            return m_range;
+        }
+
+    private:
+        range_type m_range;
+        scan_error m_error{};
+    };
+
+    template <typename Range>
+    scan_result(Range) -> scan_result<Range>;
+    template <typename Range>
+    scan_result(Range, scan_error) -> scan_result<Range>;
+
+    namespace detail {
+        template <typename... T, std::size_t... I>
+        std::tuple<T&...> make_ref_tuple_impl(std::tuple<T...>& t,
+                                              std::index_sequence<I...>)
+        {
+            return std::tie(std::get<I>(t)...);
+        }
+
+        template <typename... T>
+        std::tuple<T&...> make_ref_tuple(std::tuple<T...>& t)
+        {
+            return make_ref_tuple_impl(
+                t, std::make_index_sequence<sizeof...(T)>{});
+        }
+    }  // namespace detail
+
+    template <typename ResultMappedRange, typename... Args>
+    class scan_result_tuple {
+    public:
+        using result_type = scan_result<ResultMappedRange>;
+        using range_type = typename result_type::range_type;
+        using tuple_type = std::tuple<Args...>;
+
+        scan_result_tuple() = default;
+
+        template <typename Range,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<range_type, Range>>>
+        scan_result_tuple(scan_result<Range>&& result, tuple_type values)
+            : m_result(SCN_MOVE(result)), m_values(SCN_MOVE(values))
+        {
+        }
+
+        template <typename Range,
+                  typename... A,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<range_type, Range>>>
+        scan_result_tuple(const scan_result_tuple<Range, A...>& other)
+            : m_result(other.result()), m_values(other.values())
+        {
+        }
+        template <typename Range,
+                  typename... A,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<range_type, Range>>>
+        scan_result_tuple(scan_result_tuple<Range, A...>&& other)
+            : m_result(SCN_MOVE(other.result())),
+              m_values(SCN_MOVE(other.values()))
+        {
+        }
+
+        constexpr result_type& result() & SCN_NOEXCEPT
+        {
+            return m_result;
+        }
+        constexpr const result_type& result() const& SCN_NOEXCEPT
+        {
+            return m_result;
+        }
+        constexpr result_type result() && SCN_NOEXCEPT
+        {
+            return m_result;
+        }
+
+        constexpr tuple_type& values() & SCN_NOEXCEPT
+        {
+            return m_values;
+        }
+        constexpr const tuple_type& values() const& SCN_NOEXCEPT
+        {
+            return m_values;
+        }
+        constexpr tuple_type values() && SCN_NOEXCEPT
+        {
+            return m_values;
+        }
+
+        constexpr explicit operator bool() const SCN_NOEXCEPT
+        {
+            return result().operator bool();
+        }
+        SCN_NODISCARD constexpr bool good() const SCN_NOEXCEPT
+        {
+            return operator bool();
+        }
+
+        SCN_NODISCARD constexpr scan_error error() const SCN_NOEXCEPT
+        {
+            return result().error();
+        }
+
+        range_type& range() & SCN_NOEXCEPT
+        {
+            return result().range();
+        }
+        const range_type& range() const& SCN_NOEXCEPT
+        {
+            return result().range();
+        }
+        range_type range() &&
+        {
+            return result().range();
+        }
+
+        operator std::tuple<result_type&, Args&...>()
+        {
+            return std::tuple_cat(std::tuple<result_type&>{m_result},
+                                  detail::make_ref_tuple(m_values));
+        }
+
+    private:
+        result_type m_result{};
+        tuple_type m_values{};
+    };
 
     SCN_END_NAMESPACE
 }  // namespace scn
 
-#endif  // SCN_DETAIL_RESULT_H
+template <std::size_t I, typename R, typename... T>
+struct std::tuple_element<I, scn::scan_result_tuple<R, T...>> {
+    using type = std::tuple_element_t<I, std::tuple<scn::scan_result<R>, T...>>;
+};
+template <typename R, typename... T>
+struct std::tuple_size<scn::scan_result_tuple<R, T...>>
+    : std::integral_constant<std::size_t, 1 + sizeof...(T)> {};
+
+namespace scn {
+    SCN_BEGIN_NAMESPACE
+
+    template <std::size_t I, typename R, typename... T>
+    decltype(auto) get(scan_result_tuple<R, T...>& r)
+    {
+        if constexpr (I == 0) {
+            return r.result();
+        }
+        else {
+            return std::get<I - 1>(r.values());
+        }
+    }
+    template <std::size_t I, typename R, typename... T>
+    decltype(auto) get(const scan_result_tuple<R, T...>& r)
+    {
+        if constexpr (I == 0) {
+            return r.result();
+        }
+        else {
+            return std::get<I - 1>(r.values());
+        }
+    }
+    template <std::size_t I, typename R, typename... T>
+    decltype(auto) get(scan_result_tuple<R, T...>&& r)
+    {
+        if constexpr (I == 0) {
+            return r.result();
+        }
+        else {
+            return std::get<I - 1>(r.values());
+        }
+    }
+
+    SCN_END_NAMESPACE
+}  // namespace scn

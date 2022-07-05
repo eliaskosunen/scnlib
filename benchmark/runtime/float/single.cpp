@@ -15,24 +15,28 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "bench_float.h"
+#include <benchmark/benchmark.h>
+
+#include "float_bench.h"
+
+#include <charconv>
 
 template <typename Float>
 static void scan_float_single_scn(benchmark::State& state)
 {
-    auto source = stringified_floats_list<Float>();
+    const auto& source = get_float_list<float>();
     auto it = source.begin();
-    Float f;
     for (auto _ : state) {
         if (it == source.end()) {
             it = source.begin();
         }
 
-        auto result = scn::scan(*it, "{}", f);
-
-        if (!result) {
+        if (auto [result, f] = scn::scan<Float>(*it, "{}"); !result) {
             state.SkipWithError("Benchmark errored");
             break;
+        }
+        else {
+            benchmark::DoNotOptimize(f);
         }
     }
     state.SetBytesProcessed(
@@ -43,45 +47,21 @@ BENCHMARK_TEMPLATE(scan_float_single_scn, double);
 BENCHMARK_TEMPLATE(scan_float_single_scn, long double);
 
 template <typename Float>
-static void scan_float_single_scn_default(benchmark::State& state)
-{
-    auto source = stringified_floats_list<Float>();
-    auto it = source.begin();
-    Float f;
-    for (auto _ : state) {
-        if (it == source.end()) {
-            it = source.begin();
-        }
-
-        auto result = scn::scan_default(*it, f);
-
-        if (!result) {
-            state.SkipWithError("Benchmark errored");
-            break;
-        }
-    }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
-}
-BENCHMARK_TEMPLATE(scan_float_single_scn_default, float);
-BENCHMARK_TEMPLATE(scan_float_single_scn_default, double);
-BENCHMARK_TEMPLATE(scan_float_single_scn_default, long double);
-
-template <typename Float>
 static void scan_float_single_scn_value(benchmark::State& state)
 {
-    auto source = stringified_floats_list<Float>();
+    const auto& source = get_float_list<Float>();
     auto it = source.begin();
     for (auto _ : state) {
         if (it == source.end()) {
             it = source.begin();
         }
 
-        auto result = scn::scan_value<Float>(*it);
-
-        if (!result) {
+        if (auto [result, f] = scn::scan_value<Float>(*it); !result) {
             state.SkipWithError("Benchmark errored");
             break;
+        }
+        else {
+            benchmark::DoNotOptimize(f);
         }
     }
     state.SetBytesProcessed(
@@ -92,42 +72,16 @@ BENCHMARK_TEMPLATE(scan_float_single_scn_value, double);
 BENCHMARK_TEMPLATE(scan_float_single_scn_value, long double);
 
 template <typename Float>
-static void scan_float_single_scn_parse(benchmark::State& state)
-{
-    auto source = stringified_floats_list<Float>();
-    auto it = source.begin();
-    Float f{};
-    for (auto _ : state) {
-        if (it == source.end()) {
-            it = source.begin();
-        }
-
-        auto result = scn::parse_float<Float>(
-            scn::string_view{it->data(), it->size()}, f);
-
-        if (!result) {
-            state.SkipWithError("Benchmark errored");
-            break;
-        }
-    }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
-}
-BENCHMARK_TEMPLATE(scan_float_single_scn_parse, float);
-BENCHMARK_TEMPLATE(scan_float_single_scn_parse, double);
-BENCHMARK_TEMPLATE(scan_float_single_scn_parse, long double);
-
-template <typename Float>
 static void scan_float_single_sstream(benchmark::State& state)
 {
-    auto source = stringified_floats_list<Float>();
+    const auto& source = get_float_list<Float>();
     auto it = source.begin();
-    Float f;
     for (auto _ : state) {
         if (it == source.end()) {
             it = source.begin();
         }
 
+        Float f;
         std::istringstream iss{*it};
         iss >> f;
 
@@ -135,6 +89,7 @@ static void scan_float_single_sstream(benchmark::State& state)
             state.SkipWithError("Benchmark errored");
             break;
         }
+        benchmark::DoNotOptimize(f);
     }
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Float)));
@@ -146,19 +101,20 @@ BENCHMARK_TEMPLATE(scan_float_single_sstream, long double);
 template <typename Float>
 static void scan_float_single_scanf(benchmark::State& state)
 {
-    auto source = stringified_floats_list<Float>();
+    const auto& source = get_float_list<Float>();
     auto it = source.begin();
-    Float f;
     for (auto _ : state) {
         if (it == source.end()) {
             it = source.begin();
         }
 
-        auto ret = scanf_float(it->c_str(), f);
+        Float f;
+        auto ret = sscanf_float(it->c_str(), f);
         if (ret != 1) {
             state.SkipWithError("Benchmark errored");
             break;
         }
+        benchmark::DoNotOptimize(f);
     }
     state.SetBytesProcessed(
         static_cast<int64_t>(state.iterations() * sizeof(Float)));
@@ -166,3 +122,28 @@ static void scan_float_single_scanf(benchmark::State& state)
 BENCHMARK_TEMPLATE(scan_float_single_scanf, float);
 BENCHMARK_TEMPLATE(scan_float_single_scanf, double);
 BENCHMARK_TEMPLATE(scan_float_single_scanf, long double);
+
+template <typename Float>
+static void scan_float_single_charconv(benchmark::State& state)
+{
+    const auto& source = get_float_list<Float>();
+    auto it = source.begin();
+    for (auto _ : state) {
+        if (it == source.end()) {
+            it = source.begin();
+        }
+
+        Float f;
+        auto ret = std::from_chars(it->data(), it->data() + it->size(), f);
+        if (ret.ec != std::errc{}) {
+            state.SkipWithError("Benchmark errored");
+            break;
+        }
+        benchmark::DoNotOptimize(f);
+    }
+    state.SetBytesProcessed(
+        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+}
+BENCHMARK_TEMPLATE(scan_float_single_charconv, float);
+BENCHMARK_TEMPLATE(scan_float_single_charconv, double);
+BENCHMARK_TEMPLATE(scan_float_single_charconv, long double);

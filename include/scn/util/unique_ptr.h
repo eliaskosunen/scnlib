@@ -15,10 +15,9 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_UTIL_UNIQUE_PTR_H
-#define SCN_UTIL_UNIQUE_PTR_H
+#pragma once
 
-#include "../detail/fwd.h"
+#include <scn/fwd.h>
 
 #include <type_traits>
 
@@ -36,16 +35,16 @@ namespace scn {
             using element_type = T;
             using pointer = T*;
 
-            constexpr unique_ptr() noexcept = default;
-            constexpr unique_ptr(std::nullptr_t) noexcept {}
+            constexpr unique_ptr() SCN_NOEXCEPT = default;
+            constexpr unique_ptr(std::nullptr_t) SCN_NOEXCEPT {}
 
-            constexpr explicit unique_ptr(pointer p) noexcept : m_ptr(p) {}
+            constexpr explicit unique_ptr(pointer p) SCN_NOEXCEPT : m_ptr(p) {}
 
             template <
                 typename U,
                 typename std::enable_if<
                     std::is_convertible<U*, pointer>::value>::type* = nullptr>
-            SCN_CONSTEXPR14 unique_ptr(unique_ptr<U>&& u) noexcept
+            constexpr unique_ptr(unique_ptr<U>&& u) SCN_NOEXCEPT
                 : m_ptr(SCN_MOVE(u.get()))
             {
                 u.reset();
@@ -54,12 +53,12 @@ namespace scn {
             unique_ptr(const unique_ptr&) = delete;
             unique_ptr& operator=(const unique_ptr&) = delete;
 
-            SCN_CONSTEXPR14 unique_ptr(unique_ptr&& p) noexcept
+            constexpr unique_ptr(unique_ptr&& p) SCN_NOEXCEPT
                 : m_ptr(SCN_MOVE(p.m_ptr))
             {
                 p.m_ptr = nullptr;
             }
-            unique_ptr& operator=(unique_ptr&& p) noexcept
+            unique_ptr& operator=(unique_ptr&& p) SCN_NOEXCEPT
             {
                 delete m_ptr;
                 m_ptr = p.m_ptr;
@@ -67,24 +66,24 @@ namespace scn {
                 return *this;
             }
 
-            ~unique_ptr() noexcept
+            ~unique_ptr() SCN_NOEXCEPT
             {
                 SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                 delete m_ptr;
                 SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
             }
 
-            constexpr explicit operator bool() const noexcept
+            constexpr explicit operator bool() const SCN_NOEXCEPT
             {
                 return get() != nullptr;
             }
 
-            constexpr pointer get() const noexcept
+            constexpr pointer get() const SCN_NOEXCEPT
             {
                 return m_ptr;
             }
 
-            constexpr pointer operator->() const noexcept
+            constexpr pointer operator->() const SCN_NOEXCEPT
             {
                 return m_ptr;
             }
@@ -94,7 +93,7 @@ namespace scn {
                 return *m_ptr;
             }
 
-            SCN_CONSTEXPR14 void reset()
+            constexpr void reset()
             {
                 m_ptr = nullptr;
             }
@@ -107,12 +106,10 @@ namespace scn {
         unique_ptr<T> make_unique(Args&&... a)
         {
             SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-            return unique_ptr<T>(new T(SCN_FWD(a)...));
+            return ::scn::detail::unique_ptr<T>(new T(SCN_FWD(a)...));
             SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
         }
     }  // namespace detail
 
     SCN_END_NAMESPACE
 }  // namespace scn
-
-#endif

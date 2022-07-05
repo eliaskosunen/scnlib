@@ -3,7 +3,10 @@ name: Ubuntu 20.04
 on: [ push, pull_request ]
 
 env:
-  APT_INSTALL: sudo apt-get install -yq --no-install-suggests --no-install-recommends --allow-unauthenticated --allow-downgrades --allow-change-held-packages
+  APT_INSTALL: |
+    sudo apt-get install
+      -yq --no-install-suggests --no-install-recommends
+      --allow-unauthenticated --allow-downgrades --allow-change-held-packages
 
 jobs:
   build:
@@ -11,62 +14,55 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cxx: [ g++-11, g++-10, g++-9, g++-8, clang++-13, clang++-12, clang++-10, clang++-6.0 ]
-        std: [ 11, 14, 17, 20 ]
-        exclude:
-          - cxx: g++-8
-            std: 20
-          - cxx: clang++-6.0
-            std: 20
+        cxx: [ g++-10, g++-9, g++-8, g++-7, clang++-12, clang++-11, clang++-10, clang++-6.0 ]
+        std: [ 17, 20 ]
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: recursive
+
+      - uses: lukka/get-cmake@latest
 
       - name: Create Build Environment
-        env:
-          CXX: ${{ matrix.cxx }}
         run: |
-          mkdir ${{ runner.workspace }}/install
-          cd ${{ runner.workspace }}/install
+          mkdir ${{ runner.workspace }}/deps
+          mkdir ${{ runner.workspace }}/build
           
           sudo locale-gen en_US.UTF-8
           sudo locale-gen fi_FI.UTF-8
           sudo update-locale
           sudo locale -a
-          
+
+      - name: Install dependencies
+        working-directory: ${{ runner.workspace }}/deps
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt-get --allow-unauthenticated -yq update
           
-          if [[ "${CXX}" == "g++-11" ]]; then
-            ${APT_INSTALL} g++-11
-          fi
           if [[ "${CXX}" == "g++-8" ]]; then
             ${APT_INSTALL} g++-8
           fi
-          if [[ "${CXX}" == "clang++-13" ]]; then
-            wget https://apt.llvm.org/llvm.sh
-            chmod +x llvm.sh
-            sudo ./llvm.sh 13
+          if [[ "${CXX}" == "g++-7" ]]; then
+            ${APT_INSTALL} g++-7
           fi
+          
           if [[ "${CXX}" == "clang++-6.0" ]]; then
             ${APT_INSTALL} clang-6.0
           fi
-          
-          cd ${{ runner.workspace }}
-          mkdir ${{ runner.workspace }}/build
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         env:
           CXX: ${{ matrix.cxx }}
           STD: ${{ matrix.std }}
-        shell: bash
         run: |
-          cmake -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_WERROR=ON -DCMAKE_BUILD_TYPE=Debug \
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DSCN_CI=ON \
                 -DCMAKE_CXX_STANDARD=$STD \
                 $GITHUB_WORKSPACE
-          make -k -j2
+          cmake --build . -- -k 0
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: |
           ctest --output-on-failure
-          make clean

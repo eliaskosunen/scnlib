@@ -15,9 +15,6 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_ISTREAM_H
-#define SCN_ISTREAM_H
+#pragma once
 
-#include "scan/istream.h"
-
-#endif  // SCN_ISTREAM_H
+#include <scn/detail/istream_scanner.h>

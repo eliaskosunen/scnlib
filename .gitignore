@@ -1,2 +1,2 @@
-benchmark/bloat/out/
-test/fuzz/corpus/*
+build/
+benchmark/binarysize/out/
