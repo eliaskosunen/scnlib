@@ -381,7 +381,9 @@
 #define SCN_ASSUME(x) static_cast<void>((x) ? 0 : 0)
 #endif
 
-#if SCN_HAS_BUILTIN_UNREACHABLE
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202 
+#define SCN_UNREACHABLE std::unreachable()
+#elif SCN_HAS_BUILTIN_UNREACHABLE
 #define SCN_UNREACHABLE __builtin_unreachable()
 #else
 #define SCN_UNREACHABLE SCN_ASSUME(0)
