@@ -151,21 +151,25 @@ if (SCN_INSTALL)
 
     install(DIRECTORY
             "${CMAKE_CURRENT_SOURCE_DIR}/include/"
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            COMPONENT scnlib_Development)
 
     install(DIRECTORY
             "${CMAKE_CURRENT_SOURCE_DIR}/src/"
-            DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn/detail")
+            DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn/detail"
+            COMPONENT scnlib_Development)
 
     install(FILES
             "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
             "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
-            DESTINATION ${CMAKE_INSTALL_DATADIR}/scn)
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/scn
+            COMPONENT scnlib_Development)
 
     install(FILES
             "${CMAKE_CURRENT_BINARY_DIR}/scnConfigVersion.cmake"
             "${CMAKE_CURRENT_BINARY_DIR}/scnConfig.cmake"
-            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/scn")
+            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/scn"
+            COMPONENT scnlib_Development)
 
     export(TARGETS ${SCN_EXPORT_TARGETS_LIST}
             NAMESPACE scn
@@ -174,12 +178,14 @@ if (SCN_INSTALL)
     export(PACKAGE scn)
 
     install(TARGETS ${SCN_EXPORT_TARGETS_LIST}
+            COMPONENT scnlib_Development
             EXPORT scnTargets
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
             INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
     install(EXPORT scnTargets
+            COMPONENT scnlib_Development
             NAMESPACE scn::
             DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/scn")
 endif ()
