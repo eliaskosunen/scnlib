@@ -44,13 +44,6 @@ namespace scn {
             using char_type = CharT;
             using string_view_type = std::basic_string_view<CharT>;
 
-            template <typename T>
-            class cstd_impl;
-            template <typename T>
-            class from_chars_impl;
-            template <typename T>
-            class fast_float_impl;
-
             float_classic_value_reader() = default;
 
             explicit float_classic_value_reader(uint8_t opt)

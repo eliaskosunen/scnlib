@@ -15,11 +15,13 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <benchmark/benchmark.h>
+#include "benchmark_common.h"
 
 #include "float_bench.h"
 
+#if SCN_HAS_FLOAT_CHARCONV
 #include <charconv>
+#endif
 
 template <typename Float>
 static void scan_float_single_scn(benchmark::State& state)
@@ -39,8 +41,8 @@ static void scan_float_single_scn(benchmark::State& state)
             benchmark::DoNotOptimize(f);
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_scn, float);
 BENCHMARK_TEMPLATE(scan_float_single_scn, double);
@@ -64,8 +66,8 @@ static void scan_float_single_scn_value(benchmark::State& state)
             benchmark::DoNotOptimize(f);
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_scn_value, float);
 BENCHMARK_TEMPLATE(scan_float_single_scn_value, double);
@@ -91,8 +93,8 @@ static void scan_float_single_sstream(benchmark::State& state)
         }
         benchmark::DoNotOptimize(f);
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_sstream, float);
 BENCHMARK_TEMPLATE(scan_float_single_sstream, double);
@@ -116,12 +118,14 @@ static void scan_float_single_scanf(benchmark::State& state)
         }
         benchmark::DoNotOptimize(f);
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_scanf, float);
 BENCHMARK_TEMPLATE(scan_float_single_scanf, double);
 BENCHMARK_TEMPLATE(scan_float_single_scanf, long double);
+
+#if SCN_HAS_FLOAT_CHARCONV
 
 template <typename Float>
 static void scan_float_single_charconv(benchmark::State& state)
@@ -141,9 +145,11 @@ static void scan_float_single_charconv(benchmark::State& state)
         }
         benchmark::DoNotOptimize(f);
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_charconv, float);
 BENCHMARK_TEMPLATE(scan_float_single_charconv, double);
 BENCHMARK_TEMPLATE(scan_float_single_charconv, long double);
+
+#endif  // SCN_HAS_FLOAT_CHARCONV

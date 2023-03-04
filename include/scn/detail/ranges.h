@@ -59,12 +59,22 @@ namespace std::ranges {
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wnoexcept")
 SCN_GCC_IGNORE("-Wconversion")
+SCN_GCC_IGNORE("-Wsign-conversion")
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wshadow")
 SCN_CLANG_IGNORE("-Wredundant-parens")
-SCN_CLANG_IGNORE("-Wimplicit-int-conversion")
+SCN_CLANG_IGNORE("-Wzero-as-null-pointer-constant")
+SCN_CLANG_IGNORE("-Wmismatched-tags")
+SCN_CLANG_IGNORE("-Wmissing-variable-declarations")
+
+#if SCN_CLANG >= SCN_COMPILER(9, 0, 0)
 SCN_CLANG_IGNORE("-Wctad-maybe-unsupported")
+#endif
+
+#if SCN_CLANG >= SCN_COMPILER(8, 0, 0)
+SCN_CLANG_IGNORE("-Wimplicit-int-conversion")
+#endif
 
 #include <scn/external/nanorange/nanorange.hpp>
 
@@ -126,24 +136,31 @@ namespace scn {
                 return SCN_MOVE(m_range);
             }
 
-            constexpr scn::ranges::iterator_t<Range> begin()
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wnoexcept")
+
+            constexpr scn::ranges::iterator_t<Range> begin() SCN_NOEXCEPT_P(
+                noexcept(scn::ranges::begin(SCN_DECLVAL(Range&))))
             {
                 return scn::ranges::begin(m_range);
             }
             constexpr scn::ranges::sentinel_t<Range> end()
+                SCN_NOEXCEPT_P(noexcept(scn::ranges::end(SCN_DECLVAL(Range&))))
             {
                 return scn::ranges::end(m_range);
             }
 
             template <typename R = Range,
                       std::enable_if_t<scn::ranges::range<const R>>* = nullptr>
-            constexpr auto begin() const
+            constexpr auto begin() const SCN_NOEXCEPT_P(
+                noexcept(scn::ranges::begin(SCN_DECLVAL(const R&))))
             {
                 return scn::ranges::begin(m_range);
             }
             template <typename R = Range,
                       std::enable_if_t<scn::ranges::range<const R>>* = nullptr>
-            constexpr auto end() const
+            constexpr auto end() const SCN_NOEXCEPT_P(
+                noexcept(scn::ranges::end(SCN_DECLVAL(const R&))))
             {
                 return scn::ranges::end(m_range);
             }
@@ -152,13 +169,15 @@ namespace scn {
                       std::void_t<decltype(scn::ranges::empty(
                           SCN_DECLVAL(R&)))>* = nullptr>
             constexpr bool empty()
+                SCN_NOEXCEPT_P(noexcept(scn::ranges::empty(SCN_DECLVAL(R&))))
             {
                 return scn::ranges::empty(m_range);
             }
             template <typename R = Range,
                       std::void_t<decltype(scn::ranges::empty(
                           SCN_DECLVAL(const R&)))>* = nullptr>
-            constexpr bool empty() const
+            constexpr bool empty() const SCN_NOEXCEPT_P(
+                noexcept(scn::ranges::empty(SCN_DECLVAL(const R&))))
             {
                 return scn::ranges::empty(m_range);
             }
@@ -167,13 +186,15 @@ namespace scn {
                       std::void_t<decltype(scn::ranges::size(
                           SCN_DECLVAL(R&)))>* = nullptr>
             constexpr auto size()
+                SCN_NOEXCEPT_P(noexcept(scn::ranges::size(SCN_DECLVAL(R&))))
             {
                 return scn::ranges::size(m_range);
             }
             template <typename R = Range,
                       std::void_t<decltype(scn::ranges::size(
                           SCN_DECLVAL(const R&)))>* = nullptr>
-            constexpr auto size() const
+            constexpr auto size() const SCN_NOEXCEPT_P(
+                noexcept(scn::ranges::size(SCN_DECLVAL(const R&))))
             {
                 return scn::ranges::size(m_range);
             }
@@ -182,19 +203,23 @@ namespace scn {
                       std::void_t<decltype(scn::ranges::data(
                           SCN_DECLVAL(R&)))>* = nullptr>
             constexpr auto data()
+                SCN_NOEXCEPT_P(noexcept(scn::ranges::data(SCN_DECLVAL(R&))))
             {
                 return scn::ranges::data(m_range);
             }
             template <typename R = Range,
                       std::void_t<decltype(scn::ranges::data(
                           SCN_DECLVAL(const R&)))>* = nullptr>
-            constexpr auto data() const
+            constexpr auto data() const SCN_NOEXCEPT_P(
+                noexcept(scn::ranges::data(SCN_DECLVAL(const R&))))
             {
                 return scn::ranges::data(m_range);
             }
 
         private:
             Range m_range = Range();
+
+            SCN_GCC_POP  // -Wnoexcept
         };
 
         template <typename Range>

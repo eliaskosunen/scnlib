@@ -102,7 +102,7 @@ namespace scn {
             auto src = ranges::begin(input);
             auto dst = ranges::begin(output);
             while (src != ranges::end(input) && dst != ranges::end(output)) {
-                auto len = code_point_length(*src);
+                auto len = code_point_length_by_starting_code_unit(*src);
                 if (!len) {
                     return unexpected(len.error());
                 }
@@ -135,19 +135,16 @@ namespace scn {
                     SCN_GCC_POP
                 }
 
-                code_point cp{};
                 auto decode_sv = std::basic_string_view<char_type>{
                     buffer.data(),
                     static_cast<size_t>(buffer_it - buffer.begin())};
-                auto decode_result = decode_code_point(decode_sv, cp);
+                auto decode_result = get_next_code_point(decode_sv);
                 if (!decode_result) {
                     return unexpected(decode_result.error());
                 }
-                SCN_ENSURE(scn::detail::to_address_safe(*decode_result,
-                                                        decode_sv.begin(),
-                                                        decode_sv.end()) ==
-                           scn::detail::to_address_safe(
-                               buffer_it, buffer.begin(), buffer.end()));
+                SCN_ENSURE(scn::detail::to_address(decode_result->iterator) ==
+                           scn::detail::to_address(buffer_it));
+                const auto cp = decode_result->value;
 
                 if (until(cp)) {
                     return {{src_copy, dst}};

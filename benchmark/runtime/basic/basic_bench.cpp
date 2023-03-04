@@ -15,11 +15,14 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <benchmark/benchmark.h>
-#include "scn/scan.h"
+#include <scn/scan.h>
+#include "benchmark_common.h"
 
-#include <charconv>
 #include <sstream>
+
+#if SCN_HAS_INTEGER_CHARCONV
+#include <charconv>
+#endif
 
 static void bench_basic_scn(benchmark::State& state)
 {
@@ -72,8 +75,7 @@ static void bench_basic_scn_localized(benchmark::State& state)
     std::string_view input{"123"};
     auto loc = std::locale{};
     for (auto _ : state) {
-        if (auto [result, i] = scn::scan<int>(loc, input, "{:L}");
-            result) {
+        if (auto [result, i] = scn::scan<int>(loc, input, "{:L}"); result) {
             benchmark::DoNotOptimize(i);
         }
         else {
@@ -99,12 +101,15 @@ static void bench_basic_scn_value(benchmark::State& state)
 }
 BENCHMARK(bench_basic_scn_value);
 
+#if SCN_HAS_INTEGER_CHARCONV
+
 static void bench_basic_from_chars(benchmark::State& state)
 {
     std::string_view input{"123"};
     for (auto _ : state) {
         int i{};
-        if (auto res = std::from_chars(input.begin(), input.end(), i);
+        if (auto res =
+                std::from_chars(input.data(), input.data() + input.size(), i);
             res.ec == std::errc{}) {
             benchmark::DoNotOptimize(i);
         }
@@ -115,6 +120,8 @@ static void bench_basic_from_chars(benchmark::State& state)
     }
 }
 BENCHMARK(bench_basic_from_chars);
+
+#endif  // SCN_HAS_INTEGER_CHARCONV
 
 static void bench_basic_scanf(benchmark::State& state)
 {

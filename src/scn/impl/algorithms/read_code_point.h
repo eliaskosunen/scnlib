@@ -18,28 +18,28 @@
 #pragma once
 
 #include <scn/impl/algorithms/common.h>
-#include <scn/impl/unicode/utf16.h>
-#include <scn/impl/unicode/utf8.h>
+#include <scn/impl/unicode/unicode.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
 
-        template <typename Range>
-        scan_expected<iterator_value_result<ranges::borrowed_iterator_t<Range>,
-                                            span<char>>>
-        read_utf8_code_point(Range&& range, span<char> buf)
+        template <typename Range, typename U8>
+        scan_expected<
+            iterator_value_result<ranges::borrowed_iterator_t<Range>, span<U8>>>
+        read_utf8_code_point(Range&& range, span<U8> buf)
         {
+            static_assert(sizeof(U8) == 1);
             SCN_EXPECT(!ranges::empty(range));
             SCN_EXPECT(buf.size() >= 4);
 
             auto it = ranges::begin(range);
             const auto first = *it;
-            buf[0] = first;
+            buf[0] = static_cast<U8>(first);
             ++it;
 
-            const auto len = code_point_length(first);
+            const auto len = code_point_length_by_starting_code_unit(first);
             if (!len) {
                 return unexpected(len.error());
             }
@@ -56,26 +56,31 @@ namespace scn {
                 }
 
                 const auto ch = *it;
-                buf[i] = ch;
+                buf[i] = static_cast<U8>(ch);
                 ++it;
             }
             return {{it, buf.first(*len)}};
         }
 
-        template <typename Range>
+        template <typename Range, typename U16>
         scan_expected<iterator_value_result<ranges::borrowed_iterator_t<Range>,
-                                            span<char16_t>>>
-        read_utf16_code_point(Range&& range, span<char16_t> buf)
+                                            span<U16>>>
+        read_utf16_code_point(Range&& range, span<U16> buf)
         {
+            static_assert(sizeof(U16) == 2);
             SCN_EXPECT(!ranges::empty(range));
             SCN_EXPECT(buf.size() >= 2);
 
             auto it = ranges::begin(range);
             const auto first = *it;
-            buf[0] = static_cast<char16_t>(first);
+            buf[0] = static_cast<U16>(first);
             ++it;
 
-            if (utf16::code_point_length(first) == 1) {
+            const auto len = code_point_length_by_starting_code_unit(first);
+            if (!len) {
+                return unexpected(len.error());
+            }
+            if (*len == 1) {
                 return {{it, buf.first(1)}};
             }
 
@@ -85,20 +90,28 @@ namespace scn {
                     "EOF in the middle of UTF-16 code point");
             }
 
-            buf[1] = static_cast<char16_t>(*it);
+            buf[1] = static_cast<U16>(*it);
             ++it;
+
+            if (utf16_code_point_length_by_starting_code_unit(buf[1]) != 0) {
+                // should be a low surrogate
+                return unexpected_scan_error(scan_error::invalid_encoding,
+                                             "Unpaired UTF-16 high surrogate");
+            }
+
             return {{it, buf.first(2)}};
         }
 
-        template <typename Range>
+        template <typename Range, typename U32>
         scan_expected<iterator_value_result<ranges::borrowed_iterator_t<Range>,
-                                            span<char32_t>>>
-        read_utf32_code_point(Range&& range, span<char32_t> buf)
+                                            span<U32>>>
+        read_utf32_code_point(Range&& range, span<U32> buf)
         {
+            static_assert(sizeof(U32) == 4);
             SCN_EXPECT(!ranges::empty(range));
             SCN_EXPECT(buf.size() != 0);
 
-            buf[0] = static_cast<char32_t>(*ranges::begin(range));
+            buf[0] = static_cast<U32>(*ranges::begin(range));
             return {{ranges::next(ranges::begin(range)), buf.first(1)}};
         }
 
@@ -113,7 +126,7 @@ namespace scn {
                 return unexpected(e);
             }
 
-            if constexpr (std::is_same_v<CharT, char>) {
+            if constexpr (sizeof(CharT) == 1) {
                 return read_utf8_code_point(SCN_FWD(range), buf);
             }
             else if constexpr (sizeof(CharT) == 2) {

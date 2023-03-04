@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "scn/scan.h"
+#include <scn/scan.h>
 
 #include "bench_helpers.h"
 

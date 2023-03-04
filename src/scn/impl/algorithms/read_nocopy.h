@@ -30,12 +30,6 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-        template <typename T>
-        constexpr bool range_supports_nocopy() SCN_NOEXCEPT
-        {
-            return ranges::contiguous_range<T>;
-        }
-
         template <typename R>
         using read_nocopy_result = iterator_value_result<
             ranges::borrowed_iterator_t<R>,
@@ -48,9 +42,9 @@ namespace scn {
         {
             static_assert(range_supports_nocopy<Range>());
 
-            const auto size = ranges::size(range);
+            const auto size = range_nocopy_size(range);
             return {ranges::begin(range) + static_cast<std::ptrdiff_t>(size),
-                    {ranges::data(range), static_cast<size_t>(size)}};
+                    {range_nocopy_data(range), static_cast<size_t>(size)}};
         }
 
         template <typename Range>
@@ -63,7 +57,7 @@ namespace scn {
 
             const auto size =
                 (std::min)(n, static_cast<ranges::range_difference_t<Range>>(
-                                  ranges::ssize(range)));
+                                  range_nocopy_size(range)));
 
             return {ranges::begin(range) + size,
                     {ranges::data(range), static_cast<size_t>(size)}};
@@ -77,9 +71,8 @@ namespace scn {
             static_assert(range_supports_nocopy<Range>());
 
             const auto found = ranges::find_if(range, until);
-            auto str = std::basic_string_view<ranges::range_value_t<Range>>{
-                ranges::data(range), static_cast<size_t>(ranges::distance(
-                                         ranges::begin(range), found))};
+            auto str = detail::make_string_view_from_iterators<
+                ranges::range_value_t<Range>>(ranges::begin(range), found);
             return {found, str};
         }
 
@@ -88,14 +81,12 @@ namespace scn {
         {
             if constexpr (range_supports_nocopy<Range>() &&
                           std::is_same_v<ranges::range_value_t<Range>, char>) {
-                const auto sv =
-                    std::string_view{ranges::data(range),
-                                     static_cast<size_t>(ranges::size(range))};
+                const auto sv = std::string_view{range_nocopy_data(range),
+                                                 range_nocopy_size(range)};
                 const auto it = find_classic_space_narrow_fast(sv);
                 const auto n = ranges::distance(sv.begin(), it);
                 return {ranges::next(ranges::begin(range), n),
-                        std::string_view{ranges::data(range),
-                                         static_cast<size_t>(n)}};
+                        sv.substr(0, static_cast<size_t>(n))};
             }
             else {
                 return read_until_classic_nocopy(
@@ -131,12 +122,12 @@ namespace scn {
                 [&](auto it) -> read_nocopy_result<SourceRange> {
                 const auto n = static_cast<size_t>(
                     ranges::distance(ranges::begin(input), it));
-                return {it, {ranges::data(input), n}};
+                return {it, {range_nocopy_data(input), n}};
             };
 
             auto it = ranges::begin(input);
             while (it != ranges::end(input)) {
-                auto len = code_point_length(*it);
+                auto len = code_point_length_by_starting_code_unit(*it);
                 if (!len) {
                     return unexpected(len.error());
                 }
@@ -149,22 +140,13 @@ namespace scn {
                     continue;
                 }
 
-                const auto string_view_of_rest = [&]() {
-                    auto begin = detail::to_address_safe(
-                        it, ranges::data(input),
-                        ranges::data(input) + ranges::size(input));
-                    auto n = static_cast<size_t>(
-                        (ranges::data(input) + ranges::size(input)) - begin);
-                    return std::basic_string_view<
-                        ranges::range_value_t<SourceRange>>{begin, n};
-                };
-
-                code_point cp{};
-                auto decode_sv = string_view_of_rest();
-                auto decode_result = decode_code_point(decode_sv, cp);
+                auto decode_sv = detail::make_string_view_from_iterators<
+                    ranges::range_value_t<SourceRange>>(it, ranges::end(input));
+                auto decode_result = get_next_code_point(decode_sv);
                 if (!decode_result) {
                     return unexpected(decode_result.error());
                 }
+                const auto cp = decode_result->value;
 
                 if (until(cp)) {
                     return make_result(it);

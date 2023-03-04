@@ -135,8 +135,11 @@ namespace scn {
         void tuple_for_each(std::index_sequence<Is...>, Tuple&& tuple, F&& f)
         {
             using std::get;
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wcomma")
             const int ignored[] = {
                 0, (static_cast<void>(f(get<Is>(tuple))), 0)...};
+            SCN_CLANG_POP
             SCN_UNUSED(ignored);
         }
         template <typename Tuple, typename F>

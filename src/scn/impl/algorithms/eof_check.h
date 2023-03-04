@@ -19,15 +19,68 @@
 
 #include <scn/detail/error.h>
 #include <scn/detail/ranges.h>
+#include <scn/util/memory.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+        template <typename T>
+        constexpr bool range_supports_nocopy() SCN_NOEXCEPT
+        {
+            return ranges::contiguous_range<T> ||
+                   (ranges::random_access_range<T> &&
+                    detail::can_make_address_from_iterator<
+                        ranges::iterator_t<T>>::value);
+        }
+
+        template <typename R>
+        constexpr auto range_nocopy_data(R&& r) SCN_NOEXCEPT
+        {
+            static_assert(range_supports_nocopy<R>());
+            return detail::to_address(ranges::begin(SCN_FWD(r)));
+        }
+
+        template <typename R>
+        constexpr auto range_nocopy_size(R&& r) SCN_NOEXCEPT
+        {
+            static_assert(range_supports_nocopy<R>());
+            if constexpr (ranges::contiguous_range<R> &&
+                          ranges::sized_range<R>) {
+                return static_cast<size_t>(ranges::size(SCN_FWD(r)));
+            }
+            else if constexpr (ranges::random_access_range<R> &&
+                               detail::can_make_address_from_iterator<
+                                   ranges::iterator_t<R>>::value) {
+                return static_cast<size_t>(
+                    ranges::distance(detail::to_address(ranges::begin(r)),
+                                     detail::to_address(ranges::end(r))));
+            }
+        }
+
+        template <typename I, typename S>
+        SCN_NODISCARD constexpr bool is_range_eof(I begin, S end)
+        {
+            if constexpr (ranges_std::contiguous_iterator<I> ||
+                          (ranges_std::random_access_iterator<I> &&
+                           detail::can_make_address_from_iterator<I>::value)) {
+                return detail::to_address(begin) == detail::to_address(end);
+            }
+            else {
+                return begin == end;
+            }
+        }
+
+        template <typename Range>
+        SCN_NODISCARD constexpr bool is_range_eof(const Range& range)
+        {
+            return is_range_eof(ranges::begin(range), ranges::end(range));
+        }
+
         template <typename Range>
         SCN_NODISCARD constexpr scan_error eof_check(const Range& range)
         {
-            if (ranges::empty(range)) {
+            if (is_range_eof(range)) {
                 return {scan_error::end_of_range, "EOF"};
             }
             return {};

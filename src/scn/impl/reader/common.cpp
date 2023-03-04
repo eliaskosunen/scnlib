@@ -27,7 +27,7 @@ namespace scn {
         template <typename CharT>
         std::basic_string<CharT>& source_reader_buffer()
         {
-            static std::basic_string<CharT> buffer;
+            static thread_local std::basic_string<CharT> buffer;
             return buffer;
         }
 

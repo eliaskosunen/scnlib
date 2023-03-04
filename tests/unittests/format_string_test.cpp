@@ -83,6 +83,8 @@ TEST(FormatStringTest, TooManyArgsInArgListLiteral)
 {
     auto [result, i, j] = scn::scan<int, int>("42", "{}");
     EXPECT_FALSE(result);
+    SCN_UNUSED(i);
+    SCN_UNUSED(j);
 }
 #endif
 
@@ -95,6 +97,8 @@ TEST(FormatStringTest, TooManyArgsInArgListCompileTime)
 {
     auto [result, i, j] = scn::scan<int, int>("42", scn::runtime("{}"));
     EXPECT_FALSE(result);
+    SCN_UNUSED(i);
+    SCN_UNUSED(j);
 }
 
 TEST(FormatStringTest, HasId)
@@ -137,6 +141,17 @@ TEST(FormatStringTest, AlphaCharacterSet)
 }
 TEST(FormatStringTest, AlphaCharacterSetWithStringView)
 {
+    static_assert(scn::ranges::contiguous_range<std::string_view>);
+    static_assert(scn::ranges::contiguous_range<scn::ranges::subrange<const char*>>);
+    //static_assert(scn::ranges::contiguous_range<scn::ranges::subrange<std::string_view::iterator>>);
+    static_assert(std::is_same_v<decltype(scn::ranges::data(
+                                     SCN_DECLVAL(std::string_view&))),
+                                 const char*>);
+    /*
+    static_assert(std::is_same_v<decltype(
+                                     SCN_DECLVAL(scn::ranges::subrange<std::string_view::iterator>&).data()),
+                                 const char*>);
+                                 */
     auto [result, word] = scn::scan<std::string_view>("abc", "{:[:alpha:]}");
     EXPECT_TRUE(result);
     EXPECT_EQ(word, "abc");

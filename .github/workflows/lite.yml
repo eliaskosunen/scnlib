@@ -1,0 +1,73 @@
+name: Light builds
+
+on: [ push, pull_request, workflow_dispatch ]
+
+jobs:
+  lite-linux:
+    runs-on: ubuntu-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 22.04, 20.04 ]
+        std: [ 17, 20 ]
+        cxx: [ g++, clang++ ]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: lukka/get-cmake@latest
+
+      - name: Create Build Environment
+        run: |
+          mkdir ${{ runner.workspace }}/build
+          
+          sudo locale-gen en_US.UTF-8
+          sudo locale-gen fi_FI.UTF-8
+          sudo update-locale
+          sudo locale -a
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
+                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . -- -k 0
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest --output-on-failure
+
+  lite-windows:
+    runs-on: windows-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 2019, 2022 ]
+        platform: [ x64 ]
+        type: [ Debug ]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{ runner.workspace }}/build
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        shell: bash
+        run: |
+          cmake -A ${{ matrix.platform }} -DSCN_CI=ON $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . --config ${{ matrix.type }} --parallel
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest -C ${{ matrix.type }} --output-on-failure

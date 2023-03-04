@@ -1,0 +1,72 @@
+name: Other architectures
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+      #- ci-*
+  pull_request:
+    branches:
+      - master
+      - dev
+  workflow_dispatch:
+
+jobs:
+  other-archs:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ armv7, aarch64, riscv64, s390x, ppc64le ]
+        distro: [ ubuntu22.04 ]
+
+        include:
+          - arch: armv6
+            distro: bullseye
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: uraimo/run-on-arch-action@v2
+        name: Build and test
+        id: build
+        with:
+          arch: ${{ matrix.arch }}
+          distro: ${{ matrix.distro }}
+
+          githubToken: ${{ github.token }}
+
+          install: |
+            apt-get update -yq
+            apt-get install -yq git wget cmake build-essential make g++
+
+          run: |
+            cmake -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=ON -DSCN_TESTS=ON -B build
+            cmake --build build --parallel
+            ctest --output-on-failure --test-dir build
+
+  vs-arm64-crosscompile:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - gen: Visual Studio 17 2022
+            arch: ARM64
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{ runner.workspace }}/build
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        shell: bash
+        run: |
+          cmake -G "${{ matrix.gen }}" -A ${{ matrix.arch }} -DCMAKE_CROSSCOMPILING=ON -DSCN_CI=ON $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . --parallel

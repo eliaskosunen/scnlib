@@ -22,7 +22,9 @@ option(SCN_FUZZING "Enable fuzz tests (clang only)" OFF)
 option(SCN_COVERAGE "Enable coverage reporting" OFF)
 
 option(SCN_PEDANTIC "Enable pedantic compilation flags" ${SCN_ENABLE_EXTRAS})
-option(SCN_WERROR "Halt compilation in case of a warning" ${SCN_ENABLE_EXTRAS})
+option(SCN_WERROR "Halt compilation in case of a warning" ${SCN_CI})
+
+option(SCN_TESTS_LOCALIZED "Enable tests requiring installed locales (en_US.UTF-8, fi_FI.UTF-8)" OFF)
 
 option(SCN_USE_32BIT "Compile as 32-bit (gcc or clang only)" OFF)
 option(SCN_USE_EXCEPTIONS "Compile with exception support (disabling will cause test failures)" ON)

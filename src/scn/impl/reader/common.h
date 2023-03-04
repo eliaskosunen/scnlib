@@ -77,7 +77,11 @@ namespace scn {
                     auto r = read_until_classic_space_copying(
                         SCN_FWD(source),
                         back_insert(source_reader_buffer<CharT>()));
+
+                    SCN_GCC_PUSH
+                    SCN_GCC_IGNORE("-Wconversion")
                     return {r.in, {source_reader_buffer<CharT>()}};
+                    SCN_GCC_POP
                 }
             }
         };
@@ -115,9 +119,12 @@ namespace scn {
                                null_output_range<wchar_t>{}, m_locale,
                                std::ctype_base::space, true)
                         .transform([&](auto result) SCN_NOEXCEPT {
+                            SCN_GCC_PUSH
+                            SCN_GCC_IGNORE("-Wconversion")
                             return source_read_result<SourceRange>{
                                 result.in, string_view_type{
                                                source_reader_buffer<CharT>()}};
+                            SCN_GCC_POP
                         });
                 }
             }
@@ -141,8 +148,8 @@ namespace scn {
                               std::is_same_v<ranges::range_value_t<SourceRange>,
                                              char>) {
                     return find_classic_nonspace_narrow_fast(
-                        {ranges::data(source),
-                         static_cast<size_t>(ranges::size(source))});
+                        detail::make_string_view_from_iterators<char>(
+                            source.begin(), source.end()));
                 }
                 else if constexpr (range_supports_nocopy<SourceRange>()) {
                     const auto result = read_until_classic_nocopy(
@@ -181,7 +188,7 @@ namespace scn {
             auto result =
                 whitespace_skipper<ranges::range_value_t<SourceRange>>{}
                     .skip_classic(range);
-            if (!allow_exhaustion && result == end) {
+            if (!allow_exhaustion && is_range_eof(result, end)) {
                 return unexpected_scan_error(scan_error::end_of_range, "EOF");
             }
             return {{result, end}};
@@ -314,9 +321,6 @@ namespace scn {
                 return static_cast<const Derived&>(*this);
             }
 
-            template <typename U>
-            struct debug;
-
             template <typename SourceRange,
                       typename SourceReader,
                       typename ValueReader>
@@ -342,7 +346,9 @@ namespace scn {
                     .transform([&](auto it) {
                         return ranges::next(
                             ranges::begin(src),
-                            ranges::distance(src_read->value.begin(), it));
+                            ranges::distance(
+                                detail::to_address(src_read->value.begin()),
+                                detail::to_address(it)));
                     });
             }
         };

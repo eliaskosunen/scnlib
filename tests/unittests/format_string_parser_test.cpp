@@ -27,7 +27,8 @@ TEST(FormatStringParserTest, DefaultConstructedSpecs)
     EXPECT_EQ(specs.fill, " ");
     EXPECT_EQ(specs.type, scn::detail::presentation_type::none);
     EXPECT_EQ(specs.arbitrary_base, 0);
-    EXPECT_EQ(specs.align, scn::detail::align_type::none);
+    EXPECT_EQ(specs.align,
+              static_cast<unsigned>(scn::detail::align_type::none));
     EXPECT_EQ(specs.localized, false);
     EXPECT_EQ(specs.thsep, false);
 }
@@ -85,38 +86,45 @@ protected:
 TEST_F(FormatStringParserAlignTest, NoAlignNoFill)
 {
     std::string_view input{"}"};
-    auto result = scn::detail::parse_align(input.begin(), input.end(), handler);
+    auto result = scn::detail::parse_align(
+        input.data(), input.data() + input.size(), handler);
     EXPECT_EQ(specs.fill, " ");
-    EXPECT_EQ(specs.align, scn::detail::align_type::none);
+    EXPECT_EQ(specs.align,
+              static_cast<unsigned>(scn::detail::align_type::none));
     EXPECT_EQ(specs, scn::detail::basic_format_specs<char>{});
-    EXPECT_EQ(result, input.begin());
+    EXPECT_EQ(result, input.data());
     EXPECT_EQ(handler.latest_error, nullptr);
 }
 
 TEST_F(FormatStringParserAlignTest, LeftAlignNoFill)
 {
     std::string_view input{"<}"};
-    auto result = scn::detail::parse_align(input.begin(), input.end(), handler);
+    auto result = scn::detail::parse_align(
+        input.data(), input.data() + input.size(), handler);
     EXPECT_EQ(specs.fill, " ");
-    EXPECT_EQ(specs.align, scn::detail::align_type::left);
-    EXPECT_EQ(result, input.begin() + 1);
+    EXPECT_EQ(specs.align,
+              static_cast<unsigned>(scn::detail::align_type::left));
+    EXPECT_EQ(result, input.data() + 1);
     EXPECT_EQ(handler.latest_error, nullptr);
 }
 
 TEST_F(FormatStringParserAlignTest, RightAlignWithFill)
 {
     std::string_view input{"_>}"};
-    auto result = scn::detail::parse_align(input.begin(), input.end(), handler);
+    auto result = scn::detail::parse_align(
+        input.data(), input.data() + input.size(), handler);
     EXPECT_EQ(specs.fill, "_");
-    EXPECT_EQ(specs.align, scn::detail::align_type::right);
-    EXPECT_EQ(result, input.begin() + 2);
+    EXPECT_EQ(specs.align,
+              static_cast<unsigned>(scn::detail::align_type::right));
+    EXPECT_EQ(result, input.data() + 2);
     EXPECT_EQ(handler.latest_error, nullptr);
 }
 
 TEST_F(FormatStringParserAlignTest, InvalidFillCharacter)
 {
     std::string_view input{"{^}"};
-    std::ignore = scn::detail::parse_align(input.begin(), input.end(), handler);
+    std::ignore = scn::detail::parse_align(
+        input.data(), input.data() + input.size(), handler);
     EXPECT_EQ(specs, scn::detail::basic_format_specs<char>{});
     EXPECT_NE(handler.latest_error, nullptr);
 }
@@ -139,9 +147,9 @@ protected:
 TEST_F(FormatStringParserFormatSpecsTest, EmptySpecs)
 {
     std::string_view input{"}"};
-    auto result =
-        scn::detail::parse_format_specs(input.begin(), input.end(), handler);
-    EXPECT_EQ(result, input.begin());
+    auto result = scn::detail::parse_format_specs(
+        input.data(), input.data() + input.size(), handler);
+    EXPECT_EQ(result, input.data());
     EXPECT_EQ(specs, scn::detail::basic_format_specs<char>{});
     EXPECT_EQ(handler.latest_error, nullptr);
 }
@@ -149,9 +157,9 @@ TEST_F(FormatStringParserFormatSpecsTest, EmptySpecs)
 TEST_F(FormatStringParserFormatSpecsTest, Localized)
 {
     std::string_view input{"L}"};
-    auto result =
-        scn::detail::parse_format_specs(input.begin(), input.end(), handler);
-    EXPECT_EQ(result, input.begin() + 1);
+    auto result = scn::detail::parse_format_specs(
+        input.data(), input.data() + input.size(), handler);
+    EXPECT_EQ(result, input.data() + 1);
     EXPECT_EQ(specs.localized, true);
     EXPECT_EQ(handler.latest_error, nullptr);
 }

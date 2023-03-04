@@ -207,6 +207,14 @@
         SCN_ASSUME(!!(cond));        \
         SCN_CLANG_POP                \
     } while (false)
+#elif SCN_MSVC
+#define SCN_ASSERT(cond, msg)                      \
+    do {                                           \
+        if (!(cond)) {                             \
+            ::scn::detail::assertion_failed();     \
+            assert((#cond, true) && msg && false); \
+        }                                          \
+    } while (false)
 #else
 #define SCN_ASSERT(cond, msg) assert((cond) && msg)
 #endif
@@ -222,3 +230,16 @@
 
 #define SCN_BEGIN_NAMESPACE inline namespace v2 {
 #define SCN_END_NAMESPACE   }
+
+namespace scn {
+    SCN_BEGIN_NAMESPACE
+
+    namespace detail {
+        inline void assertion_failed()
+        {
+            (void)0;
+        }
+    }  // namespace detail
+
+    SCN_END_NAMESPACE
+}

@@ -15,6 +15,22 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "benchmark_common.h"
+#pragma once
 
-BENCHMARK_MAIN();
+#include "scn/fwd.h"
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wsign-conversion")
+SCN_GCC_IGNORE("-Wswitch-default")
+SCN_GCC_IGNORE("-Wredundant-decls")
+
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wweak-vtables")
+SCN_CLANG_IGNORE("-Wglobal-constructors")
+SCN_CLANG_IGNORE("-Wzero-as-null-pointer-constant")
+SCN_CLANG_IGNORE("-Wshift-sign-overflow")
+
+#include <benchmark/benchmark.h>
+
+SCN_CLANG_POP
+SCN_GCC_POP

@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <gtest/gtest.h>
+#include "test_common.h"
 
 #include <scn/detail/scan.h>
 
@@ -60,7 +60,7 @@ TEST(ResultTestMocked, StringView)
         auto [r, i, d] = std::move(result);
         EXPECT_EQ(r.range(), "FooBar");
         EXPECT_EQ(i, 0);
-        EXPECT_DOUBLE_EQ(i, 0.0);
+        EXPECT_DOUBLE_EQ(d, 0.0);
     }
 }
 

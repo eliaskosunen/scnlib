@@ -19,6 +19,7 @@
 #include <scn/detail/istream_range.h>
 #include <scn/util/meta.h>
 #include <scn/util/span.h>
+#include <scn/util/string_view.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -40,6 +41,18 @@ namespace scn {
             impl(std::basic_string_view<CharT> r, priority_tag<4>) SCN_NOEXCEPT
             {
                 return r;
+            }
+
+            template <typename CharT>
+            static std::enable_if_t<is_valid_char_type<CharT>,
+                                    std::basic_string_view<CharT>>
+            impl(ranges::subrange<
+                     typename std::basic_string_view<CharT>::iterator,
+                     typename std::basic_string_view<CharT>::iterator> r,
+                 priority_tag<4>) SCN_NOEXCEPT
+            {
+                return make_string_view_from_iterators<char>(r.begin(),
+                                                             r.end());
             }
 
             // string& -> string_view
@@ -74,7 +87,7 @@ namespace scn {
                 return {r};
             }
 
-            // erased_range& -> erased_view (subrange)
+            // erased_range& -> erased_subrange
             template <typename CharT>
             static std::enable_if_t<is_valid_char_type<CharT>,
                                     basic_erased_subrange<CharT>>
@@ -108,6 +121,9 @@ namespace scn {
                 return r;
             }
 
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wnoexcept")
+
             // contiguous + sized + valid-char + borrowed -> string_view
             template <typename Range,
                       typename CharT = ranges::range_value_t<Range>>
@@ -124,6 +140,29 @@ namespace scn {
                 return {ranges::data(r),
                         static_cast<std::size_t>(ranges::size(r))};
             }
+            // !contiguous + random-access + iterator can be made into a ptr
+            // for MSVC debug iterators
+            //   -> string_view
+            template <typename Range,
+                      typename CharT = ranges::range_value_t<Range>>
+            static std::enable_if_t<is_valid_char_type<CharT> &&
+                                        !ranges::contiguous_range<Range> &&
+                                        ranges::random_access_range<Range> &&
+                                        can_make_address_from_iterator<
+                                            ranges::iterator_t<Range>>::value,
+                                    std::basic_string_view<CharT>>
+            impl(const Range& r, priority_tag<2>) SCN_NOEXCEPT_P(
+                noexcept(ranges::begin(r)) && noexcept(ranges::end(r)) &&
+                std::is_nothrow_constructible_v<std::basic_string_view<CharT>,
+                                                const CharT*,
+                                                std::size_t>)
+            {
+                auto b = to_address(ranges::begin(r));
+                return {b, static_cast<std::size_t>(ranges::distance(
+                               b, to_address(ranges::end(r))))};
+            }
+
+            SCN_GCC_POP
 
             // forward + proper char type -> erased
             template <typename Range,

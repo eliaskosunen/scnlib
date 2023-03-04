@@ -116,8 +116,10 @@ TEST(StringViewTest, WonkyInput2)
 
     auto [result, str] = scn::scan<std::string_view>(range, "{:64U}");
     EXPECT_TRUE(result);
+    EXPECT_EQ(str, (std::string_view{source, sizeof(source) - 1}));
     range = std::move(result.range());
 
     auto [newresult, newstr] = scn::scan<std::string_view>(range, "{:64U}");
     EXPECT_FALSE(newresult);
+    EXPECT_EQ(newstr, "");
 }

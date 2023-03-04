@@ -24,9 +24,15 @@
 #if SCN_HAS_BITOPS
 #include <bit>
 #elif SCN_MSVC
+#include <IntSafe.h>
 #include <intrin.h>
-#elif SCN_POSIX
+#elif SCN_POSIX && !SCN_GCC_COMPAT
+
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wreserved-id-macro")
 #define _XOPEN_SOURCE 700
+SCN_CLANG_POP
+
 #include <strings.h>
 #endif
 
@@ -41,10 +47,17 @@ namespace scn {
             return std::countr_zero(val);
 #elif SCN_GCC_COMPAT
             return __builtin_ctzll(val);
-#elif SCN_MSVC
+#elif SCN_MSVC && SCN_WINDOWS_64BIT
             DWORD ret{};
-            _BitScanForward(&ret, val);
-            return ret;
+            _BitScanForward64(&ret, val);
+            return static_cast<int>(ret);
+#elif SCN_MSVC && !SCN_WINDOWS_64BIT
+            DWORD ret{};
+            if (_BitScanForward(&ret, static_cast<DWORD>(val)) != 0) {
+                _BitScanForward(&ret, static_cast<DWORD>(val >> 32));
+                ret += 32;
+            }
+            return static_cast<int>(ret);
 #elif SCN_POSIX
             return ::ctzll(val);
 #else
@@ -62,10 +75,11 @@ namespace scn {
         {
             const auto m = static_cast<uint64_t>(a) - 1,
                        n = static_cast<uint64_t>(b) + 1;
-            return (((~0ul / 255 * (127 + (n)) - ((word) & ~0ul / 255 * 127)) &
-                     ~(word) &
-                     (((word) & ~0ul / 255 * 127) + ~0ul / 255 * (127 - (m)))) &
-                    (~0ul / 255 * 128));
+            return (
+                ((~0ull / 255 * (127 + (n)) - ((word) & ~0ull / 255 * 127)) &
+                 ~(word) &
+                 (((word) & ~0ull / 255 * 127) + ~0ull / 255 * (127 - (m)))) &
+                (~0ull / 255 * 128));
         }
 
         inline size_t get_index_of_first_nonmatching_byte(uint64_t word)

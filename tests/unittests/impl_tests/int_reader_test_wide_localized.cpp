@@ -29,4 +29,9 @@ using TypeList = ::testing::Types<
     test_type_pack<localized_reader_interface, wchar_t, unsigned long>,
     test_type_pack<localized_reader_interface, wchar_t, unsigned long long>>;
 
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")
+
 INSTANTIATE_TYPED_TEST_SUITE_P(WideLocalized, IntValueReaderTest, TypeList);
+
+SCN_CLANG_POP

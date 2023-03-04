@@ -17,7 +17,7 @@
 
 #include "bench_helpers.h"
 
-#include "scn/scan.h"
+#include <scn/scan.h>
 
 #include <random>
 #include <sstream>
@@ -26,9 +26,9 @@
 template <typename T>
 T generate_single_float()
 {
-    static std::uniform_int_distribution<uint8_t> dist(
-        std::numeric_limits<uint8_t>::min(),
-        std::numeric_limits<uint8_t>::max());
+    static std::uniform_int_distribution<uint16_t> dist(
+        static_cast<uint16_t>(std::numeric_limits<uint8_t>::min()),
+        static_cast<uint16_t>(std::numeric_limits<uint8_t>::max()));
 
     unsigned char bytes[sizeof(T)]{};
 
@@ -39,14 +39,14 @@ T generate_single_float()
     };
     auto is_good_float = [](T f) { return std::isnormal(f); };
 
-    T f;
-    while (!is_good_float(f)) {
+    T f{};
+    do {
         for (auto ptr = bytes; ptr != bytes + sizeof(T); ++ptr) {
             auto rand = dist(get_rng());
             std::memcpy(ptr, &rand, 1);
         }
         f = make_float();
-    }
+    } while (!is_good_float(f));
     return f;
 }
 template <>

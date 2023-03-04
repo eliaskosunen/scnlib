@@ -28,7 +28,8 @@ protected:
         if (auto ret = parser.parse(fmt); !ret) {
             return testing::AssertionFailure() << "Parse failed";
         }
-        else if (*ret != fmt.end()) {
+        else if (scn::detail::to_address(*ret) !=
+                 scn::detail::to_address(fmt.end())) {
             return testing::AssertionFailure() << "Non-exhaustive parse";
         }
 
@@ -52,7 +53,8 @@ protected:
                                              int code_units_expected,
                                              Result result)
     {
-        const auto expected_result = source.substr(0, static_cast<size_t>(code_units_expected));
+        const auto expected_result =
+            source.substr(0, static_cast<size_t>(code_units_expected));
         if (!result) {
             return testing::AssertionFailure() << "Read failed";
         }
@@ -84,14 +86,14 @@ TEST_F(CharacterSetFormatParserTest, Upper_SpelledOut)
 {
     EXPECT_TRUE(ParseAndSanitize("[A-Z]"));
 
-    for (const char ch : scn::ranges::iota_view{'A', 'Z' + 1}) {
+    for (char ch = 'A'; ch != 'Z' + 1; ++ch) {
         EXPECT_TRUE(CheckAsciiChar(ch));
     }
 
-    for (const char ch : scn::ranges::iota_view{'a', 'z' + 1}) {
+    for (char ch = 'a'; ch != 'z' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
-    for (const char ch : scn::ranges::iota_view{'0', '9' + 1}) {
+    for (char ch = '0'; ch != '9' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
 
@@ -102,14 +104,14 @@ TEST_F(CharacterSetFormatParserTest, Upper_ColonSpecifier)
 {
     EXPECT_TRUE(ParseAndSanitize("[:upper:]"));
 
-    for (const char ch : scn::ranges::iota_view{'A', 'Z' + 1}) {
+    for (char ch = 'A'; ch != 'Z' + 1; ++ch) {
         EXPECT_TRUE(CheckAsciiChar(ch));
     }
 
-    for (const char ch : scn::ranges::iota_view{'a', 'z' + 1}) {
+    for (char ch = 'a'; ch != 'z' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
-    for (const char ch : scn::ranges::iota_view{'0', '9' + 1}) {
+    for (char ch = '0'; ch != '9' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
 }
@@ -118,17 +120,17 @@ TEST_F(CharacterSetFormatParserTest, Alpha_SpelledOut)
 {
     EXPECT_TRUE(ParseAndSanitize("[a-zA-Z]"));
 
-    for (const char ch : scn::ranges::iota_view{'A', 'Z' + 1}) {
+    for (char ch = 'A'; ch != 'Z' + 1; ++ch) {
         EXPECT_TRUE(CheckAsciiChar(ch));
     }
-    for (const char ch : scn::ranges::iota_view{'a', 'z' + 1}) {
+    for (char ch = 'a'; ch != 'z' + 1; ++ch) {
         EXPECT_TRUE(CheckAsciiChar(ch));
     }
 
-    for (const char ch : scn::ranges::iota_view{'0', '9' + 1}) {
+    for (char ch = '0'; ch != '9' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
-    for (const char ch : scn::ranges::iota_view{'[', '`' + 1}) {
+    for (char ch = '['; ch != '`' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
 }
@@ -136,17 +138,17 @@ TEST_F(CharacterSetFormatParserTest, Alpha_ColonSpecifier)
 {
     EXPECT_TRUE(ParseAndSanitize("[:alpha:]"));
 
-    for (const char ch : scn::ranges::iota_view{'A', 'Z' + 1}) {
+    for (char ch = 'A'; ch != 'Z' + 1; ++ch) {
         EXPECT_TRUE(CheckAsciiChar(ch));
     }
-    for (const char ch : scn::ranges::iota_view{'a', 'z' + 1}) {
+    for (char ch = 'a'; ch != 'z' + 1; ++ch) {
         EXPECT_TRUE(CheckAsciiChar(ch));
     }
 
-    for (const char ch : scn::ranges::iota_view{'0', '9' + 1}) {
+    for (char ch = '0'; ch != '9' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
-    for (const char ch : scn::ranges::iota_view{'[', '`' + 1}) {
+    for (char ch = '['; ch != '`' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
 
@@ -158,17 +160,17 @@ TEST_F(CharacterSetFormatParserTest, Alpha_ColonSpecifier_LowerAndUpper)
 {
     EXPECT_TRUE(ParseAndSanitize("[:lower::upper:]"));
 
-    for (const char ch : scn::ranges::iota_view{'A', 'Z' + 1}) {
+    for (char ch = 'A'; ch != 'Z' + 1; ++ch) {
         EXPECT_TRUE(CheckAsciiChar(ch));
     }
-    for (const char ch : scn::ranges::iota_view{'a', 'z' + 1}) {
+    for (char ch = 'a'; ch != 'z' + 1; ++ch) {
         EXPECT_TRUE(CheckAsciiChar(ch));
     }
 
-    for (const char ch : scn::ranges::iota_view{'0', '9' + 1}) {
+    for (char ch = '0'; ch != '9' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
-    for (const char ch : scn::ranges::iota_view{'[', '`' + 1}) {
+    for (char ch = '['; ch != '`' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
 }
@@ -176,17 +178,17 @@ TEST_F(CharacterSetFormatParserTest, Alpha_BackslashSpecifier)
 {
     EXPECT_TRUE(ParseAndSanitize("[\\l]"));
 
-    for (const char ch : scn::ranges::iota_view{'A', 'Z' + 1}) {
+    for (char ch = 'A'; ch != 'Z' + 1; ++ch) {
         EXPECT_TRUE(CheckAsciiChar(ch));
     }
-    for (const char ch : scn::ranges::iota_view{'a', 'z' + 1}) {
+    for (char ch = 'a'; ch != 'z' + 1; ++ch) {
         EXPECT_TRUE(CheckAsciiChar(ch));
     }
 
-    for (const char ch : scn::ranges::iota_view{'0', '9' + 1}) {
+    for (char ch = '0'; ch != '9' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
-    for (const char ch : scn::ranges::iota_view{'[', '`' + 1}) {
+    for (char ch = '['; ch != '`' + 1; ++ch) {
         EXPECT_FALSE(CheckAsciiChar(ch));
     }
 }

@@ -17,6 +17,18 @@
 
 #pragma once
 
+#ifdef __has_include
+#define SCN_HAS_INCLUDE(x) __has_include(x)
+#else
+#define SCN_HAS_INCLUDE(x) 0
+#endif
+
+#if SCN_HAS_INCLUDE(<version>)
+#include <version>
+#else
+#include <ciso646>
+#endif
+
 #define SCN_STD_17 201703L
 #define SCN_STD_20 202002L
 
@@ -83,6 +95,29 @@
 #define SCN_GCC_COMPAT 0
 #endif  // #ifdef __GNUC__
 
+// Stdlib detect: libstdc++
+#ifdef _GLIBCXX_RELEASE
+#define SCN_STDLIB_GLIBCXX _GLIBCXX_RELEASE
+#elif defined(__GLIBCXX__)
+#define SCN_STDLIB_GLIBCXX 1
+#else
+#define SCN_STDLIB_GLIBCXX 0
+#endif
+
+// libc++
+#ifdef _LIBCPP_VERSION
+#define SCN_STDLIB_LIBCPP _LIBCPP_VERSION
+#else
+#define SCN_STDLIB_LIBCPP 0
+#endif
+
+// MSVC STL
+#ifdef _MSVC_STL_VERSION
+#define SCN_STDLIB_MS_STL _MSVC_STL_VERSION
+#else
+#define SCN_STDLIB_MS_STL 0
+#endif
+
 // POSIX
 #if defined(__unix__) || defined(__APPLE__)
 #define SCN_POSIX 1
@@ -97,11 +132,18 @@
 #endif
 
 // Windows
-#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32)) && \
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32) || \
+     defined(_WIN64)) &&                                      \
     !defined(__CYGWIN__)
 #define SCN_WINDOWS 1
 #else
 #define SCN_WINDOWS 0
+#endif
+
+#if SCN_WINDOWS && defined(_WIN64)
+#define SCN_WINDOWS_64BIT 1
+#else
+#define SCN_WINDOWS_64BIT 0
 #endif
 
 #ifdef _MSVC_LANG
@@ -115,12 +157,6 @@
 #define SCN_STD SCN_MSVC_LANG
 #else
 #define SCN_STD __cplusplus
-#endif
-
-#ifdef __has_include
-#define SCN_HAS_INCLUDE(x) __has_include(x)
-#else
-#define SCN_HAS_INCLUDE(x) 0
 #endif
 
 #ifdef __has_cpp_attribute
@@ -139,10 +175,6 @@
 #define SCN_HAS_BUILTIN(x) __has_builtin(x)
 #else
 #define SCN_HAS_BUILTIN(x) 0
-#endif
-
-#if SCN_HAS_INCLUDE(<version>)
-#include <version>
 #endif
 
 #if defined(_SCN_DOXYGEN) && _SCN_DOXYGEN
@@ -272,9 +304,7 @@
 #define SCN_HAS_INTEGER_CHARCONV 0
 #endif
 
-// libstdc++ from_chars is unreliable with long doubles
-//#if _GLIBCXX_RELEASE >= 11
-#if 0
+#if _GLIBCXX_RELEASE >= 11
 #define SCN_HAS_FLOAT_CHARCONV 1
 #else
 #define SCN_HAS_FLOAT_CHARCONV 0
@@ -290,7 +320,19 @@
 #define SCN_HAS_FLOAT_CHARCONV 0
 #endif
 
-#elif defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606
+#elif defined(_LIBCPP_VERSION)
+
+#define SCN_HAS_FLOAT_CHARCONV 0
+
+#if _LIBCPP_VERSION >= 7000 && defined(__cpp_lib_to_chars) && \
+    __cpp_lib_to_chars >= 201606L && SCN_STD >= SCN_STD_17
+#define SCN_HAS_INTEGER_CHARCONV 1
+#else
+#define SCN_HAS_INTEGER_CHARCONV 0
+#endif
+
+#elif defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606L && \
+    SCN_STD >= SCN_STD_17
 #define SCN_HAS_INTEGER_CHARCONV 1
 #define SCN_HAS_FLOAT_CHARCONV   1
 #endif  // _GLIBCXX_RELEASE
@@ -308,7 +350,8 @@
 #endif
 
 // Detect <bit> operations
-#if defined(__cpp_lib_bitops) && __cpp_lib_bitops >= 201907L
+#if defined(__cpp_lib_bitops) && __cpp_lib_bitops >= 201907L && \
+    SCN_STD >= SCN_STD_20
 #define SCN_HAS_BITOPS 1
 #else
 #define SCN_HAS_BITOPS 0
@@ -349,8 +392,8 @@
 #define SCN_HAS_CONCEPTS 0
 #endif
 
-// Detect ranges
-#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L
+// Detect ranges (202110 = owning_view, P2415, C++20 DR)
+#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 202110L
 #define SCN_HAS_RANGES 1
 #else
 #define SCN_HAS_RANGES 0

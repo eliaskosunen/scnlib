@@ -148,7 +148,7 @@ TEST(StringTest, CharacterSetPresentationWideStringFromNarrowSource)
 
 TEST(StringTest, WonkyInput)
 {
-    auto [result, str] = scn::scan<std::string>("o \x0f\n\n\xc3", "{:64U}");
+    auto [result, _] = scn::scan<std::string>("o \x0f\n\n\xc3", "{:64U}");
     EXPECT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_encoding);
 }

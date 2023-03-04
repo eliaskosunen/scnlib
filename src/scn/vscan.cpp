@@ -131,7 +131,7 @@ namespace scn {
             {
                 for (; begin != end; ++begin) {
                     auto it = ranges::begin(ctx.range());
-                    if (it == ranges::end(ctx.range())) {
+                    if (impl::is_range_eof(it, ranges::end(ctx.range()))) {
                         return on_error("Unexpected end of source");
                     }
                     auto next = *it;

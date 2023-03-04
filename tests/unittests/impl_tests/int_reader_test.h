@@ -17,8 +17,7 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-#include "test_common.h"
+#include "../test_common.h"
 
 #include <scn/detail/istream_range.h>
 #include <scn/impl/reader/integer/reader.h>
@@ -160,9 +159,12 @@ protected:
             widened_source = std::wstring{SCN_FWD(s)};
         }
         else {
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wconversion")
             auto sv = std::string_view{s};
             widened_source = std::wstring(sv.size(), L'\0');
             std::copy(sv.begin(), sv.end(), widened_source->begin());
+            SCN_GCC_POP
         }
     }
 
@@ -391,13 +393,13 @@ protected:
                    << "Result not good: code " << result.error().code();
         }
         SCN_EXPECT(this->widened_source.has_value());
-        if (result.value() !=
-            this->widened_source->data() + this->widened_source->size()) {
+        if (scn::detail::to_address(result.value()) !=
+            scn::detail::to_address(this->widened_source->end())) {
             return testing::AssertionFailure()
                    << "Result range not correct: diff "
-                   << (this->widened_source->data() +
-                       this->widened_source->size()) -
-                          result.value();
+                   << std::distance(
+                          scn::detail::to_address(result.value()),
+                          scn::detail::to_address(this->widened_source->end()));
         }
         return testing::AssertionSuccess();
     }
@@ -536,11 +538,13 @@ TYPED_TEST_P(IntValueReaderTest, Negative)
         EXPECT_TRUE(this->simple_default_test(src, val));
     }
     else {
-        const auto [val, src] = this->get_neg();
-        const auto [result, _] = this->simple_test(src);
+        const auto [_1, src] = this->get_neg();
+        const auto [result, _2] = this->simple_test(src);
         ASSERT_FALSE(result);
         EXPECT_EQ(result.error().code(),
                   scn::scan_error::invalid_scanned_value);
+        SCN_UNUSED(_1);
+        SCN_UNUSED(_2);
     }
 }
 
@@ -665,10 +669,12 @@ TYPED_TEST_P(IntValueReaderTest, FourDigits)
         EXPECT_TRUE(this->simple_default_test(src, val));
     }
     else {
-        const auto [val, src] = this->get_four_digits();
-        const auto [result, _] = this->simple_test(src);
+        const auto [_1, src] = this->get_four_digits();
+        const auto [result, _2] = this->simple_test(src);
         ASSERT_FALSE(result);
         EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
+        SCN_UNUSED(_1);
+        SCN_UNUSED(_2);
     }
 }
 TYPED_TEST_P(IntValueReaderTest, EightDigits)
@@ -678,10 +684,12 @@ TYPED_TEST_P(IntValueReaderTest, EightDigits)
         EXPECT_TRUE(this->simple_default_test(src, val));
     }
     else {
-        const auto [val, src] = this->get_eight_digits();
-        const auto [result, _] = this->simple_test(src);
+        const auto [_1, src] = this->get_eight_digits();
+        const auto [result, _2] = this->simple_test(src);
         ASSERT_FALSE(result);
         EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
+        SCN_UNUSED(_1);
+        SCN_UNUSED(_2);
     }
 }
 TYPED_TEST_P(IntValueReaderTest, NineDigits)
@@ -691,10 +699,12 @@ TYPED_TEST_P(IntValueReaderTest, NineDigits)
         EXPECT_TRUE(this->simple_default_test(src, val));
     }
     else {
-        const auto [val, src] = this->get_nine_digits();
-        const auto [result, _] = this->simple_test(src);
+        const auto [_1, src] = this->get_nine_digits();
+        const auto [result, _2] = this->simple_test(src);
         ASSERT_FALSE(result);
         EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
+        SCN_UNUSED(_1);
+        SCN_UNUSED(_2);
     }
 }
 TYPED_TEST_P(IntValueReaderTest, SixteenDigits)
@@ -704,10 +714,12 @@ TYPED_TEST_P(IntValueReaderTest, SixteenDigits)
         EXPECT_TRUE(this->simple_default_test(src, val));
     }
     else {
-        const auto [val, src] = this->get_sixteen_digits();
-        const auto [result, _] = this->simple_test(src);
+        const auto [_1, src] = this->get_sixteen_digits();
+        const auto [result, _2] = this->simple_test(src);
         ASSERT_FALSE(result);
         EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
+        SCN_UNUSED(_1);
+        SCN_UNUSED(_2);
     }
 }
 TYPED_TEST_P(IntValueReaderTest, SeventeenDigits)
@@ -717,10 +729,12 @@ TYPED_TEST_P(IntValueReaderTest, SeventeenDigits)
         EXPECT_TRUE(this->simple_default_test(src, val));
     }
     else {
-        const auto [val, src] = this->get_seventeen_digits();
-        const auto [result, _] = this->simple_test(src);
+        const auto [_1, src] = this->get_seventeen_digits();
+        const auto [result, _2] = this->simple_test(src);
         ASSERT_FALSE(result);
         EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
+        SCN_UNUSED(_1);
+        SCN_UNUSED(_2);
     }
 }
 
@@ -729,26 +743,26 @@ TYPED_TEST_P(IntValueReaderTest, StartsAsDecimalNumber)
     auto [result, val] = this->simple_test("123abc");
     EXPECT_TRUE(result);
     EXPECT_EQ(val, 123);
-    EXPECT_EQ(*result,
+    EXPECT_EQ(scn::detail::to_address(*result),
               scn::detail::to_address(this->widened_source->begin() + 3));
 }
 
 TYPED_TEST_P(IntValueReaderTest, Nonsense)
 {
-    auto [result, val] = this->simple_test("helloworld");
+    auto [result, _] = this->simple_test("helloworld");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
 }
 
 TYPED_TEST_P(IntValueReaderTest, OnlyPlusSign)
 {
-    auto [result, val] = this->simple_test("+");
+    auto [result, _] = this->simple_test("+");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
 }
 TYPED_TEST_P(IntValueReaderTest, OnlyMinusSign)
 {
-    auto [result, val] = this->simple_test("-");
+    auto [result, _] = this->simple_test("-");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
 }
@@ -758,7 +772,7 @@ TYPED_TEST_P(IntValueReaderTest, DISABLED_OnlyHexPrefix)
     auto [result, val] = this->simple_test("0x");
     ASSERT_TRUE(result);
     EXPECT_EQ(val, 0);
-    EXPECT_EQ(*result,
+    EXPECT_EQ(scn::detail::to_address(*result),
               scn::detail::to_address(this->widened_source->begin() + 1));
 }
 
@@ -773,7 +787,7 @@ TYPED_TEST_P(IntValueReaderTest, InputWithNullBytes)
     auto [result, val] = this->simple_test(std::move(src));
     ASSERT_TRUE(result);
     EXPECT_EQ(val, 1);
-    EXPECT_EQ(*result,
+    EXPECT_EQ(scn::detail::to_address(*result),
               scn::detail::to_address(this->widened_source->begin() + 1));
 }
 

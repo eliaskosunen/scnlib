@@ -59,6 +59,7 @@ namespace scn {
                                 "unsigned integer"};
                     }
                 }
+                SCN_UNUSED(source);
                 return {};
             }
 
@@ -152,7 +153,7 @@ namespace scn {
                 }
 
                 using scanned_type = std::conditional_t<std::is_signed_v<T>,
-                                                        long, unsigned long>;
+                                                        long long, unsigned long long>;
                 scanned_type tmp{};
                 auto it = do_get_facet(facet, stream, err, source, tmp);
                 if (auto e = check_range_unsupported<T>(tmp, err); !e) {

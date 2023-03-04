@@ -27,10 +27,10 @@ namespace scn {
 
     namespace detail {
         enum class align_type : unsigned char {
-            none,
-            left,   // '<'
-            right,  // '>'
-            center  // '^'
+            none = 0,
+            left = 1,   // '<'
+            right = 2,  // '>'
+            center = 3  // '^'
         };
 
         enum class presentation_type : unsigned char {
@@ -60,17 +60,15 @@ namespace scn {
             presentation_type type{presentation_type::none};
             std::basic_string_view<CharT> set_string{};
             unsigned arbitrary_base : 6;
-            align_type align : 2;
+            unsigned align : 2;
             bool localized : 1;
             bool thsep : 1;
-            unsigned char _reserved : 6;
 
             constexpr basic_format_specs()
                 : arbitrary_base{0},
-                  align{align_type::none},
+                  align{static_cast<unsigned>(align_type::none)},
                   localized{false},
-                  thsep{false},
-                  _reserved{0}
+                  thsep{false}
             {
             }
 
@@ -123,7 +121,10 @@ namespace scn {
 
             constexpr void on_align(align_type align)
             {
-                m_specs.align = align;
+                SCN_GCC_PUSH
+                SCN_GCC_IGNORE("-Wconversion")
+                m_specs.align = static_cast<unsigned>(align);
+                SCN_GCC_POP
             }
             constexpr void on_fill(std::basic_string_view<CharT> fill)
             {
@@ -408,13 +409,14 @@ namespace scn {
                 }
             }
             else if (*begin == CharT{']'}) {
-                return make_string_view_from_iterators<CharT>(start, ++begin);
+                return {start,
+                        static_cast<size_t>(std::distance(start, ++begin))};
             }
 
             for (; begin != end; ++begin) {
                 if (*begin == CharT{']'}) {
-                    return make_string_view_from_iterators<CharT>(start,
-                                                                  ++begin);
+                    return {start,
+                            static_cast<size_t>(std::distance(start, ++begin))};
                 }
             }
 
@@ -572,22 +574,23 @@ namespace scn {
         {
             if (format.size() < 32) {
                 // Small size -> use a simple loop instead of memchr
-                auto begin = format.begin();
+                auto begin = format.data();
                 auto it = begin;
+                const auto end = format.data() + format.size();
 
-                while (it != format.end()) {
+                while (it != end) {
                     const auto ch = *it++;
                     if (ch == CharT{'{'}) {
                         handler.on_literal_text(begin, it - 1);
 
-                        begin = it = parse_replacement_field(
-                            it - 1, format.end(), handler);
+                        begin = it =
+                            parse_replacement_field(it - 1, end, handler);
                         if (!handler) {
                             return;
                         }
                     }
                     else if (ch == CharT{'}'}) {
-                        if (it == format.end() || *it != CharT{'}'}) {
+                        if (it == end || *it != CharT{'}'}) {
                             handler.on_error("Unmatched '}' in format string");
                             return;
                         }
@@ -597,7 +600,7 @@ namespace scn {
                     }
                 }
 
-                handler.on_literal_text(begin, format.end());
+                handler.on_literal_text(begin, end);
                 return;
             }
 
@@ -628,16 +631,17 @@ namespace scn {
                 }
             };
 
-            auto begin = format.begin();
-            while (begin != format.end()) {
+            auto begin = format.data();
+            const auto end = format.data() + format.size();
+            while (begin != end) {
                 if (*begin != CharT{'{'}) {
-                    reader(begin, format.end());
+                    reader(begin, end);
                     return;
                 }
 
-                auto p = find<IsConstexpr>(begin + 1, format.end(), CharT{'{'});
-                if (p == format.end()) {
-                    reader(begin, format.end());
+                auto p = find<IsConstexpr>(begin + 1, end, CharT{'{'});
+                if (p == end) {
+                    reader(begin, end);
                     return;
                 }
 
@@ -646,7 +650,7 @@ namespace scn {
                     return;
                 }
 
-                begin = parse_replacement_field(p, format.end(), handler);
+                begin = parse_replacement_field(p, end, handler);
                 if (!handler) {
                     return;
                 }
@@ -726,7 +730,6 @@ namespace scn {
                     SCN_CLANG_POP
             }
 
-            SCN_ENSURE(false);
             SCN_UNREACHABLE;
         }
 

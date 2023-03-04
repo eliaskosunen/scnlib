@@ -149,11 +149,15 @@ namespace scn {
         auto check_format_string(Str format_str)
             -> std::enable_if_t<is_compile_string_v<Str>>
         {
-            using checker = format_string_checker<typename Str::char_type,
-                                                  remove_cvref_t<Args>...>;
+            using char_type = typename Str::char_type;
 
-            constexpr auto s =
-                std::basic_string_view<typename Str::char_type>{format_str};
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wconversion")
+            constexpr auto s = std::basic_string_view<char_type>{format_str};
+            SCN_GCC_POP
+
+            using checker =
+                format_string_checker<char_type, remove_cvref_t<Args>...>;
             constexpr bool invalid_format =
                 (parse_format_string<true>(s, checker(s)), true);
             SCN_UNUSED(invalid_format);

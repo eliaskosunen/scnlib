@@ -278,16 +278,16 @@ namespace scn {
 
         void advance_until_index(std::ptrdiff_t i) const
         {
-            SCN_EXPECT(i == 0 || i >= m_impl->get_current_index());
-
-            if (i == 0) {
-                return m_impl->reset_current_to_begin();
+            if (i == m_impl->get_current_index()) {
+                return;
             }
 
-            const auto current = m_impl->get_current_index();
-            if (i > current) {
-                m_impl->increment_current(i - current);
+            if (i > m_impl->get_current_index()) {
+                return m_impl->increment_current(i - m_impl->get_current_index());
             }
+
+            m_impl->reset_current_to_begin();
+            return m_impl->increment_current(i);
         }
 
         bool _is_end() const

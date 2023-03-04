@@ -21,6 +21,7 @@
 #include <scn/detail/istream_range.h>
 #include <scn/detail/locale_ref.h>
 #include <scn/detail/ranges.h>
+#include <scn/util/string_view.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -34,12 +35,14 @@ namespace scn {
             std::void_t<decltype(SCN_DECLVAL(const Iterator&) == nullptr)>>
             : std::true_type {};
 
+#if 0
         static_assert(
             is_comparable_with_nullptr<std::string_view::iterator>::value);
         static_assert(
             is_comparable_with_nullptr<ranges::iterator_t<ranges::subrange<
                 ranges::iterator_t<std::string_view>,
                 ranges::sentinel_t<std::string_view>>>>::value);
+#endif
     }  // namespace detail
 
     template <typename Range, typename CharT>
@@ -128,7 +131,8 @@ namespace scn {
                     ranges::sentinel_t<std::basic_string_view<CharT>>> r) const
                 SCN_NOEXCEPT
             {
-                return {r.data(), static_cast<std::size_t>(r.size())};
+                return detail::make_string_view_from_iterators<CharT>(r.begin(),
+                                                                      r.end());
             }
 
             template <typename CharT>

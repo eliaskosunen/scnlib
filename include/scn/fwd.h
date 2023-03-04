@@ -19,10 +19,15 @@
 
 #include <scn/detail/pp.h>
 
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wnoexcept")
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <type_traits>
+
+SCN_GCC_POP
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

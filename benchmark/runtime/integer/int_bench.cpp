@@ -15,6 +15,6 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <benchmark/benchmark.h>
+#include "benchmark_common.h"
 
 BENCHMARK_MAIN();

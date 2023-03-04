@@ -19,11 +19,19 @@
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
+SCN_GCC_IGNORE("-Wnoexcept")
+SCN_GCC_IGNORE("-Wsign-conversion")
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wold-style-cast")
+
+#if SCN_CLANG >= SCN_COMPILER(8, 0, 0)
 SCN_CLANG_IGNORE("-Wextra-semi-stmt")
+#endif
+
+#if SCN_CLANG >= SCN_COMPILER(13, 0, 0)
 SCN_CLANG_IGNORE("-Wreserved-identifier")
+#endif
 
 #include <fast_float/fast_float.h>
 
@@ -57,6 +65,102 @@ namespace scn {
                     return false;
                 }
                 return str[0] == CharT{'-'} && is_hexfloat(str.substr(1), true);
+            }
+
+            template <typename CharT>
+            bool is_input_inf(std::basic_string_view<CharT> str)
+            {
+                if (str.empty()) {
+                    return false;
+                }
+                if (str[0] == CharT{'-'}) {
+                    str = str.substr(1);
+                }
+
+                if (str.size() >= 3) {
+                    if ((str[0] == CharT{'i'} || str[0] == CharT{'I'}) &&
+                        (str[1] == CharT{'n'} || str[1] == CharT{'N'}) &&
+                        (str[2] == CharT{'f'} || str[2] == CharT{'F'})) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            template <typename CharT>
+            bool _skip_zeroes(
+                std::basic_string_view<CharT> str,
+                typename std::basic_string_view<CharT>::iterator& it)
+            {
+                for (; it != str.end(); ++it) {
+                    if (*it == CharT{'0'}) {
+                        continue;
+                    }
+                    if (*it == CharT{'.'} || *it == CharT{'e'} ||
+                        *it == CharT{'E'} || *it == CharT{'p'} ||
+                        *it == CharT{'P'}) {
+                        break;
+                    }
+                    return false;
+                }
+                return true;
+            }
+
+            template <typename CharT>
+            bool is_input_hexzero(std::basic_string_view<CharT> str)
+            {
+                if (str[0] == CharT{'-'}) {
+                    str = str.substr(3);
+                }
+                else {
+                    str = str.substr(2);
+                }
+
+                auto it = str.begin();
+                if (!_skip_zeroes(str, it)) {
+                    return false;
+                }
+
+                if (it == str.end() || *it != CharT{'.'}) {
+                    return true;
+                }
+                ++it;
+                if (it == str.end()) {
+                    return true;
+                }
+                if (!_skip_zeroes(str, it)) {
+                    return false;
+                }
+                return true;
+            }
+
+            template <typename CharT>
+            bool is_input_zero(std::basic_string_view<CharT> str)
+            {
+                if (is_hexfloat(str)) {
+                    return is_input_hexzero(str);
+                }
+
+                if (str.empty()) {
+                    return false;
+                }
+                if (str[0] == CharT{'-'}) {
+                    str = str.substr(1);
+                }
+
+                auto it = str.begin();
+                if (!_skip_zeroes(str, it)) {
+                    return false;
+                }
+                if (it == str.end() || *it != CharT{'.'}) {
+                    return true;
+                }
+                ++it;
+
+                if (!_skip_zeroes(str, it)) {
+                    return false;
+                }
+                return true;
             }
 
             SCN_GCC_COMPAT_PUSH
@@ -93,12 +197,11 @@ namespace scn {
             };
         }  // namespace
 
-        template <typename CharT>
-        template <typename T>
-        class float_classic_value_reader<CharT>::cstd_impl
+        template <typename CharT, typename T>
+        class cstd_reader_impl
             : public float_classic_value_reader_cstd_impl_base {
         public:
-            explicit cstd_impl(const float_value_reader_base& r)
+            explicit cstd_reader_impl(const float_value_reader_base& r)
                 : float_classic_value_reader_cstd_impl_base{r}
             {
             }
@@ -117,11 +220,9 @@ namespace scn {
                 errno = 0;
                 auto tmp = impl(null_terminated_source.c_str(), &end);
                 const auto chars_read = end - null_terminated_source.c_str();
-                const auto cstd_errno = errno;
                 errno = 0;
 
-                if (auto e = check_error(source, chars_read, tmp, cstd_errno);
-                    !e) {
+                if (auto e = check_error(source, chars_read, tmp); !e) {
                     return unexpected(e);
                 }
 
@@ -133,8 +234,7 @@ namespace scn {
             SCN_NODISCARD scan_error
             check_error(std::basic_string_view<CharT> source,
                         std::ptrdiff_t chars_read,
-                        T& value,
-                        int cstd_errno) const
+                        T& value) const
             {
                 // No conversion
                 if (is_float_zero(value) && chars_read == 0) {
@@ -142,27 +242,36 @@ namespace scn {
                             "strtod failed: no conversion"};
                 }
 
-                // Range error
-                if (cstd_errno == ERANGE) {
-                    // Underflow
-                    if (is_float_zero(value)) {
-                        value = std::copysign(
-                            std::numeric_limits<T>::denorm_min(), value);
-                        return {};
-                    }
-                    // Overflow
-                    if (std::isinf(value)) {
-                        return {scan_error::value_out_of_range,
-                                "strtod failed: float overflow"};
-                    }
-                }
-
+                // Unexpected hex float
                 if (is_hexfloat(source) &&
                     (reader.m_options &
                      float_classic_value_reader<CharT>::allow_hex) == 0) {
                     return {scan_error::invalid_scanned_value,
                             "Parsed a hex float, which was "
                             "not allowed by the format string"};
+                }
+
+                // Musl libc doesn't set errno to ERANGE on range error,
+                // so we can't rely on that
+
+                // Underflow:
+                // returned 0, and input is not 0
+                if (is_float_zero(value) &&
+                    !is_input_zero(
+                        source.substr(0, static_cast<size_t>(chars_read)))) {
+                    // Not an error, return smallest subnormal value
+                    value = std::copysign(std::numeric_limits<T>::denorm_min(),
+                                          value);
+                    return {};
+                }
+
+                // Overflow:
+                // returned inf (HUGE_VALUE), and input is not "inf"
+                if (std::isinf(value) &&
+                    !is_input_inf(
+                        source.substr(0, static_cast<size_t>(chars_read)))) {
+                    return {scan_error::value_out_of_range,
+                            "strtod failed: float overflow"};
                 }
 
                 return {};
@@ -202,6 +311,7 @@ namespace scn {
 
 #if SCN_HAS_FLOAT_CHARCONV
         namespace {
+            template <typename = void>
             struct float_classic_value_reader_from_chars_impl_base {
                 scan_expected<std::chars_format> get_flags(
                     std::string_view& source,
@@ -245,12 +355,11 @@ namespace scn {
             };
         }  // namespace
 
-        template <typename CharT>
-        template <typename T>
-        class float_classic_value_reader<CharT>::from_chars_impl
-            : public float_classic_value_reader_from_chars_impl_base {
+        template <typename CharT, typename T>
+        class from_chars_reader_impl
+            : public float_classic_value_reader_from_chars_impl_base<> {
         public:
-            explicit from_chars_impl(const float_value_reader_base& r)
+            explicit from_chars_reader_impl(const float_value_reader_base& r)
                 : float_classic_value_reader_from_chars_impl_base{r}
             {
             }
@@ -278,7 +387,8 @@ namespace scn {
                 if (result.ec == std::errc::result_out_of_range) {
                     // Out of range, may be subnormal -> fall back to strtod
                     // On gcc, std::from_chars doesn't parse subnormals
-                    return cstd_impl<T>{reader}(original_source, value);
+                    return cstd_reader_impl<CharT, T>{reader}(original_source,
+                                                              value);
                 }
 
                 if (has_negative_sign) {
@@ -318,27 +428,49 @@ namespace scn {
         };
 
         namespace {
+#if SCN_HAS_FLOAT_CHARCONV
+            template <typename Float, typename = void>
+            struct has_charconv_for : std::false_type {};
+
+            template <typename Float>
+            struct has_charconv_for<
+                Float,
+                std::void_t<decltype(std::from_chars(SCN_DECLVAL(const char*),
+                                                     SCN_DECLVAL(const char*),
+                                                     SCN_DECLVAL(Float&)))>>
+                : std::true_type {};
+#endif
+
             template <typename T>
             auto fast_float_fallback(const float_value_reader_base& reader,
                                      std::string_view source,
                                      T& value)
             {
 #if SCN_HAS_FLOAT_CHARCONV
-                return float_classic_value_reader<char>::from_chars_impl<T>{
-                    reader}(source, value);
+                constexpr bool cond =
+#if SCN_STDLIB_GLIBCXX
+                    !std::is_same_v<T, long double> &&
+#endif
+                    has_charconv_for<T>::value;
+
+                if constexpr (cond) {
+                    return from_chars_reader_impl<char, T>{reader}(source,
+                                                                   value);
+                }
+                else {
+                    return cstd_reader_impl<char, T>{reader}(source, value);
+                }
 #else
-                return float_classic_value_reader<char>::cstd_impl<T>{reader}(
-                    source, value);
+                return cstd_reader_impl<char, T>{reader}(source, value);
 #endif
             }
         }  // namespace
 
-        template <typename CharT>
-        template <typename T>
-        class float_classic_value_reader<CharT>::fast_float_impl
+        template <typename CharT, typename T>
+        class fast_float_reader_impl
             : float_classic_value_reader_fast_float_impl_base {
         public:
-            explicit fast_float_impl(const float_value_reader_base& r)
+            explicit fast_float_reader_impl(const float_value_reader_base& r)
                 : float_classic_value_reader_fast_float_impl_base{r}
             {
             }
@@ -401,21 +533,22 @@ namespace scn {
                 -> scan_expected<ranges::iterator_t<std::string_view>>
             {
                 if constexpr (std::is_same_v<T, long double>) {
-                    // long doubles aren't supported by fast_float ->
-                    // fall back to from_chars or cstd_impl
-#ifdef __GLIBCXX__
-                    // libstdc++ has a buggy implementation for long double ->
-                    // use cstd_impl
-                    return float_classic_value_reader<char>::cstd_impl<
-                        long double>{reader}(source, value);
-#else
-                    return fast_float_fallback(reader, source, value);
-#endif
+                    if constexpr (sizeof(double) == sizeof(long double)) {
+                        // If long double is an alias to double (true on Windows),
+                        // use fast_float with double
+                        return fast_float_reader_impl<char, double>{reader}(
+                            source, *reinterpret_cast<double*>(&value));
+                    }
+                    else {
+                        // long doubles aren't supported by fast_float ->
+                        // fall back to from_chars or cstd_impl
+                        return fast_float_fallback(reader, source, value);
+                    }
                 }
                 else {
                     // Default to fast_float
-                    return float_classic_value_reader<char>::fast_float_impl<T>{
-                        reader}(source, value);
+                    return fast_float_reader_impl<char, T>{reader}(source,
+                                                                   value);
                 }
             }
 
@@ -423,11 +556,11 @@ namespace scn {
                 std::wstring_view source,
                 span<char> buffer)
             {
-                return count_and_validate_utf8_code_units(source).transform(
-                    [source, &buffer](std::size_t utf8_cu_count) {
+                return validate_and_count_transcoded_code_units<char>(source)
+                    .transform([source, &buffer](std::size_t utf8_cu_count) {
                         buffer = buffer.first(utf8_cu_count);
-                        auto it = encode_to_utf8(source, buffer);
-                        SCN_ENSURE(it == buffer.data() + buffer.size());
+                        const auto n = transcode_valid(source, buffer);
+                        SCN_ENSURE(n == buffer.size());
 
                         return std::string_view{buffer.data(), buffer.size()};
                     });
@@ -438,7 +571,7 @@ namespace scn {
                 std::string_view utf8_input,
                 std::size_t utf8_count)
             {
-                auto n = count_code_units_in_valid_utf8<wchar_t>(
+                auto n = count_valid_transcoded_code_units<wchar_t>(
                     std::string_view{utf8_input.data(), utf8_count});
                 return wide_input.begin() + n;
             }
@@ -453,8 +586,8 @@ namespace scn {
 
                 auto limited_source = source.substr(0, 64);
                 if constexpr (sizeof(wchar_t) == 2) {
-                    while (utf16::code_point_length(limited_source.back()) ==
-                           0) {
+                    while (utf16_code_point_length_by_starting_code_unit(
+                               limited_source.back()) == 0) {
                         limited_source =
                             limited_source.substr(0, limited_source.size() - 1);
                     }
@@ -471,8 +604,9 @@ namespace scn {
                     .transform([&source, utf8_input](auto it) {
                         return get_corresponding_iterator(
                             source, *utf8_input,
-                            static_cast<std::size_t>(
-                                ranges::distance(utf8_input->begin(), it)));
+                            static_cast<std::size_t>(ranges::distance(
+                                detail::to_address(utf8_input->begin()),
+                                detail::to_address(it))));
                     });
             }
         }  // namespace
@@ -520,7 +654,9 @@ namespace scn {
                     return {};
                 }
 
-                if (std::isinf(value) || is_float_max(value)) {
+                if (std::isinf(value) || is_float_max(value) ||
+                    (is_float_zero(value) &&
+                     (err & std::ios_base::eofbit) != 0)) {
                     return {scan_error::value_out_of_range,
                             "Out of range: float overflow"};
                 }
@@ -543,19 +679,19 @@ namespace scn {
             std::basic_istringstream<CharT> stream{};
             auto stdloc = m_locale.get<std::locale>();
             const auto& facet = get_or_add_facet<
-                std::num_get<CharT, ranges::iterator_t<string_view_type>>>(
+                std::num_get<CharT, const CharT*>>(
                 stdloc);
 
             std::ios_base::iostate err = std::ios_base::goodbit;
 
             T tmp{};
-            auto it = facet.get(ranges::begin(source), ranges::end(source),
+            auto it = facet.get(source.data(), source.data() + source.size(),
                                 stream, err, tmp);
             if (auto e = check_range_localized(tmp, err); !e) {
                 return unexpected(e);
             }
             value = tmp;
-            return {it};
+            return detail::make_string_view_iterator(source, it);
         }
 
         template auto float_localized_value_reader<char>::read(string_view_type,

@@ -26,7 +26,7 @@ namespace scn {
     class basic_scan_parse_context {
     public:
         using char_type = CharT;
-        using iterator = typename std::basic_string_view<CharT>::iterator;
+        using iterator = typename std::basic_string_view<CharT>::const_pointer;
 
         explicit constexpr basic_scan_parse_context(
             std::basic_string_view<CharT> format,
@@ -37,11 +37,11 @@ namespace scn {
 
         constexpr auto begin() const SCN_NOEXCEPT
         {
-            return m_format.begin();
+            return m_format.data();
         }
         constexpr auto end() const SCN_NOEXCEPT
         {
-            return m_format.end();
+            return m_format.data() + m_format.size();
         }
 
         constexpr void advance_to(iterator it)
@@ -120,6 +120,9 @@ namespace scn {
                 return m_types[id];
             }
 
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wsign-conversion")
+
             constexpr std::size_t next_arg_id()
             {
                 auto id = base::next_arg_id();
@@ -138,8 +141,9 @@ namespace scn {
             }
             using base::check_arg_id;
 
-        private:
-            int m_num_args;
+            SCN_GCC_POP  // -Wsign-conversion
+
+                private : int m_num_args;
             const arg_type* m_types;
         };
 
@@ -158,7 +162,9 @@ namespace scn {
     template <typename CharT>
     constexpr void basic_scan_parse_context<CharT>::do_check_arg_id(size_t id)
     {
-        if (detail::is_constant_evaluated()) {
+        if (detail::is_constant_evaluated() &&
+            (!SCN_GCC || SCN_GCC >= SCN_COMPILER(12, 0, 0))) {
+            // The cast below will cause an error on gcc pre-12
             using parse_context_type = detail::compile_parse_context<CharT>;
             if (static_cast<int>(id) >=
                 static_cast<parse_context_type*>(this)->get_num_args()) {

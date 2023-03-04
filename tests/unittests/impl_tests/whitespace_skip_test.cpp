@@ -23,7 +23,7 @@ namespace {
     std::ptrdiff_t PositionOfFirstNonSpace(std::string_view src)
     {
         auto it = scn::impl::skip_classic_whitespace(src, true);
-        return it->begin() - src.begin();
+        return scn::impl::range_nocopy_data(*it) - src.data();
     }
 }  // namespace
 

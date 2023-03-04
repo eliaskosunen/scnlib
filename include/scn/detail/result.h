@@ -48,8 +48,8 @@ namespace scn {
                                                 const CharT*,
                                                 std::size_t>)
         {
-            return {result.range.data(),
-                    static_cast<std::size_t>(result.range.size())};
+            return make_string_view_from_iterators<CharT>(result.range.begin(),
+                                                          result.range.end());
         }
 
         template <typename CharT, typename Source>

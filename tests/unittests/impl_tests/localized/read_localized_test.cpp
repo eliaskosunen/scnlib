@@ -149,7 +149,12 @@ using types = testing::Types<
     std::tuple<classic_locale_ref, std::string_view, std::wstring_view>,
     std::tuple<en_us_utf8_locale_ref, std::string_view, std::wstring_view>>;
 
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")
+
 TYPED_TEST_SUITE(ReadUntilLocalizedSkipTest, types);
+
+SCN_CLANG_POP
 
 TYPED_TEST(ReadUntilLocalizedSkipTest, UntilSpace)
 {

@@ -44,10 +44,14 @@ namespace scn {
                         source,
                         back_insert(source_reader_buffer<SourceCharT>()),
                         width);
+                    SCN_UNUSED(_);
+                    SCN_GCC_PUSH
+                    SCN_GCC_IGNORE("-Wconversion")
                     return iterator_value_result<
                         ranges::iterator_t<SourceRange>,
                         std::basic_string_view<SourceCharT>>{
                         it, {source_reader_buffer<SourceCharT>()}};
+                    SCN_GCC_POP
                 }
             }
         };
@@ -58,8 +62,9 @@ namespace scn {
             constexpr unicode_character_reader_impl() = default;
 
             template <typename SourceRange>
-            scan_expected<iterator_value_result<ranges::iterator_t<SourceRange>,
-                                                std::string_view>>
+            scan_expected<
+                iterator_value_result<ranges::iterator_t<SourceRange>,
+                                      std::basic_string_view<SourceCharT>>>
             read(SourceRange& source, int cp_count)
             {
                 if constexpr (ranges::contiguous_range<SourceRange>) {
@@ -72,11 +77,14 @@ namespace scn {
                                back_insert(source_reader_buffer<SourceCharT>()),
                                cp_count)
                         .transform([&](auto result) SCN_NOEXCEPT {
+                            SCN_GCC_PUSH
+                            SCN_GCC_IGNORE("-Wconversion")
                             return iterator_value_result<
                                 ranges::iterator_t<SourceRange>,
                                 std::basic_string_view<SourceCharT>>{
                                 result.in,
                                 {source_reader_buffer<SourceCharT>()}};
+                            SCN_GCC_POP
                         });
                 }
             }

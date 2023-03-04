@@ -82,7 +82,8 @@ namespace scn {
             auto checker =
                 detail::specs_checker<handler_type>(handler_type(specs), type);
 
-            const auto it = detail::parse_format_specs(begin, end, checker);
+            const auto it = detail::parse_format_specs(
+                to_address(begin), to_address(end), checker);
             if (auto e = checker.get_error(); !e) {
                 return unexpected(e);
             }

@@ -64,21 +64,21 @@ namespace scn {
     namespace detail {
         template <typename CharT>
         constexpr std::basic_string_view<CharT> make_string_view_from_iterators(
-            std::basic_string_view<CharT> str,
             typename std::basic_string_view<CharT>::iterator first,
             typename std::basic_string_view<CharT>::iterator last)
         {
-            return {to_address_safe(first, str.data(), str.data() + str.size()),
-                    static_cast<size_t>(last - first)};
+            return {to_address(first),
+                    static_cast<size_t>(
+                        std::distance(to_address(first), to_address(last)))};
         }
 
         template <typename CharT>
-        constexpr std::basic_string_view<CharT> make_string_view_from_iterators(
-            typename std::basic_string_view<CharT>::iterator first,
-            typename std::basic_string_view<CharT>::iterator last)
+        constexpr auto make_string_view_iterator(
+            std::basic_string_view<CharT> sv,
+            const CharT* ptr) ->
+            typename std::basic_string_view<CharT>::iterator
         {
-            return {to_address_safe(first, first, last),
-                    static_cast<size_t>(last - first)};
+            return sv.begin() + std::distance(sv.data(), ptr);
         }
     }  // namespace detail
 

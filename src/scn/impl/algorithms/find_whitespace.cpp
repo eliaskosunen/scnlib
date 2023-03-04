@@ -170,7 +170,7 @@ namespace scn {
             {
                 const auto get_mask = [](uint64_t word) -> uint64_t {
                     constexpr uint64_t space_mask =
-                        ~0ul / 255 * static_cast<uint64_t>(' ');
+                        ~0ull / 255 * static_cast<uint64_t>(' ');
 
                     // Has non-zero byte on space (' ') chars
                     uint64_t space_masked = has_zero_byte(word ^ space_mask);
@@ -200,22 +200,31 @@ namespace scn {
         std::string_view::iterator find_classic_space_narrow_fast(
             std::string_view source)
         {
-            // return find_classic_space_simple_impl(source);
-            return find_classic_space_64_impl(source);
+            if constexpr (sizeof(void*) == 8) {
+                return find_classic_space_64_impl(source);
+            } else {
+                return find_classic_space_simple_impl(source);
+            }
         }
 
         std::string_view::iterator find_classic_nonspace_narrow_fast(
             std::string_view source)
         {
-            // return find_classic_nonspace_simple_impl(source);
-            return find_classic_nonspace_64_impl(source);
+            if constexpr (sizeof(void*) == 8) {
+                return find_classic_nonspace_64_impl(source);
+            } else {
+                return find_classic_nonspace_simple_impl(source);
+            }
         }
 
         std::string_view::iterator find_nondecimal_digit_narrow_fast(
             std::string_view source)
         {
-            // return find_nondecimal_digit_simple_impl(source);
-            return find_nondecimal_digit_64_impl(source);
+            if constexpr (sizeof(void*) == 8) {
+                return find_nondecimal_digit_64_impl(source);
+            } else {
+                return find_nondecimal_digit_simple_impl(source);
+            }
         }
     }  // namespace impl
 

@@ -126,7 +126,8 @@ namespace scn {
                 *buf_it++ = *it;
 
                 if (cp_len == static_cast<std::size_t>(-1)) {
-                    auto cp_len_tmp = code_point_length(buf[0]);
+                    auto cp_len_tmp =
+                        code_point_length_by_starting_code_unit(buf[0]);
                     if (!cp_len_tmp) {
                         result = impl_base::result_code::error;
                         return;
@@ -140,17 +141,13 @@ namespace scn {
                     return;
                 }
 
-                std::size_t ret{};
-                if constexpr (sizeof(wchar_t) == 2) {
-                    ret = simdutf::convert_utf8_to_utf16le(
-                        buf, buf_len,
-                        reinterpret_cast<char16_t*>(&output_char));
+                const auto buf_sv = std::string_view{buf, buf_len};
+                if (!validate_unicode(buf_sv)) {
+                    result = impl_base::result_code::error;
+                    return;
                 }
-                else {
-                    ret = simdutf::convert_utf8_to_utf32(
-                        buf, buf_len,
-                        reinterpret_cast<char32_t*>(&output_char));
-                }
+                std::size_t ret =
+                    transcode_valid(buf_sv, span<wchar_t>{&output_char, 1});
                 if (ret == 0) {
                     result = impl_base::result_code::error;
                     return;
@@ -207,7 +204,10 @@ namespace scn {
         template <>
         struct localized_single_character_widener<wchar_t> {
         public:
-            explicit localized_single_character_widener(detail::locale_ref) {}
+            explicit constexpr localized_single_character_widener(
+                detail::locale_ref) SCN_NOEXCEPT
+            {
+            }
 
             template <
                 typename InputR,
@@ -249,6 +249,8 @@ namespace scn {
             auto output_widened_it = ranges::begin(output_widened);
 
             auto widen = localized_single_character_widener<char_type>{loc};
+            SCN_UNUSED(widen);  // not really, gcc 9 is just buggy
+
             const auto& ctype = get_facet<std::ctype<wchar_t>>(loc);
 
             while (input_it != ranges::end(input) &&
@@ -331,11 +333,13 @@ namespace scn {
             auto make_result = [&](auto it) -> read_nocopy_result<Range> {
                 const auto n = static_cast<size_t>(
                     ranges::distance(ranges::begin(range), it));
-                return {it, {ranges::data(range), n}};
+                return {it, {range_nocopy_data(range), n}};
             };
             auto it = ranges::begin(range);
 
             auto widen = localized_single_character_widener<char_type>{loc};
+            SCN_UNUSED(widen);
+
             const auto& ctype = get_facet<std::ctype<wchar_t>>(loc);
 
             for (; it != ranges::end(range); ++it) {

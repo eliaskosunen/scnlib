@@ -173,7 +173,9 @@ namespace scn {
             auto args =
                 make_scan_args<detail::mapped_context_type<decltype(range)>,
                                Args...>(std::move(args_default_values));
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
             auto result = vscan(loc, range, format, args);
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
             return make_scan_result(SCN_FWD(source), SCN_MOVE(result),
                                     SCN_MOVE(args));
         }

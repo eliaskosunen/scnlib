@@ -46,7 +46,8 @@ namespace scn {
             else {
                 SCN_UNUSED(buffer);
                 if (auto e = transcode_to_string(result.value, value); !e) {
-                    return unexpected(e);
+                    return unexpected_scan_error(scan_error::invalid_encoding,
+                                                 "Transcode failed");
                 }
             }
             return result.iterator;
@@ -139,7 +140,8 @@ namespace scn {
                 if (auto ret = format_parser.parse(specs.set_string); !ret) {
                     return ret.error();
                 }
-                else if (*ret != specs.set_string.end()) {
+                else if (detail::to_address(*ret) !=
+                         detail::to_address(specs.set_string.end())) {
                     return scan_error{
                         scan_error::invalid_format_string,
                         "[character set] specifier not exhausted"};
@@ -301,6 +303,9 @@ namespace scn {
                         });
                 }
                 else {
+                    SCN_UNUSED(range);
+                    SCN_UNUSED(value);
+                    SCN_UNUSED(loc);
                     SCN_EXPECT(false);
                     SCN_UNREACHABLE;
                 }
@@ -322,6 +327,11 @@ namespace scn {
                         });
                 }
                 else {
+                    SCN_UNUSED(range);
+                    SCN_UNUSED(specs);
+                    SCN_UNUSED(value);
+                    SCN_UNUSED(loc);
+
                     SCN_EXPECT(false);
                     SCN_UNREACHABLE;
                 }

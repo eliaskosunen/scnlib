@@ -92,10 +92,7 @@ set(SCN_PRIVATE_HEADERS
         src/scn/impl/reader/string/character_set_reader.h
         src/scn/impl/reader/string/word_reader.h
 
-        src/scn/impl/unicode/common.h
         src/scn/impl/unicode/unicode.h
-        src/scn/impl/unicode/utf8.h
-        src/scn/impl/unicode/utf16.h
 
         src/scn/impl/util/ascii_ctype.h
         src/scn/impl/util/bits.h
@@ -122,6 +119,7 @@ set(SCN_PRIVATE_SOURCES
         src/scn/impl/reader/integer/source_reader.cpp
         src/scn/impl/reader/integer/classic_value_reader.cpp
         src/scn/impl/reader/integer/localized_value_reader.cpp
+
         )
 set(SCN_PRIVATE_SOURCES_WITH_IOSTREAMS
         )

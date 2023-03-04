@@ -76,8 +76,11 @@ namespace scn {
                 const auto ch_bits = static_cast<uint64_t>(ch);
                 auto& v = (ch_bits > 63 ? m_char_allowed_upper
                                         : m_char_allowed_lower);
+                SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4146)  // unary minus applied to unsigned
                 v ^= (-static_cast<uint64_t>(val) ^ v) &
                      (1ULL << (ch_bits % 64));
+                SCN_MSVC_POP
             }
             SCN_NODISCARD bool _has_no_allowed_chars() const
             {
@@ -96,10 +99,13 @@ namespace scn {
             }
             void _set_specifier(specifier s, bool val)
             {
+                SCN_MSVC_PUSH
+                SCN_MSVC_IGNORE(4146)  // unary minus applied to unsigned
                 const auto s_bits = static_cast<uint64_t>(s);
                 m_set_specifiers ^=
                     (-static_cast<uint64_t>(val) ^ m_set_specifiers) &
                     (1ULL << s_bits);
+                SCN_MSVC_POP
             }
             SCN_NODISCARD bool _has_no_set_specifiers() const
             {
@@ -223,7 +229,8 @@ namespace scn {
                     ++it;
                 }
 
-                while (it != fmt.end()) {
+                while (detail::to_address(it) !=
+                       detail::to_address(fmt.end())) {
                     if (*it == ']') {
                         return {++it};
                     }
@@ -308,7 +315,7 @@ namespace scn {
 
             scan_error on_literal(iterator& it, iterator end)
             {
-                SCN_EXPECT(it != end);
+                SCN_EXPECT(detail::to_address(it) != detail::to_address(end));
                 SCN_EXPECT(*it != ':' && *it != '\\');
 
                 auto cp_result = parse_cp(it, end);
@@ -316,8 +323,10 @@ namespace scn {
                     return cp_result.error();
                 }
 
-                if (it != end && *it == '-' && (it + 1) != end &&
-                    *(it + 1) != ']') {
+                const auto it_addr = detail::to_address(it);
+                const auto end_addr = detail::to_address(end);
+                if (it_addr != end_addr && *it_addr == '-' &&
+                    (it_addr + 1) != end_addr && *(it_addr + 1) != ']') {
                     ++it;
                     auto cp2_result = parse_cp(it, end);
                     if (!cp2_result) {
@@ -364,16 +373,14 @@ namespace scn {
 
             scan_expected<code_point> parse_cp(iterator& it, iterator end)
             {
-                SCN_EXPECT(it != end);
+                SCN_EXPECT(detail::to_address(it) != detail::to_address(end));
 
-                code_point cp{};
-                return decode_code_point(
+                return get_next_code_point(
                            detail::make_string_view_from_iterators<CharT>(it,
-                                                                          end),
-                           cp)
-                    .transform([&](auto iter) SCN_NOEXCEPT {
-                        it = iter;
-                        return cp;
+                                                                          end))
+                    .transform([&](auto result) SCN_NOEXCEPT {
+                        it = result.iterator;
+                        return result.value;
                     });
             }
         };
@@ -736,15 +743,23 @@ namespace scn {
                                        -> iterator_value_result<
                                            ranges::iterator_t<SourceRange>,
                                            std::basic_string_view<CharT>> {
+                                SCN_GCC_PUSH
+                                SCN_GCC_IGNORE("-Wconversion")
                                 return {result.in, {buffer}};
+                                SCN_GCC_POP
                             });
                     }
 
                     auto [it, _] = read_until_classic_copying(
                         source, back_insert(buffer), predicate);
+                    SCN_UNUSED(_);
+
+                    SCN_GCC_PUSH
+                    SCN_GCC_IGNORE("-Wconversion")
                     return iterator_value_result<
                         ranges::iterator_t<SourceRange>,
                         std::basic_string_view<CharT>>{it, {buffer}};
+                    SCN_GCC_POP
                 }
             }
 

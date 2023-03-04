@@ -15,11 +15,13 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <benchmark/benchmark.h>
+#include "benchmark_common.h"
 
 #include "int_bench.h"
 
+#if SCN_HAS_INTEGER_CHARCONV
 #include <charconv>
+#endif
 
 template <typename Int>
 static void scan_int_repeated_scn(benchmark::State& state)
@@ -43,8 +45,8 @@ static void scan_int_repeated_scn(benchmark::State& state)
             range = SCN_MOVE(result.range());
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_scn, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn, long long);
@@ -72,8 +74,8 @@ static void scan_int_repeated_scn_value(benchmark::State& state)
             range = SCN_MOVE(result.range());
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, long long);
@@ -96,8 +98,8 @@ static void scan_int_repeated_sstream(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_sstream, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_sstream, long long);
@@ -124,12 +126,14 @@ static void scan_int_repeated_scanf(benchmark::State& state)
         }
         benchmark::DoNotOptimize(i);
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, long long);
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, unsigned);
+
+#if SCN_HAS_INTEGER_CHARCONV
 
 template <typename Int>
 static void scan_int_repeated_charconv(benchmark::State& state)
@@ -153,9 +157,11 @@ static void scan_int_repeated_charconv(benchmark::State& state)
         ptr = ret.ptr;
         benchmark::DoNotOptimize(i);
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_charconv, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_charconv, long long);
 BENCHMARK_TEMPLATE(scan_int_repeated_charconv, unsigned);
+
+#endif  // SCN_HAS_INTEGER_CHARCONV

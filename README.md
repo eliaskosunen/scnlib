@@ -1,10 +1,8 @@
 # scnlib
 
-[![Ubuntu 22 builds](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-22.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-22.yml)
-[![Ubuntu 20 builds](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-20.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-20.yml)
+[![Linux builds](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml)
 [![macOS builds](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml)
 [![Windows builds](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml)
-[![Alpine builds](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/alpine.yml)
 [![Code Coverage](https://codecov.io/gh/eliaskosunen/scnlib/branch/dev/graph/badge.svg?token=LyWrDluna1)](https://codecov.io/gh/eliaskosunen/scnlib)
 
 [![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver&display_name=tag)](https://github.com/eliaskosunen/scnlib/releases)

@@ -1,32 +1,121 @@
 name: Windows
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+      - dev
+      #- ci-*
+  pull_request:
+    branches:
+      - master
+      - dev
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+  visual-studio:
+    runs-on: windows-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ windows-2019, windows-2022 ]
+        os: [ 2019, 2022 ]
         platform: [ Win32, x64 ]
+        type: [ Debug, Release ]
+        std: [ 17, 20 ]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{ runner.workspace }}/build
 
       - name: Run CMake
-        shell: bash
         working-directory: ${{ runner.workspace }}/build
+        shell: bash
         run: |
-          cmake -A ${{ matrix.platform }} $GITHUB_WORKSPACE
+          cmake -A ${{ matrix.platform }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_CI=ON $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config Debug --parallel
+        run: cmake --build . --config ${{ matrix.type }} --parallel
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
-        run: ctest -C Debug --output-on-failure
+        run: ctest -C ${{ matrix.type }} --output-on-failure
+
+  clang:
+    runs-on: windows-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+          os: [ 2019, 2022 ]
+          std: [ 17, 20 ]
+          platform: [ x64 ]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{ runner.workspace }}/build
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        shell: bash
+        run: |
+          cmake -T ClangCL -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_CI=ON $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . --parallel
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest --output-on-failure
+
+  msys:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: msys2 {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # x64 gcc
+          - msystem: "MINGW64"
+            install: mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-gcc
+          # x32 gcc
+          - msystem: "MINGW32"
+            install: mingw-w64-i686-cmake mingw-w64-i686-ninja mingw-w64-i686-gcc
+          # x64 clang
+          - msystem: "MINGW64"
+            install: mingw-w64-x86_64-libxml2 mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-clang
+          # x32 clang
+          - msystem: "MINGW32"
+            install: mingw-w64-i686-libxml2 mingw-w64-i686-cmake mingw-w64-i686-ninja mingw-w64-i686-clang
+    env:
+      CMAKE_GENERATOR: Ninja
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          msystem: ${{ matrix.msystem }}
+          install: ${{ matrix.install }}
+
+      - name: Create Build Environment
+        run: mkdir ${{ runner.workspace }}/build
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake -DSCN_CI=ON $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . --parallel
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest --output-on-failure
+

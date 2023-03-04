@@ -129,7 +129,7 @@ TEST(IstreamRangeTest, ReadFromStreamAfterFailureWithScan)
     auto view = scn::istreambuf_view{ss};
 
     {
-        auto [result, i] = scn::scan<int>(view, "{}");
+        auto [result, _] = scn::scan<int>(view, "{}");
         EXPECT_FALSE(result);
         view.sync(result.range().begin());
     }

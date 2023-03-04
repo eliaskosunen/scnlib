@@ -11,7 +11,6 @@ function(get_warning_flags flags)
             -Wno-c++98-compat-local-type-template-args>
         $<$<CXX_COMPILER_ID:GNU>:
             -ftemplate-backtrace-limit=0
-            -fconcepts-diagnostics-depth=99
             -Wall -Wextra -Wpedantic
             -pedantic-errors
             -Wconversion -Wsign-conversion
@@ -41,10 +40,10 @@ function(get_warning_flags flags)
             $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,9.0>>:
             -Wmismatched-tags -Wredundant-tags>
             $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,10.0>>:
-            -Wmismatched-tags -Wredundant-tags>
+            -fconcepts-diagnostics-depth=99>
             >
         $<$<CXX_COMPILER_ID:MSVC>:
-            /W4
+            /W3
             /D_SCL_SECURE_NO_WARNINGS
             /D_CRT_SECURE_NO_WARNINGS
             /wd4324 # padding
@@ -119,6 +118,12 @@ function(set_interface_flags target)
         get_werror_flags(werror_flags)
         target_compile_options(${target} INTERFACE ${werror_flags})
     endif()
+
+    target_compile_options(${target} INTERFACE
+            $<$<CXX_COMPILER_ID:MSVC>:
+            /bigobj
+            /D_SCL_SECURE_NO_WARNINGS
+            /D_CRT_SECURE_NO_WARNINGS>)
 endfunction()
 
 function(set_library_flags target)
@@ -155,6 +160,10 @@ function(set_library_flags target)
         target_compile_options(${target} PUBLIC ${coverage_flags})
         target_link_options(${target} PUBLIC --coverage)
     endif()
+
+    target_compile_options(${target} PRIVATE
+            $<$<CXX_COMPILER_ID:MSVC>:
+            /bigobj>)
 
     target_compile_features(${target} PUBLIC cxx_std_17)
 endfunction()

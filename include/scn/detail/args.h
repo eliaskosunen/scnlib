@@ -27,6 +27,7 @@
 #include <scn/detail/unicode.h>
 #include <scn/util/meta.h>
 
+#include <array>
 #include <cstddef>
 #include <string>
 #include <tuple>
@@ -257,18 +258,19 @@ namespace scn {
         constexpr std::size_t packed_arg_bits = 5;
         static_assert((1 << packed_arg_bits) >=
                       static_cast<int>(arg_type::last_type));
-        constexpr std::size_t bits_in_ull = sizeof(unsigned long long) * 8;
+        constexpr std::size_t bits_in_sz = sizeof(std::size_t) * 8;
         constexpr std::size_t max_packed_args =
-            (bits_in_ull - 1) / packed_arg_bits - 1;
-        constexpr std::size_t is_unpacked_bit = 1ull << (bits_in_ull - 1);
+            (bits_in_sz - 1) / packed_arg_bits - 1;
+        constexpr std::size_t is_unpacked_bit = std::size_t{1}
+                                                << (bits_in_sz - 1);
 
         template <typename>
-        constexpr unsigned long long encode_types_impl()
+        constexpr size_t encode_types_impl()
         {
             return 0;
         }
         template <typename Context, typename T, typename... Others>
-        constexpr unsigned long long encode_types_impl()
+        constexpr size_t encode_types_impl()
         {
             return static_cast<unsigned>(
                        mapped_type_constant<
@@ -277,7 +279,7 @@ namespace scn {
         }
 
         template <typename Context, typename... Ts>
-        constexpr unsigned long long encode_types()
+        constexpr size_t encode_types()
         {
             static_assert(sizeof...(Ts) < (1 << packed_arg_bits));
             return sizeof...(Ts) |
@@ -491,7 +493,7 @@ namespace scn {
 
         friend class basic_scan_args<Context>;
 
-        static constexpr unsigned long long desc =
+        static constexpr size_t desc =
             base::is_packed ? detail::encode_types<Context, Args...>()
                             : detail::is_unpacked_bit | base::num_args;
     };
@@ -563,12 +565,12 @@ namespace scn {
         }
 
     private:
-        constexpr basic_scan_args(unsigned long long desc,
+        constexpr basic_scan_args(size_t desc,
                                   detail::arg_value<Context>* values)
             : m_desc{desc}, m_values{values}
         {
         }
-        constexpr basic_scan_args(unsigned long long desc,
+        constexpr basic_scan_args(size_t desc,
                                   basic_scan_args<Context>* args)
             : m_desc{desc}, m_args{args}
         {
@@ -587,7 +589,7 @@ namespace scn {
             return static_cast<detail::arg_type>((m_desc >> shift) & mask);
         }
 
-        unsigned long long m_desc{0};
+        size_t m_desc{0};
         union {
             detail::arg_value<Context>* m_values;
             basic_scan_arg<Context>* m_args{nullptr};

@@ -63,7 +63,11 @@ namespace scn {
                     auto r = read_until_classic_copying(
                         SCN_FWD(range),
                         back_insert(source_reader_buffer<CharT>()), until);
+
+                    SCN_GCC_PUSH
+                    SCN_GCC_IGNORE("-Wconversion")
                     return {{r.in, {source_reader_buffer<CharT>()}}};
+                    SCN_GCC_POP
                 }
             }
 

@@ -1,0 +1,311 @@
+name: Linux
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+      #- ci-*
+  pull_request:
+    branches:
+      - master
+      - dev
+  workflow_dispatch:
+
+env:
+  APT_INSTALL: |
+    sudo apt-get install
+      -yq --no-install-suggests --no-install-recommends
+      --allow-unauthenticated --allow-downgrades --allow-change-held-packages
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 22.04, 20.04 ]
+        std: [ 17, 20 ]
+        cxx:
+          - g++-12
+          - g++-11
+          - g++-10
+          - g++-9
+          - g++-8
+          - g++-7
+          - clang++-15
+          - clang++-14
+          - clang++-13
+          - clang++-12
+          - clang++-11
+          - clang++-10
+          - clang++-9
+          - clang++-8
+          - clang++-7
+          - clang++-6.0
+        exclude:
+          # gcc 8, gcc 7, and clang 6-8 have lacking C++20 support
+          - cxx: g++-8
+            std: 20
+          - cxx: g++-7
+            std: 20
+          - cxx: clang++-8
+            std: 20
+          - cxx: clang++-7
+            std: 20
+          - cxx: clang++-6.0
+            std: 20
+          # gcc 8, clang 12, and before aren't available on 22.04
+          - cxx: g++-8
+            os: 22.04
+          - cxx: g++-7
+            os: 22.04
+          - cxx: clang++-12
+            os: 22.04
+          - cxx: clang++-11
+            os: 22.04
+          - cxx: clang++-10
+            os: 22.04
+          - cxx: clang++-9
+            os: 22.04
+          - cxx: clang++-8
+            os: 22.04
+          - cxx: clang++-7
+            os: 22.04
+          - cxx: clang++-6.0
+            os: 22.04
+          # gcc 12 isn't available on 20.04
+          - cxx: g++-12
+            os: 20.04
+          # simdutf has problems with clang 6 and 7 (_ktestc_mask64_u8 undefined)
+          - cxx: clang++-7
+          - cxx: clang++-6.0
+          # FIXME: some weird linker issue: undefined reference to range_default_scanner default constructor
+          - cxx: g++-11
+            std: 20
+            os: 20.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: lukka/get-cmake@latest
+
+      - name: Create Build Environment
+        run: |
+          mkdir ${{ runner.workspace }}/deps
+          mkdir ${{ runner.workspace }}/build
+          
+          sudo locale-gen en_US.UTF-8
+          sudo locale-gen fi_FI.UTF-8
+          sudo update-locale
+          sudo locale -a
+
+      - name: Install dependencies
+        working-directory: ${{ runner.workspace }}/deps
+        env:
+          CXX: ${{ matrix.cxx }}
+          OS: ${{ matrix.os }}
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+          sudo apt-get --allow-unauthenticated -yq update
+          
+          if [[ "${CXX}" == "g++-12" ]]; then
+            ${APT_INSTALL} g++-12
+          fi
+          if [[ "${CXX}" == "g++-11" ]]; then
+            ${APT_INSTALL} g++-11
+          fi
+          if [[ "${CXX}" == "g++-10" ]]; then
+            ${APT_INSTALL} g++-10
+          fi
+          if [[ "${CXX}" == "g++-9" ]]; then
+            ${APT_INSTALL} g++-9
+          fi
+          if [[ "${CXX}" == "g++-8" ]]; then
+            ${APT_INSTALL} g++-8
+          fi
+          if [[ "${CXX}" == "g++-7" ]]; then
+            ${APT_INSTALL} g++-7
+          fi
+          
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          
+          if [[ "${CXX}" == "clang++-15" ]]; then
+            sudo ./llvm.sh 15
+          fi
+          if [[ "${CXX}" == "clang++-14" ]]; then
+            sudo ./llvm.sh 14
+          fi
+          if [[ "${CXX}" == "clang++-13" ]]; then
+            sudo ./llvm.sh 13
+          fi
+          if [[ "${CXX}" == "clang++-12" ]]; then
+            sudo ./llvm.sh 12
+          fi
+          if [[ "${CXX}" == "clang++-11" ]]; then
+            sudo ./llvm.sh 11
+          fi
+          if [[ "${CXX}" == "clang++-10" ]]; then
+            sudo ./llvm.sh 10
+          fi
+          if [[ "${CXX}" == "clang++-9" ]]; then
+            sudo ./llvm.sh 9
+          fi
+          
+          if [[ "${CXX}" == "clang++-8" ]]; then
+            ${APT_INSTALL} clang-8
+          fi
+          if [[ "${CXX}" == "clang++-7" ]]; then
+            ${APT_INSTALL} clang-7
+          fi
+          if [[ "${CXX}" == "clang++-6.0" ]]; then
+            ${APT_INSTALL} clang-6.0
+          fi
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
+                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                $GITHUB_WORKSPACE
+          cmake --build . -- -k 0
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . -- -k 0
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest --output-on-failure
+
+  alpine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Start docker
+        run: |
+          docker run -w /src -dit --name alpine -v $PWD:/src alpine:3.17
+          echo 'docker exec alpine "$@";' > alpine-run.sh
+          chmod +x alpine-run.sh
+
+      - name: Install dependencies
+        run: |
+          ./alpine-run.sh apk update
+          ./alpine-run.sh apk add build-base cmake g++ linux-headers git bash
+
+      - name: Run CMake
+        run: |
+          ./alpine-run.sh cmake -S /src -B build -DSCN_CI=ON
+
+      - name: Build
+        run: |
+          ./alpine-run.sh cmake --build build --parallel
+
+      - name: Test
+        run: |
+          ./alpine-run.sh bash -c "cd build && ctest --output-on-failure"
+
+  codecov:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: lukka/get-cmake@latest
+
+      - name: Create Build Environment
+        run: |
+          sudo locale-gen en_US.UTF-8
+          sudo locale-gen fi_FI.UTF-8
+          sudo update-locale
+          sudo locale -a
+          
+          $APT_INSTALL lcov
+          
+          mkdir ${{ runner.workspace }}/build
+          mkdir ${{ runner.workspace }}/report
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_CXX_STANDARD=20 \
+                -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON -DSCN_COVERAGE=ON \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake --build . -- -k 0
+
+      - name: Generate Coverage Report
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          ./coverage.sh
+          cp coverage-filtered.info ${{ runner.workspace }}/report/coverage.info
+
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ${{ runner.workspace }}/report
+          fail_ci_if_error: true
+          verbose: true
+
+  sanitize:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        std: [ 17, 20 ]
+        san: [ asan-and-ubsan, msan ]
+        cxx: [ clang++-14 ]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: lukka/get-cmake@latest
+
+      - name: Create Build Environment
+        run: |
+          sudo locale-gen en_US.UTF-8
+          sudo locale-gen fi_FI.UTF-8
+          sudo update-locale
+          sudo locale -a
+          
+          if [[ "${{ matrix.san }}" == "asan-and-ubsan" ]]; then
+            echo "asan_flag=ON" >> $GITHUB_ENV
+            echo "ubsan_flag=ON" >> $GITHUB_ENV
+            echo "msan_flag=OFF" >> $GITHUB_ENV
+          fi
+          if [[ "${{ matrix.san }}" == "msan" ]]; then
+            echo "asan_flag=OFF" >> $GITHUB_ENV
+            echo "ubsan_flag=OFF" >> $GITHUB_ENV
+            echo "msan_flag=ON" >> $GITHUB_ENV
+          fi
+
+          mkdir ${{ runner.workspace }}/build
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
+                -DSCN_USE_ASAN=${{ env.asan_flag }} \
+                -DSCN_USE_UBSAN=${{ env.ubsan_flag }} \
+                -DSCN_USE_MSAN=${{ env.msan_flag }} \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake --build . -- -k 0
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          ctest --output-on-failure

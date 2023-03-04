@@ -50,8 +50,7 @@ namespace scn {
                 SourceRange& range,
                 code_point& cp)
             {
-                using char_type =
-                    char_type_for_encoding<ranges::range_value_t<SourceRange>>;
+                using char_type = ranges::range_value_t<SourceRange>;
                 alignas(char32_t) char_type buffer[4 / sizeof(char_type)]{};
                 const auto read_result = read_code_point(
                     range, span<char_type>{buffer, 4 / sizeof(char_type)});
@@ -61,10 +60,11 @@ namespace scn {
 
                 const auto decode_sv = std::basic_string_view<char_type>{
                     read_result->value.data(), read_result->value.size()};
-                const auto decode_result = decode_code_point(decode_sv, cp);
+                const auto decode_result = get_next_code_point(decode_sv);
                 if (!decode_result) {
                     return unexpected(decode_result.error());
                 }
+                cp = decode_result->value;
                 return read_result->iterator;
             }
         };
