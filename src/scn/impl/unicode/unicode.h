@@ -153,7 +153,7 @@ namespace scn {
                     reinterpret_cast<const char*>(input.data()), *len, &output);
             }
             else if constexpr (enc == encoding::utf16) {
-                result = simdutf::convert_utf16le_to_utf32(
+                result = simdutf::convert_utf16_to_utf32(
                     reinterpret_cast<const char16_t*>(input.data()), *len,
                     &output);
             }
@@ -183,7 +183,7 @@ namespace scn {
                 return simdutf::validate_utf8(input.data(), input.size());
             }
             else if constexpr (enc == encoding::utf16) {
-                return simdutf::validate_utf16le(
+                return simdutf::validate_utf16(
                     reinterpret_cast<const char16_t*>(input.data()),
                     input.size());
             }
@@ -212,7 +212,7 @@ namespace scn {
                                                        input.size());
             }
             else if constexpr (enc == encoding::utf16) {
-                return simdutf::utf32_length_from_utf16le(
+                return simdutf::utf32_length_from_utf16(
                     reinterpret_cast<char16_t*>(input.data()), input.size());
             }
             else if constexpr (enc == encoding::utf32) {
@@ -264,12 +264,12 @@ namespace scn {
             }
             else if constexpr (src_enc == encoding::utf16) {
                 if constexpr (dest_enc == encoding::utf8) {
-                    return simdutf::utf8_length_from_utf16le(
+                    return simdutf::utf8_length_from_utf16(
                         reinterpret_cast<const char16_t*>(input.data()),
                         input.size());
                 }
                 else {
-                    return simdutf::utf32_length_from_utf16le(
+                    return simdutf::utf32_length_from_utf16(
                         reinterpret_cast<const char16_t*>(input.data()),
                         input.size());
                 }
@@ -323,7 +323,7 @@ namespace scn {
                     reinterpret_cast<char32_t*>(output.data()));
             }
             else if constexpr (enc == encoding::utf16) {
-                offset = simdutf::convert_valid_utf16le_to_utf32(
+                offset = simdutf::convert_valid_utf16_to_utf32(
                     reinterpret_cast<const char16_t*>(input.data()),
                     input.size(), reinterpret_cast<char32_t*>(output.data()));
             }
@@ -362,7 +362,7 @@ namespace scn {
 
             if constexpr (src_enc == encoding::utf8) {
                 if constexpr (dest_enc == encoding::utf16) {
-                    return simdutf::convert_valid_utf8_to_utf16le(
+                    return simdutf::convert_valid_utf8_to_utf16(
                         input.data(), input.size(),
                         reinterpret_cast<char16_t*>(output.data()));
                 }
@@ -374,12 +374,12 @@ namespace scn {
             }
             else if constexpr (src_enc == encoding::utf16) {
                 if constexpr (dest_enc == encoding::utf8) {
-                    return simdutf::convert_valid_utf16le_to_utf8(
+                    return simdutf::convert_valid_utf16_to_utf8(
                         reinterpret_cast<const char16_t*>(input.data()),
                         input.size(), output.data());
                 }
                 else {
-                    return simdutf::convert_valid_utf16le_to_utf32(
+                    return simdutf::convert_valid_utf16_to_utf32(
                         reinterpret_cast<const char16_t*>(input.data()),
                         input.size(),
                         reinterpret_cast<char32_t*>(output.data()));
@@ -392,7 +392,7 @@ namespace scn {
                         input.size(), output.data());
                 }
                 else {
-                    return simdutf::convert_valid_utf32_to_utf16le(
+                    return simdutf::convert_valid_utf32_to_utf16(
                         reinterpret_cast<const char32_t*>(input.data()),
                         input.size(),
                         reinterpret_cast<char16_t*>(output.data()));

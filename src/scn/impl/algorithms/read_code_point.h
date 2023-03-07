@@ -24,6 +24,25 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+        template <typename Range>
+        scan_expected<ranges::borrowed_iterator_t<Range>>
+        read_code_point_impl_nocopy(Range&& range, span<unsigned char> buf)
+        {
+            static_assert(range_supports_nocopy<Range>());
+
+            static constexpr auto char_size =
+                sizeof(ranges::range_value_t<Range>);
+
+            if (range_nocopy_size(range) * char_size < buf.size()) {
+                return unexpected_scan_error(scan_error::invalid_encoding,
+                                             "EOF in the middle of code point");
+            }
+
+            std::memcpy(buf.data(), range_nocopy_data(range), buf.size());
+            return ranges::next(
+                ranges::begin(range),
+                static_cast<std::ptrdiff_t>(buf.size() / char_size));
+        }
 
         template <typename Range, typename U8>
         scan_expected<
@@ -48,18 +67,36 @@ namespace scn {
                 return {{it, buf.first(1)}};
             }
 
-            for (std::size_t i = 1; i < *len; ++i) {
-                if (it == ranges::end(range)) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_encoding,
-                        "EOF in the middle of UTF-8 code point");
-                }
-
-                const auto ch = *it;
-                buf[i] = static_cast<U8>(ch);
-                ++it;
+            if constexpr (range_supports_nocopy<Range>()) {
+                auto s = span<unsigned char>{
+                    reinterpret_cast<unsigned char*>(buf.data()), *len};
+                return read_code_point_impl_nocopy(SCN_FWD(range), s)
+                    .transform([s](auto iter) {
+                        return iterator_value_result<
+                            ranges::borrowed_iterator_t<Range>, span<U8>>{
+                            iter, {reinterpret_cast<U8*>(s.data()), s.size()}};
+                    });
             }
-            return {{it, buf.first(*len)}};
+            else {
+                SCN_EXPECT(*len <= 4);
+                for (std::size_t i = 1; i < *len; ++i) {
+                    if (it == ranges::end(range)) {
+                        return unexpected_scan_error(
+                            scan_error::invalid_encoding,
+                            "EOF in the middle of UTF-8 code point");
+                    }
+
+                    const auto ch = *it;
+
+                    SCN_GCC_PUSH
+                    SCN_GCC_IGNORE("-Wstringop-overflow")
+                    buf[i] = static_cast<U8>(ch);
+                    SCN_GCC_POP
+
+                    ++it;
+                }
+                return {{it, buf.first(*len)}};
+            }
         }
 
         template <typename Range, typename U16>
@@ -92,13 +129,6 @@ namespace scn {
 
             buf[1] = static_cast<U16>(*it);
             ++it;
-
-            if (utf16_code_point_length_by_starting_code_unit(buf[1]) != 0) {
-                // should be a low surrogate
-                return unexpected_scan_error(scan_error::invalid_encoding,
-                                             "Unpaired UTF-16 high surrogate");
-            }
-
             return {{it, buf.first(2)}};
         }
 

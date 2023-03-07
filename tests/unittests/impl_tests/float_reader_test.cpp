@@ -198,6 +198,14 @@ protected:
     static_assert(is_f32() || is_double_64() || is_long_double_64() ||
                   is_f80() || is_f128());
 
+#if SCN_LONG_DOUBLE_WIDTH == 64
+    static_assert(!is_long_double() || is_long_double_64());
+#elif SCN_LONG_DOUBLE_WIDTH == 80
+    static_assert(!is_long_double() || is_f80());
+#elif SCN_LONG_DOUBLE_WIDTH == 128
+    static_assert(!is_long_double() || is_f128());
+#endif
+
     static constexpr const char* get_length_flag()
     {
         if constexpr (std::is_same_v<float_type, long double>) {
@@ -258,22 +266,6 @@ protected:
         }
     }
 
-#ifdef __x86_64__
-#define SCN_IS_X86 1
-#elif defined(_M_X64)
-#define SCN_IS_X86 1
-#elif defined(i386)
-#define SCN_IS_X86 1
-#elif defined(__i386)
-#define SCN_IS_X86 1
-#elif defined(__i386__)
-#define SCN_IS_X86 1
-#elif defined(_M_IX86)
-#define SCN_IS_X86 1
-#else
-#define SCN_IS_X86 0
-#endif
-
     static auto get_subnormal()
     {
         if constexpr (is_f32()) {
@@ -285,22 +277,14 @@ protected:
         else if constexpr (is_long_double_64()) {
             return std::make_pair(5e-320l, "5e-320"sv);
         }
+#if SCN_LONG_DOUBLE_WIDTH > 64
         else if constexpr (is_f80()) {
             return std::make_pair(3e-4940l, "3e-4940"sv);
         }
-        // GCC warns about out-of-range literal here on x86.
-        // The value is out of range for f80, but not for f128.
-        // This branch is not taken on x86, where long double is never f128.
-        //
-        // For some reason, -Woverflow can't also be ignored
-#if !(SCN_GCC && SCN_IS_X86)
+#endif
+#if SCN_LONG_DOUBLE_WIDTH > 80
         else if constexpr (is_f128()) {
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
-
             return std::make_pair(5e-4960l, "5e-4960"sv);
-
-            SCN_CLANG_POP
         }
 #endif
     }
@@ -315,17 +299,14 @@ protected:
         else if constexpr (is_long_double_64()) {
             return std::make_pair(0x1.2p-1050l, "0x1.2p-1050"sv);
         }
+#if SCN_LONG_DOUBLE_WIDTH > 64
         else if constexpr (is_f80()) {
             return std::make_pair(0x1.2p-16400l, "0x1.2p-16400"sv);
         }
-#if !(SCN_GCC && SCN_IS_X86)
+#endif
+#if SCN_LONG_DOUBLE_WIDTH > 80
         else if constexpr (is_f128()) {
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
-
             return std::make_pair(0x1.2p-16450l, "0x1.2p-16450"sv);
-
-            SCN_CLANG_POP
         }
 #endif
     }
@@ -341,9 +322,11 @@ protected:
         else if constexpr (is_long_double_64()) {
             return std::make_pair(2e-308l, "2e-308"sv);
         }
+#if SCN_LONG_DOUBLE_WIDTH > 64
         else if constexpr (is_f80() || is_f128()) {
             return std::make_pair(3.2e-4932l, "3.2e-4932"sv);
         }
+#endif
     }
     static auto get_subnormal_max_hex()
     {
@@ -356,9 +339,11 @@ protected:
         else if constexpr (is_long_double_64()) {
             return std::make_pair(0x1.fp-1023l, "0x1.fp-1023"sv);
         }
+#if SCN_LONG_DOUBLE_WIDTH > 64
         else if constexpr (is_f80() || is_f128()) {
             return std::make_pair(0x1.fp-16383l, "0x1.fp-16383"sv);
         }
+#endif
     }
 
     static auto get_normal_min()
@@ -591,16 +576,20 @@ protected:
 using type_list = ::testing::Types<
     test_type_pack<classic_reader_interface, char, float>,
     test_type_pack<classic_reader_interface, char, double>,
-    test_type_pack<classic_reader_interface, char, long double>,
     test_type_pack<classic_reader_interface, wchar_t, float>,
     test_type_pack<classic_reader_interface, wchar_t, double>,
-    test_type_pack<classic_reader_interface, wchar_t, long double>,
     test_type_pack<localized_reader_interface, char, float>,
     test_type_pack<localized_reader_interface, char, double>,
-    test_type_pack<localized_reader_interface, char, long double>,
     test_type_pack<localized_reader_interface, wchar_t, float>,
-    test_type_pack<localized_reader_interface, wchar_t, double>,
-    test_type_pack<localized_reader_interface, wchar_t, long double>>;
+    test_type_pack<localized_reader_interface, wchar_t, double>
+#if SCN_LONG_DOUBLE_WIDTH != 0
+    ,
+    test_type_pack<classic_reader_interface, char, long double>,
+    test_type_pack<classic_reader_interface, wchar_t, long double>,
+    test_type_pack<localized_reader_interface, char, long double>,
+    test_type_pack<localized_reader_interface, wchar_t, long double>
+#endif
+    >;
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")

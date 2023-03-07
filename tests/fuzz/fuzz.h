@@ -82,7 +82,7 @@ namespace scn::fuzz {
                 auto size =
                     simdutf::utf16_length_from_utf8(sv.data(), sv.size());
                 wstring_buffer_transcoded_wide.resize(size);
-                (void)simdutf::convert_valid_utf8_to_utf16le(
+                (void)simdutf::convert_valid_utf8_to_utf16(
                     sv.data(), sv.size(),
                     reinterpret_cast<char16_t*>(
                         wstring_buffer_transcoded_wide.data()));

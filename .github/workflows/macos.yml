@@ -32,17 +32,14 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          locale -a
-          
           mkdir ${{ runner.workspace }}/build
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         env:
           CXX: ${{ matrix.cxx }}
-          STD: ${{ matrix.std }}
         run: |
-          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=$STD $GITHUB_WORKSPACE
+          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build

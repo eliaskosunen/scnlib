@@ -396,6 +396,8 @@ namespace scn {
                 return reinterpret_cast<const T*>(m_memory.data());
             }
 
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wcast-align")
             unexpected<E>* unexpected_ptr()
             {
                 return reinterpret_cast<unexpected<E>*>(m_memory.data());
@@ -404,6 +406,7 @@ namespace scn {
             {
                 return reinterpret_cast<const unexpected<E>*>(m_memory.data());
             }
+            SCN_GCC_POP
 
             static constexpr std::size_t required_size =
                 std::max(sizeof(T), sizeof(unexpected<E>));
@@ -487,6 +490,8 @@ namespace scn {
             }
 
         private:
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wcast-align")
             unexpected<E>* unexpected_ptr()
             {
                 return reinterpret_cast<unexpected<E>*>(m_memory.data());
@@ -495,6 +500,7 @@ namespace scn {
             {
                 return reinterpret_cast<const unexpected<E>*>(m_memory.data());
             }
+            SCN_GCC_POP
 
             static constexpr std::size_t required_size = sizeof(unexpected<E>);
             static constexpr std::size_t required_alignment =

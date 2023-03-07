@@ -18,12 +18,13 @@
 #include <gtest/gtest.h>
 
 #include <scn/impl/reader/common.h>
+#include <scn/util/memory.h>
 
 namespace {
     std::ptrdiff_t PositionOfFirstNonSpace(std::string_view src)
     {
         auto it = scn::impl::skip_classic_whitespace(src, true);
-        return scn::impl::range_nocopy_data(*it) - src.data();
+        return scn::detail::to_address(it->begin()) - src.data();
     }
 }  // namespace
 

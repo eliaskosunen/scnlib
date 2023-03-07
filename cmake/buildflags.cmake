@@ -1,9 +1,7 @@
 function(get_warning_flags flags)
-    set(${flags}
+    set(tmp
         $<$<CXX_COMPILER_ID:Clang>:
-            -ftemplate-backtrace-limit=0
             -Weverything
-            -Wpedantic -pedantic-errors
             -Wno-padded
             -Wno-c++98-compat
             -Wno-c++98-compat-pedantic
@@ -44,12 +42,16 @@ function(get_warning_flags flags)
             >
         $<$<CXX_COMPILER_ID:MSVC>:
             /W3
-            /D_SCL_SECURE_NO_WARNINGS
-            /D_CRT_SECURE_NO_WARNINGS
             /wd4324 # padding
-            /permissive->
+            /permissive->)
 
-            PARENT_SCOPE)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
+            NOT (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
+        set(tmp ${tmp}
+                -ftemplate-backtrace-limit=0)
+    endif()
+
+    set(${flags} ${tmp} PARENT_SCOPE)
 endfunction()
 
 function(get_werror_flags flags)
@@ -109,6 +111,21 @@ function(get_coverage_flags flags)
             PARENT_SCOPE)
 endfunction()
 
+function(disable_msvc_secure_flags target scope)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
+            CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        target_compile_definitions(${target} ${scope}
+                _CRT_SECURE_NO_WARNINGS
+                _SCL_SECURE_NO_WARNINGS)
+    endif()
+
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        target_compile_definitions(${target} ${scope}
+                _CRT_SECURE_NO_WARNINGS
+                _SCL_SECURE_NO_WARNINGS)
+    endif()
+endfunction()
+
 function(set_interface_flags target)
     if(SCN_PEDANTIC)
         get_warning_flags(warning_flags)
@@ -119,11 +136,10 @@ function(set_interface_flags target)
         target_compile_options(${target} INTERFACE ${werror_flags})
     endif()
 
+    disable_msvc_secure_flags(${target} INTERFACE)
     target_compile_options(${target} INTERFACE
             $<$<CXX_COMPILER_ID:MSVC>:
-            /bigobj
-            /D_SCL_SECURE_NO_WARNINGS
-            /D_CRT_SECURE_NO_WARNINGS>)
+            /bigobj>)
 endfunction()
 
 function(set_library_flags target)

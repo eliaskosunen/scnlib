@@ -665,8 +665,9 @@ namespace scn {
                             "Failed to scan float"};
                 }
 
-                return {scan_error::invalid_scanned_value,
-                        "Failed to scan float: unknown failure"};
+                // Not actually an error
+                // libcxx gets here when parsing a subnormal
+                return {};
             }
         }  // namespace
 

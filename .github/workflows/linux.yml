@@ -181,6 +181,47 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: ctest --output-on-failure
 
+  libcxx:
+    runs-on: ubuntu-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 20.04, 22.04 ]
+        std: [ 17, 20 ]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: lukka/get-cmake@latest
+
+      - name: Create Build Environment
+        run: |
+          mkdir ${{ runner.workspace }}/build
+          
+          sudo locale-gen en_US.UTF-8
+          sudo locale-gen fi_FI.UTF-8
+          sudo update-locale
+          sudo locale -a
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
+                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                -DCMAKE_CXX_FLAGS="-stdlib=libc++" -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++ -lc++abi" \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . -- -k 0
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest --output-on-failure
+
   alpine:
     runs-on: ubuntu-latest
     steps:
@@ -209,59 +250,12 @@ jobs:
         run: |
           ./alpine-run.sh bash -c "cd build && ctest --output-on-failure"
 
-  codecov:
-    runs-on: ubuntu-22.04
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: lukka/get-cmake@latest
-
-      - name: Create Build Environment
-        run: |
-          sudo locale-gen en_US.UTF-8
-          sudo locale-gen fi_FI.UTF-8
-          sudo update-locale
-          sudo locale -a
-          
-          $APT_INSTALL lcov
-          
-          mkdir ${{ runner.workspace }}/build
-          mkdir ${{ runner.workspace }}/report
-
-      - name: Run CMake
-        working-directory: ${{ runner.workspace }}/build
-        run: |
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-                -DCMAKE_CXX_STANDARD=20 \
-                -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON -DSCN_COVERAGE=ON \
-                $GITHUB_WORKSPACE
-
-      - name: Build
-        working-directory: ${{ runner.workspace }}/build
-        run: |
-          cmake --build . -- -k 0
-
-      - name: Generate Coverage Report
-        working-directory: ${{ runner.workspace }}/build
-        run: |
-          ./coverage.sh
-          cp coverage-filtered.info ${{ runner.workspace }}/report/coverage.info
-
-      - name: Upload Coverage Report
-        uses: codecov/codecov-action@v3
-        with:
-          directory: ${{ runner.workspace }}/report
-          fail_ci_if_error: true
-          verbose: true
-
-  sanitize:
+  asan-and-ubsan:
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         std: [ 17, 20 ]
-        san: [ asan-and-ubsan, msan ]
         cxx: [ clang++-14 ]
 
     steps:
@@ -276,17 +270,6 @@ jobs:
           sudo update-locale
           sudo locale -a
           
-          if [[ "${{ matrix.san }}" == "asan-and-ubsan" ]]; then
-            echo "asan_flag=ON" >> $GITHUB_ENV
-            echo "ubsan_flag=ON" >> $GITHUB_ENV
-            echo "msan_flag=OFF" >> $GITHUB_ENV
-          fi
-          if [[ "${{ matrix.san }}" == "msan" ]]; then
-            echo "asan_flag=OFF" >> $GITHUB_ENV
-            echo "ubsan_flag=OFF" >> $GITHUB_ENV
-            echo "msan_flag=ON" >> $GITHUB_ENV
-          fi
-
           mkdir ${{ runner.workspace }}/build
 
       - name: Run CMake
@@ -295,9 +278,7 @@ jobs:
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
                 -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
                 -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
-                -DSCN_USE_ASAN=${{ env.asan_flag }} \
-                -DSCN_USE_UBSAN=${{ env.ubsan_flag }} \
-                -DSCN_USE_MSAN=${{ env.msan_flag }} \
+                -DSCN_USE_ASAN=ON -DSCN_USE_UBSAN=ON \
                 $GITHUB_WORKSPACE
 
       - name: Build

@@ -148,6 +148,7 @@ target_link_libraries(scn
 set_property(TARGET scn PROPERTY SOVERSION 2)
 
 add_library(scn::scn ALIAS scn)
+disable_msvc_secure_flags(scn PRIVATE)
 
 add_library(scn_internal INTERFACE)
 target_link_libraries(scn_internal INTERFACE scn::scn)

@@ -469,10 +469,10 @@ namespace scn {
                       typename State,
                       typename Iterator,
                       typename Sentinel>
-            scan_error do_read_decimal_fast64(State& state,
-                                              Iterator& it,
-                                              Sentinel end,
-                                              bool& stop_fast)
+            SCN_MAYBE_UNUSED scan_error do_read_decimal_fast64(State& state,
+                                                               Iterator& it,
+                                                               Sentinel end,
+                                                               bool& stop_fast)
             {
                 SCN_EXPECT(end - it >= 8);
                 uint64_t word{};
@@ -589,8 +589,8 @@ namespace scn {
             if ((m_options & allow_thsep) == 0) {
                 // No thsep
                 bool stop_reading = false;
-                if constexpr (std::is_same_v<CharT, char> &&
-                              sizeof(void*) == 8) {
+                if constexpr (std::is_same_v<CharT, char> && !SCN_IS_32BIT &&
+                              !SCN_IS_BIG_ENDIAN && SCN_HAS_BITS_CTZ) {
                     if (state.ubase == 10) {
                         while (source.end() - it >= 8 && !stop_reading) {
                             if (auto err = do_read_decimal_fast64<T>(

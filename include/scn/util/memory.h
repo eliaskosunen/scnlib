@@ -27,9 +27,7 @@ SCN_GCC_IGNORE("-Wnoexcept")
 #include <iterator>
 SCN_GCC_POP
 
-#if SCN_MSVC && SCN_HAS_STRING_VIEW
 #include <string_view>
-#endif
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -128,7 +126,7 @@ namespace scn {
 #endif
 
 // Workaround for MSVC _String_view_iterator
-#if SCN_MSVC
+#if SCN_STDLIB_MS_STL
         template <typename Traits>
         struct pointer_traits<std::_String_view_iterator<Traits>> {
             using iterator = std::_String_view_iterator<Traits>;
@@ -141,6 +139,19 @@ namespace scn {
                 // operator-> of _String_view_iterator
                 // is checked for past-the-end dereference,
                 // even though operator-> isn't dereferencing anything :)))
+                return it._Unwrapped();
+            }
+        };
+
+        template <typename Traits>
+        struct pointer_traits<std::_String_iterator<Traits>> {
+            using iterator = std::_String_iterator<Traits>;
+            using pointer = typename iterator::pointer;
+            using element_type = typename iterator::value_type;
+            using difference_type = typename iterator::difference_type;
+
+            static constexpr pointer to_address(const iterator& it) SCN_NOEXCEPT
+            {
                 return it._Unwrapped();
             }
         };

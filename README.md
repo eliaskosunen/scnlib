@@ -152,10 +152,13 @@ int main() {
  * `"{python}"`-like format string syntax
    * Including compile-time format string checking
  * Minimal code size increase (in user code, see Benchmarks)
- * Usable without exceptions or RTTI, `<iostream>`s, or even dynamic allocation
+ * Usable without exceptions or RTTI, `<iostream>`s, or even dynamic allocation (*TODO*)
    * Configurable through build flags
    * Limited functionality
- * Supports Unicode (input is assumed to be UTF-8, UTF-16, or UTF-32)
+ * Supports, and requires Unicode (input is UTF-8, UTF-16, or UTF-32)
+ * Highly portable
+   * Tested on multiple platforms, see CI
+   * Works on multiple architectures, tested on x86, x86-64, arm, aarch64, riscv64, ppc64le, and riscv64
 
 ## Installing
 

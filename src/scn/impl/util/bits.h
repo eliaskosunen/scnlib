@@ -61,9 +61,15 @@ namespace scn {
 #elif SCN_POSIX
             return ::ctzll(val);
 #else
-#error No CTZ implementation found
+#define SCN_HAS_BITS_CTZ 0
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
 #endif
         }
+
+#ifndef SCN_HAS_BITS_CTZ
+#define SCN_HAS_BITS_CTZ 1
+#endif
 
         constexpr uint64_t has_zero_byte(uint64_t word)
         {

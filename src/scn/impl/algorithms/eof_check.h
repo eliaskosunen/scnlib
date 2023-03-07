@@ -25,37 +25,47 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+#if !SCN_STD_RANGES && SCN_STDLIB_MS_STL
+#define SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND 1
+#else
+#define SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND 0
+#endif
+
         template <typename T>
         constexpr bool range_supports_nocopy() SCN_NOEXCEPT
         {
+#if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
             return ranges::contiguous_range<T> ||
                    (ranges::random_access_range<T> &&
                     detail::can_make_address_from_iterator<
                         ranges::iterator_t<T>>::value);
+#else
+            return ranges::contiguous_range<T>;
+#endif
         }
 
         template <typename R>
         constexpr auto range_nocopy_data(R&& r) SCN_NOEXCEPT
         {
             static_assert(range_supports_nocopy<R>());
+#if SCN_STDLIB_MS_STL
             return detail::to_address(ranges::begin(SCN_FWD(r)));
+#else
+            return ranges::data(SCN_FWD(r));
+#endif
         }
 
         template <typename R>
         constexpr auto range_nocopy_size(R&& r) SCN_NOEXCEPT
         {
             static_assert(range_supports_nocopy<R>());
-            if constexpr (ranges::contiguous_range<R> &&
-                          ranges::sized_range<R>) {
-                return static_cast<size_t>(ranges::size(SCN_FWD(r)));
-            }
-            else if constexpr (ranges::random_access_range<R> &&
-                               detail::can_make_address_from_iterator<
-                                   ranges::iterator_t<R>>::value) {
-                return static_cast<size_t>(
-                    ranges::distance(detail::to_address(ranges::begin(r)),
-                                     detail::to_address(ranges::end(r))));
-            }
+#if SCN_STDLIB_MS_STL
+            return static_cast<size_t>(
+                ranges::distance(detail::to_address(ranges::begin(r)),
+                                 detail::to_address(ranges::end(r))));
+#else
+            return static_cast<size_t>(ranges::size(SCN_FWD(r)));
+#endif
         }
 
         template <typename I, typename S>

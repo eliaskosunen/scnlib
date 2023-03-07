@@ -72,7 +72,7 @@ namespace scn {
         template <typename U = std::add_const_t<T>,
                   typename E = element_type,
                   typename = std::enable_if_t<std::is_same_v<E, value_type>>>
-        constexpr span(span<U> other) : m_ptr(other.m_ptr), m_end(other.m_end)
+        constexpr span(span<U> other) : m_ptr(other.begin()), m_end(other.end())
         {
         }
 

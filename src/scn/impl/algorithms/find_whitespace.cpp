@@ -100,7 +100,7 @@ namespace scn {
             }
 
             template <typename GetMask, typename Fallback>
-            std::string_view::iterator find_64_match_impl(
+            SCN_MAYBE_UNUSED std::string_view::iterator find_64_match_impl(
                 std::string_view source,
                 GetMask get_mask,
                 Fallback fallback)
@@ -123,7 +123,7 @@ namespace scn {
                 return fallback({source.data() + i, source.size() - i});
             }
 
-            std::string_view::iterator find_classic_space_64_impl(
+            SCN_MAYBE_UNUSED std::string_view::iterator find_classic_space_64_impl(
                 std::string_view source)
             {
                 const auto get_mask = [](uint64_t word) -> uint64_t {
@@ -144,7 +144,7 @@ namespace scn {
             }
 
             template <typename GetMask, typename Fallback>
-            std::string_view::iterator find_64_nonmatch_impl(
+            SCN_MAYBE_UNUSED std::string_view::iterator find_64_nonmatch_impl(
                 std::string_view source,
                 GetMask get_mask,
                 Fallback fallback)
@@ -165,7 +165,7 @@ namespace scn {
                 return fallback({source.data() + i, source.size() - i});
             }
 
-            std::string_view::iterator find_classic_nonspace_64_impl(
+            SCN_MAYBE_UNUSED std::string_view::iterator find_classic_nonspace_64_impl(
                 std::string_view source)
             {
                 const auto get_mask = [](uint64_t word) -> uint64_t {
@@ -185,7 +185,7 @@ namespace scn {
                                              find_classic_nonspace_simple_impl);
             }
 
-            std::string_view::iterator find_nondecimal_digit_64_impl(
+            SCN_MAYBE_UNUSED std::string_view::iterator find_nondecimal_digit_64_impl(
                 std::string_view source)
             {
                 const auto get_mask = [](uint64_t word) -> uint64_t {
@@ -200,7 +200,7 @@ namespace scn {
         std::string_view::iterator find_classic_space_narrow_fast(
             std::string_view source)
         {
-            if constexpr (sizeof(void*) == 8) {
+            if (sizeof(void*) == 8 && !SCN_IS_BIG_ENDIAN) {
                 return find_classic_space_64_impl(source);
             } else {
                 return find_classic_space_simple_impl(source);
@@ -210,7 +210,7 @@ namespace scn {
         std::string_view::iterator find_classic_nonspace_narrow_fast(
             std::string_view source)
         {
-            if constexpr (sizeof(void*) == 8) {
+            if (sizeof(void*) == 8 && !SCN_IS_BIG_ENDIAN) {
                 return find_classic_nonspace_64_impl(source);
             } else {
                 return find_classic_nonspace_simple_impl(source);
@@ -220,7 +220,7 @@ namespace scn {
         std::string_view::iterator find_nondecimal_digit_narrow_fast(
             std::string_view source)
         {
-            if constexpr (sizeof(void*) == 8) {
+            if (sizeof(void*) == 8 && !SCN_IS_BIG_ENDIAN) {
                 return find_nondecimal_digit_64_impl(source);
             } else {
                 return find_nondecimal_digit_simple_impl(source);

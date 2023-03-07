@@ -12,7 +12,7 @@ on:
       - dev
 
 jobs:
-  visual-studio:
+  msvc:
     runs-on: windows-${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -42,14 +42,14 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: ctest -C ${{ matrix.type }} --output-on-failure
 
-  clang:
+  clang-cl:
     runs-on: windows-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-          os: [ 2019, 2022 ]
-          std: [ 17, 20 ]
-          platform: [ x64 ]
+        os: [ 2019, 2022 ]
+        std: [ 17, 20 ]
+        platform: [ x64 ]
 
     steps:
       - uses: actions/checkout@v3
@@ -61,7 +61,8 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
-          cmake -T ClangCL -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_CI=ON $GITHUB_WORKSPACE
+          cmake -T ClangCL -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+            -DSCN_CI=ON -DSCN_PEDANTIC=OFF -DSCN_WERROR=OFF $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
@@ -79,21 +80,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # x64 gcc
-          - msystem: "MINGW64"
-            install: mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-gcc
-          # x32 gcc
-          - msystem: "MINGW32"
-            install: mingw-w64-i686-cmake mingw-w64-i686-ninja mingw-w64-i686-gcc
-          # x64 clang
-          - msystem: "MINGW64"
-            install: mingw-w64-x86_64-libxml2 mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-clang
-          # x32 clang
-          - msystem: "MINGW32"
-            install: mingw-w64-i686-libxml2 mingw-w64-i686-cmake mingw-w64-i686-ninja mingw-w64-i686-clang
-    env:
-      CMAKE_GENERATOR: Ninja
+        sys: [ mingw32, mingw64, ucrt64, clang64 ]
 
     steps:
       - uses: actions/checkout@v3
@@ -101,21 +88,20 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           update: true
-          msystem: ${{ matrix.msystem }}
-          install: ${{ matrix.install }}
+          msystem: ${{ matrix.sys }}
+          install: >-
+            git
+            make
+          pacboy: >-
+            toolchain:p
+            cmake:p
+            ninja:p
 
-      - name: Create Build Environment
-        run: mkdir ${{ runner.workspace }}/build
-
-      - name: Run CMake
-        working-directory: ${{ runner.workspace }}/build
-        run: cmake -DSCN_CI=ON $GITHUB_WORKSPACE
-
-      - name: Build
-        working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --parallel
-
-      - name: Test
-        working-directory: ${{ runner.workspace }}/build
-        run: ctest --output-on-failure
-
+      - name: Build and test
+        run: |
+          mkdir build
+          cd build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON ..
+          cmake --build . --parallel
+          ctest --output-on-failure

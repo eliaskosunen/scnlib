@@ -70,8 +70,9 @@ namespace scn {
                               std::basic_string_view<CharT> source,
                               T& value)
             {
-                return facet.get(ranges::begin(source), ranges::end(source),
-                                 stream, err, value);
+                auto data = range_nocopy_data(source);
+                return facet.get(data, data + range_nocopy_size(source), stream,
+                                 err, value);
             }
 
             template <typename T>
@@ -152,15 +153,16 @@ namespace scn {
                     return unexpected(e);
                 }
 
-                using scanned_type = std::conditional_t<std::is_signed_v<T>,
-                                                        long long, unsigned long long>;
+                using scanned_type =
+                    std::conditional_t<std::is_signed_v<T>, long long,
+                                       unsigned long long>;
                 scanned_type tmp{};
                 auto it = do_get_facet(facet, stream, err, source, tmp);
                 if (auto e = check_range_unsupported<T>(tmp, err); !e) {
                     return unexpected(e);
                 }
                 value = static_cast<T>(tmp);
-                return {it};
+                return detail::make_string_view_iterator(source, it);
             }
 
 #define SCN_DO_GET_SUPPORTED(T)                                \
@@ -202,9 +204,8 @@ namespace scn {
             make_istream(s);
 
             auto stdloc = m_locale.get<std::locale>();
-            const auto& facet = get_or_add_facet<
-                std::num_get<CharT, ranges::iterator_t<string_view_type>>>(
-                stdloc);
+            const auto& facet =
+                get_or_add_facet<std::num_get<CharT, const CharT*>>(stdloc);
 
             std::ios_base::iostate err = std::ios_base::goodbit;
             return do_get(value, facet, s, err, source);
