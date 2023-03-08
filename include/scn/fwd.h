@@ -189,7 +189,16 @@ namespace scn {
 
     // detail/visitor.h, detail/vscan.h: empty
 
-    // util/algorithm.h, util/expected.h: empty
+    // util/algorithm.h: empty
+
+    // util/buffer.h
+
+    namespace detail {
+        template <typename T, size_t N>
+        class basic_buffer;
+    }  // namespace detail
+
+    // util/expected.h: empty
 
     // util/memory.h
 
