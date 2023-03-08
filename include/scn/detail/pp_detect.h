@@ -146,6 +146,13 @@
 #define SCN_WINDOWS_64BIT 0
 #endif
 
+// MinGW
+#if defined(__MINGW32__) || defined(__MINGW64__)
+#define SCN_MINGW 1
+#else
+#define SCN_MINGW 0
+#endif
+
 #ifdef _MSVC_LANG
 #define SCN_MSVC_LANG _MSVC_LANG
 #else
@@ -443,15 +450,15 @@
 #define SCN_IS_BIG_ENDIAN 1
 #endif
 
-#endif // defined __BYTE_ORDER__ && defined __ORDER_BIG_ENDIAN__
+#endif  // defined __BYTE_ORDER__ && defined __ORDER_BIG_ENDIAN__
 
 // Detect architecture
 #if defined(__x86_64__) || defined(_M_AMD64)
 #define SCN_IS_X86_64 1
-#define SCN_IS_32BIT 0
+#define SCN_IS_32BIT  0
 #elif defined(__i386__) || defined(_M_IX86)
 #define SCN_IS_X86_32 1
-#define SCN_IS_32BIT 1
+#define SCN_IS_32BIT  1
 
 #elif defined(__aarch64__) || defined(_M_ARM64)
 #define SCN_IS_ARM64 1
@@ -468,10 +475,10 @@
 #define SCN_IS_32BIT 1
 
 #elif defined(__s390__)
-#define SCN_IS_S390 1
+#define SCN_IS_S390  1
 #define SCN_IS_32BIT 1
 
-#endif // defined __x86_64__ || defined _M_AMD64
+#endif  // defined __x86_64__ || defined _M_AMD64
 
 #ifndef SCN_IS_X86_64
 #define SCN_IS_X86_64 0
@@ -518,7 +525,8 @@
 #endif
 
 // long double width
-#if SCN_WINDOWS || SCN_IS_ARM32 || (SCN_IS_ARM64 && SCN_APPLE)
+#if (SCN_WINDOWS && !SCN_GCC_COMPAT) || SCN_IS_ARM32 || \
+    (SCN_IS_ARM64 && SCN_APPLE)
 #define SCN_LONG_DOUBLE_WIDTH 64
 #elif SCN_IS_ARM64 && !SCN_APPLE && !SCN_WINDOWS
 #define SCN_LONG_DOUBLE_WIDTH 128

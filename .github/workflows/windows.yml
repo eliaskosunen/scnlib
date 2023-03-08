@@ -103,5 +103,5 @@ jobs:
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
             -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON ..
-          cmake --build . --parallel
+          cmake --build . --parallel -- -k 0
           ctest --output-on-failure

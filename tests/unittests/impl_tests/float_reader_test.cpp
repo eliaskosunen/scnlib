@@ -130,6 +130,18 @@ struct test_type_pack {
 };
 
 template <typename T>
+void dump_bytes(T val)
+{
+    alignas(T) std::array<unsigned char, sizeof(T)> bytes{};
+    std::memcpy(bytes.data(), &val, sizeof(T));
+
+    for (unsigned char b : bytes) {
+        std::printf("%02x ", static_cast<unsigned>(b));
+    }
+    std::puts("");
+}
+
+template <typename T>
 [[nodiscard]] testing::AssertionResult check_floating_eq(T a, T b)
 {
     SCN_GCC_COMPAT_PUSH
@@ -349,12 +361,12 @@ protected:
     static auto get_normal_min()
     {
         auto val = std::numeric_limits<float_type>::min();
-        return std::make_pair(val, format_float(val, ".24", "e"));
+        return std::make_pair(val, format_float(val, ".48", "e"));
     }
     static auto get_normal_min_hex()
     {
         auto val = std::numeric_limits<float_type>::min();
-        return std::make_pair(val, format_float(val, "", "a"));
+        return std::make_pair(val, format_float(val, ".32", "a"));
     }
 
     static auto get_underflow()
@@ -391,12 +403,12 @@ protected:
     static auto get_maximum()
     {
         auto val = std::numeric_limits<float_type>::max();
-        return std::make_pair(val, format_float(val, ".24", "e"));
+        return std::make_pair(val, format_float(val, ".48", "e"));
     }
     static auto get_maximum_hex()
     {
         auto val = std::numeric_limits<float_type>::max();
-        return std::make_pair(val, format_float(val, ".16", "a"));
+        return std::make_pair(val, format_float(val, ".32", "a"));
     }
 
     static auto get_overflow()

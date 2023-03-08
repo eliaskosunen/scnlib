@@ -96,7 +96,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --parallel
+        run: cmake --build . --parallel -- -k
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build

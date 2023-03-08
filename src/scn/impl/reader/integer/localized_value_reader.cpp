@@ -138,7 +138,7 @@ namespace scn {
                 if (auto e = check_range_supported(value, err); !e) {
                     return unexpected(e);
                 }
-                return {it};
+                return detail::make_string_view_iterator(source, it);
             }
 
             template <typename T, typename CharT, typename Facet>

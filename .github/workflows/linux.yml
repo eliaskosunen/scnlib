@@ -182,11 +182,10 @@ jobs:
         run: ctest --output-on-failure
 
   libcxx:
-    runs-on: ubuntu-${{ matrix.os }}
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        os: [ 20.04, 22.04 ]
         std: [ 17, 20 ]
 
     steps:
@@ -244,7 +243,7 @@ jobs:
 
       - name: Build
         run: |
-          ./alpine-run.sh cmake --build build --parallel
+          ./alpine-run.sh cmake --build build --parallel -- -k
 
       - name: Test
         run: |
