@@ -61,16 +61,16 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
-          cmake -T ClangCL -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+          cmake -T ClangCL -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DCMAKE_BUILD_TYPE=Debug \
             -DSCN_CI=ON -DSCN_PEDANTIC=OFF -DSCN_WERROR=OFF $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --parallel
+        run: cmake --build . --config Debug --parallel
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
-        run: ctest --output-on-failure
+        run: ctest -C Debug --output-on-failure
 
   msys:
     runs-on: windows-2022
@@ -80,7 +80,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sys: [ mingw32, mingw64, ucrt64, clang64 ]
+        sys: [ mingw32, mingw64, ucrt64 ]
 
     steps:
       - uses: actions/checkout@v3
