@@ -15,6 +15,8 @@ v1 required C++11 in order to compile. v2, at least at this point, requires C++1
 Header files changed
 --------------------
 
+The base header is renamed from ``<scn/scn.h>`` in v1 to ``<scn/scan.h>`` in v2.
+
 ``<scn/tuple_return.h>`` is removed in v2: no longer necessary, "tuple return" is now the only available API.
 
 ``<scn/all.h>`` is removed in v2. Include the required headers explicitly to get the same behavior.
