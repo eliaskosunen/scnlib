@@ -25,9 +25,6 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        template <typename... T>
-        void valid_expr(T&&...);
-
         template <std::size_t I>
         struct priority_tag : priority_tag<I - 1> {};
         template <>
@@ -52,121 +49,6 @@ namespace scn {
         template <typename T, template <typename...> class Templ>
         inline constexpr bool is_specialization_of_v =
             is_specialization_of<T, Templ>::value;
-
-        // tag_invoke
-
-        namespace tginv {
-            namespace adl {
-                template <typename Tag, typename... Args>
-                constexpr auto adl_tag_invoke(Tag&& tag, Args&&... args)
-                    SCN_NOEXCEPT_P(noexcept(tag_invoke(SCN_FWD(tag),
-                                                       SCN_FWD(args)...)))
-                        -> decltype(tag_invoke(SCN_FWD(tag), SCN_FWD(args)...))
-                {
-                    return tag_invoke(SCN_FWD(tag), SCN_FWD(args)...);
-                }
-            }  // namespace adl
-
-            struct fn {
-                template <typename Tag, typename... Args>
-                constexpr auto operator()(Tag&& tag, Args&&... args) const
-                    SCN_NOEXCEPT_P(noexcept(
-                        adl::adl_tag_invoke(SCN_FWD(tag), SCN_FWD(args)...)))
-                        -> decltype(adl::adl_tag_invoke(SCN_FWD(tag),
-                                                        SCN_FWD(args)...))
-                {
-                    return adl::adl_tag_invoke(SCN_FWD(tag), SCN_FWD(args)...);
-                }
-            };
-        }  // namespace tginv
-
-        inline constexpr tginv::fn tag_invoke{};
-
-        template <bool, typename Tag, typename... Args>
-        struct is_nothrow_tag_invocable_t : std::false_type {};
-        template <typename Tag, typename... Args>
-        struct is_nothrow_tag_invocable_t<true, Tag, Args...>
-            : std::integral_constant<
-                  bool,
-                  std::is_nothrow_invocable_v<decltype(tag_invoke),
-                                              Tag,
-                                              Args...>> {};
-
-        template <typename Tag, typename... Args>
-        struct is_tag_invocable
-            : std::is_invocable<decltype(tag_invoke), Tag, Args...> {};
-        template <typename Tag, typename... Args>
-        inline constexpr bool is_tag_invocable_v =
-            is_tag_invocable<Tag, Args...>::value;
-
-        template <typename Tag, typename... Args>
-        struct is_nothrow_tag_invocable
-            : is_nothrow_tag_invocable_t<is_tag_invocable_v<Tag, Args...>,
-                                         Tag,
-                                         Args...> {};
-        template <typename Tag, typename... Args>
-        inline constexpr bool is_nothrow_tag_invocable_v =
-            is_nothrow_tag_invocable<Tag, Args...>::value;
-
-        template <auto& Name>
-        using tag_t = remove_cvref_t<decltype(Name)>;
-
-        struct nonesuch {
-            nonesuch() = delete;
-            nonesuch(const nonesuch&) = delete;
-            nonesuch(nonesuch&&) = delete;
-            nonesuch& operator=(const nonesuch&) = delete;
-            nonesuch& operator=(nonesuch&&) = delete;
-            ~nonesuch() = delete;
-        };
-
-        template <class Default,
-                  class AlwaysVoid,
-                  template <class...>
-                  class Op,
-                  class... Args>
-        struct detector {
-            using value_t = std::false_type;
-            using type = Default;
-        };
-
-        template <class Default, template <class...> class Op, class... Args>
-        struct detector<Default, std::void_t<Op<Args...>>, Op, Args...> {
-            using value_t = std::true_type;
-            using type = Op<Args...>;
-        };
-
-        template <template <class...> class Op, class... Args>
-        using is_detected =
-            typename detector<nonesuch, void, Op, Args...>::value_t;
-
-        template <template <class...> class Op, class... Args>
-        using detected_t = typename detector<nonesuch, void, Op, Args...>::type;
-
-        template <class Default, template <class...> class Op, class... Args>
-        using detected_or = detector<Default, void, Op, Args...>;
-
-        template <template <class...> class Op, class... Args>
-        constexpr inline bool is_detected_v = is_detected<Op, Args...>::value;
-
-        template <class Default, template <class...> class Op, class... Args>
-        using detected_or_t = typename detected_or<Default, Op, Args...>::type;
-
-        template <class Expected, template <class...> class Op, class... Args>
-        using is_detected_exact =
-            std::is_same<Expected, detected_t<Op, Args...>>;
-
-        template <class Expected, template <class...> class Op, class... Args>
-        constexpr inline bool is_detected_exact_v =
-            is_detected_exact<Expected, Op, Args...>::value;
-
-        template <class To, template <class...> class Op, class... Args>
-        using is_detected_convertible =
-            std::is_convertible<detected_t<Op, Args...>, To>;
-
-        template <class To, template <class...> class Op, class... Args>
-        constexpr inline bool is_detected_convertible_v =
-            is_detected_convertible<To, Op, Args...>::value;
     }  // namespace detail
 
     SCN_END_NAMESPACE

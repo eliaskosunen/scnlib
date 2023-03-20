@@ -32,6 +32,7 @@ namespace scn {
         struct reader_error_handler {
             constexpr void on_error(const char* msg)
             {
+                SCN_UNLIKELY_ATTR
                 m_msg = msg;
             }
             explicit constexpr operator bool() const
@@ -253,6 +254,7 @@ namespace scn {
 
             auto result = whitespace_skipper<char_type>{}.skip_classic(range);
             if (!allow_exhaustion && is_range_eof(result, ranges::end(range))) {
+                SCN_UNLIKELY_ATTR
                 return unexpected_scan_error(scan_error::end_of_range, "EOF");
             }
             return result;
@@ -271,6 +273,7 @@ namespace scn {
                           -> scan_expected<ranges::iterator_t<SourceRange>> {
                     if (!allow_exhaustion &&
                         is_range_eof(it, ranges::end(range))) {
+                        SCN_UNLIKELY_ATTR
                         return unexpected_scan_error(scan_error::end_of_range,
                                                      "EOF");
                     }
@@ -309,7 +312,7 @@ namespace scn {
             {
                 reader_error_handler eh{};
                 get_derived().check_specs_impl(specs, eh);
-                if (!eh) {
+                if (SCN_UNLIKELY(!eh)) {
                     return {scan_error::invalid_format_string, eh.m_msg};
                 }
                 return {};
@@ -332,7 +335,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_specs(
-                Range& range,
+                Range range,
                 const detail::basic_format_specs<CharT>& specs,
                 T& value,
                 detail::locale_ref loc)
@@ -381,7 +384,7 @@ namespace scn {
                     return unexpected(src_read.error());
                 }
 
-                if (src_read->value.empty()) {
+                if (SCN_UNLIKELY(src_read->value.empty())) {
                     return unexpected_scan_error(
                         scan_error::invalid_scanned_value,
                         "Failed to scan value: no valid characters found");

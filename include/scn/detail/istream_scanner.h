@@ -143,11 +143,13 @@ namespace scn {
                     return unexpected_scan_error(scan_error::end_of_range,
                                                  "EOF");
                 }
-                if (stream.bad()) {
+                if (SCN_UNLIKELY(stream.bad())) {
                     return unexpected_scan_error(
                         scan_error::bad_source_error,
                         "Bad std::istream after reading");
                 }
+
+                SCN_UNLIKELY_ATTR
                 return unexpected_scan_error(
                     scan_error::invalid_scanned_value,
                     "Failed to read with std::istream");

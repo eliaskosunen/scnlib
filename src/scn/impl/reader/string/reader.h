@@ -45,7 +45,8 @@ namespace scn {
             }
             else {
                 SCN_UNUSED(buffer);
-                if (auto e = transcode_to_string(result.value, value); !e) {
+                if (auto e = transcode_to_string(result.value, value);
+                    SCN_UNLIKELY(!e)) {
                     return unexpected_scan_error(scan_error::invalid_encoding,
                                                  "Transcode failed");
                 }
@@ -81,7 +82,7 @@ namespace scn {
             {
                 reader_error_handler eh{};
                 detail::check_string_type_specs(specs, eh);
-                if (!eh) {
+                if (SCN_UNLIKELY(!eh)) {
                     return {scan_error::invalid_format_string, eh.m_msg};
                 }
                 set_type_from_specs(specs);
@@ -132,7 +133,7 @@ namespace scn {
                 const detail::basic_format_specs<CharT>& specs,
                 detail::locale_ref loc)
             {
-                if (specs.set_string.empty()) {
+                if (SCN_UNLIKELY(specs.set_string.empty())) {
                     return scan_error{
                         scan_error::invalid_format_string,
                         "Empty [character set] specifier is not valid"};
@@ -142,12 +143,13 @@ namespace scn {
                 }
                 else if (detail::to_address(*ret) !=
                          detail::to_address(specs.set_string.end())) {
+                    SCN_UNLIKELY_ATTR
                     return scan_error{
                         scan_error::invalid_format_string,
                         "[character set] specifier not exhausted"};
                 }
 
-                if (auto e = format_parser.sanitize(loc); !e) {
+                if (auto e = format_parser.sanitize(loc); SCN_UNLIKELY(!e)) {
                     return e;
                 }
                 return scan_error{};
@@ -262,7 +264,7 @@ namespace scn {
                         character_set_localized_format_parser<SourceCharT>{};
                     if (auto e =
                             this->parse_set_format(format_parser, specs, loc);
-                        !e) {
+                        SCN_UNLIKELY(!e)) {
                         return unexpected(e);
                     }
 
@@ -276,7 +278,7 @@ namespace scn {
                 auto format_parser =
                     character_set_classic_format_parser<SourceCharT>{};
                 if (auto e = this->parse_set_format(format_parser, specs, loc);
-                    !e) {
+                    SCN_UNLIKELY(!e)) {
                     return unexpected(e);
                 }
 
@@ -419,7 +421,7 @@ namespace scn {
                         character_set_localized_format_parser<SourceCharT>{};
                     if (auto e =
                             this->parse_set_format(format_parser, specs, loc);
-                        !e) {
+                        SCN_UNLIKELY(!e)) {
                         return unexpected(e);
                     }
 
@@ -430,7 +432,7 @@ namespace scn {
                 auto format_parser =
                     character_set_classic_format_parser<SourceCharT>{};
                 if (auto e = this->parse_set_format(format_parser, specs, loc);
-                    !e) {
+                    SCN_UNLIKELY(!e)) {
                     return unexpected(e);
                 }
 

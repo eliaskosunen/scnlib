@@ -143,6 +143,15 @@
 #define SCN_UNLIKELY(x) (x)
 #endif
 
+// SCN_LIKELY_ATTR & SCN_UNLIKELY_ATTR
+#if SCN_HAS_LIKELY_ATTR
+#define SCN_LIKELY_ATTR   [[likely]]
+#define SCN_UNLIKELY_ATTR [[unlikely]]
+#else
+#define SCN_LIKELY_ATTR   /* likely */
+#define SCN_UNLIKELY_ATTR /* unlikely */
+#endif
+
 // SCN_ASSUME
 #if SCN_HAS_ASSUME
 #define SCN_ASSUME(x) __assume(x)
@@ -151,7 +160,7 @@
 #elif SCN_HAS_BUILTIN_UNREACHABLE
 #define SCN_ASSUME(x) ((x) ? static_cast<void>(0) : __builtin_unreachable())
 #else
-#define SCN_ASSUME(x) static_cast<void>((x) ? 0 : 0)
+#define SCN_ASSUME(x) static_cast<void>(!!(x))
 #endif
 
 // SCN_UNREACHABLE

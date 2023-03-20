@@ -159,10 +159,12 @@ namespace scn {
             // Intentionally not constexpr
             void on_error(const char* msg)
             {
+                SCN_UNLIKELY_ATTR
                 m_error = scan_error{scan_error::invalid_format_string, msg};
             }
             void on_error(scan_error err)
             {
+                SCN_LIKELY(err);
                 m_error = err;
             }
 
@@ -187,7 +189,8 @@ namespace scn {
                                             IDHandler&& handler)
         {
             SCN_EXPECT(begin != end);
-            if (*begin != '}' && *begin != ':') {
+            if (SCN_UNLIKELY(*begin != '}' && *begin != ':')) {
+                SCN_UNLIKELY_ATTR
                 handler.on_error("Argument IDs in format strings unsupported");
                 return end;
             }
@@ -289,8 +292,9 @@ namespace scn {
             };
 
             auto potential_fill_len = code_point_length(begin, end);
-            if (potential_fill_len == 0 ||
-                std::distance(begin, end) < potential_fill_len) {
+            if (SCN_UNLIKELY(potential_fill_len == 0 ||
+                             std::distance(begin, end) < potential_fill_len)) {
+                SCN_UNLIKELY_ATTR
                 handler.on_error("Invalid encoding in fill character");
                 return begin;
             }
@@ -313,7 +317,7 @@ namespace scn {
             ++begin;
 
             if (potential_fill_len == 1) {
-                if (potential_fill[0] == '{') {
+                if (SCN_UNLIKELY(potential_fill[0] == '{')) {
                     handler.on_error(
                         "Invalid fill character '{' in format string");
                     return begin;
@@ -351,7 +355,8 @@ namespace scn {
             } while (p != end && *p >= '0' && *p <= '9');
             auto num_digits = p - begin;
             begin = p;
-            if (num_digits <= std::numeric_limits<int>::digits10) {
+            if (SCN_LIKELY(num_digits <= std::numeric_limits<int>::digits10)) {
+                SCN_LIKELY_ATTR
                 return static_cast<int>(value);
             }
             const auto max =
@@ -371,7 +376,7 @@ namespace scn {
 
             if (*begin >= CharT{'0'} && *begin <= CharT{'9'}) {
                 int width = parse_simple_int(begin, end);
-                if (width != -1) {
+                if (SCN_LIKELY(width != -1)) {
                     handler.on_width(width);
                 }
                 else {
@@ -396,7 +401,8 @@ namespace scn {
 
             auto start = begin;
 
-            if (++begin == end) {
+            if (SCN_UNLIKELY(++begin == end)) {
+                SCN_UNLIKELY_ATTR
                 handler.on_error(
                     "Unexpected end of [character set] specifier in format "
                     "string");
@@ -420,6 +426,7 @@ namespace scn {
                 }
             }
 
+            SCN_UNLIKELY_ATTR
             handler.on_error(
                 "Invalid [character set] specifier in format string");
             return {};
@@ -433,7 +440,8 @@ namespace scn {
             auto do_presentation = [&]() -> const CharT* {
                 if (*begin == CharT{'['}) {
                     auto set = parse_presentation_set(begin, end, handler);
-                    if (set.empty()) {
+                    if (SCN_UNLIKELY(set.empty())) {
+                        SCN_UNLIKELY_ATTR
                         handler.on_error(
                             "Invalid (empty) [character set] specifier in "
                             "format string");
@@ -443,7 +451,8 @@ namespace scn {
                     return begin;
                 }
                 presentation_type type = parse_presentation_type(*begin++);
-                if (type == presentation_type::none) {
+                if (SCN_UNLIKELY(type == presentation_type::none)) {
+                    SCN_UNLIKELY_ATTR
                     handler.on_error("Invalid type specifier in format string");
                     return begin;
                 }
@@ -457,19 +466,19 @@ namespace scn {
                 return do_presentation();
             }
 
-            if (begin == end) {
+            if (SCN_UNLIKELY(begin == end)) {
                 handler.on_error("Unexpected end of format string");
                 return begin;
             }
 
             begin = parse_align(begin, end, handler);
-            if (begin == end) {
+            if (SCN_UNLIKELY(begin == end)) {
                 handler.on_error("Unexpected end of format string");
                 return begin;
             }
 
             begin = parse_width(begin, end, handler);
-            if (begin == end) {
+            if (SCN_UNLIKELY(begin == end)) {
                 handler.on_error("Unexpected end of format string");
                 return begin;
             }
@@ -478,7 +487,7 @@ namespace scn {
                 handler.on_localized();
                 ++begin;
             }
-            if (begin == end) {
+            if (SCN_UNLIKELY(begin == end)) {
                 handler.on_error("Unexpected end of format string");
                 return begin;
             }
@@ -487,7 +496,7 @@ namespace scn {
                 handler.on_thsep();
                 ++begin;
             }
-            if (begin == end) {
+            if (SCN_UNLIKELY(begin == end)) {
                 handler.on_error("Unexpected end of format string");
                 return begin;
             }
@@ -495,7 +504,7 @@ namespace scn {
             if (begin != end && *begin != CharT{'}'}) {
                 do_presentation();
             }
-            if (begin == end) {
+            if (SCN_UNLIKELY(begin == end)) {
                 handler.on_error("Unexpected end of format string");
                 return begin;
             }
@@ -520,6 +529,7 @@ namespace scn {
 
                 constexpr void on_error(const char* msg)
                 {
+                    SCN_UNLIKELY_ATTR
                     handler.on_error(msg);
                 }
 
@@ -528,7 +538,7 @@ namespace scn {
             };
 
             ++begin;
-            if (begin == end) {
+            if (SCN_UNLIKELY(begin == end)) {
                 handler.on_error("Unexpected end of replacement field");
                 return begin;
             }
@@ -543,7 +553,7 @@ namespace scn {
                 auto adapter = id_adapter{handler, 0};
                 begin = parse_arg_id(begin, end, adapter);
 
-                if (begin == end) {
+                if (SCN_UNLIKELY(begin == end)) {
                     handler.on_error("Missing '}' in format string");
                     return begin;
                 }
@@ -554,12 +564,13 @@ namespace scn {
                 else if (*begin == CharT{':'}) {
                     begin =
                         handler.on_format_specs(adapter.arg_id, begin + 1, end);
-                    if (begin == end || *begin != '}') {
+                    if (SCN_UNLIKELY(begin == end || *begin != '}')) {
                         handler.on_error("Unknown format specifier");
                         return begin;
                     }
                 }
                 else {
+                    SCN_UNLIKELY_ATTR
                     handler.on_error("Missing '}' in format string");
                     return begin;
                 }
@@ -572,7 +583,7 @@ namespace scn {
             std::basic_string_view<CharT> format,
             Handler&& handler)
         {
-            if (format.size() < 32) {
+            if (SCN_LIKELY(format.size() < 32)) {
                 // Small size -> use a simple loop instead of memchr
                 auto begin = format.data();
                 auto it = begin;
@@ -590,7 +601,7 @@ namespace scn {
                         }
                     }
                     else if (ch == CharT{'}'}) {
-                        if (it == end || *it != CharT{'}'}) {
+                        if (SCN_UNLIKELY(it == end || *it != CharT{'}'})) {
                             handler.on_error("Unmatched '}' in format string");
                             return;
                         }
@@ -618,7 +629,7 @@ namespace scn {
                     }
 
                     ++p;
-                    if (p == end || *p != CharT{'}'}) {
+                    if (SCN_UNLIKELY(p == end || *p != CharT{'}'})) {
                         handler.on_error("Unmatched '}' in format string");
                         return;
                     }
@@ -646,12 +657,12 @@ namespace scn {
                 }
 
                 reader(begin, p);
-                if (!handler) {
+                if (SCN_UNLIKELY(!handler)) {
                     return;
                 }
 
                 begin = parse_replacement_field(p, end, handler);
-                if (!handler) {
+                if (SCN_UNLIKELY(!handler)) {
                     return;
                 }
             }
@@ -750,6 +761,7 @@ namespace scn {
                     cat != arg_type_category::unsigned_integer &&
                     cat != arg_type_category::floating &&
                     cat != arg_type_category::boolean) {
+                    SCN_UNLIKELY_ATTR
                     return this->on_error(
                         "'L' specifier can only be used with arguments of "
                         "integer, floating-point or boolean types");
@@ -763,6 +775,7 @@ namespace scn {
                 if (cat != arg_type_category::integer &&
                     cat != arg_type_category::unsigned_integer &&
                     cat != arg_type_category::floating) {
+                    SCN_UNLIKELY_ATTR
                     return this->on_error(
                         "' specifier (for a thousands separator) can only "
                         "be "
@@ -782,7 +795,7 @@ namespace scn {
             const basic_format_specs<CharT>& specs,
             Handler&& handler)
         {
-            if (specs.thsep) {
+            if (SCN_UNLIKELY(specs.thsep)) {
                 return handler.on_error(
                     "' specifier not allowed for this type");
             }
@@ -793,16 +806,17 @@ namespace scn {
             const basic_format_specs<CharT>& specs,
             Handler&& handler)
         {
-            if (specs.type > presentation_type::int_hex) {
+            if (SCN_UNLIKELY(specs.type > presentation_type::int_hex)) {
                 return handler.on_error(
                     "Invalid type specifier for integer type");
             }
             if (specs.localized) {
-                if (specs.type == presentation_type::int_binary) {
+                if (SCN_UNLIKELY(specs.type == presentation_type::int_binary)) {
                     return handler.on_error(
                         "'b' specifier not supported for localized integers");
                 }
-                if (specs.type == presentation_type::int_arbitrary_base) {
+                if (SCN_UNLIKELY(specs.type ==
+                                 presentation_type::int_arbitrary_base)) {
                     return handler.on_error(
                         "Arbitrary bases not supported for localized integers");
                 }
@@ -818,6 +832,7 @@ namespace scn {
             if (specs.type != presentation_type::none &&
                 specs.type != presentation_type::character &&
                 specs.type != presentation_type::unicode_character) {
+                SCN_UNLIKELY_ATTR
                 return handler.on_error(
                     "Invalid type specifier for character type");
             }
@@ -831,6 +846,7 @@ namespace scn {
             if (specs.type != presentation_type::none &&
                 (specs.type < presentation_type::float_hex ||
                  specs.type > presentation_type::float_general)) {
+                SCN_UNLIKELY_ATTR
                 return handler.on_error(
                     "Invalid type specifier for float type");
             }
@@ -849,13 +865,14 @@ namespace scn {
             }
             if (specs.type == presentation_type::character ||
                 specs.type == presentation_type::unicode_character) {
-                if (specs.width == 0) {
+                if (SCN_UNLIKELY(specs.width == 0)) {
                     return handler.on_error(
                         "'c' and 'U' type specifiers for strings requires a "
                         "width to be specified");
                 }
                 return;
             }
+            SCN_UNLIKELY_ATTR
             handler.on_error("Invalid type specifier for string");
         }
 
@@ -867,6 +884,7 @@ namespace scn {
             check_disallow_thsep(specs, handler);
             if (specs.type != presentation_type::none &&
                 specs.type != presentation_type::pointer) {
+                SCN_UNLIKELY_ATTR
                 return handler.on_error("Invalid type specifier for pointer");
             }
         }

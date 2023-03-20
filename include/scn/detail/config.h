@@ -22,21 +22,38 @@
 #define SCN_VERSION SCN_COMPILER(2, 0, 0)
 
 // SCN_USE_EXCEPTIONS
+// If 0, removes all `noexcept` annotations,
+// and exception handling around stdlib facilities.
 #ifndef SCN_USE_EXCEPTIONS
 #define SCN_USE_EXCEPTIONS 1
 #endif
 
 // SCN_USE_TRIVIAL_ABI
+// If 1, uses [[clang::trivial_abi]] in some classes, if available.
 #ifndef SCN_USE_TRIVIAL_ABI
 #define SCN_USE_TRIVIAL_ABI 1
 #endif
 
 // SCN_USE_STD_RANGES
+// If 1, uses stdlib <ranges>, if available.
+// If 0, always falls back to bundled nanorange
+// (include/scn/external/nanorange).
 #ifndef SCN_USE_STD_RANGES
 #define SCN_USE_STD_RANGES 1
 #endif
 
 // SCN_USE_IOSTREAMS
+// If 0, removes all references and functionality related to standard streams.
 #ifndef SCN_USE_IOSTREAMS
 #define SCN_USE_IOSTREAMS 1
+#endif
+
+// TODO
+#if 0
+// SCN_USE_DYNAMIC_ALLOCATION
+// If 0, removes all instances of dynamic allocation from the library,
+// including references to standard facilities that may allocate.
+#ifndef SCN_USE_DYNAMIC_ALLOCATION
+#define SCN_USE_DYNAMIC_ALLOCATION 1
+#endif
 #endif

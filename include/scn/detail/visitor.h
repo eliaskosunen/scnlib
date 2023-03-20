@@ -78,6 +78,8 @@ namespace scn {
                     arg.m_value.custom_value));
                 SCN_CLANG_PUSH
                 SCN_CLANG_IGNORE("-Wcovered-switch-default")
+
+                SCN_UNLIKELY_ATTR
             case detail::arg_type::none_type:
             default:
                 auto val = detail::monostate{};

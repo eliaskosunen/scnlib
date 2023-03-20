@@ -110,6 +110,7 @@ namespace scn {
 
             void on_error(const char* msg) const
             {
+                SCN_UNLIKELY_ATTR
                 m_parse_context.on_error(msg);
             }
 

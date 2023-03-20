@@ -21,6 +21,8 @@
 #include <scn/detail/scanner.h>
 #include <scn/detail/scanner_builtin.h>
 
+// experimental
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
@@ -167,7 +169,7 @@ namespace scn {
             return internal_skip_classic_whitespace(source, false)
                 .and_then([&](auto it) -> scan_expected<decltype(it)> {
                     for (auto ch_to_read : str_to_read) {
-                        if (ch_to_read != *it) {
+                        if (SCN_UNLIKELY(ch_to_read != *it)) {
                             return unexpected_scan_error(
                                 scan_error::invalid_scanned_value,
                                 "Invalid range character");
@@ -292,7 +294,7 @@ namespace scn {
                             T elem{};
                             if (auto e =
                                     scan_inner_loop(scan_cb, ctx, elem, i == 0);
-                                e) {
+                                SCN_LIKELY(e)) {
                                 detail::add_element_to_range(range,
                                                              SCN_MOVE(elem));
                                 ctx.advance_to(*e);
@@ -388,14 +390,14 @@ namespace scn {
             int index{};
 
             auto callback = [&](auto& val) {
-                if (!err) {
+                if (SCN_UNLIKELY(!err)) {
                     return;
                 }
 
                 if (index > 0) {
                     if (auto e =
                             detail::scan_str(ctx.range(), this->m_separator);
-                        e) {
+                        SCN_LIKELY(e)) {
                         ctx.advance_to(e.value());
                     }
                     else {
@@ -405,7 +407,7 @@ namespace scn {
                 }
 
                 scanner<detail::remove_cvref_t<decltype(val)>, CharT> s{};
-                if (auto e = s.scan(val, ctx); e) {
+                if (auto e = s.scan(val, ctx); SCN_LIKELY(e)) {
                     ctx.advance_to(e.value());
                     ++index;
                 }
@@ -415,7 +417,7 @@ namespace scn {
             };
 
             detail::tuple_for_each(value, callback);
-            if (!err) {
+            if (SCN_UNLIKELY(!err)) {
                 return unexpected(err);
             }
             return ctx.range().begin();

@@ -49,7 +49,7 @@ namespace scn {
             basic_scan_arg<basic_scan_context<SourceRange, CharT>> arg,
             detail::locale_ref loc = {})
         {
-            if (!arg) {
+            if (SCN_UNLIKELY(!arg)) {
                 return {SCN_MOVE(source),
                         {scan_error::invalid_format_string,
                          "Argument #0 not found"}};
@@ -75,7 +75,7 @@ namespace scn {
             typename Context::arg_type
         {
             auto arg = ctx.arg(id);
-            if (!arg) {
+            if (SCN_UNLIKELY(!arg)) {
                 handler.on_error("Failed to find argument with ID");
             }
             return arg;
@@ -138,10 +138,12 @@ namespace scn {
                 for (; begin != end; ++begin) {
                     auto it = ranges::begin(ctx.range());
                     if (impl::is_range_eof(it, ranges::end(ctx.range()))) {
+                        SCN_UNLIKELY_ATTR
                         return on_error("Unexpected end of source");
                     }
                     auto next = *it;
                     if (next != *begin) {
+                        SCN_UNLIKELY_ATTR
                         return on_error("Unexpected literal char in source");
                     }
                     ctx.advance_to(ranges::next(it));
@@ -163,6 +165,7 @@ namespace scn {
                                    typename context_type::arg_type arg)
             {
                 if (!*this || !arg) {
+                    SCN_UNLIKELY_ATTR
                     return;
                 }
 
@@ -205,6 +208,7 @@ namespace scn {
 
                 begin = detail::parse_format_specs(begin, end, handler);
                 if (begin == end || *begin != CharT{'}'}) {
+                    SCN_UNLIKELY_ATTR
                     on_error("Missing '}' in format string");
                     return parse_ctx.begin();
                 }
@@ -224,11 +228,12 @@ namespace scn {
 
             void on_error(const char* msg)
             {
+                SCN_UNLIKELY_ATTR
                 error = scan_error{scan_error::invalid_format_string, msg};
             }
             void on_error(scan_error err)
             {
-                if (err != scan_error::good) {
+                if (SCN_UNLIKELY(err != scan_error::good)) {
                     error = err;
                 }
             }

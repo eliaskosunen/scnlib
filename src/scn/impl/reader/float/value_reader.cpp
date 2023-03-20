@@ -209,25 +209,61 @@ namespace scn {
                 clocale_restorer lr{LC_NUMERIC};
                 std::setlocale(LC_NUMERIC, "C");
 
-                // Because `source` may not be null terminated, we need to
-                // make a copy here.
-                std::basic_string<CharT> null_terminated_source{source};
+                std::basic_string<CharT> null_terminated_source;
+                scan_error err{};
+                T tmp{};
 
-                CharT* end{};
-                errno = 0;
-                auto tmp = impl(null_terminated_source.c_str(), &end);
-                const auto chars_read = end - null_terminated_source.c_str();
-                errno = 0;
+                for (size_t size : {size_t{16}, size_t{64}, size_t{256}}) {
+                    if (size > source.size()) {
+                        size = source.size();
+                    }
+                    if (null_terminated_source.size() == size) {
+                        break;
+                    }
+                    null_terminated_source.assign(source.data(), size);
 
-                if (auto e = check_error(source, chars_read, tmp); !e) {
-                    return unexpected(e);
+                    auto e = impl(null_terminated_source, tmp);
+                    if (SCN_UNLIKELY(!e)) {
+                        err = e.error();
+                    }
+                    else if (SCN_UNLIKELY(e.value() == size)) {
+                        err = {};
+                        continue;
+                    }
+                    else {
+                        err = {};
+                        value = tmp;
+                        return {source.begin() + e.value()};
+                    }
                 }
 
+                if (SCN_UNLIKELY(!err)) {
+                    return unexpected(err);
+                }
                 value = tmp;
-                return {source.begin() + chars_read};
+                return {source.end()};
             }
 
         private:
+            scan_expected<std::size_t> impl(
+                std::basic_string<CharT>& null_terminated_source,
+                T& tmp_value) const
+            {
+                CharT* end{};
+                errno = 0;
+                tmp_value = cstd_strtod(null_terminated_source.c_str(), &end);
+                const auto chars_read = end - null_terminated_source.c_str();
+                errno = 0;
+
+                if (auto e = check_error(null_terminated_source, chars_read,
+                                         tmp_value);
+                    SCN_UNLIKELY(!e)) {
+                    return unexpected(e);
+                }
+
+                return static_cast<size_t>(chars_read);
+            }
+
             SCN_NODISCARD scan_error
             check_error(std::basic_string_view<CharT> source,
                         std::ptrdiff_t chars_read,
@@ -235,6 +271,7 @@ namespace scn {
             {
                 // No conversion
                 if (is_float_zero(value) && chars_read == 0) {
+                    SCN_UNLIKELY_ATTR
                     return {scan_error::invalid_scanned_value,
                             "strtod failed: no conversion"};
                 }
@@ -243,6 +280,7 @@ namespace scn {
                 if (is_hexfloat(source) &&
                     (reader.m_options &
                      float_classic_value_reader<CharT>::allow_hex) == 0) {
+                    SCN_UNLIKELY_ATTR
                     return {scan_error::invalid_scanned_value,
                             "Parsed a hex float, which was "
                             "not allowed by the format string"};
@@ -267,6 +305,7 @@ namespace scn {
                 if (std::isinf(value) &&
                     !is_input_inf(
                         source.substr(0, static_cast<size_t>(chars_read)))) {
+                    SCN_UNLIKELY_ATTR
                     return {scan_error::value_out_of_range,
                             "strtod failed: float overflow"};
                 }
@@ -274,7 +313,7 @@ namespace scn {
                 return {};
             }
 
-            T impl(const CharT* str, CharT** str_end) const
+            T cstd_strtod(const CharT* str, CharT** str_end) const
             {
                 if constexpr (std::is_same_v<CharT, char>) {
                     if constexpr (std::is_same_v<T, float>) {
@@ -337,7 +376,7 @@ namespace scn {
                         flags |= std::chars_format::scientific;
                     }
 
-                    if (flags == std::chars_format{}) {
+                    if (SCN_UNLIKELY(flags == std::chars_format{})) {
                         SCN_EXPECT((reader.m_options &
                                     float_value_reader_base::allow_hex) != 0);
                         return unexpected_scan_error(
@@ -368,7 +407,7 @@ namespace scn {
                 const auto original_source = source;
                 bool has_negative_sign = false;
                 const auto flags = get_flags(source, has_negative_sign);
-                if (!flags) {
+                if (SCN_UNLIKELY(!flags)) {
                     return unexpected(flags.error());
                 }
 
@@ -376,7 +415,7 @@ namespace scn {
                 const auto result = std::from_chars(
                     source.data(), source.data() + source.size(), tmp, *flags);
 
-                if (result.ec == std::errc::invalid_argument) {
+                if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
                     return unexpected_scan_error(
                         scan_error::invalid_scanned_value,
                         "from_chars failed: invalid_argument");
@@ -485,6 +524,7 @@ namespace scn {
                     if ((reader.m_options ^
                          float_value_reader_base::allow_hex) == 0) {
                         // only hex floats allowed
+                        SCN_UNLIKELY_ATTR
                         return unexpected_scan_error(
                             scan_error::invalid_scanned_value,
                             "float parsing failed: expected hexfloat");
@@ -496,12 +536,12 @@ namespace scn {
                 const auto result = fast_float::from_chars_advanced(
                     source.data(), source.data() + source.size(), tmp, flags);
 
-                if (result.ec == std::errc::invalid_argument) {
+                if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
                     return unexpected_scan_error(
                         scan_error::invalid_scanned_value,
                         "fast_float failed: invalid_argument");
                 }
-                if (result.ec == std::errc::result_out_of_range) {
+                if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
                     return unexpected_scan_error(
                         scan_error::value_out_of_range,
                         "fast_float failed: result_out_of_range");
@@ -531,8 +571,8 @@ namespace scn {
             {
                 if constexpr (std::is_same_v<T, long double>) {
                     if constexpr (sizeof(double) == sizeof(long double)) {
-                        // If long double is an alias to double (true on Windows),
-                        // use fast_float with double
+                        // If long double is an alias to double (true on
+                        // Windows), use fast_float with double
                         return fast_float_reader_impl<char, double>{reader}(
                             source, *reinterpret_cast<double*>(&value));
                     }
@@ -593,7 +633,7 @@ namespace scn {
                 std::array<char, 256> buffer{};
                 auto utf8_input = make_utf8_string(
                     limited_source, {buffer.data(), buffer.size()});
-                if (!utf8_input) {
+                if (SCN_UNLIKELY(!utf8_input)) {
                     return unexpected(utf8_input.error());
                 }
 
@@ -654,10 +694,12 @@ namespace scn {
                 if (std::isinf(value) || is_float_max(value) ||
                     (is_float_zero(value) &&
                      (err & std::ios_base::eofbit) != 0)) {
+                    SCN_UNLIKELY_ATTR
                     return {scan_error::value_out_of_range,
                             "Out of range: float overflow"};
                 }
                 if (is_float_zero(value)) {
+                    SCN_UNLIKELY_ATTR
                     return {scan_error::invalid_scanned_value,
                             "Failed to scan float"};
                 }
@@ -676,16 +718,15 @@ namespace scn {
         {
             std::basic_istringstream<CharT> stream{};
             auto stdloc = m_locale.get<std::locale>();
-            const auto& facet = get_or_add_facet<
-                std::num_get<CharT, const CharT*>>(
-                stdloc);
+            const auto& facet =
+                get_or_add_facet<std::num_get<CharT, const CharT*>>(stdloc);
 
             std::ios_base::iostate err = std::ios_base::goodbit;
 
             T tmp{};
             auto it = facet.get(source.data(), source.data() + source.size(),
                                 stream, err, tmp);
-            if (auto e = check_range_localized(tmp, err); !e) {
+            if (auto e = check_range_localized(tmp, err); SCN_UNLIKELY(!e)) {
                 return unexpected(e);
             }
             value = tmp;

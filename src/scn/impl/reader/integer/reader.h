@@ -54,19 +54,19 @@ namespace scn {
         private:
             constexpr uint8_t get_options() const SCN_NOEXCEPT
             {
-                using options =
+                using opt_t =
                     typename int_classic_value_reader<CharT>::options_type;
                 uint8_t opt{};
                 if (m_specs.thsep) {
-                    opt |= options::allow_thsep;
+                    opt |= opt_t::allow_thsep;
                 }
                 if (m_specs.type ==
                     detail::presentation_type::int_unsigned_decimal) {
-                    opt |= options::only_unsigned;
+                    opt |= opt_t::only_unsigned;
                 }
                 if (m_specs.type !=
                     detail::presentation_type::int_arbitrary_base) {
-                    opt |= options::allow_base_prefix;
+                    opt |= opt_t::allow_base_prefix;
                 }
                 return opt;
             }

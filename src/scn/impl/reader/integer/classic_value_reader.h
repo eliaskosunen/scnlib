@@ -24,18 +24,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-        /**
-         * ValueReader:
-         * auto read(sv, T&) -> scan_expected<iterator<sv>>
-         */
-
-        template <typename CharT>
-        class int_classic_value_reader {
-        public:
-            using char_type = CharT;
-            using string_type = std::basic_string<CharT>;
-            using string_view_type = std::basic_string_view<CharT>;
-
+        struct int_classic_value_reader_base {
             enum options_type : uint8_t {
                 // ' option -> accept thsep (',')
                 allow_thsep = 1,
@@ -46,85 +35,42 @@ namespace scn {
             };
 
             template <typename T>
-            explicit int_classic_value_reader(detail::tag_type<T>)
-                : m_options(get_default_options<T>()), m_base(0)
-            {
-            }
-
-            int_classic_value_reader(uint8_t opt, int8_t b)
-                : m_options(opt), m_base(b)
-            {
-            }
-
-            template <typename T>
             static constexpr uint8_t get_default_options()
             {
                 return 0;
+            }
+
+            unsigned options{0};
+            int base{0};
+
+        protected:
+            int_classic_value_reader_base(unsigned opt, int b)
+                : options(opt), base(b)
+            {
+            }
+        };
+
+        template <typename CharT>
+        class int_classic_value_reader : public int_classic_value_reader_base {
+        public:
+            using char_type = CharT;
+            using string_view_type = std::basic_string_view<CharT>;
+
+            template <typename T>
+            explicit int_classic_value_reader(detail::tag_type<T>)
+                : int_classic_value_reader_base(get_default_options<T>(), 0)
+            {
+            }
+
+            int_classic_value_reader(unsigned opt, int b)
+                : int_classic_value_reader_base(opt, b)
+            {
             }
 
             template <typename T>
             scan_expected<ranges::iterator_t<string_view_type>> read(
                 string_view_type source,
                 T& value);
-
-        private:
-            template <typename T>
-            struct int_reader_state;
-
-            enum sign_type { plus_sign, minus_sign };
-
-            scan_expected<sign_type> parse_sign_signed(
-                string_view_type& source);
-            scan_error parse_sign_unsigned(string_view_type& source);
-
-            enum class base_prefix_state : uint8_t {
-                // Base not determined
-                base_not_determined = 0,
-                // Determined base from "0_" prefix
-                base_determined_from_prefix,
-                // Determined base from "0" prefix
-                base_determined_from_zero_prefix,
-                // Found '0'
-                zero_parsed,
-            };
-            struct base_prefix_result {
-                typename string_view_type::iterator iterator;
-                base_prefix_state state;
-                int8_t parsed_base{0};
-            };
-
-            base_prefix_result parse_base_prefix(string_view_type source);
-
-            enum class determine_base_result {
-                zero_parsed,
-                keep_parsing,
-            };
-
-            scan_expected<determine_base_result> parse_and_determine_base(
-                string_view_type& source);
-
-            SCN_NODISCARD scan_error
-            check_thousands_separators(const std::string&) const;
-
-            template <typename T>
-            std::pair<bool, scan_error> do_single_char(
-                CharT ch,
-                int_reader_state<T>& state);
-            template <typename T>
-            std::pair<bool, scan_error> do_single_char_with_thsep(
-                int_reader_state<T>& state,
-                typename string_view_type::iterator it,
-                typename string_view_type::iterator& after_last_thsep_it,
-                std::string&);
-
-            template <typename T>
-            scan_expected<ranges::iterator_t<string_view_type>>
-            do_read(string_view_type source, T& value, sign_type sign);
-
-            uint8_t m_options;
-            // 0 = detect_base
-            // else, [2,36]
-            int8_t m_base{0};
         };
 
 #define SCN_DECLARE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, IntT) \

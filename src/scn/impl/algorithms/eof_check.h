@@ -90,7 +90,7 @@ namespace scn {
         template <typename Range>
         SCN_NODISCARD constexpr scan_error eof_check(const Range& range)
         {
-            if (is_range_eof(range)) {
+            if (SCN_UNLIKELY(is_range_eof(range))) {
                 return {scan_error::end_of_range, "EOF"};
             }
             return {};

@@ -170,7 +170,8 @@ namespace scn {
                                  ctx.advance_to(SCN_MOVE(it));
                              });
 
-                if (!r) {
+                if (SCN_UNLIKELY(!r)) {
+                    SCN_UNLIKELY_ATTR
                     return r.error();
                 }
                 return {};
@@ -563,19 +564,19 @@ namespace scn {
         SCN_NODISCARD constexpr basic_scan_arg<Context> get(
             std::size_t id) const
         {
-            if (!is_packed()) {
-                if (id < max_size()) {
+            if (SCN_UNLIKELY(!is_packed())) {
+                if (SCN_LIKELY(id < max_size())) {
                     return m_args[id];
                 }
                 return {};
             }
 
-            if (id >= detail::max_packed_args) {
+            if (SCN_UNLIKELY(id >= detail::max_packed_args)) {
                 return {};
             }
 
             const auto t = type(id);
-            if (t == detail::arg_type::none_type) {
+            if (SCN_UNLIKELY(t == detail::arg_type::none_type)) {
                 return {};
             }
 
@@ -587,13 +588,14 @@ namespace scn {
 
         SCN_NODISCARD constexpr std::size_t max_size() const
         {
-            return is_packed() ? detail::max_packed_args
-                               : (m_desc & ~detail::is_unpacked_bit);
+            return SCN_LIKELY(is_packed())
+                       ? detail::max_packed_args
+                       : (m_desc & ~detail::is_unpacked_bit);
         }
 
         SCN_NODISCARD constexpr std::size_t size() const
         {
-            if (!is_packed()) {
+            if (SCN_UNLIKELY(!is_packed())) {
                 return max_size();
             }
 

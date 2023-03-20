@@ -105,7 +105,7 @@ namespace scn {
 
             if constexpr (enc == encoding::utf8) {
                 auto len = utf8_code_point_length_by_starting_code_unit(ch);
-                if (len == 0) {
+                if (SCN_UNLIKELY(len == 0)) {
                     return unexpected_scan_error(scan_error::invalid_encoding,
                                                  "Invalid UTF-8 code point");
                 }
@@ -113,7 +113,7 @@ namespace scn {
             }
             else if constexpr (enc == encoding::utf16) {
                 auto len = utf16_code_point_length_by_starting_code_unit(ch);
-                if (len == 0) {
+                if (SCN_UNLIKELY(len == 0)) {
                     return unexpected_scan_error(scan_error::invalid_encoding,
                                                  "Invalid UTF-16 code point");
                 }
@@ -137,10 +137,10 @@ namespace scn {
             SCN_EXPECT(!input.empty());
 
             const auto len = code_point_length_by_starting_code_unit(input[0]);
-            if (!len) {
+            if (SCN_UNLIKELY(!len)) {
                 return unexpected(len.error());
             }
-            if (*len == 0) {
+            if (SCN_UNLIKELY(*len == 0)) {
                 return unexpected_scan_error(scan_error::invalid_encoding,
                                              "Invalid encoding");
             }
@@ -161,7 +161,7 @@ namespace scn {
                 output = static_cast<char32_t>(input[0]);
             }
 
-            if (result != 1) {
+            if (SCN_UNLIKELY(result != 1)) {
                 return unexpected_scan_error(scan_error::invalid_encoding,
                                              "Invalid encoding");
             }
@@ -227,7 +227,7 @@ namespace scn {
         scan_expected<std::size_t> validate_and_count_code_points(
             std::basic_string_view<CharT> input)
         {
-            if (!validate_unicode(input)) {
+            if (SCN_UNLIKELY(!validate_unicode(input))) {
                 return unexpected_scan_error(scan_error::invalid_encoding,
                                              "Invalid encoding");
             }
@@ -248,7 +248,7 @@ namespace scn {
             constexpr auto src_enc = get_encoding<SourceCharT>();
             constexpr auto dest_enc = get_encoding<DestCharT>();
 
-            if (src_enc == dest_enc) {
+            if constexpr (src_enc == dest_enc) {
                 return input.size();
             }
 
@@ -295,7 +295,7 @@ namespace scn {
         scan_expected<std::size_t> validate_and_count_transcoded_code_units(
             std::basic_string_view<SourceCharT> input)
         {
-            if (!validate_unicode(input)) {
+            if (SCN_UNLIKELY(!validate_unicode(input))) {
                 return unexpected_scan_error(scan_error::invalid_encoding,
                                              "Invalid encoding");
             }
@@ -423,7 +423,7 @@ namespace scn {
         bool transcode_to_string(std::basic_string_view<SourceCharT> source,
                                  std::basic_string<DestCharT>& dest)
         {
-            if (!validate_unicode(source)) {
+            if (SCN_UNLIKELY(!validate_unicode(source))) {
                 return false;
             }
 

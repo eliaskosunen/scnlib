@@ -294,19 +294,3 @@ namespace nano {
 }  // namespace nano
 
 #endif  // SCN_STD_RANGES
-
-#if 0
-namespace scn {
-    SCN_BEGIN_NAMESPACE
-
-    namespace detail {
-        template <typename R>
-        using borrowed_itsen_subrange_t = std::conditional_t<
-            ranges::borrowed_range<R>,
-            ranges::subrange<ranges::iterator_t<R>, ranges::sentinel_t<R>>,
-            ranges::dangling>;
-    }
-
-    SCN_END_NAMESPACE
-}  // namespace scn
-#endif

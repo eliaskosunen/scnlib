@@ -123,8 +123,8 @@ namespace scn {
                 return fallback({source.data() + i, source.size() - i});
             }
 
-            SCN_MAYBE_UNUSED std::string_view::iterator find_classic_space_64_impl(
-                std::string_view source)
+            SCN_MAYBE_UNUSED std::string_view::iterator
+            find_classic_space_64_impl(std::string_view source)
             {
                 const auto get_mask = [](uint64_t word) -> uint64_t {
                     constexpr uint64_t space_mask =
@@ -165,8 +165,8 @@ namespace scn {
                 return fallback({source.data() + i, source.size() - i});
             }
 
-            SCN_MAYBE_UNUSED std::string_view::iterator find_classic_nonspace_64_impl(
-                std::string_view source)
+            SCN_MAYBE_UNUSED std::string_view::iterator
+            find_classic_nonspace_64_impl(std::string_view source)
             {
                 const auto get_mask = [](uint64_t word) -> uint64_t {
                     constexpr uint64_t space_mask =
@@ -185,8 +185,8 @@ namespace scn {
                                              find_classic_nonspace_simple_impl);
             }
 
-            SCN_MAYBE_UNUSED std::string_view::iterator find_nondecimal_digit_64_impl(
-                std::string_view source)
+            SCN_MAYBE_UNUSED std::string_view::iterator
+            find_nondecimal_digit_64_impl(std::string_view source)
             {
                 const auto get_mask = [](uint64_t word) -> uint64_t {
                     return has_byte_between(word, '0', '9');
@@ -197,6 +197,7 @@ namespace scn {
             }
         }  // namespace
 
+#if 0
         std::string_view::iterator find_classic_space_narrow_fast(
             std::string_view source)
         {
@@ -226,6 +227,25 @@ namespace scn {
                 return find_nondecimal_digit_simple_impl(source);
             }
         }
+#else
+        std::string_view::iterator find_classic_space_narrow_fast(
+            std::string_view source)
+        {
+            return find_classic_space_simple_impl(source);
+        }
+
+        std::string_view::iterator find_classic_nonspace_narrow_fast(
+            std::string_view source)
+        {
+            return find_classic_nonspace_simple_impl(source);
+        }
+
+        std::string_view::iterator find_nondecimal_digit_narrow_fast(
+            std::string_view source)
+        {
+            return find_nondecimal_digit_simple_impl(source);
+        }
+#endif
     }  // namespace impl
 
     SCN_END_NAMESPACE

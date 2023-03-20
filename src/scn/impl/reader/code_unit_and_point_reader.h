@@ -54,14 +54,14 @@ namespace scn {
                 alignas(char32_t) char_type buffer[4 / sizeof(char_type)]{};
                 const auto read_result = read_code_point(
                     range, span<char_type>{buffer, 4 / sizeof(char_type)});
-                if (!read_result) {
+                if (SCN_UNLIKELY(!read_result)) {
                     return unexpected(read_result.error());
                 }
 
                 const auto decode_sv = std::basic_string_view<char_type>{
                     read_result->value.data(), read_result->value.size()};
                 const auto decode_result = get_next_code_point(decode_sv);
-                if (!decode_result) {
+                if (SCN_UNLIKELY(!decode_result)) {
                     return unexpected(decode_result.error());
                 }
                 cp = decode_result->value;
@@ -88,6 +88,7 @@ namespace scn {
                     if (static_cast<uint32_t>(cp) >=
                         static_cast<uint32_t>(
                             std::numeric_limits<wchar_t>::max())) {
+                        SCN_UNLIKELY_ATTR
                         return unexpected_scan_error(
                             scan_error::value_out_of_range,
                             "Can't fit scanned code point into wchar_t");
@@ -113,7 +114,7 @@ namespace scn {
             {
                 reader_error_handler eh{};
                 detail::check_char_type_specs(specs, eh);
-                if (!eh) {
+                if (SCN_UNLIKELY(!eh)) {
                     return {scan_error::invalid_format_string, eh.m_msg};
                 }
                 return {};

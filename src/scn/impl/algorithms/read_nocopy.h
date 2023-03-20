@@ -128,7 +128,7 @@ namespace scn {
             auto it = ranges::begin(input);
             while (it != ranges::end(input)) {
                 auto len = code_point_length_by_starting_code_unit(*it);
-                if (!len) {
+                if (SCN_UNLIKELY(!len)) {
                     return unexpected(len.error());
                 }
 
@@ -143,7 +143,7 @@ namespace scn {
                 auto decode_sv = detail::make_string_view_from_iterators<
                     ranges::range_value_t<SourceRange>>(it, ranges::end(input));
                 auto decode_result = get_next_code_point(decode_sv);
-                if (!decode_result) {
+                if (SCN_UNLIKELY(!decode_result)) {
                     return unexpected(decode_result.error());
                 }
                 const auto cp = decode_result->value;

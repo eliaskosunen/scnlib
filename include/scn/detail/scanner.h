@@ -84,7 +84,7 @@ namespace scn {
 
             const auto it = detail::parse_format_specs(
                 to_address(begin), to_address(end), checker);
-            if (auto e = checker.get_error(); !e) {
+            if (auto e = checker.get_error(); SCN_UNLIKELY(!e)) {
                 return unexpected(e);
             }
 
@@ -148,7 +148,7 @@ namespace scn {
                     SCN_CLANG_POP
             }
 
-            if (auto e = checker.get_error(); !e) {
+            if (auto e = checker.get_error(); SCN_UNLIKELY(!e)) {
                 return unexpected(e);
             }
 

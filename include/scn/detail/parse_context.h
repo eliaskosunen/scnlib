@@ -51,7 +51,7 @@ namespace scn {
 
         constexpr size_t next_arg_id()
         {
-            if (m_next_arg_id < 0) {
+            if (SCN_UNLIKELY(m_next_arg_id < 0)) {
                 on_error(
                     "Cannot switch from manual to automatic argument indexing");
                 return 0;
@@ -64,7 +64,7 @@ namespace scn {
 
         constexpr void check_arg_id(std::size_t id)
         {
-            if (m_next_arg_id > 0) {
+            if (SCN_UNLIKELY(m_next_arg_id > 0)) {
                 on_error(
                     "Cannot switch from manual to automatic argument indexing");
                 return;
@@ -81,7 +81,7 @@ namespace scn {
 
         constexpr scan_error check_args_exhausted(std::size_t arg_count) const
         {
-            if (m_next_arg_id < static_cast<int>(arg_count)) {
+            if (SCN_UNLIKELY(m_next_arg_id < static_cast<int>(arg_count))) {
                 return on_error("Argument list not exhausted");
             }
             return {};
@@ -126,7 +126,7 @@ namespace scn {
             constexpr std::size_t next_arg_id()
             {
                 auto id = base::next_arg_id();
-                if (id >= static_cast<size_t>(m_num_args)) {
+                if (SCN_UNLIKELY(id >= static_cast<size_t>(m_num_args))) {
                     this->on_error("Argument not found");
                 }
                 return id;
@@ -135,7 +135,7 @@ namespace scn {
             constexpr void check_arg_id(std::size_t id)
             {
                 base::check_arg_id(id);
-                if (id >= static_cast<size_t>(m_num_args)) {
+                if (SCN_UNLIKELY(id >= static_cast<size_t>(m_num_args))) {
                     this->on_error("Argument not found");
                 }
             }
@@ -169,6 +169,7 @@ namespace scn {
             using parse_context_type = detail::compile_parse_context<CharT>;
             if (static_cast<int>(id) >=
                 static_cast<parse_context_type*>(this)->get_num_args()) {
+                SCN_UNLIKELY_ATTR
                 on_error("Argument not found");
             }
         }

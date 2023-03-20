@@ -51,7 +51,7 @@ namespace scn {
         auto result_range =
             detail::map_scan_result_range<ranges::range_value_t<ResultRange>>(
                 source, result);
-        if (result.error) {
+        if (SCN_UNLIKELY(result.error)) {
             return {scan_result{SCN_MOVE(result_range), {}},
                     SCN_MOVE(args.args())};
         }

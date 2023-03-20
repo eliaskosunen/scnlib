@@ -99,7 +99,7 @@ namespace scn {
             auto dst = ranges::begin(output);
             while (src != ranges::end(input) && dst != ranges::end(output)) {
                 auto len = code_point_length_by_starting_code_unit(*src);
-                if (!len) {
+                if (SCN_UNLIKELY(!len)) {
                     return unexpected(len.error());
                 }
 
@@ -135,7 +135,7 @@ namespace scn {
                     buffer.data(),
                     static_cast<size_t>(buffer_it - buffer.begin())};
                 auto decode_result = get_next_code_point(decode_sv);
-                if (!decode_result) {
+                if (SCN_UNLIKELY(!decode_result)) {
                     return unexpected(decode_result.error());
                 }
                 SCN_ENSURE(scn::detail::to_address(decode_result->iterator) ==

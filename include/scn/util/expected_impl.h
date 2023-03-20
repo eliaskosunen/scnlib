@@ -48,6 +48,7 @@ namespace scn {
         constexpr explicit unexpected(Err&& e)
             : m_unexpected(std::forward<Err>(e))
         {
+            SCN_UNLIKELY_ATTR SCN_UNUSED(m_unexpected);
         }
 
         template <typename... Args,
@@ -56,6 +57,7 @@ namespace scn {
         constexpr explicit unexpected(std::in_place_t, Args&&... args)
             : m_unexpected(std::forward<Args>(args)...)
         {
+            SCN_UNLIKELY_ATTR SCN_UNUSED(m_unexpected);
         }
 
         constexpr E& error() & SCN_NOEXCEPT
@@ -865,7 +867,7 @@ namespace scn {
         {
             static_assert(is_expected<Ret>::value, "F must return an expected");
 
-            return exp.has_value()
+            return SCN_LIKELY(exp.has_value())
                        ? std::invoke(std::forward<F>(f),
                                      *std::forward<Exp>(exp))
                        : Ret(unexpect, std::forward<Exp>(exp).error());
@@ -878,7 +880,7 @@ namespace scn {
         {
             static_assert(is_expected<Ret>::value, "F must return an expected");
 
-            return exp.has_value()
+            return SCN_LIKELY(exp.has_value())
                        ? std::invoke(std::forward<F>(f))
                        : Ret(unexpect, std::forward<Exp>(exp).error());
         }
@@ -894,7 +896,7 @@ namespace scn {
         {
             static_assert(is_expected<Ret>::value, "F must return an expected");
 
-            return exp.has_value()
+            return SCN_LIKELY(exp.has_value())
                        ? Ret(std::forward<Exp>(exp))
                        : std::invoke(std::forward<F>(f),
                                      std::forward<Exp>(exp).error());
@@ -912,14 +914,14 @@ namespace scn {
         {
             using result = typename remove_cvref_t<Exp>::template rebind<Ret>;
             if constexpr (std::is_void<Ret>::value) {
-                if (exp.has_value()) {
+                if (SCN_LIKELY(exp.has_value())) {
                     std::invoke(std::forward<F>(f), *std::forward<Exp>(exp));
                     return result();
                 }
                 return result(unexpect, std::forward<Exp>(exp).error());
             }
             else {
-                return exp.has_value()
+                return SCN_LIKELY(exp.has_value())
                            ? result(std::invoke(std::forward<F>(f),
                                                 *std::forward<Exp>(exp)))
                            : result(unexpect, std::forward<Exp>(exp).error());
@@ -933,14 +935,14 @@ namespace scn {
         {
             using result = typename remove_cvref_t<Exp>::template rebind<Ret>;
             if constexpr (std::is_void<Ret>::value) {
-                if (exp.has_value()) {
+                if (SCN_LIKELY(exp.has_value())) {
                     std::invoke(std::forward<F>(f));
                     return result();
                 }
                 return result(unexpect, std::forward<Exp>(exp).error());
             }
             else {
-                return exp.has_value()
+                return SCN_LIKELY(exp.has_value())
                            ? result(std::invoke(std::forward<F>(f)))
                            : result(unexpect, std::forward<Exp>(exp).error());
             }
@@ -958,7 +960,7 @@ namespace scn {
         {
             if constexpr (std::is_void<Ret>::value) {
                 using result = expected<typename Exp::value_type, monostate>;
-                if (exp.has_value()) {
+                if (SCN_LIKELY(exp.has_value())) {
                     return result(*std::forward<Exp>(exp));
                 }
 
@@ -968,7 +970,7 @@ namespace scn {
             else {
                 using result =
                     expected<typename Exp::value_type, remove_cvref_t<Ret>>;
-                return exp.has_value()
+                return SCN_LIKELY(exp.has_value())
                            ? result(*std::forward<Exp>(exp))
                            : result(
                                  unexpect,
@@ -986,7 +988,7 @@ namespace scn {
         {
             if constexpr (std::is_void<Ret>::value) {
                 using result = expected<typename Exp::value_type, monostate>;
-                if (exp.has_value()) {
+                if (SCN_LIKELY(exp.has_value())) {
                     return result();
                 }
 
@@ -996,7 +998,7 @@ namespace scn {
             else {
                 using result =
                     expected<typename Exp::value_type, remove_cvref_t<Ret>>;
-                return exp.has_value()
+                return SCN_LIKELY(exp.has_value())
                            ? result()
                            : result(
                                  unexpect,

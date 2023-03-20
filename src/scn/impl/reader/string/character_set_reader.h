@@ -236,21 +236,26 @@ namespace scn {
                     }
 
                     if (*it == ':') {
-                        if (auto err = on_colon(it, fmt.end()); !err) {
+                        if (auto err = on_colon(it, fmt.end());
+                            SCN_UNLIKELY(!err)) {
                             return unexpected(err);
                         }
                     }
                     else if (*it == '\\') {
-                        if (auto err = on_backslash(it, fmt.end()); !err) {
+                        if (auto err = on_backslash(it, fmt.end());
+                            SCN_UNLIKELY(!err)) {
                             return unexpected(err);
                         }
                     }
                     else {
-                        if (auto err = on_literal(it, fmt.end()); !err) {
+                        if (auto err = on_literal(it, fmt.end());
+                            SCN_UNLIKELY(!err)) {
                             return unexpected(err);
                         }
                     }
                 }
+
+                SCN_UNLIKELY_ATTR
                 return unexpected_scan_error(
                     scan_error::invalid_format_string,
                     "Unexpected end of [character set] format string argument");
@@ -280,6 +285,7 @@ namespace scn {
                     }
                 }
 
+                SCN_UNLIKELY_ATTR
                 return {scan_error::invalid_format_string,
                         "Invalid :colon: specifier in a [character set] format "
                         "string argument"};
@@ -309,6 +315,7 @@ namespace scn {
                     return {};
                 }
 
+                SCN_UNLIKELY_ATTR
                 return {scan_error::invalid_format_string,
                         "Invalid \\backslash specifier in a [character set] "
                         "format string argument"};
@@ -330,14 +337,14 @@ namespace scn {
                     (it_addr + 1) != end_addr && *(it_addr + 1) != ']') {
                     ++it;
                     auto cp2_result = parse_cp(it, end);
-                    if (!cp2_result) {
+                    if (SCN_UNLIKELY(!cp2_result)) {
                         return cp2_result.error();
                     }
 
                     auto cp1 = static_cast<uint32_t>(*cp_result);
                     auto cp2 = static_cast<uint32_t>(*cp2_result);
 
-                    if (cp2 < cp1) {
+                    if (SCN_UNLIKELY(cp2 < cp1)) {
                         return {scan_error::invalid_format_string,
                                 "Invalid range in [character set] format "
                                 "string argument: end before beginning"};
@@ -709,7 +716,7 @@ namespace scn {
                         [&](auto result) -> scan_expected<iterator_value_result<
                                              ranges::iterator_t<SourceRange>,
                                              std::basic_string_view<CharT>>> {
-                            if (begin == result.iterator) {
+                            if (SCN_UNLIKELY(begin == result.iterator)) {
                                 return unexpected_scan_error(
                                     scan_error::invalid_scanned_value,
                                     "[character set] matched no characters");

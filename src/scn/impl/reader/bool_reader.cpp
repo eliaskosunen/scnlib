@@ -80,7 +80,7 @@ namespace scn {
                     return read_numeric(range, val);
                 })
                 .transform_error([&](scan_error err) SCN_NOEXCEPT {
-                    if (err.code() == scan_error::good) {
+                    if (SCN_UNLIKELY(err.code() == scan_error::good)) {
                         return scan_error{scan_error::invalid_scanned_value,
                                           "Failed to scan boolean"};
                     }

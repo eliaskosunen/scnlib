@@ -41,13 +41,13 @@ namespace scn {
                     break;
                 }
 
+                using char_type = ranges::range_value_t<Range>;
                 auto rng = ranges::subrange{it, ranges::end(range)};
 
-                using char_type = ranges::range_value_t<Range>;
                 char_type buffer[4 / sizeof(char_type)]{};
                 auto e = read_code_point(
                     rng, span<char_type>{buffer, 4 / sizeof(char_type)});
-                if (!e) {
+                if (SCN_UNLIKELY(!e)) {
                     return unexpected(e.error());
                 }
 
@@ -85,13 +85,13 @@ namespace scn {
                 char_type buffer[4 / sizeof(char_type)]{};
                 auto e = read_code_point(
                     rng, span<char_type>{buffer, 4 / sizeof(char_type)});
-                if (!e) {
+                if (SCN_UNLIKELY(!e)) {
                     return unexpected(e.error());
                 }
 
                 auto out_before_write = out;
                 for (char_type ch : e->value) {
-                    if (out == ranges::end(output)) {
+                    if (SCN_UNLIKELY(out == ranges::end(output))) {
                         return read_copying_result<InputR, OutputR>{
                             in, out_before_write};
                     }

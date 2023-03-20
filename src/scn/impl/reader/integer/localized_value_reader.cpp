@@ -53,7 +53,7 @@ namespace scn {
                 std::basic_string_view<CharT> source)
             {
                 if constexpr (std::is_unsigned_v<T>) {
-                    if (source.front() == CharT{'-'}) {
+                    if (SCN_UNLIKELY(source.front() == CharT{'-'})) {
                         return {scan_error::invalid_scanned_value,
                                 "Unexpected sign '-' when scanning an "
                                 "unsigned integer"};
@@ -80,6 +80,7 @@ namespace scn {
                                              std::ios_base::iostate err)
             {
                 if ((err & std::ios_base::failbit) == 0) {
+                    SCN_LIKELY_ATTR
                     return {};
                 }
 
@@ -115,6 +116,7 @@ namespace scn {
                 }
 
                 if ((err & std::ios_base::failbit) == 0) {
+                    SCN_LIKELY_ATTR
                     return {};
                 }
 
@@ -130,12 +132,14 @@ namespace scn {
                                   std::basic_string_view<CharT> source,
                                   T& value)
             {
-                if (auto e = reject_minus_sign_if_unsigned<T>(source); !e) {
+                if (auto e = reject_minus_sign_if_unsigned<T>(source);
+                    SCN_UNLIKELY(!e)) {
                     return unexpected(e);
                 }
 
                 auto it = do_get_facet(facet, stream, err, source, value);
-                if (auto e = check_range_supported(value, err); !e) {
+                if (auto e = check_range_supported(value, err);
+                    SCN_UNLIKELY(!e)) {
                     return unexpected(e);
                 }
                 return detail::make_string_view_iterator(source, it);
@@ -149,7 +153,8 @@ namespace scn {
                                     std::basic_string_view<CharT> source,
                                     T& value)
             {
-                if (auto e = reject_minus_sign_if_unsigned<T>(source); !e) {
+                if (auto e = reject_minus_sign_if_unsigned<T>(source);
+                    SCN_UNLIKELY(!e)) {
                     return unexpected(e);
                 }
 
@@ -158,7 +163,8 @@ namespace scn {
                                        unsigned long long>;
                 scanned_type tmp{};
                 auto it = do_get_facet(facet, stream, err, source, tmp);
-                if (auto e = check_range_unsupported<T>(tmp, err); !e) {
+                if (auto e = check_range_unsupported<T>(tmp, err);
+                    SCN_UNLIKELY(!e)) {
                     return unexpected(e);
                 }
                 value = static_cast<T>(tmp);

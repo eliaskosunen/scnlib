@@ -101,6 +101,15 @@ namespace scn {
                 this->m_buffer.clear();
             }
 
+            auto& underlying()
+            {
+                return m_range;
+            }
+            const auto& underlying() const
+            {
+                return m_range;
+            }
+
         protected:
             SCN_NODISCARD char_type get_at_index(difference_type idx) const
             {
@@ -124,7 +133,8 @@ namespace scn {
                 SCN_EXPECT(n > 0);
                 read_single_into_buffer();
                 for (difference_type i = 1; i < n; ++i) {
-                    if (m_iterator == ranges::end(m_range)) {
+                    if (SCN_UNLIKELY(m_iterator == ranges::end(m_range))) {
+                        SCN_UNLIKELY_ATTR
                         return false;
                     }
                     read_single_into_buffer();

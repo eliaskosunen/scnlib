@@ -294,6 +294,26 @@
 #define SCN_HAS_FALLTHROUGH_GCCATTRIBUTE 0
 #endif
 
+// Detect [[likely]] and [[unlikely]]
+#if SCN_STD >= SCN_STD_20
+
+#if SCN_HAS_CPP_ATTRIBUTE(likely) >= 201803 && \
+    SCN_HAS_CPP_ATTRIBUTE(unlikely) >= 201803
+#define SCN_HAS_LIKELY_ATTR 1
+#elif SCN_GCC >= SCN_COMPILER(9, 0, 0)
+#define SCN_HAS_LIKELY_ATTR 1
+#elif SCN_CLANG >= SCN_COMPILER(12, 0, 0)
+#define SCN_HAS_LIKELY_ATTR 1
+#elif SCN_MSVC >= SCN_COMPILER(19, 26, 0)
+#define SCN_HAS_LIKELY_ATTR 1
+#else
+#define SCN_HAS_LIKELY_ATTR 0
+#endif  // has_attr(likely && unlikely)
+
+#else
+#define SCN_HAS_LIKELY_ATTR 0
+#endif  // SCN_STD >= 20
+
 // Detect [[clang::trivial_abi]]
 #if SCN_HAS_CPP_ATTRIBUTE(clang::trivial_abi)
 #define SCN_HAS_TRIVIAL_ABI 1
@@ -390,6 +410,13 @@
 #define SCN_HAS_BUILTIN_EXPECT 1
 #else
 #define SCN_HAS_BUILTIN_EXPECT 0
+#endif
+
+// Detect __builtin_add_overflow etc.
+#if SCN_HAS_BUILTIN(__builtin_add_overflow) || SCN_GCC_COMPAT
+#define SCN_HAS_BUILTIN_OVERFLOW 1
+#else
+#define SCN_HAS_BUILTIN_OVERFLOW 0
 #endif
 
 // Detect concepts

@@ -43,8 +43,6 @@ namespace scn {
             /// Scanned value was invalid for given type.
             /// e.g. a period '.' when scanning for an int
             invalid_scanned_value,
-            /// Source range does not support the performed operation
-            invalid_operation,
             /// Scanned value was out of range for the desired type.
             /// (e.g. `>2^32` for an `uint32_t`)
             value_out_of_range,
@@ -53,9 +51,9 @@ namespace scn {
             /// Source range has invalid (utf-8 or utf-16) encoding
             invalid_encoding,
             /// This operation is only possible with exceptions enabled
-            exceptions_required,
+            exceptions_required,  // currently unused
             /// This operation is only possible with the heap enabled
-            heap_required,
+            heap_required,  // currently unused
             /// The source range emitted an error that cannot be recovered
             /// from. The library can't use the source range in this state.
             bad_source_error,
@@ -75,6 +73,7 @@ namespace scn {
             : m_msg(m),
               m_code(c)
         {
+            SCN_UNLIKELY_ATTR SCN_UNUSED(m_code);
         }
 
         /// Evaluated to true if there was no error
@@ -160,19 +159,10 @@ namespace scn {
                 return {};
             }
 
-            /// Get error code
             SCN_NODISCARD static constexpr enum scan_error::code code()
                 SCN_NOEXCEPT
             {
                 return scan_error::good;
-            }
-
-            /// Returns `true` if, after this error, the state of the given
-            /// input range is consistent, and thus, the range can be used for
-            /// new scanning operations.
-            SCN_NODISCARD static constexpr bool is_recoverable() SCN_NOEXCEPT
-            {
-                return true;
             }
         };
 

@@ -64,208 +64,215 @@ namespace scn {
                 }
                 return 255;
             }
-        }  // namespace
 
-        template <typename CharT>
-        auto int_classic_value_reader<CharT>::parse_sign_unsigned(
-            string_view_type& source) -> scan_error
-        {
-            if (SCN_UNLIKELY(source[0] == CharT{'-'})) {
-                return scan_error{scan_error::invalid_scanned_value,
-                                  "Unexpected sign '-' when scanning an "
-                                  "unsigned integer"};
-            }
+            enum sign_type : uint8_t { plus_sign, minus_sign };
 
-            if (source[0] == CharT{'+'}) {
-                source = source.substr(1);
-            }
+            template <typename CharT>
+            std::pair<bool, sign_type> get_sign(
+                std::basic_string_view<CharT> source)
+            {
+                SCN_EXPECT(!source.empty());
 
-            if (SCN_UNLIKELY(source.empty())) {
-                return scan_error{scan_error::invalid_scanned_value,
-                                  "Expected number after sign"};
-            }
-            return {};
-        }
+                switch (source[0]) {
+                    case CharT{'-'}:
+                        return {true, minus_sign};
 
-        template <typename CharT>
-        auto int_classic_value_reader<CharT>::parse_sign_signed(
-            string_view_type& source) -> scan_expected<sign_type>
-        {
-            sign_type sign = plus_sign;
+                    case CharT{'+'}:
+                        return {true, plus_sign};
 
-            if (source[0] == CharT{'-'}) {
-                if (SCN_UNLIKELY((m_options & only_unsigned) != 0)) {
-                    // 'u' option -> negative values disallowed
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "Parsed negative value, when 'u' format "
-                        "option was given");
+                    default:
+                        return {false, plus_sign};
                 }
-                sign = minus_sign;
-                source = source.substr(1);
-            }
-            else if (source[0] == CharT{'+'}) {
-                source = source.substr(1);
+
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
             }
 
-            if (SCN_UNLIKELY(source.empty())) {
-                return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "Expected number after potential sign character sign");
-            }
-
-            return {sign};
-        }
-
-        template <typename CharT>
-        auto int_classic_value_reader<CharT>::parse_base_prefix(
-            string_view_type source) -> base_prefix_result
-        {
-            SCN_EXPECT(!source.empty());
-
-            auto it = source.begin();
-            if (*it != CharT{'0'}) {
-                // All base prefixes start with '0'
-                return {it, base_prefix_state::base_not_determined};
-            }
-            // *it is now '0'
-
-            ++it;
-            if (it == source.end()) {
-                // Only '0' parsed
-                return {it, base_prefix_state::zero_parsed};
-            }
-
-            // Check for possible base prefix
-            int base_prefix = 0;
-            switch (static_cast<char>(*it)) {
-                case 'b':
-                case 'B':
-                    base_prefix = 2;
-                    break;
-                case 'o':
-                case 'O':
-                    base_prefix = 8;
-                    break;
-                case 'x':
-                case 'X':
-                    base_prefix = 16;
-                    break;
-                default:
-                    break;
-            }
-            if (base_prefix != 0) {
-                // Starts with "0_", skip the '_'
-                ++it;
-                return {it, base_prefix_state::base_determined_from_prefix,
-                        static_cast<int8_t>(base_prefix)};
-            }
-
-            // Starts with "0_", where '_' is not a base prefix char.
-            // If '_' is an octal digit, base is 8.
-            // Else, parse only '0'
-            if (_char_to_int(*it) < 8) {
-                // Octal digit
-                return {it, base_prefix_state::base_determined_from_zero_prefix,
-                        8};
-            }
-            return {it, base_prefix_state::base_not_determined};
-        }
-
-        template <typename CharT>
-        auto int_classic_value_reader<CharT>::parse_and_determine_base(
-            string_view_type& source) -> scan_expected<determine_base_result>
-        {
-            auto result = parse_base_prefix(source);
-            if (result.state == base_prefix_state::zero_parsed) {
-                source = detail::make_string_view_from_iterators<CharT>(
-                    result.iterator, source.end());
-                return {determine_base_result::zero_parsed};
-            }
-
-            if (m_base == 0) {
-                // Format string was 'i' or default ->
-                // base needs to be detected
-                if (result.state == base_prefix_state::base_not_determined) {
-                    // None detected -> base 10
-                    m_base = 10;
-                }
-                else {
-                    m_base = result.parsed_base;
-                }
-            }
-            else if ((m_options & allow_base_prefix) != 0) {
-                if (result.state ==
-                        base_prefix_state::base_determined_from_prefix &&
-                    result.parsed_base != m_base) {
-                    // Parsed base prefix for different base in the format "0_",
-                    // go back a single char
-                    source = detail::make_string_view_from_iterators<CharT>(
-                        --result.iterator, source.end());
-                    return {determine_base_result::keep_parsing};
-                }
-            }
-            else if (result.state != base_prefix_state::base_not_determined) {
-                return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "Parsed a base prefix, even though one isn't allowed");
-            }
-
-            SCN_ENSURE(m_base != 0);
-
-            source = detail::make_string_view_from_iterators<CharT>(
-                result.iterator, source.end());
-            return {determine_base_result::keep_parsing};
-        }
-
-        template <typename CharT>
-        scan_error int_classic_value_reader<CharT>::check_thousands_separators(
-            const std::string& thousands_separators) const
-        {
-            const auto return_error = []() {
-                return scan_error{scan_error::invalid_scanned_value,
-                                  "Invalid thousands separator grouping"};
+            enum class base_prefix_state {
+                base_not_determined,
+                base_determined_from_prefix,
+                base_determined_from_zero_prefix,
+                zero_parsed,
             };
 
-            if (thousands_separators[0] > 3) {
-                return return_error();
-            }
-            for (auto it = thousands_separators.begin() + 1;
-                 it != thousands_separators.end(); ++it) {
-                if (*it != 3) {
-                    return return_error();
+            struct base_prefix_result {
+                base_prefix_state state;
+                int offset;
+                int parsed_base{0};
+            };
+
+            template <typename CharT>
+            base_prefix_result get_base_prefix(
+                std::basic_string_view<CharT> source)
+            {
+                SCN_EXPECT(!source.empty());
+
+                if (source[0] != CharT{'0'}) {
+                    // Non-'0' initial character, surely not a base prefix
+                    return {base_prefix_state::base_not_determined, 0};
+                }
+                if (source.size() == 1) {
+                    // Only '0' parsed -> it's a zero
+                    return {base_prefix_state::zero_parsed, 1};
+                }
+
+                switch (source[1]) {
+                    case CharT{'x'}:
+                    case CharT{'X'}:
+                        // Starts with "0x"/"0X" -> hex
+                        return {base_prefix_state::base_determined_from_prefix,
+                                2, 16};
+
+                    case CharT{'o'}:
+                    case CharT{'O'}:
+                        // Starts with "0o"/"0O" -> oct
+                        return {base_prefix_state::base_determined_from_prefix,
+                                2, 8};
+                        break;
+
+                    case CharT{'b'}:
+                    case CharT{'B'}:
+                        // Starts with "0b"/"0B" -> bin
+                        return {base_prefix_state::base_determined_from_prefix,
+                                2, 2};
+                        break;
+
+                    case CharT{'0'}:
+                    case CharT{'1'}:
+                    case CharT{'2'}:
+                    case CharT{'3'}:
+                    case CharT{'4'}:
+                    case CharT{'5'}:
+                    case CharT{'6'}:
+                    case CharT{'7'}:
+                        // Starts with "0_" where _ is a valid octal digit ->
+                        // C-like octal prefix
+                        return {
+                            base_prefix_state::base_determined_from_zero_prefix,
+                            1, 8};
+
+                    default:
+                        // "0_", where _ is some other char -> not a base prefix
+                        return {base_prefix_state::base_not_determined, 0};
                 }
             }
 
-            return {};
-        }
+            enum class prefix_parse_result {
+                zero_parsed,
+                keep_parsing,
+            };
 
-        namespace {
-            inline uint64_t power_of_10(int pw)
+            template <typename T, typename CharT>
+            scan_expected<std::pair<prefix_parse_result, sign_type>>
+            parse_prefix(std::basic_string_view<CharT>& source,
+                         unsigned options,
+                         int& base)
             {
-                static constexpr std::array<uint64_t, 20> powers{
-                    {1ull,
-                     10ull,
-                     100ull,
-                     1000ull,
-                     10'000ull,
-                     100'000ull,
-                     1'000'000ull,
-                     10'000'000ull,
-                     100'000'000ull,
-                     1'000'000'000ull,
-                     10'000'000'000ull,
-                     100'000'000'000ull,
-                     1'000'000'000'000ull,
-                     10'000'000'000'000ull,
-                     100'000'000'000'000ull,
-                     1'000'000'000'000'000ull,
-                     10'000'000'000'000'000ull,
-                     100'000'000'000'000'000ull,
-                     1'000'000'000'000'000'000ull,
-                     10'000'000'000'000'000'000ull}};
-                return powers[static_cast<std::size_t>(pw)];
+                SCN_EXPECT(!source.empty());
+
+                const auto sign_result = get_sign(source);
+                if constexpr (std::is_signed_v<T>) {
+                    if (sign_result.second == minus_sign &&
+                        (options &
+                         int_classic_value_reader_base::only_unsigned) != 0) {
+                        // 'u' option -> negative values disallowed
+                        SCN_UNLIKELY_ATTR
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "Parsed negative value, when 'u' format options "
+                            "was given");
+                    }
+                }
+                else {
+                    if (SCN_UNLIKELY(sign_result.second == minus_sign)) {
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "Unexpected sign '-' when scanning an unsigned "
+                            "integer");
+                    }
+                }
+
+                if (sign_result.first) {
+                    source = source.substr(1);
+
+                    if (SCN_UNLIKELY(source.empty())) {
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "Expected number after sign");
+                    }
+                }
+
+                auto base_result = get_base_prefix(source);
+
+                auto do_return = [&](prefix_parse_result r) {
+                    source =
+                        source.substr(static_cast<size_t>(base_result.offset));
+                    return std::make_pair(r, sign_result.second);
+                };
+
+                if (base_result.state == base_prefix_state::zero_parsed) {
+                    return do_return(prefix_parse_result::zero_parsed);
+                }
+
+                if (base == 0) {
+                    // Format string was 'i' or default ->
+                    // base needs to be detected
+                    // Use parsed_base, if one could be determined,
+                    // default to base 10
+                    base = base_result.state ==
+                                   base_prefix_state::base_not_determined
+                               ? 10
+                               : base_result.parsed_base;
+                    SCN_ENSURE(base != 0);
+                    return do_return(prefix_parse_result::keep_parsing);
+                }
+
+                if ((options &
+                     int_classic_value_reader_base::allow_base_prefix) != 0) {
+                    if (base_result.state ==
+                            base_prefix_state::base_determined_from_prefix &&
+                        base_result.parsed_base != base) {
+                        // Parsed base prefix for different base in the format
+                        // "0_", go back a single char
+                        --base_result.offset;
+                    }
+                }
+                else if (SCN_UNLIKELY(base_result.state !=
+                                      base_prefix_state::base_not_determined)) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Parsed a base prefix, even though one isn't allowed");
+                }
+
+                return do_return(prefix_parse_result::keep_parsing);
             }
+
+            constexpr std::array<uint64_t, 20> powers_of_ten{
+                {1ull,
+                 10ull,
+                 100ull,
+                 1000ull,
+                 10'000ull,
+                 100'000ull,
+                 1'000'000ull,
+                 10'000'000ull,
+                 100'000'000ull,
+                 1'000'000'000ull,
+                 10'000'000'000ull,
+                 100'000'000'000ull,
+                 1'000'000'000'000ull,
+                 10'000'000'000'000ull,
+                 100'000'000'000'000ull,
+                 1'000'000'000'000'000ull,
+                 10'000'000'000'000'000ull,
+                 100'000'000'000'000'000ull,
+                 1'000'000'000'000'000'000ull,
+                 10'000'000'000'000'000'000ull}};
+            constexpr uint64_t power_of_10(int pw)
+            {
+                return powers_of_ten[static_cast<std::size_t>(pw)];
+            }
+
             constexpr int count_digits(uint64_t x)
             {
                 if (x >= 10'000'000'000ull) {
@@ -338,9 +345,8 @@ namespace scn {
             }
         }  // namespace
 
-        template <typename CharT>
         template <typename T>
-        struct int_classic_value_reader<CharT>::int_reader_state {
+        struct int_reader_state {
             using utype = std::make_unsigned_t<T>;
 
             // Max for uint
@@ -351,7 +357,7 @@ namespace scn {
             // Absolute value of min for sint
             static constexpr auto abs_int_min = static_cast<utype>(int_max + 1);
 
-            int_reader_state(int8_t base, sign_type s)
+            int_reader_state(int base, sign_type s)
                 : ubase(static_cast<utype>(base)),
                   sign(s),
                   limit([&]() -> utype {
@@ -383,11 +389,40 @@ namespace scn {
             const std::pair<utype, utype> cutlimits;
         };
 
-        template <typename CharT>
-        template <typename T>
-        auto int_classic_value_reader<CharT>::do_single_char(
-            CharT ch,
-            int_reader_state<T>& state) -> std::pair<bool, scan_error>
+        namespace {
+            template <typename UType, typename T>
+            const char* do_single_char_impl(UType digit,
+                                            int_reader_state<T>& state)
+            {
+                auto overflow_error_msg = [sign = state.sign]() {
+                    if (sign == minus_sign) {
+                        return "Out of range: integer overflow";
+                    }
+                    return "Out of range: integer underflow";
+                };
+
+                if (SCN_UNLIKELY(state.accumulator > state.cutoff() ||
+                                 (state.accumulator == state.cutoff() &&
+                                  digit > state.cutlim()))) {
+                    SCN_UNLIKELY_ATTR
+                    return overflow_error_msg();
+                }
+
+                SCN_GCC_PUSH
+                SCN_GCC_IGNORE("-Wconversion")
+
+                state.accumulator *= state.ubase;
+                state.accumulator += digit;
+
+                SCN_GCC_POP
+
+                return nullptr;
+            }
+        }  // namespace
+
+        template <typename CharT, typename T>
+        auto do_single_char(CharT ch, int_reader_state<T>& state)
+            -> std::pair<bool, scan_error>
         {
             using utype = typename int_reader_state<T>::utype;
 
@@ -396,35 +431,19 @@ namespace scn {
                 return {false, {}};
             }
 
-            if (state.accumulator > state.cutoff() ||
-                (state.accumulator == state.cutoff() &&
-                 digit > state.cutlim())) {
-                if (state.sign == minus_sign) {
-                    return {false,
-                            {scan_error::value_out_of_range,
-                             "Out of range: integer overflow"}};
-                }
-                return {false, scan_error{scan_error::value_out_of_range,
-                                          "Out of range: integer underflow"}};
+            if (auto msg = do_single_char_impl(digit, state);
+                SCN_UNLIKELY(msg != nullptr)) {
+                return {false, {scan_error::value_out_of_range, msg}};
             }
-
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Wconversion")
-
-            state.accumulator *= state.ubase;
-            state.accumulator += digit;
-
-            SCN_GCC_POP
-
             return {true, {}};
         }
 
-        template <typename CharT>
-        template <typename T>
-        auto int_classic_value_reader<CharT>::do_single_char_with_thsep(
+        template <typename CharT, typename T>
+        auto do_single_char_with_thsep(
             int_reader_state<T>& state,
-            typename string_view_type::iterator it,
-            typename string_view_type::iterator& after_last_thsep_it,
+            typename std::basic_string_view<CharT>::iterator it,
+            typename std::basic_string_view<CharT>::iterator&
+                after_last_thsep_it,
             std::string& thousands_separators) -> std::pair<bool, scan_error>
         {
             using utype = typename int_reader_state<T>::utype;
@@ -441,30 +460,26 @@ namespace scn {
                 return {false, {}};
             }
 
-            if (state.accumulator > state.cutoff() ||
-                (state.accumulator == state.cutoff() &&
-                 digit > state.cutlim())) {
-                if (state.sign == minus_sign) {
-                    return {false,
-                            {scan_error::value_out_of_range,
-                             "Out of range: integer overflow"}};
-                }
-                return {false, scan_error{scan_error::value_out_of_range,
-                                          "Out of range: integer underflow"}};
+            if (auto msg = do_single_char_impl(digit, state);
+                SCN_UNLIKELY(msg != nullptr)) {
+                return {false, {scan_error::value_out_of_range, msg}};
             }
-
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Wconversion")
-
-            state.accumulator *= state.ubase;
-            state.accumulator += digit;
-
-            SCN_GCC_POP
-
             return {true, {}};
         }
 
         namespace {
+            constexpr uint64_t accumulator_multipliers[] = {
+                0,
+                power_of_10(1),
+                power_of_10(2),
+                power_of_10(3),
+                power_of_10(4),
+                power_of_10(5),
+                power_of_10(6),
+                power_of_10(7),
+                power_of_10(8),
+            };
+
             template <typename T,
                       typename State,
                       typename Iterator,
@@ -478,6 +493,20 @@ namespace scn {
                 uint64_t word{};
                 std::memcpy(&word, &*it, 8);
 
+#if 1
+                constexpr std::size_t digits_in_word = 8;
+
+                // Check if word is all decimal digits, from:
+                // https://lemire.me/blog/2018/09/30/quickly-identifying-a-sequence-of-digits-in-a-string-of-characters/
+                if ((word & (word + 0x0606060606060606ull) &
+                     0xF0F0F0F0F0F0F0F0ull) != 0x3030303030303030ull) {
+                    // Bail out, use simpler loop
+                    stop_fast = true;
+                    return {};
+                }
+#else
+                // Alternative (slower) approach, where we count the number of
+                // decimal digits in the string, and mask them out
                 std::size_t digits_in_word{};
 
                 {
@@ -499,13 +528,15 @@ namespace scn {
                     word <<= shift;
                     const uint64_t mask = (~0ull) << shift;
                     word = (mask & word) | (~mask & 0x3030303030303030ull);
-
-                    it += digits_in_word;
                 }
+#endif
+
+                it += digits_in_word;
 
                 {
                     // Bit-twiddle ascii decimal chars to become an actual
-                    // integer
+                    // integer, from:
+                    // https://lemire.me/blog/2022/01/21/swar-explained-parsing-eight-digits/
 
                     constexpr uint64_t mask = 0x000000FF000000FFull;
                     constexpr uint64_t mul1 = 100 + (1000000ull << 32);
@@ -518,30 +549,66 @@ namespace scn {
                            32;
                 }
 
-                SCN_ASSUME(word <= 9999'9999ull);
-
                 using utype = typename State::utype;
+
+#if SCN_HAS_BUILTIN_OVERFLOW
+                if (state.accumulator == 0) {
+                    if (static_cast<uint64_t>(
+                            std::numeric_limits<utype>::max()) <
+                            1'0000'0000ull &&
+                        word > static_cast<uint64_t>(state.limit)) {
+                        SCN_UNLIKELY_ATTR
+                        return scan_error{scan_error::value_out_of_range,
+                                          "Out of range: integer overflow"};
+                    }
+
+                    state.accumulator = static_cast<utype>(word);
+                }
+                else {
+                    SCN_EXPECT(can_do_fast64_multiple_times<T>());
+                    const utype accumulator_multiplier = static_cast<utype>(
+                        accumulator_multipliers[digits_in_word]);
+
+                    if (SCN_UNLIKELY(
+                            __builtin_mul_overflow(state.accumulator,
+                                                   accumulator_multiplier,
+                                                   &state.accumulator) ||
+                            __builtin_add_overflow(state.accumulator,
+                                                   static_cast<utype>(word),
+                                                   &state.accumulator))) {
+                        SCN_UNLIKELY_ATTR
+                        return scan_error{scan_error::value_out_of_range,
+                                          "Out of range: integer overflow"};
+                    }
+                }
+#else
                 const utype accumulator_multiplier =
-                    can_do_fast64_multiple_times<T>()
-                        ? static_cast<utype>(
-                              power_of_10(static_cast<int>(digits_in_word)))
-                        : utype{1};
+                    static_cast<utype>(accumulator_multipliers[digits_in_word]);
+                SCN_EXPECT(accumulator_multiplier != 0);
 
                 if (state.accumulator == 0) {
-                    if (word > static_cast<uint64_t>(state.limit)) {
+                    if (static_cast<uint64_t>(state.limit) >= 1'0000'0000ull &&
+                        word > static_cast<uint64_t>(state.limit)) {
+                        SCN_UNLIKELY_ATTR
                         return scan_error{scan_error::value_out_of_range,
                                           "Out of range: integer overflow"};
                     }
                 }
                 else {
-                    SCN_EXPECT(accumulator_multiplier != 0 &&
-                               accumulator_multiplier != 1);
+                    // MSVC likes to act dumb, and not realize that
+                    // accumulator_multiplier really can't be 0 here.
+                    // Disabling C4723 (potential divide by 0) does not work.
+                    const auto multiplier = accumulator_multiplier == 0
+                                                ? utype{1}
+                                                : accumulator_multiplier;
+
                     // accumulator * multiplier + word > limit -> overflow
                     // accumulator * multiplier > limit - word
                     // accumulator > (limit - word) / multiplier
                     if (state.accumulator >
                         ((state.limit - static_cast<utype>(word)) /
-                         accumulator_multiplier)) {
+                         multiplier)) {
+                        SCN_UNLIKELY_ATTR
                         return scan_error{scan_error::value_out_of_range,
                                           "Out of range: integer overflow"};
                     }
@@ -562,104 +629,148 @@ namespace scn {
                 else {
                     state.accumulator = static_cast<utype>(word);
                 }
+#endif  // SCN_HAS_BUILTIN_OVERFLOW
 
                 return {};
             }
-        }  // namespace
 
-        template <typename CharT>
-        template <typename T>
-        auto int_classic_value_reader<CharT>::do_read(string_view_type source,
-                                                      T& value,
-                                                      sign_type sign)
-            -> scan_expected<ranges::iterator_t<string_view_type>>
-        {
-            SCN_EXPECT(!source.empty());
-            SCN_EXPECT(std::is_signed_v<T> || sign == plus_sign);
-            SCN_EXPECT(m_base > 0);
-
-            int_reader_state<T> state{m_base, sign};
-            auto it = source.begin();
-
-            if (_char_to_int(*it) >= m_base) {
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "Invalid integer value");
+            template <typename CharT, typename T>
+            scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>
+            parse_zero(std::basic_string_view<CharT> source, T& value)
+            {
+                value = 0;
+                return source.begin();
             }
 
-            if ((m_options & allow_thsep) == 0) {
-                // No thsep
-                bool stop_reading = false;
-                if constexpr (std::is_same_v<CharT, char> && !SCN_IS_32BIT &&
-                              !SCN_IS_BIG_ENDIAN && SCN_HAS_BITS_CTZ) {
-                    if (state.ubase == 10) {
-                        while (source.end() - it >= 8 && !stop_reading) {
-                            if (auto err = do_read_decimal_fast64<T>(
-                                    state, it, source.end(), stop_reading);
-                                !err) {
-                                return unexpected(err);
+            scan_error check_thousands_separators(
+                const std::string& thousands_separators)
+            {
+                const auto return_error = []() {
+                    return scan_error{scan_error::invalid_scanned_value,
+                                      "Invalid thousands separator grouping"};
+                };
+
+                if (thousands_separators[0] > 3) {
+                    SCN_UNLIKELY_ATTR
+                    return return_error();
+                }
+                for (auto it = thousands_separators.begin() + 1;
+                     it != thousands_separators.end(); ++it) {
+                    if (*it != 3) {
+                        SCN_UNLIKELY_ATTR
+                        return return_error();
+                    }
+                }
+
+                return {};
+            }
+
+            template <typename CharT, typename T>
+            scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>
+            do_read(const int_classic_value_reader_base& reader,
+                    std::basic_string_view<CharT> source,
+                    T& value,
+                    sign_type sign)
+            {
+                if (SCN_UNLIKELY(source.empty())) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Invalid integer value");
+                }
+
+                SCN_EXPECT(std::is_signed_v<T> || sign == plus_sign);
+                SCN_EXPECT(reader.base > 0);
+
+                int_reader_state<T> state{reader.base, sign};
+                auto it = source.begin();
+
+                if (_char_to_int(*it) >= reader.base) {
+                    SCN_UNLIKELY_ATTR
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Invalid integer value");
+                }
+
+                if ((reader.options &
+                     int_classic_value_reader_base::allow_thsep) == 0) {
+                    // No thsep
+                    bool stop_reading = false;
+                    if constexpr (std::is_same_v<CharT, char> &&
+                                  !SCN_IS_32BIT && !SCN_IS_BIG_ENDIAN &&
+                                  SCN_HAS_BITS_CTZ) {
+                        if (state.ubase == 10) {
+                            while (source.end() - it >= 8 && !stop_reading) {
+                                if (auto err = do_read_decimal_fast64<T>(
+                                        state, it, source.end(), stop_reading);
+                                    SCN_UNLIKELY(!err)) {
+                                    return unexpected(err);
+                                }
+                                if constexpr (!can_do_fast64_multiple_times<
+                                                  T>()) {
+                                    break;
+                                }
                             }
-                            if constexpr (!can_do_fast64_multiple_times<T>()) {
-                                break;
-                            }
+                        }
+                    }
+
+                    for (; /*!stop_reading &&*/ it != source.end(); ++it) {
+                        if (const auto [keep_going, err] =
+                                do_single_char(*it, state);
+                            SCN_UNLIKELY(!err)) {
+                            return unexpected(err);
+                        }
+                        else if (!keep_going) {
+                            break;
+                        }
+                    }
+                }
+                else {
+                    // Allow thsep
+                    std::string thousands_separators{};
+                    auto after_last_thsep_it = it;
+
+                    for (; it != source.end(); ++it) {
+                        if (const auto [keep_going, err] =
+                                do_single_char_with_thsep<CharT>(
+                                    state, it, after_last_thsep_it,
+                                    thousands_separators);
+                            SCN_UNLIKELY(!err)) {
+                            return unexpected(err);
+                        }
+                        else if (!keep_going) {
+                            break;
+                        }
+                    }
+
+                    if (!thousands_separators.empty()) {
+                        if (auto e = check_thousands_separators(
+                                thousands_separators);
+                            SCN_UNLIKELY(!e)) {
+                            return unexpected(e);
                         }
                     }
                 }
 
-                for (; !stop_reading && it != source.end(); ++it) {
-                    if (const auto [keep_going, err] =
-                            do_single_char(*it, state);
-                        !err) {
-                        return unexpected(err);
+                if (sign == minus_sign) {
+                    if (SCN_UNLIKELY(state.accumulator == state.abs_int_min)) {
+                        value = std::numeric_limits<T>::min();
                     }
-                    else if (!keep_going) {
-                        break;
+                    else {
+                        SCN_MSVC_PUSH
+                        SCN_MSVC_IGNORE(
+                            4146)  // unary minus applied to unsigned
+                        value =
+                            static_cast<T>(-static_cast<T>(state.accumulator));
+                        SCN_MSVC_POP
                     }
-                }
-            }
-            else {
-                // Allow thsep
-                std::string thousands_separators{};
-                auto after_last_thsep_it = it;
-
-                for (; it != source.end(); ++it) {
-                    if (const auto [keep_going, err] =
-                            do_single_char_with_thsep(state, it,
-                                                      after_last_thsep_it,
-                                                      thousands_separators);
-                        !err) {
-                        return unexpected(err);
-                    }
-                    else if (!keep_going) {
-                        break;
-                    }
-                }
-
-                if (!thousands_separators.empty()) {
-                    if (auto e =
-                            check_thousands_separators(thousands_separators);
-                        !e) {
-                        return unexpected(e);
-                    }
-                }
-            }
-
-            if (sign == minus_sign) {
-                if (SCN_UNLIKELY(state.accumulator == state.abs_int_min)) {
-                    value = std::numeric_limits<T>::min();
                 }
                 else {
-                    SCN_MSVC_PUSH
-                    SCN_MSVC_IGNORE(4146)  // unary minus applied to unsigned
-                    value = static_cast<T>(-static_cast<T>(state.accumulator));
-                    SCN_MSVC_POP
+                    value = static_cast<T>(state.accumulator);
                 }
-            }
-            else {
-                value = static_cast<T>(state.accumulator);
-            }
 
-            return it;
-        }
+                return it;
+            }
+        }  // namespace
 
         template <typename CharT>
         template <typename T>
@@ -669,37 +780,14 @@ namespace scn {
         {
             SCN_EXPECT(!source.empty());
 
-            auto parse_sign =
-                [&](string_view_type& src) -> scan_expected<sign_type> {
-                if constexpr (std::is_unsigned_v<T>) {
-                    if (auto e = parse_sign_unsigned(src); !e) {
-                        return unexpected(e);
+            return parse_prefix<T>(source, options, base)
+                .and_then([&](auto result) {
+                    if (result.first == prefix_parse_result::zero_parsed) {
+                        return parse_zero(source, value);
                     }
-                    return plus_sign;
-                }
-                else {
-                    return parse_sign_signed(src);
-                }
-            };
 
-            auto sign = parse_sign(source);
-            return sign
-                .and_then(
-                    [&](auto) { return parse_and_determine_base(source); })
-                .and_then(
-                    [&](auto base_result)
-                        -> scan_expected<ranges::iterator_t<string_view_type>> {
-                        if (base_result == determine_base_result::zero_parsed) {
-                            value = T{0};
-                            return {source.begin()};
-                        }
-                        if (source.empty()) {
-                            return unexpected_scan_error(
-                                scan_error::invalid_scanned_value,
-                                "Invalid integer value");
-                        }
-                        return do_read(source, value, *sign);
-                    });
+                    return do_read(*this, source, value, result.second);
+                });
         }
 
 #define SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, IntT)    \

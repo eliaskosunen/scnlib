@@ -97,16 +97,18 @@ namespace scn {
                 SCN_GCC_PUSH
                 SCN_GCC_IGNORE("-Wswitch-default")
                 switch (code) {
+                    SCN_LIKELY_ATTR
                     case std::codecvt_base::ok: {
                         if (output_char == 0) {
                             return result_code::in_progress;
                         }
                         return result_code::ok;
                     }
+
                     case std::codecvt_base::partial:
                     case std::codecvt_base::error:
                         return result_code::error;
-                        return result_code::error;
+
                     case std::codecvt_base::noconv:
                         SCN_EXPECT(false);
                         SCN_UNREACHABLE;
@@ -128,7 +130,7 @@ namespace scn {
                 if (cp_len == static_cast<std::size_t>(-1)) {
                     auto cp_len_tmp =
                         code_point_length_by_starting_code_unit(buf[0]);
-                    if (!cp_len_tmp) {
+                    if (SCN_UNLIKELY(!cp_len_tmp)) {
                         result = impl_base::result_code::error;
                         return;
                     }
@@ -142,13 +144,13 @@ namespace scn {
                 }
 
                 const auto buf_sv = std::string_view{buf, buf_len};
-                if (!validate_unicode(buf_sv)) {
+                if (SCN_UNLIKELY(!validate_unicode(buf_sv))) {
                     result = impl_base::result_code::error;
                     return;
                 }
                 std::size_t ret =
                     transcode_valid(buf_sv, span<wchar_t>{&output_char, 1});
-                if (ret == 0) {
+                if (SCN_UNLIKELY(ret == 0)) {
                     result = impl_base::result_code::error;
                     return;
                 }
@@ -188,8 +190,10 @@ namespace scn {
             SCN_GCC_PUSH
             SCN_GCC_IGNORE("-Wswitch-default")
             switch (impl.result) {
+                    SCN_LIKELY_ATTR
                 case impl_base::result_code::ok:
                     return {{input_it, impl.output_char}};
+
                 case impl_base::result_code::in_progress:
                 case impl_base::result_code::error:
                     return unexpected_scan_error(
@@ -262,7 +266,7 @@ namespace scn {
                 if constexpr (std::is_same_v<char_type, char>) {
                     auto result =
                         widen(ranges::subrange{input_it, ranges::end(input)});
-                    if (!result) {
+                    if (SCN_UNLIKELY(!result)) {
                         return unexpected(result.error());
                     }
 
@@ -348,7 +352,7 @@ namespace scn {
                 if constexpr (std::is_same_v<char_type, char>) {
                     auto result =
                         widen(ranges::subrange{it, ranges::end(range)});
-                    if (!result) {
+                    if (SCN_UNLIKELY(!result)) {
                         return unexpected(result.error());
                     }
 

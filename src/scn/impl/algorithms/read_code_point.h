@@ -33,7 +33,8 @@ namespace scn {
             static constexpr auto char_size =
                 sizeof(ranges::range_value_t<Range>);
 
-            if (range_nocopy_size(range) * char_size < buf.size()) {
+            if (SCN_UNLIKELY(range_nocopy_size(range) * char_size <
+                             buf.size())) {
                 return unexpected_scan_error(scan_error::invalid_encoding,
                                              "EOF in the middle of code point");
             }
@@ -59,7 +60,7 @@ namespace scn {
             ++it;
 
             const auto len = code_point_length_by_starting_code_unit(first);
-            if (!len) {
+            if (SCN_UNLIKELY(!len)) {
                 return unexpected(len.error());
             }
 
@@ -80,7 +81,7 @@ namespace scn {
             else {
                 SCN_EXPECT(*len <= 4);
                 for (std::size_t i = 1; i < *len; ++i) {
-                    if (it == ranges::end(range)) {
+                    if (SCN_UNLIKELY(it == ranges::end(range))) {
                         return unexpected_scan_error(
                             scan_error::invalid_encoding,
                             "EOF in the middle of UTF-8 code point");
@@ -114,14 +115,14 @@ namespace scn {
             ++it;
 
             const auto len = code_point_length_by_starting_code_unit(first);
-            if (!len) {
+            if (SCN_UNLIKELY(!len)) {
                 return unexpected(len.error());
             }
             if (*len == 1) {
                 return {{it, buf.first(1)}};
             }
 
-            if (it == ranges::end(range)) {
+            if (SCN_UNLIKELY(it == ranges::end(range))) {
                 return unexpected_scan_error(
                     scan_error::invalid_encoding,
                     "EOF in the middle of UTF-16 code point");
@@ -152,7 +153,7 @@ namespace scn {
         {
             static_assert(!std::is_const_v<CharT>);
 
-            if (auto e = eof_check(range); !e) {
+            if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
                 return unexpected(e);
             }
 

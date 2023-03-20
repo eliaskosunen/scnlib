@@ -39,7 +39,7 @@ namespace scn {
             {
                 reader_error_handler eh{};
                 detail::check_pointer_type_specs(specs, eh);
-                if (!eh) {
+                if (SCN_UNLIKELY(!eh)) {
                     return {scan_error::invalid_format_string, eh.m_msg};
                 }
                 return {};
