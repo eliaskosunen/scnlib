@@ -22,8 +22,9 @@
 
 TEST(IntSourceReaderTest, DISABLED_Nocopy)
 {
+    std::string buf{};
     std::string_view source{"123 456"};
-    auto source_reader = scn::impl::int_classic_source_reader<char>{};
+    auto source_reader = scn::impl::simple_classic_source_reader<char>{buf};
     auto result = source_reader.read(source);
     EXPECT_EQ(result.iterator, source.begin() + 3);
     EXPECT_EQ(result.value, std::string_view{"123"});
@@ -36,7 +37,8 @@ TEST(IntSourceReaderTest, Copying)
     auto source = scn::istreambuf_view{ss};
     auto subrange = scn::istreambuf_subrange{source};
 
-    auto source_reader = scn::impl::int_classic_source_reader<char>{};
+    std::string buf{};
+    auto source_reader = scn::impl::simple_classic_source_reader<char>{buf};
     auto result = source_reader.read(subrange);
     EXPECT_NE(result.iterator, subrange.begin());
     EXPECT_NE(result.iterator, subrange.end());

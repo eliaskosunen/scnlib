@@ -23,10 +23,11 @@ namespace scn {
     namespace impl {
         template <typename CharT>
         int_localized_source_reader<CharT>::int_localized_source_reader(
+            std::basic_string<CharT>& buffer,
             detail::locale_ref loc,
             int base,
             bool allow_minus_sign)
-            : m_locale{loc}
+            : m_buffer{buffer}, m_locale{loc}
         {
             auto f = localized_number_formatting_options<char_type>{loc};
             m_thsep = f.thousands_sep;
@@ -48,11 +49,13 @@ namespace scn {
         }
 
         template int_localized_source_reader<char>::int_localized_source_reader(
+            std::string&,
             detail::locale_ref,
             int,
             bool);
         template int_localized_source_reader<
-            wchar_t>::int_localized_source_reader(detail::locale_ref,
+            wchar_t>::int_localized_source_reader(std::wstring&,
+                                                  detail::locale_ref,
                                                   int,
                                                   bool);
     }  // namespace impl

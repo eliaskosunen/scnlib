@@ -24,10 +24,6 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-        // TODO
-        template <typename CharT>
-        using bool_classic_source_reader = classic_numeric_source_reader<CharT>;
-
         template <typename CharT>
         class bool_value_reader {
         public:
@@ -132,13 +128,14 @@ namespace scn {
 
             auto make_default_classic_readers() const
             {
-                return std::make_pair(bool_classic_source_reader<CharT>{},
-                                      bool_value_reader<CharT>{});
+                return std::make_pair(
+                    simple_classic_source_reader<CharT>{this->buffer},
+                    bool_value_reader<CharT>{});
             }
             auto make_default_userlocale_readers(detail::locale_ref loc) const
             {
                 return std::make_pair(
-                    until_space_localized_source_reader<CharT>{loc},
+                    simple_localized_source_reader<CharT>{loc, this->buffer},
                     bool_value_reader<CharT>{loc});
             }
 
@@ -147,8 +144,9 @@ namespace scn {
             {
                 // TODO: specs
                 SCN_UNUSED(specs);
-                return std::make_pair(bool_classic_source_reader<CharT>{},
-                                      bool_value_reader<CharT>{});
+                return std::make_pair(
+                    simple_classic_source_reader<CharT>{this->buffer},
+                    bool_value_reader<CharT>{});
             }
             auto make_specs_userlocale_readers(
                 const detail::basic_format_specs<CharT>& specs,
@@ -157,7 +155,7 @@ namespace scn {
                 // TODO: specs
                 SCN_UNUSED(specs);
                 return std::make_pair(
-                    until_space_localized_source_reader<CharT>{loc},
+                    simple_localized_source_reader<CharT>{loc, this->buffer},
                     bool_value_reader<CharT>{loc});
             }
             auto make_specs_localized_readers(
@@ -167,7 +165,7 @@ namespace scn {
                 // TODO: specs
                 SCN_UNUSED(specs);
                 return std::make_pair(
-                    until_space_localized_source_reader<CharT>{loc},
+                    simple_localized_source_reader<CharT>{loc, this->buffer},
                     bool_value_reader<CharT>{loc});
             }
         };

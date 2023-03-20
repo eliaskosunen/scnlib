@@ -47,7 +47,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_default(
-                Range& range,
+                Range range,
                 void*& value,
                 detail::locale_ref loc)
             {
@@ -65,7 +65,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_specs(
-                Range& range,
+                Range range,
                 const detail::basic_format_specs<CharT>& specs,
                 void*& value,
                 detail::locale_ref loc)

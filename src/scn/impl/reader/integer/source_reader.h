@@ -24,9 +24,6 @@ namespace scn {
 
     namespace impl {
         template <typename CharT>
-        using int_classic_source_reader = classic_numeric_source_reader<CharT>;
-
-        template <typename CharT>
         class int_localized_source_reader {
         public:
             using char_type = CharT;
@@ -34,13 +31,18 @@ namespace scn {
             using string_view_type = std::basic_string_view<CharT>;
 
             template <typename T>
-            int_localized_source_reader(detail::locale_ref loc,
+            int_localized_source_reader(string_type& buffer,
+                                        detail::locale_ref loc,
                                         detail::tag_type<T>)
-                : int_localized_source_reader(loc, 16, std::is_signed_v<T>)
+                : int_localized_source_reader(buffer,
+                                              loc,
+                                              16,
+                                              std::is_signed_v<T>)
             {
             }
 
-            int_localized_source_reader(detail::locale_ref loc,
+            int_localized_source_reader(string_type& buffer,
+                                        detail::locale_ref loc,
                                         int base,
                                         bool allow_minus_sign);
 
@@ -53,20 +55,19 @@ namespace scn {
             scan_expected<source_read_result<SourceRange>> read(
                 SourceRange&& range)
             {
-                until_callback until{m_digits, m_thsep};
-
                 if constexpr (range_supports_nocopy<SourceRange>()) {
-                    return {read_until_classic_nocopy(SCN_FWD(range), until)};
+                    return {read_all_nocopy(SCN_FWD(range))};
                 }
                 else {
-                    source_reader_buffer<CharT>().clear();
+                    until_callback until{m_digits, m_thsep};
+
+                    m_buffer.clear();
                     auto r = read_until_classic_copying(
-                        SCN_FWD(range),
-                        back_insert(source_reader_buffer<CharT>()), until);
+                        SCN_FWD(range), back_insert(m_buffer), until);
 
                     SCN_GCC_PUSH
                     SCN_GCC_IGNORE("-Wconversion")
-                    return {{r.in, {source_reader_buffer<CharT>()}}};
+                    return {{r.in, {m_buffer}}};
                     SCN_GCC_POP
                 }
             }
@@ -98,15 +99,20 @@ namespace scn {
                 char_type thsep;
             };
 
+            std::basic_string<CharT>& m_buffer;
             detail::locale_ref m_locale{};
             std::string_view m_digits{};
             char_type m_thsep{0};
         };
 
         extern template int_localized_source_reader<
-            char>::int_localized_source_reader(detail::locale_ref, int, bool);
+            char>::int_localized_source_reader(std::string&,
+                                               detail::locale_ref,
+                                               int,
+                                               bool);
         extern template int_localized_source_reader<
-            wchar_t>::int_localized_source_reader(detail::locale_ref,
+            wchar_t>::int_localized_source_reader(std::wstring&,
+                                                  detail::locale_ref,
                                                   int,
                                                   bool);
     }  // namespace impl

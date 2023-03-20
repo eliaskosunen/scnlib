@@ -51,20 +51,17 @@ namespace scn {
     namespace impl {
         namespace {
             template <typename CharT>
-            constexpr bool is_hexfloat(std::basic_string_view<CharT> str,
-                                       bool recursed = false) SCN_NOEXCEPT
+            constexpr bool is_hexfloat(std::basic_string_view<CharT> str)
+                SCN_NOEXCEPT
             {
                 if (str.size() < 3) {
                     return false;
                 }
-                if (str[0] == CharT{'0'} &&
-                    (str[1] == CharT{'x'} || str[1] == CharT{'X'})) {
-                    return true;
+                if (str[0] == CharT{'-'}) {
+                    str = str.substr(1);
                 }
-                if (recursed) {
-                    return false;
-                }
-                return str[0] == CharT{'-'} && is_hexfloat(str.substr(1), true);
+                return str[0] == CharT{'0'} &&
+                       (str[1] == CharT{'x'} || str[1] == CharT{'X'});
             }
 
             template <typename CharT>

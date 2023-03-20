@@ -35,19 +35,19 @@ namespace scn {
                                    bool is_specs_localized,
                                    detail::locale_ref loc)
         {
-            if (auto e = eof_check(range); !e) {
+            if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
                 return unexpected(e);
             }
 
             if (!reader.skip_ws_before_read()) {
-                return range;
+                return ranges::begin(range);
             }
 
             if (is_specs_localized || loc) {
-                return skip_localized_whitespace(range, loc);
+                return skip_localized_whitespace(SCN_FWD(range), loc);
             }
 
-            return skip_classic_whitespace(range);
+            return skip_classic_whitespace(SCN_FWD(range));
         }
 
         template <typename Context>

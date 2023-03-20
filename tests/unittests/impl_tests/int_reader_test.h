@@ -28,6 +28,8 @@ class int_reader_interface : public value_reader_interface<CharT> {
 public:
     virtual scn::scan_expected<typename std::basic_string_view<CharT>::iterator>
     read(std::basic_string_view<CharT> source, IntT& value) = 0;
+
+    std::basic_string<CharT> buffer{};
 };
 
 template <typename CharT, typename IntT>
@@ -49,7 +51,8 @@ public:
         const scn::detail::basic_format_specs<CharT>& specs) override
     {
         auto [_, reader] =
-            scn::impl::int_classic_reader_factory<CharT>(specs).make();
+            scn::impl::int_classic_reader_factory<CharT>(this->buffer, specs)
+                .make();
         m_reader = std::make_unique<scn::impl::int_classic_value_reader<CharT>>(
             reader);
     }
@@ -91,7 +94,7 @@ public:
         const scn::detail::basic_format_specs<CharT>& specs) override
     {
         auto [_, reader] = scn::impl::int_localized_reader_factory<CharT, IntT>(
-                               specs, scn::detail::locale_ref{})
+                               this->buffer, specs, scn::detail::locale_ref{})
                                .make();
         m_reader =
             std::make_unique<scn::impl::int_localized_value_reader<CharT>>(

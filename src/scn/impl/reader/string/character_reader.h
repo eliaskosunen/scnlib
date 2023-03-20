@@ -27,7 +27,10 @@ namespace scn {
         template <typename SourceCharT>
         class character_reader {
         public:
-            constexpr character_reader() = default;
+            character_reader(std::basic_string<SourceCharT>& buffer)
+                : m_buffer(buffer)
+            {
+            }
 
             template <typename SourceRange>
             scan_expected<
@@ -39,27 +42,31 @@ namespace scn {
                     return read_n_nocopy(source, width);
                 }
                 else {
-                    source_reader_buffer<SourceCharT>().clear();
-                    auto [it, _] = read_n_copying(
-                        source,
-                        back_insert(source_reader_buffer<SourceCharT>()),
-                        width);
+                    m_buffer.clear();
+                    auto [it, _] =
+                        read_n_copying(source, back_insert(m_buffer), width);
                     SCN_UNUSED(_);
                     SCN_GCC_PUSH
                     SCN_GCC_IGNORE("-Wconversion")
                     return iterator_value_result<
                         ranges::iterator_t<SourceRange>,
-                        std::basic_string_view<SourceCharT>>{
-                        it, {source_reader_buffer<SourceCharT>()}};
+                        std::basic_string_view<SourceCharT>>{it, {m_buffer}};
                     SCN_GCC_POP
                 }
             }
+
+        private:
+            std::basic_string<SourceCharT>& m_buffer;
         };
 
         template <typename SourceCharT>
         class unicode_character_reader_impl {
         public:
-            constexpr unicode_character_reader_impl() = default;
+            unicode_character_reader_impl(
+                std::basic_string<SourceCharT>& buffer)
+                : m_buffer(buffer)
+            {
+            }
 
             template <typename SourceRange>
             scan_expected<
@@ -71,23 +78,23 @@ namespace scn {
                     return read_n_code_points_nocopy(source, cp_count);
                 }
                 else {
-                    source_reader_buffer<SourceCharT>().clear();
+                    m_buffer.clear();
                     return read_n_code_points_copying(
-                               source,
-                               back_insert(source_reader_buffer<SourceCharT>()),
-                               cp_count)
+                               source, back_insert(m_buffer), cp_count)
                         .transform([&](auto result) SCN_NOEXCEPT {
                             SCN_GCC_PUSH
                             SCN_GCC_IGNORE("-Wconversion")
                             return iterator_value_result<
                                 ranges::iterator_t<SourceRange>,
                                 std::basic_string_view<SourceCharT>>{
-                                result.in,
-                                {source_reader_buffer<SourceCharT>()}};
+                                result.in, {m_buffer}};
                             SCN_GCC_POP
                         });
                 }
             }
+
+        private:
+            std::basic_string<SourceCharT>& m_buffer;
         };
 
         template <typename SourceCharT>

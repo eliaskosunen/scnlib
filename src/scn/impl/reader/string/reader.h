@@ -154,6 +154,7 @@ namespace scn {
             }
 
             reader_type m_type{reader_type::word};
+            std::basic_string<CharT> m_buffer{};
         };
 
         template <typename SourceCharT, typename ValueCharT>
@@ -161,7 +162,7 @@ namespace scn {
         public:
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_default(
-                Range& range,
+                Range range,
                 std::basic_string<ValueCharT>& value,
                 detail::locale_ref loc)
             {
@@ -171,7 +172,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_specs(
-                Range& range,
+                Range range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string<ValueCharT>& value,
                 detail::locale_ref loc)
@@ -188,23 +189,23 @@ namespace scn {
 
                     case base::reader_type::characters: {
                         SCN_EXPECT(specs.width != 0);
-                        auto reader = character_reader<SourceCharT>{};
+                        auto reader =
+                            character_reader<SourceCharT>{this->m_buffer};
                         return reader.read(range, specs.width)
                             .and_then([&](auto result) {
                                 return transcode_if_necessary(
-                                    result, source_reader_buffer<SourceCharT>(),
-                                    value);
+                                    result, this->m_buffer, value);
                             });
                     }
 
                     case base::reader_type::unicode_characters: {
                         SCN_EXPECT(specs.width != 0);
-                        auto reader = unicode_character_reader<SourceCharT>{};
+                        auto reader = unicode_character_reader<SourceCharT>{
+                            this->m_buffer};
                         return reader.read(range, specs.width)
                             .and_then([&](auto result) {
                                 return transcode_if_necessary(
-                                    result, source_reader_buffer<SourceCharT>(),
-                                    value);
+                                    result, this->m_buffer, value);
                             });
                     }
 
@@ -221,36 +222,37 @@ namespace scn {
         private:
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_word_impl(
-                Range& range,
+                Range range,
                 std::basic_string<ValueCharT>& value,
                 detail::locale_ref loc,
                 bool do_localized)
             {
                 if (do_localized) {
                     auto source_reader =
-                        until_space_localized_source_reader<SourceCharT>{loc};
+                        until_space_localized_source_reader<SourceCharT>{
+                            loc, this->m_buffer};
                     return word_reader<SourceCharT>{}
                         .read(range, source_reader)
                         .and_then([&](auto result) {
                             return transcode_if_necessary(
-                                result, source_reader_buffer<SourceCharT>(),
-                                value);
+                                result, this->m_buffer, value);
                         });
                 }
 
                 auto source_reader =
-                    until_space_classic_source_reader<SourceCharT>{};
+                    until_space_classic_source_reader<SourceCharT>{
+                        this->m_buffer};
                 return word_reader<SourceCharT>{}
                     .read(range, source_reader)
                     .and_then([&](auto result) {
-                        return transcode_if_necessary(
-                            result, source_reader_buffer<SourceCharT>(), value);
+                        return transcode_if_necessary(result, this->m_buffer,
+                                                      value);
                     });
             }
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_set_impl(
-                Range& range,
+                Range range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string<ValueCharT>& value,
                 detail::locale_ref loc)
@@ -290,7 +292,7 @@ namespace scn {
         public:
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_default(
-                Range& range,
+                Range range,
                 std::basic_string_view<ValueCharT>& value,
                 detail::locale_ref loc)
             {
@@ -313,7 +315,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_specs(
-                Range& range,
+                Range range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string_view<ValueCharT>& value,
                 detail::locale_ref loc)
@@ -339,14 +341,14 @@ namespace scn {
 
         private:
             template <typename Range>
-            auto read_value_default_impl(Range& range, detail::locale_ref loc)
+            auto read_value_default_impl(Range range, detail::locale_ref loc)
             {
                 return read_value_word_impl(range, loc, static_cast<bool>(loc));
             }
 
             template <typename Range>
             auto read_value_specs_impl(
-                Range& range,
+                Range range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 detail::locale_ref loc)
             {
@@ -362,13 +364,15 @@ namespace scn {
 
                     case base::reader_type::characters: {
                         SCN_EXPECT(specs.width != 0);
-                        auto reader = character_reader<SourceCharT>{};
+                        auto reader =
+                            character_reader<SourceCharT>{this->m_buffer};
                         return reader.read(range, specs.width);
                     }
 
                     case base::reader_type::unicode_characters: {
                         SCN_EXPECT(specs.width != 0);
-                        auto reader = unicode_character_reader<SourceCharT>{};
+                        auto reader = unicode_character_reader<SourceCharT>{
+                            this->m_buffer};
                         return reader.read(range, specs.width);
                     }
 
@@ -383,19 +387,21 @@ namespace scn {
             }
 
             template <typename Range>
-            auto read_value_word_impl(Range& range,
+            auto read_value_word_impl(Range range,
                                       detail::locale_ref loc,
                                       bool do_localized)
             {
                 if (do_localized) {
                     auto source_reader =
-                        until_space_localized_source_reader<SourceCharT>{loc};
+                        until_space_localized_source_reader<SourceCharT>{
+                            loc, this->m_buffer};
                     return word_reader<SourceCharT>{}.read(range,
                                                            source_reader);
                 }
 
                 auto source_reader =
-                    until_space_classic_source_reader<SourceCharT>{};
+                    until_space_classic_source_reader<SourceCharT>{
+                        this->m_buffer};
                 return word_reader<SourceCharT>{}.read(range, source_reader);
             }
 
@@ -404,7 +410,7 @@ namespace scn {
                 iterator_value_result<ranges::iterator_t<Range>,
                                       std::basic_string_view<SourceCharT>>>
             read_value_set_impl(
-                Range& range,
+                Range range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 detail::locale_ref loc)
             {

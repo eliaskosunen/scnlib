@@ -20,22 +20,5 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    namespace impl {
-        SCN_CLANG_PUSH
-        SCN_CLANG_IGNORE("-Wexit-time-destructors")
-
-        template <typename CharT>
-        std::basic_string<CharT>& source_reader_buffer()
-        {
-            static thread_local std::basic_string<CharT> buffer;
-            return buffer;
-        }
-
-        SCN_CLANG_POP
-
-        template std::string& source_reader_buffer();
-        template std::wstring& source_reader_buffer();
-    }  // namespace impl
-
     SCN_END_NAMESPACE
 }  // namespace scn

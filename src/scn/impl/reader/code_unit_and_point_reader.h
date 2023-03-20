@@ -124,16 +124,15 @@ namespace scn {
         class reader<char, CharT> : public char_reader_base<CharT, char> {
         public:
             template <typename Range>
-            scan_expected<ranges::iterator_t<Range>> read_value_default(
-                Range& range,
-                char& value,
-                detail::locale_ref loc)
+            scan_expected<ranges::iterator_t<Range>>
+            read_value_default(Range range, char& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
                 if constexpr (std::is_same_v<CharT, char>) {
                     return code_unit_reader<char>{}.read(range, value);
                 }
                 else {
+                    SCN_UNUSED(range);
                     SCN_EXPECT(false);
                     SCN_UNREACHABLE;
                 }
@@ -141,7 +140,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_specs(
-                Range& range,
+                Range range,
                 const detail::basic_format_specs<CharT>& specs,
                 char& value,
                 detail::locale_ref loc)
@@ -157,7 +156,7 @@ namespace scn {
         public:
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_default(
-                Range& range,
+                Range range,
                 wchar_t& value,
                 detail::locale_ref loc)
             {
@@ -172,7 +171,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_specs(
-                Range& range,
+                Range range,
                 const detail::basic_format_specs<CharT>& specs,
                 wchar_t& value,
                 detail::locale_ref loc)
@@ -189,7 +188,7 @@ namespace scn {
         public:
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_default(
-                Range& range,
+                Range range,
                 code_point& value,
                 detail::locale_ref loc)
             {
@@ -199,7 +198,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_specs(
-                Range& range,
+                Range range,
                 const detail::basic_format_specs<CharT>& specs,
                 code_point& value,
                 detail::locale_ref loc)

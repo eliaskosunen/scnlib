@@ -29,22 +29,24 @@ namespace scn {
         class int_classic_reader_factory {
         public:
             int_classic_reader_factory(
+                std::basic_string<CharT>& buffer,
                 const detail::basic_format_specs<CharT>& s)
-                : m_specs(s)
+                : m_buffer(buffer), m_specs(s)
             {
             }
 
             auto make() const
             {
-                return std::make_pair(int_classic_source_reader<CharT>{},
-                                      make_value_reader());
+                return std::make_pair(
+                    simple_classic_source_reader<CharT>{m_buffer},
+                    make_value_reader());
             }
 
             template <typename T>
             auto make_with_locale(detail::locale_ref loc) const
             {
                 return std::make_pair(
-                    int_localized_source_reader<CharT>{loc,
+                    int_localized_source_reader<CharT>{m_buffer, loc,
                                                        detail::tag_type<T>{}},
                     make_value_reader());
             }
@@ -76,6 +78,7 @@ namespace scn {
                         static_cast<int8_t>(m_specs.get_base(0))};
             }
 
+            std::basic_string<CharT>& m_buffer;
             const detail::basic_format_specs<CharT>& m_specs;
         };
 
@@ -83,9 +86,10 @@ namespace scn {
         class int_localized_reader_factory {
         public:
             int_localized_reader_factory(
+                std::basic_string<CharT>& buffer,
                 const detail::basic_format_specs<CharT>& specs,
                 detail::locale_ref loc)
-                : m_specs(specs), m_loc(loc)
+                : m_buffer(buffer), m_specs(specs), m_loc(loc)
             {
             }
 
@@ -106,10 +110,11 @@ namespace scn {
                     std::is_signed_v<T> &&
                     m_specs.type !=
                         detail::presentation_type::int_unsigned_decimal;
-                return int_localized_source_reader<CharT>{m_loc, base,
+                return int_localized_source_reader<CharT>{m_buffer, m_loc, base,
                                                           allow_sign};
             }
 
+            std::basic_string<CharT>& m_buffer;
             const detail::basic_format_specs<CharT>& m_specs;
             detail::locale_ref m_loc;
         };
@@ -133,13 +138,13 @@ namespace scn {
             auto make_default_classic_readers() const
             {
                 return std::make_pair(
-                    int_classic_source_reader<CharT>{},
+                    simple_classic_source_reader<CharT>{this->buffer},
                     int_classic_value_reader<CharT>{detail::tag_type<T>{}});
             }
             auto make_default_userlocale_readers(detail::locale_ref loc) const
             {
                 return std::make_pair(
-                    int_localized_source_reader<CharT>{loc,
+                    int_localized_source_reader<CharT>{this->buffer, loc,
                                                        detail::tag_type<T>{}},
                     int_classic_value_reader<CharT>{detail::tag_type<T>{}});
             }
@@ -147,20 +152,22 @@ namespace scn {
             auto make_specs_classic_readers(
                 const detail::basic_format_specs<CharT>& specs) const
             {
-                return int_classic_reader_factory<CharT>(specs).make();
+                return int_classic_reader_factory<CharT>(this->buffer, specs)
+                    .make();
             }
             auto make_specs_userlocale_readers(
                 const detail::basic_format_specs<CharT>& specs,
                 detail::locale_ref loc) const
             {
-                return int_classic_reader_factory<CharT>(specs)
+                return int_classic_reader_factory<CharT>(this->buffer, specs)
                     .template make_with_locale<T>(loc);
             }
             auto make_specs_localized_readers(
                 const detail::basic_format_specs<CharT>& specs,
                 detail::locale_ref loc) const
             {
-                return int_localized_reader_factory<CharT, T>(specs, loc)
+                return int_localized_reader_factory<CharT, T>(this->buffer,
+                                                              specs, loc)
                     .make();
             }
         };

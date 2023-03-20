@@ -69,13 +69,14 @@ namespace scn {
 
             auto make_default_classic_readers() const
             {
-                return std::make_pair(classic_numeric_source_reader<CharT>{},
-                                      float_classic_value_reader<CharT>{});
+                return std::make_pair(
+                    simple_classic_source_reader<CharT>{this->buffer},
+                    float_classic_value_reader<CharT>{});
             }
             auto make_default_userlocale_readers(detail::locale_ref loc) const
             {
                 return std::make_pair(
-                    until_space_localized_source_reader<CharT>{loc},
+                    simple_localized_source_reader<CharT>{loc, this->buffer},
                     float_classic_value_reader<CharT>{});
             }
 
@@ -84,8 +85,9 @@ namespace scn {
             {
                 const auto flags = get_presentation_flags(specs);
 
-                return std::make_pair(classic_numeric_source_reader<CharT>{},
-                                      float_classic_value_reader<CharT>{flags});
+                return std::make_pair(
+                    simple_classic_source_reader<CharT>{this->buffer},
+                    float_classic_value_reader<CharT>{flags});
             }
             auto make_specs_userlocale_readers(
                 const detail::basic_format_specs<CharT>& specs,
@@ -94,7 +96,7 @@ namespace scn {
                 const auto flags = get_presentation_flags(specs);
 
                 return std::make_pair(
-                    until_space_localized_source_reader<CharT>{loc},
+                    simple_localized_source_reader<CharT>{loc, this->buffer},
                     float_classic_value_reader<CharT>{flags});
             }
             auto make_specs_localized_readers(
@@ -104,7 +106,7 @@ namespace scn {
                 const auto flags = get_presentation_flags(specs);
 
                 return std::make_pair(
-                    until_space_localized_source_reader<CharT>{loc},
+                    simple_localized_source_reader<CharT>{loc, this->buffer},
                     float_localized_value_reader<CharT>{flags, loc});
             }
         };

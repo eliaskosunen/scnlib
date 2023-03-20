@@ -43,12 +43,6 @@ namespace scn {
         };
 
         template <typename CharT>
-        std::basic_string<CharT>& source_reader_buffer();
-
-        extern template std::string& source_reader_buffer();
-        extern template std::wstring& source_reader_buffer();
-
-        template <typename CharT>
         std::basic_string_view<CharT> reconstruct_view(
             typename std::basic_string_view<CharT>::iterator first,
             typename std::basic_string_view<CharT>::iterator last)
@@ -76,7 +70,10 @@ namespace scn {
             using char_type = CharT;
             using string_view_type = std::basic_string_view<CharT>;
 
-            until_space_classic_source_reader() = default;
+            until_space_classic_source_reader(std::basic_string<CharT>& buffer)
+                : m_buffer(buffer)
+            {
+            }
 
             template <typename SourceRange>
             using source_read_result =
@@ -90,17 +87,19 @@ namespace scn {
                     return read_until_classic_space_nocopy(SCN_FWD(source));
                 }
                 else {
-                    source_reader_buffer<CharT>().clear();
+                    m_buffer.clear();
                     auto r = read_until_classic_space_copying(
-                        SCN_FWD(source),
-                        back_insert(source_reader_buffer<CharT>()));
+                        SCN_FWD(source), back_insert(m_buffer));
 
                     SCN_GCC_PUSH
                     SCN_GCC_IGNORE("-Wconversion")
-                    return {r.in, {source_reader_buffer<CharT>()}};
+                    return {r.in, {m_buffer}};
                     SCN_GCC_POP
                 }
             }
+
+        private:
+            std::basic_string<CharT>& m_buffer;
         };
 
         template <typename CharT>
@@ -109,8 +108,10 @@ namespace scn {
             using char_type = CharT;
             using string_view_type = std::basic_string_view<CharT>;
 
-            until_space_localized_source_reader(detail::locale_ref loc)
-                : m_locale(loc)
+            until_space_localized_source_reader(
+                detail::locale_ref loc,
+                std::basic_string<CharT>& buffer)
+                : m_locale(loc), m_buffer(buffer)
             {
             }
 
@@ -129,25 +130,74 @@ namespace scn {
                         true);
                 }
                 else {
-                    source_reader_buffer<CharT>().clear();
+                    m_buffer.clear();
                     return read_until_localized_copy(
-                               SCN_FWD(source),
-                               back_insert(source_reader_buffer<CharT>()),
+                               SCN_FWD(source), back_insert(m_buffer),
                                null_output_range<wchar_t>{}, m_locale,
                                std::ctype_base::space, true)
                         .transform([&](auto result) SCN_NOEXCEPT {
                             SCN_GCC_PUSH
                             SCN_GCC_IGNORE("-Wconversion")
                             return source_read_result<SourceRange>{
-                                result.in, string_view_type{
-                                               source_reader_buffer<CharT>()}};
+                                result.in, string_view_type{m_buffer}};
                             SCN_GCC_POP
                         });
                 }
             }
 
         private:
-            detail::locale_ref m_locale{};
+            detail::locale_ref m_locale;
+            std::basic_string<CharT>& m_buffer;
+        };
+
+        // Classic mode, read all in nocopy, and until space in copying
+        template <typename CharT>
+        class simple_classic_source_reader
+            : public until_space_classic_source_reader<CharT> {
+            using base = until_space_classic_source_reader<CharT>;
+
+        public:
+            simple_classic_source_reader(std::basic_string<CharT>& buffer)
+                : base(buffer)
+            {
+            }
+
+            template <typename SourceRange>
+            auto read(SourceRange&& source) ->
+                typename base::template source_read_result<SourceRange>
+            {
+                if constexpr (range_supports_nocopy<SourceRange>()) {
+                    return read_all_nocopy(SCN_FWD(source));
+                }
+                else {
+                    return base::template read(SCN_FWD(source));
+                }
+            }
+        };
+
+        template <typename CharT>
+        class simple_localized_source_reader
+            : public until_space_localized_source_reader<CharT> {
+            using base = until_space_localized_source_reader<CharT>;
+
+        public:
+            simple_localized_source_reader(detail::locale_ref loc,
+                                           std::basic_string<CharT>& buffer)
+                : base(loc, buffer)
+            {
+            }
+
+            template <typename SourceRange>
+            auto read(SourceRange&& source) -> scan_expected<
+                typename base::template source_read_result<SourceRange>>
+            {
+                if constexpr (range_supports_nocopy<SourceRange>()) {
+                    return read_all_nocopy(SCN_FWD(source));
+                }
+                else {
+                    return base::template read(SCN_FWD(source));
+                }
+            }
         };
 
         template <typename CharT>
@@ -168,14 +218,13 @@ namespace scn {
                             source.begin(), source.end()));
                 }
                 else if constexpr (range_supports_nocopy<SourceRange>()) {
-                    const auto result = read_until_classic_nocopy(
-                        SCN_FWD(source), is_not_ascii_space);
+                    const auto result =
+                        read_until_classic_nocopy(source, is_not_ascii_space);
                     return result.iterator;
                 }
                 else {
                     const auto result = read_until_classic_copying(
-                        SCN_FWD(source), null_output_range<CharT>{},
-                        is_not_ascii_space);
+                        source, null_output_range<CharT>{}, is_not_ascii_space);
                     return result.in;
                 }
             }
@@ -196,37 +245,36 @@ namespace scn {
         };
 
         template <typename SourceRange>
-        scan_expected<detail::borrowed_itsen_subrange_t<SourceRange>>
-        skip_classic_whitespace(SourceRange&& range,
-                                bool allow_exhaustion = false)
+        scan_expected<ranges::iterator_t<SourceRange>> skip_classic_whitespace(
+            SourceRange range,
+            bool allow_exhaustion = false)
         {
-            auto end = ranges::end(range);
-            auto result =
-                whitespace_skipper<ranges::range_value_t<SourceRange>>{}
-                    .skip_classic(range);
-            if (!allow_exhaustion && is_range_eof(result, end)) {
+            using char_type = ranges::range_value_t<SourceRange>;
+
+            auto result = whitespace_skipper<char_type>{}.skip_classic(range);
+            if (!allow_exhaustion && is_range_eof(result, ranges::end(range))) {
                 return unexpected_scan_error(scan_error::end_of_range, "EOF");
             }
-            return {{result, end}};
+            return result;
         }
 
         template <typename SourceRange>
-        scan_expected<detail::borrowed_itsen_subrange_t<SourceRange>>
-        skip_localized_whitespace(SourceRange&& range,
-                                  detail::locale_ref loc,
-                                  bool allow_exhaustion = false)
+        auto skip_localized_whitespace(SourceRange range,
+                                       detail::locale_ref loc,
+                                       bool allow_exhaustion = false)
         {
-            return whitespace_skipper<ranges::range_value_t<SourceRange>>{}
+            using char_type = ranges::range_value_t<SourceRange>;
+
+            return whitespace_skipper<char_type>{}
                 .skip_localized(range, loc)
                 .and_then([&](auto it) SCN_NOEXCEPT
-                          -> scan_expected<
-                              detail::borrowed_itsen_subrange_t<SourceRange>> {
-                    const auto end = ranges::end(range);
-                    if (!allow_exhaustion && it == end) {
+                          -> scan_expected<ranges::iterator_t<SourceRange>> {
+                    if (!allow_exhaustion &&
+                        is_range_eof(it, ranges::end(range))) {
                         return unexpected_scan_error(scan_error::end_of_range,
                                                      "EOF");
                     }
-                    return {{it, end}};
+                    return it;
                 });
         }
 
@@ -242,27 +290,6 @@ namespace scn {
                     reader.read(SCN_FWD(range))};
             }
         }
-
-        template <typename CharT>
-        class classic_numeric_source_reader
-            : public until_space_classic_source_reader<CharT> {
-            using base = until_space_classic_source_reader<CharT>;
-
-        public:
-            classic_numeric_source_reader() = default;
-
-            template <typename SourceRange>
-            auto read(SourceRange&& source) ->
-                typename base::template source_read_result<SourceRange>
-            {
-                if constexpr (range_supports_nocopy<SourceRange>()) {
-                    return read_all_nocopy(SCN_FWD(source));
-                }
-                else {
-                    return base::template read(SCN_FWD(source));
-                }
-            }
-        };
 
         template <typename T, typename CharT, typename Enable = void>
         class reader;
@@ -290,7 +317,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>>
-            read_value_default(Range& range, T& value, detail::locale_ref loc)
+            read_value_default(Range range, T& value, detail::locale_ref loc)
             {
                 if (loc) {
                     auto [source_reader, value_reader] =
@@ -327,6 +354,8 @@ namespace scn {
                 return read_impl(range, source_reader, value_reader, value);
             }
 
+            mutable std::basic_string<CharT> buffer{};
+
         private:
             Derived& get_derived()
             {
@@ -341,7 +370,7 @@ namespace scn {
                       typename SourceReader,
                       typename ValueReader>
             static scan_expected<ranges::iterator_t<SourceRange>> read_impl(
-                SourceRange& src,
+                SourceRange src,
                 SourceReader& source_reader,
                 ValueReader& value_reader,
                 T& value)
@@ -388,7 +417,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>>
-            read_value_default(Range&, detail::monostate&, detail::locale_ref)
+            read_value_default(Range, detail::monostate&, detail::locale_ref)
             {
                 SCN_EXPECT(false);
                 SCN_UNREACHABLE;
@@ -396,7 +425,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_value_specs(
-                Range&,
+                Range,
                 const detail::basic_format_specs<CharT>&,
                 detail::monostate&,
                 detail::locale_ref)

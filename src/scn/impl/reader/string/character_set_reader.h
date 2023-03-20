@@ -206,7 +206,7 @@ namespace scn {
                 SCN_EXPECT(!fmt.empty());
 
                 auto it = ranges::next(fmt.begin());
-                if (it == fmt.end()) {
+                if (SCN_UNLIKELY(it == fmt.end())) {
                     return unexpected_scan_error(
                         scan_error::invalid_format_string,
                         "Unexpected end of [character set] format string "
@@ -217,7 +217,7 @@ namespace scn {
                     this->m_inverted_flag_set = true;
                     ++it;
                 }
-                if (it == fmt.end()) {
+                if (SCN_UNLIKELY(it == fmt.end())) {
                     return unexpected_scan_error(
                         scan_error::invalid_format_string,
                         "Unexpected end of [character set] format string "
@@ -266,7 +266,8 @@ namespace scn {
                 const auto chars_left = end - it;
 
                 for (const auto& elem : get_colon_specifier_map<CharT>()) {
-                    const auto len = ::scn::detail::strlen(elem.first);
+                    const auto len =
+                        std::char_traits<CharT>::length(elem.first);
                     if (static_cast<size_t>(chars_left) < len) {
                         continue;
                     }
