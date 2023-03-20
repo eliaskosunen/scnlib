@@ -295,6 +295,7 @@ namespace nano {
 
 #endif  // SCN_STD_RANGES
 
+#if 0
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
@@ -308,3 +309,4 @@ namespace scn {
 
     SCN_END_NAMESPACE
 }  // namespace scn
+#endif

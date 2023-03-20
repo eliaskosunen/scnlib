@@ -78,17 +78,17 @@ namespace scn {
     }
 
     template <typename CharT>
-    void basic_istreambuf_subrange<CharT>::sync(iterator it)
+    void basic_istreambuf_subrange<CharT>::sync()
     {
         static_cast<basic_istreambuf_view<CharT>&>(this->begin().view())
-            .sync(it);
+            .sync(this->begin());
     }
 
     template void basic_istreambuf_view<char>::sync(iterator);
     template void basic_istreambuf_view<wchar_t>::sync(iterator);
 
-    template void basic_istreambuf_subrange<char>::sync(iterator);
-    template void basic_istreambuf_subrange<wchar_t>::sync(iterator);
+    template void basic_istreambuf_subrange<char>::sync();
+    template void basic_istreambuf_subrange<wchar_t>::sync();
 
     SCN_END_NAMESPACE
 }  // namespace scn

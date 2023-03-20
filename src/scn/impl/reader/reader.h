@@ -29,10 +29,11 @@ namespace scn {
 
     namespace impl {
         template <typename Reader, typename Range>
-        scan_expected<Range> skip_ws_before_if_required(Reader& reader,
-                                                        Range& range,
-                                                        bool is_specs_localized,
-                                                        detail::locale_ref loc)
+        scan_expected<ranges::borrowed_iterator_t<Range>>
+        skip_ws_before_if_required(Reader& reader,
+                                   Range&& range,
+                                   bool is_specs_localized,
+                                   detail::locale_ref loc)
         {
             if (auto e = eof_check(range); !e) {
                 return unexpected(e);
@@ -54,7 +55,7 @@ namespace scn {
             using context_type = Context;
             using char_type = typename context_type::char_type;
             using args_type = basic_scan_args<context_type>;
-            using subrange_type = typename context_type::subrange_type;
+            using range_type = typename context_type::range_type;
             using iterator = typename context_type::iterator;
 
             template <typename T>
@@ -62,8 +63,10 @@ namespace scn {
             {
                 auto rd = reader<T, char_type>{};
                 return skip_ws_before_if_required(rd, range, false, loc)
-                    .and_then([&](auto rng) {
-                        return rd.read_value_default(rng, value, loc);
+                    .and_then([&](auto it) {
+                        return rd.read_value_default(
+                            reconstruct_view<char_type>(it, ranges::end(range)),
+                            value, loc);
                     });
             }
 
@@ -71,16 +74,14 @@ namespace scn {
                 typename basic_scan_arg<context_type>::handle h)
             {
                 basic_scan_parse_context<char_type> parse_ctx{{}};
-                context_type ctx{detail::map_subrange_to_context_range_type(
-                                     detail::tag_type<char_type>{}, range),
-                                 args, loc};
+                context_type ctx{range, args, loc};
                 if (auto e = h.scan(parse_ctx, ctx); !e) {
                     return unexpected(e);
                 }
                 return {ctx.range().begin()};
             }
 
-            subrange_type range;
+            range_type range;
             args_type args;
             detail::locale_ref loc;
         };
@@ -89,7 +90,7 @@ namespace scn {
         struct arg_reader {
             using context_type = Context;
             using char_type = typename context_type::char_type;
-            using subrange_type = typename context_type::subrange_type;
+            using range_type = typename context_type::range_type;
             using iterator = typename context_type::iterator;
 
             template <typename T>
@@ -102,9 +103,10 @@ namespace scn {
 
                 return skip_ws_before_if_required(rd, range, specs.localized,
                                                   loc)
-                    .and_then([&](auto rng) {
-                        // force formatting
-                        return rd.read_value_specs(rng, specs, value, loc);
+                    .and_then([&](auto it) {
+                        return rd.read_value_specs(
+                            reconstruct_view<char_type>(it, ranges::end(range)),
+                            specs, value, loc);
                     });
             }
 
@@ -115,7 +117,7 @@ namespace scn {
                 return {ranges::begin(range)};
             }
 
-            subrange_type range;
+            range_type range;
             const detail::basic_format_specs<char_type>& specs;
             detail::locale_ref loc;
         };

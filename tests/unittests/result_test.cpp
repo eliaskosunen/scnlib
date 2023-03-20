@@ -47,7 +47,7 @@ TEST(ResultTestMocked, StringView)
 {
     auto source = std::string_view{"FooBar"};
     auto input = scn::scan_map_input_range(source);
-    auto args = scn::make_scan_args<scan_context, int, double>();
+    auto args = scn::make_scan_args<std::string_view, int, double>();
     auto leftovers = mock_vscan(input, args);
     auto result =
         scn::make_scan_result(source, SCN_MOVE(leftovers), SCN_MOVE(args));
@@ -69,7 +69,7 @@ TEST(ResultTestMocked, IstreamRange)
     auto ss = std::istringstream{"FooBar"};
     auto source = scn::istreambuf_view{ss};
     auto input = scn::scan_map_input_range(source);
-    auto args = scn::make_scan_args<scan_context, int, double>();
+    auto args = scn::make_scan_args<std::string_view, int, double>();
     auto leftovers = mock_vscan(input, args);
     auto result =
         scn::make_scan_result(source, SCN_MOVE(leftovers), SCN_MOVE(args));

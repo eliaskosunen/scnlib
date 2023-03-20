@@ -79,7 +79,7 @@ TEST(ArgsTest, ArgTypeMapping)
 
 TEST(ArgsTest, ArgStore)
 {
-    auto store = scn::make_scan_args<scan_context, int, double>();
+    auto store = scn::make_scan_args<std::string_view, int, double>();
     auto args = scn::basic_scan_args<scan_context>{store};
 
     EXPECT_EQ(args.get(0).type(), scn::detail::arg_type::int_type);

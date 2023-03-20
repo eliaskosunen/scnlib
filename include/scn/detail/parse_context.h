@@ -141,10 +141,11 @@ namespace scn {
             }
             using base::check_arg_id;
 
-            SCN_GCC_POP  // -Wsign-conversion
-
-                private : int m_num_args;
+        private:
+            int m_num_args;
             const arg_type* m_types;
+
+            SCN_GCC_POP  // -Wsign-conversion
         };
 
         constexpr inline bool is_constant_evaluated(bool default_value = false)

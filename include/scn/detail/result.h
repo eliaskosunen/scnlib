@@ -26,19 +26,24 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /**
+     * Result type used as the return value from vscan.
+     */
     template <typename Range>
     struct vscan_result {
-        using iterator = ranges::iterator_t<Range>;
-        using sentinel = ranges::sentinel_t<Range>;
+        /// Range containing the unparsed input.
+        /// On error, equal to the range given to vscan
+        Range range;
 
-        std::conditional_t<detail::is_erased_range_or_subrange<Range>::value,
-                           Range,
-                           ranges::subrange<iterator, sentinel>>
-            range;
+        /// Possible error
         scan_error error;
     };
 
     namespace detail {
+        // Make a user-friendly range value from the return value of vscan
+
+        // string_view -> self
+        // Not affected by Source type
         template <typename CharT, typename Source>
         std::basic_string_view<CharT> map_scan_result_range(
             const Source&,
@@ -48,10 +53,11 @@ namespace scn {
                                                 const CharT*,
                                                 std::size_t>)
         {
-            return make_string_view_from_iterators<CharT>(result.range.begin(),
-                                                          result.range.end());
+            return result.range;
         }
 
+        // istreambuf_subrange -> self
+        // Not affected by Source type
         template <typename CharT, typename Source>
         basic_istreambuf_subrange<CharT> map_scan_result_range(
             const Source&,
@@ -62,9 +68,13 @@ namespace scn {
                     ranges::iterator_t<basic_istreambuf_subrange<CharT>>&,
                     ranges::sentinel_t<basic_istreambuf_subrange<CharT>>&>)
         {
-            return {result.range.begin(), result.range.end()};
+            return result.range;
         }
 
+        // erased_subrange, when Source is an erased type (erased_(sub)range)
+        //   -> erased_subrange
+        // erased_subrange, when Source is any other range
+        //   -> subrange<Source::iterator, Source::sentinel>
         template <typename CharT, typename Source>
         auto map_scan_result_range(
             const Source& source,
@@ -126,20 +136,42 @@ namespace scn {
         {
         }
 
+        template <typename Range,
+                  typename =
+                      std::enable_if_t<std::is_assignable_v<range_type, Range>>>
+        scan_result& operator=(Range&& r)
+        {
+            m_range = SCN_FWD(r);
+            return *this;
+        }
+        template <typename Range,
+                  typename =
+                      std::enable_if_t<std::is_assignable_v<range_type, Range>>>
+        scan_result& operator=(scan_result<Range>&& r)
+        {
+            m_range = SCN_FWD(r.range());
+            m_range = SCN_FWD(r.error());
+            return *this;
+        }
+
+        /// True, if the operation succeeded
         constexpr explicit operator bool() const
         {
             return m_error.operator bool();
         }
+        /// True, if the operation succeeded
         SCN_NODISCARD constexpr bool good() const
         {
             return operator bool();
         }
 
+        /// Error, if one occured
         SCN_NODISCARD constexpr scan_error error() const
         {
             return m_error;
         }
 
+        /// The unparsed input
         range_type& range() & SCN_NOEXCEPT
         {
             return m_range;
@@ -148,9 +180,13 @@ namespace scn {
         {
             return m_range;
         }
-        range_type range() && SCN_NOEXCEPT
+        range_type&& range() && SCN_NOEXCEPT
         {
-            return m_range;
+            return SCN_MOVE(m_range);
+        }
+        range_type&& range() const&& SCN_NOEXCEPT
+        {
+            return SCN_MOVE(m_range);
         }
 
     private:
@@ -196,10 +232,12 @@ namespace scn {
         {
         }
 
-        template <typename Range,
-                  typename... A,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<range_type, Range>>>
+        template <
+            typename Range,
+            typename... A,
+            typename = std::enable_if_t<
+                std::is_constructible_v<range_type, const Range&> &&
+                std::is_constructible_v<tuple_type, const std::tuple<A...>&>>>
         scan_result_tuple(const scan_result_tuple<Range, A...>& other)
             : m_result(other.result()), m_values(other.values())
         {
@@ -207,13 +245,42 @@ namespace scn {
         template <typename Range,
                   typename... A,
                   typename = std::enable_if_t<
-                      std::is_constructible_v<range_type, Range>>>
+                      std::is_constructible_v<range_type, Range&&> &&
+                      std::is_constructible_v<tuple_type, std::tuple<A...>&&>>>
         scan_result_tuple(scan_result_tuple<Range, A...>&& other)
             : m_result(SCN_MOVE(other.result())),
               m_values(SCN_MOVE(other.values()))
         {
         }
 
+        template <
+            typename Range,
+            typename... A,
+            typename = std::enable_if_t<
+                std::is_assignable_v<range_type, const Range&> &&
+                std::is_assignable_v<tuple_type, const std::tuple<A...>&>>>
+        scan_result_tuple& operator=(
+            const scan_result_tuple<Range, A...>& other)
+        {
+            m_result = other.result();
+            m_values = other.values();
+            return *this;
+        }
+        template <typename Range,
+                  typename... A,
+                  typename = std::enable_if_t<
+                      std::is_assignable_v<range_type, Range&&> &&
+                      std::is_assignable_v<tuple_type, std::tuple<A...>&&>>>
+        scan_result_tuple& operator=(scan_result_tuple<Range, A...>&& other)
+        {
+            m_result = SCN_MOVE(other.result());
+            m_values = SCN_MOVE(other.values());
+            return *this;
+        }
+
+        /// The scan_result value associated with this result.
+        /// Contains the unparsed input, and a possible error.
+        /// The first/0th element in this tuple, if accessed with std::get.
         constexpr result_type& result() & SCN_NOEXCEPT
         {
             return m_result;
@@ -222,11 +289,16 @@ namespace scn {
         {
             return m_result;
         }
-        constexpr result_type result() && SCN_NOEXCEPT
+        constexpr result_type&& result() && SCN_NOEXCEPT
         {
-            return m_result;
+            return SCN_MOVE(m_result);
+        }
+        constexpr const result_type&& result() const&& SCN_NOEXCEPT
+        {
+            return SCN_MOVE(m_result);
         }
 
+        /// The tuple of values, which contain the parsed values.
         constexpr tuple_type& values() & SCN_NOEXCEPT
         {
             return m_values;
@@ -235,25 +307,33 @@ namespace scn {
         {
             return m_values;
         }
-        constexpr tuple_type values() && SCN_NOEXCEPT
+        constexpr tuple_type&& values() && SCN_NOEXCEPT
         {
-            return m_values;
+            return SCN_MOVE(m_values);
+        }
+        constexpr const tuple_type&& values() const&& SCN_NOEXCEPT
+        {
+            return SCN_MOVE(m_values);
         }
 
+        /// True, if the operation succeeded
         constexpr explicit operator bool() const SCN_NOEXCEPT
         {
             return result().operator bool();
         }
+        /// True, if the operation succeeded
         SCN_NODISCARD constexpr bool good() const SCN_NOEXCEPT
         {
             return operator bool();
         }
 
+        /// Error, if any occurred
         SCN_NODISCARD constexpr scan_error error() const SCN_NOEXCEPT
         {
             return result().error();
         }
 
+        /// The unparsed input
         range_type& range() & SCN_NOEXCEPT
         {
             return result().range();
@@ -262,11 +342,16 @@ namespace scn {
         {
             return result().range();
         }
-        range_type range() &&
+        range_type&& range() && SCN_NOEXCEPT
         {
-            return result().range();
+            return SCN_MOVE(result().range());
+        }
+        const range_type&& range() const&& SCN_NOEXCEPT
+        {
+            return SCN_MOVE(result().range());
         }
 
+        // For std::tie support
         operator std::tuple<result_type&, Args&...>()
         {
             return std::tuple_cat(std::tuple<result_type&>{m_result},

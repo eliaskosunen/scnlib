@@ -36,8 +36,7 @@ namespace scn {
         scan_expected<ranges::iterator_t<Range>>
         internal_skip_classic_whitespace(Range r, bool allow_exhaustion)
         {
-            return impl::skip_classic_whitespace(r, allow_exhaustion)
-                .transform([](auto subr) noexcept { return subr.begin(); });
+            return impl::skip_classic_whitespace(r, allow_exhaustion);
         }
 
 #define SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(T, Context)                         \
@@ -63,8 +62,8 @@ namespace scn {
                                      Context)                               \
     SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(                                       \
         std::basic_string_view<Context::char_type>, Context)                \
-    template scan_expected<ranges::iterator_t<Context::subrange_type>>      \
-    internal_skip_classic_whitespace(Context::subrange_type, bool);
+    template scan_expected<ranges::iterator_t<Context::range_type>>         \
+    internal_skip_classic_whitespace(Context::range_type, bool);
 
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::sv)
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)

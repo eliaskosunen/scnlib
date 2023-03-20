@@ -24,6 +24,7 @@
  */
 
 #include <scn/detail/error.h>
+#include <scn/detail/ranges.h>
 #include <scn/detail/unicode.h>
 #include <scn/util/meta.h>
 
@@ -498,17 +499,53 @@ namespace scn {
                             : detail::is_unpacked_bit | base::num_args;
     };
 
-    template <typename Context, typename... Args>
-    constexpr auto make_scan_args() -> scan_arg_store<Context, Args...>
+    namespace detail {
+        template <typename CharT>
+        std::basic_string_view<CharT> decay_input_range(
+            std::basic_string_view<CharT>);
+
+        template <typename CharT>
+        basic_istreambuf_subrange<CharT> decay_input_range(
+            basic_istreambuf_subrange<CharT>);
+
+        template <typename CharT>
+        basic_erased_subrange<CharT> decay_input_range(
+            basic_erased_subrange<CharT>);
+
+        template <typename R, typename CharT>
+        using decayed_input_range =
+            decltype(decay_input_range<CharT>(SCN_DECLVAL(R)));
+    }  // namespace detail
+
+    /**
+     * Constructs a `scan_arg_store` object, associated with `Range`,
+     * that contains value-initialized values of types `Args...`.
+     */
+    template <typename Range, typename... Args>
+    constexpr auto make_scan_args()
     {
         detail::check_scan_arg_types<Args...>();
-        return {};
+
+        using char_type = ranges::range_value_t<Range>;
+        return scan_arg_store<
+            basic_scan_context<detail::decayed_input_range<Range, char_type>,
+                               char_type>,
+            Args...>{};
     }
-    template <typename Context, typename... Args>
+    /**
+     * Constructs a `scan_arg_store` object, associated with `Range`,
+     * that contains `values`.
+     */
+    template <typename Range, typename... Args>
     constexpr auto make_scan_args(std::tuple<Args...>&& values)
     {
         detail::check_scan_arg_types<Args...>();
-        return scan_arg_store<Context, Args...>{SCN_MOVE(values)};
+
+        using char_type = ranges::range_value_t<Range>;
+        return scan_arg_store<
+            basic_scan_context<detail::decayed_input_range<Range, char_type>,
+                               char_type>,
+            Args...>{SCN_MOVE(values)};
     }
 
     template <typename Context>
@@ -570,8 +607,7 @@ namespace scn {
             : m_desc{desc}, m_values{values}
         {
         }
-        constexpr basic_scan_args(size_t desc,
-                                  basic_scan_args<Context>* args)
+        constexpr basic_scan_args(size_t desc, basic_scan_args<Context>* args)
             : m_desc{desc}, m_args{args}
         {
         }

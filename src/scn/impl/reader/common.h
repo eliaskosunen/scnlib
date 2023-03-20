@@ -48,10 +48,27 @@ namespace scn {
         extern template std::string& source_reader_buffer();
         extern template std::wstring& source_reader_buffer();
 
-        /**
-         * SourceReader:
-         * auto read(SourceRange&&) -> iterator_value_result<SourceRange, sv>
-         */
+        template <typename CharT>
+        std::basic_string_view<CharT> reconstruct_view(
+            typename std::basic_string_view<CharT>::iterator first,
+            typename std::basic_string_view<CharT>::iterator last)
+        {
+            return detail::make_string_view_from_iterators<CharT>(first, last);
+        }
+        template <typename CharT>
+        basic_istreambuf_subrange<CharT> reconstruct_view(
+            typename basic_istreambuf_subrange<CharT>::iterator first,
+            typename basic_istreambuf_subrange<CharT>::sentinel last)
+        {
+            return {first, last};
+        }
+        template <typename CharT>
+        basic_erased_subrange<CharT> reconstruct_view(
+            typename basic_erased_subrange<CharT>::iterator first,
+            typename basic_erased_subrange<CharT>::sentinel last)
+        {
+            return {first, last};
+        }
 
         template <typename CharT>
         class until_space_classic_source_reader {
@@ -141,8 +158,7 @@ namespace scn {
             whitespace_skipper() = default;
 
             template <typename SourceRange>
-            ranges::borrowed_iterator_t<SourceRange> skip_classic(
-                SourceRange&& source)
+            ranges::iterator_t<SourceRange> skip_classic(SourceRange source)
             {
                 if constexpr (range_supports_nocopy<SourceRange>() &&
                               std::is_same_v<ranges::range_value_t<SourceRange>,

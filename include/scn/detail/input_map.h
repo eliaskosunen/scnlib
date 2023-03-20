@@ -43,18 +43,6 @@ namespace scn {
                 return r;
             }
 
-            template <typename CharT>
-            static std::enable_if_t<is_valid_char_type<CharT>,
-                                    std::basic_string_view<CharT>>
-            impl(ranges::subrange<
-                     typename std::basic_string_view<CharT>::iterator,
-                     typename std::basic_string_view<CharT>::iterator> r,
-                 priority_tag<4>) SCN_NOEXCEPT
-            {
-                return make_string_view_from_iterators<char>(r.begin(),
-                                                             r.end());
-            }
-
             // string& -> string_view
             template <typename CharT, typename Allocator>
             static std::enable_if_t<is_valid_char_type<CharT>,
@@ -110,7 +98,7 @@ namespace scn {
                 return r;
             }
 
-            // erased_view (subrange) -> self
+            // erased_subrange -> self
             template <typename CharT>
             static std::enable_if_t<is_valid_char_type<CharT>,
                                     basic_erased_subrange<CharT>>
@@ -124,7 +112,7 @@ namespace scn {
             SCN_GCC_PUSH
             SCN_GCC_IGNORE("-Wnoexcept")
 
-            // contiguous + sized + valid-char + borrowed -> string_view
+            // contiguous + sized + valid-char -> string_view
             template <typename Range,
                       typename CharT = ranges::range_value_t<Range>>
             static std::enable_if_t<is_valid_char_type<CharT> &&

@@ -56,8 +56,11 @@ namespace scn {
                 basic_scan_context<SourceRange, CharT>>{SCN_MOVE(source),
                                                         SCN_MOVE(args), loc};
 
-            if (auto result = visit_scan_arg(SCN_MOVE(reader), arg); result) {
-                return {{*result, reader.range.end()}, {}};
+            if (auto result = visit_scan_arg(SCN_MOVE(reader), arg);
+                SCN_LIKELY(result)) {
+                return {
+                    impl::reconstruct_view<CharT>(*result, reader.range.end()),
+                    {}};
             }
             else {
                 return {reader.range, result.error()};

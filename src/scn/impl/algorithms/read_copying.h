@@ -71,10 +71,6 @@ namespace scn {
             SCN_EXPECT(ranges::begin(output) != ranges::end(output));
 
             auto found = ranges::find_if(input, until);
-            if (found == ranges::end(input)) {
-                return read_all_copying(SCN_FWD(input), SCN_FWD(output));
-            }
-
             auto [in, out] = impl::copy(
                 ranges::subrange{ranges::begin(input), found}, SCN_FWD(output));
             return {SCN_MOVE(in), SCN_MOVE(out)};

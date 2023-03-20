@@ -54,8 +54,8 @@ namespace scn {
         std::basic_string<Context::char_type>, Context)                       \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(                                 \
         std::basic_string_view<Context::char_type>, Context)                  \
-    extern template scan_expected<ranges::iterator_t<Context::subrange_type>> \
-    internal_skip_classic_whitespace(Context::subrange_type, bool);
+    extern template scan_expected<ranges::iterator_t<Context::range_type>> \
+    internal_skip_classic_whitespace(Context::range_type, bool);
 
         namespace scanner_scan_contexts {
             using sv = basic_scan_context<std::string_view, char>;

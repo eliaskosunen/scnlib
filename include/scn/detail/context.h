@@ -34,17 +34,9 @@ namespace scn {
             Iterator,
             std::void_t<decltype(SCN_DECLVAL(const Iterator&) == nullptr)>>
             : std::true_type {};
-
-#if 0
-        static_assert(
-            is_comparable_with_nullptr<std::string_view::iterator>::value);
-        static_assert(
-            is_comparable_with_nullptr<ranges::iterator_t<ranges::subrange<
-                ranges::iterator_t<std::string_view>,
-                ranges::sentinel_t<std::string_view>>>>::value);
-#endif
     }  // namespace detail
 
+    /// Scanning context
     template <typename Range, typename CharT>
     class basic_scan_context {
     public:
@@ -52,7 +44,6 @@ namespace scn {
         using range_type = Range;
         using iterator = ranges::iterator_t<range_type>;
         using sentinel = ranges::sentinel_t<range_type>;
-        using subrange_type = ranges::subrange<iterator, sentinel>;
         using parse_context_type = basic_scan_parse_context<char_type>;
 
         using arg_type = basic_scan_arg<basic_scan_context>;
@@ -71,6 +62,14 @@ namespace scn {
         {
         }
 
+        basic_scan_context(const basic_scan_context&) = delete;
+        basic_scan_context& operator=(const basic_scan_context&) = delete;
+
+        basic_scan_context(basic_scan_context&&) = default;
+        basic_scan_context& operator=(basic_scan_context&&) = default;
+        ~basic_scan_context() = default;
+
+        /// Get argument at index `id`
         constexpr basic_scan_arg<basic_scan_context> arg(size_t id) const
             SCN_NOEXCEPT
         {
@@ -82,9 +81,16 @@ namespace scn {
             return m_args;
         }
 
-        constexpr subrange_type range() const
+        /// Returns a view over the input range, starting at `current()`
+        constexpr range_type range() const
         {
-            return {current(), ranges::end(m_range)};
+            if constexpr (detail::is_string_view<range_type>::value) {
+                return detail::make_string_view_from_iterators<char_type>(
+                    current(), ranges::end(m_range));
+            }
+            else {
+                return {current(), ranges::end(m_range)};
+            }
         }
         constexpr iterator current() const
         {
@@ -112,71 +118,6 @@ namespace scn {
         basic_scan_args<basic_scan_context> m_args;
         detail::locale_ref m_locale;
     };
-
-    namespace detail {
-        struct _map_subrange_to_context_range_type_fn {
-            template <typename CharT>
-            std::basic_string_view<CharT> operator()(
-                tag_type<CharT>,
-                std::basic_string_view<CharT> r) const SCN_NOEXCEPT
-            {
-                return r;
-            }
-
-            template <typename CharT>
-            std::basic_string_view<CharT> operator()(
-                tag_type<CharT>,
-                ranges::subrange<
-                    ranges::iterator_t<std::basic_string_view<CharT>>,
-                    ranges::sentinel_t<std::basic_string_view<CharT>>> r) const
-                SCN_NOEXCEPT
-            {
-                return detail::make_string_view_from_iterators<CharT>(r.begin(),
-                                                                      r.end());
-            }
-
-            template <typename CharT>
-            basic_istreambuf_subrange<CharT> operator()(
-                tag_type<CharT>,
-                basic_istreambuf_subrange<CharT> r) const SCN_NOEXCEPT
-            {
-                return r;
-            }
-
-            template <typename CharT>
-            basic_istreambuf_subrange<CharT> operator()(
-                tag_type<CharT>,
-                ranges::subrange<
-                    ranges::iterator_t<basic_istreambuf_subrange<CharT>>,
-                    ranges::sentinel_t<basic_istreambuf_subrange<CharT>>> r)
-                const SCN_NOEXCEPT
-            {
-                return {r.begin(), r.end()};
-            }
-
-            template <typename CharT>
-            basic_erased_subrange<CharT> operator()(
-                tag_type<CharT>,
-                basic_erased_subrange<CharT> r) const SCN_NOEXCEPT
-            {
-                return r;
-            }
-
-            template <typename CharT>
-            basic_erased_subrange<CharT> operator()(
-                tag_type<CharT>,
-                ranges::subrange<
-                    ranges::iterator_t<basic_erased_subrange<CharT>>,
-                    ranges::sentinel_t<basic_erased_subrange<CharT>>> r) const
-                SCN_NOEXCEPT
-            {
-                return {r.begin(), r.end()};
-            }
-        };
-
-        inline constexpr auto map_subrange_to_context_range_type =
-            _map_subrange_to_context_range_type_fn{};
-    }  // namespace detail
 
     SCN_END_NAMESPACE
 }  // namespace scn

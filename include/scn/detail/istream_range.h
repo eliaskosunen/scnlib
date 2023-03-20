@@ -223,24 +223,41 @@ namespace scn {
               ranges::iterator_t<basic_istreambuf_view<CharT>>,
               ranges_std::default_sentinel_t,
               ranges::subrange_kind::unsized> {
-        using iterator = ranges::iterator_t<basic_istreambuf_view<CharT>>;
-        using base = ranges::subrange<iterator,
-                                      ranges_std::default_sentinel_t,
-                                      ranges::subrange_kind::unsized>;
-
     public:
+        using iterator = ranges::iterator_t<basic_istreambuf_view<CharT>>;
+        using sentinel = ranges_std::default_sentinel_t;
+        using base = ranges::
+            subrange<iterator, sentinel, ranges::subrange_kind::unsized>;
+
         using base::base;
+
+        basic_istreambuf_subrange(const basic_istreambuf_view<CharT>& other)
+            : basic_istreambuf_subrange(other.begin(), other.end())
+        {
+        }
 
         basic_istreambuf_subrange(const base& o) : base(o.begin(), o.end()) {}
 
-        void sync(iterator it);
+        /**
+         * Convenience interface over `basic_istreambuf_view::sync(iterator)`.
+         *
+         * Calls `sync` on the underlying `basic_istreambuf_view`, with
+         * `begin()` as the iterator parameter.
+         *
+         * Example:
+         *
+         * auto view = scn::istreambuf_view{stream};
+         * auto [result, i] = scn::scan<int>(view, "{}");
+         * result.range().sync();
+         */
+        void sync();
     };
 
     extern template void basic_istreambuf_view<char>::sync(iterator);
     extern template void basic_istreambuf_view<wchar_t>::sync(iterator);
 
-    extern template void basic_istreambuf_subrange<char>::sync(iterator);
-    extern template void basic_istreambuf_subrange<wchar_t>::sync(iterator);
+    extern template void basic_istreambuf_subrange<char>::sync();
+    extern template void basic_istreambuf_subrange<wchar_t>::sync();
 
     SCN_END_NAMESPACE
 }  // namespace scn

@@ -29,47 +29,29 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        inline size_t strlen(const char* s) SCN_NOEXCEPT
-        {
-            return ::std::strlen(s);
-        }
-        inline size_t strlen(const wchar_t* s) SCN_NOEXCEPT
-        {
-            return ::std::wcslen(s);
-        }
-        inline size_t strlen(const char16_t* s) SCN_NOEXCEPT
-        {
-            SCN_EXPECT(s);
-            auto end = s;
-            for (; *end != u'\0'; ++end)
-                ;
-            return static_cast<size_t>(end - s);
-        }
-        inline size_t strlen(const char32_t* s) SCN_NOEXCEPT
-        {
-            SCN_EXPECT(s);
-            auto end = s;
-            for (; *end != U'\0'; ++end)
-                ;
-            return static_cast<size_t>(end - s);
-        }
-#if SCN_HAS_CHAR8
-        inline size_t strlen(const char8_t* s) SCN_NOEXCEPT
-        {
-            return std::strlen(reinterpret_cast<const char*>(s));
-        }
-#endif
-    }  // namespace detail
+        template <typename T>
+        struct is_string_view : std::false_type {};
+        template <typename CharT, typename Traits>
+        struct is_string_view<std::basic_string_view<CharT, Traits>>
+            : std::true_type {};
 
-    namespace detail {
+        // workarounds for MSVC string_view debug iterators
         template <typename CharT>
         constexpr std::basic_string_view<CharT> make_string_view_from_iterators(
             typename std::basic_string_view<CharT>::iterator first,
             typename std::basic_string_view<CharT>::iterator last)
         {
-            return {to_address(first),
-                    static_cast<size_t>(
-                        std::distance(to_address(first), to_address(last)))};
+            if constexpr (std::is_constructible_v<std::basic_string_view<CharT>,
+                                                  decltype(first),
+                                                  decltype(last)> &&
+                          !SCN_STDLIB_MS_STL) {
+                return {first, last};
+            }
+            else {
+                return {to_address(first),
+                        static_cast<size_t>(std::distance(to_address(first),
+                                                          to_address(last)))};
+            }
         }
 
         template <typename CharT>
@@ -78,7 +60,16 @@ namespace scn {
             const CharT* ptr) ->
             typename std::basic_string_view<CharT>::iterator
         {
-            return sv.begin() + std::distance(sv.data(), ptr);
+            if constexpr (std::is_constructible_v<
+                              typename std::basic_string_view<CharT>,
+                              const CharT*> &&
+                          !SCN_STDLIB_MS_STL) {
+                SCN_UNUSED(sv);
+                return ptr;
+            }
+            else {
+                return sv.begin() + std::distance(sv.data(), ptr);
+            }
         }
     }  // namespace detail
 

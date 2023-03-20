@@ -76,8 +76,8 @@ namespace scn {
     template auto range_streambuf<Range>::showmanyc()->std::streamsize; \
     template auto range_streambuf<Range>::pbackfail(int_type)->int_type;
 
-        SCN_DEFINE_RANGE_STREAMBUF(scanner_scan_contexts::sv::subrange_type)
-        SCN_DEFINE_RANGE_STREAMBUF(scanner_scan_contexts::wsv::subrange_type)
+        SCN_DEFINE_RANGE_STREAMBUF(std::string_view)
+        SCN_DEFINE_RANGE_STREAMBUF(std::wstring_view)
         SCN_DEFINE_RANGE_STREAMBUF(istreambuf_subrange)
         SCN_DEFINE_RANGE_STREAMBUF(wistreambuf_subrange)
         SCN_DEFINE_RANGE_STREAMBUF(erased_subrange)

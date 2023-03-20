@@ -116,10 +116,8 @@ namespace scn {
     extern template auto range_streambuf<Range>::showmanyc()->std::streamsize; \
     extern template auto range_streambuf<Range>::pbackfail(int_type)->int_type;
 
-        SCN_DECLARE_EXTERN_RANGE_STREAMBUF(
-            scanner_scan_contexts::sv::subrange_type)
-        SCN_DECLARE_EXTERN_RANGE_STREAMBUF(
-            scanner_scan_contexts::wsv::subrange_type)
+        SCN_DECLARE_EXTERN_RANGE_STREAMBUF(std::string_view)
+        SCN_DECLARE_EXTERN_RANGE_STREAMBUF(std::wstring_view)
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(istreambuf_subrange)
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(wistreambuf_subrange)
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(erased_subrange)
@@ -135,7 +133,7 @@ namespace scn {
         scan_expected<typename Context::iterator> scan(T& val,
                                                        Context& ctx) const
         {
-            detail::range_streambuf<typename Context::subrange_type> streambuf(
+            detail::range_streambuf<typename Context::range_type> streambuf(
                 ctx.range());
             using traits = typename decltype(streambuf)::traits_type;
             std::basic_istream<CharT> stream(std::addressof(streambuf));

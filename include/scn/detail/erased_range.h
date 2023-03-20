@@ -284,7 +284,8 @@ namespace scn {
             }
 
             if (i > m_impl->get_current_index()) {
-                return m_impl->increment_current(i - m_impl->get_current_index());
+                return m_impl->increment_current(i -
+                                                 m_impl->get_current_index());
             }
 
             m_impl->reset_current_to_begin();
@@ -314,18 +315,17 @@ namespace scn {
         : public ranges::subrange<ranges::iterator_t<basic_erased_range<CharT>>,
                                   ranges_std::default_sentinel_t,
                                   ranges::subrange_kind::unsized> {
-        using base =
-            ranges::subrange<ranges::iterator_t<basic_erased_range<CharT>>,
-                             ranges_std::default_sentinel_t,
-                             ranges::subrange_kind::unsized>;
+        using iterator = ranges::iterator_t<basic_erased_range<CharT>>;
+        using sentinel = ranges_std::default_sentinel_t;
+        using base = ranges::
+            subrange<iterator, sentinel, ranges::subrange_kind::unsized>;
         using base::base;
 
-        /*
         basic_erased_subrange(const basic_erased_range<CharT>& other)
             : basic_erased_subrange(other.begin(), other.end())
         {
         }
-         */
+
         basic_erased_subrange(const base& o) : base(o.begin(), o.end()) {}
     };
 
@@ -377,3 +377,31 @@ namespace scn {
 
     SCN_END_NAMESPACE
 }  // namespace scn
+
+#if SCN_STD_RANGES
+
+namespace std::ranges {
+    template <typename CharT>
+    inline constexpr bool enable_view<scn::basic_erased_range<CharT>> = true;
+    template <typename CharT>
+    inline constexpr bool enable_view<scn::basic_erased_subrange<CharT>> = true;
+
+    template <typename CharT>
+    inline constexpr bool
+        enable_borrowed_range<scn::basic_erased_subrange<CharT>> = true;
+}  // namespace std::ranges
+
+#else
+
+namespace nano {
+    template <typename CharT>
+    inline constexpr bool enable_view<scn::basic_erased_range<CharT>> = true;
+    template <typename CharT>
+    inline constexpr bool enable_view<scn::basic_erased_subrange<CharT>> = true;
+
+    template <typename CharT>
+    inline constexpr bool
+        enable_borrowed_range<scn::basic_erased_subrange<CharT>> = true;
+}  // namespace nano
+
+#endif  // SCN_STD_RANGES
