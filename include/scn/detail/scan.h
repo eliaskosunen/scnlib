@@ -233,20 +233,12 @@ namespace scn {
 
 #if SCN_USE_IOSTREAMS
 
-    struct stdin_range_placeholder {
-        constexpr stdin_range_placeholder() SCN_NOEXCEPT = default;
-        template <typename... Args>
-        constexpr stdin_range_placeholder(Args&&...) SCN_NOEXCEPT
-        {
-        }
-    };
-
     namespace detail {
         scn::istreambuf_view& internal_narrow_stdin();
         scn::wistreambuf_view& internal_wide_stdin();
 
         template <typename... Args, typename Source, typename Format>
-        scan_result_tuple<stdin_range_placeholder, Args...> input_impl(
+        scan_result_tuple<stdin_range_marker, Args...> input_impl(
             Source& source,
             Format format)
         {
@@ -258,28 +250,37 @@ namespace scn {
         }
     }  // namespace detail
 
+    /// Scan Args... from stdin according to format
+    /// Prefer this over constructing a view over std::cin, and using scan().
+    /// Thread-safe.
     template <typename... Args>
-    SCN_NODISCARD auto input(format_string<Args...> f)
+    SCN_NODISCARD auto input(format_string<Args...> format)
     {
-        return detail::input_impl<Args...>(detail::internal_narrow_stdin(), f);
+        return detail::input_impl<Args...>(detail::internal_narrow_stdin(),
+                                           format);
     }
     template <typename... Args>
-    SCN_NODISCARD auto input(wformat_string<Args...> f)
+    SCN_NODISCARD auto input(wformat_string<Args...> format)
     {
-        return detail::input_impl<Args...>(detail::internal_wide_stdin(), f);
+        return detail::input_impl<Args...>(detail::internal_wide_stdin(),
+                                           format);
     }
 
+    /// Write msg to stdout, and call input<Args...>(format)
     template <typename... Args>
-    SCN_NODISCARD auto prompt(const char* msg, format_string<Args...> f)
+    SCN_NODISCARD auto prompt(const char* msg, format_string<Args...> format)
     {
         std::printf("%s", msg);
-        return detail::input_impl<Args...>(detail::internal_narrow_stdin(), f);
+        return detail::input_impl<Args...>(detail::internal_narrow_stdin(),
+                                           format);
     }
     template <typename... Args>
-    SCN_NODISCARD auto prompt(const wchar_t* msg, wformat_string<Args...> f)
+    SCN_NODISCARD auto prompt(const wchar_t* msg,
+                              wformat_string<Args...> format)
     {
         std::wprintf(L"%s", msg);
-        return detail::input_impl<Args...>(detail::internal_wide_stdin(), f);
+        return detail::input_impl<Args...>(detail::internal_wide_stdin(),
+                                           format);
     }
 
 #endif  // SCN_USE_IOSTREAMS

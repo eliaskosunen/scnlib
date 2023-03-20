@@ -23,7 +23,10 @@
 #include <scn/detail/vscan.h>
 #include <scn/impl/reader/reader.h>
 
-#include <istream>
+#if SCN_USE_IOSTREAMS
+#include <iostream>
+#include <mutex>
+#endif
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -275,16 +278,37 @@ namespace scn {
             return scan_simple_single_argument(SCN_MOVE(source), {}, arg);
         }
 
+#if SCN_USE_IOSTREAMS
+        std::mutex stdin_mutex;
+
+        bool is_stdin_view(istreambuf_view& view)
+        {
+            return view.underlying().rdbuf() == std::cin.rdbuf();
+        }
+        bool is_stdin_view(wistreambuf_view& view)
+        {
+            return view.underlying().rdbuf() == std::wcin.rdbuf();
+        }
+
         template <typename CharT>
         vscan_result<basic_istreambuf_subrange<CharT>> vscan_and_sync_impl(
             basic_istreambuf_subrange<CharT> source,
             std::basic_string_view<CharT> format,
             scan_args_for<basic_istreambuf_subrange<CharT>, CharT> args)
         {
+            std::unique_lock<std::mutex> stdin_lock{stdin_mutex,
+                                                    std::defer_lock};
+            auto& view = static_cast<basic_istreambuf_view<CharT>&>(
+                source.begin().view());
+            if (is_stdin_view(view)) {
+                stdin_lock.lock();
+            }
+
             auto result = vscan_impl(source, format, args);
-            source.sync(result.range.begin());
+            view.sync(result.range.begin());
             return result;
         }
+#endif
     }  // namespace
 
 #define SCN_DEFINE_VSCAN(Range, CharT)                                         \

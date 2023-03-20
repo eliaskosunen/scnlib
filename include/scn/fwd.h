@@ -165,7 +165,15 @@ namespace scn {
     template <typename ResultMappedRange, typename... Args>
     class scan_result_tuple;
 
-    // detail/scan.h: empty
+    // detail/scan.h
+
+    struct stdin_range_marker {
+        constexpr stdin_range_marker() SCN_NOEXCEPT = default;
+        template <typename... Args>
+        constexpr stdin_range_marker(Args&&...) SCN_NOEXCEPT
+        {
+        }
+    };
 
     // detail/scanner.h
 

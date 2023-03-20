@@ -85,6 +85,17 @@ TEST(IstreamRangeTest, CopyingSubrange)
     EXPECT_NE(other.begin(), other.end());
 }
 
+TEST(IstreamRangeTest, ReadWithScan)
+{
+    auto ss = std::istringstream{"123 456"};
+    auto view = scn::istreambuf_view{ss};
+
+    auto [result, i] = scn::scan<int>(view, "{}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(i, 123);
+    EXPECT_FALSE(result.range().empty());
+}
+
 TEST(IstreamRangeTest, ReadFromStreamAfterScanAndSync)
 {
     auto ss = std::istringstream{"123 456"};
@@ -104,7 +115,7 @@ TEST(IstreamRangeTest, ReadFromStreamAfterScanAndSync)
     }
 }
 
-TEST(IstreamRangeTest, ReadWithScanAfterReadFromStraem)
+TEST(IstreamRangeTest, ReadWithScanAfterReadFromStream)
 {
     auto ss = std::istringstream{"123 456"};
     auto view = scn::istreambuf_view{ss};

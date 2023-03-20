@@ -168,6 +168,16 @@ namespace scn {
             static invalid_input_range impl(const T&,
                                             priority_tag<0>) SCN_NOEXCEPT
             {
+                if constexpr (std::is_same_v<T, stdin_range_marker>) {
+                    static_assert(
+                        dependent_false<T>::value,
+                        "\n"
+                        "stdin_range_marker cannot be used as an "
+                        "source range type to scn::scan.\n"
+                        "To read from stdin, use scn::input or scn::prompt, "
+                        "and do not provide an explicit source range.");
+                }
+
                 return {};
             }
 
@@ -195,33 +205,34 @@ namespace scn {
                             invalid_input_range>;
     }  // namespace detail
 
-    template <
-        typename Range,
-        typename std::enable_if_t<detail::is_scannable_range<Range>>* = nullptr>
+    /**
+     * Map a range type given to a generic scanning function (like `scan`)
+     * into something that can be given to a type-erased scanning function
+     * (like `vscan`).
+     *
+     * Maps
+     *  - `string_view` and other contiguous+sized ranges to `string_view`
+     *  - `istreambuf_view` to `istreambuf_subrange`
+     *  - `erased_view` to `erased_subrange`
+     *  - any other forward range to `erased_view`
+     *  - others to `invalid_input_range`.
+     */
+    template <typename Range>
     auto scan_map_input_range(const Range& r) SCN_NOEXCEPT_P(
         noexcept(detail::scan_map_input_range_impl(SCN_DECLVAL(const Range&))))
     {
+        static_assert(
+            detail::is_scannable_range<Range>,
+            "\n"
+            "Unsupported range type given as input to a scanning "
+            "function.\n"
+            "A range needs to model forward_range and have a valid "
+            "character type (char or wchar_t) to be scannable.\n"
+            "Examples of scannable ranges are std::string, std::string_view, "
+            "std::vector<char>, and scn::istreambuf_view.\n"
+            "See the scn documentation for more details.");
+
         return detail::scan_map_input_range_impl(r);
-    }
-
-    template <typename Range,
-              typename std::enable_if_t<!detail::is_scannable_range<Range>>* =
-                  nullptr>
-    invalid_input_range scan_map_input_range(const Range&) SCN_NOEXCEPT
-    {
-        static_assert(detail::dependent_false<Range>::value,
-                      "\n"
-                      "Unsupported range type given as input to a scanning "
-                      "function.\n"
-                      "Generally, only string-like values, "
-                      "scn::istream_char_ranges, or scn::erased_ranges can be "
-                      "scanned from.\n"
-                      "Convert your range type to a "
-                      "std::string_view or std::string, or erase its type with "
-                      "scn::erase_range().\n"
-                      "See the scn documentation for more details.");
-
-        return {};
     }
 
     SCN_END_NAMESPACE
