@@ -241,12 +241,5 @@ namespace scn {
 
     // util/string_view.h: empty
 
-    // util/unique_ptr.h
-
-    namespace detail {
-        template <typename T>
-        class unique_ptr;
-    }
-
     SCN_END_NAMESPACE
 }  // namespace scn

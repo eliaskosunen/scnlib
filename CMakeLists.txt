@@ -62,7 +62,6 @@ set(SCN_PUBLIC_HEADERS
         include/scn/util/optional.h
         include/scn/util/span.h
         include/scn/util/string_view.h
-        include/scn/util/unique_ptr.h
         )
 set(SCN_PRIVATE_HEADERS
         src/scn/impl/algorithms/common.h

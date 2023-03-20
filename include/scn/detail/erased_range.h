@@ -20,7 +20,8 @@
 #include <scn/detail/ranges.h>
 #include <scn/util/meta.h>
 #include <scn/util/span.h>
-#include <scn/util/unique_ptr.h>
+
+#include <memory>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -142,7 +143,7 @@ namespace scn {
         template <typename CharT, typename Range>
         auto make_unique_erased_range_impl(Range&& r)
         {
-            return ::scn::detail::make_unique<
+            return std::make_unique<
                 basic_erased_range_impl<Range, CharT>>(SCN_FWD(r));
         }
     }  // namespace detail
@@ -173,7 +174,7 @@ namespace scn {
 
     private:
         using impl_ptr_type =
-            detail::unique_ptr<detail::basic_erased_range_impl_base<char_type>>;
+            std::unique_ptr<detail::basic_erased_range_impl_base<char_type>>;
 
         // TODO: Small object optimization?
         impl_ptr_type m_impl{nullptr};

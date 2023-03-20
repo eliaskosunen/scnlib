@@ -97,34 +97,6 @@ namespace scn {
                 std::is_pointer_v<decltype(SCN_DECLVAL(It&).operator->())>>>
             : std::true_type {};
 
-#if 0
-#if SCN_WINDOWS
-        template <typename I, typename B, typename E>
-        constexpr auto to_address_safe(I&& p, B begin, E end)
-            SCN_NOEXCEPT->decltype(to_address(SCN_FWD(p)))
-        {
-            if (p >= begin && p < end) {
-                return to_address(SCN_FWD(p));
-            }
-            if (begin == end) {
-                return to_address(SCN_FWD(p));
-            }
-            if (p == end) {
-                return to_address(SCN_FWD(p) - 1) + 1;
-            }
-            SCN_ENSURE(false);
-            SCN_UNREACHABLE;
-        }
-#else
-        template <typename I, typename B, typename E>
-        constexpr auto to_address_safe(I&& p, B, E)
-            SCN_NOEXCEPT->decltype(to_address(SCN_FWD(p)))
-        {
-            return to_address(SCN_FWD(p));
-        }
-#endif
-#endif
-
 // Workaround for MSVC _String_view_iterator
 #if SCN_STDLIB_MS_STL
         template <typename Traits>
