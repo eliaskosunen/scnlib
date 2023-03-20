@@ -77,6 +77,11 @@ namespace scn {
             mutable buffer_type m_buffer{};
         };
 
+        /**
+         * A range adaptor over `Range`, that caches the contents of the range,
+         * and allows the user to go back and see these contents.
+         * Turns an `input_range` into a `bidirectional_range`.
+         */
         template <typename Range>
         class basic_caching_view
             : public basic_caching_view_base<ranges::range_value_t<Range>>,

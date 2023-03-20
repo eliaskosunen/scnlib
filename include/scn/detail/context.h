@@ -92,11 +92,14 @@ namespace scn {
                 return {current(), ranges::end(m_range)};
             }
         }
+        /// Returns an iterator pointing to
+        /// the beginning of the current input range
         constexpr iterator current() const
         {
             return m_current;
         }
 
+        /// Advances the beginning of the input range to `it`
         void advance_to(iterator it)
         {
             if constexpr (detail::is_comparable_with_nullptr<iterator>::value) {

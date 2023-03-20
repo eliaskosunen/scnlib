@@ -39,6 +39,45 @@ namespace scn {
             Args...>;
     }
 
+    /**
+     * Make value to be returned by scan().
+     *
+     * Returns a scan_result_tuple<R, Args...>, where Args... are the scanned
+     * arguments, and R is the appropriate result range, as determined by
+     * SourceRange and ResultRange.
+     *
+     * If the range given to scan() is a borrowed_range, R is a view into that
+     * range. Otherwise, R is ranges::dangling.
+     *
+     * Formally,
+     *   - if SourceRange is not a borrowed_range, R is ranges::dangling
+     *   - if ResultRange is a specialization of std::basic_string_view,
+     *     R is ResultRange
+     *   - if ResultRange is a specialization of basic_istreambuf_subrange,
+     *     R is ResultRange
+     *   - if ResultRange is a specialization of basic_erased_subrange, and:
+     *     - SourceRange is a specialization of basic_erased_view, or
+     *       basic_erased_subrange, R is ResultRange
+     *     - otherwise, R is ranges::subrange<ranges::iterator_t<SourceRange>,
+     *                                        ranges::sentinel_t<SourceRange>>
+     *
+     *
+     * Example:
+     *
+     * template <typename... Args, typename Source>
+     * auto my_scan(Source&& source, format_string<Args...> format) {
+     *   auto range = scan_map_input_range(source);
+     *   auto args = make_scan_args<decltype(range), Args...>();
+     *   auto result = vscan(range, format, args);
+     *   return make_scan_result(
+     *            std::forward<Source>(source), result, std::move(args));
+     * }
+     *
+     * @param source The source range given to scan(), forwarded.
+     * @param result The result value returned by vscan()
+     * @param args   The argument store returned by make_scan_args() and given
+     *               to vscan()
+     */
     template <typename SourceRange,
               typename ResultRange,
               typename Context,
@@ -94,6 +133,17 @@ namespace scn {
         return detail::scan_impl<Args...>(SCN_FWD(source), format, {});
     }
 
+    /**
+     * scan with explicitly supplied default values
+     *
+     * Can be used, for example, for preallocating a scanned string:
+     *
+     * std::string str;
+     * str.reserve(64);
+     *
+     * auto [result, s] = scn::scan<std::string>(source, "{}",
+     *                                           {std::move(str)});
+     */
     template <typename... Args,
               typename Source,
               typename = std::enable_if_t<
@@ -138,6 +188,7 @@ namespace scn {
         }
     }  // namespace detail
 
+    /// Scan using a locale
     template <typename... Args,
               typename Locale,
               typename Source,
@@ -218,6 +269,7 @@ namespace scn {
         }
     }  // namespace detail
 
+    /// Scan a single value of type T from source, with default options
     template <typename T, typename Source>
     SCN_NODISCARD auto scan_value(Source&& source)
     {

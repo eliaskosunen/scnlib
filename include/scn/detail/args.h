@@ -369,6 +369,7 @@ namespace scn {
     constexpr decltype(auto) visit_scan_arg(Visitor&& vis,
                                             basic_scan_arg<Ctx>& arg);
 
+    /// Type-erased scanning argument
     template <typename Context>
     class basic_scan_arg {
     public:
@@ -450,6 +451,13 @@ namespace scn {
         };
     }  // namespace detail
 
+    /**
+     * A tuple of scanning arguments, by value.
+     *
+     * Implicitly convertible to `basic_scan_args`,
+     * to be passed to type-erased along to type-erased scanning functions,
+     * like `vscan`.
+     */
     template <typename Context, typename... Args>
     class scan_arg_store
         : public detail::scan_arg_store_base<Context, sizeof...(Args)> {
@@ -549,6 +557,9 @@ namespace scn {
             Args...>{SCN_MOVE(values)};
     }
 
+    /**
+     * A view over a collection of scanning arguments (`scan_arg_store`).
+     */
     template <typename Context>
     class basic_scan_args {
     public:

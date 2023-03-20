@@ -30,6 +30,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        /// A input_range over a basic_streambuf
         template <typename CharT>
         class basic_input_istreambuf_view : public ranges::view_base {
         public:
@@ -197,6 +198,12 @@ namespace scn {
         basic_input_istreambuf_view<wchar_t>::iterator::is_at_end() const;
     }  // namespace detail
 
+    /**
+     * A `bidirectional_range` over a `std::basic_streambuf`.
+     *
+     * Uses `scn::detail::basic_caching_view` and
+     * `scn::detail::basic_input_istreambuf_view`.
+     */
     template <typename CharT>
     class basic_istreambuf_view
         : public detail::basic_caching_view<
@@ -214,6 +221,23 @@ namespace scn {
         basic_istreambuf_view(istream_type& is) : base(istreambuf_view{is}) {}
         basic_istreambuf_view(streambuf_type* s) : base(istreambuf_view{s}) {}
 
+        /**
+         * Sync the state of this view with the underlying streambuf, such that
+         * after this call, the position denominated by `it` is the current
+         * position of the underlying streambuf.
+         *
+         * Enables interoperability between a basic_istreambuf_view and standard
+         * I/O facilities.
+         *
+         * Example:
+         *
+         * auto view = scn::istreambuf_view{stream};
+         * auto [result, i] = scn::scan<int>(view, "{}");
+         *
+         * view.sync(result.range().begin());
+         *
+         * // Now, both result.range() and stream can be used
+         */
         void sync(iterator it);
     };
 

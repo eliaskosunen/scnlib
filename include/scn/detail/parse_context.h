@@ -22,6 +22,10 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /**
+     * Format string parsing context, wrapping the format string being parsed,
+     * and a counter for argument indexing.
+     */
     template <typename CharT>
     class basic_scan_parse_context {
     public:
@@ -35,6 +39,7 @@ namespace scn {
         {
         }
 
+        /// Returns an iterator pointing to the beginning of the format string
         constexpr auto begin() const SCN_NOEXCEPT
         {
             return m_format.data();
@@ -44,6 +49,7 @@ namespace scn {
             return m_format.data() + m_format.size();
         }
 
+        /// Advance the beginning of the format string to `it`
         constexpr void advance_to(iterator it)
         {
             m_format.remove_prefix(static_cast<std::size_t>(it - begin()));
@@ -95,6 +101,7 @@ namespace scn {
     };
 
     namespace detail {
+        /// Parse context with extra data used only for compile-time checks
         template <typename CharT>
         class compile_parse_context : public basic_scan_parse_context<CharT> {
             using base = basic_scan_parse_context<CharT>;

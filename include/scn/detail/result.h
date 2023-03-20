@@ -99,6 +99,10 @@ namespace scn {
         }
     }  // namespace detail
 
+    /**
+     * Scan result type, containing the unparsed input, and a possible error.
+     * The first element in the tuple returned by scan().
+     */
     template <typename ResultMappedRange>
     class scan_result {
     public:
@@ -215,6 +219,12 @@ namespace scn {
         }
     }  // namespace detail
 
+    /**
+     * The result type returned by scan().
+     * Contains a scan_result<R>, and a std::tuple<Args...>.
+     * Can be used as-is, or be destructured with structured bindings or
+     * std::tie.
+     */
     template <typename ResultMappedRange, typename... Args>
     class scan_result_tuple {
     public:

@@ -37,6 +37,7 @@ namespace scn {
             const basic_format_specs<typename Context::char_type>& specs);
     }  // namespace detail
 
+    // scanner specialization for all built-in types
     template <typename T, typename CharT>
     struct scanner<
         T,

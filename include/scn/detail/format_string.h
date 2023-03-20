@@ -193,6 +193,7 @@ namespace scn {
 
 #define SCN_STRING(s) SCN_STRING_IMPL(s, ::scn::detail::compile_string, )
 
+    /// Compile-time format string
     template <typename CharT, typename... Args>
     class basic_format_string {
     public:

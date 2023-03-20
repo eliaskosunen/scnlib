@@ -62,6 +62,11 @@ namespace scn {
                   is_streamable_impl<T, CharT>,
                   std::false_type> {};
 
+        /**
+         * Wraps `SourceRange`, and makes it a `std::basic_streambuf`.
+         *
+         * Used by `basic_istream_scanner`.
+         */
         template <typename SourceRange>
         class range_streambuf
             : public std::basic_streambuf<ranges::range_value_t<SourceRange>> {
@@ -126,6 +131,24 @@ namespace scn {
 #undef SCN_DECLARE_EXTERN_RANGE_STREAMBUF
     }  // namespace detail
 
+    /**
+     * Implements the `scn::scanner` interface, by reading the value with
+     * `operator>>`.
+     *
+     * Example:
+     *
+     * #include <scn/istream.h> // required for basic_istream_scanner
+     *
+     * struct mytype {
+     *   friend std::istream& operator>>(std::istream&, const mytype&);
+     * };
+     *
+     * // Use mytype::operator>> for scanning with scnlib
+     * template <typename CharT>
+     * struct scn::scanner<mytype> : scn::basic_istream_scanner<CharT> {};
+     *
+     * auto [result, myvalue] = scn::scan<mytype>(...);
+     */
     template <typename CharT>
     struct basic_istream_scanner
         : scanner<std::basic_string_view<CharT>, CharT> {

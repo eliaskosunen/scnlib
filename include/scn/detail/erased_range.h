@@ -148,6 +148,9 @@ namespace scn {
         }
     }  // namespace detail
 
+    /**
+     * Type-erased forward_range.
+     */
     template <typename CharT>
     class basic_erased_range {
     public:
