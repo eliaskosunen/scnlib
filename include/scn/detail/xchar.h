@@ -88,7 +88,7 @@ namespace scn {
     template <typename... Args,
               typename Source,
               typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, wchar_t>>>
+                  std::is_same_v<detail::char_t<Source>, wchar_t>>>
     SCN_NODISCARD auto scan(Source&& source, wformat_string<Args...> format)
     {
         return detail::scan_impl<Args...>(SCN_FWD(source), format, {});
@@ -97,7 +97,7 @@ namespace scn {
     template <typename... Args,
               typename Source,
               typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, wchar_t>>>
+                  std::is_same_v<detail::char_t<Source>, wchar_t>>>
     SCN_NODISCARD auto scan(Source&& source,
                             wformat_string<Args...> format,
                             std::tuple<Args...>&& args)
@@ -110,7 +110,7 @@ namespace scn {
               typename Locale,
               typename Source,
               typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, wchar_t>>,
+                  std::is_same_v<detail::char_t<Source>, wchar_t>>,
               typename = std::void_t<decltype(Locale::classic())>>
     SCN_NODISCARD auto scan(Locale& loc,
                             Source&& source,
@@ -124,7 +124,7 @@ namespace scn {
               typename Locale,
               typename Source,
               typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, wchar_t>>,
+                  std::is_same_v<detail::char_t<Source>, wchar_t>>,
               typename = std::void_t<decltype(Locale::classic())>>
     SCN_NODISCARD auto scan(Locale& loc,
                             Source&& source,

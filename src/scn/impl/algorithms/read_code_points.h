@@ -41,7 +41,7 @@ namespace scn {
                     break;
                 }
 
-                using char_type = ranges::range_value_t<Range>;
+                using char_type = detail::char_t<Range>;
                 auto rng = ranges::subrange{it, ranges::end(range)};
 
                 char_type buffer[4 / sizeof(char_type)]{};
@@ -54,7 +54,7 @@ namespace scn {
                 it = e->iterator;
             }
 
-            using char_type = ranges::range_value_t<Range>;
+            using char_type = detail::char_t<Range>;
             return read_nocopy_result<Range>{
                 it, std::basic_string_view<char_type>{
                         ranges::data(range),
@@ -81,7 +81,7 @@ namespace scn {
 
                 auto rng = ranges::subrange{in, ranges::end(input)};
 
-                using char_type = ranges::range_value_t<InputR>;
+                using char_type = detail::char_t<InputR>;
                 char_type buffer[4 / sizeof(char_type)]{};
                 auto e = read_code_point(
                     rng, span<char_type>{buffer, 4 / sizeof(char_type)});

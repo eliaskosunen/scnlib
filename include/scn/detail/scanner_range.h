@@ -498,7 +498,7 @@ namespace scn {
         template <typename T>
         using range_value_type_for_scanner =
             typename range_value_type_for_scanner_processor<
-                ranges::range_value_t<T>>::type;
+                detail::char_t<T>>::type;
 
         template <range_format Kind,
                   typename Range,

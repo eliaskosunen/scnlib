@@ -50,7 +50,7 @@ namespace scn {
                 SourceRange& range,
                 code_point& cp)
             {
-                using char_type = ranges::range_value_t<SourceRange>;
+                using char_type = detail::char_t<SourceRange>;
                 alignas(char32_t) char_type buffer[4 / sizeof(char_type)]{};
                 const auto read_result = read_code_point(
                     range, span<char_type>{buffer, 4 / sizeof(char_type)});

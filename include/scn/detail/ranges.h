@@ -294,3 +294,15 @@ namespace nano {
 }  // namespace nano
 
 #endif  // SCN_STD_RANGES
+
+namespace scn {
+    SCN_BEGIN_NAMESPACE
+
+    namespace detail {
+        template <typename Range>
+        using char_t = remove_cvref_t<decltype(*::scn::ranges::begin(
+            SCN_DECLVAL(Range&)))>;
+    }  // namespace detail
+
+    SCN_END_NAMESPACE
+}  // namespace scn

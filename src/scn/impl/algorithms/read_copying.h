@@ -82,7 +82,7 @@ namespace scn {
         {
             return read_until_classic_copying(
                 SCN_FWD(input), SCN_FWD(output),
-                [](typename ranges::range_value_t<InputR> ch)
+                [](typename detail::char_t<InputR> ch)
                     SCN_NOEXCEPT { return is_ascii_space(ch); });
         }
 
@@ -115,7 +115,7 @@ namespace scn {
 
                 const auto src_copy = src;
 
-                using char_type = ranges::range_value_t<InputR>;
+                using char_type = detail::char_t<InputR>;
                 std::array<char_type, 4 / sizeof(char_type)> buffer{};
                 buffer[0] = *src;
                 --*len;

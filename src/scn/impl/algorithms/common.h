@@ -99,7 +99,7 @@ namespace scn {
                 const auto items_to_copy = static_cast<std::ptrdiff_t>(
                     (std::min)(input_size, output_size));
                 std::memmove(ranges::data(output), ranges::data(input),
-                            input_size * sizeof(ranges::range_value_t<InputR>));
+                             input_size * sizeof(detail::char_t<InputR>));
                 return {ranges::begin(input) + items_to_copy,
                         ranges::begin(output) + items_to_copy};
             }

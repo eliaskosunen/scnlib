@@ -30,8 +30,7 @@ namespace scn {
         {
             static_assert(range_supports_nocopy<Range>());
 
-            static constexpr auto char_size =
-                sizeof(ranges::range_value_t<Range>);
+            static constexpr auto char_size = sizeof(detail::char_t<Range>);
 
             if (SCN_UNLIKELY(range_nocopy_size(range) * char_size <
                              buf.size())) {

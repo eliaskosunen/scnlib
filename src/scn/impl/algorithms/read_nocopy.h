@@ -34,7 +34,7 @@ namespace scn {
         using read_nocopy_result = iterator_value_result<
             ranges::borrowed_iterator_t<R>,
             std::conditional_t<ranges::borrowed_range<R>,
-                               std::basic_string_view<ranges::range_value_t<R>>,
+                               std::basic_string_view<detail::char_t<R>>,
                                ranges::dangling>>;
 
         template <typename Range>
@@ -71,8 +71,9 @@ namespace scn {
             static_assert(range_supports_nocopy<Range>());
 
             const auto found = ranges::find_if(range, until);
-            auto str = detail::make_string_view_from_iterators<
-                ranges::range_value_t<Range>>(ranges::begin(range), found);
+            auto str =
+                detail::make_string_view_from_iterators<detail::char_t<Range>>(
+                    ranges::begin(range), found);
             return {found, str};
         }
 
@@ -80,7 +81,7 @@ namespace scn {
         read_nocopy_result<Range> read_until_classic_space_nocopy(Range&& range)
         {
             if constexpr (range_supports_nocopy<Range>() &&
-                          std::is_same_v<ranges::range_value_t<Range>, char>) {
+                          std::is_same_v<detail::char_t<Range>, char>) {
                 const auto sv = std::string_view{range_nocopy_data(range),
                                                  range_nocopy_size(range)};
                 const auto it = find_classic_space_narrow_fast(sv);
@@ -90,9 +91,9 @@ namespace scn {
             }
             else {
                 return read_until_classic_nocopy(
-                    SCN_FWD(range),
-                    [](ranges::range_value_t<Range> ch)
-                        SCN_NOEXCEPT { return is_ascii_space(ch); });
+                    SCN_FWD(range), [](detail::char_t<Range> ch) SCN_NOEXCEPT {
+                        return is_ascii_space(ch);
+                    });
             }
         }
 
@@ -141,7 +142,7 @@ namespace scn {
                 }
 
                 auto decode_sv = detail::make_string_view_from_iterators<
-                    ranges::range_value_t<SourceRange>>(it, ranges::end(input));
+                    detail::char_t<SourceRange>>(it, ranges::end(input));
                 auto decode_result = get_next_code_point(decode_sv);
                 if (SCN_UNLIKELY(!decode_result)) {
                     return unexpected(decode_result.error());

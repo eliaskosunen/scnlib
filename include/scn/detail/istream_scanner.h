@@ -69,9 +69,8 @@ namespace scn {
          */
         template <typename SourceRange>
         class range_streambuf
-            : public std::basic_streambuf<ranges::range_value_t<SourceRange>> {
-            using base =
-                std::basic_streambuf<ranges::range_value_t<SourceRange>>;
+            : public std::basic_streambuf<detail::char_t<SourceRange>> {
+            using base = std::basic_streambuf<detail::char_t<SourceRange>>;
 
         public:
             using range_type = SourceRange;

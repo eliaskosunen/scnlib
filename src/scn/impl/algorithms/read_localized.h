@@ -164,7 +164,7 @@ namespace scn {
         auto localized_single_character_widener<char>::operator()(
             InputR&& input) -> return_type<InputR>
         {
-            static_assert(std::is_same_v<ranges::range_value_t<InputR>, char>);
+            static_assert(std::is_same_v<detail::char_t<InputR>, char>);
             SCN_EXPECT(ranges::begin(input) != ranges::end(input));
 
             if (m_is_classic) {
@@ -190,7 +190,7 @@ namespace scn {
             SCN_GCC_PUSH
             SCN_GCC_IGNORE("-Wswitch-default")
             switch (impl.result) {
-                    SCN_LIKELY_ATTR
+                SCN_LIKELY_ATTR
                 case impl_base::result_code::ok:
                     return {{input_it, impl.output_char}};
 
@@ -213,10 +213,9 @@ namespace scn {
             {
             }
 
-            template <
-                typename InputR,
-                typename = std::enable_if_t<
-                    std::is_same_v<ranges::range_value_t<InputR>, wchar_t>>>
+            template <typename InputR,
+                      typename = std::enable_if_t<
+                          std::is_same_v<detail::char_t<InputR>, wchar_t>>>
             scan_expected<
                 iterator_value_result<ranges::borrowed_iterator_t<InputR>,
                                       wchar_t>>
@@ -242,7 +241,7 @@ namespace scn {
                                   std::ctype_base::mask mask,
                                   bool mask_match)
         {
-            using char_type = ranges::range_value_t<InputR>;
+            using char_type = detail::char_t<InputR>;
             static_assert(
                 std::is_same_v<char_type, ranges::range_value_t<OutputR>>);
             static_assert(
@@ -319,7 +318,7 @@ namespace scn {
         {
             return read_until_localized_copy(
                        SCN_FWD(input),
-                       null_output_range<ranges::range_value_t<InputR>>{},
+                       null_output_range<detail::char_t<InputR>>{},
                        null_output_range<wchar_t>{}, loc, mask, mask_match)
                 .transform([](auto result) SCN_NOEXCEPT { return result.in; });
         }
@@ -332,7 +331,7 @@ namespace scn {
             bool mask_match)
         {
             static_assert(range_supports_nocopy<Range>());
-            using char_type = ranges::range_value_t<Range>;
+            using char_type = detail::char_t<Range>;
 
             auto make_result = [&](auto it) -> read_nocopy_result<Range> {
                 const auto n = static_cast<size_t>(

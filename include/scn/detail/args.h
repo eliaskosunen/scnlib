@@ -535,7 +535,7 @@ namespace scn {
     {
         detail::check_scan_arg_types<Args...>();
 
-        using char_type = ranges::range_value_t<Range>;
+        using char_type = detail::char_t<Range>;
         return scan_arg_store<
             basic_scan_context<detail::decayed_input_range<Range, char_type>,
                                char_type>,
@@ -550,7 +550,7 @@ namespace scn {
     {
         detail::check_scan_arg_types<Args...>();
 
-        using char_type = ranges::range_value_t<Range>;
+        using char_type = detail::char_t<Range>;
         return scan_arg_store<
             basic_scan_context<detail::decayed_input_range<Range, char_type>,
                                char_type>,

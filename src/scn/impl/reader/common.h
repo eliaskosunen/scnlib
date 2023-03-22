@@ -212,7 +212,7 @@ namespace scn {
             ranges::iterator_t<SourceRange> skip_classic(SourceRange source)
             {
                 if constexpr (range_supports_nocopy<SourceRange>() &&
-                              std::is_same_v<ranges::range_value_t<SourceRange>,
+                              std::is_same_v<detail::char_t<SourceRange>,
                                              char>) {
                     return find_classic_nonspace_narrow_fast(
                         detail::make_string_view_from_iterators<char>(
@@ -250,7 +250,7 @@ namespace scn {
             SourceRange range,
             bool allow_exhaustion = false)
         {
-            using char_type = ranges::range_value_t<SourceRange>;
+            using char_type = detail::char_t<SourceRange>;
 
             auto result = whitespace_skipper<char_type>{}.skip_classic(range);
             if (!allow_exhaustion && is_range_eof(result, ranges::end(range))) {
@@ -265,7 +265,7 @@ namespace scn {
                                        detail::locale_ref loc,
                                        bool allow_exhaustion = false)
         {
-            using char_type = ranges::range_value_t<SourceRange>;
+            using char_type = detail::char_t<SourceRange>;
 
             return whitespace_skipper<char_type>{}
                 .skip_localized(range, loc)

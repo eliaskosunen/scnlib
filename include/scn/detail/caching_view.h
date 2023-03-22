@@ -84,11 +84,11 @@ namespace scn {
          */
         template <typename Range>
         class basic_caching_view
-            : public basic_caching_view_base<ranges::range_value_t<Range>>,
+            : public basic_caching_view_base<detail::char_t<Range>>,
               public ranges::view_interface<basic_caching_view<Range>> {
         public:
             using range_type = Range;
-            using char_type = ranges::range_value_t<Range>;
+            using char_type = detail::char_t<Range>;
             using difference_type = std::ptrdiff_t;
 
             class iterator;

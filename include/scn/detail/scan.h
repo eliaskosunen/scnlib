@@ -31,7 +31,7 @@ namespace scn {
         using scan_result_type = scan_result_tuple<
             std::conditional_t<ranges::borrowed_range<SourceRange>,
                                decltype(detail::map_scan_result_range<
-                                        ranges::range_value_t<ResultRange>>(
+                                        detail::char_t<ResultRange>>(
                                    SCN_DECLVAL(const SourceRange&),
                                    SCN_DECLVAL(
                                        const vscan_result<ResultRange>&))),
@@ -88,8 +88,8 @@ namespace scn {
                      scan_arg_store<Context, Args...>&& args)
     {
         auto result_range =
-            detail::map_scan_result_range<ranges::range_value_t<ResultRange>>(
-                source, result);
+            detail::map_scan_result_range<detail::char_t<ResultRange>>(source,
+                                                                       result);
         if (SCN_UNLIKELY(result.error)) {
             return {scan_result{SCN_MOVE(result_range), {}},
                     SCN_MOVE(args.args())};
@@ -119,7 +119,7 @@ namespace scn {
     template <typename... Args,
               typename Source,
               typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, char>>>
+                  std::is_same_v<detail::char_t<Source>, char>>>
     SCN_NODISCARD auto scan(Source&& source, format_string<Args...> format)
     {
         return detail::scan_impl<Args...>(SCN_FWD(source), format, {});
@@ -139,7 +139,7 @@ namespace scn {
     template <typename... Args,
               typename Source,
               typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, char>>>
+                  std::is_same_v<detail::char_t<Source>, char>>>
     SCN_NODISCARD auto scan(Source&& source,
                             format_string<Args...> format,
                             std::tuple<Args...>&& args)
@@ -174,7 +174,7 @@ namespace scn {
               typename Locale,
               typename Source,
               typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, char>>,
+                  std::is_same_v<detail::char_t<Source>, char>>,
               typename = std::void_t<decltype(Locale::classic())>>
     SCN_NODISCARD auto scan(Locale& loc,
                             Source&& source,
@@ -188,7 +188,7 @@ namespace scn {
               typename Locale,
               typename Source,
               typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, char>>,
+                  std::is_same_v<detail::char_t<Source>, char>>,
               typename = std::void_t<decltype(Locale::classic())>>
     SCN_NODISCARD auto scan(Locale& loc,
                             Source&& source,
@@ -206,7 +206,7 @@ namespace scn {
 
         template <typename Range>
         using context_type_for =
-            detail::context_type_for_impl<Range, ranges::range_value_t<Range>>;
+            detail::context_type_for_impl<Range, detail::char_t<Range>>;
 
         template <typename T, typename Source>
         auto scan_value_impl(Source&& source, T value)

@@ -113,8 +113,7 @@ namespace scn {
             SCN_GCC_IGNORE("-Wnoexcept")
 
             // contiguous + sized + valid-char -> string_view
-            template <typename Range,
-                      typename CharT = ranges::range_value_t<Range>>
+            template <typename Range, typename CharT = detail::char_t<Range>>
             static std::enable_if_t<is_valid_char_type<CharT> &&
                                         ranges::contiguous_range<Range> &&
                                         ranges::sized_range<Range>,
@@ -131,8 +130,7 @@ namespace scn {
             // !contiguous + random-access + iterator can be made into a ptr
             // for MSVC debug iterators
             //   -> string_view
-            template <typename Range,
-                      typename CharT = ranges::range_value_t<Range>>
+            template <typename Range, typename CharT = detail::char_t<Range>>
             static std::enable_if_t<is_valid_char_type<CharT> &&
                                         !ranges::contiguous_range<Range> &&
                                         ranges::random_access_range<Range> &&
@@ -153,8 +151,7 @@ namespace scn {
             SCN_GCC_POP
 
             // forward + proper char type -> erased
-            template <typename Range,
-                      typename CharT = ranges::range_value_t<Range>>
+            template <typename Range, typename CharT = detail::char_t<Range>>
             static std::enable_if_t<is_valid_char_type<CharT> &&
                                         ranges::forward_range<Range>,
                                     basic_erased_range<CharT>>

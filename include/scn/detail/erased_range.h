@@ -143,8 +143,8 @@ namespace scn {
         template <typename CharT, typename Range>
         auto make_unique_erased_range_impl(Range&& r)
         {
-            return std::make_unique<
-                basic_erased_range_impl<Range, CharT>>(SCN_FWD(r));
+            return std::make_unique<basic_erased_range_impl<Range, CharT>>(
+                SCN_FWD(r));
         }
     }  // namespace detail
 
@@ -343,7 +343,7 @@ namespace scn {
      * Otherwise, returns the given range wrapped in a basic_erased_range, with
      * an appropriate character type.
      */
-    template <typename Range, typename CharT = ranges::range_value_t<Range>>
+    template <typename Range, typename CharT = detail::char_t<Range>>
     auto erase_range(Range&& r)
     {
         static_assert(ranges::forward_range<Range>,
