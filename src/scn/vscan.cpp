@@ -21,6 +21,7 @@
 #include <scn/detail/result.h>
 #include <scn/detail/visitor.h>
 #include <scn/detail/vscan.h>
+#include <scn/detail/xchar.h>
 #include <scn/impl/reader/reader.h>
 
 #if SCN_USE_IOSTREAMS

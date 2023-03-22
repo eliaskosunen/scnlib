@@ -24,10 +24,12 @@ include(cmake/dependencies.cmake)
 include(cmake/sanitizers.cmake)
 
 set(SCN_PUBLIC_HEADERS
+        include/scn/all.h
         include/scn/fwd.h
         include/scn/scan.h
         include/scn/ranges.h
         include/scn/istream.h
+        include/scn/xchar.h
 
         include/scn/detail/config.h
 
@@ -53,6 +55,7 @@ set(SCN_PUBLIC_HEADERS
         include/scn/detail/unicode.h
         include/scn/detail/visitor.h
         include/scn/detail/vscan.h
+        include/scn/detail/xchar.h
 
         include/scn/util/algorithm.h
         include/scn/util/buffer.h

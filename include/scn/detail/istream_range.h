@@ -190,12 +190,7 @@ namespace scn {
         extern template bool basic_input_istreambuf_view<char>::read_next_char()
             const;
         extern template bool
-        basic_input_istreambuf_view<wchar_t>::read_next_char() const;
-
-        extern template bool
         basic_input_istreambuf_view<char>::iterator::is_at_end() const;
-        extern template bool
-        basic_input_istreambuf_view<wchar_t>::iterator::is_at_end() const;
     }  // namespace detail
 
     /**
@@ -278,10 +273,7 @@ namespace scn {
     };
 
     extern template void basic_istreambuf_view<char>::sync(iterator);
-    extern template void basic_istreambuf_view<wchar_t>::sync(iterator);
-
     extern template void basic_istreambuf_subrange<char>::sync();
-    extern template void basic_istreambuf_subrange<wchar_t>::sync();
 
     SCN_END_NAMESPACE
 }  // namespace scn

@@ -15,31 +15,6 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <gtest/gtest.h>
+#pragma once
 
-#include <scn/scan.h>
-#include <scn/xchar.h>
-
-TEST(CharTest, CharFromNarrow)
-{
-    auto [result, ch] = scn::scan<char>("abc", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(ch, 'a');
-}
-TEST(CharTest, CharFromWide)
-{
-    static_assert(!scn::detail::is_scannable<char, wchar_t>::value);
-}
-
-TEST(CharTest, WcharFromNarrow)
-{
-    auto [result, ch] = scn::scan<wchar_t>("abc", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(ch, L'a');
-}
-TEST(CharTest, WcharFromWide)
-{
-    auto [result, ch] = scn::scan<wchar_t>(L"abc", L"{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(ch, L'a');
-}
+#include <scn/detail/xchar.h>

@@ -124,14 +124,6 @@ namespace scn {
     {
         return detail::scan_impl<Args...>(SCN_FWD(source), format, {});
     }
-    template <typename... Args,
-              typename Source,
-              typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, wchar_t>>>
-    SCN_NODISCARD auto scan(Source&& source, wformat_string<Args...> format)
-    {
-        return detail::scan_impl<Args...>(SCN_FWD(source), format, {});
-    }
 
     /**
      * scan with explicitly supplied default values
@@ -150,17 +142,6 @@ namespace scn {
                   std::is_same_v<ranges::range_value_t<Source>, char>>>
     SCN_NODISCARD auto scan(Source&& source,
                             format_string<Args...> format,
-                            std::tuple<Args...>&& args)
-    {
-        return detail::scan_impl<Args...>(SCN_FWD(source), format,
-                                          SCN_MOVE(args));
-    }
-    template <typename... Args,
-              typename Source,
-              typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, wchar_t>>>
-    SCN_NODISCARD auto scan(Source&& source,
-                            wformat_string<Args...> format,
                             std::tuple<Args...>&& args)
     {
         return detail::scan_impl<Args...>(SCN_FWD(source), format,
@@ -202,19 +183,6 @@ namespace scn {
         return detail::scan_localized_impl<Args...>(loc, SCN_FWD(source),
                                                     format, {});
     }
-    template <typename... Args,
-              typename Locale,
-              typename Source,
-              typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, wchar_t>>,
-              typename = std::void_t<decltype(Locale::classic())>>
-    SCN_NODISCARD auto scan(Locale& loc,
-                            Source&& source,
-                            wformat_string<Args...> format)
-    {
-        return detail::scan_localized_impl<Args...>(loc, SCN_FWD(source),
-                                                    format, {});
-    }
 
     template <typename... Args,
               typename Locale,
@@ -225,20 +193,6 @@ namespace scn {
     SCN_NODISCARD auto scan(Locale& loc,
                             Source&& source,
                             format_string<Args...> format,
-                            std::tuple<Args...>&& args)
-    {
-        return detail::scan_localized_impl<Args...>(loc, SCN_FWD(source),
-                                                    format, args);
-    }
-    template <typename... Args,
-              typename Locale,
-              typename Source,
-              typename = std::enable_if_t<
-                  std::is_same_v<ranges::range_value_t<Source>, wchar_t>>,
-              typename = std::void_t<decltype(Locale::classic())>>
-    SCN_NODISCARD auto scan(Locale& loc,
-                            Source&& source,
-                            wformat_string<Args...> format,
                             std::tuple<Args...>&& args)
     {
         return detail::scan_localized_impl<Args...>(loc, SCN_FWD(source),
@@ -287,7 +241,6 @@ namespace scn {
 
     namespace detail {
         scn::istreambuf_view& internal_narrow_stdin();
-        scn::wistreambuf_view& internal_wide_stdin();
 
         template <typename... Args, typename Source, typename Format>
         scan_result_tuple<stdin_range_marker, Args...> input_impl(
@@ -311,12 +264,6 @@ namespace scn {
         return detail::input_impl<Args...>(detail::internal_narrow_stdin(),
                                            format);
     }
-    template <typename... Args>
-    SCN_NODISCARD auto input(wformat_string<Args...> format)
-    {
-        return detail::input_impl<Args...>(detail::internal_wide_stdin(),
-                                           format);
-    }
 
     /// Write msg to stdout, and call input<Args...>(format)
     template <typename... Args>
@@ -324,14 +271,6 @@ namespace scn {
     {
         std::printf("%s", msg);
         return detail::input_impl<Args...>(detail::internal_narrow_stdin(),
-                                           format);
-    }
-    template <typename... Args>
-    SCN_NODISCARD auto prompt(const wchar_t* msg,
-                              wformat_string<Args...> format)
-    {
-        std::wprintf(L"%s", msg);
-        return detail::input_impl<Args...>(detail::internal_wide_stdin(),
                                            format);
     }
 

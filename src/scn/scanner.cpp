@@ -17,6 +17,7 @@
 
 #include <scn/detail/scan.h>
 #include <scn/detail/scanner_builtin.h>
+#include <scn/detail/xchar.h>
 #include <scn/impl/reader/reader.h>
 
 namespace scn {
@@ -67,17 +68,13 @@ namespace scn {
 
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::sv)
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)
-
+        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
+        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
 #if SCN_USE_IOSTREAMS
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::is)
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wis)
 #endif
 
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
-
-#undef SCN_DEFINE_SCANNER_SCAN_FOR_CTX
-#undef SCN_DEFINE_SCANNER_SCAN_FOR_TYPE
     }  // namespace detail
 
     SCN_END_NAMESPACE

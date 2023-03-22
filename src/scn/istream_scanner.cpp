@@ -16,6 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/detail/istream_scanner.h>
+#include <scn/detail/xchar.h>
 
 #if SCN_USE_IOSTREAMS
 

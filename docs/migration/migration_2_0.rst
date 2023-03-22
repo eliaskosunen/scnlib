@@ -17,9 +17,7 @@ Header files changed
 
 The base header is renamed from ``<scn/scn.h>`` in v1 to ``<scn/scan.h>`` in v2.
 
-``<scn/tuple_return.h>`` is removed in v2: no longer necessary, "tuple return" is now the only available API.
-
-``<scn/all.h>`` is removed in v2. Include the required headers explicitly to get the same behavior.
+To get support for ``wchar_t`` input, include ``<scn/xchar.h>``. This is done to ease compile times.
 
 ``scan_`` prefix added to many names inside the ``scn`` namespace
 -----------------------------------------------------------------

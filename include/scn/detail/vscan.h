@@ -23,40 +23,62 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-#define SCN_DECLARE_VSCAN(Range, CharT)                             \
-    vscan_result<Range> vscan(Range source,                         \
-                              std::basic_string_view<CharT> format, \
-                              scan_args_for<Range, CharT> args);    \
-    template <typename Locale,                                      \
-              typename = std::void_t<decltype(Locale::classic())>>  \
-    vscan_result<Range> vscan(Locale& loc, Range source,            \
-                              std::basic_string_view<CharT> format, \
-                              scan_args_for<Range, CharT> args);    \
-    vscan_result<Range> vscan_value(Range source,                   \
-                                    scan_arg_for<Range, CharT> arg);
-
-    SCN_DECLARE_VSCAN(std::string_view, char)
-    SCN_DECLARE_VSCAN(std::wstring_view, wchar_t)
-
+    vscan_result<std::string_view> vscan(
+        std::string_view source,
+        std::string_view format,
+        scan_args_for<std::string_view, char> args);
+    vscan_result<erased_subrange> vscan(
+        erased_subrange source,
+        std::string_view format,
+        scan_args_for<erased_subrange, char> args);
 #if SCN_USE_IOSTREAMS
-    SCN_DECLARE_VSCAN(istreambuf_subrange, char)
-    SCN_DECLARE_VSCAN(wistreambuf_subrange, wchar_t)
+    vscan_result<istreambuf_subrange> vscan(
+        istreambuf_subrange source,
+        std::string_view format,
+        scan_args_for<istreambuf_subrange, char> args);
 #endif
 
-    SCN_DECLARE_VSCAN(erased_subrange, char)
-    SCN_DECLARE_VSCAN(werased_subrange, wchar_t)
+    template <typename Locale,
+              typename = std::void_t<decltype(Locale::classic())>>
+    vscan_result<std::string_view> vscan(
+        Locale& loc,
+        std::string_view source,
+        std::string_view format,
+        scan_args_for<std::string_view, char> args);
+    template <typename Locale,
+              typename = std::void_t<decltype(Locale::classic())>>
+    vscan_result<erased_subrange> vscan(
+        Locale& loc,
+        erased_subrange source,
+        std::string_view format,
+        scan_args_for<erased_subrange, char> args);
+#if SCN_USE_IOSTREAMS
+    template <typename Locale,
+              typename = std::void_t<decltype(Locale::classic())>>
+    vscan_result<istreambuf_subrange> vscan(
+        Locale& loc,
+        istreambuf_subrange source,
+        std::string_view format,
+        scan_args_for<istreambuf_subrange, char> args);
+#endif
 
-#undef SCN_DECLARE_VSCAN
+    vscan_result<std::string_view> vscan_value(
+        std::string_view source,
+        scan_arg_for<std::string_view, char> arg);
+    vscan_result<erased_subrange> vscan_value(
+        erased_subrange source,
+        scan_arg_for<erased_subrange, char> arg);
+#if SCN_USE_IOSTREAMS
+    vscan_result<istreambuf_subrange> vscan_value(
+        istreambuf_subrange source,
+        scan_arg_for<istreambuf_subrange, char> arg);
+#endif
 
 #if SCN_USE_IOSTREAMS
     vscan_result<istreambuf_subrange> vscan_and_sync(
         istreambuf_subrange source,
         std::string_view format,
         scan_args_for<istreambuf_subrange, char> args);
-    vscan_result<wistreambuf_subrange> vscan_and_sync(
-        wistreambuf_subrange source,
-        std::wstring_view format,
-        scan_args_for<wistreambuf_subrange, wchar_t> args);
 #endif
 
     SCN_END_NAMESPACE

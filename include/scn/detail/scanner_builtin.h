@@ -35,52 +35,39 @@ namespace scn {
     scanner_scan_for_builtin_type(                           \
         T&, Context&, const basic_format_specs<Context::char_type>&);
 
-#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(Context)                      \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(Context::char_type, Context)     \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(signed char, Context)            \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(short, Context)                  \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(int, Context)                    \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(long, Context)                   \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(long long, Context)              \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(unsigned char, Context)          \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(unsigned short, Context)         \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(unsigned int, Context)           \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(unsigned long, Context)          \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(unsigned long long, Context)     \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(float, Context)                  \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(double, Context)                 \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(long double, Context)            \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(                                 \
-        std::basic_string<Context::char_type>, Context)                       \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(                                 \
-        std::basic_string_view<Context::char_type>, Context)                  \
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(Context)                   \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(Context::char_type, Context)  \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(signed char, Context)         \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(short, Context)               \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(int, Context)                 \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(long, Context)                \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(long long, Context)           \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(unsigned char, Context)       \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(unsigned short, Context)      \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(unsigned int, Context)        \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(unsigned long, Context)       \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(unsigned long long, Context)  \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(float, Context)               \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(double, Context)              \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(long double, Context)         \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(                              \
+        std::basic_string<Context::char_type>, Context)                    \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(                              \
+        std::basic_string_view<Context::char_type>, Context)               \
     extern template scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
         namespace scanner_scan_contexts {
             using sv = basic_scan_context<std::string_view, char>;
-            using wsv = basic_scan_context<std::wstring_view, wchar_t>;
             using is = basic_scan_context<istreambuf_subrange, char>;
-            using wis = basic_scan_context<wistreambuf_subrange, wchar_t>;
-            using es = basic_scan_context<basic_erased_subrange<char>, char>;
-            using wes =
-                basic_scan_context<basic_erased_subrange<wchar_t>, wchar_t>;
+            using es = basic_scan_context<erased_subrange, char>;
         }  // namespace scanner_scan_contexts
 
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::sv)
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)
-
+        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
 #if SCN_USE_IOSTREAMS
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::is)
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wis)
 #endif
-
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
-
-#undef SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX
-#undef SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE
-
     }  // namespace detail
 
     SCN_END_NAMESPACE
