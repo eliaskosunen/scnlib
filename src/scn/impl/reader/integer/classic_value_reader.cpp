@@ -699,6 +699,8 @@ namespace scn {
                      int_classic_value_reader_base::allow_thsep) == 0) {
                     // No thsep
                     bool stop_reading = false;
+                    SCN_UNUSED(stop_reading);
+
                     if constexpr (std::is_same_v<CharT, char> &&
                                   can_do_fast64_at_least_once<T>() &&
                                   !SCN_IS_32BIT && !SCN_IS_BIG_ENDIAN &&
