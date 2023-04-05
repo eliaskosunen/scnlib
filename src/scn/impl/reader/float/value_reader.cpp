@@ -667,9 +667,39 @@ namespace scn {
         ////////////////////////////////////////////////////////////////////////
 
         namespace {
-            template <typename T>
-            scan_error check_range_localized(T& value,
-                                             std::ios_base::iostate err)
+            template <typename T, typename CharT>
+            void range_error_value_localized(
+                T& value,
+                std::basic_string_view<CharT> source)
+            {
+                bool is_negative = false;
+                if (source[0] == CharT{'-'}) {
+                    is_negative = true;
+                    source = source.substr(1);
+                }
+                else if (source[0] == CharT{'+'}) {
+                    source = source.substr(1);
+                }
+
+                if (source.empty()) {
+                    return;
+                }
+
+                if (source[0] == CharT{'0'}) {
+                    value = static_cast<T>(0.0);
+                    return;
+                }
+
+                auto sign =
+                    is_negative ? static_cast<T>(-1.0) : static_cast<T>(1.0);
+                value = std::copysign(std::numeric_limits<T>::infinity(), sign);
+            }
+
+            template <typename T, typename CharT>
+            scan_error check_range_localized(
+                T& value,
+                std::ios_base::iostate err,
+                std::basic_string_view<CharT> source)
             {
                 if ((err & std::ios_base::failbit) == 0) {
                     // no error
@@ -681,16 +711,27 @@ namespace scn {
                                           value);
                 }
 
-                if (std::isinf(value) || (is_float_zero(value) &&
-                                          (err & std::ios_base::eofbit) != 0)) {
+                if (is_float_zero(value) &&
+                    (err & std::ios_base::eofbit) == 0) {
+                    SCN_UNLIKELY_ATTR
+                    return {scan_error::invalid_scanned_value,
+                            "Failed to scan float"};
+                }
+
+                if (std::isinf(value)) {
                     SCN_UNLIKELY_ATTR
                     return {scan_error::value_out_of_range,
                             "Out of range: float overflow"};
                 }
+
                 if (is_float_zero(value)) {
                     SCN_UNLIKELY_ATTR
-                    return {scan_error::invalid_scanned_value,
-                            "Failed to scan float"};
+                    // MSVC doesn't distinguish between overflow or underflow,
+                    // but always returns 0
+                    // We need to check ourselves
+                    range_error_value_localized(value, source);
+                    return {scan_error::value_out_of_range,
+                            "Out of range: float overflow"};
                 }
 
                 // Not actually an error
@@ -715,7 +756,8 @@ namespace scn {
             T tmp{};
             auto it = facet.get(source.data(), source.data() + source.size(),
                                 stream, err, tmp);
-            if (auto e = check_range_localized(tmp, err); SCN_UNLIKELY(!e)) {
+            if (auto e = check_range_localized(tmp, err, source);
+                SCN_UNLIKELY(!e)) {
                 value = tmp;
                 return unexpected(e);
             }

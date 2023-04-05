@@ -339,6 +339,12 @@ namespace scn {
             }
 
             template <typename T>
+            constexpr bool can_do_fast64_at_least_once()
+            {
+                return count_digits(std::numeric_limits<T>::max()) >= 8;
+            }
+
+            template <typename T>
             constexpr bool can_do_fast64_multiple_times()
             {
                 return count_digits(std::numeric_limits<T>::max()) > 8;
@@ -468,7 +474,7 @@ namespace scn {
         }
 
         namespace {
-            constexpr uint64_t accumulator_multipliers[] = {
+            constexpr std::array<uint64_t, 9> accumulator_multipliers{{
                 0,
                 power_of_10(1),
                 power_of_10(2),
@@ -478,7 +484,7 @@ namespace scn {
                 power_of_10(6),
                 power_of_10(7),
                 power_of_10(8),
-            };
+            }};
 
             template <typename T,
                       typename State,
@@ -583,7 +589,10 @@ namespace scn {
                 }
 #else
                 const utype accumulator_multiplier =
-                    static_cast<utype>(accumulator_multipliers[digits_in_word]);
+                    can_do_fast64_multiple_times<T>()
+                        ? static_cast<utype>(
+                              accumulator_multipliers[digits_in_word])
+                        : 1;
                 SCN_EXPECT(accumulator_multiplier != 0);
 
                 if (state.accumulator == 0) {
@@ -595,19 +604,13 @@ namespace scn {
                     }
                 }
                 else {
-                    // MSVC likes to act dumb, and not realize that
-                    // accumulator_multiplier really can't be 0 here.
-                    // Disabling C4723 (potential divide by 0) does not work.
-                    const auto multiplier = accumulator_multiplier == 0
-                                                ? utype{1}
-                                                : accumulator_multiplier;
-
+                    SCN_EXPECT(accumulator_multiplier != 1);
                     // accumulator * multiplier + word > limit -> overflow
                     // accumulator * multiplier > limit - word
                     // accumulator > (limit - word) / multiplier
                     if (state.accumulator >
                         ((state.limit - static_cast<utype>(word)) /
-                         multiplier)) {
+                         accumulator_multiplier)) {
                         SCN_UNLIKELY_ATTR
                         return scan_error{scan_error::value_out_of_range,
                                           "Out of range: integer overflow"};
@@ -616,6 +619,7 @@ namespace scn {
 
                 if (state.accumulator > 0) {
                     SCN_EXPECT(can_do_fast64_multiple_times<T>());
+                    SCN_EXPECT(accumulator_multiplier != 1);
 
                     SCN_GCC_PUSH
                     SCN_GCC_IGNORE("-Wconversion")
@@ -696,6 +700,7 @@ namespace scn {
                     // No thsep
                     bool stop_reading = false;
                     if constexpr (std::is_same_v<CharT, char> &&
+                                  can_do_fast64_at_least_once<T>() &&
                                   !SCN_IS_32BIT && !SCN_IS_BIG_ENDIAN &&
                                   SCN_HAS_BITS_CTZ) {
                         if (state.ubase == 10) {

@@ -180,6 +180,7 @@ function(set_library_flags target)
         target_link_options(${target} PUBLIC --coverage)
     endif()
 
+    disable_msvc_secure_flags(${target} PRIVATE)
     target_compile_options(${target} PRIVATE
             $<$<CXX_COMPILER_ID:MSVC>:
             /bigobj>)
