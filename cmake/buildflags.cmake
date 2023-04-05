@@ -6,14 +6,15 @@ function(get_warning_flags flags)
             -Wno-c++98-compat
             -Wno-c++98-compat-pedantic
             -Wno-c++98-compat-bind-to-temporary-copy
-            -Wno-c++98-compat-local-type-template-args>
+            -Wno-c++98-compat-local-type-template-args
+            -Qunused-arguments -fcolor-diagnostics>
         $<$<CXX_COMPILER_ID:GNU>:
             -ftemplate-backtrace-limit=0
             -Wall -Wextra -Wpedantic
             -pedantic-errors
             -Wconversion -Wsign-conversion
             -Wold-style-cast -Wfloat-equal
-            -Wlogical-op -Wundef
+            -Wlogical-op
             -Wredundant-decls -Wshadow
             -Wwrite-strings
             -Wpointer-arith -Wcast-qual
@@ -39,6 +40,8 @@ function(get_warning_flags flags)
             -Wmismatched-tags -Wredundant-tags>
             $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,10.0>>:
             -fconcepts-diagnostics-depth=99>
+            $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,13.0>>:
+            -Wundef>
             >
         $<$<CXX_COMPILER_ID:MSVC>:
             /W3

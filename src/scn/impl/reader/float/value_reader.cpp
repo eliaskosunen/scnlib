@@ -225,11 +225,11 @@ namespace scn {
 
                 T tmp{};
                 return impl(null_terminated_source.c_str(), tmp)
-                    .transform([&](size_t chars_read) {
+                    .transform([&](size_t chars_read) SCN_NOEXCEPT {
                         value = tmp;
                         return source.begin() + chars_read;
                     })
-                    .transform_error([&](scan_error err) {
+                    .transform_error([&](scan_error err) SCN_NOEXCEPT {
                         if (err.code() == scan_error::value_out_of_range) {
                             value = tmp;
                         }
