@@ -63,7 +63,7 @@ endif()
 FetchContent_Declare(
         simdutf
         GIT_REPOSITORY  https://github.com/simdutf/simdutf.git
-        GIT_TAG         master # Can't use v1.0.1 (latest), because its CMake is hostile
+        GIT_TAG         v3.2.4
         GIT_SHALLOW     TRUE
 )
 
@@ -72,7 +72,7 @@ FetchContent_Declare(
 FetchContent_Declare(
         fast_float
         GIT_REPOSITORY  https://github.com/fastfloat/fast_float.git
-        GIT_TAG         v3.5.1
+        GIT_TAG         v4.0.0
         GIT_SHALLOW     TRUE
 )
 

@@ -142,6 +142,20 @@ void dump_bytes(T val)
 }
 
 template <typename T>
+constexpr T float_zero()
+{
+    if constexpr (std::is_same_v<T, float>) {
+        return 0.0f;
+    }
+    else if constexpr (std::is_same_v<T, double>) {
+        return 0.0;
+    }
+    else {
+        return 0.0l;
+    }
+}
+
+template <typename T>
 [[nodiscard]] testing::AssertionResult check_floating_eq(T a, T b)
 {
     SCN_GCC_COMPAT_PUSH
@@ -277,6 +291,18 @@ protected:
             return std::make_pair(-123.456l, "-123.456"sv);
         }
     }
+    static auto get_leading_plus()
+    {
+        if constexpr (is_f32()) {
+            return std::make_pair(3.14f, "+3.14"sv);
+        }
+        else if constexpr (is_double()) {
+            return std::make_pair(3.14, "+3.14"sv);
+        }
+        else if constexpr (is_long_double()) {
+            return std::make_pair(3.14l, "+3.14"sv);
+        }
+    }
 
     static auto get_subnormal()
     {
@@ -369,34 +395,45 @@ protected:
         return std::make_pair(val, format_float(val, ".32", "a"));
     }
 
+    static auto get_subnormal_min()
+    {
+        auto val = std::numeric_limits<float_type>::denorm_min();
+        return std::make_pair(val, format_float(val, ".48", "e"));
+    }
+    static auto get_subnormal_min_hex()
+    {
+        auto val = std::numeric_limits<float_type>::denorm_min();
+        return std::make_pair(val, format_float(val, ".32", "a"));
+    }
+
     static auto get_underflow()
     {
         if constexpr (is_f32()) {
-            return "1.0e-45"sv;
+            return "1.0e-90"sv;
         }
         else if constexpr (is_f64()) {
-            return "4.0e-324"sv;
+            return "5.0e-400"sv;
         }
         else if constexpr (is_f80()) {
-            return "3.0e-4951"sv;
+            return "4.0e-5500"sv;
         }
         else if constexpr (is_f128()) {
-            return "6.0e-4966"sv;
+            return "6.0e-5500"sv;
         }
     }
     static auto get_underflow_hex()
     {
         if constexpr (is_f32()) {
-            return "0x1.fffffep-150"sv;
+            return "0x1p-192"sv;
         }
         else if constexpr (is_f64()) {
-            return "0x1.fffffffffffffp-1075"sv;
+            return "0x1p-1200"sv;
         }
         else if constexpr (is_f80()) {
-            return "0x1.fffffffffffffffep-16447"sv;
+            return "0x1p-18000"sv;
         }
         else if constexpr (is_f128()) {
-            return "0x1.fffffffffffffffffffep-16497"sv;
+            return "0x1p-18000"sv;
         }
     }
 
@@ -433,6 +470,31 @@ protected:
         }
         else if constexpr (is_f80() || is_f128()) {
             return "0x1p+16384"sv;
+        }
+    }
+
+    static auto get_overflow_neg()
+    {
+        if constexpr (is_f32()) {
+            return "-4.0e38"sv;
+        }
+        else if constexpr (is_f64()) {
+            return "-2.0e308"sv;
+        }
+        else if constexpr (is_f80() || is_f128()) {
+            return "-2.0e4932"sv;
+        }
+    }
+    static auto get_overflow_neg_hex()
+    {
+        if constexpr (is_f32()) {
+            return "-0x1p+128"sv;
+        }
+        else if constexpr (is_f64()) {
+            return "-0x1p+1024"sv;
+        }
+        else if constexpr (is_f80() || is_f128()) {
+            return "-0x1p+16384"sv;
         }
     }
 
@@ -509,6 +571,28 @@ protected:
                    << result.error().code() << ", expected " << c;
         }
         if (auto a = check_floating_eq(val, static_cast<float_type>(0.0)); !a) {
+            return a;
+        }
+        return testing::AssertionSuccess();
+    }
+
+    template <typename Result>
+    [[nodiscard]] testing::AssertionResult check_failure_with_code_and_value(
+        const Result& result,
+        float_type val,
+        enum scn::scan_error::code c,
+        float_type expected_value) const
+    {
+        if (result) {
+            return testing::AssertionFailure()
+                   << "Result good, expected failure";
+        }
+        if (result.error().code() != c) {
+            return testing::AssertionFailure()
+                   << "Result failed with wrong error code: "
+                   << result.error().code() << ", expected " << c;
+        }
+        if (auto a = check_floating_eq(val, expected_value); !a) {
             return a;
         }
         return testing::AssertionSuccess();
@@ -622,6 +706,12 @@ TYPED_TEST(FloatValueReaderTest, Negative)
     EXPECT_TRUE(this->simple_default_test(src, val));
 }
 
+TYPED_TEST(FloatValueReaderTest, LeadingPlus)
+{
+    const auto [val, src] = this->get_leading_plus();
+    EXPECT_TRUE(this->simple_default_test(src, val));
+}
+
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wdouble-promotion")
 
@@ -701,8 +791,9 @@ TYPED_TEST(FloatValueReaderTest, Overflow)
 {
     auto [result, val] =
         this->simple_test("9999999999999.9999e999999999999999");
-    EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::value_out_of_range));
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::value_out_of_range,
+        std::numeric_limits<typename TestFixture::float_type>::infinity()));
 }
 
 TYPED_TEST(FloatValueReaderTest, Subnormal)
@@ -771,28 +862,51 @@ TYPED_TEST(FloatValueReaderTest, MinimumNormalFromHex)
     EXPECT_TRUE(check_floating_eq(val, orig_val));
 }
 
-TYPED_TEST(FloatValueReaderTest, BarelyUnderflow)
+TYPED_TEST(FloatValueReaderTest, MinimumSubnormal)
 {
-    auto [a, _, val] = this->simple_success_test(this->get_underflow());
+    const auto [orig_val, source] = this->get_subnormal_min();
+    auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
     EXPECT_FALSE(std::isnormal(val));
-    EXPECT_TRUE(check_floating_eq(
-        val,
-        std::numeric_limits<typename TestFixture::float_type>::denorm_min()));
+    EXPECT_TRUE(check_floating_eq(val, orig_val));
 }
-TYPED_TEST(FloatValueReaderTest, BarelyUnderflowFromHex)
+TYPED_TEST(FloatValueReaderTest, MinimumSubnrmalFromHex)
 {
     if (this->interface.is_localized()) {
         return SUCCEED()
                << "std::num_get doesn't universally support hexfloats";
     }
 
-    auto [a, _, val] = this->simple_success_test(this->get_underflow_hex());
+    const auto [orig_val, source] = this->get_subnormal_min_hex();
+    auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
     EXPECT_FALSE(std::isnormal(val));
-    EXPECT_TRUE(check_floating_eq(
-        val,
-        std::numeric_limits<typename TestFixture::float_type>::denorm_min()));
+    EXPECT_TRUE(check_floating_eq(val, orig_val));
+}
+
+TYPED_TEST(FloatValueReaderTest, Underflow)
+{
+    if (this->interface.is_localized()) {
+        return SUCCEED()
+               << "std::num_get has bad support for checking for underflow";
+    }
+
+    auto [result, val] = this->simple_test(this->get_underflow());
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::value_out_of_range,
+        float_zero<typename TestFixture::float_type>()));
+}
+TYPED_TEST(FloatValueReaderTest, UnderflowFromHex)
+{
+    if (this->interface.is_localized()) {
+        return SUCCEED()
+               << "std::num_get doesn't universally support hexfloats";
+    }
+
+    auto [result, val] = this->simple_test(this->get_underflow_hex());
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::value_out_of_range,
+        float_zero<typename TestFixture::float_type>()));
 }
 
 TYPED_TEST(FloatValueReaderTest, Maximum)
@@ -820,8 +934,9 @@ TYPED_TEST(FloatValueReaderTest, MaximumFromHex)
 TYPED_TEST(FloatValueReaderTest, BarelyOverflow)
 {
     auto [result, val] = this->simple_test(this->get_overflow());
-    EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::value_out_of_range));
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::value_out_of_range,
+        std::numeric_limits<typename TestFixture::float_type>::infinity()));
 }
 TYPED_TEST(FloatValueReaderTest, BarelyOverflowFromHex)
 {
@@ -831,8 +946,29 @@ TYPED_TEST(FloatValueReaderTest, BarelyOverflowFromHex)
     }
 
     auto [result, val] = this->simple_test(this->get_overflow_hex());
-    EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::value_out_of_range));
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::value_out_of_range,
+        std::numeric_limits<typename TestFixture::float_type>::infinity()));
+}
+
+TYPED_TEST(FloatValueReaderTest, BarelyOverflowNeg)
+{
+    auto [result, val] = this->simple_test(this->get_overflow_neg());
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::value_out_of_range,
+        -std::numeric_limits<typename TestFixture::float_type>::infinity()));
+}
+TYPED_TEST(FloatValueReaderTest, BarelyOverflowNegFromHex)
+{
+    if (this->interface.is_localized()) {
+        return SUCCEED()
+               << "std::num_get doesn't universally support hexfloats";
+    }
+
+    auto [result, val] = this->simple_test(this->get_overflow_neg_hex());
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::value_out_of_range,
+        -std::numeric_limits<typename TestFixture::float_type>::infinity()));
 }
 
 TYPED_TEST(FloatValueReaderTest, PresentationScientificValueScientific)

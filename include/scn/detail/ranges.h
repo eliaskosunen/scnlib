@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <scn/fwd.h>
+#include <scn/util/meta.h>
 
 #if SCN_STD_RANGES
 
@@ -53,8 +53,6 @@ namespace std::ranges {
 }  // namespace std::ranges
 
 #else
-
-#include <scn/util/meta.h>
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wnoexcept")

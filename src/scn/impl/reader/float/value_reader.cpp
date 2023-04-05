@@ -20,10 +20,15 @@
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
 SCN_GCC_IGNORE("-Wnoexcept")
+SCN_GCC_IGNORE("-Wundef")
 SCN_GCC_IGNORE("-Wsign-conversion")
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wold-style-cast")
+SCN_CLANG_IGNORE("-Wdeprecated")
+SCN_CLANG_IGNORE("-Wcomma")
+SCN_CLANG_IGNORE("-Wundef")
+SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
 
 #if SCN_CLANG >= SCN_COMPILER(8, 0, 0)
 SCN_CLANG_IGNORE("-Wextra-semi-stmt")
@@ -32,6 +37,11 @@ SCN_CLANG_IGNORE("-Wextra-semi-stmt")
 #if SCN_CLANG >= SCN_COMPILER(13, 0, 0)
 SCN_CLANG_IGNORE("-Wreserved-identifier")
 #endif
+
+SCN_GCC_COMPAT_IGNORE("-Wundef")
+
+#define FASTFLOAT_SKIP_WHITE_SPACE    0
+#define FASTFLOAT_ALLOWS_LEADING_PLUS 1
 
 #include <fast_float/fast_float.h>
 
@@ -204,59 +214,40 @@ namespace scn {
             }
 
             scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>
-            operator()(std::basic_string_view<CharT> source, T& value) const
+            operator()(std::basic_string_view<CharT> source, T& value)
             {
                 clocale_restorer lr{LC_NUMERIC};
                 std::setlocale(LC_NUMERIC, "C");
 
-                std::basic_string<CharT> null_terminated_source;
-                scan_error err{};
+                std::basic_string<CharT> null_terminated_source{};
+                auto first_space = find_classic_space_narrow_fast(source);
+                null_terminated_source.assign(source.begin(), first_space);
+
                 T tmp{};
-
-                for (size_t size : {size_t{16}, size_t{64}, size_t{256}}) {
-                    if (size > source.size()) {
-                        size = source.size();
-                    }
-                    if (null_terminated_source.size() == size) {
-                        break;
-                    }
-                    null_terminated_source.assign(source.data(), size);
-
-                    auto e = impl(null_terminated_source, tmp);
-                    if (SCN_UNLIKELY(!e)) {
-                        err = e.error();
-                    }
-                    else if (SCN_UNLIKELY(e.value() == size)) {
-                        err = {};
-                        continue;
-                    }
-                    else {
-                        err = {};
+                return impl(null_terminated_source.c_str(), tmp)
+                    .transform([&](size_t chars_read) {
                         value = tmp;
-                        return {source.begin() + e.value()};
-                    }
-                }
-
-                if (SCN_UNLIKELY(!err)) {
-                    return unexpected(err);
-                }
-                value = tmp;
-                return {source.end()};
+                        return source.begin() + chars_read;
+                    })
+                    .transform_error([&](scan_error err) {
+                        if (err.code() == scan_error::value_out_of_range) {
+                            value = tmp;
+                        }
+                        return err;
+                    });
             }
 
         private:
-            scan_expected<std::size_t> impl(
-                std::basic_string<CharT>& null_terminated_source,
-                T& tmp_value) const
+            scan_expected<std::size_t> impl(const CharT* src,
+                                            T& tmp_value) const
             {
                 CharT* end{};
                 errno = 0;
-                tmp_value = cstd_strtod(null_terminated_source.c_str(), &end);
-                const auto chars_read = end - null_terminated_source.c_str();
+                tmp_value = cstd_strtod(src, &end);
+                const auto chars_read = end - src;
                 errno = 0;
 
-                if (auto e = check_error(null_terminated_source, chars_read,
-                                         tmp_value);
+                if (auto e = check_error(src, chars_read, tmp_value);
                     SCN_UNLIKELY(!e)) {
                     return unexpected(e);
                 }
@@ -294,10 +285,9 @@ namespace scn {
                 if (is_float_zero(value) &&
                     !is_input_zero(
                         source.substr(0, static_cast<size_t>(chars_read)))) {
-                    // Not an error, return smallest subnormal value
-                    value = std::copysign(std::numeric_limits<T>::denorm_min(),
-                                          value);
-                    return {};
+                    SCN_UNLIKELY_ATTR
+                    return {scan_error::value_out_of_range,
+                            "strtod failed: float underflow"};
                 }
 
                 // Overflow:
@@ -358,6 +348,9 @@ namespace scn {
                         is_hexfloat(source)) {
                         if (source[0] == '-') {
                             has_negative_sign = true;
+                            source = source.substr(3);
+                        }
+                        else if (source[0] == '+') {
                             source = source.substr(3);
                         }
                         else {
@@ -542,19 +535,10 @@ namespace scn {
                         "fast_float failed: invalid_argument");
                 }
                 if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
+                    value = tmp;
                     return unexpected_scan_error(
                         scan_error::value_out_of_range,
                         "fast_float failed: result_out_of_range");
-                }
-                if (std::isinf(tmp)) {
-                    // fast_float represents very large or small values as inf
-                    // But, it also parses "inf", which from_chars does not
-                    if (!(source.size() >= 3 &&
-                          (source[0] == 'i' || source[0] == 'I'))) {
-                        // Input was not actually infinity ->
-                        // invalid result, fall back to from_chars
-                        return fast_float_fallback(reader, source, value);
-                    }
                 }
 
                 value = tmp;
@@ -684,16 +668,21 @@ namespace scn {
 
         namespace {
             template <typename T>
-            scan_error check_range_localized(T value,
+            scan_error check_range_localized(T& value,
                                              std::ios_base::iostate err)
             {
                 if ((err & std::ios_base::failbit) == 0) {
+                    // no error
                     return {};
                 }
 
-                if (std::isinf(value) || is_float_max(value) ||
-                    (is_float_zero(value) &&
-                     (err & std::ios_base::eofbit) != 0)) {
+                if (is_float_max(value) || is_float_max(-value)) {
+                    value = std::copysign(std::numeric_limits<T>::infinity(),
+                                          value);
+                }
+
+                if (std::isinf(value) || (is_float_zero(value) &&
+                                          (err & std::ios_base::eofbit) != 0)) {
                     SCN_UNLIKELY_ATTR
                     return {scan_error::value_out_of_range,
                             "Out of range: float overflow"};
@@ -727,8 +716,10 @@ namespace scn {
             auto it = facet.get(source.data(), source.data() + source.size(),
                                 stream, err, tmp);
             if (auto e = check_range_localized(tmp, err); SCN_UNLIKELY(!e)) {
+                value = tmp;
                 return unexpected(e);
             }
+
             value = tmp;
             return detail::make_string_view_iterator(source, it);
         }
