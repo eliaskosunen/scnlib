@@ -184,12 +184,6 @@ namespace scn {
             {
                 return ld == 0.0L;
             }
-
-            template <typename F>
-            constexpr bool is_float_max(F f)
-            {
-                return f == std::numeric_limits<F>::max();
-            }
             SCN_GCC_COMPAT_POP
         }  // namespace
 
@@ -220,8 +214,13 @@ namespace scn {
                 std::setlocale(LC_NUMERIC, "C");
 
                 std::basic_string<CharT> null_terminated_source{};
-                auto first_space = find_classic_space_narrow_fast(source);
-                null_terminated_source.assign(source.begin(), first_space);
+                if (source.size() >= 16) {
+                    auto first_space = find_classic_space_narrow_fast(source);
+                    null_terminated_source.assign(source.begin(), first_space);
+                }
+                else {
+                    null_terminated_source.assign(source);
+                }
 
                 T tmp{};
                 return impl(null_terminated_source.c_str(), tmp)
@@ -437,7 +436,7 @@ namespace scn {
         ////////////////////////////////////////////////////////////////////////
 
         struct float_classic_value_reader_fast_float_impl_base {
-            fast_float::parse_options get_flags() const
+            fast_float::chars_format get_flags() const
             {
                 unsigned format_flags{};
                 if ((reader.m_options & float_value_reader_base::allow_fixed) !=
@@ -449,8 +448,7 @@ namespace scn {
                     format_flags |= fast_float::scientific;
                 }
 
-                return fast_float::parse_options{
-                    static_cast<fast_float::chars_format>(format_flags)};
+                return static_cast<fast_float::chars_format>(format_flags);
             }
 
             const float_value_reader_base& reader;
@@ -526,7 +524,7 @@ namespace scn {
 
                 const auto flags = get_flags();
                 T tmp{};
-                const auto result = fast_float::from_chars_advanced(
+                const auto result = fast_float::from_chars(
                     source.data(), source.data() + source.size(), tmp, flags);
 
                 if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
@@ -666,104 +664,63 @@ namespace scn {
         // localized implementation (std::num_get)
         ////////////////////////////////////////////////////////////////////////
 
-        namespace {
-            template <typename T, typename CharT>
-            void range_error_value_localized(
-                T& value,
-                std::basic_string_view<CharT> source)
-            {
-                bool is_negative = false;
-                if (source[0] == CharT{'-'}) {
-                    is_negative = true;
-                    source = source.substr(1);
-                }
-                else if (source[0] == CharT{'+'}) {
-                    source = source.substr(1);
-                }
-
-                if (source.empty()) {
-                    return;
-                }
-
-                if (source[0] == CharT{'0'}) {
-                    value = static_cast<T>(0.0);
-                    return;
-                }
-
-                auto sign =
-                    is_negative ? static_cast<T>(-1.0) : static_cast<T>(1.0);
-                value = std::copysign(std::numeric_limits<T>::infinity(), sign);
-            }
-
-            template <typename T, typename CharT>
-            scan_error check_range_localized(
-                T& value,
-                std::ios_base::iostate err,
-                std::basic_string_view<CharT> source)
-            {
-                if ((err & std::ios_base::failbit) == 0) {
-                    // no error
-                    return {};
-                }
-
-                if (is_float_max(value) || is_float_max(-value)) {
-                    value = std::copysign(std::numeric_limits<T>::infinity(),
-                                          value);
-                }
-
-                if (is_float_zero(value) &&
-                    (err & std::ios_base::eofbit) == 0) {
-                    SCN_UNLIKELY_ATTR
-                    return {scan_error::invalid_scanned_value,
-                            "Failed to scan float"};
-                }
-
-                if (std::isinf(value)) {
-                    SCN_UNLIKELY_ATTR
-                    return {scan_error::value_out_of_range,
-                            "Out of range: float overflow"};
-                }
-
-                if (is_float_zero(value)) {
-                    SCN_UNLIKELY_ATTR
-                    // MSVC doesn't distinguish between overflow or underflow,
-                    // but always returns 0
-                    // We need to check ourselves
-                    range_error_value_localized(value, source);
-                    return {scan_error::value_out_of_range,
-                            "Out of range: float overflow"};
-                }
-
-                // Not actually an error
-                // libcxx gets here when parsing a subnormal
-                return {};
-            }
-        }  // namespace
-
         template <typename CharT>
         template <typename T>
         auto float_localized_value_reader<CharT>::read(string_view_type source,
                                                        T& value)
             -> scan_expected<ranges::iterator_t<string_view_type>>
         {
-            std::basic_istringstream<CharT> stream{};
             auto stdloc = m_locale.get<std::locale>();
-            const auto& facet =
-                get_or_add_facet<std::num_get<CharT, const CharT*>>(stdloc);
+            const auto& numpunct =
+                get_or_add_facet<std::numpunct<CharT>>(stdloc);
+            std::string buffer{}, indices{}, thsep_indices{};
 
-            std::ios_base::iostate err = std::ios_base::goodbit;
+            const auto grouping = numpunct.grouping();
+            const bool use_thsep =
+                !grouping.empty() && (m_options & allow_thsep) != 0;
 
-            T tmp{};
-            auto it = facet.get(source.data(), source.data() + source.size(),
-                                stream, err, tmp);
-            if (auto e = check_range_localized(tmp, err, source);
-                SCN_UNLIKELY(!e)) {
-                value = tmp;
-                return unexpected(e);
+            const CharT decimal_point = numpunct.decimal_point();
+            const CharT thsep = numpunct.thousands_sep();
+            bool has_hit_decimal_point = false;
+
+            for (size_t i = 0; i < source.size(); ++i) {
+                if (is_ascii_space(buffer[i])) {
+                    break;
+                }
+
+                if (source[i] == decimal_point) {
+                    if (has_hit_decimal_point) {
+                        break;
+                    }
+                    buffer.push_back('.');
+                    indices.push_back(static_cast<char>(i));
+                    has_hit_decimal_point = true;
+                    continue;
+                }
+
+                if (source[i] == thsep) {
+                    if (use_thsep && !has_hit_decimal_point) {
+                        SCN_EXPECT(false);  // TODO: float thsep
+                        thsep_indices.push_back(static_cast<char>(i));
+                        continue;
+                    }
+                    break;
+                }
+
+                buffer.push_back(static_cast<char>(source[i]));
+                indices.push_back(static_cast<char>(i));
             }
 
-            value = tmp;
-            return detail::make_string_view_iterator(source, it);
+            auto reader = float_classic_value_reader<char>{m_options};
+            auto buffer_view = std::string_view{buffer};
+            return reader.read(buffer_view, value)
+                .transform([&](auto buffer_it) {
+                    auto diff =
+                        ranges::distance(buffer_view.begin(), buffer_it);
+                    auto idx = indices[static_cast<size_t>(diff) - 1];
+                    return source.begin() + static_cast<std::ptrdiff_t>(idx) +
+                           1;
+                });
         }
 
         template auto float_localized_value_reader<char>::read(string_view_type,

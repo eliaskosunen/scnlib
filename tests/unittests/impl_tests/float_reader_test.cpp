@@ -722,20 +722,10 @@ TYPED_TEST(FloatValueReaderTest, Scientific)
 
 TYPED_TEST(FloatValueReaderTest, Hex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     EXPECT_TRUE(this->simple_default_test("0x1.2ap3", 0x1.2ap3));
 }
 TYPED_TEST(FloatValueReaderTest, NegativeHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     EXPECT_TRUE(this->simple_default_test("-0x1.2ap3", -0x1.2ap3));
 }
 
@@ -743,10 +733,6 @@ SCN_CLANG_POP  // -Wdouble-promotion
 
 TYPED_TEST(FloatValueReaderTest, InfinityWithInf)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED() << "std::num_get doesn't support infinities";
-    }
-
     auto [a, _, val] = this->simple_success_test("inf");
     EXPECT_TRUE(a);
     EXPECT_TRUE(std::isinf(val));
@@ -754,10 +740,6 @@ TYPED_TEST(FloatValueReaderTest, InfinityWithInf)
 }
 TYPED_TEST(FloatValueReaderTest, InfinityWithNegInfinity)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED() << "std::num_get doesn't support infinities";
-    }
-
     auto [a, _, val] = this->simple_success_test("-infinity");
     EXPECT_TRUE(a);
     EXPECT_TRUE(std::isinf(val));
@@ -766,10 +748,6 @@ TYPED_TEST(FloatValueReaderTest, InfinityWithNegInfinity)
 
 TYPED_TEST(FloatValueReaderTest, NaN)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED() << "std::num_get doesn't support NaNs";
-    }
-
     auto [a, _, val] = this->simple_success_test("nan");
     EXPECT_TRUE(a);
     EXPECT_TRUE(std::isnan(val));
@@ -777,10 +755,6 @@ TYPED_TEST(FloatValueReaderTest, NaN)
 }
 TYPED_TEST(FloatValueReaderTest, NaNWithPayload)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED() << "std::num_get doesn't support NaNs";
-    }
-
     auto [a, _, val] = this->simple_success_test("nan(123_abc)");
     EXPECT_TRUE(a);
     EXPECT_TRUE(std::isnan(val));
@@ -806,11 +780,6 @@ TYPED_TEST(FloatValueReaderTest, Subnormal)
 }
 TYPED_TEST(FloatValueReaderTest, SubnormalFromHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     const auto [orig_val, source] = this->get_subnormal();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
@@ -828,11 +797,6 @@ TYPED_TEST(FloatValueReaderTest, LargeSubnormal)
 }
 TYPED_TEST(FloatValueReaderTest, LargeSubnormalFromHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     const auto [orig_val, source] = this->get_subnormal_max_hex();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
@@ -850,11 +814,6 @@ TYPED_TEST(FloatValueReaderTest, MinimumNormal)
 }
 TYPED_TEST(FloatValueReaderTest, MinimumNormalFromHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     const auto [orig_val, source] = this->get_normal_min_hex();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
@@ -872,11 +831,6 @@ TYPED_TEST(FloatValueReaderTest, MinimumSubnormal)
 }
 TYPED_TEST(FloatValueReaderTest, MinimumSubnrmalFromHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     const auto [orig_val, source] = this->get_subnormal_min_hex();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
@@ -886,11 +840,6 @@ TYPED_TEST(FloatValueReaderTest, MinimumSubnrmalFromHex)
 
 TYPED_TEST(FloatValueReaderTest, Underflow)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get has bad support for checking for underflow";
-    }
-
     auto [result, val] = this->simple_test(this->get_underflow());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
         result, val, scn::scan_error::value_out_of_range,
@@ -898,11 +847,6 @@ TYPED_TEST(FloatValueReaderTest, Underflow)
 }
 TYPED_TEST(FloatValueReaderTest, UnderflowFromHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     auto [result, val] = this->simple_test(this->get_underflow_hex());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
         result, val, scn::scan_error::value_out_of_range,
@@ -919,11 +863,6 @@ TYPED_TEST(FloatValueReaderTest, Maximum)
 }
 TYPED_TEST(FloatValueReaderTest, MaximumFromHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     const auto [orig_val, source] = this->get_maximum_hex();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
@@ -940,11 +879,6 @@ TYPED_TEST(FloatValueReaderTest, BarelyOverflow)
 }
 TYPED_TEST(FloatValueReaderTest, BarelyOverflowFromHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     auto [result, val] = this->simple_test(this->get_overflow_hex());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
         result, val, scn::scan_error::value_out_of_range,
@@ -960,11 +894,6 @@ TYPED_TEST(FloatValueReaderTest, BarelyOverflowNeg)
 }
 TYPED_TEST(FloatValueReaderTest, BarelyOverflowNegFromHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     auto [result, val] = this->simple_test(this->get_overflow_neg_hex());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
         result, val, scn::scan_error::value_out_of_range,
@@ -982,9 +911,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationScientificValueScientific)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationScientificValueFixed)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED() << "std::num_get doesn't specifying a float format";
-    }
     if constexpr (std::is_same_v<typename TestFixture::float_type,
                                  long double>) {
         // FIXME
@@ -999,10 +925,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationScientificValueFixed)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationScientificValueHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED() << "std::num_get doesn't specifying a float format";
-    }
-
     auto [result, val] = this->simple_specs_test(
         "0x1.fp3", this->make_format_specs_with_presentation(
                        scn::detail::presentation_type::float_scientific));
@@ -1012,9 +934,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationScientificValueHex)
 
 TYPED_TEST(FloatValueReaderTest, PresentationFixedValueScientific)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED() << "std::num_get doesn't specifying a float format";
-    }
     if constexpr (std::is_same_v<typename TestFixture::float_type,
                                  long double>) {
         // FIXME
@@ -1042,9 +961,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationFixedValueFixed)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationFixedValueHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED() << "std::num_get doesn't specifying a float format";
-    }
     if constexpr (std::is_same_v<typename TestFixture::float_type,
                                  long double>) {
         // FIXME
@@ -1063,9 +979,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationFixedValueHex)
 
 TYPED_TEST(FloatValueReaderTest, PresentationHexValueScientific)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED() << "std::num_get doesn't specifying a float format";
-    }
     if constexpr (std::is_same_v<typename TestFixture::float_type,
                                  long double>) {
         // FIXME
@@ -1080,9 +993,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueScientific)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationHexValueFixed)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED() << "std::num_get doesn't specifying a float format";
-    }
     if constexpr (std::is_same_v<typename TestFixture::float_type,
                                  long double>) {
         // FIXME
@@ -1097,11 +1007,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueFixed)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationHexValueHex)
 {
-    if (this->interface.is_localized()) {
-        return SUCCEED()
-               << "std::num_get doesn't universally support hexfloats";
-    }
-
     auto [a, _, val] = this->simple_success_specs_test(
         "0x1.fp3", this->make_format_specs_with_presentation(
                        scn::detail::presentation_type::float_hex));
