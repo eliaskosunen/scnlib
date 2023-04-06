@@ -436,6 +436,21 @@ protected:
             return "0x1p-18000"sv;
         }
     }
+    static auto get_underflow_neg()
+    {
+        if constexpr (is_f32()) {
+            return "-1.0e-90"sv;
+        }
+        else if constexpr (is_f64()) {
+            return "-5.0e-400"sv;
+        }
+        else if constexpr (is_f80()) {
+            return "-4.0e-5500"sv;
+        }
+        else if constexpr (is_f128()) {
+            return "-6.0e-5500"sv;
+        }
+    }
 
     static auto get_maximum()
     {
@@ -851,6 +866,13 @@ TYPED_TEST(FloatValueReaderTest, UnderflowFromHex)
     EXPECT_TRUE(this->check_failure_with_code_and_value(
         result, val, scn::scan_error::value_out_of_range,
         float_zero<typename TestFixture::float_type>()));
+}
+TYPED_TEST(FloatValueReaderTest, UnderflowNeg)
+{
+    auto [result, val] = this->simple_test(this->get_underflow_neg());
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::value_out_of_range,
+        -float_zero<typename TestFixture::float_type>()));
 }
 
 TYPED_TEST(FloatValueReaderTest, Maximum)

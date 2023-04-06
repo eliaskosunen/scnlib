@@ -60,52 +60,45 @@ namespace scn {
 
     namespace impl {
         namespace {
-            template <typename CharT>
-            constexpr bool is_hexfloat(std::basic_string_view<CharT> str)
-                SCN_NOEXCEPT
+            constexpr bool is_hexfloat(std::string_view str) SCN_NOEXCEPT
             {
                 if (str.size() < 3) {
                     return false;
                 }
-                if (str[0] == CharT{'-'}) {
+                if (str[0] == '-') {
                     str = str.substr(1);
                 }
-                return str[0] == CharT{'0'} &&
-                       (str[1] == CharT{'x'} || str[1] == CharT{'X'});
+                return str[0] == '0' && (str[1] == 'x' || str[1] == 'X');
             }
 
-            template <typename CharT>
-            bool is_input_inf(std::basic_string_view<CharT> str)
+            bool is_input_inf(std::string_view str)
             {
                 if (str.empty()) {
                     return false;
                 }
-                if (str[0] == CharT{'-'}) {
+                if (str[0] == '-') {
                     str = str.substr(1);
                 }
 
                 if (str.size() >= 3) {
-                    if ((str[0] == CharT{'i'} || str[0] == CharT{'I'}) &&
-                        (str[1] == CharT{'n'} || str[1] == CharT{'N'}) &&
-                        (str[2] == CharT{'f'} || str[2] == CharT{'F'})) {
+                    if ((str[0] == 'i' || str[0] == 'I') &&
+                        (str[1] == 'n' || str[1] == 'N') &&
+                        (str[2] == 'f' || str[2] == 'F')) {
                         return true;
                     }
                 }
                 return false;
             }
 
-            template <typename CharT>
-            bool _skip_zeroes(
-                std::basic_string_view<CharT> str,
-                typename std::basic_string_view<CharT>::iterator& it)
+            bool _skip_zeroes(std::string_view str,
+                              std::string_view::iterator& it)
             {
                 for (; it != str.end(); ++it) {
-                    if (*it == CharT{'0'}) {
+                    if (*it == '0') {
                         continue;
                     }
-                    if (*it == CharT{'.'} || *it == CharT{'e'} ||
-                        *it == CharT{'E'} || *it == CharT{'p'} ||
-                        *it == CharT{'P'}) {
+                    if (*it == '.' || *it == 'e' || *it == 'E' || *it == 'p' ||
+                        *it == 'P') {
                         break;
                     }
                     return false;
@@ -113,10 +106,9 @@ namespace scn {
                 return true;
             }
 
-            template <typename CharT>
-            bool is_input_hexzero(std::basic_string_view<CharT> str)
+            bool is_input_hexzero(std::string_view str)
             {
-                if (str[0] == CharT{'-'}) {
+                if (str[0] == '-') {
                     str = str.substr(3);
                 }
                 else {
@@ -128,7 +120,7 @@ namespace scn {
                     return false;
                 }
 
-                if (it == str.end() || *it != CharT{'.'}) {
+                if (it == str.end() || *it != '.') {
                     return true;
                 }
                 ++it;
@@ -141,8 +133,7 @@ namespace scn {
                 return true;
             }
 
-            template <typename CharT>
-            bool is_input_zero(std::basic_string_view<CharT> str)
+            bool is_input_zero(std::string_view str)
             {
                 if (is_hexfloat(str)) {
                     return is_input_hexzero(str);
@@ -151,7 +142,7 @@ namespace scn {
                 if (str.empty()) {
                     return false;
                 }
-                if (str[0] == CharT{'-'}) {
+                if (str[0] == '-') {
                     str = str.substr(1);
                 }
 
@@ -159,7 +150,7 @@ namespace scn {
                 if (!_skip_zeroes(str, it)) {
                     return false;
                 }
-                if (it == str.end() || *it != CharT{'.'}) {
+                if (it == str.end() || *it != '.') {
                     return true;
                 }
                 ++it;
@@ -174,15 +165,15 @@ namespace scn {
             SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
             constexpr bool is_float_zero(float f)
             {
-                return f == 0.0f;
+                return f == 0.0f || f == -0.0f;
             }
             constexpr bool is_float_zero(double d)
             {
-                return d == 0.0;
+                return d == 0.0 || d == -0.0;
             }
             constexpr bool is_float_zero(long double ld)
             {
-                return ld == 0.0L;
+                return ld == 0.0L || ld == -0.0L;
             }
             SCN_GCC_COMPAT_POP
         }  // namespace
@@ -198,7 +189,7 @@ namespace scn {
             };
         }  // namespace
 
-        template <typename CharT, typename T>
+        template <typename T>
         class cstd_reader_impl
             : public float_classic_value_reader_cstd_impl_base {
         public:
@@ -207,23 +198,15 @@ namespace scn {
             {
             }
 
-            scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>
-            operator()(std::basic_string_view<CharT> source, T& value)
+            scan_expected<ranges::iterator_t<std::string_view>> operator()(
+                std::string_view source,
+                T& value)
             {
                 clocale_restorer lr{LC_NUMERIC};
                 std::setlocale(LC_NUMERIC, "C");
 
-                std::basic_string<CharT> null_terminated_source{};
-                if (source.size() >= 16) {
-                    auto first_space = find_classic_space_narrow_fast(source);
-                    null_terminated_source.assign(source.begin(), first_space);
-                }
-                else {
-                    null_terminated_source.assign(source);
-                }
-
                 T tmp{};
-                return impl(null_terminated_source.c_str(), tmp)
+                return impl(get_null_terminated_source(source), tmp)
                     .transform([&](size_t chars_read) SCN_NOEXCEPT {
                         value = tmp;
                         return source.begin() + chars_read;
@@ -237,10 +220,21 @@ namespace scn {
             }
 
         private:
-            scan_expected<std::size_t> impl(const CharT* src,
-                                            T& tmp_value) const
+            const char* get_null_terminated_source(std::string_view source)
             {
-                CharT* end{};
+                if (source.size() >= 16) {
+                    auto first_space = find_classic_space_narrow_fast(source);
+                    ntcs_buffer.assign(source.begin(), first_space);
+                }
+                else {
+                    ntcs_buffer.assign(source);
+                }
+                return ntcs_buffer.c_str();
+            }
+
+            scan_expected<std::size_t> impl(const char* src, T& tmp_value) const
+            {
+                char* end{};
                 errno = 0;
                 tmp_value = cstd_strtod(src, &end);
                 const auto chars_read = end - src;
@@ -254,10 +248,9 @@ namespace scn {
                 return static_cast<size_t>(chars_read);
             }
 
-            SCN_NODISCARD scan_error
-            check_error(std::basic_string_view<CharT> source,
-                        std::ptrdiff_t chars_read,
-                        T& value) const
+            SCN_NODISCARD scan_error check_error(std::string_view source,
+                                                 std::ptrdiff_t chars_read,
+                                                 T& value) const
             {
                 // No conversion
                 if (is_float_zero(value) && chars_read == 0) {
@@ -268,8 +261,8 @@ namespace scn {
 
                 // Unexpected hex float
                 if (is_hexfloat(source) &&
-                    (reader.m_options &
-                     float_classic_value_reader<CharT>::allow_hex) == 0) {
+                    (reader.m_options & float_value_reader_base::allow_hex) ==
+                        0) {
                     SCN_UNLIKELY_ATTR
                     return {scan_error::invalid_scanned_value,
                             "Parsed a hex float, which was "
@@ -302,31 +295,20 @@ namespace scn {
                 return {};
             }
 
-            T cstd_strtod(const CharT* str, CharT** str_end) const
+            T cstd_strtod(const char* str, char** str_end) const
             {
-                if constexpr (std::is_same_v<CharT, char>) {
-                    if constexpr (std::is_same_v<T, float>) {
-                        return std::strtof(str, str_end);
-                    }
-                    else if constexpr (std::is_same_v<T, double>) {
-                        return std::strtod(str, str_end);
-                    }
-                    else if constexpr (std::is_same_v<T, long double>) {
-                        return std::strtold(str, str_end);
-                    }
+                if constexpr (std::is_same_v<T, float>) {
+                    return std::strtof(str, str_end);
                 }
-                else if constexpr (std::is_same_v<CharT, wchar_t>) {
-                    if constexpr (std::is_same_v<T, float>) {
-                        return std::wcstof(str, str_end);
-                    }
-                    else if constexpr (std::is_same_v<T, double>) {
-                        return std::wcstod(str, str_end);
-                    }
-                    else if constexpr (std::is_same_v<T, long double>) {
-                        return std::wcstold(str, str_end);
-                    }
+                else if constexpr (std::is_same_v<T, double>) {
+                    return std::strtod(str, str_end);
+                }
+                else if constexpr (std::is_same_v<T, long double>) {
+                    return std::strtold(str, str_end);
                 }
             }
+
+            std::string ntcs_buffer{};
         };
 
         ////////////////////////////////////////////////////////////////////////
@@ -383,7 +365,7 @@ namespace scn {
             };
         }  // namespace
 
-        template <typename CharT, typename T>
+        template <typename T>
         class from_chars_reader_impl
             : public float_classic_value_reader_from_chars_impl_base<> {
         public:
@@ -396,6 +378,12 @@ namespace scn {
                 std::string_view source,
                 T& value) const
             {
+                if ((reader.m_options & float_value_reader_base::allow_thsep) !=
+                    0) {
+                    // from_chars doesn't support thousands separators
+                    return cstd_reader_impl<T>{reader}(source, value);
+                }
+
                 const auto original_source = source;
                 bool has_negative_sign = false;
                 const auto flags = get_flags(source, has_negative_sign);
@@ -415,8 +403,7 @@ namespace scn {
                 if (result.ec == std::errc::result_out_of_range) {
                     // Out of range, may be subnormal -> fall back to strtod
                     // On gcc, std::from_chars doesn't parse subnormals
-                    return cstd_reader_impl<CharT, T>{reader}(original_source,
-                                                              value);
+                    return cstd_reader_impl<T>{reader}(original_source, value);
                 }
 
                 if (has_negative_sign) {
@@ -481,19 +468,18 @@ namespace scn {
                     has_charconv_for<T>::value;
 
                 if constexpr (cond) {
-                    return from_chars_reader_impl<char, T>{reader}(source,
-                                                                   value);
+                    return from_chars_reader_impl<T>{reader}(source, value);
                 }
                 else {
-                    return cstd_reader_impl<char, T>{reader}(source, value);
+                    return cstd_reader_impl<T>{reader}(source, value);
                 }
 #else
-                return cstd_reader_impl<char, T>{reader}(source, value);
+                return cstd_reader_impl<T>{reader}(source, value);
 #endif
             }
         }  // namespace
 
-        template <typename CharT, typename T>
+        template <typename T>
         class fast_float_reader_impl
             : float_classic_value_reader_fast_float_impl_base {
         public:
@@ -506,6 +492,12 @@ namespace scn {
                 std::string_view source,
                 T& value) const
             {
+                if ((reader.m_options & float_value_reader_base::allow_thsep) !=
+                    0) {
+                    // fast_float doesn't support thousands separators
+                    return cstd_reader_impl<T>{reader}(source, value);
+                }
+
                 if ((reader.m_options & float_value_reader_base::allow_hex) !=
                     0) {
                     if (is_hexfloat(source)) {
@@ -555,7 +547,7 @@ namespace scn {
                     if constexpr (sizeof(double) == sizeof(long double)) {
                         // If long double is an alias to double (true on
                         // Windows), use fast_float with double
-                        return fast_float_reader_impl<char, double>{reader}(
+                        return fast_float_reader_impl<double>{reader}(
                             source, *reinterpret_cast<double*>(&value));
                     }
                     else {
@@ -566,8 +558,7 @@ namespace scn {
                 }
                 else {
                     // Default to fast_float
-                    return fast_float_reader_impl<char, T>{reader}(source,
-                                                                   value);
+                    return fast_float_reader_impl<T>{reader}(source, value);
                 }
             }
 
