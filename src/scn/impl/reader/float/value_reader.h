@@ -79,6 +79,10 @@ namespace scn {
             auto read(string_view_type source, T& value)
                 -> scan_expected<ranges::iterator_t<string_view_type>>;
 
+            detail::locale_ref& locale() {
+                return m_locale;
+            }
+
         private:
             detail::locale_ref m_locale{};
         };

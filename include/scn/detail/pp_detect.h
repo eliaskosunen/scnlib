@@ -458,7 +458,7 @@
 #endif
 
 #elif SCN_WINDOWS
-#define SCN_IS_BIG_ENDIAN 0
+#define SCN_IS_BIG_ENDIAN -1
 #else
 
 #if SCN_APSCN_APPLE

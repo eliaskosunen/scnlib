@@ -95,14 +95,21 @@ public:
     void make_value_reader_from_specs(
         const scn::detail::basic_format_specs<CharT>& specs) override
     {
+        return make_value_reader_from_specs_with_locale(specs, {});
+    }
+    void make_value_reader_from_specs_with_locale(
+        const scn::detail::basic_format_specs<CharT>& specs,
+        scn::detail::locale_ref loc) override
+    {
         auto reader = scn::impl::float_localized_value_reader<CharT>{
             scn::impl::float_reader<FloatT, CharT>::get_presentation_flags(
                 specs),
-            scn::detail::locale_ref{}};
+            loc};
         m_reader =
             std::make_unique<scn::impl::float_localized_value_reader<CharT>>(
                 reader);
     }
+
     scn::scan_expected<typename std::basic_string_view<CharT>::iterator> read(
         std::basic_string_view<CharT> source,
         FloatT& value) override
@@ -156,7 +163,8 @@ constexpr T float_zero()
 }
 
 template <typename T>
-[[nodiscard]] testing::AssertionResult check_floating_eq(T a, T b)
+[[nodiscard]] testing::AssertionResult
+check_floating_eq(T a, T b, bool allow_approx = false)
 {
     SCN_GCC_COMPAT_PUSH
     SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
@@ -164,6 +172,11 @@ template <typename T>
         return testing::AssertionSuccess();
     }
     SCN_GCC_COMPAT_POP
+
+    if (allow_approx && std::abs(a - b) < std::numeric_limits<T>::epsilon()) {
+        return testing::AssertionSuccess();
+    }
+
     return testing::AssertionFailure()
            << "Floats not equal: " << a << " and " << b;
 }
@@ -513,6 +526,19 @@ protected:
         }
     }
 
+    static auto get_thsep_number()
+    {
+        if constexpr (is_f32()) {
+            return 123456.789f;
+        }
+        else if constexpr (is_f64()) {
+            return 123456.789;
+        }
+        else if constexpr (is_f80() || is_f128()) {
+            return 123456.789L;
+        }
+    }
+
     template <typename Source>
     void set_source(Source&& s)
     {
@@ -628,8 +654,16 @@ protected:
         Source&& source,
         const scn::detail::basic_format_specs<char_type>& specs)
     {
+        return simple_specs_and_locale_test(SCN_FWD(source), specs, {});
+    }
+    template <typename Source>
+    auto simple_specs_and_locale_test(
+        Source&& source,
+        const scn::detail::basic_format_specs<char_type>& specs,
+        scn::detail::locale_ref loc)
+    {
         this->set_source(SCN_FWD(source));
-        this->interface.make_value_reader_from_specs(specs);
+        this->interface.make_value_reader_from_specs_with_locale(specs, loc);
 
         float_type val{};
         auto result = this->interface.read(widened_source.value(), val);
@@ -652,8 +686,16 @@ protected:
         Source&& source,
         const scn::detail::basic_format_specs<char_type>& specs)
     {
+        return simple_success_specs_and_locale_test(SCN_FWD(source), specs, {});
+    }
+    template <typename Source>
+    auto simple_success_specs_and_locale_test(
+        Source&& source,
+        const scn::detail::basic_format_specs<char_type>& specs,
+        scn::detail::locale_ref loc)
+    {
         this->set_source(SCN_FWD(source));
-        this->interface.make_value_reader_from_specs(specs);
+        this->interface.make_value_reader_from_specs_with_locale(specs, loc);
 
         float_type val{};
         auto result = this->interface.read(widened_source.value(), val);
@@ -1035,4 +1077,32 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueHex)
     EXPECT_TRUE(a);
     EXPECT_TRUE(check_floating_eq(
         val, static_cast<typename TestFixture::float_type>(0x1.fp3)));
+}
+
+template <typename CharT>
+struct numpunct_with_comma_thsep : std::numpunct<CharT> {
+    CharT do_thousands_sep() const override
+    {
+        return CharT{','};
+    }
+    std::string do_grouping() const override
+    {
+        return "\3";
+    }
+};
+
+TYPED_TEST(FloatValueReaderTest, ThousandsSeparators)
+{
+    scn::detail::basic_format_specs<typename TestFixture::char_type> specs{};
+    specs.thsep = true;
+
+    auto stdloc = std::locale(
+        std::locale::classic(),
+        new numpunct_with_comma_thsep<typename TestFixture::char_type>{});
+    auto locref = scn::detail::locale_ref{stdloc};
+
+    auto [a, _, val] = this->simple_success_specs_and_locale_test(
+        "123,456.789", specs, locref);
+    EXPECT_TRUE(a);
+    EXPECT_TRUE(check_floating_eq(val, this->get_thsep_number()));
 }

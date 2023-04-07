@@ -34,29 +34,46 @@ namespace scn {
             static constexpr uint8_t get_presentation_flags(
                 const detail::basic_format_specs<CharT>& specs)
             {
+                uint32_t flags =
+                    specs.thsep ? float_value_reader_base::allow_thsep : 0;
+
                 SCN_GCC_COMPAT_PUSH
                 SCN_GCC_COMPAT_IGNORE("-Wswitch-enum")
                 switch (specs.type) {
                     case detail::presentation_type::float_fixed:
-                        return float_value_reader_base::allow_fixed;
+                        flags |= float_value_reader_base::allow_fixed;
+                        break;
+
                     case detail::presentation_type::float_scientific:
-                        return float_value_reader_base::allow_scientific;
+                        flags |=
+                            float_value_reader_base::allow_scientific;
+                        break;
+
                     case detail::presentation_type::float_hex:
-                        return float_value_reader_base::allow_hex;
+                        flags |=
+                            float_value_reader_base::allow_hex;
+                        break;
+
                     case detail::presentation_type::float_general:
-                        return static_cast<uint8_t>(
+                        flags |=
                             float_value_reader_base::allow_scientific |
-                            float_value_reader_base::allow_fixed);
+                            float_value_reader_base::allow_fixed;
+                        break;
+
                     case detail::presentation_type::none:
-                        return static_cast<uint8_t>(
+                        flags |=
                             float_value_reader_base::allow_scientific |
                             float_value_reader_base::allow_fixed |
-                            float_value_reader_base::allow_hex);
+                            float_value_reader_base::allow_hex;
+                        break;
+
                     default:
                         SCN_EXPECT(false);
                         SCN_UNREACHABLE;
                 }
                 SCN_GCC_COMPAT_POP  // -Wswitch-enum
+
+                return static_cast<uint8_t>(flags);
             }
 
         private:

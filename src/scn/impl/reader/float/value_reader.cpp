@@ -176,6 +176,70 @@ namespace scn {
                 return ld == 0.0L || ld == -0.0L;
             }
             SCN_GCC_COMPAT_POP
+
+            template <typename CharT>
+            struct float_preparer {
+                void prepare(std::basic_string_view<CharT> input,
+                             bool use_thsep,
+                             CharT thsep,
+                             CharT decimal_point)
+                {
+                    bool has_reached_decimal_point = false;
+
+                    for (size_t i = 0; i < input.size(); ++i) {
+                        if (is_ascii_space(input[i])) {
+                            break;
+                        }
+
+                        if (input[i] == decimal_point) {
+                            if (has_reached_decimal_point) {
+                                break;
+                            }
+                            output.push_back(CharT{'.'});
+                            indices.push_back(static_cast<char>(i));
+                            has_reached_decimal_point = true;
+                            continue;
+                        }
+
+                        if (use_thsep && input[i] == thsep) {
+                            if (!has_reached_decimal_point) {
+                                thsep_indices.push_back(static_cast<char>(i));
+                                continue;
+                            }
+                            break;
+                        }
+
+                        output.push_back(input[i]);
+                        indices.push_back(static_cast<char>(i));
+                    }
+                }
+
+                using iterator =
+                    typename std::basic_string_view<CharT>::iterator;
+
+                iterator get_iterator(std::basic_string_view<CharT> input,
+                                      iterator output_it)
+                {
+                    auto sv = std::basic_string_view<CharT>{output};
+                    auto diff = ranges::distance(sv.begin(), output_it);
+                    auto idx = indices[static_cast<size_t>(diff) - 1];
+                    return input.begin() + static_cast<std::ptrdiff_t>(idx) + 1;
+                }
+
+                scan_expected<iterator> check_grouping_and_get_iterator(
+                    std::basic_string_view<CharT> input,
+                    std::string_view grouping,
+                    iterator output_it)
+                {
+                    // TODO
+                    SCN_UNUSED(grouping);
+
+                    return get_iterator(input, output_it);
+                }
+
+                std::basic_string<CharT> output;
+                std::string indices, thsep_indices;
+            };
         }  // namespace
 
         ////////////////////////////////////////////////////////////////////////
@@ -187,129 +251,131 @@ namespace scn {
             struct float_classic_value_reader_cstd_impl_base {
                 const float_value_reader_base& reader;
             };
-        }  // namespace
 
-        template <typename T>
-        class cstd_reader_impl
-            : public float_classic_value_reader_cstd_impl_base {
-        public:
-            explicit cstd_reader_impl(const float_value_reader_base& r)
-                : float_classic_value_reader_cstd_impl_base{r}
-            {
-            }
+            template <typename T>
+            class cstd_reader_impl
+                : public float_classic_value_reader_cstd_impl_base {
+            public:
+                explicit cstd_reader_impl(const float_value_reader_base& r)
+                    : float_classic_value_reader_cstd_impl_base{r}
+                {
+                }
 
-            scan_expected<ranges::iterator_t<std::string_view>> operator()(
-                std::string_view source,
-                T& value)
-            {
-                clocale_restorer lr{LC_NUMERIC};
-                std::setlocale(LC_NUMERIC, "C");
+                scan_expected<ranges::iterator_t<std::string_view>> operator()(
+                    std::string_view source,
+                    T& value)
+                {
+                    clocale_restorer lr{LC_NUMERIC};
+                    std::setlocale(LC_NUMERIC, "C");
 
-                T tmp{};
-                return impl(get_null_terminated_source(source), tmp)
-                    .transform([&](size_t chars_read) SCN_NOEXCEPT {
-                        value = tmp;
-                        return source.begin() + chars_read;
-                    })
-                    .transform_error([&](scan_error err) SCN_NOEXCEPT {
-                        if (err.code() == scan_error::value_out_of_range) {
+                    T tmp{};
+                    return impl(get_null_terminated_source(source), tmp)
+                        .transform([&](size_t chars_read) SCN_NOEXCEPT {
                             value = tmp;
-                        }
-                        return err;
-                    });
-            }
-
-        private:
-            const char* get_null_terminated_source(std::string_view source)
-            {
-                if (source.size() >= 16) {
-                    auto first_space = find_classic_space_narrow_fast(source);
-                    ntcs_buffer.assign(source.begin(), first_space);
-                }
-                else {
-                    ntcs_buffer.assign(source);
-                }
-                return ntcs_buffer.c_str();
-            }
-
-            scan_expected<std::size_t> impl(const char* src, T& tmp_value) const
-            {
-                char* end{};
-                errno = 0;
-                tmp_value = cstd_strtod(src, &end);
-                const auto chars_read = end - src;
-                errno = 0;
-
-                if (auto e = check_error(src, chars_read, tmp_value);
-                    SCN_UNLIKELY(!e)) {
-                    return unexpected(e);
+                            return source.begin() + chars_read;
+                        })
+                        .transform_error([&](scan_error err) SCN_NOEXCEPT {
+                            if (err.code() == scan_error::value_out_of_range) {
+                                value = tmp;
+                            }
+                            return err;
+                        });
                 }
 
-                return static_cast<size_t>(chars_read);
-            }
-
-            SCN_NODISCARD scan_error check_error(std::string_view source,
-                                                 std::ptrdiff_t chars_read,
-                                                 T& value) const
-            {
-                // No conversion
-                if (is_float_zero(value) && chars_read == 0) {
-                    SCN_UNLIKELY_ATTR
-                    return {scan_error::invalid_scanned_value,
-                            "strtod failed: no conversion"};
+            private:
+                const char* get_null_terminated_source(std::string_view source)
+                {
+                    if (source.size() >= 16) {
+                        auto first_space =
+                            find_classic_space_narrow_fast(source);
+                        ntcs_buffer.assign(source.begin(), first_space);
+                    }
+                    else {
+                        ntcs_buffer.assign(source);
+                    }
+                    return ntcs_buffer.c_str();
                 }
 
-                // Unexpected hex float
-                if (is_hexfloat(source) &&
-                    (reader.m_options & float_value_reader_base::allow_hex) ==
-                        0) {
-                    SCN_UNLIKELY_ATTR
-                    return {scan_error::invalid_scanned_value,
-                            "Parsed a hex float, which was "
-                            "not allowed by the format string"};
+                scan_expected<std::size_t> impl(const char* src,
+                                                T& tmp_value) const
+                {
+                    char* end{};
+                    errno = 0;
+                    tmp_value = cstd_strtod(src, &end);
+                    const auto chars_read = end - src;
+                    errno = 0;
+
+                    if (auto e = check_error(src, chars_read, tmp_value);
+                        SCN_UNLIKELY(!e)) {
+                        return unexpected(e);
+                    }
+
+                    return static_cast<size_t>(chars_read);
                 }
 
-                // Musl libc doesn't set errno to ERANGE on range error,
-                // so we can't rely on that
+                SCN_NODISCARD scan_error check_error(std::string_view source,
+                                                     std::ptrdiff_t chars_read,
+                                                     T& value) const
+                {
+                    // No conversion
+                    if (is_float_zero(value) && chars_read == 0) {
+                        SCN_UNLIKELY_ATTR
+                        return {scan_error::invalid_scanned_value,
+                                "strtod failed: no conversion"};
+                    }
 
-                // Underflow:
-                // returned 0, and input is not 0
-                if (is_float_zero(value) &&
-                    !is_input_zero(
-                        source.substr(0, static_cast<size_t>(chars_read)))) {
-                    SCN_UNLIKELY_ATTR
-                    return {scan_error::value_out_of_range,
-                            "strtod failed: float underflow"};
+                    // Unexpected hex float
+                    if (is_hexfloat(source) &&
+                        (reader.m_options &
+                         float_value_reader_base::allow_hex) == 0) {
+                        SCN_UNLIKELY_ATTR
+                        return {scan_error::invalid_scanned_value,
+                                "Parsed a hex float, which was "
+                                "not allowed by the format string"};
+                    }
+
+                    // Musl libc doesn't set errno to ERANGE on range error,
+                    // so we can't rely on that
+
+                    // Underflow:
+                    // returned 0, and input is not 0
+                    if (is_float_zero(value) &&
+                        !is_input_zero(source.substr(
+                            0, static_cast<size_t>(chars_read)))) {
+                        SCN_UNLIKELY_ATTR
+                        return {scan_error::value_out_of_range,
+                                "strtod failed: float underflow"};
+                    }
+
+                    // Overflow:
+                    // returned inf (HUGE_VALUE), and input is not "inf"
+                    if (std::isinf(value) &&
+                        !is_input_inf(source.substr(
+                            0, static_cast<size_t>(chars_read)))) {
+                        SCN_UNLIKELY_ATTR
+                        return {scan_error::value_out_of_range,
+                                "strtod failed: float overflow"};
+                    }
+
+                    return {};
                 }
 
-                // Overflow:
-                // returned inf (HUGE_VALUE), and input is not "inf"
-                if (std::isinf(value) &&
-                    !is_input_inf(
-                        source.substr(0, static_cast<size_t>(chars_read)))) {
-                    SCN_UNLIKELY_ATTR
-                    return {scan_error::value_out_of_range,
-                            "strtod failed: float overflow"};
+                T cstd_strtod(const char* str, char** str_end) const
+                {
+                    if constexpr (std::is_same_v<T, float>) {
+                        return std::strtof(str, str_end);
+                    }
+                    else if constexpr (std::is_same_v<T, double>) {
+                        return std::strtod(str, str_end);
+                    }
+                    else if constexpr (std::is_same_v<T, long double>) {
+                        return std::strtold(str, str_end);
+                    }
                 }
 
-                return {};
-            }
-
-            T cstd_strtod(const char* str, char** str_end) const
-            {
-                if constexpr (std::is_same_v<T, float>) {
-                    return std::strtof(str, str_end);
-                }
-                else if constexpr (std::is_same_v<T, double>) {
-                    return std::strtod(str, str_end);
-                }
-                else if constexpr (std::is_same_v<T, long double>) {
-                    return std::strtold(str, str_end);
-                }
-            }
-
-            std::string ntcs_buffer{};
-        };
+                std::string ntcs_buffer{};
+            };
+        }  // namespace
 
         ////////////////////////////////////////////////////////////////////////
         // std::from_chars based implementation
@@ -363,58 +429,56 @@ namespace scn {
 
                 const float_value_reader_base& reader;
             };
+
+            template <typename T>
+            class from_chars_reader_impl
+                : public float_classic_value_reader_from_chars_impl_base<> {
+            public:
+                explicit from_chars_reader_impl(
+                    const float_value_reader_base& r)
+                    : float_classic_value_reader_from_chars_impl_base{r}
+                {
+                }
+
+                scan_expected<ranges::iterator_t<std::string_view>> operator()(
+                    std::string_view source,
+                    T& value) const
+                {
+                    const auto original_source = source;
+                    bool has_negative_sign = false;
+                    const auto flags = get_flags(source, has_negative_sign);
+                    if (SCN_UNLIKELY(!flags)) {
+                        return unexpected(flags.error());
+                    }
+
+                    T tmp{};
+                    const auto result = std::from_chars(
+                        source.data(), source.data() + source.size(), tmp,
+                        *flags);
+
+                    if (SCN_UNLIKELY(result.ec ==
+                                     std::errc::invalid_argument)) {
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "from_chars failed: invalid_argument");
+                    }
+                    if (result.ec == std::errc::result_out_of_range) {
+                        // Out of range, may be subnormal -> fall back to strtod
+                        // On gcc, std::from_chars doesn't parse subnormals
+                        return cstd_reader_impl<T>{reader}(original_source,
+                                                           value);
+                    }
+
+                    if (has_negative_sign) {
+                        value = -tmp;
+                    }
+                    else {
+                        value = tmp;
+                    }
+                    return {source.begin() + (result.ptr - source.data())};
+                }
+            };
         }  // namespace
-
-        template <typename T>
-        class from_chars_reader_impl
-            : public float_classic_value_reader_from_chars_impl_base<> {
-        public:
-            explicit from_chars_reader_impl(const float_value_reader_base& r)
-                : float_classic_value_reader_from_chars_impl_base{r}
-            {
-            }
-
-            scan_expected<ranges::iterator_t<std::string_view>> operator()(
-                std::string_view source,
-                T& value) const
-            {
-                if ((reader.m_options & float_value_reader_base::allow_thsep) !=
-                    0) {
-                    // from_chars doesn't support thousands separators
-                    return cstd_reader_impl<T>{reader}(source, value);
-                }
-
-                const auto original_source = source;
-                bool has_negative_sign = false;
-                const auto flags = get_flags(source, has_negative_sign);
-                if (SCN_UNLIKELY(!flags)) {
-                    return unexpected(flags.error());
-                }
-
-                T tmp{};
-                const auto result = std::from_chars(
-                    source.data(), source.data() + source.size(), tmp, *flags);
-
-                if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "from_chars failed: invalid_argument");
-                }
-                if (result.ec == std::errc::result_out_of_range) {
-                    // Out of range, may be subnormal -> fall back to strtod
-                    // On gcc, std::from_chars doesn't parse subnormals
-                    return cstd_reader_impl<T>{reader}(original_source, value);
-                }
-
-                if (has_negative_sign) {
-                    value = -tmp;
-                }
-                else {
-                    value = tmp;
-                }
-                return {source.begin() + (result.ptr - source.data())};
-            }
-        };
 #endif
 
         ////////////////////////////////////////////////////////////////////////
@@ -422,26 +486,26 @@ namespace scn {
         // Only for CharT=char AND FloatT=(float OR double)
         ////////////////////////////////////////////////////////////////////////
 
-        struct float_classic_value_reader_fast_float_impl_base {
-            fast_float::chars_format get_flags() const
-            {
-                unsigned format_flags{};
-                if ((reader.m_options & float_value_reader_base::allow_fixed) !=
-                    0) {
-                    format_flags |= fast_float::fixed;
-                }
-                if ((reader.m_options &
-                     float_value_reader_base::allow_scientific) != 0) {
-                    format_flags |= fast_float::scientific;
-                }
-
-                return static_cast<fast_float::chars_format>(format_flags);
-            }
-
-            const float_value_reader_base& reader;
-        };
-
         namespace {
+            struct float_classic_value_reader_fast_float_impl_base {
+                fast_float::chars_format get_flags() const
+                {
+                    unsigned format_flags{};
+                    if ((reader.m_options &
+                         float_value_reader_base::allow_fixed) != 0) {
+                        format_flags |= fast_float::fixed;
+                    }
+                    if ((reader.m_options &
+                         float_value_reader_base::allow_scientific) != 0) {
+                        format_flags |= fast_float::scientific;
+                    }
+
+                    return static_cast<fast_float::chars_format>(format_flags);
+                }
+
+                const float_value_reader_base& reader;
+            };
+
 #if SCN_HAS_FLOAT_CHARCONV
             template <typename Float, typename = void>
             struct has_charconv_for : std::false_type {};
@@ -477,78 +541,81 @@ namespace scn {
                 return cstd_reader_impl<T>{reader}(source, value);
 #endif
             }
-        }  // namespace
 
-        template <typename T>
-        class fast_float_reader_impl
-            : float_classic_value_reader_fast_float_impl_base {
-        public:
-            explicit fast_float_reader_impl(const float_value_reader_base& r)
-                : float_classic_value_reader_fast_float_impl_base{r}
-            {
-            }
-
-            scan_expected<ranges::iterator_t<std::string_view>> operator()(
-                std::string_view source,
-                T& value) const
-            {
-                if ((reader.m_options & float_value_reader_base::allow_thsep) !=
-                    0) {
-                    // fast_float doesn't support thousands separators
-                    return cstd_reader_impl<T>{reader}(source, value);
+            template <typename T>
+            class fast_float_reader_impl
+                : float_classic_value_reader_fast_float_impl_base {
+            public:
+                explicit fast_float_reader_impl(
+                    const float_value_reader_base& r)
+                    : float_classic_value_reader_fast_float_impl_base{r}
+                {
                 }
 
-                if ((reader.m_options & float_value_reader_base::allow_hex) !=
-                    0) {
-                    if (is_hexfloat(source)) {
-                        // fast_float doesn't support hexfloats
-                        return fast_float_fallback(reader, source, value);
+                scan_expected<ranges::iterator_t<std::string_view>> operator()(
+                    std::string_view source,
+                    T& value) const
+                {
+                    if ((reader.m_options &
+                         float_value_reader_base::allow_hex) != 0) {
+                        if (is_hexfloat(source)) {
+                            // fast_float doesn't support hexfloats
+                            return fast_float_fallback(reader, source, value);
+                        }
+                        if ((reader.m_options ^
+                             float_value_reader_base::allow_hex) == 0) {
+                            // only hex floats allowed
+                            SCN_UNLIKELY_ATTR
+                            return unexpected_scan_error(
+                                scan_error::invalid_scanned_value,
+                                "float parsing failed: expected hexfloat");
+                        }
                     }
-                    if ((reader.m_options ^
-                         float_value_reader_base::allow_hex) == 0) {
-                        // only hex floats allowed
-                        SCN_UNLIKELY_ATTR
+
+                    const auto flags = get_flags();
+                    T tmp{};
+                    const auto result = fast_float::from_chars(
+                        source.data(), source.data() + source.size(), tmp,
+                        flags);
+
+                    if (SCN_UNLIKELY(result.ec ==
+                                     std::errc::invalid_argument)) {
                         return unexpected_scan_error(
                             scan_error::invalid_scanned_value,
-                            "float parsing failed: expected hexfloat");
+                            "fast_float failed: invalid_argument");
                     }
-                }
+                    if (SCN_UNLIKELY(result.ec ==
+                                     std::errc::result_out_of_range)) {
+                        value = tmp;
+                        return unexpected_scan_error(
+                            scan_error::value_out_of_range,
+                            "fast_float failed: result_out_of_range");
+                    }
 
-                const auto flags = get_flags();
-                T tmp{};
-                const auto result = fast_float::from_chars(
-                    source.data(), source.data() + source.size(), tmp, flags);
-
-                if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "fast_float failed: invalid_argument");
-                }
-                if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
                     value = tmp;
-                    return unexpected_scan_error(
-                        scan_error::value_out_of_range,
-                        "fast_float failed: result_out_of_range");
+                    return {source.begin() + (result.ptr - source.data())};
                 }
+            };
+        }  // namespace
 
-                value = tmp;
-                return {source.begin() + (result.ptr - source.data())};
-            }
-        };
+        // classic reader dispatch
 
         namespace {
             template <typename T>
-            auto do_read(const float_value_reader_base& reader,
-                         std::string_view source,
-                         T& value)
+            auto do_read_without_thsep(const float_value_reader_base& reader,
+                                       std::string_view source,
+                                       T& value)
                 -> scan_expected<ranges::iterator_t<std::string_view>>
             {
                 if constexpr (std::is_same_v<T, long double>) {
                     if constexpr (sizeof(double) == sizeof(long double)) {
                         // If long double is an alias to double (true on
                         // Windows), use fast_float with double
-                        return fast_float_reader_impl<double>{reader}(
-                            source, *reinterpret_cast<double*>(&value));
+                        double tmp{};
+                        auto ret =
+                            fast_float_reader_impl<double>{reader}(source, tmp);
+                        value = tmp;
+                        return ret;
                     }
                     else {
                         // long doubles aren't supported by fast_float ->
@@ -560,6 +627,36 @@ namespace scn {
                     // Default to fast_float
                     return fast_float_reader_impl<T>{reader}(source, value);
                 }
+            }
+
+            template <typename T>
+            auto do_read_with_thsep(const float_value_reader_base& reader,
+                                    std::string_view source,
+                                    T& value)
+                -> scan_expected<ranges::iterator_t<std::string_view>>
+            {
+                float_preparer<char> prepare{};
+                prepare.prepare(source, true, ',', '.');
+
+                auto reader_input = std::string_view{prepare.output};
+                return do_read_without_thsep(reader, reader_input, value)
+                    .and_then([&](auto it) {
+                        return prepare.check_grouping_and_get_iterator(
+                            source, "\3", it);
+                    });
+            }
+
+            template <typename T>
+            auto do_read(const float_value_reader_base& reader,
+                         std::string_view source,
+                         T& value)
+                -> scan_expected<ranges::iterator_t<std::string_view>>
+            {
+                if ((reader.m_options & float_value_reader_base::allow_thsep) !=
+                    0) {
+                    return do_read_with_thsep(reader, source, value);
+                }
+                return do_read_without_thsep(reader, source, value);
             }
 
             scan_expected<std::string_view> make_utf8_string(
@@ -652,7 +749,8 @@ namespace scn {
             -> scan_expected<ranges::iterator_t<string_view_type>>;
 
         ////////////////////////////////////////////////////////////////////////
-        // localized implementation (std::num_get)
+        // localized implementation:
+        //   change localized characters, delegate to classic
         ////////////////////////////////////////////////////////////////////////
 
         template <typename CharT>
@@ -664,54 +762,23 @@ namespace scn {
             auto stdloc = m_locale.get<std::locale>();
             const auto& numpunct =
                 get_or_add_facet<std::numpunct<CharT>>(stdloc);
-            std::string buffer{}, indices{}, thsep_indices{};
 
             const auto grouping = numpunct.grouping();
             const bool use_thsep =
                 !grouping.empty() && (m_options & allow_thsep) != 0;
-
             const CharT decimal_point = numpunct.decimal_point();
             const CharT thsep = numpunct.thousands_sep();
-            bool has_hit_decimal_point = false;
 
-            for (size_t i = 0; i < source.size(); ++i) {
-                if (is_ascii_space(buffer[i])) {
-                    break;
-                }
+            auto prepare = float_preparer<CharT>{};
+            prepare.prepare(source, use_thsep, thsep, decimal_point);
 
-                if (source[i] == decimal_point) {
-                    if (has_hit_decimal_point) {
-                        break;
-                    }
-                    buffer.push_back('.');
-                    indices.push_back(static_cast<char>(i));
-                    has_hit_decimal_point = true;
-                    continue;
-                }
-
-                if (source[i] == thsep) {
-                    if (use_thsep && !has_hit_decimal_point) {
-                        SCN_EXPECT(false);  // TODO: float thsep
-                        thsep_indices.push_back(static_cast<char>(i));
-                        continue;
-                    }
-                    break;
-                }
-
-                buffer.push_back(static_cast<char>(source[i]));
-                indices.push_back(static_cast<char>(i));
-            }
-
-            auto reader = float_classic_value_reader<char>{m_options};
-            auto buffer_view = std::string_view{buffer};
-            return reader.read(buffer_view, value)
-                .transform([&](auto buffer_it) {
-                    auto diff =
-                        ranges::distance(buffer_view.begin(), buffer_it);
-                    auto idx = indices[static_cast<size_t>(diff) - 1];
-                    return source.begin() + static_cast<std::ptrdiff_t>(idx) +
-                           1;
-                });
+            auto reader = float_classic_value_reader<CharT>{
+                static_cast<uint8_t>(m_options & ~allow_thsep)};
+            auto reader_input = std::basic_string_view<CharT>{prepare.output};
+            return reader.read(reader_input, value).and_then([&](auto it) {
+                return prepare.check_grouping_and_get_iterator(source, grouping,
+                                                               it);
+            });
         }
 
         template auto float_localized_value_reader<char>::read(string_view_type,
