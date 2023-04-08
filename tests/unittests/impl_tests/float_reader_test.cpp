@@ -1081,28 +1081,82 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueHex)
 
 template <typename CharT>
 struct numpunct_with_comma_thsep : std::numpunct<CharT> {
+    numpunct_with_comma_thsep(std::string s)
+        : std::numpunct<CharT>{}, g(std::move(s))
+    {
+    }
+
     CharT do_thousands_sep() const override
     {
         return CharT{','};
     }
     std::string do_grouping() const override
     {
-        return "\3";
+        return g;
     }
+
+    std::string g;
+};
+
+template <typename CharT>
+struct thsep_test_state {
+    thsep_test_state(std::string grouping)
+        : stdloc(std::locale::classic(),
+                 new numpunct_with_comma_thsep<CharT>{std::move(grouping)}),
+          locref(stdloc)
+    {
+        specs.thsep = true;
+    }
+
+    scn::detail::basic_format_specs<CharT> specs{};
+    std::locale stdloc;
+    scn::detail::locale_ref locref;
 };
 
 TYPED_TEST(FloatValueReaderTest, ThousandsSeparators)
 {
-    scn::detail::basic_format_specs<typename TestFixture::char_type> specs{};
-    specs.thsep = true;
-
-    auto stdloc = std::locale(
-        std::locale::classic(),
-        new numpunct_with_comma_thsep<typename TestFixture::char_type>{});
-    auto locref = scn::detail::locale_ref{stdloc};
+    auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
 
     auto [a, _, val] = this->simple_success_specs_and_locale_test(
-        "123,456.789", specs, locref);
+        "123,456.789", state.specs, state.locref);
     EXPECT_TRUE(a);
     EXPECT_TRUE(check_floating_eq(val, this->get_thsep_number()));
+}
+
+TYPED_TEST(FloatValueReaderTest, ThousandsSeparatorsWithInvalidGrouping)
+{
+    auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
+
+    auto [result, val] = this->simple_specs_and_locale_test(
+        "12,34,56.789", state.specs, state.locref);
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::invalid_scanned_value));
+}
+
+TYPED_TEST(FloatValueReaderTest, ExoticThousandsSeparators)
+{
+    if (!this->interface.is_localized()) {
+        return SUCCEED() << "This test only works with localized_interface";
+    }
+
+    auto state = thsep_test_state<typename TestFixture::char_type>{"\1\2"};
+
+    auto [a, _, val] = this->simple_success_specs_and_locale_test(
+        "1,23,45,6.789", state.specs, state.locref);
+    EXPECT_TRUE(a);
+    EXPECT_TRUE(check_floating_eq(val, this->get_thsep_number()));
+}
+
+TYPED_TEST(FloatValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
+{
+    if (!this->interface.is_localized()) {
+        return SUCCEED() << "This test only works with localized_interface";
+    }
+
+    auto state = thsep_test_state<typename TestFixture::char_type>{"\1\2"};
+
+    auto [result, val] = this->simple_specs_and_locale_test(
+        "123,456.789", state.specs, state.locref);
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::invalid_scanned_value));
 }

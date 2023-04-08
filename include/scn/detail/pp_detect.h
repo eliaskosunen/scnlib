@@ -458,10 +458,10 @@
 #endif
 
 #elif SCN_WINDOWS
-#define SCN_IS_BIG_ENDIAN -1
+#define SCN_IS_BIG_ENDIAN 0
 #else
 
-#if SCN_APSCN_APPLE
+#if SCN_APPLE
 #include <machine/endian.h>
 #elif defined(sun) || defined(__sun)
 #include <sys/byteorder.h>
