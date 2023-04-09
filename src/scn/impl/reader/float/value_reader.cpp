@@ -218,7 +218,8 @@ namespace scn {
                 iterator get_iterator(iterator output_it)
                 {
                     auto sv = std::basic_string_view<CharT>{output};
-                    auto diff = ranges::distance(sv.begin(), output_it);
+                    auto diff = ranges::distance(detail::to_address(sv.begin()),
+                                                 detail::to_address(output_it));
                     auto idx = indices[static_cast<size_t>(diff) - 1];
                     return input.begin() + static_cast<std::ptrdiff_t>(idx) + 1;
                 }

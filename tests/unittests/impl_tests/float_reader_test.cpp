@@ -531,10 +531,10 @@ protected:
         if constexpr (is_f32()) {
             return 123456.789f;
         }
-        else if constexpr (is_f64()) {
+        else if constexpr (is_double()) {
             return 123456.789;
         }
-        else if constexpr (is_f80() || is_f128()) {
+        else if constexpr (is_long_double()) {
             return 123456.789L;
         }
     }
