@@ -1129,8 +1129,9 @@ TYPED_TEST(FloatValueReaderTest, ThousandsSeparatorsWithInvalidGrouping)
 
     auto [result, val] = this->simple_specs_and_locale_test(
         "12,34,56.789", state.specs, state.locref);
-    EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::invalid_scanned_value));
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::invalid_scanned_value,
+        this->get_thsep_number()));
 }
 
 TYPED_TEST(FloatValueReaderTest, ExoticThousandsSeparators)
@@ -1157,6 +1158,7 @@ TYPED_TEST(FloatValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
 
     auto [result, val] = this->simple_specs_and_locale_test(
         "123,456.789", state.specs, state.locref);
-    EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::invalid_scanned_value));
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::invalid_scanned_value,
+        this->get_thsep_number()));
 }

@@ -263,15 +263,12 @@ namespace scn {
                     return {};
                 }
 
-                template <typename T>
                 scan_expected<iterator> check_grouping_and_get_iterator(
                     std::string_view grouping,
-                    iterator output_it,
-                    T& value)
+                    iterator output_it)
                 {
                     if (decimal_point_input_index != -1) {
                         if (auto e = check_grouping(grouping); !e) {
-                            value = static_cast<T>(0.0);
                             return unexpected(e);
                         }
                     }
@@ -685,8 +682,8 @@ namespace scn {
                 auto reader_input = std::string_view{prepare.output};
                 return do_read_without_thsep(reader, reader_input, value)
                     .and_then([&](auto it) {
-                        return prepare.check_grouping_and_get_iterator("\3", it,
-                                                                       value);
+                        return prepare.check_grouping_and_get_iterator("\3",
+                                                                       it);
                     });
             }
 
@@ -820,8 +817,7 @@ namespace scn {
                 static_cast<uint8_t>(m_options & ~allow_thsep)};
             auto reader_input = std::basic_string_view<CharT>{prepare.output};
             return reader.read(reader_input, value).and_then([&](auto it) {
-                return prepare.check_grouping_and_get_iterator(grouping, it,
-                                                               value);
+                return prepare.check_grouping_and_get_iterator(grouping, it);
             });
         }
 
