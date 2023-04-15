@@ -51,6 +51,7 @@ add_executable(scn_impl_tests
         impl_tests/copy_test.cpp
         impl_tests/float_reader_test.cpp
         impl_tests/int_source_reader_test.cpp
+        impl_tests/number_preparer_test.cpp
         impl_tests/read_code_point_test.cpp
         impl_tests/read_copying_test.cpp
         impl_tests/read_nocopy_test.cpp

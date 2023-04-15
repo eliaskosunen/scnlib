@@ -77,6 +77,7 @@ set(SCN_PRIVATE_HEADERS
 
         src/scn/impl/reader/reader.h
         src/scn/impl/reader/common.h
+        src/scn/impl/reader/number_preparer.h
 
         src/scn/impl/reader/code_unit_and_point_reader.h
         src/scn/impl/reader/bool_reader.h
@@ -84,8 +85,7 @@ set(SCN_PRIVATE_HEADERS
 
         src/scn/impl/reader/integer/reader.h
         src/scn/impl/reader/integer/source_reader.h
-        src/scn/impl/reader/integer/classic_value_reader.h
-        src/scn/impl/reader/integer/localized_value_reader.h
+        src/scn/impl/reader/integer/value_reader.h
 
         src/scn/impl/reader/float/reader.h
         src/scn/impl/reader/float/value_reader.h
@@ -114,15 +114,14 @@ set(SCN_PRIVATE_SOURCES
         src/scn/impl/algorithms/find_whitespace.cpp
 
         src/scn/impl/reader/common.cpp
+        src/scn/impl/reader/number_preparer.cpp
 
         src/scn/impl/reader/bool_reader.cpp
 
         src/scn/impl/reader/float/value_reader.cpp
 
         src/scn/impl/reader/integer/source_reader.cpp
-        src/scn/impl/reader/integer/classic_value_reader.cpp
-        src/scn/impl/reader/integer/localized_value_reader.cpp
-
+        src/scn/impl/reader/integer/value_reader.cpp
         )
 set(SCN_PRIVATE_SOURCES_WITH_IOSTREAMS
         )

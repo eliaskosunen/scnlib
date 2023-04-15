@@ -64,6 +64,11 @@ namespace scn {
         {
             return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
         }
+
+        constexpr bool is_ascii_char(wchar_t ch) SCN_NOEXCEPT
+        {
+            return ch >= 0 && ch <= 255;
+        }
     }  // namespace impl
 
     SCN_END_NAMESPACE

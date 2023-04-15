@@ -15,16 +15,22 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <scn/impl/reader/integer/classic_value_reader.h>
-
+#include <scn/impl/reader/integer/value_reader.h>
+#include <scn/impl/reader/number_preparer.h>
 #include <scn/impl/util/bits.h>
 
 #include <limits>
+#include "scn/impl/locale.h"
+#include "scn/util/expected.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+        ////////////////////////////////////
+        // classic
+        ////////////////////////////////////
+
         namespace {
             SCN_NODISCARD uint8_t _char_to_int(char ch)
             {
@@ -173,8 +179,7 @@ namespace scn {
                 const auto sign_result = get_sign(source);
                 if constexpr (std::is_signed_v<T>) {
                     if (sign_result.second == minus_sign &&
-                        (options &
-                         int_classic_value_reader_base::only_unsigned) != 0) {
+                        (options & int_value_reader_base::only_unsigned) != 0) {
                         // 'u' option -> negative values disallowed
                         SCN_UNLIKELY_ATTR
                         return unexpected_scan_error(
@@ -227,8 +232,7 @@ namespace scn {
                     return do_return(prefix_parse_result::keep_parsing);
                 }
 
-                if ((options &
-                     int_classic_value_reader_base::allow_base_prefix) != 0) {
+                if ((options & int_value_reader_base::allow_base_prefix) != 0) {
                     if (base_result.state ==
                             base_prefix_state::base_determined_from_prefix &&
                         base_result.parsed_base != base) {
@@ -669,9 +673,48 @@ namespace scn {
                 return {};
             }
 
+            template <typename T>
+            void store_value(const int_reader_state<T>& state,
+                             T& value,
+                             sign_type sign)
+            {
+                if (sign == minus_sign) {
+                    if (SCN_UNLIKELY(state.accumulator == state.abs_int_min)) {
+                        value = std::numeric_limits<T>::min();
+                    }
+                    else {
+                        SCN_MSVC_PUSH
+                        SCN_MSVC_IGNORE(
+                            4146)  // unary minus applied to unsigned
+                        value =
+                            static_cast<T>(-static_cast<T>(state.accumulator));
+                        SCN_MSVC_POP
+                    }
+                }
+                else {
+                    value = static_cast<T>(state.accumulator);
+                }
+            }
+            template <typename T>
+            void store_value_if_out_of_range(const scan_error& err,
+                                             T& value,
+                                             sign_type sign)
+            {
+                if (err.code() != scan_error::value_out_of_range) {
+                    return;
+                }
+
+                if (sign == minus_sign) {
+                    value = std::numeric_limits<T>::min();
+                }
+                else {
+                    value = std::numeric_limits<T>::max();
+                }
+            }
+
             template <typename CharT, typename T>
             scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>
-            do_read(const int_classic_value_reader_base& reader,
+            do_read(const int_value_reader_base& reader,
                     std::basic_string_view<CharT> source,
                     T& value,
                     sign_type sign)
@@ -683,20 +726,20 @@ namespace scn {
                 }
 
                 SCN_EXPECT(std::is_signed_v<T> || sign == plus_sign);
-                SCN_EXPECT(reader.base > 0);
+                SCN_EXPECT(reader.m_base > 0);
 
-                int_reader_state<T> state{reader.base, sign};
+                int_reader_state<T> state{reader.m_base, sign};
                 auto it = source.begin();
 
-                if (_char_to_int(*it) >= reader.base) {
+                if (_char_to_int(*it) >= reader.m_base) {
                     SCN_UNLIKELY_ATTR
                     return unexpected_scan_error(
                         scan_error::invalid_scanned_value,
                         "Invalid integer value");
                 }
 
-                if ((reader.options &
-                     int_classic_value_reader_base::allow_thsep) == 0) {
+                if ((reader.m_options & int_value_reader_base::allow_thsep) ==
+                    0) {
                     // No thsep
                     bool stop_reading = false;
                     SCN_UNUSED(stop_reading);
@@ -710,6 +753,8 @@ namespace scn {
                                 if (auto err = do_read_decimal_fast64<T>(
                                         state, it, source.end(), stop_reading);
                                     SCN_UNLIKELY(!err)) {
+                                    store_value_if_out_of_range(err, value,
+                                                                sign);
                                     return unexpected(err);
                                 }
                                 if constexpr (!can_do_fast64_multiple_times<
@@ -724,6 +769,7 @@ namespace scn {
                         if (const auto [keep_going, err] =
                                 do_single_char(*it, state);
                             SCN_UNLIKELY(!err)) {
+                            store_value_if_out_of_range(err, value, sign);
                             return unexpected(err);
                         }
                         else if (!keep_going) {
@@ -742,6 +788,7 @@ namespace scn {
                                     state, it, after_last_thsep_it,
                                     thousands_separators);
                             SCN_UNLIKELY(!err)) {
+                            store_value_if_out_of_range(err, value, sign);
                             return unexpected(err);
                         }
                         else if (!keep_going) {
@@ -753,28 +800,13 @@ namespace scn {
                         if (auto e = check_thousands_separators(
                                 thousands_separators);
                             SCN_UNLIKELY(!e)) {
+                            store_value(state, value, sign);
                             return unexpected(e);
                         }
                     }
                 }
 
-                if (sign == minus_sign) {
-                    if (SCN_UNLIKELY(state.accumulator == state.abs_int_min)) {
-                        value = std::numeric_limits<T>::min();
-                    }
-                    else {
-                        SCN_MSVC_PUSH
-                        SCN_MSVC_IGNORE(
-                            4146)  // unary minus applied to unsigned
-                        value =
-                            static_cast<T>(-static_cast<T>(state.accumulator));
-                        SCN_MSVC_POP
-                    }
-                }
-                else {
-                    value = static_cast<T>(state.accumulator);
-                }
-
+                store_value(state, value, sign);
                 return it;
             }
         }  // namespace
@@ -787,7 +819,7 @@ namespace scn {
         {
             SCN_EXPECT(!source.empty());
 
-            return parse_prefix<T>(source, options, base)
+            return parse_prefix<T>(source, m_options, m_base)
                 .and_then([&](auto result) {
                     if (result.first == prefix_parse_result::zero_parsed) {
                         return parse_zero(source, value);
@@ -797,28 +829,67 @@ namespace scn {
                 });
         }
 
-#define SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, IntT)    \
-    template auto int_classic_value_reader<CharT>::read(string_view_type, \
-                                                        IntT&)            \
+        ////////////////////////////////////
+        // localized
+        ////////////////////////////////////
+
+        template <typename CharT>
+        template <typename T>
+        auto int_localized_value_reader<CharT>::read(string_view_type source,
+                                                     T& value)
+            -> scan_expected<ranges::iterator_t<string_view_type>>
+        {
+            auto stdloc = m_locale.get<std::locale>();
+            const auto& numpunct =
+                get_or_add_facet<std::numpunct<CharT>>(stdloc);
+
+            const auto grouping = numpunct.grouping();
+            const bool use_thsep =
+                !grouping.empty() && (m_options & allow_thsep) != 0;
+            const CharT thsep = numpunct.thousands_sep();
+
+            auto prepare = int_preparer<CharT>{source};
+            if (use_thsep) {
+                prepare.prepare_with_thsep(thsep);
+            }
+            else {
+                prepare.prepare_without_thsep();
+            }
+
+            auto reader = int_classic_value_reader<CharT>{
+                m_options & static_cast<unsigned>(~allow_thsep), m_base};
+            return reader.read(prepare.get_output(), value)
+                .and_then([&](auto it) {
+                    return prepare.check_grouping_and_get_end_iterator(grouping,
+                                                                       it);
+                });
+        }
+
+#define SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, IntT)              \
+    template auto int_classic_value_reader<CharT>::read(string_view_type,   \
+                                                        IntT&)              \
+        ->scan_expected<ranges::iterator_t<string_view_type>>;              \
+    template auto int_localized_value_reader<CharT>::read(string_view_type, \
+                                                          IntT&)            \
         ->scan_expected<ranges::iterator_t<string_view_type>>;
 
-#define SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE(CharT)                  \
-    SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, signed char)    \
-    SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, short)          \
-    SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, int)            \
-    SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, long)           \
-    SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, long long)      \
-    SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, unsigned char)  \
-    SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, unsigned short) \
-    SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, unsigned int)   \
-    SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, unsigned long)  \
-    SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL(CharT, unsigned long long)
+#define SCN_DEFINE_INT_VALUE_READER_TEMPLATE(CharT)                  \
+    SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, signed char)    \
+    SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, short)          \
+    SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, int)            \
+    SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, long)           \
+    SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, long long)      \
+    SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, unsigned char)  \
+    SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, unsigned short) \
+    SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, unsigned int)   \
+    SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, unsigned long)  \
+    SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL(CharT, unsigned long long)
 
-        SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE(char)
-        SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE(wchar_t)
+        SCN_DEFINE_INT_VALUE_READER_TEMPLATE(char)
+        SCN_DEFINE_INT_VALUE_READER_TEMPLATE(wchar_t)
 
-#undef SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE
-#undef SCN_DEFINE_INT_CLASSIC_VALUE_READER_TEMPLATE_IMPL
+#undef SCN_DEFINE_INT_VALUE_READER_TEMPLATE
+#undef SCN_DEFINE_INT_VALUE_READER_TEMPLATE_IMPL
     }  // namespace impl
 
     SCN_END_NAMESPACE

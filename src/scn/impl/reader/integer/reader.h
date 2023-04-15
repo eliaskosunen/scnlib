@@ -17,21 +17,51 @@
 
 #pragma once
 
-#include <scn/impl/reader/integer/classic_value_reader.h>
-#include <scn/impl/reader/integer/localized_value_reader.h>
 #include <scn/impl/reader/integer/source_reader.h>
+#include <scn/impl/reader/integer/value_reader.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
         template <typename CharT>
-        class int_classic_reader_factory {
+        class int_reader_factory_base {
+        protected:
+            int_reader_factory_base(
+                const detail::basic_format_specs<CharT>& specs)
+                : m_specs(specs)
+            {
+            }
+
+            constexpr unsigned get_options() const SCN_NOEXCEPT
+            {
+                using opt_t = int_value_reader_base::options_type;
+                unsigned opt{};
+                if (m_specs.thsep) {
+                    opt |= opt_t::allow_thsep;
+                }
+                if (m_specs.type ==
+                    detail::presentation_type::int_unsigned_decimal) {
+                    opt |= opt_t::only_unsigned;
+                }
+                if (m_specs.type !=
+                    detail::presentation_type::int_arbitrary_base) {
+                    opt |= opt_t::allow_base_prefix;
+                }
+                return opt;
+            }
+
+            const detail::basic_format_specs<CharT>& m_specs;
+        };
+
+        template <typename CharT>
+        class int_classic_reader_factory
+            : private int_reader_factory_base<CharT> {
         public:
             int_classic_reader_factory(
                 std::basic_string<CharT>& buffer,
                 const detail::basic_format_specs<CharT>& s)
-                : m_buffer(buffer), m_specs(s)
+                : int_reader_factory_base<CharT>(s), m_buffer(buffer)
             {
             }
 
@@ -52,44 +82,26 @@ namespace scn {
             }
 
         private:
-            constexpr uint8_t get_options() const SCN_NOEXCEPT
-            {
-                using opt_t =
-                    typename int_classic_value_reader<CharT>::options_type;
-                uint8_t opt{};
-                if (m_specs.thsep) {
-                    opt |= opt_t::allow_thsep;
-                }
-                if (m_specs.type ==
-                    detail::presentation_type::int_unsigned_decimal) {
-                    opt |= opt_t::only_unsigned;
-                }
-                if (m_specs.type !=
-                    detail::presentation_type::int_arbitrary_base) {
-                    opt |= opt_t::allow_base_prefix;
-                }
-                return opt;
-            }
-
             constexpr int_classic_value_reader<CharT> make_value_reader() const
                 SCN_NOEXCEPT
             {
-                return {get_options(),
-                        static_cast<int8_t>(m_specs.get_base(0))};
+                return {this->get_options(), this->m_specs.get_base(0)};
             }
 
             std::basic_string<CharT>& m_buffer;
-            const detail::basic_format_specs<CharT>& m_specs;
         };
 
         template <typename CharT, typename T>
-        class int_localized_reader_factory {
+        class int_localized_reader_factory
+            : private int_reader_factory_base<CharT> {
         public:
             int_localized_reader_factory(
                 std::basic_string<CharT>& buffer,
                 const detail::basic_format_specs<CharT>& specs,
                 detail::locale_ref loc)
-                : m_buffer(buffer), m_specs(specs), m_loc(loc)
+                : int_reader_factory_base<CharT>(specs),
+                  m_buffer(buffer),
+                  m_loc(loc)
             {
             }
 
@@ -98,24 +110,23 @@ namespace scn {
                 return std::make_pair(
                     make_source_reader(),
                     int_localized_value_reader<CharT>{
-                        m_loc, static_cast<int8_t>(m_specs.get_base(0))});
+                        m_loc, this->get_options(), this->m_specs.get_base(0)});
             }
 
         private:
             constexpr int_localized_source_reader<CharT> make_source_reader()
                 const SCN_NOEXCEPT
             {
-                const int base = m_specs.get_base(16);
+                const int base = this->m_specs.get_base(16);
                 const bool allow_sign =
                     std::is_signed_v<T> &&
-                    m_specs.type !=
+                    this->m_specs.type !=
                         detail::presentation_type::int_unsigned_decimal;
                 return int_localized_source_reader<CharT>{m_buffer, m_loc, base,
                                                           allow_sign};
             }
 
             std::basic_string<CharT>& m_buffer;
-            const detail::basic_format_specs<CharT>& m_specs;
             detail::locale_ref m_loc;
         };
 

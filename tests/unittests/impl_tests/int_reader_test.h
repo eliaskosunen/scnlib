@@ -93,8 +93,14 @@ public:
     void make_value_reader_from_specs(
         const scn::detail::basic_format_specs<CharT>& specs) override
     {
+        make_value_reader_from_specs_with_locale(specs, {});
+    }
+    void make_value_reader_from_specs_with_locale(
+        const scn::detail::basic_format_specs<CharT>& specs,
+        scn::detail::locale_ref loc) override
+    {
         auto [_, reader] = scn::impl::int_localized_reader_factory<CharT, IntT>(
-                               this->buffer, specs, scn::detail::locale_ref{})
+                               this->buffer, specs, loc)
                                .make();
         m_reader =
             std::make_unique<scn::impl::int_localized_value_reader<CharT>>(
@@ -242,6 +248,11 @@ protected:
         return oss.str();
     }
 
+    static constexpr auto get_max_value()
+    {
+        return (std::numeric_limits<int_type>::max)();
+    }
+
     static auto get_max()
     {
         constexpr auto val = (std::numeric_limits<int_type>::max)();
@@ -321,7 +332,7 @@ protected:
             return std::make_pair(int_type{1234}, "1234"sv);
         }
         else {
-            return std::make_pair(int_type{}, "1234"sv);
+            return std::make_pair(get_max_value(), "1234"sv);
         }
     }
 
@@ -336,7 +347,7 @@ protected:
             return std::make_pair(int_type{12345678}, "12345678"sv);
         }
         else {
-            return std::make_pair(int_type{}, "12345678"sv);
+            return std::make_pair(get_max_value(), "12345678"sv);
         }
     }
 
@@ -351,7 +362,7 @@ protected:
             return std::make_pair(int_type{123456789}, "123456789"sv);
         }
         else {
-            return std::make_pair(int_type{}, "123456789"sv);
+            return std::make_pair(get_max_value(), "123456789"sv);
         }
     }
 
@@ -367,7 +378,7 @@ protected:
             return std::make_pair(int_type{1122334455667788}, s);
         }
         else {
-            return std::make_pair(int_type{}, s);
+            return std::make_pair(get_max_value(), s);
         }
     }
 
@@ -383,7 +394,37 @@ protected:
             return std::make_pair(int_type{11223344556677889}, s);
         }
         else {
-            return std::make_pair(int_type{}, s);
+            return std::make_pair(get_max_value(), s);
+        }
+    }
+
+    template <bool IsAllowed, typename Digits>
+    testing::AssertionResult digits_test(const Digits& digits)
+    {
+        if constexpr (IsAllowed) {
+            const auto [val, src] = digits;
+            return simple_default_test(src, val);
+        }
+        else {
+            const auto [of_value, src] = digits;
+            const auto [result, val] = simple_test(src);
+            return check_failure_with_code_and_value(
+                result, val, scn::scan_error::value_out_of_range, of_value);
+        }
+    }
+
+    static constexpr bool has_thsep_value()
+    {
+        return static_cast<uint64_t>(std::numeric_limits<int_type>::max()) >=
+               123456ull;
+    }
+    static auto get_thsep_value()
+    {
+        if constexpr (has_thsep_value()) {
+            return int_type{123456};
+        }
+        else {
+            return get_max_value();
         }
     }
 
@@ -445,6 +486,30 @@ protected:
         return testing::AssertionSuccess();
     }
 
+    template <typename Result>
+    [[nodiscard]] testing::AssertionResult check_failure_with_code_and_value(
+        const Result& result,
+        int_type val,
+        enum scn::scan_error::code c,
+        int_type expected_value) const
+    {
+        if (result) {
+            return testing::AssertionFailure()
+                   << "Result good, expected failure";
+        }
+        if (result.error().code() != c) {
+            return testing::AssertionFailure()
+                   << "Result failed with wrong error code: "
+                   << result.error().code() << ", expected " << c;
+        }
+        if (val != expected_value) {
+            return testing::AssertionFailure()
+                   << "Ints not equal: Got " << val << ", expected "
+                   << expected_value;
+        }
+        return testing::AssertionSuccess();
+    }
+
     template <typename Source, typename... ReaderArgs>
     auto simple_test(Source&& source, ReaderArgs&&... args)
     {
@@ -460,8 +525,16 @@ protected:
         Source&& source,
         const scn::detail::basic_format_specs<char_type>& specs)
     {
+        return simple_specs_and_locale_test(SCN_FWD(source), specs, {});
+    }
+    template <typename Source>
+    auto simple_specs_and_locale_test(
+        Source&& source,
+        const scn::detail::basic_format_specs<char_type>& specs,
+        scn::detail::locale_ref loc)
+    {
         this->set_source(SCN_FWD(source));
-        this->interface.make_value_reader_from_specs(specs);
+        this->interface.make_value_reader_from_specs_with_locale(specs, loc);
 
         int_type val{};
         auto result = this->interface.read(widened_source.value(), val);
@@ -484,8 +557,16 @@ protected:
         Source&& source,
         const scn::detail::basic_format_specs<char_type>& specs)
     {
+        return simple_success_specs_and_locale_test(SCN_FWD(source), specs, {});
+    }
+    template <typename Source>
+    auto simple_success_specs_and_locale_test(
+        Source&& source,
+        const scn::detail::basic_format_specs<char_type>& specs,
+        scn::detail::locale_ref loc)
+    {
         this->set_source(SCN_FWD(source));
-        this->interface.make_value_reader_from_specs(specs);
+        this->interface.make_value_reader_from_specs_with_locale(specs, loc);
 
         int_type val{};
         auto result = this->interface.read(widened_source.value(), val);
@@ -505,13 +586,15 @@ protected:
     scn::detail::basic_format_specs<char_type>
     make_format_specs_with_presentation_and_base(
         scn::detail::presentation_type type,
-        uint8_t arb_base = 0) const
+        uint8_t arb_base = 0,
+        bool thsep = false) const
     {
         scn::detail::basic_format_specs<char_type> specs{};
         specs.type = type;
         SCN_GCC_PUSH
         SCN_GCC_IGNORE("-Wconversion")
         specs.arbitrary_base = arb_base;
+        specs.thsep = thsep;
         SCN_GCC_POP
         return specs;
     }
@@ -541,13 +624,11 @@ TYPED_TEST_P(IntValueReaderTest, Negative)
         EXPECT_TRUE(this->simple_default_test(src, val));
     }
     else {
-        const auto [_1, src] = this->get_neg();
-        const auto [result, _2] = this->simple_test(src);
-        ASSERT_FALSE(result);
-        EXPECT_EQ(result.error().code(),
-                  scn::scan_error::invalid_scanned_value);
-        SCN_UNUSED(_1);
-        SCN_UNUSED(_2);
+        const auto [_, src] = this->get_neg();
+        const auto [result, val] = this->simple_test(src);
+        EXPECT_TRUE(this->check_failure_with_code(
+            result, val, scn::scan_error::invalid_scanned_value));
+        SCN_UNUSED(_);
     }
 }
 
@@ -649,9 +730,10 @@ TYPED_TEST_P(IntValueReaderTest, Max)
 TYPED_TEST_P(IntValueReaderTest, Overflow)
 {
     const auto src = this->get_overflow();
-    const auto [result, _] = this->simple_test(src);
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
+    const auto [result, val] = this->simple_test(src);
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::value_out_of_range,
+        std::numeric_limits<typename TestFixture::int_type>::max()));
 }
 TYPED_TEST_P(IntValueReaderTest, Underflow)
 {
@@ -660,85 +742,36 @@ TYPED_TEST_P(IntValueReaderTest, Underflow)
     }
 
     const auto src = this->get_underflow();
-    const auto [result, _] = this->simple_test(src);
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
+    const auto [result, val] = this->simple_test(src);
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::value_out_of_range,
+        std::numeric_limits<typename TestFixture::int_type>::min()));
 }
 
 TYPED_TEST_P(IntValueReaderTest, FourDigits)
 {
-    if constexpr (TestFixture::has_four_digits()) {
-        const auto [val, src] = this->get_four_digits();
-        EXPECT_TRUE(this->simple_default_test(src, val));
-    }
-    else {
-        const auto [_1, src] = this->get_four_digits();
-        const auto [result, _2] = this->simple_test(src);
-        ASSERT_FALSE(result);
-        EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
-        SCN_UNUSED(_1);
-        SCN_UNUSED(_2);
-    }
+    EXPECT_TRUE(this->template digits_test<TestFixture::has_four_digits()>(
+        this->get_four_digits()));
 }
 TYPED_TEST_P(IntValueReaderTest, EightDigits)
 {
-    if constexpr (TestFixture::has_eight_digits()) {
-        const auto [val, src] = this->get_eight_digits();
-        EXPECT_TRUE(this->simple_default_test(src, val));
-    }
-    else {
-        const auto [_1, src] = this->get_eight_digits();
-        const auto [result, _2] = this->simple_test(src);
-        ASSERT_FALSE(result);
-        EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
-        SCN_UNUSED(_1);
-        SCN_UNUSED(_2);
-    }
+    EXPECT_TRUE(this->template digits_test<TestFixture::has_eight_digits()>(
+        this->get_eight_digits()));
 }
 TYPED_TEST_P(IntValueReaderTest, NineDigits)
 {
-    if constexpr (TestFixture::has_nine_digits()) {
-        const auto [val, src] = this->get_nine_digits();
-        EXPECT_TRUE(this->simple_default_test(src, val));
-    }
-    else {
-        const auto [_1, src] = this->get_nine_digits();
-        const auto [result, _2] = this->simple_test(src);
-        ASSERT_FALSE(result);
-        EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
-        SCN_UNUSED(_1);
-        SCN_UNUSED(_2);
-    }
+    EXPECT_TRUE(this->template digits_test<TestFixture::has_nine_digits()>(
+        this->get_nine_digits()));
 }
 TYPED_TEST_P(IntValueReaderTest, SixteenDigits)
 {
-    if constexpr (TestFixture::has_sixteen_digits()) {
-        const auto [val, src] = this->get_sixteen_digits();
-        EXPECT_TRUE(this->simple_default_test(src, val));
-    }
-    else {
-        const auto [_1, src] = this->get_sixteen_digits();
-        const auto [result, _2] = this->simple_test(src);
-        ASSERT_FALSE(result);
-        EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
-        SCN_UNUSED(_1);
-        SCN_UNUSED(_2);
-    }
+    EXPECT_TRUE(this->template digits_test<TestFixture::has_sixteen_digits()>(
+        this->get_sixteen_digits()));
 }
 TYPED_TEST_P(IntValueReaderTest, SeventeenDigits)
 {
-    if constexpr (TestFixture::has_seventeen_digits()) {
-        const auto [val, src] = this->get_seventeen_digits();
-        EXPECT_TRUE(this->simple_default_test(src, val));
-    }
-    else {
-        const auto [_1, src] = this->get_seventeen_digits();
-        const auto [result, _2] = this->simple_test(src);
-        ASSERT_FALSE(result);
-        EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
-        SCN_UNUSED(_1);
-        SCN_UNUSED(_2);
-    }
+    EXPECT_TRUE(this->template digits_test<TestFixture::has_seventeen_digits()>(
+        this->get_seventeen_digits()));
 }
 
 TYPED_TEST_P(IntValueReaderTest, StartsAsDecimalNumber)
@@ -756,22 +789,22 @@ TYPED_TEST_P(IntValueReaderTest, StartsAsDecimalNumber)
 
 TYPED_TEST_P(IntValueReaderTest, Nonsense)
 {
-    auto [result, _] = this->simple_test("helloworld");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
+    auto [result, val] = this->simple_test("helloworld");
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::invalid_scanned_value));
 }
 
 TYPED_TEST_P(IntValueReaderTest, OnlyPlusSign)
 {
-    auto [result, _] = this->simple_test("+");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
+    auto [result, val] = this->simple_test("+");
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::invalid_scanned_value));
 }
 TYPED_TEST_P(IntValueReaderTest, OnlyMinusSign)
 {
-    auto [result, _] = this->simple_test("-");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
+    auto [result, val] = this->simple_test("-");
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::invalid_scanned_value));
 }
 
 TYPED_TEST_P(IntValueReaderTest, DISABLED_OnlyHexPrefix)
@@ -796,6 +829,106 @@ TYPED_TEST_P(IntValueReaderTest, InputWithNullBytes)
     EXPECT_EQ(val, 1);
     EXPECT_EQ(scn::detail::to_address(*result),
               scn::detail::to_address(this->widened_source->begin() + 1));
+}
+
+template <typename CharT>
+struct numpunct_with_comma_thsep : std::numpunct<CharT> {
+    numpunct_with_comma_thsep(std::string s)
+        : std::numpunct<CharT>{}, g(std::move(s))
+    {
+    }
+
+    CharT do_thousands_sep() const override
+    {
+        return CharT{','};
+    }
+    std::string do_grouping() const override
+    {
+        return g;
+    }
+
+    std::string g;
+};
+
+template <typename CharT>
+struct thsep_test_state {
+    thsep_test_state(std::string grouping)
+        : stdloc(std::locale::classic(),
+                 new numpunct_with_comma_thsep<CharT>{std::move(grouping)}),
+          locref(stdloc)
+    {
+        specs.thsep = true;
+    }
+
+    scn::detail::basic_format_specs<CharT> specs{};
+    std::locale stdloc;
+    scn::detail::locale_ref locref;
+};
+
+TYPED_TEST_P(IntValueReaderTest, ThousandsSeparators)
+{
+    if constexpr (!TestFixture::has_thsep_value()) {
+        return SUCCEED() << "Type too small to hold '123,456'";
+    }
+
+    auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
+
+    auto [a, _, val] = this->simple_success_specs_and_locale_test(
+        "123,456", state.specs, state.locref);
+    EXPECT_TRUE(a);
+    EXPECT_EQ(val, this->get_thsep_value());
+}
+
+TYPED_TEST_P(IntValueReaderTest, ThousandsSeparatorsWithInvalidGrouping)
+{
+    if constexpr (!TestFixture::has_thsep_value()) {
+        return SUCCEED() << "Type too small to hold '123,456'";
+    }
+
+    auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
+
+    auto [result, val] = this->simple_specs_and_locale_test(
+        "12,34,56", state.specs, state.locref);
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::invalid_scanned_value,
+        this->get_thsep_value()));
+}
+
+TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparators)
+{
+    if constexpr (!TestFixture::has_thsep_value()) {
+        return SUCCEED() << "Type too small to hold '123,456'";
+    }
+
+    if (!this->interface.is_localized()) {
+        return SUCCEED() << "This test only works with localized_interface";
+    }
+
+    auto state = thsep_test_state<typename TestFixture::char_type>{"\1\2"};
+
+    auto [a, _, val] = this->simple_success_specs_and_locale_test(
+        "1,23,45,6", state.specs, state.locref);
+    EXPECT_TRUE(a);
+    EXPECT_EQ(val, this->get_thsep_value());
+}
+
+TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
+{
+    if constexpr (!TestFixture::has_thsep_value()) {
+        return SUCCEED() << "Type too small to hold '123,456'";
+    }
+
+    if (!this->interface.is_localized()) {
+        return SUCCEED() << "This test only works with localized_interface";
+    }
+
+    auto state = thsep_test_state<typename TestFixture::char_type>{"\1\2"};
+
+    auto [result, val] = this->simple_specs_and_locale_test(
+        "123,456", state.specs, state.locref);
+    EXPECT_TRUE(this->check_failure_with_code_and_value(
+        result, val, scn::scan_error::invalid_scanned_value,
+        this->get_thsep_value()));
 }
 
 REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
@@ -824,4 +957,8 @@ REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
                             OnlyPlusSign,
                             OnlyMinusSign,
                             DISABLED_OnlyHexPrefix,
-                            InputWithNullBytes);
+                            InputWithNullBytes,
+                            ThousandsSeparators,
+                            ThousandsSeparatorsWithInvalidGrouping,
+                            ExoticThousandsSeparators,
+                            ExoticThousandsSeparatorsWithInvalidGrouping);

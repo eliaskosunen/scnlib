@@ -16,6 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/impl/reader/float/value_reader.h>
+#include <scn/impl/reader/number_preparer.h>
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
@@ -176,111 +177,6 @@ namespace scn {
                 return ld == 0.0L || ld == -0.0L;
             }
             SCN_GCC_COMPAT_POP
-
-            template <typename CharT>
-            struct float_preparer {
-                float_preparer(std::basic_string_view<CharT> i) : input(i) {}
-
-                void prepare(bool use_thsep, CharT thsep, CharT decimal_point)
-                {
-                    for (size_t i = 0; i < input.size(); ++i) {
-                        if (is_ascii_space(input[i])) {
-                            break;
-                        }
-
-                        if (input[i] == decimal_point) {
-                            if (decimal_point_input_index != -1) {
-                                break;
-                            }
-                            output.push_back(CharT{'.'});
-                            indices.push_back(static_cast<char>(i));
-                            decimal_point_input_index =
-                                static_cast<std::ptrdiff_t>(i);
-                            continue;
-                        }
-
-                        if (use_thsep && input[i] == thsep) {
-                            if (decimal_point_input_index == -1) {
-                                thsep_indices.push_back(static_cast<char>(i));
-                                continue;
-                            }
-                            break;
-                        }
-
-                        output.push_back(input[i]);
-                        indices.push_back(static_cast<char>(i));
-                    }
-                }
-
-                using iterator =
-                    typename std::basic_string_view<CharT>::iterator;
-
-                iterator get_iterator(iterator output_it)
-                {
-                    auto sv = std::basic_string_view<CharT>{output};
-                    auto diff = ranges::distance(detail::to_address(sv.begin()),
-                                                 detail::to_address(output_it));
-                    auto idx = indices[static_cast<size_t>(diff) - 1];
-                    return input.begin() + static_cast<std::ptrdiff_t>(idx) + 1;
-                }
-
-                void transform_thsep_indices()
-                {
-                    SCN_EXPECT(decimal_point_input_index != -1);
-
-                    auto last_thsep_index = decimal_point_input_index;
-                    for (auto thsep_it = thsep_indices.rbegin();
-                         thsep_it != thsep_indices.rend(); ++thsep_it) {
-                        auto tmp = *thsep_it;
-                        *thsep_it =
-                            static_cast<char>(last_thsep_index - tmp - 1);
-                        last_thsep_index = static_cast<std::ptrdiff_t>(tmp);
-                    }
-                }
-
-                scan_error check_grouping(std::string_view grouping)
-                {
-                    transform_thsep_indices();
-
-                    auto thsep_it = thsep_indices.rbegin();
-                    for (auto grouping_it = grouping.begin();
-                         grouping_it != grouping.end() &&
-                         thsep_it != thsep_indices.rend();
-                         ++grouping_it, ++thsep_it) {
-                        if (*thsep_it != *grouping_it) {
-                            return {scan_error::invalid_scanned_value,
-                                    "Invalid thousands separator grouping"};
-                        }
-                    }
-
-                    for (; thsep_it != thsep_indices.rend(); ++thsep_it) {
-                        if (*thsep_it != grouping.back()) {
-                            return {scan_error::invalid_scanned_value,
-                                    "Invalid thousands separator grouping"};
-                        }
-                    }
-
-                    return {};
-                }
-
-                scan_expected<iterator> check_grouping_and_get_iterator(
-                    std::string_view grouping,
-                    iterator output_it)
-                {
-                    if (decimal_point_input_index != -1) {
-                        if (auto e = check_grouping(grouping); !e) {
-                            return unexpected(e);
-                        }
-                    }
-
-                    return get_iterator(output_it);
-                }
-
-                std::basic_string<CharT> output;
-                std::string indices, thsep_indices;
-                std::basic_string_view<CharT> input;
-                std::ptrdiff_t decimal_point_input_index{-1};
-            };
         }  // namespace
 
         ////////////////////////////////////////////////////////////////////////
@@ -677,13 +573,13 @@ namespace scn {
                 -> scan_expected<ranges::iterator_t<std::string_view>>
             {
                 float_preparer<char> prepare{source};
-                prepare.prepare(true, ',', '.');
+                prepare.prepare_with_thsep(',', '.');
 
-                auto reader_input = std::string_view{prepare.output};
-                return do_read_without_thsep(reader, reader_input, value)
+                return do_read_without_thsep(reader, prepare.get_output(),
+                                             value)
                     .and_then([&](auto it) {
-                        return prepare.check_grouping_and_get_iterator("\3",
-                                                                       it);
+                        return prepare.check_grouping_and_get_end_iterator("\3",
+                                                                           it);
                     });
             }
 
@@ -714,7 +610,7 @@ namespace scn {
                     });
             }
 
-            ranges::iterator_t<std::wstring_view> get_corresponding_iterator(
+            ranges::iterator_t<std::wstring_view> get_iterator(
                 std::wstring_view wide_input,
                 std::string_view utf8_input,
                 std::size_t utf8_count)
@@ -750,7 +646,7 @@ namespace scn {
 
                 return do_read(reader, *utf8_input, value)
                     .transform([&source, utf8_input](auto it) {
-                        return get_corresponding_iterator(
+                        return get_iterator(
                             source, *utf8_input,
                             static_cast<std::size_t>(ranges::distance(
                                 detail::to_address(utf8_input->begin()),
@@ -811,16 +707,20 @@ namespace scn {
             const CharT thsep = numpunct.thousands_sep();
 
             auto prepare = float_preparer<CharT>{source};
-            prepare.prepare(use_thsep, thsep, decimal_point);
+            if (use_thsep) {
+                prepare.prepare_with_thsep(thsep, decimal_point);
+            }
+            else {
+                prepare.prepare_without_thsep(decimal_point);
+            }
 
             auto reader = float_classic_value_reader<CharT>{
                 static_cast<uint8_t>(m_options & ~allow_thsep)};
-            auto reader_input = std::basic_string_view<CharT>{prepare.output};
-            SCN_UNUSED(reader_input);
-
-            return reader.read(reader_input, value).and_then([&](auto it) {
-                return prepare.check_grouping_and_get_iterator(grouping, it);
-            });
+            return reader.read(prepare.get_output(), value)
+                .and_then([&](auto it) {
+                    return prepare.check_grouping_and_get_end_iterator(grouping,
+                                                                       it);
+                });
         }
 
         template auto float_localized_value_reader<char>::read(string_view_type,
