@@ -171,7 +171,7 @@ namespace scn {
             {
                 return d == 0.0 || d == -0.0;
             }
-            constexpr bool is_float_zero(long double ld)
+            SCN_MAYBE_UNUSED constexpr bool is_float_zero(long double ld)
             {
                 return ld == 0.0L || ld == -0.0L;
             }
@@ -816,6 +816,8 @@ namespace scn {
             auto reader = float_classic_value_reader<CharT>{
                 static_cast<uint8_t>(m_options & ~allow_thsep)};
             auto reader_input = std::basic_string_view<CharT>{prepare.output};
+            SCN_UNUSED(reader_input);
+
             return reader.read(reader_input, value).and_then([&](auto it) {
                 return prepare.check_grouping_and_get_iterator(grouping, it);
             });
