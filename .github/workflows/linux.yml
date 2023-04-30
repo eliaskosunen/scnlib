@@ -27,6 +27,7 @@ jobs:
         os: [ 22.04, 20.04 ]
         std: [ 17, 20 ]
         cxx:
+          - g++-13
           - g++-12
           - g++-11
           - g++-10
@@ -109,6 +110,9 @@ jobs:
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt-get --allow-unauthenticated -yq update
           
+          if [[ "${CXX}" == "g++-13" ]]; then
+            ${APT_INSTALL} g++-13
+          fi
           if [[ "${CXX}" == "g++-12" ]]; then
             ${APT_INSTALL} g++-12
           fi

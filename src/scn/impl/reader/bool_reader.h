@@ -168,6 +168,8 @@ namespace scn {
             static constexpr unsigned make_flags(
                 const detail::basic_format_specs<CharT>& specs)
             {
+                SCN_GCC_COMPAT_PUSH
+                SCN_GCC_COMPAT_IGNORE("-Wswitch-enum")
                 switch (specs.type) {
                     case detail::presentation_type::none:
                         return bool_value_reader<CharT>::allow_text |
@@ -183,6 +185,7 @@ namespace scn {
                         SCN_EXPECT(false);
                         SCN_UNREACHABLE;
                 }
+                SCN_GCC_COMPAT_POP
             }
         };
 
