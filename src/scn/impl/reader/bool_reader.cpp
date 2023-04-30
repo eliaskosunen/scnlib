@@ -23,28 +23,21 @@ namespace scn {
     namespace impl {
         namespace {
             template <typename CharT>
-            constexpr bool do_allow_text(uint8_t f)
+            constexpr bool do_allow_text(unsigned f)
             {
-                return (f & static_cast<uint8_t>(
-                                bool_value_reader<CharT>::flags::allow_text)) !=
-                       0;
+                return (f & bool_value_reader<CharT>::allow_text) != 0;
             }
 
             template <typename CharT>
-            constexpr bool do_allow_numeric(uint8_t f)
+            constexpr bool do_allow_numeric(unsigned f)
             {
-                return (f &
-                        static_cast<uint8_t>(
-                            bool_value_reader<CharT>::flags::allow_numeric)) !=
-                       0;
+                return (f & bool_value_reader<CharT>::allow_numeric) != 0;
             }
 
             template <typename CharT>
-            constexpr bool do_use_localized_numpunct(uint8_t f)
+            constexpr bool do_use_localized_numpunct(unsigned f)
             {
-                return (f & static_cast<uint8_t>(
-                                bool_value_reader<
-                                    CharT>::flags::use_localized_numpunct)) !=
+                return (f & bool_value_reader<CharT>::use_localized_numpunct) !=
                        0;
             }
         }  // namespace

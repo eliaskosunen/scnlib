@@ -888,6 +888,20 @@ namespace scn {
                 return handler.on_error("Invalid type specifier for pointer");
             }
         }
+
+        template <typename CharT, typename Handler>
+        constexpr void check_bool_type_specs(
+            const basic_format_specs<CharT>& specs,
+            Handler&& handler)
+        {
+            check_disallow_thsep(specs, handler);
+            if (specs.type != presentation_type::none &&
+                specs.type != presentation_type::string &&
+                specs.type != presentation_type::int_generic) {
+                SCN_UNLIKELY_ATTR
+                return handler.on_error("Invalid type specifier for boolean");
+            }
+        }
     }  // namespace detail
 
     SCN_END_NAMESPACE

@@ -97,11 +97,8 @@ namespace scn {
                     break;
 
                 case detail::arg_type::bool_type:
-                    if (specs.type == detail::presentation_type::none ||
-                        specs.type == detail::presentation_type::string) {
-                        break;
-                    }
-                    SCN_FALLTHROUGH;
+                    detail::check_bool_type_specs(specs, checker);
+                    break;
 
                 case detail::arg_type::schar_type:
                 case detail::arg_type::short_type:

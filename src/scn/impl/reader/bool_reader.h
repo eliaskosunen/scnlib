@@ -19,6 +19,7 @@
 
 #include <scn/detail/scanner.h>
 #include <scn/impl/reader/common.h>
+#include "scn/detail/format_string_parser.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -31,7 +32,7 @@ namespace scn {
             using string_view_type = std::basic_string_view<char_type>;
             using iterator = ranges::iterator_t<string_view_type>;
 
-            enum class flags : uint8_t {
+            enum flags {
                 allow_text = 1,
                 allow_numeric = 2,
                 use_localized_numpunct = 4,
@@ -42,7 +43,8 @@ namespace scn {
                 : m_locale(loc)
             {
             }
-            constexpr bool_value_reader(uint8_t f, detail::locale_ref loc)
+            explicit constexpr bool_value_reader(unsigned f,
+                                                 detail::locale_ref loc = {})
                 : m_flags(f), m_locale(loc)
             {
             }
@@ -78,8 +80,7 @@ namespace scn {
                 }
             }
 
-            uint8_t m_flags{static_cast<uint8_t>(flags::allow_text) |
-                            static_cast<uint8_t>(flags::allow_numeric)};
+            unsigned m_flags{allow_text | allow_numeric};
             detail::locale_ref m_locale{};
         };
 
@@ -121,9 +122,7 @@ namespace scn {
                 const detail::basic_format_specs<CharT>& specs,
                 reader_error_handler& eh)
             {
-                // TODO
-                SCN_UNUSED(specs);
-                SCN_UNUSED(eh);
+                return detail::check_bool_type_specs(specs, eh);
             }
 
             auto make_default_classic_readers() const
@@ -142,31 +141,48 @@ namespace scn {
             auto make_specs_classic_readers(
                 const detail::basic_format_specs<CharT>& specs) const
             {
-                // TODO: specs
-                SCN_UNUSED(specs);
                 return std::make_pair(
                     simple_classic_source_reader<CharT>{this->buffer},
-                    bool_value_reader<CharT>{});
+                    bool_value_reader<CharT>{make_flags(specs)});
             }
             auto make_specs_userlocale_readers(
                 const detail::basic_format_specs<CharT>& specs,
                 detail::locale_ref loc) const
             {
-                // TODO: specs
-                SCN_UNUSED(specs);
                 return std::make_pair(
                     simple_localized_source_reader<CharT>{loc, this->buffer},
-                    bool_value_reader<CharT>{loc});
+                    bool_value_reader<CharT>{make_flags(specs), loc});
             }
             auto make_specs_localized_readers(
                 const detail::basic_format_specs<CharT>& specs,
                 detail::locale_ref loc) const
             {
-                // TODO: specs
-                SCN_UNUSED(specs);
                 return std::make_pair(
                     simple_localized_source_reader<CharT>{loc, this->buffer},
-                    bool_value_reader<CharT>{loc});
+                    bool_value_reader<CharT>{
+                        make_flags(specs) |
+                            bool_value_reader<CharT>::use_localized_numpunct,
+                        loc});
+            }
+
+            static constexpr unsigned make_flags(
+                const detail::basic_format_specs<CharT>& specs)
+            {
+                switch (specs.type) {
+                    case detail::presentation_type::none:
+                        return bool_value_reader<CharT>::allow_text |
+                               bool_value_reader<CharT>::allow_numeric;
+
+                    case detail::presentation_type::string:
+                        return bool_value_reader<CharT>::allow_text;
+
+                    case detail::presentation_type::int_generic:
+                        return bool_value_reader<CharT>::allow_numeric;
+
+                    default:
+                        SCN_EXPECT(false);
+                        SCN_UNREACHABLE;
+                }
             }
         };
 
