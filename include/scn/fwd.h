@@ -159,8 +159,6 @@ namespace scn {
 
     template <typename ResultMappedRange>
     class scan_result;
-    template <typename ResultMappedRange, typename... Args>
-    class scan_result_tuple;
 
     // detail/scan.h
 

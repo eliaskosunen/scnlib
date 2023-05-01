@@ -28,14 +28,22 @@ namespace scn {
 
     namespace detail {
         template <typename SourceRange, typename ResultRange, typename... Args>
-        using scan_result_type = scan_result_tuple<
-            std::conditional_t<ranges::borrowed_range<SourceRange>,
-                               decltype(detail::map_scan_result_range(
-                                   SCN_DECLVAL(const SourceRange&),
-                                   SCN_DECLVAL(const ResultRange&))),
-                               ranges::dangling>,
-            Args...>;
-    }
+        using scan_result_type =
+            std::tuple<scan_result<decltype(map_scan_result_range(
+                           SCN_DECLVAL(SourceRange&&),
+                           SCN_DECLVAL(const ResultRange&)))>,
+                       Args...>;
+
+        template <typename Range, size_t... Is, typename... Args>
+        auto make_scan_result_impl(Range&& range,
+                                   std::index_sequence<Is...>,
+                                   std::tuple<Args...>&& values)
+        {
+            // lighter than tuple_cat
+            return std::tuple{scan_result{SCN_MOVE(range)},
+                              SCN_MOVE(std::get<Is>(values))...};
+        }
+    }  // namespace detail
 
     /**
      * Make value to be returned by scan().
@@ -80,18 +88,21 @@ namespace scn {
               typename ResultRange,
               typename Context,
               typename... Args>
-    detail::scan_result_type<SourceRange, ResultRange, Args...>
-    make_scan_result(SourceRange&& source,
-                     scan_result<ResultRange> result,
-                     scan_arg_store<Context, Args...>&& args)
+    auto make_scan_result(SourceRange&& source,
+                          scan_result<ResultRange> result,
+                          scan_arg_store<Context, Args...>&& args)
     {
         auto result_range =
-            detail::map_scan_result_range(source, result.range());
+            detail::map_scan_result_range(SCN_FWD(source), result.range());
+
         if (SCN_LIKELY(result.good())) {
-            return {scan_result{SCN_MOVE(result_range), {}},
-                    SCN_MOVE(args.args())};
+            return detail::make_scan_result_impl(
+                SCN_MOVE(result_range),
+                std::make_index_sequence<sizeof...(Args)>{},
+                SCN_MOVE(args.args()));
         }
-        return {scan_result{SCN_MOVE(result_range), result.error()}, {}};
+        return std::tuple{scan_result{SCN_MOVE(result_range), result.error()},
+                          Args()...};
     }
 
     namespace detail {
@@ -216,7 +227,7 @@ namespace scn {
                 detail::map_scan_result_range(SCN_FWD(source), result.range());
             return scan_result_type<Source, decltype(result_range), T>{
                 scan_result{SCN_MOVE(result_range), result.error()},
-                std::tuple<T>{SCN_MOVE(value)}};
+                SCN_MOVE(value)};
         }
     }  // namespace detail
 
@@ -240,9 +251,8 @@ namespace scn {
         scn::istreambuf_view& internal_narrow_stdin();
 
         template <typename... Args, typename Source, typename Format>
-        scan_result_tuple<stdin_range_marker, Args...> input_impl(
-            Source& source,
-            Format format)
+        std::tuple<stdin_range_marker, Args...> input_impl(Source& source,
+                                                           Format format)
         {
             auto range = scan_map_input_range(source);
             auto args = make_scan_args<decltype(range), Args...>({});

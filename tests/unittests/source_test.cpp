@@ -21,6 +21,9 @@
 
 using ::testing::Test;
 
+template <typename R, typename... Args>
+using scan_result_tuple_helper = std::tuple<scn::scan_result<R>, Args...>;
+
 TEST(SourceTest, Simple)
 {
     auto [r, i] = scn::scan<int>("123", "{}");
@@ -42,10 +45,10 @@ using std::get;
 TEST(SourceTest, SourceIsStringLiteral)
 {
     auto result = scn::scan<int, double>("123 3.14", "{} {}");
-    static_assert(
-        std::is_same_v<decltype(result),
-                       scn::scan_result_tuple<std::string_view, int, double>>);
-    EXPECT_TRUE(result);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scan_result_tuple_helper<std::string_view, int, double>>);
+    // EXPECT_TRUE(result);
     EXPECT_TRUE(get<0>(result));
     EXPECT_TRUE(get<0>(result).range().empty());
     EXPECT_EQ(get<1>(result), 123);
@@ -55,10 +58,10 @@ TEST(SourceTest, SourceIsStringLiteral)
 TEST(SourceTest, SourceIsStringView)
 {
     auto result = scn::scan<int, double>(std::string_view{"123 3.14"}, "{} {}");
-    static_assert(
-        std::is_same_v<decltype(result),
-                       scn::scan_result_tuple<std::string_view, int, double>>);
-    EXPECT_TRUE(result);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scan_result_tuple_helper<std::string_view, int, double>>);
+    // EXPECT_TRUE(result);
     EXPECT_TRUE(get<0>(result));
     EXPECT_TRUE(get<0>(result).range().empty());
     EXPECT_EQ(get<1>(result), 123);
@@ -69,9 +72,9 @@ TEST(SourceTest, SourceIsStringLvalue)
 {
     auto source = std::string{"123 3.14"};
     auto result = scn::scan<int, double>(source, "{} {}");
-    static_assert(
-        std::is_same_v<decltype(result),
-                       scn::scan_result_tuple<std::string_view, int, double>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scan_result_tuple_helper<std::string_view, int, double>>);
     EXPECT_TRUE(get<0>(result));
     EXPECT_TRUE(get<0>(result).range().empty());
     EXPECT_EQ(get<1>(result), 123);
@@ -81,13 +84,11 @@ TEST(SourceTest, SourceIsStringLvalue)
 TEST(SourceTest, SourceIsStringRvalue)
 {
     auto result = scn::scan<int, double>(std::string{"123 3.14"}, "{} {}");
-    static_assert(std::is_same_v<
-                  decltype(result),
-                  scn::scan_result_tuple<scn::ranges::dangling, int, double>>);
+    static_assert(
+        std::is_same_v<
+            decltype(result),
+            scan_result_tuple_helper<scn::ranges::dangling, int, double>>);
 }
-
-template <typename>
-struct debug;
 
 TEST(SourceTest, SourceIsIstreamViewLvalue)
 {
@@ -99,7 +100,7 @@ TEST(SourceTest, SourceIsIstreamViewLvalue)
     static_assert(
         std::is_same_v<
             decltype(result),
-            scn::scan_result_tuple<scn::istreambuf_subrange, int, double>>);
+            scan_result_tuple_helper<scn::istreambuf_subrange, int, double>>);
 }
 
 TEST(SourceTest, SourceIsIstreamViewRvalue)
@@ -112,7 +113,7 @@ TEST(SourceTest, SourceIsIstreamViewRvalue)
     static_assert(
         std::is_same_v<
             decltype(result),
-            scn::scan_result_tuple<scn::istreambuf_subrange, int, double>>);
+            scan_result_tuple_helper<scn::istreambuf_subrange, int, double>>);
 }
 
 TEST(SourceTest, SourceIsIstreamRangeLvalue)
@@ -124,7 +125,7 @@ TEST(SourceTest, SourceIsIstreamRangeLvalue)
     static_assert(
         std::is_same_v<
             decltype(result),
-            scn::scan_result_tuple<scn::istreambuf_subrange, int, double>>);
+            scan_result_tuple_helper<scn::istreambuf_subrange, int, double>>);
 }
 
 TEST(SourceTest, SourceIsIstreamRangeRvalue)
@@ -132,7 +133,8 @@ TEST(SourceTest, SourceIsIstreamRangeRvalue)
     auto ss = std::istringstream{"123 3.14"};
 
     auto result = scn::scan<int, double>(scn::istreambuf_view{ss}, "{} {}");
-    static_assert(std::is_same_v<
-                  decltype(result),
-                  scn::scan_result_tuple<scn::ranges::dangling, int, double>>);
+    static_assert(
+        std::is_same_v<
+            decltype(result),
+            scan_result_tuple_helper<scn::ranges::dangling, int, double>>);
 }

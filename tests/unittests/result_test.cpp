@@ -29,6 +29,9 @@ using ::testing::Test;
 using scan_context = scn::basic_scan_context<std::string_view, char>;
 using scan_args = scn::scan_args_for<std::string_view, char>;
 
+template <typename R, typename... Args>
+using scan_result_tuple_helper = std::tuple<scn::scan_result<R>, Args...>;
+
 namespace {
     scn::scan_result<std::string_view> mock_vscan(std::string_view input,
                                                   scan_args)
@@ -53,9 +56,9 @@ TEST(ResultTestMocked, StringView)
     auto result =
         scn::make_scan_result(source, SCN_MOVE(leftovers), SCN_MOVE(args));
 
-    static_assert(
-        std::is_same_v<decltype(result),
-                       scn::scan_result_tuple<std::string_view, int, double>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scan_result_tuple_helper<std::string_view, int, double>>);
 
     {
         auto [r, i, d] = std::move(result);
@@ -78,7 +81,7 @@ TEST(ResultTestMocked, IstreamRange)
     static_assert(
         std::is_same_v<
             decltype(result),
-            scn::scan_result_tuple<scn::istreambuf_subrange, int, double>>);
+            scan_result_tuple_helper<scn::istreambuf_subrange, int, double>>);
 }
 
 TEST(ResultTestReal, StringLvalue)
