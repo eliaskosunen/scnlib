@@ -34,6 +34,7 @@ jobs:
           - g++-9
           - g++-8
           - g++-7
+          - clang++-16
           - clang++-15
           - clang++-14
           - clang++-13
@@ -45,6 +46,8 @@ jobs:
           - clang++-7
           - clang++-6.0
         exclude:
+          # gcc 13 not yet available in repos
+          - cxx: g++-13
           # gcc 8, gcc 7, and clang 6-8 have lacking C++20 support
           - cxx: g++-8
             std: 20
@@ -135,6 +138,12 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           
+          if [[ "${CXX}" == "clang++-17" ]]; then
+            sudo ./llvm.sh 17
+          fi
+          if [[ "${CXX}" == "clang++-16" ]]; then
+            sudo ./llvm.sh 16
+          fi
           if [[ "${CXX}" == "clang++-15" ]]; then
             sudo ./llvm.sh 15
           fi

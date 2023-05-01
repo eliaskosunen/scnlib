@@ -15,6 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#include "scn/fwd.h"
 #include "test_common.h"
 
 #include <scn/detail/scan.h>
@@ -29,17 +30,17 @@ using scan_context = scn::basic_scan_context<std::string_view, char>;
 using scan_args = scn::scan_args_for<std::string_view, char>;
 
 namespace {
-    scn::vscan_result<std::string_view> mock_vscan(std::string_view input,
-                                                   scan_args)
+    scn::scan_result<std::string_view> mock_vscan(std::string_view input,
+                                                  scan_args)
     {
-        return {input, {}};
+        return scn::scan_result<std::string_view>{input};
     }
 
-    scn::vscan_result<scn::istreambuf_subrange> mock_vscan(
+    scn::scan_result<scn::istreambuf_subrange> mock_vscan(
         scn::istreambuf_subrange input,
         scan_args)
     {
-        return {input, {}};
+        return scn::scan_result<scn::istreambuf_subrange>{input};
     }
 }  // namespace
 

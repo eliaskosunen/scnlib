@@ -157,9 +157,6 @@ namespace scn {
 
     // detail/result.h
 
-    template <typename Range>
-    struct vscan_result;
-
     template <typename ResultMappedRange>
     class scan_result;
     template <typename ResultMappedRange, typename... Args>

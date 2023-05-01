@@ -23,16 +23,16 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    vscan_result<std::string_view> vscan(
+    scan_result<std::string_view> vscan(
         std::string_view source,
         std::string_view format,
         scan_args_for<std::string_view, char> args);
-    vscan_result<erased_subrange> vscan(
+    scan_result<erased_subrange> vscan(
         erased_subrange source,
         std::string_view format,
         scan_args_for<erased_subrange, char> args);
 #if SCN_USE_IOSTREAMS
-    vscan_result<istreambuf_subrange> vscan(
+    scan_result<istreambuf_subrange> vscan(
         istreambuf_subrange source,
         std::string_view format,
         scan_args_for<istreambuf_subrange, char> args);
@@ -40,14 +40,14 @@ namespace scn {
 
     template <typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
-    vscan_result<std::string_view> vscan(
+    scan_result<std::string_view> vscan(
         Locale& loc,
         std::string_view source,
         std::string_view format,
         scan_args_for<std::string_view, char> args);
     template <typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
-    vscan_result<erased_subrange> vscan(
+    scan_result<erased_subrange> vscan(
         Locale& loc,
         erased_subrange source,
         std::string_view format,
@@ -55,27 +55,27 @@ namespace scn {
 #if SCN_USE_IOSTREAMS
     template <typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
-    vscan_result<istreambuf_subrange> vscan(
+    scan_result<istreambuf_subrange> vscan(
         Locale& loc,
         istreambuf_subrange source,
         std::string_view format,
         scan_args_for<istreambuf_subrange, char> args);
 #endif
 
-    vscan_result<std::string_view> vscan_value(
+    scan_result<std::string_view> vscan_value(
         std::string_view source,
         scan_arg_for<std::string_view, char> arg);
-    vscan_result<erased_subrange> vscan_value(
+    scan_result<erased_subrange> vscan_value(
         erased_subrange source,
         scan_arg_for<erased_subrange, char> arg);
 #if SCN_USE_IOSTREAMS
-    vscan_result<istreambuf_subrange> vscan_value(
+    scan_result<istreambuf_subrange> vscan_value(
         istreambuf_subrange source,
         scan_arg_for<istreambuf_subrange, char> arg);
 #endif
 
 #if SCN_USE_IOSTREAMS
-    vscan_result<istreambuf_subrange> vscan_and_sync(
+    scan_result<istreambuf_subrange> vscan_and_sync(
         istreambuf_subrange source,
         std::string_view format,
         scan_args_for<istreambuf_subrange, char> args);

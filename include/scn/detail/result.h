@@ -22,82 +22,10 @@
 #include <scn/detail/input_map.h>
 
 #include <tuple>
+#include "scn/detail/erased_range.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
-
-    /**
-     * Result type used as the return value from vscan.
-     */
-    template <typename Range>
-    struct vscan_result {
-        /// Range containing the unparsed input.
-        /// On error, equal to the range given to vscan
-        Range range;
-
-        /// Possible error
-        scan_error error;
-    };
-
-    namespace detail {
-        // Make a user-friendly range value from the return value of vscan
-
-        // string_view -> self
-        // Not affected by Source type
-        template <typename CharT, typename Source>
-        std::basic_string_view<CharT> map_scan_result_range(
-            const Source&,
-            const vscan_result<std::basic_string_view<CharT>>& result)
-            SCN_NOEXCEPT_P(
-                std::is_nothrow_constructible_v<std::basic_string_view<CharT>,
-                                                const CharT*,
-                                                std::size_t>)
-        {
-            return result.range;
-        }
-
-        // istreambuf_subrange -> self
-        // Not affected by Source type
-        template <typename CharT, typename Source>
-        basic_istreambuf_subrange<CharT> map_scan_result_range(
-            const Source&,
-            const vscan_result<basic_istreambuf_subrange<CharT>>& result)
-            SCN_NOEXCEPT_P(
-                std::is_nothrow_constructible_v<
-                    basic_istreambuf_subrange<CharT>,
-                    ranges::iterator_t<basic_istreambuf_subrange<CharT>>&,
-                    ranges::sentinel_t<basic_istreambuf_subrange<CharT>>&>)
-        {
-            return result.range;
-        }
-
-        // erased_subrange, when Source is an erased type (erased_(sub)range)
-        //   -> erased_subrange
-        // erased_subrange, when Source is any other range
-        //   -> subrange<Source::iterator, Source::sentinel>
-        template <typename CharT, typename Source>
-        auto map_scan_result_range(
-            const Source& source,
-            const vscan_result<basic_erased_subrange<CharT>>& result)
-        {
-            if constexpr (is_erased_range_or_subrange<Source>::value) {
-                return result.range;
-            }
-            else {
-                using iterator = ranges::iterator_t<const Source&>;
-                using sentinel = ranges::sentinel_t<const Source&>;
-                constexpr ranges::subrange_kind kind =
-                    ranges::sized_range<const Source&>
-                        ? ranges::subrange_kind::sized
-                        : ranges::subrange_kind::unsized;
-
-                return ranges::subrange<iterator, sentinel, kind>{
-                    ranges::next(ranges::begin(source),
-                                 result.range.begin().distance_from_begin()),
-                    ranges::end(source)};
-            }
-        }
-    }  // namespace detail
 
     /**
      * Scan result type, containing the unparsed input, and a possible error.
@@ -113,14 +41,7 @@ namespace scn {
         template <typename Range,
                   typename = std::enable_if_t<
                       std::is_constructible_v<range_type, Range>>>
-        explicit scan_result(Range&& r) : m_range(SCN_FWD(r))
-        {
-        }
-
-        template <typename Range,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<range_type, Range>>>
-        scan_result(Range&& r, scan_error e)
+        explicit scan_result(Range&& r, scan_error e = {})
             : m_range(SCN_FWD(r)), m_error(SCN_MOVE(e))
         {
         }
@@ -154,7 +75,7 @@ namespace scn {
         scan_result& operator=(scan_result<Range>&& r)
         {
             m_range = SCN_FWD(r.range());
-            m_range = SCN_FWD(r.error());
+            m_error = SCN_FWD(r.error());
             return *this;
         }
 
@@ -202,6 +123,90 @@ namespace scn {
     scan_result(Range) -> scan_result<Range>;
     template <typename Range>
     scan_result(Range, scan_error) -> scan_result<Range>;
+
+    namespace detail {
+        // Make a user-friendly range value from the return value of vscan
+
+        template <typename SourceRange, typename ResultRange>
+        auto map_scan_result_range(const SourceRange& source,
+                                   const ResultRange& result)
+        {
+            if constexpr (is_erased_range_or_subrange<ResultRange>::value &&
+                          !is_erased_range_or_subrange<SourceRange>::value) {
+                using iterator = ranges::iterator_t<const SourceRange&>;
+                using sentinel = ranges::sentinel_t<const SourceRange&>;
+                constexpr ranges::subrange_kind kind =
+                    ranges::sized_range<const SourceRange&>
+                        ? ranges::subrange_kind::sized
+                        : ranges::subrange_kind::unsized;
+
+                return ranges::subrange<iterator, sentinel, kind>{
+                    ranges::next(ranges::begin(source),
+                                 result.begin().distance_from_begin()),
+                    ranges::end(source)};
+            }
+            else {
+                return result;
+            }
+        }
+#if 0
+        // string_view -> self
+        // Not affected by Source type
+        template <typename CharT, typename Source>
+        std::basic_string_view<CharT> map_scan_result_range(
+            const Source&,
+            const scan_result<std::basic_string_view<CharT>>& result)
+            SCN_NOEXCEPT_P(
+                std::is_nothrow_constructible_v<std::basic_string_view<CharT>,
+                                                const CharT*,
+                                                std::size_t>)
+        {
+            return result.range();
+        }
+
+        // istreambuf_subrange -> self
+        // Not affected by Source type
+        template <typename CharT, typename Source>
+        basic_istreambuf_subrange<CharT> map_scan_result_range(
+            const Source&,
+            const scan_result<basic_istreambuf_subrange<CharT>>& result)
+            SCN_NOEXCEPT_P(
+                std::is_nothrow_constructible_v<
+                    basic_istreambuf_subrange<CharT>,
+                    ranges::iterator_t<basic_istreambuf_subrange<CharT>>&,
+                    ranges::sentinel_t<basic_istreambuf_subrange<CharT>>&>)
+        {
+            return result.range();
+        }
+
+        // erased_subrange, when Source is an erased type (erased_(sub)range)
+        //   -> erased_subrange
+        // erased_subrange, when Source is any other range
+        //   -> subrange<Source::iterator, Source::sentinel>
+        template <typename CharT, typename Source>
+        auto map_scan_result_range(
+            const Source& source,
+            const scan_result<basic_erased_subrange<CharT>>& result)
+        {
+            if constexpr (is_erased_range_or_subrange<Source>::value) {
+                return result.range();
+            }
+            else {
+                using iterator = ranges::iterator_t<const Source&>;
+                using sentinel = ranges::sentinel_t<const Source&>;
+                constexpr ranges::subrange_kind kind =
+                    ranges::sized_range<const Source&>
+                        ? ranges::subrange_kind::sized
+                        : ranges::subrange_kind::unsized;
+
+                return ranges::subrange<iterator, sentinel, kind>{
+                    ranges::next(ranges::begin(source),
+                                 result.range().begin().distance_from_begin()),
+                    ranges::end(source)};
+            }
+        }
+#endif
+    }  // namespace detail
 
     namespace detail {
         template <typename... T, std::size_t... I>

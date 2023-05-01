@@ -25,16 +25,16 @@ namespace scn {
 
     // vscan
 
-    vscan_result<std::wstring_view> vscan(
+    scan_result<std::wstring_view> vscan(
         std::wstring_view source,
         std::wstring_view format,
         scan_args_for<std::wstring_view, wchar_t> args);
-    vscan_result<werased_subrange> vscan(
+    scan_result<werased_subrange> vscan(
         werased_subrange source,
         std::wstring_view format,
         scan_args_for<werased_subrange, wchar_t> args);
 #if SCN_USE_IOSTREAMS
-    vscan_result<wistreambuf_subrange> vscan(
+    scan_result<wistreambuf_subrange> vscan(
         wistreambuf_subrange source,
         std::wstring_view format,
         scan_args_for<wistreambuf_subrange, wchar_t> args);
@@ -42,14 +42,14 @@ namespace scn {
 
     template <typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
-    vscan_result<std::wstring_view> vscan(
+    scan_result<std::wstring_view> vscan(
         Locale& loc,
         std::wstring_view source,
         std::wstring_view format,
         scan_args_for<std::wstring_view, wchar_t> args);
     template <typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
-    vscan_result<werased_subrange> vscan(
+    scan_result<werased_subrange> vscan(
         Locale& loc,
         werased_subrange source,
         std::wstring_view format,
@@ -57,27 +57,27 @@ namespace scn {
 #if SCN_USE_IOSTREAMS
     template <typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
-    vscan_result<wistreambuf_subrange> vscan(
+    scan_result<wistreambuf_subrange> vscan(
         Locale& loc,
         wistreambuf_subrange source,
         std::wstring_view format,
         scan_args_for<wistreambuf_subrange, wchar_t> args);
 #endif
 
-    vscan_result<std::wstring_view> vscan_value(
+    scan_result<std::wstring_view> vscan_value(
         std::wstring_view source,
         scan_arg_for<std::wstring_view, wchar_t> arg);
-    vscan_result<werased_subrange> vscan_value(
+    scan_result<werased_subrange> vscan_value(
         werased_subrange source,
         scan_arg_for<werased_subrange, wchar_t> arg);
 #if SCN_USE_IOSTREAMS
-    vscan_result<wistreambuf_subrange> vscan_value(
+    scan_result<wistreambuf_subrange> vscan_value(
         wistreambuf_subrange source,
         scan_arg_for<wistreambuf_subrange, wchar_t> arg);
 #endif
 
 #if SCN_USE_IOSTREAMS
-    vscan_result<wistreambuf_subrange> vscan_and_sync(
+    scan_result<wistreambuf_subrange> vscan_and_sync(
         wistreambuf_subrange source,
         std::wstring_view format,
         scan_args_for<wistreambuf_subrange, wchar_t> args);

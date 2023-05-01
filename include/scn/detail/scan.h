@@ -30,11 +30,9 @@ namespace scn {
         template <typename SourceRange, typename ResultRange, typename... Args>
         using scan_result_type = scan_result_tuple<
             std::conditional_t<ranges::borrowed_range<SourceRange>,
-                               decltype(detail::map_scan_result_range<
-                                        detail::char_t<ResultRange>>(
+                               decltype(detail::map_scan_result_range(
                                    SCN_DECLVAL(const SourceRange&),
-                                   SCN_DECLVAL(
-                                       const vscan_result<ResultRange>&))),
+                                   SCN_DECLVAL(const ResultRange&))),
                                ranges::dangling>,
             Args...>;
     }
@@ -84,17 +82,16 @@ namespace scn {
               typename... Args>
     detail::scan_result_type<SourceRange, ResultRange, Args...>
     make_scan_result(SourceRange&& source,
-                     vscan_result<ResultRange> result,
+                     scan_result<ResultRange> result,
                      scan_arg_store<Context, Args...>&& args)
     {
         auto result_range =
-            detail::map_scan_result_range<detail::char_t<ResultRange>>(source,
-                                                                       result);
-        if (SCN_UNLIKELY(result.error)) {
+            detail::map_scan_result_range(source, result.range());
+        if (SCN_LIKELY(result.good())) {
             return {scan_result{SCN_MOVE(result_range), {}},
                     SCN_MOVE(args.args())};
         }
-        return {scan_result{SCN_MOVE(result_range), result.error}, {}};
+        return {scan_result{SCN_MOVE(result_range), result.error()}, {}};
     }
 
     namespace detail {
@@ -216,9 +213,9 @@ namespace scn {
                 detail::make_arg<context_type_for<decltype(range)>>(value);
             auto result = vscan_value(range, arg);
             auto result_range =
-                detail::map_scan_result_range(SCN_FWD(source), result);
+                detail::map_scan_result_range(SCN_FWD(source), result.range());
             return scan_result_type<Source, decltype(result_range), T>{
-                scan_result{SCN_MOVE(result_range), result.error},
+                scan_result{SCN_MOVE(result_range), result.error()},
                 std::tuple<T>{SCN_MOVE(value)}};
         }
     }  // namespace detail
