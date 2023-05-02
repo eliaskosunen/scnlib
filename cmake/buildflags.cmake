@@ -7,7 +7,10 @@ function(get_warning_flags flags)
             -Wno-c++98-compat-pedantic
             -Wno-c++98-compat-bind-to-temporary-copy
             -Wno-c++98-compat-local-type-template-args
-            -Qunused-arguments -fcolor-diagnostics>
+            -Qunused-arguments -fcolor-diagnostics
+            $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,16.0>>:
+            -Wno-unsafe-buffer-usage
+            >>
         $<$<CXX_COMPILER_ID:GNU>:
             -ftemplate-backtrace-limit=0
             -Wall -Wextra -Wpedantic

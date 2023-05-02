@@ -251,8 +251,9 @@ namespace scn {
         scn::istreambuf_view& internal_narrow_stdin();
 
         template <typename... Args, typename Source, typename Format>
-        std::tuple<stdin_range_marker, Args...> input_impl(Source& source,
-                                                           Format format)
+        std::tuple<scan_result<stdin_range_marker>, Args...> input_impl(
+            Source& source,
+            Format format)
         {
             auto range = scan_map_input_range(source);
             auto args = make_scan_args<decltype(range), Args...>({});
