@@ -46,8 +46,6 @@ namespace scn {
             /// Scanned value was out of range for the desired type.
             /// (e.g. `>2^32` for an `uint32_t`)
             value_out_of_range,
-            /// Invalid argument given to operation
-            invalid_argument,
             /// Source range has invalid (utf-8 or utf-16) encoding
             invalid_encoding,
             /// This operation is only possible with exceptions enabled

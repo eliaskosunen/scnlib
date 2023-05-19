@@ -178,7 +178,22 @@ See docs for usage without CMake
 
 ## Compiler support
 
-TODO
+A C++17 compatible compiler is required. The following compilers are tested in CI:
+
+ * GCC 7 and newer
+ * Clang 8 and newer
+ * Visual Studio 2019 and 2022
+
+Including the following environments:
+
+ * 32-bit and 64-bit builds on Windows
+ * libc++ on Linux
+ * AppleClang on macOS 11 (Big Sur) and 12 (Monterey)
+ * clang-cl with VS 2019 and 2022
+ * MinGW
+ * GCC on armv6, armv7, aarch64, riscv64, s390x, and ppc64le
+ * Visual Studio 2022, cross compiling to arm64
+
 
 ## Benchmarks
 

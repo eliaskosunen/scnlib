@@ -67,7 +67,11 @@ namespace scn {
 
         constexpr bool is_ascii_char(wchar_t ch) SCN_NOEXCEPT
         {
+#if WCHAR_MIN < 0
             return ch >= 0 && ch <= 255;
+#else
+            return ch <= 255;
+#endif
         }
     }  // namespace impl
 
