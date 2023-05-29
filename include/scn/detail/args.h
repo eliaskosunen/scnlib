@@ -513,9 +513,11 @@ namespace scn {
         std::basic_string_view<CharT> decay_input_range(
             std::basic_string_view<CharT>);
 
+#if SCN_USE_IOSTREAMS
         template <typename CharT>
         basic_istreambuf_subrange<CharT> decay_input_range(
             basic_istreambuf_subrange<CharT>);
+#endif
 
         template <typename CharT>
         basic_erased_subrange<CharT> decay_input_range(

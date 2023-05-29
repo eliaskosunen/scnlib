@@ -24,20 +24,22 @@ TEST(ErrorTest, General)
     const auto good = scn::scan_error{};
     const auto eof_error =
         scn::scan_error{scn::scan_error::end_of_range, "EOF"};
-    const auto invalid_arg_error =
-        scn::scan_error{scn::scan_error::invalid_argument, ""};
+    const auto invalid_scanned_value_error =
+        scn::scan_error{scn::scan_error::invalid_scanned_value, ""};
 
     EXPECT_TRUE(good);
     EXPECT_FALSE(eof_error);
-    EXPECT_FALSE(invalid_arg_error);
+    EXPECT_FALSE(invalid_scanned_value_error);
 
     EXPECT_EQ(good.code(), scn::scan_error::good);
     EXPECT_EQ(eof_error.code(), scn::scan_error::end_of_range);
-    EXPECT_EQ(invalid_arg_error.code(), scn::scan_error::invalid_argument);
+    EXPECT_EQ(invalid_scanned_value_error.code(),
+              scn::scan_error::invalid_scanned_value);
 
     EXPECT_EQ(good, scn::scan_error::good);
     EXPECT_EQ(eof_error, scn::scan_error::end_of_range);
-    EXPECT_EQ(invalid_arg_error, scn::scan_error::invalid_argument);
+    EXPECT_EQ(invalid_scanned_value_error,
+              scn::scan_error::invalid_scanned_value);
 
     EXPECT_EQ(good, scn::detail::always_success_error{});
     EXPECT_NE(eof_error, scn::detail::always_success_error{});

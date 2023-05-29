@@ -35,13 +35,13 @@ namespace scn {
 
         enum class presentation_type : unsigned char {
             none,
-            int_binary,            // 'b'
-            int_arbitrary_base,    // 'Bnn'
+            int_binary,            // 'b', 'B'
             int_decimal,           // 'd'
             int_generic,           // 'i'
             int_unsigned_decimal,  // 'u'
             int_octal,             // 'o'
-            int_hex,               // 'x'
+            int_hex,               // 'x', 'X'
+            int_arbitrary_base,    // 'rnn', 'Rnn' (R for radix)
             float_hex,             // 'a', 'A'
             float_scientific,      // 'e', 'E'
             float_fixed,           // 'f', 'F'
@@ -205,9 +205,8 @@ namespace scn {
         {
             switch (type) {
                 case 'b':
-                    return presentation_type::int_binary;
                 case 'B':
-                    return presentation_type::int_arbitrary_base;
+                    return presentation_type::int_binary;
                 case 'd':
                     return presentation_type::int_decimal;
                 case 'i':
@@ -217,7 +216,11 @@ namespace scn {
                 case 'o':
                     return presentation_type::int_octal;
                 case 'x':
+                case 'X':
                     return presentation_type::int_hex;
+                case 'r':
+                case 'R':
+                    return presentation_type::int_arbitrary_base;
                 case 'a':
                 case 'A':
                     return presentation_type::float_hex;
@@ -813,7 +816,7 @@ namespace scn {
             if (specs.localized) {
                 if (SCN_UNLIKELY(specs.type == presentation_type::int_binary)) {
                     return handler.on_error(
-                        "'b' specifier not supported for localized integers");
+                        "'b'/'B' specifier not supported for localized integers");
                 }
                 if (SCN_UNLIKELY(specs.type ==
                                  presentation_type::int_arbitrary_base)) {

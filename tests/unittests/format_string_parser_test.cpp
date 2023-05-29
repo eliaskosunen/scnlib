@@ -37,7 +37,7 @@ TEST(FormatStringParserTest, ParsePresentationType)
 {
     EXPECT_EQ(scn::detail::parse_presentation_type('i'),
               scn::detail::presentation_type::int_generic);
-    EXPECT_EQ(scn::detail::parse_presentation_type('B'),
+    EXPECT_EQ(scn::detail::parse_presentation_type('r'),
               scn::detail::presentation_type::int_arbitrary_base);
     EXPECT_EQ(scn::detail::parse_presentation_type('a'),
               scn::detail::parse_presentation_type('A'));
