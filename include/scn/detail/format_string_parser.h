@@ -49,6 +49,7 @@ namespace scn {
             string,                // 's'
             string_set,            // '[...]'
             character,             // 'c'
+            escaped_character,     // '?'
             unicode_character,     // 'U'
             pointer,               // 'p'
         };
@@ -237,6 +238,8 @@ namespace scn {
                     return presentation_type::string;
                 case 'c':
                     return presentation_type::character;
+                case '?':
+                    return presentation_type::escaped_character;
                 case 'U':
                     return presentation_type::unicode_character;
                 case 'p':

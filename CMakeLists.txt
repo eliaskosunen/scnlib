@@ -93,6 +93,7 @@ set(SCN_PRIVATE_HEADERS
         src/scn/impl/reader/string/reader.h
         src/scn/impl/reader/string/character_reader.h
         src/scn/impl/reader/string/character_set_reader.h
+        src/scn/impl/reader/string/escaped_character_reader.h
         src/scn/impl/reader/string/word_reader.h
 
         src/scn/impl/unicode/unicode.h
