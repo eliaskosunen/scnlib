@@ -19,10 +19,9 @@
 
 #include <scn/detail/args.h>
 #include <scn/detail/error.h>
-#include <scn/detail/input_map.h>
+#include <scn/detail/erased_range.h>
 
 #include <tuple>
-#include "scn/detail/erased_range.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

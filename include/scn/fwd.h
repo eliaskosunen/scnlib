@@ -55,11 +55,6 @@ namespace scn {
     template <typename Range, typename CharT>
     class basic_scan_context;
 
-    template <typename Range, typename CharT>
-    using scan_arg_for = basic_scan_arg<basic_scan_context<Range, CharT>>;
-    template <typename Range, typename CharT>
-    using scan_args_for = basic_scan_args<basic_scan_context<Range, CharT>>;
-
     // detail/erased_range.h
 
     template <typename CharT>

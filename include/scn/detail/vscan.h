@@ -19,67 +19,126 @@
 
 #include <scn/detail/context.h>
 #include <scn/detail/istream_range.h>
+#include <scn/detail/result.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    scan_result<std::string_view> vscan(
-        std::string_view source,
-        std::string_view format,
-        scan_args_for<std::string_view, char> args);
-    scan_result<erased_subrange> vscan(
-        erased_subrange source,
-        std::string_view format,
-        scan_args_for<erased_subrange, char> args);
+    template <typename Range, typename CharT>
+    using scan_arg_for = basic_scan_arg<
+        basic_scan_context<detail::decayed_mapped_source_range<Range>, CharT>>;
+    template <typename Range, typename CharT>
+    using scan_args_for = basic_scan_args<
+        basic_scan_context<detail::decayed_mapped_source_range<Range>, CharT>>;
+
+    namespace detail {
+        scan_result<std::string_view> vscan_impl(
+            std::string_view source,
+            std::string_view format,
+            scan_args_for<std::string_view, char> args);
+        scan_result<erased_subrange> vscan_impl(
+            erased_subrange source,
+            std::string_view format,
+            scan_args_for<erased_subrange, char> args);
 #if SCN_USE_IOSTREAMS
-    scan_result<istreambuf_subrange> vscan(
-        istreambuf_subrange source,
-        std::string_view format,
-        scan_args_for<istreambuf_subrange, char> args);
+        scan_result<istreambuf_subrange> vscan_impl(
+            istreambuf_subrange source,
+            std::string_view format,
+            scan_args_for<istreambuf_subrange, char> args);
 #endif
 
-    template <typename Locale,
-              typename = std::void_t<decltype(Locale::classic())>>
-    scan_result<std::string_view> vscan(
-        Locale& loc,
-        std::string_view source,
-        std::string_view format,
-        scan_args_for<std::string_view, char> args);
-    template <typename Locale,
-              typename = std::void_t<decltype(Locale::classic())>>
-    scan_result<erased_subrange> vscan(
-        Locale& loc,
-        erased_subrange source,
-        std::string_view format,
-        scan_args_for<erased_subrange, char> args);
+        template <typename Locale>
+        scan_result<std::string_view> vscan_localized_impl(
+            const Locale& loc,
+            std::string_view source,
+            std::string_view format,
+            scan_args_for<std::string_view, char> args);
+        template <typename Locale,
+                  typename = std::void_t<decltype(Locale::classic())>>
+        scan_result<erased_subrange> vscan_localized_impl(
+            Locale& loc,
+            erased_subrange source,
+            std::string_view format,
+            scan_args_for<erased_subrange, char> args);
 #if SCN_USE_IOSTREAMS
-    template <typename Locale,
-              typename = std::void_t<decltype(Locale::classic())>>
-    scan_result<istreambuf_subrange> vscan(
-        Locale& loc,
-        istreambuf_subrange source,
-        std::string_view format,
-        scan_args_for<istreambuf_subrange, char> args);
+        template <typename Locale,
+                  typename = std::void_t<decltype(Locale::classic())>>
+        scan_result<istreambuf_subrange> vscan_localized_impl(
+            Locale& loc,
+            istreambuf_subrange source,
+            std::string_view format,
+            scan_args_for<istreambuf_subrange, char> args);
 #endif
 
-    scan_result<std::string_view> vscan_value(
-        std::string_view source,
-        scan_arg_for<std::string_view, char> arg);
-    scan_result<erased_subrange> vscan_value(
-        erased_subrange source,
-        scan_arg_for<erased_subrange, char> arg);
+        scan_result<std::string_view> vscan_value_impl(
+            std::string_view source,
+            scan_arg_for<std::string_view, char> arg);
+        scan_result<erased_subrange> vscan_value_impl(
+            erased_subrange source,
+            scan_arg_for<erased_subrange, char> arg);
 #if SCN_USE_IOSTREAMS
-    scan_result<istreambuf_subrange> vscan_value(
-        istreambuf_subrange source,
-        scan_arg_for<istreambuf_subrange, char> arg);
+        scan_result<istreambuf_subrange> vscan_value_impl(
+            istreambuf_subrange source,
+            scan_arg_for<istreambuf_subrange, char> arg);
 #endif
 
 #if SCN_USE_IOSTREAMS
-    scan_result<istreambuf_subrange> vscan_and_sync(
-        istreambuf_subrange source,
-        std::string_view format,
-        scan_args_for<istreambuf_subrange, char> args);
+        scan_result<istreambuf_subrange> vscan_and_sync_impl(
+            istreambuf_subrange source,
+            std::string_view format,
+            scan_args_for<istreambuf_subrange, char> args);
 #endif
+    }  // namespace detail
+
+    template <typename Range>
+    auto vscan(Range&& range,
+               std::string_view format,
+               scan_args_for<Range, char> args)
+    {
+        auto mapped_range = detail::scan_map_input_range(range);
+        auto result = detail::vscan_impl(mapped_range, format, args);
+        auto result_range =
+            detail::map_scan_result_range(SCN_FWD(range), result.range());
+        return scan_result{SCN_MOVE(result_range), result.error()};
+    }
+
+    template <typename Range,
+              typename Locale,
+              typename = std::void_t<decltype(Locale::classic())>>
+    auto vscan(const Locale& loc,
+               Range&& range,
+               std::string_view format,
+               scan_args_for<Range, char> args)
+    {
+        auto mapped_range = detail::scan_map_input_range(range);
+        auto result =
+            detail::vscan_localized_impl(loc, mapped_range, format, args);
+        auto result_range =
+            detail::map_scan_result_range(SCN_FWD(range), result.range());
+        return scan_result{SCN_MOVE(result_range), result.error()};
+    }
+
+    template <typename Range>
+    auto vscan_value(Range&& range, scan_arg_for<Range, char> arg)
+    {
+        auto mapped_range = detail::scan_map_input_range(range);
+        auto result = detail::vscan_value_impl(mapped_range, arg);
+        auto result_range =
+            detail::map_scan_result_range(SCN_FWD(range), result.range());
+        return scan_result{SCN_MOVE(result_range), result.error()};
+    }
+
+    template <typename Range>
+    auto vscan_and_sync(Range&& range,
+                        std::string_view format,
+                        scan_args_for<Range, char> args)
+    {
+        auto mapped_range = detail::scan_map_input_range(range);
+        auto result = detail::vscan_and_sync_impl(mapped_range, format, args);
+        auto result_range =
+            detail::map_scan_result_range(SCN_FWD(range), result.range());
+        return scan_result{SCN_MOVE(result_range), result.error()};
+    }
 
     SCN_END_NAMESPACE
 }  // namespace scn

@@ -26,7 +26,7 @@ using ::testing::Test;
 TEST(InputMapTest, StringView)
 {
     std::string_view input{"FooBar"};
-    auto result = scn::scan_map_input_range(input);
+    auto result = scn::detail::scan_map_input_range(input);
     static_assert(std::is_same_v<decltype(result), std::string_view>);
 }
 
@@ -34,20 +34,20 @@ TEST(InputMapTest, Span)
 {
     auto str = "FooBar";
     scn::span<const char> input{str, std::strlen(str)};
-    auto result = scn::scan_map_input_range(input);
+    auto result = scn::detail::scan_map_input_range(input);
     static_assert(std::is_same_v<decltype(result), std::string_view>);
 }
 
 TEST(InputMapTest, String)
 {
     std::string input{"FooBar"};
-    auto result = scn::scan_map_input_range(input);
+    auto result = scn::detail::scan_map_input_range(input);
     static_assert(std::is_same_v<decltype(result), std::string_view>);
 }
 
 TEST(InputMapTest, StringLiteral)
 {
-    auto result = scn::scan_map_input_range("FooBar");
+    auto result = scn::detail::scan_map_input_range("FooBar");
     static_assert(std::is_same_v<decltype(result), std::string_view>);
 }
 
@@ -55,7 +55,7 @@ TEST(InputMapTest, IstreambufView)
 {
     std::istringstream iss{"abc"};
     auto view = scn::istreambuf_view{iss};
-    auto result = scn::scan_map_input_range(view);
+    auto result = scn::detail::scan_map_input_range(view);
     static_assert(std::is_same_v<decltype(result), scn::istreambuf_subrange>);
 }
 
@@ -63,21 +63,22 @@ TEST(InputMapTest, IstreambufSubrange)
 {
     std::istringstream iss{"abc"};
     auto view = scn::istreambuf_view{iss};
-    auto result = scn::scan_map_input_range(scn::istreambuf_subrange{view});
+    auto result =
+        scn::detail::scan_map_input_range(scn::istreambuf_subrange{view});
     static_assert(std::is_same_v<decltype(result), scn::istreambuf_subrange>);
 }
 
 TEST(InputMapTest, Vector)
 {
     std::vector<char> input{'a', 'b', 'c'};
-    auto result = scn::scan_map_input_range(input);
+    auto result = scn::detail::scan_map_input_range(input);
     static_assert(std::is_same_v<decltype(result), std::string_view>);
 }
 
 TEST(InputMapTest, Deque)
 {
     std::deque<char> input{'a', 'b', 'c'};
-    auto result = scn::scan_map_input_range(input);
+    auto result = scn::detail::scan_map_input_range(input);
     static_assert(std::is_same_v<decltype(result), scn::erased_range>);
 }
 
@@ -85,6 +86,6 @@ TEST(InputMapTest, ErasedRange)
 {
     std::deque<char> input{'a', 'b', 'c'};
     auto range = scn::erase_range(input);
-    auto result = scn::scan_map_input_range(range);
+    auto result = scn::detail::scan_map_input_range(range);
     static_assert(std::is_same_v<decltype(result), scn::erased_subrange>);
 }

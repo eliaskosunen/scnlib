@@ -113,7 +113,7 @@ TEST(StringViewTest, WonkyInput)
 TEST(StringViewTest, WonkyInput2)
 {
     const char source[] = {'o', ' ', '\x0f', '\n', '\n', '\xc3'};
-    auto range = scn::scan_map_input_range(source);
+    auto range = scn::detail::scan_map_input_range(source);
 
     auto [result, str] = scn::scan<std::string_view>(range, "{:64U}");
     EXPECT_TRUE(result);

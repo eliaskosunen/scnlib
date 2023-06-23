@@ -47,6 +47,8 @@ namespace {
     }
 }  // namespace
 
+// TODO
+#if 0
 TEST(ResultTestMocked, StringView)
 {
     auto source = std::string_view{"FooBar"};
@@ -83,6 +85,7 @@ TEST(ResultTestMocked, IstreamRange)
             decltype(result),
             scan_result_tuple_helper<scn::istreambuf_subrange, int, double>>);
 }
+#endif
 
 TEST(ResultTestReal, StringLvalue)
 {

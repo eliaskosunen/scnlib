@@ -24,6 +24,7 @@
  */
 
 #include <scn/detail/error.h>
+#include <scn/detail/input_map.h>
 #include <scn/detail/ranges.h>
 #include <scn/detail/unicode.h>
 #include <scn/util/meta.h>
@@ -509,23 +510,6 @@ namespace scn {
     };
 
     namespace detail {
-        template <typename CharT>
-        std::basic_string_view<CharT> decay_input_range(
-            std::basic_string_view<CharT>);
-
-#if SCN_USE_IOSTREAMS
-        template <typename CharT>
-        basic_istreambuf_subrange<CharT> decay_input_range(
-            basic_istreambuf_subrange<CharT>);
-#endif
-
-        template <typename CharT>
-        basic_erased_subrange<CharT> decay_input_range(
-            basic_erased_subrange<CharT>);
-
-        template <typename R, typename CharT>
-        using decayed_input_range =
-            decltype(decay_input_range<CharT>(SCN_DECLVAL(R)));
     }  // namespace detail
 
     /**
@@ -539,7 +523,7 @@ namespace scn {
 
         using char_type = detail::char_t<Range>;
         return scan_arg_store<
-            basic_scan_context<detail::decayed_input_range<Range, char_type>,
+            basic_scan_context<detail::decayed_mapped_source_range<Range>,
                                char_type>,
             Args...>{};
     }
@@ -554,7 +538,7 @@ namespace scn {
 
         using char_type = detail::char_t<Range>;
         return scan_arg_store<
-            basic_scan_context<detail::decayed_input_range<Range, char_type>,
+            basic_scan_context<detail::decayed_mapped_source_range<Range>,
                                char_type>,
             Args...>{SCN_MOVE(values)};
     }

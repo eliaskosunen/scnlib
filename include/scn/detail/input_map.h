@@ -196,41 +196,72 @@ namespace scn {
             _scan_map_input_range_impl::fn{};
 
         template <typename Range>
+        using mapped_source_range =
+            decltype(scan_map_input_range_impl(SCN_DECLVAL(const Range&)));
+
+        template <typename Range>
         inline constexpr bool is_scannable_range =
-            !std::is_same_v<decltype(scan_map_input_range_impl(
-                                SCN_DECLVAL(const Range&))),
-                            invalid_input_range>;
+            !std::is_same_v<mapped_source_range<Range>, invalid_input_range>;
+
+        template <typename CharT>
+        std::basic_string_view<CharT> decay_source_range(
+            std::basic_string_view<CharT>);
+
+#if SCN_USE_IOSTREAMS
+        template <typename CharT>
+        basic_istreambuf_subrange<CharT> decay_source_range(
+            basic_istreambuf_subrange<CharT>);
+        template <typename CharT>
+        basic_istreambuf_subrange<CharT> decay_source_range(
+            const basic_istreambuf_view<CharT>&);
+#endif
+
+        template <typename CharT>
+        basic_erased_subrange<CharT> decay_source_range(
+            basic_erased_subrange<CharT>);
+        template <typename CharT>
+        basic_erased_subrange<CharT> decay_source_range(
+            const basic_erased_range<CharT>&);
+
+        template <typename R>
+        using decayed_source_range =
+            decltype(decay_source_range(SCN_DECLVAL(R)));
+
+        template <typename R>
+        using decayed_mapped_source_range =
+            decayed_source_range<mapped_source_range<R>>;
+
+        /**
+         * Map a range type given to a generic scanning function (like `scan`)
+         * into something that can be given to a type-erased scanning function
+         * (like `vscan`).
+         *
+         * Maps
+         *  - `string_view` and other contiguous+sized ranges to `string_view`
+         *  - `istreambuf_view` to `istreambuf_subrange`
+         *  - `erased_view` to `erased_subrange`
+         *  - any other forward range to `erased_view`
+         *  - errors (static_assert) on other range types
+         */
+        template <typename Range>
+        auto scan_map_input_range(const Range& r) SCN_NOEXCEPT_P(noexcept(
+            detail::scan_map_input_range_impl(SCN_DECLVAL(const Range&))))
+        {
+            static_assert(
+                detail::is_scannable_range<Range>,
+                "\n"
+                "Unsupported range type given as input to a scanning "
+                "function.\n"
+                "A range needs to model forward_range and have a valid "
+                "character type (char or wchar_t) to be scannable.\n"
+                "Examples of scannable ranges are std::string, "
+                "std::string_view, "
+                "std::vector<char>, and scn::istreambuf_view.\n"
+                "See the scn documentation for more details.");
+
+            return detail::scan_map_input_range_impl(r);
+        }
     }  // namespace detail
-
-    /**
-     * Map a range type given to a generic scanning function (like `scan`)
-     * into something that can be given to a type-erased scanning function
-     * (like `vscan`).
-     *
-     * Maps
-     *  - `string_view` and other contiguous+sized ranges to `string_view`
-     *  - `istreambuf_view` to `istreambuf_subrange`
-     *  - `erased_view` to `erased_subrange`
-     *  - any other forward range to `erased_view`
-     *  - others to `invalid_input_range`.
-     */
-    template <typename Range>
-    auto scan_map_input_range(const Range& r) SCN_NOEXCEPT_P(
-        noexcept(detail::scan_map_input_range_impl(SCN_DECLVAL(const Range&))))
-    {
-        static_assert(
-            detail::is_scannable_range<Range>,
-            "\n"
-            "Unsupported range type given as input to a scanning "
-            "function.\n"
-            "A range needs to model forward_range and have a valid "
-            "character type (char or wchar_t) to be scannable.\n"
-            "Examples of scannable ranges are std::string, std::string_view, "
-            "std::vector<char>, and scn::istreambuf_view.\n"
-            "See the scn documentation for more details.");
-
-        return detail::scan_map_input_range_impl(r);
-    }
 
     SCN_END_NAMESPACE
 }  // namespace scn
