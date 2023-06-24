@@ -152,7 +152,7 @@ namespace scn {
 
     // detail/result.h
 
-    template <typename ResultMappedRange>
+    template <typename Iterator, typename... Args>
     class scan_result;
 
     // detail/scan.h
@@ -201,7 +201,7 @@ namespace scn {
     // util/memory.h
 
     namespace detail {
-        template <typename T>
+        template <typename T, typename = void>
         struct pointer_traits;
     }  // namespace detail
 

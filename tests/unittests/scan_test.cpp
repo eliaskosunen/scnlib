@@ -21,101 +21,94 @@
 
 TEST(ScanTest, SingleValue)
 {
-    auto [result, i] = scn::scan<int>("42", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
-    EXPECT_EQ(i, 42);
+    auto result = scn::scan<int>("42", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(std::get<0>(result->values()), 42);
 }
 
 TEST(ScanTest, MultipleValues)
 {
-    auto [result, a, b] = scn::scan<int, int>("123 456", "{} {}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
+    auto result = scn::scan<int, int>("123 456", "{} {}");
+    ASSERT_TRUE(result);
+    auto [a, b] = result->values();
     EXPECT_EQ(a, 123);
     EXPECT_EQ(b, 456);
 }
 
 TEST(ScanTest, StringValue)
 {
-    auto [result, a] = scn::scan<std::string>("abc def", "abc {}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
-    EXPECT_STREQ(a.c_str(), "def");
+    auto result = scn::scan<std::string>("abc def", "abc {}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(std::get<0>(result->values()).c_str(), "def");
 }
 
 TEST(ScanTest, LiteralSkip)
 {
-    auto [result, a] = scn::scan<int>("abc 123", "abc {}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
-    EXPECT_EQ(a, 123);
+    auto result = scn::scan<int>("abc 123", "abc {}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(std::get<0>(result->values()), 123);
 }
 
 TEST(ScanTest, ResultUse)
 {
-    auto [result, a] = scn::scan<int>("123 456", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(a, 123);
+    auto source = std::string_view{"123 456"};
+    auto result = scn::scan<int>(source, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(std::get<0>(result->values()), 123);
 
-    auto [result2, b] = scn::scan<int>(result.range(), "{}");
-    EXPECT_TRUE(result2);
-    EXPECT_TRUE(result2.range().empty());
-    EXPECT_EQ(b, 456);
+    auto result2 = scn::scan<int>(
+        scn::ranges::subrange{result->begin(), source.end()}, "{}");
+    ASSERT_TRUE(result2);
+    EXPECT_EQ(std::get<0>(result2->values()), 456);
 }
 
 TEST(ScanTest, IntValue)
 {
-    auto [result, i] = scn::scan_value<int>("123");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(i, 123);
+    auto result = scn::scan_value<int>("123");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 123);
 }
 
 TEST(ScanTest, Discard)
 {
-    auto [result, a, _, b] =
+    auto result =
         scn::scan<int, scn::discard<int>, int>("123 456 789", "{} {} {}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
+    ASSERT_TRUE(result);
+    auto [a, _, b] = result->values();
     EXPECT_EQ(a, 123);
     EXPECT_EQ(b, 789);
 }
 
 TEST(ScanTest, CodePoint)
 {
-    auto [result, cp] = scn::scan<scn::code_point>("ä", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
-    EXPECT_EQ(cp, 0xe4);
+    auto result = scn::scan<scn::code_point>("ä", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 0xe4);
 }
 
 TEST(ScanTest, BoolNumeric)
 {
-    auto [result, val] = scn::scan<bool>("1", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
-    EXPECT_TRUE(val);
+    auto result = scn::scan<bool>("1", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->value());
 }
 TEST(ScanTest, BoolText)
 {
-    auto [result, val] = scn::scan<bool>("true", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
-    EXPECT_TRUE(val);
+    auto result = scn::scan<bool>("true", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->value());
 }
 
 TEST(ScanTest, DefaultValueSuccess)
 {
-    auto [result, val] = scn::scan<int>("42", "{}", {123});
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
-    EXPECT_EQ(val, 42);
+    auto result = scn::scan<int>("42", "{}", {123});
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 42);
 }
 TEST(ScanTest, DefaultValueFail)
 {
-    auto [result, val] = scn::scan<int>("foobar", "{}", {123});
-    EXPECT_FALSE(result);
-    EXPECT_EQ(val, 0);
+    auto result = scn::scan<int>("foobar", "{}", {123});
+    ASSERT_FALSE(result);
 }
 TEST(ScanTest, DefaultValueString)
 {
@@ -123,10 +116,10 @@ TEST(ScanTest, DefaultValueString)
     initial_string.reserve(256);
     const auto addr = initial_string.data();
 
-    auto [result, str] =
+    auto result =
         scn::scan<std::string>("foobar", "{}", {std::move(initial_string)});
-    EXPECT_TRUE(result);
-    EXPECT_EQ(str, "foobar");
-    EXPECT_EQ(str.data(), addr);
-    EXPECT_GE(str.capacity(), 256);
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), "foobar");
+    EXPECT_EQ(result->value().data(), addr);
+    EXPECT_GE(result->value().capacity(), 256);
 }

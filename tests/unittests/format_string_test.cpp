@@ -33,117 +33,114 @@ TEST(FormatStringTest, CompileTimeCheckLiteral)
 
 TEST(FormatStringTest, ValidStringCompileTimeCheck)
 {
-    auto [result, val] = scn::scan<int>("42", SCN_STRING("{}"));
-    EXPECT_TRUE(result);
-    EXPECT_EQ(val, 42);
+    auto result = scn::scan<int>("42", SCN_STRING("{}"));
+    ASSERT_TRUE(result);
+    EXPECT_EQ(std::get<0>(result->values()), 42);
 }
 // Fails to compile, as it should
 #if 0
 TEST(FormatStringTest, InvalidStringCompileTimeCheck)
 {
-    auto [result, _] = scn::scan<int>("42", SCN_STRING("{"));
+    auto result = scn::scan<int>("42", SCN_STRING("{"));
     EXPECT_FALSE(result);
 }
 #endif
 
 TEST(FormatStringTest, ValidStringRuntimeCheck)
 {
-    auto [result, val] = scn::scan<int>("42", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(val, 42);
+    auto result = scn::scan<int>("42", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(std::get<0>(result->values()), 42);
 }
 // Fails to compile, as it should
 #if !SCN_HAS_CONSTEVAL
 TEST(FormatStringTest, InvalidStringRuntimeCheck)
 {
-    auto [result, _] = scn::scan<int>("42", "{");
+    auto result = scn::scan<int>("42", "{");
     EXPECT_FALSE(result);
 }
 #endif
 
 TEST(FormatStringTest, ValidStringForceRuntime)
 {
-    auto [result, val] = scn::scan<int>("42", scn::runtime("{}"));
-    EXPECT_TRUE(result);
-    EXPECT_EQ(val, 42);
+    auto result = scn::scan<int>("42", scn::runtime("{}"));
+    ASSERT_TRUE(result);
+    EXPECT_EQ(std::get<0>(result->values()), 42);
 }
 TEST(FormatStringTest, InvalidStringForceRuntime)
 {
-    auto [result, _] = scn::scan<int>("42", scn::runtime("{"));
+    auto result = scn::scan<int>("42", scn::runtime("{"));
     EXPECT_FALSE(result);
 }
 
 #if !SCN_HAS_CONSTEVAL
 TEST(FormatStringTest, TooManyArgsInFormatStringLiteral)
 {
-    auto [result, _] = scn::scan<int>("42", "{} {}");
+    auto result = scn::scan<int>("42", "{} {}");
     EXPECT_FALSE(result);
 }
 TEST(FormatStringTest, TooManyArgsInArgListLiteral)
 {
-    auto [result, i, j] = scn::scan<int, int>("42", "{}");
+    auto result = scn::scan<int, int>("42", "{}");
     EXPECT_FALSE(result);
-    SCN_UNUSED(i);
-    SCN_UNUSED(j);
 }
 #endif
 
 TEST(FormatStringTest, TooManyArgsInFormatStringRuntime)
 {
-    auto [result, _] = scn::scan<int>("42", scn::runtime("{} {}"));
+    auto result = scn::scan<int>("42", scn::runtime("{} {}"));
     EXPECT_FALSE(result);
 }
 TEST(FormatStringTest, TooManyArgsInArgListCompileTime)
 {
-    auto [result, i, j] = scn::scan<int, int>("42", scn::runtime("{}"));
+    auto result = scn::scan<int, int>("42", scn::runtime("{}"));
     EXPECT_FALSE(result);
-    SCN_UNUSED(i);
-    SCN_UNUSED(j);
 }
 
 TEST(FormatStringTest, HasId)
 {
-    auto [result, _] = scn::scan<int>("42", scn::runtime("{0}"));
+    auto result = scn::scan<int>("42", scn::runtime("{0}"));
     EXPECT_FALSE(result);
 }
 
 TEST(FormatStringTest, UnexpectedEndOfSpecs_WithOnlyOpenBrace)
 {
-    auto [result, _] = scn::scan<std::string>("42", scn::runtime("{"));
+    auto result = scn::scan<std::string>("42", scn::runtime("{"));
     EXPECT_FALSE(result);
 }
 TEST(FormatStringTest, UnexpectedEndOfSpecs_WithOpenBraceAndLineBreak)
 {
-    auto [result, _] = scn::scan<std::string>("42", scn::runtime("{\n"));
+    auto result = scn::scan<std::string>("42", scn::runtime("{\n"));
     EXPECT_FALSE(result);
 }
 TEST(FormatStringTest, UnexpectedEndOfSpecs_WithOpenBraceAndColon)
 {
-    auto [result, _] = scn::scan<std::string>("42", scn::runtime("{:"));
+    auto result = scn::scan<std::string>("42", scn::runtime("{:"));
     EXPECT_FALSE(result);
 }
 TEST(FormatStringTest, UnexpectedEndOfSpecs_WithOpenBraceAndColonAndLineBreak)
 {
-    auto [result, _] = scn::scan<std::string>("42", scn::runtime("{:\n"));
+    auto result = scn::scan<std::string>("42", scn::runtime("{:\n"));
     EXPECT_FALSE(result);
 }
 
 TEST(FormatStringTest, EmptyCharacterSet)
 {
-    auto [result, _] = scn::scan<std::string>("42", scn::runtime("{:[]}"));
+    auto result = scn::scan<std::string>("42", scn::runtime("{:[]}"));
     EXPECT_FALSE(result);
 }
 TEST(FormatStringTest, AlphaCharacterSet)
 {
-    auto [result, word] = scn::scan<std::string>("abc", "{:[:alpha:]}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(word, "abc");
+    auto result = scn::scan<std::string>("abc", "{:[:alpha:]}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(std::get<0>(result->values()), "abc");
 }
 TEST(FormatStringTest, AlphaCharacterSetWithStringView)
 {
     static_assert(scn::ranges::contiguous_range<std::string_view>);
-    static_assert(scn::ranges::contiguous_range<scn::ranges::subrange<const char*>>);
-    //static_assert(scn::ranges::contiguous_range<scn::ranges::subrange<std::string_view::iterator>>);
+    static_assert(
+        scn::ranges::contiguous_range<scn::ranges::subrange<const char*>>);
+    // static_assert(scn::ranges::contiguous_range<scn::ranges::subrange<std::string_view::iterator>>);
     static_assert(std::is_same_v<decltype(scn::ranges::data(
                                      SCN_DECLVAL(std::string_view&))),
                                  const char*>);
@@ -152,31 +149,30 @@ TEST(FormatStringTest, AlphaCharacterSetWithStringView)
                                      SCN_DECLVAL(scn::ranges::subrange<std::string_view::iterator>&).data()),
                                  const char*>);
                                  */
-    auto [result, word] = scn::scan<std::string_view>("abc", "{:[:alpha:]}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(word, "abc");
+    auto result = scn::scan<std::string_view>("abc", "{:[:alpha:]}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(std::get<0>(result->values()), "abc");
 }
 TEST(FormatStringTest, InvertedCharacterSet)
 {
-    auto [result, word] =
-        scn::scan<std::string>("abc\n", scn::runtime("{:[^\n]}"));
-    EXPECT_TRUE(result);
-    EXPECT_EQ(word, "abc");
+    auto result = scn::scan<std::string>("abc\n", scn::runtime("{:[^\n]}"));
+    ASSERT_TRUE(result);
+    EXPECT_EQ(std::get<0>(result->values()), "abc");
 }
 
 TEST(FormatStringTest, NonTerminatedCharacterSet)
 {
-    auto [result, _] = scn::scan<std::string>("abc", scn::runtime("{:["));
+    auto result = scn::scan<std::string>("abc", scn::runtime("{:["));
     EXPECT_FALSE(result);
 }
 TEST(FormatStringTest, NonTerminatedCharacterSetWithStringView)
 {
-    auto [result, _] = scn::scan<std::string_view>("abc", scn::runtime("{:["));
+    auto result = scn::scan<std::string_view>("abc", scn::runtime("{:["));
     EXPECT_FALSE(result);
 }
 
 TEST(FormatStringTest, ExtraArgInFormatString)
 {
-    auto [result, _] = scn::scan<std::string>("abc def", scn::runtime("{} {}"));
+    auto result = scn::scan<std::string>("abc def", scn::runtime("{} {}"));
     EXPECT_FALSE(result);
 }

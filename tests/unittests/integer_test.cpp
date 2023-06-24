@@ -18,65 +18,79 @@
 #include <gtest/gtest.h>
 
 #include <scn/detail/scan.h>
+#include "gtest/gtest.h"
+
+namespace {
+    template <typename... Args>
+    std::tuple<testing::AssertionResult, Args...> do_test(
+        std::string_view src,
+        scn::format_string<Args...> fmt)
+    {
+        auto result = scn::scan<Args...>(src, fmt);
+        if (!result) {
+            return {testing::AssertionFailure()
+                        << "scan failed with " << result.error().code(),
+                    Args{}...};
+        }
+        if (result->begin() != src.end()) {
+            return {testing::AssertionFailure() << "result iterator not at end",
+                    Args{}...};
+        }
+        return std::tuple_cat(std::tuple{testing::AssertionSuccess()},
+                              result->values());
+    }
+}  // namespace
 
 TEST(IntegerTest, Simple)
 {
-    auto [result, val] = scn::scan<int>("42", "{}");
+    auto [result, val] = do_test<int>("42", "{}");
     EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
     EXPECT_EQ(val, 42);
 }
 
 TEST(IntegerTest, SkipPrecedingWhitespaceByDefault)
 {
-    auto [result, val] = scn::scan<int>(" \n42", "{}");
+    auto [result, val] = do_test<int>(" \n42", "{}");
     EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
     EXPECT_EQ(val, 42);
 }
 TEST(IntegerTest, SkipPrecedingWhitespaceByForce)
 {
-    auto [result, val] = scn::scan<int>(" \n42", " {}");
+    auto [result, val] = do_test<int>(" \n42", " {}");
     EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
     EXPECT_EQ(val, 42);
 }
 TEST(IntegerTest, SkipWhitespaceBetweenValuesByDefault)
 {
-    auto [result, a, b] = scn::scan<int, int>("123 456", "{}{}");
+    auto [result, a, b] = do_test<int, int>("123 456", "{}{}");
     EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
     EXPECT_EQ(a, 123);
     EXPECT_EQ(b, 456);
 }
 TEST(IntegerTest, SkipWhitespaceBetweenValuesByForce)
 {
-    auto [result, a, b] = scn::scan<int, int>("123 456", "{} {}");
+    auto [result, a, b] = do_test<int, int>("123 456", "{} {}");
     EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
     EXPECT_EQ(a, 123);
     EXPECT_EQ(b, 456);
 }
 
 TEST(IntegerTest, UnsignedWithDefaultFormat)
 {
-    auto [result, val] = scn::scan<unsigned>("42", "{}");
+    auto [result, val] = do_test<unsigned>("42", "{}");
     EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
     EXPECT_EQ(val, 42);
 }
 TEST(IntegerTest, UnsignedWithDecimalFormat)
 {
-    auto [result, val] = scn::scan<unsigned>("42", "{:i}");
+    auto [result, val] = do_test<unsigned>("42", "{:i}");
     EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
     EXPECT_EQ(val, 42);
 }
 TEST(IntegerTest, UnsignedWithUnsignedFormat)
 {
-    auto [result, val] = scn::scan<unsigned>("42", "{:u}");
+    auto [result, val] = do_test<unsigned>("42", "{:u}");
     EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
     EXPECT_EQ(val, 42);
 }
 
@@ -87,9 +101,8 @@ TEST(IntegerTest, Pointer)
     std::snprintf(source_buf, 64, "%p", static_cast<const void*>(&value));
     std::string_view source{source_buf};
 
-    auto [result, val] = scn::scan<void*>(source, "{}");
+    auto [result, val] = do_test<void*>(source, "{}");
     EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
     ASSERT_NE(val, nullptr);
     EXPECT_EQ(val, &value);
     EXPECT_EQ(*static_cast<const int*>(val), value);
@@ -137,9 +150,8 @@ namespace {
 TEST(IntegerTest, LongInput)
 {
     std::string_view input = get_long_input();
-    auto [result, i] = scn::scan<int>(input, "{}");
-
-    EXPECT_TRUE(result);
-    EXPECT_FALSE(result.range().empty());
-    EXPECT_EQ(i, 1452555457);
+    auto result = scn::scan<int>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_NE(result->begin(), input.end());
+    EXPECT_EQ(std::get<0>(result->values()), 1452555457);
 }

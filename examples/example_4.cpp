@@ -23,17 +23,17 @@
 int main()
 {
     std::string source{R"([{1: 2, 3: 4}, {5: 6}])"};
-    if (auto [result, data] =
-            scn::scan<std::vector<std::map<int, int>>>(source, "{}");
-        result) {
-        const auto& a = *(data[0].begin());
-        const auto& b = *std::next(data[0].begin());
-        const auto& c = *(data[1].begin());
 
-        std::printf(R"([{%d: %d, %d: %d}, {%d: %d}])", a.first, a.second,
-                    b.first, b.second, c.first, c.second);
-    }
-    else {
-        std::puts("failure");
-    }
+    // Use monadic interface of scn::expected (return type of scn::scan)
+    scn::scan<std::vector<std::map<int, int>>>(source, "{}")
+        .transform([](auto result) {
+            const auto& data = result.value();
+            const auto& a = *(data[0].begin());
+            const auto& b = *std::next(data[0].begin());
+            const auto& c = *(data[1].begin());
+
+            std::printf(R"([{%d: %d, %d: %d}, {%d: %d}])", a.first, a.second,
+                        b.first, b.second, c.first, c.second);
+        })
+        .transform_error([](auto) { std::puts("failure"); });
 }

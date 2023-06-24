@@ -36,16 +36,17 @@ struct scn::scanner<has_istream_operator, CharT>
 
 TEST(IstreamScannerTest, HasIstreamOperator)
 {
-    auto [result, val] = scn::scan<has_istream_operator>("42", "{}");
-    EXPECT_TRUE(result);
+    auto result = scn::scan<has_istream_operator>("42", "{}");
+    ASSERT_TRUE(result);
+    const auto& [val] = result->values();
     EXPECT_EQ(val.i, 42);
 }
 TEST(IstreamScannerTest, OtherValues)
 {
-    auto [result, a, b, c] =
-        scn::scan<has_istream_operator, has_istream_operator,
-                  has_istream_operator>("123 456 789", "{} {} {}");
-    EXPECT_TRUE(result);
+    auto result = scn::scan<has_istream_operator, has_istream_operator,
+                            has_istream_operator>("123 456 789", "{} {} {}");
+    ASSERT_TRUE(result);
+    const auto& [a, b, c] = result->values();
     EXPECT_EQ(a.i, 123);
     EXPECT_EQ(b.i, 456);
     EXPECT_EQ(c.i, 789);

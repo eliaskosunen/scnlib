@@ -29,29 +29,32 @@ struct scn::scanner<mytype, char> : scn::scanner<std::string, char> {
     scn::scan_expected<typename Context::iterator> scan(mytype& val,
                                                         Context& ctx) const
     {
-        auto [result, i, j] = scn::scan<int, int>(ctx.range(), "{} {}");
-        if (result) {
-            val = mytype{i, j};
-            return result.range().begin();
-        }
-        return unexpected(result.error());
+        return scn::scan<int, int>(ctx.range(), "{} {}")
+            .transform([&](auto result) {
+                std::tie(val.i, val.j) = result.values();
+                return result.begin();
+            });
     }
 };
 
 TEST(CustomTypeTest, Simple)
 {
-    auto [result, val] = scn::scan<mytype>("123 456", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
+    auto result = scn::scan<mytype>("123 456", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result->begin(), '\0');
+
+    const auto& val = std::get<0>(result->values());
     EXPECT_EQ(val.i, 123);
     EXPECT_EQ(val.j, 456);
 }
 
 TEST(CustomTypeTest, Multiple)
 {
-    auto [result, a, b] = scn::scan<mytype, mytype>("12 34 56 78", "{} {}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
+    auto result = scn::scan<mytype, mytype>("12 34 56 78", "{} {}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result->begin(), '\0');
+
+    const auto& [a, b] = result->values();
     EXPECT_EQ(a.i, 12);
     EXPECT_EQ(a.j, 34);
     EXPECT_EQ(b.i, 56);
@@ -60,10 +63,11 @@ TEST(CustomTypeTest, Multiple)
 
 TEST(CustomTypeTest, Surrounded)
 {
-    auto [result, a, val, b] =
-        scn::scan<int, mytype, int>("1 2 3 4", "{} {} {}");
-    EXPECT_TRUE(result);
-    EXPECT_TRUE(result.range().empty());
+    auto result = scn::scan<int, mytype, int>("1 2 3 4", "{} {} {}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result->begin(), '\0');
+
+    const auto& [a, val, b] = result->values();
     EXPECT_EQ(a, 1);
     EXPECT_EQ(val.i, 2);
     EXPECT_EQ(val.j, 3);

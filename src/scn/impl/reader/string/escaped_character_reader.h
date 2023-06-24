@@ -17,11 +17,9 @@
 
 #pragma once
 
-#include <bits/ranges_base.h>
 #include <scn/impl/algorithms/read_code_points.h>
 #include <scn/impl/reader/common.h>
-#include "scn/fwd.h"
-#include "scn/util/expected.h"
+#include <scn/util/expected.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

@@ -22,134 +22,134 @@
 
 TEST(StringTest, DefaultNarrowStringFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::string>("abc def", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), " def");
-    EXPECT_EQ(str, "abc");
+    auto result = scn::scan<std::string>("abc def", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), " def");
+    EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringTest, DefaultWideStringFromWideSource)
 {
-    auto [result, str] = scn::scan<std::wstring>(L"abc def", L"{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L" def");
-    EXPECT_EQ(str, L"abc");
+    auto result = scn::scan<std::wstring>(L"abc def", L"{}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L" def");
+    EXPECT_EQ(result->value(), L"abc");
 }
 
 TEST(StringTest, DefaultNarrowStringFromWideSource)
 {
-    auto [result, str] = scn::scan<std::string>(L"abc def", L"{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L" def");
-    EXPECT_EQ(str, "abc");
+    auto result = scn::scan<std::string>(L"abc def", L"{}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L" def");
+    EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringTest, DefaultWideStringFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::wstring>("abc def", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), " def");
-    EXPECT_EQ(str, L"abc");
+    auto result = scn::scan<std::wstring>("abc def", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), " def");
+    EXPECT_EQ(result->value(), L"abc");
 }
 
 TEST(StringTest, StringPresentationNarrowStringFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::string>("abc def", "{:s}");
+    auto result = scn::scan<std::string>("abc def", "{:s}");
     EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), " def");
-    EXPECT_EQ(str, "abc");
+    EXPECT_STREQ(result->begin(), " def");
+    EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringTest, StringPresentationWideStringFromWideSource)
 {
-    auto [result, str] = scn::scan<std::wstring>(L"abc def", L"{:s}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L" def");
-    EXPECT_EQ(str, L"abc");
+    auto result = scn::scan<std::wstring>(L"abc def", L"{:s}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L" def");
+    EXPECT_EQ(result->value(), L"abc");
 }
 
 TEST(StringTest, StringPresentationNarrowStringFromWideSource)
 {
-    auto [result, str] = scn::scan<std::string>(L"abc def", L"{:s}");
+    auto result = scn::scan<std::string>(L"abc def", L"{:s}");
     EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L" def");
-    EXPECT_EQ(str, "abc");
+    EXPECT_STREQ(result->begin(), L" def");
+    EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringTest, StringPresentationWideStringFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::wstring>("abc def", "{:s}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), " def");
-    EXPECT_EQ(str, L"abc");
+    auto result = scn::scan<std::wstring>("abc def", "{:s}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), " def");
+    EXPECT_EQ(result->value(), L"abc");
 }
 
 TEST(StringTest, CharacterPresentationWithNoWidthCausesError)
 {
-    auto [result, _] = scn::scan<std::string>("abc def", scn::runtime("{:c}"));
-    EXPECT_FALSE(result);
+    auto result = scn::scan<std::string>("abc def", scn::runtime("{:c}"));
+    ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
 }
 
 TEST(StringTest, CharacterPresentationNarrowStringFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::string>("abc def", "{:4c}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), "def");
-    EXPECT_EQ(str, "abc ");
+    auto result = scn::scan<std::string>("abc def", "{:4c}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), "def");
+    EXPECT_EQ(result->value(), "abc ");
 }
 TEST(StringTest, CharacterPresentationWideStringFromWideSource)
 {
-    auto [result, str] = scn::scan<std::wstring>(L"abc def", L"{:4c}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L"def");
-    EXPECT_EQ(str, L"abc ");
+    auto result = scn::scan<std::wstring>(L"abc def", L"{:4c}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L"def");
+    EXPECT_EQ(result->value(), L"abc ");
 }
 
 TEST(StringTest, CharacterPresentationNarrowStringFromWideSource)
 {
-    auto [result, str] = scn::scan<std::string>(L"abc def", L"{:4c}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L"def");
-    EXPECT_EQ(str, "abc ");
+    auto result = scn::scan<std::string>(L"abc def", L"{:4c}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L"def");
+    EXPECT_EQ(result->value(), "abc ");
 }
 TEST(StringTest, CharacterPresentationWideStringFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::wstring>("abc def", "{:4c}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), "def");
-    EXPECT_EQ(str, L"abc ");
+    auto result = scn::scan<std::wstring>("abc def", "{:4c}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), "def");
+    EXPECT_EQ(result->value(), L"abc ");
 }
 
 TEST(StringTest, CharacterSetPresentationNarrowStringFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::string>("abc def", "{:[:alpha:]}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), " def");
-    EXPECT_EQ(str, "abc");
+    auto result = scn::scan<std::string>("abc def", "{:[:alpha:]}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), " def");
+    EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringTest, CharacterSetPresentationWideStringFromWideSource)
 {
-    auto [result, str] = scn::scan<std::wstring>(L"abc def", L"{:[:alpha:]}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L" def");
-    EXPECT_EQ(str, L"abc");
+    auto result = scn::scan<std::wstring>(L"abc def", L"{:[:alpha:]}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L" def");
+    EXPECT_EQ(result->value(), L"abc");
 }
 
 TEST(StringTest, CharacterSetPresentationNarrowStringFromWideSource)
 {
-    auto [result, str] = scn::scan<std::string>(L"abc def", L"{:[:alpha:]}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L" def");
-    EXPECT_EQ(str, "abc");
+    auto result = scn::scan<std::string>(L"abc def", L"{:[:alpha:]}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L" def");
+    EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringTest, CharacterSetPresentationWideStringFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::wstring>("abc def", "{:[:alpha:]}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), " def");
-    EXPECT_EQ(str, L"abc");
+    auto result = scn::scan<std::wstring>("abc def", "{:[:alpha:]}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), " def");
+    EXPECT_EQ(result->value(), L"abc");
 }
 
 TEST(StringTest, WonkyInput)
 {
-    auto [result, _] = scn::scan<std::string>("o \x0f\n\n\xc3", "{:64U}");
-    EXPECT_FALSE(result);
+    auto result = scn::scan<std::string>("o \x0f\n\n\xc3", "{:64U}");
+    ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_encoding);
 }

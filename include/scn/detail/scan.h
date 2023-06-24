@@ -26,6 +26,7 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+#if 0
     namespace detail {
         template <typename SourceRange, typename ResultRange, typename... Args>
         using scan_result_tuple =
@@ -44,17 +45,16 @@ namespace scn {
                               SCN_MOVE(std::get<Is>(values))...};
         }
     }  // namespace detail
+#endif
 
-    template <typename ResultRange, typename Context, typename... Args>
-    auto make_scan_result_tuple(scan_result<ResultRange> result,
+    template <typename ResultIterator, typename Context, typename... Args>
+    auto make_scan_result_tuple(scan_expected<ResultIterator>&& result,
                                 scan_arg_store<Context, Args...>&& args)
+        -> scan_expected<scan_result<ResultIterator, Args...>>
     {
-        if (SCN_LIKELY(result.good())) {
-            return detail::make_scan_result_tuple_impl(
-                SCN_MOVE(result), std::make_index_sequence<sizeof...(Args)>{},
-                SCN_MOVE(args.args()));
-        }
-        return std::tuple{SCN_MOVE(result), Args()...};
+        return result.transform([&](auto&& it) {
+            return scan_result{SCN_FWD(it), SCN_MOVE(args.args())};
+        });
     }
 
     namespace detail {
@@ -169,8 +169,9 @@ namespace scn {
         {
             auto arg =
                 detail::make_arg<detail::context_type_for<Source>>(value);
-            auto result = vscan_value(SCN_FWD(source), arg);
-            return std::tuple{SCN_MOVE(result), SCN_MOVE(value)};
+            return vscan_value(SCN_FWD(source), arg).transform([&](auto&& it) {
+                return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(value)}};
+            });
         }
     }  // namespace detail
 
@@ -194,9 +195,7 @@ namespace scn {
         scn::istreambuf_view& internal_narrow_stdin();
 
         template <typename... Args, typename Source, typename Format>
-        std::tuple<scan_result<stdin_range_marker>, Args...> input_impl(
-            Source& source,
-            Format format)
+        auto input_impl(Source& source, Format format)
         {
             auto args = make_scan_args<decltype(source), Args...>();
             auto result = vscan_and_sync(SCN_FWD(source), format, args);

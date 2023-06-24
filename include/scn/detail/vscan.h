@@ -20,6 +20,7 @@
 #include <scn/detail/context.h>
 #include <scn/detail/istream_range.h>
 #include <scn/detail/result.h>
+#include <scn/util/expected.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -32,30 +33,33 @@ namespace scn {
         basic_scan_context<detail::decayed_mapped_source_range<Range>, CharT>>;
 
     namespace detail {
-        scan_result<std::string_view> vscan_impl(
+        template <typename R>
+        using vscan_result = scan_expected<typename R::iterator>;
+
+        vscan_result<std::string_view> vscan_impl(
             std::string_view source,
             std::string_view format,
             scan_args_for<std::string_view, char> args);
-        scan_result<erased_subrange> vscan_impl(
+        vscan_result<erased_subrange> vscan_impl(
             erased_subrange source,
             std::string_view format,
             scan_args_for<erased_subrange, char> args);
 #if SCN_USE_IOSTREAMS
-        scan_result<istreambuf_subrange> vscan_impl(
+        vscan_result<istreambuf_subrange> vscan_impl(
             istreambuf_subrange source,
             std::string_view format,
             scan_args_for<istreambuf_subrange, char> args);
 #endif
 
         template <typename Locale>
-        scan_result<std::string_view> vscan_localized_impl(
+        vscan_result<std::string_view> vscan_localized_impl(
             const Locale& loc,
             std::string_view source,
             std::string_view format,
             scan_args_for<std::string_view, char> args);
         template <typename Locale,
                   typename = std::void_t<decltype(Locale::classic())>>
-        scan_result<erased_subrange> vscan_localized_impl(
+        vscan_result<erased_subrange> vscan_localized_impl(
             Locale& loc,
             erased_subrange source,
             std::string_view format,
@@ -63,32 +67,35 @@ namespace scn {
 #if SCN_USE_IOSTREAMS
         template <typename Locale,
                   typename = std::void_t<decltype(Locale::classic())>>
-        scan_result<istreambuf_subrange> vscan_localized_impl(
+        vscan_result<istreambuf_subrange> vscan_localized_impl(
             Locale& loc,
             istreambuf_subrange source,
             std::string_view format,
             scan_args_for<istreambuf_subrange, char> args);
 #endif
 
-        scan_result<std::string_view> vscan_value_impl(
+        vscan_result<std::string_view> vscan_value_impl(
             std::string_view source,
             scan_arg_for<std::string_view, char> arg);
-        scan_result<erased_subrange> vscan_value_impl(
+        vscan_result<erased_subrange> vscan_value_impl(
             erased_subrange source,
             scan_arg_for<erased_subrange, char> arg);
 #if SCN_USE_IOSTREAMS
-        scan_result<istreambuf_subrange> vscan_value_impl(
+        vscan_result<istreambuf_subrange> vscan_value_impl(
             istreambuf_subrange source,
             scan_arg_for<istreambuf_subrange, char> arg);
 #endif
 
 #if SCN_USE_IOSTREAMS
-        scan_result<istreambuf_subrange> vscan_and_sync_impl(
+        vscan_result<istreambuf_subrange> vscan_and_sync_impl(
             istreambuf_subrange source,
             std::string_view format,
             scan_args_for<istreambuf_subrange, char> args);
 #endif
     }  // namespace detail
+
+    SCN_GCC_PUSH
+    SCN_GCC_IGNORE("-Wnoexcept")
 
     template <typename Range>
     auto vscan(Range&& range,
@@ -96,10 +103,13 @@ namespace scn {
                scan_args_for<Range, char> args)
     {
         auto mapped_range = detail::scan_map_input_range(range);
-        auto result = detail::vscan_impl(mapped_range, format, args);
-        auto result_range =
-            detail::map_scan_result_range(SCN_FWD(range), result.range());
-        return scan_result{SCN_MOVE(result_range), result.error()};
+        return detail::vscan_impl(mapped_range, format, args)
+            .transform([&](const auto& it) SCN_NOEXCEPT_P(
+                           noexcept(detail::map_scan_result_iterator(
+                               SCN_FWD(range), mapped_range.begin(), it))) {
+                return detail::map_scan_result_iterator(
+                    SCN_FWD(range), mapped_range.begin(), it);
+            });
     }
 
     template <typename Range,
@@ -111,21 +121,26 @@ namespace scn {
                scan_args_for<Range, char> args)
     {
         auto mapped_range = detail::scan_map_input_range(range);
-        auto result =
-            detail::vscan_localized_impl(loc, mapped_range, format, args);
-        auto result_range =
-            detail::map_scan_result_range(SCN_FWD(range), result.range());
-        return scan_result{SCN_MOVE(result_range), result.error()};
+        return detail::vscan_localized_impl(loc, mapped_range, format, args)
+            .transform([&](const auto& it) SCN_NOEXCEPT_P(
+                           noexcept(detail::map_scan_result_iterator(
+                               SCN_FWD(range), mapped_range.begin(), it))) {
+                return detail::map_scan_result_iterator(
+                    SCN_FWD(range), mapped_range.begin(), it);
+            });
     }
 
     template <typename Range>
     auto vscan_value(Range&& range, scan_arg_for<Range, char> arg)
     {
         auto mapped_range = detail::scan_map_input_range(range);
-        auto result = detail::vscan_value_impl(mapped_range, arg);
-        auto result_range =
-            detail::map_scan_result_range(SCN_FWD(range), result.range());
-        return scan_result{SCN_MOVE(result_range), result.error()};
+        return detail::vscan_value_impl(mapped_range, arg)
+            .transform([&](const auto& it) SCN_NOEXCEPT_P(
+                           noexcept(detail::map_scan_result_iterator(
+                               SCN_FWD(range), mapped_range.begin(), it))) {
+                return detail::map_scan_result_iterator(
+                    SCN_FWD(range), mapped_range.begin(), it);
+            });
     }
 
     template <typename Range>
@@ -134,11 +149,16 @@ namespace scn {
                         scan_args_for<Range, char> args)
     {
         auto mapped_range = detail::scan_map_input_range(range);
-        auto result = detail::vscan_and_sync_impl(mapped_range, format, args);
-        auto result_range =
-            detail::map_scan_result_range(SCN_FWD(range), result.range());
-        return scan_result{SCN_MOVE(result_range), result.error()};
+        return detail::vscan_and_sync_impl(mapped_range, format, args)
+            .transform([&](const auto& it) SCN_NOEXCEPT_P(
+                           noexcept(detail::map_scan_result_iterator(
+                               SCN_FWD(range), mapped_range.begin(), it))) {
+                return detail::map_scan_result_iterator(
+                    SCN_FWD(range), mapped_range.begin(), it);
+            });
     }
 
-    SCN_END_NAMESPACE
+    SCN_GCC_POP  // -Wnoexcept
+
+        SCN_END_NAMESPACE
 }  // namespace scn

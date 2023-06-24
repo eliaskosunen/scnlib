@@ -29,9 +29,7 @@ using ::testing::Test;
 using scan_context = scn::basic_scan_context<std::string_view, char>;
 using scan_args = scn::scan_args_for<std::string_view, char>;
 
-template <typename R, typename... Args>
-using scan_result_tuple_helper = std::tuple<scn::scan_result<R>, Args...>;
-
+#if 0
 namespace {
     scn::scan_result<std::string_view> mock_vscan(std::string_view input,
                                                   scan_args)
@@ -46,6 +44,7 @@ namespace {
         return scn::scan_result<scn::istreambuf_subrange>{input};
     }
 }  // namespace
+#endif
 
 // TODO
 #if 0
@@ -90,100 +89,104 @@ TEST(ResultTestMocked, IstreamRange)
 TEST(ResultTestReal, StringLvalue)
 {
     auto source = std::string{"foobar"};
-    auto [result] = scn::scan(source, "");
+    auto result = scn::scan(source, "");
 
-    static_assert(
-        std::is_same_v<decltype(result), scn::scan_result<std::string_view>>);
-    EXPECT_EQ(result.range(), "foobar");
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scn::scan_expected<scn::scan_result<std::string::iterator>>>);
+    EXPECT_STREQ(&*result->begin(), "foobar");
 }
 TEST(ResultTestReal, StringRvalue)
 {
-    auto [result] = scn::scan(std::string{"foobar"}, "");
+    auto result = scn::scan(std::string{"foobar"}, "");
 
-    static_assert(std::is_same_v<decltype(result),
-                                 scn::scan_result<scn::ranges::dangling>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scn::scan_expected<scn::scan_result<scn::ranges::dangling>>>);
 }
 TEST(ResultTestReal, StringView)
 {
-    auto [result] = scn::scan(std::string_view{"foobar"}, "");
+    auto result = scn::scan(std::string_view{"foobar"}, "");
 
     static_assert(
-        std::is_same_v<decltype(result), scn::scan_result<std::string_view>>);
-    EXPECT_EQ(result.range(), "foobar");
+        std::is_same_v<
+            decltype(result),
+            scn::scan_expected<scn::scan_result<std::string_view::iterator>>>);
+    EXPECT_STREQ(&*result->begin(), "foobar");
 }
 
 TEST(ResultTestReal, VectorLvalue)
 {
     auto source = std::vector<char>{'a', 'b', 'c'};
-    auto [result] = scn::scan(source, "");
+    auto result = scn::scan(source, "");
 
     static_assert(
-        std::is_same_v<decltype(result), scn::scan_result<std::string_view>>);
-    EXPECT_EQ(result.range(), "abc");
+        std::is_same_v<
+            decltype(result),
+            scn::scan_expected<scn::scan_result<std::vector<char>::iterator>>>);
 }
 TEST(ResultTestReal, VectorRvalue)
 {
-    auto [result] = scn::scan(std::vector<char>{'a', 'b', 'c'}, "");
+    auto result = scn::scan(std::vector<char>{'a', 'b', 'c'}, "");
 
-    static_assert(std::is_same_v<decltype(result),
-                                 scn::scan_result<scn::ranges::dangling>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scn::scan_expected<scn::scan_result<scn::ranges::dangling>>>);
 }
 
 TEST(ResultTestReal, DequeLvalue)
 {
     auto source = std::deque<char>{'a', 'b', 'c'};
-    auto [result] = scn::scan(source, "");
+    auto result = scn::scan(source, "");
 
-    using iterator = scn::ranges::iterator_t<const std::deque<char>&>;
-    using sentinel = scn::ranges::sentinel_t<const std::deque<char>&>;
-    static_assert(std::is_same_v<
-                  decltype(result),
-                  scn::scan_result<scn::ranges::subrange<iterator, sentinel>>>);
-    EXPECT_EQ(result.range().size(), 3);
+    static_assert(
+        std::is_same_v<decltype(result),
+                       scn::scan_expected<scn::scan_result<
+                           scn::ranges::iterator_t<std::deque<char>&>>>>);
 }
 TEST(ResultTestReal, DequeRvalue)
 {
-    auto [result] = scn::scan(std::deque<char>{'a', 'b', 'c'}, "");
+    auto result = scn::scan(std::deque<char>{'a', 'b', 'c'}, "");
 
-    static_assert(std::is_same_v<decltype(result),
-                                 scn::scan_result<scn::ranges::dangling>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scn::scan_expected<scn::scan_result<scn::ranges::dangling>>>);
 }
 
 TEST(ResultTestReal, ForwardListLvalue)
 {
     auto source = std::forward_list<char>{'a', 'b', 'c'};
-    auto [result] = scn::scan(source, "");
+    auto result = scn::scan(source, "");
 
-    using iterator = scn::ranges::iterator_t<const std::forward_list<char>&>;
-    using sentinel = scn::ranges::sentinel_t<const std::forward_list<char>&>;
     static_assert(std::is_same_v<
                   decltype(result),
-                  scn::scan_result<scn::ranges::subrange<iterator, sentinel>>>);
-    EXPECT_EQ(
-        scn::ranges::distance(result.range().begin(), result.range().end()), 3);
+                  scn::scan_expected<scn::scan_result<
+                      scn::ranges::iterator_t<std::forward_list<char>&>>>>);
 }
 TEST(ResultTestReal, ForwardListRvalue)
 {
-    auto [result] = scn::scan(std::forward_list<char>{'a', 'b', 'c'}, "");
+    auto result = scn::scan(std::forward_list<char>{'a', 'b', 'c'}, "");
 
-    static_assert(std::is_same_v<decltype(result),
-                                 scn::scan_result<scn::ranges::dangling>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scn::scan_expected<scn::scan_result<scn::ranges::dangling>>>);
 }
 
 TEST(ResultTestReal, ErasedRangeLvalue)
 {
     auto source = scn::erased_range{std::string_view{"foobar"}};
-    auto [result] = scn::scan(source, "");
+    auto result = scn::scan(source, "");
 
-    static_assert(std::is_same_v<decltype(result),
-                                 scn::scan_result<scn::erased_subrange>>);
-    EXPECT_EQ(
-        scn::ranges::distance(result.range().begin(), result.range().end()), 6);
+    static_assert(
+        std::is_same_v<
+            decltype(result),
+            scn::scan_expected<scn::scan_result<scn::erased_range::iterator>>>);
 }
 TEST(ResultTestReal, ErasedRangeRvalue)
 {
-    auto [result] = scn::scan(scn::erased_range{"foobar"}, "");
+    auto result = scn::scan(scn::erased_range{"foobar"}, "");
 
-    static_assert(std::is_same_v<decltype(result),
-                                 scn::scan_result<scn::ranges::dangling>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scn::scan_expected<scn::scan_result<scn::ranges::dangling>>>);
 }

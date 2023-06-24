@@ -22,8 +22,9 @@
 
 TEST(CharTest, CharFromNarrow)
 {
-    auto [result, ch] = scn::scan<char>("abc", "{}");
-    EXPECT_TRUE(result);
+    auto result = scn::scan<char>("abc", "{}");
+    ASSERT_TRUE(result);
+    auto [ch] = result->values();
     EXPECT_EQ(ch, 'a');
 }
 TEST(CharTest, CharFromWide)
@@ -33,13 +34,15 @@ TEST(CharTest, CharFromWide)
 
 TEST(CharTest, WcharFromNarrow)
 {
-    auto [result, ch] = scn::scan<wchar_t>("abc", "{}");
-    EXPECT_TRUE(result);
+    auto result = scn::scan<wchar_t>("abc", "{}");
+    ASSERT_TRUE(result);
+    auto [ch] = result->values();
     EXPECT_EQ(ch, L'a');
 }
 TEST(CharTest, WcharFromWide)
 {
-    auto [result, ch] = scn::scan<wchar_t>(L"abc", L"{}");
+    auto result = scn::scan<wchar_t>(L"abc", L"{}");
     EXPECT_TRUE(result);
+    auto [ch] = result->values();
     EXPECT_EQ(ch, L'a');
 }

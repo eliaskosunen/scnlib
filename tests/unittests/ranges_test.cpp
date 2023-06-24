@@ -32,9 +32,9 @@ TEST(RangesTest, VectorSequence)
     static_assert(scn::range_format_kind<std::vector<int>, char>::value ==
                   scn::range_format::sequence);
 
-    auto [result, vec] = scn::scan<std::vector<int>>("[123, 456]", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_THAT(vec, testing::ElementsAre(123, 456));
+    auto result = scn::scan<std::vector<int>>("[123, 456]", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_THAT(result->value(), testing::ElementsAre(123, 456));
 }
 
 TEST(RangesTest, Set)
@@ -42,9 +42,9 @@ TEST(RangesTest, Set)
     static_assert(scn::range_format_kind<std::set<int>, char>::value ==
                   scn::range_format::set);
 
-    auto [result, set] = scn::scan<std::set<int>>("{123, 456}", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_THAT(set, testing::ElementsAre(123, 456));
+    auto result = scn::scan<std::set<int>>("{123, 456}", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_THAT(result->value(), testing::ElementsAre(123, 456));
 }
 
 TEST(RangesTest, Map)
@@ -52,9 +52,8 @@ TEST(RangesTest, Map)
     static_assert(scn::range_format_kind<std::map<int, int>, char>::value ==
                   scn::range_format::map);
 
-    auto [result, map] =
-        scn::scan<std::map<int, int>>("{12: 34, 56: 78}", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_THAT(map,
+    auto result = scn::scan<std::map<int, int>>("{12: 34, 56: 78}", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_THAT(result->value(),
                 testing::ElementsAre(std::pair{12, 34}, std::pair{56, 78}));
 }

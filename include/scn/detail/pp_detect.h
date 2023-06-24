@@ -448,6 +448,13 @@
 #define SCN_HAS_CONSTEVAL 0
 #endif
 
+// Detect std::span
+#if defined(__cpp_lib_span) && __cpp_lib_span >= 202002L && SCN_STD >= SCN_STD_20
+#define SCN_HAS_STD_SPAN 1
+#else
+#define SCN_HAS_STD_SPAN 0
+#endif
+
 // Detect endianness
 #if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
 

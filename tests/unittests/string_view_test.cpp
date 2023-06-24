@@ -22,77 +22,75 @@
 
 TEST(StringViewTest, DefaultNarrowStringViewFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::string_view>("abc def", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), " def");
-    EXPECT_EQ(str, "abc");
+    auto result = scn::scan<std::string_view>("abc def", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), " def");
+    EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringViewTest, DefaultWideStringViewFromWideSource)
 {
-    auto [result, str] = scn::scan<std::wstring_view>(L"abc def", L"{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L" def");
-    EXPECT_EQ(str, L"abc");
+    auto result = scn::scan<std::wstring_view>(L"abc def", L"{}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L" def");
+    EXPECT_EQ(result->value(), L"abc");
 }
 
 TEST(StringViewTest, StringPresentationNarrowStringViewFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::string_view>("abc def", "{:s}");
+    auto result = scn::scan<std::string_view>("abc def", "{:s}");
     EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), " def");
-    EXPECT_EQ(str, "abc");
+    EXPECT_STREQ(result->begin(), " def");
+    EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringViewTest, StringPresentationWideStringViewFromWideSource)
 {
-    auto [result, str] = scn::scan<std::wstring_view>(L"abc def", L"{:s}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L" def");
-    EXPECT_EQ(str, L"abc");
+    auto result = scn::scan<std::wstring_view>(L"abc def", L"{:s}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L" def");
+    EXPECT_EQ(result->value(), L"abc");
 }
 
 TEST(StringViewTest, CharacterPresentationWithNoWidthCausesError)
 {
-    auto [result, _] =
-        scn::scan<std::string_view>("abc def", scn::runtime("{:c}"));
-    EXPECT_FALSE(result);
+    auto result = scn::scan<std::string_view>("abc def", scn::runtime("{:c}"));
+    ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
 }
 
 TEST(StringViewTest, CharacterPresentationNarrowStringViewFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::string_view>("abc def", "{:4c}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), "def");
-    EXPECT_EQ(str, "abc ");
+    auto result = scn::scan<std::string_view>("abc def", "{:4c}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), "def");
+    EXPECT_EQ(result->value(), "abc ");
 }
 TEST(StringViewTest, CharacterPresentationWideStringViewFromWideSource)
 {
-    auto [result, str] = scn::scan<std::wstring_view>(L"abc def", L"{:4c}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L"def");
-    EXPECT_EQ(str, L"abc ");
+    auto result = scn::scan<std::wstring_view>(L"abc def", L"{:4c}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L"def");
+    EXPECT_EQ(result->value(), L"abc ");
 }
 
 TEST(StringViewTest, CharacterSetPresentationNarrowStringViewFromNarrowSource)
 {
-    auto [result, str] = scn::scan<std::string_view>("abc def", "{:[:alpha:]}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), " def");
-    EXPECT_EQ(str, "abc");
+    auto result = scn::scan<std::string_view>("abc def", "{:[:alpha:]}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), " def");
+    EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringViewTest, CharacterSetPresentationWideStringViewFromWideSource)
 {
-    auto [result, str] =
-        scn::scan<std::wstring_view>(L"abc def", L"{:[:alpha:]}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(result.range(), L" def");
-    EXPECT_EQ(str, L"abc");
+    auto result = scn::scan<std::wstring_view>(L"abc def", L"{:[:alpha:]}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->begin(), L" def");
+    EXPECT_EQ(result->value(), L"abc");
 }
 
 TEST(StringViewTest, InvalidUtf8)
 {
     auto source = std::string_view{"\x82\xf5"};
-    auto [result, _] = scn::scan<std::string_view>(source, "{:64U}");
+    auto result = scn::scan<std::string_view>(source, "{:64U}");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error(), scn::scan_error::invalid_encoding);
 }
@@ -100,27 +98,23 @@ TEST(StringViewTest, InvalidUtf8)
 TEST(StringViewTest, WonkyInput)
 {
     auto source = std::string_view{"o \U0000000f\n\n\xc3"};
-    auto [result, str] = scn::scan<std::string_view>(source, "{:64U}");
-    std::tie(result, str) =
-        scn::scan<std::string_view>(result.range(), "{:64U}");
-    std::tie(result, str) =
-        scn::scan<std::string_view>(result.range(), "{:64U}");
-    std::tie(result, str) =
-        scn::scan<std::string_view>(result.range(), "{:64U}");
-    std::tie(result, str) =
-        scn::scan<std::string_view>(result.range(), "{:64U}");
+    auto it = source.begin();
+    for (int i = 0; i < 5; ++i) {
+        if (it == source.end()) {
+            break;
+        }
+        auto result = scn::scan<std::string_view>(
+            scn::ranges::subrange{it, source.end()}, "{:64U}");
+        if (result) {
+            it = result->begin();
+        }
+    }
 }
 TEST(StringViewTest, WonkyInput2)
 {
     const char source[] = {'o', ' ', '\x0f', '\n', '\n', '\xc3'};
-    auto range = scn::detail::scan_map_input_range(source);
+    auto range = std::string_view{source, sizeof(source)};
 
-    auto [result, str] = scn::scan<std::string_view>(range, "{:64U}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(str, (std::string_view{source, sizeof(source) - 1}));
-    range = std::move(result.range());
-
-    auto [newresult, newstr] = scn::scan<std::string_view>(range, "{:64U}");
-    EXPECT_FALSE(newresult);
-    EXPECT_EQ(newstr, "");
+    auto result = scn::scan<std::string_view>(range, "{:64U}");
+    ASSERT_FALSE(result);
 }

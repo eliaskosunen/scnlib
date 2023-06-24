@@ -18,112 +18,172 @@
 #pragma once
 
 #include <scn/detail/args.h>
-#include <scn/detail/error.h>
 #include <scn/detail/erased_range.h>
+#include <scn/detail/error.h>
 
 #include <tuple>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    /**
-     * Scan result type, containing the unparsed input, and a possible error.
-     * The first element in the tuple returned by scan().
-     */
-    template <typename ResultMappedRange>
+    template <typename Iterator, typename... Args>
     class scan_result {
     public:
-        using range_type = ResultMappedRange;
+        using iterator = Iterator;
+        using tuple_type = std::tuple<Args...>;
 
         scan_result() = default;
 
-        template <typename Range,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<range_type, Range>>>
-        explicit scan_result(Range&& r, scan_error e = {})
-            : m_range(SCN_FWD(r)), m_error(SCN_MOVE(e))
+        scan_result(iterator it, std::tuple<Args...>&& values)
+            : m_begin(SCN_MOVE(it)), m_values(SCN_MOVE(values))
         {
         }
 
-        template <typename Range,
+        template <typename OtherIt,
                   typename = std::enable_if_t<
-                      std::is_constructible_v<range_type, Range>>>
-        scan_result(const scan_result<Range>& o)
-            : m_range(o.range()), m_error(o.error())
-        {
-        }
-        template <typename Range,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<range_type, Range>>>
-        scan_result(scan_result<Range>&& o)
-            : m_range(SCN_MOVE(o.range())), m_error(SCN_MOVE(o.error()))
+                      std::is_constructible_v<iterator, OtherIt>>>
+        scan_result(OtherIt&& it, std::tuple<Args...>&& values)
+            : m_begin(SCN_FWD(it)), m_values(SCN_MOVE(values))
         {
         }
 
-        template <typename Range,
-                  typename =
-                      std::enable_if_t<std::is_assignable_v<range_type, Range>>>
-        scan_result& operator=(Range&& r)
+        template <typename OtherIt,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<iterator, OtherIt>>>
+        explicit scan_result(const scan_result<OtherIt, Args...>& o)
+            : m_begin(o.m_begin), m_values(o.m_values)
         {
-            m_range = SCN_FWD(r);
+        }
+
+        template <typename OtherIt,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<iterator, OtherIt>>>
+        explicit scan_result(scan_result<OtherIt, Args...>&& o)
+            : m_begin(SCN_MOVE(o.m_begin)), m_values(SCN_MOVE(o.m_values))
+        {
+        }
+
+        template <typename OtherIt,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<iterator, OtherIt>>>
+        scan_result& operator=(const scan_result<OtherIt, Args...>& o)
+        {
+            m_begin = o.m_begin;
+            m_values = o.m_values;
             return *this;
         }
-        template <typename Range,
-                  typename =
-                      std::enable_if_t<std::is_assignable_v<range_type, Range>>>
-        scan_result& operator=(scan_result<Range>&& r)
+
+        template <typename OtherIt,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<iterator, OtherIt>>>
+        scan_result& operator=(scan_result<OtherIt, Args...>&& o)
         {
-            m_range = SCN_FWD(r.range());
-            m_error = SCN_FWD(r.error());
+            m_begin = SCN_MOVE(o.m_begin);
+            m_values = SCN_MOVE(o.m_values);
             return *this;
         }
 
-        /// True, if the operation succeeded
-        constexpr explicit operator bool() const
+        iterator begin() const
         {
-            return m_error.operator bool();
-        }
-        /// True, if the operation succeeded
-        SCN_NODISCARD constexpr bool good() const
-        {
-            return operator bool();
+            return m_begin;
         }
 
-        /// Error, if one occured
-        SCN_NODISCARD constexpr scan_error error() const
+        tuple_type& values() &
         {
-            return m_error;
+            return m_values;
+        }
+        const tuple_type& values() const&
+        {
+            return m_values;
+        }
+        tuple_type&& values() &&
+        {
+            return SCN_MOVE(m_values);
+        }
+        const tuple_type&& values() const&&
+        {
+            return SCN_MOVE(m_values);
         }
 
-        /// The unparsed input
-        range_type& range() & SCN_NOEXCEPT
+        template <size_t N = sizeof...(Args),
+                  typename = std::enable_if_t<N == 1>>
+        decltype(auto) value() &
         {
-            return m_range;
+            return std::get<0>(m_values);
         }
-        const range_type& range() const& SCN_NOEXCEPT
+        template <size_t N = sizeof...(Args),
+                  typename = std::enable_if_t<N == 1>>
+        decltype(auto) value() const&
         {
-            return m_range;
+            return std::get<0>(m_values);
         }
-        range_type&& range() && SCN_NOEXCEPT
+        template <size_t N = sizeof...(Args),
+                  typename = std::enable_if_t<N == 1>>
+        decltype(auto) value() &&
         {
-            return SCN_MOVE(m_range);
+            return SCN_MOVE(std::get<0>(m_values));
         }
-        range_type&& range() const&& SCN_NOEXCEPT
+        template <size_t N = sizeof...(Args),
+                  typename = std::enable_if_t<N == 1>>
+        decltype(auto) value() const&&
         {
-            return SCN_MOVE(m_range);
+            return SCN_MOVE(std::get<0>(m_values));
         }
 
     private:
-        range_type m_range;
-        scan_error m_error{};
+        iterator m_begin{};
+        tuple_type m_values{};
     };
 
-    template <typename Range>
-    scan_result(Range) -> scan_result<Range>;
-    template <typename Range>
-    scan_result(Range, scan_error) -> scan_result<Range>;
+    template <typename It, typename... Args>
+    scan_result(It, std::tuple<Args...>) -> scan_result<It, Args...>;
 
     namespace detail {
+        template <typename SourceRange, typename ResultIterator>
+        SCN_MAYBE_UNUSED constexpr bool is_map_scan_result_iterator_noexcept()
+        {
+            if constexpr (!ranges::borrowed_range<SourceRange>) {
+                return true;
+            }
+            else if constexpr (std::is_constructible_v<
+                                   ranges::iterator_t<SourceRange>,
+                                   const ResultIterator&>) {
+                return std::is_nothrow_constructible_v<
+                    ranges::iterator_t<SourceRange>, const ResultIterator&>;
+            }
+            else {
+                return false;
+            }
+        }
+
+        template <typename SourceRange, typename ResultIterator>
+        auto map_scan_result_iterator(SourceRange&& source,
+                                      const ResultIterator& mapped_begin,
+                                      const ResultIterator& result)
+            SCN_NOEXCEPT_P(
+                is_map_scan_result_iterator_noexcept<SourceRange,
+                                                     const ResultIterator&>())
+        {
+            if constexpr (!ranges::borrowed_range<SourceRange>) {
+                return ranges::dangling{};
+            }
+            else if constexpr (std::is_constructible_v<
+                                   ranges::iterator_t<SourceRange>,
+                                   const ResultIterator&>) {
+                return result;
+            }
+            else if constexpr (is_erased_range_iterator<
+                                   ResultIterator>::value) {
+                return ranges::next(ranges::begin(source),
+                                    result.distance_from_begin());
+            }
+            else {
+                return ranges::next(ranges::begin(source),
+                                    ranges::distance(mapped_begin, result));
+            }
+        }
+
+#if 0
         // Make a user-friendly range value from the return value of vscan
 
         template <typename SourceRange, typename ResultRange>
@@ -154,6 +214,7 @@ namespace scn {
                 return result;
             }
         }
+#endif
     }  // namespace detail
 
     SCN_END_NAMESPACE

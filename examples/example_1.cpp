@@ -17,14 +17,16 @@
 
 #include <scn/scan.h>
 
-#include <streambuf>
 #include <fstream>
+#include <streambuf>
 
 int main()
 {
-    if (const auto [result, num] =
-            scn::prompt<int>("What's your favorite number? ", "{}"); result) {
-        std::printf("%d, interesting\n", num);
+    if (const auto result =
+            scn::prompt<int>("What's your favorite number? ", "{}")) {
+        // `result` is true, we have a successful read.
+        // Read the single parsed value with result->value()
+        std::printf("%d, interesting\n", result->value());
     }
     else {
         std::puts("Well, nevermind then.");

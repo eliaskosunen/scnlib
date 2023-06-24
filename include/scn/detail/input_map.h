@@ -97,6 +97,27 @@ namespace scn {
             {
                 return r;
             }
+            template <typename Iterator,
+                      typename Sentinel,
+                      ranges::subrange_kind Kind,
+                      typename CharT = ranges_std::iter_value_t<Iterator>>
+            static std::enable_if_t<
+                is_valid_char_type<CharT> &&
+                    std::is_same_v<
+                        Iterator,
+                        typename basic_istreambuf_view<CharT>::iterator> &&
+                    std::is_same_v<
+                        Sentinel,
+                        typename basic_istreambuf_view<CharT>::sentinel>,
+                basic_istreambuf_subrange<CharT>>
+            impl(ranges::subrange<Iterator, Sentinel, Kind> r, priority_tag<3>)
+                SCN_NOEXCEPT_P(std::is_nothrow_constructible_v<
+                               basic_istreambuf_subrange<CharT>,
+                               Iterator,
+                               Sentinel>)
+            {
+                return {r.begin(), r.end()};
+            }
 
             // erased_subrange -> self
             template <typename CharT>
@@ -107,6 +128,27 @@ namespace scn {
                                basic_erased_subrange<CharT>>)
             {
                 return r;
+            }
+            template <typename Iterator,
+                      typename Sentinel,
+                      ranges::subrange_kind Kind,
+                      typename CharT = ranges_std::iter_value_t<Iterator>>
+            static std::enable_if_t<
+                is_valid_char_type<CharT> &&
+                    std::is_same_v<
+                        Iterator,
+                        typename basic_erased_range<CharT>::iterator> &&
+                    std::is_same_v<
+                        Sentinel,
+                        typename basic_erased_range<CharT>::sentinel>,
+                basic_erased_subrange<CharT>>
+            impl(ranges::subrange<Iterator, Sentinel, Kind> r, priority_tag<3>)
+                SCN_NOEXCEPT_P(std::is_nothrow_constructible_v<
+                               basic_erased_subrange<CharT>,
+                               Iterator,
+                               Sentinel>)
+            {
+                return {r.begin(), r.end()};
             }
 
             SCN_GCC_PUSH

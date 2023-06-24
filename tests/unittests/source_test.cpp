@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include <scn/detail/scan.h>
+#include "scn/detail/result.h"
 
 using ::testing::Test;
 
@@ -26,68 +27,69 @@ using scan_result_tuple_helper = std::tuple<scn::scan_result<R>, Args...>;
 
 TEST(SourceTest, Simple)
 {
-    auto [r, i] = scn::scan<int>("123", "{}");
-    EXPECT_TRUE(r);
-    EXPECT_TRUE(r.range().empty());
-    EXPECT_EQ(i, 123);
+    auto r = scn::scan<int>("123", "{}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(*r->begin(), '\0');
+    EXPECT_EQ(std::get<0>(r->values()), 123);
 }
 TEST(SourceTest, TwoArgs)
 {
-    auto [r, i, d] = scn::scan<int, double>("123 3.14", "{} {}");
-    EXPECT_TRUE(r);
-    EXPECT_TRUE(r.range().empty());
+    auto r = scn::scan<int, double>("123 3.14", "{} {}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(*r->begin(), '\0');
+    auto [i, d] = r->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
 }
 
-using std::get;
-
 TEST(SourceTest, SourceIsStringLiteral)
 {
     auto result = scn::scan<int, double>("123 3.14", "{} {}");
-    static_assert(std::is_same_v<
-                  decltype(result),
-                  scan_result_tuple_helper<std::string_view, int, double>>);
-    // EXPECT_TRUE(result);
-    EXPECT_TRUE(get<0>(result));
-    EXPECT_TRUE(get<0>(result).range().empty());
-    EXPECT_EQ(get<1>(result), 123);
-    EXPECT_DOUBLE_EQ(get<2>(result), 3.14);
+    static_assert(
+        std::is_same_v<
+            decltype(result),
+            scn::scan_expected<scn::scan_result<const char*, int, double>>>);
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result->begin(), '\0');
+    auto [i, d] = result->values();
+    EXPECT_EQ(i, 123);
+    EXPECT_DOUBLE_EQ(d, 3.14);
 }
 
 TEST(SourceTest, SourceIsStringView)
 {
     auto result = scn::scan<int, double>(std::string_view{"123 3.14"}, "{} {}");
-    static_assert(std::is_same_v<
-                  decltype(result),
-                  scan_result_tuple_helper<std::string_view, int, double>>);
-    // EXPECT_TRUE(result);
-    EXPECT_TRUE(get<0>(result));
-    EXPECT_TRUE(get<0>(result).range().empty());
-    EXPECT_EQ(get<1>(result), 123);
-    EXPECT_DOUBLE_EQ(get<2>(result), 3.14);
+    static_assert(
+        std::is_same_v<decltype(result),
+                       scn::scan_expected<scn::scan_result<
+                           std::string_view::iterator, int, double>>>);
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result->begin(), '\0');
+    auto [i, d] = result->values();
+    EXPECT_EQ(i, 123);
+    EXPECT_DOUBLE_EQ(d, 3.14);
 }
 
 TEST(SourceTest, SourceIsStringLvalue)
 {
     auto source = std::string{"123 3.14"};
     auto result = scn::scan<int, double>(source, "{} {}");
-    static_assert(std::is_same_v<
-                  decltype(result),
-                  scan_result_tuple_helper<std::string_view, int, double>>);
-    EXPECT_TRUE(get<0>(result));
-    EXPECT_TRUE(get<0>(result).range().empty());
-    EXPECT_EQ(get<1>(result), 123);
-    EXPECT_DOUBLE_EQ(get<2>(result), 3.14);
+    static_assert(std::is_same_v<decltype(result),
+                                 scn::scan_expected<scn::scan_result<
+                                     std::string::iterator, int, double>>>);
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result->begin(), '\0');
+    auto [i, d] = result->values();
+    EXPECT_EQ(i, 123);
+    EXPECT_DOUBLE_EQ(d, 3.14);
 }
 
 TEST(SourceTest, SourceIsStringRvalue)
 {
     auto result = scn::scan<int, double>(std::string{"123 3.14"}, "{} {}");
-    static_assert(
-        std::is_same_v<
-            decltype(result),
-            scan_result_tuple_helper<scn::ranges::dangling, int, double>>);
+    static_assert(std::is_same_v<decltype(result),
+                                 scn::scan_expected<scn::scan_result<
+                                     scn::ranges::dangling, int, double>>>);
 }
 
 TEST(SourceTest, SourceIsIstreamViewLvalue)
@@ -98,9 +100,9 @@ TEST(SourceTest, SourceIsIstreamViewLvalue)
 
     auto result = scn::scan<int, double>(range, "{} {}");
     static_assert(
-        std::is_same_v<
-            decltype(result),
-            scan_result_tuple_helper<scn::istreambuf_subrange, int, double>>);
+        std::is_same_v<decltype(result),
+                       scn::scan_expected<scn::scan_result<
+                           scn::istreambuf_subrange::iterator, int, double>>>);
 }
 
 TEST(SourceTest, SourceIsIstreamViewRvalue)
@@ -111,9 +113,9 @@ TEST(SourceTest, SourceIsIstreamViewRvalue)
     auto result =
         scn::scan<int, double>(scn::istreambuf_subrange{ssr}, "{} {}");
     static_assert(
-        std::is_same_v<
-            decltype(result),
-            scan_result_tuple_helper<scn::istreambuf_subrange, int, double>>);
+        std::is_same_v<decltype(result),
+                       scn::scan_expected<scn::scan_result<
+                           scn::istreambuf_subrange::iterator, int, double>>>);
 }
 
 TEST(SourceTest, SourceIsIstreamRangeLvalue)
@@ -123,9 +125,9 @@ TEST(SourceTest, SourceIsIstreamRangeLvalue)
 
     auto result = scn::scan<int, double>(ssr, "{} {}");
     static_assert(
-        std::is_same_v<
-            decltype(result),
-            scan_result_tuple_helper<scn::istreambuf_subrange, int, double>>);
+        std::is_same_v<decltype(result),
+                       scn::scan_expected<scn::scan_result<
+                           scn::istreambuf_view::iterator, int, double>>>);
 }
 
 TEST(SourceTest, SourceIsIstreamRangeRvalue)
@@ -133,8 +135,7 @@ TEST(SourceTest, SourceIsIstreamRangeRvalue)
     auto ss = std::istringstream{"123 3.14"};
 
     auto result = scn::scan<int, double>(scn::istreambuf_view{ss}, "{} {}");
-    static_assert(
-        std::is_same_v<
-            decltype(result),
-            scan_result_tuple_helper<scn::ranges::dangling, int, double>>);
+    static_assert(std::is_same_v<decltype(result),
+                                 scn::scan_expected<scn::scan_result<
+                                     scn::ranges::dangling, int, double>>>);
 }

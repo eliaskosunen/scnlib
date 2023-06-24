@@ -376,6 +376,15 @@ namespace scn {
         template <typename CharT>
         struct is_erased_range_or_subrange<basic_erased_subrange<CharT>>
             : std::true_type {};
+
+        template <typename T>
+        struct is_erased_range_iterator : std::false_type {};
+        template <>
+        struct is_erased_range_iterator<basic_erased_range<char>::iterator>
+            : std::true_type {};
+        template <>
+        struct is_erased_range_iterator<basic_erased_range<wchar_t>::iterator>
+            : std::true_type {};
     }  // namespace detail
 
     SCN_END_NAMESPACE
