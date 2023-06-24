@@ -673,7 +673,7 @@ namespace scn {
         };
 
         /**
-         * base class trickery to conditionally mark copy and move
+         * Base class trickery to conditionally mark copy and move
          * constructors of an expected as =deleted.
          *
          * We need to do this, because otherwise utilities like

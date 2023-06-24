@@ -68,6 +68,50 @@ TEST(IstreamRangeTest, StringStreamBidir)
     EXPECT_EQ(*range.begin(), 'a');
 }
 
+TEST(IstreamRangeTest, MultipleSubrangesIntoSameView)
+{
+    auto ss = std::istringstream{"abcdef"};
+    auto ssr = scn::istreambuf_view{ss};
+    auto subr = scn::istreambuf_subrange{ssr};
+
+    auto it = subr.begin();
+    scn::ranges::advance(it, 3);
+    EXPECT_EQ(*it, 'd');
+
+    auto it2 = ssr.begin();
+    EXPECT_EQ(*it2, 'a');
+}
+
+TEST(IstreamRangeTest, MultipleSubrangesIntoSameView2)
+{
+    auto ss = std::istringstream{"abcdef"};
+    auto ssr = scn::istreambuf_view{ss};
+
+    auto it = ssr.begin();
+    EXPECT_EQ(*it, 'a');
+
+    ++it;
+    EXPECT_EQ(*it, 'b');
+
+    ++it;
+    EXPECT_EQ(*it, 'c');
+
+    auto subr = scn::istreambuf_subrange{ssr};
+    auto it2 = subr.begin();
+    EXPECT_EQ(*it2, 'a');
+
+    ++it2;
+    EXPECT_EQ(*it2, 'b');
+
+    auto subr2 = scn::istreambuf_subrange{it, ssr.end()};
+    EXPECT_EQ(*it, 'c');
+    EXPECT_EQ(it, subr2.begin());
+
+    ++it2;
+    EXPECT_EQ(*it2, 'c');
+    EXPECT_EQ(it, it2);
+}
+
 TEST(IstreamRangeTest, CopyingSubrange)
 {
     auto ss = std::istringstream{"abc"};
@@ -142,7 +186,7 @@ TEST(IstreamRangeTest, ReadFromStreamAfterFailureWithScan)
     {
         auto result = scn::scan<int>(view, "{}");
         ASSERT_FALSE(result);
-        view.sync(view.begin());  // FIXME
+        view.sync(view.begin());
     }
 
     {
@@ -156,26 +200,25 @@ TEST(IstreamRangeTest, ReadFromStreamAfterFailureWithScan)
     }
 }
 
-// FIXME
-TEST(IstreamRangeTest, DISABLED_ReadWithScanAfterFailed)
+TEST(IstreamRangeTest, ReadWithScanAfterFailed)
 {
     auto ss = std::istringstream{"foo 456"};
-    auto view = scn::istreambuf_view{ss};
 
     {
         int j{};
         EXPECT_FALSE(ss >> j);
     }
 
+    auto view = scn::istreambuf_view{ss};
+
     {
         auto result = scn::scan<std::string>(view, "{}");
         ASSERT_TRUE(result);
         EXPECT_EQ(result->value(), "foo");
-        view.sync(result->begin());
 
-        auto result2 = scn::scan<int>(view, "{}");
+        auto result2 = scn::scan<int>(
+            scn::ranges::subrange{result->begin(), view.end()}, "{}");
         ASSERT_TRUE(result2);
         EXPECT_EQ(result2->value(), 456);
-        view.sync(result2->begin());
     }
 }
