@@ -372,8 +372,8 @@ namespace scn {
         {
             return vscan_and_sync_internal(source, format, args);
         }
-#endif  // #if 0
-    }   // namespace detail
+#endif
+    }  // namespace detail
 
     SCN_END_NAMESPACE
 }  // namespace scn

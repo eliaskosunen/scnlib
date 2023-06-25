@@ -21,6 +21,7 @@
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wnoexcept")
+SCN_GCC_IGNORE("-Wrestrict")
 
 #include <cstddef>
 #include <cstdint>

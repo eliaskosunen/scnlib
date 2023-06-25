@@ -121,11 +121,11 @@ namespace scn {
         struct is_wrapped_pointer_iterator<std::_String_const_iterator<Traits>>
             : std::true_type {};
 
-        template <typename T>
-        struct is_wrapped_pointer_iterator<std::_Vector_iterator<T>>
+        template <typename Vec>
+        struct is_wrapped_pointer_iterator<std::_Vector_iterator<Vec>>
             : std::true_type {};
-        template <typename Traits>
-        struct is_wrapped_pointer_iterator<std::_Vector_const_iterator<T>>
+        template <typename Vec>
+        struct is_wrapped_pointer_iterator<std::_Vector_const_iterator<Vec>>
             : std::true_type {};
 
 #if SCN_HAS_STD_SPAN

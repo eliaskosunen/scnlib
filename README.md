@@ -11,20 +11,19 @@
 
 ```cpp
 #include <scn/scan.h>
-#include <print>
+#include <print> // for std::println (C++23)
 
 int main() {
-    // Read an integer from stdin
+    // Read two integers from stdin
     // with an accompanying message
-    auto [result, i] = scn::prompt<int>("What's your favorite number? ", "{}");
-    if (result) {
-        std::println("Oh, cool, {}!", i);
+    if (auto result =
+            scn::prompt<int>("What are your two favorite numbers? ", "{} {}")) {
+        auto [a, b] = result->values();
+        std::println("Oh, cool, {} and {}!", a, b);
+    } else {
+        std::println(stderr, "Error: {}", result.error().msg());
     }
 }
-
-// Example result:
-// What's your favorite number? 42
-// Oh, cool, 42!
 ```
 
 ## What is this?
@@ -59,22 +58,20 @@ See more examples in the `examples/` folder.
 #include <print>
 
 int main() {
+    auto input = std::string_view{"Hello world"};
+
     // Reading a std::string will read until the first whitespace character
-    auto [result, word] = scn::scan<std::string>("Hello world", "{}");
-    
-    if (result) {
+    if (auto result = scn::scan<std::string>(input, "{}")) {
         // Will output "Hello":
-        std::println("{}", word);
+        // Access the only read value with result->value()
+        std::println("{}", result->value());
         
         // Will output " world":
-        // result.range() is a std::string_view,
-        // containing the unparsed input
-        std::println("{}", result.range());
+        // result->begin() returns an iterator pointing to
+        // the start of the unused input
+        std::println("{}", std::string_view{result->begin(), input.end()};
     } else {
         std::println("Couldn't parse a word: {}", result.error().msg());
-        
-        // Will output "Unparsed input: Hello world"
-        std::println("Unparsed input: {}", result.range());
     }
 }
 ```

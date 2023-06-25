@@ -121,6 +121,7 @@ namespace scn {
                scan_args_for<Range, char> args)
     {
         auto mapped_range = detail::scan_map_input_range(range);
+        SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
         return detail::vscan_localized_impl(loc, mapped_range, format, args)
             .transform([&](const auto& it) SCN_NOEXCEPT_P(
                            noexcept(detail::map_scan_result_iterator(
@@ -128,6 +129,7 @@ namespace scn {
                 return detail::map_scan_result_iterator(
                     SCN_FWD(range), mapped_range.begin(), it);
             });
+        SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
     }
 
     template <typename Range>
