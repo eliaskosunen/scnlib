@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <gmock/gmock.h>
+#include "wrapped_gtest.h"
 
 #include <map>
 #include <set>
@@ -23,9 +23,6 @@
 
 #include <scn/detail/scan.h>
 #include <scn/detail/scanner_range.h>
-
-template <typename>
-struct debug;
 
 TEST(RangesTest, VectorSequence)
 {

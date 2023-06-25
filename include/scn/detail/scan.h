@@ -26,35 +26,15 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-#if 0
-    namespace detail {
-        template <typename SourceRange, typename ResultRange, typename... Args>
-        using scan_result_tuple =
-            std::tuple<scan_result<decltype(map_scan_result_range(
-                           SCN_DECLVAL(SourceRange&&),
-                           SCN_DECLVAL(const ResultRange&)))>,
-                       Args...>;
-
-        template <typename Range, size_t... Is, typename... Args>
-        auto make_scan_result_tuple_impl(scan_result<Range>&& result,
-                                         std::index_sequence<Is...>,
-                                         std::tuple<Args...>&& values)
-        {
-            // lighter than tuple_cat
-            return std::tuple{SCN_MOVE(result),
-                              SCN_MOVE(std::get<Is>(values))...};
-        }
-    }  // namespace detail
-#endif
-
     template <typename ResultIterator, typename Context, typename... Args>
     auto make_scan_result_tuple(scan_expected<ResultIterator>&& result,
                                 scan_arg_store<Context, Args...>&& args)
         -> scan_expected<scan_result<ResultIterator, Args...>>
     {
-        return result.transform([&](auto&& it) {
-            return scan_result{SCN_FWD(it), SCN_MOVE(args.args())};
-        });
+        if (SCN_UNLIKELY(!result)) {
+            return unexpected(result.error());
+        }
+        return scan_result{SCN_MOVE(*result), SCN_MOVE(args.args())};
     }
 
     namespace detail {

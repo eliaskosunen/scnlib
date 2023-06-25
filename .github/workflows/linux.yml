@@ -200,6 +200,9 @@ jobs:
       matrix:
         os: [ 22.04, 20.04 ]
         std: [ 17, 20 ]
+        exclude:
+          # seems to be buggy
+          - os: 20.04
 
     steps:
       - uses: actions/checkout@v3
