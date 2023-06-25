@@ -26,14 +26,14 @@
 template <typename Int>
 static void scan_int_repeated_scn(benchmark::State& state)
 {
-    auto data = get_integer_string<Int>();
-    auto range = scn::scan_map_input_range(data);
+    repeated_state<Int> s{get_integer_string<Int>()};
+
     for (auto _ : state) {
-        auto [result, i] = scn::scan<Int>(range, "{}");
+        auto result = scn::scan<Int>(s.view(), "{}");
 
         if (!result) {
             if (result.error() == scn::scan_error::end_of_range) {
-                range = scn::scan_map_input_range(data);
+                s.reset();
             }
             else {
                 state.SkipWithError("Scan error");
@@ -41,12 +41,11 @@ static void scan_int_repeated_scn(benchmark::State& state)
             }
         }
         else {
-            benchmark::DoNotOptimize(i);
-            range = SCN_MOVE(result.range());
+            s.push(result->value());
+            s.it = scn::detail::to_address(result->begin());
         }
     }
-    state.SetBytesProcessed(state.iterations() *
-                            static_cast<int64_t>(sizeof(Int)));
+    state.SetBytesProcessed(s.get_bytes_processed(state));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_scn, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn, long long);
@@ -55,14 +54,14 @@ BENCHMARK_TEMPLATE(scan_int_repeated_scn, unsigned);
 template <typename Int>
 static void scan_int_repeated_scn_value(benchmark::State& state)
 {
-    auto data = get_integer_string<Int>();
-    auto range = scn::scan_map_input_range(data);
+    repeated_state<Int> s{get_integer_string<Int>()};
+
     for (auto _ : state) {
-        auto [result, i] = scn::scan_value<Int>(range);
+        auto result = scn::scan_value<Int>(s.view());
 
         if (!result) {
             if (result.error() == scn::scan_error::end_of_range) {
-                range = scn::scan_map_input_range(data);
+                s.reset();
             }
             else {
                 state.SkipWithError("Scan error");
@@ -70,12 +69,11 @@ static void scan_int_repeated_scn_value(benchmark::State& state)
             }
         }
         else {
-            benchmark::DoNotOptimize(i);
-            range = SCN_MOVE(result.range());
+            s.push(result->value());
+            s.it = scn::detail::to_address(result->begin());
         }
     }
-    state.SetBytesProcessed(state.iterations() *
-                            static_cast<int64_t>(sizeof(Int)));
+    state.SetBytesProcessed(s.get_bytes_processed(state));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, long long);
@@ -84,22 +82,26 @@ BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, unsigned);
 template <typename Int>
 static void scan_int_repeated_sstream(benchmark::State& state)
 {
-    auto data = get_integer_string<Int>();
-    auto stream = std::istringstream(data);
+    repeated_state<Int> s{get_integer_string<Int>()};
+    std::istringstream stream{s.source};
+
     for (auto _ : state) {
         Int i{};
         stream >> i;
 
         if (stream.eof()) {
-            stream = std::istringstream(data);
+            stream = std::istringstream(s.source);
+            s.values.clear();
         }
         else if (stream.fail()) {
             state.SkipWithError("Scan error");
             break;
         }
+        else {
+            s.push(i);
+        }
     }
-    state.SetBytesProcessed(state.iterations() *
-                            static_cast<int64_t>(sizeof(Int)));
+    state.SetBytesProcessed(s.get_bytes_processed(state));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_sstream, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_sstream, long long);
@@ -108,26 +110,24 @@ BENCHMARK_TEMPLATE(scan_int_repeated_sstream, unsigned);
 template <typename Int>
 static void scan_int_repeated_scanf(benchmark::State& state)
 {
-    auto data = get_integer_string<Int>();
-    const char* ptr = data.data();
+    repeated_state<Int> s{get_integer_string<Int>()};
 
     for (auto _ : state) {
         Int i{};
 
-        auto ret = sscanf_integral_n(ptr, i);
+        auto ret = sscanf_integral_n(s.it, i);
         if (ret != 1) {
             if (ret == EOF) {
-                ptr = data.data();
+                s.reset();
                 continue;
             }
 
             state.SkipWithError("Scan error");
             break;
         }
-        benchmark::DoNotOptimize(i);
+        s.push(i);
     }
-    state.SetBytesProcessed(state.iterations() *
-                            static_cast<int64_t>(sizeof(Int)));
+    state.SetBytesProcessed(s.get_bytes_processed(state));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, long long);
@@ -138,27 +138,25 @@ BENCHMARK_TEMPLATE(scan_int_repeated_scanf, unsigned);
 template <typename Int>
 static void scan_int_repeated_charconv(benchmark::State& state)
 {
-    auto data = get_integer_string<Int>();
-    const char* ptr = data.data();
+    repeated_state<Int> s{get_integer_string<Int>()};
 
     for (auto _ : state) {
         Int i{};
 
-        for (; std::isspace(*ptr) != 0; ++ptr) {}
-        if (ptr == data.data() + data.size()) {
-            ptr = data.data();
+        for (; std::isspace(*s.it) != 0; ++s.it) {}
+        if (s.it == s.source_end_addr()) {
+            s.reset();
         }
 
-        auto ret = std::from_chars(ptr, data.data() + data.size(), i);
+        auto ret = std::from_chars(s.view().begin(), s.view().end(), i);
         if (ret.ec != std::errc{}) {
             state.SkipWithError("Scan error");
             break;
         }
-        ptr = ret.ptr;
-        benchmark::DoNotOptimize(i);
+        s.it = ret.ptr;
+        s.push(i);
     }
-    state.SetBytesProcessed(state.iterations() *
-                            static_cast<int64_t>(sizeof(Int)));
+    state.SetBytesProcessed(s.get_bytes_processed(state));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_charconv, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_charconv, long long);

@@ -28,8 +28,8 @@ static void bench_basic_scn(benchmark::State& state)
 {
     std::string_view input{"123"};
     for (auto _ : state) {
-        if (auto [result, i] = scn::scan<int>(input, "{}"); result) {
-            benchmark::DoNotOptimize(i);
+        if (auto result = scn::scan<int>(input, "{}")) {
+            benchmark::DoNotOptimize(result->value());
         }
         else {
             state.SkipWithError("Failed scan");
@@ -43,8 +43,8 @@ static void bench_basic_scn_withoptions(benchmark::State& state)
 {
     std::string_view input{"123"};
     for (auto _ : state) {
-        if (auto [result, i] = scn::scan<int>(input, "{:i}"); result) {
-            benchmark::DoNotOptimize(i);
+        if (auto result = scn::scan<int>(input, "{:i}")) {
+            benchmark::DoNotOptimize(result->value());
         }
         else {
             state.SkipWithError("Failed scan");
@@ -59,8 +59,8 @@ static void bench_basic_scn_withlocale(benchmark::State& state)
     std::string_view input{"123"};
     auto loc = std::locale{};
     for (auto _ : state) {
-        if (auto [result, i] = scn::scan<int>(loc, input, "{}"); result) {
-            benchmark::DoNotOptimize(i);
+        if (auto result = scn::scan<int>(loc, input, "{}")) {
+            benchmark::DoNotOptimize(result->value());
         }
         else {
             state.SkipWithError("Failed scan");
@@ -75,8 +75,8 @@ static void bench_basic_scn_localized(benchmark::State& state)
     std::string_view input{"123"};
     auto loc = std::locale{};
     for (auto _ : state) {
-        if (auto [result, i] = scn::scan<int>(loc, input, "{:L}"); result) {
-            benchmark::DoNotOptimize(i);
+        if (auto result = scn::scan<int>(loc, input, "{:L}")) {
+            benchmark::DoNotOptimize(result->value());
         }
         else {
             state.SkipWithError("Failed scan");
@@ -90,8 +90,8 @@ static void bench_basic_scn_value(benchmark::State& state)
 {
     std::string_view input{"123"};
     for (auto _ : state) {
-        if (auto [result, i] = scn::scan_value<int>(input); result) {
-            benchmark::DoNotOptimize(i);
+        if (auto result = scn::scan_value<int>(input)) {
+            benchmark::DoNotOptimize(result->value());
         }
         else {
             state.SkipWithError("Failed scan");

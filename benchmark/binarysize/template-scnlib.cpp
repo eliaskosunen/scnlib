@@ -2,8 +2,8 @@
 
 void do_scan()
 {
-    auto [_1, i] = scn::input<int>("{}");
-    auto [_2, d] = scn::input<double>("{}");
-    auto [_3, ll] = scn::input<long long>("{}");
-    auto [_4, str] = scn::input<std::string>("{}");
+    auto _1 = scn::input<int>("{}");
+    auto _2 = scn::input<double>("{}");
+    auto _3 = scn::input<long long>("{}");
+    auto _4 = scn::input<std::string>("{}");
 }

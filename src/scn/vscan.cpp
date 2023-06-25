@@ -324,7 +324,7 @@ namespace scn {
         return vscan_internal(SCN_MOVE(source), format, args);                 \
     }                                                                          \
                                                                                \
-    template <typename Locale, typename>                                       \
+    template <typename Locale>                                                 \
     vscan_result<Range> vscan_localized_impl(                                  \
         const Locale& loc, Range source, std::basic_string_view<CharT> format, \
         scan_args_for<Range, CharT> args)                                      \
@@ -332,7 +332,7 @@ namespace scn {
         return vscan_internal(SCN_MOVE(source), format, args,                  \
                               detail::locale_ref{loc});                        \
     }                                                                          \
-    template vscan_result<Range> vscan_localized_impl<std::locale, void>(      \
+    template vscan_result<Range> vscan_localized_impl<std::locale>(            \
         const std::locale& loc, Range source,                                  \
         std::basic_string_view<CharT> format,                                  \
         scan_args_for<Range, CharT> args);                                     \

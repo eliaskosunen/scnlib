@@ -26,23 +26,20 @@
 template <typename Int>
 static void scan_int_single_scn(benchmark::State& state)
 {
-    const auto& source = get_integer_list<Int>();
-    auto it = source.begin();
-    for (auto _ : state) {
-        if (it == source.end()) {
-            it = source.begin();
-        }
+    single_state<Int> s{get_integer_list<Int>()};
 
-        if (auto [result, i] = scn::scan<Int>(*it, "{}"); !result) {
+    for (auto _ : state) {
+        s.reset_if_necessary();
+
+        if (auto result = scn::scan<Int>(*s.it, "{}"); !result) {
             state.SkipWithError("Benchmark errored");
             break;
         }
         else {
-            benchmark::DoNotOptimize(i);
+            s.push(result->value());
         }
     }
-    state.SetBytesProcessed(state.iterations() *
-                            static_cast<int64_t>(sizeof(Int)));
+    state.SetBytesProcessed(s.get_bytes_processed(state));
 }
 BENCHMARK_TEMPLATE(scan_int_single_scn, int);
 BENCHMARK_TEMPLATE(scan_int_single_scn, long long);
@@ -51,23 +48,20 @@ BENCHMARK_TEMPLATE(scan_int_single_scn, unsigned);
 template <typename Int>
 static void scan_int_single_scn_value(benchmark::State& state)
 {
-    const auto& source = get_integer_list<Int>();
-    auto it = source.begin();
-    for (auto _ : state) {
-        if (it == source.end()) {
-            it = source.begin();
-        }
+    single_state<Int> s{get_integer_list<Int>()};
 
-        if (auto [result, i] = scn::scan_value<Int>(*it); !result) {
+    for (auto _ : state) {
+        s.reset_if_necessary();
+
+        if (auto result = scn::scan_value<Int>(*s.it); !result) {
             state.SkipWithError("Benchmark errored");
             break;
         }
         else {
-            benchmark::DoNotOptimize(i);
+            s.push(result->value());
         }
     }
-    state.SetBytesProcessed(state.iterations() *
-                            static_cast<int64_t>(sizeof(Int)));
+    state.SetBytesProcessed(s.get_bytes_processed(state));
 }
 BENCHMARK_TEMPLATE(scan_int_single_scn_value, int);
 BENCHMARK_TEMPLATE(scan_int_single_scn_value, long long);
@@ -76,25 +70,22 @@ BENCHMARK_TEMPLATE(scan_int_single_scn_value, unsigned);
 template <typename Int>
 static void scan_int_single_sstream(benchmark::State& state)
 {
-    const auto& source = get_integer_list<Int>();
-    auto it = source.begin();
-    for (auto _ : state) {
-        if (it == source.end()) {
-            it = source.begin();
-        }
+    single_state<Int> s{get_integer_list<Int>()};
 
-        Int i;
-        std::istringstream iss{*it};
+    for (auto _ : state) {
+        s.reset_if_necessary();
+
+        Int i{};
+        std::istringstream iss{*s.it};
         iss >> i;
 
         if (iss.fail()) {
             state.SkipWithError("Benchmark errored");
             break;
         }
-        benchmark::DoNotOptimize(i);
+        s.push(i);
     }
-    state.SetBytesProcessed(state.iterations() *
-                            static_cast<int64_t>(sizeof(Int)));
+    state.SetBytesProcessed(s.get_bytes_processed(state));
 }
 BENCHMARK_TEMPLATE(scan_int_single_sstream, int);
 BENCHMARK_TEMPLATE(scan_int_single_sstream, long long);
@@ -103,23 +94,20 @@ BENCHMARK_TEMPLATE(scan_int_single_sstream, unsigned);
 template <typename Int>
 static void scan_int_single_scanf(benchmark::State& state)
 {
-    const auto& source = get_integer_list<Int>();
-    auto it = source.begin();
-    for (auto _ : state) {
-        if (it == source.end()) {
-            it = source.begin();
-        }
+    single_state<Int> s{get_integer_list<Int>()};
 
-        Int i;
-        auto ret = sscanf_integral(it->c_str(), i);
+    for (auto _ : state) {
+        s.reset_if_necessary();
+
+        Int i{};
+        auto ret = sscanf_integral(s.it->c_str(), i);
         if (ret != 1) {
             state.SkipWithError("Benchmark errored");
             break;
         }
-        benchmark::DoNotOptimize(i);
+        s.push(i);
     }
-    state.SetBytesProcessed(state.iterations() *
-                            static_cast<int64_t>(sizeof(Int)));
+    state.SetBytesProcessed(s.get_bytes_processed(state));
 }
 BENCHMARK_TEMPLATE(scan_int_single_scanf, int);
 BENCHMARK_TEMPLATE(scan_int_single_scanf, long long);
@@ -130,23 +118,21 @@ BENCHMARK_TEMPLATE(scan_int_single_scanf, unsigned);
 template <typename Int>
 static void scan_int_single_charconv(benchmark::State& state)
 {
-    const auto& source = get_integer_list<Int>();
-    auto it = source.begin();
-    for (auto _ : state) {
-        if (it == source.end()) {
-            it = source.begin();
-        }
+    single_state<Int> s{get_integer_list<Int>()};
 
-        Int i;
-        auto ret = std::from_chars(it->data(), it->data() + it->size(), i);
+    for (auto _ : state) {
+        s.reset_if_necessary();
+
+        Int i{};
+        auto ret =
+            std::from_chars(s.it->data(), s.it->data() + s.it->size(), i);
         if (ret.ec != std::errc{}) {
             state.SkipWithError("Benchmark errored");
             break;
         }
-        benchmark::DoNotOptimize(i);
+        s.push(i);
     }
-    state.SetBytesProcessed(state.iterations() *
-                            static_cast<int64_t>(sizeof(Int)));
+    state.SetBytesProcessed(s.get_bytes_processed(state));
 }
 BENCHMARK_TEMPLATE(scan_int_single_charconv, int);
 BENCHMARK_TEMPLATE(scan_int_single_charconv, long long);

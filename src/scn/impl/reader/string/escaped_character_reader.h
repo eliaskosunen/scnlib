@@ -123,6 +123,9 @@ namespace scn {
                                                 code_point>>
             read_char_copying(SourceRange& source, SourceCharT delimeter)
             {
+                // TODO
+                SCN_UNUSED(source);
+                SCN_UNUSED(delimeter);
             }
 
             std::basic_string<SourceCharT>& m_buffer;
