@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <gtest/gtest.h>
+#include "wrapped_gtest.h"
 
 #include <scn/detail/input_map.h>
 #include <scn/util/span.h>
@@ -76,7 +76,7 @@ TEST(InputMapTest, SubrangeOfStringView)
 TEST(InputMapTest, StdSpan)
 {
     std::string source{"abc"};
-    std::span s{source};
+    std::span<const char> s{source.data(), source.size()};
     auto result = scn::detail::scan_map_input_range(s);
     static_assert(std::is_same_v<decltype(result), std::string_view>);
 }
@@ -84,7 +84,7 @@ TEST(InputMapTest, StdSpan)
 TEST(InputMapTest, StdSpanSubrange)
 {
     std::string source{"abc"};
-    std::span s{source};
+    std::span<const char> s{source.data(), source.size()};
     auto subr = scn::ranges::subrange{s};
     auto result = scn::detail::scan_map_input_range(s);
     static_assert(std::is_same_v<decltype(result), std::string_view>);

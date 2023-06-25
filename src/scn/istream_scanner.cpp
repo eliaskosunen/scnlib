@@ -36,7 +36,9 @@ namespace scn {
                 return traits_type::eof();
             }
             m_begin_prev = m_begin;
+            SCN_CLANG_PUSH_IGNORE_UNSAFE_BUFFER_USAGE
             m_ch = traits_type::to_int_type(*m_begin++);
+            SCN_CLANG_POP_IGNORE_UNSAFE_BUFFER_USAGE
             return m_ch;
         }
 

@@ -15,6 +15,12 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "../wrapped_gtest.h"
+#include <scn/fwd.h>
 
-#include <scn/impl/algorithms/read_code_point.h>
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wnoexcept")
+SCN_GCC_IGNORE("-Wrestrict")
+
+#include <gmock/gmock.h>
+
+SCN_GCC_POP

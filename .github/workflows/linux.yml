@@ -184,7 +184,6 @@ jobs:
           cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
                 -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
                 $GITHUB_WORKSPACE
-          cmake --build . -- -k 0
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
@@ -195,10 +194,11 @@ jobs:
         run: ctest --output-on-failure
 
   libcxx:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ 22.04, 20.04 ]
         std: [ 17, 20 ]
 
     steps:

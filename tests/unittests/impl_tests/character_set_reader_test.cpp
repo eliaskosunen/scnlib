@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <gtest/gtest.h>
+#include "../wrapped_gtest.h"
 
 #include <scn/impl/reader/string/character_set_reader.h>
 

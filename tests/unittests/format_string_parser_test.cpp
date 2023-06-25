@@ -15,8 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "wrapped_gtest.h"
 
 #include <scn/detail/format_string_parser.h>
 

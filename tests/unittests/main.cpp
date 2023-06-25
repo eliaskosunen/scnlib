@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <gtest/gtest.h>
+#include "wrapped_gtest.h"
 
 int main(int argc, char** argv)
 {

@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <gtest/gtest.h>
+#include "../../wrapped_gtest.h"
 
 #include <scn/detail/erased_range.h>
 #include <scn/impl/algorithms/read_localized.h>

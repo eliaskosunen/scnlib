@@ -81,17 +81,28 @@ int main() {
 ```cpp
 #include <scn/scan.h>
 
+// scn::ranges is
+//  - std::ranges on C++20 or later (if available)
+//  - nano::ranges on C++17 (bundled implementation)
+namespace ranges = scn::ranges;
+
 int main() {
-    auto [result, i, j] = scn::scan<int, int>("123 456 foo", "{} {}");
-    // result == true
-    // result.range() == " foo"
-    // i == 123
-    // j == 456
+    auto input = std::string{"123 456 foo"};
     
-    auto [result2, str] = scn::scan<std::string>(result.range(), "{}");
+    auto result = scn::scan<int, int>(input, "{} {}");
+    // result == true
+    // [result->begin(), input.end()): " foo"
+    
+    // All read values can be accessed through a tuple with result->values()
+    auto [a, b] = result->values();
+    
+    // Construct a subrange of the remaining input
+    // Could also be a string_view, or a string
+    auto result2 = scn::scan<std::string>(
+            ranges::subrange{result->begin(), input.end()}, "{}");
     // result2 == true
-    // result2.range().empty() == true
-    // str == "foo"
+    // result2->begin() == input.end(): true
+    // result->value() == "foo"
 }
 ```
 
@@ -100,16 +111,13 @@ int main() {
 ```cpp
 #include <scn/scan.h>
 
-// scn::ranges is
-//  - std::ranges on C++20 or later
-//  - nano::ranges on C++17 (bundled implementation)
 namespace ranges = scn::ranges;
 
 int main() {
-    auto [result, i] = scn::scan<int>("123" | ranges::views::reverse, "{}");
+    auto result = scn::scan<int>("123" | ranges::views::reverse, "{}");
     // result == true
-    // result.range() is a ranges::reverse_view
-    // i == 321
+    // result->begin() is an iterator into a reverse_view
+    // result->value() == 321
 }
 ```
 
@@ -122,19 +130,13 @@ int main() {
 int main() {
     std::vector<int> vec{};
     
-    // `range` now has the same type,
-    // as the range returned from scn::scan,
-    // if "123 456 789" was given to it as input
-    //
-    // By doing this, we can reassign the unparsed leftover range
-    // to `range` on every loop iteration
-    auto range = scn::scan_map_input_range("123 456 789");
+    auto input = std::string_view{"123 456 789"};
+    auto it = input.begin();
     
-    // Structured bindings can't be used in a loop condition
-    while (auto tmp = scn::scan<int>(range, "{}")) {
-        const auto& [result, i] = tmp;
-        vec.push_back(i);
-        range = result.range();
+    while (auto result = 
+            scn::scan<int>(std::string_view{it, input.end()}, "{}")) {
+        vec.push_back(result->value());
+        it = result->begin();
     }
 }
 ```

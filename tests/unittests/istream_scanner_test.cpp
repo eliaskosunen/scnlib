@@ -18,7 +18,7 @@
 #include <scn/detail/istream_scanner.h>
 #include <scn/detail/scan.h>
 
-#include <gtest/gtest.h>
+#include "wrapped_gtest.h"
 
 #include <istream>
 

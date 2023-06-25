@@ -180,6 +180,7 @@ namespace scn {
                                                            Impl& impl)
             -> return_type<InputR>
         {
+            SCN_EXPECT(ranges::begin(input) != ranges::end(input));
             auto input_it = ranges::begin(input);
 
             while (impl.result == impl_base::result_code::in_progress &&
@@ -292,7 +293,7 @@ namespace scn {
                     output_it = out;
                 }
                 {
-                    const auto next_char_end = &next_char + 1;
+                    const auto next_char_end = (&next_char) + 1;
                     auto [in, out] = impl::copy(
                         ranges::subrange{&next_char, next_char_end},
                         ranges::subrange{output_widened_it,

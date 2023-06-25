@@ -15,10 +15,10 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <gtest/gtest.h>
+#include "wrapped_gtest.h"
 
 #include <scn/detail/scan.h>
-#include "scn/detail/result.h"
+#include <scn/detail/result.h>
 
 using ::testing::Test;
 

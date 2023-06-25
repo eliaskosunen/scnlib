@@ -15,15 +15,10 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "scn/detail/format_string_parser.h"
-#include "scn/detail/locale_ref.h"
+#include <scn/detail/format_string_parser.h>
+#include <scn/detail/locale_ref.h>
 
-SCN_GCC_PUSH
-SCN_GCC_IGNORE("-Wnoexcept")
-
-#include <gmock/gmock.h>
-
-SCN_GCC_POP
+#include "wrapped_gtest.h"
 
 template <typename CharT>
 class value_reader_interface {

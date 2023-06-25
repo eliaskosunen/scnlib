@@ -18,7 +18,7 @@
 #include <scn/scan.h>
 #include <scn/xchar.h>
 
-#include <gtest/gtest.h>
+#include "wrapped_gtest.h"
 
 TEST(StringTest, DefaultNarrowStringFromNarrowSource)
 {

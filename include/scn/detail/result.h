@@ -140,40 +140,12 @@ namespace scn {
 
     namespace detail {
         template <typename SourceRange, typename ResultIterator>
-        SCN_MAYBE_UNUSED constexpr bool is_map_scan_result_iterator_noexcept()
-        {
-            if constexpr (!ranges::borrowed_range<SourceRange>) {
-                return true;
-            }
-            else if constexpr (std::is_constructible_v<
-                                   ranges::iterator_t<SourceRange>,
-                                   const ResultIterator&>) {
-                return std::is_nothrow_constructible_v<
-                    ranges::iterator_t<SourceRange>, const ResultIterator&>;
-            }
-            else {
-                return false;
-            }
-        }
-
-        template <typename SourceRange, typename ResultIterator>
         auto map_scan_result_iterator(SourceRange&& source,
                                       const ResultIterator& mapped_begin,
                                       const ResultIterator& result)
-            SCN_NOEXCEPT_P(
-                is_map_scan_result_iterator_noexcept<SourceRange,
-                                                     const ResultIterator&>())
+            -> ranges::borrowed_iterator_t<SourceRange>
         {
-            if constexpr (!ranges::borrowed_range<SourceRange>) {
-                return ranges::dangling{};
-            }
-            else if constexpr (std::is_constructible_v<
-                                   ranges::iterator_t<SourceRange>,
-                                   const ResultIterator&>) {
-                return result;
-            }
-            else if constexpr (is_erased_range_iterator<
-                                   ResultIterator>::value) {
+            if constexpr (is_erased_range_iterator<ResultIterator>::value) {
                 return ranges::next(ranges::begin(source),
                                     result.distance_from_begin());
             }
@@ -182,39 +154,6 @@ namespace scn {
                                     ranges::distance(mapped_begin, result));
             }
         }
-
-#if 0
-        // Make a user-friendly range value from the return value of vscan
-
-        template <typename SourceRange, typename ResultRange>
-        auto map_scan_result_range(SourceRange&& source,
-                                   const ResultRange& result)
-        {
-            if constexpr (!ranges::borrowed_range<SourceRange>) {
-                return ranges::dangling{};
-            }
-            else if constexpr (is_erased_range_or_subrange<
-                                   ResultRange>::value &&
-                               !is_erased_range_or_subrange<
-                                   remove_cvref_t<SourceRange>>::value) {
-                using cref_source_range = const remove_cvref_t<SourceRange>&;
-                using iterator = ranges::iterator_t<cref_source_range>;
-                using sentinel = ranges::sentinel_t<cref_source_range>;
-                constexpr ranges::subrange_kind kind =
-                    ranges::sized_range<cref_source_range>
-                        ? ranges::subrange_kind::sized
-                        : ranges::subrange_kind::unsized;
-
-                return ranges::subrange<iterator, sentinel, kind>{
-                    ranges::next(ranges::begin(source),
-                                 result.begin().distance_from_begin()),
-                    ranges::end(source)};
-            }
-            else {
-                return result;
-            }
-        }
-#endif
     }  // namespace detail
 
     SCN_END_NAMESPACE
