@@ -37,12 +37,17 @@ namespace scn {
         return scan_result{SCN_MOVE(*result), SCN_MOVE(args.args())};
     }
 
+    template <typename Range, typename... Args>
+    using scan_result_type =
+        scan_expected<scan_result<ranges::borrowed_iterator_t<Range>, Args...>>;
+
     namespace detail {
         // Boilerplate for scan()
         template <typename... Args, typename Source, typename Format>
         auto scan_impl(Source&& source,
                        Format format,
                        std::tuple<Args...> default_values)
+            -> scan_result_type<Source, Args...>
         {
             auto args =
                 make_scan_args<Source, Args...>(SCN_MOVE(default_values));
@@ -59,6 +64,7 @@ namespace scn {
               typename = std::enable_if_t<
                   std::is_same_v<detail::char_t<Source>, char>>>
     SCN_NODISCARD auto scan(Source&& source, format_string<Args...> format)
+        -> scan_result_type<Source, Args...>
     {
         return detail::scan_impl<Args...>(SCN_FWD(source), format, {});
     }
@@ -81,6 +87,7 @@ namespace scn {
     SCN_NODISCARD auto scan(Source&& source,
                             format_string<Args...> format,
                             std::tuple<Args...>&& default_args)
+        -> scan_result_type<Source, Args...>
     {
         return detail::scan_impl<Args...>(SCN_FWD(source), format,
                                           SCN_MOVE(default_args));
@@ -96,6 +103,7 @@ namespace scn {
                                  Source&& source,
                                  Format format,
                                  std::tuple<Args...> default_values)
+            -> scan_result_type<Source, Args...>
         {
             auto args =
                 make_scan_args<Source, Args...>(SCN_MOVE(default_values));
@@ -114,6 +122,7 @@ namespace scn {
     SCN_NODISCARD auto scan(const Locale& loc,
                             Source&& source,
                             format_string<Args...> format)
+        -> scan_result_type<Source, Args...>
     {
         return detail::scan_localized_impl<Args...>(loc, SCN_FWD(source),
                                                     format, {});
@@ -129,6 +138,7 @@ namespace scn {
                             Source&& source,
                             format_string<Args...> format,
                             std::tuple<Args...>&& default_args)
+        -> scan_result_type<Source, Args...>
     {
         return detail::scan_localized_impl<Args...>(
             loc, SCN_FWD(source), format, SCN_MOVE(default_args));
@@ -146,6 +156,7 @@ namespace scn {
 
         template <typename T, typename Source>
         auto scan_value_impl(Source&& source, T value)
+            -> scan_result_type<Source, T>
         {
             auto arg =
                 detail::make_arg<detail::context_type_for<Source>>(value);
@@ -158,12 +169,14 @@ namespace scn {
     /// Scan a single value of type T from source, with default options
     template <typename T, typename Source>
     SCN_NODISCARD auto scan_value(Source&& source)
+        -> scan_result_type<Source, T>
     {
         return detail::scan_value_impl(SCN_FWD(source), T{});
     }
 
     template <typename T, typename Source>
     SCN_NODISCARD auto scan_value(Source&& source, T default_value)
+        -> scan_result_type<Source, T>
     {
         return detail::scan_value_impl(SCN_FWD(source),
                                        SCN_MOVE(default_value));
@@ -176,9 +189,10 @@ namespace scn {
 
         template <typename... Args, typename Source, typename Format>
         auto input_impl(Source& source, Format format)
+            -> scan_result_type<Source, Args...>
         {
             auto args = make_scan_args<decltype(source), Args...>();
-            auto result = vscan_and_sync(SCN_FWD(source), format, args);
+            auto result = detail::vscan_and_sync(SCN_FWD(source), format, args);
             return make_scan_result_tuple(SCN_MOVE(result), SCN_MOVE(args));
         }
     }  // namespace detail
@@ -188,6 +202,7 @@ namespace scn {
     /// Thread-safe.
     template <typename... Args>
     SCN_NODISCARD auto input(format_string<Args...> format)
+        -> scan_result_type<scn::istreambuf_view&, Args...>
     {
         return detail::input_impl<Args...>(detail::internal_narrow_stdin(),
                                            format);
@@ -196,6 +211,7 @@ namespace scn {
     /// Write msg to stdout, and call input<Args...>(format)
     template <typename... Args>
     SCN_NODISCARD auto prompt(const char* msg, format_string<Args...> format)
+        -> scan_result_type<scn::istreambuf_view&, Args...>
     {
         std::printf("%s", msg);
         return detail::input_impl<Args...>(detail::internal_narrow_stdin(),

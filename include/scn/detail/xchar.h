@@ -28,8 +28,7 @@ namespace scn {
     template <typename Range>
     auto vscan(Range&& range,
                std::wstring_view format,
-               scan_args_for<Range, wchar_t> args)
-        -> detail::vscan_return_type<Range>
+               scan_args_for<Range, wchar_t> args) -> vscan_result<Range>
     {
         return detail::vscan_generic(SCN_FWD(range), format, args);
     }
@@ -40,8 +39,7 @@ namespace scn {
     auto vscan(const Locale& loc,
                Range&& range,
                std::wstring_view format,
-               scan_args_for<Range, wchar_t> args)
-        -> detail::vscan_return_type<Range>
+               scan_args_for<Range, wchar_t> args) -> vscan_result<Range>
     {
         return detail::vscan_localized_generic(loc, SCN_FWD(range), format,
                                                args);
@@ -49,7 +47,7 @@ namespace scn {
 
     template <typename Range>
     auto vscan_value(Range&& range, scan_arg_for<Range, wchar_t> arg)
-        -> detail::vscan_return_type<Range>
+        -> vscan_result<Range>
     {
         return detail::vscan_value_generic(SCN_FWD(range), arg);
     }
@@ -58,7 +56,7 @@ namespace scn {
     auto vscan_and_sync(Range&& range,
                         std::wstring_view format,
                         scan_args_for<Range, wchar_t> args)
-        -> detail::vscan_return_type<Range>
+        -> vscan_result<Range>
     {
         return detail::vscan_and_sync_generic(SCN_FWD(range), format, args);
     }
@@ -70,6 +68,7 @@ namespace scn {
               typename = std::enable_if_t<
                   std::is_same_v<detail::char_t<Source>, wchar_t>>>
     SCN_NODISCARD auto scan(Source&& source, wformat_string<Args...> format)
+        -> scan_result_type<Source, Args...>
     {
         return detail::scan_impl<Args...>(SCN_FWD(source), format, {});
     }
@@ -81,6 +80,7 @@ namespace scn {
     SCN_NODISCARD auto scan(Source&& source,
                             wformat_string<Args...> format,
                             std::tuple<Args...>&& args)
+        -> scan_result_type<Source, Args...>
     {
         return detail::scan_impl<Args...>(SCN_FWD(source), format,
                                           SCN_MOVE(args));
@@ -95,6 +95,7 @@ namespace scn {
     SCN_NODISCARD auto scan(Locale& loc,
                             Source&& source,
                             wformat_string<Args...> format)
+        -> scan_result_type<Source, Args...>
     {
         return detail::scan_localized_impl<Args...>(loc, SCN_FWD(source),
                                                     format, {});
@@ -110,6 +111,7 @@ namespace scn {
                             Source&& source,
                             wformat_string<Args...> format,
                             std::tuple<Args...>&& args)
+        -> scan_result_type<Source, Args...>
     {
         return detail::scan_localized_impl<Args...>(loc, SCN_FWD(source),
                                                     format, args);
@@ -122,6 +124,7 @@ namespace scn {
 
     template <typename... Args>
     SCN_NODISCARD auto input(wformat_string<Args...> format)
+        -> scan_result_type<wistreambuf_view&, Args...>
     {
         return detail::input_impl<Args...>(detail::internal_wide_stdin(),
                                            format);
@@ -130,6 +133,7 @@ namespace scn {
     template <typename... Args>
     SCN_NODISCARD auto prompt(const wchar_t* msg,
                               wformat_string<Args...> format)
+        -> scan_result_type<wistreambuf_view&, Args...>
     {
         std::wprintf(L"%s", msg);
         return detail::input_impl<Args...>(detail::internal_wide_stdin(),

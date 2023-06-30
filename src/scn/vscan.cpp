@@ -23,6 +23,7 @@
 #include <scn/detail/vscan.h>
 #include <scn/detail/xchar.h>
 #include <scn/impl/reader/reader.h>
+#include "scn/detail/scan.h"
 #include "scn/util/expected.h"
 
 #if SCN_USE_IOSTREAMS
@@ -45,7 +46,7 @@ namespace scn {
         }
 
         template <typename SourceRange, typename CharT>
-        detail::vscan_result<SourceRange> scan_simple_single_argument(
+        detail::vscan_impl_result<SourceRange> scan_simple_single_argument(
             SourceRange source,
             basic_scan_args<basic_scan_context<SourceRange, CharT>> args,
             basic_scan_arg<basic_scan_context<SourceRange, CharT>> arg,
@@ -247,7 +248,7 @@ namespace scn {
         };
 
         template <typename SourceRange, typename CharT>
-        detail::vscan_result<SourceRange> vscan_internal(
+        detail::vscan_impl_result<SourceRange> vscan_internal(
             SourceRange source,
             std::basic_string_view<CharT> format,
             basic_scan_args<basic_scan_context<SourceRange, CharT>> args,
@@ -272,7 +273,7 @@ namespace scn {
         }
 
         template <typename SourceRange, typename CharT>
-        detail::vscan_result<SourceRange> vscan_value_internal(
+        detail::vscan_impl_result<SourceRange> vscan_value_internal(
             SourceRange source,
             basic_scan_arg<basic_scan_context<SourceRange, CharT>> arg)
         {
@@ -282,17 +283,17 @@ namespace scn {
 #if SCN_USE_IOSTREAMS
         std::mutex stdin_mutex;
 
-        bool is_stdin_view(istreambuf_view& view)
+        bool is_global_stdin_view(istreambuf_view& view)
         {
-            return view.underlying().rdbuf() == std::cin.rdbuf();
+            return &view == &detail::internal_narrow_stdin();
         }
-        bool is_stdin_view(wistreambuf_view& view)
+        bool is_global_stdin_view(wistreambuf_view& view)
         {
-            return view.underlying().rdbuf() == std::wcin.rdbuf();
+            return &view == &detail::internal_wide_stdin();
         }
 
         template <typename CharT>
-        detail::vscan_result<basic_istreambuf_subrange<CharT>>
+        detail::vscan_impl_result<basic_istreambuf_subrange<CharT>>
         vscan_and_sync_internal(
             basic_istreambuf_subrange<CharT> source,
             std::basic_string_view<CharT> format,
@@ -302,7 +303,7 @@ namespace scn {
                                                     std::defer_lock};
             auto& view = static_cast<basic_istreambuf_view<CharT>&>(
                 source.begin().view());
-            if (is_stdin_view(view)) {
+            if (is_global_stdin_view(view)) {
                 stdin_lock.lock();
             }
 
@@ -317,28 +318,28 @@ namespace scn {
 
     namespace detail {
 #define SCN_DEFINE_VSCAN(Range, CharT)                                         \
-    vscan_result<Range> vscan_impl(Range source,                               \
-                                   std::basic_string_view<CharT> format,       \
-                                   scan_args_for<Range, CharT> args)           \
+    vscan_impl_result<Range> vscan_impl(Range source,                          \
+                                        std::basic_string_view<CharT> format,  \
+                                        scan_args_for<Range, CharT> args)      \
     {                                                                          \
         return vscan_internal(SCN_MOVE(source), format, args);                 \
     }                                                                          \
                                                                                \
     template <typename Locale>                                                 \
-    vscan_result<Range> vscan_localized_impl(                                  \
+    vscan_impl_result<Range> vscan_localized_impl(                             \
         const Locale& loc, Range source, std::basic_string_view<CharT> format, \
         scan_args_for<Range, CharT> args)                                      \
     {                                                                          \
         return vscan_internal(SCN_MOVE(source), format, args,                  \
                               detail::locale_ref{loc});                        \
     }                                                                          \
-    template vscan_result<Range> vscan_localized_impl<std::locale>(            \
+    template vscan_impl_result<Range> vscan_localized_impl<std::locale>(       \
         const std::locale& loc, Range source,                                  \
         std::basic_string_view<CharT> format,                                  \
         scan_args_for<Range, CharT> args);                                     \
                                                                                \
-    vscan_result<Range> vscan_value_impl(Range source,                         \
-                                         scan_arg_for<Range, CharT> arg)       \
+    vscan_impl_result<Range> vscan_value_impl(Range source,                    \
+                                              scan_arg_for<Range, CharT> arg)  \
     {                                                                          \
         return vscan_value_internal(SCN_MOVE(source), arg);                    \
     }
@@ -357,7 +358,7 @@ namespace scn {
 #undef SCN_DEFINE_VSCAN
 
 #if SCN_USE_IOSTREAMS
-        vscan_result<istreambuf_subrange> vscan_and_sync_impl(
+        vscan_impl_result<istreambuf_subrange> vscan_and_sync_impl(
             istreambuf_subrange source,
             std::string_view format,
             scan_args_for<istreambuf_subrange, char> args)
@@ -365,7 +366,7 @@ namespace scn {
             return vscan_and_sync_internal(source, format, args);
         }
 
-        vscan_result<wistreambuf_subrange> vscan_and_sync_impl(
+        vscan_impl_result<wistreambuf_subrange> vscan_and_sync_impl(
             wistreambuf_subrange source,
             std::wstring_view format,
             scan_args_for<wistreambuf_subrange, wchar_t> args)
