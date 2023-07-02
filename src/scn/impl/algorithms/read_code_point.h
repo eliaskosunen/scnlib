@@ -166,7 +166,7 @@ namespace scn {
                 return read_utf32_code_point(SCN_FWD(range), buf);
             }
             else {
-                static_assert(scn::detail::dependent_false<CharT>::value,
+                static_assert(detail::dependent_false<CharT>::value,
                               "Nonsensical CharT in read_code_point");
             }
         }

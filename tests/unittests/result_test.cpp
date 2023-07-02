@@ -54,7 +54,7 @@ TEST(ResultTestMocked, StringView)
     auto input = scn::scan_map_input_range(source);
     auto args = scn::make_scan_args<std::string_view, int, double>();
     auto leftovers = mock_vscan(input, args);
-    auto result = scn::make_scan_result_tuple(source, SCN_MOVE(leftovers),
+    auto result = scn::make_scan_result(source, SCN_MOVE(leftovers),
                                               SCN_MOVE(args));
 
     static_assert(std::is_same_v<
@@ -76,7 +76,7 @@ TEST(ResultTestMocked, IstreamRange)
     auto input = scn::scan_map_input_range(source);
     auto args = scn::make_scan_args<std::string_view, int, double>();
     auto leftovers = mock_vscan(input, args);
-    auto result = scn::make_scan_result_tuple(source, SCN_MOVE(leftovers),
+    auto result = scn::make_scan_result(source, SCN_MOVE(leftovers),
                                               SCN_MOVE(args));
 
     static_assert(

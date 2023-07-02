@@ -390,9 +390,6 @@ namespace scn {
                     return begin;
                 }
             }
-            else if (*begin == CharT{'{'}) {
-                // TODO: dynamic width
-            }
             return begin;
         }
 
@@ -873,8 +870,8 @@ namespace scn {
                 specs.type == presentation_type::unicode_character) {
                 if (SCN_UNLIKELY(specs.width == 0)) {
                     return handler.on_error(
-                        "'c' and 'U' type specifiers for strings requires a "
-                        "width to be specified");
+                        "'c' and 'U' type specifiers for strings require the "
+                        "field width to be specified");
                 }
                 return;
             }

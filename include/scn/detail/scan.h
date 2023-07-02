@@ -27,8 +27,8 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     template <typename ResultIterator, typename Context, typename... Args>
-    auto make_scan_result_tuple(scan_expected<ResultIterator>&& result,
-                                scan_arg_store<Context, Args...>&& args)
+    auto make_scan_result(scan_expected<ResultIterator>&& result,
+                          scan_arg_store<Context, Args...>&& args)
         -> scan_expected<scan_result<ResultIterator, Args...>>
     {
         if (SCN_UNLIKELY(!result)) {
@@ -52,7 +52,7 @@ namespace scn {
             auto args =
                 make_scan_args<Source, Args...>(SCN_MOVE(default_values));
             auto result = vscan(SCN_FWD(source), format, args);
-            return make_scan_result_tuple(SCN_MOVE(result), SCN_MOVE(args));
+            return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
         }
     }  // namespace detail
 
@@ -108,7 +108,7 @@ namespace scn {
             auto args =
                 make_scan_args<Source, Args...>(SCN_MOVE(default_values));
             auto result = vscan(loc, SCN_FWD(source), format, args);
-            return make_scan_result_tuple(SCN_MOVE(result), SCN_MOVE(args));
+            return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
         }
     }  // namespace detail
 
@@ -193,7 +193,7 @@ namespace scn {
         {
             auto args = make_scan_args<decltype(source), Args...>();
             auto result = detail::vscan_and_sync(SCN_FWD(source), format, args);
-            return make_scan_result_tuple(SCN_MOVE(result), SCN_MOVE(args));
+            return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
         }
     }  // namespace detail
 

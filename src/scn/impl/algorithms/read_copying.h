@@ -17,9 +17,9 @@
 
 #pragma once
 
-#include <scn/impl/algorithms/common.h>
-#include <scn/impl/unicode/unicode.h>
+#include <scn/impl/algorithms/read_code_point.h>
 #include <scn/impl/util/ascii_ctype.h>
+#include <scn/impl/util/text_width.h>
 #include <scn/util/span.h>
 
 namespace scn {
@@ -44,10 +44,10 @@ namespace scn {
         }
 
         template <typename InputR, typename OutputR>
-        SCN_NODISCARD read_copying_result<InputR, OutputR> read_n_copying(
-            InputR&& input,
-            OutputR&& output,
-            ranges::range_difference_t<InputR> n)
+        SCN_NODISCARD read_copying_result<InputR, OutputR>
+        read_n_code_units_copying(InputR&& input,
+                                  OutputR&& output,
+                                  ranges::range_difference_t<InputR> n)
         {
             SCN_EXPECT(n >= 0);
             auto in_view = ranges::take_view{SCN_FWD(input), n};
@@ -59,6 +59,54 @@ namespace scn {
             else {
                 return {SCN_MOVE(in), SCN_MOVE(out)};
             }
+        }
+
+        template <typename InputR, typename OutputR>
+        SCN_NODISCARD scan_expected<read_copying_result<InputR, OutputR>>
+        read_n_width_units_copying(InputR&& input,
+                                   OutputR&& output,
+                                   std::ptrdiff_t width)
+        {
+            SCN_EXPECT(!ranges::empty(input));
+            SCN_EXPECT(ranges::begin(output) != ranges::end(output));
+            SCN_EXPECT(width >= 0);
+
+            std::ptrdiff_t acc_width = 0;
+            auto src = ranges::begin(input);
+            auto dst = ranges::begin(output);
+
+            while (src != ranges::end(input) && dst != ranges::end(output)) {
+                using char_type = detail::char_t<InputR>;
+                std::array<char_type, 4 / sizeof(char_type)> buffer{};
+                auto read_result = read_code_point(
+                    ranges::subrange{src, ranges::end(input)},
+                    span<char_type>{buffer.data(), buffer.size()});
+                if (SCN_UNLIKELY(!read_result)) {
+                    return unexpected(read_result.error());
+                }
+
+                auto code_point_encoded = std::basic_string_view<char_type>{
+                    read_result->value.data(), read_result->value.size()};
+                auto decode_result = get_next_code_point(code_point_encoded);
+                if (SCN_UNLIKELY(!decode_result)) {
+                    return unexpected(decode_result.error());
+                }
+
+                acc_width += static_cast<std::ptrdiff_t>(
+                    calculate_valid_text_width(decode_result->value));
+                if (acc_width > width) {
+                    break;
+                }
+
+                auto src_copy = src;
+                auto [in, out] = impl::copy(
+                    code_point_encoded, ranges::subrange{dst, output.end()});
+                if (in != code_point_encoded.end()) {
+                    return {{src_copy, dst}};
+                }
+                dst = out;
+            }
+            return {{src, dst}};
         }
 
         template <typename InputR, typename OutputR, typename Pred>
@@ -97,60 +145,37 @@ namespace scn {
 
             auto src = ranges::begin(input);
             auto dst = ranges::begin(output);
+
             while (src != ranges::end(input) && dst != ranges::end(output)) {
-                auto len = code_point_length_by_starting_code_unit(*src);
-                if (SCN_UNLIKELY(!len)) {
-                    return unexpected(len.error());
-                }
-
-                if (*len == 1) {
-                    if (until(static_cast<code_point>(*src))) {
-                        return {{src, dst}};
-                    }
-                    *dst = *src;
-                    ++src;
-                    ++dst;
-                    continue;
-                }
-
-                const auto src_copy = src;
-
                 using char_type = detail::char_t<InputR>;
                 std::array<char_type, 4 / sizeof(char_type)> buffer{};
-                buffer[0] = *src;
-                --*len;
-                ++src;
-                auto buffer_it = buffer.begin() + 1;
-                for (; *len != 0; --*len, (void)++buffer_it, (void)++src) {
-                    // False positive
-                    SCN_GCC_PUSH
-                    SCN_GCC_IGNORE("-Wstringop-overflow")
-
-                    *buffer_it = *src;
-
-                    SCN_GCC_POP
+                auto read_result = read_code_point(
+                    ranges::subrange{src, ranges::end(input)},
+                    span<char_type>{buffer.data(), buffer.size()});
+                if (SCN_UNLIKELY(!read_result)) {
+                    return unexpected(read_result.error());
                 }
 
-                auto decode_sv = std::basic_string_view<char_type>{
-                    buffer.data(),
-                    static_cast<size_t>(buffer_it - buffer.begin())};
-                auto decode_result = get_next_code_point(decode_sv);
+                auto code_point_encoded = std::basic_string_view<char_type>{
+                    read_result->value.data(), read_result->value.size()};
+                auto decode_result = get_next_code_point(code_point_encoded);
                 if (SCN_UNLIKELY(!decode_result)) {
                     return unexpected(decode_result.error());
                 }
-                SCN_ENSURE(scn::detail::to_address(decode_result->iterator) ==
-                           scn::detail::to_address(buffer_it));
-                const auto cp = decode_result->value;
 
-                if (until(cp)) {
-                    return {{src_copy, dst}};
+                if (until(decode_result->value)) {
+                    break;
                 }
 
-                auto [in, out] =
-                    impl::copy(decode_sv, ranges::subrange{dst, output.end()});
-                if (in != decode_sv.end()) {
-                    return {{src_copy, dst}};
+                auto [in, out] = impl::copy(
+                    code_point_encoded, ranges::subrange{dst, output.end()});
+                if (in != code_point_encoded.end()) {
+                    break;
                 }
+
+                ranges::advance(src,
+                                static_cast<ranges::range_difference_t<InputR>>(
+                                    code_point_encoded.size()));
                 dst = out;
             }
             return {{src, dst}};

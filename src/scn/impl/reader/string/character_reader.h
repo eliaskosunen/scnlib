@@ -39,18 +39,22 @@ namespace scn {
             read(SourceRange& source, int width)
             {
                 if constexpr (ranges::contiguous_range<SourceRange>) {
-                    return read_n_nocopy(source, width);
+                    return read_n_width_units_nocopy(source, width);
                 }
                 else {
                     m_buffer.clear();
-                    auto [it, _] =
-                        read_n_copying(source, back_insert(m_buffer), width);
-                    SCN_UNUSED(_);
+                    auto read_result = read_n_width_units_copying(
+                        source, back_insert(m_buffer), width);
+                    if (SCN_UNLIKELY(!read_result)) {
+                        return unexpected(read_result.error());
+                    }
+
                     SCN_GCC_PUSH
                     SCN_GCC_IGNORE("-Wconversion")
                     return iterator_value_result<
                         ranges::iterator_t<SourceRange>,
-                        std::basic_string_view<SourceCharT>>{it, {m_buffer}};
+                        std::basic_string_view<SourceCharT>>{
+                        read_result->in, {m_buffer}};
                     SCN_GCC_POP
                 }
             }

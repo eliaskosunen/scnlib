@@ -18,6 +18,7 @@
 #pragma once
 
 #include <scn/detail/unicode.h>
+#include <scn/impl/algorithms/common.h>
 #include <scn/util/expected.h>
 #include <scn/util/meta.h>
 #include <scn/util/span.h>
@@ -62,10 +63,38 @@ namespace scn {
             SCN_GCC_POP  // -Wswitch-default
         }
 
+        template <typename CharT>
+        bool validate_unicode(std::basic_string_view<CharT> input)
+        {
+            if (input.empty()) {
+                return true;
+            }
+
+            constexpr auto enc = get_encoding<CharT>();
+            if constexpr (enc == encoding::utf8) {
+                return simdutf::validate_utf8(input.data(), input.size());
+            }
+            else if constexpr (enc == encoding::utf16) {
+                return simdutf::validate_utf16(
+                    reinterpret_cast<const char16_t*>(input.data()),
+                    input.size());
+            }
+            else if constexpr (enc == encoding::utf32) {
+                return simdutf::validate_utf32(
+                    reinterpret_cast<const char32_t*>(input.data()),
+                    input.size());
+            }
+            else {
+                static_assert(detail::dependent_false<CharT>::type);
+            }
+        }
+
         template <typename U8>
         constexpr std::size_t utf8_code_point_length_by_starting_code_unit(
             U8 ch)
         {
+            static_assert(sizeof(U8) == 1);
+
             SCN_GCC_COMPAT_PUSH
             SCN_GCC_COMPAT_IGNORE("-Wsign-conversion")
             const auto lengths =
@@ -85,6 +114,8 @@ namespace scn {
         constexpr std::size_t utf16_code_point_length_by_starting_code_unit(
             U16 ch)
         {
+            static_assert(sizeof(U16) == 2);
+
             const auto lead = static_cast<uint16_t>(0xffff & ch);
             if (lead >= 0xd800 && lead <= 0xdbff) {
                 // high surrogate
@@ -129,6 +160,42 @@ namespace scn {
         }
 
         template <typename CharT>
+        auto get_next_code_point_valid(std::basic_string_view<CharT> input)
+            -> iterator_value_result<
+                ranges::iterator_t<std::basic_string_view<CharT>>,
+                code_point>
+        {
+            SCN_EXPECT(!input.empty());
+            SCN_EXPECT(validate_unicode(input));
+
+            const auto len_wrapped =
+                code_point_length_by_starting_code_unit(input[0]);
+            SCN_ASSUME(len_wrapped);
+            const auto len = *len_wrapped;
+            SCN_ASSUME(len != 0);
+
+            constexpr auto enc = get_encoding<CharT>();
+            std::size_t result{1};
+            char32_t output{};
+            if constexpr (enc == encoding::utf8) {
+                result = simdutf::convert_valid_utf8_to_utf32(
+                    reinterpret_cast<const char*>(input.data()), *len, &output);
+            }
+            else if constexpr (enc == encoding::utf16) {
+                result = simdutf::convert_valid_utf16_to_utf32(
+                    reinterpret_cast<const char16_t*>(input.data()), *len,
+                    &output);
+            }
+            else if constexpr (enc == encoding::utf32) {
+                output = static_cast<char32_t>(input[0]);
+            }
+
+            return iterator_value_result<
+                ranges::iterator_t<std::basic_string_view<CharT>>, code_point>{
+                input.begin() + *len, static_cast<code_point>(output)};
+        }
+
+        template <typename CharT>
         auto get_next_code_point(std::basic_string_view<CharT> input)
             -> scan_expected<iterator_value_result<
                 ranges::iterator_t<std::basic_string_view<CharT>>,
@@ -169,32 +236,6 @@ namespace scn {
             return iterator_value_result<
                 ranges::iterator_t<std::basic_string_view<CharT>>, code_point>{
                 input.begin() + *len, static_cast<code_point>(output)};
-        }
-
-        template <typename CharT>
-        bool validate_unicode(std::basic_string_view<CharT> input)
-        {
-            if (input.empty()) {
-                return true;
-            }
-
-            constexpr auto enc = get_encoding<CharT>();
-            if constexpr (enc == encoding::utf8) {
-                return simdutf::validate_utf8(input.data(), input.size());
-            }
-            else if constexpr (enc == encoding::utf16) {
-                return simdutf::validate_utf16(
-                    reinterpret_cast<const char16_t*>(input.data()),
-                    input.size());
-            }
-            else if constexpr (enc == encoding::utf32) {
-                return simdutf::validate_utf32(
-                    reinterpret_cast<const char32_t*>(input.data()),
-                    input.size());
-            }
-            else {
-                static_assert(detail::dependent_false<CharT>::type);
-            }
         }
 
         template <typename CharT>
@@ -429,6 +470,19 @@ namespace scn {
 
             transcode_valid_to_string(source, dest);
             return true;
+        }
+
+        template <typename CharT, typename Cb>
+        void for_each_code_point_valid(std::basic_string_view<CharT> input,
+                                       Cb&& cb)
+        {
+            auto it = input.begin();
+            while (it != input.end()) {
+                code_point cp{};
+                std::tie(it, cp) = get_next_code_point_valid(input);
+                cb(cp);
+                input = make_string_view_from_iterators(it, input.end());
+            }
         }
     }  // namespace impl
 

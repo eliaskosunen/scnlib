@@ -19,8 +19,8 @@
 
 #include <scn/detail/locale_ref.h>
 
-#include <cstring>
 #include <clocale>
+#include <cstring>
 #include <locale>
 #include <tuple>
 

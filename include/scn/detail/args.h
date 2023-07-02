@@ -164,7 +164,7 @@ namespace scn {
                 auto s = Scanner{};
 
                 auto r = s.parse(pctx)
-                             .and_then([&](auto) {
+                             .and_then([&](auto&&) {
                                  return s.scan(*static_cast<T*>(arg), ctx);
                              })
                              .transform([&](auto&& it) SCN_NOEXCEPT {
@@ -508,9 +508,6 @@ namespace scn {
             base::is_packed ? detail::encode_types<Context, Args...>()
                             : detail::is_unpacked_bit | base::num_args;
     };
-
-    namespace detail {
-    }  // namespace detail
 
     /**
      * Constructs a `scan_arg_store` object, associated with `Range`,

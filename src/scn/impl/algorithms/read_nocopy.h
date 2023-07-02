@@ -22,6 +22,7 @@
 #include <scn/impl/algorithms/find_whitespace.h>
 #include <scn/impl/unicode/unicode.h>
 #include <scn/impl/util/ascii_ctype.h>
+#include <scn/impl/util/text_width.h>
 #include <scn/util/span.h>
 
 #include <algorithm>
@@ -48,7 +49,7 @@ namespace scn {
         }
 
         template <typename Range>
-        SCN_NODISCARD read_nocopy_result<Range> read_n_nocopy(
+        SCN_NODISCARD read_nocopy_result<Range> read_n_code_units_nocopy(
             Range&& range,
             ranges::range_difference_t<Range> n)
         {
@@ -61,6 +62,42 @@ namespace scn {
 
             return {ranges::begin(range) + size,
                     {ranges::data(range), static_cast<size_t>(size)}};
+        }
+
+        template <typename Range>
+        SCN_NODISCARD scan_expected<read_nocopy_result<Range>>
+        read_n_width_units_nocopy(Range&& input, std::ptrdiff_t width)
+        {
+            static_assert(range_supports_nocopy<Range>());
+            SCN_EXPECT(width >= 0);
+
+            std::ptrdiff_t acc_width = 0;
+            auto it = ranges::begin(input);
+
+            while (it != ranges::end(input)) {
+                auto decode_sv = detail::make_string_view_from_iterators<
+                    detail::char_t<Range>>(it, ranges::end(input));
+                auto decode_result = get_next_code_point(decode_sv);
+                if (SCN_UNLIKELY(!decode_result)) {
+                    return unexpected(decode_result.error());
+                }
+
+                const auto cp = decode_result->value;
+                acc_width +=
+                    static_cast<std::ptrdiff_t>(calculate_valid_text_width(cp));
+                if (acc_width > width) {
+                    break;
+                }
+
+                it = decode_result->iterator;
+            }
+
+            {
+                const auto n = static_cast<size_t>(
+                    ranges::distance(ranges::begin(input), it));
+                return read_nocopy_result<Range>{it,
+                                                 {range_nocopy_data(input), n}};
+            }
         }
 
         template <typename Range, typename Predicate>

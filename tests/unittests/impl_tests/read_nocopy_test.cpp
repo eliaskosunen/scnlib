@@ -43,19 +43,19 @@ TEST(ReadAllNocopyTest, StringLiteral)
     EXPECT_STREQ(result_str.c_str(), "abcdef");
 }
 
-TEST(ReadNNocopyTest, SmallerN)
+TEST(ReadNCodeUnitsNocopyTest, SmallerN)
 {
     std::string source{"abcdef"};
-    auto result = scn::impl::read_n_nocopy(source, 3);
+    auto result = scn::impl::read_n_code_units_nocopy(source, 3);
     EXPECT_EQ(result.iterator, source.begin() + 3);
     EXPECT_EQ(result.value.data(), source.data());
     EXPECT_EQ(result.value.size(), 3);
     EXPECT_EQ(result.value, "abc");
 }
-TEST(ReadNNocopyTest, LargerN)
+TEST(ReadNCodeUnitsNocopyTest, LargerN)
 {
     std::string source{"abcdef"};
-    auto result = scn::impl::read_n_nocopy(source, 12);
+    auto result = scn::impl::read_n_code_units_nocopy(source, 12);
     EXPECT_EQ(result.iterator, source.end());
     EXPECT_EQ(result.value.data(), source.data());
     EXPECT_EQ(result.value.size(), source.size());
