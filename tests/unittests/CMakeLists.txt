@@ -20,6 +20,7 @@ target_compile_options(scn_tests_base INTERFACE
 add_executable(scn_tests
         main.cpp
 
+        align_and_fill_test.cpp
         args_test.cpp
         caching_view_test.cpp
         char_test.cpp
