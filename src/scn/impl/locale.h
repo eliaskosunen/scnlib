@@ -80,6 +80,17 @@ namespace scn {
             int m_category;
         };
 
+        class set_clocale_classic_guard {
+        public:
+            set_clocale_classic_guard(int cat) : m_restorer(cat)
+            {
+                std::setlocale(cat, "C");
+            }
+
+        private:
+            clocale_restorer m_restorer;
+        };
+
         template <typename CharT>
         struct localized_number_formatting_options {
             localized_number_formatting_options() = default;

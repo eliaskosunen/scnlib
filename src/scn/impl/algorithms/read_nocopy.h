@@ -134,6 +134,17 @@ namespace scn {
             }
         }
 
+        template <typename Range>
+        scan_expected<read_nocopy_result<Range>>
+        read_until_classic_space_with_max_width_nocopy(Range&& range,
+                                                       int max_width)
+        {
+            return read_n_width_units_nocopy(SCN_FWD(range), max_width)
+                .transform([](auto result) {
+                    return read_until_classic_space_nocopy(result.value);
+                });
+        }
+
         template <typename SourceRange, typename NeedleRange>
         SCN_NODISCARD read_nocopy_result<SourceRange>
         read_until_code_units_nocopy(SourceRange&& range,

@@ -61,11 +61,12 @@ namespace scn {
             }
         }
 
-        template <typename InputR, typename OutputR>
+        template <typename InputR, typename OutputR, typename Predicate>
         SCN_NODISCARD scan_expected<read_copying_result<InputR, OutputR>>
-        read_n_width_units_copying(InputR&& input,
-                                   OutputR&& output,
-                                   std::ptrdiff_t width)
+        read_until_with_max_n_width_units_copying(InputR&& input,
+                                                  OutputR&& output,
+                                                  std::ptrdiff_t width,
+                                                  Predicate&& pred)
         {
             SCN_EXPECT(!ranges::empty(input));
             SCN_EXPECT(ranges::begin(output) != ranges::end(output));
@@ -92,6 +93,10 @@ namespace scn {
                     return unexpected(decode_result.error());
                 }
 
+                if (!pred(decode_result->value)) {
+                    break;
+                }
+
                 acc_width += static_cast<std::ptrdiff_t>(
                     calculate_valid_text_width(decode_result->value));
                 if (acc_width > width) {
@@ -107,6 +112,17 @@ namespace scn {
                 dst = out;
             }
             return {{src, dst}};
+        }
+
+        template <typename InputR, typename OutputR>
+        SCN_NODISCARD scan_expected<read_copying_result<InputR, OutputR>>
+        read_n_width_units_copying(InputR&& input,
+                                   OutputR&& output,
+                                   std::ptrdiff_t width)
+        {
+            return read_until_with_max_n_width_units_copying(
+                SCN_FWD(input), SCN_FWD(output), width,
+                [](code_point) { return true; });
         }
 
         template <typename InputR, typename OutputR, typename Pred>

@@ -60,6 +60,7 @@ namespace scn {
 
             return lookup[static_cast<size_t>(static_cast<unsigned char>(ch))];
         }
+
         constexpr bool is_ascii_space(wchar_t ch) SCN_NOEXCEPT
         {
             return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
@@ -72,6 +73,11 @@ namespace scn {
 #else
             return ch <= 255;
 #endif
+        }
+
+        constexpr bool is_ascii_char(code_point cp) SCN_NOEXCEPT
+        {
+            return cp <= code_point{255};
         }
     }  // namespace impl
 

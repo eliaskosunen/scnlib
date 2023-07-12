@@ -17,6 +17,7 @@
 
 #include <scn/impl/reader/float/value_reader.h>
 #include <scn/impl/reader/number_preparer.h>
+#include "scn/impl/locale.h"
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
@@ -202,8 +203,7 @@ namespace scn {
                     std::string_view source,
                     T& value)
                 {
-                    clocale_restorer lr{LC_NUMERIC};
-                    std::setlocale(LC_NUMERIC, "C");
+                    set_clocale_classic_guard clocale_guard{LC_NUMERIC};
 
                     T tmp{};
                     return impl(get_null_terminated_source(source), tmp)

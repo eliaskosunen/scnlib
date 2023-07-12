@@ -58,7 +58,7 @@ namespace scn {
         template <typename CharT>
         class string_reader_factory {
         public:
-            string_reader_factory(
+            explicit string_reader_factory(
                 const detail::basic_format_specs<CharT>& specs)
                 : m_specs(specs)
             {
@@ -73,7 +73,7 @@ namespace scn {
         public:
             string_reader_base() = default;
 
-            bool skip_ws_before_read() const
+            SCN_NODISCARD bool skip_ws_before_read() const
             {
                 return m_type == reader_type::word;
             }
@@ -187,7 +187,8 @@ namespace scn {
 
                 switch (this->m_type) {
                     case base::reader_type::word:
-                        return read_value_word_impl(range, value, loc,
+                        return read_value_word_impl(range, value, specs.width,
+                                                    loc,
                                                     specs.localized || loc);
 
                     case base::reader_type::characters: {
@@ -227,6 +228,7 @@ namespace scn {
             scan_expected<ranges::iterator_t<Range>> read_value_word_impl(
                 Range range,
                 std::basic_string<ValueCharT>& value,
+                int width,
                 detail::locale_ref loc,
                 bool do_localized)
             {

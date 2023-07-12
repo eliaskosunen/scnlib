@@ -110,7 +110,8 @@ namespace scn {
             switch (algo) {
                 case text_width_algorithm::wcswidth: {
 #if SCN_POSIX
-                    clocale_restorer cloc{LC_CTYPE};
+                    set_clocale_classic_guard clocale_guard{LC_CTYPE};
+
                     auto input_u32 = static_cast<char32_t>(cp);
                     std::wstring winput;
                     transcode_valid_to_string(
@@ -157,7 +158,8 @@ namespace scn {
             switch (algo) {
                 case text_width_algorithm::wcswidth: {
 #if SCN_POSIX
-                    clocale_restorer cloc{LC_CTYPE};
+                    set_clocale_classic_guard clocale_guard{LC_CTYPE};
+
                     std::wstring winput;
                     transcode_valid_to_string(input, winput);
                     const auto n = ::wcswidth(winput.data(), winput.size());

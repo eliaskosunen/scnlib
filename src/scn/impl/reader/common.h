@@ -71,8 +71,9 @@ namespace scn {
             using char_type = CharT;
             using string_view_type = std::basic_string_view<CharT>;
 
-            until_space_classic_source_reader(std::basic_string<CharT>& buffer)
-                : m_buffer(buffer)
+            until_space_classic_source_reader(std::basic_string<CharT>& buffer,
+                                              int max_width = 0)
+                : m_buffer(buffer), m_max_width(max_width)
             {
             }
 
@@ -82,15 +83,15 @@ namespace scn {
                                       string_view_type>;
 
             template <typename SourceRange>
-            source_read_result<SourceRange> read(SourceRange&& source)
+            scan_expected<source_read_result<SourceRange>> read(
+                SourceRange&& source)
             {
                 if constexpr (range_supports_nocopy<SourceRange>()) {
-                    return read_until_classic_space_nocopy(SCN_FWD(source));
+                    return impl(SCN_FWD(source));
                 }
                 else {
                     m_buffer.clear();
-                    auto r = read_until_classic_space_copying(
-                        SCN_FWD(source), back_insert(m_buffer));
+                    auto r = impl(SCN_FWD(source));
 
                     SCN_GCC_PUSH
                     SCN_GCC_IGNORE("-Wconversion")
@@ -100,7 +101,35 @@ namespace scn {
             }
 
         private:
+            template <typename SourceRange>
+            auto impl(SourceRange&& source)
+            {
+                if constexpr (range_supports_nocopy<SourceRange>()) {
+                    if (m_max_width != 0) {
+                        return read_until_classic_space_with_max_width_nocopy(
+                            SCN_FWD(source), m_max_width);
+                    }
+
+                    return scan_expected<source_read_result<SourceRange>>{
+                        read_until_classic_space_nocopy(SCN_FWD(source))};
+                }
+                else {
+                    if (m_max_width != 0) {
+                        return read_until_with_max_n_width_units_copying(
+                            SCN_FWD(source), back_insert(m_buffer), m_max_width,
+                            [](code_point cp) SCN_NOEXCEPT {
+                                return is_ascii_char(cp) &&
+                                       is_ascii_space(static_cast<char>(cp));
+                            });
+                    }
+
+                    return scan_expected{read_until_classic_space_copying(
+                        SCN_FWD(source), back_insert(m_buffer))};
+                }
+            }
+
             std::basic_string<CharT>& m_buffer;
+            int m_max_width;
         };
 
         template <typename CharT>
@@ -164,8 +193,8 @@ namespace scn {
             }
 
             template <typename SourceRange>
-            auto read(SourceRange&& source) ->
-                typename base::template source_read_result<SourceRange>
+            auto read(SourceRange&& source) -> scan_expected<
+                typename base::template source_read_result<SourceRange>>
             {
                 if constexpr (range_supports_nocopy<SourceRange>()) {
                     return read_all_nocopy(SCN_FWD(source));
