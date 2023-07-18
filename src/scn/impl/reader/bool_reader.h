@@ -20,11 +20,92 @@
 #include <scn/detail/scanner.h>
 #include <scn/impl/reader/common.h>
 #include "scn/detail/format_string_parser.h"
+#include "scn/impl/algorithms/read_nocopy.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+        struct bool_reader_base {
+            enum options_type {
+                allow_text = 1,
+                allow_numeric = 2,
+                use_localized_numpunct = 4,
+            };
+
+            constexpr bool_reader_base() = default;
+            constexpr bool_reader_base(unsigned opt) : m_options(opt) {}
+
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read(
+                Range&& range,
+                bool& value)
+            {
+                scan_error err{scan_error::invalid_scanned_value,
+                               "Failed to read boolean"};
+
+                if (m_options & allow_numeric) {
+                    if (auto r = read_numeric(range, value)) {
+                        return *r;
+                    }
+                    else {
+                        err = r.error();
+                    }
+                }
+
+                if (m_options & allow_text) {
+                    if (auto r = read_textual(range, value)) {
+                        return *r;
+                    }
+                    else {
+                        err = r.error();
+                    }
+                }
+
+                return err;
+            }
+
+        protected:
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_numeric(
+                Range&& range,
+                bool& value)
+            {
+                if (auto r = read_matching_code_unit(range, '0')) {
+                    value = false;
+                    return r;
+                }
+                if (auto r = read_matching_code_unit(range, '1')) {
+                    value = true;
+                    return r;
+                }
+
+                return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "read_numeric: No match");
+            }
+
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_textual(
+                Range&& range,
+                bool& value)
+            {
+                if (auto r = read_matching_string(range, "true")) {
+                    value = true;
+                    return r;
+                }
+                if (auto r = read_matching_string(range, "false")) {
+                    value = false;
+                    return r;
+                }
+
+                return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "read_textual: No match");
+            }
+
+            unsigned m_options{allow_text | allow_numeric};
+        };
+
+#if 0
         template <typename CharT>
         class bool_value_reader {
         public:
@@ -191,6 +272,7 @@ namespace scn {
 
         template <typename CharT>
         class reader<bool, CharT> : public bool_reader<CharT> {};
+#endif
     }  // namespace impl
 
     SCN_END_NAMESPACE

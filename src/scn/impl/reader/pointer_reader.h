@@ -25,9 +25,8 @@ namespace scn {
 
     namespace impl {
         template <typename CharT>
-        class pointer_reader {
-        public:
-            constexpr pointer_reader() = default;
+        class reader<void*, CharT> {
+            constexpr reader() = default;
 
             bool skip_ws_before_read() const
             {
@@ -74,9 +73,6 @@ namespace scn {
                 return read_value_default(range, value, loc);
             }
         };
-
-        template <typename CharT>
-        class reader<void*, CharT> : public pointer_reader<CharT> {};
     }  // namespace impl
 
     SCN_END_NAMESPACE

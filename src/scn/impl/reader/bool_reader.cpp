@@ -21,6 +21,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+#if 0
         namespace {
             template <typename CharT>
             constexpr bool do_allow_text(unsigned f)
@@ -148,6 +149,7 @@ namespace scn {
         template auto bool_value_reader<wchar_t>::read_numeric(
             std::wstring_view,
             bool&) const -> scan_expected<std::wstring_view::iterator>;
+#endif
     }  // namespace impl
 
     SCN_END_NAMESPACE

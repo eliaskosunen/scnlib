@@ -77,24 +77,15 @@ set(SCN_PRIVATE_HEADERS
 
         src/scn/impl/reader/reader.h
         src/scn/impl/reader/common.h
+        src/scn/impl/reader/numeric_reader.h
         src/scn/impl/reader/number_preparer.h
 
         src/scn/impl/reader/code_unit_and_point_reader.h
         src/scn/impl/reader/bool_reader.h
+        src/scn/impl/reader/float_reader.h
+        src/scn/impl/reader/integer_reader.h
         src/scn/impl/reader/pointer_reader.h
-
-        src/scn/impl/reader/integer/reader.h
-        src/scn/impl/reader/integer/source_reader.h
-        src/scn/impl/reader/integer/value_reader.h
-
-        src/scn/impl/reader/float/reader.h
-        src/scn/impl/reader/float/value_reader.h
-
-        src/scn/impl/reader/string/reader.h
-        src/scn/impl/reader/string/character_reader.h
-        src/scn/impl/reader/string/character_set_reader.h
-        src/scn/impl/reader/string/escaped_character_reader.h
-        src/scn/impl/reader/string/word_reader.h
+        src/scn/impl/reader/string_reader.h
 
         src/scn/impl/unicode/unicode.h
 
@@ -117,13 +108,12 @@ set(SCN_PRIVATE_SOURCES
 
         src/scn/impl/reader/common.cpp
         src/scn/impl/reader/number_preparer.cpp
+        src/scn/impl/reader/numeric_reader.cpp
 
         src/scn/impl/reader/bool_reader.cpp
-
-        src/scn/impl/reader/float/value_reader.cpp
-
-        src/scn/impl/reader/integer/source_reader.cpp
-        src/scn/impl/reader/integer/value_reader.cpp
+        src/scn/impl/reader/float_reader.cpp
+        src/scn/impl/reader/integer_reader.cpp
+        src/scn/impl/reader/string_reader.cpp
         )
 set(SCN_PRIVATE_SOURCES_WITH_IOSTREAMS
         )

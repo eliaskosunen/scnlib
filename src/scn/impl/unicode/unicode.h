@@ -44,23 +44,34 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-        enum class encoding : char { utf8, utf16, utf32, other };
+        enum class encoding { utf8 = 1, utf16 = 2, utf32 = 4 };
 
         template <typename CharT>
         constexpr encoding get_encoding()
         {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Wswitch-default")
-            switch (sizeof(CharT)) {
-                case 1:
-                    return encoding::utf8;
-                case 2:
-                    return encoding::utf16;
-                case 4:
-                    return encoding::utf32;
+            static_assert(sizeof(CharT) == 1 || sizeof(CharT) == 2 ||
+                          sizeof(CharT) == 4);
+            encoding options[] = {
+                encoding::utf8,   // 0 (error)
+                encoding::utf8,   // 1
+                encoding::utf16,  // 2
+                encoding::utf16,  // 3 (error)
+                encoding::utf32,  // 4
+            };
+            return options[sizeof(CharT)];
+        }
+
+        constexpr size_t max_code_point_length_in_encoding(encoding enc)
+        {
+            if (enc == encoding::utf8) {
+                return 4;
             }
-            return encoding::other;
-            SCN_GCC_POP  // -Wswitch-default
+            else if (enc == encoding::utf16) {
+                return 2;
+            }
+            else {
+                return 1;
+            }
         }
 
         template <typename CharT>
@@ -83,9 +94,6 @@ namespace scn {
                 return simdutf::validate_utf32(
                     reinterpret_cast<const char32_t*>(input.data()),
                     input.size());
-            }
-            else {
-                static_assert(detail::dependent_false<CharT>::type);
             }
         }
 
@@ -153,9 +161,57 @@ namespace scn {
             else if constexpr (enc == encoding::utf32) {
                 return size_t{1};
             }
-            else {
-                SCN_UNUSED(ch);
-                static_assert(detail::dependent_false<CharT>::type);
+        }
+
+        template <typename CharT>
+        code_point decode_code_point_exhaustive_valid(
+            std::basic_string_view<CharT> input)
+        {
+            SCN_EXPECT(!input.empty());
+
+            const auto len = code_point_length_by_starting_code_unit(input[0]);
+            SCN_EXPECT(len);
+            SCN_EXPECT(*len == input.size());
+
+            SCN_EXPECT(validate_unicode(input));
+
+            constexpr auto enc = get_encodign<CharT>();
+            char32_t output;
+            if constexpr (enc == encoding::utf8) {
+                (void)simdutf::convert_valid_utf8_to_utf32(
+                    reinterpret_cast<const char*>(input.data()), *len, &output);
+            }
+            else if constexpr (enc == encoding::utf16) {
+                (void)simdutf::convert_valid_utf16_to_utf32(
+                    reinterpret_cast<const char16_t*>(input.data()), *len,
+                    &output);
+            }
+            else if constexpr (enc == encoding::utf32) {
+                return static_cast<code_point>(input[0]);
+            }
+
+            return static_cast<code_point>(output);
+        }
+
+        inline scan_expected<wchar_t> encode_code_point_as_wide_character(
+            code_point cp,
+            bool error_on_overflow)
+        {
+            constexpr auto enc = get_encoding<wchar_t>();
+            if constexpr (enc == encoding::utf32) {
+                return static_cast<wchar_t>(cp);
+            }
+            else if constexpr (enc == encoding::utf16) {
+                char16_t buf[2]{};
+                auto result = simdutf::convert_valid_utf32_to_utf16(
+                    reinterpret_cast<const char32_t*>(&cp), 1, buf);
+                if (result != 1 && error_on_overflow) {
+                    return unexpected_scan_error(scan_error::value_out_of_range,
+                                                 "Non-BOM code point can't be "
+                                                 "narrowed to a single 2-byte "
+                                                 "wchar_t code unit");
+                }
+                return static_cast<wchar_t>(buf[0]);
             }
         }
 
@@ -259,9 +315,6 @@ namespace scn {
             else if constexpr (enc == encoding::utf32) {
                 return input.size();
             }
-            else {
-                static_assert(detail::dependent_false<CharT>::type);
-            }
         }
 
         template <typename CharT>
@@ -327,9 +380,6 @@ namespace scn {
                         input.size());
                 }
             }
-            else {
-                static_assert(detail::dependent_false<SourceCharT>::type);
-            }
         }
 
         template <typename DestCharT, typename SourceCharT>
@@ -373,9 +423,6 @@ namespace scn {
                 std::memcpy(output.data(), input.size(),
                             input.size() * sizeof(CharT));
                 offset = input.size();
-            }
-            else {
-                static_assert(detail::dependent_false<CharT>::type);
             }
 
             return input.begin() + offset;
@@ -438,9 +485,6 @@ namespace scn {
                         input.size(),
                         reinterpret_cast<char16_t*>(output.data()));
                 }
-            }
-            else {
-                static_assert(detail::dependent_false<SourceCharT>::type);
             }
         }
 

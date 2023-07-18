@@ -97,7 +97,8 @@ namespace scn {
 
             localized_number_formatting_options(detail::locale_ref loc)
             {
-                const auto& numpunct = get_facet<std::numpunct<CharT>>(loc);
+                const auto& numpunct =
+                    get_or_add_facet<std::numpunct<CharT>>(loc);
                 grouping = numpunct.grouping();
                 thousands_sep = grouping.length() != 0
                                     ? numpunct.thousands_sep()

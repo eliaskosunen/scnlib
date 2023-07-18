@@ -27,6 +27,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+#if 0
         template <typename CharT>
         struct localized_single_character_widener;
 
@@ -368,6 +369,7 @@ namespace scn {
             }
             return make_result(it);
         }
+#endif
     }  // namespace impl
 
     SCN_END_NAMESPACE

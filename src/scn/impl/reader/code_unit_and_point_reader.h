@@ -20,6 +20,7 @@
 #include <scn/detail/scanner.h>
 #include <scn/impl/algorithms/read_code_point.h>
 #include <scn/impl/reader/common.h>
+#include "impl/unicode/unicode.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -29,13 +30,14 @@ namespace scn {
         class code_unit_reader {
         public:
             template <typename SourceRange>
-            scan_expected<ranges::iterator_t<SourceRange>> read(
-                SourceRange& range,
+            scan_expected<ranges::borrowed_iterator_t<SourceRange>> read(
+                SourceRange&& range,
                 CharT& ch)
             {
-                auto it = ranges::begin(range);
-                ch = *it;
-                return {++it};
+                return read_code_unit(range).transform([&](auto it) {
+                    ch = *ranges::begin(range);
+                    return it;
+                });
             }
         };
 
@@ -46,26 +48,15 @@ namespace scn {
         class code_point_reader<code_point> {
         public:
             template <typename SourceRange>
-            scan_expected<ranges::iterator_t<SourceRange>> read(
-                SourceRange& range,
+            scan_expected<ranges::borrowed_iterator_t<SourceRange>> read(
+                SourceRange&& range,
                 code_point& cp)
             {
-                using char_type = detail::char_t<SourceRange>;
-                alignas(char32_t) char_type buffer[4 / sizeof(char_type)]{};
-                const auto read_result = read_code_point(
-                    range, span<char_type>{buffer, 4 / sizeof(char_type)});
-                if (SCN_UNLIKELY(!read_result)) {
-                    return unexpected(read_result.error());
-                }
-
-                const auto decode_sv = std::basic_string_view<char_type>{
-                    read_result->value.data(), read_result->value.size()};
-                const auto decode_result = get_next_code_point(decode_sv);
-                if (SCN_UNLIKELY(!decode_result)) {
-                    return unexpected(decode_result.error());
-                }
-                cp = decode_result->value;
-                return read_result->iterator;
+                return read_code_point_into(SCN_FWD(range))
+                    .transform([&](auto result) {
+                        cp = result.value;
+                        return result.iterator;
+                    });
             }
         };
 
@@ -73,29 +64,22 @@ namespace scn {
         class code_point_reader<wchar_t> {
         public:
             template <typename SourceRange>
-            scan_expected<ranges::iterator_t<SourceRange>> read(
-                SourceRange& range,
+            scan_expected<ranges::borrowed_iterator_t<SourceRange>> read(
+                SourceRange&& range,
                 wchar_t& ch)
             {
                 code_point_reader<code_point> reader{};
                 code_point cp{};
-                auto ret = reader.read(range, cp);
+                auto ret = reader.read(SCN_FWD(range), cp);
                 if (!ret) {
                     return unexpected(ret.error());
                 }
 
-                if constexpr (sizeof(wchar_t) < sizeof(code_point)) {
-                    if (static_cast<uint32_t>(cp) >=
-                        static_cast<uint32_t>(
-                            std::numeric_limits<wchar_t>::max())) {
-                        SCN_UNLIKELY_ATTR
-                        return unexpected_scan_error(
-                            scan_error::value_out_of_range,
-                            "Can't fit scanned code point into wchar_t");
-                    }
-                }
-                ch = static_cast<wchar_t>(cp);
-                return ret;
+                return encode_code_point_as_wide_character(cp, true).transform(
+                    [&](auto encoded_ch) {
+                        ch = encoded_ch;
+                        return *ret;
+                    });
             }
         };
 

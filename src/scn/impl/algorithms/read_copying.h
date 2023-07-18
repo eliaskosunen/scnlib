@@ -26,6 +26,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+#if 0
         template <typename In, typename Out>
         using read_copying_result =
             ranges::in_out_result<ranges::borrowed_iterator_t<In>,
@@ -196,6 +197,7 @@ namespace scn {
             }
             return {{src, dst}};
         }
+#endif
     }  // namespace impl
 
     SCN_END_NAMESPACE

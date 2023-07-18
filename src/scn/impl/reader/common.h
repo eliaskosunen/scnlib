@@ -43,6 +43,7 @@ namespace scn {
             const char* m_msg{nullptr};
         };
 
+#if 0
         template <typename CharT>
         std::basic_string_view<CharT> reconstruct_view(
             typename std::basic_string_view<CharT>::iterator first,
@@ -322,10 +323,82 @@ namespace scn {
                     reader.read(SCN_FWD(range))};
             }
         }
+#endif
+
+        template <typename SourceRange>
+        scan_expected<ranges::borrowed_iterator_t<SourceRange>>
+        skip_classic_whitespace(SourceRange&& range,
+                                bool allow_exhaustion = false)
+        {
+            return read_while_classic_space(range).and_then(
+                [&](auto it) -> scan_expected<decltype(it)> {
+                    if (!allow_exhaustion) {
+                        if (auto e = eof_check(
+                                ranges::subrange{it, ranges::end(range)});
+                            SCN_UNLIKELY(!e)) {
+                            return unexpected(e);
+                        }
+                    }
+                    return it;
+                });
+        }
+
+        template <typename SourceRange>
+        auto skip_localized_whitespace(SourceRange range,
+                                       detail::locale_ref loc,
+                                       bool allow_exhaustion = false)
+        {
+            return read_while_localized_mask(range, loc, std::ctype_base::space)
+                .and_then([&](auto it) -> scan_expected<decltype(it)> {
+                    if (!allow_exhaustion) {
+                        if (auto e = eof_check(
+                                ranges::subrange{it, ranges::end(range)});
+                            SCN_UNLIKELY(!e)) {
+                            return unexpected(e);
+                        }
+                    }
+                    return it;
+                });
+        }
 
         template <typename T, typename CharT, typename Enable = void>
         class reader;
 
+        template <typename Derived, typename CharT>
+        class reader_base {
+        public:
+            using char_type = CharT;
+
+            constexpr reader_base() = default;
+
+            bool skip_ws_before_read() const
+            {
+                return true;
+            }
+
+            scan_error check_specs(
+                const detail::basic_format_specs<char_type>& specs)
+            {
+                reader_error_handler eh{};
+                get_derived().check_specs_impl(specs, eh);
+                if (SCN_UNLIKELY(!eh)) {
+                    return {scan_error::invalid_format_string, eh.m_msg};
+                }
+                return {};
+            }
+
+        private:
+            Derived& get_derived()
+            {
+                return static_cast<Derived&>(*this);
+            }
+            const Derived& get_derived() const
+            {
+                return static_cast<const Derived&>(*this);
+            }
+        };
+
+#if 0
         template <typename Derived, typename T, typename CharT>
         class reader_facade {
         public:
@@ -429,6 +502,7 @@ namespace scn {
                     });
             }
         };
+#endif
 
         template <typename CharT>
         class monostate_reader {

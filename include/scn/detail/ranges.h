@@ -40,7 +40,13 @@ namespace scn {
             template <typename Range>
             using all_t = ranges::views::all_t<Range>;
         }  // namespace views
-    }      // namespace ranges_polyfill
+
+        template <typename R>
+        concept simple_view =
+            ranges::view<R> && ranges::range<const R> &&
+            std::same_as<ranges::iterator_t<R>, ranges::iterator_t<const R>> &&
+            std::same_as<ranges::sentinel_t<R>, ranges::sentinel_t<const R>>;
+    }  // namespace ranges_polyfill
 
     SCN_END_NAMESPACE
 }  // namespace scn
@@ -274,7 +280,10 @@ namespace scn {
             template <typename Range>
             using all_t = decltype(all(SCN_DECLVAL(Range)));
         }  // namespace views
-    }      // namespace ranges_polyfill
+
+        template <typename R>
+        inline constexpr bool simple_view = nano::detail::simple_view<R>;
+    }  // namespace ranges_polyfill
 
     SCN_END_NAMESPACE
 }  // namespace scn

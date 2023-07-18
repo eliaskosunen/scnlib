@@ -25,6 +25,65 @@ namespace scn {
 
     namespace impl {
         template <typename Range>
+        scan_expected<iterator_value_result<
+            ranges::borrowed_iterator_t<Range>,
+            contiguous_range_factory<detail::char_t<Range>>>>
+        read_code_point_into(Range&& range)
+        {
+            if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+                return unexpected(e);
+            }
+
+            auto it = ranges::begin(range);
+            const auto len = code_point_length_by_starting_code_unit(*it);
+            if (SCN_UNLIKELY(!len)) {
+                return unexpected(len.error());
+            }
+
+            if (*len == 1) {
+                ++it;
+                auto cp_view = make_contiguous_buffer(
+                    ranges::subrange{ranges::begin(range), it});
+                return {it, cp_view};
+            }
+
+            if constexpr (ranges::sized_range<Range>) {
+                auto sz = ranges::size(range);
+                if (SCN_UNLIKELY(sz < *len)) {
+                    return unexpected_scan_error(scan_error::invalid_encoding,
+                                                 "Incomplete code point");
+                }
+                ranges::advance(it, *len);
+            }
+            else {
+                ++it;
+                size_t i = 1;
+                for (; i < *len && it != ranges::end(range); ++i, (void)++it) {}
+                if (SCN_UNLIKELY(i != *len)) {
+                    return unexpected_scan_error(scan_error::invalid_encoding,
+                                                 "Incomplete code point");
+                }
+            }
+
+            auto cp_view = make_contiguous_buffer(
+                ranges::subrange{ranges::begin(range), it});
+            if (SCN_UNLIKELY(!validate_unicode(cp_view.view()))) {
+                return unexpected_scan_error(scan_error::invalid_encoding,
+                                             "Invalid code point");
+            }
+
+            return {it, cp_view};
+        }
+
+        template <typename Range>
+        scan_expected<ranges::borrowed_iterator_t<Range>> read_code_point(
+            Range&& range)
+        {
+            return read_code_point_into(SCN_FWD(range))
+                .transform([](auto&& result) { return result.iterator; });
+        }
+#if 0
+        template <typename Range>
         scan_expected<ranges::borrowed_iterator_t<Range>>
         read_code_point_impl_nocopy(Range&& range, span<unsigned char> buf)
         {
@@ -170,6 +229,7 @@ namespace scn {
                               "Nonsensical CharT in read_code_point");
             }
         }
+#endif
     }  // namespace impl
 
     SCN_END_NAMESPACE

@@ -20,11 +20,45 @@
 #include <scn/impl/algorithms/read_code_point.h>
 #include <scn/impl/algorithms/read_copying.h>
 #include <scn/impl/algorithms/read_nocopy.h>
+#include "scn/util/expected.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+        template <typename Range>
+        scan_expected<ranges::borrowed_iterator_t<Range>> read_exactly_n_code_points(
+            Range&& range,
+            ranges::range_difference_t<Range> count)
+        {
+            SCN_EXPECT(count >= 0);
+
+            if (count > 0) {
+                if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+                    return unexpected(e);
+                }
+            }
+
+            auto it = ranges::begin(range);
+            for (ranges::range_difference_t<Range> i = 0; i < count; ++i) {
+                auto rng = ranges::subrange{it, ranges::end(range)};
+
+                if (auto e = eof_check(rng); SCN_UNLIKELY(!e)) {
+                    return unexpected(e);
+                }
+
+                auto result = read_code_point(rng);
+                if (SCN_UNLIKELY(!result)) {
+                    return unexpected(result.error());
+                }
+
+                it = *result;
+            }
+
+            return it;
+        }
+
+#if 0
         template <typename Range>
         scan_expected<read_nocopy_result<Range>> read_n_code_points_nocopy(
             Range&& range,
@@ -102,6 +136,7 @@ namespace scn {
 
             return read_copying_result<InputR, OutputR>{in, out};
         }
+#endif
     }  // namespace impl
 
     SCN_END_NAMESPACE

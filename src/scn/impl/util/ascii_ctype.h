@@ -66,18 +66,23 @@ namespace scn {
             return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
         }
 
+        constexpr bool is_ascii_char(char ch) SCN_NOEXCEPT
+        {
+            return static_cast<unsigned char>(ch) <= 127;
+        }
+
         constexpr bool is_ascii_char(wchar_t ch) SCN_NOEXCEPT
         {
 #if WCHAR_MIN < 0
-            return ch >= 0 && ch <= 255;
+            return ch >= 0 && ch <= 127;
 #else
-            return ch <= 255;
+            return ch <= 127;
 #endif
         }
 
         constexpr bool is_ascii_char(code_point cp) SCN_NOEXCEPT
         {
-            return cp <= code_point{255};
+            return cp <= code_point{127};
         }
     }  // namespace impl
 

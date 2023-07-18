@@ -9,6 +9,7 @@ if (SCN_TESTS)
             googletest
             GIT_REPOSITORY  https://github.com/google/googletest.git
             GIT_TAG         main
+            GIT_SHALLOW     TRUE
     )
 
     # gtest CMake does some flag overriding we don't want, and it's also quite heavy
@@ -45,6 +46,7 @@ if (SCN_BENCHMARKS)
             google-benchmark
             GIT_REPOSITORY  https://github.com/google/benchmark.git
             GIT_TAG         main
+            GIT_SHALLOW     TRUE
     )
     list(APPEND SCN_OPTIONAL_DEPENDENCIES "google-benchmark")
 endif()
@@ -63,21 +65,17 @@ endif()
 FetchContent_Declare(
         simdutf
         GIT_REPOSITORY  https://github.com/simdutf/simdutf.git
-        GIT_TAG         v3.2.4
+        GIT_TAG         v3.2.14
         GIT_SHALLOW     TRUE
 )
 
-# fast_float
+# simdutf CMake includes tests if BUILD_TESTING is globally ON
+# we don't want to include tests of dependencies, so we need to do some manual work
 
-FetchContent_Declare(
-        fast_float
-        GIT_REPOSITORY  https://github.com/fastfloat/fast_float.git
-        GIT_TAG         v4.0.0
-        GIT_SHALLOW     TRUE
-)
+set(SIMDUTF_BENCHMARKS_BEFORE_SIMDUTF ${SIMDUTF_BENCHMARKS})
+set(BUILD_TESTING_BEFORE_SIMDUTF ${BUILD_TESTING})
 
 set(SIMDUTF_BENCHMARKS OFF)
-set(BUILD_TESTING_BEFORE_SIMDUTF ${BUILD_TESTING})
 set(BUILD_TESTING OFF)
 
 FetchContent_GetProperties(simdutf)
@@ -87,7 +85,17 @@ if(NOT simdutf_POPULATED)
     add_subdirectory(${simdutf_SOURCE_DIR} ${simdutf_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
+set(SIMDUTF_BENCHMARKS ${SIMDUTF_BENCHMARKS_BEFORE_SIMDUTF})
 set(BUILD_TESTING ${BUILD_TESTING_BEFORE_SIMDUTF})
+
+# fast_float
+
+FetchContent_Declare(
+        fast_float
+        GIT_REPOSITORY  https://github.com/fastfloat/fast_float.git
+        GIT_TAG         v5.2.0
+        GIT_SHALLOW     TRUE
+)
 
 # make available
 
