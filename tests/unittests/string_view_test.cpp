@@ -90,7 +90,7 @@ TEST(StringViewTest, CharacterSetPresentationWideStringViewFromWideSource)
 TEST(StringViewTest, InvalidUtf8)
 {
     auto source = std::string_view{"\x82\xf5"};
-    auto result = scn::scan<std::string_view>(source, "{:64U}");
+    auto result = scn::scan<std::string_view>(source, "{:64c}");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error(), scn::scan_error::invalid_encoding);
 }

@@ -197,18 +197,10 @@ TEST(CustomWidthTest, SingleWidthText)
     EXPECT_STREQ(r->begin(), "ö");
 }
 
-TEST(CustomWidthTest, SingleWidthEmoji)
+TEST(CustomWidthTest, DoubleWidthEmoji)
 {
     auto r = scn::scan<std::string>("😂a", "{:2}");
     ASSERT_TRUE(r);
-    EXPECT_EQ(r->value(), "😂a");
-    EXPECT_STREQ(r->begin(), "");
-}
-
-TEST(CustomWidthTest, DoubleWidthEmoji)
-{
-    auto r = scn::scan<std::string>("🤯a", "{:2}");
-    ASSERT_TRUE(r);
-    EXPECT_EQ(r->value(), "🤯");
+    EXPECT_EQ(r->value(), "😂");
     EXPECT_STREQ(r->begin(), "a");
 }

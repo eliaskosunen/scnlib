@@ -18,13 +18,15 @@
 #pragma once
 
 #include <scn/impl/reader/numeric_reader.h>
+
 #include <limits>
-#include "scn/external/nanorange/nanorange.hpp"
+#include "scn/detail/error.h"
+#include "scn/detail/format_string_parser.h"
 #include "scn/impl/algorithms/common.h"
-#include "scn/impl/algorithms/read_nocopy.h"
+#include "scn/impl/algorithms/read.h"
+#include "scn/impl/locale.h"
 #include "scn/impl/util/ascii_ctype.h"
 #include "scn/util/expected.h"
-#include "scn/util/expected_impl.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -61,8 +63,10 @@ namespace scn {
         };
 
         template <typename CharT>
-        class float_reader : public numeric_reader<float_reader<CharT>, CharT>,
+        class float_reader : public numeric_reader<CharT>,
                              public float_reader_base {
+            using numeric_base = numeric_reader<CharT>;
+
         public:
             using char_type = CharT;
 
@@ -73,26 +77,31 @@ namespace scn {
             {
             }
 
-            template <typename T, typename Range>
+            template <typename Range>
             SCN_NODISCARD scan_expected<ranges::borrowed_iterator_t<Range>>
-            read_source(detail::tag_type<T>, Range&& range)
+            read_source(Range&& range)
             {
-                auto digits_begin = ranges::begin(range);
-                return numeric_reader_base::read_sign(range, m_sign)
-                    .and_then([&](auto it) {
-                        digits_begin = it;
-                        return read_source_impl(
-                            ranges::subrange{it, ranges::end(range)});
-                    })
-                    .transform([&](auto it) {
-                        SCN_EXPECT(m_kind != float_kind::tbd);
-                        if (m_nonbuffer_value_len < 0) {
-                            this->m_buffer.assign(
-                                ranges::subrange{digits_begin, it});
-                        }
+                if (SCN_UNLIKELY(m_options & float_reader_base::allow_thsep)) {
+                    m_locale_options =
+                        localized_number_formatting_options<CharT>{
+                            classic_with_thsep_tag{}};
+                }
 
-                        return it;
-                    });
+                return read_source_impl(SCN_FWD(range));
+            }
+
+            template <typename Range>
+            SCN_NODISCARD scan_expected<ranges::borrowed_iterator_t<Range>>
+            read_source_localized(Range&& range, detail::locale_ref loc)
+            {
+                m_locale_options =
+                    localized_number_formatting_options<CharT>{loc};
+                if (SCN_LIKELY((m_options & float_reader_base::allow_thsep) ==
+                               0)) {
+                    m_locale_options.thousands_sep = CharT{0};
+                }
+
+                return read_source_impl(SCN_FWD(range));
             }
 
             template <typename T>
@@ -103,26 +112,57 @@ namespace scn {
                 const std::ptrdiff_t sign_len =
                     m_sign != numeric_reader_base::sign::default_sign ? 1 : 0;
 
-                if (m_nonbuffer_value_len < 0) {
-                    store_nonbuffer(value);
-                    return m_nonbuffer_value_len + sign_len;
-                }
-
                 return parse_value_impl(value).transform(
                     [&](auto n) { return n + sign_len; });
             }
 
         private:
             template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_source_impl(
+                Range&& range)
+            {
+                auto digits_begin = ranges::begin(range);
+                return numeric_reader_base::read_sign(range, m_sign)
+                    .and_then([&](auto it) {
+                        digits_begin = it;
+                        if constexpr (ranges::contiguous_range<Range> &&
+                                      ranges::sized_range<Range>) {
+                            return read_contiguous_source_impl(
+                                ranges::subrange{it, ranges::end(range)});
+                        }
+                        else {
+                            return read_noncontiguous_source_impl(
+                                ranges::subrange{it, ranges::end(range)});
+                        }
+                    })
+                    .transform([&](auto it) {
+                        SCN_EXPECT(m_kind != float_kind::tbd);
+
+                        if (m_kind != float_kind::inf_short &&
+                            m_kind != float_kind::inf_long &&
+                            m_kind != float_kind::nan_simple &&
+                            m_kind != float_kind::nan_with_payload) {
+                            this->m_buffer.assign(
+                                ranges::subrange{digits_begin, it});
+                        }
+
+                        strip_thseps_from_buffer();
+
+                        return it;
+                    });
+            }
+
+            template <typename Range>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_dec_digits(
                 Range&& range,
-                CharT thsep = 0)
+                bool thsep_allowed)
             {
-                if (SCN_UNLIKELY(thsep != 0)) {
+                if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
+                                 thsep_allowed)) {
                     return read_while_code_unit(
-                        SCN_FWD(range), [=](char_type ch) {
+                        SCN_FWD(range), [&](char_type ch) {
                             return numeric_reader_base::char_to_int(ch) < 10 ||
-                                   ch == thsep;
+                                   ch == m_locale_options.thousands_sep;
                         });
                 }
 
@@ -133,13 +173,14 @@ namespace scn {
             template <typename Range>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_hex_digits(
                 Range&& range,
-                CharT thsep = 0)
+                bool thsep_allowed)
             {
-                if (SCN_UNLIKELY(thsep != 0)) {
+                if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
+                                 thsep_allowed)) {
                     return read_while_code_unit(
-                        SCN_FWD(range), [=](char_type ch) {
+                        SCN_FWD(range), [&](char_type ch) {
                             return numeric_reader_base::char_to_int(ch) < 16 ||
-                                   ch == thsep;
+                                   ch == m_locale_options.thousands_sep;
                         });
                 }
 
@@ -151,7 +192,8 @@ namespace scn {
             scan_expected<ranges::borrowed_iterator_t<Range>> read_hex_prefix(
                 Range&& range)
             {
-                return read_matching_string_nocase(SCN_FWD(range), "0x");
+                return read_matching_string_classic_nocase(SCN_FWD(range),
+                                                           "0x");
             }
 
             template <typename Range>
@@ -159,21 +201,22 @@ namespace scn {
                 Range&& range)
             {
                 auto it = ranges::begin(range);
-                if (auto r = read_matching_string_nocase(range, "inf"); !r) {
+                if (auto r = read_matching_string_classic_nocase(range, "inf");
+                    !r) {
                     return unexpected(r.error());
                 }
                 else {
                     it = *r;
                 }
 
-                if (auto r = read_matching_string_nocase(range, "inity"); !r) {
+                if (auto r =
+                        read_matching_string_classic_nocase(range, "inity");
+                    !r) {
                     m_kind = float_kind::inf_short;
-                    m_nonbuffer_value_len = 3;
                     return it;
                 }
                 else {
                     m_kind = float_kind::inf_long;
-                    m_nonbuffer_value_len = 8;
                     return *r;
                 }
             }
@@ -183,8 +226,8 @@ namespace scn {
                 Range&& range)
             {
                 auto it = ranges::begin(range);
-                auto nan_beg_it = it;
-                if (auto r = read_matching_string_nocase(range, "nan"); !r) {
+                if (auto r = read_matching_string_classic_nocase(range, "nan");
+                    !r) {
                     return unexpected(r.error());
                 }
                 else {
@@ -195,13 +238,13 @@ namespace scn {
                         ranges::subrange{it, ranges::end(range)}, '(');
                     !r) {
                     m_kind = float_kind::nan_simple;
-                    m_nonbuffer_value_len = 3;
                     return it;
                 }
                 else {
                     it = *r;
                 }
 
+                auto payload_beg_it = it;
                 if (auto r = read_while_code_unit(
                         ranges::subrange{it, ranges::end(range)},
                         [](char_type ch) {
@@ -211,12 +254,13 @@ namespace scn {
                                     (ch >= 'A' && ch <= 'Z') || ch == '_');
                         })) {
                     it = *r;
+                    m_nan_payload_buffer.assign(
+                        ranges::subrange{payload_beg_it, it});
                 }
 
                 m_kind = float_kind::nan_with_payload;
                 if (auto r = read_matching_code_unit(
                         ranges::subrange{it, ranges::end(range)}, ')')) {
-                    m_nonbuffer_value_len = ranges::distance(nan_beg_it, *r);
                     return *r;
                 }
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
@@ -268,7 +312,7 @@ namespace scn {
 
                 std::ptrdiff_t digits_count = 0;
                 if (auto r = read_hex_digits(
-                        ranges::subrange{it, ranges::end(range)});
+                        ranges::subrange{it, ranges::end(range)}, true);
                     SCN_UNLIKELY(!r)) {
                     return unexpected(r.error());
                 }
@@ -278,12 +322,13 @@ namespace scn {
                 }
 
                 if (auto r = read_matching_code_unit(
-                        ranges::subrange{it, ranges::end(range)}, '.')) {
+                        ranges::subrange{it, ranges::end(range)},
+                        m_locale_options.decimal_point)) {
                     it = *r;
                 }
 
                 if (auto r = read_hex_digits(
-                        ranges::subrange{it, ranges::end(range)})) {
+                        ranges::subrange{it, ranges::end(range)}, false)) {
                     digits_count += ranges::distance(it, *r);
                     it = *r;
                 }
@@ -312,7 +357,7 @@ namespace scn {
                 std::ptrdiff_t digits_count = 0;
 
                 if (auto r = read_dec_digits(
-                        ranges::subrange{it, ranges::end(range)});
+                        ranges::subrange{it, ranges::end(range)}, true);
                     SCN_UNLIKELY(!r)) {
                     return unexpected(r.error());
                 }
@@ -322,12 +367,13 @@ namespace scn {
                 }
 
                 if (auto r = read_matching_code_unit(
-                        ranges::subrange{it, ranges::end(range)}, '.')) {
+                        ranges::subrange{it, ranges::end(range)},
+                        m_locale_options.decimal_point)) {
                     it = *r;
                 }
 
                 if (auto r = read_dec_digits(
-                        ranges::subrange{it, ranges::end(range)})) {
+                        ranges::subrange{it, ranges::end(range)}, false)) {
                     digits_count += ranges::distance(it, *r);
                     it = *r;
                 }
@@ -356,13 +402,13 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_source_impl(
-                Range&& range)
+            scan_expected<ranges::borrowed_iterator_t<Range>>
+            read_noncontiguous_source_impl(Range&& range)
             {
                 const bool allowed_hex = (m_options & allow_hex) != 0;
                 const bool allowed_nonhex =
-                    (m_options & ~allow_thsep & ~allow_hex) != 0;
-                const bool allowed_thsep = (m_options & allow_thsep) != 0;
+                    (m_options & ~static_cast<unsigned>(allow_thsep) &
+                     ~static_cast<unsigned>(allow_hex)) != 0;
 
                 if (auto r = read_inf(range); !r && m_kind != float_kind::tbd) {
                     return unexpected(r.error());
@@ -414,6 +460,75 @@ namespace scn {
                 }
             }
 
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>>
+            read_contiguous_source_impl(Range&& range)
+            {
+                static_assert(ranges::contiguous_range<Range> &&
+                              ranges::sized_range<Range>);
+
+                if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0)) {
+                    return read_noncontiguous_source_impl(SCN_FWD(range));
+                }
+
+                if (auto r = read_inf(range); !r && m_kind != float_kind::tbd) {
+                    return unexpected(r.error());
+                }
+                else if (r) {
+                    return *r;
+                }
+
+                if (auto r = read_nan(range); !r && m_kind != float_kind::tbd) {
+                    return unexpected(r.error());
+                }
+                else if (r) {
+                    return *r;
+                }
+
+                return read_until_classic_space(SCN_FWD(range))
+                    .and_then(
+                        [&](auto it) -> scan_expected<
+                                         ranges::borrowed_iterator_t<Range>> {
+                            if (it == ranges::begin(range)) {
+                                return unexpected_scan_error(
+                                    scan_error::invalid_scanned_value,
+                                    "Invalid scanned float");
+                            }
+                            m_kind = float_kind::generic;
+                            return it;
+                        });
+            }
+
+            void strip_thseps_from_buffer()
+            {
+                if (m_locale_options.thousands_sep == 0) {
+                    return;
+                }
+
+                auto& str = this->m_buffer.make_into_allocated_string();
+
+                auto first = ranges::find(str, m_locale_options.thousands_sep);
+                if (first == str.end()) {
+                    return;
+                }
+
+                auto push_iter = [&](auto it) {
+                    m_thsep_indices.push_back(
+                        static_cast<char>(ranges::distance(str.begin(), it)));
+                };
+
+                push_iter(first);
+                for (auto it = std::next(first); it != str.end(); ++it) {
+                    if (*it == m_locale_options.thousands_sep) {
+                        push_iter(it);
+                        *first = ranges::iter_move(it);
+                        ++first;
+                    }
+                }
+
+                str.erase(first, str.end());
+            }
+
             template <typename T>
             T setsign(T value) const
             {
@@ -425,39 +540,11 @@ namespace scn {
             }
 
             template <typename T>
-            void store_nonbuffer(T& value) const
-            {
-                switch (m_kind) {
-                    case float_kind::inf_short:
-                        SCN_EXPECT(m_nonbuffer_value_len == 3);
-                        value = setsign(std::numeric_limits<T>::infinity());
-                        break;
-
-                    case float_kind::inf_long:
-                        SCN_EXPECT(m_nonbuffer_value_len == 8);
-                        value = setsign(std::numeric_limits<T>::infinity());
-                        break;
-
-                    case float_kind::nan_simple:
-                        SCN_EXPECT(m_nonbuffer_value_len == 3);
-                        value = setsign(std::numeric_limits<T>::quiet_NaN());
-                        break;
-
-                    case float_kind::nan_with_payload:
-                        SCN_EXPECT(m_nonbuffer_value_len >= 5);
-                        value = setsign(std::numeric_limits<T>::quiet_NaN());
-                        break;
-
-                    default:
-                        SCN_EXPECT(false);
-                        SCN_UNREACHABLE;
-                }
-            }
-
-            template <typename T>
             scan_expected<std::ptrdiff_t> parse_value_impl(T& value);
 
-            std::ptrdiff_t m_nonbuffer_value_len{-1};
+            localized_number_formatting_options<CharT> m_locale_options{};
+            std::string m_thsep_indices{};
+            contiguous_range_factory<CharT> m_nan_payload_buffer{};
             numeric_reader_base::sign m_sign{
                 numeric_reader_base::sign::default_sign};
             float_kind m_kind{float_kind::tbd};
@@ -477,6 +564,117 @@ namespace scn {
 
 #undef SCN_DECLARE_FLOAT_READER_TEMPLATE
 #undef SCN_DECLARE_FLOAT_READER_TEMPLATE_IMPL
+
+        template <typename T>
+        inline constexpr bool is_float_reader_type =
+            std::is_floating_point_v<T>;
+
+        template <typename T, typename CharT>
+        class reader<T, CharT, std::enable_if_t<is_float_reader_type<T>>>
+            : public reader_base<reader<T, CharT>, CharT> {
+        public:
+            constexpr reader() = default;
+
+            void check_specs_impl(
+                const detail::basic_format_specs<CharT>& specs,
+                reader_error_handler& eh)
+            {
+                detail::check_float_type_specs(specs, eh);
+            }
+
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>>
+            read_default(Range&& range, T& value, detail::locale_ref loc)
+            {
+                SCN_UNUSED(loc);
+
+                float_reader<CharT> rd{};
+                return read_impl(
+                    SCN_FWD(range), rd,
+                    [&](auto&& rng) { return rd.read_source(SCN_FWD(rng)); },
+                    value);
+            }
+
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_specs(
+                Range&& range,
+                const detail::basic_format_specs<CharT>& specs,
+                T& value,
+                detail::locale_ref loc)
+            {
+                float_reader<CharT> rd{get_options(specs)};
+
+                if (specs.localized) {
+                    return read_impl(
+                        SCN_FWD(range), rd,
+                        [&](auto&& rng) {
+                            return rd.read_source_localized(SCN_FWD(rng), loc);
+                        },
+                        value);
+                }
+
+                return read_impl(
+                    SCN_FWD(range), rd,
+                    [&](auto&& rng) { return rd.read_source(SCN_FWD(rng)); },
+                    value);
+            }
+
+        private:
+            template <typename Range, typename ReadSource>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_impl(
+                Range&& range,
+                float_reader<CharT>& rd,
+                ReadSource&& read_source_cb,
+                T& value)
+            {
+                return read_source_cb(range)
+                    .and_then([&](auto _) {
+                        SCN_UNUSED(_);
+                        return rd.parse_value(value);
+                    })
+                    .transform([&](auto n) {
+                        return ranges::next(ranges::begin(range), n);
+                    });
+            }
+
+            static unsigned get_options(
+                const detail::basic_format_specs<CharT>& specs)
+            {
+                unsigned options{};
+                if (specs.thsep) {
+                    options |= float_reader_base::allow_thsep;
+                }
+
+                SCN_GCC_COMPAT_PUSH
+                SCN_GCC_COMPAT_IGNORE("-Wswitch-enum")
+
+                switch (specs.type) {
+                    case detail::presentation_type::float_fixed:
+                        return options | float_reader_base::allow_fixed;
+
+                    case detail::presentation_type::float_scientific:
+                        return options | float_reader_base::allow_scientific;
+
+                    case detail::presentation_type::float_hex:
+                        return options | float_reader_base::allow_hex;
+
+                    case detail::presentation_type::float_general:
+                        return options | float_reader_base::allow_scientific |
+                               float_reader_base::allow_fixed;
+
+                    case detail::presentation_type::none:
+                        return options | float_reader_base::allow_scientific |
+                               float_reader_base::allow_fixed |
+                               float_reader_base::allow_hex;
+
+                    default:
+                        SCN_EXPECT(false);
+                        SCN_UNREACHABLE;
+                }
+
+                SCN_GCC_COMPAT_POP  // -Wswitch-enum
+            }
+        };
     }  // namespace impl
 
     SCN_END_NAMESPACE

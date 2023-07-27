@@ -18,7 +18,7 @@
 #pragma once
 
 #include <scn/detail/scanner.h>
-#include <scn/impl/reader/integer/reader.h>
+#include <scn/impl/reader/integer_reader.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -26,6 +26,7 @@ namespace scn {
     namespace impl {
         template <typename CharT>
         class reader<void*, CharT> {
+        public:
             constexpr reader() = default;
 
             bool skip_ws_before_read() const
@@ -45,17 +46,15 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::iterator_t<Range>> read_value_default(
-                Range range,
-                void*& value,
-                detail::locale_ref loc)
+            scan_expected<ranges::iterator_t<Range>>
+            read_default(Range range, void*& value, detail::locale_ref loc)
             {
                 detail::basic_format_specs<CharT> specs{};
                 specs.type = detail::presentation_type::int_hex;
 
                 std::uintptr_t intvalue{};
-                return int_reader<std::uintptr_t, CharT>{}
-                    .read_value_specs(range, specs, intvalue, loc)
+                return reader<std::uintptr_t, CharT>{}
+                    .read_specs(range, specs, intvalue, loc)
                     .transform([&](auto result) SCN_NOEXCEPT {
                         value = reinterpret_cast<void*>(intvalue);
                         return result;
@@ -63,14 +62,14 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::iterator_t<Range>> read_value_specs(
+            scan_expected<ranges::iterator_t<Range>> read_specs(
                 Range range,
                 const detail::basic_format_specs<CharT>& specs,
                 void*& value,
                 detail::locale_ref loc)
             {
                 SCN_UNUSED(specs);
-                return read_value_default(range, value, loc);
+                return read_default(range, value, loc);
             }
         };
     }  // namespace impl

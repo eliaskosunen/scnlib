@@ -17,7 +17,7 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/impl/algorithms/read_nocopy.h>
+#include <scn/impl/algorithms/read.h>
 
 TEST(ReadAllNocopyTest, General)
 {

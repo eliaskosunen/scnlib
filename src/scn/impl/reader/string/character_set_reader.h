@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <scn/impl/algorithms/read_copying.h>
+#include <scn/impl/algorithms/read.h>
 #include <scn/impl/reader/common.h>
 #include <scn/util/string_view.h>
 

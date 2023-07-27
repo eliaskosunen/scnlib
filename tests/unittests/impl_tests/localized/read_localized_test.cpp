@@ -18,7 +18,6 @@
 #include "../../wrapped_gtest.h"
 
 #include <scn/detail/erased_range.h>
-#include <scn/impl/algorithms/read_localized.h>
 
 class LocalizedSingleCharWidenerTest
     : public testing::TestWithParam<std::locale> {

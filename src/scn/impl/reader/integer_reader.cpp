@@ -222,37 +222,6 @@ namespace scn {
                 return {true, {}};
             }
 
-            template <typename CharT, typename T>
-            auto do_single_char_with_thsep(
-                int_reader_state<T>& state,
-                typename std::basic_string_view<CharT>::iterator it,
-                typename std::basic_string_view<CharT>::iterator&
-                    after_last_thsep_it,
-                std::string& thousands_separators)
-                -> std::pair<bool, scan_error>
-            {
-                using utype = typename int_reader_state<T>::utype;
-
-                const auto digit =
-                    static_cast<utype>(numeric_reader_base::char_to_int(*it));
-                if (digit >= state.ubase) {
-                    if (*it == ',') {
-                        thousands_separators.push_back(
-                            static_cast<char>(it - after_last_thsep_it));
-                        after_last_thsep_it = it + 1;
-                        return {true, {}};
-                    }
-
-                    return {false, {}};
-                }
-
-                if (auto msg = do_single_char_impl(digit, state);
-                    SCN_UNLIKELY(msg != nullptr)) {
-                    return {false, {scan_error::value_overflow, msg}};
-                }
-                return {true, {}};
-            }
-
             constexpr std::array<uint64_t, 9> accumulator_multipliers{{
                 0,
                 power_of_10(1),
@@ -417,29 +386,6 @@ namespace scn {
                 return {};
             }
 
-            scan_error check_thousands_separators(
-                const std::string& thousands_separators)
-            {
-                const auto return_error = []() {
-                    return scan_error{scan_error::invalid_scanned_value,
-                                      "Invalid thousands separator grouping"};
-                };
-
-                if (thousands_separators[0] > 3) {
-                    SCN_UNLIKELY_ATTR
-                    return return_error();
-                }
-                for (auto it = thousands_separators.begin() + 1;
-                     it != thousands_separators.end(); ++it) {
-                    if (*it != 3) {
-                        SCN_UNLIKELY_ATTR
-                        return return_error();
-                    }
-                }
-
-                return {};
-            }
-
             template <typename T>
             void store_value(const int_reader_state<T>& state,
                              T& value,
@@ -503,14 +449,12 @@ namespace scn {
                                              "Invalid integer value");
             }
 
-            bool stop_reading = false;
-            SCN_UNUSED(stop_reading);
-
             if constexpr (std::is_same_v<CharT, char> &&
                           can_do_fast64_at_least_once<T>() && !SCN_IS_32BIT &&
                           !SCN_IS_BIG_ENDIAN && SCN_HAS_BITS_CTZ) {
                 if (state.ubase == 10) {
-                    while (source.end() - it >= 8 && !stop_reading) {
+                    for (bool stop_reading = false;
+                         source.end() - it >= 8 && !stop_reading;) {
                         if (auto err = do_read_decimal_fast64<T>(
                                 state, it, source.end(), stop_reading);
                             SCN_UNLIKELY(!err)) {

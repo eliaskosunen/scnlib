@@ -18,7 +18,6 @@
 #pragma once
 
 #include <scn/impl/reader/numeric_reader.h>
-#include "scn/impl/locale.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -50,10 +49,9 @@ namespace scn {
         };
 
         template <typename CharT>
-        class integer_reader
-            : public numeric_reader<integer_reader<CharT>, CharT>,
-              public integer_reader_base {
-            using numeric_base = numeric_reader<integer_reader<CharT>, CharT>;
+        class integer_reader : public numeric_reader<CharT>,
+                               public integer_reader_base {
+            using numeric_base = numeric_reader<CharT>;
 
         public:
             using char_type = CharT;
@@ -76,9 +74,8 @@ namespace scn {
                 if (SCN_UNLIKELY(m_options &
                                  integer_reader_base::allow_thsep)) {
                     m_locale_options =
-                        localized_number_formatting_options<CharT>{};
-                    m_locale_options.thousands_sep = CharT{','};
-                    m_locale_options.grouping = "\3";
+                        localized_number_formatting_options<CharT>{
+                            classic_with_thsep_tag{}};
 
                     return read_source_with_thsep_impl<std::is_signed_v<T>>(
                         SCN_FWD(range));
@@ -121,7 +118,8 @@ namespace scn {
                 return parse_value_impl(value).transform([&](auto it) {
                     return ranges::distance(
                                numeric_base::m_buffer.view().begin(), it) +
-                           m_nondigit_prefix_len + m_thsep_indices.size();
+                           m_nondigit_prefix_len +
+                           ranges::ssize(m_thsep_indices);
                 });
             }
 
@@ -130,16 +128,18 @@ namespace scn {
             scan_expected<ranges::borrowed_iterator_t<Range>>
             read_source_with_thsep_impl(Range&& range)
             {
-                SCN_EXPECT(m_locale_options.thsep != 0);
+                SCN_EXPECT(m_locale_options.thousands_sep != 0);
                 SCN_EXPECT(!m_locale_options.grouping.empty());
 
-                return read_source_impl(range).and_then(
+                return read_source_impl<IsSigned>(range).and_then(
                     [&](auto it) -> scan_expected<decltype(it)> {
                         if (!m_thsep_indices.empty()) {
-                            return this->check_thsep_grouping(
-                                ranges::subrange{ranges::begin(this->m_buffer),
-                                                 it},
-                                m_thsep_indices, m_locale_options.grouping);
+                            if (auto e = this->check_thsep_grouping(
+                                    ranges::subrange{ranges::begin(range), it},
+                                    m_thsep_indices, m_locale_options.grouping);
+                                SCN_UNLIKELY(!e)) {
+                                return unexpected(e);
+                            }
                         }
 
                         return it;
@@ -161,7 +161,9 @@ namespace scn {
                     })
                     .and_then([&](auto it) {
                         digits_begin = it;
-                        return read_digits(make_subrange(it));
+                        return read_digits(make_subrange(it),
+                                           ranges_polyfill::prev_backtrack(
+                                               it, ranges::begin(range)));
                     })
                     .transform([&](auto it) {
                         m_nondigit_prefix_len = ranges::distance(
@@ -171,9 +173,13 @@ namespace scn {
                         if (!m_thsep_indices.empty()) {
                             numeric_base::m_buffer.make_into_allocated_string();
                             for (auto idx : m_thsep_indices) {
+                                auto erase_it =
+                                    numeric_base::m_buffer
+                                        .get_allocated_string()
+                                        .begin() +
+                                    static_cast<std::ptrdiff_t>(idx);
                                 numeric_base::m_buffer.get_allocated_string()
-                                    .erase(numeric_base::m_buffer.begin() +
-                                           static_cast<std::ptrdiff_t>(idx));
+                                    .erase(erase_it);
                             }
                         }
                         return it;
@@ -213,21 +219,23 @@ namespace scn {
             scan_expected<ranges::borrowed_iterator_t<Range>>
             read_bin_base_prefix(Range&& range)
             {
-                return read_matching_string_nocase(SCN_FWD(range), "0b");
+                return read_matching_string_classic_nocase(SCN_FWD(range),
+                                                           "0b");
             }
 
             template <typename Range>
             scan_expected<ranges::borrowed_iterator_t<Range>>
             read_hex_base_prefix(Range&& range)
             {
-                return read_matching_string_nocase(SCN_FWD(range), "0x");
+                return read_matching_string_classic_nocase(SCN_FWD(range),
+                                                           "0x");
             }
 
             template <typename Range>
             scan_expected<ranges::borrowed_iterator_t<Range>>
             read_oct_base_prefix(Range&& range)
             {
-                if (auto r = read_matching_string_nocase(range, "0o")) {
+                if (auto r = read_matching_string_classic_nocase(range, "0o")) {
                     return *r;
                 }
 
@@ -293,10 +301,10 @@ namespace scn {
             {
                 SCN_EXPECT(m_base != 0);
 
-                if (SCN_UNLIKELY(m_locale_options.thsep != 0)) {
+                if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0)) {
                     auto it = ranges::begin(range);
                     for (; it != ranges::end(range); ++it) {
-                        if (*it == m_locale_options.thsep) {
+                        if (*it == m_locale_options.thousands_sep) {
                             m_thsep_indices.push_back(static_cast<char>(
                                 ranges::distance(ranges::begin(range), it)));
                         }
@@ -315,12 +323,13 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_digits(
-                Range&& range)
+                Range&& range,
+                ranges::iterator_t<Range> prev_begin)
             {
                 auto adjust_for_zero = [&](auto it) {
                     if (m_zero_parsed && it == ranges::begin(range)) {
                         m_zero_parsed = false;
-                        return ranges::prev(it);
+                        return prev_begin;
                     }
                     return it;
                 };
@@ -346,7 +355,8 @@ namespace scn {
             localized_number_formatting_options<CharT> m_locale_options{};
             std::string m_thsep_indices{};
             std::ptrdiff_t m_nondigit_prefix_len{0};
-            numeric_base::sign m_sign{numeric_base::sign::default_sign};
+            typename numeric_base::sign m_sign{
+                numeric_base::sign::default_sign};
             bool m_zero_parsed{false};
         };
 
@@ -371,7 +381,103 @@ namespace scn {
 
 #undef SCN_DECLARE_INTEGER_READER_TEMPLATE
 #undef SCN_DECLARE_INTEGER_READER_TEMPLATE_IMPL
-    }  // namespace impl
+
+        template <typename T>
+        inline constexpr bool is_integer_reader_type =
+            std::is_integral_v<T> && !std::is_same_v<T, char> &&
+            !std::is_same_v<T, wchar_t> && !std::is_same_v<T, bool>;
+
+        template <typename T, typename CharT>
+        class reader<T, CharT, std::enable_if_t<is_integer_reader_type<T>>>
+            : public reader_base<reader<T, CharT>, CharT> {
+        public:
+            constexpr reader() = default;
+
+            void check_specs_impl(
+                const detail::basic_format_specs<CharT>& specs,
+                reader_error_handler& eh)
+            {
+                detail::check_int_type_specs(specs, eh);
+            }
+
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>>
+            read_default(Range&& range, T& value, detail::locale_ref loc)
+            {
+                SCN_UNUSED(loc);
+
+                integer_reader<CharT> rd{detail::tag_type<T>{}};
+                return read_impl(
+                    SCN_FWD(range), rd,
+                    [&](auto&& rng) {
+                        return rd.read_source(detail::tag_type<T>{},
+                                              SCN_FWD(rng));
+                    },
+                    value);
+            }
+
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_specs(
+                Range&& range,
+                const detail::basic_format_specs<CharT>& specs,
+                T& value,
+                detail::locale_ref loc)
+            {
+                auto rd = get_reader_from_specs(specs);
+
+                if (specs.localized) {
+                    return read_impl(
+                        SCN_FWD(range), rd,
+                        [&](auto&& rng) {
+                            return rd.read_source_localized(
+                                detail::tag_type<T>{}, SCN_FWD(rng), loc);
+                        },
+                        value);
+                }
+
+                return read_impl(
+                    SCN_FWD(range), rd,
+                    [&](auto&& rng) {
+                        return rd.read_source(detail::tag_type<T>{},
+                                              SCN_FWD(rng));
+                    },
+                    value);
+            }
+
+        private:
+            template <typename Range, typename ReadSource>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_impl(
+                Range&& range,
+                integer_reader<CharT>& rd,
+                ReadSource&& read_source_cb,
+                T& value)
+            {
+                return read_source_cb(range)
+                    .and_then([&](auto _) {
+                        SCN_UNUSED(_);
+                        return rd.parse_value(value);
+                    })
+                    .transform([&](auto n) {
+                        return ranges::next(ranges::begin(range), n);
+                    });
+            }
+
+            static integer_reader<CharT> get_reader_from_specs(
+                const detail::basic_format_specs<CharT>& specs)
+            {
+                unsigned options{};
+                if (specs.thsep) {
+                    options |= integer_reader_base::allow_thsep;
+                }
+                if (specs.type ==
+                    detail::presentation_type::int_unsigned_decimal) {
+                    options |= integer_reader_base::only_unsigned;
+                }
+
+                return {options, specs.get_base(0)};
+            }
+        };
+    };  // namespace impl
 
     SCN_END_NAMESPACE
 }  // namespace scn

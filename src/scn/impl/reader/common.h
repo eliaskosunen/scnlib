@@ -18,12 +18,7 @@
 #pragma once
 
 #include <scn/detail/scanner.h>
-#include <scn/impl/algorithms/find_whitespace.h>
-#include <scn/impl/algorithms/read_copying.h>
-#include <scn/impl/algorithms/read_localized.h>
-#include <scn/impl/algorithms/read_nocopy.h>
-
-#include <variant>
+#include <scn/impl/algorithms/read.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -505,9 +500,9 @@ namespace scn {
 #endif
 
         template <typename CharT>
-        class monostate_reader {
+        class reader<detail::monostate, CharT, void> {
         public:
-            constexpr monostate_reader() = default;
+            constexpr reader() = default;
 
             bool skip_ws_before_read() const
             {
@@ -522,16 +517,16 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::iterator_t<Range>>
-            read_value_default(Range, detail::monostate&, detail::locale_ref)
+            scan_expected<ranges::borrowed_iterator_t<Range>>
+            read_default(Range&&, detail::monostate&, detail::locale_ref)
             {
                 SCN_EXPECT(false);
                 SCN_UNREACHABLE;
             }
 
             template <typename Range>
-            scan_expected<ranges::iterator_t<Range>> read_value_specs(
-                Range,
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_specs(
+                Range&&,
                 const detail::basic_format_specs<CharT>&,
                 detail::monostate&,
                 detail::locale_ref)
@@ -540,10 +535,6 @@ namespace scn {
                 SCN_UNREACHABLE;
             }
         };
-
-        template <typename CharT>
-        class reader<detail::monostate, CharT>
-            : public monostate_reader<CharT> {};
     }  // namespace impl
 
     SCN_END_NAMESPACE

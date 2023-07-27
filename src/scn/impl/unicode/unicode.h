@@ -22,14 +22,19 @@
 #include <scn/util/expected.h>
 #include <scn/util/meta.h>
 #include <scn/util/span.h>
+#include <scn/util/string_view.h>
 
 #include <cstdint>
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wold-style-cast")
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wdocumentation")
 SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
 SCN_CLANG_IGNORE("-Wnewline-eof")
 SCN_CLANG_IGNORE("-Wextra-semi")
+SCN_CLANG_IGNORE("-Wold-style-cast")
 
 SCN_MSVC_PUSH
 SCN_MSVC_IGNORE(4146)  // unary minus applied to unsigned
@@ -39,6 +44,8 @@ SCN_MSVC_IGNORE(4146)  // unary minus applied to unsigned
 SCN_MSVC_POP
 
 SCN_CLANG_POP
+
+SCN_GCC_POP
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -175,16 +182,18 @@ namespace scn {
 
             SCN_EXPECT(validate_unicode(input));
 
-            constexpr auto enc = get_encodign<CharT>();
+            constexpr auto enc = get_encoding<CharT>();
             char32_t output;
             if constexpr (enc == encoding::utf8) {
-                (void)simdutf::convert_valid_utf8_to_utf32(
+                const auto ret = simdutf::convert_valid_utf8_to_utf32(
                     reinterpret_cast<const char*>(input.data()), *len, &output);
+                SCN_EXPECT(ret == 1);
             }
             else if constexpr (enc == encoding::utf16) {
-                (void)simdutf::convert_valid_utf16_to_utf32(
+                const auto ret = simdutf::convert_valid_utf16_to_utf32(
                     reinterpret_cast<const char16_t*>(input.data()), *len,
                     &output);
+                SCN_EXPECT(ret == 1);
             }
             else if constexpr (enc == encoding::utf32) {
                 return static_cast<code_point>(input[0]);
@@ -206,7 +215,7 @@ namespace scn {
                 auto result = simdutf::convert_valid_utf32_to_utf16(
                     reinterpret_cast<const char32_t*>(&cp), 1, buf);
                 if (result != 1 && error_on_overflow) {
-                    return unexpected_scan_error(scan_error::value_out_of_range,
+                    return unexpected_scan_error(scan_error::value_overflow,
                                                  "Non-BOM code point can't be "
                                                  "narrowed to a single 2-byte "
                                                  "wchar_t code unit");
@@ -226,21 +235,22 @@ namespace scn {
 
             const auto len_wrapped =
                 code_point_length_by_starting_code_unit(input[0]);
-            SCN_ASSUME(len_wrapped);
+            SCN_EXPECT(len_wrapped);
             const auto len = *len_wrapped;
             SCN_ASSUME(len != 0);
 
             constexpr auto enc = get_encoding<CharT>();
-            std::size_t result{1};
             char32_t output{};
             if constexpr (enc == encoding::utf8) {
-                result = simdutf::convert_valid_utf8_to_utf32(
-                    reinterpret_cast<const char*>(input.data()), *len, &output);
+                const auto ret = simdutf::convert_valid_utf8_to_utf32(
+                    reinterpret_cast<const char*>(input.data()), len, &output);
+                SCN_EXPECT(ret == 1);
             }
             else if constexpr (enc == encoding::utf16) {
-                result = simdutf::convert_valid_utf16_to_utf32(
-                    reinterpret_cast<const char16_t*>(input.data()), *len,
+                const auto ret = simdutf::convert_valid_utf16_to_utf32(
+                    reinterpret_cast<const char16_t*>(input.data()), len,
                     &output);
+                SCN_EXPECT(ret == 1);
             }
             else if constexpr (enc == encoding::utf32) {
                 output = static_cast<char32_t>(input[0]);
@@ -248,7 +258,7 @@ namespace scn {
 
             return iterator_value_result<
                 ranges::iterator_t<std::basic_string_view<CharT>>, code_point>{
-                input.begin() + *len, static_cast<code_point>(output)};
+                input.begin() + len, static_cast<code_point>(output)};
         }
 
         template <typename CharT>
@@ -522,10 +532,12 @@ namespace scn {
         {
             auto it = input.begin();
             while (it != input.end()) {
-                code_point cp{};
-                std::tie(it, cp) = get_next_code_point_valid(input);
-                cb(cp);
-                input = make_string_view_from_iterators(it, input.end());
+                auto res = get_next_code_point_valid(input);
+                cb(res.value);
+
+                it = res.iterator;
+                input = detail::make_string_view_from_iterators<CharT>(
+                    it, input.end());
             }
         }
     }  // namespace impl

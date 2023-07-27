@@ -17,4 +17,3 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/impl/algorithms/read_code_point.h>

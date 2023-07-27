@@ -16,16 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/impl/reader/float_reader.h>
-#include <string_view>
-#include "float/value_reader.h"
-#include "numeric_reader.h"
-#include "scn/impl/algorithms/common.h"
-#include "scn/impl/algorithms/find_whitespace.h"
-#include "scn/impl/algorithms/read_nocopy.h"
-#include "scn/impl/locale.h"
-#include "scn/impl/unicode/unicode.h"
-#include "scn/util/expected.h"
-#include "scn/util/expected_impl.h"
+#include <scn/impl/reader/integer_reader.h>
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
@@ -55,6 +46,7 @@ SCN_GCC_POP
 
 #include <limits>
 #include <sstream>
+#include <string_view>
 
 #if SCN_HAS_FLOAT_CHARCONV
 #include <charconv>
@@ -80,22 +72,6 @@ namespace scn {
                 return ld == 0.0L || ld == -0.0L;
             }
             SCN_GCC_COMPAT_POP
-
-            ////////////////////////////////////////////////////////////////////
-            // Fallback implementation
-            // Always errors
-            ////////////////////////////////////////////////////////////////////
-
-            struct error_fallback_impl {
-                explicit error_fallback_impl() {}
-
-                scan_expected<std::ptrdiff_t> operator()()
-                {
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "No valid float parser found for this type");
-                }
-            };
 
             struct impl_base {
                 float_reader_base::float_kind m_kind;
@@ -202,6 +178,9 @@ namespace scn {
                                     "strtod failed: underflow"};
                         }
 
+                        SCN_GCC_COMPAT_PUSH
+                        SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
+
                         if (std::abs(value) ==
                             std::numeric_limits<T>::infinity()) {
                             SCN_UNLIKELY_ATTR
@@ -209,8 +188,10 @@ namespace scn {
                                     "strtod failed: overflow"};
                         }
 
-                        return {scan_error::invalid_scanned_value,
-                                "Unknown range error"};
+                        SCN_GCC_COMPAT_POP  // -Wfloat-equal
+
+                            return {scan_error::invalid_scanned_value,
+                                    "Unknown range error"};
                     }
 
                     return {};
@@ -298,13 +279,14 @@ namespace scn {
             struct has_charconv_for<long double, void> : std::false_type {};
 #endif
 
-            struct from_chars_impl_base : impl_base {
-                from_chars_impl_base(impl_init_data<char> data)
+            struct SCN_MAYBE_UNUSED from_chars_impl_base : impl_base {
+                SCN_MAYBE_UNUSED from_chars_impl_base(impl_init_data<char> data)
                     : impl_base{data.base()}, m_input(data.input)
                 {
                 }
 
-                scan_expected<std::chars_format> get_flags(
+            protected:
+                SCN_MAYBE_UNUSED scan_expected<std::chars_format> get_flags(
                     std::string_view& input) const
                 {
                     auto flags = map_options_to_flags();
@@ -332,7 +314,6 @@ namespace scn {
                     return flags;
                 }
 
-            protected:
                 contiguous_range_factory<char>& m_input;
 
             private:
@@ -355,7 +336,7 @@ namespace scn {
             };
 
             template <typename T>
-            class from_chars_impl : from_chars_impl_base {
+            class from_chars_impl : public from_chars_impl_base {
             public:
                 using from_chars_impl_base::from_chars_impl_base;
 
@@ -498,8 +479,56 @@ namespace scn {
             template <typename CharT, typename T>
             scan_expected<std::ptrdiff_t> dispatch_impl(
                 impl_init_data<CharT> data,
+                contiguous_range_factory<CharT>& nan_payload,
                 T& value)
             {
+                if (data.kind == float_reader_base::float_kind::inf_short) {
+                    value = std::numeric_limits<T>::infinity();
+                    return 3;
+                }
+                if (data.kind == float_reader_base::float_kind::inf_long) {
+                    value = std::numeric_limits<T>::infinity();
+                    return 8;
+                }
+                if (data.kind == float_reader_base::float_kind::nan_simple) {
+                    value = std::numeric_limits<T>::quiet_NaN();
+                    return 3;
+                }
+                if (data.kind ==
+                    float_reader_base::float_kind::nan_with_payload) {
+                    value = std::numeric_limits<T>::quiet_NaN();
+
+                    // TODO: use payload
+#if 0
+                    {
+                        auto reader = integer_reader<CharT>{
+                            integer_reader_base::only_unsigned, 0};
+                        if (auto r = reader.read_source(
+                                detail::tag_type<unsigned long long>{},
+                                nan_payload.view());
+                            SCN_UNLIKELY(!r)) {
+                            return unexpected(r.error());
+                        }
+
+                        unsigned long long payload;
+                        if (auto r = reader.parse_value(payload);
+                            SCN_UNLIKELY(!r)) {
+                            return unexpected(r.error());
+                        }
+
+                        constexpr auto mantissa_payload_len =
+                            std::numeric_limits<T>::digits - 2;
+                        payload &= ((1ull << mantissa_payload_len) - 1ull);
+
+
+                    }
+#endif
+                    SCN_UNUSED(nan_payload);
+
+                    return static_cast<std::ptrdiff_t>(
+                        5 + nan_payload.view().size());
+                }
+
                 if constexpr (std::is_same_v<T, long double>) {
                     if constexpr (sizeof(double) == sizeof(long double)) {
                         // If double == long double (true on Windows),
@@ -531,7 +560,7 @@ namespace scn {
             SCN_EXPECT((m_options & float_reader_base::allow_thsep) == 0);
 
             return dispatch_impl<CharT>({this->m_buffer, m_kind, m_options},
-                                        value)
+                                        m_nan_payload_buffer, value)
                 .transform([&](auto n) {
                     value = this->setsign(value);
                     return n;

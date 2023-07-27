@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <scn/impl/algorithms/read_code_points.h>
+#include <scn/impl/algorithms/read.h>
 #include <scn/impl/reader/common.h>
 
 namespace scn {

@@ -17,7 +17,6 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/impl/algorithms/read_copying.h>
 #include <scn/impl/util/ascii_ctype.h>
 
 TEST(ReadUntilAsciiCopyingTest, ContiguousSourceAndDest)

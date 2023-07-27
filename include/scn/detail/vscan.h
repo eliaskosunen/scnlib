@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <bits/ranges_base.h>
 #include <scn/detail/context.h>
 #include <scn/detail/istream_range.h>
 #include <scn/detail/result.h>

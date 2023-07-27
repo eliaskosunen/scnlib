@@ -19,10 +19,10 @@
 
 #include <scn/impl/reader/bool_reader.h>
 #include <scn/impl/reader/code_unit_and_point_reader.h>
-#include <scn/impl/reader/float/reader.h>
-#include <scn/impl/reader/integer/reader.h>
+#include <scn/impl/reader/float_reader.h>
+#include <scn/impl/reader/integer_reader.h>
 #include <scn/impl/reader/pointer_reader.h>
-#include <scn/impl/reader/string/reader.h>
+#include <scn/impl/reader/string_reader.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -32,7 +32,6 @@ namespace scn {
         scan_expected<ranges::borrowed_iterator_t<Range>>
         skip_ws_before_if_required(Reader& reader,
                                    Range&& range,
-                                   bool is_specs_localized,
                                    detail::locale_ref loc)
         {
             if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
@@ -43,7 +42,7 @@ namespace scn {
                 return ranges::begin(range);
             }
 
-            if (is_specs_localized || loc) {
+            if (loc) {
                 return skip_localized_whitespace(SCN_FWD(range), loc);
             }
 
@@ -62,11 +61,11 @@ namespace scn {
             scan_expected<iterator> operator()(T& value)
             {
                 auto rd = reader<T, char_type>{};
-                return skip_ws_before_if_required(rd, range, false, loc)
+                return skip_ws_before_if_required(rd, range, loc)
                     .and_then([&](auto it) {
-                        return rd.read_value_default(
-                            reconstruct_view<char_type>(it, ranges::end(range)),
-                            value, loc);
+                        return rd.read_default(
+                            ranges::subrange{it, ranges::end(range)}, value,
+                            loc);
                     });
             }
 
@@ -101,12 +100,22 @@ namespace scn {
                     return unexpected(e);
                 }
 
-                return skip_ws_before_if_required(rd, range, specs.localized,
-                                                  loc)
+                return skip_ws_before_if_required(rd, range, loc)
                     .and_then([&](auto it) {
-                        return rd.read_value_specs(
-                            reconstruct_view<char_type>(it, ranges::end(range)),
-                            specs, value, loc);
+                        if (specs.width != 0) {
+                            return rd
+                                .read_specs(take_width(
+                                                ranges::subrange{
+                                                    it, ranges::end(range)},
+                                                specs.width),
+                                            specs, value, loc)
+                                .transform(
+                                    [](auto w_it) { return w_it.base(); });
+                        }
+
+                        return rd.read_specs(
+                            ranges::subrange{it, ranges::end(range)}, specs,
+                            value, loc);
                     });
             }
 

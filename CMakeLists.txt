@@ -68,17 +68,15 @@ set(SCN_PUBLIC_HEADERS
         )
 set(SCN_PRIVATE_HEADERS
         src/scn/impl/algorithms/common.h
+        src/scn/impl/algorithms/contiguous_range_factory.h
         src/scn/impl/algorithms/eof_check.h
         src/scn/impl/algorithms/find_whitespace.h
-        src/scn/impl/algorithms/read_code_point.h
-        src/scn/impl/algorithms/read_copying.h
-        src/scn/impl/algorithms/read_localized.h
-        src/scn/impl/algorithms/read_nocopy.h
+        src/scn/impl/algorithms/read.h
+        src/scn/impl/algorithms/take_width_view.h
 
         src/scn/impl/reader/reader.h
         src/scn/impl/reader/common.h
         src/scn/impl/reader/numeric_reader.h
-        src/scn/impl/reader/number_preparer.h
 
         src/scn/impl/reader/code_unit_and_point_reader.h
         src/scn/impl/reader/bool_reader.h
@@ -105,10 +103,6 @@ set(SCN_PRIVATE_SOURCES
         src/scn/impl/locale.cpp
 
         src/scn/impl/algorithms/find_whitespace.cpp
-
-        src/scn/impl/reader/common.cpp
-        src/scn/impl/reader/number_preparer.cpp
-        src/scn/impl/reader/numeric_reader.cpp
 
         src/scn/impl/reader/bool_reader.cpp
         src/scn/impl/reader/float_reader.cpp

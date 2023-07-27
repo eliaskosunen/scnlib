@@ -311,5 +311,82 @@ namespace scn {
             SCN_DECLVAL(Range&)))>;
     }  // namespace detail
 
+    namespace ranges_polyfill {
+        // Necessary, because nanorange subrange::size() returns a signed type
+        namespace usize_impl {
+            struct fn {
+            private:
+                template <typename T>
+                using usize_return_t = std::conditional_t<
+                    sizeof(ranges::range_difference_t<T>) <
+                        sizeof(std::ptrdiff_t),
+                    std::size_t,
+                    std::make_unsigned_t<ranges::range_difference_t<T>>>;
+
+                template <typename T>
+                static constexpr auto impl(T&& t)
+                    SCN_NOEXCEPT_P(noexcept(ranges::size(SCN_FWD(t))))
+                        -> decltype(ranges::size(SCN_FWD(t)),
+                                    usize_return_t<T>())
+                {
+                    return static_cast<usize_return_t<T>>(
+                        ranges::size(SCN_FWD(t)));
+                }
+
+            public:
+                template <typename T>
+                constexpr auto operator()(T&& t) const
+                    SCN_NOEXCEPT_P(noexcept(fn::impl(SCN_FWD(t))))
+                        -> decltype(fn::impl(SCN_FWD(t)))
+                {
+                    return fn::impl(SCN_FWD(t));
+                }
+            };
+        }  // namespace usize_impl
+
+        inline constexpr usize_impl::fn usize{};
+
+        // prev, for forward_iterators
+        namespace prev_backtrack_impl {
+            struct fn {
+            private:
+                template <typename It>
+                static constexpr auto impl(It it, It, detail::priority_tag<1>)
+                    -> std::enable_if_t<ranges_std::bidirectional_iterator<It>,
+                                        It>
+                {
+                    return ranges::prev(it);
+                }
+
+                template <typename It>
+                static constexpr auto impl(It it,
+                                           It beg,
+                                           detail::priority_tag<0>)
+                    -> std::enable_if_t<ranges_std::forward_iterator<It>, It>
+                {
+                    SCN_EXPECT(it != beg);
+
+                    while (true) {
+                        auto tmp = beg;
+                        ++beg;
+                        if (beg == it) {
+                            return tmp;
+                        }
+                    }
+                }
+
+            public:
+                template <typename It>
+                constexpr auto operator()(It it, It beg) const
+                    -> decltype(fn::impl(it, beg, detail::priority_tag<1>{}))
+                {
+                    return fn::impl(it, beg, detail::priority_tag<1>{});
+                }
+            };
+        }  // namespace prev_backtrack_impl
+
+        inline constexpr prev_backtrack_impl::fn prev_backtrack{};
+    }  // namespace ranges_polyfill
+
     SCN_END_NAMESPACE
 }  // namespace scn

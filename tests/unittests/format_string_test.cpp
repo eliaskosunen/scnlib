@@ -131,7 +131,7 @@ TEST(FormatStringTest, EmptyCharacterSet)
 }
 TEST(FormatStringTest, AlphaCharacterSet)
 {
-    auto result = scn::scan<std::string>("abc", "{:[:alpha:]}");
+    auto result = scn::scan<std::string>("abc123", "{:[:alpha:]}");
     ASSERT_TRUE(result);
     EXPECT_EQ(std::get<0>(result->values()), "abc");
 }
@@ -149,15 +149,15 @@ TEST(FormatStringTest, AlphaCharacterSetWithStringView)
                                      SCN_DECLVAL(scn::ranges::subrange<std::string_view::iterator>&).data()),
                                  const char*>);
                                  */
-    auto result = scn::scan<std::string_view>("abc", "{:[:alpha:]}");
+    auto result = scn::scan<std::string_view>("abc123", "{:[:alpha:]}");
     ASSERT_TRUE(result);
     EXPECT_EQ(std::get<0>(result->values()), "abc");
 }
 TEST(FormatStringTest, InvertedCharacterSet)
 {
-    auto result = scn::scan<std::string>("abc\n", scn::runtime("{:[^\n]}"));
+    auto result = scn::scan<std::string>("abc 123\n", scn::runtime("{:[^\n]}"));
     ASSERT_TRUE(result);
-    EXPECT_EQ(std::get<0>(result->values()), "abc");
+    EXPECT_EQ(std::get<0>(result->values()), "abc 123");
 }
 
 TEST(FormatStringTest, NonTerminatedCharacterSet)

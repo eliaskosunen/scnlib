@@ -91,14 +91,23 @@ namespace scn {
             clocale_restorer m_restorer;
         };
 
+        struct classic_with_thsep_tag {};
+
         template <typename CharT>
         struct localized_number_formatting_options {
             localized_number_formatting_options() = default;
 
+            localized_number_formatting_options(classic_with_thsep_tag)
+            {
+                grouping = "\3";
+                thousands_sep = CharT{','};
+            }
+
             localized_number_formatting_options(detail::locale_ref loc)
             {
+                auto stdloc = loc.get<std::locale>();
                 const auto& numpunct =
-                    get_or_add_facet<std::numpunct<CharT>>(loc);
+                    get_or_add_facet<std::numpunct<CharT>>(stdloc);
                 grouping = numpunct.grouping();
                 thousands_sep = grouping.length() != 0
                                     ? numpunct.thousands_sep()

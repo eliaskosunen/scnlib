@@ -18,9 +18,8 @@
 #pragma once
 
 #include <scn/detail/scanner.h>
-#include <scn/impl/algorithms/read_code_point.h>
+#include <scn/impl/algorithms/read.h>
 #include <scn/impl/reader/common.h>
-#include "impl/unicode/unicode.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -54,7 +53,8 @@ namespace scn {
             {
                 return read_code_point_into(SCN_FWD(range))
                     .transform([&](auto result) {
-                        cp = result.value;
+                        cp = decode_code_point_exhaustive_valid(
+                            result.value.view());
                         return result.iterator;
                     });
             }
@@ -110,7 +110,7 @@ namespace scn {
         public:
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>>
-            read_value_default(Range range, char& value, detail::locale_ref loc)
+            read_default(Range range, char& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
                 if constexpr (std::is_same_v<CharT, char>) {
@@ -124,7 +124,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::iterator_t<Range>> read_value_specs(
+            scan_expected<ranges::iterator_t<Range>> read_specs(
                 Range range,
                 const detail::basic_format_specs<CharT>& specs,
                 char& value,
@@ -132,7 +132,7 @@ namespace scn {
             {
                 // TODO: do something with specs
                 SCN_UNUSED(specs);
-                return read_value_default(range, value, loc);
+                return read_default(range, value, loc);
             }
         };
 
@@ -140,10 +140,8 @@ namespace scn {
         class reader<wchar_t, CharT> : public char_reader_base<CharT, wchar_t> {
         public:
             template <typename Range>
-            scan_expected<ranges::iterator_t<Range>> read_value_default(
-                Range range,
-                wchar_t& value,
-                detail::locale_ref loc)
+            scan_expected<ranges::iterator_t<Range>>
+            read_default(Range range, wchar_t& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
                 if constexpr (std::is_same_v<CharT, char>) {
@@ -155,7 +153,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::iterator_t<Range>> read_value_specs(
+            scan_expected<ranges::iterator_t<Range>> read_specs(
                 Range range,
                 const detail::basic_format_specs<CharT>& specs,
                 wchar_t& value,
@@ -163,7 +161,7 @@ namespace scn {
             {
                 // TODO: do something with specs
                 SCN_UNUSED(specs);
-                return read_value_default(range, value, loc);
+                return read_default(range, value, loc);
             }
         };
 
@@ -172,17 +170,15 @@ namespace scn {
             : public char_reader_base<CharT, code_point> {
         public:
             template <typename Range>
-            scan_expected<ranges::iterator_t<Range>> read_value_default(
-                Range range,
-                code_point& value,
-                detail::locale_ref loc)
+            scan_expected<ranges::iterator_t<Range>>
+            read_default(Range range, code_point& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
                 return code_point_reader<code_point>{}.read(range, value);
             }
 
             template <typename Range>
-            scan_expected<ranges::iterator_t<Range>> read_value_specs(
+            scan_expected<ranges::iterator_t<Range>> read_specs(
                 Range range,
                 const detail::basic_format_specs<CharT>& specs,
                 code_point& value,
@@ -190,7 +186,7 @@ namespace scn {
             {
                 // TODO: do something with specs
                 SCN_UNUSED(specs);
-                return read_value_default(range, value, loc);
+                return read_default(range, value, loc);
             }
         };
     }  // namespace impl

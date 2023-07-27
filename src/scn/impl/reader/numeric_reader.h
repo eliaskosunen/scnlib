@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <scn/impl/algorithms/read_nocopy.h>
+#include <scn/impl/algorithms/read.h>
 #include <scn/impl/reader/common.h>
 
 namespace scn {
@@ -99,21 +99,75 @@ namespace scn {
                         });
             }
 
-            template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
-            check_thsep_grouping(Range&& range,
-                                 std::string& thsep_indices,
-                                 std::string_view grouping)
+            template <typename Range,
+                      std::enable_if_t<ranges::view<Range>>* = nullptr>
+            scan_error check_thsep_grouping(Range&& range,
+                                            std::string& thsep_indices,
+                                            std::string_view grouping)
             {
                 SCN_EXPECT(!thsep_indices.empty());
 
-                return ranges::end(range);
+                if (!check_thsep_grouping_impl(range, thsep_indices,
+                                               grouping)) {
+                    SCN_UNLIKELY_ATTR
+                    return {scan_error::invalid_scanned_value,
+                            "Invalid thousands separator grouping"};
+                }
+
+                return {};
+            }
+
+        private:
+            template <typename Range>
+            bool check_thsep_grouping_impl(Range& range,
+                                           std::string& thsep_indices,
+                                           std::string_view grouping)
+            {
+                transform_thsep_indices(
+                    thsep_indices,
+                    ranges::distance(ranges::begin(range), ranges::end(range)));
+
+                auto thsep_it = thsep_indices.rbegin();
+                for (auto grouping_it = grouping.begin();
+                     grouping_it != grouping.end() &&
+                     thsep_it != thsep_indices.rend() - 1;
+                     ++grouping_it, (void)++thsep_it) {
+                    if (*thsep_it != *grouping_it) {
+                        return false;
+                    }
+                }
+
+                for (; thsep_it < thsep_indices.rend() - 1; ++thsep_it) {
+                    if (*thsep_it != grouping.back()) {
+                        return false;
+                    }
+                }
+
+                if (thsep_it == thsep_indices.rend() - 1) {
+                    if (*thsep_it > grouping.back()) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            static void transform_thsep_indices(std::string& indices,
+                                                std::ptrdiff_t last_thsep_index)
+            {
+                for (auto thsep_it = indices.rbegin();
+                     thsep_it != indices.rend(); ++thsep_it) {
+                    const auto tmp = *thsep_it;
+                    *thsep_it = static_cast<char>(last_thsep_index - tmp - 1);
+                    last_thsep_index = static_cast<std::ptrdiff_t>(tmp);
+                }
+                indices.insert(indices.begin(),
+                               static_cast<char>(last_thsep_index));
             }
         };
 
-        template <typename Derived, typename CharT>
-        class numeric_reader : public reader_base<Derived, CharT>,
-                               public numeric_reader_base {
+        template <typename CharT>
+        class numeric_reader : public numeric_reader_base {
         protected:
             contiguous_range_factory<CharT> m_buffer{};
         };

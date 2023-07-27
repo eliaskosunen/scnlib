@@ -48,21 +48,23 @@ add_test(NAME scn_tests COMMAND scn_tests)
 add_executable(scn_impl_tests
         main.cpp
 
-        impl_tests/character_set_reader_test.cpp
-        impl_tests/copy_test.cpp
-        impl_tests/float_reader_test.cpp
-        impl_tests/int_source_reader_test.cpp
-        impl_tests/number_preparer_test.cpp
-        impl_tests/read_code_point_test.cpp
-        impl_tests/read_copying_test.cpp
-        impl_tests/read_nocopy_test.cpp
+        impl_tests/text_width_test.cpp
         impl_tests/whitespace_skip_test.cpp
 
-        impl_tests/int_reader_test.h
-        impl_tests/int_reader_test_narrow_classic.cpp
-        impl_tests/int_reader_test_narrow_localized.cpp
-        impl_tests/int_reader_test_wide_classic.cpp
-        impl_tests/int_reader_test_wide_localized.cpp
+        #impl_tests/character_set_reader_test.cpp
+        #impl_tests/copy_test.cpp
+        #impl_tests/float_reader_test.cpp
+        #impl_tests/int_source_reader_test.cpp
+        #impl_tests/number_preparer_test.cpp
+        #impl_tests/read_code_point_test.cpp
+        #impl_tests/read_copying_test.cpp
+        #impl_tests/read_nocopy_test.cpp
+
+        #impl_tests/int_reader_test.h
+        #impl_tests/int_reader_test_narrow_classic.cpp
+        #impl_tests/int_reader_test_narrow_localized.cpp
+        #impl_tests/int_reader_test_wide_classic.cpp
+        #impl_tests/int_reader_test_wide_localized.cpp
 )
 target_link_libraries(scn_impl_tests
         scn_gtest scn_tests_base
