@@ -104,70 +104,16 @@ namespace scn {
             }
         }
 
-        template <typename U8>
-        constexpr std::size_t utf8_code_point_length_by_starting_code_unit(
-            U8 ch)
-        {
-            static_assert(sizeof(U8) == 1);
-
-            SCN_GCC_COMPAT_PUSH
-            SCN_GCC_COMPAT_IGNORE("-Wsign-conversion")
-            const auto lengths =
-                "\1\1\1\1\1\1\1\1"  // highest bit is 0 -> single-byte
-                "\1\1\1\1\1\1\1\1"
-                "\0\0\0\0\0\0\0\0"  // highest bits 10 -> error, non-initial
-                // byte
-                "\2\2\2\2"  // highest bits 110 -> 2-byte cp
-                "\3\3"      // highest bits 1110 -> 3-byte cp
-                "\4";       // highest bits 11110 -> 4-byte cp
-            const int len = lengths[static_cast<unsigned char>(ch) >> 3];
-            return len;
-            SCN_GCC_COMPAT_POP
-        }
-
-        template <typename U16>
-        constexpr std::size_t utf16_code_point_length_by_starting_code_unit(
-            U16 ch)
-        {
-            static_assert(sizeof(U16) == 2);
-
-            const auto lead = static_cast<uint16_t>(0xffff & ch);
-            if (lead >= 0xd800 && lead <= 0xdbff) {
-                // high surrogate
-                return 2;
-            }
-            if (lead >= 0xdc00 && lead <= 0xdfff) {
-                // unpaired low surrogate
-                return 0;
-            }
-            return 1;
-        }
-
         template <typename CharT>
         scan_expected<std::size_t> code_point_length_by_starting_code_unit(
             CharT ch)
         {
-            constexpr auto enc = get_encoding<CharT>();
-
-            if constexpr (enc == encoding::utf8) {
-                auto len = utf8_code_point_length_by_starting_code_unit(ch);
-                if (SCN_UNLIKELY(len == 0)) {
-                    return unexpected_scan_error(scan_error::invalid_encoding,
-                                                 "Invalid UTF-8 code point");
-                }
-                return len;
+            auto len = detail::utf_code_point_length_by_starting_code_unit(ch);
+            if (SCN_UNLIKELY(len == 0)) {
+                return unexpected_scan_error(scan_error::invalid_encoding,
+                                             "Invalid Unicode code point");
             }
-            else if constexpr (enc == encoding::utf16) {
-                auto len = utf16_code_point_length_by_starting_code_unit(ch);
-                if (SCN_UNLIKELY(len == 0)) {
-                    return unexpected_scan_error(scan_error::invalid_encoding,
-                                                 "Invalid UTF-16 code point");
-                }
-                return len;
-            }
-            else if constexpr (enc == encoding::utf32) {
-                return size_t{1};
-            }
+            return len;
         }
 
         template <typename CharT>

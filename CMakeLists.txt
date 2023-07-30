@@ -76,6 +76,7 @@ set(SCN_PRIVATE_HEADERS
 
         src/scn/impl/reader/reader.h
         src/scn/impl/reader/common.h
+        src/scn/impl/reader/character_set_format_parser.h
         src/scn/impl/reader/numeric_reader.h
 
         src/scn/impl/reader/code_unit_and_point_reader.h

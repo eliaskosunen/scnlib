@@ -18,7 +18,7 @@
 #pragma once
 
 #include <scn/impl/algorithms/take_width_view.h>
-#include <scn/impl/reader/common.h>
+#include <scn/impl/reader/character_set_format_parser.h>
 
 #include <string>
 #include <string_view>
@@ -63,7 +63,8 @@ namespace scn {
             if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
                 if (source.stores_allocated_string()) {
                     dest.assign(SCN_MOVE(source.get_allocated_string()));
-                } else {
+                }
+                else {
                     dest.assign(source.view());
                 }
             }
