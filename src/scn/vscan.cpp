@@ -206,6 +206,9 @@ namespace scn {
                     on_error("Missing '}' in format string");
                     return parse_ctx.begin();
                 }
+                if (SCN_UNLIKELY(!handler)) {
+                    return parse_ctx.begin();
+                }
                 parse_ctx.advance_to(begin);
 
                 on_visit_scan_arg(

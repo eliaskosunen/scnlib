@@ -246,6 +246,110 @@ namespace scn {
             }
         };
 
+        detail::character_set_specifier get_charset_specifier_for_ascii(
+            char ch);
+
+        template <typename SourceCharT>
+        class character_set_reader_impl {
+        public:
+            template <typename Range, typename ValueCharT>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_classic(
+                Range&& range,
+                const detail::basic_format_specs<SourceCharT>& specs,
+                std::basic_string<ValueCharT>& value)
+            {
+                // TODO: reparse format string
+                SCN_EXPECT(
+                    (specs.charset_specifiers &
+                     detail::character_set_specifier::has_nonascii_literals) ==
+                    detail::character_set_specifier::none);
+
+                return read_string_impl(
+                    range, read_source_classic_impl(range, specs), value);
+            }
+
+            template <typename Range, typename ValueCharT>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_localized(
+                Range&& range,
+                detail::locale_ref loc,
+                const detail::basic_format_specs<SourceCharT>& specs,
+                std::basic_string<ValueCharT>& value)
+            {
+                SCN_EXPECT(
+                    (specs.charset_specifiers &
+                     detail::character_set_specifier::has_nonascii_literals) ==
+                    detail::character_set_specifier::none);
+
+                SCN_UNUSED(loc);
+                return read_string_impl(
+                    range, read_source_classic_impl(range, specs), value);
+            }
+
+            template <typename Range, typename ValueCharT>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_classic(
+                Range&& range,
+                const detail::basic_format_specs<SourceCharT>& specs,
+                std::basic_string_view<ValueCharT>& value)
+            {
+                // TODO: reparse format string
+                SCN_EXPECT(
+                    (specs.charset_specifiers &
+                     detail::character_set_specifier::has_nonascii_literals) ==
+                    detail::character_set_specifier::none);
+
+                return read_string_view_impl(
+                    range, read_source_classic_impl(range, specs), value);
+            }
+
+            template <typename Range, typename ValueCharT>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_localized(
+                Range&& range,
+                detail::locale_ref loc,
+                const detail::basic_format_specs<SourceCharT>& specs,
+                std::basic_string_view<ValueCharT>& value)
+            {
+                SCN_EXPECT(
+                    (specs.charset_specifiers &
+                     detail::character_set_specifier::has_nonascii_literals) ==
+                    detail::character_set_specifier::none);
+
+                SCN_UNUSED(loc);
+                return read_string_view_impl(
+                    range, read_source_classic_impl(range, specs), value);
+            }
+
+        private:
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>>
+            read_source_classic_impl(
+                Range&& range,
+                const detail::basic_format_specs<SourceCharT>& specs) const
+            {
+                auto cb = [&specs](SourceCharT ch) {
+                    if (!is_ascii_char(ch)) {
+                        return false;
+                    }
+
+                    const auto ch_value = static_cast<unsigned>(ch);
+
+                    return ((specs.charset_literals[ch_value / 8] >>
+                             (ch_value % 8)) &
+                            1u) ||
+                           ((get_charset_specifier_for_ascii(
+                                 static_cast<char>(ch)) &
+                             specs.charset_specifiers) !=
+                            detail::character_set_specifier::none);
+                };
+
+                if ((specs.charset_specifiers &
+                     detail::character_set_specifier::has_inverted_flag) !=
+                    detail::character_set_specifier::none) {
+                    return read_until_code_unit(SCN_FWD(range), cb);
+                }
+                return read_while_code_unit(SCN_FWD(range), cb);
+            }
+        };
+
         template <typename SourceCharT>
         class string_reader
             : public reader_base<string_reader<SourceCharT>, SourceCharT> {
@@ -275,6 +379,10 @@ namespace scn {
                     case detail::presentation_type::character:
                         m_type = reader_type::character;
                         break;
+
+                    case detail::presentation_type::string_set:
+                        m_type = reader_type::character_set;
+                        break;
                 }
 
                 SCN_CLANG_POP    // -Wswitch-enum, -Wcovered-switch-default
@@ -291,7 +399,8 @@ namespace scn {
             read_default(Range&& range, Value& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
-                return read_classic(SCN_FWD(range), value);
+                return word_reader_impl<SourceCharT>{}.read_classic(
+                    SCN_FWD(range), value);
             }
 
             template <typename Range, typename Value>
@@ -302,18 +411,19 @@ namespace scn {
                 detail::locale_ref loc)
             {
                 if (specs.localized) {
-                    return read_localized(SCN_FWD(range), loc, value);
+                    return read_localized(SCN_FWD(range), loc, specs, value);
                 }
 
-                return read_classic(SCN_FWD(range), value);
+                return read_classic(SCN_FWD(range), specs, value);
             }
 
         protected:
-            enum class reader_type { word, character };
+            enum class reader_type { word, character, character_set };
 
             template <typename Range, typename Value>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_classic(
                 Range&& range,
+                const detail::basic_format_specs<SourceCharT>& specs,
                 Value& value)
             {
                 SCN_CLANG_PUSH
@@ -328,6 +438,10 @@ namespace scn {
                         return character_reader_impl<SourceCharT>{}.read(
                             SCN_FWD(range), value);
 
+                    case reader_type::character_set:
+                        return character_set_reader_impl<SourceCharT>{}
+                            .read_classic(SCN_FWD(range), specs, value);
+
                     default:
                         SCN_EXPECT(false);
                         SCN_UNREACHABLE;
@@ -337,8 +451,11 @@ namespace scn {
             }
 
             template <typename Range, typename Value>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
-            read_localized(Range&& range, detail::locale_ref loc, Value& value)
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_localized(
+                Range&& range,
+                detail::locale_ref loc,
+                const detail::basic_format_specs<SourceCharT>& specs,
+                Value& value)
             {
                 SCN_CLANG_PUSH
                 SCN_CLANG_IGNORE("-Wcovered-switch-default")
@@ -351,6 +468,10 @@ namespace scn {
                     case reader_type::character:
                         return character_reader_impl<SourceCharT>{}.read(
                             SCN_FWD(range), value);
+
+                    case reader_type::character_set:
+                        return character_set_reader_impl<SourceCharT>{}
+                            .read_localized(SCN_FWD(range), loc, specs, value);
 
                     default:
                         SCN_EXPECT(false);

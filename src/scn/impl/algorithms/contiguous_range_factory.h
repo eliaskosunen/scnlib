@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <scn/detail/ranges.h>
+
 #include <type_traits>
 
 namespace scn {

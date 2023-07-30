@@ -700,11 +700,13 @@ namespace scn {
             const CharT* end,
             SpecHandler&& handler)
         {
+            SCN_EXPECT(begin != end);
             SCN_EXPECT(*begin == CharT{'['});
+            ++begin;
 
             auto start = begin;
 
-            if (SCN_UNLIKELY(++begin == end)) {
+            if (SCN_UNLIKELY(begin == end)) {
                 SCN_UNLIKELY_ATTR
                 handler.on_error(
                     "Unexpected end of [character set] specifier in format "
@@ -722,13 +724,13 @@ namespace scn {
             }
             else if (*begin == CharT{']'}) {
                 return {start,
-                        static_cast<size_t>(std::distance(start, ++begin))};
+                        static_cast<size_t>(std::distance(start, begin++))};
             }
 
             while (begin != end) {
                 if (*begin == CharT{']'}) {
                     return {start,
-                            static_cast<size_t>(std::distance(start, ++begin))};
+                            static_cast<size_t>(std::distance(start, begin++))};
                 }
 
                 if (*begin == CharT{':'}) {
