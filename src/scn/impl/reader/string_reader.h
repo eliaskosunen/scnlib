@@ -19,6 +19,7 @@
 
 #include <scn/impl/algorithms/take_width_view.h>
 #include <scn/impl/reader/character_set_format_parser.h>
+#include <scn/impl/util/bits.h>
 
 #include <string>
 #include <string_view>
@@ -249,6 +250,62 @@ namespace scn {
         detail::character_set_specifier get_charset_specifier_for_ascii(
             char ch);
 
+        struct nonascii_specs_handler {
+            constexpr void on_charset_specifier(detail::character_set_specifier)
+            {
+            }
+
+            void on_charset_single(code_point cp)
+            {
+                on_charset_range(
+                    cp, static_cast<code_point>(static_cast<uint32_t>(cp) + 1));
+            }
+
+            void on_charset_range(code_point begin, code_point end)
+            {
+                const auto begin_value = static_cast<unsigned>(begin);
+                const auto end_value = static_cast<unsigned>(end);
+                SCN_EXPECT(begin_value < end_value);
+
+                if (end_value <= 127) {
+                    return;
+                }
+
+                for (auto& elem : extra_ranges) {
+                    // TODO: check for overlap
+                    if (elem.first == end) {
+                        elem.first = begin;
+                        return;
+                    }
+
+                    if (elem.second == begin) {
+                        elem.second = end;
+                        return;
+                    }
+                }
+
+                extra_ranges.push_back(std::make_pair(begin, end));
+            }
+
+            constexpr void on_error(const char* msg)
+            {
+                on_error(scan_error{scan_error::invalid_format_string, msg});
+            }
+            constexpr void on_error(scan_error e)
+            {
+                SCN_UNLIKELY_ATTR
+                err = e;
+            }
+
+            constexpr explicit operator bool() const
+            {
+                return static_cast<bool>(err);
+            }
+
+            std::vector<std::pair<code_point, code_point>> extra_ranges;
+            scan_error err;
+        };
+
         template <typename SourceCharT>
         class character_set_reader_impl {
         public:
@@ -258,14 +315,8 @@ namespace scn {
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string<ValueCharT>& value)
             {
-                // TODO: reparse format string
-                SCN_EXPECT(
-                    (specs.charset_specifiers &
-                     detail::character_set_specifier::has_nonascii_literals) ==
-                    detail::character_set_specifier::none);
-
                 return read_string_impl(
-                    range, read_source_classic_impl(range, specs), value);
+                    range, read_source_classic_impl(range, {specs}), value);
             }
 
             template <typename Range, typename ValueCharT>
@@ -275,14 +326,9 @@ namespace scn {
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string<ValueCharT>& value)
             {
-                SCN_EXPECT(
-                    (specs.charset_specifiers &
-                     detail::character_set_specifier::has_nonascii_literals) ==
-                    detail::character_set_specifier::none);
-
-                SCN_UNUSED(loc);
                 return read_string_impl(
-                    range, read_source_classic_impl(range, specs), value);
+                    range, read_source_localized_impl(range, {specs}, loc),
+                    value);
             }
 
             template <typename Range, typename ValueCharT>
@@ -291,14 +337,8 @@ namespace scn {
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string_view<ValueCharT>& value)
             {
-                // TODO: reparse format string
-                SCN_EXPECT(
-                    (specs.charset_specifiers &
-                     detail::character_set_specifier::has_nonascii_literals) ==
-                    detail::character_set_specifier::none);
-
                 return read_string_view_impl(
-                    range, read_source_classic_impl(range, specs), value);
+                    range, read_source_classic_impl(range, {specs}), value);
             }
 
             template <typename Range, typename ValueCharT>
@@ -308,45 +348,318 @@ namespace scn {
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string_view<ValueCharT>& value)
             {
-                SCN_EXPECT(
-                    (specs.charset_specifiers &
-                     detail::character_set_specifier::has_nonascii_literals) ==
-                    detail::character_set_specifier::none);
-
-                SCN_UNUSED(loc);
                 return read_string_view_impl(
-                    range, read_source_classic_impl(range, specs), value);
+                    range, read_source_localized_impl(range, {specs}, loc),
+                    value);
             }
 
         private:
-            template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
-            read_source_classic_impl(
-                Range&& range,
-                const detail::basic_format_specs<SourceCharT>& specs) const
-            {
-                auto cb = [&specs](SourceCharT ch) {
+            struct specs_helper {
+                constexpr specs_helper(
+                    const detail::basic_format_specs<SourceCharT>& s)
+                    : specs(s)
+                {
+                }
+
+                constexpr bool is_char_set_in_literals(char ch) const
+                {
+                    SCN_EXPECT(is_ascii_char(ch));
+                    const auto val = static_cast<size_t>(ch);
+                    return (specs.charset_literals[val / 8] >> (val % 8)) & 1u;
+                }
+
+                constexpr bool is_char_set_in_specifiers(char ch) const
+                {
+                    SCN_EXPECT(is_ascii_char(ch));
+                    return (get_charset_specifier_for_ascii(ch) &
+                            specs.charset_specifiers) !=
+                           detail::character_set_specifier::none;
+                }
+
+                bool is_char_set_in_extra_literals(code_point cp) const
+                {
+                    // TODO: binary search?
+                    const auto cp_val = static_cast<uint32_t>(cp);
+                    return ranges::find_if(
+                               nonascii.extra_ranges,
+                               [cp_val](const auto& pair) {
+                                   return static_cast<uint32_t>(pair.first) <=
+                                              cp_val &&
+                                          static_cast<uint32_t>(pair.second) >
+                                              cp_val;
+                               }) != nonascii.extra_ranges.end();
+                }
+
+                scan_error handle_nonascii()
+                {
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::
+                             has_nonascii_literals) ==
+                        detail::character_set_specifier::none) {
+                        return {};
+                    }
+
+                    auto it = specs.charset_string.begin();
+                    auto set = detail::parse_presentation_set(
+                        it, specs.charset_string.end(), nonascii);
+                    if (SCN_UNLIKELY(!nonascii)) {
+                        return nonascii.err;
+                    }
+                    SCN_ENSURE(it == specs.charset_string.end());
+                    SCN_ENSURE(set == specs.charset_string);
+
+                    ranges::sort(nonascii.extra_ranges);
+                    return {};
+                }
+
+                scan_error handle_localized_nonmask(detail::locale_ref loc)
+                {
+                    SCN_UNUSED(loc);
+
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::space_literal) !=
+                        detail::character_set_specifier::none) {
+                        nonascii.extra_ranges.push_back(std::make_pair(
+                            code_point{' '}, code_point{' ' + 1}));
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::underscore_literal) !=
+                        detail::character_set_specifier::none) {
+                        nonascii.extra_ranges.push_back(std::make_pair(
+                            code_point{'_'}, code_point{'_' + 1}));
+                    }
+
+                    return {};
+                }
+
+                std::pair<std::ctype_base::mask, bool> map_localized_mask()
+                    const
+                {
+                    std::ctype_base::mask mask{};
+                    bool is_exhaustive = true;
+
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::space_literal) !=
+                        detail::character_set_specifier::none) {
+                        is_exhaustive = false;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::underscore_literal) !=
+                        detail::character_set_specifier::none) {
+                        is_exhaustive = false;
+                    }
+
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::space) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::space;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::blank) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::blank;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::punct) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::punct;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::upper) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::upper;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::lower) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::lower;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::alpha) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::alpha;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::digit) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::digit;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::xdigit) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::xdigit;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::cntrl) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::cntrl;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::alnum) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::alnum;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::graph) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::graph;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::print) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::print;
+                    }
+
+                    // TODO: inverted flags
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::letters) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::alpha;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::alnum_underscore) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::alnum;
+                        is_exhaustive = false;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::whitespace) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::space;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::numbers) !=
+                        detail::character_set_specifier::none) {
+                        mask |= std::ctype_base::digit;
+                    }
+
+                    return {mask, is_exhaustive};
+                }
+
+                const detail::basic_format_specs<SourceCharT>& specs;
+                nonascii_specs_handler nonascii;
+            };
+
+            struct read_source_callback {
+                bool on_ascii_only(SourceCharT ch) const
+                {
                     if (!is_ascii_char(ch)) {
                         return false;
                     }
 
-                    const auto ch_value = static_cast<unsigned>(ch);
+                    return helper.is_char_set_in_literals(
+                               static_cast<char>(ch)) ||
+                           helper.is_char_set_in_specifiers(
+                               static_cast<char>(ch));
+                }
 
-                    return ((specs.charset_literals[ch_value / 8] >>
-                             (ch_value % 8)) &
-                            1u) ||
-                           ((get_charset_specifier_for_ascii(
-                                 static_cast<char>(ch)) &
-                             specs.charset_specifiers) !=
-                            detail::character_set_specifier::none);
+                bool on_classic_with_extra_ranges(code_point cp) const
+                {
+                    if (!is_ascii_char(cp)) {
+                        return helper.is_char_set_in_extra_literals(cp);
+                    }
+
+                    return helper.is_char_set_in_literals(
+                               static_cast<char>(cp)) ||
+                           helper.is_char_set_in_specifiers(
+                               static_cast<char>(cp));
+                }
+
+                bool on_localized(code_point cp) const
+                {
+                    if (!is_ascii_char(cp)) {
+                        return helper.is_char_set_in_extra_literals(cp);
+                    }
+
+                    return helper.is_char_set_in_literals(
+                               static_cast<char>(cp)) ||
+                           helper.is_char_set_in_extra_literals(cp);
+                }
+
+                const specs_helper& helper;
+                detail::locale_ref loc{};
+            };
+
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>>
+            read_source_classic_impl(Range&& range, specs_helper helper) const
+            {
+                const bool is_inverted =
+                    (helper.specs.charset_specifiers &
+                     detail::character_set_specifier::has_inverted_flag) !=
+                    detail::character_set_specifier::none;
+                const bool accepts_nonascii =
+                    (helper.specs.charset_specifiers &
+                     detail::character_set_specifier::has_nonascii_literals) !=
+                    detail::character_set_specifier::none;
+
+                if (auto e = helper.handle_nonascii(); SCN_UNLIKELY(!e)) {
+                    return unexpected(e);
+                }
+
+                read_source_callback cb_wrapper{helper};
+
+                if (accepts_nonascii) {
+                    const auto cb = [&](code_point cp) {
+                        return cb_wrapper.on_classic_with_extra_ranges(cp);
+                    };
+
+                    if (is_inverted) {
+                        return read_until_code_point(SCN_FWD(range), cb);
+                    }
+                    return read_while_code_point(SCN_FWD(range), cb);
+                }
+
+                const auto cb = [&](SourceCharT ch) {
+                    return cb_wrapper.on_ascii_only(ch);
                 };
 
-                if ((specs.charset_specifiers &
-                     detail::character_set_specifier::has_inverted_flag) !=
-                    detail::character_set_specifier::none) {
+                if (is_inverted) {
                     return read_until_code_unit(SCN_FWD(range), cb);
                 }
                 return read_while_code_unit(SCN_FWD(range), cb);
+            }
+
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>>
+            read_source_localized_impl(Range&& range,
+                                       specs_helper helper,
+                                       detail::locale_ref loc) const
+            {
+                const bool is_inverted =
+                    (helper.specs.charset_specifiers &
+                     detail::character_set_specifier::has_inverted_flag) !=
+                    detail::character_set_specifier::none;
+
+                if (auto e = helper.handle_nonascii(); SCN_UNLIKELY(!e)) {
+                    return unexpected(e);
+                }
+                if (auto e = helper.handle_localized_nonmask(loc);
+                    SCN_UNLIKELY(!e)) {
+                    return unexpected(e);
+                }
+
+                read_source_callback cb_wrapper{helper, loc};
+
+                auto [mask, is_mask_exhaustive] = helper.map_localized_mask();
+
+                if (!is_mask_exhaustive) {
+                    const auto cb = [&](code_point cp) {
+                        return cb_wrapper.on_localized(cp);
+                    };
+
+                    if (is_inverted) {
+                        return read_until_localized_mask_or_code_point(
+                            SCN_FWD(range), loc, mask, cb);
+                    }
+                    return read_while_localized_mask_or_code_point(
+                        SCN_FWD(range), loc, mask, cb);
+                }
+
+                if (is_inverted) {
+                    return read_until_localized_mask(SCN_FWD(range), loc, mask);
+                }
+                return read_while_localized_mask(SCN_FWD(range), loc, mask);
             }
         };
 

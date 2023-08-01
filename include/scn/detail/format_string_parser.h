@@ -687,7 +687,7 @@ namespace scn {
 
                 handler.on_charset_range(
                     cp_first, static_cast<code_point>(
-                                  static_cast<unsigned>(cp_second) + 1));
+                                  static_cast<uint32_t>(cp_second) + 1));
                 return;
             }
 
@@ -702,9 +702,9 @@ namespace scn {
         {
             SCN_EXPECT(begin != end);
             SCN_EXPECT(*begin == CharT{'['});
-            ++begin;
 
             auto start = begin;
+            ++begin;
 
             if (SCN_UNLIKELY(begin == end)) {
                 SCN_UNLIKELY_ATTR
@@ -724,13 +724,13 @@ namespace scn {
             }
             else if (*begin == CharT{']'}) {
                 return {start,
-                        static_cast<size_t>(std::distance(start, begin++))};
+                        static_cast<size_t>(std::distance(start, ++begin))};
             }
 
             while (begin != end) {
                 if (*begin == CharT{']'}) {
                     return {start,
-                            static_cast<size_t>(std::distance(start, begin++))};
+                            static_cast<size_t>(std::distance(start, ++begin))};
                 }
 
                 if (*begin == CharT{':'}) {
@@ -759,7 +759,7 @@ namespace scn {
             auto do_presentation = [&]() -> const CharT* {
                 if (*begin == CharT{'['}) {
                     auto set = parse_presentation_set(begin, end, handler);
-                    if (SCN_UNLIKELY(set.empty())) {
+                    if (SCN_UNLIKELY(set.size() <= 2)) {
                         SCN_UNLIKELY_ATTR
                         handler.on_error(
                             "Invalid (empty) [character set] specifier in "

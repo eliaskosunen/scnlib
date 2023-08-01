@@ -482,6 +482,22 @@ namespace scn {
             }
         }
 
+        template <typename Range, typename Predicate>
+        scan_expected<ranges::borrowed_iterator_t<Range>>
+        read_localized_mask_or_code_point_impl(Range&& range,
+                                               detail::locale_ref loc,
+                                               std::ctype_base::mask mask,
+                                               Predicate&& pred,
+                                               bool read_until)
+        {
+            const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
+
+            return read_until_code_point(SCN_FWD(range), [&](code_point cp) {
+                auto ch = *encode_code_point_as_wide_character(cp, false);
+                return ctype_facet.is(mask, ch) == read_until || pred(cp);
+            });
+        }
+
         template <typename Range>
         scan_expected<ranges::borrowed_iterator_t<Range>>
         read_until_localized_mask(Range&& range,
@@ -514,6 +530,28 @@ namespace scn {
         {
             return read_while_localized_mask(SCN_FWD(range), loc,
                                              std::ctype_base::space);
+        }
+
+        template <typename Range, typename Predicate>
+        scan_expected<ranges::borrowed_iterator_t<Range>>
+        read_until_localized_mask_or_code_point(Range&& range,
+                                                detail::locale_ref loc,
+                                                std::ctype_base::mask mask,
+                                                Predicate&& pred)
+        {
+            return read_localized_mask_or_code_point_impl(
+                SCN_FWD(range), loc, mask, SCN_FWD(pred), true);
+        }
+
+        template <typename Range, typename Predicate>
+        scan_expected<ranges::borrowed_iterator_t<Range>>
+        read_while_localized_mask_or_code_point(Range&& range,
+                                                detail::locale_ref loc,
+                                                std::ctype_base::mask mask,
+                                                Predicate&& pred)
+        {
+            return read_localized_mask_or_code_point_impl(
+                SCN_FWD(range), loc, mask, SCN_FWD(pred), false);
         }
 
         template <typename Range, typename Iterator>
