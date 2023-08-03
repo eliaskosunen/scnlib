@@ -8,9 +8,7 @@ function(get_warning_flags flags)
             -Wno-c++98-compat-bind-to-temporary-copy
             -Wno-c++98-compat-local-type-template-args
             -Qunused-arguments -fcolor-diagnostics
-            $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,16>>:
-            -Wno-unsafe-buffer-usage
-            >>
+            >
         $<$<CXX_COMPILER_ID:GNU>:
             -ftemplate-backtrace-limit=0
             -Wall -Wextra -Wpedantic
@@ -55,6 +53,14 @@ function(get_warning_flags flags)
             NOT (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
         set(tmp ${tmp}
                 -ftemplate-backtrace-limit=0)
+    endif()
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16.0)
+        set(tmp ${tmp}
+                -Wno-unsafe-buffer-usage)
+    endif()
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 17.0)
+        set(tmp ${tmp}
+                -fsafe-buffer-usage-suggestions)
     endif()
 
     set(${flags} ${tmp} PARENT_SCOPE)

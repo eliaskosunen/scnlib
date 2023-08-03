@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#include <scn/detail/ranges.h>
 #include <scn/impl/algorithms/find_whitespace.h>
-
 #include <scn/impl/util/ascii_ctype.h>
 #include <scn/impl/util/bits.h>
 
@@ -25,30 +25,17 @@ namespace scn {
 
     namespace impl {
         namespace {
-            template <typename F>
-            std::string_view::iterator find_simple_until_impl(
-                std::string_view source,
-                F until)
-            {
-                for (auto it = source.begin(); it != source.end(); ++it) {
-                    if (until(*it)) {
-                        return it;
-                    }
-                }
-                return source.end();
-            }
-
             std::string_view::iterator find_classic_space_simple_impl(
                 std::string_view source)
             {
-                return find_simple_until_impl(
+                return ranges::find_if(
                     source, [](char ch) { return is_ascii_space(ch); });
             }
 
             std::string_view::iterator find_classic_nonspace_simple_impl(
                 std::string_view source)
             {
-                return find_simple_until_impl(
+                return ranges::find_if(
                     source, [](char ch) { return !is_ascii_space(ch); });
             }
 
@@ -95,7 +82,7 @@ namespace scn {
             std::string_view::iterator find_nondecimal_digit_simple_impl(
                 std::string_view source)
             {
-                return find_simple_until_impl(
+                return ranges::find_if(
                     source, [](char ch) { return !is_decimal_digit(ch); });
             }
 

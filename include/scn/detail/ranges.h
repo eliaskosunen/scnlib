@@ -72,6 +72,10 @@ SCN_CLANG_IGNORE("-Wzero-as-null-pointer-constant")
 SCN_CLANG_IGNORE("-Wmismatched-tags")
 SCN_CLANG_IGNORE("-Wmissing-variable-declarations")
 
+#if SCN_CLANG >= SCN_COMPILER(16, 0, 0)
+SCN_CLANG_IGNORE("-Wunsafe-buffer-usage")
+#endif
+
 #if SCN_CLANG >= SCN_COMPILER(9, 0, 0)
 SCN_CLANG_IGNORE("-Wctad-maybe-unsupported")
 #endif

@@ -31,6 +31,10 @@ SCN_CLANG_IGNORE("-Wcomma")
 SCN_CLANG_IGNORE("-Wundef")
 SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
 
+#if SCN_CLANG >= SCN_COMPILER(16, 0, 0)
+SCN_CLANG_IGNORE("-Wunsafe-buffer-usage")
+#endif
+
 #if SCN_CLANG >= SCN_COMPILER(8, 0, 0)
 SCN_CLANG_IGNORE("-Wextra-semi-stmt")
 #endif

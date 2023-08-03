@@ -58,7 +58,7 @@ namespace scn {
         {
             static_assert(sizeof(CharT) == 1 || sizeof(CharT) == 2 ||
                           sizeof(CharT) == 4);
-            encoding options[] = {
+            constexpr std::array<encoding, 5> options = {
                 encoding::utf8,   // 0 (error)
                 encoding::utf8,   // 1
                 encoding::utf16,  // 2

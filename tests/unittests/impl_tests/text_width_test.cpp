@@ -17,7 +17,7 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/impl/util/text_width.h>
+#include <scn/impl/algorithms/take_width_view.h>
 
 using namespace std::string_view_literals;
 

@@ -24,7 +24,7 @@ namespace scn {
         namespace ascii_charset_specifiers {
             using detail::character_set_specifier;
 
-            std::array<character_set_specifier, 128> table = {{
+            static constexpr std::array<character_set_specifier, 128> table = {{
                 character_set_specifier::cntrl,  // 0x00: '\0' (NUL)
                 character_set_specifier::cntrl,  // 0x01: SOH
                 character_set_specifier::cntrl,  // 0x02: STX
@@ -242,7 +242,7 @@ namespace scn {
         detail::character_set_specifier get_charset_specifier_for_ascii(char ch)
         {
             SCN_EXPECT(is_ascii_char(ch));
-            return ascii_charset_specifiers::table[static_cast<size_t>(ch)];
+            return ascii_charset_specifiers::table[static_cast<size_t>(static_cast<unsigned char>(ch))];
         }
     }  // namespace impl
 

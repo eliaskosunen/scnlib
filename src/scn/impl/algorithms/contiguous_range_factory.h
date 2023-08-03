@@ -25,6 +25,9 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+        template <typename View>
+        class take_width_view;
+
         template <typename CharT>
         struct string_view_wrapper {
             using char_type = CharT;
@@ -75,13 +78,6 @@ namespace scn {
         string_view_wrapper(Range) -> string_view_wrapper<
             detail::char_t<detail::remove_cvref_t<Range>>>;
 
-        template <typename It, typename = void>
-        struct iterator_has_base_member : std::false_type {};
-        template <typename It>
-        struct iterator_has_base_member<
-            It,
-            std::void_t<decltype(SCN_DECLVAL(It&).base())>> : std::true_type {};
-
         template <typename CharT>
         class contiguous_range_factory {
         public:
@@ -102,7 +98,7 @@ namespace scn {
                 _construct_from_range(SCN_FWD(range));
             }
 
-            contiguous_range_factory(const string_view_wrapper<CharT>& svw)
+            contiguous_range_factory(string_view_wrapper<CharT> svw)
             {
                 _construct_string_view(svw.view());
                 m_stores_string = false;
@@ -151,7 +147,7 @@ namespace scn {
                     return {_get_string()->data(), _get_string()->size()};
                 }
 
-                return {_get_string_view()->data(), _get_string_view()->size()};
+                return *_get_string_view();
             }
 
             constexpr bool stores_allocated_string() const
@@ -184,6 +180,8 @@ namespace scn {
                 auto sv = view();
                 _destruct();
                 _construct_string(sv.data(), sv.size());
+                m_stores_string = true;
+
                 return get_allocated_string();
             }
 
@@ -211,28 +209,16 @@ namespace scn {
                                            ranges_polyfill::usize(range));
                     m_stores_string = false;
                 }
-                else if constexpr (iterator_has_base_member<
-                                       ranges::iterator_t<Range>>::value &&
-                                   iterator_has_base_member<
-                                       ranges::sentinel_t<Range>>::value) {
-                    _construct_from_range(
-                        ranges::subrange{ranges::begin(range).base(),
-                                         ranges::end(range).base()});
-                }
                 else if constexpr (std::is_same_v<detail::remove_cvref_t<Range>,
                                                   std::basic_string<CharT>>) {
                     _construct_string(SCN_FWD(range));
                     m_stores_string = true;
                 }
-                else if constexpr (std::is_constructible_v<
-                                       std::basic_string<CharT>,
-                                       const ranges::iterator_t<Range>&,
-                                       const ranges::sentinel_t<Range>&>) {
-                    _construct_string(ranges::begin(range), ranges::end(range));
-                    m_stores_string = true;
-                }
                 else {
                     _construct_string();
+                    if constexpr (ranges::sized_range<Range>) {
+                        _get_string()->reserve(ranges_polyfill::usize(range));
+                    }
                     std::copy(ranges::begin(range), ranges::end(range),
                               std::back_inserter(*_get_string()));
                     m_stores_string = true;
@@ -263,9 +249,9 @@ namespace scn {
                     _construct_string(other.view().data(), other.view().size());
                 }
                 else {
-                    _construct_string_view(other.view().data(),
-                                           other.view().size());
+                    _construct_string_view(other.view());
                 }
+                m_stores_string = other.m_stores_string;
             }
 
             void _move(contiguous_range_factory&& other)
@@ -274,9 +260,9 @@ namespace scn {
                     _construct_string(SCN_MOVE(other.get_allocated_string()));
                 }
                 else {
-                    _construct_string_view(other.view().data(),
-                                           other.view().size());
+                    _construct_string_view(other.view());
                 }
+                m_stores_string = other.m_stores_string;
             }
 
             void _destruct()

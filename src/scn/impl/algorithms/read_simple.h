@@ -39,7 +39,7 @@ namespace scn {
                 return unexpected(e);
             }
 
-            return ranges::next(ranges::begin(SCN_FWD(range)));
+            return ranges::next(ranges::begin(range));
         }
 
         template <typename Range>
@@ -71,7 +71,7 @@ namespace scn {
                 return it;
             }
         }
-    }
+    }  // namespace impl
 
     SCN_END_NAMESPACE
-}
+}  // namespace scn

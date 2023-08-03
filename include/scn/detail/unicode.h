@@ -69,16 +69,14 @@ namespace scn {
 
             SCN_GCC_COMPAT_PUSH
             SCN_GCC_COMPAT_IGNORE("-Wsign-conversion")
-            const auto lengths =
+            constexpr std::string_view lengths =
                 "\1\1\1\1\1\1\1\1"  // highest bit is 0 -> single-byte
                 "\1\1\1\1\1\1\1\1"
-                "\0\0\0\0\0\0\0\0"  // highest bits 10 -> error, non-initial
-                // byte
+                "\0\0\0\0\0\0\0\0"  // highest bits 10 -> error, non-initial byte
                 "\2\2\2\2"  // highest bits 110 -> 2-byte cp
                 "\3\3"      // highest bits 1110 -> 3-byte cp
                 "\4";       // highest bits 11110 -> 4-byte cp
-            const int len = lengths[static_cast<unsigned char>(ch) >> 3];
-            return len;
+            return lengths[static_cast<unsigned char>(ch) >> 3];
             SCN_GCC_COMPAT_POP
         }
 

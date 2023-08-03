@@ -62,6 +62,23 @@ TEST_P(ErasedRangeTest, Test)
 #endif
 }
 
+TEST_P(ErasedRangeTest, Empty)
+{
+    {
+        auto r1 = scn::erased_range(std::string_view{"1"});
+        auto it = r1.begin();
+        ASSERT_NE(it, r1.end());
+        EXPECT_EQ(*it, '1');
+        ++it;
+        EXPECT_EQ(it, r1.end());
+    }
+
+    {
+        auto r2 = scn::erased_range(std::string_view{""});
+        EXPECT_EQ(r2.begin(), r2.end());
+    }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     String,
     ErasedRangeTest,

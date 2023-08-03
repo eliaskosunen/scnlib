@@ -325,35 +325,43 @@ namespace scn {
         skip_classic_whitespace(SourceRange&& range,
                                 bool allow_exhaustion = false)
         {
-            return read_while_classic_space(range).and_then(
-                [&](auto it) -> scan_expected<decltype(it)> {
-                    if (!allow_exhaustion) {
+            if (!allow_exhaustion) {
+                return read_while_classic_space(range).and_then(
+                    [&](auto it) -> scan_expected<decltype(it)> {
                         if (auto e = eof_check(
                                 ranges::subrange{it, ranges::end(range)});
                             SCN_UNLIKELY(!e)) {
                             return unexpected(e);
                         }
-                    }
-                    return it;
-                });
+
+                        return it;
+                    });
+            }
+
+            return read_while_classic_space(SCN_FWD(range));
         }
 
         template <typename SourceRange>
-        auto skip_localized_whitespace(SourceRange range,
-                                       detail::locale_ref loc,
-                                       bool allow_exhaustion = false)
+        scan_expected<ranges::borrowed_iterator_t<SourceRange>>
+        skip_localized_whitespace(SourceRange&& range,
+                                  detail::locale_ref loc,
+                                  bool allow_exhaustion = false)
         {
-            return read_while_localized_mask(range, loc, std::ctype_base::space)
-                .and_then([&](auto it) -> scan_expected<decltype(it)> {
-                    if (!allow_exhaustion) {
+            if (!allow_exhaustion) {
+                return read_while_localized_mask(range, loc,
+                                                 std::ctype_base::space)
+                    .and_then([&](auto it) -> scan_expected<decltype(it)> {
                         if (auto e = eof_check(
                                 ranges::subrange{it, ranges::end(range)});
                             SCN_UNLIKELY(!e)) {
                             return unexpected(e);
                         }
-                    }
-                    return it;
-                });
+                        return it;
+                    });
+            }
+
+            return read_while_localized_mask(SCN_FWD(range), loc,
+                                             std::ctype_base::space);
         }
 
         template <typename T, typename CharT, typename Enable = void>
