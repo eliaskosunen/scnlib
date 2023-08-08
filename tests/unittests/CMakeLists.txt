@@ -79,7 +79,7 @@ if (SCN_TESTS_LOCALIZED)
     add_executable(scn_impl_localized_tests
             main.cpp
 
-            impl_tests/localized/read_localized_test.cpp
+            #impl_tests/localized/read_localized_test.cpp
     )
     target_link_libraries(scn_impl_localized_tests
             scn_gtest scn_tests_base

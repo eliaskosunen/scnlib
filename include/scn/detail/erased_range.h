@@ -222,6 +222,7 @@ namespace scn {
         {
             SCN_EXPECT(m_impl);
 
+            advance_until_index(m_current);
             return m_impl->get_current();
         }
 

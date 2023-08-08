@@ -17,8 +17,10 @@
 
 #pragma once
 
+#include <scn/detail/format_string_parser.h>
 #include <scn/impl/algorithms/take_width_view.h>
-#include <scn/impl/reader/character_set_format_parser.h>
+#include <scn/impl/reader/common.h>
+#include <scn/impl/util/ascii_ctype.h>
 #include <scn/impl/util/bits.h>
 
 #include <string>
@@ -47,6 +49,11 @@ namespace scn {
             std::basic_string<DestCharT>& dest)
         {
             if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
+                if (SCN_UNLIKELY(!validate_unicode(source.view()))) {
+                    return {scan_error::invalid_encoding,
+                            "Failed to validate string value"};
+                }
+
                 dest.assign(source.view());
             }
             else {
@@ -62,6 +69,11 @@ namespace scn {
             std::basic_string<DestCharT>& dest)
         {
             if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
+                if (SCN_UNLIKELY(!validate_unicode(source.view()))) {
+                    return {scan_error::invalid_encoding,
+                            "Failed to validate string value"};
+                }
+
                 if (source.stores_allocated_string()) {
                     dest.assign(SCN_MOVE(source.get_allocated_string()));
                 }
@@ -146,6 +158,12 @@ namespace scn {
                                              "transcoding)");
             }
             else {
+                if (SCN_UNLIKELY(!validate_unicode(src.view()))) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_encoding,
+                        "Failed to validate string_view value");
+                }
+
                 value = std::basic_string_view<ValueCharT>(
                     ranges::data(src.view()),
                     ranges_polyfill::usize(src.view()));

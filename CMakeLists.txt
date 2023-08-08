@@ -76,7 +76,6 @@ set(SCN_PRIVATE_HEADERS
 
         src/scn/impl/reader/reader.h
         src/scn/impl/reader/common.h
-        src/scn/impl/reader/character_set_format_parser.h
         src/scn/impl/reader/numeric_reader.h
 
         src/scn/impl/reader/code_unit_and_point_reader.h
@@ -105,7 +104,6 @@ set(SCN_PRIVATE_SOURCES
 
         src/scn/impl/algorithms/find_whitespace.cpp
 
-        src/scn/impl/reader/bool_reader.cpp
         src/scn/impl/reader/float_reader.cpp
         src/scn/impl/reader/integer_reader.cpp
         src/scn/impl/reader/string_reader.cpp

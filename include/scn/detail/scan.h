@@ -189,7 +189,7 @@ namespace scn {
 
         template <typename... Args, typename Source, typename Format>
         auto input_impl(Source& source, Format format)
-            -> scan_result_type<Source, Args...>
+            -> scan_result_type<Source&, Args...>
         {
             auto args = make_scan_args<decltype(source), Args...>();
             auto result = detail::vscan_and_sync(SCN_FWD(source), format, args);

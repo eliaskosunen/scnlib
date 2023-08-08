@@ -242,7 +242,8 @@ namespace scn {
         detail::character_set_specifier get_charset_specifier_for_ascii(char ch)
         {
             SCN_EXPECT(is_ascii_char(ch));
-            return ascii_charset_specifiers::table[static_cast<size_t>(static_cast<unsigned char>(ch))];
+            return ascii_charset_specifiers::table[static_cast<size_t>(
+                static_cast<unsigned char>(ch))];
         }
     }  // namespace impl
 

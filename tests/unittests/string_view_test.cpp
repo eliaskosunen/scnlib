@@ -104,7 +104,7 @@ TEST(StringViewTest, WonkyInput)
             break;
         }
         auto result = scn::scan<std::string_view>(
-            scn::ranges::subrange{it, source.end()}, "{:64U}");
+            scn::ranges::subrange{it, source.end()}, "{:64c}");
         if (result) {
             it = result->begin();
         }
@@ -115,6 +115,6 @@ TEST(StringViewTest, WonkyInput2)
     const char source[] = {'o', ' ', '\x0f', '\n', '\n', '\xc3'};
     auto range = std::string_view{source, sizeof(source)};
 
-    auto result = scn::scan<std::string_view>(range, "{:64U}");
+    auto result = scn::scan<std::string_view>(range, "{:64c}");
     ASSERT_FALSE(result);
 }

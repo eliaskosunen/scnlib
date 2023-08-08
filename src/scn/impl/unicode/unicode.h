@@ -122,9 +122,12 @@ namespace scn {
         {
             SCN_EXPECT(!input.empty());
 
-            const auto len = code_point_length_by_starting_code_unit(input[0]);
-            SCN_EXPECT(len);
-            SCN_EXPECT(*len == input.size());
+            {
+                const auto len =
+                    code_point_length_by_starting_code_unit(input[0]);
+                SCN_EXPECT(len);
+                SCN_EXPECT(*len == input.size());
+            }
 
             SCN_EXPECT(validate_unicode(input));
 
@@ -132,13 +135,14 @@ namespace scn {
             char32_t output;
             if constexpr (enc == encoding::utf8) {
                 const auto ret = simdutf::convert_valid_utf8_to_utf32(
-                    reinterpret_cast<const char*>(input.data()), *len, &output);
+                    reinterpret_cast<const char*>(input.data()), input.size(),
+                    &output);
                 SCN_EXPECT(ret == 1);
             }
             else if constexpr (enc == encoding::utf16) {
                 const auto ret = simdutf::convert_valid_utf16_to_utf32(
-                    reinterpret_cast<const char16_t*>(input.data()), *len,
-                    &output);
+                    reinterpret_cast<const char16_t*>(input.data()),
+                    input.size(), &output);
                 SCN_EXPECT(ret == 1);
             }
             else if constexpr (enc == encoding::utf32) {

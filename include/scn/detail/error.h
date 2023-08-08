@@ -49,13 +49,13 @@ namespace scn {
             value_underflow,
             /// Source range has invalid (utf-8 or utf-16) encoding
             invalid_encoding,
-            /// This operation is only possible with exceptions enabled
-            exceptions_required,  // currently unused
-            /// This operation is only possible with the heap enabled
-            heap_required,  // currently unused
             /// The source range emitted an error that cannot be recovered
             /// from. The library can't use the source range in this state.
             bad_source_error,
+            /// This operation is only possible with exceptions enabled
+            //exceptions_required,  // currently unused
+            /// This operation is only possible with the heap enabled
+            //heap_required,  // currently unused
 
             max_error
         };
