@@ -109,6 +109,12 @@ namespace scn {
                                                     const CharT* src,
                                                     Strtod strtod_cb)
                 {
+                    if (auto e = this->verify_kind(
+                            std::basic_string_view<CharT>{src});
+                        SCN_UNLIKELY(!e)) {
+                        return unexpected(e);
+                    }
+
                     set_clocale_classic_guard clocale_guard{LC_NUMERIC};
                     CharT* end{};
                     errno = 0;
@@ -176,7 +182,7 @@ namespace scn {
                     }
 
                     if (c_errno == ERANGE) {
-                        if (std::abs(value) <= std::numeric_limits<T>::min()) {
+                        if (is_float_zero(value)) {
                             SCN_UNLIKELY_ATTR
                             return {scan_error::value_underflow,
                                     "strtod failed: underflow"};
@@ -193,13 +199,22 @@ namespace scn {
                         }
 
                         SCN_GCC_COMPAT_POP  // -Wfloat-equal
-
-                            return {scan_error::invalid_scanned_value,
-                                    "Unknown range error"};
                     }
 
                     return {};
                 }
+
+                template <typename CharT>
+                SCN_NODISCARD scan_error
+                verify_kind(std::basic_string_view<CharT> parsed) const
+                {
+                    if (m_kind != float_reader_base::float_kind::generic) {
+                        return {};
+                    }
+
+                    // TODO
+                    return {};
+                };
 
                 static T generic_narrow_strtod(const char* str, char** str_end)
                 {
@@ -563,17 +578,15 @@ namespace scn {
             // TODO
             SCN_EXPECT((m_options & float_reader_base::allow_thsep) == 0);
 
-            return dispatch_impl<CharT>({this->m_buffer, m_kind, m_options},
-                                        m_nan_payload_buffer, value)
-                .transform([&](auto n) {
-                    value = this->setsign(value);
-                    return n;
-                });
+            auto n = dispatch_impl<CharT>({this->m_buffer, m_kind, m_options},
+                                          m_nan_payload_buffer, value);
+            value = this->setsign(value);
+            return n;
         }
 
 #define SCN_DEFINE_FLOAT_READER_TEMPLATE_IMPL(CharT, FloatT)     \
     template auto float_reader<CharT>::parse_value_impl(FloatT&) \
-        ->scan_expected<std::ptrdiff_t>;
+        -> scan_expected<std::ptrdiff_t>;
 
 #define SCN_DEFINE_FLOAT_READER_TEMPLATE(CharT)          \
     SCN_DEFINE_FLOAT_READER_TEMPLATE_IMPL(CharT, float)  \

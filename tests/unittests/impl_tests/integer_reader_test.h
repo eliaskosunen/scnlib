@@ -17,53 +17,11 @@
 
 #pragma once
 
-#include "../test_common.h"
+#include "reader_test_common.h"
 
 #include <scn/detail/istream_range.h>
 #include <scn/impl/reader/integer_reader.h>
 #include <scn/util/optional.h>
-
-template <bool Localized, typename CharT, typename IntT>
-class reader_wrapper {
-public:
-    using char_type = CharT;
-    using int_type = IntT;
-    using reader_type = scn::impl::reader<IntT, CharT>;
-
-    static constexpr bool is_localized = Localized;
-
-    reader_wrapper() = default;
-
-    auto read_default(std::basic_string_view<CharT> source, IntT& value)
-    {
-        return m_reader.read_default(source, value, {});
-    }
-
-    auto read_specs(std::basic_string_view<CharT> source,
-                    const scn::detail::basic_format_specs<CharT>& specs,
-                    IntT& value)
-    {
-        auto specs_copy = specs;
-        specs_copy.localized = is_localized;
-
-        return m_reader.read_specs(source, specs_copy, value, {});
-    }
-
-    auto read_specs_with_locale(
-        std::basic_string_view<CharT> source,
-        const scn::detail::basic_format_specs<CharT>& specs,
-        IntT& value,
-        scn::detail::locale_ref loc)
-    {
-        auto specs_copy = specs;
-        specs_copy.localized = is_localized;
-
-        return m_reader.read_specs(source, specs_copy, value, loc);
-    }
-
-private:
-    reader_type m_reader{};
-};
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wheader-hygiene")
@@ -76,7 +34,7 @@ template <typename T>
 class IntValueReaderTest : public testing::Test {
 protected:
     using char_type = typename T::char_type;
-    using int_type = typename T::int_type;
+    using int_type = typename T::value_type;
     using string_type = std::basic_string<char_type>;
     using string_view_type = std::basic_string_view<char_type>;
 
@@ -527,7 +485,7 @@ protected:
         return specs;
     }
 
-    T wrapped_reader;
+    T wrapped_reader{};
     scn::optional<string_type> widened_source;
 };
 

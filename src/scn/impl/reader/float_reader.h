@@ -19,14 +19,8 @@
 
 #include <scn/impl/reader/numeric_reader.h>
 
+#include <cmath>
 #include <limits>
-#include "scn/detail/error.h"
-#include "scn/detail/format_string_parser.h"
-#include "scn/impl/algorithms/common.h"
-#include "scn/impl/algorithms/read.h"
-#include "scn/impl/locale.h"
-#include "scn/impl/util/ascii_ctype.h"
-#include "scn/util/expected.h"
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -125,14 +119,34 @@ namespace scn {
                 return numeric_reader_base::read_sign(range, m_sign)
                     .and_then([&](auto it) {
                         digits_begin = it;
+                        auto r = ranges::subrange{it, ranges::end(range)};
                         if constexpr (ranges::contiguous_range<Range> &&
                                       ranges::sized_range<Range>) {
-                            return read_contiguous_source_impl(
-                                ranges::subrange{it, ranges::end(range)});
+                            auto cb = [&](auto&& rr)
+                                -> scan_expected<
+                                    ranges::borrowed_iterator_t<decltype(rr)>> {
+                                auto res = read_all(rr);
+                                if (SCN_UNLIKELY(!res)) {
+                                    return unexpected(res.error());
+                                }
+                                if (SCN_UNLIKELY(*res == ranges::begin(r))) {
+                                    return unexpected_scan_error(
+                                        scan_error::invalid_scanned_value,
+                                        "Invalid float value");
+                                }
+                                return *res;
+                            };
+                            return do_read_source_impl(r, cb, cb);
                         }
                         else {
-                            return read_noncontiguous_source_impl(
-                                ranges::subrange{it, ranges::end(range)});
+                            return do_read_source_impl(
+                                r,
+                                [&](auto&& rr) {
+                                    return read_regular_float(SCN_FWD(rr));
+                                },
+                                [&](auto&& rr) {
+                                    return read_hexfloat(SCN_FWD(rr));
+                                });
                         }
                     })
                     .transform([&](auto it) {
@@ -209,8 +223,8 @@ namespace scn {
                     it = *r;
                 }
 
-                if (auto r =
-                        read_matching_string_classic_nocase(range, "inity");
+                if (auto r = read_matching_string_classic_nocase(
+                        ranges::subrange{it, ranges::end(range)}, "inity");
                     !r) {
                     m_kind = float_kind::inf_short;
                     return it;
@@ -401,9 +415,11 @@ namespace scn {
                 return it;
             }
 
-            template <typename Range>
+            template <typename Range, typename ReadRegular, typename ReadHex>
             scan_expected<ranges::borrowed_iterator_t<Range>>
-            read_noncontiguous_source_impl(Range&& range)
+            do_read_source_impl(Range&& range,
+                                ReadRegular&& read_regular,
+                                ReadHex&& read_hex)
             {
                 const bool allowed_hex = (m_options & allow_hex) != 0;
                 const bool allowed_nonhex =
@@ -437,13 +453,13 @@ namespace scn {
                         m_kind = float_kind::hex_without_prefix;
                     }
 
-                    return read_hexfloat(
-                        ranges::subrange{it, ranges::end(range)});
+                    return read_hex(ranges::subrange{it, ranges::end(range)});
                 }
                 else if (!allowed_hex && allowed_nonhex) {
                     // only nonhex allowed:
                     // no prefix allowed
-                    return read_regular_float(SCN_FWD(range));
+                    m_kind = float_kind::generic;
+                    return read_regular(SCN_FWD(range));
                 }
                 else {
                     // both hex and nonhex allowed:
@@ -452,51 +468,13 @@ namespace scn {
 
                     if (auto r = read_hex_prefix(range); SCN_UNLIKELY(r)) {
                         m_kind = float_kind::hex_with_prefix;
-                        return read_hexfloat(
+                        return read_hex(
                             ranges::subrange{*r, ranges::end(range)});
                     }
 
-                    return read_regular_float(SCN_FWD(range));
+                    m_kind = float_kind::generic;
+                    return read_regular(SCN_FWD(range));
                 }
-            }
-
-            template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
-            read_contiguous_source_impl(Range&& range)
-            {
-                static_assert(ranges::contiguous_range<Range> &&
-                              ranges::sized_range<Range>);
-
-                if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0)) {
-                    return read_noncontiguous_source_impl(SCN_FWD(range));
-                }
-
-                if (auto r = read_inf(range); !r && m_kind != float_kind::tbd) {
-                    return unexpected(r.error());
-                }
-                else if (r) {
-                    return *r;
-                }
-
-                if (auto r = read_nan(range); !r && m_kind != float_kind::tbd) {
-                    return unexpected(r.error());
-                }
-                else if (r) {
-                    return *r;
-                }
-
-                return read_until_classic_space(SCN_FWD(range))
-                    .and_then(
-                        [&](auto it) -> scan_expected<
-                                         ranges::borrowed_iterator_t<Range>> {
-                            if (it == ranges::begin(range)) {
-                                return unexpected_scan_error(
-                                    scan_error::invalid_scanned_value,
-                                    "Invalid scanned float");
-                            }
-                            m_kind = float_kind::generic;
-                            return it;
-                        });
             }
 
             void strip_thseps_from_buffer()
@@ -532,7 +510,7 @@ namespace scn {
             template <typename T>
             T setsign(T value) const
             {
-                SCN_EXPECT(value >= static_cast<T>(0.0));
+                SCN_EXPECT(std::isnan(value) || value >= static_cast<T>(0.0));
                 if (m_sign == numeric_reader_base::sign::minus_sign) {
                     return -value;
                 }
@@ -552,7 +530,7 @@ namespace scn {
 
 #define SCN_DECLARE_FLOAT_READER_TEMPLATE_IMPL(CharT, FloatT)           \
     extern template auto float_reader<CharT>::parse_value_impl(FloatT&) \
-        ->scan_expected<std::ptrdiff_t>;
+        -> scan_expected<std::ptrdiff_t>;
 
 #define SCN_DECLARE_FLOAT_READER_TEMPLATE(CharT)          \
     SCN_DECLARE_FLOAT_READER_TEMPLATE_IMPL(CharT, float)  \
