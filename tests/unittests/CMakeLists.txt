@@ -54,6 +54,12 @@ add_executable(scn_impl_tests
         impl_tests/text_width_test.cpp
         impl_tests/whitespace_skip_test.cpp
 
+        impl_tests/integer_reader_test.h
+        impl_tests/integer_reader_test.impl_narrow_classic.cpp
+        impl_tests/integer_reader_test.impl_narrow_localized.cpp
+        impl_tests/integer_reader_test.impl_wide_classic.cpp
+        impl_tests/integer_reader_test.impl_wide_localized.cpp
+
         #impl_tests/character_set_reader_test.cpp
         #impl_tests/copy_test.cpp
         #impl_tests/float_reader_test.cpp

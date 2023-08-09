@@ -102,7 +102,7 @@ namespace scn {
             template <typename Range,
                       std::enable_if_t<ranges::view<Range>>* = nullptr>
             scan_error check_thsep_grouping(Range&& range,
-                                            std::string& thsep_indices,
+                                            std::string thsep_indices,
                                             std::string_view grouping)
             {
                 SCN_EXPECT(!thsep_indices.empty());

@@ -160,10 +160,15 @@ namespace scn {
                         return read_base_prefix(make_subrange(it));
                     })
                     .and_then([&](auto it) {
+                        if (m_zero_parsed) {
+                            digits_begin = ranges_polyfill::prev_backtrack(
+                                it, ranges::begin(range));
+                            return read_digits_zero(
+                                make_subrange(digits_begin));
+                        }
+
                         digits_begin = it;
-                        return read_digits(make_subrange(it),
-                                           ranges_polyfill::prev_backtrack(
-                                               it, ranges::begin(range)));
+                        return read_digits(make_subrange(it));
                     })
                     .transform([&](auto it) {
                         m_nondigit_prefix_len = ranges::distance(
@@ -172,7 +177,10 @@ namespace scn {
                             ranges::subrange{digits_begin, it});
                         if (!m_thsep_indices.empty()) {
                             numeric_base::m_buffer.make_into_allocated_string();
-                            for (auto idx : m_thsep_indices) {
+                            for (size_t i = 0; i < m_thsep_indices.size();
+                                 ++i) {
+                                const auto idx =
+                                    static_cast<size_t>(m_thsep_indices[i]) - i;
                                 auto erase_it =
                                     numeric_base::m_buffer
                                         .get_allocated_string()
@@ -323,29 +331,41 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_digits(
-                Range&& range,
-                ranges::iterator_t<Range> prev_begin)
+                Range&& range)
             {
-                auto adjust_for_zero = [&](auto it) {
-                    if (m_zero_parsed && it == ranges::begin(range)) {
-                        m_zero_parsed = false;
-                        return prev_begin;
-                    }
-                    return it;
-                };
+                SCN_EXPECT(!m_zero_parsed);
+
+                if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0)) {
+                    return read_digits_impl(SCN_FWD(range));
+                }
 
                 if constexpr (ranges::contiguous_range<Range> &&
                               ranges::sized_range<Range>) {
-                    if (m_zero_parsed) {
-                        return read_digits_impl(SCN_FWD(range))
-                            .transform(adjust_for_zero);
+                    if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "No digits parsed for integer value");
                     }
+
                     return read_all(SCN_FWD(range));
                 }
                 else {
-                    return read_digits_impl(SCN_FWD(range))
-                        .transform(adjust_for_zero);
+                    return read_digits_impl(SCN_FWD(range));
                 }
+            }
+
+            template <typename Range>
+            scan_expected<ranges::borrowed_iterator_t<Range>> read_digits_zero(
+                Range&& range)
+            {
+                SCN_EXPECT(m_zero_parsed);
+
+                return read_digits_impl(range).transform([&](auto it) {
+                    if (it != ranges::begin(range)) {
+                        m_zero_parsed = false;
+                    }
+                    return it;
+                });
             }
 
             template <typename T>
@@ -362,7 +382,7 @@ namespace scn {
 
 #define SCN_DECLARE_INTEGER_READER_TEMPLATE_IMPL(CharT, IntT)           \
     extern template auto integer_reader<CharT>::parse_value_impl(IntT&) \
-        ->scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>;
+        -> scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>;
 
 #define SCN_DECLARE_INTEGER_READER_TEMPLATE(CharT)                  \
     SCN_DECLARE_INTEGER_READER_TEMPLATE_IMPL(CharT, signed char)    \
