@@ -154,9 +154,58 @@ namespace scn {
                     return ranges::subrange{it, ranges::end(range)};
                 };
 
+#if 0
+                auto it = ranges::begin(range);
+                if (auto r = read_sign<IsSigned>(range)) {
+                    SCN_LIKELY_ATTR
+                    it = *r;
+                }
+                else {
+                    return unexpected(r.error());
+                }
+
+                auto original_base = m_base;
+                if (auto r = read_base_prefix(make_subrange(it))) {
+                    SCN_LIKELY_ATTR
+                    it = *r;
+                }
+                else {
+                    return unexpected(r.error());
+                }
+
+                auto digits_begin = it;
+                if (m_zero_parsed) {
+                    digits_begin = ranges_polyfill::prev_backtrack(
+                        it, ranges::begin(range));
+                    if (auto r =
+                            read_digits_zero(make_subrange(digits_begin))) {
+                        SCN_LIKELY_ATTR
+                        it = *r;
+                    }
+                    else {
+                        return unexpected(r.error());
+                    }
+                }
+                else {
+                    if (auto r = read_digits(make_subrange(digits_begin))) {
+                        SCN_LIKELY_ATTR
+                        it = *r;
+                    }
+                    else {
+                        return unexpected(r.error());
+                    }
+                }
+
+                m_nondigit_prefix_len = ranges::distance(ranges::begin(range), digits_begin);
+                this->m_buffer.assign(ranges::subrange{digits_begin, it});
+#endif
+
+                auto base_prefix_begin = ranges::begin(range);
                 auto digits_begin = ranges::begin(range);
+
                 return read_sign<IsSigned>(range)
                     .and_then([&](auto it) {
+                        base_prefix_begin = it;
                         return read_base_prefix(make_subrange(it));
                     })
                     .and_then([&](auto it) {
@@ -168,7 +217,7 @@ namespace scn {
                         }
 
                         digits_begin = it;
-                        return read_digits(make_subrange(it));
+                        return read_digits(make_subrange(it), base_prefix_begin);
                     })
                     .transform([&](auto it) {
                         m_nondigit_prefix_len = ranges::distance(
@@ -262,14 +311,17 @@ namespace scn {
             {
                 if (auto r = read_hex_base_prefix(range)) {
                     m_base = 16;
+                    m_base_prefix_parsed = true;
                     return *r;
                 }
                 if (auto r = read_bin_base_prefix(range)) {
                     m_base = 2;
+                    m_base_prefix_parsed = true;
                     return *r;
                 }
                 if (auto r = read_oct_base_prefix(range)) {
                     m_base = 8;
+                    m_base_prefix_parsed = true;
                     return *r;
                 }
                 m_base = 10;
@@ -321,6 +373,11 @@ namespace scn {
                             break;
                         }
                     }
+                    if (it == ranges::begin(range)) {
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "No matching characters");
+                    }
                     return it;
                 }
 
@@ -331,26 +388,22 @@ namespace scn {
 
             template <typename Range>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_digits(
-                Range&& range)
+                Range&& range,
+                ranges::iterator_t<Range> base_prefix_begin)
             {
                 SCN_EXPECT(!m_zero_parsed);
 
-                if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0)) {
-                    return read_digits_impl(SCN_FWD(range));
+                if (auto r = read_digits_impl(SCN_FWD(range))) {
+                    SCN_LIKELY_ATTR
+                    return *r;
                 }
-
-                if constexpr (ranges::contiguous_range<Range> &&
-                              ranges::sized_range<Range>) {
-                    if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
-                        return unexpected_scan_error(
-                            scan_error::invalid_scanned_value,
-                            "No digits parsed for integer value");
-                    }
-
-                    return read_all(SCN_FWD(range));
+                else if (r.error() == scan_error::invalid_scanned_value && m_base_prefix_parsed) {
+                    m_zero_parsed = true;
+                    return ranges::next(base_prefix_begin);
                 }
                 else {
-                    return read_digits_impl(SCN_FWD(range));
+                    SCN_UNLIKELY_ATTR
+                    return unexpected(r.error());
                 }
             }
 
@@ -377,7 +430,7 @@ namespace scn {
             std::ptrdiff_t m_nondigit_prefix_len{0};
             typename numeric_base::sign m_sign{
                 numeric_base::sign::default_sign};
-            bool m_zero_parsed{false};
+            bool m_zero_parsed{false}, m_base_prefix_parsed{false};
         };
 
 #define SCN_DECLARE_INTEGER_READER_TEMPLATE_IMPL(CharT, IntT)           \

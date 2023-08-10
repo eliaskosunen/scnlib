@@ -863,11 +863,13 @@ TYPED_TEST(FloatValueReaderTest, PresentationScientificValueScientific)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationScientificValueFixed)
 {
+#if 0
     if constexpr (std::is_same_v<typename TestFixture::float_type,
                                  long double>) {
         // FIXME
         return SUCCEED() << "This test is buggy with long doubles";
     }
+#endif
 
     auto [result, val] = this->simple_specs_test(
         "12.3", this->make_format_specs_with_presentation(
@@ -886,11 +888,13 @@ TYPED_TEST(FloatValueReaderTest, PresentationScientificValueHex)
 
 TYPED_TEST(FloatValueReaderTest, PresentationFixedValueScientific)
 {
+#if 0
     if constexpr (std::is_same_v<typename TestFixture::float_type,
                                  long double>) {
         // FIXME
         return SUCCEED() << "This test is buggy with long doubles";
     }
+#endif
 
     auto [result, val] = this->simple_specs_test(
         "12.3e4", this->make_format_specs_with_presentation(
@@ -913,11 +917,13 @@ TYPED_TEST(FloatValueReaderTest, PresentationFixedValueFixed)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationFixedValueHex)
 {
+#if 0
     if constexpr (std::is_same_v<typename TestFixture::float_type,
                                  long double>) {
         // FIXME
         return SUCCEED() << "This test is buggy with long doubles";
     }
+#endif
 
     auto [result, val] = this->simple_specs_test(
         "0x1.fp3", this->make_format_specs_with_presentation(
@@ -945,11 +951,13 @@ T get_hexfloat_interpreted_as_decimal(const std::string& input)
 
 TYPED_TEST(FloatValueReaderTest, PresentationHexValueScientific)
 {
+#if 0
     if constexpr (std::is_same_v<typename TestFixture::float_type,
                                  long double>) {
         // FIXME
         return SUCCEED() << "This test is buggy with long doubles";
     }
+#endif
 
     auto [result, val] = this->simple_specs_test(
         "12.3e4", this->make_format_specs_with_presentation(
@@ -964,11 +972,13 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueScientific)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationHexValueFixed)
 {
+#if 0
     if constexpr (std::is_same_v<typename TestFixture::float_type,
                                  long double>) {
         // FIXME
         return SUCCEED() << "This test is buggy with long doubles";
     }
+#endif
 
     auto [result, val] = this->simple_specs_test(
         "12.3", this->make_format_specs_with_presentation(

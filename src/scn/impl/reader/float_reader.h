@@ -459,7 +459,7 @@ namespace scn {
                     // only nonhex allowed:
                     // no prefix allowed
                     m_kind = float_kind::generic;
-                    return read_regular(SCN_FWD(range));
+                    return read_regular_float(SCN_FWD(range));
                 }
                 else {
                     // both hex and nonhex allowed:

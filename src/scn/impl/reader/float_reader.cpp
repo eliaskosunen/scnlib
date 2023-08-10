@@ -109,12 +109,6 @@ namespace scn {
                                                     const CharT* src,
                                                     Strtod strtod_cb)
                 {
-                    if (auto e = this->verify_kind(
-                            std::basic_string_view<CharT>{src});
-                        SCN_UNLIKELY(!e)) {
-                        return unexpected(e);
-                    }
-
                     set_clocale_classic_guard clocale_guard{LC_NUMERIC};
                     CharT* end{};
                     errno = 0;
@@ -203,18 +197,6 @@ namespace scn {
 
                     return {};
                 }
-
-                template <typename CharT>
-                SCN_NODISCARD scan_error
-                verify_kind(std::basic_string_view<CharT> parsed) const
-                {
-                    if (m_kind != float_reader_base::float_kind::generic) {
-                        return {};
-                    }
-
-                    // TODO
-                    return {};
-                };
 
                 static T generic_narrow_strtod(const char* str, char** str_end)
                 {

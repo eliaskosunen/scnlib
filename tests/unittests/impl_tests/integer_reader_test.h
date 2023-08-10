@@ -679,6 +679,27 @@ TYPED_TEST_P(IntValueReaderTest, Nonsense)
     EXPECT_TRUE(this->check_failure_with_code(
         result, val, scn::scan_error::invalid_scanned_value));
 }
+TYPED_TEST_P(IntValueReaderTest, NonsenseStartingWithZero)
+{
+    auto [result, val] = this->simple_test("0helloworld");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 0);
+    EXPECT_EQ(**result, 'h');
+}
+TYPED_TEST_P(IntValueReaderTest, NonsenseStartingWithHexPrefix)
+{
+    auto [result, val] = this->simple_test("0xhelloworld");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 0);
+    EXPECT_EQ(**result, 'x');
+}
+TYPED_TEST_P(IntValueReaderTest, HexFollowedByNonsense)
+{
+    auto [result, val] = this->simple_test("0xehelloworld");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 0xe);
+    EXPECT_EQ(**result, 'h');
+}
 
 TYPED_TEST_P(IntValueReaderTest, OnlyPlusSign)
 {
@@ -693,9 +714,25 @@ TYPED_TEST_P(IntValueReaderTest, OnlyMinusSign)
         result, val, scn::scan_error::invalid_scanned_value));
 }
 
-TYPED_TEST_P(IntValueReaderTest, DISABLED_OnlyHexPrefix)
+TYPED_TEST_P(IntValueReaderTest, OnlyHexPrefix)
 {
     auto [result, val] = this->simple_test("0x");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(val, 0);
+    EXPECT_EQ(scn::detail::to_address(*result),
+              scn::detail::to_address(this->widened_source->begin() + 1));
+}
+TYPED_TEST_P(IntValueReaderTest, OnlyLongOctPrefix)
+{
+    auto [result, val] = this->simple_test("0o");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(val, 0);
+    EXPECT_EQ(scn::detail::to_address(*result),
+              scn::detail::to_address(this->widened_source->begin() + 1));
+}
+TYPED_TEST_P(IntValueReaderTest, OnlyBinPrefix)
+{
+    auto [result, val] = this->simple_test("0b");
     ASSERT_TRUE(result);
     EXPECT_EQ(val, 0);
     EXPECT_EQ(scn::detail::to_address(*result),
@@ -838,9 +875,14 @@ REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
                             SeventeenDigits,
                             StartsAsDecimalNumber,
                             Nonsense,
+                            NonsenseStartingWithZero,
+                            NonsenseStartingWithHexPrefix,
+                            HexFollowedByNonsense,
                             OnlyPlusSign,
                             OnlyMinusSign,
-                            DISABLED_OnlyHexPrefix,
+                            OnlyHexPrefix,
+                            OnlyLongOctPrefix,
+                            OnlyBinPrefix,
                             InputWithNullBytes,
                             ThousandsSeparators,
                             ThousandsSeparatorsWithInvalidGrouping,
