@@ -863,14 +863,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationScientificValueScientific)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationScientificValueFixed)
 {
-#if 0
-    if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                 long double>) {
-        // FIXME
-        return SUCCEED() << "This test is buggy with long doubles";
-    }
-#endif
-
     auto [result, val] = this->simple_specs_test(
         "12.3", this->make_format_specs_with_presentation(
                     scn::detail::presentation_type::float_scientific));
@@ -888,14 +880,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationScientificValueHex)
 
 TYPED_TEST(FloatValueReaderTest, PresentationFixedValueScientific)
 {
-#if 0
-    if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                 long double>) {
-        // FIXME
-        return SUCCEED() << "This test is buggy with long doubles";
-    }
-#endif
-
     auto [result, val] = this->simple_specs_test(
         "12.3e4", this->make_format_specs_with_presentation(
                       scn::detail::presentation_type::float_fixed));
@@ -917,14 +901,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationFixedValueFixed)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationFixedValueHex)
 {
-#if 0
-    if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                 long double>) {
-        // FIXME
-        return SUCCEED() << "This test is buggy with long doubles";
-    }
-#endif
-
     auto [result, val] = this->simple_specs_test(
         "0x1.fp3", this->make_format_specs_with_presentation(
                        scn::detail::presentation_type::float_fixed));
@@ -951,14 +927,6 @@ T get_hexfloat_interpreted_as_decimal(const std::string& input)
 
 TYPED_TEST(FloatValueReaderTest, PresentationHexValueScientific)
 {
-#if 0
-    if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                 long double>) {
-        // FIXME
-        return SUCCEED() << "This test is buggy with long doubles";
-    }
-#endif
-
     auto [result, val] = this->simple_specs_test(
         "12.3e4", this->make_format_specs_with_presentation(
                       scn::detail::presentation_type::float_hex));
@@ -972,14 +940,6 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueScientific)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationHexValueFixed)
 {
-#if 0
-    if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                 long double>) {
-        // FIXME
-        return SUCCEED() << "This test is buggy with long doubles";
-    }
-#endif
-
     auto [result, val] = this->simple_specs_test(
         "12.3", this->make_format_specs_with_presentation(
                     scn::detail::presentation_type::float_hex));
@@ -1035,8 +995,7 @@ struct thsep_test_state {
     scn::detail::locale_ref locref;
 };
 
-// TODO
-TYPED_TEST(FloatValueReaderTest, DISABLED_ThousandsSeparators)
+TYPED_TEST(FloatValueReaderTest, ThousandsSeparators)
 {
     auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
 
@@ -1046,19 +1005,17 @@ TYPED_TEST(FloatValueReaderTest, DISABLED_ThousandsSeparators)
     EXPECT_TRUE(check_floating_eq(val, this->get_thsep_number()));
 }
 
-TYPED_TEST(FloatValueReaderTest,
-           DISABLED_ThousandsSeparatorsWithInvalidGrouping)
+TYPED_TEST(FloatValueReaderTest, ThousandsSeparatorsWithInvalidGrouping)
 {
     auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
 
     auto [result, val] = this->simple_specs_and_locale_test(
         "12,34,56.789", state.specs, state.locref);
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::invalid_scanned_value,
-        this->get_thsep_number()));
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::invalid_scanned_value));
 }
 
-TYPED_TEST(FloatValueReaderTest, DISABLED_ExoticThousandsSeparators)
+TYPED_TEST(FloatValueReaderTest, ExoticThousandsSeparators)
 {
     if (!TestFixture::is_localized) {
         return SUCCEED() << "This test only works with localized_interface";
@@ -1072,8 +1029,7 @@ TYPED_TEST(FloatValueReaderTest, DISABLED_ExoticThousandsSeparators)
     EXPECT_TRUE(check_floating_eq(val, this->get_thsep_number()));
 }
 
-TYPED_TEST(FloatValueReaderTest,
-           DISABLED_ExoticThousandsSeparatorsWithInvalidGrouping)
+TYPED_TEST(FloatValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
 {
     if (!TestFixture::is_localized) {
         return SUCCEED() << "This test only works with localized_interface";
@@ -1083,7 +1039,6 @@ TYPED_TEST(FloatValueReaderTest,
 
     auto [result, val] = this->simple_specs_and_locale_test(
         "123,456.789", state.specs, state.locref);
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::invalid_scanned_value,
-        this->get_thsep_number()));
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::invalid_scanned_value));
 }

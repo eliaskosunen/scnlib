@@ -154,52 +154,6 @@ namespace scn {
                     return ranges::subrange{it, ranges::end(range)};
                 };
 
-#if 0
-                auto it = ranges::begin(range);
-                if (auto r = read_sign<IsSigned>(range)) {
-                    SCN_LIKELY_ATTR
-                    it = *r;
-                }
-                else {
-                    return unexpected(r.error());
-                }
-
-                auto original_base = m_base;
-                if (auto r = read_base_prefix(make_subrange(it))) {
-                    SCN_LIKELY_ATTR
-                    it = *r;
-                }
-                else {
-                    return unexpected(r.error());
-                }
-
-                auto digits_begin = it;
-                if (m_zero_parsed) {
-                    digits_begin = ranges_polyfill::prev_backtrack(
-                        it, ranges::begin(range));
-                    if (auto r =
-                            read_digits_zero(make_subrange(digits_begin))) {
-                        SCN_LIKELY_ATTR
-                        it = *r;
-                    }
-                    else {
-                        return unexpected(r.error());
-                    }
-                }
-                else {
-                    if (auto r = read_digits(make_subrange(digits_begin))) {
-                        SCN_LIKELY_ATTR
-                        it = *r;
-                    }
-                    else {
-                        return unexpected(r.error());
-                    }
-                }
-
-                m_nondigit_prefix_len = ranges::distance(ranges::begin(range), digits_begin);
-                this->m_buffer.assign(ranges::subrange{digits_begin, it});
-#endif
-
                 auto base_prefix_begin = ranges::begin(range);
                 auto digits_begin = ranges::begin(range);
 

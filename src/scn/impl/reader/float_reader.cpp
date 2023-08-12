@@ -558,7 +558,7 @@ namespace scn {
             T& value)
         {
             // TODO
-            SCN_EXPECT((m_options & float_reader_base::allow_thsep) == 0);
+            //SCN_EXPECT((m_options & float_reader_base::allow_thsep) == 0);
 
             auto n = dispatch_impl<CharT>({this->m_buffer, m_kind, m_options},
                                           m_nan_payload_buffer, value);

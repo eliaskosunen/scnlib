@@ -106,8 +106,9 @@ namespace scn {
                 const std::ptrdiff_t sign_len =
                     m_sign != numeric_reader_base::sign::default_sign ? 1 : 0;
 
-                return parse_value_impl(value).transform(
-                    [&](auto n) { return n + sign_len; });
+                return parse_value_impl(value).transform([&](auto n) {
+                    return n + sign_len + ranges::ssize(m_thsep_indices);
+                });
             }
 
         private:
@@ -122,6 +123,18 @@ namespace scn {
                         auto r = ranges::subrange{it, ranges::end(range)};
                         if constexpr (ranges::contiguous_range<Range> &&
                                       ranges::sized_range<Range>) {
+                            if (SCN_UNLIKELY(m_locale_options.thousands_sep !=
+                                             0)) {
+                                return do_read_source_impl(
+                                    r,
+                                    [&](auto&& rr) {
+                                        return read_regular_float(SCN_FWD(rr));
+                                    },
+                                    [&](auto&& rr) {
+                                        return read_hexfloat(SCN_FWD(rr));
+                                    });
+                            }
+
                             auto cb = [&](auto&& rr)
                                 -> scan_expected<
                                     ranges::borrowed_iterator_t<decltype(rr)>> {
@@ -149,7 +162,7 @@ namespace scn {
                                 });
                         }
                     })
-                    .transform([&](auto it) {
+                    .and_then([&](auto it) -> scan_expected<decltype(it)> {
                         SCN_EXPECT(m_kind != float_kind::tbd);
 
                         if (m_kind != float_kind::inf_short &&
@@ -160,7 +173,20 @@ namespace scn {
                                 ranges::subrange{digits_begin, it});
                         }
 
-                        strip_thseps_from_buffer();
+                        handle_separators();
+
+                        if (!m_thsep_indices.empty()) {
+                            SCN_EXPECT(m_integral_part_length >= 0);
+                            if (auto e = this->check_thsep_grouping(
+                                    ranges::subrange{
+                                        digits_begin,
+                                        ranges::next(digits_begin,
+                                                     m_integral_part_length)},
+                                    m_thsep_indices, m_locale_options.grouping);
+                                SCN_UNLIKELY(!e)) {
+                                return unexpected(e);
+                            }
+                        }
 
                         return it;
                     });
@@ -335,6 +361,7 @@ namespace scn {
                     it = *r;
                 }
 
+                m_integral_part_length = digits_count;
                 if (auto r = read_matching_code_unit(
                         ranges::subrange{it, ranges::end(range)},
                         m_locale_options.decimal_point)) {
@@ -380,6 +407,7 @@ namespace scn {
                     it = *r;
                 }
 
+                m_integral_part_length = digits_count;
                 if (auto r = read_matching_code_unit(
                         ranges::subrange{it, ranges::end(range)},
                         m_locale_options.decimal_point)) {
@@ -477,9 +505,10 @@ namespace scn {
                 }
             }
 
-            void strip_thseps_from_buffer()
+            void handle_separators()
             {
-                if (m_locale_options.thousands_sep == 0) {
+                if (m_locale_options.thousands_sep == 0 &&
+                    m_locale_options.decimal_point == CharT{'.'}) {
                     return;
                 }
 
@@ -490,17 +519,20 @@ namespace scn {
                     return;
                 }
 
-                auto push_iter = [&](auto it) {
-                    m_thsep_indices.push_back(
-                        static_cast<char>(ranges::distance(str.begin(), it)));
-                };
+                m_thsep_indices.push_back(
+                    static_cast<char>(ranges::distance(str.begin(), first)));
 
-                push_iter(first);
-                for (auto it = std::next(first); it != str.end(); ++it) {
-                    if (*it == m_locale_options.thousands_sep) {
-                        push_iter(it);
-                        *first = ranges::iter_move(it);
-                        ++first;
+                for (auto it = first; ++it != str.end();) {
+                    if (*it == m_locale_options.decimal_point) {
+                        *it = CharT{'.'};
+                    }
+
+                    if (*it != m_locale_options.thousands_sep) {
+                        *first++ = std::move(*it);
+                    }
+                    else {
+                        m_thsep_indices.push_back(static_cast<char>(
+                            ranges::distance(str.begin(), it)));
                     }
                 }
 
@@ -523,6 +555,7 @@ namespace scn {
             localized_number_formatting_options<CharT> m_locale_options{};
             std::string m_thsep_indices{};
             contiguous_range_factory<CharT> m_nan_payload_buffer{};
+            std::ptrdiff_t m_integral_part_length{-1};
             numeric_reader_base::sign m_sign{
                 numeric_reader_base::sign::default_sign};
             float_kind m_kind{float_kind::tbd};
