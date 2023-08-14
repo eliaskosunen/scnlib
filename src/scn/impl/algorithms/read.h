@@ -257,8 +257,10 @@ namespace scn {
             if constexpr (ranges::contiguous_range<Range> &&
                           ranges::sized_range<Range> &&
                           std::is_same_v<detail::char_t<Range>, char>) {
-                return find_classic_space_narrow_fast(
-                    make_contiguous_buffer(SCN_FWD(range)).view());
+                auto buf = make_contiguous_buffer(SCN_FWD(range));
+                auto it = find_classic_space_narrow_fast(buf.view());
+                return ranges::next(ranges::begin(range),
+                                    ranges::distance(buf.view().begin(), it));
             }
             else {
                 return read_until_code_unit(
@@ -470,9 +472,31 @@ namespace scn {
             const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
 
             if constexpr (std::is_same_v<detail::char_t<Range>, wchar_t>) {
-                return read_until_code_unit(SCN_FWD(range), [&](wchar_t ch) {
-                    return ctype_facet.is(mask, ch) == read_until;
-                });
+                if constexpr (ranges::contiguous_range<Range> &&
+                              ranges::sized_range<Range>) {
+                    if (read_until) {
+                        const auto ptr = ctype_facet.scan_is(
+                            mask, ranges::data(range),
+                            ranges::data(range) + ranges::size(range));
+                        return ranges::next(
+                            ranges::begin(range),
+                            ranges::distance(ranges::data(range), ptr));
+                    }
+                    else {
+                        const auto ptr = ctype_facet.scan_not(
+                            mask, ranges::data(range),
+                            ranges::data(range) + ranges::size(range));
+                        return ranges::next(
+                            ranges::begin(range),
+                            ranges::distance(ranges::data(range), ptr));
+                    }
+                }
+                else {
+                    return read_until_code_unit(
+                        SCN_FWD(range), [&](wchar_t ch) {
+                            return ctype_facet.is(mask, ch) == read_until;
+                        });
+                }
             }
             else {
                 return read_until_code_point(
@@ -482,22 +506,6 @@ namespace scn {
                         return ctype_facet.is(mask, ch) == read_until;
                     });
             }
-        }
-
-        template <typename Range, typename Predicate>
-        scan_expected<ranges::borrowed_iterator_t<Range>>
-        read_localized_mask_or_code_point_impl(Range&& range,
-                                               detail::locale_ref loc,
-                                               std::ctype_base::mask mask,
-                                               Predicate&& pred,
-                                               bool read_until)
-        {
-            const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
-
-            return read_until_code_point(SCN_FWD(range), [&](code_point cp) {
-                auto ch = *encode_code_point_as_wide_character(cp, false);
-                return ctype_facet.is(mask, ch) == read_until || pred(cp);
-            });
         }
 
         template <typename Range>
@@ -541,8 +549,12 @@ namespace scn {
                                                 std::ctype_base::mask mask,
                                                 Predicate&& pred)
         {
-            return read_localized_mask_or_code_point_impl(
-                SCN_FWD(range), loc, mask, SCN_FWD(pred), true);
+            const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
+
+            return read_until_code_point(SCN_FWD(range), [&](code_point cp) {
+                auto ch = *encode_code_point_as_wide_character(cp, false);
+                return pred(cp) || ctype_facet.is(mask, ch);
+            });
         }
 
         template <typename Range, typename Predicate>
@@ -552,10 +564,13 @@ namespace scn {
                                                 std::ctype_base::mask mask,
                                                 Predicate&& pred)
         {
-            return read_localized_mask_or_code_point_impl(
-                SCN_FWD(range), loc, mask, SCN_FWD(pred), false);
-        }
+            const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
 
+            return read_while_code_point(SCN_FWD(range), [&](code_point cp) {
+                auto ch = *encode_code_point_as_wide_character(cp, false);
+                return pred(cp) || ctype_facet.is(mask, ch);
+            });
+        }
         template <typename Range, typename Iterator>
         ranges::borrowed_iterator_t<Range> apply_opt(
             scan_expected<Iterator>&& result,

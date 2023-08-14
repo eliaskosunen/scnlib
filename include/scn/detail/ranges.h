@@ -302,6 +302,29 @@ namespace nano {
     inline constexpr bool
         enable_borrowed_range<scn::ranges_polyfill::owning_view<T>> =
             enable_borrowed_range<T>;
+
+    namespace detail {
+        template <>
+        struct iterator_category_<std::string::iterator, void> {
+            using type = contiguous_iterator_tag;
+        };
+        template <>
+        struct iterator_category_<std::wstring::iterator, void>
+            : contiguous_iterator_tag {
+            using type = contiguous_iterator_tag;
+        };
+
+        template <>
+        struct iterator_category_<std::string_view::iterator, void>
+            : contiguous_iterator_tag {
+            using type = contiguous_iterator_tag;
+        };
+        template <>
+        struct iterator_category_<std::wstring_view::iterator, void>
+            : contiguous_iterator_tag {
+            using type = contiguous_iterator_tag;
+        };
+    }  // namespace detail
 }  // namespace nano
 
 #endif  // SCN_STD_RANGES

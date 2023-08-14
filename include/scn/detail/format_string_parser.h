@@ -669,7 +669,6 @@ namespace scn {
             if (begin != end && *begin == CharT{'-'} && (begin + 1) != end &&
                 *(begin + 1) != CharT{']'}) {
                 ++begin;
-                SCN_ENSURE(*begin == CharT{'-'});
 
                 auto cp_second =
                     parse_presentation_set_code_point(begin, end, handler);

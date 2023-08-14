@@ -468,6 +468,8 @@ namespace scn {
         bool transcode_to_string(std::basic_string_view<SourceCharT> source,
                                  std::basic_string<DestCharT>& dest)
         {
+            static_assert(!std::is_same_v<SourceCharT, DestCharT>);
+
             if (SCN_UNLIKELY(!validate_unicode(source))) {
                 return false;
             }

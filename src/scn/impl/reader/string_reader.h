@@ -94,6 +94,11 @@ namespace scn {
             std::basic_string<DestCharT>& dest)
         {
             if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
+                if (SCN_UNLIKELY(!validate_unicode(source.view()))) {
+                    return {scan_error::invalid_encoding,
+                            "Failed to validate string value"};
+                }
+
                 dest.assign(source.view());
             }
             else {
@@ -382,8 +387,12 @@ namespace scn {
                 constexpr bool is_char_set_in_literals(char ch) const
                 {
                     SCN_EXPECT(is_ascii_char(ch));
-                    const auto val = static_cast<size_t>(ch);
-                    return (specs.charset_literals[val / 8] >> (val % 8)) & 1u;
+                    const auto val =
+                        static_cast<unsigned>(static_cast<unsigned char>(ch));
+                    return (static_cast<unsigned>(
+                                specs.charset_literals[val / 8]) >>
+                            (val % 8)) &
+                           1u;
                 }
 
                 constexpr bool is_char_set_in_specifiers(char ch) const
@@ -397,6 +406,10 @@ namespace scn {
                 bool is_char_set_in_extra_literals(code_point cp) const
                 {
                     // TODO: binary search?
+                    if (nonascii.extra_ranges.empty()) {
+                        return false;
+                    }
+
                     const auto cp_val = static_cast<uint32_t>(cp);
                     return ranges::find_if(
                                nonascii.extra_ranges,
@@ -512,44 +525,8 @@ namespace scn {
                         detail::character_set_specifier::none) {
                         mask |= std::ctype_base::cntrl;
                     }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::alnum) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::alnum;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::graph) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::graph;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::print) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::print;
-                    }
 
                     // TODO: inverted flags
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::letters) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::alpha;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::alnum_underscore) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::alnum;
-                        is_exhaustive = false;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::whitespace) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::space;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::numbers) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::digit;
-                    }
 
                     return {mask, is_exhaustive};
                 }
@@ -659,25 +636,40 @@ namespace scn {
 
                 read_source_callback cb_wrapper{helper, loc};
 
-                auto [mask, is_mask_exhaustive] = helper.map_localized_mask();
+                const auto [mask, is_mask_exhaustive] =
+                    helper.map_localized_mask();
+                const bool has_any_ascii_literals =
+                    ranges::any_of(helper.specs.charset_literals,
+                                   [](auto b) { return b != 0; });
+                const bool has_any_nonascii_literals =
+                    !helper.nonascii.extra_ranges.empty();
 
-                if (!is_mask_exhaustive) {
-                    const auto cb = [&](code_point cp) {
-                        return cb_wrapper.on_localized(cp);
-                    };
-
+                if (is_mask_exhaustive && !has_any_ascii_literals &&
+                    !has_any_nonascii_literals) {
                     if (is_inverted) {
-                        return read_until_localized_mask_or_code_point(
-                            SCN_FWD(range), loc, mask, cb);
+                        return read_until_localized_mask(SCN_FWD(range), loc,
+                                                         mask);
                     }
-                    return read_while_localized_mask_or_code_point(
-                        SCN_FWD(range), loc, mask, cb);
+                    return read_while_localized_mask(SCN_FWD(range), loc, mask);
+                }
+
+                const auto cb = [&](code_point cp) {
+                    return cb_wrapper.on_localized(cp);
+                };
+
+                if (is_mask_exhaustive && mask == std::ctype_base::mask{}) {
+                    if (is_inverted) {
+                        return read_until_code_point(SCN_FWD(range), cb);
+                    }
+                    return read_while_code_point(SCN_FWD(range), cb);
                 }
 
                 if (is_inverted) {
-                    return read_until_localized_mask(SCN_FWD(range), loc, mask);
+                    return read_until_localized_mask_or_code_point(
+                        SCN_FWD(range), loc, mask, cb);
                 }
-                return read_while_localized_mask(SCN_FWD(range), loc, mask);
+                return read_while_localized_mask_or_code_point(SCN_FWD(range),
+                                                               loc, mask, cb);
             }
         };
 

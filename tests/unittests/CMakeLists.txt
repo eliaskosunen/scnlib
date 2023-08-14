@@ -54,6 +54,7 @@ add_executable(scn_impl_tests
         impl_tests/find_fast_test.cpp
         impl_tests/float_reader_test.cpp
         impl_tests/read_algorithms_test.cpp
+        impl_tests/string_reader_test.cpp
         impl_tests/text_width_test.cpp
         impl_tests/whitespace_skip_test.cpp
 
