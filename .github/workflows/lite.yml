@@ -127,7 +127,7 @@ jobs:
         run: |
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
                 -DCMAKE_CXX_STANDARD=20 \
-                -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON -DSCN_COVERAGE=ON \
+                -DSCN_TESTS_LOCALIZED=ON -DSCN_COVERAGE=ON \
                 $GITHUB_WORKSPACE
 
       - name: Build

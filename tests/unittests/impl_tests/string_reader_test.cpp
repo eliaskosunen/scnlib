@@ -23,34 +23,6 @@
 
 using namespace std::string_view_literals;
 
-#if !SCN_STD_RANGES
-namespace scn {
-    static_assert(ranges::contiguous_range<std::string&>);
-
-    static_assert(ranges::contiguous_iterator<std::string::iterator>);
-    static_assert(ranges::random_access_iterator<std::string::iterator>);
-    static_assert(ranges_std::derived_from<
-                  ranges::iterator_category_t<std::string::iterator>,
-                  ranges::contiguous_iterator_tag>);
-
-    template <typename>
-    struct debug;
-
-    void foo()
-    {
-        // debug<ranges::iterator_category_t<std::string::iterator>>{};
-        // debug<std::string::iterator::iterator_category>{};
-    }
-
-    static_assert(std::is_lvalue_reference_v<
-                  ranges_std::iter_reference_t<std::string::iterator>>);
-    static_assert(
-        std::is_same_v<ranges_std::iter_value_t<std::string::iterator>,
-                       detail::remove_cvref_t<ranges_std::iter_reference_t<
-                           std::string::iterator>>>);
-}  // namespace scn
-#endif
-
 TEST(StringReaderTranscodeTest, StringViewWithSameCharacterType)
 {
     auto src = scn::impl::string_view_wrapper{"foo"sv};

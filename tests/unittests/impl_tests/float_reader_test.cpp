@@ -869,11 +869,19 @@ TYPED_TEST(FloatValueReaderTest, PresentationScientificValueFixed)
     EXPECT_TRUE(this->check_failure_with_code(
         result, val, scn::scan_error::invalid_scanned_value));
 }
-TYPED_TEST(FloatValueReaderTest, PresentationScientificValueHex)
+TYPED_TEST(FloatValueReaderTest, PresentationScientificValueHexWithPrefix)
 {
     auto [result, val] = this->simple_specs_test(
         "0x1.fp3", this->make_format_specs_with_presentation(
                        scn::detail::presentation_type::float_scientific));
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::invalid_scanned_value));
+}
+TYPED_TEST(FloatValueReaderTest, PresentationScientificValueHexWithoutPrefix)
+{
+    auto [result, val] = this->simple_specs_test(
+        "1.fp3", this->make_format_specs_with_presentation(
+                     scn::detail::presentation_type::float_scientific));
     EXPECT_TRUE(this->check_failure_with_code(
         result, val, scn::scan_error::invalid_scanned_value));
 }
@@ -899,7 +907,7 @@ TYPED_TEST(FloatValueReaderTest, PresentationFixedValueFixed)
     EXPECT_TRUE(a);
     EXPECT_TRUE(check_floating_eq(val, orig_val));
 }
-TYPED_TEST(FloatValueReaderTest, PresentationFixedValueHex)
+TYPED_TEST(FloatValueReaderTest, PresentationFixedValueHexWithPrefix)
 {
     auto [result, val] = this->simple_specs_test(
         "0x1.fp3", this->make_format_specs_with_presentation(
@@ -909,6 +917,17 @@ TYPED_TEST(FloatValueReaderTest, PresentationFixedValueHex)
               this->widened_source->data() + 1);
     EXPECT_TRUE(check_floating_eq(
         val, static_cast<typename TestFixture::float_type>(0.0)));
+}
+TYPED_TEST(FloatValueReaderTest, PresentationFixedValueHexWithoutPrefix)
+{
+    auto [result, val] = this->simple_specs_test(
+        "1.fp3", this->make_format_specs_with_presentation(
+                     scn::detail::presentation_type::float_fixed));
+    ASSERT_TRUE(result);
+    EXPECT_EQ(scn::detail::to_address(result.value()),
+              this->widened_source->data() + 2);
+    EXPECT_TRUE(check_floating_eq(
+        val, static_cast<typename TestFixture::float_type>(1.0)));
 }
 
 template <typename T>
@@ -951,11 +970,20 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueFixed)
     EXPECT_EQ(scn::detail::to_address(*result),
               this->widened_source->data() + this->widened_source->size());
 }
-TYPED_TEST(FloatValueReaderTest, PresentationHexValueHex)
+TYPED_TEST(FloatValueReaderTest, PresentationHexValueHexWithPrefix)
 {
     auto [a, _, val] = this->simple_success_specs_test(
         "0x1.fp3", this->make_format_specs_with_presentation(
                        scn::detail::presentation_type::float_hex));
+    EXPECT_TRUE(a);
+    EXPECT_TRUE(check_floating_eq(
+        val, static_cast<typename TestFixture::float_type>(0x1.fp3)));
+}
+TYPED_TEST(FloatValueReaderTest, PresentationHexValueHexWithoutPrefix)
+{
+    auto [a, _, val] = this->simple_success_specs_test(
+        "1.fp3", this->make_format_specs_with_presentation(
+                     scn::detail::presentation_type::float_hex));
     EXPECT_TRUE(a);
     EXPECT_TRUE(check_floating_eq(
         val, static_cast<typename TestFixture::float_type>(0x1.fp3)));
