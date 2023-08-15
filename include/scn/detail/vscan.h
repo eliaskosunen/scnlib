@@ -73,38 +73,36 @@ namespace scn {
             std::string_view source,
             std::string_view format,
             scan_args_for<std::string_view, char> args);
-        template <typename Locale,
-                  typename = std::void_t<decltype(Locale::classic())>>
+        template <typename Locale>
         vscan_impl_result<erased_subrange> vscan_localized_impl(
-            Locale& loc,
+            const Locale& loc,
             erased_subrange source,
             std::string_view format,
             scan_args_for<erased_subrange, char> args);
 #if SCN_USE_IOSTREAMS
-        template <typename Locale,
-                  typename = std::void_t<decltype(Locale::classic())>>
+        template <typename Locale>
         vscan_impl_result<istreambuf_subrange> vscan_localized_impl(
-            Locale& loc,
+            const Locale& loc,
             istreambuf_subrange source,
             std::string_view format,
             scan_args_for<istreambuf_subrange, char> args);
 #endif
 
         template <typename Locale>
-        vscan_impl_result<std::wstring_view> vscan_impl(
+        vscan_impl_result<std::wstring_view> vscan_localized_impl(
             const Locale& loc,
             std::wstring_view source,
             std::wstring_view format,
             scan_args_for<std::wstring_view, wchar_t> args);
         template <typename Locale>
-        vscan_impl_result<werased_subrange> vscan_impl(
+        vscan_impl_result<werased_subrange> vscan_localized_impl(
             const Locale& loc,
             werased_subrange source,
             std::wstring_view format,
             scan_args_for<werased_subrange, wchar_t> args);
 #if SCN_USE_IOSTREAMS
         template <typename Locale>
-        vscan_impl_result<wistreambuf_subrange> vscan_impl(
+        vscan_impl_result<wistreambuf_subrange> vscan_localized_impl(
             const Locale& loc,
             wistreambuf_subrange source,
             std::wstring_view format,

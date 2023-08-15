@@ -137,6 +137,10 @@ namespace scn {
                     }
                 }
 
+                SCN_CLANG_PUSH
+                // false positive
+                SCN_CLANG_IGNORE("-Wzero-as-null-pointer-constant")
+
                 for (; thsep_it < thsep_indices.rend() - 1; ++thsep_it) {
                     if (*thsep_it != grouping.back()) {
                         return false;
@@ -148,6 +152,8 @@ namespace scn {
                         return false;
                     }
                 }
+
+                SCN_CLANG_POP
 
                 return true;
             }

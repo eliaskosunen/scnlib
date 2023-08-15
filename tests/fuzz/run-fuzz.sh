@@ -18,4 +18,4 @@ seed_dir=$data_dir/seed-corpora/$data
 
 mkdir -p "$corpus_dir"
 echo "Running $fuzzer_bin, with dictionary at $dict_file and seed corpus at $seed_dir, generating corpus at $corpus_dir"
-$fuzzer_bin -dict="$dict_file" "$corpus_dir" "$seed_dir"
+$fuzzer_bin -dict="$dict_file" "$corpus_dir" "$seed_dir" -rss_limit_mb=4096

@@ -51,9 +51,7 @@ namespace scn {
             string_set,            // '[...]'
             character,             // 'c'
             escaped_character,     // '?'
-            // TODO: remove unicode_character?
-            unicode_character,  // 'U'
-            pointer,            // 'p'
+            pointer,               // 'p'
         };
 
         enum class character_set_specifier {
@@ -338,8 +336,6 @@ namespace scn {
                     return presentation_type::character;
                 case '?':
                     return presentation_type::escaped_character;
-                case 'U':
-                    return presentation_type::unicode_character;
                 case 'p':
                     return presentation_type::pointer;
                 case '[':
@@ -727,6 +723,10 @@ namespace scn {
             }
 
             while (begin != end) {
+                if (SCN_UNLIKELY(!handler)) {
+                    break;
+                }
+
                 if (*begin == CharT{']'}) {
                     return {start,
                             static_cast<size_t>(std::distance(start, ++begin))};
@@ -1149,8 +1149,7 @@ namespace scn {
         {
             check_disallow_thsep(specs, handler);
             if (specs.type != presentation_type::none &&
-                specs.type != presentation_type::character &&
-                specs.type != presentation_type::unicode_character) {
+                specs.type != presentation_type::character) {
                 SCN_UNLIKELY_ATTR
                 return handler.on_error(
                     "Invalid type specifier for character type");
@@ -1182,11 +1181,10 @@ namespace scn {
                 specs.type == presentation_type::string_set) {
                 return;
             }
-            if (specs.type == presentation_type::character ||
-                specs.type == presentation_type::unicode_character) {
+            if (specs.type == presentation_type::character) {
                 if (SCN_UNLIKELY(specs.width == 0)) {
                     return handler.on_error(
-                        "'c' and 'U' type specifiers for strings require the "
+                        "'c' type specifier for strings requires the "
                         "field width to be specified");
                 }
                 return;

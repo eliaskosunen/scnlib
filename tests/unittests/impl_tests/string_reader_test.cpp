@@ -393,6 +393,13 @@ TYPED_TEST_SUITE(StringCharacterSetReaderTest, type_list);
 
 SCN_CLANG_POP
 
+TYPED_TEST(StringCharacterSetReaderTest, MatchEmpty) {
+    auto& src = this->set_source("123"sv);
+    auto [ret, val] = this->read(this->make_specs_from_set("[:alpha:]"));
+
+    ASSERT_FALSE(ret);
+}
+
 TYPED_TEST(StringCharacterSetReaderTest, AlphaSpecifier)
 {
     auto& src = this->set_source("abc123"sv);

@@ -263,6 +263,33 @@ namespace scn {
             return !(a == b);
         }
 
+        friend bool operator<(const iterator& a, const iterator& b)
+        {
+            if (a._is_end() && b._is_end()) {
+                return false;
+            }
+            if (a._is_end() && !b._is_end()) {
+                return false;
+            }
+            if (!a._is_end() && b._is_end()) {
+                return true;
+            }
+            SCN_EXPECT(a.m_impl == b.m_impl);
+            return a.m_current < b.m_current;
+        }
+        friend bool operator>(const iterator& a, const iterator& b)
+        {
+            return b < a;
+        }
+        friend bool operator<=(const iterator& a, const iterator& b)
+        {
+            return !(a > b);
+        }
+        friend bool operator>=(const iterator& a, const iterator& b)
+        {
+            return !(a < b);
+        }
+
     private:
         iterator(detail::basic_erased_range_impl_base<char_type>* impl)
             SCN_NOEXCEPT : m_impl(impl)

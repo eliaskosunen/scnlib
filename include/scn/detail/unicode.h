@@ -72,10 +72,11 @@ namespace scn {
             constexpr std::string_view lengths =
                 "\1\1\1\1\1\1\1\1"  // highest bit is 0 -> single-byte
                 "\1\1\1\1\1\1\1\1"
-                "\0\0\0\0\0\0\0\0"  // highest bits 10 -> error, non-initial byte
-                "\2\2\2\2"  // highest bits 110 -> 2-byte cp
-                "\3\3"      // highest bits 1110 -> 3-byte cp
-                "\4";       // highest bits 11110 -> 4-byte cp
+                "\0\0\0\0\0\0\0\0"  // highest bits 10 -> error, non-initial
+                                    // byte
+                "\2\2\2\2"          // highest bits 110 -> 2-byte cp
+                "\3\3"              // highest bits 1110 -> 3-byte cp
+                "\4";               // highest bits 11110 -> 4-byte cp
             return lengths[static_cast<unsigned char>(ch) >> 3];
             SCN_GCC_COMPAT_POP
         }
@@ -126,14 +127,20 @@ namespace scn {
             };
 
             if (input.size() == 1) {
-                SCN_EXPECT(static_cast<unsigned char>(input[0]) < 0x80);
+                if (static_cast<unsigned char>(input[0]) >= 0x80) {
+                    SCN_UNLIKELY_ATTR
+                    return invalid_code_point;
+                }
                 return static_cast<code_point>(input[0]);
             }
 
             if (input.size() == 2) {
-                SCN_EXPECT((static_cast<unsigned char>(input[0]) & 0xe0) ==
-                           0xc0);
+                if ((static_cast<unsigned char>(input[0]) & 0xe0) != 0xc0) {
+                    SCN_UNLIKELY_ATTR
+                    return invalid_code_point;
+                }
                 if (!is_trailing_code_unit(input[1])) {
+                    SCN_UNLIKELY_ATTR
                     return invalid_code_point;
                 }
 
@@ -144,10 +151,13 @@ namespace scn {
             }
 
             if (input.size() == 3) {
-                SCN_EXPECT((static_cast<unsigned char>(input[0]) & 0xf0) ==
-                           0xe0);
+                if ((static_cast<unsigned char>(input[0]) & 0xf0) != 0xe0) {
+                    SCN_UNLIKELY_ATTR
+                    return invalid_code_point;
+                }
                 if (!is_trailing_code_unit(input[1]) ||
                     !is_trailing_code_unit(input[2])) {
+                    SCN_UNLIKELY_ATTR
                     return invalid_code_point;
                 }
 
@@ -159,12 +169,18 @@ namespace scn {
             }
 
             if (input.size() == 4) {
-                SCN_EXPECT((static_cast<unsigned char>(input[0]) & 0xf8) ==
-                           0xf0);
-                SCN_EXPECT(static_cast<unsigned char>(input[0]) <= 0xf4);
+                if ((static_cast<unsigned char>(input[0]) & 0xf8) != 0xf0) {
+                    SCN_UNLIKELY_ATTR
+                    return invalid_code_point;
+                }
+                if (static_cast<unsigned char>(input[0]) > 0xf4) {
+                    SCN_UNLIKELY_ATTR
+                    return invalid_code_point;
+                }
                 if (!is_trailing_code_unit(input[1]) ||
                     !is_trailing_code_unit(input[2]) ||
                     !is_trailing_code_unit(input[3])) {
+                    SCN_UNLIKELY_ATTR
                     return invalid_code_point;
                 }
 

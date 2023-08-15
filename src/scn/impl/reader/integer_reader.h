@@ -171,9 +171,15 @@ namespace scn {
                         }
 
                         digits_begin = it;
-                        return read_digits(make_subrange(it), base_prefix_begin);
+                        return read_digits(make_subrange(it),
+                                           base_prefix_begin);
                     })
                     .transform([&](auto it) {
+                        if (it <= digits_begin) {
+                            digits_begin = base_prefix_begin;
+                        }
+
+                        SCN_EXPECT(digits_begin <= it);
                         m_nondigit_prefix_len = ranges::distance(
                             ranges::begin(range), digits_begin);
                         numeric_base::m_buffer.assign(
@@ -351,7 +357,8 @@ namespace scn {
                     SCN_LIKELY_ATTR
                     return *r;
                 }
-                else if (r.error() == scan_error::invalid_scanned_value && m_base_prefix_parsed) {
+                else if (r.error() == scan_error::invalid_scanned_value &&
+                         m_base_prefix_parsed) {
                     m_zero_parsed = true;
                     return ranges::next(base_prefix_begin);
                 }
@@ -504,7 +511,7 @@ namespace scn {
                 return {options, specs.get_base(0)};
             }
         };
-    };  // namespace impl
+    }  // namespace impl
 
     SCN_END_NAMESPACE
 }  // namespace scn

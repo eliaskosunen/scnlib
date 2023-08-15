@@ -109,8 +109,9 @@ namespace scn {
                                                     it, ranges::end(range)},
                                                 specs.width),
                                             specs, value, loc)
-                                .transform(
-                                    [](auto w_it) { return w_it.base(); });
+                                .transform([](auto w_it) SCN_NOEXCEPT {
+                                    return w_it.base();
+                                });
                         }
 
                         return rd.read_specs(

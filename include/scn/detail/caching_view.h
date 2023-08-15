@@ -270,6 +270,33 @@ namespace scn {
                 return !(*this == o);
             }
 
+            friend bool operator<(const iterator& a, const iterator& b)
+            {
+                if (a.is_at_end() && b.is_at_end()) {
+                    return false;
+                }
+                if (a.is_at_end() && !b.is_at_end()) {
+                    return false;
+                }
+                if (!a.is_at_end() && b.is_at_end()) {
+                    return true;
+                }
+                SCN_EXPECT(a.m_view == b.m_view);
+                return a.m_index < b.m_index;
+            }
+            friend bool operator>(const iterator& a, const iterator& b)
+            {
+                return b < a;
+            }
+            friend bool operator<=(const iterator& a, const iterator& b)
+            {
+                return !(a > b);
+            }
+            friend bool operator>=(const iterator& a, const iterator& b)
+            {
+                return !(a < b);
+            }
+
         private:
             iterator(const view_type& view) : m_view(&view) {}
 

@@ -264,7 +264,8 @@ namespace scn {
             }
             else {
                 return read_until_code_unit(
-                    SCN_FWD(range), [](auto ch) { return is_ascii_space(ch); });
+                    SCN_FWD(range),
+                    [](auto ch) SCN_NOEXCEPT { return is_ascii_space(ch); });
             }
         }
 
@@ -280,7 +281,8 @@ namespace scn {
             }
             else {
                 return read_while_code_unit(
-                    SCN_FWD(range), [](auto ch) { return is_ascii_space(ch); });
+                    SCN_FWD(range),
+                    [](auto ch) SCN_NOEXCEPT { return is_ascii_space(ch); });
             }
         }
 

@@ -16,6 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/scan.h>
+#include <scn/xchar.h>
 #include <simdutf.h>
 
 #include <sstream>
@@ -196,37 +197,41 @@ namespace scn::fuzz {
     {
         // Regular scan
         for (const auto& f : format_strings) {
-            auto range = scn::scan_map_input_range(source);
+            auto it = scn::ranges::begin(source);
             while (true) {
-                auto [result, i] = scn::scan<T>(range, f);
+                auto result = scn::scan<T>(
+                    scn::ranges::subrange{it, scn::ranges::end(source)}, f);
                 if (!result) {
                     break;
                 }
-                range = std::move(result.range());
+                it = result->begin();
             }
         }
 
         // scan localized
         for (const auto& f : format_strings) {
-            auto range = scn::scan_map_input_range(source);
+            auto it = scn::ranges::begin(source);
             while (true) {
-                auto [result, i] = scn::scan<T>(global_locale, range, f);
+                auto result = scn::scan<T>(
+                    global_locale,
+                    scn::ranges::subrange{it, scn::ranges::end(source)}, f);
                 if (!result) {
                     break;
                 }
-                range = std::move(result.range());
+                it = result->begin();
             }
         }
 
         // scan_value
         {
-            auto range = scn::scan_map_input_range(source);
+            auto it = scn::ranges::begin(source);
             while (true) {
-                auto [result, i] = scn::scan_value<T>(range);
+                auto result = scn::scan_value<T>(
+                    scn::ranges::subrange{it, scn::ranges::end(source)});
                 if (!result) {
                     break;
                 }
-                range = std::move(result.range());
+                it = result->begin();
             }
         }
     }

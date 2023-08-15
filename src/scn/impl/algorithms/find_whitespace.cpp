@@ -28,15 +28,17 @@ namespace scn {
             std::string_view::iterator find_classic_space_simple_impl(
                 std::string_view source)
             {
-                return ranges::find_if(
-                    source, [](char ch) { return is_ascii_space(ch); });
+                return ranges::find_if(source, [](char ch) SCN_NOEXCEPT {
+                    return is_ascii_space(ch);
+                });
             }
 
             std::string_view::iterator find_classic_nonspace_simple_impl(
                 std::string_view source)
             {
-                return ranges::find_if(
-                    source, [](char ch) { return !is_ascii_space(ch); });
+                return ranges::find_if(source, [](char ch) SCN_NOEXCEPT {
+                    return !is_ascii_space(ch);
+                });
             }
 
             bool is_decimal_digit(char ch) SCN_NOEXCEPT
@@ -82,8 +84,9 @@ namespace scn {
             std::string_view::iterator find_nondecimal_digit_simple_impl(
                 std::string_view source)
             {
-                return ranges::find_if(
-                    source, [](char ch) { return !is_decimal_digit(ch); });
+                return ranges::find_if(source, [](char ch) SCN_NOEXCEPT {
+                    return !is_decimal_digit(ch);
+                });
             }
 
             template <typename GetMask, typename Fallback>

@@ -48,12 +48,46 @@ SCN_CLANG_IGNORE("-Wreserved-identifier")
 SCN_CLANG_POP
 SCN_GCC_POP
 
+#include <clocale>
 #include <limits>
 #include <sstream>
 #include <string_view>
 
 #if SCN_HAS_FLOAT_CHARCONV
 #include <charconv>
+#endif
+
+#define SCN_XLOCALE_POSIX 0
+#define SCN_XLOCALE_MSVC  1
+#define SCN_XLOCALE_OTHER 2
+
+#if SCN_HAS_INCLUDE(<xlocale.h>)
+#include <xlocale.h>
+#define SCN_XLOCALE SCN_XLOCALE_POSIX
+
+#elif defined(_MSC_VER)
+#define SCN_XLOCALE SCN_XLOCALE_MSVC
+
+#elif defined(__GLIBC__)
+// glibc
+
+#include <features.h>
+
+#if !((__GLIBC__ > 2) || ((__GLIBC__ == 2) && (__GLIBC_MINOR__ > 25)))
+#include <xlocale.h>
+#define SCN_XLOCALE SCN_XLOCALE_POSIX
+#endif  // __GLIBC__ <= 2.25
+
+#elif defined(__FreeBSD_version) && __FreeBSD_version >= 1000010
+
+// FreeBSD
+#include <xlocale.h>
+#define SCN_XLOCALE SCN_XLOCALE_POSIX
+
+#endif  // ^^^ else
+
+#ifndef SCN_XLOCALE
+#define SCN_XLOCALE SCN_XLOCALE_OTHER
 #endif
 
 namespace scn {
@@ -109,7 +143,6 @@ namespace scn {
                                                     const CharT* src,
                                                     Strtod strtod_cb)
                 {
-                    set_clocale_classic_guard clocale_guard{LC_NUMERIC};
                     CharT* end{};
                     errno = 0;
                     value = strtod_cb(src, &end);
@@ -123,8 +156,8 @@ namespace scn {
                     }
 
                     if (m_kind ==
-                        float_reader_base::float_kind::hex_without_prefix) {
-                        SCN_EXPECT(chars_read >= 2);
+                            float_reader_base::float_kind::hex_without_prefix &&
+                        chars_read >= 2) {
                         chars_read -= 2;
                     }
 
@@ -200,6 +233,30 @@ namespace scn {
 
                 static T generic_narrow_strtod(const char* str, char** str_end)
                 {
+#if SCN_XLOCALE == SCN_XLOCALE_POSIX
+                    static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", NULL);
+                    if constexpr (std::is_same_v<T, float>) {
+                        return ::strtof_l(str, str_end, cloc);
+                    }
+                    else if constexpr (std::is_same_v<T, double>) {
+                        return ::strtod_l(str, str_end, cloc);
+                    }
+                    else if constexpr (std::is_same_v<T, long double>) {
+                        return ::strtold_l(str, str_end, cloc);
+                    }
+#elif SCN_XLOCALE == SCN_XLOCALE_MSVC
+                    static _locale_t cloc = ::_create_locale(LC_ALL, "C");
+                    if constexpr (std::is_same_v<T, float>) {
+                        return ::_strtof_l(str, str_end, cloc);
+                    }
+                    else if constexpr (std::is_same_v<T, double>) {
+                        return ::_strtod_l(str, str_end, cloc);
+                    }
+                    else if constexpr (std::is_same_v<T, long double>) {
+                        return ::_strtold_l(str, str_end, cloc);
+                    }
+#else
+                    set_clocale_classic_guard clocale_guard{LC_NUMERIC};
                     if constexpr (std::is_same_v<T, float>) {
                         return std::strtof(str, str_end);
                     }
@@ -209,11 +266,36 @@ namespace scn {
                     else if constexpr (std::is_same_v<T, long double>) {
                         return std::strtold(str, str_end);
                     }
+#endif
                 }
 
                 static T generic_wide_strtod(const wchar_t* str,
                                              wchar_t** str_end)
                 {
+#if SCN_XLOCALE == SCN_XLOCALE_POSIX
+                    static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", NULL);
+                    if constexpr (std::is_same_v<T, float>) {
+                        return ::wcstof_l(str, str_end, cloc);
+                    }
+                    else if constexpr (std::is_same_v<T, double>) {
+                        return ::wcstod_l(str, str_end, cloc);
+                    }
+                    else if constexpr (std::is_same_v<T, long double>) {
+                        return ::wcstold_l(str, str_end, cloc);
+                    }
+#elif SCN_XLOCALE == SCN_XLOCALE_MSVC
+                    static _locale_t cloc = ::_create_locale(LC_ALL, "C");
+                    if constexpr (std::is_same_v<T, float>) {
+                        return ::_wcstof_l(str, str_end, cloc);
+                    }
+                    else if constexpr (std::is_same_v<T, double>) {
+                        return ::_wcstod_l(str, str_end, cloc);
+                    }
+                    else if constexpr (std::is_same_v<T, long double>) {
+                        return ::_wcstold_l(str, str_end, cloc);
+                    }
+#else
+                    set_clocale_classic_guard clocale_guard{LC_NUMERIC};
                     if constexpr (std::is_same_v<T, float>) {
                         return std::wcstof(str, str_end);
                     }
@@ -223,6 +305,7 @@ namespace scn {
                     else if constexpr (std::is_same_v<T, long double>) {
                         return std::wcstold(str, str_end);
                     }
+#endif
                 }
             };
 
@@ -558,7 +641,7 @@ namespace scn {
             T& value)
         {
             // TODO
-            //SCN_EXPECT((m_options & float_reader_base::allow_thsep) == 0);
+            // SCN_EXPECT((m_options & float_reader_base::allow_thsep) == 0);
 
             auto n = dispatch_impl<CharT>({this->m_buffer, m_kind, m_options},
                                           m_nan_payload_buffer, value);

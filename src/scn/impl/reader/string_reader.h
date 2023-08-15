@@ -600,9 +600,11 @@ namespace scn {
                     };
 
                     if (is_inverted) {
-                        return read_until_code_point(SCN_FWD(range), cb);
+                        return read_until_code_point(range, cb).and_then(
+                            [&](auto it) { return check_nonempty(it, range); });
                     }
-                    return read_while_code_point(SCN_FWD(range), cb);
+                    return read_while_code_point(range, cb).and_then(
+                        [&](auto it) { return check_nonempty(it, range); });
                 }
 
                 const auto cb = [&](SourceCharT ch) {
@@ -610,9 +612,11 @@ namespace scn {
                 };
 
                 if (is_inverted) {
-                    return read_until_code_unit(SCN_FWD(range), cb);
+                    return read_until_code_unit(range, cb).and_then(
+                        [&](auto it) { return check_nonempty(it, range); });
                 }
-                return read_while_code_unit(SCN_FWD(range), cb);
+                return read_while_code_unit(range, cb).and_then(
+                    [&](auto it) { return check_nonempty(it, range); });
             }
 
             template <typename Range>
@@ -640,17 +644,21 @@ namespace scn {
                     helper.map_localized_mask();
                 const bool has_any_ascii_literals =
                     ranges::any_of(helper.specs.charset_literals,
-                                   [](auto b) { return b != 0; });
+                                   [](auto b) SCN_NOEXCEPT { return b != 0; });
                 const bool has_any_nonascii_literals =
                     !helper.nonascii.extra_ranges.empty();
 
                 if (is_mask_exhaustive && !has_any_ascii_literals &&
                     !has_any_nonascii_literals) {
                     if (is_inverted) {
-                        return read_until_localized_mask(SCN_FWD(range), loc,
-                                                         mask);
+                        return read_until_localized_mask(range, loc, mask)
+                            .and_then([&](auto it) {
+                                return check_nonempty(it, range);
+                            });
                     }
-                    return read_while_localized_mask(SCN_FWD(range), loc, mask);
+                    return read_while_localized_mask(range, loc, mask)
+                        .and_then(
+                            [&](auto it) { return check_nonempty(it, range); });
                 }
 
                 const auto cb = [&](code_point cp) {
@@ -659,17 +667,36 @@ namespace scn {
 
                 if (is_mask_exhaustive && mask == std::ctype_base::mask{}) {
                     if (is_inverted) {
-                        return read_until_code_point(SCN_FWD(range), cb);
+                        return read_until_code_point(range, cb).and_then(
+                            [&](auto it) { return check_nonempty(it, range); });
                     }
-                    return read_while_code_point(SCN_FWD(range), cb);
+                    return read_while_code_point(range, cb).and_then(
+                        [&](auto it) { return check_nonempty(it, range); });
                 }
 
                 if (is_inverted) {
-                    return read_until_localized_mask_or_code_point(
-                        SCN_FWD(range), loc, mask, cb);
+                    return read_until_localized_mask_or_code_point(range, loc,
+                                                                   mask, cb)
+                        .and_then(
+                            [&](auto it) { return check_nonempty(it, range); });
                 }
-                return read_while_localized_mask_or_code_point(SCN_FWD(range),
-                                                               loc, mask, cb);
+                return read_while_localized_mask_or_code_point(range, loc, mask,
+                                                               cb)
+                    .and_then(
+                        [&](auto it) { return check_nonempty(it, range); });
+            }
+
+            template <typename Iterator, typename Range>
+            static scan_expected<Iterator> check_nonempty(const Iterator& it,
+                                                          const Range& range)
+            {
+                if (it == ranges::begin(range)) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "No characters matched in [character set]");
+                }
+
+                return it;
             }
         };
 

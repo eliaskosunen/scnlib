@@ -106,9 +106,10 @@ namespace scn {
                 const std::ptrdiff_t sign_len =
                     m_sign != numeric_reader_base::sign::default_sign ? 1 : 0;
 
-                return parse_value_impl(value).transform([&](auto n) {
-                    return n + sign_len + ranges::ssize(m_thsep_indices);
-                });
+                return parse_value_impl(value).transform(
+                    [&](auto n) SCN_NOEXCEPT {
+                        return n + sign_len + ranges::ssize(m_thsep_indices);
+                    });
             }
 
         private:
@@ -169,6 +170,7 @@ namespace scn {
                             m_kind != float_kind::inf_long &&
                             m_kind != float_kind::nan_simple &&
                             m_kind != float_kind::nan_with_payload) {
+                            SCN_EXPECT(digits_begin <= it);
                             this->m_buffer.assign(
                                 ranges::subrange{digits_begin, it});
                         }
@@ -200,15 +202,16 @@ namespace scn {
                 if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
                                  thsep_allowed)) {
                     return read_while_code_unit(
-                        SCN_FWD(range), [&](char_type ch) {
+                        SCN_FWD(range), [&](char_type ch) SCN_NOEXCEPT {
                             return numeric_reader_base::char_to_int(ch) < 10 ||
                                    ch == m_locale_options.thousands_sep;
                         });
                 }
 
-                return read_while_code_unit(SCN_FWD(range), [](char_type ch) {
-                    return numeric_reader_base::char_to_int(ch) < 10;
-                });
+                return read_while_code_unit(
+                    SCN_FWD(range), [](char_type ch) SCN_NOEXCEPT {
+                        return numeric_reader_base::char_to_int(ch) < 10;
+                    });
             }
             template <typename Range>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_hex_digits(
@@ -218,15 +221,16 @@ namespace scn {
                 if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
                                  thsep_allowed)) {
                     return read_while_code_unit(
-                        SCN_FWD(range), [&](char_type ch) {
+                        SCN_FWD(range), [&](char_type ch) SCN_NOEXCEPT {
                             return numeric_reader_base::char_to_int(ch) < 16 ||
                                    ch == m_locale_options.thousands_sep;
                         });
                 }
 
-                return read_while_code_unit(SCN_FWD(range), [](char_type ch) {
-                    return numeric_reader_base::char_to_int(ch) < 16;
-                });
+                return read_while_code_unit(
+                    SCN_FWD(range), [](char_type ch) SCN_NOEXCEPT {
+                        return numeric_reader_base::char_to_int(ch) < 16;
+                    });
             }
             template <typename Range>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_hex_prefix(
@@ -287,7 +291,7 @@ namespace scn {
                 auto payload_beg_it = it;
                 if (auto r = read_while_code_unit(
                         ranges::subrange{it, ranges::end(range)},
-                        [](char_type ch) {
+                        [](char_type ch) SCN_NOEXCEPT {
                             return is_ascii_char(ch) &&
                                    ((ch >= '0' && ch <= '9') ||
                                     (ch >= 'a' && ch <= 'z') ||
