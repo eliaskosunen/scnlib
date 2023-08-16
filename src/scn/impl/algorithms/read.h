@@ -95,7 +95,8 @@ namespace scn {
             Range&& range)
         {
             return read_code_point_into(SCN_FWD(range))
-                .transform([](auto&& result) SCN_NOEXCEPT { return result.iterator; });
+                .transform([](auto&& result)
+                               SCN_NOEXCEPT { return result.iterator; });
         }
 
         template <typename Range>
@@ -382,15 +383,17 @@ namespace scn {
         scan_expected<ranges::borrowed_iterator_t<Range>>
         read_matching_string_classic_nocase(Range&& range, std::string_view str)
         {
-            auto ascii_tolower =
-                [](detail::char_t<Range> ch) -> detail::char_t<Range> {
+            using char_type = detail::char_t<Range>;
+
+            auto ascii_tolower = [](char_type ch) -> char_type {
                 if (!is_ascii_char(ch)) {
                     return ch;
                 }
                 if (ch < 'A' || ch > 'Z') {
                     return ch;
                 }
-                return ch + static_cast<detail::char_t<Range>>('a' - 'A');
+                return static_cast<char_type>(
+                    ch + static_cast<char_type>('a' - 'A'));
             };
 
             using return_type =

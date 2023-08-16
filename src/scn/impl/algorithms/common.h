@@ -238,18 +238,22 @@ namespace std::ranges {
 }  // namespace std::ranges
 
 #else
-namespace nano {
-    template <typename Container>
-    inline constexpr bool enable_view<scn::impl::back_insert_view<Container>> =
-        true;
-    template <typename Container>
-    inline constexpr bool
-        enable_borrowed_range<scn::impl::back_insert_view<Container>> = true;
 
-    template <typename CharT>
-    inline constexpr bool
-        enable_borrowed_range<scn::impl::null_output_range<CharT>> = true;
-}  // namespace nano
+NANO_BEGIN_NAMESPACE
+
+template <typename Container>
+inline constexpr bool enable_view<scn::impl::back_insert_view<Container>> =
+    true;
+template <typename Container>
+inline constexpr bool
+    enable_borrowed_range<scn::impl::back_insert_view<Container>> = true;
+
+template <typename CharT>
+inline constexpr bool
+    enable_borrowed_range<scn::impl::null_output_range<CharT>> = true;
+
+NANO_END_NAMESPACE
+
 #endif
 
 namespace scn {

@@ -197,6 +197,8 @@ namespace scn {
     template <typename CharT, typename... Args>
     class basic_format_string {
     public:
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wc++20-compat")  // false positive about consteval
         template <
             typename S,
             typename = std::enable_if_t<
@@ -213,6 +215,7 @@ namespace scn {
             detail::check_format_string<Args...>(s);
 #endif
         }
+        SCN_CLANG_POP
 
         basic_format_string(basic_runtime_format_string<CharT> r) : m_str(r.str)
         {

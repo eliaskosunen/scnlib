@@ -34,6 +34,7 @@ jobs:
           - g++-9
           - g++-8
           - g++-7
+          - clang++-17
           - clang++-16
           - clang++-15
           - clang++-14
@@ -138,6 +139,9 @@ jobs:
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
           
+          if [[ "${CXX}" == "clang++-18" ]]; then
+            sudo ./llvm.sh 18
+          fi
           if [[ "${CXX}" == "clang++-17" ]]; then
             sudo ./llvm.sh 17
           fi

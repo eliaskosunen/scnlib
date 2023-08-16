@@ -368,8 +368,8 @@ namespace scn {
                         return 0;
                     }
 
-                    auto cp_view = make_contiguous_buffer(
-                        ranges::subrange{m_current, *r});
+                    auto cp_view =
+                        make_contiguous_buffer(ranges::subrange{m_current, *r});
                     if (SCN_UNLIKELY(!validate_unicode(cp_view.view()))) {
                         return 0;
                     }
@@ -597,13 +597,14 @@ namespace std::ranges {
 
 #else
 
-namespace nano {
-    template <typename R>
-    inline constexpr bool enable_view<::scn::impl::take_width_view<R>> = true;
-    template <typename R>
-    inline constexpr bool
-        enable_borrowed_range<::scn::impl::take_width_view<R>> =
-            enable_borrowed_range<R>;
-}  // namespace nano
+NANO_BEGIN_NAMESPACE
+
+template <typename R>
+inline constexpr bool enable_view<::scn::impl::take_width_view<R>> = true;
+template <typename R>
+inline constexpr bool enable_borrowed_range<::scn::impl::take_width_view<R>> =
+    enable_borrowed_range<R>;
+
+NANO_END_NAMESPACE
 
 #endif  // SCN_STD_RANGES

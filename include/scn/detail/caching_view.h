@@ -361,18 +361,19 @@ namespace std::ranges {
 
 #else
 
-namespace nano {
-    template <typename Range>
-    inline constexpr bool enable_view<scn::detail::basic_caching_view<Range>> =
-        true;
-    template <typename Range>
-    inline constexpr bool
-        enable_view<scn::detail::basic_caching_subrange<Range>> = true;
+NANO_BEGIN_NAMESPACE
 
-    template <typename Range>
-    inline constexpr bool
-        enable_borrowed_range<scn::detail::basic_caching_subrange<Range>> =
-            true;
-}  // namespace nano
+template <typename Range>
+inline constexpr bool enable_view<scn::detail::basic_caching_view<Range>> =
+    true;
+template <typename Range>
+inline constexpr bool enable_view<scn::detail::basic_caching_subrange<Range>> =
+    true;
+
+template <typename Range>
+inline constexpr bool
+    enable_borrowed_range<scn::detail::basic_caching_subrange<Range>> = true;
+
+NANO_END_NAMESPACE
 
 #endif

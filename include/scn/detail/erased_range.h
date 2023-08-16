@@ -433,15 +433,17 @@ namespace std::ranges {
 
 #else
 
-namespace nano {
-    template <typename CharT>
-    inline constexpr bool enable_view<scn::basic_erased_range<CharT>> = true;
-    template <typename CharT>
-    inline constexpr bool enable_view<scn::basic_erased_subrange<CharT>> = true;
+NANO_BEGIN_NAMESPACE
 
-    template <typename CharT>
-    inline constexpr bool
-        enable_borrowed_range<scn::basic_erased_subrange<CharT>> = true;
-}  // namespace nano
+template <typename CharT>
+inline constexpr bool enable_view<scn::basic_erased_range<CharT>> = true;
+template <typename CharT>
+inline constexpr bool enable_view<scn::basic_erased_subrange<CharT>> = true;
+
+template <typename CharT>
+inline constexpr bool enable_borrowed_range<scn::basic_erased_subrange<CharT>> =
+    true;
+
+NANO_END_NAMESPACE
 
 #endif  // SCN_STD_RANGES

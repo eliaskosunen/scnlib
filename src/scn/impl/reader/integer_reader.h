@@ -375,12 +375,13 @@ namespace scn {
             {
                 SCN_EXPECT(m_zero_parsed);
 
-                return read_digits_impl(range).transform([&](auto it) {
-                    if (it != ranges::begin(range)) {
-                        m_zero_parsed = false;
-                    }
-                    return it;
-                });
+                return read_digits_impl(range).transform(
+                    [&](auto it) SCN_NOEXCEPT {
+                        if (it != ranges::begin(range)) {
+                            m_zero_parsed = false;
+                        }
+                        return it;
+                    });
             }
 
             template <typename T>

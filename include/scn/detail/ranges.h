@@ -292,40 +292,42 @@ namespace scn {
     SCN_END_NAMESPACE
 }  // namespace scn
 
-namespace nano {
-    template <typename T>
-    inline constexpr bool enable_view<scn::span<T>> = true;
+NANO_BEGIN_NAMESPACE
 
-    template <typename T>
-    inline constexpr bool enable_borrowed_range<scn::span<T>> = true;
-    template <typename T>
-    inline constexpr bool
-        enable_borrowed_range<scn::ranges_polyfill::owning_view<T>> =
-            enable_borrowed_range<T>;
+template <typename T>
+inline constexpr bool enable_view<scn::span<T>> = true;
 
-    namespace detail {
-        template <>
-        struct iterator_category_<std::string::iterator, void> {
-            using type = contiguous_iterator_tag;
-        };
-        template <>
-        struct iterator_category_<std::wstring::iterator, void>
-            : contiguous_iterator_tag {
-            using type = contiguous_iterator_tag;
-        };
+template <typename T>
+inline constexpr bool enable_borrowed_range<scn::span<T>> = true;
+template <typename T>
+inline constexpr bool
+    enable_borrowed_range<scn::ranges_polyfill::owning_view<T>> =
+        enable_borrowed_range<T>;
 
-        template <>
-        struct iterator_category_<std::string_view::iterator, void>
-            : contiguous_iterator_tag {
-            using type = contiguous_iterator_tag;
-        };
-        template <>
-        struct iterator_category_<std::wstring_view::iterator, void>
-            : contiguous_iterator_tag {
-            using type = contiguous_iterator_tag;
-        };
-    }  // namespace detail
-}  // namespace nano
+namespace detail {
+    template <>
+    struct iterator_category_<std::string::iterator, void> {
+        using type = contiguous_iterator_tag;
+    };
+    template <>
+    struct iterator_category_<std::wstring::iterator, void>
+        : contiguous_iterator_tag {
+        using type = contiguous_iterator_tag;
+    };
+
+    template <>
+    struct iterator_category_<std::string_view::iterator, void>
+        : contiguous_iterator_tag {
+        using type = contiguous_iterator_tag;
+    };
+    template <>
+    struct iterator_category_<std::wstring_view::iterator, void>
+        : contiguous_iterator_tag {
+        using type = contiguous_iterator_tag;
+    };
+}  // namespace detail
+
+NANO_END_NAMESPACE
 
 #endif  // SCN_STD_RANGES
 
@@ -341,6 +343,8 @@ namespace scn {
     namespace ranges_polyfill {
         // Necessary, because nanorange subrange::size() returns a signed type
         namespace usize_impl {
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Wnoexcept")
             struct fn {
             private:
                 template <typename T>
@@ -369,6 +373,7 @@ namespace scn {
                     return fn::impl(SCN_FWD(t));
                 }
             };
+            SCN_GCC_POP
         }  // namespace usize_impl
 
         inline constexpr usize_impl::fn usize{};

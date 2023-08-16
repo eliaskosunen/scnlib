@@ -33,7 +33,7 @@ namespace scn {
                 SourceRange&& range,
                 CharT& ch)
             {
-                return read_code_unit(range).transform([&](auto it) {
+                return read_code_unit(range).transform([&](auto it) SCN_NOEXCEPT {
                     ch = *ranges::begin(range);
                     return it;
                 });
