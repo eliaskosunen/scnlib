@@ -82,8 +82,10 @@ namespace scn {
                                              std::ctype_base::space);
         }
 
+#if 0
         template <typename T, typename CharT, typename Enable = void>
         class reader;
+#endif
 
         template <typename Derived, typename CharT>
         class reader_base {
@@ -120,9 +122,9 @@ namespace scn {
         };
 
         template <typename CharT>
-        class reader<detail::monostate, CharT, void> {
+        class reader_impl_for_monostate {
         public:
-            constexpr reader() = default;
+            constexpr reader_impl_for_monostate() = default;
 
             bool skip_ws_before_read() const
             {

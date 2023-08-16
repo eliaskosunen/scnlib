@@ -171,10 +171,10 @@ namespace scn {
         };
 
         template <typename CharT>
-        class reader<bool, CharT, void>
-            : public reader_base<reader<bool, CharT, void>, CharT> {
+        class reader_impl_for_bool
+            : public reader_base<reader_impl_for_bool<CharT>, CharT> {
         public:
-            reader() = default;
+            reader_impl_for_bool() = default;
 
             void check_specs_impl(
                 const detail::basic_format_specs<CharT>& specs,

@@ -49,6 +49,44 @@ namespace scn {
             return skip_classic_whitespace(SCN_FWD(range));
         }
 
+        template <typename T, typename CharT>
+        constexpr auto make_reader()
+        {
+            if constexpr (std::is_same_v<T, bool>) {
+                return reader_impl_for_bool<CharT>{};
+            }
+            else if constexpr (std::is_same_v<T, char>) {
+                return reader_impl_for_char<CharT>{};
+            }
+            else if constexpr (std::is_same_v<T, wchar_t>) {
+                return reader_impl_for_wchar<CharT>{};
+            }
+            else if constexpr (std::is_same_v<T, code_point>) {
+                return reader_impl_for_code_point<CharT>{};
+            }
+            else if constexpr (std::is_same_v<T, std::string> ||
+                               std::is_same_v<T, std::wstring> ||
+                               std::is_same_v<T, std::string_view> ||
+                               std::is_same_v<T, std::wstring_view>) {
+                return reader_impl_for_string<CharT>{};
+            }
+            else if constexpr (std::is_same_v<T, void*>) {
+                return reader_impl_for_voidptr<CharT>{};
+            }
+            else if constexpr (std::is_floating_point_v<T>) {
+                return reader_impl_for_float<CharT>{};
+            }
+            else if constexpr (std::is_integral_v<T> &&
+                               !std::is_same_v<T, char> &&
+                               !std::is_same_v<T, wchar_t> &&
+                               !std::is_same_v<T, bool>) {
+                return reader_impl_for_int<CharT>{};
+            }
+            else {
+                return reader_impl_for_monostate<CharT>{};
+            }
+        }
+
         template <typename Context>
         struct default_arg_reader {
             using context_type = Context;
@@ -60,7 +98,7 @@ namespace scn {
             template <typename T>
             scan_expected<iterator> operator()(T& value)
             {
-                auto rd = reader<T, char_type>{};
+                auto rd = make_reader<T, char_type>();
                 return skip_ws_before_if_required(rd, range, loc)
                     .and_then([&](auto it) {
                         return rd.read_default(
@@ -95,7 +133,7 @@ namespace scn {
             template <typename T>
             scan_expected<iterator> operator()(T& value)
             {
-                auto rd = reader<T, char_type>{};
+                auto rd = make_reader<T, char_type>();
                 if (auto e = rd.check_specs(specs); !e) {
                     return unexpected(e);
                 }

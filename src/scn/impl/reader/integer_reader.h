@@ -417,16 +417,11 @@ namespace scn {
 #undef SCN_DECLARE_INTEGER_READER_TEMPLATE
 #undef SCN_DECLARE_INTEGER_READER_TEMPLATE_IMPL
 
-        template <typename T>
-        inline constexpr bool is_integer_reader_type =
-            std::is_integral_v<T> && !std::is_same_v<T, char> &&
-            !std::is_same_v<T, wchar_t> && !std::is_same_v<T, bool>;
-
-        template <typename T, typename CharT>
-        class reader<T, CharT, std::enable_if_t<is_integer_reader_type<T>>>
-            : public reader_base<reader<T, CharT>, CharT> {
+        template <typename CharT>
+        class reader_impl_for_int
+            : public reader_base<reader_impl_for_int<CharT>, CharT> {
         public:
-            constexpr reader() = default;
+            constexpr reader_impl_for_int() = default;
 
             void check_specs_impl(
                 const detail::basic_format_specs<CharT>& specs,
@@ -435,7 +430,7 @@ namespace scn {
                 detail::check_int_type_specs(specs, eh);
             }
 
-            template <typename Range>
+            template <typename Range, typename T>
             scan_expected<ranges::borrowed_iterator_t<Range>>
             read_default(Range&& range, T& value, detail::locale_ref loc)
             {
@@ -451,7 +446,7 @@ namespace scn {
                     value);
             }
 
-            template <typename Range>
+            template <typename Range, typename T>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_specs(
                 Range&& range,
                 const detail::basic_format_specs<CharT>& specs,
@@ -480,7 +475,7 @@ namespace scn {
             }
 
         private:
-            template <typename Range, typename ReadSource>
+            template <typename Range, typename ReadSource, typename T>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_impl(
                 Range&& range,
                 integer_reader<CharT>& rd,

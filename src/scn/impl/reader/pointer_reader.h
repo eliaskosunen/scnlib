@@ -25,9 +25,9 @@ namespace scn {
 
     namespace impl {
         template <typename CharT>
-        class reader<void*, CharT> {
+        class reader_impl_for_voidptr {
         public:
-            constexpr reader() = default;
+            constexpr reader_impl_for_voidptr() = default;
 
             bool skip_ws_before_read() const
             {
@@ -53,7 +53,7 @@ namespace scn {
                 specs.type = detail::presentation_type::int_hex;
 
                 std::uintptr_t intvalue{};
-                return reader<std::uintptr_t, CharT>{}
+                return reader_impl_for_int<CharT>{}
                     .read_specs(range, specs, intvalue, loc)
                     .transform([&](auto result) SCN_NOEXCEPT {
                         value = reinterpret_cast<void*>(intvalue);

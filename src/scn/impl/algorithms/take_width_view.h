@@ -245,7 +245,7 @@ namespace scn {
                         return a.multibyte_left() > b.multibyte_left();
                     }
 
-                    return a.count() < b.count();
+                    return a.count() > b.count();
                 }
 
                 template <typename OtherIt, typename OtherS>

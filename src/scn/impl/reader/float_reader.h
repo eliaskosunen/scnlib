@@ -580,15 +580,11 @@ namespace scn {
 #undef SCN_DECLARE_FLOAT_READER_TEMPLATE
 #undef SCN_DECLARE_FLOAT_READER_TEMPLATE_IMPL
 
-        template <typename T>
-        inline constexpr bool is_float_reader_type =
-            std::is_floating_point_v<T>;
-
-        template <typename T, typename CharT>
-        class reader<T, CharT, std::enable_if_t<is_float_reader_type<T>>>
-            : public reader_base<reader<T, CharT>, CharT> {
+        template <typename CharT>
+        class reader_impl_for_float
+            : public reader_base<reader_impl_for_float<CharT>, CharT> {
         public:
-            constexpr reader() = default;
+            constexpr reader_impl_for_float() = default;
 
             void check_specs_impl(
                 const detail::basic_format_specs<CharT>& specs,
@@ -597,7 +593,7 @@ namespace scn {
                 detail::check_float_type_specs(specs, eh);
             }
 
-            template <typename Range>
+            template <typename Range, typename T>
             scan_expected<ranges::borrowed_iterator_t<Range>>
             read_default(Range&& range, T& value, detail::locale_ref loc)
             {
@@ -610,7 +606,7 @@ namespace scn {
                     value);
             }
 
-            template <typename Range>
+            template <typename Range, typename T>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_specs(
                 Range&& range,
                 const detail::basic_format_specs<CharT>& specs,
@@ -635,7 +631,7 @@ namespace scn {
             }
 
         private:
-            template <typename Range, typename ReadSource>
+            template <typename Range, typename ReadSource, typename T>
             scan_expected<ranges::borrowed_iterator_t<Range>> read_impl(
                 Range&& range,
                 float_reader<CharT>& rd,

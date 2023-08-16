@@ -106,7 +106,7 @@ namespace scn {
         };
 
         template <typename CharT>
-        class reader<char, CharT> : public char_reader_base<CharT, char> {
+        class reader_impl_for_char : public char_reader_base<CharT, char> {
         public:
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>>
@@ -137,7 +137,7 @@ namespace scn {
         };
 
         template <typename CharT>
-        class reader<wchar_t, CharT> : public char_reader_base<CharT, wchar_t> {
+        class reader_impl_for_wchar : public char_reader_base<CharT, wchar_t> {
         public:
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>>
@@ -166,7 +166,7 @@ namespace scn {
         };
 
         template <typename CharT>
-        class reader<code_point, CharT>
+        class reader_impl_for_code_point
             : public char_reader_base<CharT, code_point> {
         public:
             template <typename Range>

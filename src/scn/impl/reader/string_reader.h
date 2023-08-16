@@ -834,13 +834,8 @@ namespace scn {
             reader_type m_type{reader_type::word};
         };
 
-        template <typename SourceCharT, typename ValueCharT>
-        class reader<std::basic_string<ValueCharT>, SourceCharT, void>
-            : public string_reader<SourceCharT> {};
-
-        template <typename SourceCharT, typename ValueCharT>
-        class reader<std::basic_string_view<ValueCharT>, SourceCharT, void>
-            : public string_reader<SourceCharT> {};
+        template <typename SourceCharT>
+        class reader_impl_for_string : public string_reader<SourceCharT> {};
     }  // namespace impl
 
     SCN_END_NAMESPACE
