@@ -244,7 +244,7 @@ jobs:
 
       - name: Start docker
         run: |
-          docker run -w /src -dit --name alpine -v $PWD:/src alpine:3.17
+          docker run -w /src -dit --name alpine -v $PWD:/src alpine:3.18
           echo 'docker exec alpine "$@";' > alpine-run.sh
           chmod +x alpine-run.sh
 

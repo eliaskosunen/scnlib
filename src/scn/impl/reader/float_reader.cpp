@@ -208,27 +208,26 @@ namespace scn {
                                 "Hexfloats disallowed by format string"};
                     }
 
-                    if (c_errno == ERANGE) {
-                        if (is_float_zero(value)) {
-                            SCN_UNLIKELY_ATTR
-                            return {scan_error::value_underflow,
-                                    "strtod failed: underflow"};
-                        }
-
-                        SCN_GCC_COMPAT_PUSH
-                        SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
-
-                        if (std::abs(value) ==
-                            std::numeric_limits<T>::infinity()) {
-                            SCN_UNLIKELY_ATTR
-                            return {scan_error::value_overflow,
-                                    "strtod failed: overflow"};
-                        }
-
-                        SCN_GCC_COMPAT_POP  // -Wfloat-equal
+                    if (c_errno == ERANGE && is_float_zero(value)) {
+                        SCN_UNLIKELY_ATTR
+                        return {scan_error::value_underflow,
+                                "strtod failed: underflow"};
                     }
 
-                    return {};
+                    SCN_GCC_COMPAT_PUSH
+                    SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
+
+                    if (m_kind != float_reader_base::float_kind::inf_short &&
+                        m_kind != float_reader_base::float_kind::inf_long &&
+                        std::abs(value) == std::numeric_limits<T>::infinity()) {
+                        SCN_UNLIKELY_ATTR
+                        return {scan_error::value_overflow,
+                                "strtod failed: overflow"};
+                    }
+
+                    SCN_GCC_COMPAT_POP  // -Wfloat-equal
+
+                        return {};
                 }
 
                 static T generic_narrow_strtod(const char* str, char** str_end)
@@ -640,9 +639,6 @@ namespace scn {
         scan_expected<std::ptrdiff_t> float_reader<CharT>::parse_value_impl(
             T& value)
         {
-            // TODO
-            // SCN_EXPECT((m_options & float_reader_base::allow_thsep) == 0);
-
             auto n = dispatch_impl<CharT>({this->m_buffer, m_kind, m_options},
                                           m_nan_payload_buffer, value);
             value = this->setsign(value);
