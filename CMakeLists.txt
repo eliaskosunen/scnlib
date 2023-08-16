@@ -92,13 +92,18 @@ set(SCN_PRIVATE_HEADERS
         src/scn/impl/util/text_width.h
 
         src/scn/impl/locale.h
+
+        src/scn/vscan_impl.h
         )
 set(SCN_PRIVATE_SOURCES
         src/scn/scan.cpp
         src/scn/istream_range.cpp
         src/scn/istream_scanner.cpp
         src/scn/scanner.cpp
-        src/scn/vscan.cpp
+
+        src/scn/vscan_impl_sv.cpp
+        src/scn/vscan_impl_ios.cpp
+        src/scn/vscan_impl_erased.cpp
 
         src/scn/impl/locale.cpp
 

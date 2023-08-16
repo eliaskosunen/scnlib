@@ -17,19 +17,11 @@
 
 #include <scn/detail/error.h>
 #include <scn/detail/format_string_parser.h>
-#include <scn/detail/istream_range.h>
 #include <scn/detail/result.h>
 #include <scn/detail/visitor.h>
 #include <scn/detail/vscan.h>
 #include <scn/detail/xchar.h>
 #include <scn/impl/reader/reader.h>
-#include "scn/detail/scan.h"
-#include "scn/util/expected.h"
-
-#if SCN_USE_IOSTREAMS
-#include <iostream>
-#include <mutex>
-#endif
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -282,41 +274,6 @@ namespace scn {
         {
             return scan_simple_single_argument(SCN_MOVE(source), {}, arg);
         }
-
-#if SCN_USE_IOSTREAMS
-        std::mutex stdin_mutex;
-
-        bool is_global_stdin_view(istreambuf_view& view)
-        {
-            return &view == &detail::internal_narrow_stdin();
-        }
-        bool is_global_stdin_view(wistreambuf_view& view)
-        {
-            return &view == &detail::internal_wide_stdin();
-        }
-
-        template <typename CharT>
-        detail::vscan_impl_result<basic_istreambuf_subrange<CharT>>
-        vscan_and_sync_internal(
-            basic_istreambuf_subrange<CharT> source,
-            std::basic_string_view<CharT> format,
-            scan_args_for<basic_istreambuf_subrange<CharT>, CharT> args)
-        {
-            std::unique_lock<std::mutex> stdin_lock{stdin_mutex,
-                                                    std::defer_lock};
-            auto& view = static_cast<basic_istreambuf_view<CharT>&>(
-                source.begin().view());
-            if (is_global_stdin_view(view)) {
-                stdin_lock.lock();
-            }
-
-            auto result = vscan_internal(source, format, args);
-            if (SCN_LIKELY(result)) {
-                view.sync(*result);
-            }
-            return result;
-        }
-#endif
     }  // namespace
 
     namespace detail {
@@ -346,37 +303,6 @@ namespace scn {
     {                                                                          \
         return vscan_value_internal(SCN_MOVE(source), arg);                    \
     }
-
-        SCN_DEFINE_VSCAN(std::string_view, char)
-        SCN_DEFINE_VSCAN(std::wstring_view, wchar_t)
-
-#if SCN_USE_IOSTREAMS
-        SCN_DEFINE_VSCAN(istreambuf_subrange, char)
-        SCN_DEFINE_VSCAN(wistreambuf_subrange, wchar_t)
-#endif
-
-        SCN_DEFINE_VSCAN(erased_subrange, char)
-        SCN_DEFINE_VSCAN(werased_subrange, wchar_t)
-
-#undef SCN_DEFINE_VSCAN
-
-#if SCN_USE_IOSTREAMS
-        vscan_impl_result<istreambuf_subrange> vscan_and_sync_impl(
-            istreambuf_subrange source,
-            std::string_view format,
-            scan_args_for<istreambuf_subrange, char> args)
-        {
-            return vscan_and_sync_internal(source, format, args);
-        }
-
-        vscan_impl_result<wistreambuf_subrange> vscan_and_sync_impl(
-            wistreambuf_subrange source,
-            std::wstring_view format,
-            scan_args_for<wistreambuf_subrange, wchar_t> args)
-        {
-            return vscan_and_sync_internal(source, format, args);
-        }
-#endif
     }  // namespace detail
 
     SCN_END_NAMESPACE

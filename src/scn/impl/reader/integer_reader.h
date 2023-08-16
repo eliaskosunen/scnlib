@@ -341,9 +341,10 @@ namespace scn {
                     return it;
                 }
 
-                return read_while1_code_unit(range, [&](char_type ch) {
-                    return numeric_reader_base::char_to_int(ch) < m_base;
-                });
+                return read_while1_code_unit(
+                    range, [&](char_type ch) SCN_NOEXCEPT {
+                        return numeric_reader_base::char_to_int(ch) < m_base;
+                    });
             }
 
             template <typename Range>
@@ -486,14 +487,13 @@ namespace scn {
                 ReadSource&& read_source_cb,
                 T& value)
             {
-                return read_source_cb(range)
-                    .and_then([&](auto _) {
-                        SCN_UNUSED(_);
-                        return rd.parse_value(value);
-                    })
-                    .transform([&](auto n) {
-                        return ranges::next(ranges::begin(range), n);
-                    });
+                if (auto r = read_source_cb(range); SCN_UNLIKELY(!r)) {
+                    return unexpected(r.error());
+                }
+
+                return rd.parse_value(value).transform([&](std::ptrdiff_t n) {
+                    return ranges::next(ranges::begin(range), n);
+                });
             }
 
             static integer_reader<CharT> get_reader_from_specs(

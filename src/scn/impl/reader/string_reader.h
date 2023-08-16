@@ -413,7 +413,7 @@ namespace scn {
                     const auto cp_val = static_cast<uint32_t>(cp);
                     return ranges::find_if(
                                nonascii.extra_ranges,
-                               [cp_val](const auto& pair) {
+                               [cp_val](const auto& pair) SCN_NOEXCEPT {
                                    return static_cast<uint32_t>(pair.first) <=
                                               cp_val &&
                                           static_cast<uint32_t>(pair.second) >

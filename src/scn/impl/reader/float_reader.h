@@ -330,7 +330,7 @@ namespace scn {
 
                     if (auto r_exp = read_while1_code_unit(
                             ranges::subrange{it, ranges::end(range)},
-                            [](char_type ch) {
+                            [](char_type ch) SCN_NOEXCEPT {
                                 return numeric_reader_base::char_to_int(ch) <
                                        10;
                             });
@@ -642,14 +642,13 @@ namespace scn {
                 ReadSource&& read_source_cb,
                 T& value)
             {
-                return read_source_cb(range)
-                    .and_then([&](auto _) {
-                        SCN_UNUSED(_);
-                        return rd.parse_value(value);
-                    })
-                    .transform([&](auto n) {
-                        return ranges::next(ranges::begin(range), n);
-                    });
+                if (auto r = read_source_cb(range); SCN_UNLIKELY(!r)) {
+                    return unexpected(r.error());
+                }
+
+                return rd.parse_value(value).transform([&](std::ptrdiff_t n) {
+                    return ranges::next(ranges::begin(range), n);
+                });
             }
 
             static unsigned get_options(

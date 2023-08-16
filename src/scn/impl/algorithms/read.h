@@ -95,7 +95,7 @@ namespace scn {
             Range&& range)
         {
             return read_code_point_into(SCN_FWD(range))
-                .transform([](auto&& result) { return result.iterator; });
+                .transform([](auto&& result) SCN_NOEXCEPT { return result.iterator; });
         }
 
         template <typename Range>
@@ -390,7 +390,7 @@ namespace scn {
                 if (ch < 'A' || ch > 'Z') {
                     return ch;
                 }
-                return ch + ('a' - 'A');
+                return ch + static_cast<detail::char_t<Range>>('a' - 'A');
             };
 
             using return_type =

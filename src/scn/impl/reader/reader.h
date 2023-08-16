@@ -100,24 +100,21 @@ namespace scn {
                     return unexpected(e);
                 }
 
-                return skip_ws_before_if_required(rd, range, loc)
-                    .and_then([&](auto it) {
-                        if (specs.width != 0) {
-                            return rd
-                                .read_specs(take_width(
-                                                ranges::subrange{
-                                                    it, ranges::end(range)},
-                                                specs.width),
-                                            specs, value, loc)
-                                .transform([](auto w_it) SCN_NOEXCEPT {
-                                    return w_it.base();
-                                });
-                        }
+                auto it = skip_ws_before_if_required(rd, range, loc);
+                if (SCN_UNLIKELY(!it)) {
+                    return unexpected(it.error());
+                }
 
-                        return rd.read_specs(
-                            ranges::subrange{it, ranges::end(range)}, specs,
-                            value, loc);
-                    });
+                auto subr = ranges::subrange{*it, ranges::end(range)};
+                if (specs.width != 0) {
+                    return rd
+                        .read_specs(take_width(subr, specs.width), specs, value,
+                                    loc)
+                        .transform([](auto w_it)
+                                       SCN_NOEXCEPT { return w_it.base(); });
+                }
+
+                return rd.read_specs(subr, specs, value, loc);
             }
 
             scan_expected<iterator> operator()(

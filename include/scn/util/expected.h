@@ -23,13 +23,6 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    static_assert(std::is_trivially_destructible_v<scan_error>);
-    static_assert(std::is_trivially_copy_constructible_v<scan_error>);
-    static_assert(std::is_trivially_copy_assignable_v<scan_error>);
-    static_assert(std::is_trivially_move_constructible_v<scan_error>);
-    static_assert(std::is_trivially_move_assignable_v<scan_error>);
-    static_assert(std::is_trivially_copyable_v<scan_error>);
-
     template <typename T>
     using scan_expected = expected<T, scan_error>;
 

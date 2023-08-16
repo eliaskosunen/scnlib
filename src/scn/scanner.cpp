@@ -15,7 +15,6 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <scn/detail/scan.h>
 #include <scn/detail/scanner_builtin.h>
 #include <scn/detail/xchar.h>
 #include <scn/impl/reader/reader.h>

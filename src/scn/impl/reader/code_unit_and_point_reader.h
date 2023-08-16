@@ -76,7 +76,7 @@ namespace scn {
                 }
 
                 return encode_code_point_as_wide_character(cp, true).transform(
-                    [&](auto encoded_ch) {
+                    [&](auto encoded_ch) SCN_NOEXCEPT {
                         ch = encoded_ch;
                         return *ret;
                     });

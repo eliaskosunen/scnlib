@@ -111,6 +111,7 @@ namespace scn {
             else {
                 // utf-32
                 static_assert(sizeof(U) == 4);
+                SCN_UNUSED(ch);
                 return 1;
             }
         }
