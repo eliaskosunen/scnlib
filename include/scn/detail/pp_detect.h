@@ -399,42 +399,43 @@
 #endif
 
 // Detect std::assume_aligned
-#if defined(__cpp_lib_assume_aligned) && __cpp_lib_assume_aligned >= 201811L && SCN_STD >= SCN_STD_20
+#if defined(__cpp_lib_assume_aligned) && \
+    __cpp_lib_assume_aligned >= 201811L && SCN_STD >= SCN_STD_20
 #define SCN_HAS_STD_ASSUME_ALIGNED 1
 #else
 #define SCN_HAS_STD_ASSUME_ALIGNED 0
 #endif
 
 // Detect __builtin_assume_aligned
-#if SCN_HAS_BUILTIN(__builtin_assume_aligned)
+#if SCN_HAS_BUILTIN(__builtin_assume_aligned) || SCN_GCC
 #define SCN_HAS_BUILTIN_ASSUME_ALIGNED 1
 #else
 #define SCN_HAS_BUILTIN_ASSUME_ALIGNED 0
 #endif
 
 // Detect __assume_aligned
-#if SCN_HAS_BUILTIN(__assume_aligned)
+#if SCN_HAS_BUILTIN(__assume_aligned) || SCN_INTEL
 #define SCN_HAS_ASSUME_ALIGNED 1
 #else
 #define SCN_HAS_ASSUME_ALIGNED 0
 #endif
 
 // Detect __builtin_unreachable
-#if SCN_HAS_BUILTIN(__builtin_unreachable)
+#if SCN_HAS_BUILTIN(__builtin_unreachable) || SCN_GCC
 #define SCN_HAS_BUILTIN_UNREACHABLE 1
 #else
 #define SCN_HAS_BUILTIN_UNREACHABLE 0
 #endif
 
 // Detect __builtin_expect
-#if SCN_HAS_BUILTIN(__builtin_expect)
+#if SCN_HAS_BUILTIN(__builtin_expect) || SCN_GCC
 #define SCN_HAS_BUILTIN_EXPECT 1
 #else
 #define SCN_HAS_BUILTIN_EXPECT 0
 #endif
 
 // Detect __builtin_add_overflow etc.
-#if SCN_HAS_BUILTIN(__builtin_add_overflow)
+#if SCN_HAS_BUILTIN(__builtin_add_overflow) || SCN_GCC
 #define SCN_HAS_BUILTIN_OVERFLOW 1
 #else
 #define SCN_HAS_BUILTIN_OVERFLOW 0

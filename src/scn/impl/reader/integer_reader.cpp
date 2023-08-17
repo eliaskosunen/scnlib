@@ -347,7 +347,7 @@ namespace scn {
                     if (static_cast<uint64_t>(state.limit) >= 1'0000'0000ull &&
                         word > static_cast<uint64_t>(state.limit)) {
                         SCN_UNLIKELY_ATTR
-                        return scan_error{scan_error::value_out_of_range,
+                        return scan_error{scan_error::value_overflow,
                                           "Out of range: integer overflow"};
                     }
                 }
@@ -360,7 +360,7 @@ namespace scn {
                         ((state.limit - static_cast<utype>(word)) /
                          accumulator_multiplier)) {
                         SCN_UNLIKELY_ATTR
-                        return scan_error{scan_error::value_out_of_range,
+                        return scan_error{scan_error::value_overflow,
                                           "Out of range: integer overflow"};
                     }
                 }

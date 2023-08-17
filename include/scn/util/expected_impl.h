@@ -115,8 +115,8 @@ namespace scn {
         template <typename T,
                   typename E,
                   bool IsTriviallyDestructible =
-                      std::is_trivially_destructible_v<T>&&
-                          std::is_trivially_destructible_v<E>>
+                      std::is_trivially_destructible_v<T> &&
+                      std::is_trivially_destructible_v<E>>
         struct expected_storage_base;
 
         template <typename T, typename E>
@@ -391,22 +391,27 @@ namespace scn {
         private:
             T* value_ptr()
             {
-                return reinterpret_cast<T*>(m_memory.data());
+                return reinterpret_cast<T*>(
+                    SCN_ASSUME_ALIGNED(m_memory.data(), alignof(T)));
             }
             const T* value_ptr() const
             {
-                return reinterpret_cast<const T*>(m_memory.data());
+                return reinterpret_cast<const T*>(
+                    SCN_ASSUME_ALIGNED(m_memory.data(), alignof(T)));
             }
 
             SCN_GCC_PUSH
             SCN_GCC_IGNORE("-Wcast-align")
             unexpected<E>* unexpected_ptr()
             {
-                return reinterpret_cast<unexpected<E>*>(m_memory.data());
+                return reinterpret_cast<unexpected<E>*>(SCN_ASSUME_ALIGNED(
+                    m_memory.data(), alignof(unexpected<E>)));
             }
             const unexpected<E>* unexpected_ptr() const
             {
-                return reinterpret_cast<const unexpected<E>*>(m_memory.data());
+                return reinterpret_cast<const unexpected<E>*>(
+                    SCN_ASSUME_ALIGNED(m_memory.data(),
+                                       alignof(unexpected<E>)));
             }
             SCN_GCC_POP
 

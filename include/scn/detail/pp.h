@@ -198,10 +198,10 @@
 #elif SCN_HAS_ASSUME_ALIGNED
 #define SCN_ASSUME_ALIGNED(x, n) __assume_aligned(x, n)
 #else
-#define SCN_ASSUME_ALIGNED(x, n)                               \
-    ([&](auto&& p) SCN_NOEXCEPT {                              \
-        SCN_ASSUME(static_cast<std::uintptr_t>(p) % (n) == 0); \
-        return p;                                              \
+#define SCN_ASSUME_ALIGNED(x, n)                                    \
+    ([&](auto&& p) SCN_NOEXCEPT {                                   \
+        SCN_ASSUME(reinterpret_cast<std::uintptr_t>(p) % (n) == 0); \
+        return p;                                                   \
     }(x))
 #endif
 

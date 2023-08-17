@@ -617,7 +617,7 @@ namespace scn {
                         // If double == long double (true on Windows),
                         // use fast_float with double
                         double tmp{};
-                        auto ret = fast_float_impl<CharT, double>{data}(value);
+                        auto ret = fast_float_impl<CharT, double>{data}(tmp);
                         value = tmp;
                         return ret;
                     }
