@@ -223,6 +223,8 @@
 #define SCN_HAS_CPP17_ATTRIBUTES 1
 #elif SCN_INTEL >= SCN_COMPILER(18, 0, 0)
 #define SCN_HAS_CPP17_ATTRIBUTES 1
+#else
+#define SCN_HAS_CPP17_ATTRIBUTES 0
 #endif
 
 // Detect [[nodiscard]]
@@ -323,20 +325,24 @@
 
 // Detect <charconv>
 
-#if defined(_GLIBCXX_RELEASE) && __cplusplus >= SCN_STD_17
+#if SCN_STD >= SCN_STD_17
 
-#if _GLIBCXX_RELEASE >= 9
+// libstdc++
+#if SCN_STDLIB_GLIBCXX
+
+#if SCN_STDLIB_GLIBCXX >= 9
 #define SCN_HAS_INTEGER_CHARCONV 1
 #else
 #define SCN_HAS_INTEGER_CHARCONV 0
 #endif
 
-#if _GLIBCXX_RELEASE >= 11
+#if SCN_STDLIB_GLIBCXX >= 11
 #define SCN_HAS_FLOAT_CHARCONV 1
 #else
 #define SCN_HAS_FLOAT_CHARCONV 0
 #endif
 
+// MSVC
 #elif SCN_MSVC >= SCN_COMPILER(19, 14, 0)
 
 #define SCN_HAS_INTEGER_CHARCONV 1
@@ -347,22 +353,24 @@
 #define SCN_HAS_FLOAT_CHARCONV 0
 #endif
 
-#elif defined(_LIBCPP_VERSION)
+// libc++
+#elif SCN_STDLIB_LIBCPP
 
 #define SCN_HAS_FLOAT_CHARCONV 0
 
-#if _LIBCPP_VERSION >= 7000 && defined(__cpp_lib_to_chars) && \
-    __cpp_lib_to_chars >= 201606L && SCN_STD >= SCN_STD_17
+#if SCN_STDLIB_LIBCPP >= 7000
 #define SCN_HAS_INTEGER_CHARCONV 1
 #else
 #define SCN_HAS_INTEGER_CHARCONV 0
 #endif
 
-#elif defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606L && \
-    SCN_STD >= SCN_STD_17
+// other
+#elif defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201606L
 #define SCN_HAS_INTEGER_CHARCONV 1
 #define SCN_HAS_FLOAT_CHARCONV   1
 #endif  // _GLIBCXX_RELEASE
+
+#endif  // std >= 17
 
 #ifndef SCN_HAS_INTEGER_CHARCONV
 #define SCN_HAS_INTEGER_CHARCONV 0

@@ -130,7 +130,6 @@ namespace scn {
                 char& value,
                 detail::locale_ref loc)
             {
-                // TODO: do something with specs
                 SCN_UNUSED(specs);
                 return read_default(range, value, loc);
             }
@@ -159,7 +158,6 @@ namespace scn {
                 wchar_t& value,
                 detail::locale_ref loc)
             {
-                // TODO: do something with specs
                 SCN_UNUSED(specs);
                 return read_default(range, value, loc);
             }
@@ -184,7 +182,6 @@ namespace scn {
                 code_point& value,
                 detail::locale_ref loc)
             {
-                // TODO: do something with specs
                 SCN_UNUSED(specs);
                 return read_default(range, value, loc);
             }

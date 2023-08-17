@@ -149,13 +149,15 @@ namespace scn {
                         ranges::subrange{ranges::begin(range), *result});
                 }
             }();
+            using src_type = decltype(src);
+
             if (src.stores_allocated_string()) {
                 return unexpected_scan_error(
                     scan_error::invalid_scanned_value,
                     "Cannot read a string_view from this source range (not "
                     "contiguous)");
             }
-            if constexpr (!std::is_same_v<typename decltype(src)::char_type,
+            if constexpr (!std::is_same_v<typename src_type::char_type,
                                           ValueCharT>) {
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Cannot read a string_view from "
