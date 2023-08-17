@@ -22,12 +22,25 @@
 
 #include <iostream>
 #include <mutex>
-#endif
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wexit-time-destructors")
+        scn::istreambuf_view& internal_narrow_stdin()
+        {
+            static scn::istreambuf_view range{std::cin};
+            return range;
+        }
+        scn::wistreambuf_view& internal_wide_stdin()
+        {
+            static scn::wistreambuf_view range{std::wcin};
+            return range;
+        }
+        SCN_CLANG_POP
+
         namespace {
             std::mutex stdin_mutex;
 
@@ -63,7 +76,6 @@ namespace scn {
             }
         }  // namespace
 
-#if SCN_USE_IOSTREAMS
         SCN_DEFINE_VSCAN(istreambuf_subrange, char)
         SCN_DEFINE_VSCAN(wistreambuf_subrange, wchar_t)
 
@@ -82,8 +94,8 @@ namespace scn {
         {
             return vscan_and_sync_internal(source, format, args);
         }
-#endif
     }  // namespace detail
 
     SCN_END_NAMESPACE
 }  // namespace scn
+#endif

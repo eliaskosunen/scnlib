@@ -190,6 +190,21 @@
 #define SCN_NOEXCEPT_P(...) /*noexcept_p*/
 #endif
 
+// SCN_ASSUME_ALIGNED
+#if SCN_HAS_STD_ASSUME_ALIGNED
+#define SCN_ASSUME_ALIGNED(x, n) ::std::assume_aligned<n>(x)
+#elif SCN_HAS_BUILTIN_ASSUME_ALIGNED
+#define SCN_ASSUME_ALIGNED(x, n) __builtin_assume_aligned(x, n)
+#elif SCN_HAS_ASSUME_ALIGNED
+#define SCN_ASSUME_ALIGNED(x, n) __assume_aligned(x, n)
+#else
+#define SCN_ASSUME_ALIGNED(x, n)                               \
+    ([&](auto&& p) SCN_NOEXCEPT {                              \
+        SCN_ASSUME(static_cast<std::uintptr_t>(p) % (n) == 0); \
+        return p;                                              \
+    }(x))
+#endif
+
 // SCN_TRY and friends
 #if SCN_HAS_EXCEPTIONS && SCN_USE_EXCEPTIONS
 #define SCN_TRY      try

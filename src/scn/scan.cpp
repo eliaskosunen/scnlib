@@ -16,11 +16,6 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/detail/scan.h>
-#include <scn/detail/xchar.h>
-
-#if SCN_USE_IOSTREAMS
-#include <iostream>
-#endif
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -30,22 +25,6 @@ namespace scn {
         {
             return e;
         }
-
-#if SCN_USE_IOSTREAMS
-        SCN_CLANG_PUSH
-        SCN_CLANG_IGNORE("-Wexit-time-destructors")
-        scn::istreambuf_view& internal_narrow_stdin()
-        {
-            static scn::istreambuf_view range{std::cin};
-            return range;
-        }
-        scn::wistreambuf_view& internal_wide_stdin()
-        {
-            static scn::wistreambuf_view range{std::wcin};
-            return range;
-        }
-        SCN_CLANG_POP
-#endif
 
         erased_range_impl_base::~erased_range_impl_base() = default;
     }  // namespace detail

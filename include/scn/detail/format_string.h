@@ -198,7 +198,9 @@ namespace scn {
     class basic_format_string {
     public:
         SCN_CLANG_PUSH
+#if SCN_CLANG >= SCN_COMPILER(10, 0, 0)
         SCN_CLANG_IGNORE("-Wc++20-compat")  // false positive about consteval
+#endif
         template <
             typename S,
             typename = std::enable_if_t<

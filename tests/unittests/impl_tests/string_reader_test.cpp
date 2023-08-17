@@ -137,7 +137,7 @@ struct test_type_pack {
         }
         else {
             auto r = scn::impl::transcode_to_string(
-                std::basic_string_view<dest_char_type>{val}, narrowed_val);
+                std::basic_string_view<dest_char_type>(val), narrowed_val);
             SCN_EXPECT(r);
         }
 

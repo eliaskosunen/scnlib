@@ -398,22 +398,43 @@
 #define SCN_HAS_BUILTIN_ASSUME 0
 #endif
 
+// Detect std::assume_aligned
+#if defined(__cpp_lib_assume_aligned) && __cpp_lib_assume_aligned >= 201811L && SCN_STD >= SCN_STD_20
+#define SCN_HAS_STD_ASSUME_ALIGNED 1
+#else
+#define SCN_HAS_STD_ASSUME_ALIGNED 0
+#endif
+
+// Detect __builtin_assume_aligned
+#if SCN_HAS_BUILTIN(__builtin_assume_aligned)
+#define SCN_HAS_BUILTIN_ASSUME_ALIGNED 1
+#else
+#define SCN_HAS_BUILTIN_ASSUME_ALIGNED 0
+#endif
+
+// Detect __assume_aligned
+#if SCN_HAS_BUILTIN(__assume_aligned)
+#define SCN_HAS_ASSUME_ALIGNED 1
+#else
+#define SCN_HAS_ASSUME_ALIGNED 0
+#endif
+
 // Detect __builtin_unreachable
-#if SCN_HAS_BUILTIN(__builtin_unreachable) || SCN_GCC_COMPAT
+#if SCN_HAS_BUILTIN(__builtin_unreachable)
 #define SCN_HAS_BUILTIN_UNREACHABLE 1
 #else
 #define SCN_HAS_BUILTIN_UNREACHABLE 0
 #endif
 
 // Detect __builtin_expect
-#if SCN_HAS_BUILTIN(__builtin_expect) || SCN_GCC_COMPAT
+#if SCN_HAS_BUILTIN(__builtin_expect)
 #define SCN_HAS_BUILTIN_EXPECT 1
 #else
 #define SCN_HAS_BUILTIN_EXPECT 0
 #endif
 
 // Detect __builtin_add_overflow etc.
-#if SCN_HAS_BUILTIN(__builtin_add_overflow) || SCN_GCC_COMPAT
+#if SCN_HAS_BUILTIN(__builtin_add_overflow)
 #define SCN_HAS_BUILTIN_OVERFLOW 1
 #else
 #define SCN_HAS_BUILTIN_OVERFLOW 0
@@ -449,7 +470,8 @@
 #endif
 
 // Detect std::span
-#if defined(__cpp_lib_span) && __cpp_lib_span >= 202002L && SCN_STD >= SCN_STD_20
+#if defined(__cpp_lib_span) && __cpp_lib_span >= 202002L && \
+    SCN_STD >= SCN_STD_20
 #define SCN_HAS_STD_SPAN 1
 #else
 #define SCN_HAS_STD_SPAN 0

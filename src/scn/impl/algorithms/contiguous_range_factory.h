@@ -19,6 +19,7 @@
 
 #include <scn/detail/ranges.h>
 
+#include <memory>
 #include <type_traits>
 
 namespace scn {
@@ -227,20 +228,24 @@ namespace scn {
 
             string_type* _get_string()
             {
-                return reinterpret_cast<string_type*>(m_memory);
+                return reinterpret_cast<string_type*>(
+                    SCN_ASSUME_ALIGNED(m_memory, alignof(string_type)));
             }
             const string_type* _get_string() const
             {
-                return reinterpret_cast<const string_type*>(m_memory);
+                return reinterpret_cast<const string_type*>(
+                    SCN_ASSUME_ALIGNED(m_memory, alignof(string_type)));
             }
 
             string_view_type* _get_string_view()
             {
-                return reinterpret_cast<string_view_type*>(m_memory);
+                return reinterpret_cast<string_view_type*>(
+                    SCN_ASSUME_ALIGNED(m_memory, alignof(string_view_type)));
             }
             const string_view_type* _get_string_view() const
             {
-                return reinterpret_cast<const string_view_type*>(m_memory);
+                return reinterpret_cast<const string_view_type*>(
+                    SCN_ASSUME_ALIGNED(m_memory, alignof(string_view_type)));
             }
 
             void _copy(const contiguous_range_factory& other)
