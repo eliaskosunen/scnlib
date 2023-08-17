@@ -335,10 +335,66 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        namespace begin_for_char_t {
+            template <typename T>
+            struct tag_type {
+                using type = T;
+            };
+
+            template <typename T, typename = typename T::value_type>
+            constexpr auto impl_nonarray(priority_tag<2>)
+            {
+                return tag_type<typename T::value_type>{};
+            }
+            template <typename T, typename = decltype(SCN_DECLVAL(T&).begin())>
+            constexpr auto impl_nonarray(priority_tag<1>)
+            {
+                return tag_type<
+                    remove_cvref_t<decltype(*(SCN_DECLVAL(T&).begin()))>>{};
+            }
+            template <typename T>
+            constexpr auto impl_nonarray(priority_tag<0>)
+            {
+                return tag_type<
+                    remove_cvref_t<decltype(*begin(SCN_DECLVAL(T&)))>>{};
+            }
+
+            template <typename T>
+            constexpr auto impl()
+            {
+                using T_nocvref = remove_cvref_t<T>;
+                if constexpr (std::is_array_v<T_nocvref>) {
+                    return tag_type<std::remove_all_extents_t<T_nocvref>>{};
+                }
+                else {
+                    return impl_nonarray<T>(priority_tag<2>{});
+                }
+            }
+
+            template <typename Range>
+            using impl_result = decltype(impl<Range>());
+        }  // namespace begin_for_char_t
+
+        template <typename R>
+        struct char_t_impl {
+            using type = typename begin_for_char_t::impl_result<R>::type;
+        };
         template <typename Range>
-        using char_t = remove_cvref_t<decltype(*::scn::ranges::begin(
-            SCN_DECLVAL(Range&)))>;
+        using char_t = typename char_t_impl<Range>::type;
     }  // namespace detail
+
+    template <typename R, bool Borrowed = ranges::borrowed_range<R>>
+    struct borrowed_ssubrange {
+        using type =
+            ranges::subrange<ranges::iterator_t<R>, ranges::sentinel_t<R>>;
+    };
+    template <typename R>
+    struct borrowed_ssubrange<R, false> {
+        using type = ranges::dangling;
+    };
+
+    template <typename R>
+    using borrowed_ssubrange_t = typename borrowed_ssubrange<R>::type;
 
     namespace ranges_polyfill {
         // Necessary, because nanorange subrange::size() returns a signed type

@@ -3,6 +3,7 @@
 [![Linux builds](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml)
 [![macOS builds](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml)
 [![Windows builds](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml)
+[![Other architectures](https://github.com/eliaskosunen/scnlib/actions/workflows/arch.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/arch.yml)
 [![Code Coverage](https://codecov.io/gh/eliaskosunen/scnlib/branch/dev/graph/badge.svg?token=LyWrDluna1)](https://codecov.io/gh/eliaskosunen/scnlib)
 
 [![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver&display_name=tag)](https://github.com/eliaskosunen/scnlib/releases)
@@ -37,7 +38,8 @@ This library is the reference implementation of the ISO C++ standards proposal
 [P1729 "Text Parsing"](https://wg21.link/p1729).
 
 This branch (dev) targets v2, and is currently unstable.
-For a stable release, see the master branch.
+The master branch contains the latest stable version of the library, with a substantially different interface, and
+support for C++11 and C++14.
 
 ## Documentation
 
@@ -63,13 +65,12 @@ int main() {
     // Reading a std::string will read until the first whitespace character
     if (auto result = scn::scan<std::string>(input, "{}")) {
         // Will output "Hello":
-        // Access the only read value with result->value()
+        // Access the read value with result->value()
         std::println("{}", result->value());
         
         // Will output " world":
-        // result->begin() returns an iterator pointing to
-        // the start of the unused input
-        std::println("{}", std::string_view{result->begin(), input.end()};
+        // result->range() returns a subrange containing the unused input
+        std::println("{}", std::string_view{result->range()});
     } else {
         std::println("Couldn't parse a word: {}", result.error().msg());
     }
@@ -91,18 +92,17 @@ int main() {
     
     auto result = scn::scan<int, int>(input, "{} {}");
     // result == true
-    // [result->begin(), input.end()): " foo"
+    // result->range(): " foo"
     
     // All read values can be accessed through a tuple with result->values()
     auto [a, b] = result->values();
     
-    // Construct a subrange of the remaining input
-    // Could also be a string_view, or a string
-    auto result2 = scn::scan<std::string>(
-            ranges::subrange{result->begin(), input.end()}, "{}");
+    // Read from the remaining input
+    // Could also use scn::ranges::subrange{result->begin(), result->end()} as input
+    auto result2 = scn::scan<std::string>(result->range(), "{}");
     // result2 == true
-    // result2->begin() == input.end(): true
-    // result->value() == "foo"
+    // result2->range().empty: true
+    // result2->value() == "foo"
 }
 ```
 
@@ -117,6 +117,7 @@ int main() {
     auto result = scn::scan<int>("123" | ranges::views::reverse, "{}");
     // result == true
     // result->begin() is an iterator into a reverse_view
+    // result->range() is empty
     // result->value() == 321
 }
 ```
@@ -129,14 +130,11 @@ int main() {
 
 int main() {
     std::vector<int> vec{};
+    auto input = scn::ranges::subrange{std::string_view{"123 456 789"}};
     
-    auto input = std::string_view{"123 456 789"};
-    auto it = input.begin();
-    
-    while (auto result = 
-            scn::scan<int>(std::string_view{it, input.end()}, "{}")) {
+    while (auto result = scn::scan<int>(input), "{}")) {
         vec.push_back(result->value());
-        it = result->begin();
+        input = result->range();
     }
 }
 ```
@@ -151,9 +149,9 @@ int main() {
  * `"{python}"`-like format string syntax
    * Including compile-time format string checking
  * Minimal code size increase (in user code, see Benchmarks)
- * Usable without exceptions or RTTI, `<iostream>`s, or even dynamic allocation (*TODO*)
+ * Usable without exceptions, RTTI, or `<iostream>`s
    * Configurable through build flags
-   * Limited functionality
+   * Limited functionality if enabled
  * Supports, and requires Unicode (input is UTF-8, UTF-16, or UTF-32)
  * Highly portable
    * Tested on multiple platforms, see CI
@@ -173,7 +171,7 @@ add_executable(my_program ...)
 target_link_libraries(my_program scn::scn)
 ```
 
-See docs for usage without CMake
+See docs for usage without CMake.
 
 ## Compiler support
 
@@ -192,7 +190,6 @@ Including the following environments:
  * MinGW
  * GCC on armv6, armv7, aarch64, riscv64, s390x, and ppc64le
  * Visual Studio 2022, cross compiling to arm64
-
 
 ## Benchmarks
 

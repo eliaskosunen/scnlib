@@ -149,7 +149,7 @@ namespace scn {
     }  // namespace detail
 
     template <typename Range>
-    using vscan_result = scan_expected<ranges::borrowed_iterator_t<Range>>;
+    using vscan_result = scan_expected<borrowed_ssubrange_t<Range>>;
 
     namespace detail {
         template <typename Range, typename Format, typename Args>
@@ -162,8 +162,8 @@ namespace scn {
             if (SCN_UNLIKELY(!result)) {
                 return unexpected(result.error());
             }
-            return map_scan_result_iterator(SCN_FWD(range),
-                                            mapped_range.begin(), *result);
+            return map_scan_result_range(SCN_FWD(range), mapped_range.begin(),
+                                         *result);
         }
 
         template <typename Locale,
@@ -184,8 +184,8 @@ namespace scn {
             if (SCN_UNLIKELY(!result)) {
                 return unexpected(result.error());
             }
-            return map_scan_result_iterator(SCN_FWD(range),
-                                            mapped_range.begin(), *result);
+            return map_scan_result_range(SCN_FWD(range), mapped_range.begin(),
+                                         *result);
         }
 
         template <typename Range, typename Arg>
@@ -197,8 +197,8 @@ namespace scn {
             if (SCN_UNLIKELY(!result)) {
                 return unexpected(result.error());
             }
-            return map_scan_result_iterator(SCN_FWD(range),
-                                            mapped_range.begin(), *result);
+            return map_scan_result_range(SCN_FWD(range), mapped_range.begin(),
+                                         *result);
         }
 
         template <typename Range, typename Format, typename Args>
@@ -211,8 +211,8 @@ namespace scn {
             if (SCN_UNLIKELY(!result)) {
                 return unexpected(result.error());
             }
-            return map_scan_result_iterator(SCN_FWD(range),
-                                            mapped_range.begin(), *result);
+            return map_scan_result_range(SCN_FWD(range), mapped_range.begin(),
+                                         *result);
         }
     }  // namespace detail
 

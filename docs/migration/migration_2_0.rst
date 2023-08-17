@@ -56,21 +56,23 @@ The return value was used to get information about the leftover input data, and 
     std::string str;
     auto result = scn::scan("123 input", "{} {}", i, str);
 
-In v2, the values are returned from ``scn::scan``, using a tuple-like type.
+In v2, the values are returned from ``scn::scan``, wrapped in an ``expected``
+(https://en.cppreference.com/w/cpp/utility/expected).
 The types of the arguments are given in an explicit template parameter list,
 instead of being deduced from the given arguments.
 
 .. code-block:: cpp
 
-    auto result_tuple = scn::scan<int, std::string>("123 input", "{} {}");
-    auto& result = std::get<0>(result_tuple);
-    auto& i = std::get<1>(result_tuple);
+    auto result = scn::scan<int, std::string>("123 input", "{} {}");
+    if (result)
+        auto& [i, str] = result->values();
 
-    // Way better with C++17 structured bindings
-    auto [result, i, str] = scn::scan<int, std::string>("123 input", "{} {}");
-
-The ``result`` value above is truthy when the operation was successful (also observable with ``result.good()``).
-Use ``result.range()`` to get what's left of the input range, and ``result.error()`` to see any possible errors.
+The ``result`` value above is truthy when the operation was successful.
+Use ``result->range()`` to get a ``subrange`` over the unparsed input,
+``result->begin()`` and ``result->end()`` to get the begin and the end of that range, respectively, and
+``result->values()`` to access the parsed values through a ``std::tuple``.
+If only a single value is read, ``result->value()`` can be used to access it directly.
+If ``result`` contains an error, use ``result.error()`` to access it.
 
 No more "indirect" ranges: revamped source range error handling
 ---------------------------------------------------------------
@@ -96,7 +98,7 @@ a number of optimizations are enabled.
     std::string input;
     std::getline(file, input);
 
-    auto [result, i] = scn::scan<int>(input, "{}");
+    auto result = scn::scan<int>(input, "{}");
 
 If doing your own I/O isn't possible, or is for some reason unfeasible, a number of other options are available:
 
@@ -108,25 +110,26 @@ If doing your own I/O isn't possible, or is for some reason unfeasible, a number
 .. code-block:: cpp
 
     auto range = scn::istreambuf_view{std::cin};
-    auto [result, i] = scn::scan<int>(range, "{}");
+    auto result = scn::scan<int>(range, "{}");
 
 2) Signal errors like any other range signals them: by reaching end prematurely, or with exceptions (discouraged).
    If using a custom user-provided range, this is likely the only option.
 
 .. code-block:: cpp
 
-    auto [result, i, d] = scn::scan<int, double>(custom_source_range, "{} {}");
-    // result can be true, if both i and d could be scanned, even if the given range reached an error condition
+    auto result = scn::scan<int, double>(custom_source_range, "{} {}");
+    // result can be true, if both the int and the double could be scanned,
+    // but the given range reached an error condition.
     // We need to do the checking ourselves through custom_source_range, through whatever mechanism it provides
     if (result && custom_source_range.good()) {
-        // Use i and d
+        auto& [i, d] = result->values();
     }
 
     // Alternatively, if custom_source_range throws on error
     try {
-        auto [result, i, d] = scn::scan<int, double>(custom_source_range, "{} {}");
+        auto result = scn::scan<int, double>(custom_source_range, "{} {}");
         if (result) {
-            // Use i and d
+            auto& [i, d] = result->values();
         }
     } catch (const custom_source_range_error& e) {
         // ...
@@ -199,20 +202,20 @@ If that view would dangle, ``ranges::dangling`` is returned instead.
 .. code-block:: cpp
 
     // v2: reference semantics (no change)
-    auto [result, i] = scn::scan<int>("123 456", "{}");
-    // result contains a string_view over the given string literal
+    auto result = scn::scan<int>("123 456", "{}");
+    // result.begin() points to the given string literal
 
     // v2: reference semantics (no change)
     std::string source{};
-    auto [result, i] = scn::scan<int>(source, "{}");
-    // result contains a string_view over source
+    auto result = scn::scan<int>(source, "{}");
+    // result.begin() points to source
 
     // v2: dangling
-    auto [result, i] = scn::scan<int>(std::string{"123 456"}, "{}");
-    // result contains a ranges::dangling, the given std::string has gone out of scope and been destroyed
+    auto result = scn::scan<int>(std::string{"123 456"}, "{}");
+    // result.begin() is of type scn::ranges::dangling, the given std::string has gone out of scope and been destroyed
 
-In other words, in v2, ``scn::scan`` always returns a view to the given range.
-If that's not possible, it returns ``ranges::dangling`` instead.
+In other words, in v2, ``scn::scan`` always returns an iterator pointing to the given range.
+If that's not possible without dangling, it returns ``scn::ranges::dangling`` instead.
 
 Files removed
 -------------
@@ -239,11 +242,11 @@ remembering to sync the range afterwards with ``std::(w)cin``.
     auto result = scn::scan(scn::cstdin(), "{}", i);
 
     // v2:
-    auto [result, i] = scn::input<int>("{}");
+    auto result = scn::input<int>("{}");
     // or
     auto in = scn::istreambuf_view{std::cin};
-    auto [result, i] = scn::scan<int>(in, "{}");
-    in.sync(result.range().begin());
+    auto result = scn::scan<int>(in, "{}");
+    in.sync(result->begin());
 
 Specializing ``scn::scanner`` changed
 -------------------------------------
@@ -309,10 +312,13 @@ and because the context no longer deals with complicated ranges.
     // v2
     template <typename Context>
     auto scan(int_and_double& val, Context& ctx) const -> expected<typename Context::iterator> {
-        auto [result, i, d] = scn::scan<int, double>(ctx.range(), "[{}, {}]);
+        auto result = scn::scan<int, double>(ctx.range(), "[{}, {}]");
         if (result) {
-            val = int_and_double{i, d};
-            return result.range().begin();
+            {
+                auto [i, d] = result->values();
+                val = int_and_double{i, d};
+            }
+            return result->begin();
         }
         return unexpected(result.error());
     }
@@ -355,7 +361,7 @@ This is done to avoid potentially surprising behavior.
     template <typename CharT>
     struct scn::scanner<mytype, CharT> : public scn::basic_istream_scanner<CharT> {};
 
-    auto [result, val] = scn::scan<mytype>("123 456", "{}");
+    auto result = scn::scan<mytype>("123 456", "{}");
 
 ``scn::scan_localized`` renamed to ``scn::scan``
 ------------------------------------------------
@@ -371,7 +377,7 @@ In v2, this function is part of the ``scn::scan`` overload set.
     auto ret = scn::scan_localized(locale, "42", "{}", i);
 
     // v2;
-    auto [result, i] = scn::scan<int>(locale, "42", "{}");
+    auto result = scn::scan<int>(locale, "42", "{}");
 
 List operations removed
 -----------------------
@@ -393,22 +399,19 @@ Either scan each value manually, or use the new (experimental) range scanning fu
 
     // v2
     std::vector<int> vec{};
-    auto [result] = scn::scan("123 456 abc", "");
-    while (!result.range().empty()) {
-        int i{};
-        std::tie(result, i) = scn::scan<int>(result.range(), "{}");
-        if (!result) {
-            break;
-        }
-        vec.push_back(i);
+    auto input = scn::ranges::subrange{std::string_view{"123 456 abc"}};
+
+    while (auto result = scn::scan<int>(input, "{}")) {
+        vec.push_back(result->value());
+        input = result->range();
     }
     // vec == [123, 456]
-    // result.range() == " abc"
+    // input == " abc"
 
     // or, if the source range is in the correct format
     // (how std::format would output it)
-    auto [result, vec] = scn::scan<std::vector<int>>("[123, 456]", "{}");
-    // vec == [123, 456]
+    auto result = scn::scan<std::vector<int>>("[123, 456]", "{}");
+    // result->value() == [123, 456]
 
 
 ``scn::ignore`` and ``scn::getline`` removed

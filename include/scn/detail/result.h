@@ -26,66 +26,122 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    template <typename Iterator, typename... Args>
+    namespace detail {
+        template <typename Range, bool Dangling = false>
+        struct dangling_iterator {
+            using type = ranges::iterator_t<Range>;
+        };
+        template <typename Range>
+        struct dangling_iterator<Range, true> {
+            using type = ranges::dangling;
+        };
+
+        template <typename Range, bool Dangling = false>
+        struct dangling_sentinel {
+            using type = ranges::sentinel_t<Range>;
+        };
+        template <typename Range>
+        struct dangling_sentinel<Range, true> {
+            using type = ranges::dangling;
+        };
+    }  // namespace detail
+
+    template <typename Range, typename... Args>
     class scan_result {
     public:
-        using iterator = Iterator;
+        static constexpr bool is_dangling =
+            std::is_same_v<detail::remove_cvref_t<Range>, ranges::dangling>;
+        static_assert(ranges::borrowed_range<Range> || is_dangling);
+
+        using range_type = Range;
+        using iterator = detail::dangling_iterator<Range, is_dangling>;
+        using sentinel = detail::dangling_sentinel<Range, is_dangling>;
         using tuple_type = std::tuple<Args...>;
 
-        scan_result() = default;
+        constexpr scan_result() = default;
 
-        scan_result(iterator it, std::tuple<Args...>&& values)
-            : m_begin(SCN_MOVE(it)), m_values(SCN_MOVE(values))
+        constexpr scan_result(const scan_result&) = default;
+        constexpr scan_result(scan_result&&) = default;
+        constexpr scan_result& operator=(const scan_result&) = default;
+        constexpr scan_result& operator=(scan_result&&) = default;
+        ~scan_result() = default;
+
+        scan_result(range_type r, std::tuple<Args...>&& values)
+            : m_range(SCN_MOVE(r)), m_values(SCN_MOVE(values))
         {
         }
 
-        template <typename OtherIt,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<iterator, OtherIt>>>
-        scan_result(OtherIt&& it, std::tuple<Args...>&& values)
-            : m_begin(SCN_FWD(it)), m_values(SCN_MOVE(values))
+        scan_result(iterator b, sentinel e, std::tuple<Args...>&& values)
+            : m_range(b, e), m_values(SCN_MOVE(values))
         {
         }
 
-        template <typename OtherIt,
+        template <typename OtherR,
                   typename = std::enable_if_t<
-                      std::is_constructible_v<iterator, OtherIt>>>
-        explicit scan_result(const scan_result<OtherIt, Args...>& o)
-            : m_begin(o.m_begin), m_values(o.m_values)
+                      std::is_constructible_v<range_type, OtherR>>>
+        scan_result(OtherR&& r, std::tuple<Args...>&& values)
+            : m_range(SCN_FWD(r)), m_values(SCN_MOVE(values))
         {
         }
 
-        template <typename OtherIt,
+        template <typename OtherR,
                   typename = std::enable_if_t<
-                      std::is_constructible_v<iterator, OtherIt>>>
-        explicit scan_result(scan_result<OtherIt, Args...>&& o)
-            : m_begin(SCN_MOVE(o.m_begin)), m_values(SCN_MOVE(o.m_values))
+                      std::is_constructible_v<range_type, OtherR>>>
+        explicit scan_result(const scan_result<OtherR, Args...>& o)
+            : m_range(o.m_range), m_values(o.m_values)
         {
         }
 
-        template <typename OtherIt,
+        template <typename OtherR,
                   typename = std::enable_if_t<
-                      std::is_constructible_v<iterator, OtherIt>>>
-        scan_result& operator=(const scan_result<OtherIt, Args...>& o)
+                      std::is_constructible_v<range_type, OtherR>>>
+        explicit scan_result(scan_result<OtherR, Args...>&& o)
+            : m_range(SCN_MOVE(o.m_range)), m_values(SCN_MOVE(o.m_values))
         {
-            m_begin = o.m_begin;
+        }
+
+        template <typename OtherR,
+                  typename = std::enable_if_t<
+                      std::is_constructible_v<range_type, OtherR>>>
+        scan_result& operator=(const scan_result<OtherR, Args...>& o)
+        {
+            m_range = o.m_range;
             m_values = o.m_values;
             return *this;
         }
 
-        template <typename OtherIt,
+        template <typename OtherR,
                   typename = std::enable_if_t<
-                      std::is_constructible_v<iterator, OtherIt>>>
-        scan_result& operator=(scan_result<OtherIt, Args...>&& o)
+                      std::is_constructible_v<range_type, OtherR>>>
+        scan_result& operator=(scan_result<OtherR, Args...>&& o)
         {
-            m_begin = SCN_MOVE(o.m_begin);
+            m_range = SCN_MOVE(o.m_range);
             m_values = SCN_MOVE(o.m_values);
             return *this;
         }
 
-        iterator begin() const
+        range_type range() const
         {
-            return m_begin;
+            return m_range;
+        }
+
+        auto begin() const
+        {
+            if constexpr (is_dangling) {
+                return ranges::dangling{};
+            }
+            else {
+                return m_range.begin();
+            }
+        }
+        auto end() const
+        {
+            if constexpr (is_dangling) {
+                return ranges::dangling{};
+            }
+            else {
+                return m_range.end();
+            }
         }
 
         tuple_type& values() &
@@ -131,12 +187,12 @@ namespace scn {
         }
 
     private:
-        iterator m_begin{};
+        range_type m_range{};
         tuple_type m_values{};
     };
 
-    template <typename It, typename... Args>
-    scan_result(It, std::tuple<Args...>) -> scan_result<It, Args...>;
+    template <typename R, typename... Args>
+    scan_result(R, std::tuple<Args...>) -> scan_result<R, Args...>;
 
     namespace detail {
         template <typename SourceRange, typename ResultIterator>
@@ -153,6 +209,18 @@ namespace scn {
                 return ranges::next(ranges::begin(source),
                                     ranges::distance(mapped_begin, result));
             }
+        }
+
+        template <typename SourceRange, typename ResultIterator>
+        auto map_scan_result_range(SourceRange&& source,
+                                   const ResultIterator& mapped_begin,
+                                   const ResultIterator& result)
+            -> borrowed_ssubrange_t<SourceRange>
+        {
+            auto end = ranges::end(source);
+            return {
+                map_scan_result_iterator(SCN_FWD(source), mapped_begin, result),
+                end};
         }
     }  // namespace detail
 

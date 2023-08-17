@@ -17,13 +17,17 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/detail/scan.h>
 #include <scn/detail/result.h>
+#include <scn/detail/scan.h>
 
 using ::testing::Test;
 
-template <typename R, typename... Args>
-using scan_result_tuple_helper = std::tuple<scn::scan_result<R>, Args...>;
+template <typename It, typename... Args>
+using scan_result_helper = scn::scan_expected<scn::scan_result<
+    std::conditional_t<std::is_same_v<It, scn::ranges::dangling>,
+                       scn::ranges::dangling,
+                       scn::ranges::subrange<It>>,
+    Args...>>;
 
 TEST(SourceTest, Simple)
 {
@@ -45,10 +49,8 @@ TEST(SourceTest, TwoArgs)
 TEST(SourceTest, SourceIsStringLiteral)
 {
     auto result = scn::scan<int, double>("123 3.14", "{} {}");
-    static_assert(
-        std::is_same_v<
-            decltype(result),
-            scn::scan_expected<scn::scan_result<const char*, int, double>>>);
+    static_assert(std::is_same_v<decltype(result),
+                                 scan_result_helper<const char*, int, double>>);
     ASSERT_TRUE(result);
     EXPECT_EQ(*result->begin(), '\0');
     auto [i, d] = result->values();
@@ -59,10 +61,9 @@ TEST(SourceTest, SourceIsStringLiteral)
 TEST(SourceTest, SourceIsStringView)
 {
     auto result = scn::scan<int, double>(std::string_view{"123 3.14"}, "{} {}");
-    static_assert(
-        std::is_same_v<decltype(result),
-                       scn::scan_expected<scn::scan_result<
-                           std::string_view::iterator, int, double>>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scan_result_helper<std::string_view::iterator, int, double>>);
     ASSERT_TRUE(result);
     EXPECT_EQ(*result->begin(), '\0');
     auto [i, d] = result->values();
@@ -74,9 +75,9 @@ TEST(SourceTest, SourceIsStringLvalue)
 {
     auto source = std::string{"123 3.14"};
     auto result = scn::scan<int, double>(source, "{} {}");
-    static_assert(std::is_same_v<decltype(result),
-                                 scn::scan_expected<scn::scan_result<
-                                     std::string::iterator, int, double>>>);
+    static_assert(
+        std::is_same_v<decltype(result),
+                       scan_result_helper<std::string::iterator, int, double>>);
     ASSERT_TRUE(result);
     EXPECT_EQ(*result->begin(), '\0');
     auto [i, d] = result->values();
@@ -87,9 +88,9 @@ TEST(SourceTest, SourceIsStringLvalue)
 TEST(SourceTest, SourceIsStringRvalue)
 {
     auto result = scn::scan<int, double>(std::string{"123 3.14"}, "{} {}");
-    static_assert(std::is_same_v<decltype(result),
-                                 scn::scan_expected<scn::scan_result<
-                                     scn::ranges::dangling, int, double>>>);
+    static_assert(
+        std::is_same_v<decltype(result),
+                       scan_result_helper<scn::ranges::dangling, int, double>>);
 }
 
 TEST(SourceTest, SourceIsIstreamViewLvalue)
@@ -99,10 +100,12 @@ TEST(SourceTest, SourceIsIstreamViewLvalue)
     auto range = scn::istreambuf_subrange{ssr};
 
     auto result = scn::scan<int, double>(range, "{} {}");
-    static_assert(
-        std::is_same_v<decltype(result),
-                       scn::scan_expected<scn::scan_result<
-                           scn::istreambuf_subrange::iterator, int, double>>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scn::scan_expected<scn::scan_result<
+                      scn::ranges::subrange<scn::istreambuf_subrange::iterator,
+                                            scn::istreambuf_subrange::sentinel>,
+                      int, double>>>);
 }
 
 TEST(SourceTest, SourceIsIstreamViewRvalue)
@@ -112,10 +115,12 @@ TEST(SourceTest, SourceIsIstreamViewRvalue)
 
     auto result =
         scn::scan<int, double>(scn::istreambuf_subrange{ssr}, "{} {}");
-    static_assert(
-        std::is_same_v<decltype(result),
-                       scn::scan_expected<scn::scan_result<
-                           scn::istreambuf_subrange::iterator, int, double>>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scn::scan_expected<scn::scan_result<
+                      scn::ranges::subrange<scn::istreambuf_subrange::iterator,
+                                            scn::istreambuf_subrange::sentinel>,
+                      int, double>>>);
 }
 
 TEST(SourceTest, SourceIsIstreamRangeLvalue)
@@ -124,10 +129,12 @@ TEST(SourceTest, SourceIsIstreamRangeLvalue)
     auto ssr = scn::istreambuf_view{ss};
 
     auto result = scn::scan<int, double>(ssr, "{} {}");
-    static_assert(
-        std::is_same_v<decltype(result),
-                       scn::scan_expected<scn::scan_result<
-                           scn::istreambuf_view::iterator, int, double>>>);
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scn::scan_expected<scn::scan_result<
+                      scn::ranges::subrange<scn::istreambuf_view::iterator,
+                                            scn::istreambuf_view::sentinel>,
+                      int, double>>>);
 }
 
 TEST(SourceTest, SourceIsIstreamRangeRvalue)

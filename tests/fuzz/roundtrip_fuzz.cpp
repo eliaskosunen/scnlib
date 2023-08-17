@@ -30,7 +30,7 @@ namespace scn::fuzz {
             if (value != original) {
                 throw std::runtime_error("Roundtrip failure");
             }
-            if (!result.range().empty()) {
+            if (!result->range().empty()) {
                 throw std::runtime_error("Unparsed input");
             }
         }
@@ -39,18 +39,18 @@ namespace scn::fuzz {
         void do_roundtrip(const T& original_value, const Source& source)
         {
             {
-                const auto [result, value] =
+                const auto result =
                     scn::scan<T>(source, get_default_format_string<CharT>());
-                check_roundtrip(value, original_value, result);
+                check_roundtrip(result.value().value(), original_value, result);
             }
             {
-                const auto [result, value] = scn::scan_value<T>(source);
-                check_roundtrip(value, original_value, result);
+                const auto result = scn::scan_value<T>(source);
+                check_roundtrip(result.value().value(), original_value, result);
             }
             {
-                const auto [result, value] = scn::scan<T>(
+                const auto result = scn::scan<T>(
                     global_locale, source, get_default_format_string<CharT>());
-                check_roundtrip(value, original_value, result);
+                check_roundtrip(result.value().value(), original_value, result);
             }
         }
 

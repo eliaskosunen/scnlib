@@ -26,10 +26,10 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    template <typename ResultIterator, typename Context, typename... Args>
-    auto make_scan_result(scan_expected<ResultIterator>&& result,
+    template <typename ResultRange, typename Context, typename... Args>
+    auto make_scan_result(scan_expected<ResultRange>&& result,
                           scan_arg_store<Context, Args...>&& args)
-        -> scan_expected<scan_result<ResultIterator, Args...>>
+        -> scan_expected<scan_result<ResultRange, Args...>>
     {
         if (SCN_UNLIKELY(!result)) {
             return unexpected(result.error());
@@ -39,7 +39,7 @@ namespace scn {
 
     template <typename Range, typename... Args>
     using scan_result_type =
-        scan_expected<scan_result<ranges::borrowed_iterator_t<Range>, Args...>>;
+        scan_expected<scan_result<borrowed_ssubrange_t<Range>, Args...>>;
 
     namespace detail {
         // Boilerplate for scan()
