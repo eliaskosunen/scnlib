@@ -217,7 +217,7 @@ namespace scn {
 
                 if (auto msg = do_single_char_impl(digit, state);
                     SCN_UNLIKELY(msg != nullptr)) {
-                    return {false, {scan_error::value_overflow, msg}};
+                    return {false, {scan_error::value_out_of_range, msg}};
                 }
                 return {true, {}};
             }
@@ -312,7 +312,7 @@ namespace scn {
                             1'0000'0000ull &&
                         word > static_cast<uint64_t>(state.limit)) {
                         SCN_UNLIKELY_ATTR
-                        return scan_error{scan_error::value_overflow,
+                        return scan_error{scan_error::value_out_of_range,
                                           "Out of range: integer overflow"};
                     }
 
@@ -331,7 +331,7 @@ namespace scn {
                                                    static_cast<utype>(word),
                                                    &state.accumulator))) {
                         SCN_UNLIKELY_ATTR
-                        return scan_error{scan_error::value_overflow,
+                        return scan_error{scan_error::value_out_of_range,
                                           "Out of range: integer overflow"};
                     }
                 }
@@ -347,7 +347,7 @@ namespace scn {
                     if (static_cast<uint64_t>(state.limit) >= 1'0000'0000ull &&
                         word > static_cast<uint64_t>(state.limit)) {
                         SCN_UNLIKELY_ATTR
-                        return scan_error{scan_error::value_overflow,
+                        return scan_error{scan_error::value_out_of_range,
                                           "Out of range: integer overflow"};
                     }
                 }
@@ -360,7 +360,7 @@ namespace scn {
                         ((state.limit - static_cast<utype>(word)) /
                          accumulator_multiplier)) {
                         SCN_UNLIKELY_ATTR
-                        return scan_error{scan_error::value_overflow,
+                        return scan_error{scan_error::value_out_of_range,
                                           "Out of range: integer overflow"};
                     }
                 }
@@ -413,7 +413,7 @@ namespace scn {
                                              T& value,
                                              numeric_reader_base::sign sign)
             {
-                if (err.code() != scan_error::value_overflow) {
+                if (err.code() != scan_error::value_out_of_range) {
                     return;
                 }
 

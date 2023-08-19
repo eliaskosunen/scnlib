@@ -711,7 +711,7 @@ TYPED_TEST(FloatValueReaderTest, Overflow)
     auto [result, val] =
         this->simple_test("9999999999999.9999e999999999999999");
     EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_overflow,
+        result, val, scn::scan_error::value_out_of_range,
         std::numeric_limits<typename TestFixture::float_type>::infinity()));
 }
 
@@ -787,21 +787,21 @@ TYPED_TEST(FloatValueReaderTest, Underflow)
 {
     auto [result, val] = this->simple_test(this->get_underflow());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_underflow,
+        result, val, scn::scan_error::value_out_of_range,
         float_zero<typename TestFixture::float_type>()));
 }
 TYPED_TEST(FloatValueReaderTest, UnderflowFromHex)
 {
     auto [result, val] = this->simple_test(this->get_underflow_hex());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_underflow,
+        result, val, scn::scan_error::value_out_of_range,
         float_zero<typename TestFixture::float_type>()));
 }
 TYPED_TEST(FloatValueReaderTest, UnderflowNeg)
 {
     auto [result, val] = this->simple_test(this->get_underflow_neg());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_underflow,
+        result, val, scn::scan_error::value_out_of_range,
         -float_zero<typename TestFixture::float_type>()));
 }
 
@@ -826,14 +826,14 @@ TYPED_TEST(FloatValueReaderTest, BarelyOverflow)
 {
     auto [result, val] = this->simple_test(this->get_overflow());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_overflow,
+        result, val, scn::scan_error::value_out_of_range,
         std::numeric_limits<typename TestFixture::float_type>::infinity()));
 }
 TYPED_TEST(FloatValueReaderTest, BarelyOverflowFromHex)
 {
     auto [result, val] = this->simple_test(this->get_overflow_hex());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_overflow,
+        result, val, scn::scan_error::value_out_of_range,
         std::numeric_limits<typename TestFixture::float_type>::infinity()));
 }
 
@@ -841,14 +841,14 @@ TYPED_TEST(FloatValueReaderTest, BarelyOverflowNeg)
 {
     auto [result, val] = this->simple_test(this->get_overflow_neg());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_overflow,
+        result, val, scn::scan_error::value_out_of_range,
         -std::numeric_limits<typename TestFixture::float_type>::infinity()));
 }
 TYPED_TEST(FloatValueReaderTest, BarelyOverflowNegFromHex)
 {
     auto [result, val] = this->simple_test(this->get_overflow_neg_hex());
     EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_overflow,
+        result, val, scn::scan_error::value_out_of_range,
         -std::numeric_limits<typename TestFixture::float_type>::infinity()));
 }
 

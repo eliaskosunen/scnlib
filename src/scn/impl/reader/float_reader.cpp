@@ -210,7 +210,7 @@ namespace scn {
 
                     if (c_errno == ERANGE && is_float_zero(value)) {
                         SCN_UNLIKELY_ATTR
-                        return {scan_error::value_underflow,
+                        return {scan_error::value_out_of_range,
                                 "strtod failed: underflow"};
                     }
 
@@ -221,7 +221,7 @@ namespace scn {
                         m_kind != float_reader_base::float_kind::inf_long &&
                         std::abs(value) == std::numeric_limits<T>::infinity()) {
                         SCN_UNLIKELY_ATTR
-                        return {scan_error::value_overflow,
+                        return {scan_error::value_out_of_range,
                                 "strtod failed: overflow"};
                     }
 

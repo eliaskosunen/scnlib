@@ -165,7 +165,7 @@ namespace scn {
                 auto result = simdutf::convert_valid_utf32_to_utf16(
                     reinterpret_cast<const char32_t*>(&cp), 1, buf);
                 if (result != 1 && error_on_overflow) {
-                    return unexpected_scan_error(scan_error::value_overflow,
+                    return unexpected_scan_error(scan_error::value_out_of_range,
                                                  "Non-BOM code point can't be "
                                                  "narrowed to a single 2-byte "
                                                  "wchar_t code unit");
