@@ -41,6 +41,7 @@ add_executable(scn_tests
         source_test.cpp
         string_test.cpp
         string_view_test.cpp
+        unicode_test.cpp
 )
 target_link_libraries(scn_tests scn_gtest scn_tests_base)
 add_test(NAME scn_tests COMMAND scn_tests)

@@ -171,9 +171,9 @@ namespace scn {
                         "Failed to validate string_view value");
                 }
 
+                const auto view = src.view();
                 value = std::basic_string_view<ValueCharT>(
-                    ranges::data(src.view()),
-                    ranges_polyfill::usize(src.view()));
+                    ranges::data(view), ranges_polyfill::usize(view));
 
                 return *result;
             }
@@ -432,13 +432,15 @@ namespace scn {
                         return {};
                     }
 
-                    auto it = specs.charset_string.begin();
+                    auto it = detail::to_address(specs.charset_string.begin());
                     auto set = detail::parse_presentation_set(
-                        it, specs.charset_string.end(), nonascii);
+                        it, detail::to_address(specs.charset_string.end()),
+                        nonascii);
                     if (SCN_UNLIKELY(!nonascii)) {
                         return nonascii.err;
                     }
-                    SCN_ENSURE(it == specs.charset_string.end());
+                    SCN_ENSURE(it ==
+                               detail::to_address(specs.charset_string.end()));
                     SCN_ENSURE(set == specs.charset_string);
 
                     ranges::sort(nonascii.extra_ranges);

@@ -61,7 +61,7 @@ namespace scn {
         };
 
     private:
-        using code_t = enum code;
+        using code_t = code;
 
     public:
         struct success_tag_t {};

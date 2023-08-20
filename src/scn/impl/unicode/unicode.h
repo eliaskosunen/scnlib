@@ -270,7 +270,8 @@ namespace scn {
             }
             else if constexpr (enc == encoding::utf16) {
                 return simdutf::utf32_length_from_utf16(
-                    reinterpret_cast<char16_t*>(input.data()), input.size());
+                    reinterpret_cast<const char16_t*>(input.data()),
+                    input.size());
             }
             else if constexpr (enc == encoding::utf32) {
                 return input.size();
@@ -484,12 +485,13 @@ namespace scn {
         {
             auto it = input.begin();
             while (it != input.end()) {
-                auto res = get_next_code_point_valid(input);
+                auto res = get_next_code_point_valid(
+                    detail::make_string_view_from_iterators<CharT>(
+                        it, input.end()));
                 cb(res.value);
 
-                it = res.iterator;
-                input = detail::make_string_view_from_iterators<CharT>(
-                    it, input.end());
+                it += ranges::distance(detail::to_address(it),
+                                       detail::to_address(res.iterator));
             }
         }
     }  // namespace impl

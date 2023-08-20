@@ -69,7 +69,7 @@ namespace scn {
 
             SCN_GCC_COMPAT_PUSH
             SCN_GCC_COMPAT_IGNORE("-Wsign-conversion")
-            constexpr std::string_view lengths =
+            constexpr char lengths[] =
                 "\1\1\1\1\1\1\1\1"  // highest bit is 0 -> single-byte
                 "\1\1\1\1\1\1\1\1"
                 "\0\0\0\0\0\0\0\0"  // highest bits 10 -> error, non-initial
@@ -197,9 +197,11 @@ namespace scn {
             SCN_UNREACHABLE;
         }
 
+        template <typename CharT>
         inline constexpr code_point decode_utf16_code_point(
-            std::wstring_view input)
+            std::basic_string_view<CharT> input)
         {
+            static_assert(sizeof(CharT) == 2);
             SCN_EXPECT(!input.empty() && input.size() <= 2);
 
             if (input.size() == 1) {

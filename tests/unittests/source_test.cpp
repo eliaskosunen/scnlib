@@ -44,14 +44,14 @@ TEST(SourceTest, Simple)
 {
     auto r = scn::scan<int>("123", "{}");
     ASSERT_TRUE(r);
-    EXPECT_EQ(*r->begin(), '\0');
+    EXPECT_TRUE(r->range().empty());
     EXPECT_EQ(std::get<0>(r->values()), 123);
 }
 TEST(SourceTest, TwoArgs)
 {
     auto r = scn::scan<int, double>("123 3.14", "{} {}");
     ASSERT_TRUE(r);
-    EXPECT_EQ(*r->begin(), '\0');
+    EXPECT_TRUE(r->range().empty());
     auto [i, d] = r->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
@@ -63,7 +63,7 @@ TEST(SourceTest, SourceIsStringLiteral)
     static_assert(std::is_same_v<decltype(result),
                                  scan_result_helper<const char*, int, double>>);
     ASSERT_TRUE(result);
-    EXPECT_EQ(*result->begin(), '\0');
+    EXPECT_TRUE(result->range().empty());
     auto [i, d] = result->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
@@ -76,7 +76,7 @@ TEST(SourceTest, SourceIsStringView)
                   decltype(result),
                   scan_result_helper<std::string_view::iterator, int, double>>);
     ASSERT_TRUE(result);
-    EXPECT_EQ(*result->begin(), '\0');
+    EXPECT_TRUE(result->range().empty());
     auto [i, d] = result->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
@@ -90,7 +90,7 @@ TEST(SourceTest, SourceIsStringLvalue)
         std::is_same_v<decltype(result),
                        scan_result_helper<std::string::iterator, int, double>>);
     ASSERT_TRUE(result);
-    EXPECT_EQ(*result->begin(), '\0');
+    EXPECT_TRUE(result->range().empty());
     auto [i, d] = result->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);

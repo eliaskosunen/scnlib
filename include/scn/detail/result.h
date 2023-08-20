@@ -216,10 +216,28 @@ namespace scn {
                 return ranges::next(ranges::begin(source),
                                     result.distance_from_begin());
             }
+            else if constexpr (can_make_address_from_iterator<
+                                   ResultIterator>::value) {
+                return ranges::next(ranges::begin(source),
+                                    ranges::distance(to_address(mapped_begin),
+                                                     to_address(result)));
+            }
             else {
                 return ranges::next(ranges::begin(source),
                                     ranges::distance(mapped_begin, result));
             }
+        }
+
+        template <typename SourceRange>
+        auto map_scan_result_end(SourceRange& source)
+        {
+            return ranges::end(source);
+        }
+        template <typename CharT, size_t N>
+        auto map_scan_result_end(CharT (&source)[N])
+            -> ranges::sentinel_t<CharT (&)[N]>
+        {
+            return source + N - 1;
         }
 
         template <typename SourceRange, typename ResultIterator>
@@ -228,7 +246,7 @@ namespace scn {
                                    const ResultIterator& result)
             -> borrowed_ssubrange_t<SourceRange>
         {
-            auto end = ranges::end(source);
+            auto end = map_scan_result_end(source);
             return {
                 map_scan_result_iterator(SCN_FWD(source), mapped_begin, result),
                 end};
