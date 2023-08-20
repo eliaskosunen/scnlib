@@ -2,7 +2,19 @@
 
 _Released 2023-xx-xx_
 
-* TODO
+Major overhaul. The library is rewritten in its entirety.
+See the documentation, namely the [Migration guide](https://scnlib.readthedocs.io/en/v2.0/migration/migration_2_0.html)
+for more details.
+
+Major changes include:
+
+* C++17 is required.
+* Several names are changed to include the `scan_` prefix.
+* `scn::scan` returns the scanned values by value. Output parameters are no longer used.
+* `scn::scan` now accepts all `forward_range`s (v1: `bidirectional_range` + default- and move constructible).
+* `scn::scan` returns a view (`subrange`) into its input, and never takes ownership.
+* Scope is more focused: list operations, `ignore`, `getline`, and `file` have been removed.
+* Performance improvements
 
 # 1.1.2
 

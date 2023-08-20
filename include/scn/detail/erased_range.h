@@ -390,6 +390,7 @@ namespace scn {
     template <typename CharT>
     ranges::dangling erase_range(basic_erased_range<CharT>& r)
     {
+        SCN_UNUSED(r);
         return {};
     }
 

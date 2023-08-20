@@ -311,16 +311,15 @@ and because the context no longer deals with complicated ranges.
 
     // v2
     template <typename Context>
-    auto scan(int_and_double& val, Context& ctx) const -> expected<typename Context::iterator> {
+    auto scan(int_and_double& val, Context& ctx) const
+        -> expected<typename Context::iterator> {
         auto result = scn::scan<int, double>(ctx.range(), "[{}, {}]");
-        if (result) {
-            {
-                auto [i, d] = result->values();
-                val = int_and_double{i, d};
-            }
-            return result->begin();
+        if (!result) {
+            return unexpected(result.error());
         }
-        return unexpected(result.error());
+
+        std::tie(val.i, val.d) = result->values();
+        return result->begin();
     }
 
 ``scn::*_parser`` removed
