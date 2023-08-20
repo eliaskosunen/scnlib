@@ -442,6 +442,7 @@ namespace scn {
                         }
                     }
 
+                    SCN_UNUSED(check_narrow_allocated_string);
                     return check_other(it, buf);
                 });
         }

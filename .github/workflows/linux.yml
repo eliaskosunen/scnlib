@@ -294,7 +294,7 @@ jobs:
           
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          ./llvm.sh 16
+          sudo ./llvm.sh 16
           
           mkdir ${{ runner.workspace }}/build
 
