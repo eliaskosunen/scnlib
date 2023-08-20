@@ -5,11 +5,16 @@ on:
     branches:
       - master
       - dev
-      #- ci-*
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
   pull_request:
     branches:
       - master
       - dev
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
   workflow_dispatch:
 
 jobs:

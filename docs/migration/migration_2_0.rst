@@ -1,5 +1,5 @@
 ============================
-Migration Guide v1.0 -> v2.0
+Migration Guide v1.1 -> v2.0
 ============================
 
 For v2.0, the library was rewritten and redesigned in its entirety.
@@ -165,7 +165,7 @@ Constructible from ``scn::(w)istreambuf_view``, which the user can pass to ``scn
 
 3) ``scn::(w)erased_range``
 
-All other forward ranges are type-erased, and passed to ``scn::vscan`` as ``scn::(w)erased_range``s.
+All other forward ranges are type-erased, and passed to ``scn::vscan`` as ``scn::(w)erased_range`` s.
 
 If possible, option 1) should be preferred, followed by option 2) and 3).
 Each of these option is less performant than the option before it.
@@ -273,7 +273,7 @@ Inside it, ``parse()`` and ``scan()`` returned a ``scn::error``.
 In v2, ``scn::scanner`` also takes in the character type of the source range.
 This is consistent with ``std::formatter``.
 
-``parse()`` and ``scan()`` return a ``scn::expected<iterator>``.
+``parse()`` and ``scan()`` return a ``scn::scan_expected<iterator>``.
 
 ``parse()`` should be ``constexpr``, to support compile-time format string checking.
 
@@ -287,10 +287,10 @@ This is consistent with ``std::formatter``.
     template <typename CharT>
     struct scn::scanner<int_and_double, CharT> {
         template <typename ParseCtx>
-        constexpr auto parse(ParseCtx& pctx) -> expected<typename ParseCtx::iterator>;
+        constexpr auto parse(ParseCtx& pctx) -> scan_expected<typename ParseCtx::iterator>;
 
         template <typename Context>
-        auto scan(int_and_double& val, Context& ctx) const -> expected<typename Context::iterator>;
+        auto scan(int_and_double& val, Context& ctx) const -> scan_expected<typename Context::iterator>;
     };
 
 ``scn::scan_usertype`` removed
@@ -329,12 +329,12 @@ and because the context no longer deals with complicated ranges.
 In v1, there were helper base classes for creating ``scanner::parse``,
 including ``scn::empty_parser`` and ``scn::common_parser``.
 
-In v2, these are removed. Create your own ``parse`` member functions, or reuse already existing ``scanner``s.
+In v2, these are removed. Create your own ``parse`` member functions, or reuse already existing ``scanner`` s.
 
 Including ``<scn/istream.h>`` no longer enables custom scanning for types with ``operator>>`` by default
 --------------------------------------------------------------------------------------------------------
 
-In v1, just by including ``<scn/istream.h>``, any type with an ``operator>>`` would be automatically ``scn::scan``able.
+In v1, just by including ``<scn/istream.h>``, any type with an ``operator>>`` would be automatically ``scn::scan`` able.
 
 In v2, you'll need to explicitly opt-in to this behavior for your own types, by creating a ``scn::scanner``,
 and inheriting from the ``scn::basic_istream_scanner<CharT>`` class template.

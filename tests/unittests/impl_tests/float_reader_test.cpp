@@ -1070,3 +1070,40 @@ TYPED_TEST(FloatValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
     EXPECT_TRUE(this->check_failure_with_code(
         result, val, scn::scan_error::invalid_scanned_value));
 }
+
+template <typename CharT>
+struct numpunct_with_comma_decimal_separator : std::numpunct<CharT> {
+    numpunct_with_comma_decimal_separator() = default;
+
+    CharT do_decimal_point() const override
+    {
+        return CharT{','};
+    }
+};
+
+template <typename CharT>
+struct decimal_comma_test_state {
+    decimal_comma_test_state()
+        : stdloc(std::locale::classic(),
+                 new numpunct_with_comma_decimal_separator<CharT>{}),
+          locref(stdloc)
+    {
+    }
+
+    std::locale stdloc;
+    scn::detail::locale_ref locref;
+};
+
+TYPED_TEST(FloatValueReaderTest, LocalizedDecimalSeparator)
+{
+    if (!TestFixture::is_localized) {
+        return SUCCEED() << "This test only works with localized_interface";
+    }
+
+    auto state = decimal_comma_test_state<typename TestFixture::char_type>{};
+
+    auto [a, _, val] =
+        this->simple_success_specs_and_locale_test("3,14", {}, state.locref);
+    EXPECT_TRUE(a);
+    EXPECT_TRUE(check_floating_eq(val, this->get_pi().first));
+}

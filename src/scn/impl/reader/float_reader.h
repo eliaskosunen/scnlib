@@ -125,7 +125,9 @@ namespace scn {
                         if constexpr (ranges::contiguous_range<Range> &&
                                       ranges::sized_range<Range>) {
                             if (SCN_UNLIKELY(m_locale_options.thousands_sep !=
-                                             0)) {
+                                                 0 ||
+                                             m_locale_options.decimal_point !=
+                                                 CharT{'.'})) {
                                 return do_read_source_impl(
                                     r,
                                     [&](auto&& rr) {
@@ -517,6 +519,17 @@ namespace scn {
                 }
 
                 auto& str = this->m_buffer.make_into_allocated_string();
+                if (m_locale_options.decimal_point != CharT{'.'}) {
+                    for (auto& ch : str) {
+                        if (ch == m_locale_options.decimal_point) {
+                            ch = CharT{'.'};
+                        }
+                    }
+                }
+
+                if (m_locale_options.thousands_sep == 0) {
+                    return;
+                }
 
                 auto first = ranges::find(str, m_locale_options.thousands_sep);
                 if (first == str.end()) {
@@ -527,10 +540,6 @@ namespace scn {
                     static_cast<char>(ranges::distance(str.begin(), first)));
 
                 for (auto it = first; ++it != str.end();) {
-                    if (*it == m_locale_options.decimal_point) {
-                        *it = CharT{'.'};
-                    }
-
                     if (*it != m_locale_options.thousands_sep) {
                         *first++ = std::move(*it);
                     }

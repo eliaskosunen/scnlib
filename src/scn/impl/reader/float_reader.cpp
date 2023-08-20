@@ -511,9 +511,9 @@ namespace scn {
                     }
 
                     const auto flags = get_flags();
+                    const auto view = get_view();
                     const auto result = fast_float::from_chars(
-                        get_view().data(),
-                        get_view().data() + get_view().size(), value, flags);
+                        view.data(), view.data() + view.size(), value, flags);
 
                     if (SCN_UNLIKELY(result.ec ==
                                      std::errc::invalid_argument)) {
@@ -528,7 +528,7 @@ namespace scn {
                             {m_input, m_kind, m_options}, value);
                     }
 
-                    return result.ptr - get_view().data();
+                    return result.ptr - view.data();
                 }
 
             private:

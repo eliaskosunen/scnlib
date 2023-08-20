@@ -158,11 +158,17 @@ namespace scn {
     struct discard {
         constexpr discard() = default;
 
-        constexpr discard(const T&) {}
-        constexpr discard(T&&) {}
+        constexpr discard(const T&) SCN_NOEXCEPT {}
+        constexpr discard(T&&) SCN_NOEXCEPT {}
 
-        constexpr discard& operator=(const T&) {}
-        constexpr discard& operator=(T&&) {}
+        constexpr discard& operator=(const T&) SCN_NOEXCEPT
+        {
+            return *this;
+        }
+        constexpr discard& operator=(T&&) SCN_NOEXCEPT
+        {
+            return *this;
+        }
     };
 
     template <typename T, typename CharT>

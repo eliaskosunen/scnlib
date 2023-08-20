@@ -76,269 +76,275 @@ namespace scn {
 
             mutable buffer_type m_buffer{};
         };
+    }  // namespace detail
 
-        /**
-         * A range adaptor over `Range`, that caches the contents of the range,
-         * and allows the user to go back and see these contents.
-         * Turns an `input_range` into a `bidirectional_range`.
-         */
-        template <typename Range>
-        class basic_caching_view
-            : public basic_caching_view_base<detail::char_t<Range>>,
-              public ranges::view_interface<basic_caching_view<Range>> {
-        public:
-            using range_type = Range;
-            using char_type = detail::char_t<Range>;
-            using difference_type = std::ptrdiff_t;
+    /**
+     * A range adaptor over `Range`, that caches the contents of the range,
+     * and allows the user to go back and see these contents.
+     * Turns an `input_range` into a `bidirectional_range`.
+     *
+     * Move-only.
+     */
+    template <typename Range>
+    class basic_caching_view
+        : public detail::basic_caching_view_base<detail::char_t<Range>>,
+          public ranges::view_interface<basic_caching_view<Range>> {
+    public:
+        using range_type = Range;
+        using char_type = detail::char_t<Range>;
+        using difference_type = std::ptrdiff_t;
 
-            class iterator;
+        class iterator;
 
-            basic_caching_view(Range r)
-                : m_range(SCN_FWD(r)), m_iterator(ranges::begin(m_range))
-            {
-            }
-
-            iterator begin() const SCN_NOEXCEPT;
-
-            void clear()
-            {
-                this->m_buffer_begin_offset = this->buffer_size();
-                this->m_buffer.clear();
-            }
-
-            auto& underlying()
-            {
-                return m_range;
-            }
-            const auto& underlying() const
-            {
-                return m_range;
-            }
-
-        protected:
-            SCN_NODISCARD char_type get_at_index(difference_type idx) const
-            {
-                const auto read_result = read_until_index(idx);
-                SCN_ENSURE(read_result);
-                return this->get_cached_at_index(idx);
-            }
-
-            void read_single_into_buffer() const
-            {
-                SCN_EXPECT(m_iterator != ranges::end(m_range));
-                auto ch = *m_iterator;
-                ++m_iterator;
-                ++this->m_iterator_offset;
-                this->m_buffer.push_back(ch);
-            }
-
-            SCN_NODISCARD
-            bool read_multiple_into_buffer(difference_type n) const
-            {
-                SCN_EXPECT(n > 0);
-                read_single_into_buffer();
-                for (difference_type i = 1; i < n; ++i) {
-                    if (SCN_UNLIKELY(m_iterator == ranges::end(m_range))) {
-                        SCN_UNLIKELY_ATTR
-                        return false;
-                    }
-                    read_single_into_buffer();
-                }
-                return true;
-            }
-
-            SCN_NODISCARD bool read_until_index(difference_type idx) const
-            {
-                const auto bufidx = this->_convert_index_to_buffer(idx);
-                if (bufidx >= this->buffer_size()) {
-                    return read_multiple_into_buffer(bufidx -
-                                                     this->buffer_size() + 1);
-                }
-                return true;
-            }
-
-            SCN_NODISCARD bool is_index_at_end(difference_type idx) const
-            {
-                const auto bufidx = this->_convert_index_to_buffer(idx);
-                if (bufidx < this->buffer_size()) {
-                    return false;
-                }
-
-                if (m_iterator == ranges::end(m_range)) {
-                    return true;
-                }
-
-                return !this->read_until_index(idx);
-            }
-
-            ranges_polyfill::views::all_t<Range> m_range;
-            mutable ranges::iterator_t<decltype(m_range)> m_iterator;
-        };
-
-        template <typename Range>
-        class basic_caching_view<Range>::iterator {
-        public:
-            using view_type = basic_caching_view<Range>;
-
-            using iterator_category = std::bidirectional_iterator_tag;
-            using difference_type = std::ptrdiff_t;
-            using value_type = typename view_type::char_type;
-            using reference = value_type;
-            using pointer = value_type*;
-
-            friend view_type;
-
-            iterator() = default;
-
-            iterator& operator++()
-            {
-                SCN_EXPECT(m_view);
-                ++m_index;
-                return *this;
-            }
-            iterator operator++(int)
-            {
-                auto copy = *this;
-                operator++();
-                return copy;
-            }
-
-            iterator& operator--()
-            {
-                SCN_EXPECT(m_view);
-                --m_index;
-                return *this;
-            }
-            iterator operator--(int)
-            {
-                auto copy = *this;
-                operator--();
-                return copy;
-            }
-
-            value_type operator*() const
-            {
-                SCN_EXPECT(m_view);
-                return m_view->get_at_index(m_index);
-            }
-
-            view_type& view()
-            {
-                SCN_EXPECT(m_view);
-                return const_cast<view_type&>(*m_view);
-            }
-            const view_type& view() const
-            {
-                SCN_EXPECT(m_view);
-                return *m_view;
-            }
-
-            difference_type index() const
-            {
-                SCN_EXPECT(m_view);
-                return m_index;
-            }
-
-            friend bool operator==(const iterator& x,
-                                   ranges_std::default_sentinel_t)
-            {
-                return x.is_at_end();
-            }
-            friend bool operator==(ranges_std::default_sentinel_t s,
-                                   const iterator& x)
-            {
-                return x == s;
-            }
-
-            friend bool operator!=(const iterator& x,
-                                   ranges_std::default_sentinel_t s)
-            {
-                return !(x == s);
-            }
-            friend bool operator!=(ranges_std::default_sentinel_t s,
-                                   const iterator& x)
-            {
-                return !(x == s);
-            }
-
-            bool operator==(const iterator& o) const
-            {
-                return m_view == o.m_view && m_index == o.m_index;
-            }
-            bool operator!=(const iterator& o) const
-            {
-                return !(*this == o);
-            }
-
-            friend bool operator<(const iterator& a, const iterator& b)
-            {
-                if (a.is_at_end() && b.is_at_end()) {
-                    return false;
-                }
-                if (a.is_at_end() && !b.is_at_end()) {
-                    return false;
-                }
-                if (!a.is_at_end() && b.is_at_end()) {
-                    return true;
-                }
-                SCN_EXPECT(a.m_view == b.m_view);
-                return a.m_index < b.m_index;
-            }
-            friend bool operator>(const iterator& a, const iterator& b)
-            {
-                return b < a;
-            }
-            friend bool operator<=(const iterator& a, const iterator& b)
-            {
-                return !(a > b);
-            }
-            friend bool operator>=(const iterator& a, const iterator& b)
-            {
-                return !(a < b);
-            }
-
-        private:
-            iterator(const view_type& view) : m_view(&view) {}
-
-            bool is_at_end() const
-            {
-                if (!m_view) {
-                    return true;
-                }
-
-                return m_view->is_index_at_end(m_index);
-            }
-
-            mutable const view_type* m_view;
-            difference_type m_index{0};
-        };
-
-        template <typename Range>
-        auto basic_caching_view<Range>::begin() const SCN_NOEXCEPT->iterator
+        template <
+            typename R,
+            std::enable_if_t<std::is_constructible_v<Range, R&&>>* = nullptr>
+        explicit basic_caching_view(R&& r)
+            : m_range(SCN_FWD(r)), m_iterator(ranges::begin(m_range))
         {
-            return {*this};
         }
 
-        template <typename Range>
-        class basic_caching_subrange
-            : public ranges::subrange<
-                  ranges::iterator_t<basic_caching_view<Range>>,
-                  ranges_std::default_sentinel_t,
-                  ranges::subrange_kind::unsized> {
-            using base =
-                ranges::subrange<ranges::iterator_t<basic_caching_view<Range>>,
-                                 ranges_std::default_sentinel_t,
-                                 ranges::subrange_kind::unsized>;
+        iterator begin() const SCN_NOEXCEPT;
 
-        public:
-            using base::base;
+        void clear()
+        {
+            this->m_buffer_begin_offset = this->buffer_size();
+            this->m_buffer.clear();
+        }
 
-            basic_caching_subrange(const base& other)
-                : base(other.begin(), other.end())
-            {
+        auto& underlying()
+        {
+            return m_range;
+        }
+        const auto& underlying() const
+        {
+            return m_range;
+        }
+
+    protected:
+        SCN_NODISCARD char_type get_at_index(difference_type idx) const
+        {
+            const auto read_result = read_until_index(idx);
+            SCN_ENSURE(read_result);
+            return this->get_cached_at_index(idx);
+        }
+
+        void read_single_into_buffer() const
+        {
+            SCN_EXPECT(m_iterator != ranges::end(m_range));
+            auto ch = *m_iterator;
+            ++m_iterator;
+            ++this->m_iterator_offset;
+            this->m_buffer.push_back(ch);
+        }
+
+        SCN_NODISCARD
+        bool read_multiple_into_buffer(difference_type n) const
+        {
+            SCN_EXPECT(n > 0);
+            read_single_into_buffer();
+            for (difference_type i = 1; i < n; ++i) {
+                if (SCN_UNLIKELY(m_iterator == ranges::end(m_range))) {
+                    SCN_UNLIKELY_ATTR
+                    return false;
+                }
+                read_single_into_buffer();
             }
-        };
-    }  // namespace detail
+            return true;
+        }
+
+        SCN_NODISCARD bool read_until_index(difference_type idx) const
+        {
+            const auto bufidx = this->_convert_index_to_buffer(idx);
+            if (bufidx >= this->buffer_size()) {
+                return read_multiple_into_buffer(bufidx - this->buffer_size() +
+                                                 1);
+            }
+            return true;
+        }
+
+        SCN_NODISCARD bool is_index_at_end(difference_type idx) const
+        {
+            const auto bufidx = this->_convert_index_to_buffer(idx);
+            if (bufidx < this->buffer_size()) {
+                return false;
+            }
+
+            if (m_iterator == ranges::end(m_range)) {
+                return true;
+            }
+
+            return !this->read_until_index(idx);
+        }
+
+        ranges_polyfill::views::all_t<Range> m_range;
+        mutable ranges::iterator_t<decltype(m_range)> m_iterator;
+    };
+
+    template <typename R>
+    basic_caching_view(R) -> basic_caching_view<R>;
+
+    template <typename Range>
+    class basic_caching_view<Range>::iterator {
+    public:
+        using view_type = basic_caching_view<Range>;
+        friend basic_caching_view<Range>;
+
+        using iterator_category = std::bidirectional_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = typename view_type::char_type;
+        using reference = value_type;
+        using pointer = value_type*;
+
+        iterator() = default;
+
+        iterator& operator++()
+        {
+            SCN_EXPECT(m_view);
+            ++m_index;
+            return *this;
+        }
+        iterator operator++(int)
+        {
+            auto copy = *this;
+            operator++();
+            return copy;
+        }
+
+        iterator& operator--()
+        {
+            SCN_EXPECT(m_view);
+            --m_index;
+            return *this;
+        }
+        iterator operator--(int)
+        {
+            auto copy = *this;
+            operator--();
+            return copy;
+        }
+
+        value_type operator*() const
+        {
+            SCN_EXPECT(m_view);
+            return m_view->get_at_index(m_index);
+        }
+
+        view_type& view()
+        {
+            SCN_EXPECT(m_view);
+            return const_cast<view_type&>(*m_view);
+        }
+        const view_type& view() const
+        {
+            SCN_EXPECT(m_view);
+            return *m_view;
+        }
+
+        difference_type index() const
+        {
+            SCN_EXPECT(m_view);
+            return m_index;
+        }
+
+        friend bool operator==(const iterator& x,
+                               ranges_std::default_sentinel_t)
+        {
+            return x.is_at_end();
+        }
+        friend bool operator==(ranges_std::default_sentinel_t s,
+                               const iterator& x)
+        {
+            return x == s;
+        }
+
+        friend bool operator!=(const iterator& x,
+                               ranges_std::default_sentinel_t s)
+        {
+            return !(x == s);
+        }
+        friend bool operator!=(ranges_std::default_sentinel_t s,
+                               const iterator& x)
+        {
+            return !(x == s);
+        }
+
+        bool operator==(const iterator& o) const
+        {
+            return m_view == o.m_view && m_index == o.m_index;
+        }
+        bool operator!=(const iterator& o) const
+        {
+            return !(*this == o);
+        }
+
+        friend bool operator<(const iterator& a, const iterator& b)
+        {
+            if (a.is_at_end() && b.is_at_end()) {
+                return false;
+            }
+            if (a.is_at_end() && !b.is_at_end()) {
+                return false;
+            }
+            if (!a.is_at_end() && b.is_at_end()) {
+                return true;
+            }
+            SCN_EXPECT(a.m_view == b.m_view);
+            return a.m_index < b.m_index;
+        }
+        friend bool operator>(const iterator& a, const iterator& b)
+        {
+            return b < a;
+        }
+        friend bool operator<=(const iterator& a, const iterator& b)
+        {
+            return !(a > b);
+        }
+        friend bool operator>=(const iterator& a, const iterator& b)
+        {
+            return !(a < b);
+        }
+
+    private:
+        iterator(const view_type& view) : m_view(&view) {}
+
+        bool is_at_end() const
+        {
+            if (!m_view) {
+                return true;
+            }
+
+            return m_view->is_index_at_end(m_index);
+        }
+
+        mutable const view_type* m_view;
+        difference_type m_index{0};
+    };
+
+    template <typename Range>
+    auto basic_caching_view<Range>::begin() const SCN_NOEXCEPT->iterator
+    {
+        return {*this};
+    }
+
+    template <typename Range>
+    class basic_caching_subrange
+        : public ranges::subrange<ranges::iterator_t<basic_caching_view<Range>>,
+                                  ranges_std::default_sentinel_t,
+                                  ranges::subrange_kind::unsized> {
+        using base =
+            ranges::subrange<ranges::iterator_t<basic_caching_view<Range>>,
+                             ranges_std::default_sentinel_t,
+                             ranges::subrange_kind::unsized>;
+
+    public:
+        using base::base;
+
+        basic_caching_subrange(const base& other)
+            : base(other.begin(), other.end())
+        {
+        }
+    };
 
     SCN_END_NAMESPACE
 }  // namespace scn
@@ -347,16 +353,14 @@ namespace scn {
 
 namespace std::ranges {
     template <typename Range>
-    inline constexpr bool enable_view<scn::detail::basic_caching_view<Range>> =
-        true;
+    inline constexpr bool enable_view<scn::basic_caching_view<Range>> = true;
     template <typename Range>
-    inline constexpr bool
-        enable_view<scn::detail::basic_caching_subrange<Range>> = true;
+    inline constexpr bool enable_view<scn::basic_caching_subrange<Range>> =
+        true;
 
     template <typename Range>
     inline constexpr bool
-        enable_borrowed_range<scn::detail::basic_caching_subrange<Range>> =
-            true;
+        enable_borrowed_range<scn::basic_caching_subrange<Range>> = true;
 }  // namespace std::ranges
 
 #else
@@ -364,15 +368,13 @@ namespace std::ranges {
 NANO_BEGIN_NAMESPACE
 
 template <typename Range>
-inline constexpr bool enable_view<scn::detail::basic_caching_view<Range>> =
-    true;
+inline constexpr bool enable_view<scn::basic_caching_view<Range>> = true;
 template <typename Range>
-inline constexpr bool enable_view<scn::detail::basic_caching_subrange<Range>> =
-    true;
+inline constexpr bool enable_view<scn::basic_caching_subrange<Range>> = true;
 
 template <typename Range>
 inline constexpr bool
-    enable_borrowed_range<scn::detail::basic_caching_subrange<Range>> = true;
+    enable_borrowed_range<scn::basic_caching_subrange<Range>> = true;
 
 NANO_END_NAMESPACE
 

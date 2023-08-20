@@ -33,8 +33,7 @@ namespace scn {
         basic_scan_context<detail::decayed_mapped_source_range<Range>, CharT>>;
 
     namespace detail {
-        template <typename R,
-                  typename = std::enable_if_t<ranges::borrowed_range<R>>>
+        template <typename R>
         using vscan_impl_result = scan_expected<typename R::iterator>;
 
         vscan_impl_result<std::string_view> vscan_impl(
@@ -201,6 +200,7 @@ namespace scn {
                                          *result);
         }
 
+#if SCN_USE_IOSTREAMS
         template <typename Range, typename Format, typename Args>
         auto vscan_and_sync_generic(Range&& range, Format format, Args args)
             -> vscan_result<Range>
@@ -214,6 +214,7 @@ namespace scn {
             return map_scan_result_range(SCN_FWD(range), mapped_range.begin(),
                                          *result);
         }
+#endif
     }  // namespace detail
 
     SCN_GCC_PUSH
@@ -246,6 +247,7 @@ namespace scn {
         return detail::vscan_value_generic(SCN_FWD(range), arg);
     }
 
+#if SCN_USE_IOSTREAMS
     namespace detail {
         template <typename Range>
         auto vscan_and_sync(Range&& range,
@@ -256,6 +258,7 @@ namespace scn {
             return detail::vscan_and_sync_generic(SCN_FWD(range), format, args);
         }
     }  // namespace detail
+#endif
 
     SCN_GCC_POP  // -Wnoexcept
 

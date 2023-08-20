@@ -15,6 +15,10 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+// This implementation of expected is based on TartanLlama/expected:
+//     https://github.com/TartanLlama/expected
+// which is licensed under CC0 (Public Domain).
+
 #pragma once
 
 #include <scn/fwd.h>

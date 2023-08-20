@@ -196,15 +196,15 @@ namespace scn {
     /**
      * A `bidirectional_range` over a `std::basic_streambuf`.
      *
-     * Uses `scn::detail::basic_caching_view` and
+     * Uses `scn::basic_caching_view` and
      * `scn::detail::basic_input_istreambuf_view`.
      */
     template <typename CharT>
     class basic_istreambuf_view
-        : public detail::basic_caching_view<
+        : public basic_caching_view<
               detail::basic_input_istreambuf_view<CharT>> {
         using istreambuf_view = detail::basic_input_istreambuf_view<CharT>;
-        using base = detail::basic_caching_view<istreambuf_view>;
+        using base = basic_caching_view<istreambuf_view>;
 
     public:
         using char_type = CharT;
@@ -221,17 +221,19 @@ namespace scn {
          * after this call, the position denominated by `it` is the current
          * position of the underlying streambuf.
          *
-         * Enables interoperability between a basic_istreambuf_view and standard
-         * I/O facilities.
+         * Enables interoperability between a `basic_istreambuf_view` and
+         * standard I/O facilities.
          *
          * Example:
          *
+         * \code{.cpp}
          * auto view = scn::istreambuf_view{stream};
          * auto [result, i] = scn::scan<int>(view, "{}");
          *
          * view.sync(result.range().begin());
          *
          * // Now, both result.range() and stream can be used
+         * \endcode
          */
         void sync(iterator it);
     };
@@ -265,9 +267,11 @@ namespace scn {
          *
          * Example:
          *
+         * \code{.cpp}
          * auto view = scn::istreambuf_view{stream};
          * auto [result, i] = scn::scan<int>(view, "{}");
          * result.range().sync();
+         * \endcode
          */
         void sync();
     };

@@ -44,12 +44,10 @@ namespace scn {
 
     // detail/caching_view.h
 
-    namespace detail {
-        template <typename Range>
-        class basic_caching_view;
-        template <typename Range>
-        class basic_caching_subrange;
-    }  // namespace detail
+    template <typename Range>
+    class basic_caching_view;
+    template <typename Range>
+    class basic_caching_subrange;
 
     // detail/context.h
 
@@ -168,7 +166,7 @@ namespace scn {
 
     // detail/scanner.h
 
-    template <typename T, typename CharT, typename Enable = void>
+    template <typename T, typename CharT = char, typename Enable = void>
     struct scanner {
         scanner() = delete;
     };

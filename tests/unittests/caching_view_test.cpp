@@ -21,7 +21,7 @@
 
 TEST(CachingViewTest, CompareDereferenceIncrease) {
     std::string source{"123"};
-    scn::detail::basic_caching_view<std::string_view> view{source};
+    scn::basic_caching_view<std::string_view> view{source};
 
     auto it = view.begin();
     EXPECT_NE(it, view.end());
@@ -38,7 +38,7 @@ TEST(CachingViewTest, CompareDereferenceIncrease) {
 
 TEST(CachingViewTest, DereferenceIncreaseCompare) {
     std::string source{"123"};
-    scn::detail::basic_caching_view<std::string_view> view{source};
+    scn::basic_caching_view<std::string_view> view{source};
 
     auto it = view.begin();
     EXPECT_EQ(*it, '1');
@@ -55,7 +55,7 @@ TEST(CachingViewTest, DereferenceIncreaseCompare) {
 TEST(CachingViewTest, Loop)
 {
     std::string source{"123"};
-    scn::detail::basic_caching_view<std::string_view> view{source};
+    scn::basic_caching_view<std::string_view> view{source};
 
     std::string dest;
     for (auto ch : view) {

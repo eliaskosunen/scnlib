@@ -50,15 +50,20 @@ namespace scn {
             invalid_encoding,
             /// The source range emitted an error that cannot be recovered
             /// from. The library can't use the source range in this state.
+            /// Can only happen when using an istream as the input.
             bad_source_error,
             /// This operation is only possible with exceptions enabled
-            //exceptions_required,  // currently unused
+            // exceptions_required,  // currently unused
             /// This operation is only possible with the heap enabled
-            //heap_required,  // currently unused
+            // heap_required,  // currently unused
 
             max_error
         };
 
+    private:
+        using code_t = enum code;
+
+    public:
         struct success_tag_t {};
         static constexpr success_tag_t success_tag() SCN_NOEXCEPT
         {
@@ -67,9 +72,8 @@ namespace scn {
 
         constexpr scan_error() SCN_NOEXCEPT = default;
         constexpr scan_error(success_tag_t) SCN_NOEXCEPT : scan_error() {}
-        constexpr scan_error(enum code c, const char* m) SCN_NOEXCEPT
-            : m_msg(m),
-              m_code(c)
+        constexpr scan_error(code_t c, const char* m) SCN_NOEXCEPT : m_msg(m),
+                                                                     m_code(c)
         {
             SCN_UNLIKELY_ATTR SCN_UNUSED(m_code);
         }
@@ -79,28 +83,26 @@ namespace scn {
         {
             return m_code == good;
         }
-        constexpr bool operator!() const SCN_NOEXCEPT
-        {
-            return !(operator bool());
-        }
 
-        constexpr explicit operator enum code() const SCN_NOEXCEPT {
+        constexpr explicit operator code_t() const SCN_NOEXCEPT
+        {
             return m_code;
         }
 
         /// Get error code
-        SCN_NODISCARD constexpr enum code code() const SCN_NOEXCEPT
+        SCN_NODISCARD constexpr code_t code() const SCN_NOEXCEPT
         {
             return m_code;
         }
-        SCN_NODISCARD constexpr const char* msg() const SCN_NOEXCEPT
+        /// Get error message
+        SCN_NODISCARD constexpr auto msg() const SCN_NOEXCEPT -> const char*
         {
             return m_msg;
         }
 
     private:
         const char* m_msg{nullptr};
-        enum code m_code { good };
+        code_t m_code{good};
     };
 
     constexpr inline bool operator==(scan_error a, scan_error b) SCN_NOEXCEPT
@@ -164,7 +166,7 @@ namespace scn {
             }
         };
 
-        // Intentionally not constexpr
+        // Intentionally not constexpr, to give out a compile-time error
         scan_error handle_error(scan_error e);
     }  // namespace detail
 

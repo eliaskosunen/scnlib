@@ -52,14 +52,18 @@ namespace scn {
         return detail::vscan_value_generic(SCN_FWD(range), arg);
     }
 
-    template <typename Range>
-    auto vscan_and_sync(Range&& range,
-                        std::wstring_view format,
-                        scan_args_for<Range, wchar_t> args)
-        -> vscan_result<Range>
-    {
-        return detail::vscan_and_sync_generic(SCN_FWD(range), format, args);
-    }
+#if SCN_USE_IOSTREAMS
+    namespace detail {
+        template <typename Range>
+        auto vscan_and_sync(Range&& range,
+                            std::wstring_view format,
+                            scan_args_for<Range, wchar_t> args)
+            -> vscan_result<Range>
+        {
+            return detail::vscan_and_sync_generic(SCN_FWD(range), format, args);
+        }
+    }  // namespace detail
+#endif
 
     // scan
 
@@ -92,7 +96,7 @@ namespace scn {
               typename = std::enable_if_t<
                   std::is_same_v<detail::char_t<Source>, wchar_t>>,
               typename = std::void_t<decltype(Locale::classic())>>
-    SCN_NODISCARD auto scan(Locale& loc,
+    SCN_NODISCARD auto scan(const Locale& loc,
                             Source&& source,
                             wformat_string<Args...> format)
         -> scan_result_type<Source, Args...>
@@ -107,7 +111,7 @@ namespace scn {
               typename = std::enable_if_t<
                   std::is_same_v<detail::char_t<Source>, wchar_t>>,
               typename = std::void_t<decltype(Locale::classic())>>
-    SCN_NODISCARD auto scan(Locale& loc,
+    SCN_NODISCARD auto scan(const Locale& loc,
                             Source&& source,
                             wformat_string<Args...> format,
                             std::tuple<Args...>&& args)
@@ -139,7 +143,6 @@ namespace scn {
         return detail::input_impl<Args...>(detail::internal_wide_stdin(),
                                            format);
     }
-#endif
 
     // istream_range
 
@@ -152,12 +155,15 @@ namespace scn {
 
     extern template void basic_istreambuf_view<wchar_t>::sync(iterator);
     extern template void basic_istreambuf_subrange<wchar_t>::sync();
+#endif
 
     // istream_scanner streambuf
 
     namespace detail {
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(std::wstring_view)
+#if SCN_USE_IOSTREAMS
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(wistreambuf_subrange)
+#endif
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(werased_subrange)
     }  // namespace detail
 

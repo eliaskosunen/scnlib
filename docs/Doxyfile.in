@@ -873,7 +873,7 @@ RECURSIVE              = YES
 # Note that relative paths are relative to the directory from which doxygen is
 # run.
 
-EXCLUDE                =
+EXCLUDE                = */external/*
 
 # The EXCLUDE_SYMLINKS tag can be used to select whether or not files or
 # directories that are symbolic links (a Unix file system feature) are excluded
@@ -2078,7 +2078,7 @@ ENABLE_PREPROCESSING   = YES
 # The default value is: NO.
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
-MACRO_EXPANSION        = NO
+MACRO_EXPANSION        = YES
 
 # If the EXPAND_ONLY_PREDEF and MACRO_EXPANSION tags are both set to YES then
 # the macro expansion is limited to the macros specified with the PREDEFINED and
@@ -2118,7 +2118,28 @@ INCLUDE_FILE_PATTERNS  =
 # recursively expanded use the := operator instead of the = operator.
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
-PREDEFINED             = _SCN_DOXYGEN=1
+PREDEFINED             = "SCN_DOXYGEN=1" \
+                         "SCN_USE_IOSTREAMS=1" \
+                         "SCN_NOEXCEPT=noexcept" \
+                         "SCN_NOEXCEPT_P(a)=noexcept(a)" \
+                         "SCN_CONSTEVAL=consteval" \
+                         "SCN_NODISCARD=[[nodiscard]]" \
+                         "SCN_MAYBE_UNUSED=[[maybe_unused]]" \
+                         "SCN_NO_UNIQUE_ADDRESS=[[no_unique_address]]" \
+                         "SCN_MOVE(x)=std::move(x)" \
+                         "SCN_FWD(x)=std::forward<decltype(x)>(x)" \
+                         "SCN_DECLVAL(x)=std::declval<x>()" \
+                         "SCN_BEGIN_NAMESPACE=" \
+                         "SCN_END_NAMESPACE=" \
+                         "SCN_GCC_PUSH=" \
+                         "SCN_GCC_IGNORE(x)=" \
+                         "SCN_GCC_POP=" \
+                         "SCN_CLANG_PUSH=" \
+                         "SCN_CLANG_IGNORE(x)=" \
+                         "SCN_CLANG_POP=" \
+                         "SCN_MSVC_PUSH=" \
+                         "SCN_MSVC_IGNORE(x)=" \
+                         "SCN_MSVC_POP="
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this
 # tag can be used to specify a list of macro names that should be expanded. The

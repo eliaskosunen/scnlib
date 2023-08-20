@@ -24,9 +24,7 @@ The repository lives on the `scnlib GitHub`_.
 
    guide
    api
-   cmake
    migration/migration_2_0
-   rationale/index
 
 Indices and tables
 ------------------

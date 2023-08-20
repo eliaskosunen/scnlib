@@ -131,6 +131,7 @@ namespace scn {
      *
      * Example:
      *
+     * \code{.cpp}
      * #include <scn/istream.h> // required for basic_istream_scanner
      *
      * struct mytype {
@@ -142,6 +143,7 @@ namespace scn {
      * struct scn::scanner<mytype> : scn::basic_istream_scanner<CharT> {};
      *
      * auto [result, myvalue] = scn::scan<mytype>(...);
+     * \endcode
      */
     template <typename CharT>
     struct basic_istream_scanner

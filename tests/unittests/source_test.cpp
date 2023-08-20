@@ -22,11 +22,22 @@
 
 using ::testing::Test;
 
+template <bool, typename>
+struct scan_result_helper_impl;
+
+template <typename It>
+struct scan_result_helper_impl<false, It> {
+    using type = scn::ranges::subrange<It>;
+};
+template <typename It>
+struct scan_result_helper_impl<true, It> {
+    using type = scn::ranges::dangling;
+};
+
 template <typename It, typename... Args>
 using scan_result_helper = scn::scan_expected<scn::scan_result<
-    std::conditional_t<std::is_same_v<It, scn::ranges::dangling>,
-                       scn::ranges::dangling,
-                       scn::ranges::subrange<It>>,
+    typename scan_result_helper_impl<std::is_same_v<It, scn::ranges::dangling>,
+                                     It>::type,
     Args...>>;
 
 TEST(SourceTest, Simple)

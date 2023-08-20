@@ -46,13 +46,17 @@ namespace scn {
         };
     }  // namespace detail
 
+    /**
+     * Type returned by `scan`, contains the unused input as a `subrange`, and
+     * the scanned values in a `tuple`.
+     */
     template <typename Range, typename... Args>
     class scan_result {
-    public:
         static constexpr bool is_dangling =
             std::is_same_v<detail::remove_cvref_t<Range>, ranges::dangling>;
         static_assert(ranges::borrowed_range<Range> || is_dangling);
 
+    public:
         using range_type = Range;
         using iterator = detail::dangling_iterator<Range, is_dangling>;
         using sentinel = detail::dangling_sentinel<Range, is_dangling>;
@@ -66,13 +70,9 @@ namespace scn {
         constexpr scan_result& operator=(scan_result&&) = default;
         ~scan_result() = default;
 
+        /// Construct from a range and a tuple
         scan_result(range_type r, std::tuple<Args...>&& values)
             : m_range(SCN_MOVE(r)), m_values(SCN_MOVE(values))
-        {
-        }
-
-        scan_result(iterator b, sentinel e, std::tuple<Args...>&& values)
-            : m_range(b, e), m_values(SCN_MOVE(values))
         {
         }
 
@@ -120,11 +120,14 @@ namespace scn {
             return *this;
         }
 
+        /// Access the ununsed input range
         range_type range() const
         {
             return m_range;
         }
 
+        /// Access the beginning of the unused input range
+        /// If `range_type` is `dangling`, returns `dangling`.
         auto begin() const
         {
             if constexpr (is_dangling) {
@@ -134,6 +137,8 @@ namespace scn {
                 return m_range.begin();
             }
         }
+        /// Access the end of the unused input range
+        /// If `range_type` is `dangling`, returns `dangling`.
         auto end() const
         {
             if constexpr (is_dangling) {
@@ -144,6 +149,8 @@ namespace scn {
             }
         }
 
+        /// Access the scanned values
+        /// @{
         tuple_type& values() &
         {
             return m_values;
@@ -160,7 +167,10 @@ namespace scn {
         {
             return SCN_MOVE(m_values);
         }
+        /// @}
 
+        /// Access the single scanned value
+        /// @{
         template <size_t N = sizeof...(Args),
                   typename = std::enable_if_t<N == 1>>
         decltype(auto) value() &
@@ -185,6 +195,7 @@ namespace scn {
         {
             return SCN_MOVE(std::get<0>(m_values));
         }
+        /// @}
 
     private:
         range_type m_range{};

@@ -5,11 +5,16 @@ on:
     branches:
       - master
       - dev
-      #- ci-*
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
   pull_request:
     branches:
       - master
       - dev
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
   workflow_dispatch:
 
 env:
@@ -47,8 +52,6 @@ jobs:
           - clang++-7
           - clang++-6.0
         exclude:
-          # gcc 13 not yet available in repos
-          - cxx: g++-13
           # gcc 8, gcc 7, and clang 6-8 have lacking C++20 support
           - cxx: g++-8
             std: 20
@@ -79,7 +82,7 @@ jobs:
             os: 22.04
           - cxx: clang++-6.0
             os: 22.04
-          # gcc 12 isn't available on 20.04
+          # gcc 12 isn't available on 20.04 (11 and 13 are in ubuntu-toolchain-r)
           - cxx: g++-12
             os: 20.04
           # simdutf has problems with clang 6 and 7 (_ktestc_mask64_u8 undefined)
@@ -275,7 +278,7 @@ jobs:
       fail-fast: false
       matrix:
         std: [ 17, 20 ]
-        cxx: [ clang++-14 ]
+        cxx: [ clang++-16 ]
 
     steps:
       - uses: actions/checkout@v3
@@ -288,6 +291,10 @@ jobs:
           sudo locale-gen fi_FI.UTF-8
           sudo update-locale
           sudo locale -a
+          
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          ./llvm.sh 16
           
           mkdir ${{ runner.workspace }}/build
 

@@ -22,11 +22,13 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /// A runtime format string
     template <typename CharT>
     struct basic_runtime_format_string {
         std::basic_string_view<CharT> str;
     };
 
+    /// Create a runtime format string
     inline basic_runtime_format_string<char> runtime(std::string_view s)
     {
         return {{s}};

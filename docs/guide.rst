@@ -120,7 +120,8 @@ otherwise all the read values can be accessed through a ``std::tuple`` with ``va
 
     // Scanning an int
     auto result = scn::scan<int>("123", "{}"):
-    // result->value() == 123
+    auto i = result->value();
+    // i == 123
 
     // Scanning a double
     auto result = scn::scan<double>("3.14", "{}");
@@ -273,7 +274,7 @@ so that it can be used again.
     auto result = scn::scan<int>(ssview, "{}");
     // result->value() == 123
 
-    result->range().sync();
+    result->begin().sync();
     // ss can now be used again
     int j{};
     ss >> j;

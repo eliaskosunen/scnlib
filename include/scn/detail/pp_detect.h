@@ -33,7 +33,7 @@
 #define SCN_STD_20 202002L
 
 #define SCN_COMPILER(major, minor, patch) \
-    ((major)*10000000 /* 10,000,000 */ + (minor)*10000 /* 10,000 */ + (patch))
+    ((major)*10'000'000 + (minor)*10'000 + (patch))
 
 #ifdef __INTEL_COMPILER
 // Intel
@@ -246,22 +246,16 @@
 #endif
 
 // Detect [[no_unique_address]]
-#if SCN_HAS_CPP_ATTRIBUTE(no_unique_address) >= 201803L
-#define SCN_HAS_NO_UNIQUE_ADDRESS 1
-#elif SCN_STD >= SCN_STD_20
-
-#if SCN_GCC >= SCN_COMPILER(9, 0, 0)
-#define SCN_HAS_NO_UNIQUE_ADDRESS 1
-#elif SCN_CLANG >= SCN_COMPILER(9, 0, 0)
-#define SCN_HAS_NO_UNIQUE_ADDRESS 1
-#elif SCN_MSVC >= SCN_COMPILER(19, 28, 0)
-#define SCN_HAS_NO_UNIQUE_ADDRESS 1
-#endif
-
-#endif
-
-#ifndef SCN_HAS_NO_UNIQUE_ADDRESS
-#define SCN_HAS_NO_UNIQUE_ADDRESS 0
+#if SCN_MSVC >= SCN_COMPILER(19, 29, 0) && SCN_STD >= SCN_STD_20
+#define SCN_HAS_NO_UNIQUE_ADDRESS_MSVC 1
+#define SCN_HAS_NO_UNIQUE_ADDRESS_STD  0
+#elif SCN_HAS_CPP_ATTRIBUTE(no_unique_address) >= 201803L && \
+    SCN_STD >= SCN_STD_20
+#define SCN_HAS_NO_UNIQUE_ADDRESS_MSVC 0
+#define SCN_HAS_NO_UNIQUE_ADDRESS_STD  1
+#else
+#define SCN_HAS_NO_UNIQUE_ADDRESS_MSVC 0
+#define SCN_HAS_NO_UNIQUE_ADDRESS_STD  0
 #endif
 
 // Detect [[fallthrough]]

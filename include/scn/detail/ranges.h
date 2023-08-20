@@ -335,7 +335,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        namespace begin_for_char_t {
+        namespace char_t_fn {
             template <typename T>
             struct tag_type {
                 using type = T;
@@ -367,20 +367,16 @@ namespace scn {
                     return tag_type<std::remove_all_extents_t<T_nocvref>>{};
                 }
                 else {
-                    return impl_nonarray<T>(priority_tag<2>{});
+                    return impl_nonarray<T_nocvref>(priority_tag<2>{});
                 }
             }
 
             template <typename Range>
-            using impl_result = decltype(impl<Range>());
-        }  // namespace begin_for_char_t
+            using result = decltype(impl<Range>());
+        }  // namespace char_t_fn
 
-        template <typename R>
-        struct char_t_impl {
-            using type = typename begin_for_char_t::impl_result<R>::type;
-        };
         template <typename Range>
-        using char_t = typename char_t_impl<Range>::type;
+        using char_t = typename char_t_fn::result<Range>::type;
     }  // namespace detail
 
     template <typename R, bool Borrowed = ranges::borrowed_range<R>>

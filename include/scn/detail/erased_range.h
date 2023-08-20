@@ -363,19 +363,20 @@ namespace scn {
     /**
      * Erase the given range, if necessary.
      *
-     * The given range must model forward_range.
+     * The given range must model `forward_range`. `caching_view` can be used to
+     * turn `input_range`s into `forward_range`s, if necessary.
      *
-     * If the given range models contiguous_range and sized_range, returns the
-     * given range as-is.
+     * If the given range models `contiguous_range` and `sized_range`, returns
+     * the given range as-is.
      *
-     * Otherwise, returns the given range wrapped in a basic_erased_range, with
-     * an appropriate character type.
+     * Otherwise, returns the given range wrapped in a `basic_erased_range`,
+     * with an appropriate character type.
      */
     template <typename Range, typename CharT = detail::char_t<Range>>
     auto erase_range(Range&& r)
     {
         static_assert(ranges::forward_range<Range>,
-                      "erased_range can only erase forward_ranges");
+                      "erase_range can only erase forward_ranges");
 
         if constexpr (ranges::contiguous_range<detail::remove_cvref_t<Range>> &&
                       ranges::sized_range<detail::remove_cvref_t<Range>>) {
@@ -387,7 +388,10 @@ namespace scn {
     }
 
     template <typename CharT>
-    ranges::dangling erase_range(basic_erased_range<CharT>& r) = delete;
+    ranges::dangling erase_range(basic_erased_range<CharT>& r)
+    {
+        return {};
+    }
 
     template <typename CharT>
     basic_erased_range<CharT>&& erase_range(basic_erased_range<CharT>&& r)

@@ -63,6 +63,7 @@ namespace scn {
                 return {r, N - 1};
             }
 
+#if SCN_USE_IOSTREAMS
             // istreambuf_view& -> istreambuf_subrange
             template <typename CharT>
             static std::enable_if_t<is_valid_char_type<CharT>,
@@ -74,6 +75,7 @@ namespace scn {
             {
                 return {r};
             }
+#endif
 
             // erased_range& -> erased_subrange
             template <typename CharT>
@@ -87,6 +89,7 @@ namespace scn {
                 return {r};
             }
 
+#if SCN_USE_IOSTREAMS
             // istreambuf_subrange -> self
             template <typename CharT>
             static std::enable_if_t<is_valid_char_type<CharT>,
@@ -118,6 +121,7 @@ namespace scn {
             {
                 return {r.begin(), r.end()};
             }
+#endif
 
             // erased_subrange -> self
             template <typename CharT>
@@ -283,7 +287,7 @@ namespace scn {
          *  - `istreambuf_view` to `istreambuf_subrange`
          *  - `erased_view` to `erased_subrange`
          *  - any other forward range to `erased_view`
-         *  - errors (static_assert) on other range types
+         *  - errors (static_assert) on other, invalid range types
          */
         template <typename Range>
         auto scan_map_input_range(const Range& r) SCN_NOEXCEPT_P(noexcept(
