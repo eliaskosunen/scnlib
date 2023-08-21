@@ -65,15 +65,6 @@ namespace scn {
     template scan_expected<ranges::iterator_t<Context::range_type>>         \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::sv)
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
-#if SCN_USE_IOSTREAMS
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::is)
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wis)
-#endif
-
     }  // namespace detail
 
     SCN_END_NAMESPACE

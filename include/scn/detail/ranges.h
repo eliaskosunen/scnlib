@@ -19,6 +19,16 @@
 
 #include <scn/util/meta.h>
 
+namespace scn {
+    SCN_BEGIN_NAMESPACE
+
+    namespace r_pf {
+    }
+    namespace ranges_polyfill = r_pf;
+
+    SCN_END_NAMESPACE
+}  // namespace scn
+
 #if SCN_STD_RANGES
 
 #include <concepts>
@@ -30,7 +40,7 @@ namespace scn {
     namespace ranges = std::ranges;
     namespace ranges_std = std;
 
-    namespace ranges_polyfill {
+    namespace r_pf {
         template <typename Range>
         using owning_view = ranges::owning_view<Range>;
 
@@ -46,7 +56,7 @@ namespace scn {
             ranges::view<R> && ranges::range<const R> &&
             std::same_as<ranges::iterator_t<R>, ranges::iterator_t<const R>> &&
             std::same_as<ranges::sentinel_t<R>, ranges::sentinel_t<const R>>;
-    }  // namespace ranges_polyfill
+    }  // namespace r_pf
 
     SCN_END_NAMESPACE
 }  // namespace scn
@@ -96,7 +106,7 @@ namespace scn {
     namespace ranges = nano;
     namespace ranges_std = nano;
 
-    namespace ranges_polyfill {
+    namespace r_pf {
         template <typename T>
         struct _is_initializer_list : std::false_type {};
         template <typename T>
@@ -287,7 +297,7 @@ namespace scn {
 
         template <typename R>
         inline constexpr bool simple_view = nano::detail::simple_view<R>;
-    }  // namespace ranges_polyfill
+    }  // namespace r_pf
 
     SCN_END_NAMESPACE
 }  // namespace scn
@@ -335,12 +345,44 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        namespace char_t_fn {
+        namespace simple_iterator_t_fn {
+            template <typename T, typename = typename T::iterator>
+            constexpr auto impl_nonarray(priority_tag<2>)
+            {
+                return tag_type<typename T::iterator>{};
+            }
+            template <typename T, typename = decltype(SCN_DECLVAL(T&).begin())>
+            constexpr auto impl_nonarray(priority_tag<1>)
+            {
+                return tag_type<decltype(SCN_DECLVAL(T&).begin())>{};
+            }
             template <typename T>
-            struct tag_type {
-                using type = T;
-            };
+            constexpr auto impl_nonarray(priority_tag<0>)
+            {
+                return tag_type<decltype(begin(SCN_DECLVAL(T&)))>{};
+            }
 
+            template <typename T>
+            constexpr auto impl()
+            {
+                using T_nocvref = remove_cvref_t<T>;
+                if constexpr (std::is_array_v<T_nocvref>) {
+                    return tag_type<T_nocvref*>{};
+                }
+                else {
+                    return impl_nonarray<T_nocvref>(priority_tag<2>{});
+                }
+            }
+
+            template <typename Range>
+            using result = decltype(impl<Range>());
+        }  // namespace simple_iterator_t_fn
+
+        template <typename Range>
+        using simple_iterator_t =
+            typename simple_iterator_t_fn::result<Range>::type;
+
+        namespace char_t_fn {
             template <typename T, typename = typename T::value_type>
             constexpr auto impl_nonarray(priority_tag<2>)
             {
@@ -379,6 +421,35 @@ namespace scn {
         using char_t = typename char_t_fn::result<Range>::type;
     }  // namespace detail
 
+    // borrowed_iterator_t and borrowed_subrange_t, but shorter template
+    // names
+
+    template <typename R, bool Borrowed = ranges::borrowed_range<R>>
+    struct simple_borrowed_iterator {
+        using type = detail::simple_iterator_t<R>;
+    };
+    template <typename R>
+    struct simple_borrowed_iterator<R, false> {
+        using type = ranges::dangling;
+    };
+
+    template <typename R>
+    using simple_borrowed_iterator_t =
+        typename simple_borrowed_iterator<R>::type;
+
+    template <typename R, bool Borrowed = ranges::borrowed_range<R>>
+    struct simple_borrowed_subrange {
+        using type = ranges::subrange<detail::simple_iterator_t<R>>;
+    };
+    template <typename R>
+    struct simple_borrowed_subrange<R, false> {
+        using type = ranges::dangling;
+    };
+
+    template <typename R>
+    using simple_borrowed_subrange_t =
+        typename simple_borrowed_subrange<R>::type;
+
     template <typename R, bool Borrowed = ranges::borrowed_range<R>>
     struct borrowed_ssubrange {
         using type =
@@ -392,7 +463,8 @@ namespace scn {
     template <typename R>
     using borrowed_ssubrange_t = typename borrowed_ssubrange<R>::type;
 
-    namespace ranges_polyfill {
+    namespace r_pf {
+
         // Necessary, because nanorange subrange::size() returns a signed type
         namespace usize_impl {
             SCN_GCC_PUSH
@@ -470,7 +542,7 @@ namespace scn {
         }  // namespace prev_backtrack_impl
 
         inline constexpr prev_backtrack_impl::fn prev_backtrack{};
-    }  // namespace ranges_polyfill
+    }  // namespace r_pf
 
     SCN_END_NAMESPACE
 }  // namespace scn

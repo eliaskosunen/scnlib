@@ -85,7 +85,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sys: [ mingw32, mingw64, ucrt64 ]
+        sys:
+          # MSYS recommended default:
+          # gcc, ucrt, libstdc++
+          - ucrt64
+          # gcc, msvcrt, libstdc++
+          - mingw32
+          - mingw64
+          # gcc, cygwin, libstdc++
+          - msys
+          # llvm, ucrt, libc++
+          - clang32
+          - clang64
 
     steps:
       - uses: actions/checkout@v3

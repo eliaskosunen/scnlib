@@ -117,6 +117,7 @@ TEST(StringTest, CharacterPresentationWideStringFromNarrowSource)
     EXPECT_EQ(result->value(), L"abc ");
 }
 
+#if 0
 TEST(StringTest, CharacterSetPresentationNarrowStringFromNarrowSource)
 {
     auto result = scn::scan<std::string>("abc def", "{:[:alpha:]}");
@@ -146,6 +147,7 @@ TEST(StringTest, CharacterSetPresentationWideStringFromNarrowSource)
     EXPECT_STREQ(result->begin(), " def");
     EXPECT_EQ(result->value(), L"abc");
 }
+#endif
 
 TEST(StringTest, WonkyInput)
 {

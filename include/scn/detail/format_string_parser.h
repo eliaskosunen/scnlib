@@ -487,20 +487,21 @@ namespace scn {
             return begin;
         }
 
-        inline constexpr std::pair<const char*, character_set_specifier>
-            set_colon_specifiers[] = {
-                {"alnum:", character_set_specifier::alnum},
-                {"alpha:", character_set_specifier::alpha},
-                {"blank:", character_set_specifier::blank},
-                {"cntrl:", character_set_specifier::cntrl},
-                {"digit:", character_set_specifier::digit},
-                {"graph:", character_set_specifier::graph},
-                {"lower:", character_set_specifier::lower},
-                {"print:", character_set_specifier::print},
-                {"punct:", character_set_specifier::punct},
-                {"space:", character_set_specifier::space},
-                {"upper:", character_set_specifier::upper},
-                {"xdigit:", character_set_specifier::xdigit}};
+        inline constexpr std::
+            tuple<const char*, const wchar_t*, character_set_specifier>
+                set_colon_specifiers[] = {
+                    {"alnum:", L"alnum:", character_set_specifier::alnum},
+                    {"alpha:", L"alpha:", character_set_specifier::alpha},
+                    {"blank:", L"blank:", character_set_specifier::blank},
+                    {"cntrl:", L"cntrl:", character_set_specifier::cntrl},
+                    {"digit:", L"digit:", character_set_specifier::digit},
+                    {"graph:", L"graph:", character_set_specifier::graph},
+                    {"lower:", L"lower:", character_set_specifier::lower},
+                    {"print:", L"print:", character_set_specifier::print},
+                    {"punct:", L"punct:", character_set_specifier::punct},
+                    {"space:", L"space:", character_set_specifier::space},
+                    {"upper:", L"upper:", character_set_specifier::upper},
+                    {"xdigit:", L"xdigit:", character_set_specifier::xdigit}};
 
         template <typename CharT, typename SpecHandler>
         constexpr void parse_presentation_set_colon_specifier(
@@ -514,35 +515,34 @@ namespace scn {
 
             const auto chars_left = static_cast<size_t>(end - begin);
 
+            auto check_spec = [&](auto str, character_set_specifier flag,
+                                  size_t len) {
+                if (std::basic_string_view<CharT>{&*begin, len} !=
+                    std::basic_string_view<CharT>{str, len}) {
+                    return false;
+                }
+
+                handler.on_charset_specifier(flag);
+                begin += len;
+                SCN_ENSURE(*(begin - 1) == CharT{':'});
+                return true;
+            };
+
             for (const auto& elem : set_colon_specifiers) {
-                const auto spec_len =
-                    std::char_traits<char>::length(elem.first);
+                const auto [str_ch, str_wch, flag] = elem;
+
+                const auto spec_len = std::char_traits<char>::length(str_ch);
                 if (chars_left < spec_len) {
                     continue;
                 }
 
                 if constexpr (std::is_same_v<CharT, char>) {
-                    if (std::string_view{&*begin, spec_len} ==
-                        std::string_view{elem.first, spec_len}) {
-                        handler.on_charset_specifier(elem.second);
-                        begin += spec_len;
-                        SCN_ENSURE(*(begin - 1) == CharT{':'});
+                    if (check_spec(str_ch, flag, spec_len)) {
                         return;
                     }
                 }
                 else {
-                    bool is_eq = true;
-                    for (size_t i = 0; i < spec_len; ++i) {
-                        if (*(begin + i) !=
-                            static_cast<CharT>(*(elem.first + i))) {
-                            is_eq = false;
-                            break;
-                        }
-                    }
-                    if (is_eq) {
-                        handler.on_charset_specifier(elem.second);
-                        begin += spec_len;
-                        SCN_ENSURE(*(begin - 1) == CharT{':'});
+                    if (check_spec(str_wch, flag, spec_len)) {
                         return;
                     }
                 }

@@ -23,8 +23,21 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    // Doing this instead of a simple using-declaration
+    // to shorten template names
     template <typename T>
-    using scan_expected = expected<T, scan_error>;
+    struct scan_expected : public expected<T, scan_error> {
+        using expected<T, scan_error>::expected;
+
+        scan_expected(const expected<T, scan_error>& other)
+            : expected<T, scan_error>(other)
+        {
+        }
+        scan_expected(expected<T, scan_error>&& other)
+            : expected<T, scan_error>(SCN_MOVE(other))
+        {
+        }
+    };
 
     template <typename... Args>
     auto unexpected_scan_error(Args&&... args)
@@ -57,6 +70,11 @@ namespace scn {
 
         template <typename T>
         always_success_expected(T) -> always_success_expected<T>;
+
+        template <typename T>
+        struct is_expected_impl<scan_expected<T>> : std::true_type {};
+        template <typename T>
+        struct is_expected_impl<always_success_expected<T>> : std::true_type {};
     }  // namespace detail
 
     SCN_END_NAMESPACE

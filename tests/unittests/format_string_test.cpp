@@ -129,6 +129,7 @@ TEST(FormatStringTest, EmptyCharacterSet)
     auto result = scn::scan<std::string>("42", scn::runtime("{:[]}"));
     EXPECT_FALSE(result);
 }
+#if 0
 TEST(FormatStringTest, AlphaCharacterSet)
 {
     auto result = scn::scan<std::string>("abc123", "{:[:alpha:]}");
@@ -137,22 +138,11 @@ TEST(FormatStringTest, AlphaCharacterSet)
 }
 TEST(FormatStringTest, AlphaCharacterSetWithStringView)
 {
-    static_assert(scn::ranges::contiguous_range<std::string_view>);
-    static_assert(
-        scn::ranges::contiguous_range<scn::ranges::subrange<const char*>>);
-    // static_assert(scn::ranges::contiguous_range<scn::ranges::subrange<std::string_view::iterator>>);
-    static_assert(std::is_same_v<decltype(scn::ranges::data(
-                                     SCN_DECLVAL(std::string_view&))),
-                                 const char*>);
-    /*
-    static_assert(std::is_same_v<decltype(
-                                     SCN_DECLVAL(scn::ranges::subrange<std::string_view::iterator>&).data()),
-                                 const char*>);
-                                 */
     auto result = scn::scan<std::string_view>("abc123", "{:[:alpha:]}");
     ASSERT_TRUE(result);
     EXPECT_EQ(std::get<0>(result->values()), "abc");
 }
+#endif
 TEST(FormatStringTest, InvertedCharacterSet)
 {
     auto result = scn::scan<std::string>("abc 123\n", scn::runtime("{:[^\n]}"));

@@ -64,7 +64,10 @@ namespace scn {
 
 struct mock_specs_setter : public scn::detail::specs_setter<char> {
     mock_specs_setter(scn::detail::basic_format_specs<char>& specs)
-        : scn::detail::specs_setter<char>{specs}
+        : scn::detail::specs_setter<char>
+    {
+        specs
+    }
     {
     }
 
@@ -161,4 +164,22 @@ TEST_F(FormatStringParserFormatSpecsTest, Localized)
     EXPECT_EQ(result, input.data() + 1);
     EXPECT_EQ(specs.localized, true);
     EXPECT_EQ(handler.latest_error, nullptr);
+}
+
+class FormatStringParserSetTest : public testing::Test {
+protected:
+    scn::detail::basic_format_specs<char> specs{};
+    mock_specs_setter handler{specs};
+};
+
+TEST_F(FormatStringParserSetTest, ColonAlpha)
+{
+    std::string_view input{":alpha:"};
+    auto beg = input.data();
+    scn::detail::parse_presentation_set_colon_specifier(
+        beg, input.data() + input.size(), handler);
+    EXPECT_EQ(beg, input.data() + input.size());
+    EXPECT_NE(
+        specs.charset_specifiers & scn::detail::character_set_specifier::alpha,
+        scn::detail::character_set_specifier{});
 }

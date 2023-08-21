@@ -138,6 +138,16 @@ function(disable_msvc_secure_flags target scope)
     endif()
 endfunction()
 
+function(set_bigobj_flags target scope)
+    target_compile_options(${target} ${scope}
+            $<$<CXX_COMPILER_ID:MSVC>:
+            /bigobj>)
+
+    if (MINGW)
+        target_compile_options(${target} ${scope} -Wa,-mbig-obj)
+    endif()
+endfunction()
+
 function(set_interface_flags target)
     if(SCN_PEDANTIC)
         get_warning_flags(warning_flags)
@@ -149,9 +159,7 @@ function(set_interface_flags target)
     endif()
 
     disable_msvc_secure_flags(${target} INTERFACE)
-    target_compile_options(${target} INTERFACE
-            $<$<CXX_COMPILER_ID:MSVC>:
-            /bigobj>)
+    set_bigobj_flags(${target} INTERFACE)
 endfunction()
 
 function(set_library_flags target)
@@ -190,9 +198,7 @@ function(set_library_flags target)
     endif()
 
     disable_msvc_secure_flags(${target} PRIVATE)
-    target_compile_options(${target} PRIVATE
-            $<$<CXX_COMPILER_ID:MSVC>:
-            /bigobj>)
+    set_bigobj_flags(${target} PRIVATE)
 
     target_compile_features(${target} PUBLIC cxx_std_17)
 endfunction()

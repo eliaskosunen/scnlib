@@ -125,7 +125,7 @@ namespace scn {
 
         private:
             template <bool IsSigned, typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_source_with_thsep_impl(Range&& range)
             {
                 SCN_EXPECT(m_locale_options.thousands_sep != 0);
@@ -147,7 +147,7 @@ namespace scn {
             }
 
             template <bool IsSigned, typename Range>
-            SCN_NODISCARD scan_expected<ranges::borrowed_iterator_t<Range>>
+            SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
             read_source_impl(Range&& range)
             {
                 const auto make_subrange = [&](auto it) {
@@ -204,7 +204,7 @@ namespace scn {
             }
 
             template <bool IsSigned, typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_sign(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_sign(
                 Range&& range)
             {
                 return numeric_base::read_sign(SCN_FWD(range), m_sign)
@@ -233,7 +233,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_bin_base_prefix(Range&& range)
             {
                 return read_matching_string_classic_nocase(SCN_FWD(range),
@@ -241,7 +241,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_hex_base_prefix(Range&& range)
             {
                 return read_matching_string_classic_nocase(SCN_FWD(range),
@@ -249,7 +249,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_oct_base_prefix(Range&& range)
             {
                 if (auto r = read_matching_string_classic_nocase(range, "0o")) {
@@ -266,7 +266,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_base_prefix_for_detection(Range&& range)
             {
                 if (auto r = read_hex_base_prefix(range)) {
@@ -289,7 +289,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_base_prefix(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_base_prefix(
                 Range&& range)
             {
                 switch (m_base) {
@@ -316,7 +316,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_digits_impl(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_digits_impl(
                 Range&& range)
             {
                 SCN_EXPECT(m_base != 0);
@@ -348,7 +348,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_digits(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_digits(
                 Range&& range,
                 ranges::iterator_t<Range> base_prefix_begin)
             {
@@ -370,7 +370,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_digits_zero(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_digits_zero(
                 Range&& range)
             {
                 SCN_EXPECT(m_zero_parsed);
@@ -432,7 +432,7 @@ namespace scn {
             }
 
             template <typename Range, typename T>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_default(Range&& range, T& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
@@ -448,7 +448,7 @@ namespace scn {
             }
 
             template <typename Range, typename T>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_specs(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
                 Range&& range,
                 const detail::basic_format_specs<CharT>& specs,
                 T& value,
@@ -477,7 +477,7 @@ namespace scn {
 
         private:
             template <typename Range, typename ReadSource, typename T>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_impl(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_impl(
                 Range&& range,
                 integer_reader<CharT>& rd,
                 ReadSource&& read_source_cb,

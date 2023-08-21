@@ -209,8 +209,10 @@ namespace scn {
     namespace detail {
         struct dummy_type {};
 
-        template <typename>
-        struct tag_type {};
+        template <typename T>
+        struct tag_type {
+            using type = T;
+        };
 
         template <typename>
         struct dependent_false : std::false_type {};

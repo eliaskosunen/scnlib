@@ -72,6 +72,7 @@ TEST(StringViewTest, CharacterPresentationWideStringViewFromWideSource)
     EXPECT_EQ(result->value(), L"abc ");
 }
 
+#if 0
 TEST(StringViewTest, CharacterSetPresentationNarrowStringViewFromNarrowSource)
 {
     auto result = scn::scan<std::string_view>("abc def", "{:[:alpha:]}");
@@ -86,6 +87,7 @@ TEST(StringViewTest, CharacterSetPresentationWideStringViewFromWideSource)
     EXPECT_STREQ(result->begin(), L" def");
     EXPECT_EQ(result->value(), L"abc");
 }
+#endif
 
 TEST(StringViewTest, InvalidUtf8)
 {

@@ -73,6 +73,7 @@ namespace scn {
                 return SCN_VISIT_CAST(std::wstring_view);
             case detail::arg_type::wide_string_type:
                 return SCN_VISIT_CAST(std::wstring);
+
             case detail::arg_type::custom_type:
                 return vis(typename basic_scan_arg<Ctx>::handle(
                     arg.m_value.custom_value));
@@ -81,9 +82,11 @@ namespace scn {
 
                 SCN_UNLIKELY_ATTR
             case detail::arg_type::none_type:
-            default:
-                auto val = detail::monostate{};
+            default: {
+                detail::monostate val{};
                 return vis(val);
+            }
+
                 SCN_CLANG_POP
         }
 
