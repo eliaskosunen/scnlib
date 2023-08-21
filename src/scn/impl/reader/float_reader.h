@@ -72,7 +72,7 @@ namespace scn {
             }
 
             template <typename Range>
-            SCN_NODISCARD scan_expected<ranges::borrowed_iterator_t<Range>>
+            SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
             read_source(Range&& range)
             {
                 if (SCN_UNLIKELY(m_options & float_reader_base::allow_thsep)) {
@@ -85,7 +85,7 @@ namespace scn {
             }
 
             template <typename Range>
-            SCN_NODISCARD scan_expected<ranges::borrowed_iterator_t<Range>>
+            SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
             read_source_localized(Range&& range, detail::locale_ref loc)
             {
                 m_locale_options =
@@ -114,7 +114,7 @@ namespace scn {
 
         private:
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_source_impl(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_source_impl(
                 Range&& range)
             {
                 auto digits_begin = ranges::begin(range);
@@ -140,7 +140,7 @@ namespace scn {
 
                             auto cb = [&](auto&& rr)
                                 -> scan_expected<
-                                    ranges::borrowed_iterator_t<decltype(rr)>> {
+                                    simple_borrowed_iterator_t<decltype(rr)>> {
                                 auto res = read_all(rr);
                                 if (SCN_UNLIKELY(!res)) {
                                     return unexpected(res.error());
@@ -197,7 +197,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_dec_digits(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_dec_digits(
                 Range&& range,
                 bool thsep_allowed)
             {
@@ -216,7 +216,7 @@ namespace scn {
                     });
             }
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_hex_digits(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_hex_digits(
                 Range&& range,
                 bool thsep_allowed)
             {
@@ -235,7 +235,7 @@ namespace scn {
                     });
             }
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_hex_prefix(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_hex_prefix(
                 Range&& range)
             {
                 return read_matching_string_classic_nocase(SCN_FWD(range),
@@ -243,7 +243,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_inf(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_inf(
                 Range&& range)
             {
                 auto it = ranges::begin(range);
@@ -268,7 +268,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_nan(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_nan(
                 Range&& range)
             {
                 auto it = ranges::begin(range);
@@ -314,7 +314,7 @@ namespace scn {
             }
 
             template <typename Range>
-            ranges::borrowed_iterator_t<Range> read_exponent(
+            simple_borrowed_iterator_t<Range> read_exponent(
                 Range&& range,
                 std::string_view exp)
             {
@@ -351,7 +351,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_hexfloat(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_hexfloat(
                 Range&& range)
             {
                 auto it = ranges::begin(range);
@@ -393,7 +393,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_regular_float(Range&& range)
             {
                 const bool allowed_exp = (m_options & allow_scientific) != 0;
@@ -450,7 +450,7 @@ namespace scn {
             }
 
             template <typename Range, typename ReadRegular, typename ReadHex>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             do_read_source_impl(Range&& range,
                                 ReadRegular&& read_regular,
                                 ReadHex&& read_hex)
@@ -603,7 +603,7 @@ namespace scn {
             }
 
             template <typename Range, typename T>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_default(Range&& range, T& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
@@ -616,7 +616,7 @@ namespace scn {
             }
 
             template <typename Range, typename T>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_specs(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
                 Range&& range,
                 const detail::basic_format_specs<CharT>& specs,
                 T& value,
@@ -641,7 +641,7 @@ namespace scn {
 
         private:
             template <typename Range, typename ReadSource, typename T>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_impl(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_impl(
                 Range&& range,
                 float_reader<CharT>& rd,
                 ReadSource&& read_source_cb,

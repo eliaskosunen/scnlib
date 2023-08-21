@@ -72,14 +72,14 @@ namespace scn {
 
         protected:
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_sign(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_sign(
                 Range&& range,
                 sign& p_sign)
             {
                 return read_one_of_code_unit(range, "+-")
                     .and_then(
                         [&](auto it) -> scan_expected<
-                                         ranges::borrowed_iterator_t<Range>> {
+                                         simple_borrowed_iterator_t<Range>> {
                             if (*ranges::begin(range) == '-') {
                                 p_sign = sign::minus_sign;
                             }
@@ -90,7 +90,7 @@ namespace scn {
                         })
                     .or_else(
                         [&](auto err) -> scan_expected<
-                                          ranges::borrowed_iterator_t<Range>> {
+                                          simple_borrowed_iterator_t<Range>> {
                             if (err.code() ==
                                 scan_error::invalid_scanned_value) {
                                 return ranges::begin(range);

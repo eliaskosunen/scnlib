@@ -183,7 +183,7 @@ namespace scn {
         class word_reader_impl {
         public:
             template <typename Range, typename ValueCharT>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
                 Range&& range,
                 std::basic_string<ValueCharT>& value)
             {
@@ -192,7 +192,7 @@ namespace scn {
             }
 
             template <typename Range, typename ValueCharT>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_localized(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
                 detail::locale_ref loc,
                 std::basic_string<ValueCharT>& value)
@@ -202,7 +202,7 @@ namespace scn {
             }
 
             template <typename Range, typename ValueCharT>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
                 Range&& range,
                 std::basic_string_view<ValueCharT>& value)
             {
@@ -211,7 +211,7 @@ namespace scn {
             }
 
             template <typename Range, typename ValueCharT>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_localized(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
                 detail::locale_ref loc,
                 std::basic_string_view<ValueCharT>& value)
@@ -229,7 +229,7 @@ namespace scn {
 
             template <typename Range, typename ValueCharT>
             auto read(Range&& range, std::basic_string<ValueCharT>& value)
-                -> scan_expected<ranges::borrowed_iterator_t<Range>>
+                -> scan_expected<simple_borrowed_iterator_t<Range>>
             {
                 return read_impl(
                     range,
@@ -241,7 +241,7 @@ namespace scn {
 
             template <typename Range, typename ValueCharT>
             auto read(Range&& range, std::basic_string_view<ValueCharT>& value)
-                -> scan_expected<ranges::borrowed_iterator_t<Range>>
+                -> scan_expected<simple_borrowed_iterator_t<Range>>
             {
                 return read_impl(
                     range,
@@ -257,14 +257,14 @@ namespace scn {
                                   ReadCb&& read_cb,
                                   detail::priority_tag<1>)
                 -> scan_expected<
-                    ranges::borrowed_iterator_t<take_width_view<View>&>>
+                    simple_borrowed_iterator_t<take_width_view<View>&>>
             {
                 return read_cb(range);
             }
 
             template <typename Range, typename ReadCb>
             static auto read_impl(Range&&, ReadCb&&, detail::priority_tag<0>)
-                -> scan_expected<ranges::borrowed_iterator_t<Range>>
+                -> scan_expected<simple_borrowed_iterator_t<Range>>
             {
                 return unexpected_scan_error(
                     scan_error::invalid_scanned_value,
@@ -335,7 +335,7 @@ namespace scn {
         class character_set_reader_impl {
         public:
             template <typename Range, typename ValueCharT>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
                 Range&& range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string<ValueCharT>& value)
@@ -345,7 +345,7 @@ namespace scn {
             }
 
             template <typename Range, typename ValueCharT>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_localized(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
                 detail::locale_ref loc,
                 const detail::basic_format_specs<SourceCharT>& specs,
@@ -357,7 +357,7 @@ namespace scn {
             }
 
             template <typename Range, typename ValueCharT>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
                 Range&& range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string_view<ValueCharT>& value)
@@ -367,7 +367,7 @@ namespace scn {
             }
 
             template <typename Range, typename ValueCharT>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_localized(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
                 detail::locale_ref loc,
                 const detail::basic_format_specs<SourceCharT>& specs,
@@ -580,7 +580,7 @@ namespace scn {
             };
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_source_classic_impl(Range&& range, specs_helper helper) const
             {
                 const bool is_inverted =
@@ -624,7 +624,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_source_localized_impl(Range&& range,
                                        specs_helper helper,
                                        detail::locale_ref loc) const
@@ -749,7 +749,7 @@ namespace scn {
             }
 
             template <typename Range, typename Value>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_default(Range&& range, Value& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
@@ -758,7 +758,7 @@ namespace scn {
             }
 
             template <typename Range, typename Value>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_specs(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
                 Range&& range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 Value& value,
@@ -775,7 +775,7 @@ namespace scn {
             enum class reader_type { word, character, character_set };
 
             template <typename Range, typename Value>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
                 Range&& range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 Value& value)
@@ -805,7 +805,7 @@ namespace scn {
             }
 
             template <typename Range, typename Value>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_localized(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
                 detail::locale_ref loc,
                 const detail::basic_format_specs<SourceCharT>& specs,

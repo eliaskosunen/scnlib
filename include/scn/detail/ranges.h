@@ -346,32 +346,10 @@ namespace scn {
 
     namespace detail {
         namespace simple_iterator_t_fn {
-            template <typename T, typename = typename T::iterator>
-            constexpr auto impl_nonarray(priority_tag<2>)
-            {
-                return tag_type<typename T::iterator>{};
-            }
-            template <typename T, typename = decltype(SCN_DECLVAL(T&).begin())>
-            constexpr auto impl_nonarray(priority_tag<1>)
-            {
-                return tag_type<decltype(SCN_DECLVAL(T&).begin())>{};
-            }
-            template <typename T>
-            constexpr auto impl_nonarray(priority_tag<0>)
-            {
-                return tag_type<decltype(begin(SCN_DECLVAL(T&)))>{};
-            }
-
             template <typename T>
             constexpr auto impl()
             {
-                using T_nocvref = remove_cvref_t<T>;
-                if constexpr (std::is_array_v<T_nocvref>) {
-                    return tag_type<T_nocvref*>{};
-                }
-                else {
-                    return impl_nonarray<T_nocvref>(priority_tag<2>{});
-                }
+                return tag_type<decltype(ranges::begin(SCN_DECLVAL(T&)))>{};
             }
 
             template <typename Range>

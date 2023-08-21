@@ -210,7 +210,7 @@ namespace scn {
         auto map_scan_result_iterator(SourceRange&& source,
                                       const ResultIterator& mapped_begin,
                                       const ResultIterator& result)
-            -> ranges::borrowed_iterator_t<SourceRange>
+            -> simple_borrowed_iterator_t<SourceRange>
         {
             if constexpr (is_erased_range_iterator<ResultIterator>::value) {
                 return ranges::next(ranges::begin(source),

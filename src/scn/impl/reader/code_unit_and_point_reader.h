@@ -29,7 +29,7 @@ namespace scn {
         class code_unit_reader {
         public:
             template <typename SourceRange>
-            scan_expected<ranges::borrowed_iterator_t<SourceRange>> read(
+            scan_expected<simple_borrowed_iterator_t<SourceRange>> read(
                 SourceRange&& range,
                 CharT& ch)
             {
@@ -47,7 +47,7 @@ namespace scn {
         class code_point_reader<code_point> {
         public:
             template <typename SourceRange>
-            scan_expected<ranges::borrowed_iterator_t<SourceRange>> read(
+            scan_expected<simple_borrowed_iterator_t<SourceRange>> read(
                 SourceRange&& range,
                 code_point& cp)
             {
@@ -64,7 +64,7 @@ namespace scn {
         class code_point_reader<wchar_t> {
         public:
             template <typename SourceRange>
-            scan_expected<ranges::borrowed_iterator_t<SourceRange>> read(
+            scan_expected<simple_borrowed_iterator_t<SourceRange>> read(
                 SourceRange&& range,
                 wchar_t& ch)
             {

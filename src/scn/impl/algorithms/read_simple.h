@@ -25,14 +25,14 @@ namespace scn {
 
     namespace impl {
         template <typename Range>
-        scan_expected<ranges::borrowed_iterator_t<Range>> read_all(
+        scan_expected<simple_borrowed_iterator_t<Range>> read_all(
             Range&& range)
         {
             return ranges::next(ranges::begin(range), ranges::end(range));
         }
 
         template <typename Range>
-        scan_expected<ranges::borrowed_iterator_t<Range>> read_code_unit(
+        scan_expected<simple_borrowed_iterator_t<Range>> read_code_unit(
             Range&& range)
         {
             if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
@@ -43,7 +43,7 @@ namespace scn {
         }
 
         template <typename Range>
-        scan_expected<ranges::borrowed_iterator_t<Range>>
+        scan_expected<simple_borrowed_iterator_t<Range>>
         read_exactly_n_code_units(Range&& range,
                                   ranges::range_difference_t<Range> count)
         {

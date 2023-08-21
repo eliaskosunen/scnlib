@@ -82,8 +82,8 @@ namespace scn {
 
         template <typename InputR, typename OutputR>
         using copy_result =
-            ranges::in_out_result<ranges::borrowed_iterator_t<InputR>,
-                                  ranges::borrowed_iterator_t<OutputR>>;
+            ranges::in_out_result<simple_borrowed_iterator_t<InputR>,
+                                  simple_borrowed_iterator_t<OutputR>>;
 
         template <typename InputR, typename OutputR>
         SCN_NODISCARD copy_result<InputR, OutputR> copy(InputR&& input,

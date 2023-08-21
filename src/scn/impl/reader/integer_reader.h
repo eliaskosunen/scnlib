@@ -68,7 +68,7 @@ namespace scn {
             }
 
             template <typename T, typename Range>
-            SCN_NODISCARD scan_expected<ranges::borrowed_iterator_t<Range>>
+            SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
             read_source(detail::tag_type<T>, Range&& range)
             {
                 if (SCN_UNLIKELY(m_options &
@@ -85,7 +85,7 @@ namespace scn {
             }
 
             template <typename T, typename Range>
-            SCN_NODISCARD scan_expected<ranges::borrowed_iterator_t<Range>>
+            SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
             read_source_localized(detail::tag_type<T>,
                                   Range&& range,
                                   detail::locale_ref loc)
@@ -210,7 +210,7 @@ namespace scn {
                 return numeric_base::read_sign(SCN_FWD(range), m_sign)
                     .and_then([&](auto it)
                                   -> scan_expected<
-                                      ranges::borrowed_iterator_t<Range>> {
+                                      simple_borrowed_iterator_t<Range>> {
                         if (m_sign == numeric_base::sign::minus_sign) {
                             if constexpr (IsSigned) {
                                 if (SCN_UNLIKELY((m_options & only_unsigned) !=

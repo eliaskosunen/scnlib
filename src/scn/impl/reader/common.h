@@ -39,7 +39,7 @@ namespace scn {
         };
 
         template <typename SourceRange>
-        scan_expected<ranges::borrowed_iterator_t<SourceRange>>
+        scan_expected<simple_borrowed_iterator_t<SourceRange>>
         skip_classic_whitespace(SourceRange&& range,
                                 bool allow_exhaustion = false)
         {
@@ -60,7 +60,7 @@ namespace scn {
         }
 
         template <typename SourceRange>
-        scan_expected<ranges::borrowed_iterator_t<SourceRange>>
+        scan_expected<simple_borrowed_iterator_t<SourceRange>>
         skip_localized_whitespace(SourceRange&& range,
                                   detail::locale_ref loc,
                                   bool allow_exhaustion = false)
@@ -139,7 +139,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_default(Range&&, detail::monostate&, detail::locale_ref)
             {
                 SCN_EXPECT(false);
@@ -147,7 +147,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_specs(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
                 Range&&,
                 const detail::basic_format_specs<CharT>&,
                 detail::monostate&,

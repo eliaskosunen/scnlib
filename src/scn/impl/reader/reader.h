@@ -29,7 +29,7 @@ namespace scn {
 
     namespace impl {
         template <typename Reader, typename Range>
-        scan_expected<ranges::borrowed_iterator_t<Range>>
+        scan_expected<simple_borrowed_iterator_t<Range>>
         skip_ws_before_if_required(Reader& reader,
                                    Range&& range,
                                    detail::locale_ref loc)

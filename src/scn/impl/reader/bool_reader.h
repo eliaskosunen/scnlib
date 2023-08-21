@@ -31,7 +31,7 @@ namespace scn {
             constexpr bool_reader_base(unsigned opt) : m_options(opt) {}
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
                 Range&& range,
                 bool& value) const
             {
@@ -61,7 +61,7 @@ namespace scn {
 
         protected:
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_numeric(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_numeric(
                 Range&& range,
                 bool& value) const
             {
@@ -79,7 +79,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_textual_classic(Range&& range, bool& value) const
             {
                 if (auto r = read_matching_string_classic(range, "true")) {
@@ -103,7 +103,7 @@ namespace scn {
             using bool_reader_base::bool_reader_base;
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_localized(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
                 detail::locale_ref loc,
                 bool& value) const
@@ -141,7 +141,7 @@ namespace scn {
 
         protected:
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>>
+            scan_expected<simple_borrowed_iterator_t<Range>>
             read_textual_custom(Range&& range,
                                 bool& value,
                                 std::basic_string_view<CharT> truename,
@@ -184,7 +184,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_default(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_default(
                 Range&& range,
                 bool& value,
                 detail::locale_ref loc) const
@@ -195,7 +195,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<ranges::borrowed_iterator_t<Range>> read_specs(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
                 Range&& range,
                 const detail::basic_format_specs<CharT>& specs,
                 bool& value,
