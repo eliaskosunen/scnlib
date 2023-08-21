@@ -201,17 +201,22 @@ namespace scn {
         inline constexpr code_point decode_utf16_code_point(
             std::basic_string_view<CharT> input)
         {
-            static_assert(sizeof(CharT) == 2);
-            SCN_EXPECT(!input.empty() && input.size() <= 2);
+            if constexpr (sizeof(CharT) == 2) {
+                SCN_EXPECT(!input.empty() && input.size() <= 2);
 
-            if (input.size() == 1) {
-                return static_cast<code_point>(input[0]);
+                if (input.size() == 1) {
+                    return static_cast<code_point>(input[0]);
+                }
+
+                const auto lead = static_cast<uint32_t>(input[0]) - 0xd800;
+                const auto trail = static_cast<uint32_t>(input[1]) - 0xdc00;
+                const auto cp = (lead << 10) | trail;
+                return static_cast<code_point>(cp + 0x10000);
             }
-
-            const auto lead = static_cast<uint32_t>(input[0]) - 0xd800;
-            const auto trail = static_cast<uint32_t>(input[1]) - 0xdc00;
-            const auto cp = (lead << 10) | trail;
-            return static_cast<code_point>(cp + 0x10000);
+            else {
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
+            }
         }
     }  // namespace detail
 
