@@ -99,7 +99,7 @@
 #if SCN_HAS_CONSTEVAL
 #define SCN_CONSTEVAL consteval
 #else
-#define SCN_CONSTEVAL /*consteval*/
+#define SCN_CONSTEVAL /*consteval*/ constexpr
 #endif
 
 // SCN_NODISCARD

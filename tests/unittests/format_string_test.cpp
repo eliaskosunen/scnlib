@@ -129,7 +129,6 @@ TEST(FormatStringTest, EmptyCharacterSet)
     auto result = scn::scan<std::string>("42", scn::runtime("{:[]}"));
     EXPECT_FALSE(result);
 }
-#if 0
 TEST(FormatStringTest, AlphaCharacterSet)
 {
     auto result = scn::scan<std::string>("abc123", "{:[:alpha:]}");
@@ -142,7 +141,6 @@ TEST(FormatStringTest, AlphaCharacterSetWithStringView)
     ASSERT_TRUE(result);
     EXPECT_EQ(std::get<0>(result->values()), "abc");
 }
-#endif
 TEST(FormatStringTest, InvertedCharacterSet)
 {
     auto result = scn::scan<std::string>("abc 123\n", scn::runtime("{:[^\n]}"));

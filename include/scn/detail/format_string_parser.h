@@ -515,19 +515,7 @@ namespace scn {
 
             const auto chars_left = static_cast<size_t>(end - begin);
 
-            auto check_spec = [&](auto str, character_set_specifier flag,
-                                  size_t len) {
-                if (std::basic_string_view<CharT>{&*begin, len} !=
-                    std::basic_string_view<CharT>{str, len}) {
-                    return false;
-                }
-
-                handler.on_charset_specifier(flag);
-                begin += len;
-                SCN_ENSURE(*(begin - 1) == CharT{':'});
-                return true;
-            };
-
+            character_set_specifier found{};
             for (const auto& elem : set_colon_specifiers) {
                 const auto [str_ch, str_wch, flag] = elem;
 
@@ -537,21 +525,32 @@ namespace scn {
                 }
 
                 if constexpr (std::is_same_v<CharT, char>) {
-                    if (check_spec(str_ch, flag, spec_len)) {
-                        return;
+                    if (std::string_view{&*begin, spec_len} !=
+                        std::string_view{str_ch}) {
+                        continue;
                     }
                 }
                 else {
-                    if (check_spec(str_wch, flag, spec_len)) {
-                        return;
+                    if (std::wstring_view{&*begin, spec_len} !=
+                        std::wstring_view{str_wch}) {
+                        continue;
                     }
                 }
+
+                begin += spec_len;
+                SCN_ENSURE(*(begin - 1) == CharT{':'});
+                found = flag;
+                break;
             }
 
-            SCN_UNLIKELY_ATTR
-            handler.on_error(
-                "Invalid :colon-delimeted: specifier in a [character set] "
-                "format string argument");
+            if (SCN_UNLIKELY(found == character_set_specifier{})) {
+                handler.on_error(
+                    "Invalid :colon-delimeted: specifier in a [character set] "
+                    "format string argument");
+            }
+            else {
+                handler.on_charset_specifier(found);
+            }
         }
 
         inline constexpr std::pair<char, character_set_specifier>
