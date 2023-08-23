@@ -1,15 +1,5 @@
-function(get_warning_flags flags)
-    set(tmp
-        $<$<CXX_COMPILER_ID:Clang>:
-            -Weverything
-            -Wno-padded
-            -Wno-c++98-compat
-            -Wno-c++98-compat-pedantic
-            -Wno-c++98-compat-bind-to-temporary-copy
-            -Wno-c++98-compat-local-type-template-args
-            -Qunused-arguments -fcolor-diagnostics
-            >
-        $<$<CXX_COMPILER_ID:GNU>:
+function(get_gcc_warning_flags flags)
+    set(${flags}
             -ftemplate-backtrace-limit=0
             -Wall -Wextra -Wpedantic
             -pedantic-errors
@@ -25,54 +15,89 @@ function(get_warning_flags flags)
             -Wctor-dtor-privacy -Wdisabled-optimization
             -Winvalid-pch -Wnoexcept
             -Wmissing-declarations -Woverloaded-virtual
-            $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,5.0>>:
+            $<$<VERSION_GREATER_EQUAL:CXX_COMPILER_VERSION,5.0>:
             -Wdouble-promotion -Wtrampolines
             -Wzero-as-null-pointer-constant
             -Wuseless-cast -Wvector-operation-performance>
-            $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,6.0>>:
+            $<$<VERSION_GREATER_EQUAL:CXX_COMPILER_VERSION,6.0>:
             -Wshift-overflow=2 -Wnull-dereference
             -Wduplicated-cond>
-            $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,7.0>>:
+            $<$<VERSION_GREATER_EQUAL:CXX_COMPILER_VERSION,7.0>:
             -Walloc-zero -Walloca
             -Wduplicated-branches>
-            $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,8.0>>:
+            $<$<VERSION_GREATER_EQUAL:CXX_COMPILER_VERSION,8.0>:
             -Wcast-align=strict>
-            $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,9.0>>:
+            $<$<VERSION_GREATER_EQUAL:CXX_COMPILER_VERSION,9.0>:
             -Wmismatched-tags -Wredundant-tags>
-            $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,10.0>>:
+            $<$<VERSION_GREATER_EQUAL:CXX_COMPILER_VERSION,10.0>:
             -fconcepts-diagnostics-depth=99>
-            $<$<NOT:$<VERSION_LESS:CXX_COMPILER_VERSION,13.0>>:
+            $<$<VERSION_GREATER_EQUAL:CXX_COMPILER_VERSION,13.0>:
             -Wundef>
-            >
-        $<$<CXX_COMPILER_ID:MSVC>:
-            /W3
-            /wd4324 # padding
-            /permissive->)
+            PARENT_SCOPE
+    )
+endfunction()
 
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
-            NOT (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
-        set(tmp ${tmp}
-                -ftemplate-backtrace-limit=0)
+function(get_clang_warning_flags flags)
+    set(tmp
+            -Weverything
+            -Wno-padded
+            -Wno-c++98-compat
+            -Wno-c++98-compat-pedantic
+            -Wno-c++98-compat-bind-to-temporary-copy
+            -Wno-c++98-compat-local-type-template-args
+            -Qunused-arguments -fcolor-diagnostics)
+
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16.0)
+        set(tmp ${tmp} -Wno-unsafe-buffer-usage)
     endif()
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16.0)
-        set(tmp ${tmp}
-                -Wno-unsafe-buffer-usage)
-    endif()
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 17.0)
-        set(tmp ${tmp}
-                -fsafe-buffer-usage-suggestions)
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 17.0)
+        set(tmp ${tmp} -fsafe-buffer-usage-suggestions)
     endif()
 
     set(${flags} ${tmp} PARENT_SCOPE)
 endfunction()
 
+function(get_msvc_warning_flags flags)
+    set(${flags}
+            /W3
+            /wd4324 # padding
+            /permissive-
+            PARENT_SCOPE)
+endfunction()
+
+function(get_warning_flags flags)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        get_gcc_warning_flags(flags)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+            get_msvc_warning_flags(flags)
+        else()
+            get_clang_warning_flags(flags)
+        endif()
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        get_msvc_warning_flags(flags)
+    endif()
+endfunction()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(SCN_CXX_FRONTEND "GNU")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        set(SCN_CXX_FRONTEND "MSVC")
+    else()
+        set(SCN_CXX_FRONTEND "GNU")
+    endif()
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set(SCN_CXX_FRONTEND "MSVC")
+else()
+    set(SCN_CXX_FRONTEND "Other")
+endif()
+
 function(get_werror_flags flags)
     set(${flags}
-        $<$<CXX_COMPILER_ID:Clang>:
+        $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
             -Werror>
-        $<$<CXX_COMPILER_ID:GNU>:
-            -Werror>
-        $<$<CXX_COMPILER_ID:MSVC>:
+        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             /WX>
 
             PARENT_SCOPE)
@@ -80,11 +105,9 @@ endfunction()
 
 function(get_suppress_warnings_flags flags)
     set(${flags}
-        $<$<CXX_COMPILER_ID:Clang>:
+        $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
             -w>
-        $<$<CXX_COMPILER_ID:GNU>:
-            -w>
-        $<$<CXX_COMPILER_ID:MSVC>:
+        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             /w>
 
             PARENT_SCOPE)
@@ -92,11 +115,9 @@ endfunction()
 
 function(get_disable_exceptions_flags flags)
     set(${flags}
-        $<$<CXX_COMPILER_ID:Clang>:
+        $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
             -fno-exceptions>
-        $<$<CXX_COMPILER_ID:GNU>:
-            -fno-exceptions>
-        $<$<CXX_COMPILER_ID:MSVC>:
+        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             /EHs-c->
 
             PARENT_SCOPE)
@@ -104,11 +125,9 @@ endfunction()
 
 function(get_disable_rtti_flags flags)
     set(${flags}
-        $<$<CXX_COMPILER_ID:Clang>:
+        $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
             -fno-rtti>
-        $<$<CXX_COMPILER_ID:GNU>:
-            -fno-rtti>
-        $<$<CXX_COMPILER_ID:MSVC>:
+        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             /GR->
 
             PARENT_SCOPE)
@@ -124,23 +143,15 @@ function(get_coverage_flags flags)
 endfunction()
 
 function(disable_msvc_secure_flags target scope)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
-            CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-        target_compile_definitions(${target} ${scope}
-                _CRT_SECURE_NO_WARNINGS
-                _SCL_SECURE_NO_WARNINGS)
-    endif()
-
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        target_compile_definitions(${target} ${scope}
-                _CRT_SECURE_NO_WARNINGS
-                _SCL_SECURE_NO_WARNINGS)
-    endif()
+    target_compile_definitions(${target} ${scope}
+        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
+            _CRT_SECURE_NO_WARNINGS
+            _SCL_SECURE_NO_WARNINGS>)
 endfunction()
 
 function(set_bigobj_flags target scope)
     target_compile_options(${target} ${scope}
-            $<$<CXX_COMPILER_ID:MSVC>:
+        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             /bigobj>)
 
     if (MINGW)
@@ -183,6 +194,9 @@ function(set_library_flags target)
     if(NOT SCN_USE_EXCEPTIONS)
         get_disable_exceptions_flags(noexceptions_flags)
         target_compile_options(${target} PRIVATE ${noexceptions_flags})
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND SCN_CXX_FRONTEND STREQUAL "MSVC")
+        # clang-cl requires explicitly enabling exceptions
+        target_compile_options(${target} PUBLIC /EHsc)
     endif()
     if(NOT SCN_USE_RTTI)
         get_disable_rtti_flags(nortti_flags)

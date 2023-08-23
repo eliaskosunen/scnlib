@@ -40,16 +40,6 @@
 #define SCN_INTEL                                                      \
     SCN_COMPILER(__INTEL_COMPILER / 100, (__INTEL_COMPILER / 10) % 10, \
                  __INTEL_COMPILER % 10)
-#elif defined(_MSC_VER) && defined(_MSC_FULL_VER)
-// MSVC
-#if _MSC_VER == _MSC_FULL_VER / 10000
-#define SCN_MSVC \
-    SCN_COMPILER(_MSC_VER / 100, _MSC_VER % 100, _MSC_FULL_VER % 10000)
-#else
-#define SCN_MSVC                                                \
-    SCN_COMPILER(_MSC_VER / 100, (_MSC_FULL_VER / 100000) % 10, \
-                 _MSC_FULL_VER % 100000)
-#endif  // _MSC_VER == _MSC_FULL_VER / 10000
 #elif defined(__clang__) && defined(__clang_minor__) && \
     defined(__clang_patchlevel__)
 // Clang
@@ -60,6 +50,18 @@
 // GCC
 #define SCN_GCC SCN_COMPILER(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
 #endif
+
+#if defined(_MSC_VER) && defined(_MSC_FULL_VER)
+// MSVC
+#if _MSC_VER == _MSC_FULL_VER / 10000
+#define SCN_MSVC \
+    SCN_COMPILER(_MSC_VER / 100, _MSC_VER % 100, _MSC_FULL_VER % 10000)
+#else
+#define SCN_MSVC                                                \
+    SCN_COMPILER(_MSC_VER / 100, (_MSC_FULL_VER / 100000) % 10, \
+                 _MSC_FULL_VER % 100000)
+#endif  // _MSC_VER == _MSC_FULL_VER / 10000
+#endif  // _MSC_VER
 
 #ifndef SCN_INTEL
 #define SCN_INTEL 0
@@ -72,6 +74,12 @@
 #endif
 #ifndef SCN_GCC
 #define SCN_GCC 0
+#endif
+
+#if SCN_CLANG && SCN_MSVC
+#define SCN_MSVC_CLANG 1
+#else
+#define SCN_MSVC_CLANG 0
 #endif
 
 // Pretending to be gcc (clang, icc, etc.)

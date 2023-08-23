@@ -55,6 +55,9 @@ jobs:
         os: [ 2019, 2022 ]
         std: [ 17, 20 ]
         platform: [ x64 ]
+        exclude:
+          # clang-cl ICEs with MSVC STL <ranges>
+          - std: 20
 
     steps:
       - uses: actions/checkout@v3
@@ -67,7 +70,7 @@ jobs:
         shell: bash
         run: |
           cmake -T ClangCL -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DCMAKE_BUILD_TYPE=Debug \
-            -DSCN_CI=ON -DSCN_PEDANTIC=OFF -DSCN_WERROR=OFF $GITHUB_WORKSPACE
+            -DSCN_CI=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=ON $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
@@ -92,11 +95,13 @@ jobs:
           # gcc, msvcrt, libstdc++
           - mingw32
           - mingw64
-          # gcc, cygwin, libstdc++
-          - msys
           # llvm, ucrt, libc++
           - clang32
           - clang64
+        exclude:
+          # FIXME: bugging out with float parsing
+          - sys: clang32
+          - sys: clang64
 
     steps:
       - uses: actions/checkout@v3

@@ -379,7 +379,9 @@ namespace scn {
                     remove_cvref_t<decltype(*begin(SCN_DECLVAL(T&)))>>{};
             }
 
-            template <typename T>
+            template <
+                typename T,
+                typename = std::enable_if_t<ranges::range<remove_cvref_t<T>>>>
             constexpr auto impl()
             {
                 using T_nocvref = remove_cvref_t<T>;

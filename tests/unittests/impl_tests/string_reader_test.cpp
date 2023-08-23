@@ -398,6 +398,7 @@ TYPED_TEST(StringCharacterSetReaderTest, MatchEmpty) {
     auto [ret, val] = this->read(this->make_specs_from_set("[:alpha:]"));
 
     ASSERT_FALSE(ret);
+    SCN_UNUSED(src);
 }
 
 TYPED_TEST(StringCharacterSetReaderTest, AlphaSpecifier)
