@@ -123,3 +123,41 @@ TEST(ScanTest, DefaultValueString)
     EXPECT_EQ(result->value().data(), addr);
     EXPECT_GE(result->value().capacity(), 256);
 }
+
+TEST(ScanTest, NumberedArguments)
+{
+    auto result = scn::scan<int, int>("123 456", "{0} {1}");
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    auto [a, b] = result->values();
+    EXPECT_EQ(a, 123);
+    EXPECT_EQ(b, 456);
+}
+
+TEST(ScanTest, NumberedArgumentsSwapped)
+{
+    auto result = scn::scan<int, int>("123 456", "{1} {0}");
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    auto [a, b] = result->values();
+    EXPECT_EQ(a, 456);
+    EXPECT_EQ(b, 123);
+}
+
+TEST(ScanTest, NumberedArgumentsRepeatedSingleArg)
+{
+    auto result = scn::scan<int>("123 456", scn::runtime("{0} {0}"));
+    ASSERT_FALSE(result);
+}
+
+TEST(ScanTest, NumberedArgumentsRepeatedDoubleArg)
+{
+    auto result = scn::scan<int, int>("123 456", scn::runtime("{0} {0}"));
+    ASSERT_FALSE(result);
+}
+
+TEST(ScanTest, NumberedArgumentsOutOfRange)
+{
+    auto result = scn::scan<int>("123 456", scn::runtime("{1}"));
+    ASSERT_FALSE(result);
+}

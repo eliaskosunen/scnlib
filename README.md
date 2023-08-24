@@ -60,16 +60,15 @@ See more examples in the `examples/` folder.
 #include <print>
 
 int main() {
-    auto input = std::string_view{"Hello world"};
-
     // Reading a std::string will read until the first whitespace character
-    if (auto result = scn::scan<std::string>(input, "{}")) {
+    if (auto result = scn::scan<std::string>("Hello world!", "{}")) {
         // Will output "Hello":
         // Access the read value with result->value()
         std::println("{}", result->value());
         
         // Will output " world":
         // result->range() returns a subrange containing the unused input
+        // C++23 is required for the std::string_view range constructor used below
         std::println("{}", std::string_view{result->range()});
     } else {
         std::println("Couldn't parse a word: {}", result.error().msg());
@@ -81,11 +80,6 @@ int main() {
 
 ```cpp
 #include <scn/scan.h>
-
-// scn::ranges is
-//  - std::ranges on C++20 or later (if available)
-//  - nano::ranges on C++17 (bundled implementation)
-namespace ranges = scn::ranges;
 
 int main() {
     auto input = std::string{"123 456 foo"};
@@ -101,7 +95,7 @@ int main() {
     // Could also use scn::ranges::subrange{result->begin(), result->end()} as input
     auto result2 = scn::scan<std::string>(result->range(), "{}");
     // result2 == true
-    // result2->range().empty: true
+    // result2->range().empty() == true
     // result2->value() == "foo"
 }
 ```
@@ -111,6 +105,9 @@ int main() {
 ```cpp
 #include <scn/scan.h>
 
+// scn::ranges is
+//  - std::ranges on C++20 or later (if available)
+//  - nano::ranges on C++17 (bundled implementation)
 namespace ranges = scn::ranges;
 
 int main() {

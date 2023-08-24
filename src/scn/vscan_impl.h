@@ -117,6 +117,9 @@ namespace scn {
                   ctx{SCN_MOVE(source), SCN_MOVE(args), SCN_MOVE(loc)},
                   args_count{argcount}
             {
+                if (args_count >= 64) {
+                    visited_args_upper.resize((args_count - 64) / 8);
+                }
             }
 
             void on_literal_text(const CharT* begin, const CharT* end)
@@ -167,6 +170,8 @@ namespace scn {
             void on_replacement_field(std::size_t arg_id, const CharT*)
             {
                 auto arg = get_arg(ctx, arg_id, *this);
+                set_arg_as_visited(arg_id);
+
                 on_visit_scan_arg(
                     impl::default_arg_reader<context_type>{
                         ctx.range(), ctx.args(), ctx.locale()},
@@ -178,6 +183,7 @@ namespace scn {
                                          const CharT* end)
             {
                 auto arg = get_arg(ctx, arg_id, *this);
+                set_arg_as_visited(arg_id);
 
                 if (arg.type() == detail::arg_type::custom_type) {
                     parse_ctx.advance_to(begin);
@@ -212,7 +218,37 @@ namespace scn {
 
             void check_args_exhausted()
             {
-                on_error(parse_ctx.check_args_exhausted(ctx.args().size()));
+                {
+                    const auto args_count_lower64 =
+                        args_count >= 64 ? 64 : args_count;
+                    const uint64_t mask =
+                        args_count_lower64 == 64
+                            ? std::numeric_limits<uint64_t>::max()
+                            : (1ull << args_count_lower64) - 1;
+
+                    if (visited_args_lower64 != mask) {
+                        return on_error("Argument list not exhausted");
+                    }
+                }
+
+                if (args_count < 64) {
+                    return;
+                }
+
+                auto last_args_count = args_count - 64;
+                for (auto it = visited_args_upper.begin();
+                     it != visited_args_upper.end() - 1; ++it) {
+                    if (*it != std::numeric_limits<uint8_t>::max()) {
+                        return on_error("Argument list not exhausted");
+                    }
+                    last_args_count -= 8;
+                }
+
+                const auto mask =
+                    static_cast<uint8_t>(1u << last_args_count) - 1;
+                if (visited_args_upper.back() != mask) {
+                    return on_error("Argument list not exhausted");
+                }
             }
 
             void on_error(const char* msg)
@@ -236,10 +272,48 @@ namespace scn {
                 return error;
             }
 
+            SCN_NODISCARD bool has_arg_been_visited(size_t id)
+            {
+                if (id >= args_count) {
+                    on_error("Invalid out-of-range argument ID");
+                    return false;
+                }
+
+                if (id < 64) {
+                    return (visited_args_lower64 >> id) & 1ul;
+                }
+
+                id -= 64;
+                return (visited_args_upper[id / 8] >> (id % 8)) & 1u;
+            }
+
+            void set_arg_as_visited(size_t id)
+            {
+                if (id >= args_count) {
+                    on_error("Invalid out-of-range argument ID");
+                    return;
+                }
+
+                if (has_arg_been_visited(id)) {
+                    return on_error(
+                        "Argument with this ID has already been scanned");
+                }
+
+                if (id < 64) {
+                    visited_args_lower64 |= (1ul << id);
+                    return;
+                }
+
+                id -= 64;
+                visited_args_upper[id / 8] |= (1u << (id % 8));
+            }
+
             parse_context_type parse_ctx;
             context_type ctx;
             scan_error error;
             std::size_t args_count;
+            uint64_t visited_args_lower64{0};
+            std::vector<uint8_t> visited_args_upper{};
         };
 
         template <typename SourceRange, typename CharT>

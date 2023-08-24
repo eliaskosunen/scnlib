@@ -280,19 +280,74 @@ namespace scn {
             scan_error m_error;
         };
 
+        template <typename CharT>
+        constexpr int parse_simple_int(const CharT*& begin, const CharT* end)
+        {
+            SCN_EXPECT(begin != end);
+            SCN_EXPECT(*begin >= '0' && *begin <= '9');
+
+            unsigned value = 0, prev = 0;
+            auto p = begin;
+            do {
+                prev = value;
+                value = value * 10 + static_cast<unsigned>(*p - '0');
+                ++p;
+            } while (p != end && *p >= '0' && *p <= '9');
+            auto num_digits = p - begin;
+            begin = p;
+            if (SCN_LIKELY(num_digits <= std::numeric_limits<int>::digits10)) {
+                SCN_LIKELY_ATTR
+                return static_cast<int>(value);
+            }
+            const auto max =
+                static_cast<unsigned>((std::numeric_limits<int>::max)());
+            return num_digits == std::numeric_limits<int>::digits10 + 1 &&
+                           prev * 10ull + unsigned(p[-1] - '0') <= max
+                       ? static_cast<int>(value)
+                       : -1;
+        }
+
+        template <typename CharT, typename IDHandler>
+        constexpr const CharT* do_parse_arg_id(const CharT* begin,
+                                               const CharT* end,
+                                               IDHandler&& handler)
+        {
+            SCN_EXPECT(begin != end);
+
+            CharT c = *begin;
+            if (c < CharT{'0'} || c > CharT{'9'}) {
+                handler.on_error("Invalid argument ID");
+                return begin;
+            }
+
+            int idx = 0;
+            if (c != CharT{'0'}) {
+                idx = parse_simple_int(begin, end);
+            }
+            else {
+                ++begin;
+            }
+
+            if (begin == end ||
+                (*begin != CharT{'}'} && *begin != CharT{':'})) {
+                handler.on_error("Invalid argument ID");
+                return begin;
+            }
+            handler(idx);
+
+            return begin;
+        }
+
         template <typename CharT, typename IDHandler>
         constexpr const CharT* parse_arg_id(const CharT* begin,
                                             const CharT* end,
                                             IDHandler&& handler)
         {
             SCN_EXPECT(begin != end);
-            if (SCN_UNLIKELY(*begin != '}' && *begin != ':')) {
-                SCN_UNLIKELY_ATTR
-                handler.on_error("Argument IDs in format strings unsupported");
-                return end;
+            if (*begin != '}' && *begin != ':') {
+                return do_parse_arg_id(begin, end, SCN_FWD(handler));
             }
 
-            // TODO: do_parse_arg_id, fmt/core.h:2410
             handler();
             return begin;
         }
@@ -438,33 +493,6 @@ namespace scn {
             handler.on_fill(potential_fill);
             handler.on_align(potential_align_after_fill);
             return begin;
-        }
-
-        template <typename CharT>
-        constexpr int parse_simple_int(const CharT*& begin, const CharT* end)
-        {
-            SCN_EXPECT(begin != end);
-            SCN_EXPECT(*begin >= '0' && *begin <= '9');
-
-            unsigned value = 0, prev = 0;
-            auto p = begin;
-            do {
-                prev = value;
-                value = value * 10 + static_cast<unsigned>(*p - '0');
-                ++p;
-            } while (p != end && *p >= '0' && *p <= '9');
-            auto num_digits = p - begin;
-            begin = p;
-            if (SCN_LIKELY(num_digits <= std::numeric_limits<int>::digits10)) {
-                SCN_LIKELY_ATTR
-                return static_cast<int>(value);
-            }
-            const auto max =
-                static_cast<unsigned>((std::numeric_limits<int>::max)());
-            return num_digits == std::numeric_limits<int>::digits10 + 1 &&
-                           prev * 10ull + unsigned(p[-1] - '0') <= max
-                       ? static_cast<int>(value)
-                       : -1;
         }
 
         template <typename CharT, typename Handler>

@@ -94,12 +94,16 @@ namespace scn {
                 return id;
             }
 
-            constexpr void on_replacement_field(size_t, const CharT*) {}
+            constexpr void on_replacement_field(size_t id, const CharT*)
+            {
+                set_arg_as_read(id);
+            }
 
             constexpr const CharT* on_format_specs(std::size_t id,
                                                    const CharT* begin,
                                                    const CharT*)
             {
+                set_arg_as_read(id);
                 m_parse_context.advance_to(begin);
                 return id < num_args ? m_parse_funcs[id](m_parse_context)
                                      : begin;
@@ -107,7 +111,14 @@ namespace scn {
 
             constexpr void check_args_exhausted() const
             {
-                m_parse_context.check_args_exhausted(num_args);
+                if (num_args == 0) {
+                    return;
+                }
+                for (auto is_set : m_visited_args) {
+                    if (!is_set) {
+                        return on_error("Argument list not exhausted");
+                    }
+                }
             }
 
             void on_error(const char* msg) const
@@ -129,11 +140,23 @@ namespace scn {
             }
 
         private:
+            constexpr void set_arg_as_read(size_t id)
+            {
+                if (id >= num_args) {
+                    return on_error("Invalid out-of-range argument ID");
+                }
+                if (m_visited_args[id]) {
+                    return on_error("Argument with this ID already scanned");
+                }
+                m_visited_args[id] = true;
+            }
+
             using parse_func = const CharT* (*)(parse_context_type&);
 
             parse_context_type m_parse_context;
             parse_func m_parse_funcs[num_args > 0 ? num_args : 1];
             arg_type m_types[num_args > 0 ? num_args : 1];
+            bool m_visited_args[num_args > 0 ? num_args : 1] = {false};
         };
 
         template <typename... Args, typename Str>

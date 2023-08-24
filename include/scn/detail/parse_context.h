@@ -85,14 +85,6 @@ namespace scn {
                 scan_error{scan_error::invalid_format_string, msg});
         }
 
-        constexpr scan_error check_args_exhausted(std::size_t arg_count) const
-        {
-            if (SCN_UNLIKELY(m_next_arg_id < static_cast<int>(arg_count))) {
-                return on_error("Argument list not exhausted");
-            }
-            return {};
-        }
-
     protected:
         constexpr void do_check_arg_id(size_t id);
 

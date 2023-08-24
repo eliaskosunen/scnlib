@@ -100,7 +100,7 @@ TEST(FormatStringTest, TooManyArgsInArgListCompileTime)
 TEST(FormatStringTest, HasId)
 {
     auto result = scn::scan<int>("42", scn::runtime("{0}"));
-    EXPECT_FALSE(result);
+    EXPECT_TRUE(result);
 }
 
 TEST(FormatStringTest, UnexpectedEndOfSpecs_WithOnlyOpenBrace)
