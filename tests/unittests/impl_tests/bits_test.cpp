@@ -37,6 +37,26 @@ TEST(BitsTest, CountTrailingZeroes)
     EXPECT_EQ(scn::impl::count_trailing_zeroes(
                   std::numeric_limits<uint64_t>::max() - 3),
               2);
+
+    EXPECT_EQ(scn::impl::count_trailing_zeroes(
+                  static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())),
+              0);
+    EXPECT_EQ(
+        scn::impl::count_trailing_zeroes(
+            static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) - 1),
+        1);
+    EXPECT_EQ(
+        scn::impl::count_trailing_zeroes(
+            static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) - 2),
+        0);
+    EXPECT_EQ(
+        scn::impl::count_trailing_zeroes(
+            static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) - 3),
+        2);
+    EXPECT_EQ(scn::impl::count_trailing_zeroes(
+                  static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) *
+                  2,
+              0);
 }
 
 TEST(BitsTest, HasZeroByte)

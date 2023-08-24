@@ -396,27 +396,26 @@ namespace scn {
                     ch + static_cast<char_type>('a' - 'A'));
             };
 
-            using return_type =
-                scan_expected<simple_borrowed_iterator_t<Range>>;
+            auto check = [&](auto it)
+                -> scan_expected<simple_borrowed_iterator_t<Range>> {
+                auto buf = make_contiguous_buffer(
+                    ranges::subrange{ranges::begin(range), it});
 
-            auto check_narrow_allocated_string = [&](auto it,
-                                                     auto& buf) -> return_type {
-                SCN_EXPECT(buf.stores_allocated_string());
+                if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
+                    if (buf.stores_allocated_string()) {
+                        for (auto& ch : buf.get_allocated_string()) {
+                            ch = ascii_tolower(ch);
+                        }
+                        if (SCN_UNLIKELY(buf.view() != str)) {
+                            return unexpected_scan_error(
+                                scan_error::invalid_scanned_value,
+                                "read_matching_string_nocase: No match");
+                        }
 
-                // buf is a string, make buf lowercase
-                for (auto& ch : buf.get_allocated_string()) {
-                    ch = ascii_tolower(ch);
+                        return it;
+                    }
                 }
-                if (SCN_UNLIKELY(buf.view() != str)) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "read_matching_string_nocase: No match");
-                }
 
-                return it;
-            };
-            auto check_other = [&](auto it, auto& buf) -> return_type {
-                // buf is a string_view, compare char-by-char
                 if (SCN_UNLIKELY(!std::equal(
                         buf.view().begin(), buf.view().end(), str.begin(),
                         [&](auto a, auto b) {
@@ -432,19 +431,7 @@ namespace scn {
             };
 
             return read_exactly_n_code_units(range, ranges::ssize(str))
-                .and_then([&](auto it) {
-                    auto buf = make_contiguous_buffer(
-                        ranges::subrange{ranges::begin(range), it});
-
-                    if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
-                        if (buf.stores_allocated_string()) {
-                            return check_narrow_allocated_string(it, buf);
-                        }
-                    }
-
-                    SCN_UNUSED(check_narrow_allocated_string);
-                    return check_other(it, buf);
-                });
+                .and_then(check);
         }
 
         template <typename Range>

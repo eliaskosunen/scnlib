@@ -53,11 +53,12 @@ namespace scn {
             return static_cast<int>(ret);
 #elif SCN_MSVC && !SCN_WINDOWS_64BIT
             DWORD ret{};
-            if (_BitScanForward(&ret, static_cast<DWORD>(val)) != 0) {
-                _BitScanForward(&ret, static_cast<DWORD>(val >> 32));
-                ret += 32;
+            if (_BitScanForward(&ret, static_cast<uint32_t>(val))) {
+                return static_cast<int>(ret);
             }
-            return static_cast<int>(ret);
+
+            _BitScanForward(&ret, static_cast<uint32_t>(val >> 32));
+            return static_cast<int>(ret + 32);
 #elif SCN_POSIX
             return ::ctzll(val);
 #else
