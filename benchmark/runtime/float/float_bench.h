@@ -125,3 +125,62 @@ inline int sscanf_float_n(const char*& ptr, long double& f)
     ptr += n + 1;
     return ret;
 }
+
+inline bool strtod_float(const char* ptr, float& f)
+{
+    char* endptr{};
+    f = std::strtof(ptr, &endptr);
+    return endptr != ptr;
+}
+inline bool strtod_float(const char* ptr, double& f)
+{
+    char* endptr{};
+    f = std::strtod(ptr, &endptr);
+    return endptr != ptr;
+}
+inline bool strtod_float(const char* ptr, long double& f)
+{
+    char* endptr{};
+    f = std::strtold(ptr, &endptr);
+    return endptr != ptr;
+}
+
+inline int strtod_float_n(const char*& ptr, float& f)
+{
+    char* endptr{};
+    f = std::strtof(ptr, &endptr);
+    if (*ptr == '\0') {
+        return EOF;
+    }
+    if (endptr == ptr) {
+        return 1;
+    }
+    ptr = endptr;
+    return 0;
+}
+inline int strtod_float_n(const char*& ptr, double& f)
+{
+    char* endptr{};
+    f = std::strtod(ptr, &endptr);
+    if (*ptr == '\0') {
+        return EOF;
+    }
+    if (endptr == ptr) {
+        return 1;
+    }
+    ptr = endptr;
+    return 0;
+}
+inline int strtod_float_n(const char*& ptr, long double& f)
+{
+    char* endptr{};
+    f = std::strtold(ptr, &endptr);
+    if (*ptr == '\0') {
+        return EOF;
+    }
+    if (endptr == ptr) {
+        return 1;
+    }
+    ptr = endptr;
+    return 0;
+}

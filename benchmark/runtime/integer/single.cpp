@@ -113,6 +113,28 @@ BENCHMARK_TEMPLATE(scan_int_single_scanf, int);
 BENCHMARK_TEMPLATE(scan_int_single_scanf, long long);
 BENCHMARK_TEMPLATE(scan_int_single_scanf, unsigned);
 
+template <typename Int>
+static void scan_int_single_strtol(benchmark::State& state)
+{
+    single_state<Int> s{get_integer_list<Int>()};
+
+    for (auto _ : state) {
+        s.reset_if_necessary();
+
+        Int i{};
+        auto ret = strtol_integral(s.it->c_str(), i);
+        if (!ret) {
+            state.SkipWithError("Benchmark errored");
+            break;
+        }
+        s.push(i);
+    }
+    state.SetBytesProcessed(s.get_bytes_processed(state));
+}
+BENCHMARK_TEMPLATE(scan_int_single_strtol, int);
+BENCHMARK_TEMPLATE(scan_int_single_strtol, long long);
+BENCHMARK_TEMPLATE(scan_int_single_strtol, unsigned);
+
 #if SCN_HAS_INTEGER_CHARCONV
 
 template <typename Int>

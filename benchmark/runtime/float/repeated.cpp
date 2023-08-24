@@ -133,6 +133,33 @@ BENCHMARK_TEMPLATE(scan_float_repeated_scanf, float);
 BENCHMARK_TEMPLATE(scan_float_repeated_scanf, double);
 BENCHMARK_TEMPLATE(scan_float_repeated_scanf, long double);
 
+template <typename Float>
+static void scan_float_repeated_strtod(benchmark::State& state)
+{
+    repeated_state<Float> s{get_float_string<Float>()};
+
+    for (auto _ : state) {
+        Float f{};
+        s.skip_classic_ascii_space();
+
+        auto ret = strtod_float_n(s.it, f);
+        if (ret != 0) {
+            if (ret == EOF) {
+                s.reset();
+                continue;
+            }
+
+            state.SkipWithError("Scan error");
+            break;
+        }
+        s.push(f);
+    }
+    state.SetBytesProcessed(s.get_bytes_processed(state));
+}
+BENCHMARK_TEMPLATE(scan_float_repeated_strtod, float);
+BENCHMARK_TEMPLATE(scan_float_repeated_strtod, double);
+BENCHMARK_TEMPLATE(scan_float_repeated_strtod, long double);
+
 #if SCN_HAS_FLOAT_CHARCONV
 
 template <typename Float>
@@ -142,11 +169,7 @@ static void scan_float_repeated_charconv(benchmark::State& state)
 
     for (auto _ : state) {
         Float f{};
-
-        for (; std::isspace(*s.it) != 0; ++s.it) {}
-        if (s.it == s.source_end_addr()) {
-            s.reset();
-        }
+        s.skip_classic_ascii_space();
 
         auto ret = std::from_chars(s.view().begin(), s.view().end(), f);
         if (ret.ec != std::errc{}) {

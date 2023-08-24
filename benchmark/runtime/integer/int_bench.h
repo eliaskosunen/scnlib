@@ -98,3 +98,66 @@ inline int sscanf_integral_n(const char*& ptr, unsigned& i)
     ptr += n + 1;
     return ret;
 }
+
+inline bool strtol_integral(const char* ptr, int& i)
+{
+    char* endptr{};
+    auto tmp = std::strtol(ptr, &endptr, 0);
+    i = static_cast<int>(tmp);
+    return endptr != ptr;
+}
+inline bool strtol_integral(const char* ptr, long long& i)
+{
+    char* endptr{};
+    i = std::strtoll(ptr, &endptr, 0);
+    return endptr != ptr;
+}
+inline bool strtol_integral(const char* ptr, unsigned& i)
+{
+    char* endptr{};
+    auto tmp = std::strtoul(ptr, &endptr, 0);
+    i = static_cast<unsigned>(tmp);
+    return endptr != ptr;
+}
+
+inline int strtol_integral_n(const char*& ptr, int& i)
+{
+    char* endptr{};
+    auto tmp = std::strtol(ptr, &endptr, 0);
+    if (*ptr == '\0') {
+        return EOF;
+    }
+    if (endptr == ptr) {
+        return 1;
+    }
+    ptr = endptr;
+    i = static_cast<int>(tmp);
+    return 0;
+}
+inline int strtol_integral_n(const char*& ptr, long long& i)
+{
+    char* endptr{};
+    i = std::strtoll(ptr, &endptr, 0);
+    if (*ptr == '\0') {
+        return EOF;
+    }
+    if (endptr == ptr) {
+        return 1;
+    }
+    ptr = endptr;
+    return 0;
+}
+inline int strtol_integral_n(const char*& ptr, unsigned& i)
+{
+    char* endptr{};
+    auto tmp = std::strtoul(ptr, &endptr, 0);
+    if (*ptr == '\0') {
+        return EOF;
+    }
+    if (endptr == ptr) {
+        return 1;
+    }
+    ptr = endptr;
+    i = static_cast<unsigned>(tmp);
+    return 0;
+}

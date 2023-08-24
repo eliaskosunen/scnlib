@@ -113,6 +113,28 @@ BENCHMARK_TEMPLATE(scan_float_single_scanf, float);
 BENCHMARK_TEMPLATE(scan_float_single_scanf, double);
 BENCHMARK_TEMPLATE(scan_float_single_scanf, long double);
 
+template <typename Float>
+static void scan_float_single_strtod(benchmark::State& state)
+{
+    single_state<Float> s{get_float_list<Float>()};
+
+    for (auto _ : state) {
+        s.reset_if_necessary();
+
+        Float f{};
+        auto ret = strtod_float(s.it->c_str(), f);
+        if (!ret) {
+            state.SkipWithError("Benchmark errored");
+            break;
+        }
+        s.push(f);
+    }
+    state.SetBytesProcessed(s.get_bytes_processed(state));
+}
+BENCHMARK_TEMPLATE(scan_float_single_strtod, float);
+BENCHMARK_TEMPLATE(scan_float_single_strtod, double);
+BENCHMARK_TEMPLATE(scan_float_single_strtod, long double);
+
 #if SCN_HAS_FLOAT_CHARCONV
 
 template <typename Float>

@@ -195,46 +195,202 @@ Including the following environments:
 
 ### Run-time performance
 
-TODO
+All times below are in nanoseconds of CPU time.
+Lower is better.
+
+#### Integer parsing (`int`)
+
+![Integer result, chart](benchmark/runtime/results/int.png)
+
+| Test   |   `scn::scan` | `scn::scan_value` | `std::stringstream` | `sscanf` | `strtol` | `std::from_chars` |
+|:-------|--------------:| ----------------: | ------------------: |---------:|----------|------------------:|
+| Test 1 | 55.9          | 50.9              | 142                 |     81.6 |  21.2    |              13.3 |
+| Test 2 | 56.3          | 51.8              | 59.1                |      512 |  49.7    |              13.9 |
+
+#### Floating-point number parsing (`double`)
+
+![Float result, chart](benchmark/runtime/results/float.png)
+
+| Test   | `scn::scan` | `scn::scan_value` | `std::stringstream` | `sscanf` | `strtod`  | `std::from_chars` |
+|:-------| ----------: | ----------------: | ------------------: |---------:|-----------|------------------:|
+| Test 1 | 83.6        | 76.6              | 403                 |      206 |     50.1  |              28.7 |
+| Test 2 | 79.8        | 73.9              | 268                 |      716 |     87.2  |              30.4 |
+
+#### Conclusions
+
+ * `scn::scan` is faster than using `stringstream`s and `sscanf`, in all cases
+ * `std::from_chars` is faster than `scn::scan`, but it supports fewer features
+ * `strtod` has around the same performance as `scn::scan`, but supports fewer features
+ * `scn::scan_value` is slightly faster compared to `scn::scan`
+
+#### About
+
+Above,
+ * "Test 1" refers to scanning a single value from a string,
+   which only contains the text representation for that value.
+   The time used for creating any state needed for the scanner is included,
+   for example, constructing a `stringstream`. This test is called `"single"` in the benchmark sources.
+ * "Test 2" refers to the average time of scanning a value,
+   which contains multiple values in their text representations, separated by spaces.
+   The time used for creating any state needed for the scanner is not included.
+   This test is called `"repeated"` in the benchmark sources.
+
+The difference between "Test 1" and "Test 2" is most pronounced when using a `stringstream`,
+which is relatively expensive to construct, and seems to be adding around ~100ns of runtime.
+With `sscanf`, it seems like using the `%n` specifier and skipping whitespace are really expensive (~500ns of runtime).
+With `scn::scan` and `std::from_chars`, there's really no state to construct,
+and the results for "Test 1" and "Test 2" are thus quite similar.
+
+These benchmarks were run on a Fedora 37 machine, running Linux kernel version 6.4.11,
+with an AMD Ryzen 7 5700X processor, and compiled with gcc version 12.3.1,
+with `-O3 -DNDEBUG -march=haswell` and LTO enabled.
+C++20 was used, with the standard library (libstdc++) `<ranges>` implementation.
+These benchmarks were run on 2023-08-24 (commit fdefc09).
+
+The source code for these benchmarks can be found in the `benchmark` directory.
+You can run these benchmarks yourself by enabling the CMake variable `SCN_BENCHMARKS`.
+This variable is `ON` by default, if `scnlib` is the root CMake project, and `OFF` otherwise.
+
+```sh
+$ cd build
+$ cmake -DSCN_BENCHMARKS=ON \
+        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
+        -DSCN_USE_HASWELL_ARCH=ON ..
+$ cmake --build .
+# choose benchamrks to run in ./benchmark/runtime/*/*_bench
+$ ./benchmark/runtime/integer/scn_int_bench
+```
 
 ### Executable size
 
-Debug
+All sizes below are in kibibytes (KiB), measuring the compiled executable.
+"Stripped size" shows the size of the executable after running `strip`.
+Lower is better.
 
-.so size: 24M
+#### Release build (`-O3 -DNDEBUG` + LTO)
+
+![Release result, chart](benchmark/binarysize/graph-release.png)
+
+Size of `scnlib` shared library (`.so`): 1.5M
+
+| Method         | Executable size | Stripped size |
+| :------------- | --------------: | ------------: |
+| empty          |            24.2 |          14.6 |
+| `std::scanf`   |            25.4 |          14.8 |
+| `std::istream` |            26.8 |          14.9 |
+| `scn::input`   |            26.1 |          14.8 |
+
+#### Minimized (MinSizeRel) build (`-Os -DNDEBUG` + LTO)
+
+![MinSizeRel result, chart](benchmark/binarysize/graph-minsizerel.png)
+
+Size of `scnlib` shared library (`.so`): 1.3M
+
+| Method         | Executable size | Stripped size |
+| :------------- | --------------: | ------------: |
+| empty          |            24.2 |          14.6 |
+| `std::scanf`   |            25.4 |          14.8 |
+| `std::istream` |            26.8 |          14.9 |
+| `scn::input`   |            27.6 |          14.8 |
+
+#### Debug build (`-g -O0`)
+
+![Debug result, chart](benchmark/binarysize/graph-debug.png)
+
+Size of `scnlib` shared library (`.so`): 42M
 
 | Method         | Executable size | Stripped size |
 | :------------- | --------------: | ------------: |
 | empty          |            33.1 |          14.6 |
-| `std::scanf`   |             570 |          26.9 |
-| `std::istream` |             545 |          22.9 |
-| `scn::input`   |            1967 |          42.8 |
+| `std::scanf`   |             571 |          26.9 |
+| `std::istream` |             546 |          22.9 |
+| `scn::input`   |            2460 |          86.9 |
 
-Release
+#### Conclusions
 
-.so size: 1.1M
+When using optimized builds, depending on compiler flags, scnlib provides a binary,
+the size of which is within ~5% of what would be produced with `scanf` or `<iostream>`s.
+Interestingly, when doing a MinSizeRel-build, the scnlib binary is bigger, than when doing a Release-build.
+In a Debug-environment, scnlib is ~5x bigger when compared to `scanf` or `<iostream>`.
+After `strip`ing the binaries, these differences go away.
 
-| Method         | Executable size | Stripped size |
-| :------------- | --------------: | ------------: |
-| empty          |            24.1 |          14.6 |
-| `std::scanf`   |            25.3 |          14.8 |
-| `std::istream` |            26.7 |          14.8 |
-| `scn::input`   |            25.7 |          14.8 |
+#### About
 
-MinSizeRel
+In these tests, 25 translation units are generated, in all of which values are read from `stdin` five times.
+This is done to simulate a small project.
+`scnlib` is linked dynamically, to level the playing field with the standard library, which is also dynamically linked.
 
-.so size: 856K
+The code was compiled on Fedora 37, with gcc 12.3.1.
+See the directory `benchmark/bloat` for the source code.
 
-| Method         | Executable size | Stripped size |
-| :------------- | --------------: | ------------: |
-| empty          |            24.1 |          14.6 |
-| `std::scanf`   |            25.3 |          14.8 |
-| `std::istream` |            26.7 |          14.8 |
-| `scn::input`   |            27.2 |          14.8 |
+You can run these benchmarks yourself by enabling the CMake variable `SCN_BENCHMARKS_BINARYSIZE`.
+This variable is `ON` by default, if `scnlib` is the root CMake project, and `OFF` otherwise.
+
+```sh
+$ cd build
+# For Debug
+$ cmake -DCMAKE_BUILD_TYPE=Debug \
+        -DSCN_BENCHMARKS_BINARYSIZE=ON \
+        -DBUILD_SHARED_LIBS=ON ..
+# For Release and MinSizeRel,
+# add -DCMAKE_BUILD_TYPE=$BUILD_TYPE and
+# -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
+
+$ cmake --build .
+$ ./benchmark/bloat/run-bloat-tests.py ./benchmark/bloat $BUILD_TYPE
+```
 
 ### Build time
 
-TODO
+#### Build time
+
+Time is in seconds of CPU time (user time + sys/kernel time).
+Lower is better.
+
+| Method        | Debug | Release |
+|:--------------|------:| ------: |
+| empty         |  0.05 |   0.05  |
+| `scanf`       |  0.19 |   0.18  |
+| `<iostream>`  |  0.26 |   0.24  |
+| `scn::input`  |  1.03 |   0.90  |
+
+#### Memory consumption
+
+Memory is in mebibytes (MiB) used while compiling.
+Lower is better.
+
+| Method        | Debug | Release |
+|:--------------| ----: | ------: |
+| empty         |  20.6 |    22.0 |
+| `scanf`       |  52.2 |    49.7 |
+| `<iostream>`  |  64.8 |    61.6 |
+| `scn::input`  |  196  |    174  |
+
+#### Conclusions
+
+Code using scnlib takes around 3x longer to compile compared to `<iostream>`,
+and also uses around 3x more memory.
+Debug and Release builds make no major difference.
+
+#### About
+
+This tests measures the time it takes to compile a binary, when using different libraries.
+The time taken to compile the library itself is not taken into account (the standard library is precompiled, anyway).
+
+These tests were run on a Fedora 37 machine, with an AMD Ryzen 7 5700X processor, using gcc version 12.3.1.
+The compiler flags used for a Debug build were `-g`, and `-O3 -DNDEBUG` for a Release build.
+
+You can run these benchmarks yourself by enabling the CMake variable `SCN_BENCHMARKS_BUILDTIME`.
+This variable is `ON` by default, if `scnlib` is the root CMake project, and `OFF` otherwise.
+In order for these tests to work, `c++` must point to a gcc-compatible C++ compiler binary,
+and a somewhat POSIX-compatible `/usr/bin/time` must be available.
+
+```sh
+$ cd build
+$ cmake -DSCN_BENCMARKS_BUILDTIME=ON ..
+$ cmake --build .
+$ ./benchmark/buildtime/run-buildtime-tests.sh
+```
 
 ## Acknowledgements
 

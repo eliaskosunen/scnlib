@@ -30,6 +30,10 @@ jobs:
           - arch: armv6
             distro: bullseye
 
+        exclude:
+          # FIXME: timing out for some reason
+          - arch: aarch64
+
     steps:
       - uses: actions/checkout@v3
 

@@ -133,6 +133,33 @@ BENCHMARK_TEMPLATE(scan_int_repeated_scanf, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, long long);
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, unsigned);
 
+template <typename Int>
+static void scan_int_repeated_strtol(benchmark::State& state)
+{
+    repeated_state<Int> s{get_integer_string<Int>()};
+
+    for (auto _ : state) {
+        Int i{};
+        s.skip_classic_ascii_space();
+
+        auto ret = strtol_integral_n(s.it, i);
+        if (ret != 0) {
+            if (ret == EOF) {
+                s.reset();
+                continue;
+            }
+
+            state.SkipWithError("Scan error");
+            break;
+        }
+        s.push(i);
+    }
+    state.SetBytesProcessed(s.get_bytes_processed(state));
+}
+BENCHMARK_TEMPLATE(scan_int_repeated_strtol, int);
+BENCHMARK_TEMPLATE(scan_int_repeated_strtol, long long);
+BENCHMARK_TEMPLATE(scan_int_repeated_strtol, unsigned);
+
 #if SCN_HAS_INTEGER_CHARCONV
 
 template <typename Int>
@@ -142,11 +169,7 @@ static void scan_int_repeated_charconv(benchmark::State& state)
 
     for (auto _ : state) {
         Int i{};
-
-        for (; std::isspace(*s.it) != 0; ++s.it) {}
-        if (s.it == s.source_end_addr()) {
-            s.reset();
-        }
+        s.skip_classic_ascii_space();
 
         auto ret = std::from_chars(s.view().begin(), s.view().end(), i);
         if (ret.ec != std::errc{}) {

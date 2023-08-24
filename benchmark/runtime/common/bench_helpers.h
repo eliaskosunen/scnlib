@@ -27,6 +27,40 @@ inline std::mt19937_64& get_rng()
     return rng;
 }
 
+// Stolen from ascii_ctype.h
+inline bool is_classic_ascii_space(char ch)
+{
+    static constexpr std::array<bool, 256> lookup = {
+        {false, false, false, false, false, false, false, false, false, true,
+         true,  true,  true,  true,  false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, true,  false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false, false, false, false, false,
+         false, false, false, false, false, false}};
+
+    return lookup[static_cast<size_t>(static_cast<unsigned char>(ch))];
+}
+
 template <typename T>
 struct single_state {
     single_state(scn::span<std::string> src) : source(src), it(source.begin())
@@ -74,6 +108,13 @@ struct repeated_state {
     auto source_end_addr() const
     {
         return scn::detail::to_address(source.end());
+    }
+
+    void skip_classic_ascii_space() {
+        for (; is_classic_ascii_space(*it); ++it) {}
+        if (it == source_end_addr()) {
+            reset();
+        }
     }
 
     auto view() const
