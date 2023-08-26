@@ -37,6 +37,24 @@ struct scn::scanner<mytype, char> : scn::scanner<std::string, char> {
     }
 };
 
+struct mytype2 {
+    char ch{};
+};
+
+template <>
+struct scn::scanner<mytype2, char> : scn::scanner<std::string, char> {
+    template <typename Context>
+    scn::scan_expected<typename Context::iterator> scan(mytype2& val,
+                                                        Context& ctx) const
+    {
+        return scn::scan<scn::discard<char>, char>(ctx.range(), "{} {}")
+            .transform([&](auto result) {
+                std::tie(std::ignore, val.ch) = result.values();
+                return result.begin();
+            });
+    }
+};
+
 TEST(CustomTypeTest, Simple)
 {
     auto result = scn::scan<mytype>("123 456", "{}");
@@ -72,4 +90,13 @@ TEST(CustomTypeTest, Surrounded)
     EXPECT_EQ(val.i, 2);
     EXPECT_EQ(val.j, 3);
     EXPECT_EQ(b, 4);
+}
+
+TEST(CustomTypeTest, WhiteSpaceNotSkipped)
+{
+    auto result = scn::scan<mytype2>(" abc", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_STREQ(result->range().data(), "bc");
+
+    EXPECT_EQ(result->value().ch, 'a');
 }

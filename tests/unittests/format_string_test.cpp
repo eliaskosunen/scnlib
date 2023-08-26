@@ -164,3 +164,31 @@ TEST(FormatStringTest, ExtraArgInFormatString)
     auto result = scn::scan<std::string>("abc def", scn::runtime("{} {}"));
     EXPECT_FALSE(result);
 }
+
+TEST(FormatStringTest, SpaceSkipsAnyWhitespace)
+{
+    auto result = scn::scan<char, char>("a \n\tb", "{} {}");
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    auto [a, b] = result->values();
+    EXPECT_EQ(a, 'a');
+    EXPECT_EQ(b, 'b');
+}
+TEST(FormatStringTest, AnyWhitespaceSkipsAnyWhitespace)
+{
+    auto result = scn::scan<char, char>("a \n\tb", "{}\n{}");
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    auto [a, b] = result->values();
+    EXPECT_EQ(a, 'a');
+    EXPECT_EQ(b, 'b');
+}
+TEST(FormatStringTest, AnyComboOfWhitespaceSkipsAnyWhitespace)
+{
+    auto result = scn::scan<char, char>("a \n\tb", "{}\n {}");
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    auto [a, b] = result->values();
+    EXPECT_EQ(a, 'a');
+    EXPECT_EQ(b, 'b');
+}

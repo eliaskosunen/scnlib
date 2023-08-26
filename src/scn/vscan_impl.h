@@ -131,11 +131,21 @@ namespace scn {
                         return on_error("Unexpected end of source");
                     }
                     auto next = *it;
-                    if (next != *begin) {
-                        SCN_UNLIKELY_ATTR
-                        return on_error("Unexpected literal char in source");
+
+                    if (impl::is_ascii_space(*begin)) {
+                        for (; it != ranges::end(ctx.range()) &&
+                               impl::is_ascii_space(*it);
+                             ++it) {}
+                        ctx.advance_to(it);
                     }
-                    ctx.advance_to(ranges::next(it));
+                    else if (next != *begin) {
+                        SCN_UNLIKELY_ATTR
+                        return on_error(
+                            "Unexpected literal character in source");
+                    }
+                    else {
+                        ctx.advance_to(ranges::next(it));
+                    }
                 }
             }
 
