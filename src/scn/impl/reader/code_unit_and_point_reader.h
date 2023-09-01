@@ -20,6 +20,7 @@
 #include <scn/detail/scanner.h>
 #include <scn/impl/algorithms/read.h>
 #include <scn/impl/reader/common.h>
+#include <scn/impl/reader/integer_reader.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -33,10 +34,11 @@ namespace scn {
                 SourceRange&& range,
                 CharT& ch)
             {
-                return read_code_unit(range).transform([&](auto it) SCN_NOEXCEPT {
-                    ch = *ranges::begin(range);
-                    return it;
-                });
+                return read_code_unit(range).transform(
+                    [&](auto it) SCN_NOEXCEPT {
+                        ch = *ranges::begin(range);
+                        return it;
+                    });
             }
         };
 
@@ -97,7 +99,12 @@ namespace scn {
                 const detail::basic_format_specs<SourceCharT>& specs)
             {
                 reader_error_handler eh{};
-                detail::check_char_type_specs(specs, eh);
+                if constexpr (std::is_same_v<ValueCharT, code_point>) {
+                    detail::check_code_point_type_specs(specs, eh);
+                }
+                else {
+                    detail::check_char_type_specs(specs, eh);
+                }
                 if (SCN_UNLIKELY(!eh)) {
                     return {scan_error::invalid_format_string, eh.m_msg};
                 }
@@ -130,8 +137,16 @@ namespace scn {
                 char& value,
                 detail::locale_ref loc)
             {
-                SCN_UNUSED(specs);
-                return read_default(range, value, loc);
+                if (specs.type == detail::presentation_type::none ||
+                    specs.type == detail::presentation_type::character) {
+                    return read_default(range, value, loc);
+                }
+
+                reader_impl_for_int<CharT> reader{};
+                signed char tmp_value{};
+                auto ret = reader.read_specs(range, specs, tmp_value, loc);
+                value = static_cast<signed char>(value);
+                return ret;
             }
         };
 
@@ -158,8 +173,18 @@ namespace scn {
                 wchar_t& value,
                 detail::locale_ref loc)
             {
-                SCN_UNUSED(specs);
-                return read_default(range, value, loc);
+                if (specs.type == detail::presentation_type::none ||
+                    specs.type == detail::presentation_type::character) {
+                    return read_default(range, value, loc);
+                }
+
+                reader_impl_for_int<CharT> reader{};
+                using integer_type =
+                    std::conditional_t<sizeof(wchar_t) == 2, int16_t, int32_t>;
+                integer_type tmp_value{};
+                auto ret = reader.read_specs(range, specs, tmp_value, loc);
+                value = static_cast<integer_type>(value);
+                return ret;
             }
         };
 

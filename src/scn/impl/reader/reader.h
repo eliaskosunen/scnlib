@@ -42,10 +42,6 @@ namespace scn {
                 return ranges::begin(range);
             }
 
-            if (loc) {
-                return skip_localized_whitespace(SCN_FWD(range), loc);
-            }
-
             return skip_classic_whitespace(SCN_FWD(range));
         }
 

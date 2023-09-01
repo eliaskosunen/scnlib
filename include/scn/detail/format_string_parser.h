@@ -1175,6 +1175,20 @@ namespace scn {
             Handler&& handler)
         {
             check_disallow_thsep(specs, handler);
+            if (specs.type > presentation_type::int_hex ||
+                specs.type == presentation_type::int_arbitrary_base) {
+                SCN_UNLIKELY_ATTR
+                return handler.on_error(
+                    "Invalid type specifier for character type");
+            }
+        }
+
+        template <typename CharT, typename Handler>
+        constexpr void check_code_point_type_specs(
+            const basic_format_specs<CharT>& specs,
+            Handler&& handler)
+        {
+            check_disallow_thsep(specs, handler);
             if (specs.type != presentation_type::none &&
                 specs.type != presentation_type::character) {
                 SCN_UNLIKELY_ATTR
@@ -1241,7 +1255,12 @@ namespace scn {
             check_disallow_thsep(specs, handler);
             if (specs.type != presentation_type::none &&
                 specs.type != presentation_type::string &&
-                specs.type != presentation_type::int_generic) {
+                specs.type != presentation_type::int_generic &&
+                specs.type != presentation_type::int_hex &&
+                specs.type != presentation_type::int_binary &&
+                specs.type != presentation_type::int_unsigned_decimal &&
+                specs.type != presentation_type::int_octal &&
+                specs.type != presentation_type::int_decimal) {
                 SCN_UNLIKELY_ATTR
                 return handler.on_error("Invalid type specifier for boolean");
             }

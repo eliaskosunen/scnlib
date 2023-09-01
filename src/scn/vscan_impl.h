@@ -290,11 +290,11 @@ namespace scn {
                 }
 
                 if (id < 64) {
-                    return (visited_args_lower64 >> id) & 1ul;
+                    return (visited_args_lower64 >> id) & 1ull;
                 }
 
                 id -= 64;
-                return (visited_args_upper[id / 8] >> (id % 8)) & 1u;
+                return (visited_args_upper[id / 8] >> (id % 8)) & 1ull;
             }
 
             void set_arg_as_visited(size_t id)
@@ -310,12 +310,12 @@ namespace scn {
                 }
 
                 if (id < 64) {
-                    visited_args_lower64 |= (1ul << id);
+                    visited_args_lower64 |= (1ull << id);
                     return;
                 }
 
                 id -= 64;
-                visited_args_upper[id / 8] |= (1u << (id % 8));
+                visited_args_upper[id / 8] |= (1ull << (id % 8));
             }
 
             parse_context_type parse_ctx;

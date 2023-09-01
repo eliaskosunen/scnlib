@@ -221,6 +221,11 @@ namespace scn {
                         return bool_reader_base::allow_text;
 
                     case detail::presentation_type::int_generic:
+                    case detail::presentation_type::int_binary:
+                    case detail::presentation_type::int_decimal:
+                    case detail::presentation_type::int_hex:
+                    case detail::presentation_type::int_octal:
+                    case detail::presentation_type::int_unsigned_decimal:
                         return bool_reader_base::allow_numeric;
 
                     default:
