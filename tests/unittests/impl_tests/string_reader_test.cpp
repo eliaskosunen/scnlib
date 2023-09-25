@@ -118,13 +118,9 @@ struct test_type_pack {
             return source_string_type{SCN_FWD(s)};
         }
         else {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Wconversion")
-            auto sv = std::string_view{s};
-            auto tmp = std::wstring(sv.size(), L'\0');
-            std::copy(sv.begin(), sv.end(), tmp.begin());
-            return tmp;
-            SCN_GCC_POP
+            source_string_type str;
+            scn::impl::transcode_valid_to_string(s, str);
+            return str;
         }
     }
 
@@ -141,19 +137,35 @@ struct test_type_pack {
             SCN_EXPECT(r);
         }
 
-        if (val.size() != expected.size()) {
+        if (narrowed_val.size() != expected.size()) {
             return testing::AssertionFailure()
                    << "Size mismatch: " << val.size()
                    << " != " << expected.size() << " (\"" << narrowed_val
-                   << "\" != \"" << expected << "\")";
+                   << "\" " << string_bytes_spelled_out(narrowed_val)
+                   << " != \"" << expected << "\" "
+                   << string_bytes_spelled_out(expected) << ')';
         }
-        if (!std::equal(val.begin(), val.end(), expected.begin())) {
+        if (!std::equal(narrowed_val.begin(), narrowed_val.end(),
+                        expected.begin())) {
             return testing::AssertionFailure()
-                   << "Value mismatch: \"" << narrowed_val << "\" != \""
-                   << expected << "\"";
+                   << "Value mismatch: \"" << narrowed_val << "\" "
+                   << string_bytes_spelled_out(narrowed_val) << " != \""
+                   << expected << "\" " << string_bytes_spelled_out(expected);
         }
 
         return testing::AssertionSuccess();
+    }
+
+private:
+    static std::string string_bytes_spelled_out(std::string_view s)
+    {
+        std::ostringstream oss;
+        oss << '[' << std::hex;
+        for (auto byte : s.substr(0, s.size() - 1)) {
+            oss << static_cast<int>(static_cast<unsigned char>(byte)) << ", ";
+        }
+        oss << static_cast<int>(static_cast<unsigned char>(s.back())) << ']';
+        return oss.str();
     }
 };
 
@@ -314,18 +326,17 @@ protected:
     using specs_type =
         scn::detail::basic_format_specs<typename T::source_char_type>;
 
-    static specs_type make_specs_from_set(std::string_view f)
+    specs_type make_specs_from_set(std::string_view f)
     {
         SCN_EXPECT(f.front() == '[');
 
         SCN_GCC_PUSH
         SCN_GCC_IGNORE("-Wconversion")
-        std::wstring widened_f{};
         {
-            auto r = scn::impl::transcode_to_string(f, widened_f);
+            auto r = scn::impl::transcode_to_string(f, tmp_specs_str);
             SCN_EXPECT(r);
         }
-        auto widened_sv = std::wstring_view{widened_f};
+        auto widened_sv = std::wstring_view{tmp_specs_str};
         SCN_GCC_POP
 
         specs_type specs{};
@@ -384,6 +395,7 @@ protected:
     }
 
     std::optional<typename T::source_string_type> widened_source{std::nullopt};
+    std::wstring tmp_specs_str{};
 };
 
 SCN_CLANG_PUSH
@@ -393,7 +405,8 @@ TYPED_TEST_SUITE(StringCharacterSetReaderTest, type_list);
 
 SCN_CLANG_POP
 
-TYPED_TEST(StringCharacterSetReaderTest, MatchEmpty) {
+TYPED_TEST(StringCharacterSetReaderTest, MatchEmpty)
+{
     auto& src = this->set_source("123"sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[:alpha:]"));
 
@@ -464,4 +477,23 @@ TYPED_TEST(StringCharacterSetReaderTest, LiteralAToCAndDigit)
     ASSERT_TRUE(ret);
     EXPECT_EQ(*ret, src.begin() + 6);
     EXPECT_TRUE(this->check_value(val, "abc123"));
+}
+
+TYPED_TEST(StringCharacterSetReaderTest, LiteralAWithDiaeresis)
+{
+    auto& src = this->set_source("äa"sv);
+    auto [ret, val] = this->read(this->make_specs_from_set("[ä]"));
+
+    ASSERT_TRUE(ret);
+    EXPECT_NE(*ret, src.end());
+    EXPECT_TRUE(this->check_value(val, "ä"));
+}
+TYPED_TEST(StringCharacterSetReaderTest, MultipleLiteralNonAsciiCharacters)
+{
+    auto& src = this->set_source("öäa"sv);
+    auto [ret, val] = this->read(this->make_specs_from_set("[äö]"));
+
+    ASSERT_TRUE(ret);
+    EXPECT_NE(*ret, src.end());
+    EXPECT_TRUE(this->check_value(val, "öä"));
 }
