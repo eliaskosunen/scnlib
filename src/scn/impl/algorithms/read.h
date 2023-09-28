@@ -23,7 +23,7 @@
 #include <scn/impl/algorithms/read_simple.h>
 #include <scn/impl/locale.h>
 #include <scn/impl/unicode/unicode.h>
-#include <scn/impl/util/ascii_ctype.h>
+#include <scn/impl/unicode/unicode_whitespace.h>
 #include <scn/util/span.h>
 
 #include <algorithm>
@@ -264,9 +264,9 @@ namespace scn {
                                     ranges::distance(buf.view().begin(), it));
             }
             else {
-                return read_until_code_unit(
+                return read_until_code_point(
                     SCN_FWD(range),
-                    [](auto ch) SCN_NOEXCEPT { return is_ascii_space(ch); });
+                    [](code_point cp) SCN_NOEXCEPT { return is_cp_space(cp); });
             }
         }
 
@@ -281,9 +281,9 @@ namespace scn {
                     make_contiguous_buffer(SCN_FWD(range)).view());
             }
             else {
-                return read_while_code_unit(
+                return read_while_code_point(
                     SCN_FWD(range),
-                    [](auto ch) SCN_NOEXCEPT { return is_ascii_space(ch); });
+                    [](code_point cp) SCN_NOEXCEPT { return is_cp_space(cp); });
             }
         }
 

@@ -25,6 +25,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+#if 0
         inline bool is_ascii_space(char ch) SCN_NOEXCEPT
         {
             static constexpr std::array<bool, 256> lookup = {
@@ -65,6 +66,7 @@ namespace scn {
         {
             return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
         }
+#endif
 
         constexpr bool is_ascii_char(char ch) SCN_NOEXCEPT
         {

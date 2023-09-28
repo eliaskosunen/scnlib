@@ -17,7 +17,7 @@
 
 #include <scn/detail/ranges.h>
 #include <scn/impl/algorithms/find_whitespace.h>
-#include <scn/impl/util/ascii_ctype.h>
+#include <scn/impl/unicode/unicode_whitespace.h>
 #include <scn/impl/util/bits.h>
 
 namespace scn {
@@ -28,17 +28,29 @@ namespace scn {
             std::string_view::iterator find_classic_space_simple_impl(
                 std::string_view source)
             {
-                return ranges::find_if(source, [](char ch) SCN_NOEXCEPT {
-                    return is_ascii_space(ch);
-                });
+                for (auto it = source.begin(); it != source.end(); ++it) {
+                    auto ret = is_first_char_space(
+                        detail::make_string_view_from_iterators<char>(
+                            it, source.end()));
+                    if (ret.value) {
+                        return it;
+                    }
+                }
+                return source.end();
             }
 
             std::string_view::iterator find_classic_nonspace_simple_impl(
                 std::string_view source)
             {
-                return ranges::find_if(source, [](char ch) SCN_NOEXCEPT {
-                    return !is_ascii_space(ch);
-                });
+                for (auto it = source.begin(); it != source.end(); ++it) {
+                    auto ret = is_first_char_space(
+                        detail::make_string_view_from_iterators<char>(
+                            it, source.end()));
+                    if (!ret.value) {
+                        return it;
+                    }
+                }
+                return source.end();
             }
 
             bool is_decimal_digit(char ch) SCN_NOEXCEPT
@@ -88,7 +100,10 @@ namespace scn {
                     return !is_decimal_digit(ch);
                 });
             }
+        }  // namespace
 
+#if 0
+        namespace {
             template <typename GetMask, typename Fallback>
             SCN_MAYBE_UNUSED std::string_view::iterator find_64_match_impl(
                 std::string_view source,
@@ -187,7 +202,6 @@ namespace scn {
             }
         }  // namespace
 
-#if 0
         std::string_view::iterator find_classic_space_narrow_fast(
             std::string_view source)
         {

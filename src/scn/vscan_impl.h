@@ -130,22 +130,26 @@ namespace scn {
                         SCN_UNLIKELY_ATTR
                         return on_error("Unexpected end of source");
                     }
-                    auto next = *it;
 
-                    if (impl::is_ascii_space(*begin)) {
-                        for (; it != ranges::end(ctx.range()) &&
-                               impl::is_ascii_space(*it);
-                             ++it) {}
-                        ctx.advance_to(it);
+                    if (auto [after_space_it, is_space] =
+                            impl::is_first_char_space(
+                                std::basic_string_view<CharT>{begin, end});
+                        is_space) {
+                        auto ret = impl::read_while_classic_space(ctx.range());
+                        if (!ret) {
+                            // TODO
+                            return on_error(ret.error());
+                        }
+                        ctx.advance_to(*ret);
+                        return;
                     }
-                    else if (next != *begin) {
+
+                    if (*it != *begin) {
                         SCN_UNLIKELY_ATTR
                         return on_error(
                             "Unexpected literal character in source");
                     }
-                    else {
-                        ctx.advance_to(ranges::next(it));
-                    }
+                    ctx.advance_to(ranges::next(it));
                 }
             }
 
