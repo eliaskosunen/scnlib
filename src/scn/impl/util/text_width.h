@@ -75,7 +75,7 @@ namespace scn {
             text_width_algorithm::fmt_latest;
 
         constexpr std::size_t calculate_valid_text_width_for_fmt_v10(
-            code_point cp)
+            char32_t cp)
         {
             if (cp >= 0x1100 &&
                 (cp <= 0x115f ||  // Hangul Jamo init. consonants
@@ -103,7 +103,7 @@ namespace scn {
 
         template <typename Dependent = void>
         std::size_t calculate_valid_text_width(
-            code_point cp,
+            char32_t cp,
             text_width_algorithm algo = default_text_width_algorithm)
         {
             SCN_GCC_PUSH
@@ -117,10 +117,9 @@ namespace scn {
 #if SCN_POSIX
                     set_clocale_classic_guard clocale_guard{LC_CTYPE};
 
-                    auto input_u32 = static_cast<char32_t>(cp);
                     std::wstring winput;
                     transcode_valid_to_string(
-                        std::u32string_view{&input_u32, 1}, winput);
+                        std::u32string_view{&cp, 1}, winput);
                     const auto n = ::wcswidth(winput.data(), winput.size());
                     SCN_ENSURE(n != -1);
                     return static_cast<size_t>(n);
@@ -131,10 +130,9 @@ namespace scn {
                 }
 
                 case text_width_algorithm::code_units: {
-                    auto input_u32 = static_cast<char32_t>(cp);
                     std::wstring winput;
                     transcode_valid_to_string(
-                        std::u32string_view{&input_u32, 1}, winput);
+                        std::u32string_view{&cp, 1}, winput);
                     return winput.size();
                 }
 
@@ -191,7 +189,7 @@ namespace scn {
 
                 case text_width_algorithm::fmt_v10: {
                     size_t count{0};
-                    for_each_code_point_valid(input, [&count](code_point cp) {
+                    for_each_code_point_valid(input, [&count](char32_t cp) {
                         count += calculate_valid_text_width_for_fmt_v10(cp);
                     });
                     return count;

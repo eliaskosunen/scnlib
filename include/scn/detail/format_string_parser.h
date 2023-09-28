@@ -207,7 +207,7 @@ namespace scn {
                 m_specs.charset_specifiers |= spec;
             }
 
-            constexpr void on_charset_single(code_point cp)
+            constexpr void on_charset_single(char32_t cp)
             {
                 const auto cp_value = static_cast<unsigned>(cp);
                 if (SCN_LIKELY(cp_value <= 127)) {
@@ -220,7 +220,7 @@ namespace scn {
                 }
             }
 
-            constexpr void on_charset_range(code_point begin, code_point end)
+            constexpr void on_charset_range(char32_t begin, char32_t end)
             {
                 const auto begin_value = static_cast<unsigned>(begin);
                 const auto end_value = static_cast<unsigned>(end);
@@ -612,12 +612,12 @@ namespace scn {
             }
 
             if (*begin == '\\') {
-                handler.on_charset_single(code_point{'\\'});
+                handler.on_charset_single(char32_t{'\\'});
                 ++begin;
                 return;
             }
             if (*begin == ':') {
-                handler.on_charset_single(code_point{':'});
+                handler.on_charset_single(char32_t{':'});
                 ++begin;
                 return;
             }
@@ -629,7 +629,7 @@ namespace scn {
         }
 
         template <typename CharT, typename SpecHandler>
-        constexpr code_point parse_presentation_set_code_point(
+        constexpr char32_t parse_presentation_set_code_point(
             const CharT*& begin,
             const CharT* end,
             SpecHandler&& handler)
@@ -671,7 +671,7 @@ namespace scn {
             }
             else {
                 SCN_EXPECT(len == 1);
-                return static_cast<code_point>(*cp_begin);
+                return static_cast<char32_t>(*cp_begin);
             }
         }
 
@@ -699,17 +699,14 @@ namespace scn {
                     return;
                 }
 
-                if (SCN_UNLIKELY(static_cast<unsigned>(cp_second) <
-                                 static_cast<unsigned>(cp_first))) {
+                if (SCN_UNLIKELY(cp_second < cp_first)) {
                     handler.on_error(
                         "Invalid range in [character set] format string "
                         "argument: Range end before the beginning");
                     return;
                 }
 
-                handler.on_charset_range(
-                    cp_first, static_cast<code_point>(
-                                  static_cast<uint32_t>(cp_second) + 1));
+                handler.on_charset_range(cp_first, cp_second + 1);
                 return;
             }
 
@@ -740,7 +737,7 @@ namespace scn {
                     character_set_specifier::has_inverted_flag);
                 ++begin;
                 if (*begin == CharT{']'}) {
-                    handler.on_charset_single(code_point{']'});
+                    handler.on_charset_single(char32_t{']'});
                     ++begin;
                 }
             }

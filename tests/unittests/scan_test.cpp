@@ -81,7 +81,7 @@ TEST(ScanTest, Discard)
 
 TEST(ScanTest, CodePoint)
 {
-    auto result = scn::scan<scn::code_point>("ä", "{}");
+    auto result = scn::scan<char32_t>("ä", "{}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value(), 0xe4);
 }

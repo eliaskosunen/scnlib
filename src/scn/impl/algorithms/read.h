@@ -248,7 +248,7 @@ namespace scn {
             Predicate pred)
         {
             return read_until_code_point(
-                SCN_FWD(range), [&](code_point cp) { return !pred(cp); });
+                SCN_FWD(range), [&](char32_t cp) { return !pred(cp); });
         }
 
         template <typename Range>
@@ -266,7 +266,7 @@ namespace scn {
             else {
                 return read_until_code_point(
                     SCN_FWD(range),
-                    [](code_point cp) SCN_NOEXCEPT { return is_cp_space(cp); });
+                    [](char32_t cp) SCN_NOEXCEPT { return is_cp_space(cp); });
             }
         }
 
@@ -283,7 +283,7 @@ namespace scn {
             else {
                 return read_while_code_point(
                     SCN_FWD(range),
-                    [](code_point cp) SCN_NOEXCEPT { return is_cp_space(cp); });
+                    [](char32_t cp) SCN_NOEXCEPT { return is_cp_space(cp); });
             }
         }
 
@@ -307,7 +307,7 @@ namespace scn {
 
         template <typename Range>
         scan_expected<simple_borrowed_iterator_t<Range>>
-        read_matching_code_point(Range&& range, code_point cp)
+        read_matching_code_point(Range&& range, char32_t cp)
         {
             return read_code_point_into(range).and_then(
                 [&](auto result)
@@ -493,7 +493,7 @@ namespace scn {
             }
             else {
                 return read_until_code_point(
-                    SCN_FWD(range), [&](code_point cp) {
+                    SCN_FWD(range), [&](char32_t cp) {
                         auto ch =
                             *encode_code_point_as_wide_character(cp, false);
                         return ctype_facet.is(mask, ch) == read_until;
@@ -544,7 +544,7 @@ namespace scn {
         {
             const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
 
-            return read_until_code_point(SCN_FWD(range), [&](code_point cp) {
+            return read_until_code_point(SCN_FWD(range), [&](char32_t cp) {
                 auto ch = *encode_code_point_as_wide_character(cp, false);
                 return pred(cp) || ctype_facet.is(mask, ch);
             });
@@ -559,7 +559,7 @@ namespace scn {
         {
             const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
 
-            return read_while_code_point(SCN_FWD(range), [&](code_point cp) {
+            return read_while_code_point(SCN_FWD(range), [&](char32_t cp) {
                 auto ch = *encode_code_point_as_wide_character(cp, false);
                 return pred(cp) || ctype_facet.is(mask, ch);
             });

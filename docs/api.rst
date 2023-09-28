@@ -220,16 +220,16 @@ Integer values are scanned as if by using ``std::from_chars``, except:
 Type specifier: characters
 ##########################
 
-.. list-table:: Character types (``char`` and ``wchar_t``), and code points (``scn::code_point``)
+.. list-table:: Character types (``char`` and ``wchar_t``), and code points (``char32_t``)
     :widths: 20 80
     :header-rows: 1
 
     * - Type
       - Meaning
     * - none, ``c``
-      - Copies a character from the input.
+      - Copies a character (code point for ``char32_t``, code unit otherwise) from the input.
     * - ``b``, ``B``, ``d``, ``i``, ``o``, ``O``, ``u``, ``x``, ``X``
-      - Same as for integers, see above. Not allowed for ``scn::code_point``.
+      - Same as for integers, see above. Not allowed for ``char32_t``.
 
 Note, that when scanning characters (``char`` and ``wchar_t``), the source range is read a single code unit at a time,
 and encoding is not respected.

@@ -24,17 +24,15 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-        constexpr bool is_cp_space(code_point cp) SCN_NOEXCEPT
+        constexpr bool is_cp_space(char32_t cp) SCN_NOEXCEPT
         {
             // Pattern_White_Space property
-            return (static_cast<unsigned>(cp) >= 0x09 &&
-                    static_cast<unsigned>(cp) <= 0x0d) ||
-                   cp == code_point{0x20} ||
-                   cp == code_point{0x85} ||    // NEXT LINE (NEL)
-                   cp == code_point{0x200e} ||  // LEFT-TO-RIGHT MARK
-                   cp == code_point{0x200f} ||  // RIGHT-TO-LEFT MARK
-                   cp == code_point{0x2028} ||  // LINE SEPARATOR
-                   cp == code_point{0x2029};    // PARAGRAPH SEPARATOR
+            return (cp >= 0x09 && cp <= 0x0d) || cp == 0x20 || // ASCII space characters
+                   cp == 0x85 ||    // NEXT LINE (NEL)
+                   cp == 0x200e ||  // LEFT-TO-RIGHT MARK
+                   cp == 0x200f ||  // RIGHT-TO-LEFT MARK
+                   cp == 0x2028 ||  // LINE SEPARATOR
+                   cp == 0x2029;    // PARAGRAPH SEPARATOR
         }
 
         template <typename CharT>

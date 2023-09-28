@@ -280,19 +280,14 @@ namespace scn {
             {
             }
 
-            void on_charset_single(code_point cp)
+            void on_charset_single(char32_t cp)
             {
-                on_charset_range(
-                    cp, static_cast<code_point>(static_cast<uint32_t>(cp) + 1));
+                on_charset_range(cp, cp + 1);
             }
 
-            void on_charset_range(code_point begin, code_point end)
+            void on_charset_range(char32_t begin, char32_t end)
             {
-                const auto begin_value = static_cast<unsigned>(begin);
-                const auto end_value = static_cast<unsigned>(end);
-                SCN_EXPECT(begin_value < end_value);
-
-                if (end_value <= 127) {
+                if (end <= 127) {
                     return;
                 }
 
@@ -327,7 +322,7 @@ namespace scn {
                 return static_cast<bool>(err);
             }
 
-            std::vector<std::pair<code_point, code_point>> extra_ranges;
+            std::vector<std::pair<char32_t, char32_t>> extra_ranges;
             scan_error err;
         };
 
@@ -405,7 +400,7 @@ namespace scn {
                            detail::character_set_specifier::none;
                 }
 
-                bool is_char_set_in_extra_literals(code_point cp) const
+                bool is_char_set_in_extra_literals(char32_t cp) const
                 {
                     // TODO: binary search?
                     if (nonascii.extra_ranges.empty()) {
@@ -454,14 +449,14 @@ namespace scn {
                     if ((specs.charset_specifiers &
                          detail::character_set_specifier::space_literal) !=
                         detail::character_set_specifier::none) {
-                        nonascii.extra_ranges.push_back(std::make_pair(
-                            code_point{' '}, code_point{' ' + 1}));
+                        nonascii.extra_ranges.push_back(
+                            std::make_pair(char32_t{' '}, char32_t{' ' + 1}));
                     }
                     if ((specs.charset_specifiers &
                          detail::character_set_specifier::underscore_literal) !=
                         detail::character_set_specifier::none) {
-                        nonascii.extra_ranges.push_back(std::make_pair(
-                            code_point{'_'}, code_point{'_' + 1}));
+                        nonascii.extra_ranges.push_back(
+                            std::make_pair(char32_t{'_'}, char32_t{'_' + 1}));
                     }
 
                     return {};
@@ -552,7 +547,7 @@ namespace scn {
                                static_cast<char>(ch));
                 }
 
-                bool on_classic_with_extra_ranges(code_point cp) const
+                bool on_classic_with_extra_ranges(char32_t cp) const
                 {
                     if (!is_ascii_char(cp)) {
                         return helper.is_char_set_in_extra_literals(cp);
@@ -564,7 +559,7 @@ namespace scn {
                                static_cast<char>(cp));
                 }
 
-                bool on_localized(code_point cp) const
+                bool on_localized(char32_t cp) const
                 {
                     if (!is_ascii_char(cp)) {
                         return helper.is_char_set_in_extra_literals(cp);
@@ -599,7 +594,7 @@ namespace scn {
                 read_source_callback cb_wrapper{helper};
 
                 if (accepts_nonascii) {
-                    const auto cb = [&](code_point cp) {
+                    const auto cb = [&](char32_t cp) {
                         return cb_wrapper.on_classic_with_extra_ranges(cp);
                     };
 
@@ -665,7 +660,7 @@ namespace scn {
                             [&](auto it) { return check_nonempty(it, range); });
                 }
 
-                const auto cb = [&](code_point cp) {
+                const auto cb = [&](char32_t cp) {
                     return cb_wrapper.on_localized(cp);
                 };
 

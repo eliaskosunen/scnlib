@@ -46,12 +46,12 @@ namespace scn {
         class code_point_reader;
 
         template <>
-        class code_point_reader<code_point> {
+        class code_point_reader<char32_t> {
         public:
             template <typename SourceRange>
             scan_expected<simple_borrowed_iterator_t<SourceRange>> read(
                 SourceRange&& range,
-                code_point& cp)
+                char32_t& cp)
             {
                 return read_code_point_into(SCN_FWD(range))
                     .transform([&](auto result) {
@@ -70,8 +70,8 @@ namespace scn {
                 SourceRange&& range,
                 wchar_t& ch)
             {
-                code_point_reader<code_point> reader{};
-                code_point cp{};
+                code_point_reader<char32_t> reader{};
+                char32_t cp{};
                 auto ret = reader.read(SCN_FWD(range), cp);
                 if (!ret) {
                     return unexpected(ret.error());
@@ -99,7 +99,7 @@ namespace scn {
                 const detail::basic_format_specs<SourceCharT>& specs)
             {
                 reader_error_handler eh{};
-                if constexpr (std::is_same_v<ValueCharT, code_point>) {
+                if constexpr (std::is_same_v<ValueCharT, char32_t>) {
                     detail::check_code_point_type_specs(specs, eh);
                 }
                 else {
@@ -190,21 +190,21 @@ namespace scn {
 
         template <typename CharT>
         class reader_impl_for_code_point
-            : public char_reader_base<CharT, code_point> {
+            : public char_reader_base<CharT, char32_t> {
         public:
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>>
-            read_default(Range range, code_point& value, detail::locale_ref loc)
+            read_default(Range range, char32_t& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
-                return code_point_reader<code_point>{}.read(range, value);
+                return code_point_reader<char32_t>{}.read(range, value);
             }
 
             template <typename Range>
             scan_expected<ranges::iterator_t<Range>> read_specs(
                 Range range,
                 const detail::basic_format_specs<CharT>& specs,
-                code_point& value,
+                char32_t& value,
                 detail::locale_ref loc)
             {
                 SCN_UNUSED(specs);

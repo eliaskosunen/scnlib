@@ -468,9 +468,9 @@ TEST(ReadWhile1CodeUnit, ReadNone)
 
 // read_until_code_point
 
-constexpr bool is_smiling_emoji(scn::code_point cp)
+constexpr bool is_smiling_emoji(char32_t cp)
 {
-    return cp == scn::code_point{0x1f60a};  // 😊
+    return cp == 0x1f60a;  // 😊
 }
 
 TEST(ReadUntilCodePoint, ReadSomeContiguous)

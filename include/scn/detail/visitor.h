@@ -58,7 +58,7 @@ namespace scn {
             case detail::arg_type::wide_character_type:
                 return SCN_VISIT_CAST(wchar_t);
             case detail::arg_type::code_point_type:
-                return SCN_VISIT_CAST(code_point);
+                return SCN_VISIT_CAST(char32_t);
             case detail::arg_type::float_type:
                 return SCN_VISIT_CAST(float);
             case detail::arg_type::double_type:

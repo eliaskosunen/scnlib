@@ -180,9 +180,7 @@ namespace scn {
 
     // detail/scanner_builtin.h: empty
 
-    // detail/unicode.h
-
-    enum class code_point : std::uint32_t {};
+    // detail/unicode.h: empty
 
     // detail/visitor.h, detail/vscan.h: empty
 

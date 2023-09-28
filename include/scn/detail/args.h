@@ -94,7 +94,7 @@ namespace scn {
         SCN_TYPE_CONSTANT(bool, bool_type);
         SCN_TYPE_CONSTANT(char, narrow_character_type);
         SCN_TYPE_CONSTANT(wchar_t, wide_character_type);
-        SCN_TYPE_CONSTANT(code_point, code_point_type);
+        SCN_TYPE_CONSTANT(char32_t, code_point_type);
         SCN_TYPE_CONSTANT(void*, pointer_type);
         SCN_TYPE_CONSTANT(float, float_type);
         SCN_TYPE_CONSTANT(double, double_type);
@@ -201,7 +201,7 @@ namespace scn {
             SCN_ARG_MAPPER(unsigned long)
             SCN_ARG_MAPPER(unsigned long long)
             SCN_ARG_MAPPER(wchar_t)
-            SCN_ARG_MAPPER(code_point)
+            SCN_ARG_MAPPER(char32_t)
             SCN_ARG_MAPPER(bool)
             SCN_ARG_MAPPER(void*)
             SCN_ARG_MAPPER(float)

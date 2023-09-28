@@ -117,7 +117,7 @@ namespace scn {
         }
 
         template <typename CharT>
-        code_point decode_code_point_exhaustive_valid(
+        char32_t decode_code_point_exhaustive_valid(
             std::basic_string_view<CharT> input)
         {
             SCN_EXPECT(!input.empty());
@@ -146,14 +146,14 @@ namespace scn {
                 SCN_EXPECT(ret == 1);
             }
             else if constexpr (enc == encoding::utf32) {
-                return static_cast<code_point>(input[0]);
+                return static_cast<char32_t>(input[0]);
             }
 
-            return static_cast<code_point>(output);
+            return static_cast<char32_t>(output);
         }
 
         inline scan_expected<wchar_t> encode_code_point_as_wide_character(
-            code_point cp,
+            char32_t cp,
             bool error_on_overflow)
         {
             constexpr auto enc = get_encoding<wchar_t>();
@@ -178,7 +178,7 @@ namespace scn {
         auto get_next_code_point_valid(std::basic_string_view<CharT> input)
             -> iterator_value_result<
                 ranges::iterator_t<std::basic_string_view<CharT>>,
-                code_point>
+                char32_t>
         {
             SCN_EXPECT(!input.empty());
             SCN_EXPECT(validate_unicode(input));
@@ -207,15 +207,15 @@ namespace scn {
             }
 
             return iterator_value_result<
-                ranges::iterator_t<std::basic_string_view<CharT>>, code_point>{
-                input.begin() + len, static_cast<code_point>(output)};
+                ranges::iterator_t<std::basic_string_view<CharT>>, char32_t>{
+                input.begin() + len, static_cast<char32_t>(output)};
         }
 
         template <typename CharT>
         auto get_next_code_point(std::basic_string_view<CharT> input)
             -> scan_expected<iterator_value_result<
                 ranges::iterator_t<std::basic_string_view<CharT>>,
-                code_point>>
+                char32_t>>
         {
             SCN_EXPECT(!input.empty());
 
@@ -250,8 +250,8 @@ namespace scn {
             }
 
             return iterator_value_result<
-                ranges::iterator_t<std::basic_string_view<CharT>>, code_point>{
-                input.begin() + *len, static_cast<code_point>(output)};
+                ranges::iterator_t<std::basic_string_view<CharT>>, char32_t>{
+                input.begin() + *len, static_cast<char32_t>(output)};
         }
 
         template <typename CharT>
@@ -356,9 +356,9 @@ namespace scn {
         }
 
         template <typename CharT>
-        span<code_point>::iterator get_valid_code_points(
+        span<char32_t>::iterator get_valid_code_points(
             std::basic_string_view<CharT> input,
-            span<code_point> output)
+            span<char32_t> output)
         {
             if (input.empty()) {
                 return output.begin();

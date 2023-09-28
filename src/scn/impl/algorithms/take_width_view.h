@@ -357,7 +357,7 @@ namespace scn {
 
                     if (cplen == 1) {
                         SCN_EXPECT(m_current != m_end);
-                        auto cp = static_cast<code_point>(*m_current);
+                        auto cp = static_cast<char32_t>(*m_current);
                         return static_cast<difference_type>(
                             calculate_valid_text_width(cp));
                     }

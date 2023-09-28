@@ -57,7 +57,7 @@ namespace scn {
             else if constexpr (std::is_same_v<T, wchar_t>) {
                 return reader_impl_for_wchar<CharT>{};
             }
-            else if constexpr (std::is_same_v<T, code_point>) {
+            else if constexpr (std::is_same_v<T, char32_t>) {
                 return reader_impl_for_code_point<CharT>{};
             }
             else if constexpr (std::is_same_v<T, std::string> ||

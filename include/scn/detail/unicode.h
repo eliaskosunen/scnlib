@@ -24,39 +24,8 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    template <typename T>
-    constexpr bool operator==(code_point a, T b)
-    {
-        return static_cast<uint32_t>(a) == static_cast<uint32_t>(b);
-    }
-    template <typename T>
-    constexpr bool operator!=(code_point a, T b)
-    {
-        return static_cast<uint32_t>(a) != static_cast<uint32_t>(b);
-    }
-    template <typename T>
-    constexpr bool operator<(code_point a, T b)
-    {
-        return static_cast<uint32_t>(a) < static_cast<uint32_t>(b);
-    }
-    template <typename T>
-    constexpr bool operator>(code_point a, T b)
-    {
-        return static_cast<uint32_t>(a) > static_cast<uint32_t>(b);
-    }
-    template <typename T>
-    constexpr bool operator<=(code_point a, T b)
-    {
-        return static_cast<uint32_t>(a) <= static_cast<uint32_t>(b);
-    }
-    template <typename T>
-    constexpr bool operator>=(code_point a, T b)
-    {
-        return static_cast<uint32_t>(a) >= static_cast<uint32_t>(b);
-    }
-
     namespace detail {
-        constexpr inline bool is_ascii_code_point(code_point cp)
+        constexpr inline bool is_ascii_code_point(char32_t cp)
         {
             return cp <= 0x7f;
         }
@@ -116,10 +85,9 @@ namespace scn {
             }
         }
 
-        inline constexpr auto invalid_code_point = code_point{0x110000};
+        inline constexpr char32_t invalid_code_point = 0x110000;
 
-        inline constexpr code_point decode_utf8_code_point(
-            std::string_view input)
+        inline constexpr char32_t decode_utf8_code_point(std::string_view input)
         {
             SCN_EXPECT(!input.empty() && input.size() <= 4);
 
@@ -132,7 +100,7 @@ namespace scn {
                     SCN_UNLIKELY_ATTR
                     return invalid_code_point;
                 }
-                return static_cast<code_point>(input[0]);
+                return static_cast<char32_t>(input[0]);
             }
 
             if (input.size() == 2) {
@@ -145,10 +113,10 @@ namespace scn {
                     return invalid_code_point;
                 }
 
-                uint32_t cp{};
-                cp |= (static_cast<uint32_t>(input[0]) & 0x1f) << 6;
-                cp |= (static_cast<uint32_t>(input[1]) & 0x3f) << 0;
-                return static_cast<code_point>(cp);
+                char32_t cp{};
+                cp |= (static_cast<char32_t>(input[0]) & 0x1f) << 6;
+                cp |= (static_cast<char32_t>(input[1]) & 0x3f) << 0;
+                return cp;
             }
 
             if (input.size() == 3) {
@@ -162,11 +130,11 @@ namespace scn {
                     return invalid_code_point;
                 }
 
-                uint32_t cp{};
-                cp |= (static_cast<uint32_t>(input[0]) & 0x0f) << 12;
-                cp |= (static_cast<uint32_t>(input[1]) & 0x3f) << 6;
-                cp |= (static_cast<uint32_t>(input[2]) & 0x3f) << 0;
-                return static_cast<code_point>(cp);
+                char32_t cp{};
+                cp |= (static_cast<char32_t>(input[0]) & 0x0f) << 12;
+                cp |= (static_cast<char32_t>(input[1]) & 0x3f) << 6;
+                cp |= (static_cast<char32_t>(input[2]) & 0x3f) << 0;
+                return cp;
             }
 
             if (input.size() == 4) {
@@ -185,12 +153,12 @@ namespace scn {
                     return invalid_code_point;
                 }
 
-                uint32_t cp{};
-                cp |= (static_cast<uint32_t>(input[0]) & 0x07) << 18;
-                cp |= (static_cast<uint32_t>(input[1]) & 0x3f) << 12;
-                cp |= (static_cast<uint32_t>(input[2]) & 0x3f) << 6;
-                cp |= (static_cast<uint32_t>(input[3]) & 0x3f) << 0;
-                return static_cast<code_point>(cp);
+                char32_t cp{};
+                cp |= (static_cast<char32_t>(input[0]) & 0x07) << 18;
+                cp |= (static_cast<char32_t>(input[1]) & 0x3f) << 12;
+                cp |= (static_cast<char32_t>(input[2]) & 0x3f) << 6;
+                cp |= (static_cast<char32_t>(input[3]) & 0x3f) << 0;
+                return cp;
             }
 
             SCN_EXPECT(false);
@@ -198,20 +166,20 @@ namespace scn {
         }
 
         template <typename CharT>
-        inline constexpr code_point decode_utf16_code_point(
+        inline constexpr char32_t decode_utf16_code_point(
             std::basic_string_view<CharT> input)
         {
             if constexpr (sizeof(CharT) == 2) {
                 SCN_EXPECT(!input.empty() && input.size() <= 2);
 
                 if (input.size() == 1) {
-                    return static_cast<code_point>(input[0]);
+                    return static_cast<char32_t>(input[0]);
                 }
 
                 const auto lead = static_cast<uint32_t>(input[0]) - 0xd800;
                 const auto trail = static_cast<uint32_t>(input[1]) - 0xdc00;
                 const auto cp = (lead << 10) | trail;
-                return static_cast<code_point>(cp + 0x10000);
+                return static_cast<char32_t>(cp + 0x10000);
             }
             else {
                 SCN_EXPECT(false);

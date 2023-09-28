@@ -82,9 +82,9 @@ namespace scn {
 #endif
         }
 
-        constexpr bool is_ascii_char(code_point cp) SCN_NOEXCEPT
+        constexpr bool is_ascii_char(char32_t cp) SCN_NOEXCEPT
         {
-            return cp <= code_point{127};
+            return cp <= 127;
         }
     }  // namespace impl
 
