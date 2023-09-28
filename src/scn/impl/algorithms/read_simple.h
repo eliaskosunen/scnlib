@@ -25,8 +25,7 @@ namespace scn {
 
     namespace impl {
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_all(
-            Range&& range)
+        simple_borrowed_iterator_t<Range> read_all(Range&& range)
         {
             return ranges::next(ranges::begin(range), ranges::end(range));
         }

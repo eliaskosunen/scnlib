@@ -44,16 +44,14 @@ namespace scn {
                                 bool allow_exhaustion = false)
         {
             if (!allow_exhaustion) {
-                return read_while_classic_space(range).and_then(
-                    [&](auto it) -> scan_expected<decltype(it)> {
-                        if (auto e = eof_check(
-                                ranges::subrange{it, ranges::end(range)});
-                            SCN_UNLIKELY(!e)) {
-                            return unexpected(e);
-                        }
+                auto it = read_while_classic_space(range);
+                if (auto e =
+                        eof_check(ranges::subrange{it, ranges::end(range)});
+                    SCN_UNLIKELY(!e)) {
+                    return unexpected(e);
+                }
 
-                        return it;
-                    });
+                return it;
             }
 
             return read_while_classic_space(SCN_FWD(range));

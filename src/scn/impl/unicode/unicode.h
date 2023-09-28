@@ -105,15 +105,9 @@ namespace scn {
         }
 
         template <typename CharT>
-        scan_expected<std::size_t> code_point_length_by_starting_code_unit(
-            CharT ch)
+        std::size_t code_point_length_by_starting_code_unit(CharT ch)
         {
-            auto len = detail::utf_code_point_length_by_starting_code_unit(ch);
-            if (SCN_UNLIKELY(len == 0)) {
-                return unexpected_scan_error(scan_error::invalid_encoding,
-                                             "Invalid Unicode code point");
-            }
-            return len;
+            return detail::utf_code_point_length_by_starting_code_unit(ch);
         }
 
         template <typename CharT>
@@ -125,8 +119,7 @@ namespace scn {
             {
                 const auto len =
                     code_point_length_by_starting_code_unit(input[0]);
-                SCN_EXPECT(len);
-                SCN_EXPECT(*len == input.size());
+                SCN_EXPECT(len == input.size());
             }
 
             SCN_EXPECT(validate_unicode(input));
@@ -183,11 +176,8 @@ namespace scn {
             SCN_EXPECT(!input.empty());
             SCN_EXPECT(validate_unicode(input));
 
-            const auto len_wrapped =
-                code_point_length_by_starting_code_unit(input[0]);
-            SCN_EXPECT(len_wrapped);
-            const auto len = *len_wrapped;
-            SCN_ASSUME(len != 0);
+            const auto len = code_point_length_by_starting_code_unit(input[0]);
+            SCN_EXPECT(len != 0);
 
             constexpr auto enc = get_encoding<CharT>();
             char32_t output{};
@@ -212,20 +202,31 @@ namespace scn {
         }
 
         template <typename CharT>
+        auto get_start_of_next_code_point(std::basic_string_view<CharT> input)
+            -> ranges::iterator_t<std::basic_string_view<CharT>>
+        {
+            auto it = input.begin();
+            for (; it != input.end(); ++it) {
+                if (code_point_length_by_starting_code_unit(*it) != 0) {
+                    break;
+                }
+            }
+
+            return it;
+        }
+
+        template <typename CharT>
         auto get_next_code_point(std::basic_string_view<CharT> input)
-            -> scan_expected<iterator_value_result<
+            -> iterator_value_result<
                 ranges::iterator_t<std::basic_string_view<CharT>>,
-                char32_t>>
+                char32_t>
         {
             SCN_EXPECT(!input.empty());
 
             const auto len = code_point_length_by_starting_code_unit(input[0]);
-            if (SCN_UNLIKELY(!len)) {
-                return unexpected(len.error());
-            }
-            if (SCN_UNLIKELY(*len == 0)) {
-                return unexpected_scan_error(scan_error::invalid_encoding,
-                                             "Invalid encoding");
+            if (SCN_UNLIKELY(len == 0)) {
+                return {get_start_of_next_code_point(input),
+                        detail::invalid_code_point};
             }
 
             constexpr auto enc = get_encoding<CharT>();
@@ -233,25 +234,24 @@ namespace scn {
             char32_t output{};
             if constexpr (enc == encoding::utf8) {
                 result = simdutf::convert_utf8_to_utf32(
-                    reinterpret_cast<const char*>(input.data()), *len, &output);
+                    reinterpret_cast<const char*>(input.data()), len, &output);
             }
             else if constexpr (enc == encoding::utf16) {
                 result = simdutf::convert_utf16_to_utf32(
-                    reinterpret_cast<const char16_t*>(input.data()), *len,
+                    reinterpret_cast<const char16_t*>(input.data()), len,
                     &output);
             }
             else if constexpr (enc == encoding::utf32) {
+                SCN_EXPECT(len == 1);
                 output = static_cast<char32_t>(input[0]);
             }
 
             if (SCN_UNLIKELY(result != 1)) {
-                return unexpected_scan_error(scan_error::invalid_encoding,
-                                             "Invalid encoding");
+                return {get_start_of_next_code_point(input.substr(1)),
+                        detail::invalid_code_point};
             }
 
-            return iterator_value_result<
-                ranges::iterator_t<std::basic_string_view<CharT>>, char32_t>{
-                input.begin() + *len, static_cast<char32_t>(output)};
+            return {input.begin() + len, output};
         }
 
         template <typename CharT>
@@ -276,18 +276,6 @@ namespace scn {
             else if constexpr (enc == encoding::utf32) {
                 return input.size();
             }
-        }
-
-        template <typename CharT>
-        scan_expected<std::size_t> validate_and_count_code_points(
-            std::basic_string_view<CharT> input)
-        {
-            if (SCN_UNLIKELY(!validate_unicode(input))) {
-                return unexpected_scan_error(scan_error::invalid_encoding,
-                                             "Invalid encoding");
-            }
-
-            return count_valid_code_ponts(input);
         }
 
         template <typename DestCharT, typename SourceCharT>
@@ -341,18 +329,6 @@ namespace scn {
                         input.size());
                 }
             }
-        }
-
-        template <typename DestCharT, typename SourceCharT>
-        scan_expected<std::size_t> validate_and_count_transcoded_code_units(
-            std::basic_string_view<SourceCharT> input)
-        {
-            if (SCN_UNLIKELY(!validate_unicode(input))) {
-                return unexpected_scan_error(scan_error::invalid_encoding,
-                                             "Invalid encoding");
-            }
-
-            return count_valid_transcoded_code_units<DestCharT>(input);
         }
 
         template <typename CharT>
@@ -466,17 +442,43 @@ namespace scn {
         }
 
         template <typename SourceCharT, typename DestCharT>
-        bool transcode_to_string(std::basic_string_view<SourceCharT> source,
+        void transcode_invalid_to_string(
+            std::basic_string_view<SourceCharT> source,
+            std::basic_string<DestCharT>& dest)
+        {
+            auto it = source.begin();
+            while (it != source.end()) {
+                auto [iter, cp] = get_next_code_point(
+                    detail::make_string_view_from_iterators<SourceCharT>(
+                        it, source.end()));
+
+                if (SCN_UNLIKELY(cp == detail::invalid_code_point)) {
+                    cp = 0xfffd;  // Replacement character
+                }
+
+                auto cp_input = std::basic_string_view<char32_t>{&cp, 1};
+                SCN_EXPECT(validate_unicode(cp_input));
+
+                std::array<DestCharT, 5> temp{0};
+                auto ret = transcode_valid(
+                    cp_input, span<DestCharT>{temp.data(), temp.size()});
+                SCN_EXPECT(ret == 1);
+
+                dest.append(temp.data());
+            }
+        }
+
+        template <typename SourceCharT, typename DestCharT>
+        void transcode_to_string(std::basic_string_view<SourceCharT> source,
                                  std::basic_string<DestCharT>& dest)
         {
             static_assert(!std::is_same_v<SourceCharT, DestCharT>);
 
             if (SCN_UNLIKELY(!validate_unicode(source))) {
-                return false;
+                return transcode_invalid_to_string(source, dest);
             }
 
             transcode_valid_to_string(source, dest);
-            return true;
         }
 
         template <typename CharT, typename Cb>

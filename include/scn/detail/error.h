@@ -46,8 +46,6 @@ namespace scn {
             /// Scanned value was out of range for the desired type.
             /// (e.g. `>2^32` for an `uint32_t`)
             value_out_of_range,
-            /// Source range has invalid (utf-8 or utf-16) encoding
-            invalid_encoding,
             /// The source range emitted an error that cannot be recovered
             /// from. The library can't use the source range in this state.
             /// Can only happen when using an istream as the input.
@@ -95,7 +93,7 @@ namespace scn {
             return m_code;
         }
         /// Get error message
-        SCN_NODISCARD constexpr auto msg() const SCN_NOEXCEPT -> const char*
+        SCN_NODISCARD constexpr auto msg() const SCN_NOEXCEPT->const char*
         {
             return m_msg;
         }

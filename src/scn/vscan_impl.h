@@ -135,12 +135,8 @@ namespace scn {
                             impl::is_first_char_space(
                                 std::basic_string_view<CharT>{begin, end});
                         is_space) {
-                        auto ret = impl::read_while_classic_space(ctx.range());
-                        if (!ret) {
-                            // TODO
-                            return on_error(ret.error());
-                        }
-                        ctx.advance_to(*ret);
+                        ctx.advance_to(
+                            impl::read_while_classic_space(ctx.range()));
                         return;
                     }
 

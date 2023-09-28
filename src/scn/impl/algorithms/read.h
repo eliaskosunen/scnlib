@@ -35,68 +35,60 @@ namespace scn {
     namespace impl {
 
         template <typename Range>
-        scan_expected<iterator_value_result<
+        auto read_code_point_into(Range&& range) -> iterator_value_result<
             simple_borrowed_iterator_t<Range>,
-            contiguous_range_factory<detail::char_t<Range>>>>
-        read_code_point_into(Range&& range)
+            contiguous_range_factory<detail::char_t<Range>>>
         {
-            using rettype = iterator_value_result<
-                simple_borrowed_iterator_t<Range>,
-                contiguous_range_factory<detail::char_t<Range>>>;
-
-            if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
-                return unexpected(e);
-            }
+            SCN_EXPECT(ranges::begin(range) != ranges::end(range));
 
             auto it = ranges::begin(range);
             const auto len = code_point_length_by_starting_code_unit(*it);
-            if (SCN_UNLIKELY(!len)) {
-                return unexpected(len.error());
+
+            if (SCN_UNLIKELY(len == 0)) {
+                for (; it != ranges::end(range); ++it) {
+                    if (code_point_length_by_starting_code_unit(*it) != 0) {
+                        break;
+                    }
+                }
+
+                auto cp_view = make_contiguous_buffer(
+                    ranges::subrange{ranges::begin(range), it});
+                return {it, cp_view};
             }
 
-            if (*len == 1) {
+            if (len == 1) {
                 ++it;
                 auto cp_view = make_contiguous_buffer(
                     ranges::subrange{ranges::begin(range), it});
-                return rettype{it, cp_view};
+                return {it, cp_view};
             }
 
             if constexpr (ranges::sized_range<Range>) {
                 auto sz = ranges_polyfill::usize(range);
-                if (SCN_UNLIKELY(sz < *len)) {
-                    return unexpected_scan_error(scan_error::invalid_encoding,
-                                                 "Incomplete code point");
+                if (SCN_UNLIKELY(sz < len)) {
+                    ranges::advance(it, ranges::end(range));
                 }
-                ranges::advance(
-                    it, static_cast<ranges::range_difference_t<Range>>(*len));
+                else {
+                    ranges::advance(
+                        it,
+                        static_cast<ranges::range_difference_t<Range>>(len));
+                }
             }
             else {
                 ++it;
                 size_t i = 1;
-                for (; i < *len && it != ranges::end(range); ++i, (void)++it) {}
-                if (SCN_UNLIKELY(i != *len)) {
-                    return unexpected_scan_error(scan_error::invalid_encoding,
-                                                 "Incomplete code point");
-                }
+                for (; i < len && it != ranges::end(range); ++i, (void)++it) {}
             }
 
             auto cp_view = make_contiguous_buffer(
                 ranges::subrange{ranges::begin(range), it});
-            if (SCN_UNLIKELY(!validate_unicode(cp_view.view()))) {
-                return unexpected_scan_error(scan_error::invalid_encoding,
-                                             "Invalid code point");
-            }
-
-            return rettype{it, cp_view};
+            return {it, cp_view};
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_code_point(
-            Range&& range)
+        simple_borrowed_iterator_t<Range> read_code_point(Range&& range)
         {
-            return read_code_point_into(SCN_FWD(range))
-                .transform([](auto&& result)
-                               SCN_NOEXCEPT { return result.iterator; });
+            return read_code_point_into(SCN_FWD(range)).iterator;
         }
 
         template <typename Range>
@@ -120,56 +112,51 @@ namespace scn {
                     return unexpected(e);
                 }
 
-                auto result = read_code_point(rng);
-                if (SCN_UNLIKELY(!result)) {
-                    return unexpected(result.error());
-                }
-
-                it = *result;
+                it = read_code_point(rng);
             }
 
             return it;
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
-        read_exactly_n_width_units(Range&& range,
-                                   ranges::range_difference_t<Range> count)
+        simple_borrowed_iterator_t<Range> read_exactly_n_width_units(
+            Range&& range,
+            ranges::range_difference_t<Range> count)
         {
             auto it = ranges::begin(range);
             ranges::range_difference_t<Range> acc_width = 0;
 
             while (it != ranges::end(range)) {
-                auto read_result = read_code_point_into(
+                auto [iter, val] = read_code_point_into(
                     ranges::subrange{it, ranges::end(range)});
-                if (SCN_UNLIKELY(!read_result)) {
-                    return unexpected(read_result.error());
+
+                if (SCN_UNLIKELY(!validate_unicode(val.view()))) {
+                    ++acc_width;
+                }
+                else {
+                    acc_width += calculate_valid_text_width(val.view());
                 }
 
-                acc_width +=
-                    calculate_valid_text_width(read_result->value.view());
                 if (acc_width > count) {
                     break;
                 }
 
-                it = read_result->iterator;
+                it = iter;
             }
 
             return it;
         }
 
         template <typename Range, typename Predicate>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_until_code_unit(
-            Range&& range,
-            Predicate pred)
+        simple_borrowed_iterator_t<Range> read_until_code_unit(Range&& range,
+                                                               Predicate pred)
         {
             return ranges::find_if(range, pred);
         }
 
         template <typename Range, typename Predicate>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_while_code_unit(
-            Range&& range,
-            Predicate pred)
+        simple_borrowed_iterator_t<Range> read_while_code_unit(Range&& range,
+                                                               Predicate pred)
         {
             return ranges::find_if_not(range, pred);
         }
@@ -179,16 +166,13 @@ namespace scn {
             Range&& range,
             Predicate pred)
         {
-            return read_until_code_unit(range, pred)
-                .and_then([&](auto it) -> scan_expected<
-                                           simple_borrowed_iterator_t<Range>> {
-                    if (it == ranges::begin(range)) {
-                        return unexpected_scan_error(
-                            scan_error::invalid_scanned_value,
-                            "read_until1_code_unit: No matching code units");
-                    }
-                    return it;
-                });
+            auto it = read_until_code_unit(range, pred);
+            if (it == ranges::begin(range)) {
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "read_until1_code_unit: No matching code units");
+            }
+            return it;
         }
 
         template <typename Range, typename Predicate>
@@ -196,20 +180,17 @@ namespace scn {
             Range&& range,
             Predicate pred)
         {
-            return read_while_code_unit(range, pred)
-                .and_then([&](auto it) -> scan_expected<
-                                           simple_borrowed_iterator_t<Range>> {
-                    if (it == ranges::begin(range)) {
-                        return unexpected_scan_error(
-                            scan_error::invalid_scanned_value,
-                            "read_while1_code_unit: No matching code units");
-                    }
-                    return it;
-                });
+            auto it = read_while_code_unit(range, pred);
+            if (it == ranges::begin(range)) {
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "read_while1_code_unit: No matching code units");
+            }
+            return it;
         }
 
         template <typename Range, typename CodeUnits>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_until_code_units(
+        simple_borrowed_iterator_t<Range> read_until_code_units(
             Range&& range,
             CodeUnits&& needle)
         {
@@ -217,43 +198,45 @@ namespace scn {
         }
 
         template <typename Range, typename Predicate>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_until_code_point(
-            Range&& range,
-            Predicate pred)
+        simple_borrowed_iterator_t<Range> read_until_code_point(Range&& range,
+                                                                Predicate pred)
         {
             auto it = ranges::begin(range);
 
             while (it != ranges::end(range)) {
-                const auto result = read_code_point_into(
+                const auto [iter, value] = read_code_point_into(
                     ranges::subrange{it, ranges::end(range)});
-                if (SCN_UNLIKELY(!result)) {
-                    return unexpected(result.error());
+
+                if (SCN_UNLIKELY(!validate_unicode(value.view()))) {
+                    if (pred(detail::invalid_code_point)) {
+                        break;
+                    }
+                }
+                else {
+                    const auto cp =
+                        decode_code_point_exhaustive_valid(value.view());
+                    if (pred(cp)) {
+                        break;
+                    }
                 }
 
-                const auto cp =
-                    decode_code_point_exhaustive_valid(result->value.view());
-                if (pred(cp)) {
-                    break;
-                }
-
-                it = result->iterator;
+                it = iter;
             }
 
             return it;
         }
 
         template <typename Range, typename Predicate>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_while_code_point(
-            Range&& range,
-            Predicate pred)
+        simple_borrowed_iterator_t<Range> read_while_code_point(Range&& range,
+                                                                Predicate pred)
         {
             return read_until_code_point(
                 SCN_FWD(range), [&](char32_t cp) { return !pred(cp); });
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
-        read_until_classic_space(Range&& range)
+        simple_borrowed_iterator_t<Range> read_until_classic_space(
+            Range&& range)
         {
             if constexpr (ranges::contiguous_range<Range> &&
                           ranges::sized_range<Range> &&
@@ -271,8 +254,8 @@ namespace scn {
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
-        read_while_classic_space(Range&& range)
+        simple_borrowed_iterator_t<Range> read_while_classic_space(
+            Range&& range)
         {
             if constexpr (ranges::contiguous_range<Range> &&
                           ranges::sized_range<Range> &&
@@ -291,38 +274,42 @@ namespace scn {
         scan_expected<simple_borrowed_iterator_t<Range>>
         read_matching_code_unit(Range&& range, detail::char_t<Range> ch)
         {
-            return read_code_unit(range).and_then(
-                [&](auto it)
-                    -> scan_expected<simple_borrowed_iterator_t<Range>> {
-                    if (SCN_UNLIKELY(*ranges::begin(range) !=
-                                     static_cast<detail::char_t<Range>>(ch))) {
-                        return unexpected_scan_error(
-                            scan_error::invalid_scanned_value,
-                            "read_matching_code_unit: No match");
-                    }
+            auto it = read_code_unit(range);
 
-                    return it;
-                });
+            if (SCN_UNLIKELY(*ranges::begin(range) !=
+                             static_cast<detail::char_t<Range>>(ch))) {
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "read_matching_code_unit: No match");
+            }
+
+            return it;
         }
 
         template <typename Range>
         scan_expected<simple_borrowed_iterator_t<Range>>
         read_matching_code_point(Range&& range, char32_t cp)
         {
-            return read_code_point_into(range).and_then(
-                [&](auto result)
-                    -> scan_expected<simple_borrowed_iterator_t<Range>> {
-                    auto decoded_cp =
-                        decode_code_point_exhaustive_valid(result.value.view());
+            auto [it, value] = read_code_point_into(range);
 
-                    if (SCN_UNLIKELY(decoded_cp != cp)) {
-                        return unexpected_scan_error(
-                            scan_error::invalid_scanned_value,
-                            "read_matching_code_point: No match");
-                    }
+            if (SCN_UNLIKELY(!validate_unicode(value.view()))) {
+                if (SCN_UNLIKELY(cp != detail::invalid_code_point)) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "read_matching_code_point: No match");
+                }
+            }
+            else {
+                auto decoded_cp =
+                    decode_code_point_exhaustive_valid(value.view());
+                if (SCN_UNLIKELY(decoded_cp != cp)) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "read_matching_code_point: No match");
+                }
+            }
 
-                    return result.iterator;
-                });
+            return it;
         }
 
         template <typename Range>
@@ -439,28 +426,28 @@ namespace scn {
             Range&& range,
             std::string_view str)
         {
-            return read_code_unit(range).and_then(
-                [&](auto it)
-                    -> scan_expected<simple_borrowed_iterator_t<Range>> {
-                    for (auto ch : str) {
-                        if (*ranges::begin(range) ==
-                            static_cast<detail::char_t<Range>>(ch)) {
-                            return it;
-                        }
-                    }
+            auto it = read_code_unit(range);
+            if (SCN_UNLIKELY(!it)) {
+                return unexpected(it.error());
+            }
 
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "read_one_of_code_unit: No match");
-                });
+            for (auto ch : str) {
+                if (*ranges::begin(range) ==
+                    static_cast<detail::char_t<Range>>(ch)) {
+                    return *it;
+                }
+            }
+
+            return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                         "read_one_of_code_unit: No match");
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
-        read_localized_mask_impl(Range&& range,
-                                 detail::locale_ref loc,
-                                 std::ctype_base::mask mask,
-                                 bool read_until)
+        simple_borrowed_iterator_t<Range> read_localized_mask_impl(
+            Range&& range,
+            detail::locale_ref loc,
+            std::ctype_base::mask mask,
+            bool read_until)
         {
             const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
 
@@ -492,51 +479,51 @@ namespace scn {
                 }
             }
             else {
-                return read_until_code_point(
-                    SCN_FWD(range), [&](char32_t cp) {
-                        auto ch =
-                            *encode_code_point_as_wide_character(cp, false);
-                        return ctype_facet.is(mask, ch) == read_until;
-                    });
+                return read_until_code_point(SCN_FWD(range), [&](char32_t cp) {
+                    auto ch = *encode_code_point_as_wide_character(cp, false);
+                    return ctype_facet.is(mask, ch) == read_until;
+                });
             }
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
-        read_until_localized_mask(Range&& range,
-                                  detail::locale_ref loc,
-                                  std::ctype_base::mask mask)
+        simple_borrowed_iterator_t<Range> read_until_localized_mask(
+            Range&& range,
+            detail::locale_ref loc,
+            std::ctype_base::mask mask)
         {
             return read_localized_mask_impl(SCN_FWD(range), loc, mask, true);
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
-        read_while_localized_mask(Range&& range,
-                                  detail::locale_ref loc,
-                                  std::ctype_base::mask mask)
+        simple_borrowed_iterator_t<Range> read_while_localized_mask(
+            Range&& range,
+            detail::locale_ref loc,
+            std::ctype_base::mask mask)
         {
             return read_localized_mask_impl(SCN_FWD(range), loc, mask, false);
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
-        read_until_localized_space(Range&& range, detail::locale_ref loc)
+        simple_borrowed_iterator_t<Range> read_until_localized_space(
+            Range&& range,
+            detail::locale_ref loc)
         {
             return read_until_localized_mask(SCN_FWD(range), loc,
                                              std::ctype_base::space);
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
-        read_while_localized_space(Range&& range, detail::locale_ref loc)
+        simple_borrowed_iterator_t<Range> read_while_localized_space(
+            Range&& range,
+            detail::locale_ref loc)
         {
             return read_while_localized_mask(SCN_FWD(range), loc,
                                              std::ctype_base::space);
         }
 
         template <typename Range, typename Predicate>
-        scan_expected<simple_borrowed_iterator_t<Range>>
+        simple_borrowed_iterator_t<Range>
         read_until_localized_mask_or_code_point(Range&& range,
                                                 detail::locale_ref loc,
                                                 std::ctype_base::mask mask,
@@ -551,7 +538,7 @@ namespace scn {
         }
 
         template <typename Range, typename Predicate>
-        scan_expected<simple_borrowed_iterator_t<Range>>
+        simple_borrowed_iterator_t<Range>
         read_while_localized_mask_or_code_point(Range&& range,
                                                 detail::locale_ref loc,
                                                 std::ctype_base::mask mask,
@@ -564,6 +551,7 @@ namespace scn {
                 return pred(cp) || ctype_facet.is(mask, ch);
             });
         }
+
         template <typename Range, typename Iterator>
         simple_borrowed_iterator_t<Range> apply_opt(
             scan_expected<Iterator>&& result,

@@ -149,7 +149,11 @@ TEST(StringTest, CharacterSetPresentationWideStringFromNarrowSource)
 
 TEST(StringTest, WonkyInput)
 {
-    auto result = scn::scan<std::string>("o \x0f\n\n\xc3", "{:64c}");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_encoding);
+    const char source[] = {'o', ' ', '\x0f', '\n', '\n', '\xc3'};
+    auto input = std::string_view{source, sizeof(source)};
+
+    auto result = scn::scan<std::string>(input, "{:64c}");
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    EXPECT_EQ(result->value(), input);
 }

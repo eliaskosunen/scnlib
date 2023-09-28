@@ -142,15 +142,12 @@ namespace scn {
                                 -> scan_expected<
                                     simple_borrowed_iterator_t<decltype(rr)>> {
                                 auto res = read_all(rr);
-                                if (SCN_UNLIKELY(!res)) {
-                                    return unexpected(res.error());
-                                }
-                                if (SCN_UNLIKELY(*res == ranges::begin(r))) {
+                                if (SCN_UNLIKELY(res == ranges::begin(r))) {
                                     return unexpected_scan_error(
                                         scan_error::invalid_scanned_value,
                                         "Invalid float value");
                                 }
-                                return *res;
+                                return res;
                             };
                             return do_read_source_impl(r, cb, cb);
                         }
@@ -291,18 +288,16 @@ namespace scn {
                 }
 
                 auto payload_beg_it = it;
-                if (auto r = read_while_code_unit(
-                        ranges::subrange{it, ranges::end(range)},
-                        [](char_type ch) SCN_NOEXCEPT {
-                            return is_ascii_char(ch) &&
-                                   ((ch >= '0' && ch <= '9') ||
-                                    (ch >= 'a' && ch <= 'z') ||
-                                    (ch >= 'A' && ch <= 'Z') || ch == '_');
-                        })) {
-                    it = *r;
-                    m_nan_payload_buffer.assign(
-                        ranges::subrange{payload_beg_it, it});
-                }
+                it = read_while_code_unit(
+                    ranges::subrange{it, ranges::end(range)},
+                    [](char_type ch) SCN_NOEXCEPT {
+                        return is_ascii_char(ch) &&
+                               ((ch >= '0' && ch <= '9') ||
+                                (ch >= 'a' && ch <= 'z') ||
+                                (ch >= 'A' && ch <= 'Z') || ch == '_');
+                    });
+                m_nan_payload_buffer.assign(
+                    ranges::subrange{payload_beg_it, it});
 
                 m_kind = float_kind::nan_with_payload;
                 if (auto r = read_matching_code_unit(
@@ -393,8 +388,8 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>>
-            read_regular_float(Range&& range)
+            scan_expected<simple_borrowed_iterator_t<Range>> read_regular_float(
+                Range&& range)
             {
                 const bool allowed_exp = (m_options & allow_scientific) != 0;
                 const bool required_exp =

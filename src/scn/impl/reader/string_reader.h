@@ -35,11 +35,7 @@ namespace scn {
                                   std::basic_string<DestCharT>& dst)
         {
             dst.clear();
-            if (!transcode_to_string(src, dst)) {
-                SCN_UNLIKELY_ATTR
-                return scan_error(scan_error::invalid_encoding,
-                                  "Failed to transcode string value");
-            }
+            transcode_to_string(src, dst);
             return {};
         }
 
@@ -49,11 +45,6 @@ namespace scn {
             std::basic_string<DestCharT>& dest)
         {
             if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
-                if (SCN_UNLIKELY(!validate_unicode(source.view()))) {
-                    return {scan_error::invalid_encoding,
-                            "Failed to validate string value"};
-                }
-
                 dest.assign(source.view());
             }
             else {
@@ -69,11 +60,6 @@ namespace scn {
             std::basic_string<DestCharT>& dest)
         {
             if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
-                if (SCN_UNLIKELY(!validate_unicode(source.view()))) {
-                    return {scan_error::invalid_encoding,
-                            "Failed to validate string value"};
-                }
-
                 if (source.stores_allocated_string()) {
                     dest.assign(SCN_MOVE(source.get_allocated_string()));
                 }
@@ -94,11 +80,6 @@ namespace scn {
             std::basic_string<DestCharT>& dest)
         {
             if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
-                if (SCN_UNLIKELY(!validate_unicode(source.view()))) {
-                    return {scan_error::invalid_encoding,
-                            "Failed to validate string value"};
-                }
-
                 dest.assign(source.view());
             }
             else {
@@ -110,43 +91,41 @@ namespace scn {
 
         template <typename Range, typename Iterator, typename ValueCharT>
         auto read_string_impl(Range& range,
-                              scan_expected<Iterator>&& result,
+                              Iterator&& result,
                               std::basic_string<ValueCharT>& value)
             -> scan_expected<ranges::iterator_t<Range&>>
         {
-            if (SCN_UNLIKELY(!result)) {
-                return unexpected(result.error());
-            }
+            static_assert(
+                ranges_std::forward_iterator<detail::remove_cvref_t<Iterator>>);
 
             auto src = make_contiguous_buffer(
-                ranges::subrange{ranges::begin(range), *result});
+                ranges::subrange{ranges::begin(range), result});
             if (auto e = transcode_if_necessary(SCN_MOVE(src), value);
                 SCN_UNLIKELY(!e)) {
                 return unexpected(e);
             }
 
-            return *result;
+            return result;
         }
 
         template <typename Range, typename Iterator, typename ValueCharT>
         auto read_string_view_impl(Range& range,
-                                   scan_expected<Iterator>&& result,
+                                   Iterator&& result,
                                    std::basic_string_view<ValueCharT>& value)
             -> scan_expected<ranges::iterator_t<Range&>>
         {
-            if (SCN_UNLIKELY(!result)) {
-                return unexpected(result.error());
-            }
+            static_assert(
+                ranges_std::forward_iterator<detail::remove_cvref_t<Iterator>>);
 
             auto src = [&]() {
                 if constexpr (detail::is_specialization_of_v<Range,
                                                              take_width_view>) {
                     return make_contiguous_buffer(ranges::subrange{
-                        ranges::begin(range).base(), result->base()});
+                        ranges::begin(range).base(), result.base()});
                 }
                 else {
                     return make_contiguous_buffer(
-                        ranges::subrange{ranges::begin(range), *result});
+                        ranges::subrange{ranges::begin(range), result});
                 }
             }();
             using src_type = decltype(src);
@@ -165,17 +144,11 @@ namespace scn {
                                              "transcoding)");
             }
             else {
-                if (SCN_UNLIKELY(!validate_unicode(src.view()))) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_encoding,
-                        "Failed to validate string_view value");
-                }
-
                 const auto view = src.view();
                 value = std::basic_string_view<ValueCharT>(
                     ranges::data(view), ranges_polyfill::usize(view));
 
-                return *result;
+                return result;
             }
         }
 
@@ -335,8 +308,12 @@ namespace scn {
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string<ValueCharT>& value)
             {
-                return read_string_impl(
-                    range, read_source_classic_impl(range, {specs}), value);
+                auto it = read_source_classic_impl(range, {specs});
+                if (SCN_UNLIKELY(!it)) {
+                    return unexpected(it.error());
+                }
+
+                return read_string_impl(range, *it, value);
             }
 
             template <typename Range, typename ValueCharT>
@@ -346,9 +323,12 @@ namespace scn {
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string<ValueCharT>& value)
             {
-                return read_string_impl(
-                    range, read_source_localized_impl(range, {specs}, loc),
-                    value);
+                auto it = read_source_localized_impl(range, {specs}, loc);
+                if (SCN_UNLIKELY(!it)) {
+                    return unexpected(it.error());
+                }
+
+                return read_string_impl(range, *it, value);
             }
 
             template <typename Range, typename ValueCharT>
@@ -357,8 +337,12 @@ namespace scn {
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string_view<ValueCharT>& value)
             {
-                return read_string_view_impl(
-                    range, read_source_classic_impl(range, {specs}), value);
+                auto it = read_source_classic_impl(range, {specs});
+                if (SCN_UNLIKELY(!it)) {
+                    return unexpected(it.error());
+                }
+
+                return read_string_view_impl(range, *it, value);
             }
 
             template <typename Range, typename ValueCharT>
@@ -368,9 +352,12 @@ namespace scn {
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string_view<ValueCharT>& value)
             {
-                return read_string_view_impl(
-                    range, read_source_localized_impl(range, {specs}, loc),
-                    value);
+                auto it = read_source_localized_impl(range, {specs}, loc);
+                if (SCN_UNLIKELY(!it)) {
+                    return unexpected(it.error());
+                }
+
+                return read_string_view_impl(range, *it, value);
             }
 
         private:
@@ -599,11 +586,11 @@ namespace scn {
                     };
 
                     if (is_inverted) {
-                        return read_until_code_point(range, cb).and_then(
-                            [&](auto it) { return check_nonempty(it, range); });
+                        auto it = read_until_code_point(range, cb);
+                        return check_nonempty(it, range);
                     }
-                    return read_while_code_point(range, cb).and_then(
-                        [&](auto it) { return check_nonempty(it, range); });
+                    auto it = read_while_code_point(range, cb);
+                    return check_nonempty(it, range);
                 }
 
                 const auto cb = [&](SourceCharT ch) {
@@ -611,11 +598,11 @@ namespace scn {
                 };
 
                 if (is_inverted) {
-                    return read_until_code_unit(range, cb).and_then(
-                        [&](auto it) { return check_nonempty(it, range); });
+                    auto it = read_until_code_unit(range, cb);
+                    return check_nonempty(it, range);
                 }
-                return read_while_code_unit(range, cb).and_then(
-                    [&](auto it) { return check_nonempty(it, range); });
+                auto it = read_while_code_unit(range, cb);
+                return check_nonempty(it, range);
             }
 
             template <typename Range>
@@ -650,14 +637,11 @@ namespace scn {
                 if (is_mask_exhaustive && !has_any_ascii_literals &&
                     !has_any_nonascii_literals) {
                     if (is_inverted) {
-                        return read_until_localized_mask(range, loc, mask)
-                            .and_then([&](auto it) {
-                                return check_nonempty(it, range);
-                            });
+                        auto it = read_until_localized_mask(range, loc, mask);
+                        return check_nonempty(it, range);
                     }
-                    return read_while_localized_mask(range, loc, mask)
-                        .and_then(
-                            [&](auto it) { return check_nonempty(it, range); });
+                    auto it = read_while_localized_mask(range, loc, mask);
+                    return check_nonempty(it, range);
                 }
 
                 const auto cb = [&](char32_t cp) {
@@ -666,23 +650,21 @@ namespace scn {
 
                 if (is_mask_exhaustive && mask == std::ctype_base::mask{}) {
                     if (is_inverted) {
-                        return read_until_code_point(range, cb).and_then(
-                            [&](auto it) { return check_nonempty(it, range); });
+                        auto it = read_until_code_point(range, cb);
+                        return check_nonempty(it, range);
                     }
-                    return read_while_code_point(range, cb).and_then(
-                        [&](auto it) { return check_nonempty(it, range); });
+                    auto it = read_while_code_point(range, cb);
+                    return check_nonempty(it, range);
                 }
 
                 if (is_inverted) {
-                    return read_until_localized_mask_or_code_point(range, loc,
-                                                                   mask, cb)
-                        .and_then(
-                            [&](auto it) { return check_nonempty(it, range); });
+                    auto it = read_until_localized_mask_or_code_point(
+                        range, loc, mask, cb);
+                    return check_nonempty(it, range);
                 }
-                return read_while_localized_mask_or_code_point(range, loc, mask,
-                                                               cb)
-                    .and_then(
-                        [&](auto it) { return check_nonempty(it, range); });
+                auto it = read_while_localized_mask_or_code_point(range, loc,
+                                                                  mask, cb);
+                return check_nonempty(it, range);
             }
 
             template <typename Iterator, typename Range>

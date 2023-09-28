@@ -340,12 +340,8 @@ namespace scn {
             private:
                 difference_type _get_cp_length_at_current() const
                 {
-                    const auto r =
-                        code_point_length_by_starting_code_unit(*m_current);
-                    if (!r) {
-                        return 0;
-                    }
-                    return static_cast<difference_type>(*r);
+                    return static_cast<difference_type>(
+                        code_point_length_by_starting_code_unit(*m_current));
                 }
 
                 difference_type _get_width_at_current_cp_start(

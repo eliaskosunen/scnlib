@@ -649,8 +649,8 @@ namespace scn {
 
             if constexpr (sizeof(CharT) == 1) {
                 // UTF-8
-                auto cp =
-                    decode_utf8_code_point(std::string_view{&*cp_begin, len});
+                auto cp = decode_utf8_code_point_exhaustive(
+                    std::string_view{&*cp_begin, len});
                 if (SCN_UNLIKELY(cp == invalid_code_point)) {
                     handler.on_error(
                         "Invalid Unicode code point in format string argument");
@@ -660,8 +660,8 @@ namespace scn {
             }
             else if constexpr (sizeof(CharT) == 2) {
                 // UTF-16
-                auto cp =
-                    decode_utf16_code_point(std::wstring_view{&*cp_begin, len});
+                auto cp = decode_utf16_code_point_exhaustive(
+                    std::wstring_view{&*cp_begin, len});
                 if (SCN_UNLIKELY(cp == invalid_code_point)) {
                     handler.on_error(
                         "Invalid Unicode code point in format string argument");

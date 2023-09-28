@@ -87,7 +87,8 @@ namespace scn {
 
         inline constexpr char32_t invalid_code_point = 0x110000;
 
-        inline constexpr char32_t decode_utf8_code_point(std::string_view input)
+        inline constexpr char32_t decode_utf8_code_point_exhaustive(
+            std::string_view input)
         {
             SCN_EXPECT(!input.empty() && input.size() <= 4);
 
@@ -165,8 +166,66 @@ namespace scn {
             SCN_UNREACHABLE;
         }
 
+        inline constexpr char32_t decode_utf8_code_point_exhaustive_valid(
+            std::string_view input)
+        {
+            SCN_EXPECT(!input.empty() && input.size() <= 4);
+
+            const auto is_trailing_code_unit = [](char ch) {
+                return static_cast<unsigned char>(ch) >> 6 == 0x2;
+            };
+
+            if (input.size() == 1) {
+                SCN_EXPECT(static_cast<unsigned char>(input[0]) < 0x80);
+                return static_cast<char32_t>(input[0]);
+            }
+
+            if (input.size() == 2) {
+                SCN_EXPECT((static_cast<unsigned char>(input[0]) & 0xe0) ==
+                           0xc0);
+                SCN_EXPECT(is_trailing_code_unit(input[1]));
+
+                char32_t cp{};
+                cp |= (static_cast<char32_t>(input[0]) & 0x1f) << 6;
+                cp |= (static_cast<char32_t>(input[1]) & 0x3f) << 0;
+                return cp;
+            }
+
+            if (input.size() == 3) {
+                SCN_EXPECT((static_cast<unsigned char>(input[0]) & 0xf0) ==
+                           0xe0);
+                SCN_EXPECT(is_trailing_code_unit(input[1]));
+                SCN_EXPECT(is_trailing_code_unit(input[2]));
+
+                char32_t cp{};
+                cp |= (static_cast<char32_t>(input[0]) & 0x0f) << 12;
+                cp |= (static_cast<char32_t>(input[1]) & 0x3f) << 6;
+                cp |= (static_cast<char32_t>(input[2]) & 0x3f) << 0;
+                return cp;
+            }
+
+            if (input.size() == 4) {
+                SCN_EXPECT((static_cast<unsigned char>(input[0]) & 0xf8) ==
+                           0xf0);
+                SCN_EXPECT(static_cast<unsigned char>(input[0]) <= 0xf4);
+                SCN_EXPECT(is_trailing_code_unit(input[1]));
+                SCN_EXPECT(is_trailing_code_unit(input[2]));
+                SCN_EXPECT(is_trailing_code_unit(input[3]));
+
+                char32_t cp{};
+                cp |= (static_cast<char32_t>(input[0]) & 0x07) << 18;
+                cp |= (static_cast<char32_t>(input[1]) & 0x3f) << 12;
+                cp |= (static_cast<char32_t>(input[2]) & 0x3f) << 6;
+                cp |= (static_cast<char32_t>(input[3]) & 0x3f) << 0;
+                return cp;
+            }
+
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
+        }
+
         template <typename CharT>
-        inline constexpr char32_t decode_utf16_code_point(
+        inline constexpr char32_t decode_utf16_code_point_exhaustive(
             std::basic_string_view<CharT> input)
         {
             if constexpr (sizeof(CharT) == 2) {

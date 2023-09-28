@@ -27,7 +27,8 @@ namespace scn {
         constexpr bool is_cp_space(char32_t cp) SCN_NOEXCEPT
         {
             // Pattern_White_Space property
-            return (cp >= 0x09 && cp <= 0x0d) || cp == 0x20 || // ASCII space characters
+            return (cp >= 0x09 && cp <= 0x0d) ||
+                   cp == 0x20 ||    // ASCII space characters
                    cp == 0x85 ||    // NEXT LINE (NEL)
                    cp == 0x200e ||  // LEFT-TO-RIGHT MARK
                    cp == 0x200f ||  // RIGHT-TO-LEFT MARK
@@ -43,12 +44,8 @@ namespace scn {
         {
             // TODO: optimize
             SCN_EXPECT(!str.empty());
-            auto cp = get_next_code_point(str);
-            if (!cp) {
-                return {ranges::next(str.begin()), false};
-            }
-
-            return {cp->iterator, is_cp_space(cp->value)};
+            auto res = get_next_code_point(str);
+            return {res.iterator, is_cp_space(res.value)};
         }
     }  // namespace impl
 

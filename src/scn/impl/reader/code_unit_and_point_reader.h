@@ -53,12 +53,9 @@ namespace scn {
                 SourceRange&& range,
                 char32_t& cp)
             {
-                return read_code_point_into(SCN_FWD(range))
-                    .transform([&](auto result) {
-                        cp = decode_code_point_exhaustive_valid(
-                            result.value.view());
-                        return result.iterator;
-                    });
+                auto result = read_code_point_into(SCN_FWD(range));
+                cp = decode_code_point_exhaustive_valid(result.value.view());
+                return result.iterator;
             }
         };
 

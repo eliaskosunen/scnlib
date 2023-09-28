@@ -174,7 +174,7 @@ namespace scn {
                             read_until_classic_space(input.view());
                         SCN_EXPECT(first_space);
                         input.assign(std::basic_string<CharT>{
-                            input.view().begin(), *first_space});
+                            input.view().begin(), first_space});
                     }
 
                     if (this->m_kind ==

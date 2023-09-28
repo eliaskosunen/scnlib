@@ -118,8 +118,8 @@ namespace scn {
                     set_clocale_classic_guard clocale_guard{LC_CTYPE};
 
                     std::wstring winput;
-                    transcode_valid_to_string(
-                        std::u32string_view{&cp, 1}, winput);
+                    transcode_valid_to_string(std::u32string_view{&cp, 1},
+                                              winput);
                     const auto n = ::wcswidth(winput.data(), winput.size());
                     SCN_ENSURE(n != -1);
                     return static_cast<size_t>(n);
@@ -131,8 +131,8 @@ namespace scn {
 
                 case text_width_algorithm::code_units: {
                     std::wstring winput;
-                    transcode_valid_to_string(
-                        std::u32string_view{&cp, 1}, winput);
+                    transcode_valid_to_string(std::u32string_view{&cp, 1},
+                                              winput);
                     return winput.size();
                 }
 

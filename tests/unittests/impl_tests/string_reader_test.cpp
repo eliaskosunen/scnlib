@@ -132,9 +132,8 @@ struct test_type_pack {
             narrowed_val = val;
         }
         else {
-            auto r = scn::impl::transcode_to_string(
+            scn::impl::transcode_to_string(
                 std::basic_string_view<dest_char_type>(val), narrowed_val);
-            SCN_EXPECT(r);
         }
 
         if (narrowed_val.size() != expected.size()) {
@@ -332,10 +331,7 @@ protected:
 
         SCN_GCC_PUSH
         SCN_GCC_IGNORE("-Wconversion")
-        {
-            auto r = scn::impl::transcode_to_string(f, tmp_specs_str);
-            SCN_EXPECT(r);
-        }
+        scn::impl::transcode_to_string(f, tmp_specs_str);
         auto widened_sv = std::wstring_view{tmp_specs_str};
         SCN_GCC_POP
 

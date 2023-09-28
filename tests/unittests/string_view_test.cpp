@@ -91,8 +91,9 @@ TEST(StringViewTest, InvalidUtf8)
 {
     auto source = std::string_view{"\x82\xf5"};
     auto result = scn::scan<std::string_view>(source, "{:64c}");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error(), scn::scan_error::invalid_encoding);
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    EXPECT_EQ(result->value(), source);
 }
 
 TEST(StringViewTest, WonkyInput)
@@ -113,8 +114,10 @@ TEST(StringViewTest, WonkyInput)
 TEST(StringViewTest, WonkyInput2)
 {
     const char source[] = {'o', ' ', '\x0f', '\n', '\n', '\xc3'};
-    auto range = std::string_view{source, sizeof(source)};
+    auto input = std::string_view{source, sizeof(source)};
 
-    auto result = scn::scan<std::string_view>(range, "{:64c}");
-    ASSERT_FALSE(result);
+    auto result = scn::scan<std::string_view>(input, "{:64c}");
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    EXPECT_EQ(result->value(), input);
 }
