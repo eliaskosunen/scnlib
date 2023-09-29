@@ -157,3 +157,13 @@ TEST(StringTest, WonkyInput)
     EXPECT_TRUE(result->range().empty());
     EXPECT_EQ(result->value(), input);
 }
+
+TEST(StringTest, WonkyInputAndFormatWithTranscoding)
+{
+    const char source[] = {'a', ']', 'c', '{', '}', '\xdf', ':', '\xb1'};
+    auto input = std::string_view{source, sizeof(source)};
+
+    auto result = scn::scan<std::wstring>(input, input);
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
+}

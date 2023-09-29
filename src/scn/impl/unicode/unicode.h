@@ -452,7 +452,7 @@ namespace scn {
                     detail::make_string_view_from_iterators<SourceCharT>(
                         it, source.end()));
 
-                if (SCN_UNLIKELY(cp == detail::invalid_code_point)) {
+                if (SCN_UNLIKELY(cp >= detail::invalid_code_point)) {
                     cp = 0xfffd;  // Replacement character
                 }
 
@@ -465,6 +465,7 @@ namespace scn {
                 SCN_EXPECT(ret == 1);
 
                 dest.append(temp.data());
+                it = iter;
             }
         }
 

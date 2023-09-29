@@ -639,40 +639,19 @@ namespace scn {
             auto len = utf_code_point_length_by_starting_code_unit(*begin);
             if (SCN_UNLIKELY(len == 0 ||
                              static_cast<size_t>(end - begin) < len)) {
-                handler.on_error(
-                    "Invalid Unicode code point in format string argument");
+                handler.on_error("Invalid encoding in format string");
                 return invalid_code_point;
             }
 
-            auto cp_begin = begin;
-            begin += len;
+            const auto cp = decode_utf_code_point_exhaustive(
+                std::basic_string_view<CharT>{begin, len});
+            if (SCN_UNLIKELY(cp >= invalid_code_point)) {
+                handler.on_error("Invalid encoding in format string");
+                return invalid_code_point;
+            }
 
-            if constexpr (sizeof(CharT) == 1) {
-                // UTF-8
-                auto cp = decode_utf8_code_point_exhaustive(
-                    std::string_view{&*cp_begin, len});
-                if (SCN_UNLIKELY(cp == invalid_code_point)) {
-                    handler.on_error(
-                        "Invalid Unicode code point in format string argument");
-                    return invalid_code_point;
-                }
-                return cp;
-            }
-            else if constexpr (sizeof(CharT) == 2) {
-                // UTF-16
-                auto cp = decode_utf16_code_point_exhaustive(
-                    std::wstring_view{&*cp_begin, len});
-                if (SCN_UNLIKELY(cp == invalid_code_point)) {
-                    handler.on_error(
-                        "Invalid Unicode code point in format string argument");
-                    return invalid_code_point;
-                }
-                return cp;
-            }
-            else {
-                SCN_EXPECT(len == 1);
-                return static_cast<char32_t>(*cp_begin);
-            }
+            begin += len;
+            return cp;
         }
 
         template <typename CharT, typename SpecHandler>
@@ -685,7 +664,7 @@ namespace scn {
 
             auto cp_first =
                 parse_presentation_set_code_point(begin, end, handler);
-            if (SCN_UNLIKELY(cp_first == invalid_code_point)) {
+            if (SCN_UNLIKELY(cp_first >= invalid_code_point)) {
                 return;
             }
 
@@ -695,7 +674,7 @@ namespace scn {
 
                 auto cp_second =
                     parse_presentation_set_code_point(begin, end, handler);
-                if (SCN_UNLIKELY(cp_second == invalid_code_point)) {
+                if (SCN_UNLIKELY(cp_second >= invalid_code_point)) {
                     return;
                 }
 

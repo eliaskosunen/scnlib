@@ -82,7 +82,26 @@ namespace scn {
             {
             }
 
-            constexpr void on_literal_text(const CharT*, const CharT*) const {}
+            constexpr void on_literal_text(const CharT* begin,
+                                           const CharT* end) const
+            {
+                while (begin != end) {
+                    const auto len =
+                        utf_code_point_length_by_starting_code_unit(*begin);
+                    if (SCN_UNLIKELY(len == 0 ||
+                                     static_cast<size_t>(end - begin) < len)) {
+                        return on_error("Invalid encoding in format string");
+                    }
+
+                    const auto cp = decode_utf_code_point_exhaustive(
+                        std::basic_string_view<CharT>{begin, len});
+                    if (SCN_UNLIKELY(cp >= invalid_code_point)) {
+                        return on_error("Invalid encoding in format string");
+                    }
+
+                    begin += len;
+                }
+            }
 
             constexpr auto on_arg_id()
             {

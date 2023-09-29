@@ -245,6 +245,20 @@ namespace scn {
                 SCN_UNREACHABLE;
             }
         }
+
+        template <typename CharT>
+        inline constexpr char32_t decode_utf_code_point_exhaustive(
+            std::basic_string_view<CharT> input)
+        {
+            if constexpr (sizeof(CharT) == 1) {
+                return decode_utf8_code_point_exhaustive(input);
+            } else if constexpr (sizeof(CharT) == 2) {
+                return decode_utf16_code_point_exhaustive(input);
+            } else {
+                SCN_EXPECT(input.size() == 1);
+                return static_cast<char32_t>(input.front());
+            }
+        }
     }  // namespace detail
 
     SCN_END_NAMESPACE

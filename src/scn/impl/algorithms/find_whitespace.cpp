@@ -28,29 +28,33 @@ namespace scn {
             std::string_view::iterator find_classic_space_simple_impl(
                 std::string_view source)
             {
-                for (auto it = source.begin(); it != source.end(); ++it) {
+                auto it = source.begin();
+                while (it != source.end()) {
                     auto ret = is_first_char_space(
                         detail::make_string_view_from_iterators<char>(
                             it, source.end()));
-                    if (ret.value) {
-                        return it;
+                    if (ret.is_space) {
+                        break;
                     }
+                    it = ret.iterator;
                 }
-                return source.end();
+                return it;
             }
 
             std::string_view::iterator find_classic_nonspace_simple_impl(
                 std::string_view source)
             {
-                for (auto it = source.begin(); it != source.end(); ++it) {
+                auto it = source.begin();
+                while (it != source.end()) {
                     auto ret = is_first_char_space(
                         detail::make_string_view_from_iterators<char>(
                             it, source.end()));
-                    if (!ret.value) {
-                        return it;
+                    if (!ret.is_space) {
+                        break;
                     }
+                    it = ret.iterator;
                 }
-                return source.end();
+                return it;
             }
 
             bool is_decimal_digit(char ch) SCN_NOEXCEPT

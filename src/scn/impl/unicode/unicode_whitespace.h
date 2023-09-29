@@ -37,15 +37,20 @@ namespace scn {
         }
 
         template <typename CharT>
+        struct is_first_char_space_result {
+            ranges::iterator_t<std::basic_string_view<CharT>> iterator;
+            char32_t cp;
+            bool is_space;
+        };
+
+        template <typename CharT>
         inline auto is_first_char_space(std::basic_string_view<CharT> str)
-            -> iterator_value_result<
-                ranges::iterator_t<std::basic_string_view<CharT>>,
-                bool>
+            -> is_first_char_space_result<CharT>
         {
             // TODO: optimize
             SCN_EXPECT(!str.empty());
             auto res = get_next_code_point(str);
-            return {res.iterator, is_cp_space(res.value)};
+            return {res.iterator, res.value, is_cp_space(res.value)};
         }
     }  // namespace impl
 

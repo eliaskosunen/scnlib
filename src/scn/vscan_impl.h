@@ -131,10 +131,15 @@ namespace scn {
                         return on_error("Unexpected end of source");
                     }
 
-                    if (auto [after_space_it, is_space] =
+                    if (auto [after_space_it, cp, is_space] =
                             impl::is_first_char_space(
-                                std::basic_string_view<CharT>{begin, end});
-                        is_space) {
+                                std::basic_string_view<CharT>{
+                                    begin, static_cast<size_t>(
+                                               ranges::distance(begin, end))});
+                        cp == detail::invalid_code_point) {
+                        return on_error("Invalid encoding in format string");
+                    }
+                    else if (is_space) {
                         ctx.advance_to(
                             impl::read_while_classic_space(ctx.range()));
                         return;
