@@ -172,7 +172,6 @@ namespace scn {
                         // TODO: call float_reader::read_source?
                         auto first_space =
                             read_until_classic_space(input.view());
-                        SCN_EXPECT(first_space);
                         input.assign(std::basic_string<CharT>{
                             input.view().begin(), first_space});
                     }
