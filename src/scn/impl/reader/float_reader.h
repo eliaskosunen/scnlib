@@ -106,10 +106,8 @@ namespace scn {
                 const std::ptrdiff_t sign_len =
                     m_sign != numeric_reader_base::sign::default_sign ? 1 : 0;
 
-                return parse_value_impl(value).transform(
-                    [&](auto n) SCN_NOEXCEPT {
-                        return n + sign_len + ranges::ssize(m_thsep_indices);
-                    });
+                SCN_TRY(n, parse_value_impl(value));
+                return n + sign_len + ranges::ssize(m_thsep_indices);
             }
 
         private:
@@ -117,80 +115,78 @@ namespace scn {
             scan_expected<simple_borrowed_iterator_t<Range>> read_source_impl(
                 Range&& range)
             {
-                auto digits_begin = ranges::begin(range);
-                return numeric_reader_base::read_sign(range, m_sign)
-                    .and_then([&](auto it) {
-                        digits_begin = it;
-                        auto r = ranges::subrange{it, ranges::end(range)};
-                        if constexpr (ranges::contiguous_range<Range> &&
-                                      ranges::sized_range<Range>) {
-                            if (SCN_UNLIKELY(m_locale_options.thousands_sep !=
-                                                 0 ||
-                                             m_locale_options.decimal_point !=
-                                                 CharT{'.'})) {
-                                return do_read_source_impl(
+                SCN_TRY(it, numeric_reader_base::read_sign(range, m_sign));
+
+                auto digits_begin = it;
+                auto r = ranges::subrange{it, ranges::end(range)};
+                if constexpr (ranges::contiguous_range<Range> &&
+                              ranges::sized_range<Range>) {
+                    if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 ||
+                                     m_locale_options.decimal_point !=
+                                         CharT{'.'})) {
+                        SCN_TRY_ASSIGN(
+                            it, do_read_source_impl(
                                     r,
                                     [&](auto&& rr) {
                                         return read_regular_float(SCN_FWD(rr));
                                     },
                                     [&](auto&& rr) {
                                         return read_hexfloat(SCN_FWD(rr));
-                                    });
+                                    }));
+                    }
+                    else {
+                        auto cb = [&](auto&& rr)
+                            -> scan_expected<
+                                simple_borrowed_iterator_t<decltype(rr)>> {
+                            auto res = read_all(rr);
+                            if (SCN_UNLIKELY(res == ranges::begin(r))) {
+                                return unexpected_scan_error(
+                                    scan_error::invalid_scanned_value,
+                                    "Invalid float value");
                             }
-
-                            auto cb = [&](auto&& rr)
-                                -> scan_expected<
-                                    simple_borrowed_iterator_t<decltype(rr)>> {
-                                auto res = read_all(rr);
-                                if (SCN_UNLIKELY(res == ranges::begin(r))) {
-                                    return unexpected_scan_error(
-                                        scan_error::invalid_scanned_value,
-                                        "Invalid float value");
-                                }
-                                return res;
-                            };
-                            return do_read_source_impl(r, cb, cb);
-                        }
-                        else {
-                            return do_read_source_impl(
+                            return res;
+                        };
+                        SCN_TRY_ASSIGN(it, do_read_source_impl(r, cb, cb));
+                    }
+                }
+                else {
+                    SCN_TRY_ASSIGN(
+                        it, do_read_source_impl(
                                 r,
                                 [&](auto&& rr) {
                                     return read_regular_float(SCN_FWD(rr));
                                 },
                                 [&](auto&& rr) {
                                     return read_hexfloat(SCN_FWD(rr));
-                                });
-                        }
-                    })
-                    .and_then([&](auto it) -> scan_expected<decltype(it)> {
-                        SCN_EXPECT(m_kind != float_kind::tbd);
+                                }));
+                }
 
-                        if (m_kind != float_kind::inf_short &&
-                            m_kind != float_kind::inf_long &&
-                            m_kind != float_kind::nan_simple &&
-                            m_kind != float_kind::nan_with_payload) {
-                            SCN_EXPECT(digits_begin <= it);
-                            this->m_buffer.assign(
-                                ranges::subrange{digits_begin, it});
-                        }
+                SCN_EXPECT(m_kind != float_kind::tbd);
 
-                        handle_separators();
+                if (m_kind != float_kind::inf_short &&
+                    m_kind != float_kind::inf_long &&
+                    m_kind != float_kind::nan_simple &&
+                    m_kind != float_kind::nan_with_payload) {
+                    SCN_EXPECT(digits_begin <= it);
+                    this->m_buffer.assign(ranges::subrange{digits_begin, it});
+                }
 
-                        if (!m_thsep_indices.empty()) {
-                            SCN_EXPECT(m_integral_part_length >= 0);
-                            if (auto e = this->check_thsep_grouping(
-                                    ranges::subrange{
-                                        digits_begin,
-                                        ranges::next(digits_begin,
-                                                     m_integral_part_length)},
-                                    m_thsep_indices, m_locale_options.grouping);
-                                SCN_UNLIKELY(!e)) {
-                                return unexpected(e);
-                            }
-                        }
+                handle_separators();
 
-                        return it;
-                    });
+                if (!m_thsep_indices.empty()) {
+                    SCN_EXPECT(m_integral_part_length >= 0);
+                    if (auto e = this->check_thsep_grouping(
+                            ranges::subrange{
+                                digits_begin,
+                                ranges::next(digits_begin,
+                                             m_integral_part_length)},
+                            m_thsep_indices, m_locale_options.grouping);
+                        SCN_UNLIKELY(!e)) {
+                        return unexpected(e);
+                    }
+                }
+
+                return it;
             }
 
             template <typename Range>
@@ -646,9 +642,8 @@ namespace scn {
                     return unexpected(r.error());
                 }
 
-                return rd.parse_value(value).transform([&](std::ptrdiff_t n) {
-                    return ranges::next(ranges::begin(range), n);
-                });
+                SCN_TRY(n, rd.parse_value(value));
+                return ranges::next(ranges::begin(range), n);
             }
 
             static unsigned get_options(

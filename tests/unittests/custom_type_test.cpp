@@ -66,6 +66,16 @@ TEST(CustomTypeTest, Simple)
     EXPECT_EQ(val.j, 456);
 }
 
+TEST(CustomTypeTest, DISABLED_CustomFormatString)
+{
+    auto input = std::string_view{"123 456"};
+    auto result = scn::scan<mytype>(input, "{:6}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value().i, 123);
+    EXPECT_EQ(result->value().j, 45);
+}
+
 TEST(CustomTypeTest, Multiple)
 {
     auto result = scn::scan<mytype, mytype>("12 34 56 78", "{} {}");

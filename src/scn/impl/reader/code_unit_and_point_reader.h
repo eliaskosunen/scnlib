@@ -34,11 +34,9 @@ namespace scn {
                 SourceRange&& range,
                 CharT& ch)
             {
-                return read_code_unit(range).transform(
-                    [&](auto it) SCN_NOEXCEPT {
-                        ch = *ranges::begin(range);
-                        return it;
-                    });
+                SCN_TRY(it, read_code_unit(range));
+                ch = *ranges::begin(range);
+                return it;
             }
         };
 
@@ -70,15 +68,14 @@ namespace scn {
                 code_point_reader<char32_t> reader{};
                 char32_t cp{};
                 auto ret = reader.read(SCN_FWD(range), cp);
-                if (!ret) {
+                if (SCN_UNLIKELY(!ret)) {
                     return unexpected(ret.error());
                 }
 
-                return encode_code_point_as_wide_character(cp, true).transform(
-                    [&](auto encoded_ch) SCN_NOEXCEPT {
-                        ch = encoded_ch;
-                        return *ret;
-                    });
+                SCN_TRY(encoded_ch,
+                        encode_code_point_as_wide_character(cp, true));
+                ch = encoded_ch;
+                return *ret;
             }
         };
 

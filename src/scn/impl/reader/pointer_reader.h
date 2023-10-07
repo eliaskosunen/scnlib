@@ -53,12 +53,10 @@ namespace scn {
                 specs.type = detail::presentation_type::int_hex;
 
                 std::uintptr_t intvalue{};
-                return reader_impl_for_int<CharT>{}
-                    .read_specs(range, specs, intvalue, loc)
-                    .transform([&](auto result) SCN_NOEXCEPT {
-                        value = reinterpret_cast<void*>(intvalue);
-                        return result;
-                    });
+                SCN_TRY(result, reader_impl_for_int<CharT>{}.read_specs(
+                                    range, specs, intvalue, loc));
+                value = reinterpret_cast<void*>(intvalue);
+                return result;
             }
 
             template <typename Range>

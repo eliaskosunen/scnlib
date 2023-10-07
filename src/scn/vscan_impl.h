@@ -173,13 +173,13 @@ namespace scn {
                     return;
                 }
 
-                visit_scan_arg(SCN_FWD(visitor), arg)
-                    .transform([&](auto it) SCN_NOEXCEPT {
-                        // force formatting
-                        ctx.advance_to(it);
-                    })
-                    .transform_error([&](auto err)
-                                         SCN_NOEXCEPT { on_error(err); });
+                auto r = visit_scan_arg(SCN_FWD(visitor), arg);
+                if (SCN_UNLIKELY(!r)) {
+                    on_error(r.error());
+                }
+                else {
+                    ctx.advance_to(*r);
+                }
             }
 
             void on_replacement_field(std::size_t arg_id, const CharT*)

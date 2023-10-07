@@ -207,19 +207,6 @@
     }(x))
 #endif
 
-// SCN_TRY and friends
-#if SCN_HAS_EXCEPTIONS && SCN_USE_EXCEPTIONS
-#define SCN_TRY      try
-#define SCN_CATCH(x) catch (x)
-#define SCN_THROW(x) throw x
-#define SCN_RETHROW  throw
-#else
-#define SCN_TRY      if (true)
-#define SCN_CATCH(x) if (false)
-#define SCN_THROW(x) ::std::abort()
-#define SCN_RETHROW  ::std::abort()
-#endif
-
 // clang currently can't process libstdc++ ranges::view_interface
 #if SCN_CLANG && SCN_STDLIB_GLIBCXX
 #define SCN_ENVIRONMENT_SUPPORTS_RANGES 0
@@ -255,8 +242,8 @@
 #define SCN_MOVE(x) \
     static_cast<    \
         typename ::scn::detail::remove_reference<decltype(x)>::type&&>(x)
-#define SCN_FWD(x)          static_cast<decltype(x)&&>(x)
-#define SCN_DECLVAL(T)      static_cast<T (*)()>(nullptr)()
+#define SCN_FWD(x)                 static_cast<decltype(x)&&>(x)
+#define SCN_DECLVAL(T)             static_cast<T (*)()>(nullptr)()
 
-#define SCN_BEGIN_NAMESPACE inline namespace v2 {
-#define SCN_END_NAMESPACE   }
+#define SCN_BEGIN_NAMESPACE        inline namespace v2 {
+#define SCN_END_NAMESPACE          }

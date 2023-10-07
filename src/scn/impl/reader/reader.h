@@ -95,12 +95,9 @@ namespace scn {
             scan_expected<iterator> operator()(T& value)
             {
                 auto rd = make_reader<T, char_type>();
-                return skip_ws_before_if_required(rd, range, loc)
-                    .and_then([&](auto it) {
-                        return rd.read_default(
-                            ranges::subrange{it, ranges::end(range)}, value,
-                            loc);
-                    });
+                SCN_TRY(it, skip_ws_before_if_required(rd, range, loc));
+                return rd.read_default(ranges::subrange{it, ranges::end(range)},
+                                       value, loc);
             }
 
             scan_expected<iterator> operator()(
@@ -141,11 +138,9 @@ namespace scn {
 
                 auto subr = ranges::subrange{*it, ranges::end(range)};
                 if (specs.width != 0) {
-                    return rd
-                        .read_specs(take_width(subr, specs.width), specs, value,
-                                    loc)
-                        .transform([](auto w_it)
-                                       SCN_NOEXCEPT { return w_it.base(); });
+                    SCN_TRY(w_it, rd.read_specs(take_width(subr, specs.width),
+                                                specs, value, loc));
+                    return w_it.base();
                 }
 
                 return rd.read_specs(subr, specs, value, loc);

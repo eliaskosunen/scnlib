@@ -210,9 +210,8 @@ namespace scn {
         {
             auto arg =
                 detail::make_arg<detail::context_type_for<Source>>(value);
-            return vscan_value(SCN_FWD(source), arg).transform([&](auto&& it) {
-                return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(value)}};
-            });
+            SCN_TRY(it, vscan_value(SCN_FWD(source), arg));
+            return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(value)}};
         }
     }  // namespace detail
 

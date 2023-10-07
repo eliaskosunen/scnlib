@@ -79,3 +79,22 @@ namespace scn {
 
     SCN_END_NAMESPACE
 }  // namespace scn
+
+#define SCN_TRY_IMPL_CONCAT(a, b)  a##b
+#define SCN_TRY_IMPL_CONCAT2(a, b) SCN_TRY_IMPL_CONCAT(a, b)
+#define SCN_TRY_TMP                SCN_TRY_IMPL_CONCAT2(_scn_try_tmp_, __LINE__)
+
+#define SCN_TRY_ASSIGN(init, x)                        \
+    auto&& SCN_TRY_TMP = (x);                          \
+    if (SCN_UNLIKELY(!SCN_TRY_TMP)) {                  \
+        return ::scn::unexpected(SCN_TRY_TMP.error()); \
+    }                                                  \
+    init = *SCN_FWD(SCN_TRY_TMP);
+#define SCN_TRY(name, x) SCN_TRY_ASSIGN(auto name, x)
+
+#define SCN_TRY_ERR(name, x)          \
+    auto&& SCN_TRY_TMP = (x);         \
+    if (SCN_UNLIKELY(!SCN_TRY_TMP)) { \
+        return SCN_TRY_TMP.error();   \
+    }                                 \
+    auto name = *SCN_FWD(SCN_TRY_TMP);

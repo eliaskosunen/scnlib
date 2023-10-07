@@ -115,12 +115,10 @@ namespace scn {
                 }
                 SCN_EXPECT(m_base != 0);
 
-                return parse_value_impl(value).transform([&](auto it) {
-                    return ranges::distance(
-                               numeric_base::m_buffer.view().begin(), it) +
-                           m_nondigit_prefix_len +
-                           ranges::ssize(m_thsep_indices);
-                });
+                SCN_TRY(it, parse_value_impl(value));
+                return ranges::distance(numeric_base::m_buffer.view().begin(),
+                                        it) +
+                       m_nondigit_prefix_len + ranges::ssize(m_thsep_indices);
             }
 
         private:
@@ -131,19 +129,17 @@ namespace scn {
                 SCN_EXPECT(m_locale_options.thousands_sep != 0);
                 SCN_EXPECT(!m_locale_options.grouping.empty());
 
-                return read_source_impl<IsSigned>(range).and_then(
-                    [&](auto it) -> scan_expected<decltype(it)> {
-                        if (!m_thsep_indices.empty()) {
-                            if (auto e = this->check_thsep_grouping(
-                                    ranges::subrange{ranges::begin(range), it},
-                                    m_thsep_indices, m_locale_options.grouping);
-                                SCN_UNLIKELY(!e)) {
-                                return unexpected(e);
-                            }
-                        }
+                SCN_TRY(it, read_source_impl<IsSigned>(range));
+                if (!m_thsep_indices.empty()) {
+                    if (auto e = this->check_thsep_grouping(
+                            ranges::subrange{ranges::begin(range), it},
+                            m_thsep_indices, m_locale_options.grouping);
+                        SCN_UNLIKELY(!e)) {
+                        return unexpected(e);
+                    }
+                }
 
-                        return it;
-                    });
+                return it;
             }
 
             template <bool IsSigned, typename Range>
@@ -154,82 +150,72 @@ namespace scn {
                     return ranges::subrange{it, ranges::end(range)};
                 };
 
-                auto base_prefix_begin = ranges::begin(range);
-                auto digits_begin = ranges::begin(range);
+                SCN_TRY(it, read_sign<IsSigned>(range));
 
-                return read_sign<IsSigned>(range)
-                    .and_then([&](auto it) {
-                        base_prefix_begin = it;
-                        return read_base_prefix(make_subrange(it));
-                    })
-                    .and_then([&](auto it) {
-                        if (m_zero_parsed) {
-                            digits_begin = ranges_polyfill::prev_backtrack(
-                                it, ranges::begin(range));
-                            return read_digits_zero(
-                                make_subrange(digits_begin));
-                        }
+                auto base_prefix_begin = it;
+                SCN_TRY_ASSIGN(it, read_base_prefix(make_subrange(it)));
 
-                        digits_begin = it;
-                        return read_digits(make_subrange(it),
-                                           base_prefix_begin);
-                    })
-                    .transform([&](auto it) {
-                        if (it <= digits_begin) {
-                            digits_begin = base_prefix_begin;
-                        }
+                auto digits_begin = it;
+                if (m_zero_parsed) {
+                    digits_begin = ranges_polyfill::prev_backtrack(
+                        it, ranges::begin(range));
+                    SCN_TRY_ASSIGN(
+                        it, read_digits_zero(make_subrange(digits_begin)));
+                }
+                else {
+                    SCN_TRY_ASSIGN(
+                        it, read_digits(make_subrange(it), base_prefix_begin));
+                }
 
-                        SCN_EXPECT(digits_begin <= it);
-                        m_nondigit_prefix_len = ranges::distance(
-                            ranges::begin(range), digits_begin);
-                        numeric_base::m_buffer.assign(
-                            ranges::subrange{digits_begin, it});
-                        if (!m_thsep_indices.empty()) {
-                            numeric_base::m_buffer.make_into_allocated_string();
-                            for (size_t i = 0; i < m_thsep_indices.size();
-                                 ++i) {
-                                const auto idx =
-                                    static_cast<size_t>(m_thsep_indices[i]) - i;
-                                auto erase_it =
-                                    numeric_base::m_buffer
-                                        .get_allocated_string()
-                                        .begin() +
-                                    static_cast<std::ptrdiff_t>(idx);
-                                numeric_base::m_buffer.get_allocated_string()
-                                    .erase(erase_it);
-                            }
-                        }
-                        return it;
-                    });
+                if (it <= digits_begin) {
+                    digits_begin = base_prefix_begin;
+                }
+
+                SCN_EXPECT(digits_begin <= it);
+                m_nondigit_prefix_len =
+                    ranges::distance(ranges::begin(range), digits_begin);
+                numeric_base::m_buffer.assign(
+                    ranges::subrange{digits_begin, it});
+                if (!m_thsep_indices.empty()) {
+                    numeric_base::m_buffer.make_into_allocated_string();
+                    for (size_t i = 0; i < m_thsep_indices.size(); ++i) {
+                        const auto idx =
+                            static_cast<size_t>(m_thsep_indices[i]) - i;
+                        auto erase_it =
+                            numeric_base::m_buffer.get_allocated_string()
+                                .begin() +
+                            static_cast<std::ptrdiff_t>(idx);
+                        numeric_base::m_buffer.get_allocated_string().erase(
+                            erase_it);
+                    }
+                }
+
+                return it;
             }
 
             template <bool IsSigned, typename Range>
             scan_expected<simple_borrowed_iterator_t<Range>> read_sign(
                 Range&& range)
             {
-                return numeric_base::read_sign(SCN_FWD(range), m_sign)
-                    .and_then([&](auto it)
-                                  -> scan_expected<
-                                      simple_borrowed_iterator_t<Range>> {
-                        if (m_sign == numeric_base::sign::minus_sign) {
-                            if constexpr (IsSigned) {
-                                if (SCN_UNLIKELY((m_options & only_unsigned) !=
-                                                 0)) {
-                                    return unexpected_scan_error(
-                                        scan_error::invalid_scanned_value,
-                                        "'u'-option disallows negative values");
-                                }
-                            }
-                            else {
-                                return unexpected_scan_error(
-                                    scan_error::invalid_scanned_value,
-                                    "Unexpected '-' sign when parsing an "
-                                    "unsigned value");
-                            }
-                        }
+                SCN_TRY(it, numeric_base::read_sign(SCN_FWD(range), m_sign));
 
-                        return it;
-                    });
+                if (m_sign == numeric_base::sign::minus_sign) {
+                    if constexpr (IsSigned) {
+                        if (SCN_UNLIKELY((m_options & only_unsigned) != 0)) {
+                            return unexpected_scan_error(
+                                scan_error::invalid_scanned_value,
+                                "'u'-option disallows negative values");
+                        }
+                    }
+                    else {
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "Unexpected '-' sign when parsing an "
+                            "unsigned value");
+                    }
+                }
+
+                return it;
             }
 
             template <typename Range>
@@ -375,13 +361,11 @@ namespace scn {
             {
                 SCN_EXPECT(m_zero_parsed);
 
-                return read_digits_impl(range).transform(
-                    [&](auto it) SCN_NOEXCEPT {
-                        if (it != ranges::begin(range)) {
-                            m_zero_parsed = false;
-                        }
-                        return it;
-                    });
+                SCN_TRY(it, read_digits_impl(range));
+                if (it != ranges::begin(range)) {
+                    m_zero_parsed = false;
+                }
+                return it;
             }
 
             template <typename T>
@@ -487,9 +471,8 @@ namespace scn {
                     return unexpected(r.error());
                 }
 
-                return rd.parse_value(value).transform([&](std::ptrdiff_t n) {
-                    return ranges::next(ranges::begin(range), n);
-                });
+                SCN_TRY(n, rd.parse_value(value));
+                return ranges::next(ranges::begin(range), n);
             }
 
             static integer_reader<CharT> get_reader_from_specs(

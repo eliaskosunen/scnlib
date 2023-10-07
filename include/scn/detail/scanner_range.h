@@ -166,18 +166,16 @@ namespace scn {
             Source source,
             std::basic_string_view<CharT> str_to_read)
         {
-            return internal_skip_classic_whitespace(source, false)
-                .and_then([&](auto it) -> scan_expected<decltype(it)> {
-                    for (auto ch_to_read : str_to_read) {
-                        if (SCN_UNLIKELY(ch_to_read != *it)) {
-                            return unexpected_scan_error(
-                                scan_error::invalid_scanned_value,
-                                "Invalid range character");
-                        }
-                        ++it;
-                    }
-                    return it;
-                });
+            SCN_TRY(it, internal_skip_classic_whitespace(source, false));
+            for (auto ch_to_read : str_to_read) {
+                if (SCN_UNLIKELY(ch_to_read != *it)) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Invalid range character");
+                }
+                ++it;
+            }
+            return it;
         }
 
         template <typename Range, typename Element, typename Enable = void>
@@ -186,7 +184,7 @@ namespace scn {
         struct has_push_back<Range,
                              Element,
                              decltype(SCN_DECLVAL(Range&).push_back(
-                                 SCN_DECLVAL(Element &&)))> : std::true_type {};
+                                 SCN_DECLVAL(Element&&)))> : std::true_type {};
 
         template <typename Range, typename Element, typename Enable = void>
         struct has_push : std::false_type {};
@@ -194,7 +192,7 @@ namespace scn {
         struct has_push<Range,
                         Element,
                         decltype(SCN_DECLVAL(Range&).push(
-                            SCN_DECLVAL(Element &&)))> : std::true_type {};
+                            SCN_DECLVAL(Element&&)))> : std::true_type {};
 
         template <typename Range, typename Element, typename Enable = void>
         struct has_element_insert : std::false_type {};
@@ -203,7 +201,7 @@ namespace scn {
             Range,
             Element,
             std::void_t<decltype(SCN_DECLVAL(Range&).insert(
-                SCN_DECLVAL(Element &&)))>> : std::true_type {};
+                SCN_DECLVAL(Element&&)))>> : std::true_type {};
 
         template <typename Range,
                   typename Element,
@@ -277,38 +275,30 @@ namespace scn {
             scan_expected<typename Context::iterator>
             scan_impl(Scan scan_cb, Range& range, Context& ctx) const
             {
-                return detail::scan_str(ctx.range(), this->m_opening_bracket)
-                    .and_then([&](auto it)
-                                  -> scan_expected<typename Context::iterator> {
-                        ctx.advance_to(it);
+                SCN_TRY(it,
+                        detail::scan_str(ctx.range(), this->m_opening_bracket));
+                ctx.advance_to(it);
 
-                        using diff_type = ranges::range_difference_t<Range>;
-                        for (diff_type i = 0; i < detail::range_max_size(range);
-                             ++i) {
-                            if (auto e = detail::scan_str(
-                                    ctx.range(), this->m_closing_bracket);
-                                e) {
-                                break;
-                            }
+                using diff_type = ranges::range_difference_t<Range>;
+                for (diff_type i = 0; i < detail::range_max_size(range); ++i) {
+                    if (auto e = detail::scan_str(ctx.range(),
+                                                  this->m_closing_bracket);
+                        e) {
+                        break;
+                    }
 
-                            T elem{};
-                            if (auto e =
-                                    scan_inner_loop(scan_cb, ctx, elem, i == 0);
-                                SCN_LIKELY(e)) {
-                                detail::add_element_to_range(range,
-                                                             SCN_MOVE(elem));
-                                ctx.advance_to(*e);
-                            }
-                            else {
-                                return e;
-                            }
-                        }
-                        return ctx.range().begin();
-                    })
-                    .and_then([&](auto) {
-                        return detail::scan_str(ctx.range(),
-                                                this->m_closing_bracket);
-                    });
+                    T elem{};
+                    if (auto e = scan_inner_loop(scan_cb, ctx, elem, i == 0);
+                        SCN_LIKELY(e)) {
+                        detail::add_element_to_range(range, SCN_MOVE(elem));
+                        ctx.advance_to(*e);
+                    }
+                    else {
+                        return e;
+                    }
+                }
+
+                return detail::scan_str(ctx.range(), this->m_closing_bracket);
             }
 
         private:
@@ -328,12 +318,11 @@ namespace scn {
                     return detail::scan_str(src, sep);
                 };
 
-                return skip_separator(ctx.range(), this->m_separator, is_first)
-                    .and_then([&](auto it) {
-                        ctx.advance_to(it);
-                        return scan_cb(detail::range_mapper<CharT>().map(elem),
-                                       ctx, is_first);
-                    });
+                SCN_TRY(it, skip_separator(ctx.range(), this->m_separator,
+                                           is_first));
+                ctx.advance_to(it);
+                return scan_cb(detail::range_mapper<CharT>().map(elem), ctx,
+                               is_first);
             }
         };
 
@@ -368,16 +357,10 @@ namespace scn {
         scan_expected<typename Context::iterator> scan(Tuple& value,
                                                        Context& ctx) const
         {
-            return detail::scan_str(ctx.range(), this->m_opening_bracket)
-                .and_then(
-                    [&](auto it) -> scan_expected<typename Context::iterator> {
-                        ctx.advance_to(it);
-                        return scan_for_each(value, ctx);
-                    })
-                .and_then([&](auto) {
-                    return detail::scan_str(ctx.range(),
-                                            this->m_closing_bracket);
-                });
+            SCN_TRY(it, detail::scan_str(ctx.range(), this->m_opening_bracket));
+            ctx.advance_to(it);
+            SCN_TRY(_, scan_for_each(value, ctx));
+            return detail::scan_str(ctx.range(), this->m_closing_bracket);
         }
 
     private:

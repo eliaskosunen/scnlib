@@ -27,6 +27,7 @@
 #include <scn/detail/input_map.h>
 #include <scn/detail/ranges.h>
 #include <scn/detail/unicode.h>
+#include <scn/util/expected.h>
 #include <scn/util/meta.h>
 
 #include <array>
@@ -163,18 +164,10 @@ namespace scn {
             {
                 auto s = Scanner{};
 
-                auto r = s.parse(pctx)
-                             .and_then([&](auto&&) {
-                                 return s.scan(*static_cast<T*>(arg), ctx);
-                             })
-                             .transform([&](auto&& it) SCN_NOEXCEPT {
-                                 ctx.advance_to(SCN_MOVE(it));
-                             });
+                SCN_TRY_ERR(_, s.parse(pctx));
+                SCN_TRY_ERR(it, s.scan(*static_cast<T*>(arg), ctx));
+                ctx.advance_to(SCN_MOVE(it));
 
-                if (SCN_UNLIKELY(!r)) {
-                    SCN_UNLIKELY_ATTR
-                    return r.error();
-                }
                 return {};
             }
         };

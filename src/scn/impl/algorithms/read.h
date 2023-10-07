@@ -317,53 +317,46 @@ namespace scn {
             Range&& range,
             std::basic_string_view<detail::char_t<Range>> str)
         {
-            return read_exactly_n_code_units(range, ranges::ssize(str))
-                .and_then(
-                    [&](auto it)
-                        -> scan_expected<simple_borrowed_iterator_t<Range>> {
-                        auto sv = make_contiguous_buffer(
-                            ranges::subrange{ranges::begin(range), it});
-                        if (SCN_UNLIKELY(sv.view() != str)) {
-                            return unexpected_scan_error(
-                                scan_error::invalid_scanned_value,
-                                "read_matching_string: No match");
-                        }
-                        return it;
-                    });
+            SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str)));
+
+            auto sv = make_contiguous_buffer(
+                ranges::subrange{ranges::begin(range), it});
+            if (SCN_UNLIKELY(sv.view() != str)) {
+                return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "read_matching_string: No match");
+            }
+            return it;
         }
 
         template <typename Range>
         scan_expected<simple_borrowed_iterator_t<Range>>
         read_matching_string_classic(Range&& range, std::string_view str)
         {
-            return read_exactly_n_code_units(range, ranges::ssize(str))
-                .and_then([&](auto it) -> scan_expected<
-                                           simple_borrowed_iterator_t<Range>> {
-                    if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
-                        auto sv = make_contiguous_buffer(
-                            ranges::subrange{ranges::begin(range), it});
-                        if (SCN_UNLIKELY(sv.view() != str)) {
-                            return unexpected_scan_error(
-                                scan_error::invalid_scanned_value,
-                                "read_matching_string: No match");
-                        }
-                        return it;
+            SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str)));
+
+            if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
+                auto sv = make_contiguous_buffer(
+                    ranges::subrange{ranges::begin(range), it});
+                if (SCN_UNLIKELY(sv.view() != str)) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "read_matching_string: No match");
+                }
+                return it;
+            }
+            else {
+                auto range_it = ranges::begin(range);
+                for (size_t i = 0; i < str.size(); ++i, (void)++range_it) {
+                    if (SCN_UNLIKELY(
+                            *range_it !=
+                            static_cast<detail::char_t<Range>>(str[i]))) {
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "read_matching_string: No match");
                     }
-                    else {
-                        auto range_it = ranges::begin(range);
-                        for (size_t i = 0; i < str.size();
-                             ++i, (void)++range_it) {
-                            if (SCN_UNLIKELY(*range_it !=
-                                             static_cast<detail::char_t<Range>>(
-                                                 str[i]))) {
-                                return unexpected_scan_error(
-                                    scan_error::invalid_scanned_value,
-                                    "read_matching_string: No match");
-                            }
-                        }
-                        return it;
-                    }
-                });
+                }
+                return it;
+            }
         }
 
         template <typename Range>
@@ -383,42 +376,38 @@ namespace scn {
                     ch + static_cast<char_type>('a' - 'A'));
             };
 
-            auto check = [&](auto it)
-                -> scan_expected<simple_borrowed_iterator_t<Range>> {
-                auto buf = make_contiguous_buffer(
-                    ranges::subrange{ranges::begin(range), it});
+            SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str)));
 
-                if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
-                    if (buf.stores_allocated_string()) {
-                        for (auto& ch : buf.get_allocated_string()) {
-                            ch = ascii_tolower(ch);
-                        }
-                        if (SCN_UNLIKELY(buf.view() != str)) {
-                            return unexpected_scan_error(
-                                scan_error::invalid_scanned_value,
-                                "read_matching_string_nocase: No match");
-                        }
+            auto buf = make_contiguous_buffer(
+                ranges::subrange{ranges::begin(range), it});
 
-                        return it;
+            if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
+                if (buf.stores_allocated_string()) {
+                    for (auto& ch : buf.get_allocated_string()) {
+                        ch = ascii_tolower(ch);
                     }
+                    if (SCN_UNLIKELY(buf.view() != str)) {
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "read_matching_string_nocase: No match");
+                    }
+
+                    return it;
                 }
+            }
 
-                if (SCN_UNLIKELY(!std::equal(
-                        buf.view().begin(), buf.view().end(), str.begin(),
-                        [&](auto a, auto b) {
-                            return ascii_tolower(a) ==
-                                   static_cast<detail::char_t<Range>>(b);
-                        }))) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "read_matching_string_nocase: No match");
-                }
+            if (SCN_UNLIKELY(!std::equal(
+                    buf.view().begin(), buf.view().end(), str.begin(),
+                    [&](auto a, auto b) {
+                        return ascii_tolower(a) ==
+                               static_cast<detail::char_t<Range>>(b);
+                    }))) {
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "read_matching_string_nocase: No match");
+            }
 
-                return it;
-            };
-
-            return read_exactly_n_code_units(range, ranges::ssize(str))
-                .and_then(check);
+            return it;
         }
 
         template <typename Range>

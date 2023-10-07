@@ -64,16 +64,14 @@ namespace scn {
                                   bool allow_exhaustion = false)
         {
             if (!allow_exhaustion) {
-                return read_while_localized_mask(range, loc,
-                                                 std::ctype_base::space)
-                    .and_then([&](auto it) -> scan_expected<decltype(it)> {
-                        if (auto e = eof_check(
-                                ranges::subrange{it, ranges::end(range)});
-                            SCN_UNLIKELY(!e)) {
-                            return unexpected(e);
-                        }
-                        return it;
-                    });
+                SCN_TRY(it, read_while_localized_mask(range, loc,
+                                                      std::ctype_base::space));
+                if (auto e =
+                        eof_check(ranges::subrange{it, ranges::end(range)});
+                    SCN_UNLIKELY(!e)) {
+                    return unexpected(e);
+                }
+                return it;
             }
 
             return read_while_localized_mask(SCN_FWD(range), loc,

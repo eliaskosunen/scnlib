@@ -76,27 +76,22 @@ namespace scn {
                 Range&& range,
                 sign& p_sign)
             {
-                return read_one_of_code_unit(range, "+-")
-                    .and_then(
-                        [&](auto it) -> scan_expected<
-                                         simple_borrowed_iterator_t<Range>> {
-                            if (*ranges::begin(range) == '-') {
-                                p_sign = sign::minus_sign;
-                            }
-                            else {
-                                p_sign = sign::plus_sign;
-                            }
-                            return it;
-                        })
-                    .or_else(
-                        [&](auto err) -> scan_expected<
-                                          simple_borrowed_iterator_t<Range>> {
-                            if (err.code() ==
-                                scan_error::invalid_scanned_value) {
-                                return ranges::begin(range);
-                            }
-                            return unexpected(err);
-                        });
+                auto r = read_one_of_code_unit(range, "+-");
+                if (SCN_UNLIKELY(!r)) {
+                    if (r.error().code() == scan_error::invalid_scanned_value) {
+                        return ranges::begin(range);
+                    }
+                    return unexpected(r.error());
+                }
+
+                auto& it = *r;
+                if (*ranges::begin(range) == '-') {
+                    p_sign = sign::minus_sign;
+                }
+                else {
+                    p_sign = sign::plus_sign;
+                }
+                return it;
             }
 
             template <typename Range,
