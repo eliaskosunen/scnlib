@@ -904,38 +904,82 @@ namespace scn {
             std::basic_string_view<CharT> format,
             Handler&& handler)
         {
-            if (SCN_LIKELY(format.size() < 32)) {
-                // Small size -> use a simple loop instead of memchr
-                auto begin = format.data();
-                auto it = begin;
-                const auto end = format.data() + format.size();
+            // TODO: memchr fast path with a larger (> 32) format string
 
-                while (it != end) {
-                    const auto ch = *it++;
-                    if (ch == CharT{'{'}) {
-                        handler.on_literal_text(begin, it - 1);
+            auto begin = format.data();
+            auto it = begin;
+            const auto end = format.data() + format.size();
 
-                        begin = it =
-                            parse_replacement_field(it - 1, end, handler);
-                        if (!handler) {
-                            return;
-                        }
-                    }
-                    else if (ch == CharT{'}'}) {
-                        if (SCN_UNLIKELY(it == end || *it != CharT{'}'})) {
-                            handler.on_error("Unmatched '}' in format string");
-                            return;
-                        }
+            while (it != end) {
+                const auto ch = *it++;
+                if (ch == CharT{'{'}) {
+                    handler.on_literal_text(begin, it - 1);
 
-                        handler.on_literal_text(begin, it);
-                        begin = ++it;
+                    begin = it = parse_replacement_field(it - 1, end, handler);
+                    if (!handler) {
+                        return;
                     }
                 }
+                else if (ch == CharT{'}'}) {
+                    if (SCN_UNLIKELY(it == end || *it != CharT{'}'})) {
+                        handler.on_error("Unmatched '}' in format string");
+                        return;
+                    }
 
-                handler.on_literal_text(begin, end);
-                return;
+                    handler.on_literal_text(begin, it);
+                    begin = ++it;
+                }
             }
 
+            handler.on_literal_text(begin, end);
+            return;
+
+#if 0
+            auto begin = format.data();
+            const auto end = format.data() + format.size();
+
+            while (begin != end) {
+                if (end - begin >= 1 && *begin == CharT{'}'} &&
+                    *(begin + 1) == CharT{'}'}) {
+                    handler.on_literal_text(begin, begin + 1);
+                    begin += 2;
+                }
+                if (!handler || begin == end) {
+                    break;
+                }
+
+                auto p = find<IsConstexpr>(begin, end, CharT{'{'});
+                if (p == end) {
+                    return handler.on_literal_text(begin, end);
+                }
+
+                handler.on_literal_text(begin, p);
+                if (!handler) {
+                    break;
+                }
+
+                ++p;
+                if (p == end) {
+                    break;
+                }
+                if (*p == CharT{'{'}) {
+                    handler.on_literal_text(p, p + 1);
+                    ++p;
+                    continue;
+                }
+                if (!handler) {
+                    break;
+                }
+
+                p = parse_replacement_field(p - 1, end, handler);
+                if (!handler) {
+                    break;
+                }
+                begin = p;
+            }
+#endif
+
+#if 0
             const auto reader = [&handler](const CharT* begin,
                                            const CharT* end) {
                 if (begin == end) {
@@ -987,6 +1031,7 @@ namespace scn {
                     return;
                 }
             }
+#endif
         }
 
         template <bool IsConstexpr, typename CharT, typename Handler>

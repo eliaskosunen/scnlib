@@ -167,3 +167,12 @@ TEST(StringTest, WonkyInputAndFormatWithTranscoding)
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
 }
+
+TEST(StringTest, RecoveryFromInvalidEncoding)
+{
+    const auto source = std::string_view{"a\xc3 "};
+    auto result = scn::scan<std::string>(source, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), "a\xc3");
+    EXPECT_EQ(result->begin(), source.end() - 1);
+}

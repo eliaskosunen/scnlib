@@ -39,6 +39,29 @@ TEST(UnicodeTest, Utf8CpLength)
               0);
 }
 
+TEST(UnicodeTest, Utf8Decode)
+{
+    EXPECT_EQ(scn::detail::decode_utf8_code_point_exhaustive("a"),
+              static_cast<char32_t>('a'));
+    EXPECT_EQ(scn::detail::decode_utf8_code_point_exhaustive_valid("a"),
+              static_cast<char32_t>('a'));
+
+    EXPECT_EQ(scn::detail::decode_utf8_code_point_exhaustive("ä"),
+              char32_t{0xe4});
+    EXPECT_EQ(scn::detail::decode_utf8_code_point_exhaustive_valid("ä"),
+              char32_t{0xe4});
+
+    EXPECT_EQ(scn::detail::decode_utf8_code_point_exhaustive("�"),
+              char32_t{0xfffd});
+    EXPECT_EQ(scn::detail::decode_utf8_code_point_exhaustive_valid("�"),
+              char32_t{0xfffd});
+
+    EXPECT_EQ(scn::detail::decode_utf8_code_point_exhaustive("😀"),
+              char32_t{0x1f600});
+    EXPECT_EQ(scn::detail::decode_utf8_code_point_exhaustive_valid("😀"),
+              char32_t{0x1f600});
+}
+
 TEST(UnicodeTest, Utf16CpLength)
 {
     EXPECT_EQ(scn::detail::utf16_code_point_length_by_starting_code_unit(
