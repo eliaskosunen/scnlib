@@ -23,4 +23,5 @@ endfunction()
 add_subdirectory(basic)
 add_subdirectory(integer)
 add_subdirectory(float)
+add_subdirectory(string)
 

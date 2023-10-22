@@ -1,0 +1,1 @@
+scn_make_runtime_benchmark(scn_string_bench string_bench.cpp)

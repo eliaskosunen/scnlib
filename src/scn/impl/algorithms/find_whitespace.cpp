@@ -25,36 +25,135 @@ namespace scn {
 
     namespace impl {
         namespace {
-            std::string_view::iterator find_classic_space_simple_impl(
-                std::string_view source)
+            bool has_nonascii_char_64(std::string_view source)
             {
-                auto it = source.begin();
-                while (it != source.end()) {
-                    auto ret = is_first_char_space(
+                SCN_EXPECT(source.size() <= 8);
+                uint64_t word{};
+                std::memcpy(&word, source.data(), source.size());
+
+                return has_byte_greater(word, 127) != 0;
+            }
+
+            template <typename Cb>
+            std::string_view::iterator find_impl_ascii(std::string_view sv,
+                                                       Cb cb)
+            {
+                return ranges::find_if(sv, cb);
+            }
+
+            template <typename Cb>
+            std::string_view::iterator find_impl_unicode_invalid(
+                std::string_view sv,
+                Cb cb)
+            {
+                auto it = sv.begin();
+                while (it != sv.end()) {
+                    auto res = get_next_code_point(
                         detail::make_string_view_from_iterators<char>(
-                            it, source.end()));
-                    if (ret.is_space) {
-                        break;
+                            it, sv.end()));
+                    if (cb(res.value)) {
+                        return it;
                     }
-                    it = ret.iterator;
+                    it = res.iterator;
                 }
                 return it;
             }
 
-            std::string_view::iterator find_classic_nonspace_simple_impl(
+            template <typename Cb>
+            std::string_view::iterator find_impl_unicode_valid(
+                std::string_view sv,
+                const std::array<char32_t, 8>& codepoints,
+                Cb cb)
+            {
+                for (size_t i = 0; i < codepoints.size(); ++i) {
+                    if (cb(codepoints[i])) {
+                        return sv.begin() + simdutf::utf8_length_from_utf32(
+                                                codepoints.data(), i);
+                    }
+                }
+                return sv.end();
+            }
+
+            std::string_view::iterator find_classic_space_impl(
                 std::string_view source)
             {
                 auto it = source.begin();
                 while (it != source.end()) {
-                    auto ret = is_first_char_space(
-                        detail::make_string_view_from_iterators<char>(
-                            it, source.end()));
-                    if (!ret.is_space) {
-                        break;
+                    auto sv = detail::make_string_view_from_iterators<char>(
+                                  it, source.end())
+                                  .substr(0, 8);
+
+                    if (!has_nonascii_char_64(sv)) {
+                        it = find_impl_ascii(
+                            sv, [](char ch) { return is_ascii_space(ch); });
+                        if (it != sv.end()) {
+                            return it;
+                        }
+                        continue;
                     }
-                    it = ret.iterator;
+
+                    std::array<char32_t, 8> codepoints{};
+                    auto ret = simdutf::convert_utf8_to_utf32(
+                        &*it, sv.size(), codepoints.data());
+                    if (SCN_UNLIKELY(ret == 0)) {
+                        it = find_impl_unicode_invalid(
+                            sv, [](char32_t cp) { return is_cp_space(cp); });
+                        if (it != sv.end()) {
+                            return it;
+                        }
+                        continue;
+                    }
+
+                    it = find_impl_unicode_valid(
+                        sv, codepoints,
+                        [](char32_t cp) { return is_cp_space(cp); });
+                    if (it != sv.end()) {
+                        return it;
+                    }
                 }
-                return it;
+
+                return source.end();
+            }
+
+            std::string_view::iterator find_classic_nonspace_impl(
+                std::string_view source)
+            {
+                auto it = source.begin();
+                while (it != source.end()) {
+                    auto sv = detail::make_string_view_from_iterators<char>(
+                                  it, source.end())
+                                  .substr(0, 8);
+
+                    if (!has_nonascii_char_64(sv)) {
+                        it = find_impl_ascii(
+                            sv, [](char ch) { return !is_ascii_space(ch); });
+                        if (it != sv.end()) {
+                            return it;
+                        }
+                        continue;
+                    }
+
+                    std::array<char32_t, 8> codepoints{};
+                    auto ret = simdutf::convert_utf8_to_utf32(
+                        &*it, sv.size(), codepoints.data());
+                    if (SCN_UNLIKELY(ret == 0)) {
+                        it = find_impl_unicode_invalid(
+                            sv, [](char32_t cp) { return !is_cp_space(cp); });
+                        if (it != sv.end()) {
+                            return it;
+                        }
+                        continue;
+                    }
+
+                    it = find_impl_unicode_valid(
+                        sv, codepoints,
+                        [](char32_t cp) { return !is_cp_space(cp); });
+                    if (it != sv.end()) {
+                        return it;
+                    }
+                }
+
+                return source.end();
             }
 
             bool is_decimal_digit(char ch) SCN_NOEXCEPT
@@ -106,146 +205,16 @@ namespace scn {
             }
         }  // namespace
 
-#if 0
-        namespace {
-            template <typename GetMask, typename Fallback>
-            SCN_MAYBE_UNUSED std::string_view::iterator find_64_match_impl(
-                std::string_view source,
-                GetMask get_mask,
-                Fallback fallback)
-            {
-                constexpr uint64_t match_mask = ~0ul / 255 * 0x80ull;
-                size_t i = 0;
-                for (; i + 8 <= source.size(); i += 8) {
-                    uint64_t word{};
-                    memcpy(&word, source.data() + i, 8);
-
-                    const auto masked = get_mask(word);
-                    if (masked == 0) {
-                        continue;
-                    }
-                    const auto next_i =
-                        get_index_of_first_matching_byte(masked, match_mask);
-                    return source.begin() + i + next_i;
-                }
-
-                return fallback({source.data() + i, source.size() - i});
-            }
-
-            SCN_MAYBE_UNUSED std::string_view::iterator
-            find_classic_space_64_impl(std::string_view source)
-            {
-                const auto get_mask = [](uint64_t word) -> uint64_t {
-                    constexpr uint64_t space_mask =
-                        ~0ul / 255 * static_cast<uint64_t>(' ');
-
-                    // Has non-zero byte on space (' ') chars
-                    uint64_t space_masked = has_zero_byte(word ^ space_mask);
-                    // Has non-zero (0x80) byte on otherspace chars
-                    uint64_t otherspaces_masked =
-                        has_byte_between(word, '\t', '\r');
-
-                    return space_masked | otherspaces_masked;
-                };
-
-                return find_64_match_impl(source, get_mask,
-                                          find_classic_space_simple_impl);
-            }
-
-            template <typename GetMask, typename Fallback>
-            SCN_MAYBE_UNUSED std::string_view::iterator find_64_nonmatch_impl(
-                std::string_view source,
-                GetMask get_mask,
-                Fallback fallback)
-            {
-                size_t i = 0;
-                for (; i + 8 <= source.size(); i += 8) {
-                    uint64_t word{};
-                    memcpy(&word, source.data() + i, 8);
-
-                    const auto masked = get_mask(word);
-                    const auto next_i =
-                        get_index_of_first_nonmatching_byte(masked);
-                    if (next_i != 8) {
-                        return source.begin() + i + next_i;
-                    }
-                }
-
-                return fallback({source.data() + i, source.size() - i});
-            }
-
-            SCN_MAYBE_UNUSED std::string_view::iterator
-            find_classic_nonspace_64_impl(std::string_view source)
-            {
-                const auto get_mask = [](uint64_t word) -> uint64_t {
-                    constexpr uint64_t space_mask =
-                        ~0ull / 255 * static_cast<uint64_t>(' ');
-
-                    // Has non-zero byte on space (' ') chars
-                    uint64_t space_masked = has_zero_byte(word ^ space_mask);
-                    // Has non-zero (0x80) byte on otherspace chars
-                    uint64_t otherspaces_masked =
-                        has_byte_between(word, '\t', '\r');
-
-                    return space_masked | otherspaces_masked;
-                };
-
-                return find_64_nonmatch_impl(source, get_mask,
-                                             find_classic_nonspace_simple_impl);
-            }
-
-            SCN_MAYBE_UNUSED std::string_view::iterator
-            find_nondecimal_digit_64_impl(std::string_view source)
-            {
-                const auto get_mask = [](uint64_t word) -> uint64_t {
-                    return has_byte_between(word, '0', '9');
-                };
-
-                return find_64_nonmatch_impl(source, get_mask,
-                                             find_nondecimal_digit_simple_impl);
-            }
-        }  // namespace
-
         std::string_view::iterator find_classic_space_narrow_fast(
             std::string_view source)
         {
-            if (sizeof(void*) == 8 && !SCN_IS_BIG_ENDIAN) {
-                return find_classic_space_64_impl(source);
-            } else {
-                return find_classic_space_simple_impl(source);
-            }
+            return find_classic_space_impl(source);
         }
 
         std::string_view::iterator find_classic_nonspace_narrow_fast(
             std::string_view source)
         {
-            if (sizeof(void*) == 8 && !SCN_IS_BIG_ENDIAN) {
-                return find_classic_nonspace_64_impl(source);
-            } else {
-                return find_classic_nonspace_simple_impl(source);
-            }
-        }
-
-        std::string_view::iterator find_nondecimal_digit_narrow_fast(
-            std::string_view source)
-        {
-            if (sizeof(void*) == 8 && !SCN_IS_BIG_ENDIAN) {
-                return find_nondecimal_digit_64_impl(source);
-            } else {
-                return find_nondecimal_digit_simple_impl(source);
-            }
-        }
-#else
-        std::string_view::iterator find_classic_space_narrow_fast(
-            std::string_view source)
-        {
-            return find_classic_space_simple_impl(source);
-        }
-
-        std::string_view::iterator find_classic_nonspace_narrow_fast(
-            std::string_view source)
-        {
-            return find_classic_nonspace_simple_impl(source);
+            return find_classic_nonspace_impl(source);
         }
 
         std::string_view::iterator find_nondecimal_digit_narrow_fast(
@@ -253,7 +222,6 @@ namespace scn {
         {
             return find_nondecimal_digit_simple_impl(source);
         }
-#endif
     }  // namespace impl
 
     SCN_END_NAMESPACE

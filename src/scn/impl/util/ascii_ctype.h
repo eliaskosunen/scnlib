@@ -25,9 +25,26 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-#if 0
         inline bool is_ascii_space(char ch) SCN_NOEXCEPT
         {
+#if 0
+            constexpr auto chars_per_lookup_cell = 256 / 8;
+            static constexpr std::array<uint32_t, 8> lookup = {
+                (1 << 0x09) | (1 << 0x0a) | (1 << 0x0b) | (1 << 0x0c) |
+                    (1 << 0x0d),
+                (1 << (0x20 - chars_per_lookup_cell)),
+                0,
+                0,
+                0,
+                0,
+                0,
+                0};
+            const auto word =
+                lookup[static_cast<unsigned char>(ch) / chars_per_lookup_cell];
+            return (word >>
+                    (static_cast<unsigned char>(ch) % chars_per_lookup_cell)) &
+                   1;
+#else
             static constexpr std::array<bool, 256> lookup = {
                 {false, false, false, false, false, false, false, false, false,
                  true,  true,  true,  true,  true,  false, false, false, false,
@@ -60,13 +77,13 @@ namespace scn {
                  false, false, false, false}};
 
             return lookup[static_cast<size_t>(static_cast<unsigned char>(ch))];
+#endif
         }
 
         constexpr bool is_ascii_space(wchar_t ch) SCN_NOEXCEPT
         {
             return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
         }
-#endif
 
         constexpr bool is_ascii_char(char ch) SCN_NOEXCEPT
         {

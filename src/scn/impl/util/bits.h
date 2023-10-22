@@ -89,6 +89,11 @@ namespace scn {
                 (~0ull / 255 * 128));
         }
 
+        constexpr uint64_t has_byte_greater(uint64_t word, uint8_t n)
+        {
+            return (word + ~0ull / 255 * (127 - n) | word) & ~0ull / 255 * 128;
+        }
+
         inline size_t get_index_of_first_nonmatching_byte(uint64_t word)
         {
             word ^= 0x8080808080808080ull;

@@ -63,23 +63,9 @@ namespace scn {
                 return {it, cp_view};
             }
 
-            if constexpr (ranges::sized_range<Range>) {
-                auto sz = ranges_polyfill::usize(range);
-                if (SCN_UNLIKELY(sz < len)) {
-                    ranges::advance(it, ranges::end(range));
-                }
-                else {
-                    ranges::advance(
-                        it,
-                        static_cast<ranges::range_difference_t<Range>>(len));
-                }
-            }
-            else {
-                ++it;
-                size_t i = 1;
-                for (; i < len && it != ranges::end(range); ++i, (void)++it) {}
-            }
-
+            ranges::advance(it,
+                            static_cast<ranges::range_difference_t<Range>>(len),
+                            ranges::end(range));
             auto cp_view = make_contiguous_buffer(
                 ranges::subrange{ranges::begin(range), it});
             return {it, cp_view};
