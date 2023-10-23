@@ -245,6 +245,9 @@ namespace scn {
         read_matching_code_unit(Range&& range, detail::char_t<Range> ch)
         {
             auto it = read_code_unit(range);
+            if (SCN_UNLIKELY(!it)) {
+                return unexpected(it.error());
+            }
 
             if (SCN_UNLIKELY(*ranges::begin(range) !=
                              static_cast<detail::char_t<Range>>(ch))) {

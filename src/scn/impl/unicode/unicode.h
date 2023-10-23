@@ -484,7 +484,7 @@ namespace scn {
                               sizeof(DestCharT) == 2) {
                     return simdutf::convert_utf8_to_utf16_with_errors(
                         src.data(), src.size(),
-                        reinterpret_cast<char32_t*>(dst.data()));
+                        reinterpret_cast<char16_t*>(dst.data()));
                 }
                 else if constexpr (sizeof(SourceCharT) == 1 &&
                                    sizeof(DestCharT) == 4) {

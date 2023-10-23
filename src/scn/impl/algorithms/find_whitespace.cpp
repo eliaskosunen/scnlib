@@ -25,7 +25,8 @@ namespace scn {
 
     namespace impl {
         namespace {
-            bool has_nonascii_char_64(std::string_view source)
+            template <typename R>
+            bool has_nonascii_char_64(R source)
             {
                 SCN_EXPECT(source.size() <= 8);
                 uint64_t word{};
@@ -34,126 +35,90 @@ namespace scn {
                 return has_byte_greater(word, 127) != 0;
             }
 
-            template <typename Cb>
-            std::string_view::iterator find_impl_ascii(std::string_view sv,
-                                                       Cb cb)
+            template <typename R, typename Cb>
+            auto find_impl_ascii(R sv, Cb cb)
             {
                 return ranges::find_if(sv, cb);
             }
 
             template <typename Cb>
-            std::string_view::iterator find_impl_unicode_invalid(
-                std::string_view sv,
-                Cb cb)
+            auto find_impl_unicode_invalid(std::string_view sv, Cb cb)
             {
-                auto it = sv.begin();
-                while (it != sv.end()) {
-                    auto res = get_next_code_point(
-                        detail::make_string_view_from_iterators<char>(
-                            it, sv.end()));
+                auto it = sv.data();
+                while (it != sv.data() + sv.size()) {
+                    auto tmp = std::string_view{
+                        detail::to_address(it),
+                        static_cast<size_t>(ranges::distance(
+                            it, detail::to_address(sv.end())))};
+                    auto res = get_next_code_point(tmp);
                     if (cb(res.value)) {
-                        return it;
+                        break;
                     }
-                    it = res.iterator;
+                    it += ranges::distance(tmp.data(),
+                                           detail::to_address(res.iterator));
                 }
-                return it;
+                return sv.begin() + ranges::distance(sv.data(), it);
             }
 
             template <typename Cb>
-            std::string_view::iterator find_impl_unicode_valid(
+            auto find_impl_unicode_valid(
                 std::string_view sv,
                 const std::array<char32_t, 8>& codepoints,
                 Cb cb)
             {
                 for (size_t i = 0; i < codepoints.size(); ++i) {
                     if (cb(codepoints[i])) {
-                        return sv.begin() + simdutf::utf8_length_from_utf32(
-                                                codepoints.data(), i);
+                        return sv.begin() + static_cast<std::ptrdiff_t>(
+                                                simdutf::utf8_length_from_utf32(
+                                                    codepoints.data(), i));
                     }
                 }
                 return sv.end();
             }
 
-            std::string_view::iterator find_classic_space_impl(
-                std::string_view source)
+            template <typename CuCb, typename CpCb>
+            std::string_view::iterator
+            find_classic_impl(std::string_view source, CuCb cu_cb, CpCb cp_cb)
             {
-                auto it = source.begin();
-                while (it != source.end()) {
-                    auto sv = detail::make_string_view_from_iterators<char>(
-                                  it, source.end())
-                                  .substr(0, 8);
+                auto it = source.data();
+                const auto end = source.data() + source.size();
+
+                while (it != end) {
+                    auto sv =
+                        std::string_view{
+                            it, static_cast<size_t>(ranges::distance(
+                                    it, detail::to_address(source.end())))}
+                            .substr(0, 8);
 
                     if (!has_nonascii_char_64(sv)) {
-                        it = find_impl_ascii(
-                            sv, [](char ch) { return is_ascii_space(ch); });
-                        if (it != sv.end()) {
-                            return it;
+                        auto i = find_impl_ascii(sv, cu_cb);
+                        it = detail::to_address(i);
+                        if (i != sv.end()) {
+                            break;
                         }
                         continue;
                     }
 
                     std::array<char32_t, 8> codepoints{};
                     auto ret = simdutf::convert_utf8_to_utf32(
-                        &*it, sv.size(), codepoints.data());
+                        detail::to_address(it), sv.size(), codepoints.data());
                     if (SCN_UNLIKELY(ret == 0)) {
-                        it = find_impl_unicode_invalid(
-                            sv, [](char32_t cp) { return is_cp_space(cp); });
-                        if (it != sv.end()) {
-                            return it;
+                        auto i = find_impl_unicode_invalid(sv, cp_cb);
+                        it = detail::to_address(i);
+                        if (i != sv.end()) {
+                            break;
                         }
                         continue;
                     }
 
-                    it = find_impl_unicode_valid(
-                        sv, codepoints,
-                        [](char32_t cp) { return is_cp_space(cp); });
-                    if (it != sv.end()) {
-                        return it;
+                    auto i = find_impl_unicode_valid(sv, codepoints, cp_cb);
+                    it = detail::to_address(i);
+                    if (i != sv.end()) {
+                        break;
                     }
                 }
 
-                return source.end();
-            }
-
-            std::string_view::iterator find_classic_nonspace_impl(
-                std::string_view source)
-            {
-                auto it = source.begin();
-                while (it != source.end()) {
-                    auto sv = detail::make_string_view_from_iterators<char>(
-                                  it, source.end())
-                                  .substr(0, 8);
-
-                    if (!has_nonascii_char_64(sv)) {
-                        it = find_impl_ascii(
-                            sv, [](char ch) { return !is_ascii_space(ch); });
-                        if (it != sv.end()) {
-                            return it;
-                        }
-                        continue;
-                    }
-
-                    std::array<char32_t, 8> codepoints{};
-                    auto ret = simdutf::convert_utf8_to_utf32(
-                        &*it, sv.size(), codepoints.data());
-                    if (SCN_UNLIKELY(ret == 0)) {
-                        it = find_impl_unicode_invalid(
-                            sv, [](char32_t cp) { return !is_cp_space(cp); });
-                        if (it != sv.end()) {
-                            return it;
-                        }
-                        continue;
-                    }
-
-                    it = find_impl_unicode_valid(
-                        sv, codepoints,
-                        [](char32_t cp) { return !is_cp_space(cp); });
-                    if (it != sv.end()) {
-                        return it;
-                    }
-                }
-
-                return source.end();
+                return source.begin() + ranges::distance(source.data(), it);
             }
 
             bool is_decimal_digit(char ch) SCN_NOEXCEPT
@@ -208,13 +173,17 @@ namespace scn {
         std::string_view::iterator find_classic_space_narrow_fast(
             std::string_view source)
         {
-            return find_classic_space_impl(source);
+            return find_classic_impl(
+                source, [](char ch) { return is_ascii_space(ch); },
+                [](char32_t cp) { return is_cp_space(cp); });
         }
 
         std::string_view::iterator find_classic_nonspace_narrow_fast(
             std::string_view source)
         {
-            return find_classic_nonspace_impl(source);
+            return find_classic_impl(
+                source, [](char ch) { return !is_ascii_space(ch); },
+                [](char32_t cp) { return !is_cp_space(cp); });
         }
 
         std::string_view::iterator find_nondecimal_digit_narrow_fast(
