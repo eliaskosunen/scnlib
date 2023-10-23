@@ -105,7 +105,7 @@ namespace scn {
                 return unexpected(e);
             }
 
-            return result;
+            return SCN_MOVE(result);
         }
 
         template <typename Range, typename Iterator, typename ValueCharT>
@@ -148,7 +148,7 @@ namespace scn {
                 value = std::basic_string_view<ValueCharT>(
                     ranges::data(view), ranges_polyfill::usize(view));
 
-                return result;
+                return SCN_MOVE(result);
             }
         }
 
