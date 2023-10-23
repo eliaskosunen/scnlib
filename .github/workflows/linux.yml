@@ -88,6 +88,8 @@ jobs:
           # simdutf has problems with clang 6 and 7 (_ktestc_mask64_u8 undefined)
           - cxx: clang++-7
           - cxx: clang++-6.0
+          # FIXME: Locally unreproducible ICE
+          - cxx: clang++-9
           # FIXME: some weird linker issue: undefined reference to range_default_scanner default constructor
           - cxx: g++-11
             std: 20
