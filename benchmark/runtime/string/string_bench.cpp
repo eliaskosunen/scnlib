@@ -15,17 +15,35 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <scn/scan.h>
+#include <scn/xchar.h>
+
 #include "benchmark_common.h"
+#include "string_bench.h"
 
-#include <sstream>
-
-static void bench_string_scn_stringview(benchmark::State& state)
+template <typename CharT>
+constexpr auto bench_format_string()
 {
-    std::string_view input{"qwertyuiopasdfghjklzxcvbnm foobar"};
+    if constexpr (sizeof(CharT) == 1) {
+        return scn::runtime("{}");
+    }
+    else {
+        return scn::runtime(L"{}");
+    }
+}
+
+template <typename SourceCharT, typename DestStringT, typename Tag>
+static void bench_string_scn(benchmark::State& state)
+{
+    auto input = get_benchmark_input<SourceCharT, Tag>();
+    auto subr = scn::ranges::subrange{input};
     for (auto _ : state) {
-        if (auto result = scn::scan<std::string_view>(input, "{}")) {
+        if (auto result = scn::scan<DestStringT>(
+                subr, bench_format_string<SourceCharT>())) {
             benchmark::DoNotOptimize(result->value());
+            subr = result->range();
+        }
+        else if (result.error() == scn::scan_error::end_of_range) {
+            subr = scn::ranges::subrange{input};
         }
         else {
             state.SkipWithError("Failed scan");
@@ -33,49 +51,42 @@ static void bench_string_scn_stringview(benchmark::State& state)
         }
     }
 }
-BENCHMARK(bench_string_scn_stringview);
 
-static void bench_string_scn_string(benchmark::State& state)
-{
-    std::string_view input{"qwertyuiopasdfghjklzxcvbnm foobar"};
-    for (auto _ : state) {
-        if (auto result = scn::scan<std::string>(input, "{}")) {
-            benchmark::DoNotOptimize(SCN_MOVE(result->value()));
-        }
-        else {
-            state.SkipWithError("Failed scan");
-            break;
-        }
-    }
-}
-BENCHMARK(bench_string_scn_string);
+BENCHMARK(bench_string_scn<char, std::string_view, lipsum_tag>);
+BENCHMARK(bench_string_scn<char, std::string_view, unicode_tag>);
+BENCHMARK(bench_string_scn<char, std::string, lipsum_tag>);
+BENCHMARK(bench_string_scn<char, std::string, unicode_tag>);
+BENCHMARK(bench_string_scn<char, std::wstring, lipsum_tag>);
+BENCHMARK(bench_string_scn<char, std::wstring, unicode_tag>);
+BENCHMARK(bench_string_scn<wchar_t, std::string, lipsum_tag>);
+BENCHMARK(bench_string_scn<wchar_t, std::string, unicode_tag>);
+BENCHMARK(bench_string_scn<wchar_t, std::wstring, lipsum_tag>);
+BENCHMARK(bench_string_scn<wchar_t, std::wstring, unicode_tag>);
+BENCHMARK(bench_string_scn<wchar_t, std::wstring_view, lipsum_tag>);
+BENCHMARK(bench_string_scn<wchar_t, std::wstring_view, unicode_tag>);
 
-static void bench_string_scn_transcoding(benchmark::State& state)
+template <typename CharT, typename Tag>
+static void bench_string_sstream(benchmark::State& state)
 {
-    std::string_view input{"qwertyuiopasdfghjklzxcvbnm foobar"};
+    auto input = get_benchmark_input<CharT, Tag>();
+    std::basic_istringstream<CharT> iss{input};
     for (auto _ : state) {
-        if (auto result = scn::scan<std::wstring>(input, "{}")) {
-            benchmark::DoNotOptimize(SCN_MOVE(result->value()));
-        }
-        else {
-            state.SkipWithError("Failed scan");
-            break;
-        }
-    }
-}
-BENCHMARK(bench_string_scn_transcoding);
-
-static void bench_string_scn_iostream(benchmark::State& state)
-{
-    std::string_view input{"qwertyuiopasdfghjklzxcvbnm foobar"};
-    for (auto _ : state) {
-        std::istringstream iss{std::string{input}};
-        std::string val{};
+        std::basic_string<CharT> val{};
         if (!(iss >> val)) {
+            if (iss.eof()) {
+                iss = std::basic_istringstream<CharT>{input};
+                continue;
+            }
             state.SkipWithError("Failed scan");
             break;
         }
         benchmark::DoNotOptimize(SCN_MOVE(val));
     }
 }
-BENCHMARK(bench_string_scn_iostream);
+
+BENCHMARK(bench_string_sstream<char, lipsum_tag>);
+BENCHMARK(bench_string_sstream<char, unicode_tag>);
+BENCHMARK(bench_string_sstream<wchar_t, lipsum_tag>);
+BENCHMARK(bench_string_sstream<wchar_t, unicode_tag>);
+
+BENCHMARK_MAIN();

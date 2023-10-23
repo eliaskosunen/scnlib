@@ -116,13 +116,7 @@ namespace scn {
                 auto [iter, val] = read_code_point_into(
                     ranges::subrange{it, ranges::end(range)});
 
-                if (SCN_UNLIKELY(!validate_unicode(val.view()))) {
-                    ++acc_width;
-                }
-                else {
-                    acc_width += calculate_valid_text_width(val.view());
-                }
-
+                acc_width += calculate_text_width(val.view());
                 if (acc_width > count) {
                     break;
                 }
@@ -192,20 +186,10 @@ namespace scn {
             while (it != ranges::end(range)) {
                 const auto [iter, value] = read_code_point_into(
                     ranges::subrange{it, ranges::end(range)});
-
-                if (SCN_UNLIKELY(!validate_unicode(value.view()))) {
-                    if (pred(detail::invalid_code_point)) {
-                        break;
-                    }
+                const auto cp = decode_code_point_exhaustive(value.view());
+                if (pred(cp)) {
+                    break;
                 }
-                else {
-                    const auto cp =
-                        decode_code_point_exhaustive_valid(value.view());
-                    if (pred(cp)) {
-                        break;
-                    }
-                }
-
                 it = iter;
             }
 
@@ -277,24 +261,12 @@ namespace scn {
         read_matching_code_point(Range&& range, char32_t cp)
         {
             auto [it, value] = read_code_point_into(range);
-
-            if (SCN_UNLIKELY(!validate_unicode(value.view()))) {
-                if (SCN_UNLIKELY(cp != detail::invalid_code_point)) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "read_matching_code_point: No match");
-                }
+            auto decoded_cp = decode_code_point_exhaustive(value.view());
+            if (SCN_UNLIKELY(cp != decoded_cp)) {
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "read_matching_code_point: No match");
             }
-            else {
-                auto decoded_cp =
-                    decode_code_point_exhaustive_valid(value.view());
-                if (SCN_UNLIKELY(decoded_cp != cp)) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "read_matching_code_point: No match");
-                }
-            }
-
             return it;
         }
 
