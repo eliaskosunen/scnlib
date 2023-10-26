@@ -222,3 +222,26 @@ TEST(IstreamRangeTest, ReadWithScanAfterFailed)
         EXPECT_EQ(result2->value(), 456);
     }
 }
+
+TEST(IstreamRangeTest, LongInputWithOnlySetBits)
+{
+    using namespace std::string_literals;
+    auto ss = std::istringstream{
+        "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+        "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+        "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+        "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+        "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+        "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"s};
+    auto view = scn::istreambuf_view(ss);
+
+    auto it = scn::ranges::begin(view);
+    while (true) {
+        auto result = scn::scan<std::string>(
+            scn::ranges::subrange{it, scn::ranges::end(view)}, "{}");
+        if (!result) {
+            break;
+        }
+        it = result->begin();
+    }
+}

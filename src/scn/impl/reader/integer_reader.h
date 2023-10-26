@@ -309,6 +309,7 @@ namespace scn {
 
                 if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0)) {
                     auto it = ranges::begin(range);
+                    bool digit_matched = false;
                     for (; it != ranges::end(range); ++it) {
                         if (*it == m_locale_options.thousands_sep) {
                             m_thsep_indices.push_back(static_cast<char>(
@@ -318,8 +319,11 @@ namespace scn {
                                  m_base) {
                             break;
                         }
+                        else {
+                            digit_matched = true;
+                        }
                     }
-                    if (it == ranges::begin(range)) {
+                    if (SCN_UNLIKELY(!digit_matched)) {
                         return unexpected_scan_error(
                             scan_error::invalid_scanned_value,
                             "No matching characters");

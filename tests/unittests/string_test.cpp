@@ -168,6 +168,33 @@ TEST(StringTest, WonkyInputAndFormatWithTranscoding)
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
 }
 
+TEST(StringTest, WonkyInput2)
+{
+    const auto input =
+        std::string_view{"\303 \245å\377åä\3035\377ååíääccccc\307c\244c"};
+
+    auto result = scn::scan<std::string_view>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), "\303");
+
+    result = scn::scan<std::string_view>(result->range(), "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), input.substr(2));
+}
+
+TEST(StringTest, WonkyInput3)
+{
+    const char source[] = {
+        '\216', '\030', 0,      0,      0,      0,      0,      0,      0,
+        '\216', '\'',   'a',    '\216', '\216', '\216', '\216', '\216', '\216',
+        '\216', '\216', '\216', '\216', '\216', '\360', '\237', '\237'};
+    auto input = std::string_view{source, sizeof(source)};
+
+    auto result = scn::scan<std::string>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+}
+
 TEST(StringTest, RecoveryFromInvalidEncoding)
 {
     const auto source = std::string_view{"a\xc3 "};

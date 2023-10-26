@@ -116,18 +116,37 @@ namespace scn {
         {
             SCN_EXPECT(!input.empty());
 
+            const auto len = code_point_length_by_starting_code_unit(input[0]);
+            if (SCN_UNLIKELY(len == 0)) {
+                return detail::invalid_code_point;
+            }
+
             constexpr auto enc = get_encoding<CharT>();
             char32_t output{};
             size_t ret{};
             if constexpr (enc == encoding::utf8) {
+#ifndef NDEBUG
+                if (validate_unicode(input)) {
+                    SCN_EXPECT(simdutf::utf32_length_from_utf8(
+                                   reinterpret_cast<const char*>(input.data()),
+                                   input.size()) == 1);
+                }
+#endif
                 ret = simdutf::convert_utf8_to_utf32(
-                    reinterpret_cast<const char*>(input.data()), input.size(),
-                    &output);
+                    reinterpret_cast<const char*>(input.data()), len, &output);
             }
             else if constexpr (enc == encoding::utf16) {
+#ifndef NDEBUG
+                if (validate_unicode(input)) {
+                    SCN_EXPECT(
+                        simdutf::utf32_length_from_utf16(
+                            reinterpret_cast<const char16_t*>(input.data()),
+                            input.size()) == 1);
+                }
+#endif
                 ret = simdutf::convert_utf16_to_utf32(
-                    reinterpret_cast<const char16_t*>(input.data()),
-                    input.size(), &output);
+                    reinterpret_cast<const char16_t*>(input.data()), len,
+                    &output);
             }
             else if constexpr (enc == encoding::utf32) {
                 output = static_cast<char32_t>(input[0]);
@@ -258,6 +277,9 @@ namespace scn {
                 return {get_start_of_next_code_point(input),
                         detail::invalid_code_point};
             }
+            if (SCN_UNLIKELY(len > input.size())) {
+                return {input.end(), detail::invalid_code_point};
+            }
 
             constexpr auto enc = get_encoding<CharT>();
             std::size_t result{1};
@@ -282,6 +304,51 @@ namespace scn {
             }
 
             return {input.begin() + len, output};
+        }
+
+        template <typename CharT>
+        auto find_start_of_next_valid_code_point(
+            std::basic_string_view<CharT> input)
+            -> ranges::iterator_t<std::basic_string_view<CharT>>
+        {
+            auto it = input.begin();
+            while (it != input.end()) {
+                const auto len = code_point_length_by_starting_code_unit(*it);
+                if (len == 0) {
+                    ++it;
+                    continue;
+                }
+                if (len > ranges::distance(it, input.end())) {
+                    return input.end();
+                }
+
+                bool is_valid_cp =
+                    [&]() {
+                        constexpr auto enc = get_encoding<CharT>();
+                        if constexpr (enc == encoding::utf8) {
+                            return simdutf::validate_utf8_with_errors(
+                                detail::to_address(it), len);
+                        }
+                        else if (enc == encoding::utf16) {
+                            return simdutf::validate_utf16_with_errors(
+                                reinterpret_cast<const char16_t*>(
+                                    detail::to_address(it)),
+                                len);
+                        }
+                        else if (enc == encoding::utf32) {
+                            return simdutf::validate_utf32_with_errors(
+                                reinterpret_cast<const char32_t*>(
+                                    detail::to_address(it)),
+                                len);
+                        }
+                    }()
+                        .error == simdutf::SUCCESS;
+                if (is_valid_cp) {
+                    return it;
+                }
+                it += len;
+            }
+            return input.end();
         }
 
         template <typename CharT>
@@ -520,7 +587,7 @@ namespace scn {
 
             auto it = source.begin();
             std::array<DestCharT,
-                       32 * std::max(sizeof(DestCharT) / sizeof(SourceCharT),
+                       32 * std::max(sizeof(SourceCharT) / sizeof(DestCharT),
                                      size_t{1})>
                 tmp{};
             while (it != source.end()) {
@@ -530,28 +597,34 @@ namespace scn {
 
                 auto tmp_view = span<DestCharT>{tmp.data(), tmp.size()};
                 auto res = do_transcode(sv, tmp_view);
-                if (SCN_UNLIKELY(res.error != simdutf::SUCCESS)) {
+                if (SCN_LIKELY(res.error == simdutf::SUCCESS)) {
+                    dest.append(tmp.data(), std::min(res.count, tmp.size()));
+                    it = sv.end();
+                    continue;
+                }
+
+                {
                     auto valid_sv = sv.substr(0, res.count);
                     auto n =
                         count_valid_transcoded_code_units<DestCharT>(valid_sv);
-                    // Replacement character U+fffd
-                    if constexpr (sizeof(DestCharT) == 1) {
-                        tmp_view[n + 0] = static_cast<DestCharT>(0xef);
-                        tmp_view[n + 1] = static_cast<DestCharT>(0xbf);
-                        tmp_view[n + 2] = static_cast<DestCharT>(0xbd);
-                        tmp_view = tmp_view.first(n + 3);
-                    }
-                    else {
-                        tmp_view[n + 0] = static_cast<DestCharT>(0xfffd);
-                        tmp_view = tmp_view.first(n + 1);
-                    }
-                }
-                else {
-                    tmp_view = tmp_view.first(res.count);
+                    dest.append(tmp.data(), n);
+                    it += res.count;
                 }
 
-                dest.append(tmp_view.data(), tmp_view.size());
-                it = sv.end();
+                // Replacement character U+fffd
+                if constexpr (sizeof(DestCharT) == 1) {
+                    tmp[0] = static_cast<DestCharT>(0xef);
+                    tmp[1] = static_cast<DestCharT>(0xbf);
+                    tmp[2] = static_cast<DestCharT>(0xbd);
+                    dest.append(tmp.data(), 3);
+                }
+                else {
+                    dest.push_back(DestCharT{0xfffd});
+                }
+
+                it = find_start_of_next_valid_code_point(
+                    detail::make_string_view_from_iterators<SourceCharT>(
+                        it, source.end()));
             }
         }
 

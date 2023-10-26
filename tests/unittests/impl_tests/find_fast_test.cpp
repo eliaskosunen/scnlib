@@ -41,3 +41,109 @@ TEST(FindClassicSpaceNarrowFastTest, MultipleSpaces)
     auto src = "foo bar baz"sv;
     EXPECT_EQ(scn::impl::find_classic_space_narrow_fast(src), src.begin() + 3);
 }
+
+TEST(FindClassicSpaceNarrowFastTest, WonkyLongInput)
+{
+    auto src =
+        "\360,l\377\377\377\377\377\377\377\377ን ጉሮሮ ?T  ላU\213\230\263\255\341\341ጋed sample plain-te\341\213\265\341"sv;
+    ASSERT_EQ(src.size(), 64);
+
+    auto it = scn::impl::find_classic_space_narrow_fast(src);
+    EXPECT_EQ(&*it, src.data() + 14);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(&*it, src.data() + 24);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(&*it, src.data() + 27);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(&*it, src.data() + 28);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(&*it, src.data() + 44);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(&*it, src.data() + 51);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(scn::detail::to_address(it), src.data() + src.size());
+}
+TEST(FindClassicSpaceNarrowFastTest, WonkyLongInput2)
+{
+    auto src =
+        "\360,l\215\210ተውን ጉሮሮ ?T  ላU\213\230\263\255\341\341ጋed sample plain\214\211ሮ\265\341"sv;
+    ASSERT_EQ(src.size(), 64);
+
+    auto it = scn::impl::find_classic_space_narrow_fast(src);
+    EXPECT_EQ(&*it, src.data() + 14);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(&*it, src.data() + 24);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(&*it, src.data() + 27);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(&*it, src.data() + 28);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(&*it, src.data() + 44);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(&*it, src.data() + 51);
+
+    ++it;
+    it = scn::impl::find_classic_space_narrow_fast(
+        {&*it, static_cast<size_t>(src.end() - it)});
+    EXPECT_EQ(scn::detail::to_address(it), src.data() + src.size());
+}
+TEST(FindClassicSpaceNarrowFastTest, WonkyInput3)
+{
+    auto src = "plain\214\211ሮ\265\341"sv;
+    EXPECT_EQ(scn::impl::find_classic_space_narrow_fast(src), src.end());
+}
+TEST(FindClassicSpaceNarrowFastTest, WonkyInput4)
+{
+    auto src = "plain\214\211ሮ\265Ṗn̹\226n̰\002"sv;
+    EXPECT_EQ(scn::impl::find_classic_space_narrow_fast(src), src.end());
+}
+
+TEST(FindClassicNonspaceNarrowFastTest, EmojiInput)
+{
+    auto input = "😂\n"sv;
+
+    EXPECT_EQ(scn::impl::find_classic_nonspace_narrow_fast(input.substr(0)),
+              input.begin() + 0);
+    EXPECT_EQ(scn::impl::find_classic_nonspace_narrow_fast(input.substr(1)),
+              input.begin() + 1);
+    EXPECT_EQ(scn::impl::find_classic_nonspace_narrow_fast(input.substr(2)),
+              input.begin() + 2);
+    EXPECT_EQ(scn::impl::find_classic_nonspace_narrow_fast(input.substr(3)),
+              input.begin() + 3);
+
+    EXPECT_EQ(scn::impl::find_classic_nonspace_narrow_fast(input.substr(4)),
+              input.begin() + 5);
+}

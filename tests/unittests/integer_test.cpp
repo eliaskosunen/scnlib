@@ -154,3 +154,20 @@ TEST(IntegerTest, LongInput)
     EXPECT_NE(result->begin(), input.end());
     EXPECT_EQ(std::get<0>(result->values()), 1452555457);
 }
+
+TEST(IntegerTest, WonkyInputWithThsep)
+{
+    std::string_view input = "-0x,)27614,)24t14741";
+    auto result = scn::scan<int>(input, "{:'}");
+    ASSERT_FALSE(result);
+    // invalid thsep grouping:
+    EXPECT_EQ(result.error(), scn::scan_error::invalid_scanned_value);
+}
+TEST(IntegerTest, WonkyInputWithThsep2)
+{
+    std::string_view input = "-0b,28";
+    auto result = scn::scan<int>(input, "{:'}");
+    ASSERT_FALSE(result);
+    // invalid thsep grouping:
+    EXPECT_EQ(result.error(), scn::scan_error::invalid_scanned_value);
+}

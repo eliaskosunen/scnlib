@@ -65,7 +65,7 @@ endif()
 FetchContent_Declare(
         simdutf
         GIT_REPOSITORY  https://github.com/simdutf/simdutf.git
-        GIT_TAG         v3.2.14
+        GIT_TAG         v4.0.3
         GIT_SHALLOW     TRUE
 )
 

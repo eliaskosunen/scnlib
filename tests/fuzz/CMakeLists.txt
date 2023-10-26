@@ -18,6 +18,9 @@ add_fuzzer(string)
 add_fuzzer(format)
 add_fuzzer(roundtrip)
 
+add_fuzzer(string_impl)
+target_include_directories(scn_fuzz_string_impl PRIVATE "${PROJECT_SOURCE_DIR}/src")
+
 add_custom_target(scn_fuzz_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy
         "${CMAKE_CURRENT_LIST_DIR}/run-fuzz.sh"

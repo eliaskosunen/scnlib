@@ -28,52 +28,12 @@ namespace scn {
             template <typename R>
             bool has_nonascii_char_64(R source)
             {
+                static_assert(sizeof(*source.data()) == 1);
                 SCN_EXPECT(source.size() <= 8);
                 uint64_t word{};
                 std::memcpy(&word, source.data(), source.size());
 
                 return has_byte_greater(word, 127) != 0;
-            }
-
-            template <typename R, typename Cb>
-            auto find_impl_ascii(R sv, Cb cb)
-            {
-                return ranges::find_if(sv, cb);
-            }
-
-            template <typename Cb>
-            auto find_impl_unicode_invalid(std::string_view sv, Cb cb)
-            {
-                auto it = sv.data();
-                while (it != sv.data() + sv.size()) {
-                    auto tmp = std::string_view{
-                        detail::to_address(it),
-                        static_cast<size_t>(ranges::distance(
-                            it, detail::to_address(sv.end())))};
-                    auto res = get_next_code_point(tmp);
-                    if (cb(res.value)) {
-                        break;
-                    }
-                    it += ranges::distance(tmp.data(),
-                                           detail::to_address(res.iterator));
-                }
-                return sv.begin() + ranges::distance(sv.data(), it);
-            }
-
-            template <typename Cb>
-            auto find_impl_unicode_valid(
-                std::string_view sv,
-                const std::array<char32_t, 8>& codepoints,
-                Cb cb)
-            {
-                for (size_t i = 0; i < codepoints.size(); ++i) {
-                    if (cb(codepoints[i])) {
-                        return sv.begin() + static_cast<std::ptrdiff_t>(
-                                                simdutf::utf8_length_from_utf32(
-                                                    codepoints.data(), i));
-                    }
-                }
-                return sv.end();
             }
 
             template <typename CuCb, typename CpCb>
@@ -84,6 +44,7 @@ namespace scn {
                 const auto end = source.data() + source.size();
 
                 while (it != end) {
+                    SCN_EXPECT(it < end);
                     auto sv =
                         std::string_view{
                             it, static_cast<size_t>(ranges::distance(
@@ -91,7 +52,7 @@ namespace scn {
                             .substr(0, 8);
 
                     if (!has_nonascii_char_64(sv)) {
-                        auto i = find_impl_ascii(sv, cu_cb);
+                        auto i = ranges::find_if(sv, cu_cb);
                         it = detail::to_address(i);
                         if (i != sv.end()) {
                             break;
@@ -99,22 +60,20 @@ namespace scn {
                         continue;
                     }
 
-                    std::array<char32_t, 8> codepoints{};
-                    auto ret = simdutf::convert_utf8_to_utf32(
-                        detail::to_address(it), sv.size(), codepoints.data());
-                    if (SCN_UNLIKELY(ret == 0)) {
-                        auto i = find_impl_unicode_invalid(sv, cp_cb);
-                        it = detail::to_address(i);
-                        if (i != sv.end()) {
-                            break;
+                    for (size_t i = 0; i < sv.size(); ++i) {
+                        auto tmp = std::string_view{
+                            detail::to_address(it),
+                            static_cast<size_t>(ranges::distance(it, end))};
+                        auto res = get_next_code_point(tmp);
+                        if (cp_cb(res.value)) {
+                            return source.begin() +
+                                   ranges::distance(source.data(), it);
                         }
-                        continue;
-                    }
-
-                    auto i = find_impl_unicode_valid(sv, codepoints, cp_cb);
-                    it = detail::to_address(i);
-                    if (i != sv.end()) {
-                        break;
+                        auto n = ranges::distance(
+                            tmp.data(), detail::to_address(res.iterator));
+                        it += n;
+                        i += n;
+                        SCN_ENSURE(it <= end);
                     }
                 }
 
