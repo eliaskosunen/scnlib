@@ -15,6 +15,7 @@ function(get_gcc_warning_flags flags)
             -Wctor-dtor-privacy -Wdisabled-optimization
             -Winvalid-pch -Wnoexcept
             -Wmissing-declarations -Woverloaded-virtual
+            -Wno-psabi
             $<$<VERSION_GREATER_EQUAL:CXX_COMPILER_VERSION,5.0>:
             -Wdouble-promotion -Wtrampolines
             -Wzero-as-null-pointer-constant

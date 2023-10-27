@@ -85,7 +85,7 @@ jobs:
           # gcc 12 isn't available on 20.04 (11 and 13 are in ubuntu-toolchain-r)
           - cxx: g++-12
             os: 20.04
-          # simdutf has problems with clang 6 and 7 (_ktestc_mask64_u8 undefined)
+          # FIXME?: simdutf has problems with clang 6 and 7 (_ktestc_mask64_u8 undefined)
           - cxx: clang++-7
           - cxx: clang++-6.0
           # FIXME: Locally unreproducible ICE
@@ -94,6 +94,13 @@ jobs:
           - cxx: g++-11
             std: 20
             os: 20.04
+          # FIXME?: weird incompatibility with libstdc++ 13 inside <chrono>
+          - cxx: clang++-14
+            std: 20
+            os: 22.04
+          - cxx: clang++-13
+            std: 20
+            os: 22.04
 
     steps:
       - uses: actions/checkout@v3
