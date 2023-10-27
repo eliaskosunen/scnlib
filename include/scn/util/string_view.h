@@ -44,7 +44,7 @@ namespace scn {
             if constexpr (std::is_constructible_v<std::basic_string_view<CharT>,
                                                   decltype(first),
                                                   decltype(last)> &&
-                          !SCN_STDLIB_MS_STL) {
+                          !SCN_MSVC_DEBUG_ITERATORS) {
                 return {first, last};
             }
             else {
@@ -55,15 +55,48 @@ namespace scn {
         }
 
         template <typename CharT>
+        constexpr std::basic_string_view<CharT> make_string_view_from_pointers(
+            const CharT* first,
+            const CharT* last)
+        {
+            if constexpr (std::is_constructible_v<std::basic_string_view<CharT>,
+                                                  const CharT*, const CharT*>) {
+                return {first, last};
+            }
+            else {
+                return {first, static_cast<size_t>(std::distance(first, last))};
+            }
+        }
+
+        template <typename CharT>
         constexpr auto make_string_view_iterator(
+            std::basic_string_view<CharT> sv,
+            typename std::basic_string_view<CharT>::iterator it) ->
+            typename std::basic_string_view<CharT>::iterator
+        {
+            if constexpr (std::is_constructible_v<
+                              typename std::basic_string_view<CharT>::iterator,
+                              decltype(it)> &&
+                          !SCN_MSVC_DEBUG_ITERATORS) {
+                SCN_UNUSED(sv);
+                return it;
+            }
+            else {
+                return sv.begin() +
+                       std::distance(sv.data(), detail::to_address(it));
+            }
+        }
+
+        template <typename CharT>
+        constexpr auto make_string_view_iterator_from_pointer(
             std::basic_string_view<CharT> sv,
             const CharT* ptr) ->
             typename std::basic_string_view<CharT>::iterator
         {
             if constexpr (std::is_constructible_v<
-                              typename std::basic_string_view<CharT>,
+                              typename std::basic_string_view<CharT>::iterator,
                               const CharT*> &&
-                          !SCN_STDLIB_MS_STL) {
+                          !SCN_MSVC_DEBUG_ITERATORS) {
                 SCN_UNUSED(sv);
                 return ptr;
             }

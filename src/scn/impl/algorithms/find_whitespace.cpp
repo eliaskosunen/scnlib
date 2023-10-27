@@ -40,44 +40,39 @@ namespace scn {
             std::string_view::iterator
             find_classic_impl(std::string_view source, CuCb cu_cb, CpCb cp_cb)
             {
-                auto it = source.data();
-                const auto end = source.data() + source.size();
+                auto it = source.begin();
 
-                while (it != end) {
-                    SCN_EXPECT(it < end);
-                    auto sv =
-                        std::string_view{
-                            it, static_cast<size_t>(ranges::distance(
-                                    it, detail::to_address(source.end())))}
-                            .substr(0, 8);
+                while (it != source.end()) {
+                    auto sv = detail::make_string_view_from_iterators<char>(
+                                  it, source.end())
+                                  .substr(0, 8);
 
                     if (!has_nonascii_char_64(sv)) {
-                        auto i = ranges::find_if(sv, cu_cb);
-                        it = detail::to_address(i);
-                        if (i != sv.end()) {
+                        auto tmp_it = ranges::find_if(sv, cu_cb);
+                        it = detail::make_string_view_iterator(source, tmp_it);
+                        if (tmp_it != sv.end()) {
                             break;
                         }
                         continue;
                     }
 
                     for (size_t i = 0; i < sv.size(); ++i) {
-                        auto tmp = std::string_view{
-                            detail::to_address(it),
-                            static_cast<size_t>(ranges::distance(it, end))};
+                        auto tmp =
+                            detail::make_string_view_from_iterators<char>(
+                                it, source.end());
                         auto res = get_next_code_point(tmp);
                         if (cp_cb(res.value)) {
-                            return source.begin() +
-                                   ranges::distance(source.data(), it);
+                            return it;
                         }
-                        auto n = ranges::distance(
-                            tmp.data(), detail::to_address(res.iterator));
-                        it += n;
-                        i += n;
-                        SCN_ENSURE(it <= end);
+                        i += ranges::distance(tmp.data(),
+                                              detail::to_address(res.iterator));
+                        it = detail::make_string_view_iterator(source,
+                                                               res.iterator);
+                        SCN_ENSURE(it <= source.end());
                     }
                 }
 
-                return source.begin() + ranges::distance(source.data(), it);
+                return detail::make_string_view_iterator(source, it);
             }
 
             bool is_decimal_digit(char ch) SCN_NOEXCEPT

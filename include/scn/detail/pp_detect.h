@@ -23,14 +23,26 @@
 #define SCN_HAS_INCLUDE(x) 0
 #endif
 
-#if SCN_HAS_INCLUDE(<version>)
-#include <version>
-#else
-#include <ciso646>
-#endif
-
 #define SCN_STD_17 201703L
 #define SCN_STD_20 202002L
+
+#if SCN_HAS_INCLUDE(<version>)
+#include <version>
+
+#ifdef _MSC_VER
+// _ITERATOR_DEBUG_LEVEL isn't defined in <version> (needed below)
+// <ciso646> is removed in C++20, and including it will cause a warning
+// So, include <yvals.h> from the STL directly, if available, or otherwise fall back on a small C header
+#if SCN_HAS_INCLUDE(<yvals.h>)
+#include <yvals.h>
+#else
+#include <cstddef>
+#endif
+#endif // _MSC_VER
+
+#else // has_include(<version>)
+#include <ciso646>
+#endif
 
 #define SCN_COMPILER(major, minor, patch) \
     ((major)*10'000'000 + (minor)*10'000 + (patch))
@@ -124,6 +136,13 @@
 #define SCN_STDLIB_MS_STL _MSVC_STL_VERSION
 #else
 #define SCN_STDLIB_MS_STL 0
+#endif
+
+// MSVC debug iterators
+#if SCN_STDLIB_MS_STL && defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL != 0
+#define SCN_MSVC_DEBUG_ITERATORS 1
+#else
+#define SCN_MSVC_DEBUG_ITERATORS 0
 #endif
 
 // POSIX

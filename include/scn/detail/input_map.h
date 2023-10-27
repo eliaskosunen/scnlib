@@ -189,9 +189,8 @@ namespace scn {
                                                 const CharT*,
                                                 std::size_t>)
             {
-                auto b = to_address(ranges::begin(r));
-                return {b, static_cast<std::size_t>(ranges::distance(
-                               b, to_address(ranges::end(r))))};
+                return make_string_view_from_pointers<CharT>(
+                    to_address(ranges::begin(r)), to_address(ranges::end(r)));
             }
 
             SCN_GCC_POP

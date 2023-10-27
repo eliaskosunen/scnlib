@@ -53,32 +53,32 @@ TEST(FindClassicSpaceNarrowFastTest, WonkyLongInput)
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(&*it, src.data() + 24);
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(&*it, src.data() + 27);
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(&*it, src.data() + 28);
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(&*it, src.data() + 44);
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(&*it, src.data() + 51);
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(scn::detail::to_address(it), src.data() + src.size());
 }
 TEST(FindClassicSpaceNarrowFastTest, WonkyLongInput2)
@@ -92,32 +92,32 @@ TEST(FindClassicSpaceNarrowFastTest, WonkyLongInput2)
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(&*it, src.data() + 24);
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(&*it, src.data() + 27);
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(&*it, src.data() + 28);
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(&*it, src.data() + 44);
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(&*it, src.data() + 51);
 
     ++it;
     it = scn::impl::find_classic_space_narrow_fast(
-        {&*it, static_cast<size_t>(src.end() - it)});
+        scn::detail::make_string_view_from_iterators<char>(it, src.end()));
     EXPECT_EQ(scn::detail::to_address(it), src.data() + src.size());
 }
 TEST(FindClassicSpaceNarrowFastTest, WonkyInput3)
@@ -135,15 +135,25 @@ TEST(FindClassicNonspaceNarrowFastTest, EmojiInput)
 {
     auto input = "😂\n"sv;
 
-    EXPECT_EQ(scn::impl::find_classic_nonspace_narrow_fast(input.substr(0)),
-              input.begin() + 0);
-    EXPECT_EQ(scn::impl::find_classic_nonspace_narrow_fast(input.substr(1)),
-              input.begin() + 1);
-    EXPECT_EQ(scn::impl::find_classic_nonspace_narrow_fast(input.substr(2)),
-              input.begin() + 2);
-    EXPECT_EQ(scn::impl::find_classic_nonspace_narrow_fast(input.substr(3)),
-              input.begin() + 3);
+    EXPECT_EQ(
+        scn::detail::to_address(
+            scn::impl::find_classic_nonspace_narrow_fast(input.substr(0))),
+        input.data() + 0);
+    EXPECT_EQ(
+        scn::detail::to_address(
+            scn::impl::find_classic_nonspace_narrow_fast(input.substr(1))),
+        input.data() + 1);
+    EXPECT_EQ(
+        scn::detail::to_address(
+            scn::impl::find_classic_nonspace_narrow_fast(input.substr(2))),
+        input.data() + 2);
+    EXPECT_EQ(
+        scn::detail::to_address(
+            scn::impl::find_classic_nonspace_narrow_fast(input.substr(3))),
+        input.data() + 3);
 
-    EXPECT_EQ(scn::impl::find_classic_nonspace_narrow_fast(input.substr(4)),
-              input.begin() + 5);
+    EXPECT_EQ(
+        scn::detail::to_address(
+            scn::impl::find_classic_nonspace_narrow_fast(input.substr(4))),
+        input.data() + 5);
 }

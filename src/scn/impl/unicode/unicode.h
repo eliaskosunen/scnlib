@@ -318,7 +318,8 @@ namespace scn {
                     ++it;
                     continue;
                 }
-                if (len > ranges::distance(it, input.end())) {
+                if (len >
+                    static_cast<size_t>(ranges::distance(it, input.end()))) {
                     return input.end();
                 }
 
@@ -599,7 +600,7 @@ namespace scn {
                 auto res = do_transcode(sv, tmp_view);
                 if (SCN_LIKELY(res.error == simdutf::SUCCESS)) {
                     dest.append(tmp.data(), std::min(res.count, tmp.size()));
-                    it = sv.end();
+                    it = detail::make_string_view_iterator(source, sv.end());
                     continue;
                 }
 
@@ -622,9 +623,10 @@ namespace scn {
                     dest.push_back(DestCharT{0xfffd});
                 }
 
-                it = find_start_of_next_valid_code_point(
+                auto tmp_it = find_start_of_next_valid_code_point(
                     detail::make_string_view_from_iterators<SourceCharT>(
                         it, source.end()));
+                it = detail::make_string_view_iterator(source, tmp_it);
             }
         }
 
@@ -637,9 +639,7 @@ namespace scn {
                     detail::make_string_view_from_iterators<CharT>(
                         it, input.end()));
                 cb(res.value);
-
-                it += ranges::distance(detail::to_address(it),
-                                       detail::to_address(res.iterator));
+                it = detail::make_string_view_iterator(input, res.iterator);
             }
         }
 
@@ -653,9 +653,7 @@ namespace scn {
                     detail::make_string_view_from_iterators<CharT>(
                         it, input.end()));
                 cb(res.value);
-
-                it += ranges::distance(detail::to_address(it),
-                                       detail::to_address(res.iterator));
+                it = detail::make_string_view_iterator(input, res.iterator);
             }
         }
     }  // namespace impl

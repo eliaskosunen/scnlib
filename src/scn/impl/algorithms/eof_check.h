@@ -25,7 +25,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-#if !SCN_STD_RANGES && SCN_STDLIB_MS_STL
+#if !SCN_STD_RANGES && SCN_MSVC_DEBUG_ITERATORS
 #define SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND 1
 #else
 #define SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND 0
@@ -48,7 +48,7 @@ namespace scn {
         constexpr auto range_nocopy_data(R&& r) SCN_NOEXCEPT
         {
             static_assert(range_supports_nocopy<R>());
-#if SCN_STDLIB_MS_STL
+#if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
             return detail::to_address(ranges::begin(SCN_FWD(r)));
 #else
             return ranges::data(SCN_FWD(r));
@@ -59,7 +59,7 @@ namespace scn {
         constexpr auto range_nocopy_size(R&& r) SCN_NOEXCEPT
         {
             static_assert(range_supports_nocopy<R>());
-#if SCN_STDLIB_MS_STL
+#if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
             return static_cast<size_t>(
                 ranges::distance(detail::to_address(ranges::begin(r)),
                                  detail::to_address(ranges::end(r))));
@@ -71,12 +71,15 @@ namespace scn {
         template <typename I, typename S>
         SCN_NODISCARD constexpr bool is_range_eof(I begin, S end)
         {
+#if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
             if constexpr (ranges_std::contiguous_iterator<I> ||
                           (ranges_std::random_access_iterator<I> &&
                            detail::can_make_address_from_iterator<I>::value)) {
                 return detail::to_address(begin) == detail::to_address(end);
             }
-            else {
+            else
+#endif
+            {
                 return begin == end;
             }
         }
