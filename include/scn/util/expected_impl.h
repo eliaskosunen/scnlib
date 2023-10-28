@@ -33,8 +33,11 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    struct monostate {};
-
+    /**
+     * A C++23-like `expected`.
+     *
+     * \ingroup result
+     */
     template <typename T, typename E>
     class expected;
 
@@ -682,7 +685,7 @@ namespace scn {
             }
         };
 
-        /**
+        /*
          * Base class trickery to conditionally mark copy and move
          * constructors of an expected as =deleted.
          *
@@ -758,7 +761,7 @@ namespace scn {
                           "constructible");
         };
 
-        /// Same as above, but for assignment
+        // Same as above, but for assignment
         template <typename T,
                   typename E,
                   bool EnableCopy = (std::is_copy_constructible<T>::value &&
@@ -825,7 +828,7 @@ namespace scn {
 
         struct non_default_ctor_tag_t {};
 
-        /**
+        /*
          * Same as above, but for the default constructor
          *
          * The constructor taking a non_default_ctor_tag_t is needed, to

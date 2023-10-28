@@ -23,8 +23,17 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /**
+     * \defgroup xchar Wide character APIs
+     *
+     * \brief Scanning interfaces taking wide strings (`wchar_t`).
+     *
+     * The header `<scn/xchar.h>` needs to be included for these APIs.
+     */
+
     // vscan
 
+    /// \ingroup xchar
     template <typename Range>
     auto vscan(Range&& range,
                std::wstring_view format,
@@ -33,6 +42,7 @@ namespace scn {
         return detail::vscan_generic(SCN_FWD(range), format, args);
     }
 
+    /// \ingroup xchar
     template <typename Range,
               typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
@@ -45,6 +55,7 @@ namespace scn {
                                                args);
     }
 
+    /// \ingroup xchar
     template <typename Range>
     auto vscan_value(Range&& range, scan_arg_for<Range, wchar_t> arg)
         -> vscan_result<Range>
@@ -67,6 +78,7 @@ namespace scn {
 
     // scan
 
+    /// \ingroup xchar
     template <typename... Args,
               typename Source,
               typename = std::enable_if_t<
@@ -77,6 +89,7 @@ namespace scn {
         return detail::scan_impl<Args...>(SCN_FWD(source), format, {});
     }
 
+    /// \ingroup xchar
     template <typename... Args,
               typename Source,
               typename = std::enable_if_t<
@@ -90,6 +103,7 @@ namespace scn {
                                           SCN_MOVE(args));
     }
 
+    /// \ingroup xchar
     template <typename... Args,
               typename Locale,
               typename Source,
@@ -105,6 +119,7 @@ namespace scn {
                                                     format, {});
     }
 
+    /// \ingroup xchar
     template <typename... Args,
               typename Locale,
               typename Source,
@@ -126,6 +141,7 @@ namespace scn {
         scn::wistreambuf_view& internal_wide_stdin();
     }
 
+    /// \ingroup xchar
     template <typename... Args>
     SCN_NODISCARD auto input(wformat_string<Args...> format)
         -> scan_result_type<wistreambuf_view&, Args...>
@@ -134,6 +150,7 @@ namespace scn {
                                            format);
     }
 
+    /// \ingroup xchar
     template <typename... Args>
     SCN_NODISCARD auto prompt(const wchar_t* msg,
                               wformat_string<Args...> format)

@@ -29,6 +29,8 @@ namespace scn {
     /**
      * Error class.
      * Used as a return value for functions without a success value.
+     *
+     * \ingroup result
      */
     class SCN_TRIVIAL_ABI scan_error {
     public:
@@ -50,10 +52,12 @@ namespace scn {
             /// from. The library can't use the source range in this state.
             /// Can only happen when using an istream as the input.
             bad_source_error,
+#if 0
             /// This operation is only possible with exceptions enabled
             // exceptions_required,  // currently unused
             /// This operation is only possible with the heap enabled
             // heap_required,  // currently unused
+#endif
 
             max_error
         };
@@ -68,8 +72,11 @@ namespace scn {
             return {};
         }
 
+        /// Constructs an error with `code::good` and no message.
         constexpr scan_error() SCN_NOEXCEPT = default;
         constexpr scan_error(success_tag_t) SCN_NOEXCEPT : scan_error() {}
+
+        /// Constructs an error with `c` and `m`
         constexpr scan_error(code_t c, const char* m) SCN_NOEXCEPT : m_msg(m),
                                                                      m_code(c)
         {

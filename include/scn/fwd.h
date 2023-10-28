@@ -30,8 +30,14 @@ SCN_GCC_IGNORE("-Wrestrict")
 
 SCN_GCC_POP
 
+/**
+ * scnlib namespace, containing the library interface
+ */
 namespace scn {
     SCN_BEGIN_NAMESPACE
+
+    /// Placeholder monostate type
+    struct monostate {};
 
     // detail/args.h
 
@@ -59,13 +65,17 @@ namespace scn {
     template <typename CharT>
     class basic_erased_range;
 
+    ///
     using erased_range = basic_erased_range<char>;
+    ///
     using werased_range = basic_erased_range<wchar_t>;
 
     template <typename CharT>
     struct basic_erased_subrange;
 
+    ///
     using erased_subrange = basic_erased_subrange<char>;
+    ///
     using werased_subrange = basic_erased_subrange<wchar_t>;
 
     // detail/error.h
@@ -113,13 +123,17 @@ namespace scn {
     template <typename CharT>
     class basic_istreambuf_view;
 
+    ///
     using istreambuf_view = basic_istreambuf_view<char>;
+    ///
     using wistreambuf_view = basic_istreambuf_view<wchar_t>;
 
     template <typename CharT>
     class basic_istreambuf_subrange;
 
+    ///
     using istreambuf_subrange = basic_istreambuf_subrange<char>;
+    ///
     using wistreambuf_subrange = basic_istreambuf_subrange<wchar_t>;
 
     // detail/istream_scanner.h
@@ -127,7 +141,9 @@ namespace scn {
     template <typename CharT>
     struct basic_istream_scanner;
 
+    ///
     using istream_scanner = basic_istream_scanner<char>;
+    ///
     using wistream_scanner = basic_istream_scanner<wchar_t>;
 
 #endif  // SCN_USE_IOSTREAMS
@@ -139,7 +155,9 @@ namespace scn {
     template <typename CharT>
     class basic_scan_parse_context;
 
+    ///
     using scan_parse_context = basic_scan_parse_context<char>;
+    ///
     using wscan_parse_context = basic_scan_parse_context<wchar_t>;
 
     namespace detail {
@@ -166,6 +184,11 @@ namespace scn {
 
     // detail/scanner.h
 
+    /**
+     * Scanner type, can be customized to enable scanning of user-defined types
+     *
+     * \ingroup ctx
+     */
     template <typename T, typename CharT = char, typename Enable = void>
     struct scanner {
         scanner() = delete;
@@ -237,6 +260,10 @@ namespace scn {
     class span;
 
     // util/string_view.h: empty
+
+    /// Private implementation namespace
+    namespace detail {
+    }
 
     SCN_END_NAMESPACE
 }  // namespace scn

@@ -17,6 +17,10 @@
 
 #pragma once
 
+#ifndef __cplusplus
+#error "scnlib is a C++ library"
+#endif
+
 #ifdef __has_include
 #define SCN_HAS_INCLUDE(x) __has_include(x)
 #else

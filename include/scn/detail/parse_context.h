@@ -25,6 +25,8 @@ namespace scn {
     /**
      * Format string parsing context, wrapping the format string being parsed,
      * and a counter for argument indexing.
+     *
+     * \ingroup ctx
      */
     template <typename CharT>
     class basic_scan_parse_context {
@@ -32,6 +34,9 @@ namespace scn {
         using char_type = CharT;
         using iterator = typename std::basic_string_view<CharT>::const_pointer;
 
+        /**
+         * Construct a `basic_scan_parse_context` over a format string `format`.
+         */
         explicit constexpr basic_scan_parse_context(
             std::basic_string_view<CharT> format,
             int next_arg_id = 0)
@@ -44,6 +49,7 @@ namespace scn {
         {
             return m_format.data();
         }
+        /// Returns an iterator pointing to the end of the format string
         constexpr auto end() const SCN_NOEXCEPT
         {
             return m_format.data() + m_format.size();

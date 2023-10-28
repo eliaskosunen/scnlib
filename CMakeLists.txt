@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.14)
-project(scn VERSION 2.0.0 LANGUAGES CXX)
+
+project(
+        scn
+        VERSION 2.0.0
+        DESCRIPTION "scanf for modern C++"
+        HOMEPAGE_URL "https://eliaskosunen.github.io/scnlib"
+        LANGUAGES CXX
+)
 
 option(SCN_DISABLE_TOP_PROJECT OFF)
 
@@ -62,7 +69,6 @@ set(SCN_PUBLIC_HEADERS
         include/scn/util/expected.h
         include/scn/util/memory.h
         include/scn/util/meta.h
-        include/scn/util/optional.h
         include/scn/util/span.h
         include/scn/util/string_view.h
         )

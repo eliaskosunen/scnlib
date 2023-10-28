@@ -136,7 +136,7 @@ namespace scn {
 
             template <typename Range>
             scan_expected<simple_borrowed_iterator_t<Range>>
-            read_default(Range&&, detail::monostate&, detail::locale_ref)
+            read_default(Range&&, monostate&, detail::locale_ref)
             {
                 SCN_EXPECT(false);
                 SCN_UNREACHABLE;
@@ -146,7 +146,7 @@ namespace scn {
             scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
                 Range&&,
                 const detail::basic_format_specs<CharT>&,
-                detail::monostate&,
+                monostate&,
                 detail::locale_ref)
             {
                 SCN_EXPECT(false);

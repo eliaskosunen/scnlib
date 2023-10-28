@@ -431,17 +431,18 @@ namespace scn {
         typename simple_borrowed_subrange<R>::type;
 
     template <typename R, bool Borrowed = ranges::borrowed_range<R>>
-    struct borrowed_ssubrange {
+    struct borrowed_subrange_with_sentinel {
         using type =
             ranges::subrange<ranges::iterator_t<R>, ranges::sentinel_t<R>>;
     };
     template <typename R>
-    struct borrowed_ssubrange<R, false> {
+    struct borrowed_subrange_with_sentinel<R, false> {
         using type = ranges::dangling;
     };
 
     template <typename R>
-    using borrowed_ssubrange_t = typename borrowed_ssubrange<R>::type;
+    using borrowed_subrange_with_sentinel_t =
+        typename borrowed_subrange_with_sentinel<R>::type;
 
     namespace r_pf {
 

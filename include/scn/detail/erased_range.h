@@ -149,7 +149,7 @@ namespace scn {
     }  // namespace detail
 
     /**
-     * Type-erased forward_range.
+     * Type-erased `forward_range`.
      */
     template <typename CharT>
     class basic_erased_range {
@@ -160,16 +160,24 @@ namespace scn {
         class iterator;
         using sentinel = ranges_std::default_sentinel_t;
 
-        basic_erased_range() = default;
-
-        template <typename R>
-        explicit basic_erased_range(R&& r)
-            : m_impl(detail::make_unique_erased_range_impl<CharT>(SCN_FWD(r)))
+        /**
+         * Construct a `basic_erased_range` containing `range`.
+         */
+        template <typename Range>
+        explicit basic_erased_range(Range&& range)
+            : m_impl(
+                  detail::make_unique_erased_range_impl<CharT>(SCN_FWD(range)))
         {
         }
 
+        /**
+         * \return An `iterator` pointing to the beginning of `*this`.
+         */
         iterator begin() const SCN_NOEXCEPT;
 
+        /**
+         * \return A `sentinel` corresponding to the end of `*this`.
+         */
         SCN_NODISCARD sentinel end() const SCN_NOEXCEPT
         {
             return ranges_std::default_sentinel;
@@ -179,7 +187,6 @@ namespace scn {
         using impl_ptr_type =
             std::unique_ptr<detail::basic_erased_range_impl_base<char_type>>;
 
-        // TODO: Small object optimization?
         impl_ptr_type m_impl{nullptr};
     };
 
@@ -341,6 +348,11 @@ namespace scn {
         return {m_impl.get()};
     }
 
+    /**
+     * A subrange into a `basic_erased_range`.
+     *
+     * Not a type alias to avoid long template names.
+     */
     template <typename CharT>
     struct basic_erased_subrange
         : public ranges::subrange<ranges::iterator_t<basic_erased_range<CharT>>,

@@ -47,8 +47,19 @@ namespace scn {
     }  // namespace detail
 
     /**
+     * \defgroup result Result types
+     *
+     * \brief Result and error types
+     *
+     * Instead of using exceptions, `scn::scan` and others return an object of
+     * type `scn::scan_result`, wrapped inside a `scn::scan_expected`.
+     */
+
+    /**
      * Type returned by `scan`, contains the unused input as a `subrange`, and
      * the scanned values in a `tuple`.
+     *
+     * \ingroup result
      */
     template <typename Range, typename... Args>
     class scan_result {
@@ -76,6 +87,7 @@ namespace scn {
         {
         }
 
+        /// Converting constructor from a range and a tuple
         template <typename OtherR,
                   typename = std::enable_if_t<
                       std::is_constructible_v<range_type, OtherR>>>
@@ -150,52 +162,54 @@ namespace scn {
         }
 
         /// Access the scanned values
-        /// @{
         tuple_type& values() &
         {
             return m_values;
         }
+        /// Access the scanned values
         const tuple_type& values() const&
         {
             return m_values;
         }
+        /// Access the scanned values
         tuple_type&& values() &&
         {
             return SCN_MOVE(m_values);
         }
+        /// Access the scanned values
         const tuple_type&& values() const&&
         {
             return SCN_MOVE(m_values);
         }
-        /// @}
 
         /// Access the single scanned value
-        /// @{
         template <size_t N = sizeof...(Args),
                   typename = std::enable_if_t<N == 1>>
         decltype(auto) value() &
         {
             return std::get<0>(m_values);
         }
+        /// Access the single scanned value
         template <size_t N = sizeof...(Args),
                   typename = std::enable_if_t<N == 1>>
         decltype(auto) value() const&
         {
             return std::get<0>(m_values);
         }
+        /// Access the single scanned value
         template <size_t N = sizeof...(Args),
                   typename = std::enable_if_t<N == 1>>
         decltype(auto) value() &&
         {
             return SCN_MOVE(std::get<0>(m_values));
         }
+        /// Access the single scanned value
         template <size_t N = sizeof...(Args),
                   typename = std::enable_if_t<N == 1>>
         decltype(auto) value() const&&
         {
             return SCN_MOVE(std::get<0>(m_values));
         }
-        /// @}
 
     private:
         range_type m_range{};
@@ -244,7 +258,7 @@ namespace scn {
         auto map_scan_result_range(SourceRange&& source,
                                    const ResultIterator& mapped_begin,
                                    const ResultIterator& result)
-            -> borrowed_ssubrange_t<SourceRange>
+            -> borrowed_subrange_with_sentinel_t<SourceRange>
         {
             auto end = map_scan_result_end(source);
             return {

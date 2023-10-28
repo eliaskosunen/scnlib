@@ -1,9 +1,9 @@
-# 2.0.0-dev
+# 2.0.0-beta
 
 _Released 2023-xx-xx_
 
 Major overhaul. The library is rewritten in its entirety.
-See the documentation, namely the [Migration guide](https://scnlib.readthedocs.io/en/v2.0/migration/migration_2_0.html)
+See the documentation, namely the [Migration guide](https://eliaskosunen.github.io/scnlib/v2.0.0/migration-2-0.html)
 for more details.
 
 Major changes include:

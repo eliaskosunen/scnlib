@@ -79,23 +79,53 @@ namespace scn {
     }  // namespace detail
 
     /**
+     * \defgroup scannable Scannable ranges
+     *
+     * \brief Description of the `scannable_range` concept
+     *
+     * A range is considered scannable, if it models at least `forward_range`,
+     * and its character type is correct (its value type is the same as the one
+     * of the format string).
+     * If the range additionally models `contiguous_range` and `sized_range`,
+     * additional optimizations are enabled.
+     *
+     * \code{.cpp}
+     * // Exposition only
+     * template <typename Range, typename CharT>
+     * concept scannable_range =
+     *     ranges::forward_range<Range> &&
+     *     std::same_as<ranges::range_value_t<Range>, CharT>;
+     * \endcode
+     *
+     * To turn an `input_range` into a `forward_range` (and thus a scannable
+     * one), `scn::basic_caching_view` can be used.
+     */
+
+    /**
      * A range adaptor over `Range`, that caches the contents of the range,
      * and allows the user to go back and see these contents.
-     * Turns an `input_range` into a `bidirectional_range`.
+     * Effectively, turns an `input_range` into a `bidirectional_range`.
      *
      * Move-only.
+     *
+     * \ingroup scannable
      */
     template <typename Range>
     class basic_caching_view
         : public detail::basic_caching_view_base<detail::char_t<Range>>,
           public ranges::view_interface<basic_caching_view<Range>> {
     public:
+        /// Underlying range type
         using range_type = Range;
+        /// Range character (value) type
         using char_type = detail::char_t<Range>;
         using difference_type = std::ptrdiff_t;
 
         class iterator;
 
+        /**
+         * Construct a `basic_caching_view` from a range
+         */
         template <
             typename R,
             std::enable_if_t<std::is_constructible_v<Range, R&&>>* = nullptr>
@@ -104,19 +134,36 @@ namespace scn {
         {
         }
 
+        /**
+         * \return An `iterator` pointing to the beginning of `base()`.
+         */
         iterator begin() const SCN_NOEXCEPT;
 
+        /**
+         * \return A sentinel corresponding to the end of `base()`.
+         */
+        using detail::basic_caching_view_base<detail::char_t<Range>>::end;
+
+        /**
+         * Clears the cache.
+         *
+         * After calling `clear()`, `ranges::begin(base())` and `begin()` return
+         * an iterator pointing to the same element (for the extent for which
+         * that makes sense for `input_range`s).
+         */
         void clear()
         {
             this->m_buffer_begin_offset = this->buffer_size();
             this->m_buffer.clear();
         }
 
-        auto& underlying()
+        /// Access the underlying range.
+        auto& base()
         {
             return m_range;
         }
-        const auto& underlying() const
+        /// Access the underlying range.
+        const auto& base() const
         {
             return m_range;
         }
@@ -327,6 +374,11 @@ namespace scn {
         return {*this};
     }
 
+    /**
+     * A subrange into a `basic_caching_view`.
+     *
+     * Not a type alias to limit template name length.
+     */
     template <typename Range>
     class basic_caching_subrange
         : public ranges::subrange<ranges::iterator_t<basic_caching_view<Range>>,

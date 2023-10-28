@@ -25,9 +25,28 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /**
+     * \defgroup vscan Type-erased scanning API
+     *
+     * \brief Lower-level scanning API with type-erased arguments
+     */
+
+    /**
+     * `basic_scan_arg` type used in the signature of `vscan_value`, when
+     * scanning a range of type `Range`.
+     *
+     * \ingroup vscan
+     */
     template <typename Range, typename CharT>
     using scan_arg_for = basic_scan_arg<
         basic_scan_context<detail::decayed_mapped_source_range<Range>, CharT>>;
+
+    /**
+     * `basic_scan_args` type used in the signature of `vscan`, when scanning a
+     * range of type `Range`.
+     *
+     * \ingroup vscan
+     */
     template <typename Range, typename CharT>
     using scan_args_for = basic_scan_args<
         basic_scan_context<detail::decayed_mapped_source_range<Range>, CharT>>;
@@ -147,8 +166,14 @@ namespace scn {
 #endif
     }  // namespace detail
 
+    /**
+     * Result type returned by `vscan`.
+     *
+     * \ingroup vscan
+     */
     template <typename Range>
-    using vscan_result = scan_expected<borrowed_ssubrange_t<Range>>;
+    using vscan_result =
+        scan_expected<borrowed_subrange_with_sentinel_t<Range>>;
 
     namespace detail {
         template <typename Range, typename Format, typename Args>
@@ -220,6 +245,12 @@ namespace scn {
     SCN_GCC_PUSH
     SCN_GCC_IGNORE("-Wnoexcept")
 
+    /**
+     * Perform actual scanning from `range`, according to `format`, into the
+     * type-erased arguments at `args`. Called by `scan`.
+     *
+     * \ingroup vscan
+     */
     template <typename Range>
     auto vscan(Range&& range,
                std::string_view format,
@@ -228,6 +259,13 @@ namespace scn {
         return detail::vscan_generic(SCN_FWD(range), format, args);
     }
 
+    /**
+     * Perform actual scanning from `range`, according to `format`, into the
+     * type-erased arguments at `args`, using `loc`, if requested. Called by
+     * `scan`.
+     *
+     * \ingroup locale
+     */
     template <typename Range,
               typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
@@ -240,6 +278,12 @@ namespace scn {
                                                args);
     }
 
+    /**
+     * Perform actual scanning from `range` into the type-erased argument at
+     * `arg`. Called by `scan_value`.
+     *
+     * \ingroup vscan
+     */
     template <typename Range>
     auto vscan_value(Range&& range, scan_arg_for<Range, char> arg)
         -> vscan_result<Range>

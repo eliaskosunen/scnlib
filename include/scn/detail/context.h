@@ -36,18 +36,41 @@ namespace scn {
             : std::true_type {};
     }  // namespace detail
 
-    /// Scanning context
+    /**
+     * \defgroup ctx Contexts and scanners
+     *
+     * \brief Lower-level APIs used for scanning individual values
+     */
+
+    /**
+     * Scanning context.
+     *
+     * \ingroup ctx
+     */
     template <typename Range, typename CharT>
     class basic_scan_context {
     public:
+        /// Character type of the input
         using char_type = CharT;
+
+        /**
+         * Contained range type.
+         * In normal operation, one of:
+         *  - `std::basic_string_view<char_type>`
+         *  - `scn::basic_istreambuf_subrange<char_type>`
+         *  - `scn::basic_erased_subrange<char_type>`
+         */
         using range_type = Range;
+
         using iterator = ranges::iterator_t<range_type>;
         using sentinel = ranges::sentinel_t<range_type>;
         using parse_context_type = basic_scan_parse_context<char_type>;
 
         using arg_type = basic_scan_arg<basic_scan_context>;
 
+        /**
+         * The scanner type associated with this scanning context.
+         */
         template <typename T>
         using scanner_type = scanner<T, char_type>;
 
@@ -81,7 +104,7 @@ namespace scn {
             return m_args;
         }
 
-        /// Returns a view over the input range, starting at `current()`
+        /// \return A view over the input range, starting at `current()`
         constexpr range_type range() const
         {
             if constexpr (detail::is_string_view<range_type>::value) {
@@ -92,8 +115,11 @@ namespace scn {
                 return {current(), ranges::end(m_range)};
             }
         }
-        /// Returns an iterator pointing to
-        /// the beginning of the current input range
+
+        /**
+         * \return An iterator pointing to
+         * the beginning of the current input range
+         */
         constexpr iterator current() const
         {
             return m_current;
@@ -110,7 +136,7 @@ namespace scn {
             m_current = SCN_MOVE(it);
         }
 
-        constexpr detail::locale_ref locale() const
+        SCN_NODISCARD constexpr detail::locale_ref locale() const
         {
             return m_locale;
         }

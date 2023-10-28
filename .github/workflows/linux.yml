@@ -333,3 +333,34 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: |
           ctest --output-on-failure
+
+  install-and-consume:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build scnlib
+        run: |
+          mkdir ${{ runner.workspace }}/build
+          cd ${{ runner.workspace }}/build
+          cmake -G Ninja -DSCN_INSTALL=ON ${{ runner.workspace }}
+          cmake --build . --target scn
+          sudo cmake --build . --target install
+
+      - name: Build consumer
+        run: |
+          mkdir ${{ runner.workspace }}/tests/consumer-test/build
+          cd ${{ runner.workspace }}/tests/consumer-test/build
+          cmake ..
+          cmake --build .
+
+      - name: Test consumer
+        working-directory: ${{ runner.workspace }}/tests/consumer-test/build
+        run: |
+          output="$(echo '42' | ./scn-consumer)"
+          test "$output" -eq 42

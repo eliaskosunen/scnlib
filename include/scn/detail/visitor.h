@@ -22,6 +22,14 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /**
+     * Visit a `basic_scan_arg` with `Visitor`.
+     * Calls `vis` with the value stored in `arg`.
+     * If no value is contained in `arg`, calls `vis` with a `monostate`.
+     *
+     * \return `vis(x)`, where `x` is either a reference to the value contained
+     * in `arg`, or a `basic_scan_arg::handle`.
+     */
     template <typename Visitor, typename Ctx>
     constexpr decltype(auto) visit_scan_arg(Visitor&& vis,
                                             basic_scan_arg<Ctx>& arg)
@@ -83,7 +91,7 @@ namespace scn {
                 SCN_UNLIKELY_ATTR
             case detail::arg_type::none_type:
             default: {
-                detail::monostate val{};
+                monostate val{};
                 return vis(val);
             }
 

@@ -213,7 +213,11 @@ namespace scn {
         using istream_type = std::basic_istream<CharT>;
         using iterator = typename base::iterator;
 
+        /// Construct a `basic_istreambuf_view` over a `std::basic_istream`
         basic_istreambuf_view(istream_type& is) : base(istreambuf_view{is}) {}
+
+        /// Construct a `basic_istreambuf_view` over a `std::basic_streambuf`.
+        /// Requires `s != nullptr`.
         basic_istreambuf_view(streambuf_type* s) : base(istreambuf_view{s}) {}
 
         /**
@@ -238,6 +242,11 @@ namespace scn {
         void sync(iterator it);
     };
 
+    /**
+     * A subrange into a `basic_istreambuf_range`.
+     *
+     * Not a type alias to avoid long template names.
+     */
     template <typename CharT>
     class basic_istreambuf_subrange
         : public ranges::subrange<

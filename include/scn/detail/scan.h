@@ -44,6 +44,8 @@ namespace scn {
      *
      * return scn::make_scan_result(std::move(result), std::move(args));
      * \endcode
+     *
+     * \ingroup result
      */
     template <typename ResultRange, typename Context, typename... Args>
     auto make_scan_result(scan_expected<ResultRange>&& result,
@@ -61,8 +63,8 @@ namespace scn {
      * types of the scanned arguments.
      */
     template <typename Range, typename... Args>
-    using scan_result_type =
-        scan_expected<scan_result<borrowed_ssubrange_t<Range>, Args...>>;
+    using scan_result_type = scan_expected<
+        scan_result<borrowed_subrange_with_sentinel_t<Range>, Args...>>;
 
     namespace detail {
         // Boilerplate for scan()
@@ -80,6 +82,18 @@ namespace scn {
     }  // namespace detail
 
     /**
+     * \defgroup scan Basic scanning API
+     *
+     * \brief The core public-facing interface of the library
+     *
+     * The following functions use a format string syntax similar to that of
+     * `std::format`. See more at \ref format-string.
+     *
+     * When these functions take a range `source` as input, that range must
+     * model the `scannable_range` concept. See more at \ref scannable.
+     */
+
+    /**
      * Scans `Args...` from the range given to it (`source`), according to the
      * specifications given in the format string (`format`).
      * Returns the resulting values in an object of type `scan_result`,
@@ -90,6 +104,8 @@ namespace scn {
      * if (auto result = scn::scan<int>("123", "{}"))
      *     int value = result->value();
      * \endcode
+     *
+     * \ingroup scan
      */
     template <typename... Args,
               typename Source,
@@ -116,6 +132,8 @@ namespace scn {
      *                                      {std::move(str)});
      * // Access the read string with result->value()
      * \endcode
+     *
+     * \ingroup scan
      */
     template <typename... Args,
               typename Source,
@@ -150,6 +168,12 @@ namespace scn {
     }  // namespace detail
 
     /**
+     * \defgroup locale Localization
+     *
+     * \brief Scanning APIs that allow passing in a locale
+     */
+
+    /**
      * `scan` using an explicit locale.
      *
      * Has no effect on its own, locale-specific scanning still needs to be
@@ -161,6 +185,8 @@ namespace scn {
      *     std::locale{"fi_FI.UTF-8"}, "3,14, "{:L}");
      * // result->value() == 3.14
      * \endcode
+     *
+     * \ingroup locale
      */
     template <typename... Args,
               typename Locale,
@@ -177,7 +203,11 @@ namespace scn {
                                                     format, {});
     }
 
-    /// `scan` with a locale and default values
+    /**
+     * `scan` with a locale and default values
+     *
+     * \ingroup locale
+     */
     template <typename... Args,
               typename Locale,
               typename Source,
@@ -220,6 +250,8 @@ namespace scn {
      *
      * Essentially equivalent to: `scn::scan<T>(source, "{}")`,
      * except it can skip parsing the format string, gaining performance.
+     *
+     * \ingroup scan
      */
     template <typename T, typename Source>
     SCN_NODISCARD auto scan_value(Source&& source)
@@ -228,7 +260,11 @@ namespace scn {
         return detail::scan_value_impl(SCN_FWD(source), T{});
     }
 
-    /// `scan` a single value, with default options, and a default value.
+    /**
+     * `scan` a single value, with default options, and a default value.
+     *
+     * \ingroup scan
+     */
     template <typename T, typename Source>
     SCN_NODISCARD auto scan_value(Source&& source, T default_value)
         -> scan_result_type<Source, T>
@@ -262,6 +298,8 @@ namespace scn {
      * \code{.cpp}
      * auto result = scn::input<int>("{}");
      * \endcode
+     *
+     * \ingroup scan
      */
     template <typename... Args>
     SCN_NODISCARD auto input(format_string<Args...> format)
@@ -271,7 +309,11 @@ namespace scn {
                                            format);
     }
 
-    /// Write msg to stdout, and call `input<Args...>(format)`
+    /**
+     * Write msg to stdout, and call `input<Args...>(format)`
+     *
+     * \ingroup scan
+     */
     template <typename... Args>
     SCN_NODISCARD auto prompt(const char* msg, format_string<Args...> format)
         -> scan_result_type<scn::istreambuf_view&, Args...>

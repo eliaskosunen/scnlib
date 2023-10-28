@@ -39,8 +39,6 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        struct monostate {};
-
         enum class arg_type {
             none_type,
             schar_type,
@@ -363,17 +361,30 @@ namespace scn {
     constexpr decltype(auto) visit_scan_arg(Visitor&& vis,
                                             basic_scan_arg<Ctx>& arg);
 
-    /// Type-erased scanning argument
+    /**
+     * Type-erased scanning argument.
+     *
+     * Contains a pointer to the value contained in a `scan_arg_store`.
+     */
     template <typename Context>
     class basic_scan_arg {
     public:
+        /**
+         * Enables scanning of a user-defined type.
+         *
+         * Contains a pointer to the value contained in a `scan_arg_store`, and
+         * a callback for parsing the format string, and scanning the value.
+         *
+         * \see scn::visit_scan_arg
+         */
         class handle {
         public:
-            explicit handle(detail::custom_value_type<Context> custom)
-                : m_custom(custom)
-            {
-            }
-
+            /**
+             * Parse the format string in `parse_ctx`, and scan the value from
+             * `ctx`.
+             *
+             * \return Any error returned by the scanner
+             */
             scan_error scan(typename Context::parse_context_type& parse_ctx,
                             Context& ctx) const
             {
@@ -381,26 +392,40 @@ namespace scn {
             }
 
         private:
+            explicit handle(detail::custom_value_type<Context> custom)
+                : m_custom(custom)
+            {
+            }
+
+            template <typename Visitor, typename C>
+            friend constexpr decltype(auto) visit_scan_arg(
+                Visitor&& vis,
+                basic_scan_arg<C>& arg);
+
             detail::custom_value_type<Context> m_custom;
         };
 
+        /// Construct a `basic_scan_arg` which doesn't contain an argument.
         constexpr basic_scan_arg() = default;
 
+        /**
+         * @return `true` if `*this` contains an argument
+         */
         constexpr explicit operator bool() const SCN_NOEXCEPT
         {
             return m_type != detail::arg_type::none_type;
         }
 
-        constexpr detail::arg_type type() const
+        SCN_NODISCARD constexpr detail::arg_type type() const
         {
             return m_type;
         }
 
-        constexpr detail::arg_value<Context>& value()
+        SCN_NODISCARD constexpr detail::arg_value<Context>& value()
         {
             return m_value;
         }
-        constexpr const detail::arg_value<Context>& value() const
+        SCN_NODISCARD constexpr const detail::arg_value<Context>& value() const
         {
             return m_value;
         }
@@ -446,11 +471,11 @@ namespace scn {
     }  // namespace detail
 
     /**
-     * A tuple of scanning arguments, by value.
+     * A tuple of scanning arguments, stored by value.
      *
      * Implicitly convertible to `basic_scan_args`,
      * to be passed to type-erased along to type-erased scanning functions,
-     * like `vscan`.
+     * like `scn::vscan`.
      */
     template <typename Context, typename... Args>
     class scan_arg_store
@@ -458,19 +483,25 @@ namespace scn {
         using base = detail::scan_arg_store_base<Context, sizeof...(Args)>;
 
     public:
-        constexpr scan_arg_store() : scan_arg_store(std::tuple<Args...>{}) {}
-        constexpr explicit scan_arg_store(std::tuple<Args...>&& a)
-            : m_args{std::move(a)},
-              m_data{std::apply(make_data_array<Args...>, m_args)}
-        {
-        }
-
         std::tuple<Args...>& args()
         {
             return m_args;
         }
 
     private:
+        constexpr scan_arg_store() : scan_arg_store(std::tuple<Args...>{}) {}
+
+        constexpr explicit scan_arg_store(std::tuple<Args...>&& a)
+            : m_args{std::move(a)},
+              m_data{std::apply(make_data_array<Args...>, m_args)}
+        {
+        }
+
+        template <typename Range, typename... A>
+        friend constexpr auto make_scan_args();
+        template <typename Range, typename... A>
+        friend constexpr auto make_scan_args(std::tuple<A...>&& values);
+
         template <typename... A>
         static constexpr typename base::value_array_type make_data_array(
             A&... args)
@@ -535,19 +566,33 @@ namespace scn {
 
     /**
      * A view over a collection of scanning arguments (`scan_arg_store`).
+     *
+     * Passed to `scn::vscan`, where it's automatically constructed from a
+     * `scan_arg_store`.
      */
     template <typename Context>
     class basic_scan_args {
     public:
+        /// Construct a view over no arguments
         constexpr basic_scan_args() = default;
 
+        /**
+         * Construct a view over `store`.
+         *
+         * Intentionally not `explicit`.
+         */
         template <typename... Args>
-        constexpr basic_scan_args(scan_arg_store<Context, Args...>& store)
+        constexpr /*implicit*/ basic_scan_args(
+            scan_arg_store<Context, Args...>& store)
             : basic_scan_args{scan_arg_store<Context, Args...>::desc,
                               store.m_data.data()}
         {
         }
 
+        /**
+         * \return `basic_scan_arg` at index `id`. Empty `basic_scan_arg` if
+         * there's no argument at index `id`.
+         */
         SCN_NODISCARD constexpr basic_scan_arg<Context> get(
             std::size_t id) const
         {
@@ -573,13 +618,9 @@ namespace scn {
             return arg;
         }
 
-        SCN_NODISCARD constexpr std::size_t max_size() const
-        {
-            return SCN_LIKELY(is_packed())
-                       ? detail::max_packed_args
-                       : (m_desc & ~detail::is_unpacked_bit);
-        }
-
+        /**
+         * \return Number of arguments in `*this`.
+         */
         SCN_NODISCARD constexpr std::size_t size() const
         {
             if (SCN_UNLIKELY(!is_packed())) {
@@ -612,6 +653,13 @@ namespace scn {
             const auto shift = (index + 1) * detail::packed_arg_bits;
             const std::size_t mask = (1 << detail::packed_arg_bits) - 1;
             return static_cast<detail::arg_type>((m_desc >> shift) & mask);
+        }
+
+        SCN_NODISCARD constexpr std::size_t max_size() const
+        {
+            return SCN_LIKELY(is_packed())
+                       ? detail::max_packed_args
+                       : (m_desc & ~detail::is_unpacked_bit);
         }
 
         size_t m_desc{0};

@@ -19,16 +19,333 @@
 
 #include <scn/detail/format_string_parser.h>
 
+/**
+ * \defgroup format-string Format strings
+ *
+ * \brief Format string description
+ *
+ * The format string syntax is heavily influenced by {fmt} and
+ * `std::format`, and is largely compatible with it. Scanning functions,
+ * such as `scn::scan` and
+ * `scn::input`, use the format string syntax described in this section.
+ *
+ * Format strings consist of:
+ *
+ *  * Replacement fields, which are surrounded by curly braces `{}`.
+ *
+ *  * Non-whitespace characters (except `{}`; for literal braces, use
+ *    `{{` and `}}`), which consume exactly one identical character from the
+ *    input
+ *
+ *  * Whitespace characters, which consume any and all available consecutive
+ *    whitespace from the input.
+ *
+ * Literal characters are matched by code point one-to-one, with no
+ * normalization being done.
+ * `Ä` (U+00C4, UTF-8 0xc3 0x84) only matches another U+00C4, and not, for
+ * example, U+00A8 (DIAERESIS) and U+0041 (LATIN CAPITAL LETTER A).
+ *
+ * Characters (code points) are considered to be whitespace characters by
+ * the Unicode Pattern_White_Space property, as defined by UAX31-R3a.
+ * These code points are:
+ *
+ *  * ASCII whitespace characters ("\t\n\v\f\r ")
+ *  * U+0085 (next line)
+ *  * U+200E and U+200F (LEFT-TO-RIGHT MARK and RIGHT-TO-LEFT MARK)
+ *  * U+2028 and U+2029 (LINE SEPARATOR and PARAGRAPH SEPARATOR)
+ *
+ * The grammar for a replacement field is as follows:
+ *
+ * \code
+ * replacement-field   ::= '{' [arg-id] [':' format-spec] '}'
+ * arg-id              ::= positive-integer
+ *
+ * format-spec         ::= [width] ['L'] [type]
+ * width               ::= positive-integer
+ * type                ::= 'a' | 'A' | 'b' | 'B' | 'c' | 'd' |
+ *                         'e' | 'E' | 'f' | 'F' | 'g' | 'G' |
+ *                         'o' | 'p' | 's' | 'x' | 'X' | 'i' | 'u'
+ * \endcode
+ *
+ * \section arg-ids Argument IDs
+ *
+ * The `arg-id` specifier can be used to index arguments manually.
+ * If manual indexing is used, all of the indices in a format string must be
+ * stated explicitly. The same `arg-id` can appear in the format string
+ * only once, and must refer to a valid argument.
+ *
+ * \code{.cpp}
+ * // Format string equivalent to "{0} to {1}"
+ * auto a = scn::scan<int, int>("2 to 300", "{} to {}");
+ * // a->values() == (2, 300)
+ *
+ * // Manual indexing
+ * auto b = scn::scan<int, int>("2 to 300", "{1} to {0}");
+ * // b->values() == (3, 200)
+ *
+ * // INVALID:
+ * // Automatic and manual indexing is mixed
+ * auto c = scn::scan<int, int>("2 to 300", "{} to {0}");
+ *
+ * // INVALID:
+ * // Same argument is referred to multiple times
+ * auto d = scn::scan<int, int>("2 to 300", "{0} to {0}");
+ *
+ * // INVALID:
+ * // {2} does not refer to an argument
+ * auto e = scn::scan<int, int>("2 to 300", "{0} to {2}");
+ * \endcode
+ *
+ * \subsection width Width
+ *
+ * Width specifies the maximum number of characters that will be read from
+ * the source range. It can be any unsigned integer. When using the `'c'`
+ * type specifier for strings, specifying the width is required.
+ *
+ * \code{.cpp}
+ * auto r = scn::scan<std::string>("abcde", "{:3}");
+ * // r->value() == "abc"
+ * \endcode
+ *
+ * For the purposes of width calculation, the same algorithm is used that in
+ * {fmt}. Every code point has a width of one, except the following ones
+ * have a width of 2:
+ *
+ * * any code point with the East_Asian_Width="W" or East_Asian_Width="F"
+ *   Derived Extracted Property as described by UAX#44
+ * * U+4DC0 – U+4DFF (Yijing Hexagram Symbols)
+ * * U+1F300 – U+1F5FF (Miscellaneous Symbols and Pictographs)
+ * * U+1F900 – U+1F9FF (Supplemental Symbols and Pictographs)
+ *
+ * \section localized Localized
+ *
+ * The `L` flag enables localized scanning.
+ * Its effects are different for each type it is used with:
+ *
+ *  * For integers, it enables locale-specific thousands separators
+ *  * For floating-point numbers, it enables locale-specifi thousands and
+ *    radix (decimal) separators
+ *  * For booleans, it enables locale-specific textual representations (for
+ *    `true` and `false`)
+ *  * For other types, it has no effect
+ *
+ * \section type Type specifier
+ *
+ * The type specifier determines how the data is to be scanned.
+ * The type of the argument to be scanned determines what flags are valid.
+ *
+ * \subsection type-string Type specifier: strings
+ *
+ * <table>
+ * <caption id="type-string-table">
+ * String types (`std::basic_string` and `std::basic_string_view`)
+ * </caption>
+ * <tr><th>Type</th> <th>Meaning</th></tr>
+ * <tr>
+ * <td>none, `s`</td>
+ * <td>
+ * Copies from the input until a whitespace character is encountered.
+ * Preceding whitespace is skipped.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`c`</td>
+ * <td>
+ * Copies from the input until the field width is exhausted. Does not skip
+ * preceding whitespace. Errors if no field width is provided.
+ * </td>
+ * </tr>
+ * </table>
+ *
+ * \subsection type-int Type specifier: integers
+ *
+ * Integer values are scanned as if by using `std::from_chars`, except:
+ *  * A positive `+` sign and a base prefix (like `0x`) are always
+ *    allowed to be present
+ *  * Preceding whitespace is skipped.
+ *
+ * <table>
+ * <caption id="type-int-table">
+ * Integer types (`signed` and `unsigned` variants of `char`, `short`,
+ * `int`, `long`, and `long long`)
+ * </caption>
+ * <tr><th>Type</th> <th>Meaning</th></tr>
+ * <tr>
+ * <td>`b`, `B`</td>
+ * <td>
+ * `std::from_chars` with base `2`. The base prefix is `0b` or `0B`.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`o`, `O`</td>
+ * <td>
+ * `std::from_chars` with base `8`. The base prefix is `0o` or `0O`, or just
+ * `0`.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`x`, `X`</td>
+ * <td>
+ * `std::from_chars` with base `16`. The base prefix is `0x` or `0X`.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`d`</td>
+ * <td>
+ * `std::from_chars` with base `10`. No base prefix allowed.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`u`</td>
+ * <td>
+ * `std::from_chars` with base `10`. No base prefix or `-` sign allowed.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`i`</td>
+ * <td>
+ * Detect the base from a possible prefix, defaulting to decimal (base-10).
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`rXX` (where XX = [2, 36])</td>
+ * <td>
+ * Custom base, without a base prefix (r stands for radix).
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`c`</td>
+ * <td>
+ * Copies a character (code unit) from the input.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>none</td>
+ * <td>
+ * Same as `d`.
+ * </td>
+ * </tr>
+ * </table>
+ *
+ * \subsection type-char Type specifier: characters
+ *
+ * <table>
+ * <caption id="type-char-table">
+ * Character types (`char` and `wchar_t`), and code points (`char32_t`)
+ * </caption>
+ * <tr><th>Type</th> <th>Meaning</th></tr>
+ * <tr>
+ * <td>none, `c`</td>
+ * <td>
+ * Copies a character (code point for `char32_t`, code unit otherwise) from the
+ * input.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`b`, `B`, `d`, `i`, `o`, `O`, `u`, `x`, `X`</td>
+ * <td>
+ * Same as for integers, see above \ref type-int. Not allowed for `char32_t`.
+ * </td>
+ * </tr>
+ * </table>
+ *
+ * \note When scanning characters (`char` and `wchar_t`), the source range is
+ * read a single code unit at a time, and encoding is not respected.
+ *
+ * \subsection type-float Type specifier: floating-point values
+ *
+ * Floating-point values are scanned as if by using `std::from_chars`, except:
+ *  * A positive `+` sign and a base prefix (like `0x`) are always
+ *    allowed to be present
+ *  * Preceding whitespace is skipped.
+ *
+ * <table>
+ * <caption id="type-float-table">
+ * Floating-point types (`float`, `double`, and `long double`)
+ * </caption>
+ * <tr><th>Type</th> <th>Meaning</th></tr>
+ * <tr>
+ * <td>`a`, `A`</td>
+ * <td>
+ * `std::from_chars` with `std::chars_format::hex`.
+ * Prefix `0x`/`0X` is allowed.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`e`, `E`</td>
+ * <td>
+ * `std::from_chars` with `std::chars_format::scientific`.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`f`, `F`</td>
+ * <td>
+ * `std::from_chars` with `std::chars_format::fixed`.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`g`, `G`</td>
+ * <td>
+ * `std::from_chars` with `std::chars_format::general`.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>none</td>
+ * <td>
+ * `std::from_chars` with `std::chars_format::general | std::chars_format::hex`.
+ * Prefix `0x`/`0X` is allowed.
+ * </td>
+ * </tr>
+ * </table>
+ *
+ * \subsection type-bool Type specifier: booleans
+ *
+ * <table>
+ * <caption id="type-bool-table">
+ * `bool`
+ * </caption>
+ * <tr><th>Type</th> <th>Meaning</th></tr>
+ * <tr>
+ * <td>`s`</td>
+ * <td>
+ * Allows for the textual representation (`true` or `false`).
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`b`, `B`, `d`, `i`, `o`, `O`, `u`, `x`, `X`</td>
+ * <td>
+ * Allows for the integral/numeric representation (`0` or `1`).
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>none</td>
+ * <td>
+ * Allows for both the textual and the integral/numeric representation.
+ * </td>
+ * </tr>
+ * </table>
+ */
+
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    /// A runtime format string
+    /**
+     * A runtime format string
+     *
+     * \ingroup format-string
+     */
     template <typename CharT>
     struct basic_runtime_format_string {
         std::basic_string_view<CharT> str;
     };
 
-    /// Create a runtime format string
+    /**
+     * Create a runtime format string
+     *
+     * Can be used to avoid compile-time format string checking
+     *
+     * \ingroup format-string
+     */
     inline basic_runtime_format_string<char> runtime(std::string_view s)
     {
         return {{s}};
@@ -237,7 +554,11 @@ namespace scn {
 
 #define SCN_STRING(s) SCN_STRING_IMPL(s, ::scn::detail::compile_string, )
 
-    /// Compile-time format string
+    /**
+     * Compile-time format string
+     *
+     * \ingroup format-string
+     */
     template <typename CharT, typename... Args>
     class basic_format_string {
     public:

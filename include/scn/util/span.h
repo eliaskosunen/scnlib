@@ -188,36 +188,5 @@ namespace scn {
         pointer m_end{nullptr};
     };
 
-    template <
-        typename I,
-        typename S,
-        typename Ptr = decltype(detail::to_address(SCN_DECLVAL(I))),
-        typename SPtr = decltype(detail::to_address(SCN_DECLVAL(S))),
-        typename ValueT = std::remove_reference_t<std::remove_pointer_t<Ptr>>>
-    constexpr auto make_span(I first, S last) SCN_NOEXCEPT->span<ValueT>
-    {
-        return {first, last};
-    }
-    template <
-        typename I,
-        typename Ptr = decltype(detail::to_address(SCN_DECLVAL(I))),
-        typename ValueT = std::remove_reference_t<std::remove_pointer_t<Ptr>>>
-    constexpr auto make_span(I first,
-                             std::size_t len) SCN_NOEXCEPT->span<ValueT>
-    {
-        return {first, len};
-    }
-
-    template <typename T>
-    constexpr span<typename T::value_type> make_span(T& container) SCN_NOEXCEPT
-    {
-        using std::begin;
-        using std::end;
-        return span<typename T::value_type>(
-            detail::to_address(begin(container)),
-            static_cast<size_t>(
-                std::distance(begin(container), end(container))));
-    }
-
     SCN_END_NAMESPACE
 }  // namespace scn

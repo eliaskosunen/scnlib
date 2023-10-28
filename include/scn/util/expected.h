@@ -23,8 +23,13 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    // Doing this instead of a simple using-declaration
-    // to shorten template names
+    /**
+     * An `expected<T, scan_error>`.
+     *
+     * Not a type alias to shorten template names
+*
+* \ingroup result
+     */
     template <typename T>
     struct scan_expected : public expected<T, scan_error> {
         using expected<T, scan_error>::expected;

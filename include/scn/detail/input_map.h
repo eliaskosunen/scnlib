@@ -24,6 +24,7 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /// Tag type to indicate an invalid range given to `scn::scan`
     struct invalid_input_range {};
 
     namespace detail::_scan_map_input_range_impl {

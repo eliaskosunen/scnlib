@@ -420,7 +420,7 @@ namespace scn {
     public:
         constexpr range_scanner() = default;
 
-        constexpr detail::range_scanner_type<CharT, T>& underlying()
+        constexpr detail::range_scanner_type<CharT, T>& base()
         {
             return m_underlying;
         }
@@ -525,8 +525,8 @@ namespace scn {
                 }
                 else if constexpr (Kind == range_format::map) {
                     m_underlying.set_brackets("{", "}");
-                    m_underlying.underlying().set_brackets({}, {});
-                    m_underlying.underlying().set_separator(":");
+                    m_underlying.base().set_brackets({}, {});
+                    m_underlying.base().set_separator(":");
                 }
             }
 

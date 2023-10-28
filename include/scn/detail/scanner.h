@@ -37,7 +37,11 @@ namespace scn {
             const basic_format_specs<typename Context::char_type>& specs);
     }  // namespace detail
 
-    // scanner specialization for all built-in types
+    /**
+     * `scanner` specialization for all built-in types
+     *
+     * \ingroup ctx
+     */
     template <typename T, typename CharT>
     struct scanner<
         T,
@@ -154,6 +158,16 @@ namespace scn {
         }
     }  // namespace detail
 
+    /**
+     * Type for discarding any scanned value.
+     * Example:
+     *
+     * \code{.cpp}
+     * auto r = scn::scan<scn::discard<int>>("42", "{}");
+     * // r.has_value() == true
+     * // decltype(r->value()) is scn::discard<int>
+     * \endcode
+     */
     template <typename T>
     struct discard {
         constexpr discard() = default;
