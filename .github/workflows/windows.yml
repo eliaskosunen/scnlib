@@ -28,7 +28,8 @@ jobs:
         std: [ 17, 20 ]
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{ runner.workspace }}/build
@@ -60,7 +61,8 @@ jobs:
           - std: 20
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{ runner.workspace }}/build
@@ -104,8 +106,6 @@ jobs:
           - sys: clang64
 
     steps:
-      - uses: actions/checkout@v3
-
       - uses: msys2/setup-msys2@v2
         with:
           update: true
@@ -117,6 +117,9 @@ jobs:
             toolchain:p
             cmake:p
             ninja:p
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build and test
         run: |

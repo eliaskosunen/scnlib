@@ -33,7 +33,8 @@ jobs:
             cxx: g++-9
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Create Build Environment
         run: |

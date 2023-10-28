@@ -19,12 +19,12 @@ jobs:
       matrix:
         os: [ 22.04, 20.04 ]
         std: [ 17, 20 ]
-        cxx: [ g++, clang++ ]
+        # FIXME: using clang-15 explicitly because of https://github.com/actions/runner-images/issues/8659
+        cxx: [ g++, clang++-15 ]
 
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: lukka/get-cmake@latest
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
 
       - name: Create Build Environment
         run: |
@@ -34,6 +34,16 @@ jobs:
           sudo locale-gen fi_FI.UTF-8
           sudo update-locale
           sudo locale -a
+
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+
+          if [[ "${{ matrix.cxx }}" == "clang++-15" ]]; then
+            sudo ./llvm.sh 15
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -62,7 +72,8 @@ jobs:
         type: [ Debug ]
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{ runner.workspace }}/build
@@ -90,7 +101,8 @@ jobs:
         std: [ 17, 20 ]
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Create Build Environment
         run: |
@@ -115,9 +127,8 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: lukka/get-cmake@latest
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
 
       - name: Create Build Environment
         run: |
@@ -130,6 +141,9 @@ jobs:
           
           mkdir ${{ runner.workspace }}/build
           mkdir ${{ runner.workspace }}/report
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build

@@ -95,6 +95,7 @@ jobs:
             std: 20
             os: 20.04
           # FIXME?: weird incompatibility with libstdc++ 13 inside <chrono>
+          # see https://github.com/actions/runner-images/issues/8659
           - cxx: clang++-14
             std: 20
             os: 22.04
@@ -103,9 +104,8 @@ jobs:
             os: 22.04
 
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: lukka/get-cmake@latest
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
 
       - name: Create Build Environment
         run: |
@@ -192,6 +192,9 @@ jobs:
             ${APT_INSTALL} clang-6.0
           fi
 
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         env:
@@ -221,9 +224,11 @@ jobs:
           - os: 20.04
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
 
-      - uses: lukka/get-cmake@latest
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Create Build Environment
         run: |
@@ -256,7 +261,8 @@ jobs:
   alpine:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Start docker
         run: |
@@ -267,11 +273,11 @@ jobs:
       - name: Install dependencies
         run: |
           ./alpine-run.sh apk update
-          ./alpine-run.sh apk add build-base cmake g++ linux-headers git bash
+          ./alpine-run.sh apk add build-base cmake g++ linux-headers git bash ninja
 
       - name: Run CMake
         run: |
-          ./alpine-run.sh cmake -S /src -B build -DSCN_CI=ON
+          ./alpine-run.sh cmake -G Ninja -S /src -B build -DSCN_CI=ON
 
       - name: Build
         run: |
@@ -287,12 +293,11 @@ jobs:
       fail-fast: false
       matrix:
         std: [ 17, 20 ]
-        cxx: [ clang++-16 ]
+        cxx: [ clang++-17 ]
 
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: lukka/get-cmake@latest
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
 
       - name: Create Build Environment
         run: |
@@ -303,9 +308,12 @@ jobs:
           
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          sudo ./llvm.sh 16
+          sudo ./llvm.sh 17
           
           mkdir ${{ runner.workspace }}/build
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build

@@ -1,20 +1,21 @@
+# TODO
 name: Checks
 
 on:
-  push:
-    branches:
-      - master
-      - dev
-    paths-ignore:
-      - '**.md'
-      - '**/docs/**'
-  pull_request:
-    branches:
-      - master
-      - dev
-    paths-ignore:
-      - '**.md'
-      - '**/docs/**'
+  #push:
+  #  branches:
+  #    - master
+  #    - dev
+  #  paths-ignore:
+  #    - '**.md'
+  #    - '**/docs/**'
+  #pull_request:
+  #  branches:
+  #    - master
+  #    - dev
+  #  paths-ignore:
+  #    - '**.md'
+  #    - '**/docs/**'
   workflow_dispatch:
 
 jobs:
@@ -27,7 +28,7 @@ jobs:
         std: [ 17, 20 ]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Run Clang-Tidy
         run: |

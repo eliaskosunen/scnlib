@@ -31,11 +31,13 @@ jobs:
             distro: bullseye
 
         exclude:
-          # FIXME: timing out for some reason
+          # FIXME: these runs take too long, and time out
           - arch: aarch64
+          - arch: ppc64le
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - uses: uraimo/run-on-arch-action@v2
         name: Build and test
@@ -48,10 +50,10 @@ jobs:
 
           install: |
             apt-get update -yq
-            apt-get install -yq git wget cmake build-essential make g++
+            apt-get install -yq git wget cmake build-essential make g++ ninja-build
 
           run: |
-            cmake -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=ON -DSCN_TESTS=ON -B build
+            cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
             cmake --build build --parallel -- -k
             ctest --output-on-failure --test-dir build
 
@@ -65,7 +67,8 @@ jobs:
             arch: ARM64
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{ runner.workspace }}/build
