@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
   <meta charset="utf-8"/>
-  <title>Scannable Ranges module | scnlib scanf for modern C++</title>
+  <title>Scannable ranges module | scnlib scanf for modern C++</title>
   <link href="favicon-dark.png" rel="icon" type="image/png"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <meta content="#22272e" name="theme-color"/>
@@ -58,7 +58,8 @@
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
         <h1>
-          Scannable Ranges <span class="m-thin">module</span></h1>
+          Scannable ranges <span class="m-thin">module</span></h1>
+        <p>Description of the <code>scannable_range</code> concept.</p>
         <nav class="m-block m-default poxy-toc" id="poxy-toc">
           <h3>Contents</h3>
           <ul>
@@ -70,6 +71,11 @@
             </li>
           </ul>
         </nav>
+<p>A range is considered scannable, if it models at least <code>forward_range</code>, and its character type is correct (its value type is the same as the one of the format string). If the range additionally models <code>contiguous_range</code> and <code>sized_range</code>, additional optimizations are enabled.</p><pre class="m-code"><span class="c1">// Exposition only</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Range</span><span class="p">,</span> <span class="k">typename</span> <span class="nc">CharT</span><span class="o">&gt;</span>
+<span class="k">concept</span> <span class="nc">scannable_range</span> <span class="o">=</span>
+    <span class="n">ranges</span><span class="o">::</span><span class="n">forward_range</span><span class="o">&lt;</span><span class="n">Range</span><span class="o">&gt;</span> <span class="o">&amp;&amp;</span>
+    <span class="nn">std</span><span class="o">::</span><span class="n">same_as</span><span class="o">&lt;</span><span class="n">ranges</span><span class="o">::</span><span class="n">range_value_t</span><span class="o">&lt;</span><span class="n">Range</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">CharT</span><span class="o">&gt;</span><span class="p">;</span></pre><p>To turn an <code>input_range</code> into a <code>forward_range</code> (and thus a scannable one), <code><a class="m-doc" href="classscn_1_1basic__caching__view.html">scn::<wbr/>basic_caching_view</a></code> can be used.</p>
         <section id="nested-classes">
           <h2><a href="#nested-classes">Classes</a></h2>
           <dl class="m-doc">

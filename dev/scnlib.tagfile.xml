@@ -1028,6 +1028,20 @@
       <arglist></arglist>
     </member>
     <member kind="typedef">
+      <type>basic_scan_arg&lt; basic_scan_context&lt; detail::decayed_mapped_source_range&lt; Range &gt;, CharT &gt; &gt;</type>
+      <name>scan_arg_for</name>
+      <anchorfile>group__vscan.html</anchorfile>
+      <anchor>ga4d45bbe4f31fa440f30af224217cdc57</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
+      <type>basic_scan_args&lt; basic_scan_context&lt; detail::decayed_mapped_source_range&lt; Range &gt;, CharT &gt; &gt;</type>
+      <name>scan_args_for</name>
+      <anchorfile>group__vscan.html</anchorfile>
+      <anchor>ga944822aee3e115d967fe036cf90c0194</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
       <type>scan_expected&lt; borrowed_subrange_with_sentinel_t&lt; Range &gt; &gt;</type>
       <name>vscan_result</name>
       <anchorfile>group__vscan.html</anchorfile>
@@ -1065,8 +1079,8 @@
     <member kind="function">
       <type>basic_runtime_format_string&lt; char &gt;</type>
       <name>runtime</name>
-      <anchorfile>namespacescn.html</anchorfile>
-      <anchor>a155459c0f718bad17a94c331794d6537</anchor>
+      <anchorfile>group__format-string.html</anchorfile>
+      <anchor>ga155459c0f718bad17a94c331794d6537</anchor>
       <arglist>(std::string_view s)</arglist>
     </member>
     <member kind="function">
@@ -1246,6 +1260,34 @@
     <class kind="struct">scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &gt; &gt;</class>
   </compound>
   <compound kind="group">
+    <name>format-string</name>
+    <title>Format strings</title>
+    <filename>group__format-string.html</filename>
+    <class kind="struct">scn::basic_runtime_format_string</class>
+    <class kind="class">scn::basic_format_string</class>
+    <member kind="function">
+      <type>basic_runtime_format_string&lt; char &gt;</type>
+      <name>runtime</name>
+      <anchorfile>group__format-string.html</anchorfile>
+      <anchor>ga155459c0f718bad17a94c331794d6537</anchor>
+      <arglist>(std::string_view s)</arglist>
+    </member>
+    <docanchor file="group__format-string.html" title="Argument IDs">arg-ids</docanchor>
+    <docanchor file="group__format-string.html" title="Width">width</docanchor>
+    <docanchor file="group__format-string.html" title="Localized">localized</docanchor>
+    <docanchor file="group__format-string.html" title="Type specifier">type</docanchor>
+    <docanchor file="group__format-string.html" title="Type specifier: strings">type-string</docanchor>
+    <docanchor file="group__format-string.html">type-string-table</docanchor>
+    <docanchor file="group__format-string.html" title="Type specifier: integers">type-int</docanchor>
+    <docanchor file="group__format-string.html">type-int-table</docanchor>
+    <docanchor file="group__format-string.html" title="Type specifier: characters">type-char</docanchor>
+    <docanchor file="group__format-string.html">type-char-table</docanchor>
+    <docanchor file="group__format-string.html" title="Type specifier: floating-point values">type-float</docanchor>
+    <docanchor file="group__format-string.html">type-float-table</docanchor>
+    <docanchor file="group__format-string.html" title="Type specifier: booleans">type-bool</docanchor>
+    <docanchor file="group__format-string.html">type-bool-table</docanchor>
+  </compound>
+  <compound kind="group">
     <name>locale</name>
     <title>Localization</title>
     <filename>group__locale.html</filename>
@@ -1289,7 +1331,7 @@
   </compound>
   <compound kind="group">
     <name>scannable</name>
-    <title>Scannable Ranges</title>
+    <title>Scannable ranges</title>
     <filename>group__scannable.html</filename>
     <class kind="class">scn::basic_caching_view</class>
   </compound>
@@ -1297,6 +1339,20 @@
     <name>vscan</name>
     <title>Type-erased scanning API</title>
     <filename>group__vscan.html</filename>
+    <member kind="typedef">
+      <type>basic_scan_arg&lt; basic_scan_context&lt; detail::decayed_mapped_source_range&lt; Range &gt;, CharT &gt; &gt;</type>
+      <name>scan_arg_for</name>
+      <anchorfile>group__vscan.html</anchorfile>
+      <anchor>ga4d45bbe4f31fa440f30af224217cdc57</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
+      <type>basic_scan_args&lt; basic_scan_context&lt; detail::decayed_mapped_source_range&lt; Range &gt;, CharT &gt; &gt;</type>
+      <name>scan_args_for</name>
+      <anchorfile>group__vscan.html</anchorfile>
+      <anchor>ga944822aee3e115d967fe036cf90c0194</anchor>
+      <arglist></arglist>
+    </member>
     <member kind="typedef">
       <type>scan_expected&lt; borrowed_subrange_with_sentinel_t&lt; Range &gt; &gt;</type>
       <name>vscan_result</name>
@@ -1363,5 +1419,10 @@
     <title>scnlib</title>
     <filename>index.html</filename>
     <docanchor file="index.html" title="About this documentation">about</docanchor>
+    <docanchor file="index.html" title="Installation">install</docanchor>
+    <docanchor file="index.html" title="Dependencies">deps</docanchor>
+    <docanchor file="index.html" title="Tests and benchmarks">tests</docanchor>
+    <docanchor file="index.html" title="Without CMake">without-cmake</docanchor>
+    <docanchor file="index.html" title="License">license</docanchor>
   </compound>
 </tagfile>
