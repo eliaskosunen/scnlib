@@ -50,25 +50,27 @@ To turn an ``input_range`` into a ``scannable_range``, ``scn::caching_view`` can
 Result Types
 ------------
 
-.. doxygentypedef:: scan_result_type
+.. doxygenclass:: scn::scan_error
+    :members:
+    :undoc-members:
 
 ``scan`` and others return an object of type ``scan_result``, wrapped in a ``scan_expected``.
 `std::expected on cppreference <https://en.cppreference.com/w/cpp/utility/expected>`_.
 
-.. doxygentypedef:: scan_expected
+.. doxygenstruct:: scan_expected
+    :members:
+    :undoc-members:
+
+.. doxygenclass:: scn::expected
+    :members:
+
+.. doxygentypedef:: scan_result_type
 
 .. doxygenfunction:: make_scan_result(scan_expected<ResultRange>&& result, scan_arg_store<Context, Args...>&& args)
 
 .. doxygenclass:: scn::scan_result
     :members:
     :undoc-members:
-
-.. doxygenclass:: scn::scan_error
-    :members:
-    :undoc-members:
-
-.. doxygenclass:: scn::expected
-    :members:
 
 Format Strings
 --------------
@@ -164,7 +166,7 @@ Its effects are different for each type it is used with:
  * For other types, it has no effect
 
 Type specifier
-*************
+**************
 
 The type specifier determines how the data is to be scanned.
 The type of the argument to be scanned determines what flags are valid.
@@ -203,7 +205,7 @@ Integer values are scanned as if by using ``std::from_chars``, except:
     * - ``o``, ``O``
       - ``from_chars`` with base 8. The base prefix is ``0o``, ``0O``, or just ``0``.
     * - ``x``, ``X``
-      - ``from_chars`` with base 16. The base prefix is ``0x``, ``0X`.
+      - ``from_chars`` with base 16. The base prefix is ``0x``, ``0X``.
     * - ``d``
       - ``from_chars`` with base 10. No base prefix.
     * - ``u``
@@ -270,7 +272,7 @@ Type specifier: booleans
       - Meaning
     * - ``s``
       - Allows the textual representation (``true`` or ``false``).
-    * - ``b``, ``B``, ``d``, ``i``, ``o``, `O``, ``u``, ``x``, ``X``
+    * - ``b``, ``B``, ``d``, ``i``, ``o``, ``O``, ``u``, ``x``, ``X``
       - Allows the integral/numeric representation (``0`` or ``1``).
     * - none
       - Allows for both the textual and the integral/numeric representation.
@@ -299,12 +301,12 @@ Contexts and Scanners
     :members:
     :undoc-members:
 
-.. doxygenclass:: scn::scanner
+.. doxygenstruct:: scn::scanner
 
 Localization
 ------------
 
-.. doxygenfunction:: scn::scan(const Locale &loc, Source &&source, format_string<Args...> format) -> scan_result_type<Source, Args...>
+.. doxygenfunction:: scan(const Locale &loc, Source &&source, format_string<Args...> format) -> scan_result_type<Source, Args...>
 
 .. doxygenfunction:: vscan(const Locale& loc, Range&& range, std::string_view format, scan_args_for<Range, char> args) -> vscan_result<Range>
 

@@ -54,7 +54,7 @@ jobs:
 
           run: |
             cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
-            cmake --build build --parallel -- -k
+            cmake --build build -- -k 0
             ctest --output-on-failure --test-dir build
 
   vs-arm64-crosscompile:
