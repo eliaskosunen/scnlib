@@ -65,6 +65,39 @@ BENCHMARK(bench_string_scn<wchar_t, std::wstring, unicode_tag>);
 BENCHMARK(bench_string_scn<wchar_t, std::wstring_view, lipsum_tag>);
 BENCHMARK(bench_string_scn<wchar_t, std::wstring_view, unicode_tag>);
 
+template <typename SourceCharT, typename DestStringT, typename Tag>
+static void bench_string_scn_value(benchmark::State& state)
+{
+    auto input = get_benchmark_input<SourceCharT, Tag>();
+    auto subr = scn::ranges::subrange{input};
+    for (auto _ : state) {
+        if (auto result = scn::scan_value<DestStringT>(subr)) {
+            benchmark::DoNotOptimize(result->value());
+            subr = result->range();
+        }
+        else if (result.error() == scn::scan_error::end_of_range) {
+            subr = scn::ranges::subrange{input};
+        }
+        else {
+            state.SkipWithError("Failed scan");
+            break;
+        }
+    }
+}
+
+BENCHMARK(bench_string_scn_value<char, std::string_view, lipsum_tag>);
+BENCHMARK(bench_string_scn_value<char, std::string_view, unicode_tag>);
+BENCHMARK(bench_string_scn_value<char, std::string, lipsum_tag>);
+BENCHMARK(bench_string_scn_value<char, std::string, unicode_tag>);
+BENCHMARK(bench_string_scn_value<char, std::wstring, lipsum_tag>);
+BENCHMARK(bench_string_scn_value<char, std::wstring, unicode_tag>);
+BENCHMARK(bench_string_scn_value<wchar_t, std::string, lipsum_tag>);
+BENCHMARK(bench_string_scn_value<wchar_t, std::string, unicode_tag>);
+BENCHMARK(bench_string_scn_value<wchar_t, std::wstring, lipsum_tag>);
+BENCHMARK(bench_string_scn_value<wchar_t, std::wstring, unicode_tag>);
+BENCHMARK(bench_string_scn_value<wchar_t, std::wstring_view, lipsum_tag>);
+BENCHMARK(bench_string_scn_value<wchar_t, std::wstring_view, unicode_tag>);
+
 template <typename CharT, typename Tag>
 static void bench_string_sstream(benchmark::State& state)
 {
@@ -89,4 +122,48 @@ BENCHMARK(bench_string_sstream<char, unicode_tag>);
 BENCHMARK(bench_string_sstream<wchar_t, lipsum_tag>);
 BENCHMARK(bench_string_sstream<wchar_t, unicode_tag>);
 
-BENCHMARK_MAIN();
+namespace {
+    const char* sscanf_impl(const char* input, std::string& value)
+    {
+        auto r = std::sscanf(input, " %255s", value.data());
+        if (r != 1) {
+            return nullptr;
+        }
+        auto len = std::strlen(value.c_str());
+        value.resize(len);
+        return input + len;
+    }
+    const wchar_t* sscanf_impl(const wchar_t* input, std::wstring& value)
+    {
+        auto r = std::swscanf(input, L" %255s", value.data());
+        if (r != 1) {
+            return nullptr;
+        }
+        auto len = std::wcslen(value.c_str());
+        value.resize(len);
+        return input + len;
+    }
+}  // namespace
+
+template <typename CharT, typename Tag>
+static void bench_string_scanf(benchmark::State& state)
+{
+    auto input = get_benchmark_input<CharT, Tag>();
+    const CharT* begin = input.data();
+    for (auto _ : state) {
+        std::basic_string<CharT> val{};
+        val.resize(256);
+        auto p = sscanf_impl(begin, val);
+        if (!p) {
+            begin = input.data();
+            continue;
+        }
+        begin = p;
+        benchmark::DoNotOptimize(val);
+    }
+}
+
+BENCHMARK(bench_string_scanf<char, lipsum_tag>);
+BENCHMARK(bench_string_scanf<char, unicode_tag>);
+BENCHMARK(bench_string_scanf<wchar_t, lipsum_tag>);
+BENCHMARK(bench_string_scanf<wchar_t, unicode_tag>);

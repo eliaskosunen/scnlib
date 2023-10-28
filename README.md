@@ -199,19 +199,27 @@ Lower is better.
 
 ![Integer result, chart](benchmark/runtime/results/int.png)
 
-| Test   |   `scn::scan` | `scn::scan_value` | `std::stringstream` | `sscanf` | `strtol` | `std::from_chars` |
-|:-------|--------------:| ----------------: | ------------------: |---------:|----------|------------------:|
-| Test 1 | 55.9          | 50.9              | 142                 |     81.6 |  21.2    |              13.3 |
-| Test 2 | 56.3          | 51.8              | 59.1                |      512 |  49.7    |              13.9 |
+| Test   |   `scn::scan` | `scn::scan_value` | `stringstream` | `sscanf` | `strtol` | `from_chars` |
+|:-------|--------------:| ----------------: | -------------: |---------:|----------|-------------:|
+| Test 1 | 55.9          | 50.9              | 142            |     81.6 |  21.2    |         13.3 |
+| Test 2 | 56.3          | 51.8              | 59.1           |      512 |  49.7    |         13.9 |
 
 #### Floating-point number parsing (`double`)
 
 ![Float result, chart](benchmark/runtime/results/float.png)
 
-| Test   | `scn::scan` | `scn::scan_value` | `std::stringstream` | `sscanf` | `strtod`  | `std::from_chars` |
-|:-------| ----------: | ----------------: | ------------------: |---------:|-----------|------------------:|
-| Test 1 | 83.6        | 76.6              | 403                 |      206 |     50.1  |              28.7 |
-| Test 2 | 79.8        | 73.9              | 268                 |      716 |     87.2  |              30.4 |
+| Test   | `scn::scan` | `scn::scan_value` | `stringstream` | `sscanf` | `strtod`  | `from_chars` |
+|:-------| ----------: | ----------------: | -------------: |---------:|-----------|-------------:|
+| Test 1 | 83.6        | 76.6              | 403            |      206 |     50.1  |         28.7 |
+| Test 2 | 79.8        | 73.9              | 268            |      716 |     87.2  |         30.4 |
+
+#### String "word" (whitespace-separated character sequence) parsing (`string` and `string_view`)
+
+![String result, chart](benchmark/runtime/results/string.png)
+
+| `scn::scan<string>` | `scn::scan<string_view>` | `scn::scan_value<string>` | `scn::scan_value<string_view>` | `stringstream` | `sscanf` |
+| ------------------: | -----------------------: | ------------------------: | -----------------------------: | -------------: | -------: |
+| 35.6                | 35.4                     | 27.8                      | 26.4                           | 173            | 69.5     |
 
 #### Conclusions
 
@@ -231,6 +239,7 @@ Above,
    which contains multiple values in their text representations, separated by spaces.
    The time used for creating any state needed for the scanner is not included.
    This test is called `"repeated"` in the benchmark sources.
+ * The string test is an exception: strings are read one after another from a sample of Lorem Ipsum.
 
 The difference between "Test 1" and "Test 2" is most pronounced when using a `stringstream`,
 which is relatively expensive to construct, and seems to be adding around ~100ns of runtime.
@@ -242,7 +251,8 @@ These benchmarks were run on a Fedora 37 machine, running Linux kernel version 6
 with an AMD Ryzen 7 5700X processor, and compiled with gcc version 12.3.1,
 with `-O3 -DNDEBUG -march=haswell` and LTO enabled.
 C++20 was used, with the standard library (libstdc++) `<ranges>` implementation.
-These benchmarks were run on 2023-08-24 (commit fdefc09).
+These benchmarks were run on 2023-08-24 (commit fdefc09), except for the string-benchmark,
+which was run on 2023-10-28 (commit 586e093).
 
 The source code for these benchmarks can be found in the `benchmark` directory.
 You can run these benchmarks yourself by enabling the CMake variable `SCN_BENCHMARKS`.
