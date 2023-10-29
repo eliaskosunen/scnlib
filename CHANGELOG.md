@@ -1,10 +1,14 @@
 # 2.0.0-beta
 
-_Released 2023-xx-xx_
+_Released 2023-10-29_
 
-Major overhaul. The library is rewritten in its entirety.
-See the documentation, namely the [Migration guide](https://eliaskosunen.github.io/scnlib/v2.0.0/migration-2-0.html)
-for more details.
+Major overhaul, both internally and in terms of the library interface. The library is rewritten in its entirety.
+See the documentation (note the new URL: https://eliaskosunen.github.io/scnlib),
+namely the [Migration guide](https://eliaskosunen.github.io/scnlib/v2.0.0-beta/migration-2-0.html) for more details.
+
+This is a beta pre-release.
+There may still be some bugs.
+Changes before v2.0.0 proper are possible, but aren't probably going to be major.
 
 Major changes include:
 
@@ -15,6 +19,7 @@ Major changes include:
 * `scn::scan` returns a view (`subrange`) into its input, and never takes ownership.
 * Scope is more focused: list operations, `ignore`, `getline`, and `file` have been removed.
 * Performance improvements
+* Completely reworked internals
 
 # 1.1.2
 
