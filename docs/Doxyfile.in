@@ -2118,7 +2118,26 @@ INCLUDE_FILE_PATTERNS  =
 # recursively expanded use the := operator instead of the = operator.
 # This tag requires that the tag ENABLE_PREPROCESSING is set to YES.
 
-PREDEFINED             = _SCN_DOXYGEN=1
+PREDEFINED             = "_SCN_DOXYGEN=1" \
+                         "SCN_DOXYGEN=1"
+                         "SCN_NODISCARD=[[nodiscard]]"
+                         "SCN_MOVE(x)=std::move(x)"
+                         "SCN_FWD(x)=std::forward<decltype(x)>(x)"
+                         "SCN_DECLVAL(x)=std::declval<x>()"
+                         "SCN_BEGIN_NAMESPACE="
+                         "SCN_END_NAMESPACE="
+                         "SCN_GCC_PUSH="
+                         "SCN_GCC_IGNORE(...)="
+                         "SCN_GCC_POP="
+                         "SCN_CLANG_PUSH="
+                         "SCN_CLANG_IGNORE(...)="
+                         "SCN_CLANG_POP="
+                         "SCN_GCC_COMPAT_PUSH="
+                         "SCN_GCC_COMPAT_IGNORE(...)="
+                         "SCN_GCC_COMPAT_POP="
+                         "SCN_MSVC_PUSH="
+                         "SCN_MSVC_IGNORE(...)="
+                         "SCN_MSVC_POP="
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this
 # tag can be used to specify a list of macro names that should be expanded. The
