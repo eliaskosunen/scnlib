@@ -1,34 +1,59 @@
 name: macOS
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches:
+      - master
+      - dev
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
+  pull_request:
+    branches:
+      - master
+      - dev
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ macos-latest ]
-        std: [ 11, 14, 17, 20 ]
-        cxx: [ clang++, g++-11 ]
+        os: [ 12, 11 ]
+        cxx: [ clang++, g++-12, g++-11, g++-10 ]
+        std: [ 11, 20 ]
+        exclude:
+          # Not available
+          - os: 12
+            cxx: g++-10
+          - os: 12
+            cxx: g++-9
+
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: Create Build Environment
-        run: mkdir ${{ runner.workspace }}/build
-
-      - name: Configure
-        working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
-                -DSCN_WERROR=ON $GITHUB_WORKSPACE
+          mkdir ${{ runner.workspace }}/build
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -DSCN_WERROR=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: make -k -j3
+        run: cmake --build . --parallel -- -k
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
-        run: ctest -C ${{ matrix.build_type }} --output-on-failure
+        run: ctest --output-on-failure

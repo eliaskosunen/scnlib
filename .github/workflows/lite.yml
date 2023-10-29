@@ -1,0 +1,136 @@
+name: Light builds
+
+on:
+  push:
+    branches-ignore:
+      - master
+      - dev
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
+  pull_request:
+    branches-ignore:
+      - master
+      - dev
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
+  workflow_dispatch:
+
+jobs:
+  lite-linux:
+    runs-on: ubuntu-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 22.04, 20.04 ]
+        std: [ 11, 20 ]
+        # FIXME: using clang-15 explicitly because of https://github.com/actions/runner-images/issues/8659
+        cxx: [ g++, clang++-15 ]
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Create Build Environment
+        run: |
+          mkdir ${{ runner.workspace }}/build
+          
+          sudo locale-gen en_US.UTF-8
+          sudo locale-gen fi_FI.UTF-8
+          sudo update-locale
+          sudo locale -a
+
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+
+          if [[ "${{ matrix.cxx }}" == "clang++-15" ]]; then
+            sudo ./llvm.sh 15
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -G Ninja -DSCN_WERROR=ON -DSCN_TESTS_LOCALIZED=ON \
+                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . -- -k 0
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest --output-on-failure
+
+  lite-windows:
+    runs-on: windows-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 2019, 2022 ]
+        platform: [ x64 ]
+        type: [ Debug ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{ runner.workspace }}/build
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        shell: bash
+        run: |
+          cmake -A ${{ matrix.platform }} $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . --config ${{ matrix.type }} --parallel
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest -C ${{ matrix.type }} --output-on-failure
+
+  lite-macos:
+    runs-on: macos-12
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [ g++, clang++ ]
+        std: [ 11, 20 ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Create Build Environment
+        run: |
+          mkdir ${{ runner.workspace }}/build
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -DSCN_WERROR=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . --parallel -- -k
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest --output-on-failure

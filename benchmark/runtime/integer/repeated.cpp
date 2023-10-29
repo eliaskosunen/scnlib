@@ -36,8 +36,8 @@ static void scan_int_repeated_scn(benchmark::State& state)
             }
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_scn, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn, long long);
@@ -62,8 +62,8 @@ static void scan_int_repeated_scn_default(benchmark::State& state)
             }
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_default, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_default, long long);
@@ -87,8 +87,8 @@ static void scan_int_repeated_scn_value(benchmark::State& state)
             }
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, long long);
@@ -111,8 +111,8 @@ static void scan_int_repeated_sstream(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_sstream, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_sstream, long long);
@@ -136,8 +136,8 @@ static void scan_int_repeated_scanf(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, int);
 BENCHMARK_TEMPLATE(scan_int_repeated_scanf, long long);

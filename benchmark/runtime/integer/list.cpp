@@ -38,8 +38,8 @@ static void scan_int_list_scn(benchmark::State& state)
             read.push_back(i);
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * n * sizeof(int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(n * sizeof(int)));
 }
 BENCHMARK(scan_int_list_scn)->Arg(16)->Arg(64)->Arg(256);
 
@@ -64,8 +64,8 @@ static void scan_int_list_scn_default(benchmark::State& state)
             read.push_back(i);
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * n * sizeof(int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(n * sizeof(int)));
 }
 BENCHMARK(scan_int_list_scn_default)->Arg(16)->Arg(64)->Arg(256);
 
@@ -89,8 +89,8 @@ static void scan_int_list_scn_value(benchmark::State& state)
             read.push_back(result.value());
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * n * sizeof(int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(n * sizeof(int)));
 }
 BENCHMARK(scan_int_list_scn_value)->Arg(16)->Arg(64)->Arg(256);
 
@@ -108,8 +108,8 @@ static void scan_int_list_scn_list(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * n * sizeof(int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(n * sizeof(int)));
 }
 BENCHMARK(scan_int_list_scn_list)->Arg(16)->Arg(64)->Arg(256);
 
@@ -131,8 +131,8 @@ static void scan_int_list_sstream(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * n * sizeof(int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(n * sizeof(int)));
 }
 BENCHMARK(scan_int_list_sstream)->Arg(16)->Arg(64)->Arg(256);
 
@@ -157,7 +157,7 @@ static void scan_int_list_scanf(benchmark::State& state)
             read.push_back(i);
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * n * sizeof(int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(n * sizeof(int)));
 }
 BENCHMARK(scan_int_list_scanf)->Arg(16)->Arg(64)->Arg(256);

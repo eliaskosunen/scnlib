@@ -35,8 +35,8 @@ static void scan_float_single_scn(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_scn, float);
 BENCHMARK_TEMPLATE(scan_float_single_scn, double);
@@ -60,8 +60,8 @@ static void scan_float_single_scn_default(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_scn_default, float);
 BENCHMARK_TEMPLATE(scan_float_single_scn_default, double);
@@ -84,8 +84,8 @@ static void scan_float_single_scn_value(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_scn_value, float);
 BENCHMARK_TEMPLATE(scan_float_single_scn_value, double);
@@ -110,8 +110,8 @@ static void scan_float_single_scn_parse(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_scn_parse, float);
 BENCHMARK_TEMPLATE(scan_float_single_scn_parse, double);
@@ -136,8 +136,8 @@ static void scan_float_single_sstream(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_sstream, float);
 BENCHMARK_TEMPLATE(scan_float_single_sstream, double);
@@ -160,8 +160,8 @@ static void scan_float_single_scanf(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_single_scanf, float);
 BENCHMARK_TEMPLATE(scan_float_single_scanf, double);

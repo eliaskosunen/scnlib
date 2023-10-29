@@ -35,8 +35,8 @@ static void scan_int_single_scn(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_single_scn, int);
 BENCHMARK_TEMPLATE(scan_int_single_scn, long long);
@@ -60,8 +60,8 @@ static void scan_int_single_scn_default(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_single_scn_default, int);
 BENCHMARK_TEMPLATE(scan_int_single_scn_default, long long);
@@ -84,8 +84,8 @@ static void scan_int_single_scn_value(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_single_scn_value, int);
 BENCHMARK_TEMPLATE(scan_int_single_scn_value, long long);
@@ -110,8 +110,8 @@ static void scan_int_single_scn_parse(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_single_scn_parse, int);
 BENCHMARK_TEMPLATE(scan_int_single_scn_parse, long long);
@@ -136,8 +136,8 @@ static void scan_int_single_sstream(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_single_sstream, int);
 BENCHMARK_TEMPLATE(scan_int_single_sstream, long long);
@@ -160,8 +160,8 @@ static void scan_int_single_scanf(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Int)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Int)));
 }
 BENCHMARK_TEMPLATE(scan_int_single_scanf, int);
 BENCHMARK_TEMPLATE(scan_int_single_scanf, long long);

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.5)
 
 project(scn CXX)
 
@@ -119,6 +119,8 @@ add_library(scn::scn-header-only ALIAS scn-header-only)
 
 set_property(TARGET scn PROPERTY SOVERSION 0)
 
+add_subdirectory(scripts)
+
 if (SCN_TESTS)
     enable_testing()
 endif ()
@@ -141,7 +143,7 @@ if (SCN_INSTALL)
     write_basic_package_version_file(
             "${CMAKE_CURRENT_BINARY_DIR}/scnConfigVersion.cmake"
             VERSION ${SCN_VERSION}
-            COMPATIBILITY ExactVersion)
+            COMPATIBILITY SameMinorVersion)
     configure_file(
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.cmake.in"
             "${CMAKE_CURRENT_BINARY_DIR}/scnConfig.cmake"
@@ -168,6 +170,8 @@ if (SCN_INSTALL)
     export(TARGETS ${SCN_EXPORT_TARGETS_LIST}
             NAMESPACE scn
             FILE "${CMAKE_CURRENT_BINARY_DIR}/scnTargets.cmake")
+
+    export(PACKAGE scn)
 
     install(TARGETS ${SCN_EXPORT_TARGETS_LIST}
             EXPORT scnTargets

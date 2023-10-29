@@ -55,11 +55,16 @@ namespace scn {
         {
             SCN_GCC_PUSH
             SCN_GCC_IGNORE("-Wconversion")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wtautological-constant-out-of-range-compare")
+
             if (ch >= std::numeric_limits<char>::min() &&
                 ch <= std::numeric_limits<char>::max()) {
                 return _char_to_int(static_cast<char>(ch));
             }
             return 255;
+
+            SCN_CLANG_POP
             SCN_GCC_POP
         }
 

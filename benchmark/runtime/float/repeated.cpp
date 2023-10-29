@@ -36,8 +36,8 @@ static void scan_float_repeated_scn(benchmark::State& state)
             }
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_repeated_scn, float);
 BENCHMARK_TEMPLATE(scan_float_repeated_scn, double);
@@ -61,8 +61,8 @@ static void scan_float_repeated_scn_default(benchmark::State& state)
             }
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_repeated_scn_default, float);
 BENCHMARK_TEMPLATE(scan_float_repeated_scn_default, double);
@@ -86,8 +86,8 @@ static void scan_float_repeated_scn_value(benchmark::State& state)
             }
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_repeated_scn_value, float);
 BENCHMARK_TEMPLATE(scan_float_repeated_scn_value, double);
@@ -110,8 +110,8 @@ static void scan_float_repeated_sstream(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_repeated_sstream, float);
 BENCHMARK_TEMPLATE(scan_float_repeated_sstream, double);
@@ -135,8 +135,8 @@ static void scan_float_repeated_scanf(benchmark::State& state)
             break;
         }
     }
-    state.SetBytesProcessed(
-        static_cast<int64_t>(state.iterations() * sizeof(Float)));
+    state.SetBytesProcessed(state.iterations() *
+                            static_cast<int64_t>(sizeof(Float)));
 }
 BENCHMARK_TEMPLATE(scan_float_repeated_scanf, float);
 BENCHMARK_TEMPLATE(scan_float_repeated_scanf, double);

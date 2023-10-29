@@ -1,16 +1,23 @@
-name: Code coverage
+name: Coverage
 
-on: [ push, pull_request ]
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
+  workflow_dispatch:
 
 jobs:
   codecov:
-    runs-on: ubuntu-latest
-    env:
-      CXX: g++-8
+    runs-on: ubuntu-22.04
+
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
 
       - name: Create Build Environment
         run: |
@@ -18,34 +25,41 @@ jobs:
           sudo locale-gen fi_FI.UTF-8
           sudo update-locale
           sudo locale -a
-          sudo apt-get install -yq --no-install-suggests --no-install-recommends --force-yes g++-8
-          mkdir ${{ runner.workspace }}/lcov
-          mkdir ${{ runner.workspace }}/build
 
-      - name: Setup lcov
-        working-directory: ${{ runner.workspace }}/lcov
-        shell: bash
+          sudo apt-get install -yq lcov
+
+          mkdir ${{ runner.workspace }}/build
+          mkdir ${{ runner.workspace }}/report
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
         run: |
-          wget http://downloads.sourceforge.net/ltp/lcov-1.14.tar.gz
-          tar xvfz lcov-1.14.tar.gz
-          make -C lcov-1.14
-          sudo make -C lcov-1.14 install
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_CXX_STANDARD=20 \
+                -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_COVERAGE=ON \
+                -DSCN_BENCHMARKS=OFF -DSCN_EXAMPLES=OFF \
+                $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_COVERAGE=ON -DSCN_BENCHMARKS=OFF -DSCN_EXAMPLES=OFF $GITHUB_WORKSPACE
-          make -k -j2
+          cmake --build . -- -k 0
 
       - name: Generate Coverage Report
         working-directory: ${{ runner.workspace }}/build
         run: |
-          ctest
-          lcov --gcov-tool /usr/bin/gcov-8 --directory . --capture --output-file coverage.info
-          lcov --gcov-tool /usr/bin/gcov-8 --remove coverage.info '/usr/*' 'test/*' 'src/deps/*' --output-file coverage.info
-          lcov --gcov-tool /usr/bin/gcov-8 --list coverage.info
+          ./coverage.sh
+          cp coverage-filtered.info ${{ runner.workspace }}/report/coverage.info
 
       - name: Upload Coverage Report
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
-          directory: ${{ runner.workspace }}/build
+          directory: ${{ runner.workspace }}/report
+          fail_ci_if_error: true
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}

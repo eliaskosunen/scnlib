@@ -49,22 +49,20 @@ namespace scn {
         struct static_const {
             static constexpr T value{};
         };
+#if SCN_STD < SCN_STD_17
         template <typename T>
         constexpr T static_const<T>::value;
+#endif
 
         template <std::size_t I>
-        struct priority_tag : priority_tag<I - 1> {
-        };
+        struct priority_tag : priority_tag<I - 1> {};
         template <>
-        struct priority_tag<0> {
-        };
+        struct priority_tag<0> {};
 
-        struct dummy_type {
-        };
+        struct dummy_type {};
 
         template <typename T>
-        struct dependent_false : std::false_type {
-        };
+        struct dependent_false : std::false_type {};
 
         template <typename T>
         using integer_type_for_char = typename std::

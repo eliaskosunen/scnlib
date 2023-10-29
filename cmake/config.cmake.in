@@ -1,3 +1,7 @@
 @PACKAGE_INIT@
 
-include(${CMAKE_CURRENT_LIST_DIR}/scnTargets.cmake)
+if(NOT TARGET scn::scn)
+    include(${CMAKE_CURRENT_LIST_DIR}/scnTargets.cmake)
+endif()
+
+set(SCN_LIBRARIES scn::scn)

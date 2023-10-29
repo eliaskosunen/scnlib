@@ -356,7 +356,6 @@ namespace scn {
             // Otherwise [2,36]
             uint8_t base{0};
 
-        private:
             static SCN_CONSTEXPR14 uint8_t default_format_options()
             {
                 SCN_MSVC_PUSH
@@ -369,6 +368,7 @@ namespace scn {
                 SCN_MSVC_POP
             }
 
+        private:
             template <typename Context, typename Buf, typename CharT>
             error _read_source(Context& ctx,
                                Buf& buf,

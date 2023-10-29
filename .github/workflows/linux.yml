@@ -1,0 +1,424 @@
+name: Linux
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
+  pull_request:
+    branches:
+      - master
+      - dev
+    paths-ignore:
+      - '**.md'
+      - '**/docs/**'
+  workflow_dispatch:
+
+env:
+  APT_INSTALL: |
+    sudo apt-get install
+      -yq --no-install-suggests --no-install-recommends
+      --allow-unauthenticated --allow-downgrades --allow-change-held-packages
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 22.04, 20.04 ]
+        std: [ 11, 14, 17, 20 ]
+        cxx:
+          - g++-13
+          - g++-12
+          - g++-11
+          - g++-10
+          - g++-9
+          - g++-8
+          - g++-7
+          - clang++-17
+          - clang++-16
+          - clang++-15
+          - clang++-14
+          - clang++-13
+          - clang++-12
+          - clang++-11
+          - clang++-10
+          - clang++-9
+          - clang++-8
+          - clang++-7
+          - clang++-6.0
+        exclude:
+          # Don't run gcc 9 to 13 on 20.04
+          - cxx: g++-13
+            os: 20.04
+          - cxx: g++-12
+            os: 20.04
+          - cxx: g++-11
+            os: 20.04
+          - cxx: g++-10
+            os: 20.04
+          - cxx: g++-9
+            os: 20.04
+          # Don't run gcc 7 and 8 on 22.04
+          - cxx: g++-8
+            os: 22.04
+          - cxx: g++-7
+            os: 22.04
+          # Don't run clang 13 to 17 on 20.04
+          - cxx: clang++-17
+            os: 20.04
+          - cxx: clang++-16
+            os: 20.04
+          - cxx: clang++-15
+            os: 20.04
+          - cxx: clang++-14
+            os: 20.04
+          - cxx: clang++-13
+            os: 20.04
+          # Don't run clang 6.0 to 12 on 22.04
+          - cxx: clang++-12
+            os: 22.04
+          - cxx: clang++-11
+            os: 22.04
+          - cxx: clang++-10
+            os: 22.04
+          - cxx: clang++-9
+            os: 22.04
+          - cxx: clang++-8
+            os: 22.04
+          - cxx: clang++-7
+            os: 22.04
+          - cxx: clang++-6.0
+            os: 22.04
+          # gcc 8, gcc 7, and clang 6-8 have lacking C++20 support
+          - cxx: g++-8
+            std: 20
+          - cxx: g++-7
+            std: 20
+          - cxx: clang++-8
+            std: 20
+          - cxx: clang++-7
+            std: 20
+          - cxx: clang++-6.0
+            std: 20
+          # No need to run C++11 and C++14 builds on very recent compilers
+          # We're arbitrarily picking gcc 11 and newer, and clang 12 and newer
+          - cxx: g++-11
+            std: 11
+          - cxx: g++-11
+            std: 14
+          - cxx: g++-12
+            std: 11
+          - cxx: g++-12
+            std: 14
+          - cxx: g++-13
+            std: 11
+          - cxx: g++-13
+            std: 14
+          - cxx: clang++-12
+            std: 11
+          - cxx: clang++-12
+            std: 14
+          - cxx: clang++-13
+            std: 11
+          - cxx: clang++-13
+            std: 14
+          - cxx: clang++-14
+            std: 11
+          - cxx: clang++-14
+            std: 14
+          - cxx: clang++-15
+            std: 11
+          - cxx: clang++-15
+            std: 14
+          - cxx: clang++-16
+            std: 11
+          - cxx: clang++-16
+            std: 14
+          - cxx: clang++-17
+            std: 11
+          - cxx: clang++-17
+            std: 14
+          # FIXME?: weird incompatibility with libstdc++ 13 inside <chrono>
+          # see https://github.com/actions/runner-images/issues/8659
+          - cxx: clang++-14
+            std: 20
+            os: 22.04
+          - cxx: clang++-13
+            std: 20
+            os: 22.04
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Create Build Environment
+        run: |
+          mkdir ${{ runner.workspace }}/deps
+          mkdir ${{ runner.workspace }}/build
+          
+          sudo locale-gen en_US.UTF-8
+          sudo locale-gen fi_FI.UTF-8
+          sudo update-locale
+          sudo locale -a
+
+      - name: Install dependencies
+        working-directory: ${{ runner.workspace }}/deps
+        env:
+          CXX: ${{ matrix.cxx }}
+          OS: ${{ matrix.os }}
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+          sudo apt-get --allow-unauthenticated -yq update
+          
+          if [[ "${CXX}" == "g++-13" ]]; then
+            ${APT_INSTALL} g++-13
+          fi
+          if [[ "${CXX}" == "g++-12" ]]; then
+            ${APT_INSTALL} g++-12
+          fi
+          if [[ "${CXX}" == "g++-11" ]]; then
+            ${APT_INSTALL} g++-11
+          fi
+          if [[ "${CXX}" == "g++-10" ]]; then
+            ${APT_INSTALL} g++-10
+          fi
+          if [[ "${CXX}" == "g++-9" ]]; then
+            ${APT_INSTALL} g++-9
+          fi
+          if [[ "${CXX}" == "g++-8" ]]; then
+            ${APT_INSTALL} g++-8
+          fi
+          if [[ "${CXX}" == "g++-7" ]]; then
+            ${APT_INSTALL} g++-7
+          fi
+          
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          
+          if [[ "${CXX}" == "clang++-18" ]]; then
+            sudo ./llvm.sh 18
+          fi
+          if [[ "${CXX}" == "clang++-17" ]]; then
+            sudo ./llvm.sh 17
+          fi
+          if [[ "${CXX}" == "clang++-16" ]]; then
+            sudo ./llvm.sh 16
+          fi
+          if [[ "${CXX}" == "clang++-15" ]]; then
+            sudo ./llvm.sh 15
+          fi
+          if [[ "${CXX}" == "clang++-14" ]]; then
+            sudo ./llvm.sh 14
+          fi
+          if [[ "${CXX}" == "clang++-13" ]]; then
+            sudo ./llvm.sh 13
+          fi
+          if [[ "${CXX}" == "clang++-12" ]]; then
+            sudo ./llvm.sh 12
+          fi
+          if [[ "${CXX}" == "clang++-11" ]]; then
+            sudo ./llvm.sh 11
+          fi
+          if [[ "${CXX}" == "clang++-10" ]]; then
+            sudo ./llvm.sh 10
+          fi
+          if [[ "${CXX}" == "clang++-9" ]]; then
+            sudo ./llvm.sh 9
+          fi
+          
+          if [[ "${CXX}" == "clang++-8" ]]; then
+            ${APT_INSTALL} clang-8
+          fi
+          if [[ "${CXX}" == "clang++-7" ]]; then
+            ${APT_INSTALL} clang-7
+          fi
+          if [[ "${CXX}" == "clang++-6.0" ]]; then
+            ${APT_INSTALL} clang-6.0
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -G Ninja -DSCN_WERROR=ON -DSCN_BUILD_LOCALIZED_TESTS=ON \
+                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . -- -k 0
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest --output-on-failure
+
+  # FIXME: doesn't work, see commit 866b139
+  #libcxx:
+  #  runs-on: ubuntu-${{ matrix.os }}
+  #  strategy:
+  #    fail-fast: false
+  #    matrix:
+  #      os: [ 22.04, 20.04 ]
+  #      std: [ 11, 20 ]
+
+  #  steps:
+  #    - name: Setup CMake and Ninja
+  #      uses: lukka/get-cmake@latest
+
+  #    - name: Checkout
+  #      uses: actions/checkout@v4
+  #      with:
+  #        submodules: recursive
+
+  #    - name: Create Build Environment
+  #      run: |
+  #        mkdir ${{ runner.workspace }}/build
+  #
+  #        sudo locale-gen en_US.UTF-8
+  #        sudo locale-gen fi_FI.UTF-8
+  #        sudo update-locale
+  #        sudo locale -a
+
+  #    - name: Run CMake
+  #      working-directory: ${{ runner.workspace }}/build
+  #      env:
+  #        CC: clang
+  #        CXX: clang++
+  #      run: |
+  #        cmake -G Ninja -DSCN_WERROR=ON -DSCN_BUILD_LOCALIZED_TESTS=ON \
+  #              -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+  #              -DCMAKE_CXX_FLAGS="-stdlib=libc++" -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++ -lc++abi" \
+  #              $GITHUB_WORKSPACE
+
+  #    - name: Build
+  #      working-directory: ${{ runner.workspace }}/build
+  #      run: cmake --build . -- -k 0
+
+  #    - name: Test
+  #      working-directory: ${{ runner.workspace }}/build
+  #      run: ctest --output-on-failure
+
+  alpine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Start docker
+        run: |
+          docker run -w /src -dit --name alpine -v $PWD:/src alpine:3.18
+          echo 'docker exec alpine "$@";' > alpine-run.sh
+          chmod +x alpine-run.sh
+
+      - name: Install dependencies
+        run: |
+          ./alpine-run.sh apk update
+          ./alpine-run.sh apk add build-base cmake g++ linux-headers git bash ninja
+
+      - name: Run CMake
+        run: |
+          ./alpine-run.sh cmake -G Ninja -S /src -B build -DSCN_TESTS=ON -DSCN_BENCHMARKS=ON -DSCN_EXAMPLES=ON -DSCN_PEDANTIC=ON
+
+      - name: Build
+        run: |
+          ./alpine-run.sh cmake --build build -- -k 0
+
+      - name: Test
+        run: |
+          ./alpine-run.sh bash -c "cd build && ctest --output-on-failure"
+
+  # FIXME
+  #asan-and-ubsan:
+  #  runs-on: ubuntu-22.04
+  #  strategy:
+  #    fail-fast: false
+  #    matrix:
+  #      std: [ 11, 20 ]
+  #      cxx: [ clang++-17 ]
+
+  #  steps:
+  #    - name: Setup CMake and Ninja
+  #      uses: lukka/get-cmake@latest
+
+  #    - name: Create Build Environment
+  #      run: |
+  #        sudo locale-gen en_US.UTF-8
+  #        sudo locale-gen fi_FI.UTF-8
+  #        sudo update-locale
+  #        sudo locale -a
+  #
+  #        wget https://apt.llvm.org/llvm.sh
+  #        chmod +x llvm.sh
+  #        sudo ./llvm.sh 17
+  #
+  #        mkdir ${{ runner.workspace }}/build
+
+  #    - name: Checkout
+  #      uses: actions/checkout@v4
+  #      with:
+  #        submodules: recursive
+
+  #    - name: Run CMake
+  #      working-directory: ${{ runner.workspace }}/build
+  #      run: |
+  #        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+  #              -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+  #              -DSCN_WERROR=ON -DSCN_BUILD_LOCALIZED_TESTS=ON \
+  #              -DSCN_USE_ASAN=ON -DSCN_USE_UBSAN=ON \
+  #              $GITHUB_WORKSPACE
+
+  #    - name: Build
+  #      working-directory: ${{ runner.workspace }}/build
+  #      run: |
+  #        cmake --build . -- -k 0
+
+  #    - name: Test
+  #      working-directory: ${{ runner.workspace }}/build
+  #      run: |
+  #        ctest --output-on-failure
+
+  install-and-consume:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build scnlib
+        run: |
+          mkdir ${{ runner.workspace }}/lib-build
+          cd ${{ runner.workspace }}/lib-build
+          cmake -G Ninja -DSCN_INSTALL=ON $GITHUB_WORKSPACE
+          cmake --build . --target scn
+          sudo cmake --build . --target install
+
+      - name: Build consumer
+        run: |
+          mkdir ${{ runner.workspace }}/consumer-build
+          cd ${{ runner.workspace }}/consumer-build
+          cmake $GITHUB_WORKSPACE/test/consume
+          cmake --build .
+
+      - name: Test consumer
+        working-directory: ${{ runner.workspace }}/consumer-build
+        run: |
+          output="$(echo '42' | ./scn-consumer)"
+          test "$output" -eq 42

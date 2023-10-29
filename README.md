@@ -1,10 +1,8 @@
 # scnlib
 
-[![Ubuntu 20 builds](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-20.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-20.yml)
-[![Ubuntu 18 builds](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-18.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/ubuntu-18.yml)
+[![Linux builds](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml)
 [![macOS builds](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml)
 [![Windows builds](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml)
-[![Alpine builds](https://github.com/eliaskosunen/scnlib/actions/workflows/alpine.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/alpine.yml)
 [![Code Coverage](https://codecov.io/gh/eliaskosunen/scnlib/branch/master/graph/badge.svg?token=LyWrDluna1)](https://codecov.io/gh/eliaskosunen/scnlib)
 
 [![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver&display_name=tag)](https://github.com/eliaskosunen/scnlib/releases)
@@ -35,14 +33,11 @@ This library attempts to move us ever so closer to replacing `iostream`s and C s
 It's faster than `iostream` (see Benchmarks) and type-safe, unlike `scanf`.
 Think [{fmt}](https://github.com/fmtlib/fmt) but in the other direction.
 
-This library is the reference implementation of the ISO C++ standards proposal
+This library (or rather, the v2 version of it) is the reference implementation of the ISO C++ standards proposal
 [P1729 "Text Parsing"](https://wg21.link/p1729).
 
-The library is currently deemed production-ready, and should be reasonably bug-free;
-it's tested and fuzzed extensively.
-
-The master-branch of the repository targets the next minor release (v1.2), and is backwards-compatible.
-The dev-branch targets the next major release (v2.0), and may contain backwards-incompatible changes, and may have lacking documentation.
+The master-branch of the repository is currently in maintenance-only mode, and is unlikely to receive any large updates.
+The dev-branch targets the next major release, v2.0, which is under active development, and is incompatible with v1.
 
 ## Documentation
 
@@ -175,13 +170,20 @@ See docs for usage without CMake.
 
 ## Compiler support
 
-Every commit is tested with
- * gcc 5.5 and newer (until v11)
- * clang 6.0 and newer (until v13)
+Every commit in master is tested with
+ * gcc 7 and newer (until v13)
+ * clang 6.0 and newer (until v17)
  * Visual Studio 2019 and 2022
- * clang 12 and gcc 11 on macOS Catalina
 
 with very extreme warning flags (see cmake/flags.cmake) and with multiple build configurations for each compiler.
+
+The following environments are also tested:
+ * 32-bit and 64-bit builds on Windoes
+ * AppleClang on macOS 11 (Bit Sur) and 12 (Monterey)
+ * clang-cl with VS 2019 and 2022
+ * MinGW
+ * GCC on armv6, armv7, aarch64, riscv64, s390x, and ppc64le
+ * Visual Studio 2022, cross compiling to arm64
 
 Other compilers and compiler versions may work, but it is not guaranteed.
 If your compiler does not work, it may be a bug in the library.
@@ -189,15 +191,6 @@ However, support will not be provided for:
 
  * GCC 4.9 (or earlier): C++11 support is too buggy
  * VS 2015 (or earlier): unable to handle templates
-
-VS 2017 is not tested, as GitHub Actions has deprecated the support for it.
-The last commit tested and verified to work with VS 2017 is
-[32be3f9](https://github.com/eliaskosunen/scnlib/commit/32be3f9) (post-v0.4).
-
-The code is only tested on amd64 machines (both win32 and win64 on Windows),
-because that's the only architecture GitHub Actions has runners for.
-The last commit tested and verified to work with both 32-bit and 64-bit ARM and PPC is
-[0621443](https://github.com/eliaskosunen/scnlib/commit/0621443) (v1.1).
 
 ## Benchmarks
 
