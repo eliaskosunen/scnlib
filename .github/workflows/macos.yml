@@ -5,18 +5,30 @@ on:
     branches:
       - master
       - dev
-    paths-ignore:
-      - '**.md'
-      - '**.rst'
-      - '**/docs/**'
+    paths:
+      - '.github/**'
+      - 'benchmark/**'
+      - 'cmake/**'
+      - 'examples/**'
+      - 'include/**'
+      - 'src/**'
+      - 'test/**'
+      - '**/CMakeLists.txt'
+      - '**/.gitmodules'
   pull_request:
     branches:
       - master
       - dev
-    paths-ignore:
-      - '**.md'
-      - '**.rst'
-      - '**/docs/**'
+    paths:
+      - '.github/**'
+      - 'benchmark/**'
+      - 'cmake/**'
+      - 'examples/**'
+      - 'include/**'
+      - 'src/**'
+      - 'test/**'
+      - '**/CMakeLists.txt'
+      - '**/.gitmodules'
   workflow_dispatch:
 
 jobs:
