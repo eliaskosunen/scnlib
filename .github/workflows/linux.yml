@@ -281,7 +281,7 @@ jobs:
 
       - name: Build
         run: |
-          ./alpine-run.sh cmake --build build --parallel -- -k
+          ./alpine-run.sh cmake --build build -- -k 0
 
       - name: Test
         run: |
@@ -346,21 +346,21 @@ jobs:
 
       - name: Build scnlib
         run: |
-          mkdir ${{ runner.workspace }}/build
-          cd ${{ runner.workspace }}/build
-          cmake -G Ninja -DSCN_INSTALL=ON ${{ runner.workspace }}
+          mkdir ${{ runner.workspace }}/lib-build
+          cd ${{ runner.workspace }}/lib-build
+          cmake -G Ninja -DSCN_INSTALL=ON $GITHUB_WORKSPACE
           cmake --build . --target scn
           sudo cmake --build . --target install
 
       - name: Build consumer
         run: |
-          mkdir ${{ runner.workspace }}/tests/consumer-test/build
-          cd ${{ runner.workspace }}/tests/consumer-test/build
-          cmake ..
+          mkdir ${{ runner.workspace }}/consumer-build
+          cd ${{ runner.workspace }}/consumer-build
+          cmake $GITHUB_WORKSPACE/tests/consumer-test
           cmake --build .
 
       - name: Test consumer
-        working-directory: ${{ runner.workspace }}/tests/consumer-test/build
+        working-directory: ${{ runner.workspace }}/consumer-build
         run: |
           output="$(echo '42' | ./scn-consumer)"
           test "$output" -eq 42
