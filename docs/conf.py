@@ -15,44 +15,46 @@
 # sys.path.insert(0, os.path.abspath('.'))
 
 import subprocess, os
+from pathlib import Path
+
+docs_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
 
 def configureDoxyfile(input_dir, output_dir):
-    with open('Doxyfile.in', 'r') as file:
+    with open(docs_dir / 'Doxyfile.in', 'r') as file:
         filedata = file.read()
 
     filedata = filedata.replace('@DOXYGEN_INPUT_DIR@', input_dir)
     filedata = filedata.replace('@DOXYGEN_OUTPUT_DIR@', output_dir)
 
-    with open('Doxyfile', 'w') as file:
+    with open(docs_dir / 'Doxyfile', 'w') as file:
         file.write(filedata)
 
 
 rtd_build = os.environ.get('READTHEDOCS', None) == 'True'
 
-breathe_projects = {}
+breathe_projects = {'scnlib': str((docs_dir / 'build/xml').absolute())}
 if rtd_build:
-    input_dir = '../include'
-    output_dir = 'build'
-    configureDoxyfile(input_dir, output_dir)
-    subprocess.call('doxygen', shell=True)
-    breathe_projects['scnlib'] = output_dir + '/xml'
+    input_dir = docs_dir / '../include'
+    output_dir = docs_dir / 'build'
+    configureDoxyfile(str(input_dir.absolute()), str(output_dir.absolute()))
+    subprocess.call(f'cd {docs_dir}; {docs_dir / "../rtd-downloaded-doxygen/bin/doxygen"}', shell=True)
 
 # -- Project information -----------------------------------------------------
 
 project = 'scnlib'
-copyright = '2020, Elias Kosunen'
+copyright = '2017, Elias Kosunen'
 author = 'Elias Kosunen'
 
 # The full version, including alpha/beta/rc tags
-release = '0.4.0-dev'
+release = '1.1.2'
 
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["breathe"]
+extensions = ["breathe", "sphinx.ext.ifconfig"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
