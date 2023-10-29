@@ -17,7 +17,7 @@ install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 install(EXPORT scn-targets
         FILE
-            scnTargets.cmake
+            scn-targets.cmake
         NAMESPACE
             scn::
         DESTINATION
@@ -26,25 +26,25 @@ install(EXPORT scn-targets
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/scnConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/scn-config-version.cmake"
         VERSION ${PROJECT_VERSION}
         COMPATIBILITY SameMajorVersion
 )
 
 configure_package_config_file(
-        "${PROJECT_SOURCE_DIR}/cmake/scnConfig.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/scnConfig.cmake"
+        "${PROJECT_SOURCE_DIR}/cmake/scn-config.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/scn-config.cmake"
         INSTALL_DESTINATION "${INSTALL_CONFIGDIR}"
 )
 
 install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/scnConfig.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/scnConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/scn-config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/scn-config-version.cmake"
         DESTINATION "${INSTALL_CONFIGDIR}"
 )
 
 export(EXPORT scn-targets
-        FILE "${CMAKE_CURRENT_BINARY_DIR}/scnTargets.cmake"
+        FILE "${CMAKE_CURRENT_BINARY_DIR}/scn-targets.cmake"
         NAMESPACE scn::
 )
 

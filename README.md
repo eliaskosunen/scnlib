@@ -37,9 +37,9 @@ Think [{fmt}](https://github.com/fmtlib/fmt) or C++20 `std::format`, but in the 
 This library is the reference implementation of the ISO C++ standards proposal
 [P1729 "Text Parsing"](https://wg21.link/p1729).
 
-This branch (dev) targets v2, and is currently unstable.
-The master branch contains the latest stable version of the library, with a substantially different interface, and
-support for C++11 and C++14.
+This branch (dev) targets v2.0.0, and is of pre-release quality.
+The master branch contains the latest stable version (v1.1.2) of the library, with a substantially different interface,
+and support for C++11 and C++14. Although, that version is unlikely to get updates.
 
 ## Documentation
 
