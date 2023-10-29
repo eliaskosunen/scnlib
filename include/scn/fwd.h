@@ -252,8 +252,6 @@ namespace scn {
         };
     }  // namespace detail
 
-    // util/optional.h: empty
-
     // util/span.h
 
     template <typename T>

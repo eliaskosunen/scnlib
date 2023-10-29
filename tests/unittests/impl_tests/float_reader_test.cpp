@@ -19,7 +19,6 @@
 
 #include <scn/detail/istream_range.h>
 #include <scn/impl/reader/float_reader.h>
-#include <scn/util/optional.h>
 
 #include <cmath>
 
@@ -612,7 +611,7 @@ protected:
     }
 
     T wrapped_reader{};
-    scn::optional<string_type> widened_source;
+    std::optional<string_type> widened_source;
 };
 
 using type_list = ::testing::Types<reader_wrapper<false, char, float>,

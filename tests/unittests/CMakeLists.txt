@@ -68,8 +68,6 @@ add_executable(scn_impl_tests
         impl_tests/integer_reader_test.impl_wide_classic.cpp
         impl_tests/integer_reader_test.impl_wide_localized.cpp
 )
-target_link_libraries(scn_impl_tests
-        scn_gtest scn_tests_base
-        simdutf::simdutf fast_float)
-target_include_directories(scn_impl_tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../src")
+target_link_libraries(scn_impl_tests PRIVATE
+        scn_gtest scn_tests_base scn_internal)
 add_test(NAME scn_impl_tests COMMAND scn_impl_tests)

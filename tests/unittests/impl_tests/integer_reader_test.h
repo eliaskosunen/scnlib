@@ -21,7 +21,6 @@
 
 #include <scn/detail/istream_range.h>
 #include <scn/impl/reader/integer_reader.h>
-#include <scn/util/optional.h>
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wheader-hygiene")
@@ -486,7 +485,7 @@ protected:
     }
 
     T wrapped_reader{};
-    scn::optional<string_type> widened_source;
+    std::optional<string_type> widened_source;
 };
 
 TYPED_TEST_SUITE_P(IntValueReaderTest);

@@ -43,6 +43,7 @@ if (SCN_BENCHMARKS)
     # Google Benchmark
 
     set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "Turn off google benchmark tests")
+    set(BENCHMARK_ENABLE_INSTALL OFF CACHE INTERNAL "Turn off google benchmark install")
     FetchContent_Declare(
             google-benchmark
             GIT_REPOSITORY  https://github.com/google/benchmark.git
@@ -51,15 +52,6 @@ if (SCN_BENCHMARKS)
     )
     list(APPEND SCN_OPTIONAL_DEPENDENCIES "google-benchmark")
 endif()
-
-# range-v3
-
-#FetchContent_Declare(
-#        range-v3
-#        GIT_REPOSITORY  https://github.com/ericniebler/range-v3
-#        GIT_TAG         0.12.0
-#        GIT_SHALLOW     TRUE
-#)
 
 # simdutf
 
@@ -91,6 +83,8 @@ set(BUILD_TESTING ${BUILD_TESTING_BEFORE_SIMDUTF})
 
 # fast_float
 
+set(FASTFLOAT_INSTALL_BEFORE_INCLUDE ${FASTFLOAT_INSTALL})
+set(FASTFLOAT_INSTALL OFF)
 FetchContent_Declare(
         fast_float
         GIT_REPOSITORY  https://github.com/fastfloat/fast_float.git
@@ -101,7 +95,7 @@ FetchContent_Declare(
 # make available
 
 FetchContent_MakeAvailable(
-        #range-v3
         fast_float
         ${SCN_OPTIONAL_DEPENDENCIES}
 )
+set(FASTFLOAT_INSTALL ${FASTFLOAT_INSTALL_BEFORE_INCLUDE})

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.16)
 
 project(
         scn
@@ -130,30 +130,35 @@ add_library(scn
         "${SCN_PUBLIC_HEADERS}"
         "${SCN_PRIVATE_HEADERS}"
         "${SCN_PRIVATE_SOURCES}"
-        )
-
+)
 target_include_directories(scn
         PUBLIC
             $<INSTALL_INTERFACE:include>
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         PRIVATE
-            ${PROJECT_SOURCE_DIR}/src
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
         )
-set_library_flags(scn)
-
 target_link_libraries(scn
         PRIVATE
             simdutf::simdutf
             fast_float
         )
+set_library_flags(scn)
 
 set_property(TARGET scn PROPERTY SOVERSION 2)
-
 add_library(scn::scn ALIAS scn)
-disable_msvc_secure_flags(scn PRIVATE)
 
 add_library(scn_internal INTERFACE)
-target_link_libraries(scn_internal INTERFACE scn::scn)
+target_link_libraries(scn_internal
+        INTERFACE
+            scn::scn
+            simdutf::simdutf fast_float
+)
+target_include_directories(scn_internal
+        INTERFACE
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+)
 set_interface_flags(scn_internal)
 
 add_subdirectory(scripts)

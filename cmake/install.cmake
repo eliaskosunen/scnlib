@@ -3,11 +3,11 @@ if (NOT SCN_INSTALL)
 endif()
 
 include(GNUInstallDirs)
-set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/scn)
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake)
 
 install(TARGETS
             scn
-            simdutf fast_float
+            fast_float simdutf
         EXPORT scn-targets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
