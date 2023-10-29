@@ -348,7 +348,7 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}/lib-build
           cd ${{ runner.workspace }}/lib-build
-          cmake -G Ninja -DSCN_INSTALL=ON $GITHUB_WORKSPACE
+          cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF $GITHUB_WORKSPACE
           cmake --build . --target scn
           sudo cmake --build . --target install
 

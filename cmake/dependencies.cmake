@@ -83,8 +83,7 @@ set(BUILD_TESTING ${BUILD_TESTING_BEFORE_SIMDUTF})
 
 # fast_float
 
-set(FASTFLOAT_INSTALL_BEFORE_INCLUDE ${FASTFLOAT_INSTALL})
-set(FASTFLOAT_INSTALL OFF)
+cmake_policy(SET CMP0077 NEW)
 FetchContent_Declare(
         fast_float
         GIT_REPOSITORY  https://github.com/fastfloat/fast_float.git
@@ -92,10 +91,17 @@ FetchContent_Declare(
         GIT_SHALLOW     TRUE
 )
 
+set(FASTFLOAT_INSTALL OFF CACHE INTERNAL "")
+
+FetchContent_GetProperties(fast_float)
+if(NOT fast_float_POPULATED)
+    FetchContent_Populate(fast_float)
+
+    add_subdirectory(${fast_float_SOURCE_DIR} ${fast_float_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
 # make available
 
 FetchContent_MakeAvailable(
-        fast_float
         ${SCN_OPTIONAL_DEPENDENCIES}
 )
-set(FASTFLOAT_INSTALL ${FASTFLOAT_INSTALL_BEFORE_INCLUDE})

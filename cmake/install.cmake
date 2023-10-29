@@ -3,7 +3,7 @@ if (NOT SCN_INSTALL)
 endif()
 
 include(GNUInstallDirs)
-set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake)
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/scn)
 
 install(TARGETS
             scn
