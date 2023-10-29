@@ -4,10 +4,12 @@ on:
   push:
     paths-ignore:
       - '**.md'
+      - '**.rst'
       - '**/docs/**'
   pull_request:
     paths-ignore:
       - '**.md'
+      - '**.rst'
       - '**/docs/**'
   workflow_dispatch:
 

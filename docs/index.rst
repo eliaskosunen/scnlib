@@ -19,6 +19,8 @@ Introduction
 Think of it as more C++-y ``scanf``, or the inverse of
 `fmtlib`_.
 
+This documentation is for v1.x of the library.
+For v2.x and later, see https://eliaskosunen.github.io/scnlib.
 The repository lives on the `scnlib GitHub`_.
 
 | The library is open source, licensed under the Apache License, version 2.0.
