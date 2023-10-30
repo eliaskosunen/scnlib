@@ -1,3 +1,11 @@
+# 1.x.y
+
+_Released 2023-xx-xx_
+
+## Fixes
+
+ * Fix compiler error in `scn::basic_string_view<CharT>::substr` (reported in #86)
+
 # 1.1.2
 
 _Released 2022-03-19_

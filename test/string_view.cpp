@@ -51,6 +51,13 @@ TEST_CASE("string_view")
             CHECK(it == sv.begin() + 1);
         }
     }
+    SUBCASE("substr")
+    {
+        scn::string_view sv(str.c_str());
+        auto substr = sv.substr(1, 4);
+        CHECK(substr.begin() == sv.begin() + 1);
+        CHECK(std::string{substr.data(), substr.size()} == "ello");
+    }
 }
 
 TEST_CASE("string_view scan")

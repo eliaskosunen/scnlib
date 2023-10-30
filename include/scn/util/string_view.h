@@ -247,7 +247,7 @@ namespace scn {
         {
             SCN_EXPECT(pos <= size());
             auto n = detail::min(count, size() - pos);
-            return m_data.subspan(pos, n);
+            return {data() + pos, n};
         }
 
 #if SCN_HAS_STRING_VIEW
