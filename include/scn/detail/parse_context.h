@@ -52,6 +52,10 @@ namespace scn {
 
     template <typename CharT>
     class basic_parse_context : public detail::parse_context_base {
+        static_assert(std::is_same<CharT, char>::value ||
+                          std::is_same<CharT, wchar_t>::value,
+                      "");
+
     public:
         using char_type = CharT;
         using locale_type = basic_locale_ref<CharT>;

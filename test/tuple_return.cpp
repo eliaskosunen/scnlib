@@ -77,13 +77,27 @@ namespace scn {
 
 TEST_CASE("tuple_return non_default_construct")
 {
-    auto [ret, val] =
-        scn::scan_tuple_default<scn::optional<non_default_construct>>("42");
+    SUBCASE("scan_tuple_default")
+    {
+        auto [ret, val] =
+            scn::scan_tuple_default<scn::optional<non_default_construct>>("42");
 
-    CHECK(ret);
+        CHECK(ret);
 
-    REQUIRE(val);
-    CHECK(val->value == 42);
+        REQUIRE(val);
+        CHECK(val->value == 42);
+    }
+
+    SUBCASE("scan_tuple")
+    {
+        auto [ret, val] =
+            scn::scan_tuple<scn::optional<non_default_construct>>("42", "{}");
+
+        CHECK(ret);
+
+        REQUIRE(val);
+        CHECK(val->value == 42);
+    }
 }
 
 #endif

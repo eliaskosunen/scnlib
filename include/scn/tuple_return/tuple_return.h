@@ -61,7 +61,7 @@ namespace scn {
 
         using context_type = basic_context<range_type>;
         using parse_context_type =
-            basic_parse_context<typename context_type::locale_type>;
+            basic_parse_context<typename context_type::char_type>;
         using char_type = typename range_type::char_type;
 
         auto range = wrap(SCN_FWD(r));
