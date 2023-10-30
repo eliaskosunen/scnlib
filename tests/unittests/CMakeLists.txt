@@ -28,6 +28,7 @@ add_executable(scn_tests
         custom_type_test.cpp
         erased_range_test.cpp
         error_test.cpp
+        float_test.cpp
         format_string_test.cpp
         format_string_parser_test.cpp
         integer_test.cpp

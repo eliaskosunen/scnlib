@@ -133,16 +133,16 @@ namespace scn {
 
                     if (auto [after_space_it, cp, is_space] =
                             impl::is_first_char_space(
-                                std::basic_string_view<CharT>{
-                                    begin, static_cast<size_t>(
-                                               ranges::distance(begin, end))});
+                                detail::make_string_view_from_pointers(begin,
+                                                                       end));
                         cp == detail::invalid_code_point) {
                         return on_error("Invalid encoding in format string");
                     }
                     else if (is_space) {
                         ctx.advance_to(
                             impl::read_while_classic_space(ctx.range()));
-                        return;
+                        begin = detail::to_address(std::prev(after_space_it));
+                        continue;
                     }
 
                     if (*it != *begin) {
