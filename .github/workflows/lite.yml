@@ -5,16 +5,28 @@ on:
     branches-ignore:
       - master
       - dev
-    paths-ignore:
-      - '**.md'
-      - '**/docs/**'
+    paths:
+      - '.github/**'
+      - 'benchmark/**'
+      - 'cmake/**'
+      - 'examples/**'
+      - 'include/**'
+      - 'src/**'
+      - 'tests/**'
+      - '**/CMakeLists.txt'
   pull_request:
     branches-ignore:
       - master
       - dev
-    paths-ignore:
-      - '**.md'
-      - '**/docs/**'
+    paths:
+      - '.github/**'
+      - 'benchmark/**'
+      - 'cmake/**'
+      - 'examples/**'
+      - 'include/**'
+      - 'src/**'
+      - 'tests/**'
+      - '**/CMakeLists.txt'
   workflow_dispatch:
 
 jobs:

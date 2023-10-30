@@ -2,13 +2,23 @@ name: Coverage
 
 on:
   push:
-    paths-ignore:
-      - '**.md'
-      - '**/docs/**'
+    paths:
+      - '.github/**'
+      - 'cmake/**'
+      - 'include/**'
+      - 'scripts/**'
+      - 'src/**'
+      - 'tests/**'
+      - '**/CMakeLists.txt'
   pull_request:
-    paths-ignore:
-      - '**.md'
-      - '**/docs/**'
+    paths:
+      - '.github/**'
+      - 'cmake/**'
+      - 'include/**'
+      - 'scripts/**'
+      - 'src/**'
+      - 'tests/**'
+      - '**/CMakeLists.txt'
   workflow_dispatch:
 
 jobs:

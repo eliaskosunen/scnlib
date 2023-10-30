@@ -10,7 +10,7 @@ on:
       - "**.hpp"
       - "**.dox"
       - "**.md"
-      - "docs/"
+      - "docs/**"
       - "**/docs.yml"
   release:
     types: [published]
