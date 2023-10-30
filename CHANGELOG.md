@@ -3,8 +3,8 @@
 _Released 2023-10-29_
 
 Major overhaul, both internally and in terms of the library interface. The library is rewritten in its entirety.
-See the documentation (note the new URL: https://eliaskosunen.github.io/scnlib),
-namely the [Migration guide](https://eliaskosunen.github.io/scnlib/v2.0.0-beta/migration-2-0.html) for more details.
+See the documentation (note the new URL: https://v2.scnlib.dev/),
+namely the [Migration guide](https://v2.scnlib.dev/v2.0.0-beta/migration-2-0.html) for more details.
 
 This is a beta pre-release.
 There may still be some bugs.
