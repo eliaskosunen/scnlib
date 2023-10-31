@@ -177,3 +177,31 @@ TEST(ResultTestReal, ErasedRangeRvalue)
 
     static_assert(std::is_same_v<decltype(result), dangling_scan_result>);
 }
+
+TEST(ResultTest, Destructuring)
+{
+    auto result = scn::scan<int>("42", "{}");
+    ASSERT_TRUE(result);
+    std::tuple<int> values{};
+    values = result->values();
+    EXPECT_EQ(std::get<0>(values), 42);
+    EXPECT_TRUE(result->range().empty());
+}
+TEST(ResultTest, TuplePassthrough)
+{
+    std::tuple<int> values;
+    auto result = scn::scan<int>("42", "{}", std::move(values));
+    ASSERT_TRUE(result);
+    auto [value] = result->values();
+    EXPECT_EQ(value, 42);
+    EXPECT_TRUE(result->range().empty());
+}
+TEST(ResultTest, TuplePassthroughWithImplicitTypes)
+{
+    std::tuple<int> values;
+    auto result = scn::scan("42", "{}", std::move(values));
+    ASSERT_TRUE(result);
+    auto [value] = result->values();
+    EXPECT_EQ(value, 42);
+    EXPECT_TRUE(result->range().empty());
+}
