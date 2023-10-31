@@ -19,7 +19,7 @@ int main() {
     // Read two integers from stdin
     // with an accompanying message
     if (auto result =
-            scn::prompt<int>("What are your two favorite numbers? ", "{} {}")) {
+            scn::prompt<int. int>("What are your two favorite numbers? ", "{} {}")) {
         auto [a, b] = result->values();
         std::println("Oh, cool, {} and {}!", a, b);
     } else {
