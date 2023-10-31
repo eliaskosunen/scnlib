@@ -41,4 +41,11 @@ TEST_CASE("getline std::string_view")
     CHECK_EQ(std::memcmp(sv.data(), "foo", 3), 0);
 }
 
+TEST_CASE("input std::string_view")
+{
+    std::string_view out;
+    auto ret = scn::scan(std::string_view{"foo"}, "{}", out);
+    CHECK(ret);
+    CHECK_EQ(out, "foo");
+}
 #endif

@@ -522,8 +522,8 @@ namespace scn {
 
 #if SCN_HAS_STRING_VIEW
                 template <typename CharT>
-                static auto impl(const std::basic_string_view<CharT>& str,
-                                 priority_tag<1>) noexcept
+                static auto impl(std::basic_string_view<CharT> str,
+                                 priority_tag<2>) noexcept
                     -> range_wrapper<basic_string_view<CharT>>
                 {
                     return {basic_string_view<CharT>{str.data(), str.size()}};
