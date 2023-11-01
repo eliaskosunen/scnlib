@@ -2,9 +2,15 @@
 
 _Released 2023-xx-xx_
 
+## Features
+
+ * Parse leading `+` signs in floats (reported in #77)
+
 ## Fixes
 
+ * Fix `scn::wrap(std::string_view&&)` being ambiguous on gcc (reported in #83)
  * Fix compiler error in `scn::basic_string_view<CharT>::substr` (reported in #86)
+ * Improve error messages given from the float parser
 
 # 1.1.2
 

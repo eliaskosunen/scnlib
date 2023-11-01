@@ -107,7 +107,8 @@ namespace scn {
                 SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
                 // No conversion
                 if (f == detail::zero_value<T>::value && chars == 0) {
-                    return error(error::invalid_scanned_value, "strtod");
+                    return error(error::invalid_scanned_value,
+                                 "strtod failed to parse float");
                 }
                 // Range error
                 if (err == ERANGE) {
@@ -295,10 +296,12 @@ namespace scn {
                 const auto result = ::fast_float::from_chars_advanced(
                     str, str + len, value, flags);
                 if (result.ec == std::errc::invalid_argument) {
-                    return error(error::invalid_scanned_value, "fast_float");
+                    return error(error::invalid_scanned_value,
+                                 "fast_float failed to parse float");
                 }
                 if (result.ec == std::errc::result_out_of_range) {
-                    return error(error::value_out_of_range, "fast_float");
+                    return error(error::value_out_of_range,
+                                 "fast_float parsed an out-of-range float");
                 }
                 if (std::isinf(value)) {
                     // fast_float represents very large or small values as inf

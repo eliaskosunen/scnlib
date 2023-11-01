@@ -107,6 +107,24 @@ TEST_CASE_TEMPLATE_DEFINE("floating point", T, floating_test)
         CHECK(e);
     }
     {
+        value_type f{};
+        auto e = do_scan<char_type>("+42.0", "{}", f);
+        CHECK(f == doctest::Approx(42.0));
+        CHECK(e);
+    }
+    {
+        value_type f{};
+        auto e = do_scan<char_type>(" +42.0", "{}", f);
+        CHECK(f == doctest::Approx(42.0));
+        CHECK(e);
+    }
+    {
+        value_type f{};
+        auto e = do_scan<char_type>("+", "{}", f);
+        CHECK(!e);
+        CHECK(e.error() == scn::error::invalid_scanned_value);
+    }
+    {
         value_type f{1.0};
         auto e =
             do_scan<char_type>("999999999999999.9999999999999e999999", "{}", f);

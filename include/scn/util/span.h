@@ -35,8 +35,7 @@ namespace scn {
         using std::input_iterator_tag;
         using std::output_iterator_tag;
         using std::random_access_iterator_tag;
-        struct contiguous_iterator_tag : random_access_iterator_tag {
-        };
+        struct contiguous_iterator_tag : random_access_iterator_tag {};
     }  // namespace custom_ranges
 
     /**
@@ -163,6 +162,10 @@ namespace scn {
         SCN_NODISCARD constexpr ssize_type ssize() const noexcept
         {
             return m_end - m_ptr;
+        }
+        SCN_NODISCARD constexpr bool empty() const noexcept
+        {
+            return size() == 0;
         }
 
         SCN_CONSTEXPR14 span<T> first(index_type n) const

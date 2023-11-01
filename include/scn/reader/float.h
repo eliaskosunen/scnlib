@@ -131,6 +131,7 @@ namespace scn {
                 auto do_parse_float = [&](span<const char_type> s) -> error {
                     T tmp = 0;
                     expected<std::ptrdiff_t> ret{0};
+                    int sign_offset{};
                     if (SCN_UNLIKELY((format_options & localized_digits) != 0 ||
                                      ((common_options & localized) != 0 &&
                                       (format_options & allow_hex) != 0))) {
@@ -145,16 +146,31 @@ namespace scn {
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     }
                     else {
+                        SCN_EXPECT(!s.empty());
+                        bool has_negative_sign = false;
+                        if (s[0] == char_type{'+'}) {
+                            sign_offset = 1;
+                        }
+                        else if (s[0] == char_type{'-'}) {
+                            has_negative_sign = true;
+                            sign_offset = 1;
+                        }
                         ret = _read_float(
-                            tmp, s,
+                            tmp, s.subspan(sign_offset),
                             ctx.locale()
                                 .get((common_options & localized) != 0)
                                 .decimal_point());
+                        if (has_negative_sign) {
+                            SCN_EXPECT(std::isnan(tmp) ||
+                                       tmp >= static_cast<T>(0.0));
+                            tmp = -tmp;
+                        }
                     }
 
                     if (!ret) {
                         return ret.error();
                     }
+                    ret.value() += sign_offset;
                     if (ret.value() != s.ssize()) {
                         auto pb =
                             putback_n(ctx.range(), s.ssize() - ret.value());
