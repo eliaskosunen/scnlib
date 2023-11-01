@@ -3,6 +3,7 @@
 [![Linux builds](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml)
 [![macOS builds](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml)
 [![Windows builds](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml/badge.svg?branch=master)](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml)
+[![Other architectures](https://github.com/eliaskosunen/scnlib/actions/workflows/arch.yml/badge.svg)](https://github.com/eliaskosunen/scnlib/actions/workflows/arch.yml)
 [![Code Coverage](https://codecov.io/gh/eliaskosunen/scnlib/branch/master/graph/badge.svg?token=LyWrDluna1)](https://codecov.io/gh/eliaskosunen/scnlib)
 
 [![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver&display_name=tag)](https://github.com/eliaskosunen/scnlib/releases)

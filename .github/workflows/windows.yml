@@ -30,6 +30,10 @@ on:
       - '**/CMakeLists.txt'
       - '**/.gitmodules'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
+  cancel-in-progress: true
+
 jobs:
   msvc:
     runs-on: windows-${{ matrix.os }}

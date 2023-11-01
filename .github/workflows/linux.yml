@@ -37,6 +37,10 @@ env:
       -yq --no-install-suggests --no-install-recommends
       --allow-unauthenticated --allow-downgrades --allow-change-held-packages
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
+  cancel-in-progress: true
+
 jobs:
   ubuntu:
     runs-on: ubuntu-${{ matrix.os }}
