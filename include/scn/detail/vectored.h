@@ -49,7 +49,7 @@ namespace scn {
                         if (begin >= buf_it->begin() && begin < buf_it->end()) {
                             break;
                         }
-                        if (begin == buf_it->end()) {
+                        if (begin == buf_it->end() && buf_it + 1 != s.end()) {
                             ++buf_it;
                             begin = buf_it->begin();
                             break;
@@ -156,8 +156,7 @@ namespace scn {
                   ::scn::custom_ranges::detail::_requires<
                       provides_buffer_access_concept,
                       Range,
-                      ::scn::ranges::iterator_t<const Range>>::value> {
-        };
+                      ::scn::ranges::iterator_t<const Range>>::value> {};
     }  // namespace detail
 
     SCN_END_NAMESPACE

@@ -10,6 +10,8 @@ _Released 2023-xx-xx_
 
  * Fix `scn::wrap(std::string_view&&)` being ambiguous on gcc (reported in #83)
  * Fix compiler error in `scn::basic_string_view<CharT>::substr` (reported in #86)
+ * Fix memory safety issues found with ASan and UBsan in
+   `small_vector`, `detail::utf16::validate_next`, and `detail::get_buffer`.
  * Improve error messages given from the float parser
 
 # 1.1.2

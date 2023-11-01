@@ -181,8 +181,7 @@ namespace scn {
             using reverse_iterator = std::reverse_iterator<pointer>;
             using const_reverse_iterator = std::reverse_iterator<const_pointer>;
 
-            struct stack_storage : basic_stack_storage<T, StackN> {
-            };
+            struct stack_storage : basic_stack_storage<T, StackN> {};
             struct heap_storage {
                 size_type cap{0};
             };
@@ -674,13 +673,15 @@ namespace scn {
         private:
             stack_storage& _construct_stack_storage() noexcept
             {
-                ::new (std::addressof(m_stack_storage)) stack_storage;
+                ::new (static_cast<void*>(std::addressof(m_stack_storage)))
+                    stack_storage;
                 m_ptr = m_stack_storage.reinterpret_unconstructed_data();
                 return m_stack_storage;
             }
             heap_storage& _construct_heap_storage() noexcept
             {
-                ::new (std::addressof(m_heap_storage)) heap_storage;
+                ::new (static_cast<void*>(std::addressof(m_heap_storage)))
+                    heap_storage;
                 m_ptr = nullptr;
                 return m_heap_storage;
             }
@@ -700,6 +701,9 @@ namespace scn {
 
             void _destruct_elements() noexcept
             {
+                if (!m_ptr) {
+                    return;
+                }
                 const auto s = size();
                 for (size_type i = 0; i != s; ++i) {
                     m_ptr[i].~T();
@@ -724,7 +728,9 @@ namespace scn {
                 auto ptr =
                     static_cast<pointer>(static_cast<void*>(storage_ptr));
                 auto n = size();
-                uninitialized_move(begin(), end(), ptr);
+                if (!empty()) {
+                    uninitialized_move(begin(), end(), ptr);
+                }
                 _destruct();
                 auto& heap = [this]() -> heap_storage& {
                     if (is_small()) {

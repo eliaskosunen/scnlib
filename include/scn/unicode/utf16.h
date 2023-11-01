@@ -63,9 +63,10 @@ namespace scn {
                                 "Invalid utf16 trail surrogate"};
                     }
                     ++it;
-                    cp = static_cast<code_point>(
-                        static_cast<uint32_t>(lead << 10u) + trail +
-                        surrogate_offset);
+                    auto lead32 = static_cast<uint32_t>(lead) - 0xd800u;
+                    auto trail32 = static_cast<uint32_t>(trail) - 0xdc00u;
+                    cp = static_cast<code_point>(((lead32 << 10) | trail32) +
+                                                 0x10000u);
                     return {};
                 }
                 if (is_trail_surrogate(lead)) {

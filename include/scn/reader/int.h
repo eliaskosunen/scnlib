@@ -258,8 +258,9 @@ namespace scn {
                         }
 
                         auto it = r.value();
-                        std::basic_string<char_type> str(to_address(it),
-                                                         s.size());
+                        std::basic_string<char_type> str(
+                            to_address(it),
+                            static_cast<size_t>(std::distance(it, s.end())));
                         ret = ctx.locale().get_localized().read_num(
                             tmp, str, static_cast<int>(base));
 

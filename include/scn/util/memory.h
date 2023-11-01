@@ -176,6 +176,8 @@ namespace scn {
             constexpr bool B = std::is_trivially_copyable<T>::value &&
                                std::is_pointer<ForwardIt>::value &&
                                sizeof(T) == 1;
+            SCN_EXPECT(detail::to_address(first) != nullptr);
+            SCN_EXPECT(detail::to_address(last) != nullptr);
             return uninitialized_fill(first, last, value,
                                       std::integral_constant<bool, B>{});
         }
@@ -186,6 +188,8 @@ namespace scn {
         {
             using value_type =
                 typename std::iterator_traits<ForwardIt>::value_type;
+            SCN_EXPECT(detail::to_address(first) != nullptr);
+            SCN_EXPECT(detail::to_address(last) != nullptr);
             ForwardIt current = first;
             for (; current != last; ++current) {
                 ::new (static_cast<void*>(std::addressof(*current))) value_type;
@@ -198,6 +202,8 @@ namespace scn {
             using value_type =
                 typename std::iterator_traits<ForwardIt>::value_type;
             ForwardIt current = first;
+            SCN_EXPECT(detail::to_address(first) != nullptr);
+            SCN_EXPECT(detail::to_address(last) != nullptr);
             for (; current != last; ++current) {
                 ::new (static_cast<void*>(std::addressof(*current)))
                     value_type();
@@ -216,6 +222,9 @@ namespace scn {
             using value_type =
                 typename std::iterator_traits<ForwardIt>::value_type;
             ForwardIt current = d_first;
+            SCN_EXPECT(detail::to_address(first) != nullptr);
+            SCN_EXPECT(detail::to_address(last) != nullptr);
+            SCN_EXPECT(detail::to_address(d_first) != nullptr);
             for (; first != last; ++first, (void)++current) {
                 ::new (static_cast<void*>(std::addressof(*current)))
                     value_type(*first);
@@ -234,6 +243,9 @@ namespace scn {
             using value_type =
                 typename std::iterator_traits<ForwardIt>::value_type;
             using pointer = typename std::iterator_traits<ForwardIt>::pointer;
+            SCN_EXPECT(detail::to_address(first) != nullptr);
+            SCN_EXPECT(detail::to_address(last) != nullptr);
+            SCN_EXPECT(detail::to_address(d_first) != nullptr);
             auto ptr =
                 std::memcpy(std::addressof(*d_first), std::addressof(*first),
                             static_cast<size_t>(std::distance(first, last)) *
@@ -252,6 +264,9 @@ namespace scn {
         {
             using value_type =
                 typename std::iterator_traits<ForwardIt>::value_type;
+            SCN_EXPECT(detail::to_address(first) != nullptr);
+            SCN_EXPECT(detail::to_address(last) != nullptr);
+            SCN_EXPECT(detail::to_address(d_first) != nullptr);
             ForwardIt current = d_first;
             for (; first != last; ++first, (void)++current) {
                 ::new (static_cast<void*>(std::addressof(*current)))
@@ -271,6 +286,9 @@ namespace scn {
             using value_type =
                 typename std::iterator_traits<ForwardIt>::value_type;
             using pointer = typename std::iterator_traits<ForwardIt>::pointer;
+            SCN_EXPECT(detail::to_address(first) != nullptr);
+            SCN_EXPECT(detail::to_address(last) != nullptr);
+            SCN_EXPECT(detail::to_address(d_first) != nullptr);
             auto ptr =
                 std::memcpy(std::addressof(*d_first), std::addressof(*first),
                             static_cast<size_t>(std::distance(first, last)) *
@@ -289,12 +307,12 @@ namespace scn {
 
             erased_storage(T val) noexcept(
                 std::is_nothrow_move_constructible<T>::value)
-                : m_ptr(::new (static_cast<void*>(&m_data)) T(SCN_MOVE(val)))
+                : m_ptr(::new(static_cast<void*>(&m_data)) T(SCN_MOVE(val)))
             {
             }
 
             erased_storage(const erased_storage& other)
-                : m_ptr(other ? ::new (static_cast<void*>(&m_data))
+                : m_ptr(other ? ::new(static_cast<void*>(&m_data))
                                     T(other.get())
                               : nullptr)
             {
@@ -309,7 +327,7 @@ namespace scn {
             }
 
             erased_storage(erased_storage&& other) noexcept
-                : m_ptr(other ? ::new (static_cast<void*>(&m_data))
+                : m_ptr(other ? ::new(static_cast<void*>(&m_data))
                                     T(SCN_MOVE(other.get()))
                               : nullptr)
             {

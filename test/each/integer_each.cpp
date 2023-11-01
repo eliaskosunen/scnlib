@@ -37,11 +37,15 @@ TEST_CASE_TEMPLATE_DEFINE("integer each", T, integer_each_test)
         CHECK(tmp == val);
     };
     auto random_ints = [](size_t n, T a, T b) {
+        using dist_type =
+            typename std::conditional<std::is_signed<T>::value, long long,
+                                      unsigned long long>::type;
         std::default_random_engine rng(std::random_device{}());
-        std::uniform_int_distribution<T> dist(a, b);
+        std::uniform_int_distribution<dist_type> dist(
+            static_cast<dist_type>(a), static_cast<dist_type>(b));
         std::vector<T> vec;
         std::generate_n(std::back_inserter(vec), n,
-                        [&]() { return dist(rng); });
+                        [&]() { return static_cast<T>(dist(rng)); });
         return vec;
     };
     for (T i = min; i != min + 1000; ++i) {

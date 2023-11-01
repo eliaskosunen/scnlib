@@ -73,8 +73,6 @@ namespace scn {
         static constexpr const uint16_t trail_surrogate_max = 0xdfff;
         static constexpr const uint16_t lead_offset =
             lead_surrogate_min - (0x10000u >> 10);
-        static constexpr const uint32_t surrogate_offset =
-            0x10000u - (lead_surrogate_min << 10) - trail_surrogate_min;
         static constexpr const uint32_t code_point_max = 0x10ffff;
 
         template <typename Octet>
