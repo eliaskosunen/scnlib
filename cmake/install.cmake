@@ -11,9 +11,14 @@ install(TARGETS
         EXPORT scn-targets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        COMPONENT scnlib_Development
 )
 
-install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(DIRECTORY
+            include/
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+        COMPONENT scnlib_Development
+)
 
 install(EXPORT scn-targets
         FILE
@@ -22,6 +27,8 @@ install(EXPORT scn-targets
             scn::
         DESTINATION
             "${INSTALL_CONFIGDIR}"
+        COMPONENT
+            scnlib_Development
 )
 
 include(CMakePackageConfigHelpers)
@@ -41,6 +48,7 @@ install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/scn-config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/scn-config-version.cmake"
         DESTINATION "${INSTALL_CONFIGDIR}"
+        COMPONENT scnlib_Development
 )
 
 export(EXPORT scn-targets
