@@ -141,7 +141,7 @@ namespace scn {
                         has_negative_sign = true;
                         sign_offset = 1;
                     }
-#if SCN_USE_STATIC_LOCALE
+#if SCN_DISABLE_LOCALE
                     ret =
                         _read_float(tmp, s.subspan(sign_offset),
                                     ctx.locale().get_static().decimal_point());
@@ -172,7 +172,7 @@ namespace scn {
                                    tmp >= static_cast<T>(0.0));
                         tmp = -tmp;
                     }
-#endif
+#endif // SCN_DISABLE_LOCALE
 
                     if (!ret) {
                         return ret.error();
