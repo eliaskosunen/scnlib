@@ -477,7 +477,7 @@ namespace scn {
             return {};
         }
 
-#if !SCN_USE_STATIC_LOCALE
+#if !SCN_DISABLE_LOCALE
 
         // nullptr = global
         constexpr basic_locale_ref(const void* p) : m_payload(p) {}
@@ -570,7 +570,7 @@ namespace scn {
         mutable detail::unique_ptr<custom_type> m_custom{nullptr};
         const void* m_payload{nullptr};
         default_type m_default{};
-#endif
+#endif // !SCN_DISABLE_LOCALE
     };
 
     template <typename CharT, typename Locale>

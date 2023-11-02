@@ -82,7 +82,7 @@ namespace scn {
                              size_t& chars,
                              uint8_t options)
             {
-#if !SCN_USE_STATIC_LOCALE
+#if !SCN_DISABLE_LOCALE
                 // Get current C locale
                 const auto loc = std::setlocale(LC_NUMERIC, nullptr);
                 // For whatever reason, this cannot be stored in the heap if
@@ -102,7 +102,7 @@ namespace scn {
                 chars = static_cast<size_t>(end - str);
                 auto err = errno;
 
-#if !SCN_USE_STATIC_LOCALE
+#if !SCN_DISABLE_LOCALE
                 // Reset locale
                 std::setlocale(LC_NUMERIC, locbuf);
                 errno = 0;
@@ -304,7 +304,7 @@ namespace scn {
                     flags.format = static_cast<::fast_float::chars_format>(
                         flags.format | ::fast_float::scientific);
                 }
-#if !SCN_USE_STATIC_LOCALE
+#if !SCN_DISABLE_LOCALE
                 if ((options & detail::float_scanner<T>::localized) != 0) {
                     flags.decimal_point = locale_decimal_point;
                 }

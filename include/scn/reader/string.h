@@ -116,7 +116,7 @@ namespace scn {
 
                 if (get_option(flag::use_specifiers) &&
                     !get_option(flag::accept_all)) {
-#if !SCN_USE_STATIC_LOCALE
+#if !SCN_DISABLE_LOCALE
                     if (localized) {
                         if (get_option(specifier::letters)) {
                             get_option(specifier::letters) = false;
@@ -137,7 +137,7 @@ namespace scn {
                         }
                     }
                     else
-#endif
+#endif // !SCN_DISABLE_LOCALE
                     {
                         auto do_range = [&](char a, char b) {
                             for (; a < b; ++a) {
@@ -302,7 +302,7 @@ namespace scn {
                     return not_inverted;
                 }
 
-#if !SCN_USE_STATIC_LOCALE
+#if !SCN_DISABLE_LOCALE
                 if (get_option(flag::use_specifiers)) {
                     SCN_EXPECT(localized);  // ensured by sanitize()
                     SCN_UNUSED(localized);
@@ -357,7 +357,7 @@ namespace scn {
                     }
                     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                 }
-#endif
+#endif // !SCN_DISABLE_LOCALE
                 if (get_option(flag::use_chars) && (ch >= 0 && ch <= 0x7f)) {
                     if (get_option(static_cast<char>(ch))) {
                         return not_inverted;

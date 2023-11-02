@@ -514,6 +514,11 @@
 #define SCN_DISABLE_STRTOD 0
 #endif
 
+// Define SCN_DISABLE_LOCALE
+#ifndef SCN_DISABLE_LOCALE
+#define SCN_DISABLE_LOCALE 0
+#endif
+
 #define SCN_UNUSED(x) static_cast<void>(sizeof(x))
 
 #if SCN_HAS_RELAXED_CONSTEXPR

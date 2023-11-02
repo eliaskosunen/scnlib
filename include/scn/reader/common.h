@@ -962,7 +962,7 @@ namespace scn {
                   m_width{width},
                   m_fn{get_fn(localized, width != 0)}
             {
-#if !SCN_USE_STATIC_LOCALE
+#if !SCN_DISABLE_LOCALE
                 if (localized) {
                     l.prepare_localized();
                     m_locale = l.get_localized_unsafe();
@@ -1058,7 +1058,7 @@ namespace scn {
 
             static SCN_CONSTEXPR14 fn_type get_fn(bool localized, bool counting)
             {
-#if !SCN_USE_STATIC_LOCALE
+#if !SCN_DISABLE_LOCALE
                 if (localized) {
                     return counting ? localized_call_counting : localized_call;
                 }

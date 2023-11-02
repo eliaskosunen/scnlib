@@ -231,7 +231,7 @@ namespace scn {
                 auto do_parse_int = [&](span<const char_type> s) -> error {
                     T tmp = 0;
                     expected<std::ptrdiff_t> ret{0};
-#if !SCN_USE_STATIC_LOCALE
+#if !SCN_DISABLE_LOCALE
                     if (SCN_UNLIKELY((format_options & localized_digits) !=
                                      0)) {
                         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
@@ -273,7 +273,7 @@ namespace scn {
                         SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
                     }
                     else
-#endif
+#endif // !SCN_DISABLE_LOCALE
                     {
                         SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
                         ret = _parse_int(tmp, s);
@@ -408,7 +408,7 @@ namespace scn {
                     return e;
                 }
                 auto thsep = ctx.locale()
-#if SCN_USE_STATIC_LOCALE
+#if SCN_DISABLE_LOCALE
                                  .get_static()
 #else
                                  .get((common_options & localized) != 0)

@@ -23,6 +23,8 @@ function(get_config_flags flags)
 
             $<$<BOOL:${SCN_DISABLE_FROM_CHARS}>:      -DSCN_DISABLE_FROM_CHARS=1>
             $<$<BOOL:${SCN_DISABLE_STRTOD}>:          -DSCN_DISABLE_STRTOD=1>
+
+            $<$<BOOL:${SCN_DISABLE_LOCALE}>:          -DSCN_DISABLE_LOCALE=1>
             PARENT_SCOPE
     )
 endfunction()
