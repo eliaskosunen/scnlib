@@ -4,6 +4,10 @@ _Released 2023-xx-xx_
 
 ## Features
 
+ * Allow disabling support for individual types with `SCN_DISABLE_TYPE_*` (#70, thanks [@cjvaughter (CJ Vaughter)](https://github.com/cjvaughter))
+   * Also, allow for disabling the fallbacks to `std::from_chars` and `std::strtod` when scanning floats
+   * This provides possible binary size reductions, and betters enables use in e.g. embedded platforms
+ * Allow disabling runtime localization with `SCN_DISABLE_LOCALE` (#71, thanks [@cjvaughter (CJ Vaughter)](https://github.com/cjvaughter))
  * Parse leading `+` signs in floats (reported in #77)
 
 ## Fixes
@@ -13,6 +17,9 @@ _Released 2023-xx-xx_
  * Fix memory safety issues found with ASan and UBsan in
    `small_vector`, `detail::utf16::validate_next`, and `detail::get_buffer`.
  * Add `COMPONENT` to CMake install targets (#80, thanks [@pawelwod](https://github.com/pawelwod))
+ * Fix calculation of `SCN_MSVC` from `_MSC_FULL_VER` (#62, thanks [@matbech (Mathias Berchtold)](https://github.com/matbech))
+ * Fix MSVC `C4146` warning in `integer_scanner` (#64, thanks [@matbech (Mathias Berchtold)](https://github.com/matbech))
+ * Use `if constexpr` and `std::unreachable` if available (#61, #78, thanks [@matbech (Mathias Berchtold)](https://github.com/matbech))
  * Improve error messages given from the float parser
 
 # 1.1.2
