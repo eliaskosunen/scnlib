@@ -282,7 +282,6 @@
 #define SCN_CONSTEXPR14 inline
 #endif
 
-
 // Detect if constexpr
 #if (defined(__cpp_if_constexpr) && __cpp_if_constexpr >= 201606) || \
     ((SCN_MSVC >= SCN_COMPILER(19, 11, 0) && SCN_MSVC_LANG >= SCN_STD_17))
@@ -304,7 +303,8 @@
     (SCN_MSVC >= SCN_COMPILER(19, 11, 0) && SCN_MSVC_LANG >= SCN_STD_17) || \
     ((SCN_GCC >= SCN_COMPILER(7, 0, 0) ||                                   \
       SCN_INTEL >= SCN_COMPILER(18, 0, 0)) &&                               \
-     __cplusplus >= SCN_STD_17) && !SCN_DOXYGEN
+     __cplusplus >= SCN_STD_17) &&                                          \
+        !SCN_DOXYGEN
 #define SCN_NODISCARD [[nodiscard]]
 #else
 #define SCN_NODISCARD /*nodiscard*/
@@ -381,7 +381,7 @@
 #define SCN_ASSUME(x) static_cast<void>((x) ? 0 : 0)
 #endif
 
-#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202 
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202
 #define SCN_UNREACHABLE std::unreachable()
 #elif SCN_HAS_BUILTIN_UNREACHABLE
 #define SCN_UNREACHABLE __builtin_unreachable()
@@ -444,6 +444,76 @@
 #define SCN_HAS_CHAR8 0
 #endif
 
+// Define SCN_DISABLE_* if not already defined
+#ifndef SCN_DISABLE_TYPE_SCHAR
+#define SCN_DISABLE_TYPE_SCHAR 0
+#endif
+#ifndef SCN_DISABLE_TYPE_SHORT
+#define SCN_DISABLE_TYPE_SHORT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_INT
+#define SCN_DISABLE_TYPE_INT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_LONG
+#define SCN_DISABLE_TYPE_LONG 0
+#endif
+#ifndef SCN_DISABLE_TYPE_LONG_LONG
+#define SCN_DISABLE_TYPE_LONG_LONG 0
+#endif
+#ifndef SCN_DISABLE_TYPE_UCHAR
+#define SCN_DISABLE_TYPE_UCHAR 0
+#endif
+#ifndef SCN_DISABLE_TYPE_USHORT
+#define SCN_DISABLE_TYPE_USHORT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_UINT
+#define SCN_DISABLE_TYPE_UINT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_ULONG
+#define SCN_DISABLE_TYPE_ULONG 0
+#endif
+#ifndef SCN_DISABLE_TYPE_ULONG_LONG
+#define SCN_DISABLE_TYPE_ULONG_LONG 0
+#endif
+#ifndef SCN_DISABLE_TYPE_BOOL
+#define SCN_DISABLE_TYPE_BOOL 0
+#endif
+#ifndef SCN_DISABLE_TYPE_CHAR
+#define SCN_DISABLE_TYPE_CHAR 0
+#endif
+#ifndef SCN_DISABLE_TYPE_CODE_POINT
+#define SCN_DISABLE_TYPE_CODE_POINT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_FLOAT
+#define SCN_DISABLE_TYPE_FLOAT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_DOUBLE
+#define SCN_DISABLE_TYPE_DOUBLE 0
+#endif
+#ifndef SCN_DISABLE_TYPE_LONG_DOUBLE
+#define SCN_DISABLE_TYPE_LONG_DOUBLE 0
+#endif
+#ifndef SCN_DISABLE_TYPE_BUFFER
+#define SCN_DISABLE_TYPE_BUFFER 0
+#endif
+#ifndef SCN_DISABLE_TYPE_STRING
+#define SCN_DISABLE_TYPE_STRING 0
+#endif
+#ifndef SCN_DISABLE_TYPE_STRING_VIEW
+#define SCN_DISABLE_TYPE_STRING_VIEW 0
+#endif
+#ifndef SCN_DISABLE_TYPE_CUSTOM
+#define SCN_DISABLE_TYPE_CUSTOM 0
+#endif
+
+// Define SCN_DISABLE_FROM_CHARS and SCN_DISABLE_STRTOD if not already defined
+#ifndef SCN_DISABLE_FROM_CHARS
+#define SCN_DISABLE_FROM_CHARS 0
+#endif
+#ifndef SCN_DISABLE_STRTOD
+#define SCN_DISABLE_STRTOD 0
+#endif
+
 #define SCN_UNUSED(x) static_cast<void>(sizeof(x))
 
 #if SCN_HAS_RELAXED_CONSTEXPR
@@ -462,8 +532,7 @@
 
 #define SCN_MOVE(x) \
     static_cast<    \
-        typename ::scn::detail::remove_reference \
-        <decltype(x)>::type&&>(x)
+        typename ::scn::detail::remove_reference<decltype(x)>::type&&>(x)
 #define SCN_FWD(x)          static_cast<decltype(x)&&>(x)
 #define SCN_DECLVAL(T)      static_cast<T (*)()>(nullptr)()
 

@@ -1,3 +1,32 @@
+function(get_config_flags flags)
+    set(${flags}
+            $<$<BOOL:${SCN_DISABLE_TYPE_SCHAR}>:      -DSCN_DISABLE_TYPE_SCHAR=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_SHORT}>:      -DSCN_DISABLE_TYPE_SHORT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_INT}>:        -DSCN_DISABLE_TYPE_INT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_LONG}>:       -DSCN_DISABLE_TYPE_LONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_LONG_LONG}>:  -DSCN_DISABLE_TYPE_LONG_LONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_UCHAR}>:      -DSCN_DISABLE_TYPE_UCHAR=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_USHORT}>:     -DSCN_DISABLE_TYPE_USHORT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_UINT}>:       -DSCN_DISABLE_TYPE_UINT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_ULONG}>:      -DSCN_DISABLE_TYPE_ULONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_ULONG_LONG}>: -DSCN_DISABLE_TYPE_ULONG_LONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_BOOL}>:       -DSCN_DISABLE_TYPE_BOOL=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_CHAR}>:       -DSCN_DISABLE_TYPE_CHAR=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_CODE_POINT}>: -DSCN_DISABLE_TYPE_CODE_POINT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT}>:      -DSCN_DISABLE_TYPE_FLOAT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_DOUBLE}>:     -DSCN_DISABLE_TYPE_DOUBLE=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_LONG_DOUBLE}>:-DSCN_DISABLE_TYPE_LONG_DOUBLE=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_BUFFER}>:     -DSCN_DISABLE_TYPE_BUFFER=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_STRING}>:     -DSCN_DISABLE_TYPE_STRING=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_STRING_VIEW}>:-DSCN_DISABLE_TYPE_STRING_VIEW=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_CUSTOM}>:     -DSCN_DISABLE_TYPE_CUSTOM=1>
+
+            $<$<BOOL:${SCN_DISABLE_FROM_CHARS}>:      -DSCN_DISABLE_FROM_CHARS=1>
+            $<$<BOOL:${SCN_DISABLE_STRTOD}>:          -DSCN_DISABLE_STRTOD=1>
+            PARENT_SCOPE
+    )
+endfunction()
+
 function(get_gcc_warning_flags flags)
     set(${flags}
             -ftemplate-backtrace-limit=0
@@ -178,6 +207,9 @@ function(set_interface_flags target)
             target_link_libraries(${target} INTERFACE --coverage)
         endif ()
     endif ()
+    get_config_flags(config_flags)
+    target_compile_options(${target} INTERFACE ${config_flags})
+
     disable_msvc_secure_flags(${target} INTERFACE)
     set_bigobj_flags(${target} INTERFACE)
     target_compile_features(${target} INTERFACE cxx_std_11)
@@ -202,7 +234,7 @@ function(set_private_flags target)
     if (NOT SCN_USE_EXCEPTIONS)
         get_disable_exceptions_flags(noexceptions_flags)
         target_compile_options(${target} PRIVATE ${noexceptions_flags})
-    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND SCN_CXX_FRONTEND STREQUAL "MSVC")
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND SCN_CXX_FRONTEND STREQUAL "MSVC")
         # clang-cl requires explicitly enabling exceptions
         target_compile_options(${target} PUBLIC /EHsc)
     endif ()
@@ -219,6 +251,9 @@ function(set_private_flags target)
             target_link_libraries(${target} PUBLIC --coverage)
         endif ()
     endif ()
+
+    get_config_flags(config_flags)
+    target_compile_options(${target} PUBLIC ${config_flags})
 
     disable_msvc_secure_flags(${target} PRIVATE)
     set_bigobj_flags(${target} PRIVATE)
