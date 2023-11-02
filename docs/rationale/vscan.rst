@@ -3,7 +3,7 @@ What's with all the ``vscan``, ``basic_args`` and ``arg_store`` stuff?
 ======================================================================
 
 This approach is borrowed (*cough* stolen *cough*) from fmtlib, for the same
-reason it's in there as well. Consider this peace of code:
+reason it's in there as well. Consider this piece of code:
 
 .. code-block:: cpp
 

@@ -116,7 +116,7 @@ After the format string, references to arguments to be parsed are given.
 
     // Scanning an int
     int i;
-    scn::scan("123", "{}", i):
+    scn::scan("123", "{}", i);
     // i == 123
 
     // Scanning a double
@@ -377,7 +377,7 @@ The return value of ``scn::scan_value<T>`` contains a ``.value()`` member functi
 
 As is evident by the presence of an extra member function, the return type of ``scan_value`` is not the same as the one of ``scan``.
 The return type of ``scan`` inherits from ``scn::wrapped_error``, but the return type of ``scan_value`` inherits from ``scn::expected<T>``.
-To use ``make_result`` with ``make_value``, this needs to be taken into account:
+To use ``make_result`` with ``scan_value``, this needs to be taken into account:
 
 .. code-block:: cpp
 
