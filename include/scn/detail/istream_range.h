@@ -22,7 +22,6 @@
 #if SCN_USE_IOSTREAMS
 
 #include <scn/detail/caching_view.h>
-#include <scn/detail/ranges.h>
 
 #include <iosfwd>
 

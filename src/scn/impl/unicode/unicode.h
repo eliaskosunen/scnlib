@@ -535,8 +535,7 @@ namespace scn {
                 count_valid_transcoded_code_units<DestCharT>(source);
             dest.resize(transcoded_length);
 
-            const auto n = transcode_valid(
-                source, span<DestCharT>{dest.data(), dest.size()});
+            const auto n = transcode_valid(source, span{dest});
             SCN_ENSURE(n == dest.size());
         }
 
@@ -596,7 +595,7 @@ namespace scn {
                               it, source.end())
                               .substr(0, 32);
 
-                auto tmp_view = span<DestCharT>{tmp.data(), tmp.size()};
+                auto tmp_view = span{tmp};
                 auto res = do_transcode(sv, tmp_view);
                 if (SCN_LIKELY(res.error == simdutf::SUCCESS)) {
                     dest.append(tmp.data(), std::min(res.count, tmp.size()));

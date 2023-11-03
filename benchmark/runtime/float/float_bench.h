@@ -71,7 +71,7 @@ template <typename Float>
 scn::span<std::string> get_float_list()
 {
     static auto list = make_float_list<Float>(2 << 12);
-    return {list.begin(), list.end()};
+    return {list};
 }
 
 template <typename Float>

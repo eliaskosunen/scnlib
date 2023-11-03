@@ -61,13 +61,6 @@ namespace scn {
     SCN_END_NAMESPACE
 }  // namespace scn
 
-namespace std::ranges {
-    template <typename T>
-    inline constexpr bool enable_view<scn::span<T>> = true;
-    template <typename T>
-    inline constexpr bool enable_borrowed_range<scn::span<T>> = true;
-}  // namespace std::ranges
-
 #else
 
 SCN_GCC_PUSH
@@ -304,11 +297,6 @@ namespace scn {
 
 NANO_BEGIN_NAMESPACE
 
-template <typename T>
-inline constexpr bool enable_view<scn::span<T>> = true;
-
-template <typename T>
-inline constexpr bool enable_borrowed_range<scn::span<T>> = true;
 template <typename T>
 inline constexpr bool
     enable_borrowed_range<scn::ranges_polyfill::owning_view<T>> =

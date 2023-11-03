@@ -41,7 +41,7 @@ template <typename Int>
 scn::span<std::string> get_integer_list()
 {
     static auto list = make_integer_list<Int>(2 << 12);
-    return {list.begin(), list.end()};
+    return {list};
 }
 
 template <typename Int>
