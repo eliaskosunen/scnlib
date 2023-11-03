@@ -565,20 +565,24 @@ namespace scn {
             float_kind m_kind{float_kind::tbd};
         };
 
-#define SCN_DECLARE_FLOAT_READER_TEMPLATE_IMPL(CharT, FloatT)           \
+#define SCN_DECLARE_FLOAT_READER_TEMPLATE(CharT, FloatT)                \
     extern template auto float_reader<CharT>::parse_value_impl(FloatT&) \
         -> scan_expected<std::ptrdiff_t>;
 
-#define SCN_DECLARE_FLOAT_READER_TEMPLATE(CharT)          \
-    SCN_DECLARE_FLOAT_READER_TEMPLATE_IMPL(CharT, float)  \
-    SCN_DECLARE_FLOAT_READER_TEMPLATE_IMPL(CharT, double) \
-    SCN_DECLARE_FLOAT_READER_TEMPLATE_IMPL(CharT, long double)
-
-        SCN_DECLARE_FLOAT_READER_TEMPLATE(char)
-        SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t)
+#if !SCN_DISABLE_TYPE_FLOAT
+        SCN_DECLARE_FLOAT_READER_TEMPLATE(char, float)
+        SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, float)
+#endif
+#if !SCN_DISABLE_TYPE_DOUBLE
+        SCN_DECLARE_FLOAT_READER_TEMPLATE(char, double)
+        SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, double)
+#endif
+#if !SCN_DISABLE_TYPE_LONG_DOUBLE
+        SCN_DECLARE_FLOAT_READER_TEMPLATE(char, long double)
+        SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, long double)
+#endif
 
 #undef SCN_DECLARE_FLOAT_READER_TEMPLATE
-#undef SCN_DECLARE_FLOAT_READER_TEMPLATE_IMPL
 
         template <typename CharT>
         class reader_impl_for_float

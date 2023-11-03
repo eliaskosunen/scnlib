@@ -1,3 +1,35 @@
+function(get_config_flags flags)
+    set(${flags}
+            $<$<BOOL:${SCN_DISABLE_TYPE_SCHAR}>: -DSCN_DISABLE_TYPE_SCHAR=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_SHORT}>: -DSCN_DISABLE_TYPE_SHORT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_INT}>: -DSCN_DISABLE_TYPE_INT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_LONG}>: -DSCN_DISABLE_TYPE_LONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_LONG_LONG}>: -DSCN_DISABLE_TYPE_LONG_LONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_UCHAR}>: -DSCN_DISABLE_TYPE_UCHAR=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_USHORT}>: -DSCN_DISABLE_TYPE_USHORT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_UINT}>: -DSCN_DISABLE_TYPE_UINT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_ULONG}>: -DSCN_DISABLE_TYPE_ULONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_ULONG_LONG}>: -DSCN_DISABLE_TYPE_ULONG_LONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_POINTER}>: -DSCN_DISABLE_TYPE_POINTER=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_BOOL}>: -DSCN_DISABLE_TYPE_BOOL=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_CHAR}>: -DSCN_DISABLE_TYPE_CHAR=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_CHAR32}>: -DSCN_DISABLE_TYPE_CHAR32=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT}>: -DSCN_DISABLE_TYPE_FLOAT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_DOUBLE}>: -DSCN_DISABLE_TYPE_DOUBLE=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_LONG_DOUBLE}>:-DSCN_DISABLE_TYPE_LONG_DOUBLE=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_STRING}>: -DSCN_DISABLE_TYPE_STRING=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_STRING_VIEW}>:-DSCN_DISABLE_TYPE_STRING_VIEW=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_CUSTOM}>: -DSCN_DISABLE_TYPE_CUSTOM=1>
+
+            $<$<BOOL:${SCN_DISABLE_FROM_CHARS}>: -DSCN_DISABLE_FROM_CHARS=1>
+            $<$<BOOL:${SCN_DISABLE_STRTOD}>: -DSCN_DISABLE_STRTOD=1>
+
+            $<$<BOOL:${SCN_DISABLE_TRANSCODING}>: -DSCN_DISABLE_TRANSCODING=1>
+            $<$<BOOL:${SCN_DISABLE_LOCALE}>: -DSCN_DISABLE_LOCALE=1>
+            PARENT_SCOPE
+    )
+endfunction()
+
 function(get_gcc_warning_flags flags)
     set(${flags}
             -ftemplate-backtrace-limit=0
@@ -50,10 +82,10 @@ function(get_clang_warning_flags flags)
 
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16.0)
         set(tmp ${tmp} -Wno-unsafe-buffer-usage)
-    endif()
+    endif ()
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 17.0)
         set(tmp ${tmp} -fsafe-buffer-usage-suggestions)
-    endif()
+    endif ()
 
     set(${flags} ${tmp} PARENT_SCOPE)
 endfunction()
@@ -72,12 +104,12 @@ function(get_warning_flags flags)
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
             get_msvc_warning_flags(flags)
-        else()
+        else ()
             get_clang_warning_flags(flags)
-        endif()
+        endif ()
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         get_msvc_warning_flags(flags)
-    endif()
+    endif ()
 endfunction()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -85,20 +117,20 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
         set(SCN_CXX_FRONTEND "MSVC")
-    else()
+    else ()
         set(SCN_CXX_FRONTEND "GNU")
-    endif()
+    endif ()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(SCN_CXX_FRONTEND "MSVC")
-else()
+else ()
     set(SCN_CXX_FRONTEND "Other")
-endif()
+endif ()
 
 function(get_werror_flags flags)
     set(${flags}
-        $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
+            $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
             -Werror>
-        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
+            $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             /WX>
 
             PARENT_SCOPE)
@@ -106,9 +138,9 @@ endfunction()
 
 function(get_suppress_warnings_flags flags)
     set(${flags}
-        $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
+            $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
             -w>
-        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
+            $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             /w>
 
             PARENT_SCOPE)
@@ -116,9 +148,9 @@ endfunction()
 
 function(get_disable_exceptions_flags flags)
     set(${flags}
-        $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
+            $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
             -fno-exceptions>
-        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
+            $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             /EHs-c->
 
             PARENT_SCOPE)
@@ -126,9 +158,9 @@ endfunction()
 
 function(get_disable_rtti_flags flags)
     set(${flags}
-        $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
+            $<$<STREQUAL:${SCN_CXX_FRONTEND},GNU>:
             -fno-rtti>
-        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
+            $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             /GR->
 
             PARENT_SCOPE)
@@ -136,7 +168,7 @@ endfunction()
 
 function(get_coverage_flags flags)
     set(${flags}
-        $<$<CXX_COMPILER_ID:GNU>:
+            $<$<CXX_COMPILER_ID:GNU>:
             -O0
             -g
             --coverage>
@@ -145,72 +177,78 @@ endfunction()
 
 function(disable_msvc_secure_flags target scope)
     target_compile_definitions(${target} ${scope}
-        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
+            $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             _CRT_SECURE_NO_WARNINGS
             _SCL_SECURE_NO_WARNINGS>)
 endfunction()
 
 function(set_bigobj_flags target scope)
     target_compile_options(${target} ${scope}
-        $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
+            $<$<STREQUAL:${SCN_CXX_FRONTEND},MSVC>:
             /bigobj>)
 
     if (MINGW)
         target_compile_options(${target} ${scope} -Wa,-mbig-obj)
-    endif()
+    endif ()
 endfunction()
 
 function(set_interface_flags target)
-    if(SCN_PEDANTIC)
+    if (SCN_PEDANTIC)
         get_warning_flags(warning_flags)
         target_compile_options(${target} INTERFACE ${warning_flags})
-    endif()
-    if(SCN_WERROR)
+    endif ()
+    if (SCN_WERROR)
         get_werror_flags(werror_flags)
         target_compile_options(${target} INTERFACE ${werror_flags})
-    endif()
+    endif ()
+
+    get_config_flags(config_flags)
+    target_compile_options(${target} INTERFACE ${config_flags})
 
     disable_msvc_secure_flags(${target} INTERFACE)
     set_bigobj_flags(${target} INTERFACE)
 endfunction()
 
 function(set_library_flags target)
-    if(SCN_PEDANTIC)
+    if (SCN_PEDANTIC)
         get_warning_flags(warning_flags)
         target_compile_options(${target} PRIVATE ${warning_flags})
-    endif()
-    if(SCN_WERROR)
+    endif ()
+    if (SCN_WERROR)
         get_werror_flags(werror_flags)
         target_compile_options(${target} PRIVATE ${werror_flags})
-    endif()
-    if(SCN_USE_32BIT)
+    endif ()
+    if (SCN_USE_32BIT)
         target_compile_options(${target} PUBLIC -m32)
         set_target_properties(${target} PROPERTIES LINK_FLAGS -m32)
-    endif()
-    if(SCN_USE_NATIVE_ARCH)
+    endif ()
+    if (SCN_USE_NATIVE_ARCH)
         target_compile_options(${target} PRIVATE -march=native)
-    elseif(SCN_USE_HASWELL_ARCH)
+    elseif (SCN_USE_HASWELL_ARCH)
         target_compile_options(${target} PRIVATE -march=haswell)
-    endif()
-    if(NOT SCN_USE_EXCEPTIONS)
+    endif ()
+    if (NOT SCN_USE_EXCEPTIONS)
         get_disable_exceptions_flags(noexceptions_flags)
         target_compile_options(${target} PRIVATE ${noexceptions_flags})
-    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND SCN_CXX_FRONTEND STREQUAL "MSVC")
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND SCN_CXX_FRONTEND STREQUAL "MSVC")
         # clang-cl requires explicitly enabling exceptions
         target_compile_options(${target} PUBLIC /EHsc)
-    endif()
-    if(NOT SCN_USE_RTTI)
+    endif ()
+    if (NOT SCN_USE_RTTI)
         get_disable_rtti_flags(nortti_flags)
         target_compile_options(${target} PRIVATE ${nortti_flags})
-    endif()
+    endif ()
     if (NOT SCN_USE_IOSTREAMS)
         target_compile_definitions(${target} PUBLIC -DSCN_USE_IOSTREAMS=0)
-    endif()
-    if(SCN_COVERAGE)
+    endif ()
+    if (SCN_COVERAGE)
         get_coverage_flags(coverage_flags)
         target_compile_options(${target} PUBLIC ${coverage_flags})
         target_link_options(${target} PUBLIC --coverage)
-    endif()
+    endif ()
+
+    get_config_flags(config_flags)
+    target_compile_options(${target} PUBLIC ${config_flags})
 
     disable_msvc_secure_flags(${target} PRIVATE)
     set_bigobj_flags(${target} PRIVATE)

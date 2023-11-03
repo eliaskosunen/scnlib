@@ -48,25 +48,35 @@ namespace scn {
         template <typename T, typename CharT>
         constexpr auto make_reader()
         {
-            if constexpr (std::is_same_v<T, bool>) {
+            if constexpr (std::is_same_v<T, bool> &&
+                          !detail::is_type_disabled<bool>) {
                 return reader_impl_for_bool<CharT>{};
             }
-            else if constexpr (std::is_same_v<T, char>) {
+            else if constexpr (std::is_same_v<T, char> &&
+                               !detail::is_type_disabled<char>) {
                 return reader_impl_for_char<CharT>{};
             }
-            else if constexpr (std::is_same_v<T, wchar_t>) {
+            else if constexpr (std::is_same_v<T, wchar_t> &&
+                               !detail::is_type_disabled<wchar_t>) {
                 return reader_impl_for_wchar<CharT>{};
             }
-            else if constexpr (std::is_same_v<T, char32_t>) {
+            else if constexpr (std::is_same_v<T, char32_t> &&
+                               !detail::is_type_disabled<char32_t>) {
                 return reader_impl_for_code_point<CharT>{};
             }
-            else if constexpr (std::is_same_v<T, std::string> ||
-                               std::is_same_v<T, std::wstring> ||
-                               std::is_same_v<T, std::string_view> ||
-                               std::is_same_v<T, std::wstring_view>) {
+            else if constexpr ((std::is_same_v<T, std::string_view> or
+                                std::is_same_v<
+                                    T, std::wstring_view>)and not detail::
+                                   is_type_disabled<std::string_view>) {
                 return reader_impl_for_string<CharT>{};
             }
-            else if constexpr (std::is_same_v<T, void*>) {
+            else if constexpr ((std::is_same_v<T, std::string> or
+                                std::is_same_v<T, std::wstring>)and not detail::
+                                   is_type_disabled<std::string>) {
+                return reader_impl_for_string<CharT>{};
+            }
+            else if constexpr (std::is_same_v<T, void*> &&
+                               !detail::is_type_disabled<void*>) {
                 return reader_impl_for_voidptr<CharT>{};
             }
             else if constexpr (std::is_floating_point_v<T>) {

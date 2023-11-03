@@ -483,27 +483,52 @@ namespace scn {
             return it;
         }
 
-#define SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, IntT)     \
+#define SCN_DEFINE_INTEGER_READER_TEMPLATE(CharT, IntT)          \
     template auto integer_reader<CharT>::parse_value_impl(IntT&) \
-        ->scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>;
+        -> scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>;
 
-#define SCN_DEFINE_INTEGER_READER_TEMPLATE(CharT)                  \
-    SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, signed char)    \
-    SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, short)          \
-    SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, int)            \
-    SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, long)           \
-    SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, long long)      \
-    SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, unsigned char)  \
-    SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, unsigned short) \
-    SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, unsigned int)   \
-    SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, unsigned long)  \
-    SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL(CharT, unsigned long long)
-
-        SCN_DEFINE_INTEGER_READER_TEMPLATE(char)
-        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t)
+#if !SCN_DISABLE_TYPE_SCHAR
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(char, signed char)
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, signed char)
+#endif
+#if !SCN_DISABLE_TYPE_SHORT
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(char, short)
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, short)
+#endif
+#if !SCN_DISABLE_TYPE_INT
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(char, int)
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, int)
+#endif
+#if !SCN_DISABLE_TYPE_LONG
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(char, long)
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, long)
+#endif
+#if !SCN_DISABLE_TYPE_LONG_LONG
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(char, long long)
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, long long)
+#endif
+#if !SCN_DISABLE_TYPE_UCHAR
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned char)
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned char)
+#endif
+#if !SCN_DISABLE_TYPE_USHORT
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned short)
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned short)
+#endif
+#if !SCN_DISABLE_TYPE_UINT
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned int)
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned int)
+#endif
+#if !SCN_DISABLE_TYPE_ULONG
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned long)
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned long)
+#endif
+#if !SCN_DISABLE_TYPE_ULONG_LONG
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned long long)
+        SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned long long)
+#endif
 
 #undef SCN_DEFINE_INTEGER_READER_TEMPLATE
-#undef SCN_DEFINE_INTEGER_READER_TEMPLATE_IMPL
     }  // namespace impl
 
     SCN_END_NAMESPACE

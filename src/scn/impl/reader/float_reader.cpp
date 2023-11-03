@@ -133,6 +133,7 @@ namespace scn {
             // Fallback for all CharT and FloatT, if allowed
             ////////////////////////////////////////////////////////////////////
 
+#if !SCN_DISABLE_STRTOD
             template <typename T>
             class strtod_impl_base : impl_base {
             protected:
@@ -337,13 +338,14 @@ namespace scn {
 
                 contiguous_range_factory<CharT>& m_input;
             };
+#endif
 
             ////////////////////////////////////////////////////////////////////
             // std::from_chars-based implementation
             // Only for CharT=char, if available
             ////////////////////////////////////////////////////////////////////
 
-#if SCN_HAS_FLOAT_CHARCONV
+#if SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
             template <typename Float, typename = void>
             struct has_charconv_for : std::false_type {};
 
@@ -441,17 +443,26 @@ namespace scn {
                             "from_chars: invalid_argument");
                     }
                     if (result.ec == std::errc::result_out_of_range) {
+#if !SCN_DISABLE_STRTOD
                         // May be subnormal:
                         // at least libstdc++ gives out_of_range for subnormals
                         //  -> fall back to strtod
                         return strtod_impl<char, T>{
-                            {m_input, m_kind, m_options}}(value);
+                            { m_input,
+                              m_kind,
+                              m_options }}(value);
+#else
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "from_chars: invalid_argument, fallback to strtod "
+                            "disabled");
+#endif
                     }
 
                     return result.ptr - m_input.view().data();
                 }
             };
-#endif  // SCN_HAS_FLOAT_CHARCONV
+#endif  // SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
 
             ////////////////////////////////////////////////////////////////////
             // fast_float-based implementation
@@ -463,16 +474,21 @@ namespace scn {
                 impl_init_data<CharT> data,
                 T& value)
             {
-#if SCN_HAS_FLOAT_CHARCONV
+#if SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
                 if constexpr (std::is_same_v<CharT, has_charconv_for<T>>) {
                     return from_chars_impl<T>{data}(value);
                 }
-                else {
+                else
+#endif
+                {
+#if !SCN_DISABLE_STRTOD
                     return strtod_impl<CharT, T>{data}(value);
-                }
 #else
-                return strtod_impl<CharT, T>{data}(value);
-#endif  // SCN_HAS_FLOAT_CHARCONV
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "fast_float failed, and fallbacks are disabled");
+#endif
+                }
             }
 
             struct fast_float_impl_base : impl_base {
@@ -644,20 +660,24 @@ namespace scn {
             return n;
         }
 
-#define SCN_DEFINE_FLOAT_READER_TEMPLATE_IMPL(CharT, FloatT)     \
+#define SCN_DEFINE_FLOAT_READER_TEMPLATE(CharT, FloatT)          \
     template auto float_reader<CharT>::parse_value_impl(FloatT&) \
         -> scan_expected<std::ptrdiff_t>;
 
-#define SCN_DEFINE_FLOAT_READER_TEMPLATE(CharT)          \
-    SCN_DEFINE_FLOAT_READER_TEMPLATE_IMPL(CharT, float)  \
-    SCN_DEFINE_FLOAT_READER_TEMPLATE_IMPL(CharT, double) \
-    SCN_DEFINE_FLOAT_READER_TEMPLATE_IMPL(CharT, long double)
-
-        SCN_DEFINE_FLOAT_READER_TEMPLATE(char)
-        SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t)
+#if !SCN_DISABLE_TYPE_FLOAT
+        SCN_DEFINE_FLOAT_READER_TEMPLATE(char, float)
+        SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, float)
+#endif
+#if !SCN_DISABLE_TYPE_DOUBLE
+        SCN_DEFINE_FLOAT_READER_TEMPLATE(char, double)
+        SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, double)
+#endif
+#if !SCN_DISABLE_TYPE_LONG_DOUBLE
+        SCN_DEFINE_FLOAT_READER_TEMPLATE(char, long double)
+        SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, long double)
+#endif
 
 #undef SCN_DEFINE_FLOAT_READER_TEMPLATE
-#undef SCN_DEFINE_FLOAT_READER_TEMPLATE_IMPL
     }  // namespace impl
 
     SCN_END_NAMESPACE

@@ -34,75 +34,87 @@ namespace scn {
     constexpr decltype(auto) visit_scan_arg(Visitor&& vis,
                                             basic_scan_arg<Ctx>& arg)
     {
-#define SCN_VISIT_CAST(Type) vis(*static_cast<Type*>(arg.m_value.ref_value))
+#define SCN_VISIT(Type)                                         \
+    if constexpr (!detail::is_type_disabled<Type>) {            \
+        return vis(*static_cast<Type*>(arg.m_value.ref_value)); \
+    }                                                           \
+    else {                                                      \
+        return vis(monostate_val);                              \
+    }
+
+        monostate monostate_val{};
 
         switch (arg.m_type) {
             case detail::arg_type::schar_type:
-                return SCN_VISIT_CAST(signed char);
+                SCN_VISIT(signed char);
             case detail::arg_type::short_type:
-                return SCN_VISIT_CAST(short);
+                SCN_VISIT(short);
             case detail::arg_type::int_type:
-                return SCN_VISIT_CAST(int);
+                SCN_VISIT(int);
             case detail::arg_type::long_type:
-                return SCN_VISIT_CAST(long);
+                SCN_VISIT(long);
             case detail::arg_type::llong_type:
-                return SCN_VISIT_CAST(long long);
+                SCN_VISIT(long long);
             case detail::arg_type::uchar_type:
-                return SCN_VISIT_CAST(unsigned char);
+                SCN_VISIT(unsigned char);
             case detail::arg_type::ushort_type:
-                return SCN_VISIT_CAST(unsigned short);
+                SCN_VISIT(unsigned short);
             case detail::arg_type::uint_type:
-                return SCN_VISIT_CAST(unsigned);
+                SCN_VISIT(unsigned);
             case detail::arg_type::ulong_type:
-                return SCN_VISIT_CAST(unsigned long);
+                SCN_VISIT(unsigned long);
             case detail::arg_type::ullong_type:
-                return SCN_VISIT_CAST(unsigned long long);
+                SCN_VISIT(unsigned long long);
             case detail::arg_type::pointer_type:
-                return SCN_VISIT_CAST(void*);
+                SCN_VISIT(void*);
             case detail::arg_type::bool_type:
-                return SCN_VISIT_CAST(bool);
+                SCN_VISIT(bool);
             case detail::arg_type::narrow_character_type:
-                return SCN_VISIT_CAST(char);
+                SCN_VISIT(char);
             case detail::arg_type::wide_character_type:
-                return SCN_VISIT_CAST(wchar_t);
+                SCN_VISIT(wchar_t);
             case detail::arg_type::code_point_type:
-                return SCN_VISIT_CAST(char32_t);
+                SCN_VISIT(char32_t);
             case detail::arg_type::float_type:
-                return SCN_VISIT_CAST(float);
+                SCN_VISIT(float);
             case detail::arg_type::double_type:
-                return SCN_VISIT_CAST(double);
+                SCN_VISIT(double);
             case detail::arg_type::ldouble_type:
-                return SCN_VISIT_CAST(long double);
+                SCN_VISIT(long double);
             case detail::arg_type::narrow_string_view_type:
-                return SCN_VISIT_CAST(std::string_view);
+                SCN_VISIT(std::string_view);
             case detail::arg_type::narrow_string_type:
-                return SCN_VISIT_CAST(std::string);
+                SCN_VISIT(std::string);
             case detail::arg_type::wide_string_view_type:
-                return SCN_VISIT_CAST(std::wstring_view);
+                SCN_VISIT(std::wstring_view);
             case detail::arg_type::wide_string_type:
-                return SCN_VISIT_CAST(std::wstring);
+                SCN_VISIT(std::wstring);
 
             case detail::arg_type::custom_type:
+#if !SCN_DISABLE_TYPE_CUSTOM
                 return vis(typename basic_scan_arg<Ctx>::handle(
                     arg.m_value.custom_value));
+#else
+                return vis(monostate_val);
+#endif
+
                 SCN_CLANG_PUSH
                 SCN_CLANG_IGNORE("-Wcovered-switch-default")
 
                 SCN_UNLIKELY_ATTR
             case detail::arg_type::none_type:
             default: {
-                monostate val{};
-                return vis(val);
+                return vis(monostate_val);
             }
 
                 SCN_CLANG_POP
         }
 
-#undef SCN_VISIT_CAST
+#undef SCN_VISIT
 
         SCN_ENSURE(false);
         SCN_UNREACHABLE;
-    }
+    }  // namespace scn
 
     SCN_END_NAMESPACE
 }  // namespace scn

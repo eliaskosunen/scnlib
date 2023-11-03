@@ -57,3 +57,93 @@
 #define SCN_USE_DYNAMIC_ALLOCATION 1
 #endif
 #endif
+
+// SCN_DISABLE_TRANSCODING
+// If 1, removes the ability to read narrow data from wide sources,
+// and vice versa
+#ifndef SCN_DISABLE_TRANSCODING
+#define SCN_DISABLE_TRANSCODING 0
+#endif
+
+// SCN_DISABLE_LOCALE
+// If 1, removes all references to std::locale, and C locale
+#ifndef SCN_DISABLE_LOCALE
+#define SCN_DISABLE_LOCALE 0
+#endif
+
+// SCN_DISABLE_FROM_CHARS
+// If 1, disallows the float scanner from falling back on std::from_chars,
+// even if it were available
+#ifndef SCN_DISABLE_FROM_CHARS
+#define SCN_DISABLE_FROM_CHARS 0
+#endif
+
+// SCN_DISABLE_STRTOD
+// If 1, disallows the float scanner from falling back on std::strtod,
+// even if it were available
+#ifndef SCN_DISABLE_STRTOD
+#define SCN_DISABLE_STRTOD 0
+#endif
+
+// SCN_DISABLE_TYPE_*
+// If 1, removes ability to scan type
+#ifndef SCN_DISABLE_TYPE_SCHAR
+#define SCN_DISABLE_TYPE_SCHAR 0
+#endif
+#ifndef SCN_DISABLE_TYPE_SHORT
+#define SCN_DISABLE_TYPE_SHORT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_INT
+#define SCN_DISABLE_TYPE_INT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_LONG
+#define SCN_DISABLE_TYPE_LONG 0
+#endif
+#ifndef SCN_DISABLE_TYPE_LONG_LONG
+#define SCN_DISABLE_TYPE_LONG_LONG 0
+#endif
+#ifndef SCN_DISABLE_TYPE_UCHAR
+#define SCN_DISABLE_TYPE_UCHAR 0
+#endif
+#ifndef SCN_DISABLE_TYPE_USHORT
+#define SCN_DISABLE_TYPE_USHORT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_UINT
+#define SCN_DISABLE_TYPE_UINT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_ULONG
+#define SCN_DISABLE_TYPE_ULONG 0
+#endif
+#ifndef SCN_DISABLE_TYPE_ULONG_LONG
+#define SCN_DISABLE_TYPE_ULONG_LONG 0
+#endif
+#ifndef SCN_DISABLE_TYPE_POINTER
+#define SCN_DISABLE_TYPE_POINTER 0
+#endif
+#ifndef SCN_DISABLE_TYPE_BOOL
+#define SCN_DISABLE_TYPE_BOOL 0
+#endif
+#ifndef SCN_DISABLE_TYPE_CHAR
+#define SCN_DISABLE_TYPE_CHAR 0
+#endif
+#ifndef SCN_DISABLE_TYPE_CHAR32
+#define SCN_DISABLE_TYPE_CHAR32 0
+#endif
+#ifndef SCN_DISABLE_TYPE_FLOAT
+#define SCN_DISABLE_TYPE_FLOAT 0
+#endif
+#ifndef SCN_DISABLE_TYPE_DOUBLE
+#define SCN_DISABLE_TYPE_DOUBLE 0
+#endif
+#ifndef SCN_DISABLE_TYPE_LONG_DOUBLE
+#define SCN_DISABLE_TYPE_LONG_DOUBLE 0
+#endif
+#ifndef SCN_DISABLE_TYPE_STRING
+#define SCN_DISABLE_TYPE_STRING 0
+#endif
+#ifndef SCN_DISABLE_TYPE_STRING_VIEW
+#define SCN_DISABLE_TYPE_STRING_VIEW 0
+#endif
+#ifndef SCN_DISABLE_TYPE_CUSTOM
+#define SCN_DISABLE_TYPE_CUSTOM 0
+#endif

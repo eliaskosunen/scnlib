@@ -67,41 +67,58 @@ namespace scn {
             last_type = custom_type
         };
 
+        template <typename>
+        inline constexpr bool is_type_disabled = SCN_DISABLE_TYPE_CUSTOM;
+
         template <typename T, typename CharT>
         struct arg_type_constant
             : std::integral_constant<arg_type, arg_type::custom_type> {
             using type = T;
         };
 
-#define SCN_TYPE_CONSTANT(Type, C)                        \
+#define SCN_TYPE_CONSTANT(Type, C, Disabled)              \
     template <typename CharT>                             \
     struct arg_type_constant<Type, CharT>                 \
         : std::integral_constant<arg_type, arg_type::C> { \
         using type = Type;                                \
-    }
+    };                                                    \
+    template <>                                           \
+    inline constexpr bool is_type_disabled<Type> = Disabled
 
-        SCN_TYPE_CONSTANT(signed char, schar_type);
-        SCN_TYPE_CONSTANT(short, short_type);
-        SCN_TYPE_CONSTANT(int, int_type);
-        SCN_TYPE_CONSTANT(long, long_type);
-        SCN_TYPE_CONSTANT(long long, llong_type);
-        SCN_TYPE_CONSTANT(unsigned char, uchar_type);
-        SCN_TYPE_CONSTANT(unsigned short, ushort_type);
-        SCN_TYPE_CONSTANT(unsigned int, uint_type);
-        SCN_TYPE_CONSTANT(unsigned long, ulong_type);
-        SCN_TYPE_CONSTANT(unsigned long long, ullong_type);
-        SCN_TYPE_CONSTANT(bool, bool_type);
-        SCN_TYPE_CONSTANT(char, narrow_character_type);
-        SCN_TYPE_CONSTANT(wchar_t, wide_character_type);
-        SCN_TYPE_CONSTANT(char32_t, code_point_type);
-        SCN_TYPE_CONSTANT(void*, pointer_type);
-        SCN_TYPE_CONSTANT(float, float_type);
-        SCN_TYPE_CONSTANT(double, double_type);
-        SCN_TYPE_CONSTANT(long double, ldouble_type);
-        SCN_TYPE_CONSTANT(std::string_view, narrow_string_view_type);
-        SCN_TYPE_CONSTANT(std::wstring_view, wide_string_view_type);
-        SCN_TYPE_CONSTANT(std::string, narrow_string_type);
-        SCN_TYPE_CONSTANT(std::wstring, wide_string_type);
+        SCN_TYPE_CONSTANT(signed char, schar_type, SCN_DISABLE_TYPE_SCHAR);
+        SCN_TYPE_CONSTANT(short, short_type, SCN_DISABLE_TYPE_SHORT);
+        SCN_TYPE_CONSTANT(int, int_type, SCN_DISABLE_TYPE_INT);
+        SCN_TYPE_CONSTANT(long, long_type, SCN_DISABLE_TYPE_LONG);
+        SCN_TYPE_CONSTANT(long long, llong_type, SCN_DISABLE_TYPE_LONG_LONG);
+        SCN_TYPE_CONSTANT(unsigned char, uchar_type, SCN_DISABLE_TYPE_UCHAR);
+        SCN_TYPE_CONSTANT(unsigned short, ushort_type, SCN_DISABLE_TYPE_USHORT);
+        SCN_TYPE_CONSTANT(unsigned int, uint_type, SCN_DISABLE_TYPE_UINT);
+        SCN_TYPE_CONSTANT(unsigned long, ulong_type, SCN_DISABLE_TYPE_ULONG);
+        SCN_TYPE_CONSTANT(unsigned long long,
+                          ullong_type,
+                          SCN_DISABLE_TYPE_ULONG_LONG);
+        SCN_TYPE_CONSTANT(bool, bool_type, SCN_DISABLE_TYPE_BOOL);
+        SCN_TYPE_CONSTANT(char, narrow_character_type, SCN_DISABLE_TYPE_CHAR);
+        SCN_TYPE_CONSTANT(wchar_t, wide_character_type, SCN_DISABLE_TYPE_CHAR);
+        SCN_TYPE_CONSTANT(char32_t, code_point_type, SCN_DISABLE_TYPE_CHAR32);
+        SCN_TYPE_CONSTANT(void*, pointer_type, SCN_DISABLE_TYPE_POINTER);
+        SCN_TYPE_CONSTANT(float, float_type, SCN_DISABLE_TYPE_FLOAT);
+        SCN_TYPE_CONSTANT(double, double_type, SCN_DISABLE_TYPE_DOUBLE);
+        SCN_TYPE_CONSTANT(long double,
+                          ldouble_type,
+                          SCN_DISABLE_TYPE_LONG_DOUBLE);
+        SCN_TYPE_CONSTANT(std::string_view,
+                          narrow_string_view_type,
+                          SCN_DISABLE_TYPE_STRING_VIEW);
+        SCN_TYPE_CONSTANT(std::wstring_view,
+                          wide_string_view_type,
+                          SCN_DISABLE_TYPE_STRING_VIEW);
+        SCN_TYPE_CONSTANT(std::string,
+                          narrow_string_type,
+                          SCN_DISABLE_TYPE_STRING);
+        SCN_TYPE_CONSTANT(std::wstring,
+                          wide_string_type,
+                          SCN_DISABLE_TYPE_STRING);
 
 #undef SCN_TYPE_CONSTANT
 
@@ -116,6 +133,12 @@ namespace scn {
         struct unscannable {};
         struct unscannable_char : unscannable {};
         struct unscannable_const : unscannable {};
+        struct unscannable_disabled : unscannable {
+            template <typename T>
+            constexpr unscannable_disabled(T&&)
+            {
+            }
+        };
 
         template <typename T>
         struct custom_wrapper {
@@ -147,6 +170,7 @@ namespace scn {
             arg_value(unscannable);
             arg_value(unscannable_char);
             arg_value(unscannable_const);
+            arg_value(unscannable_disabled);
 
             union {
                 void* ref_value{nullptr};
@@ -160,6 +184,10 @@ namespace scn {
                 typename Context::parse_context_type& pctx,
                 Context& ctx)
             {
+                static_assert(!is_type_disabled<T>,
+                              "Scanning of custom types is disabled by "
+                              "SCN_DISABLE_TYPE_CUSTOM");
+
                 auto s = Scanner{};
 
                 SCN_TRY_ERR(_, s.parse(pctx));
@@ -176,11 +204,13 @@ namespace scn {
             using other_char_type = std::
                 conditional_t<std::is_same_v<char_type, char>, wchar_t, char>;
 
-#define SCN_ARG_MAPPER(T) \
-    static T& map(T& val) \
-    {                     \
-        return val;       \
+#define SCN_ARG_MAPPER(T)                                                    \
+    static auto map(T& val)                                                  \
+        -> std::conditional_t<is_type_disabled<T>, unscannable_disabled, T&> \
+    {                                                                        \
+        return val;                                                          \
     }
+
             SCN_ARG_MAPPER(signed char)
             SCN_ARG_MAPPER(short)
             SCN_ARG_MAPPER(int)
@@ -296,6 +326,13 @@ namespace scn {
                 !std::is_same_v<remove_cvref_t<decltype(arg)>,
                                 unscannable_const>;
             static_assert(scannable_const, "Cannot scan a const argument");
+
+            constexpr bool scannable_disabled =
+                !std::is_same_v<remove_cvref_t<decltype(arg)>,
+                                unscannable_disabled>;
+            static_assert(scannable_disabled,
+                          "Cannot scan an argument that has been disabled by "
+                          "flag (SCN_DISABLE_TYPE_*)");
 
             constexpr bool scannable =
                 !std::is_same_v<remove_cvref_t<decltype(arg)>, unscannable>;
