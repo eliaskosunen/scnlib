@@ -27,6 +27,8 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+#if !SCN_DISABLE_LOCALE
+
     namespace detail {
         extern template locale_ref::locale_ref(const std::locale&);
         extern template auto locale_ref::get() const -> std::locale;
@@ -90,7 +92,9 @@ namespace scn {
         private:
             clocale_restorer m_restorer;
         };
+    }  // namespace impl
 
+    namespace impl {
         struct classic_with_thsep_tag {};
 
         template <typename CharT>
@@ -120,6 +124,33 @@ namespace scn {
             CharT decimal_point{CharT{'.'}};
         };
     }  // namespace impl
+
+#else
+
+    namespace impl {
+        struct set_clocale_classic_guard {
+            set_clocale_classic_guard(int) {}
+        };
+
+        struct classic_with_thsep_tag {};
+
+        template <typename CharT>
+        struct localized_number_formatting_options {
+            localized_number_formatting_options() = default;
+
+            localized_number_formatting_options(classic_with_thsep_tag)
+            {
+                grouping = "\3";
+                thousands_sep = CharT{','};
+            }
+
+            std::string grouping{};
+            CharT thousands_sep{0};
+            CharT decimal_point{CharT{'.'}};
+        };
+    }  // namespace impl
+
+#endif  // !SCN_DISABLE_LOCALE
 
     SCN_END_NAMESPACE
 }  // namespace scn

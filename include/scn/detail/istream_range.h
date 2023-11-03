@@ -19,7 +19,7 @@
 
 #include <scn/fwd.h>
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
 
 #include <scn/detail/caching_view.h>
 

@@ -617,18 +617,24 @@ protected:
 using type_list = ::testing::Types<reader_wrapper<false, char, float>,
                                    reader_wrapper<false, char, double>,
                                    reader_wrapper<false, wchar_t, float>,
-                                   reader_wrapper<false, wchar_t, double>,
+                                   reader_wrapper<false, wchar_t, double>
+#if !SCN_DISABLE_LOCALE
+                                   ,
                                    reader_wrapper<true, char, float>,
                                    reader_wrapper<true, char, double>,
                                    reader_wrapper<true, wchar_t, float>,
                                    reader_wrapper<true, wchar_t, double>
+#endif
 #if SCN_LONG_DOUBLE_WIDTH != 0
                                    ,
                                    reader_wrapper<false, char, long double>,
-                                   reader_wrapper<false, wchar_t, long double>,
+                                   reader_wrapper<false, wchar_t, long double>
+#if !SCN_DISABLE_LOCALE
+                                   ,
                                    reader_wrapper<true, char, long double>,
                                    reader_wrapper<true, wchar_t, long double>
 #endif
+#endif // has long double
                                    >;
 
 SCN_CLANG_PUSH
@@ -988,6 +994,7 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueHexWithoutPrefix)
         val, static_cast<typename TestFixture::float_type>(0x1.fp3)));
 }
 
+#if !SCN_DISABLE_LOCALE
 template <typename CharT>
 struct numpunct_with_comma_thsep : std::numpunct<CharT> {
     numpunct_with_comma_thsep(std::string s)
@@ -1106,3 +1113,4 @@ TYPED_TEST(FloatValueReaderTest, LocalizedDecimalSeparator)
     EXPECT_TRUE(a);
     EXPECT_TRUE(check_floating_eq(val, this->get_pi().first));
 }
+#endif  // !SCN_DISABLE_LOCALE

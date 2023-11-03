@@ -84,6 +84,7 @@ namespace scn {
                 return read_source_impl<std::is_signed_v<T>>(SCN_FWD(range));
             }
 
+#if !SCN_DISABLE_LOCALE
             template <typename T, typename Range>
             SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
             read_source_localized(detail::tag_type<T>,
@@ -99,6 +100,7 @@ namespace scn {
                 return read_source_with_thsep_impl<std::is_signed_v<T>>(
                     SCN_FWD(range));
             }
+#endif
 
             template <typename T>
             SCN_NODISCARD scan_expected<std::ptrdiff_t> parse_value(T& value)
@@ -469,6 +471,7 @@ namespace scn {
             {
                 auto rd = get_reader_from_specs(specs);
 
+#if !SCN_DISABLE_LOCALE
                 if (specs.localized) {
                     return read_impl(
                         SCN_FWD(range), rd,
@@ -478,6 +481,7 @@ namespace scn {
                         },
                         value);
                 }
+#endif
 
                 return read_impl(
                     SCN_FWD(range), rd,

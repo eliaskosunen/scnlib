@@ -366,14 +366,9 @@ namespace scn {
     }  // namespace
 
     namespace detail {
-#define SCN_DEFINE_VSCAN(Range, CharT)                                         \
-    vscan_impl_result<Range> vscan_impl(Range source,                          \
-                                        std::basic_string_view<CharT> format,  \
-                                        scan_args_for<Range, CharT> args)      \
-    {                                                                          \
-        return vscan_internal(SCN_MOVE(source), format, args);                 \
-    }                                                                          \
-                                                                               \
+
+#if !SCN_DISABLE_LOCALE
+#define SCN_DEFINE_VSCAN_LOCALIZED(Range, CharT)                               \
     template <typename Locale>                                                 \
     vscan_impl_result<Range> vscan_localized_impl(                             \
         const Locale& loc, Range source, std::basic_string_view<CharT> format, \
@@ -381,17 +376,25 @@ namespace scn {
     {                                                                          \
         return vscan_internal(SCN_MOVE(source), format, args,                  \
                               detail::locale_ref{loc});                        \
-    }                                                                          \
-    template vscan_impl_result<Range> vscan_localized_impl<std::locale>(       \
-        const std::locale& loc, Range source,                                  \
-        std::basic_string_view<CharT> format,                                  \
-        scan_args_for<Range, CharT> args);                                     \
-                                                                               \
-    vscan_impl_result<Range> vscan_value_impl(Range source,                    \
-                                              scan_arg_for<Range, CharT> arg)  \
-    {                                                                          \
-        return vscan_value_internal(SCN_MOVE(source), arg);                    \
     }
+#else
+#define SCN_DEFINE_VSCAN_LOCALIZED(...) /* vscan_localized_impl disabled */
+#endif
+
+#define SCN_DEFINE_VSCAN(Range, CharT)                                        \
+    vscan_impl_result<Range> vscan_impl(Range source,                         \
+                                        std::basic_string_view<CharT> format, \
+                                        scan_args_for<Range, CharT> args)     \
+    {                                                                         \
+        return vscan_internal(SCN_MOVE(source), format, args);                \
+    }                                                                         \
+    vscan_impl_result<Range> vscan_value_impl(Range source,                   \
+                                              scan_arg_for<Range, CharT> arg) \
+    {                                                                         \
+        return vscan_value_internal(SCN_MOVE(source), arg);                   \
+    }                                                                         \
+    SCN_DEFINE_VSCAN_LOCALIZED(Range, CharT)
+
     }  // namespace detail
 
     SCN_END_NAMESPACE

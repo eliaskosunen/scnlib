@@ -17,7 +17,7 @@
 
 #include <scn/vscan_impl.h>
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
 #include <scn/detail/istream_range.h>
 
 #include <iostream>

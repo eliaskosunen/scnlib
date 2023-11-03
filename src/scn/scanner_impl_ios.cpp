@@ -21,7 +21,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::is)
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wis)
 #endif

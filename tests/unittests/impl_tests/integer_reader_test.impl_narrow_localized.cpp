@@ -17,6 +17,8 @@
 
 #include "integer_reader_test.h"
 
+#if !SCN_DISABLE_LOCALE
+
 using TypeList =
     ::testing::Types<reader_wrapper<true, char, signed char>,
                      reader_wrapper<true, char, short>,
@@ -35,3 +37,5 @@ SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")
 INSTANTIATE_TYPED_TEST_SUITE_P(NarrowLocalized, IntValueReaderTest, TypeList);
 
 SCN_CLANG_POP
+
+#endif  // !SCN_DISABLE_LOCALE

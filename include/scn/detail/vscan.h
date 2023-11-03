@@ -63,7 +63,7 @@ namespace scn {
             erased_subrange source,
             std::string_view format,
             scan_args_for<erased_subrange, char> args);
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         vscan_impl_result<istreambuf_subrange> vscan_impl(
             istreambuf_subrange source,
             std::string_view format,
@@ -78,13 +78,14 @@ namespace scn {
             werased_subrange source,
             std::wstring_view format,
             scan_args_for<werased_subrange, wchar_t> args);
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         vscan_impl_result<wistreambuf_subrange> vscan_impl(
             wistreambuf_subrange source,
             std::wstring_view format,
             scan_args_for<wistreambuf_subrange, wchar_t> args);
 #endif
 
+#if !SCN_DISABLE_LOCALE
         template <typename Locale>
         vscan_impl_result<std::string_view> vscan_localized_impl(
             const Locale& loc,
@@ -97,7 +98,7 @@ namespace scn {
             erased_subrange source,
             std::string_view format,
             scan_args_for<erased_subrange, char> args);
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         template <typename Locale>
         vscan_impl_result<istreambuf_subrange> vscan_localized_impl(
             const Locale& loc,
@@ -118,7 +119,7 @@ namespace scn {
             werased_subrange source,
             std::wstring_view format,
             scan_args_for<werased_subrange, wchar_t> args);
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         template <typename Locale>
         vscan_impl_result<wistreambuf_subrange> vscan_localized_impl(
             const Locale& loc,
@@ -126,6 +127,7 @@ namespace scn {
             std::wstring_view format,
             scan_args_for<wistreambuf_subrange, wchar_t> args);
 #endif
+#endif  // !SCN_DISABLE_LOCALE
 
         vscan_impl_result<std::string_view> vscan_value_impl(
             std::string_view source,
@@ -133,7 +135,7 @@ namespace scn {
         vscan_impl_result<erased_subrange> vscan_value_impl(
             erased_subrange source,
             scan_arg_for<erased_subrange, char> arg);
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         vscan_impl_result<istreambuf_subrange> vscan_value_impl(
             istreambuf_subrange source,
             scan_arg_for<istreambuf_subrange, char> arg);
@@ -145,20 +147,20 @@ namespace scn {
         vscan_impl_result<werased_subrange> vscan_value_impl(
             werased_subrange source,
             scan_arg_for<werased_subrange, wchar_t> arg);
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         vscan_impl_result<wistreambuf_subrange> vscan_value_impl(
             wistreambuf_subrange source,
             scan_arg_for<wistreambuf_subrange, wchar_t> arg);
 #endif
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         vscan_impl_result<istreambuf_subrange> vscan_and_sync_impl(
             istreambuf_subrange source,
             std::string_view format,
             scan_args_for<istreambuf_subrange, char> args);
 #endif
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         vscan_impl_result<wistreambuf_subrange> vscan_and_sync_impl(
             wistreambuf_subrange source,
             std::wstring_view format,
@@ -199,6 +201,7 @@ namespace scn {
                                      Format format,
                                      Args args) -> vscan_result<Range>
         {
+#if !SCN_DISABLE_LOCALE
             auto mapped_range = scan_map_input_range(range);
 
             SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
@@ -210,7 +213,14 @@ namespace scn {
             }
             return map_scan_result_range(SCN_FWD(range), mapped_range.begin(),
                                          *result);
-        }
+#else
+            static_assert(
+                dependent_false<Locale>::value,
+                "Can't use scan(locale, ...) with SCN_DISABLE_LOCALE on");
+
+            return {};
+#endif
+        };
 
         template <typename Range, typename Arg>
         auto vscan_value_generic(Range&& range, Arg arg) -> vscan_result<Range>
@@ -225,7 +235,7 @@ namespace scn {
                                          *result);
         }
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         template <typename Range, typename Format, typename Args>
         auto vscan_and_sync_generic(Range&& range, Format format, Args args)
             -> vscan_result<Range>
@@ -291,7 +301,7 @@ namespace scn {
         return detail::vscan_value_generic(SCN_FWD(range), arg);
     }
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
     namespace detail {
         template <typename Range>
         auto vscan_and_sync(Range&& range,

@@ -380,3 +380,38 @@ jobs:
         run: |
           output="$(echo '42' | ./scn-consumer)"
           test "$output" -eq 42
+
+  disabled-envs:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        flags:
+          - "-DSCN_DISABLE_IOSTREAM=ON"
+          - "-DSCN_DISABLE_LOCALE=ON"
+          - "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON"
+          - "-DSCN_DISABLE_FROM_CHARS=ON -DSCN_DISABLE_STRTOD=ON"
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Build Environment
+        run: |
+          mkdir ${{ runner.workspace }}/build
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -G Ninja -DSCN_CI=ON ${{ matrix.flags }} \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . -- -k 0

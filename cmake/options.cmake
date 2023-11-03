@@ -1,4 +1,3 @@
-option(SCN_USE_IOSTREAMS "Use iostreams" ON)
 
 option(SCN_CI "Enable CI preset" OFF)
 if (SCN_IS_TOP_PROJECT)
@@ -58,8 +57,10 @@ option(SCN_DISABLE_TYPE_STRING "Disable scanning of std::basic_string" OFF)
 option(SCN_DISABLE_TYPE_STRING_VIEW "Disable scanning of std::basic_string_view" OFF)
 option(SCN_DISABLE_TYPE_CUSTOM "Disable scanning of user types" OFF)
 
+option(SCN_DISABLE_IOSTREAM "Disable iostreams" OFF)
 option(SCN_DISABLE_LOCALE "Disable all localization" OFF)
-option(SCN_DISABLE_TRANSCODING "Disable scanning of wide characters and strings from narrow sources, and vice versa" OFF)
+# TODO:
+#option(SCN_DISABLE_TRANSCODING "Disable scanning of wide characters and strings from narrow sources, and vice versa" OFF)
 
 option(SCN_DISABLE_FROM_CHARS "Disallow falling back on std::from_chars when scanning floating-point values" OFF)
 option(SCN_DISABLE_STRTOD "Disallow falling back on std::strtod when scanning floating-point values" OFF)

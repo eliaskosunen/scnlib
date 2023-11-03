@@ -19,7 +19,7 @@
 
 #include <scn/fwd.h>
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
 
 #include <scn/detail/args.h>
 #include <scn/detail/erased_range.h>

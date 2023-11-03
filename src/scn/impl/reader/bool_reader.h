@@ -102,6 +102,7 @@ namespace scn {
         struct bool_reader : public bool_reader_base {
             using bool_reader_base::bool_reader_base;
 
+#if !SCN_DISABLE_LOCALE
             template <typename Range>
             scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
@@ -138,6 +139,7 @@ namespace scn {
 
                 return unexpected(err);
             }
+#endif
 
         protected:
             template <typename Range>
@@ -203,9 +205,11 @@ namespace scn {
             {
                 const auto rd = bool_reader<CharT>{get_options(specs)};
 
+#if !SCN_DISABLE_LOCALE
                 if (specs.localized) {
                     return rd.read_localized(SCN_FWD(range), loc, value);
                 }
+#endif
 
                 return rd.read_classic(SCN_FWD(range), value);
             }

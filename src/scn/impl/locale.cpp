@@ -24,6 +24,8 @@ namespace scn {
 
     // locale_ref
 
+#if !SCN_DISABLE_LOCALE
+
     namespace detail {
         template <typename Locale>
         locale_ref::locale_ref(const Locale& loc) : m_locale(&loc)
@@ -42,6 +44,8 @@ namespace scn {
         template locale_ref::locale_ref(const std::locale&);
         template auto locale_ref::get() const -> std::locale;
     }  // namespace detail
+
+#endif
 
     SCN_END_NAMESPACE
 }  // namespace scn

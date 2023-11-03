@@ -47,7 +47,8 @@ namespace scn {
         T,
         CharT,
         std::enable_if_t<detail::arg_type_constant<T, CharT>::value !=
-                         detail::arg_type::custom_type>> {
+                             detail::arg_type::custom_type &&
+                         !detail::is_type_disabled<T>>> {
     public:
         template <typename ParseCtx>
         constexpr auto parse(ParseCtx& pctx)

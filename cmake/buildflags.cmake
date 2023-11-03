@@ -24,8 +24,9 @@ function(get_config_flags flags)
             $<$<BOOL:${SCN_DISABLE_FROM_CHARS}>: -DSCN_DISABLE_FROM_CHARS=1>
             $<$<BOOL:${SCN_DISABLE_STRTOD}>: -DSCN_DISABLE_STRTOD=1>
 
-            $<$<BOOL:${SCN_DISABLE_TRANSCODING}>: -DSCN_DISABLE_TRANSCODING=1>
+            $<$<BOOL:${SCN_DISABLE_IOSTREAM}>: -DSCN_DISABLE_IOSTREAM=1>
             $<$<BOOL:${SCN_DISABLE_LOCALE}>: -DSCN_DISABLE_LOCALE=1>
+            #$<$<BOOL:${SCN_DISABLE_TRANSCODING}>: -DSCN_DISABLE_TRANSCODING=1>
             PARENT_SCOPE
     )
 endfunction()
@@ -237,9 +238,6 @@ function(set_library_flags target)
     if (NOT SCN_USE_RTTI)
         get_disable_rtti_flags(nortti_flags)
         target_compile_options(${target} PRIVATE ${nortti_flags})
-    endif ()
-    if (NOT SCN_USE_IOSTREAMS)
-        target_compile_definitions(${target} PUBLIC -DSCN_USE_IOSTREAMS=0)
     endif ()
     if (SCN_COVERAGE)
         get_coverage_flags(coverage_flags)

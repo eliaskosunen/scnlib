@@ -31,10 +31,13 @@ protected:
 
     static auto read_default(std::string_view src, bool& val)
     {
+#if !SCN_DISABLE_LOCALE
         if constexpr (is_localized) {
             return scn::impl::bool_reader<char>{}.read_localized(src, {}, val);
         }
-        else {
+        else
+#endif
+        {
             return scn::impl::bool_reader<char>{}.read_classic(src, val);
         }
     }

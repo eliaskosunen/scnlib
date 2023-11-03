@@ -111,7 +111,7 @@ namespace scn {
 
     struct invalid_input_range;
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
 
     // detail/istream_range.h
 

@@ -189,7 +189,12 @@ namespace scn {
             }
             constexpr void on_localized()
             {
-                m_specs.localized = true;
+                if constexpr (!SCN_DISABLE_LOCALE) {
+                    m_specs.localized = true;
+                }
+                else {
+                    on_error("'L' flag invalid when SCN_DISABLE_LOCALE is on");
+                }
             }
 
             constexpr void on_width(int width)

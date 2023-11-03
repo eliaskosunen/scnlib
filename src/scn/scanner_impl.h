@@ -24,7 +24,8 @@ namespace scn {
 
     namespace detail {
         template <typename T, typename Context>
-        scan_expected<typename Context::iterator> scanner_scan_for_builtin_type(
+        scan_expected<typename Context::iterator>
+        scanner_scan_for_builtin_type_impl(
             T& val,
             Context& ctx,
             const basic_format_specs<typename Context::char_type>& specs)
@@ -39,30 +40,40 @@ namespace scn {
             return impl::skip_classic_whitespace(r, allow_exhaustion);
         }
 
-#define SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(T, Context)                         \
-    template scan_expected<Context::iterator> scanner_scan_for_builtin_type( \
-        T&, Context&, const basic_format_specs<Context::char_type>&);
+#define SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(T, Context)                    \
+    scan_expected<Context::iterator> scanner_scan_for_builtin_type(     \
+        T& val, Context& ctx,                                           \
+        const basic_format_specs<Context::char_type>& specs)            \
+    {                                                                   \
+        if constexpr (!detail::is_type_disabled<T>) {                   \
+            return scanner_scan_for_builtin_type_impl(val, ctx, specs); \
+        }                                                               \
+        else {                                                          \
+            SCN_EXPECT(false);                                          \
+            SCN_UNREACHABLE;                                            \
+        }                                                               \
+    }
 
-#define SCN_DEFINE_SCANNER_SCAN_FOR_CTX(Context)                            \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(Context::char_type, Context)           \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(signed char, Context)                  \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(short, Context)                        \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(int, Context)                          \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long, Context)                         \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long long, Context)                    \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned char, Context)                \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned short, Context)               \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned int, Context)                 \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned long, Context)                \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned long long, Context)           \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(float, Context)                        \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(double, Context)                       \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long double, Context)                  \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::basic_string<Context::char_type>, \
-                                     Context)                               \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(                                       \
-        std::basic_string_view<Context::char_type>, Context)                \
-    template scan_expected<ranges::iterator_t<Context::range_type>>         \
+#define SCN_DEFINE_SCANNER_SCAN_FOR_CTX(Context)                    \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(Context::char_type, Context)   \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(signed char, Context)          \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(short, Context)                \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(int, Context)                  \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long, Context)                 \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long long, Context)            \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned char, Context)        \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned short, Context)       \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned int, Context)         \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned long, Context)        \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned long long, Context)   \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(float, Context)                \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(double, Context)               \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long double, Context)          \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::string, Context)          \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::wstring, Context)         \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::string_view, Context)     \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::wstring_view, Context)    \
+    template scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
     }  // namespace detail

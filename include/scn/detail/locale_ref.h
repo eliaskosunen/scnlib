@@ -24,6 +24,7 @@ namespace scn {
 
     namespace detail {
         class locale_ref {
+#if !SCN_DISABLE_LOCALE
         public:
             constexpr locale_ref() = default;
 
@@ -40,6 +41,20 @@ namespace scn {
 
         private:
             const void* m_locale{nullptr};
+#else
+        public:
+            constexpr locale_ref() = default;
+
+            template <typename T>
+            constexpr explicit locale_ref(T&&)
+            {
+            }
+
+            constexpr explicit operator bool() const SCN_NOEXCEPT
+            {
+                return true;
+            }
+#endif
         };
     }  // namespace detail
 

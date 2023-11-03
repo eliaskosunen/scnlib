@@ -84,6 +84,7 @@ namespace scn {
                 return read_source_impl(SCN_FWD(range));
             }
 
+#if !SCN_DISABLE_LOCALE
             template <typename Range>
             SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
             read_source_localized(Range&& range, detail::locale_ref loc)
@@ -97,6 +98,7 @@ namespace scn {
 
                 return read_source_impl(SCN_FWD(range));
             }
+#endif
 
             template <typename T>
             SCN_NODISCARD scan_expected<std::ptrdiff_t> parse_value(T& value)
@@ -619,6 +621,7 @@ namespace scn {
             {
                 float_reader<CharT> rd{get_options(specs)};
 
+#if !SCN_DISABLE_LOCALE
                 if (specs.localized) {
                     return read_impl(
                         SCN_FWD(range), rd,
@@ -627,6 +630,7 @@ namespace scn {
                         },
                         value);
                 }
+#endif
 
                 return read_impl(
                     SCN_FWD(range), rd,

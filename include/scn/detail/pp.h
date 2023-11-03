@@ -208,6 +208,7 @@
 #endif
 
 // clang currently can't process libstdc++ ranges::view_interface
+// FIXME: which versions of clang?
 #if SCN_CLANG && SCN_STDLIB_GLIBCXX
 #define SCN_ENVIRONMENT_SUPPORTS_RANGES 0
 #else

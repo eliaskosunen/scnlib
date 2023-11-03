@@ -18,7 +18,7 @@
 #include <scn/detail/istream_scanner.h>
 #include <scn/detail/xchar.h>
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

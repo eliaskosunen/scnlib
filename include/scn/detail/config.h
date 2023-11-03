@@ -42,12 +42,6 @@
 #define SCN_USE_STD_RANGES 1
 #endif
 
-// SCN_USE_IOSTREAMS
-// If 0, removes all references and functionality related to standard streams.
-#ifndef SCN_USE_IOSTREAMS
-#define SCN_USE_IOSTREAMS 1
-#endif
-
 // TODO
 #if 0
 // SCN_USE_DYNAMIC_ALLOCATION
@@ -56,6 +50,12 @@
 #ifndef SCN_USE_DYNAMIC_ALLOCATION
 #define SCN_USE_DYNAMIC_ALLOCATION 1
 #endif
+#endif
+
+// SCN_DISABLE_IOSTREAM
+// If 0, removes all references and functionality related to standard streams.
+#ifndef SCN_DISABLE_IOSTREAM
+#define SCN_DISABLE_IOSTREAM 0
 #endif
 
 // SCN_DISABLE_TRANSCODING

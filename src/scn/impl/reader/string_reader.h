@@ -164,6 +164,7 @@ namespace scn {
                                         value);
             }
 
+#if !SCN_DISABLE_LOCALE
             template <typename Range, typename ValueCharT>
             scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
@@ -173,6 +174,7 @@ namespace scn {
                 return read_string_impl(
                     range, read_until_localized_space(range, loc), value);
             }
+#endif
 
             template <typename Range, typename ValueCharT>
             scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
@@ -183,6 +185,7 @@ namespace scn {
                     range, read_until_classic_space(range), value);
             }
 
+#if !SCN_DISABLE_LOCALE
             template <typename Range, typename ValueCharT>
             scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
@@ -192,6 +195,7 @@ namespace scn {
                 return read_string_view_impl(
                     range, read_until_localized_space(range, loc), value);
             }
+#endif
         };
 
         template <typename SourceCharT>
@@ -316,6 +320,7 @@ namespace scn {
                 return read_string_impl(range, *it, value);
             }
 
+#if !SCN_DISABLE_LOCALE
             template <typename Range, typename ValueCharT>
             scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
@@ -330,6 +335,7 @@ namespace scn {
 
                 return read_string_impl(range, *it, value);
             }
+#endif
 
             template <typename Range, typename ValueCharT>
             scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
@@ -345,6 +351,7 @@ namespace scn {
                 return read_string_view_impl(range, *it, value);
             }
 
+#if !SCN_DISABLE_LOCALE
             template <typename Range, typename ValueCharT>
             scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
@@ -359,6 +366,7 @@ namespace scn {
 
                 return read_string_view_impl(range, *it, value);
             }
+#endif
 
         private:
             struct specs_helper {
@@ -429,6 +437,7 @@ namespace scn {
                     return {};
                 }
 
+#if !SCN_DISABLE_LOCALE
                 scan_error handle_localized_nonmask(detail::locale_ref loc)
                 {
                     SCN_UNUSED(loc);
@@ -516,6 +525,7 @@ namespace scn {
 
                     return {mask, is_exhaustive};
                 }
+#endif  // !SCN_DISABLE_LOCALE
 
                 const detail::basic_format_specs<SourceCharT>& specs;
                 nonascii_specs_handler nonascii;
@@ -605,6 +615,7 @@ namespace scn {
                 return check_nonempty(it, range);
             }
 
+#if !SCN_DISABLE_LOCALE
             template <typename Range>
             scan_expected<simple_borrowed_iterator_t<Range>>
             read_source_localized_impl(Range&& range,
@@ -666,6 +677,7 @@ namespace scn {
                                                                   mask, cb);
                 return check_nonempty(it, range);
             }
+#endif  // !SCN_DISABLE_LOCALE
 
             template <typename Iterator, typename Range>
             static scan_expected<Iterator> check_nonempty(const Iterator& it,
@@ -741,9 +753,11 @@ namespace scn {
                 Value& value,
                 detail::locale_ref loc)
             {
+#if !SCN_DISABLE_LOCALE
                 if (specs.localized) {
                     return read_localized(SCN_FWD(range), loc, specs, value);
                 }
+#endif
 
                 return read_classic(SCN_FWD(range), specs, value);
             }
@@ -781,6 +795,7 @@ namespace scn {
                 SCN_CLANG_POP
             }
 
+#if !SCN_DISABLE_LOCALE
             template <typename Range, typename Value>
             scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
                 Range&& range,
@@ -811,6 +826,7 @@ namespace scn {
 
                 SCN_CLANG_POP
             }
+#endif
 
             reader_type m_type{reader_type::word};
         };

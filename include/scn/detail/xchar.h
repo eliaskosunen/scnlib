@@ -63,7 +63,7 @@ namespace scn {
         return detail::vscan_value_generic(SCN_FWD(range), arg);
     }
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
     namespace detail {
         template <typename Range>
         auto vscan_and_sync(Range&& range,
@@ -136,7 +136,7 @@ namespace scn {
                                                     format, args);
     }
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
     namespace detail {
         scn::wistreambuf_view& internal_wide_stdin();
     }
@@ -176,13 +176,13 @@ namespace scn {
 
     // istream_scanner streambuf
 
+#if !SCN_DISABLE_IOSTREAM
     namespace detail {
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(std::wstring_view)
-#if SCN_USE_IOSTREAMS
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(wistreambuf_subrange)
-#endif
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(werased_subrange)
     }  // namespace detail
+#endif
 
     // scanner_builtin
 
@@ -190,14 +190,14 @@ namespace scn {
         namespace scanner_scan_contexts {
             using wsv = basic_scan_context<std::wstring_view, wchar_t>;
             using wes = basic_scan_context<werased_subrange, wchar_t>;
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
             using wis = basic_scan_context<wistreambuf_subrange, wchar_t>;
 #endif
         }  // namespace scanner_scan_contexts
 
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wis)
 #endif
 

@@ -392,6 +392,7 @@ namespace scn {
                                          "read_one_of_code_unit: No match");
         }
 
+#if !SCN_DISABLE_LOCALE
         template <typename Range>
         simple_borrowed_iterator_t<Range> read_localized_mask_impl(
             Range&& range,
@@ -501,6 +502,7 @@ namespace scn {
                 return pred(cp) || ctype_facet.is(mask, ch);
             });
         }
+#endif // !SCN_DISABLE_LOCALE
 
         template <typename Range, typename Iterator>
         simple_borrowed_iterator_t<Range> apply_opt(

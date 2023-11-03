@@ -54,6 +54,7 @@ static void bench_basic_scn_withoptions(benchmark::State& state)
 }
 BENCHMARK(bench_basic_scn_withoptions);
 
+#if !SCN_DISABLE_LOCALE
 static void bench_basic_scn_withlocale(benchmark::State& state)
 {
     std::string_view input{"123"};
@@ -85,6 +86,7 @@ static void bench_basic_scn_localized(benchmark::State& state)
     }
 }
 BENCHMARK(bench_basic_scn_localized);
+#endif
 
 static void bench_basic_scn_value(benchmark::State& state)
 {

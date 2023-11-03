@@ -753,6 +753,7 @@ TYPED_TEST_P(IntValueReaderTest, InputWithNullBytes)
               scn::detail::to_address(this->widened_source->begin() + 1));
 }
 
+#if !SCN_DISABLE_LOCALE
 template <typename CharT>
 struct numpunct_with_comma_thsep : std::numpunct<CharT> {
     numpunct_with_comma_thsep(std::string s)
@@ -850,6 +851,7 @@ TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
     EXPECT_TRUE(this->check_failure_with_code(
         result, val, scn::scan_error::invalid_scanned_value));
 }
+#endif
 
 REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
                             Zero,
@@ -882,8 +884,12 @@ REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
                             OnlyHexPrefix,
                             OnlyLongOctPrefix,
                             OnlyBinPrefix,
-                            InputWithNullBytes,
+                            InputWithNullBytes
+#if !SCN_DISABLE_LOCALE
+                            ,
                             ThousandsSeparators,
                             ThousandsSeparatorsWithInvalidGrouping,
                             ExoticThousandsSeparators,
-                            ExoticThousandsSeparatorsWithInvalidGrouping);
+                            ExoticThousandsSeparatorsWithInvalidGrouping
+#endif
+);

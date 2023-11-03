@@ -153,6 +153,7 @@ TEST_F(FormatStringParserFormatSpecsTest, EmptySpecs)
     EXPECT_EQ(handler.latest_error, nullptr);
 }
 
+#if !SCN_DISABLE_LOCALE
 TEST_F(FormatStringParserFormatSpecsTest, Localized)
 {
     std::string_view input{"L}"};
@@ -162,3 +163,4 @@ TEST_F(FormatStringParserFormatSpecsTest, Localized)
     EXPECT_EQ(specs.localized, true);
     EXPECT_EQ(handler.latest_error, nullptr);
 }
+#endif

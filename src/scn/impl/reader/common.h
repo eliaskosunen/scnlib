@@ -57,6 +57,7 @@ namespace scn {
             return read_while_classic_space(SCN_FWD(range));
         }
 
+#if !SCN_DISABLE_LOCALE
         template <typename SourceRange>
         scan_expected<simple_borrowed_iterator_t<SourceRange>>
         skip_localized_whitespace(SourceRange&& range,
@@ -77,10 +78,6 @@ namespace scn {
             return read_while_localized_mask(SCN_FWD(range), loc,
                                              std::ctype_base::space);
         }
-
-#if 0
-        template <typename T, typename CharT, typename Enable = void>
-        class reader;
 #endif
 
         template <typename Derived, typename CharT>

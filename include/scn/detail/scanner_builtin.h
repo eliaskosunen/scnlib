@@ -59,13 +59,17 @@ namespace scn {
 
         namespace scanner_scan_contexts {
             using sv = basic_scan_context<std::string_view, char>;
-            using is = basic_scan_context<istreambuf_subrange, char>;
             using es = basic_scan_context<erased_subrange, char>;
         }  // namespace scanner_scan_contexts
 
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::sv)
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
-#if SCN_USE_IOSTREAMS
+
+#if !SCN_DISABLE_IOSTREAM
+        namespace scanner_scan_contexts {
+            using is = basic_scan_context<istreambuf_subrange, char>;
+        }
+
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::is)
 #endif
     }  // namespace detail

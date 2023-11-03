@@ -64,7 +64,7 @@ namespace scn {
                 return {r, N - 1};
             }
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
             // istreambuf_view& -> istreambuf_subrange
             template <typename CharT>
             static std::enable_if_t<is_valid_char_type<CharT>,
@@ -90,7 +90,7 @@ namespace scn {
                 return {r};
             }
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
             // istreambuf_subrange -> self
             template <typename CharT>
             static std::enable_if_t<is_valid_char_type<CharT>,
@@ -253,7 +253,7 @@ namespace scn {
         std::basic_string_view<CharT> decay_source_range(
             std::basic_string_view<CharT>);
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
         template <typename CharT>
         basic_istreambuf_subrange<CharT> decay_source_range(
             basic_istreambuf_subrange<CharT>);

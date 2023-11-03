@@ -17,7 +17,7 @@
 
 #include <scn/detail/istream_range.h>
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
 
 #include <streambuf>
 

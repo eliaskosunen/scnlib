@@ -57,11 +57,14 @@ SCN_GCC_POP
 #include <charconv>
 #endif
 
-#define SCN_XLOCALE_POSIX 0
-#define SCN_XLOCALE_MSVC  1
-#define SCN_XLOCALE_OTHER 2
+#define SCN_XLOCALE_POSIX    0
+#define SCN_XLOCALE_MSVC     1
+#define SCN_XLOCALE_OTHER    2
+#define SCN_XLOCALE_DISABLED 3
 
-#if SCN_HAS_INCLUDE(<xlocale.h>)
+#if SCN_DISABLE_LOCALE
+#define SCN_XLOCALE SCN_XLOCALE_DISABLED
+#elif SCN_HAS_INCLUDE(<xlocale.h>)
 #include <xlocale.h>
 #define SCN_XLOCALE SCN_XLOCALE_POSIX
 

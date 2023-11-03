@@ -189,7 +189,7 @@ protected:
     {
         typename T::dest_string_type val{};
 
-        if constexpr (T::is_localized) {
+        if constexpr (T::is_localized && !SCN_DISABLE_LOCALE) {
             auto ret = make_reader().read_localized(*widened_source, {}, val);
             return std::make_pair(ret, val);
         }
@@ -215,15 +215,19 @@ using type_list =
 
                    test_type_pack<false, wchar_t, char, string_tag>,
                    test_type_pack<false, wchar_t, wchar_t, string_tag>,
-                   test_type_pack<false, wchar_t, wchar_t, string_view_tag>,
+                   test_type_pack<false, wchar_t, wchar_t, string_view_tag>
 
+#if !SCN_DISABLE_LOCALE
+                   ,
                    test_type_pack<true, char, char, string_tag>,
                    test_type_pack<true, char, char, string_view_tag>,
                    test_type_pack<true, char, wchar_t, string_tag>,
 
                    test_type_pack<true, wchar_t, char, string_tag>,
                    test_type_pack<true, wchar_t, wchar_t, string_tag>,
-                   test_type_pack<true, wchar_t, wchar_t, string_view_tag>>;
+                   test_type_pack<true, wchar_t, wchar_t, string_view_tag>
+#endif
+                   >;
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")
@@ -373,7 +377,7 @@ protected:
     {
         typename T::dest_string_type val{};
 
-        if constexpr (T::is_localized) {
+        if constexpr (T::is_localized && !SCN_DISABLE_LOCALE) {
             auto ret =
                 make_reader().read_localized(*widened_source, {}, specs, val);
             return std::make_pair(ret, val);

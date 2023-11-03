@@ -273,7 +273,7 @@ namespace scn {
                                        SCN_MOVE(default_value));
     }
 
-#if SCN_USE_IOSTREAMS
+#if !SCN_DISABLE_IOSTREAM
 
     namespace detail {
         scn::istreambuf_view& internal_narrow_stdin();
