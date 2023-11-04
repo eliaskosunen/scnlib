@@ -26,6 +26,7 @@ function(get_config_flags flags)
 
             $<$<BOOL:${SCN_DISABLE_IOSTREAM}>: -DSCN_DISABLE_IOSTREAM=1>
             $<$<BOOL:${SCN_DISABLE_LOCALE}>: -DSCN_DISABLE_LOCALE=1>
+            $<$<BOOL:${SCN_DISABLE_ERASED_RANGE}>: -DSCN_DISABLE_ERASED_RANGE=1>
             #$<$<BOOL:${SCN_DISABLE_TRANSCODING}>: -DSCN_DISABLE_TRANSCODING=1>
             PARENT_SCOPE
     )

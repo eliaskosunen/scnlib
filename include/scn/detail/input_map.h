@@ -78,6 +78,7 @@ namespace scn {
             }
 #endif
 
+#if !SCN_DISABLE_ERASED_RANGE
             // erased_range& -> erased_subrange
             template <typename CharT>
             static std::enable_if_t<is_valid_char_type<CharT>,
@@ -89,6 +90,7 @@ namespace scn {
             {
                 return {r};
             }
+#endif
 
 #if !SCN_DISABLE_IOSTREAM
             // istreambuf_subrange -> self
@@ -124,6 +126,7 @@ namespace scn {
             }
 #endif
 
+#if !SCN_DISABLE_ERASED_RANGE
             // erased_subrange -> self
             template <typename CharT>
             static std::enable_if_t<is_valid_char_type<CharT>,
@@ -155,6 +158,7 @@ namespace scn {
             {
                 return {r.begin(), r.end()};
             }
+#endif
 
             SCN_GCC_PUSH
             SCN_GCC_IGNORE("-Wnoexcept")
@@ -196,6 +200,7 @@ namespace scn {
 
             SCN_GCC_POP
 
+#if !SCN_DISABLE_ERASED_RANGE
             // forward + proper char type -> erased
             template <typename Range, typename CharT = detail::char_t<Range>>
             static std::enable_if_t<is_valid_char_type<CharT> &&
@@ -205,6 +210,7 @@ namespace scn {
             {
                 return basic_erased_range<CharT>{r};
             }
+#endif
 
             // other -> error
             template <typename T>
@@ -262,12 +268,14 @@ namespace scn {
             const basic_istreambuf_view<CharT>&);
 #endif
 
+#if !SCN_DISABLE_ERASED_RANGE
         template <typename CharT>
         basic_erased_subrange<CharT> decay_source_range(
             basic_erased_subrange<CharT>);
         template <typename CharT>
         basic_erased_subrange<CharT> decay_source_range(
             const basic_erased_range<CharT>&);
+#endif
 
         template <typename R>
         using decayed_source_range =

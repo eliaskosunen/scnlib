@@ -26,7 +26,9 @@ namespace scn {
             return e;
         }
 
+#if !SCN_DISABLE_ERASED_RANGE
         erased_range_impl_base::~erased_range_impl_base() = default;
+#endif
     }  // namespace detail
 
     SCN_END_NAMESPACE

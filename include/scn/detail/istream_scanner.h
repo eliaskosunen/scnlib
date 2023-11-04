@@ -114,15 +114,19 @@ namespace scn {
             bool m_has_put_back{false};
         };
 
-#define SCN_DECLARE_EXTERN_RANGE_STREAMBUF(Range)                              \
-    extern template auto range_streambuf<Range>::underflow()->int_type;        \
-    extern template auto range_streambuf<Range>::uflow()->int_type;            \
-    extern template auto range_streambuf<Range>::showmanyc()->std::streamsize; \
-    extern template auto range_streambuf<Range>::pbackfail(int_type)->int_type;
+#define SCN_DECLARE_EXTERN_RANGE_STREAMBUF(Range)                         \
+    extern template auto range_streambuf<Range>::underflow() -> int_type; \
+    extern template auto range_streambuf<Range>::uflow() -> int_type;     \
+    extern template auto range_streambuf<Range>::showmanyc()              \
+        -> std::streamsize;                                               \
+    extern template auto range_streambuf<Range>::pbackfail(int_type)      \
+        -> int_type;
 
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(std::string_view)
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(istreambuf_subrange)
+#if !SCN_DISABLE_ERASED_RANGE
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(erased_subrange)
+#endif
     }  // namespace detail
 
     /**

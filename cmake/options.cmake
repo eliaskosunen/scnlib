@@ -59,6 +59,7 @@ option(SCN_DISABLE_TYPE_CUSTOM "Disable scanning of user types" OFF)
 
 option(SCN_DISABLE_IOSTREAM "Disable iostreams" OFF)
 option(SCN_DISABLE_LOCALE "Disable all localization" OFF)
+option(SCN_DISABLE_ERASED_RANGE "Disable erased_range" OFF)
 # TODO:
 #option(SCN_DISABLE_TRANSCODING "Disable scanning of wide characters and strings from narrow sources, and vice versa" OFF)
 

@@ -21,8 +21,10 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+#if !SCN_DISABLE_ERASED_RANGE
         SCN_DEFINE_VSCAN(erased_subrange, char)
         SCN_DEFINE_VSCAN(werased_subrange, wchar_t)
+#endif
     }  // namespace detail
 
     SCN_END_NAMESPACE

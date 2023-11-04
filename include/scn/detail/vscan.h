@@ -59,10 +59,12 @@ namespace scn {
             std::string_view source,
             std::string_view format,
             scan_args_for<std::string_view, char> args);
+#if !SCN_DISABLE_ERASED_RANGE
         vscan_impl_result<erased_subrange> vscan_impl(
             erased_subrange source,
             std::string_view format,
             scan_args_for<erased_subrange, char> args);
+#endif
 #if !SCN_DISABLE_IOSTREAM
         vscan_impl_result<istreambuf_subrange> vscan_impl(
             istreambuf_subrange source,
@@ -74,10 +76,12 @@ namespace scn {
             std::wstring_view source,
             std::wstring_view format,
             scan_args_for<std::wstring_view, wchar_t> args);
+#if !SCN_DISABLE_ERASED_RANGE
         vscan_impl_result<werased_subrange> vscan_impl(
             werased_subrange source,
             std::wstring_view format,
             scan_args_for<werased_subrange, wchar_t> args);
+#endif
 #if !SCN_DISABLE_IOSTREAM
         vscan_impl_result<wistreambuf_subrange> vscan_impl(
             wistreambuf_subrange source,
@@ -92,12 +96,14 @@ namespace scn {
             std::string_view source,
             std::string_view format,
             scan_args_for<std::string_view, char> args);
+#if !SCN_DISABLE_ERASED_RANGE
         template <typename Locale>
         vscan_impl_result<erased_subrange> vscan_localized_impl(
             const Locale& loc,
             erased_subrange source,
             std::string_view format,
             scan_args_for<erased_subrange, char> args);
+#endif
 #if !SCN_DISABLE_IOSTREAM
         template <typename Locale>
         vscan_impl_result<istreambuf_subrange> vscan_localized_impl(
@@ -113,12 +119,14 @@ namespace scn {
             std::wstring_view source,
             std::wstring_view format,
             scan_args_for<std::wstring_view, wchar_t> args);
+#if !SCN_DISABLE_ERASED_RANGE
         template <typename Locale>
         vscan_impl_result<werased_subrange> vscan_localized_impl(
             const Locale& loc,
             werased_subrange source,
             std::wstring_view format,
             scan_args_for<werased_subrange, wchar_t> args);
+#endif
 #if !SCN_DISABLE_IOSTREAM
         template <typename Locale>
         vscan_impl_result<wistreambuf_subrange> vscan_localized_impl(
@@ -132,9 +140,11 @@ namespace scn {
         vscan_impl_result<std::string_view> vscan_value_impl(
             std::string_view source,
             scan_arg_for<std::string_view, char> arg);
+#if !SCN_DISABLE_ERASED_RANGE
         vscan_impl_result<erased_subrange> vscan_value_impl(
             erased_subrange source,
             scan_arg_for<erased_subrange, char> arg);
+#endif
 #if !SCN_DISABLE_IOSTREAM
         vscan_impl_result<istreambuf_subrange> vscan_value_impl(
             istreambuf_subrange source,
@@ -144,9 +154,11 @@ namespace scn {
         vscan_impl_result<std::wstring_view> vscan_value_impl(
             std::wstring_view source,
             scan_arg_for<std::wstring_view, wchar_t> arg);
+#if !SCN_DISABLE_ERASED_RANGE
         vscan_impl_result<werased_subrange> vscan_value_impl(
             werased_subrange source,
             scan_arg_for<werased_subrange, wchar_t> arg);
+#endif
 #if !SCN_DISABLE_IOSTREAM
         vscan_impl_result<wistreambuf_subrange> vscan_value_impl(
             wistreambuf_subrange source,

@@ -389,6 +389,7 @@ jobs:
         flags:
           - "-DSCN_DISABLE_IOSTREAM=ON"
           - "-DSCN_DISABLE_LOCALE=ON"
+          - "-DSCN_DISABLE_ERASED_RANGE=ON"
           - "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON"
           - "-DSCN_DISABLE_FROM_CHARS=ON -DSCN_DISABLE_STRTOD=ON"
 
@@ -414,4 +415,4 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . -- -k 0
+        run: cmake --build . --target scn -- -k 0

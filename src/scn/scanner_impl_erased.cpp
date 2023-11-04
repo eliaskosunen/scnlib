@@ -21,8 +21,10 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+#if !SCN_DISABLE_ERASED_RANGE
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
+#endif
     }  // namespace detail
 
     SCN_END_NAMESPACE

@@ -180,23 +180,29 @@ namespace scn {
     namespace detail {
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(std::wstring_view)
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(wistreambuf_subrange)
+#if !SCN_DISABLE_ERASED_RANGE
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(werased_subrange)
-    }  // namespace detail
 #endif
+    }   // namespace detail
+#endif  // !SCN_DISABLE_IOSTREAM
 
     // scanner_builtin
 
     namespace detail {
         namespace scanner_scan_contexts {
             using wsv = basic_scan_context<std::wstring_view, wchar_t>;
+#if !SCN_DISABLE_ERASED_RANGE
             using wes = basic_scan_context<werased_subrange, wchar_t>;
+#endif
 #if !SCN_DISABLE_IOSTREAM
             using wis = basic_scan_context<wistreambuf_subrange, wchar_t>;
 #endif
         }  // namespace scanner_scan_contexts
 
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)
+#if !SCN_DISABLE_ERASED_RANGE
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
+#endif
 #if !SCN_DISABLE_IOSTREAM
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wis)
 #endif

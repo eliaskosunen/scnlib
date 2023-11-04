@@ -76,7 +76,7 @@ TEST(InputMapTest, SubrangeOfStringView)
 TEST(InputMapTest, StdSpan)
 {
     std::string source{"abc"};
-    std::span<const char> s{source};
+    std::span<const char> s{source.data(), source.size()};
     auto result = scn::detail::scan_map_input_range(s);
     static_assert(std::is_same_v<decltype(result), std::string_view>);
 }
@@ -84,7 +84,7 @@ TEST(InputMapTest, StdSpan)
 TEST(InputMapTest, StdSpanSubrange)
 {
     std::string source{"abc"};
-    std::span<const char> s{source};
+    std::span<const char> s{source.data(), source.size()};
     auto subr = scn::ranges::subrange{s};
     auto result = scn::detail::scan_map_input_range(s);
     static_assert(std::is_same_v<decltype(result), std::string_view>);

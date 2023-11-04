@@ -27,6 +27,14 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        template <typename T>
+        struct is_erased_range_or_subrange : std::false_type {};
+        template <typename T>
+        struct is_erased_range_iterator : std::false_type {};
+    }  // namespace detail
+
+#if !SCN_DISABLE_ERASED_RANGE
+    namespace detail {
         class erased_range_impl_base {
         public:
             erased_range_impl_base() = default;
@@ -413,8 +421,6 @@ namespace scn {
     }
 
     namespace detail {
-        template <typename T>
-        struct is_erased_range_or_subrange : std::false_type {};
         template <typename CharT>
         struct is_erased_range_or_subrange<basic_erased_range<CharT>>
             : std::true_type {};
@@ -422,18 +428,21 @@ namespace scn {
         struct is_erased_range_or_subrange<basic_erased_subrange<CharT>>
             : std::true_type {};
 
-        template <typename T>
-        struct is_erased_range_iterator : std::false_type {};
         template <>
         struct is_erased_range_iterator<basic_erased_range<char>::iterator>
             : std::true_type {};
         template <>
         struct is_erased_range_iterator<basic_erased_range<wchar_t>::iterator>
             : std::true_type {};
+
     }  // namespace detail
+
+#endif  // !SCN_DISABLE_ERASED_RANGE
 
     SCN_END_NAMESPACE
 }  // namespace scn
+
+#if !SCN_DISABLE_ERASED_RANGE
 
 #if SCN_STD_RANGES
 
@@ -464,3 +473,5 @@ inline constexpr bool enable_borrowed_range<scn::basic_erased_subrange<CharT>> =
 NANO_END_NAMESPACE
 
 #endif  // SCN_STD_RANGES
+
+#endif  // !SCN_DISABLE_ERASED_RANGE

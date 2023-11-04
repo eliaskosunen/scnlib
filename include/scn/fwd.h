@@ -60,6 +60,8 @@ namespace scn {
     template <typename Range, typename CharT>
     class basic_scan_context;
 
+#if !SCN_DISABLE_ERASED_RANGE
+
     // detail/erased_range.h
 
     template <typename CharT>
@@ -77,6 +79,8 @@ namespace scn {
     using erased_subrange = basic_erased_subrange<char>;
     ///
     using werased_subrange = basic_erased_subrange<wchar_t>;
+
+#endif  // !SCN_DISABLE_ERASED_RANGE
 
     // detail/error.h
 

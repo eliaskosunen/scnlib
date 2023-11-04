@@ -73,18 +73,20 @@ namespace scn {
             return traits_type::to_int_type(0);
         }
 
-#define SCN_DEFINE_RANGE_STREAMBUF(Range)                               \
-    template auto range_streambuf<Range>::underflow()->int_type;        \
-    template auto range_streambuf<Range>::uflow()->int_type;            \
-    template auto range_streambuf<Range>::showmanyc()->std::streamsize; \
-    template auto range_streambuf<Range>::pbackfail(int_type)->int_type;
+#define SCN_DEFINE_RANGE_STREAMBUF(Range)                                 \
+    template auto range_streambuf<Range>::underflow() -> int_type;        \
+    template auto range_streambuf<Range>::uflow() -> int_type;            \
+    template auto range_streambuf<Range>::showmanyc() -> std::streamsize; \
+    template auto range_streambuf<Range>::pbackfail(int_type) -> int_type;
 
         SCN_DEFINE_RANGE_STREAMBUF(std::string_view)
         SCN_DEFINE_RANGE_STREAMBUF(std::wstring_view)
         SCN_DEFINE_RANGE_STREAMBUF(istreambuf_subrange)
         SCN_DEFINE_RANGE_STREAMBUF(wistreambuf_subrange)
+#if !SCN_DISABLE_ERASED_RANGE
         SCN_DEFINE_RANGE_STREAMBUF(erased_subrange)
         SCN_DEFINE_RANGE_STREAMBUF(werased_subrange)
+#endif
 
 #undef SCN_DEFINE_RANGE_STREAMBUF
     }  // namespace detail
