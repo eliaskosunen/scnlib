@@ -884,12 +884,8 @@ REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
                             OnlyHexPrefix,
                             OnlyLongOctPrefix,
                             OnlyBinPrefix,
-                            InputWithNullBytes
-#if !SCN_DISABLE_LOCALE
-                            ,
+                            InputWithNullBytes,
                             ThousandsSeparators,
                             ThousandsSeparatorsWithInvalidGrouping,
                             ExoticThousandsSeparators,
-                            ExoticThousandsSeparatorsWithInvalidGrouping
-#endif
-);
+                            ExoticThousandsSeparatorsWithInvalidGrouping);

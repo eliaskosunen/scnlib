@@ -24,13 +24,18 @@ namespace scn {
 
     namespace detail {
         template <typename T, typename Context>
-        scan_expected<typename Context::iterator>
-        scanner_scan_for_builtin_type_impl(
+        scan_expected<typename Context::iterator> scanner_scan_for_builtin_type(
             T& val,
             Context& ctx,
             const basic_format_specs<typename Context::char_type>& specs)
         {
-            return impl::arg_reader<Context>{ctx.range(), specs, {}}(val);
+            if constexpr (!detail::is_type_disabled<T>) {
+                return impl::arg_reader<Context>{ctx.range(), specs, {}}(val);
+            }
+            else {
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
+            }
         }
 
         template <typename Range>
@@ -40,19 +45,9 @@ namespace scn {
             return impl::skip_classic_whitespace(r, allow_exhaustion);
         }
 
-#define SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(T, Context)                    \
-    scan_expected<Context::iterator> scanner_scan_for_builtin_type(     \
-        T& val, Context& ctx,                                           \
-        const basic_format_specs<Context::char_type>& specs)            \
-    {                                                                   \
-        if constexpr (!detail::is_type_disabled<T>) {                   \
-            return scanner_scan_for_builtin_type_impl(val, ctx, specs); \
-        }                                                               \
-        else {                                                          \
-            SCN_EXPECT(false);                                          \
-            SCN_UNREACHABLE;                                            \
-        }                                                               \
-    }
+#define SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(T, Context)                         \
+    template scan_expected<Context::iterator> scanner_scan_for_builtin_type( \
+        T&, Context&, const basic_format_specs<Context::char_type>&);
 
 #define SCN_DEFINE_SCANNER_SCAN_FOR_CTX(Context)                    \
     SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(Context::char_type, Context)   \

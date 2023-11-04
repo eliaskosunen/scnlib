@@ -1,3 +1,25 @@
+# 2.0.0
+
+_Released 2023-xx-xx_
+
+Changes are in comparison to 2.0.0-beta.
+
+## Features
+
+ * Allow disabling support for:
+   * Specific types (`SCN_DISABLE_TYPE_*`)
+   * Locales (`SCN_DISABLE_LOCALE`)
+   * IOStreams (`SCN_DISABLE_IOSTREAM`)
+   * Floating-point scanning fallbacks (`SCN_DISABLE_FROM_CHARS`, `SCN_DISABLE_STRTOD`)
+   * These can be useful in some constrained environments, where these facilities are either not available or not used
+   * Thanks [@cjvaughter (CJ Vaughter)](https://github.com/cjvaughter) for the original implementation in v1 in #70 and #71
+
+## Fixes and small changes
+
+ * Update implementation of `scn::span`
+ * Fix handling of literal space characters in format strings
+ * Add `COMPONENT` values to CMake install targets
+
 # 2.0.0-beta
 
 _Released 2023-10-29_

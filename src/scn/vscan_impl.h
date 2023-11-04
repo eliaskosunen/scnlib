@@ -376,7 +376,10 @@ namespace scn {
     {                                                                          \
         return vscan_internal(SCN_MOVE(source), format, args,                  \
                               detail::locale_ref{loc});                        \
-    }
+    }                                                                          \
+    template vscan_impl_result<Range> vscan_localized_impl<std::locale>(       \
+        const std::locale&, Range, std::basic_string_view<CharT>,              \
+        scan_args_for<Range, CharT>);
 #else
 #define SCN_DEFINE_VSCAN_LOCALIZED(...) /* vscan_localized_impl disabled */
 #endif
