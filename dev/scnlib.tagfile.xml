@@ -982,8 +982,8 @@
     <filename>structscn_1_1scanner.html</filename>
   </compound>
   <compound kind="struct">
-    <name>scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &gt; &gt;</name>
-    <filename>structscn_1_1scanner_3_01_t_00_01_char_t_00_01std_1_1enable__if__t_3_01detail_1_1arg__type__conse0df6c2cedf8805301e69fc4700502a5.html</filename>
+    <name>scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &amp;&amp;!detail::is_type_disabled&lt; T &gt; &gt; &gt;</name>
+    <filename>structscn_1_1scanner_3_01_t_00_01_char_t_00_01std_1_1enable__if__t_3_01detail_1_1arg__type__cons3aa1d3b11a8950d2c816ed76e7e2c811.html</filename>
     <templarg></templarg>
     <templarg></templarg>
   </compound>
@@ -1017,7 +1017,7 @@
     <class kind="class">scn::span</class>
     <class kind="class">scn::scan_error</class>
     <class kind="struct">scn::invalid_input_range</class>
-    <class kind="struct">scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &gt; &gt;</class>
+    <class kind="struct">scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &amp;&amp;!detail::is_type_disabled&lt; T &gt; &gt; &gt;</class>
     <class kind="struct">scn::scan_expected</class>
     <class kind="class">scn::expected</class>
     <member kind="typedef">
@@ -1257,7 +1257,7 @@
     <class kind="struct">scn::scanner</class>
     <class kind="class">scn::basic_scan_context</class>
     <class kind="class">scn::basic_scan_parse_context</class>
-    <class kind="struct">scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &gt; &gt;</class>
+    <class kind="struct">scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &amp;&amp;!detail::is_type_disabled&lt; T &gt; &gt; &gt;</class>
   </compound>
   <compound kind="group">
     <name>format-string</name>
