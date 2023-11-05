@@ -40,3 +40,29 @@ These default to ``OFF``, and should only be turned on if necessary:
  * ``SCN_BUILD_LOCALIZED_TEST``: Build localization tests, requires en_US.UTF-8 and fi_FI.UTF-8 locales
  * ``SCN_BUILD_BLOAT``: Build code bloat benchmarks
  * ``SCN_BUILD_BUILDTIME``: Build build time benchmarks
+
+These options also default to ``OFF``, and allow you to customize what features are included:
+
+ * ``SCN_DISABLE_FROM_CHARS``: Disable fallback on ``std::from_chars`` when parsing floats
+ * ``SCN_DISABLE_STRTOD``: Disable fallback on ``std::strtod`` when parsing floats
+ * ``SCN_DISABLE_LOCALE``: Disable ``std::locale`` and ``L``/``n`` format specifiers
+ * ``SCN_DISABLE_TYPE_SCHAR``
+ * ``SCN_DISABLE_TYPE_SHORT``
+ * ``SCN_DISABLE_TYPE_INT``
+ * ``SCN_DISABLE_TYPE_LONG``
+ * ``SCN_DISABLE_TYPE_LONG_LONG``
+ * ``SCN_DISABLE_TYPE_UCHAR``
+ * ``SCN_DISABLE_TYPE_USHORT``
+ * ``SCN_DISABLE_TYPE_UINT``
+ * ``SCN_DISABLE_TYPE_ULONG``
+ * ``SCN_DISABLE_TYPE_ULONG_LONG``
+ * ``SCN_DISABLE_TYPE_BOOL``
+ * ``SCN_DISABLE_TYPE_CHAR``
+ * ``SCN_DISABLE_TYPE_CODE_POINT``
+ * ``SCN_DISABLE_TYPE_FLOAT``
+ * ``SCN_DISABLE_TYPE_DOUBLE``
+ * ``SCN_DISABLE_TYPE_LONG_DOUBLE``
+ * ``SCN_DISABLE_TYPE_BUFFER``
+ * ``SCN_DISABLE_TYPE_STRING``
+ * ``SCN_DISABLE_TYPE_STRING_VIEW``
+ * ``SCN_DISABLE_TYPE_CUSTOM``

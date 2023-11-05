@@ -1,12 +1,15 @@
-# 1.x.y
+# 1.1.3
 
-_Released 2023-xx-xx_
+_Released 2023-11-05_
+
+Expected to be the last release in the v1-branch.
+Development efforts are now fully directed towards v2.
 
 ## Features
 
  * Allow disabling support for individual types with `SCN_DISABLE_TYPE_*` (#70, thanks [@cjvaughter (CJ Vaughter)](https://github.com/cjvaughter))
    * Also, allow for disabling the fallbacks to `std::from_chars` and `std::strtod` when scanning floats
-   * This provides possible binary size reductions, and betters enables use in e.g. embedded platforms
+   * This provides possible binary size reductions, and allows better use in e.g. embedded platforms
  * Allow disabling runtime localization with `SCN_DISABLE_LOCALE` (#71, thanks [@cjvaughter (CJ Vaughter)](https://github.com/cjvaughter))
  * Parse leading `+` signs in floats (reported in #77)
 
