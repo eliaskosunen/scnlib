@@ -173,9 +173,37 @@ namespace scn {
          */
         template <typename Range>
         explicit basic_erased_range(Range&& range)
-            : m_impl(
-                  detail::make_unique_erased_range_impl<CharT>(SCN_FWD(range)))
         {
+            if constexpr (sizeof(
+                              detail::basic_erased_range_impl<Range, CharT>) >
+                          small_buffer_size) {
+                m_ptr = new detail::basic_erased_range_impl<Range, CharT>(
+                    SCN_FWD(range));
+                m_destroy = [](impl_base* ptr) {
+                    SCN_EXPECT(ptr);
+                    delete ptr;
+                };
+            }
+            else {
+                using type = detail::basic_erased_range_impl<Range, CharT>;
+                m_ptr = ::new (static_cast<void*>(m_memory.data()))
+                    type(SCN_FWD(range));
+                m_destroy = [](impl_base* ptr) {
+                    SCN_EXPECT(ptr);
+                    static_cast<type*>(ptr)->~type();
+                };
+            }
+        }
+
+        basic_erased_range(const basic_erased_range&) = delete;
+        basic_erased_range(basic_erased_range&&) = delete;
+        basic_erased_range& operator=(const basic_erased_range&) = delete;
+        basic_erased_range& operator=(basic_erased_range&&) = delete;
+
+        ~basic_erased_range()
+        {
+            SCN_EXPECT(m_destroy);
+            m_destroy(m_ptr);
         }
 
         /**
@@ -192,10 +220,14 @@ namespace scn {
         }
 
     private:
-        using impl_ptr_type =
-            std::unique_ptr<detail::basic_erased_range_impl_base<char_type>>;
+        using impl_base = detail::basic_erased_range_impl_base<CharT>;
+        using destroy_t = void (*)(impl_base*);
 
-        impl_ptr_type m_impl{nullptr};
+        static constexpr size_t small_buffer_size = 64;
+        alignas(std::max_align_t)
+            std::array<unsigned char, small_buffer_size> m_memory;
+        impl_base* m_ptr;
+        destroy_t m_destroy;
     };
 
     template <typename CharT>
@@ -353,7 +385,8 @@ namespace scn {
     template <typename CharT>
     auto basic_erased_range<CharT>::begin() const SCN_NOEXCEPT->iterator
     {
-        return {m_impl.get()};
+        SCN_EXPECT(m_ptr);
+        return {m_ptr};
     }
 
     /**
