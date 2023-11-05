@@ -18,6 +18,7 @@
 #pragma once
 
 #include <scn/detail/ranges.h>
+#include <scn/util/span.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -166,6 +167,11 @@ namespace scn {
         const auto& base() const
         {
             return m_range;
+        }
+
+        span<const char> buffer() const
+        {
+            return this->m_buffer;
         }
 
     protected:

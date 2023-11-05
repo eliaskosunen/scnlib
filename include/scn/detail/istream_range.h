@@ -81,6 +81,11 @@ namespace scn {
                 return m_streambuf;
             }
 
+            difference_type count() const
+            {
+                return m_chars_read;
+            }
+
         private:
             bool read_next_char() const;
 
@@ -91,6 +96,7 @@ namespace scn {
             }
 
             streambuf_type* m_streambuf;
+            mutable difference_type m_chars_read{0};
             mutable int_type m_last_char{traits_type::eof()};
             mutable bool m_end_reached{false};
         };

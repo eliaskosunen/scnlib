@@ -34,6 +34,7 @@ namespace scn {
             m_last_char = m_streambuf->sbumpc();
             m_end_reached =
                 traits_type::eq_int_type(m_last_char, traits_type::eof());
+            ++m_chars_read;
             return !m_end_reached;
         }
 
