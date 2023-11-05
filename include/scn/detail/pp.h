@@ -177,7 +177,9 @@
 #endif
 
 // SCN_UNREACHABLE
-#if SCN_HAS_BUILTIN_UNREACHABLE
+#if SCN_HAS_STD_UNREACHABLE
+#define SCN_UNREACHABLE std::unreachable()
+#elif SCN_HAS_BUILTIN_UNREACHABLE
 #define SCN_UNREACHABLE __builtin_unreachable()
 #else
 #define SCN_UNREACHABLE SCN_ASSUME(0)

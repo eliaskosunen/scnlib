@@ -10,6 +10,7 @@ Changes are in comparison to 2.0.0-beta.
    * Specific types (`SCN_DISABLE_TYPE_*`)
    * Locales (`SCN_DISABLE_LOCALE`)
    * IOStreams (`SCN_DISABLE_IOSTREAM`)
+   * Type-erased ranges (`SCN_DISABLE_ERASED_RANGE`)
    * Floating-point scanning fallbacks (`SCN_DISABLE_FROM_CHARS`, `SCN_DISABLE_STRTOD`)
    * These can be useful in some constrained environments, where these facilities are either not available or not used
    * Thanks [@cjvaughter (CJ Vaughter)](https://github.com/cjvaughter) for the original implementation in v1 in #70 and #71

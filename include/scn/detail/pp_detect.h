@@ -29,6 +29,7 @@
 
 #define SCN_STD_17 201703L
 #define SCN_STD_20 202002L
+#define SCN_STD_23 202302L
 
 #if SCN_HAS_INCLUDE(<version>)
 #include <version>
@@ -451,6 +452,13 @@
 #define SCN_HAS_ASSUME_ALIGNED 1
 #else
 #define SCN_HAS_ASSUME_ALIGNED 0
+#endif
+
+// Detect std::unreachable
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L && SCN_STD >= SCN_STD_23
+#define SCN_HAS_STD_UNREACHABLE 1
+#else
+#define SCN_HAS_STD_UNREACHABLE 0
 #endif
 
 // Detect __builtin_unreachable

@@ -67,6 +67,14 @@ jobs:
           - clang++-8
           - clang++-7
           - clang++-6.0
+        include:
+          # C++23 on latest gcc and clang on 22.04
+          - cxx: g++-13
+            std: 23
+            os: 22.04
+          - cxx: clang++-17
+            std: 23
+            os: 22.04
         exclude:
           # gcc 8, gcc 7, and clang 6-8 have lacking C++20 support
           - cxx: g++-8
