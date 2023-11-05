@@ -116,6 +116,8 @@ set(SCN_PRIVATE_SOURCES
         src/scn/vscan_impl_ios.cpp
         src/scn/vscan_impl_erased.cpp
 
+        src/scn/vscan_int.cpp
+
         src/scn/impl/locale.cpp
 
         src/scn/impl/algorithms/find_whitespace.cpp

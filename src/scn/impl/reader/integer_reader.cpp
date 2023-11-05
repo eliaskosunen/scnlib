@@ -483,6 +483,59 @@ namespace scn {
             return it;
         }
 
+        template <typename T>
+        void parse_int_value_exhaustive_valid(std::string_view source, T& value)
+        {
+            SCN_EXPECT(!source.empty());
+
+            bool negative_sign = false;
+            if constexpr (std::is_signed_v<T>) {
+                if (source.front() == '-') {
+                    source = source.substr(1);
+                    negative_sign = true;
+                }
+            }
+            SCN_EXPECT(!source.empty());
+            SCN_EXPECT(numeric_reader_base::char_to_int(source.front()) < 10);
+
+            for (; source.size() >= 8; source = source.substr(8)) {
+                uint64_t word{};
+                std::memcpy(&word, source.data(), 8);
+
+                for (char ch : source.substr(0, 8)) {
+                    SCN_EXPECT(numeric_reader_base::char_to_int(ch) < 10);
+                }
+
+                // See above, do_read_decimal_fast64
+
+                constexpr uint64_t mask = 0x000000FF000000FFull;
+                constexpr uint64_t mul1 = 100 + (1000000ull << 32);
+                constexpr uint64_t mul2 = 1 + (10000ull << 32);
+
+                word -= 0x3030303030303030ull;
+                word = (word * 10) + (word >> 8);
+                word =
+                    (((word & mask) * mul1) + (((word >> 16) & mask) * mul2)) >>
+                    32;
+
+                value *= power_of_10(8);
+                value += word;
+            }
+
+            for (auto ch : source) {
+                auto digit = numeric_reader_base::char_to_int(ch);
+                SCN_EXPECT(digit < 10);
+                value *= 10;
+                value += digit;
+            }
+
+            if constexpr (std::is_signed_v<T>) {
+                if (negative_sign) {
+                    value = -value;
+                }
+            }
+        }
+
 #define SCN_DEFINE_INTEGER_READER_TEMPLATE(CharT, IntT)          \
     template auto integer_reader<CharT>::parse_value_impl(IntT&) \
         -> scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>;
@@ -490,42 +543,60 @@ namespace scn {
 #if !SCN_DISABLE_TYPE_SCHAR
         SCN_DEFINE_INTEGER_READER_TEMPLATE(char, signed char)
         SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, signed char)
+        template void parse_int_value_exhaustive_valid(std::string_view,
+                                                       signed char&);
 #endif
 #if !SCN_DISABLE_TYPE_SHORT
         SCN_DEFINE_INTEGER_READER_TEMPLATE(char, short)
         SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, short)
+        template void parse_int_value_exhaustive_valid(std::string_view,
+                                                       short&);
 #endif
 #if !SCN_DISABLE_TYPE_INT
         SCN_DEFINE_INTEGER_READER_TEMPLATE(char, int)
         SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, int)
+        template void parse_int_value_exhaustive_valid(std::string_view, int&);
 #endif
 #if !SCN_DISABLE_TYPE_LONG
         SCN_DEFINE_INTEGER_READER_TEMPLATE(char, long)
         SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, long)
+        template void parse_int_value_exhaustive_valid(std::string_view, long&);
 #endif
 #if !SCN_DISABLE_TYPE_LONG_LONG
         SCN_DEFINE_INTEGER_READER_TEMPLATE(char, long long)
         SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, long long)
+        template void parse_int_value_exhaustive_valid(std::string_view,
+                                                       long long&);
 #endif
 #if !SCN_DISABLE_TYPE_UCHAR
         SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned char)
         SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned char)
+        template void parse_int_value_exhaustive_valid(std::string_view,
+                                                       unsigned char&);
 #endif
 #if !SCN_DISABLE_TYPE_USHORT
         SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned short)
         SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned short)
+        template void parse_int_value_exhaustive_valid(std::string_view,
+                                                       unsigned short&);
 #endif
 #if !SCN_DISABLE_TYPE_UINT
         SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned int)
         SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned int)
+        template void parse_int_value_exhaustive_valid(std::string_view,
+                                                       unsigned int&);
 #endif
 #if !SCN_DISABLE_TYPE_ULONG
         SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned long)
         SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned long)
+        template void parse_int_value_exhaustive_valid(std::string_view,
+                                                       unsigned long&);
 #endif
 #if !SCN_DISABLE_TYPE_ULONG_LONG
         SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned long long)
         SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned long long)
+        template void parse_int_value_exhaustive_valid(std::string_view,
+                                                       unsigned long long&);
 #endif
 
 #undef SCN_DEFINE_INTEGER_READER_TEMPLATE

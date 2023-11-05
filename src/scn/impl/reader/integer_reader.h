@@ -386,9 +386,15 @@ namespace scn {
             bool m_zero_parsed{false}, m_base_prefix_parsed{false};
         };
 
-#define SCN_DECLARE_INTEGER_READER_TEMPLATE(CharT, IntT)                \
-    extern template auto integer_reader<CharT>::parse_value_impl(IntT&) \
-        -> scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>;
+        template <typename T>
+        void parse_int_value_exhaustive_valid(std::string_view source,
+                                              T& value);
+
+#define SCN_DECLARE_INTEGER_READER_TEMPLATE(CharT, IntT)                     \
+    extern template auto integer_reader<CharT>::parse_value_impl(IntT&)      \
+        -> scan_expected<ranges::iterator_t<std::basic_string_view<CharT>>>; \
+    extern template void parse_int_value_exhaustive_valid(std::string_view,  \
+                                                          IntT&);
 
 #if !SCN_DISABLE_TYPE_SCHAR
         SCN_DECLARE_INTEGER_READER_TEMPLATE(char, signed char)

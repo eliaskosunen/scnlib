@@ -80,6 +80,37 @@ BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, long long);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, unsigned);
 
 template <typename Int>
+static void scan_int_repeated_scn_int(benchmark::State& state)
+{
+    repeated_state<Int> s{get_integer_string<Int>()};
+
+    for (auto _ : state) {
+        s.skip_classic_ascii_space();
+        auto sv = std::string_view{s.view().data(), s.view().size()};
+
+        auto result = scn::scan_int<Int>(sv);
+
+        if (!result) {
+            if (result.error() == scn::scan_error::end_of_range) {
+                s.reset();
+            }
+            else {
+                state.SkipWithError("Scan error");
+                break;
+            }
+        }
+        else {
+            s.push(result->value());
+            s.it = scn::detail::to_address(result->begin());
+        }
+    }
+    state.SetBytesProcessed(s.get_bytes_processed(state));
+}
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_int, int);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_int, long long);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_int, unsigned);
+
+template <typename Int>
 static void scan_int_repeated_sstream(benchmark::State& state)
 {
     repeated_state<Int> s{get_integer_string<Int>()};

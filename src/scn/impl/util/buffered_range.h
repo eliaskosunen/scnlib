@@ -213,9 +213,9 @@ namespace scn {
                   Range,
                   ranges::iterator_t<Range>>::type,
               public ranges::view_interface<buffered_range_segment<Range>> {
-            using base =
-                buffered_range_segment_impl<Range,
-                                            ranges::iterator_t<Range>>::type;
+            using base = typename buffered_range_segment_impl<
+                Range,
+                ranges::iterator_t<Range>>::type;
 
         public:
             buffered_range_segment(Range& range,

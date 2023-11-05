@@ -325,5 +325,60 @@ namespace scn {
 
 #endif  // SCN_USE_IOSTREAMS
 
+    namespace detail {
+        template <typename T>
+        inline constexpr bool is_scan_int_type =
+            std::is_integral_v<T> && !std::is_same_v<T, char> &&
+            !std::is_same_v<T, wchar_t> && !std::is_same_v<T, char32_t> &&
+            !std::is_same_v<T, bool>;
+    }
+
+    /**
+     * Fast integer reading.
+     *
+     * Quickly reads an integer from a std::string_view. Skips preceding
+     * whitespace.
+     *
+     * Reads in the specified base,
+     * allowing a base prefix. Set `base` to `0` to detect the base from the
+     * input. `base` must either be `0`, or in range `[2, 36]`.
+     */
+    template <typename T,
+              std::enable_if_t<detail::is_scan_int_type<T>>* = nullptr>
+    SCN_NODISCARD auto scan_int(std::string_view source, int base = 10)
+        -> scan_result_type<std::string_view, T>
+    {
+        T value{};
+        SCN_TRY(it, detail::scan_int_impl(source, value, base));
+        return scan_result{ranges::subrange{it, source.end()},
+                           std::tuple{value}};
+    }
+
+    /**
+     * Very fast integer reading.
+     *
+     * Quickly reads an integer from a std::string_view.
+     *
+     * Be very careful when using this one!
+     * Its speed comes from some very heavy assumptions about the validity of
+     * the input:
+     *  - `source` must not be empty.
+     *  - `source` contains nothing but the integer: no leading or trailing
+     *    whitespace, no extra junk. Leading `-` is allowed for signed types,
+     *    no `+` is allowed.
+     *  - The parsed value does not overflow.
+     *  - The input is a valid base-10 integer.
+     * Breaking these assumptions will lead to UB.
+     */
+    template <typename T,
+              std::enable_if_t<detail::is_scan_int_type<T>>* = nullptr>
+    SCN_NODISCARD auto scan_int_exhaustive_valid(std::string_view source) -> T
+    {
+        static_assert(
+            !SCN_IS_BIG_ENDIAN,
+            "scan_int_exhaustive_valid requires a little endian environment");
+        return detail::scan_int_exhaustive_valid_impl<T>(source);
+    }
+
     SCN_END_NAMESPACE
 }  // namespace scn

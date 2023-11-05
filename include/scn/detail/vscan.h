@@ -326,6 +326,97 @@ namespace scn {
     }  // namespace detail
 #endif
 
+    namespace detail {
+        template <typename T>
+        auto scan_int_impl(std::string_view source, T& value, int base)
+            -> scan_expected<std::string_view::iterator>;
+
+        template <typename T>
+        auto scan_int_exhaustive_valid_impl(std::string_view source) -> T;
+
+#if !SCN_DISABLE_TYPE_SCHAR
+        extern template auto scan_int_impl(std::string_view source,
+                                           signed char& value,
+                                           int base)
+            -> scan_expected<std::string_view::iterator>;
+        extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+            -> signed char;
+#endif
+#if !SCN_DISABLE_TYPE_SHORT
+        extern template auto scan_int_impl(std::string_view source,
+                                           short& value,
+                                           int base)
+            -> scan_expected<std::string_view::iterator>;
+        extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+            -> short;
+#endif
+#if !SCN_DISABLE_TYPE_INT
+        extern template auto scan_int_impl(std::string_view source,
+                                           int& value,
+                                           int base)
+            -> scan_expected<std::string_view::iterator>;
+        extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+            -> int;
+#endif
+#if !SCN_DISABLE_TYPE_LONG
+        extern template auto scan_int_impl(std::string_view source,
+                                           long& value,
+                                           int base)
+            -> scan_expected<std::string_view::iterator>;
+        extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+            -> long;
+#endif
+#if !SCN_DISABLE_TYPE_LONG_LONG
+        extern template auto scan_int_impl(std::string_view source,
+                                           long long& value,
+                                           int base)
+            -> scan_expected<std::string_view::iterator>;
+        extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+            -> long long;
+#endif
+#if !SCN_DISABLE_TYPE_UCHAR
+        extern template auto scan_int_impl(std::string_view source,
+                                           unsigned char& value,
+                                           int base)
+            -> scan_expected<std::string_view::iterator>;
+        extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+            -> unsigned char;
+#endif
+#if !SCN_DISABLE_TYPE_USHORT
+        extern template auto scan_int_impl(std::string_view source,
+                                           unsigned short& value,
+                                           int base)
+            -> scan_expected<std::string_view::iterator>;
+        extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+            -> unsigned short;
+#endif
+#if !SCN_DISABLE_TYPE_UINT
+        extern template auto scan_int_impl(std::string_view source,
+                                           unsigned int& value,
+                                           int base)
+            -> scan_expected<std::string_view::iterator>;
+        extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+            -> unsigned int;
+#endif
+#if !SCN_DISABLE_TYPE_ULONG
+        extern template auto scan_int_impl(std::string_view source,
+                                           unsigned long& value,
+                                           int base)
+            -> scan_expected<std::string_view::iterator>;
+        extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+            -> unsigned long;
+#endif
+#if !SCN_DISABLE_TYPE_ULONG_LONG
+        extern template auto scan_int_impl(std::string_view source,
+                                           unsigned long long& value,
+                                           int base)
+            -> scan_expected<std::string_view::iterator>;
+        extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+            -> unsigned long long;
+#endif
+
+    }  // namespace detail
+
     SCN_GCC_POP  // -Wnoexcept
 
         SCN_END_NAMESPACE

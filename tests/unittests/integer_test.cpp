@@ -171,3 +171,72 @@ TEST(IntegerTest, WonkyInputWithThsep2)
     // invalid thsep grouping:
     EXPECT_EQ(result.error(), scn::scan_error::invalid_scanned_value);
 }
+
+TEST(ScanIntTest, Simple)
+{
+    std::string_view input = "42";
+    auto result = scn::scan_int<int>(input);
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    EXPECT_EQ(result->value(), 42);
+}
+TEST(ScanIntTest, Negative)
+{
+    std::string_view input = "-42";
+    auto result = scn::scan_int<int>(input);
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    EXPECT_EQ(result->value(), -42);
+}
+TEST(ScanIntTest, Positive)
+{
+    std::string_view input = "+42";
+    auto result = scn::scan_int<int>(input);
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    EXPECT_EQ(result->value(), 42);
+}
+TEST(ScanIntTest, LeadingWhitespace)
+{
+    std::string_view input = "   42";
+    auto result = scn::scan_int<int>(input);
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    EXPECT_EQ(result->value(), 42);
+}
+TEST(ScanIntTest, TrailingWhitespace)
+{
+    std::string_view input = "42   ";
+    auto result = scn::scan_int<int>(input);
+    ASSERT_TRUE(result);
+    EXPECT_EQ(std::string_view(result->range().data(), result->range().size()),
+              "   ");
+    EXPECT_EQ(result->value(), 42);
+}
+TEST(ScanIntTest, RangeError)
+{
+    std::string_view input = "999999999999999999999999999999999999";
+    auto result = scn::scan_int<int>(input);
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
+}
+TEST(ScanIntTest, Empty)
+{
+    auto result = scn::scan_int<int>("");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::end_of_range);
+}
+
+TEST(ScanIntExhaustiveValidTest, Simple)
+{
+    EXPECT_EQ(scn::scan_int_exhaustive_valid<int>("42"), 42);
+}
+TEST(ScanIntExhaustiveValidTest, Negative)
+{
+    EXPECT_EQ(scn::scan_int_exhaustive_valid<int>("-42"), -42);
+}
+TEST(ScanIntExhaustiveValidTest, Large)
+{
+    EXPECT_EQ(scn::scan_int_exhaustive_valid<long long>("999999999999"),
+              999999999999);
+}

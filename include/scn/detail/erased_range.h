@@ -22,6 +22,7 @@
 #include <scn/util/span.h>
 
 #include <memory>
+#include <array>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE

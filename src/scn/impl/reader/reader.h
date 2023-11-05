@@ -85,6 +85,7 @@ namespace scn {
             else if constexpr (std::is_integral_v<T> &&
                                !std::is_same_v<T, char> &&
                                !std::is_same_v<T, wchar_t> &&
+                               !std::is_same_v<T, char32_t> &&
                                !std::is_same_v<T, bool>) {
                 return reader_impl_for_int<CharT>{};
             }
