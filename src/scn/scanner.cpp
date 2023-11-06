@@ -22,28 +22,28 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        template <typename T, typename Context>
-        scan_expected<typename Context::iterator> scanner_scan_for_builtin_type(
-            T& val,
-            Context& ctx,
-            const basic_format_specs<typename Context::char_type>& specs)
-        {
-            if constexpr (!detail::is_type_disabled<T>) {
-                return impl::arg_reader<Context>{ctx.range(), specs, {}}(val);
+        namespace detail {
+            template <typename T, typename Context>
+            scan_expected<typename Context::iterator> scanner_scan_for_builtin_type(
+                T& val,
+                Context& ctx,
+                const basic_format_specs<typename Context::char_type>& specs)
+            {
+                if constexpr (!detail::is_type_disabled<T>) {
+                    return impl::arg_reader<Context>{ctx.range(), specs, {}}(val);
+                }
+                else {
+                    SCN_EXPECT(false);
+                    SCN_UNREACHABLE;
+                }
             }
-            else {
-                SCN_EXPECT(false);
-                SCN_UNREACHABLE;
-            }
-        }
 
-        template <typename Range>
-        scan_expected<ranges::iterator_t<Range>>
-        internal_skip_classic_whitespace(Range r, bool allow_exhaustion)
-        {
-            return impl::skip_classic_whitespace(r, allow_exhaustion);
-        }
+            template <typename Range>
+            scan_expected<ranges::iterator_t<Range>>
+            internal_skip_classic_whitespace(Range r, bool allow_exhaustion)
+            {
+                return impl::skip_classic_whitespace(r, allow_exhaustion);
+            }
 
 #define SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(T, Context)                         \
     template scan_expected<Context::iterator> scanner_scan_for_builtin_type( \
@@ -71,7 +71,17 @@ namespace scn {
     template scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
-    }  // namespace detail
+            SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::sv)
+            SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)
+#if !SCN_DISABLE_IOSTREAM
+            SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::is)
+            SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wis)
+#endif
+#if !SCN_DISABLE_ERASED_RANGE
+            SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
+            SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
+#endif
+        }  // namespace detail
 
     SCN_END_NAMESPACE
 }  // namespace scn

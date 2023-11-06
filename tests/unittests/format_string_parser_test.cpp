@@ -129,12 +129,17 @@ TEST_F(FormatStringParserAlignTest, InvalidFillCharacter)
 }
 
 class FormatStringParserWidthTest : public ::testing::Test {
-    // TODO
+protected:
+    scn::detail::basic_format_specs<char> specs{};
+    mock_specs_setter handler{specs};
 };
 
-TEST_F(FormatStringParserWidthTest, Test)
+TEST_F(FormatStringParserWidthTest, WidthTooLarge)
 {
-    SUCCEED();
+    std::string_view input{"9999999999999999999999999999999999}"};
+    std::ignore = scn::detail::parse_width(
+        input.data(), input.data() + input.size(), handler);
+    ASSERT_NE(handler.latest_error, nullptr);
 }
 
 class FormatStringParserFormatSpecsTest : public ::testing::Test {
