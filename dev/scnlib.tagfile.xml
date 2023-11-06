@@ -1148,6 +1148,20 @@
     </member>
     <member kind="function">
       <type>auto</type>
+      <name>scan_int</name>
+      <anchorfile>namespacescn.html</anchorfile>
+      <anchor>abc01dfea9c68651aa1663d24ba843c84</anchor>
+      <arglist>(std::string_view source, int base=10) -&gt; scan_result_type&lt; std::string_view, T &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan_int_exhaustive_valid</name>
+      <anchorfile>namespacescn.html</anchorfile>
+      <anchor>a75b7263129ec499db37ea67eb01eab30</anchor>
+      <arglist>(std::string_view source) -&gt; T</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__vscan.html</anchorfile>
       <anchor>ga63d82cc25940238d66fb9c877d2fab45</anchor>
