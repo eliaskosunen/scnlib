@@ -69,6 +69,10 @@ check_floating_eq(T a, T b, bool allow_approx = false)
 
 using namespace std::string_view_literals;
 
+template <bool Localized, typename CharT, typename ValueT>
+using float_reader_wrapper =
+    reader_wrapper<Localized, CharT, ValueT, scn::impl::reader_impl_for_float>;
+
 template <typename T>
 class FloatValueReaderTest : public testing::Test {
 protected:
@@ -614,28 +618,29 @@ protected:
     std::optional<string_type> widened_source;
 };
 
-using type_list = ::testing::Types<reader_wrapper<false, char, float>,
-                                   reader_wrapper<false, char, double>,
-                                   reader_wrapper<false, wchar_t, float>,
-                                   reader_wrapper<false, wchar_t, double>
+using type_list =
+    ::testing::Types<float_reader_wrapper<false, char, float>,
+                     float_reader_wrapper<false, char, double>,
+                     float_reader_wrapper<false, wchar_t, float>,
+                     float_reader_wrapper<false, wchar_t, double>
 #if !SCN_DISABLE_LOCALE
-                                   ,
-                                   reader_wrapper<true, char, float>,
-                                   reader_wrapper<true, char, double>,
-                                   reader_wrapper<true, wchar_t, float>,
-                                   reader_wrapper<true, wchar_t, double>
+                     ,
+                     float_reader_wrapper<true, char, float>,
+                     float_reader_wrapper<true, char, double>,
+                     float_reader_wrapper<true, wchar_t, float>,
+                     float_reader_wrapper<true, wchar_t, double>
 #endif
 #if SCN_LONG_DOUBLE_WIDTH != 0
-                                   ,
-                                   reader_wrapper<false, char, long double>,
-                                   reader_wrapper<false, wchar_t, long double>
+                     ,
+                     float_reader_wrapper<false, char, long double>,
+                     float_reader_wrapper<false, wchar_t, long double>
 #if !SCN_DISABLE_LOCALE
-                                   ,
-                                   reader_wrapper<true, char, long double>,
-                                   reader_wrapper<true, wchar_t, long double>
+                     ,
+                     float_reader_wrapper<true, char, long double>,
+                     float_reader_wrapper<true, wchar_t, long double>
 #endif
-#endif // has long double
-                                   >;
+#endif  // has long double
+                     >;
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")

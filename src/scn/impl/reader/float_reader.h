@@ -628,7 +628,7 @@ namespace scn {
                         range, rd,
                         &float_reader<CharT>::template read_source_localized<
                             detail::remove_cvref_t<Range>>,
-                        value);
+                        value, loc);
                 }
 #endif
 

@@ -112,6 +112,7 @@ set(SCN_PRIVATE_SOURCES
 
         src/scn/impl/algorithms/find_whitespace.cpp
 
+        src/scn/impl/reader/reader.cpp
         src/scn/impl/reader/float_reader.cpp
         src/scn/impl/reader/integer_reader.cpp
         src/scn/impl/reader/string_reader.cpp

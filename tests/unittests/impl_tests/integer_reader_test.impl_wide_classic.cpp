@@ -18,16 +18,16 @@
 #include "integer_reader_test.h"
 
 using TypeList =
-    ::testing::Types<reader_wrapper<true, wchar_t, signed char>,
-                     reader_wrapper<true, wchar_t, short>,
-                     reader_wrapper<true, wchar_t, int>,
-                     reader_wrapper<true, wchar_t, long>,
-                     reader_wrapper<true, wchar_t, long long>,
-                     reader_wrapper<true, wchar_t, unsigned char>,
-                     reader_wrapper<true, wchar_t, unsigned short>,
-                     reader_wrapper<true, wchar_t, unsigned int>,
-                     reader_wrapper<true, wchar_t, unsigned long>,
-                     reader_wrapper<true, wchar_t, unsigned long long>>;
+    ::testing::Types<int_reader_wrapper<true, wchar_t, signed char>,
+                     int_reader_wrapper<true, wchar_t, short>,
+                     int_reader_wrapper<true, wchar_t, int>,
+                     int_reader_wrapper<true, wchar_t, long>,
+                     int_reader_wrapper<true, wchar_t, long long>,
+                     int_reader_wrapper<true, wchar_t, unsigned char>,
+                     int_reader_wrapper<true, wchar_t, unsigned short>,
+                     int_reader_wrapper<true, wchar_t, unsigned int>,
+                     int_reader_wrapper<true, wchar_t, unsigned long>,
+                     int_reader_wrapper<true, wchar_t, unsigned long long>>;
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")

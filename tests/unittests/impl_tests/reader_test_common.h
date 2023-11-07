@@ -21,13 +21,16 @@
 
 #include <scn/impl/reader/reader.h>
 
-template <bool Localized, typename CharT, typename ValueT>
+template <bool Localized,
+          typename CharT,
+          typename ValueT,
+          template <class>
+          class Reader>
 class reader_wrapper {
 public:
     using char_type = CharT;
     using value_type = ValueT;
-    using reader_type =
-        decltype(scn::impl::make_reader<value_type, char_type>());
+    using reader_type = Reader<char_type>;
 
     static constexpr bool is_localized = Localized;
 

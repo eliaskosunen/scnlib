@@ -20,16 +20,16 @@
 #if !SCN_DISABLE_LOCALE
 
 using TypeList =
-    ::testing::Types<reader_wrapper<true, char, signed char>,
-                     reader_wrapper<true, char, short>,
-                     reader_wrapper<true, char, int>,
-                     reader_wrapper<true, char, long>,
-                     reader_wrapper<true, char, long long>,
-                     reader_wrapper<true, char, unsigned char>,
-                     reader_wrapper<true, char, unsigned short>,
-                     reader_wrapper<true, char, unsigned int>,
-                     reader_wrapper<true, char, unsigned long>,
-                     reader_wrapper<true, char, unsigned long long>>;
+    ::testing::Types<int_reader_wrapper<true, char, signed char>,
+                     int_reader_wrapper<true, char, short>,
+                     int_reader_wrapper<true, char, int>,
+                     int_reader_wrapper<true, char, long>,
+                     int_reader_wrapper<true, char, long long>,
+                     int_reader_wrapper<true, char, unsigned char>,
+                     int_reader_wrapper<true, char, unsigned short>,
+                     int_reader_wrapper<true, char, unsigned int>,
+                     int_reader_wrapper<true, char, unsigned long>,
+                     int_reader_wrapper<true, char, unsigned long long>>;
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")

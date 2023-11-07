@@ -21,6 +21,7 @@
 #include <scn/detail/visitor.h>
 #include <scn/detail/vscan.h>
 #include <scn/detail/xchar.h>
+#include <scn/impl/reader/integer_reader.h>
 #include <scn/impl/reader/reader.h>
 
 #if !SCN_DISABLE_IOSTREAM
@@ -271,8 +272,6 @@ namespace scn {
                 parse_ctx.check_arg_id(id);
                 return id;
             }
-
-            template <typename...> struct debug;
 
             template <typename Visitor>
             void on_visit_scan_arg(Visitor&& visitor,

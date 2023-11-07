@@ -17,83 +17,14 @@
 
 #pragma once
 
-#include <scn/impl/reader/bool_reader.h>
-#include <scn/impl/reader/code_unit_and_point_reader.h>
-#include <scn/impl/reader/float_reader.h>
-#include <scn/impl/reader/integer_reader.h>
-#include <scn/impl/reader/pointer_reader.h>
-#include <scn/impl/reader/string_reader.h>
+#include <scn/detail/args.h>
+#include <scn/detail/format_string.h>
+#include <scn/detail/xchar.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-        template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
-        skip_ws_before_if_required(bool is_required,
-                                   Range&& range,
-                                   detail::locale_ref loc)
-        {
-            if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
-                return unexpected(e);
-            }
-
-            if (!is_required) {
-                return ranges::begin(range);
-            }
-
-            return skip_classic_whitespace(SCN_FWD(range));
-        }
-
-        template <typename T, typename CharT>
-        constexpr auto make_reader()
-        {
-            if constexpr (std::is_same_v<T, bool> &&
-                          !detail::is_type_disabled<bool>) {
-                return reader_impl_for_bool<CharT>{};
-            }
-            else if constexpr (std::is_same_v<T, char> &&
-                               !detail::is_type_disabled<char>) {
-                return reader_impl_for_char<CharT>{};
-            }
-            else if constexpr (std::is_same_v<T, wchar_t> &&
-                               !detail::is_type_disabled<wchar_t>) {
-                return reader_impl_for_wchar<CharT>{};
-            }
-            else if constexpr (std::is_same_v<T, char32_t> &&
-                               !detail::is_type_disabled<char32_t>) {
-                return reader_impl_for_code_point<CharT>{};
-            }
-            else if constexpr ((std::is_same_v<T, std::string_view> or
-                                std::is_same_v<
-                                    T, std::wstring_view>)and not detail::
-                                   is_type_disabled<std::string_view>) {
-                return reader_impl_for_string<CharT>{};
-            }
-            else if constexpr ((std::is_same_v<T, std::string> or
-                                std::is_same_v<T, std::wstring>)and not detail::
-                                   is_type_disabled<std::string>) {
-                return reader_impl_for_string<CharT>{};
-            }
-            else if constexpr (std::is_same_v<T, void*> &&
-                               !detail::is_type_disabled<void*>) {
-                return reader_impl_for_voidptr<CharT>{};
-            }
-            else if constexpr (std::is_floating_point_v<T>) {
-                return reader_impl_for_float<CharT>{};
-            }
-            else if constexpr (std::is_integral_v<T> &&
-                               !std::is_same_v<T, char> &&
-                               !std::is_same_v<T, wchar_t> &&
-                               !std::is_same_v<T, char32_t> &&
-                               !std::is_same_v<T, bool>) {
-                return reader_impl_for_int<CharT>{};
-            }
-            else {
-                return reader_impl_for_monostate<CharT>{};
-            }
-        }
-
         template <typename Context>
         struct default_arg_reader {
             using context_type = Context;
@@ -103,25 +34,10 @@ namespace scn {
             using iterator = typename context_type::iterator;
 
             template <typename T>
-            scan_expected<iterator> operator()(T& value)
-            {
-                auto rd = make_reader<T, char_type>();
-                SCN_TRY(it, skip_ws_before_if_required(rd.skip_ws_before_read(),
-                                                       range, loc));
-                return rd.read_default(ranges::subrange{it, ranges::end(range)},
-                                       value, loc);
-            }
+            scan_expected<iterator> operator()(T& value);
 
             scan_expected<iterator> operator()(
-                typename basic_scan_arg<context_type>::handle h)
-            {
-                basic_scan_parse_context<char_type> parse_ctx{{}};
-                context_type ctx{range, args, loc};
-                if (auto e = h.scan(parse_ctx, ctx); !e) {
-                    return unexpected(e);
-                }
-                return {ctx.range().begin()};
-            }
+                typename basic_scan_arg<context_type>::handle h);
 
             range_type range;
             args_type args;
@@ -136,34 +52,13 @@ namespace scn {
             using iterator = typename context_type::iterator;
 
             template <typename T>
-            scan_expected<iterator> operator()(T& value)
-            {
-                auto rd = make_reader<T, char_type>();
-                if (auto e = rd.check_specs(specs); !e) {
-                    return unexpected(e);
-                }
-
-                auto it = skip_ws_before_if_required(rd.skip_ws_before_read(),
-                                                     range, loc);
-                if (SCN_UNLIKELY(!it)) {
-                    return unexpected(it.error());
-                }
-
-                auto subr = ranges::subrange{*it, ranges::end(range)};
-                if (specs.width != 0) {
-                    SCN_TRY(w_it, rd.read_specs(take_width(subr, specs.width),
-                                                specs, value, loc));
-                    return w_it.base();
-                }
-
-                return rd.read_specs(subr, specs, value, loc);
-            }
+            scan_expected<iterator> operator()(T& value);
 
             scan_expected<iterator> operator()(
                 typename basic_scan_arg<context_type>::handle)
             {
-                // Handled separately, because parse context access needed
-                return {ranges::begin(range)};
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
             }
 
             range_type range;
@@ -182,21 +77,82 @@ namespace scn {
             template <typename T>
             scan_expected<iterator> operator()(T&) const
             {
-                return {ctx.current()};
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
             }
 
             scan_expected<iterator> operator()(
-                typename basic_scan_arg<context_type>::handle h) const
-            {
-                if (auto e = h.scan(parse_ctx, ctx); !e) {
-                    return unexpected(e);
-                }
-                return {ctx.current()};
-            }
+                typename basic_scan_arg<context_type>::handle h) const;
 
             parse_context_type& parse_ctx;
             context_type& ctx;
         };
+
+#define SCN_DECLARE_READER_T(Ctx, T)                             \
+    extern template auto default_arg_reader<Ctx>::operator()(T&) \
+        -> scan_expected<iterator>;                              \
+    extern template auto arg_reader<Ctx>::operator()(T&)         \
+        -> scan_expected<iterator>;
+
+#define SCN_DECLARE_READER_CUSTOM(Ctx)                        \
+    extern template auto default_arg_reader<Ctx>::operator()( \
+        typename basic_scan_arg<context_type>::handle)        \
+        -> scan_expected<iterator>;                           \
+    extern template auto custom_reader<Ctx>::operator()(      \
+        typename basic_scan_arg<context_type>::handle) const  \
+        -> scan_expected<iterator>;
+
+        SCN_DECLARE_READER_CUSTOM(detail::scanner_scan_contexts::sv)
+        SCN_DECLARE_READER_CUSTOM(detail::scanner_scan_contexts::wsv)
+#if !SCN_DISABLE_ERASED_RANGE
+        SCN_DECLARE_READER_CUSTOM(detail::scanner_scan_contexts::es)
+        SCN_DECLARE_READER_CUSTOM(detail::scanner_scan_contexts::wes)
+#endif
+#if !SCN_DISABLE_IOSTREAM
+        SCN_DECLARE_READER_CUSTOM(detail::scanner_scan_contexts::is)
+        SCN_DECLARE_READER_CUSTOM(detail::scanner_scan_contexts::wis)
+#endif
+
+#define SCN_DECLARE_READER(Ctx)                   \
+    SCN_DECLARE_READER_T(Ctx, signed char)        \
+    SCN_DECLARE_READER_T(Ctx, short)              \
+    SCN_DECLARE_READER_T(Ctx, int)                \
+    SCN_DECLARE_READER_T(Ctx, long)               \
+    SCN_DECLARE_READER_T(Ctx, long long)          \
+    SCN_DECLARE_READER_T(Ctx, unsigned char)      \
+    SCN_DECLARE_READER_T(Ctx, unsigned short)     \
+    SCN_DECLARE_READER_T(Ctx, unsigned int)       \
+    SCN_DECLARE_READER_T(Ctx, unsigned long)      \
+    SCN_DECLARE_READER_T(Ctx, unsigned long long) \
+    SCN_DECLARE_READER_T(Ctx, float)              \
+    SCN_DECLARE_READER_T(Ctx, double)             \
+    SCN_DECLARE_READER_T(Ctx, long double)        \
+    SCN_DECLARE_READER_T(Ctx, char)               \
+    SCN_DECLARE_READER_T(Ctx, wchar_t)            \
+    SCN_DECLARE_READER_T(Ctx, char32_t)           \
+    SCN_DECLARE_READER_T(Ctx, bool)               \
+    SCN_DECLARE_READER_T(Ctx, void*)              \
+    SCN_DECLARE_READER_T(Ctx, std::string)        \
+    SCN_DECLARE_READER_T(Ctx, std::wstring)       \
+    SCN_DECLARE_READER_T(Ctx, std::string_view)   \
+    SCN_DECLARE_READER_T(Ctx, std::wstring_view)  \
+    SCN_DECLARE_READER_T(Ctx, monostate)
+
+        SCN_DECLARE_READER(detail::scanner_scan_contexts::sv)
+        SCN_DECLARE_READER(detail::scanner_scan_contexts::wsv)
+#if !SCN_DISABLE_ERASED_RANGE
+        SCN_DECLARE_READER(detail::scanner_scan_contexts::es)
+        SCN_DECLARE_READER(detail::scanner_scan_contexts::wes)
+#endif
+#if !SCN_DISABLE_IOSTREAM
+        SCN_DECLARE_READER(detail::scanner_scan_contexts::is)
+        SCN_DECLARE_READER(detail::scanner_scan_contexts::wis)
+#endif
+
+#undef SCN_DECLARE_READER_T
+#undef SCN_DECLARE_READER_CUSTOM
+#undef SCN_DECLARE_READER
+
     }  // namespace impl
 
     SCN_END_NAMESPACE

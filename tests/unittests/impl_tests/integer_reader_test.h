@@ -29,6 +29,10 @@ using namespace std::string_view_literals;
 
 SCN_CLANG_POP
 
+template <bool Localized, typename CharT, typename ValueT>
+using int_reader_wrapper =
+    reader_wrapper<Localized, CharT, ValueT, scn::impl::reader_impl_for_int>;
+
 template <typename T>
 class IntValueReaderTest : public testing::Test {
 protected:
