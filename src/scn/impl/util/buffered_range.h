@@ -103,6 +103,7 @@ namespace scn {
             range_iterator_t* m_first{};
         };
 
+#if !SCN_DISABLE_IOSTREAM
         template <typename Range>
         class buffered_range_segment_iostream_impl
             : public buffered_range_segment_impl_base {
@@ -177,6 +178,7 @@ namespace scn {
             std::basic_string<char_type> m_buffer_memory{};
             span<const char_type> m_buffer{};
         };
+#endif  // !SCN_DISABLE_IOSTREAM
 
         template <typename Range, typename Iterator>
         struct buffered_range_segment_impl {
@@ -196,6 +198,7 @@ namespace scn {
             using type = buffered_range_segment_string_impl<Range>;
         };
 
+#if !SCN_DISABLE_IOSTREAM
         template <typename Range>
         struct buffered_range_segment_impl<Range,
                                            istreambuf_subrange::iterator> {
@@ -206,6 +209,7 @@ namespace scn {
                                            wistreambuf_subrange::iterator> {
             using type = buffered_range_segment_iostream_impl<Range>;
         };
+#endif
 
         template <typename Range>
         class buffered_range_segment

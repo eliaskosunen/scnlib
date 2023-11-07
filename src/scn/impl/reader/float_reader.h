@@ -72,8 +72,9 @@ namespace scn {
             }
 
             template <typename Range>
-            SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
-            read_source(Range&& range)
+            SCN_NODISCARD scan_expected<ranges::iterator_t<Range>> read_source(
+                Range range,
+                detail::locale_ref)
             {
                 if (SCN_UNLIKELY(m_options & float_reader_base::allow_thsep)) {
                     m_locale_options =
@@ -81,13 +82,13 @@ namespace scn {
                             classic_with_thsep_tag{}};
                 }
 
-                return read_source_impl(SCN_FWD(range));
+                return read_source_impl(range);
             }
 
 #if !SCN_DISABLE_LOCALE
             template <typename Range>
-            SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
-            read_source_localized(Range&& range, detail::locale_ref loc)
+            SCN_NODISCARD scan_expected<ranges::iterator_t<Range>>
+            read_source_localized(Range range, detail::locale_ref loc)
             {
                 m_locale_options =
                     localized_number_formatting_options<CharT>{loc};
@@ -96,7 +97,7 @@ namespace scn {
                     m_locale_options.thousands_sep = CharT{0};
                 }
 
-                return read_source_impl(SCN_FWD(range));
+                return read_source_impl(range);
             }
 #endif
 
@@ -606,10 +607,10 @@ namespace scn {
                 SCN_UNUSED(loc);
 
                 float_reader<CharT> rd{};
-                return read_impl(
-                    SCN_FWD(range), rd,
-                    [&](auto&& rng) { return rd.read_source(SCN_FWD(rng)); },
-                    value);
+                return read_impl(range, rd,
+                                 &float_reader<CharT>::template read_source<
+                                     detail::remove_cvref_t<Range>>,
+                                 value);
             }
 
             template <typename Range, typename T>
@@ -624,29 +625,35 @@ namespace scn {
 #if !SCN_DISABLE_LOCALE
                 if (specs.localized) {
                     return read_impl(
-                        SCN_FWD(range), rd,
-                        [&](auto&& rng) {
-                            return rd.read_source_localized(SCN_FWD(rng), loc);
-                        },
+                        range, rd,
+                        &float_reader<CharT>::template read_source_localized<
+                            detail::remove_cvref_t<Range>>,
                         value);
                 }
 #endif
 
-                return read_impl(
-                    SCN_FWD(range), rd,
-                    [&](auto&& rng) { return rd.read_source(SCN_FWD(rng)); },
-                    value);
+                return read_impl(range, rd,
+                                 &float_reader<CharT>::template read_source<
+                                     detail::remove_cvref_t<Range>>,
+                                 value);
             }
 
         private:
-            template <typename Range, typename ReadSource, typename T>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_impl(
-                Range&& range,
+            template <typename Range>
+            using read_source_callback_type =
+                scan_expected<ranges::iterator_t<Range>> (
+                    float_reader<CharT>::*)(Range, detail::locale_ref);
+
+            template <typename Range, typename T>
+            scan_expected<ranges::iterator_t<Range>> read_impl(
+                Range range,
                 float_reader<CharT>& rd,
-                ReadSource&& read_source_cb,
-                T& value)
+                read_source_callback_type<Range> read_source_cb,
+                T& value,
+                detail::locale_ref loc = {})
             {
-                if (auto r = read_source_cb(range); SCN_UNLIKELY(!r)) {
+                if (auto r = std::invoke(read_source_cb, rd, range, loc);
+                    SCN_UNLIKELY(!r)) {
                     return unexpected(r.error());
                 }
 

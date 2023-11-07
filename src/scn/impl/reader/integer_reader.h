@@ -67,9 +67,9 @@ namespace scn {
             {
             }
 
-            template <typename T, typename Range>
-            SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
-            read_source(detail::tag_type<T>, Range&& range)
+            template <typename Range>
+            SCN_NODISCARD scan_expected<ranges::iterator_t<Range>>
+            read_source(Range range, bool is_signed, detail::locale_ref = {})
             {
                 if (SCN_UNLIKELY(m_options &
                                  integer_reader_base::allow_thsep)) {
@@ -77,28 +77,26 @@ namespace scn {
                         localized_number_formatting_options<CharT>{
                             classic_with_thsep_tag{}};
 
-                    return read_source_with_thsep_impl<std::is_signed_v<T>>(
-                        SCN_FWD(range));
+                    return read_source_with_thsep_impl(range, is_signed);
                 }
 
-                return read_source_impl<std::is_signed_v<T>>(SCN_FWD(range));
+                return read_source_impl(range, is_signed);
             }
 
 #if !SCN_DISABLE_LOCALE
-            template <typename T, typename Range>
-            SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
-            read_source_localized(detail::tag_type<T>,
-                                  Range&& range,
+            template <typename Range>
+            SCN_NODISCARD scan_expected<ranges::iterator_t<Range>>
+            read_source_localized(Range range,
+                                  bool is_signed,
                                   detail::locale_ref loc)
             {
                 if ((m_options & integer_reader_base::allow_thsep) == 0) {
-                    return read_source(detail::tag_type<T>{}, SCN_FWD(range));
+                    return read_source(range, is_signed);
                 }
 
                 m_locale_options =
                     localized_number_formatting_options<CharT>{loc};
-                return read_source_with_thsep_impl<std::is_signed_v<T>>(
-                    SCN_FWD(range));
+                return read_source_with_thsep_impl(range, is_signed);
             }
 #endif
 
@@ -124,14 +122,14 @@ namespace scn {
             }
 
         private:
-            template <bool IsSigned, typename Range>
+            template <typename Range>
             scan_expected<simple_borrowed_iterator_t<Range>>
-            read_source_with_thsep_impl(Range&& range)
+            read_source_with_thsep_impl(Range&& range, bool is_signed)
             {
                 SCN_EXPECT(m_locale_options.thousands_sep != 0);
                 SCN_EXPECT(!m_locale_options.grouping.empty());
 
-                SCN_TRY(it, read_source_impl<IsSigned>(range));
+                SCN_TRY(it, read_source_impl(range, is_signed));
                 if (!m_thsep_indices.empty()) {
                     if (auto e = this->check_thsep_grouping(
                             ranges::subrange{ranges::begin(range), it},
@@ -144,15 +142,15 @@ namespace scn {
                 return it;
             }
 
-            template <bool IsSigned, typename Range>
+            template <typename Range>
             SCN_NODISCARD scan_expected<simple_borrowed_iterator_t<Range>>
-            read_source_impl(Range&& range)
+            read_source_impl(Range&& range, bool is_signed)
             {
                 const auto make_subrange = [&](auto it) {
                     return ranges::subrange{it, ranges::end(range)};
                 };
 
-                SCN_TRY(it, read_sign<IsSigned>(range));
+                SCN_TRY(it, read_sign(range, is_signed));
 
                 auto base_prefix_begin = it;
                 SCN_TRY_ASSIGN(it, read_base_prefix(make_subrange(it)));
@@ -195,14 +193,15 @@ namespace scn {
                 return it;
             }
 
-            template <bool IsSigned, typename Range>
+            template <typename Range>
             scan_expected<simple_borrowed_iterator_t<Range>> read_sign(
-                Range&& range)
+                Range&& range,
+                bool is_signed)
             {
                 SCN_TRY(it, numeric_base::read_sign(SCN_FWD(range), m_sign));
 
                 if (m_sign == numeric_base::sign::minus_sign) {
-                    if constexpr (IsSigned) {
+                    if (is_signed) {
                         if (SCN_UNLIKELY((m_options & only_unsigned) != 0)) {
                             return unexpected_scan_error(
                                 scan_error::invalid_scanned_value,
@@ -459,13 +458,10 @@ namespace scn {
                 SCN_UNUSED(loc);
 
                 integer_reader<CharT> rd{detail::tag_type<T>{}};
-                return read_impl(
-                    SCN_FWD(range), rd,
-                    [&](auto&& rng) {
-                        return rd.read_source(detail::tag_type<T>{},
-                                              SCN_FWD(rng));
-                    },
-                    value);
+                return read_impl(range, rd,
+                                 &integer_reader<CharT>::template read_source<
+                                     detail::remove_cvref_t<Range>>,
+                                 value, loc);
             }
 
             template <typename Range, typename T>
@@ -480,33 +476,36 @@ namespace scn {
 #if !SCN_DISABLE_LOCALE
                 if (specs.localized) {
                     return read_impl(
-                        SCN_FWD(range), rd,
-                        [&](auto&& rng) {
-                            return rd.read_source_localized(
-                                detail::tag_type<T>{}, SCN_FWD(rng), loc);
-                        },
-                        value);
+                        range, rd,
+                        &integer_reader<CharT>::template read_source_localized<
+                            detail::remove_cvref_t<Range>>,
+                        value, loc);
                 }
 #endif
 
-                return read_impl(
-                    SCN_FWD(range), rd,
-                    [&](auto&& rng) {
-                        return rd.read_source(detail::tag_type<T>{},
-                                              SCN_FWD(rng));
-                    },
-                    value);
+                return read_impl(range, rd,
+                                 &integer_reader<CharT>::template read_source<
+                                     detail::remove_cvref_t<Range>>,
+                                 value, loc);
             }
 
         private:
-            template <typename Range, typename ReadSource, typename T>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_impl(
-                Range&& range,
+            template <typename Range>
+            using read_source_callback_type =
+                scan_expected<ranges::iterator_t<Range>> (
+                    integer_reader<CharT>::*)(Range, bool, detail::locale_ref);
+
+            template <typename Range, typename T>
+            scan_expected<ranges::iterator_t<Range>> read_impl(
+                Range range,
                 integer_reader<CharT>& rd,
-                ReadSource&& read_source_cb,
-                T& value)
+                read_source_callback_type<Range> read_source_cb,
+                T& value,
+                detail::locale_ref loc = {})
             {
-                if (auto r = read_source_cb(range); SCN_UNLIKELY(!r)) {
+                if (auto r = std::invoke(read_source_cb, rd, range,
+                                         std::is_signed_v<T>, loc);
+                    SCN_UNLIKELY(!r)) {
                     return unexpected(r.error());
                 }
 

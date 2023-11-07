@@ -122,12 +122,9 @@ namespace scn {
 
 #undef SCN_TYPE_CONSTANT
 
-        template <typename Context>
         struct custom_value_type {
-            using parse_context = typename Context::parse_context_type;
-
             void* value;
-            scan_error (*scan)(void* arg, parse_context& pctx, Context& ctx);
+            scan_error (*scan)(void* arg, void* pctx, void* ctx);
         };
 
         struct unscannable {};
@@ -140,16 +137,21 @@ namespace scn {
             }
         };
 
-        template <typename T>
+        struct needs_context_tag {};
+
+        template <typename Context>
+        struct context_tag {
+            using type = Context;
+        };
+
+        template <typename T, typename Context>
         struct custom_wrapper {
+            using context_type = Context;
             T& val;
         };
 
-        template <typename Context>
         class arg_value {
         public:
-            using char_type = typename Context::char_type;
-
             constexpr arg_value() = default;
 
             template <typename T>
@@ -158,12 +160,10 @@ namespace scn {
             {
             }
 
-            template <typename T>
-            explicit constexpr arg_value(custom_wrapper<T> val)
+            template <typename T, typename Context>
+            explicit constexpr arg_value(custom_wrapper<T, Context> val)
                 : custom_value{static_cast<void*>(&val.val),
-                               scan_custom_arg<
-                                   T,
-                                   typename Context::template scanner_type<T>>}
+                               scan_custom_arg<T, Context>}
             {
             }
 
@@ -174,25 +174,34 @@ namespace scn {
 
             union {
                 void* ref_value{nullptr};
-                custom_value_type<Context> custom_value;
+                custom_value_type custom_value;
             };
 
         private:
-            template <typename T, typename Scanner>
-            static scan_error scan_custom_arg(
-                void* arg,
-                typename Context::parse_context_type& pctx,
-                Context& ctx)
+            template <typename T, typename Context>
+            static scan_error scan_custom_arg(void* arg, void* pctx, void* ctx)
             {
                 static_assert(!is_type_disabled<T>,
                               "Scanning of custom types is disabled by "
                               "SCN_DISABLE_TYPE_CUSTOM");
+                SCN_EXPECT(arg && pctx && ctx);
 
-                auto s = Scanner{};
+                using context_type = Context;
+                using char_type = typename context_type::char_type;
+                using parse_context_type =
+                    typename context_type::parse_context_type;
+                using scanner_type =
+                    typename context_type::template scanner_type<T>;
 
-                SCN_TRY_ERR(_, s.parse(pctx));
-                SCN_TRY_ERR(it, s.scan(*static_cast<T*>(arg), ctx));
-                ctx.advance_to(SCN_MOVE(it));
+                auto s = scanner_type{};
+
+                auto& arg_ref = *static_cast<T*>(arg);
+                auto& pctx_ref = *static_cast<parse_context_type*>(pctx);
+                auto& ctx_ref = *static_cast<context_type*>(ctx);
+
+                SCN_TRY_ERR(_, s.parse(pctx_ref));
+                SCN_TRY_ERR(it, s.scan(arg_ref, ctx_ref));
+                ctx_ref.advance_to(SCN_MOVE(it));
 
                 return {};
             }
@@ -237,14 +246,19 @@ namespace scn {
 
             static decltype(auto) map(char& val)
             {
-                if constexpr (std::is_same_v<char_type, char>) {
+                if constexpr (std::is_same_v<char_type, char> &&
+                              !is_type_disabled<char_type>) {
                     return val;
+                }
+                else if constexpr (is_type_disabled<char_type>) {
+                    return unscannable_disabled{val};
                 }
                 else {
                     SCN_UNUSED(val);
                     return unscannable_char{};
                 }
             }
+
             static unscannable_char map(
                 std::basic_string_view<other_char_type>&)
             {
@@ -254,8 +268,17 @@ namespace scn {
             template <typename T>
             static std::enable_if_t<
                 std::is_constructible_v<scanner<T, char_type>>,
-                custom_wrapper<T>>
-            map(T& val)
+                needs_context_tag>
+            map(T&)
+            {
+                return {};
+            }
+
+            template <typename T, typename Context>
+            static std::enable_if_t<
+                std::is_constructible_v<scanner<T, char_type>>,
+                custom_wrapper<T, Context>>
+            map(T& val, context_tag<Context>)
             {
                 return {val};
             }
@@ -310,38 +333,52 @@ namespace scn {
                    (encode_types_impl<Context, Ts...>() << packed_arg_bits);
         }
 
-        template <typename Context, typename T>
-        constexpr auto make_value(T& value)
+        template <typename Arg>
+        constexpr auto make_value_impl(Arg&& arg)
         {
-            auto&& arg = arg_mapper<typename Context::char_type>().map(value);
+            using arg_nocvref_t = remove_cvref_t<Arg>;
+            static_assert(!std::is_same_v<arg_nocvref_t, needs_context_tag>);
 
             constexpr bool scannable_char =
-                !std::is_same_v<remove_cvref_t<decltype(arg)>,
-                                unscannable_char>;
+                !std::is_same_v<arg_nocvref_t, unscannable_char>;
             static_assert(scannable_char,
                           "Cannot scan an argument of an unsupported character "
                           "type (char from a wchar_t source)");
 
             constexpr bool scannable_const =
-                !std::is_same_v<remove_cvref_t<decltype(arg)>,
-                                unscannable_const>;
+                !std::is_same_v<arg_nocvref_t, unscannable_const>;
             static_assert(scannable_const, "Cannot scan a const argument");
 
             constexpr bool scannable_disabled =
-                !std::is_same_v<remove_cvref_t<decltype(arg)>,
-                                unscannable_disabled>;
+                !std::is_same_v<arg_nocvref_t, unscannable_disabled>;
             static_assert(scannable_disabled,
                           "Cannot scan an argument that has been disabled by "
                           "flag (SCN_DISABLE_TYPE_*)");
 
             constexpr bool scannable =
-                !std::is_same_v<remove_cvref_t<decltype(arg)>, unscannable>;
+                !std::is_same_v<arg_nocvref_t, unscannable>;
             static_assert(
                 scannable,
                 "Cannot scan an argument. To make a type T scannable, provide "
                 "a scn::scanner<T, CharT> specialization.");
 
-            return arg_value<Context>{arg};
+            return arg_value{arg};
+        }
+
+        template <typename Context, typename T>
+        constexpr auto make_value(T& value)
+        {
+            auto&& arg = arg_mapper<typename Context::char_type>().map(value);
+
+            if constexpr (!std::is_same_v<remove_cvref_t<decltype(arg)>,
+                                          needs_context_tag>) {
+                return make_value_impl(SCN_FWD(arg));
+            }
+            else {
+                return make_value_impl(
+                    arg_mapper<typename Context::char_type>().map(
+                        value, context_tag<Context>{}));
+            }
         }
 
         template <typename... Args>
@@ -375,7 +412,7 @@ namespace scn {
                   arg_type,
                   typename T,
                   typename = std::enable_if_t<is_packed>>
-        constexpr arg_value<Context> make_arg(T& value)
+        constexpr arg_value make_arg(T& value)
         {
             return make_value<Context>(value);
         }
@@ -390,8 +427,7 @@ namespace scn {
         }
 
         template <typename Context>
-        constexpr arg_value<Context>& get_arg_value(
-            basic_scan_arg<Context>& arg);
+        constexpr arg_value& get_arg_value(basic_scan_arg<Context>& arg);
     }  // namespace detail
 
     template <typename Visitor, typename Ctx>
@@ -425,12 +461,11 @@ namespace scn {
             scan_error scan(typename Context::parse_context_type& parse_ctx,
                             Context& ctx) const
             {
-                return m_custom.scan(m_custom.value, parse_ctx, ctx);
+                return m_custom.scan(m_custom.value, &parse_ctx, &ctx);
             }
 
         private:
-            explicit handle(detail::custom_value_type<Context> custom)
-                : m_custom(custom)
+            explicit handle(detail::custom_value_type custom) : m_custom(custom)
             {
             }
 
@@ -439,7 +474,7 @@ namespace scn {
                 Visitor&& vis,
                 basic_scan_arg<C>& arg);
 
-            detail::custom_value_type<Context> m_custom;
+            detail::custom_value_type m_custom;
         };
 
         /// Construct a `basic_scan_arg` which doesn't contain an argument.
@@ -458,11 +493,11 @@ namespace scn {
             return m_type;
         }
 
-        SCN_NODISCARD constexpr detail::arg_value<Context>& value()
+        SCN_NODISCARD constexpr detail::arg_value& value()
         {
             return m_value;
         }
-        SCN_NODISCARD constexpr const detail::arg_value<Context>& value() const
+        SCN_NODISCARD constexpr const detail::arg_value& value() const
         {
             return m_value;
         }
@@ -472,7 +507,7 @@ namespace scn {
         friend constexpr basic_scan_arg<ContextType> detail::make_arg(T& value);
 
         template <typename C>
-        friend constexpr detail::arg_value<C>& detail::get_arg_value(
+        friend constexpr detail::arg_value& detail::get_arg_value(
             basic_scan_arg<C>& arg);
 
         template <typename Visitor, typename C>
@@ -481,14 +516,13 @@ namespace scn {
 
         friend class basic_scan_args<Context>;
 
-        detail::arg_value<Context> m_value{};
+        detail::arg_value m_value{};
         detail::arg_type m_type{detail::arg_type::none_type};
     };
 
     namespace detail {
         template <typename Context>
-        constexpr arg_value<Context>& get_arg_value(
-            basic_scan_arg<Context>& arg)
+        constexpr arg_value& get_arg_value(basic_scan_arg<Context>& arg)
         {
             return arg.m_value;
         }
@@ -501,7 +535,7 @@ namespace scn {
                 num_args <= detail::max_packed_args;
 
             using value_type = std::conditional_t<is_packed,
-                                                  detail::arg_value<Context>,
+                                                  detail::arg_value,
                                                   basic_scan_arg<Context>>;
             using value_array_type = std::array<value_type, num_args>;
         };
@@ -550,7 +584,7 @@ namespace scn {
                 args)...};
         }
 
-        constexpr detail::arg_value<Context>& get_value_at(std::size_t i)
+        constexpr detail::arg_value& get_value_at(std::size_t i)
         {
             if constexpr (base::is_packed) {
                 return m_data[i];
@@ -669,8 +703,7 @@ namespace scn {
         }
 
     private:
-        constexpr basic_scan_args(size_t desc,
-                                  detail::arg_value<Context>* values)
+        constexpr basic_scan_args(size_t desc, detail::arg_value* values)
             : m_desc{desc}, m_values{values}
         {
         }
@@ -701,7 +734,7 @@ namespace scn {
 
         size_t m_desc{0};
         union {
-            detail::arg_value<Context>* m_values;
+            detail::arg_value* m_values;
             basic_scan_arg<Context>* m_args{nullptr};
         };
     };

@@ -28,9 +28,9 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-        template <typename Reader, typename Range>
+        template <typename Range>
         scan_expected<simple_borrowed_iterator_t<Range>>
-        skip_ws_before_if_required(Reader& reader,
+        skip_ws_before_if_required(bool is_required,
                                    Range&& range,
                                    detail::locale_ref loc)
         {
@@ -38,7 +38,7 @@ namespace scn {
                 return unexpected(e);
             }
 
-            if (!reader.skip_ws_before_read()) {
+            if (!is_required) {
                 return ranges::begin(range);
             }
 
@@ -106,7 +106,8 @@ namespace scn {
             scan_expected<iterator> operator()(T& value)
             {
                 auto rd = make_reader<T, char_type>();
-                SCN_TRY(it, skip_ws_before_if_required(rd, range, loc));
+                SCN_TRY(it, skip_ws_before_if_required(rd.skip_ws_before_read(),
+                                                       range, loc));
                 return rd.read_default(ranges::subrange{it, ranges::end(range)},
                                        value, loc);
             }
@@ -142,7 +143,8 @@ namespace scn {
                     return unexpected(e);
                 }
 
-                auto it = skip_ws_before_if_required(rd, range, loc);
+                auto it = skip_ws_before_if_required(rd.skip_ws_before_read(),
+                                                     range, loc);
                 if (SCN_UNLIKELY(!it)) {
                     return unexpected(it.error());
                 }
@@ -177,18 +179,18 @@ namespace scn {
             using char_type = typename context_type::char_type;
             using iterator = typename context_type::iterator;
 
+            template <typename T>
+            scan_expected<iterator> operator()(T&) const
+            {
+                return {ctx.current()};
+            }
+
             scan_expected<iterator> operator()(
                 typename basic_scan_arg<context_type>::handle h) const
             {
                 if (auto e = h.scan(parse_ctx, ctx); !e) {
                     return unexpected(e);
                 }
-                return {ctx.current()};
-            }
-
-            template <typename T>
-            scan_expected<iterator> operator()(T&) const
-            {
                 return {ctx.current()};
             }
 

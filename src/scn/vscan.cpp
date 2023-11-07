@@ -272,6 +272,8 @@ namespace scn {
                 return id;
             }
 
+            template <typename...> struct debug;
+
             template <typename Visitor>
             void on_visit_scan_arg(Visitor&& visitor,
                                    typename context_type::arg_type arg)
@@ -453,8 +455,8 @@ namespace scn {
             SCN_TRY(beg, impl::skip_classic_whitespace(source));
 
             auto reader = impl::integer_reader<char>{0, base};
-            SCN_TRY(_, reader.read_source(tag_type<T>{},
-                                          ranges::subrange(beg, source.end())));
+            SCN_TRY(_, reader.read_source(ranges::subrange(beg, source.end()),
+                                          std::is_signed_v<T>));
             SCN_TRY(n, reader.parse_value(value));
             return ranges::next(beg, n);
         }
