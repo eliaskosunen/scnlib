@@ -131,14 +131,37 @@ namespace scn {
         simple_borrowed_iterator_t<Range> read_until_code_unit(Range&& range,
                                                                Predicate pred)
         {
-            return ranges::find_if(range, pred);
+            if constexpr (ranges::contiguous_range<Range>) {
+                return ranges::find_if(range, pred);
+            }
+            else {
+                auto it = ranges::begin(range);
+                auto buf = buffered_range_segment{range, it};
+                if (buf.potential_size() == 0) {
+                    return ranges::find_if(range, pred);
+                }
+
+                buf.acquire();
+                if (auto buf_it = ranges::find_if(buf, pred);
+                    buf_it != buf.end()) {
+                    buf.set_amount_read(ranges::distance(buf.begin(), buf_it));
+                    buf.advance_iterator();
+                    return it;
+                }
+                else {
+                    buf.set_amount_read(buf.size());
+                    buf.advance_iterator();
+                }
+
+                return ranges::find_if(ranges::subrange{it, range.end()}, pred);
+            }
         }
 
         template <typename Range, typename Predicate>
         simple_borrowed_iterator_t<Range> read_while_code_unit(Range&& range,
                                                                Predicate pred)
         {
-            return ranges::find_if_not(range, pred);
+            return read_until_code_unit(SCN_FWD(range), std::not_fn(pred));
         }
 
         template <typename Range, typename Predicate>
@@ -502,7 +525,7 @@ namespace scn {
                 return pred(cp) || ctype_facet.is(mask, ch);
             });
         }
-#endif // !SCN_DISABLE_LOCALE
+#endif  // !SCN_DISABLE_LOCALE
 
         template <typename Range, typename Iterator>
         simple_borrowed_iterator_t<Range> apply_opt(

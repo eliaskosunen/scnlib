@@ -169,7 +169,7 @@ namespace scn {
             return m_range;
         }
 
-        span<const char> buffer() const
+        span<const char_type> buffer() const
         {
             return this->m_buffer;
         }

@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <utility>
 
 // experimental
 
@@ -38,12 +39,14 @@ namespace scn {
 
             buffered_range_segment_impl_base(
                 const buffered_range_segment_impl_base&) = delete;
-            buffered_range_segment_impl_base(
-                buffered_range_segment_impl_base&&) = delete;
             buffered_range_segment_impl_base& operator=(
                 const buffered_range_segment_impl_base&) = delete;
+
+            buffered_range_segment_impl_base(
+                buffered_range_segment_impl_base&&) = default;
             buffered_range_segment_impl_base& operator=(
-                buffered_range_segment_impl_base&&) = delete;
+                buffered_range_segment_impl_base&&) = default;
+
             ~buffered_range_segment_impl_base() = default;
 
             void set_amount_read(range_difference_t n)
@@ -57,6 +60,38 @@ namespace scn {
 
         protected:
             range_difference_t m_read{0};
+        };
+
+        template <typename CharT>
+        class buffered_range_segment_null_impl
+            : public buffered_range_segment_impl_base {
+        public:
+            template <typename... A>
+            explicit buffered_range_segment_null_impl(A&...)
+            {
+            }
+
+            const CharT* begin() const
+            {
+                return nullptr;
+            }
+            const CharT* end() const
+            {
+                return nullptr;
+            }
+
+            void advance_iterator() {}
+
+            SCN_NODISCARD range_difference_t potential_size() const
+            {
+                return 0;
+            }
+            void acquire(range_difference_t n =
+                             std::numeric_limits<range_difference_t>::max())
+            {
+                // no-op
+                SCN_UNUSED(n);
+            }
         };
 
         template <typename Range>
@@ -85,6 +120,12 @@ namespace scn {
             auto end() const
             {
                 return m_range->end();
+            }
+
+            void advance_iterator()
+            {
+                ranges::advance(*m_first, m_read);
+                m_read = 0;
             }
 
             SCN_NODISCARD range_difference_t potential_size() const
@@ -120,6 +161,28 @@ namespace scn {
             {
             }
 
+            buffered_range_segment_iostream_impl(
+                buffered_range_segment_iostream_impl&& other)
+                : m_range(other.m_range),
+                  m_first(other.m_first),
+                  m_streambuf_view(other.m_streambuf_view),
+                  m_buffer_memory(),
+                  m_buffer()
+            {
+            }
+
+            buffered_range_segment_iostream_impl& operator=(
+                buffered_range_segment_iostream_impl&& other)
+            {
+                m_range = std::exchange(other.m_range, nullptr);
+                m_first = std::exchange(other.m_first, nullptr);
+                m_streambuf_view =
+                    std::exchange(other.m_streambuf_view, nullptr);
+                m_buffer_memory = {};
+                m_buffer = {};
+                return *this;
+            }
+
             ~buffered_range_segment_iostream_impl()
             {
                 ranges::advance(*m_first, m_read);
@@ -132,6 +195,13 @@ namespace scn {
             auto end() const
             {
                 return m_buffer.end();
+            }
+
+            void advance_iterator()
+            {
+                ranges::advance(*m_first, m_read);
+                m_buffer = m_buffer.subspan(m_read);
+                m_read = 0;
             }
 
             SCN_NODISCARD range_difference_t potential_size() const
@@ -158,7 +228,7 @@ namespace scn {
                 if (sb_count != first_idx) {
                     m_buffer = m_first->view().buffer().subspan(first_idx);
                     auto n_to_read = std::min(ranges::ssize(m_buffer), n);
-                    m_buffer = m_buffer.first(n);
+                    m_buffer = m_buffer.first(n_to_read);
                     return;
                 }
 
@@ -182,7 +252,8 @@ namespace scn {
 
         template <typename Range, typename Iterator>
         struct buffered_range_segment_impl {
-            using type = void;
+            using type =
+                buffered_range_segment_null_impl<detail::char_t<Range>>;
         };
 
         template <typename Range>

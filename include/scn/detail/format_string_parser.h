@@ -291,25 +291,17 @@ namespace scn {
             SCN_EXPECT(begin != end);
             SCN_EXPECT(*begin >= '0' && *begin <= '9');
 
-            unsigned value = 0, prev = 0;
-            auto p = begin;
+            unsigned long long value = 0;
             do {
-                prev = value;
-                value = value * 10 + static_cast<unsigned>(*p - '0');
-                ++p;
-            } while (p != end && *p >= '0' && *p <= '9');
-            auto num_digits = p - begin;
-            begin = p;
-            if (SCN_LIKELY(num_digits <= std::numeric_limits<int>::digits10)) {
-                SCN_LIKELY_ATTR
-                return static_cast<int>(value);
-            }
-            const auto max =
-                static_cast<unsigned>((std::numeric_limits<int>::max)());
-            return num_digits == std::numeric_limits<int>::digits10 + 1 &&
-                           prev * 10ull + unsigned(p[-1] - '0') <= max
-                       ? static_cast<int>(value)
-                       : -1;
+                value *= 10;
+                value += static_cast<unsigned long long>(*begin - '0');
+                if (value > static_cast<unsigned long long>(
+                                std::numeric_limits<int>::max())) {
+                    return -1;
+                }
+                ++begin;
+            } while (begin != end && *begin >= '0' && *begin <= '9');
+            return static_cast<int>(value);
         }
 
         template <typename CharT, typename IDHandler>
