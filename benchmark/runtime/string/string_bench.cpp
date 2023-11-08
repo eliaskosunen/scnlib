@@ -24,10 +24,10 @@ template <typename CharT>
 constexpr auto bench_format_string()
 {
     if constexpr (sizeof(CharT) == 1) {
-        return scn::runtime("{}");
+        return scn::runtime_format("{}");
     }
     else {
-        return scn::runtime(L"{}");
+        return scn::runtime_format(L"{}");
     }
 }
 

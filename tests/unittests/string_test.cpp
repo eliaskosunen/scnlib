@@ -82,7 +82,7 @@ TEST(StringTest, StringPresentationWideStringFromNarrowSource)
 
 TEST(StringTest, CharacterPresentationWithNoWidthCausesError)
 {
-    auto result = scn::scan<std::string>("abc def", scn::runtime("{:c}"));
+    auto result = scn::scan<std::string>("abc def", scn::runtime_format("{:c}"));
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
 }
@@ -167,7 +167,7 @@ TEST(StringTest, WonkyInputAndFormatWithTranscoding)
     const char source[] = {'a', ']', 'c', '{', '}', '\xdf', ':', '\xb1'};
     auto input = std::string_view{source, sizeof(source)};
 
-    auto result = scn::scan<std::wstring>(input, scn::runtime(input));
+    auto result = scn::scan<std::wstring>(input, scn::runtime_format(input));
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
 }

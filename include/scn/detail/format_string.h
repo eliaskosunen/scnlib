@@ -329,15 +329,31 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    /**
-     * A runtime format string
-     *
-     * \ingroup format-string
-     */
-    template <typename CharT>
-    struct basic_runtime_format_string {
-        std::basic_string_view<CharT> str;
-    };
+    namespace detail {
+        /**
+         * A runtime format string
+         *
+         * \ingroup format-string
+         */
+        template <typename CharT>
+        struct basic_runtime_format_string {
+            basic_runtime_format_string(std::basic_string_view<CharT> s)
+                : str(s)
+            {
+            }
+
+            basic_runtime_format_string(const basic_runtime_format_string&) =
+                delete;
+            basic_runtime_format_string(basic_runtime_format_string&&) = delete;
+            basic_runtime_format_string& operator=(
+                const basic_runtime_format_string&) = delete;
+            basic_runtime_format_string& operator=(
+                basic_runtime_format_string&&) = delete;
+            ~basic_runtime_format_string() = default;
+
+            std::basic_string_view<CharT> str;
+        };
+    }  // namespace detail
 
     /**
      * Create a runtime format string
@@ -346,13 +362,15 @@ namespace scn {
      *
      * \ingroup format-string
      */
-    inline basic_runtime_format_string<char> runtime(std::string_view s)
+    inline detail::basic_runtime_format_string<char> runtime_format(
+        std::string_view s)
     {
-        return {{s}};
+        return s;
     }
-    inline basic_runtime_format_string<wchar_t> runtime(std::wstring_view s)
+    inline detail::basic_runtime_format_string<wchar_t> runtime_format(
+        std::wstring_view s)
     {
-        return {{s}};
+        return s;
     }
 
     namespace detail {
@@ -594,7 +612,8 @@ namespace scn {
         }
         SCN_CLANG_POP
 
-        basic_format_string(basic_runtime_format_string<CharT> r) : m_str(r.str)
+        basic_format_string(detail::basic_runtime_format_string<CharT> r)
+            : m_str(r.str)
         {
         }
 

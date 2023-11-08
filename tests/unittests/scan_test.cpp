@@ -146,18 +146,18 @@ TEST(ScanTest, NumberedArgumentsSwapped)
 
 TEST(ScanTest, NumberedArgumentsRepeatedSingleArg)
 {
-    auto result = scn::scan<int>("123 456", scn::runtime("{0} {0}"));
+    auto result = scn::scan<int>("123 456", scn::runtime_format("{0} {0}"));
     ASSERT_FALSE(result);
 }
 
 TEST(ScanTest, NumberedArgumentsRepeatedDoubleArg)
 {
-    auto result = scn::scan<int, int>("123 456", scn::runtime("{0} {0}"));
+    auto result = scn::scan<int, int>("123 456", scn::runtime_format("{0} {0}"));
     ASSERT_FALSE(result);
 }
 
 TEST(ScanTest, NumberedArgumentsOutOfRange)
 {
-    auto result = scn::scan<int>("123 456", scn::runtime("{1}"));
+    auto result = scn::scan<int>("123 456", scn::runtime_format("{1}"));
     ASSERT_FALSE(result);
 }

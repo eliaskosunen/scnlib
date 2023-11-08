@@ -52,7 +52,7 @@ TEST(StringViewTest, StringPresentationWideStringViewFromWideSource)
 
 TEST(StringViewTest, CharacterPresentationWithNoWidthCausesError)
 {
-    auto result = scn::scan<std::string_view>("abc def", scn::runtime("{:c}"));
+    auto result = scn::scan<std::string_view>("abc def", scn::runtime_format("{:c}"));
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
 }

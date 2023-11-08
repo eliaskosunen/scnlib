@@ -152,7 +152,12 @@ namespace scn {
 
         class arg_value {
         public:
-            constexpr arg_value() = default;
+            // trivial default initialization in constexpr
+#if defined(__cpp_constexpr) && __cpp_constexpr >= 201907L && \
+    SCN_STD > SCN_STD_20
+            constexpr
+#endif
+                arg_value() = default;
 
             template <typename T>
             explicit constexpr arg_value(T& val)
