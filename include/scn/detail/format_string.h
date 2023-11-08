@@ -403,7 +403,11 @@ namespace scn {
                                            const CharT* end) const
             {
                 // TODO: Do we want to validate Unicode in format strings?
-#if 1
+                // We're dealing with text, we probably do.
+                // We could do codeunit-to-codeunit matching,
+                // but that could get messy wrt. whitespace matching.
+                // It's simpler to not allow nonsense.
+#if 0
                 SCN_UNUSED(begin);
                 SCN_UNUSED(end);
 #else

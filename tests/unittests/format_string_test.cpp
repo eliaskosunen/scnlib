@@ -278,5 +278,7 @@ TEST(FormatStringTest, LongFormatString4)
 
 TEST(FormatStringTest, MatchLiteralInvalidEncoding)
 {
-    auto result = scn::scan<>("\xc3\na\xa4", "\xc3\n\a\xa4");
+    auto result = scn::scan<>("\xc3\na\xa4", scn::runtime("\xc3\na\xa4"));
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
 }
