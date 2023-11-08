@@ -35,7 +35,7 @@ namespace scn {
                                   std::basic_string<DestCharT>& dst)
         {
             dst.clear();
-            transcode_to_string(src, dst);
+            transcode_valid_to_string(src, dst);
             return {};
         }
 
@@ -100,6 +100,11 @@ namespace scn {
 
             auto src = make_contiguous_buffer(
                 ranges::subrange{ranges::begin(range), result});
+            if (!validate_unicode(src.view())) {
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Invalid encoding in scanned string");
+            }
             if (auto e = transcode_if_necessary(SCN_MOVE(src), value);
                 SCN_UNLIKELY(!e)) {
                 return unexpected(e);
@@ -147,6 +152,12 @@ namespace scn {
                 const auto view = src.view();
                 value = std::basic_string_view<ValueCharT>(
                     ranges::data(view), ranges_polyfill::usize(view));
+
+                if (!validate_unicode(value)) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Invalid encoding in scanned string_view");
+                }
 
                 return SCN_MOVE(result);
             }

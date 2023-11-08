@@ -204,19 +204,71 @@ namespace scn {
         simple_borrowed_iterator_t<Range> read_until_code_point(Range&& range,
                                                                 Predicate pred)
         {
-            auto it = ranges::begin(range);
+            if constexpr (ranges::contiguous_range<Range> &&
+                          ranges::sized_range<Range>) {
+                std::array<char32_t, 16> cp_buf{};
+                std::array<uint8_t, 16> idx_buf{};
+                auto it = ranges::begin(range);
+                while (it != ranges::end(range)) {
+                    auto chunk_begin = it;
+                    size_t code_point_count = 0;
+                    uint8_t code_unit_idx = 0;
+                    while (code_point_count < cp_buf.size() &&
+                           it != ranges::end(range)) {
+                        if (code_point_length_by_starting_code_unit(*it) != 0) {
+                            idx_buf[code_point_count] = code_unit_idx;
+                            ++code_point_count;
+                        }
+                        ++it;
+                        ++code_unit_idx;
+                    }
 
-            while (it != ranges::end(range)) {
-                const auto [iter, value] = read_code_point_into(
-                    ranges::subrange{it, ranges::end(range)});
-                const auto cp = decode_code_point_exhaustive(value.view());
-                if (pred(cp)) {
-                    break;
+                    auto input = detail::make_string_view_from_pointers(
+                        detail::to_address(chunk_begin),
+                        detail::to_address(it));
+                    auto codepoints = span{cp_buf.data(), code_point_count};
+                    auto transcode_result =
+                        transcode_possibly_invalid(input, codepoints);
+                    if (SCN_UNLIKELY(!transcode_result)) {
+                        it = chunk_begin;
+                        auto end = it + code_unit_idx;
+                        while (it != end) {
+                            const auto [iter, value] = read_code_point_into(
+                                ranges::subrange{it, ranges::end(range)});
+                            const auto cp =
+                                decode_code_point_exhaustive(value.view());
+                            if (pred(cp)) {
+                                return it;
+                            }
+                            it = iter;
+                        }
+                        continue;
+                    }
+
+                    for (size_t i = 0; i < code_point_count; ++i) {
+                        if (pred(cp_buf[i])) {
+                            return chunk_begin + idx_buf[i];
+                        }
+                    }
                 }
-                it = iter;
-            }
 
-            return it;
+                return it;
+            }
+            else {
+                auto it = ranges::begin(range);
+
+                while (it != ranges::end(range)) {
+                    const auto [iter, value] = read_code_point_into(
+                        ranges::subrange{it, ranges::end(range)});
+                    const auto cp = decode_code_point_exhaustive(value.view());
+                    if (pred(cp)) {
+                        break;
+                    }
+                    it = iter;
+                }
+
+                return it;
+            }
         }
 
         template <typename Range, typename Predicate>

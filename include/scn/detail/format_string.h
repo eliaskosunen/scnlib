@@ -402,6 +402,11 @@ namespace scn {
             constexpr void on_literal_text(const CharT* begin,
                                            const CharT* end) const
             {
+                // TODO: Do we want to validate Unicode in format strings?
+#if 1
+                SCN_UNUSED(begin);
+                SCN_UNUSED(end);
+#else
                 while (begin != end) {
                     const auto len =
                         utf_code_point_length_by_starting_code_unit(*begin);
@@ -418,6 +423,7 @@ namespace scn {
 
                     begin += len;
                 }
+#endif
             }
 
             constexpr auto on_arg_id()

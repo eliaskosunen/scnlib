@@ -86,7 +86,8 @@ TEST(FormatStringTest, TooManyArgsInArgListLiteral)
 }
 #endif
 
-TEST(FormatStringTest, EscapedBraces){
+TEST(FormatStringTest, EscapedBraces)
+{
     auto result = scn::scan<int>("{}123", scn::runtime("{{}}{}"));
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value(), 123);
@@ -273,4 +274,9 @@ TEST(FormatStringTest, LongFormatString4)
         scn::runtime("123456789 {{}}{}{{}} abcdefghijklmnopqrstuvwxyz"));
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value(), '0');
+}
+
+TEST(FormatStringTest, MatchLiteralInvalidEncoding)
+{
+    auto result = scn::scan<>("\xc3\na\xa4", "\xc3\n\a\xa4");
 }

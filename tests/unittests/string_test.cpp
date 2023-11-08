@@ -153,9 +153,13 @@ TEST(StringTest, WonkyInput)
     auto input = std::string_view{source, sizeof(source)};
 
     auto result = scn::scan<std::string>(input, "{:64c}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
+#if 0
     ASSERT_TRUE(result);
     EXPECT_TRUE(result->range().empty());
     EXPECT_EQ(result->value(), input);
+#endif
 }
 
 TEST(StringTest, WonkyInputAndFormatWithTranscoding)
@@ -165,7 +169,7 @@ TEST(StringTest, WonkyInputAndFormatWithTranscoding)
 
     auto result = scn::scan<std::wstring>(input, scn::runtime(input));
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
 }
 
 TEST(StringTest, WonkyInput2)
@@ -174,12 +178,16 @@ TEST(StringTest, WonkyInput2)
         std::string_view{"\303 \245å\377åä\3035\377ååíääccccc\307c\244c"};
 
     auto result = scn::scan<std::string_view>(input, "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
+#if 0
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value(), "\303");
 
     result = scn::scan<std::string_view>(result->range(), "{}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value(), input.substr(2));
+#endif
 }
 
 TEST(StringTest, WonkyInput3)
@@ -191,15 +199,23 @@ TEST(StringTest, WonkyInput3)
     auto input = std::string_view{source, sizeof(source)};
 
     auto result = scn::scan<std::string>(input, "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
+#if 0
     ASSERT_TRUE(result);
     EXPECT_TRUE(result->range().empty());
+#endif
 }
 
 TEST(StringTest, RecoveryFromInvalidEncoding)
 {
     const auto source = std::string_view{"a\xc3 "};
     auto result = scn::scan<std::string>(source, "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
+#if 0
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value(), "a\xc3");
     EXPECT_EQ(result->begin(), source.end() - 1);
+#endif
 }

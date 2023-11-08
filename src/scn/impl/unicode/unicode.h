@@ -464,6 +464,73 @@ namespace scn {
         }
 
         template <typename SourceCharT, typename DestCharT>
+        std::optional<std::size_t> transcode_possibly_invalid(
+            std::basic_string_view<SourceCharT> input,
+            span<DestCharT> output)
+        {
+            if (input.empty()) {
+                return 0;
+            }
+
+            constexpr auto src_enc = get_encoding<SourceCharT>();
+            constexpr auto dest_enc = get_encoding<DestCharT>();
+
+            if constexpr (src_enc == dest_enc) {
+                SCN_EXPECT(output.size() >= input.size());
+                std::memcpy(output.data(), input.data(),
+                            input.size() * sizeof(SourceCharT));
+                return input.size();
+            }
+
+            const auto result = [&]() {
+                if constexpr (src_enc == encoding::utf8) {
+                    if constexpr (dest_enc == encoding::utf16) {
+                        return simdutf::convert_utf8_to_utf16_with_errors(
+                            input.data(), input.size(),
+                            reinterpret_cast<char16_t*>(output.data()));
+                    }
+                    else {
+                        return simdutf::convert_utf8_to_utf32_with_errors(
+                            input.data(), input.size(),
+                            reinterpret_cast<char32_t*>(output.data()));
+                    }
+                }
+                else if constexpr (src_enc == encoding::utf16) {
+                    if constexpr (dest_enc == encoding::utf8) {
+                        return simdutf::convert_utf16_to_utf8_with_errors(
+                            reinterpret_cast<const char16_t*>(input.data()),
+                            input.size(), output.data());
+                    }
+                    else {
+                        return simdutf::convert_utf16_to_utf32_with_errors(
+                            reinterpret_cast<const char16_t*>(input.data()),
+                            input.size(),
+                            reinterpret_cast<char32_t*>(output.data()));
+                    }
+                }
+                else if constexpr (src_enc == encoding::utf32) {
+                    if constexpr (dest_enc == encoding::utf8) {
+                        return simdutf::convert_utf32_to_utf8_with_errors(
+                            reinterpret_cast<const char32_t*>(input.data()),
+                            input.size(), output.data());
+                    }
+                    else {
+                        return simdutf::convert_utf32_to_utf16_with_errors(
+                            reinterpret_cast<const char32_t*>(input.data()),
+                            input.size(),
+                            reinterpret_cast<char16_t*>(output.data()));
+                    }
+                }
+            }();
+
+            if (SCN_UNLIKELY(result.error != simdutf::SUCCESS)) {
+                return std::nullopt;
+            }
+            SCN_ENSURE(result.count <= output.size());
+            return result.count;
+        }
+
+        template <typename SourceCharT, typename DestCharT>
         std::size_t transcode_valid(std::basic_string_view<SourceCharT> input,
                                     span<DestCharT> output)
         {
@@ -632,6 +699,7 @@ namespace scn {
         template <typename CharT, typename Cb>
         void for_each_code_point(std::basic_string_view<CharT> input, Cb&& cb)
         {
+            // TODO: Could be optimized by being eager
             auto it = input.begin();
             while (it != input.end()) {
                 auto res = get_next_code_point(
