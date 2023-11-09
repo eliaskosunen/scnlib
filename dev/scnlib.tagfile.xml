@@ -259,8 +259,8 @@
     </member>
   </compound>
   <compound kind="struct">
-    <name>scn::basic_runtime_format_string</name>
-    <filename>structscn_1_1basic__runtime__format__string.html</filename>
+    <name>scn::detail::basic_runtime_format_string</name>
+    <filename>structscn_1_1detail_1_1basic__runtime__format__string.html</filename>
     <templarg></templarg>
   </compound>
   <compound kind="class">
@@ -1005,7 +1005,6 @@
     <class kind="class">scn::basic_scan_context</class>
     <class kind="class">scn::basic_erased_range</class>
     <class kind="struct">scn::basic_erased_subrange</class>
-    <class kind="struct">scn::basic_runtime_format_string</class>
     <class kind="class">scn::basic_format_string</class>
     <class kind="class">scn::basic_istreambuf_view</class>
     <class kind="class">scn::basic_istreambuf_subrange</class>
@@ -1077,10 +1076,10 @@
       <arglist>(Range &amp;&amp;r)</arglist>
     </member>
     <member kind="function">
-      <type>basic_runtime_format_string&lt; char &gt;</type>
-      <name>runtime</name>
+      <type>detail::basic_runtime_format_string&lt; char &gt;</type>
+      <name>runtime_format</name>
       <anchorfile>group__format-string.html</anchorfile>
-      <anchor>ga155459c0f718bad17a94c331794d6537</anchor>
+      <anchor>ga014577dcd48ad3a5658203de948a9579</anchor>
       <arglist>(std::string_view s)</arglist>
     </member>
     <member kind="function">
@@ -1187,6 +1186,7 @@
     <filename>namespacescn_1_1detail.html</filename>
     <class kind="class">scn::detail::basic_input_istreambuf_view</class>
     <class kind="class">scn::detail::compile_parse_context</class>
+    <class kind="struct">scn::detail::basic_runtime_format_string</class>
     <class kind="class">scn::detail::range_streambuf</class>
     <member kind="function">
       <type>auto</type>
@@ -1277,13 +1277,13 @@
     <name>format-string</name>
     <title>Format strings</title>
     <filename>group__format-string.html</filename>
-    <class kind="struct">scn::basic_runtime_format_string</class>
+    <class kind="struct">scn::detail::basic_runtime_format_string</class>
     <class kind="class">scn::basic_format_string</class>
     <member kind="function">
-      <type>basic_runtime_format_string&lt; char &gt;</type>
-      <name>runtime</name>
+      <type>detail::basic_runtime_format_string&lt; char &gt;</type>
+      <name>runtime_format</name>
       <anchorfile>group__format-string.html</anchorfile>
-      <anchor>ga155459c0f718bad17a94c331794d6537</anchor>
+      <anchor>ga014577dcd48ad3a5658203de948a9579</anchor>
       <arglist>(std::string_view s)</arglist>
     </member>
     <docanchor file="group__format-string.html" title="Argument IDs">arg-ids</docanchor>
