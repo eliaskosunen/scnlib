@@ -1,3 +1,5 @@
+// NanoRange WITH MODIFICATION at line 3338
+
 // nanorange.hpp
 //
 // Copyright (c) 2018 Tristan Brindle (tcbrindle at gmail dot com)

@@ -498,15 +498,25 @@ namespace scn {
             SCN_EXPECT(!source.empty());
             SCN_EXPECT(numeric_reader_base::char_to_int(source.front()) < 10);
 
-            for (; source.size() >= 8; source = source.substr(8)) {
+            while (source.size() >= 4) {
+                const auto n = std::min(source.size(), size_t{8});
                 uint64_t word{};
-                std::memcpy(&word, source.data(), 8);
+                std::memcpy(&word, source.data(), n);
 
-                for (char ch : source.substr(0, 8)) {
+#ifndef NDEBUG
+                for (char ch : source.substr(0, n)) {
                     SCN_EXPECT(numeric_reader_base::char_to_int(ch) < 10);
                 }
+#endif
 
                 // See above, do_read_decimal_fast64
+
+                if (n != 8) {
+                    const uint64_t shift = 8 * (8 - n);
+                    word <<= shift;
+                    const uint64_t mask = (~0ull) << shift;
+                    word = (mask & word) | (~mask & 0x3030303030303030ull);
+                }
 
                 constexpr uint64_t mask = 0x000000FF000000FFull;
                 constexpr uint64_t mul1 = 100 + (1000000ull << 32);
@@ -518,8 +528,9 @@ namespace scn {
                     (((word & mask) * mul1) + (((word >> 16) & mask) * mul2)) >>
                     32;
 
-                value *= power_of_10(8);
+                value *= power_of_10(static_cast<int>(n));
                 value += word;
+                source = source.substr(n);
             }
 
             for (auto ch : source) {
