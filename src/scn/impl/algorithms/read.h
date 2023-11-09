@@ -24,6 +24,7 @@
 #include <scn/impl/locale.h>
 #include <scn/impl/unicode/unicode.h>
 #include <scn/impl/unicode/unicode_whitespace.h>
+#include <scn/impl/util/function_ref.h>
 #include <scn/util/span.h>
 
 #include <algorithm>
@@ -33,7 +34,6 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-
         template <typename Range>
         auto read_code_point_into(Range&& range) -> iterator_value_result<
             simple_borrowed_iterator_t<Range>,
@@ -127,9 +127,10 @@ namespace scn {
             return it;
         }
 
-        template <typename Range, typename Predicate>
-        simple_borrowed_iterator_t<Range> read_until_code_unit(Range&& range,
-                                                               Predicate pred)
+        template <typename Range>
+        simple_borrowed_iterator_t<Range> read_until_code_unit(
+            Range&& range,
+            function_ref<bool(detail::char_t<Range>)> pred)
         {
             if constexpr (ranges::contiguous_range<Range>) {
                 return ranges::find_if(range, pred);
@@ -157,17 +158,18 @@ namespace scn {
             }
         }
 
-        template <typename Range, typename Predicate>
-        simple_borrowed_iterator_t<Range> read_while_code_unit(Range&& range,
-                                                               Predicate pred)
+        template <typename Range>
+        simple_borrowed_iterator_t<Range> read_while_code_unit(
+            Range&& range,
+            function_ref<bool(detail::char_t<Range>)> pred)
         {
             return read_until_code_unit(SCN_FWD(range), std::not_fn(pred));
         }
 
-        template <typename Range, typename Predicate>
+        template <typename Range>
         scan_expected<simple_borrowed_iterator_t<Range>> read_until1_code_unit(
             Range&& range,
-            Predicate pred)
+            function_ref<bool(detail::char_t<Range>)> pred)
         {
             auto it = read_until_code_unit(range, pred);
             if (it == ranges::begin(range)) {
@@ -178,10 +180,10 @@ namespace scn {
             return it;
         }
 
-        template <typename Range, typename Predicate>
+        template <typename Range>
         scan_expected<simple_borrowed_iterator_t<Range>> read_while1_code_unit(
             Range&& range,
-            Predicate pred)
+            function_ref<bool(detail::char_t<Range>)> pred)
         {
             auto it = read_while_code_unit(range, pred);
             if (it == ranges::begin(range)) {
@@ -200,9 +202,10 @@ namespace scn {
             return ranges::search(SCN_FWD(range), SCN_FWD(needle)).begin();
         }
 
-        template <typename Range, typename Predicate>
-        simple_borrowed_iterator_t<Range> read_until_code_point(Range&& range,
-                                                                Predicate pred)
+        template <typename Range>
+        simple_borrowed_iterator_t<Range> read_until_code_point(
+            Range&& range,
+            function_ref<bool(char32_t)> pred)
         {
             if constexpr (ranges::contiguous_range<Range> &&
                           ranges::sized_range<Range>) {
@@ -271,12 +274,12 @@ namespace scn {
             }
         }
 
-        template <typename Range, typename Predicate>
-        simple_borrowed_iterator_t<Range> read_while_code_point(Range&& range,
-                                                                Predicate pred)
+        template <typename Range>
+        simple_borrowed_iterator_t<Range> read_while_code_point(
+            Range&& range,
+            function_ref<bool(char32_t)> pred)
         {
-            return read_until_code_point(
-                SCN_FWD(range), [&](char32_t cp) { return !pred(cp); });
+            return read_until_code_point(SCN_FWD(range), std::not_fn(pred));
         }
 
         template <typename Range>
@@ -548,12 +551,13 @@ namespace scn {
                                              std::ctype_base::space);
         }
 
-        template <typename Range, typename Predicate>
+        template <typename Range>
         simple_borrowed_iterator_t<Range>
-        read_until_localized_mask_or_code_point(Range&& range,
-                                                detail::locale_ref loc,
-                                                std::ctype_base::mask mask,
-                                                Predicate&& pred)
+        read_until_localized_mask_or_code_point(
+            Range&& range,
+            detail::locale_ref loc,
+            std::ctype_base::mask mask,
+            function_ref<bool(char32_t)> pred)
         {
             const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
 
@@ -563,12 +567,13 @@ namespace scn {
             });
         }
 
-        template <typename Range, typename Predicate>
+        template <typename Range>
         simple_borrowed_iterator_t<Range>
-        read_while_localized_mask_or_code_point(Range&& range,
-                                                detail::locale_ref loc,
-                                                std::ctype_base::mask mask,
-                                                Predicate&& pred)
+        read_while_localized_mask_or_code_point(
+            Range&& range,
+            detail::locale_ref loc,
+            std::ctype_base::mask mask,
+            function_ref<bool(char32_t)> pred)
         {
             const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
 

@@ -53,6 +53,7 @@ add_executable(scn_impl_tests
         impl_tests/bits_test.cpp
         impl_tests/contiguous_range_factory_test.cpp
         impl_tests/find_fast_test.cpp
+        impl_tests/function_ref_test.cpp
         impl_tests/read_algorithms_test.cpp
         impl_tests/text_width_test.cpp
         impl_tests/transcode_test.cpp

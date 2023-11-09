@@ -37,6 +37,10 @@ namespace scn {
         template <typename T>
         using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
+        template <typename T, typename Self>
+        inline constexpr bool is_not_self =
+            !std::is_same_v<remove_cvref_t<T>, Self>;
+
         template <typename T, template <typename...> class Templ>
         struct is_specialization_of_impl : std::false_type {};
         template <typename... T, template <typename...> class Templ>

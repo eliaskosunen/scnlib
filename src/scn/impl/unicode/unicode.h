@@ -19,6 +19,7 @@
 
 #include <scn/detail/unicode.h>
 #include <scn/impl/algorithms/common.h>
+#include <scn/impl/util/function_ref.h>
 #include <scn/util/expected.h>
 #include <scn/util/meta.h>
 #include <scn/util/span.h>
@@ -696,8 +697,9 @@ namespace scn {
             }
         }
 
-        template <typename CharT, typename Cb>
-        void for_each_code_point(std::basic_string_view<CharT> input, Cb&& cb)
+        template <typename CharT>
+        void for_each_code_point(std::basic_string_view<CharT> input,
+                                 function_ref<void(char32_t)> cb)
         {
             // TODO: Could be optimized by being eager
             auto it = input.begin();
@@ -710,9 +712,9 @@ namespace scn {
             }
         }
 
-        template <typename CharT, typename Cb>
+        template <typename CharT>
         void for_each_code_point_valid(std::basic_string_view<CharT> input,
-                                       Cb&& cb)
+                                       function_ref<void(char32_t)> cb)
         {
             auto it = input.begin();
             while (it != input.end()) {
