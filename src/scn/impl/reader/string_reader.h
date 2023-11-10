@@ -469,11 +469,12 @@ namespace scn {
                     return {};
                 }
 
-                std::pair<std::ctype_base::mask, bool> map_localized_mask()
-                    const
+                std::pair<std::pair<std::ctype_base::mask, bool>,
+                          std::pair<std::ctype_base::mask, bool>>
+                map_localized_mask() const
                 {
-                    std::ctype_base::mask mask{};
-                    bool is_exhaustive = true;
+                    std::ctype_base::mask mask{}, inverted_mask{};
+                    bool is_exhaustive{true}, is_inverted_exhaustive{true};
 
                     if ((specs.charset_specifiers &
                          detail::character_set_specifier::space_literal) !=
@@ -532,9 +533,32 @@ namespace scn {
                         mask |= std::ctype_base::cntrl;
                     }
 
-                    // TODO: inverted flags
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::inverted_letters) !=
+                        detail::character_set_specifier::none) {
+                        inverted_mask |= std::ctype_base::alpha;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::
+                             inverted_alnum_underscore) !=
+                        detail::character_set_specifier::none) {
+                        inverted_mask |= std::ctype_base::alnum;
+                        is_inverted_exhaustive = false;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::
+                             inverted_whitespace) !=
+                        detail::character_set_specifier::none) {
+                        inverted_mask |= std::ctype_base::space;
+                    }
+                    if ((specs.charset_specifiers &
+                         detail::character_set_specifier::inverted_numbers) !=
+                        detail::character_set_specifier::none) {
+                        inverted_mask |= std::ctype_base::digit;
+                    }
 
-                    return {mask, is_exhaustive};
+                    return {{mask, is_exhaustive},
+                            {inverted_mask, is_inverted_exhaustive}};
                 }
 #endif  // !SCN_DISABLE_LOCALE
 
@@ -648,16 +672,18 @@ namespace scn {
 
                 read_source_callback cb_wrapper{helper, loc};
 
-                const auto [mask, is_mask_exhaustive] =
-                    helper.map_localized_mask();
+                const auto [m1, m2] = helper.map_localized_mask();
+                const auto [mask, is_mask_exhaustive] = m1;
+                const auto [inverted_mask, is_inverted_mask_exhaustive] = m2;
                 const bool has_any_ascii_literals =
                     ranges::any_of(helper.specs.charset_literals,
                                    [](auto b) SCN_NOEXCEPT { return b != 0; });
                 const bool has_any_nonascii_literals =
                     !helper.nonascii.extra_ranges.empty();
 
-                if (is_mask_exhaustive && !has_any_ascii_literals &&
-                    !has_any_nonascii_literals) {
+                if (is_mask_exhaustive && is_inverted_mask_exhaustive &&
+                    inverted_mask == std::ctype_base::mask{} &&
+                    !has_any_ascii_literals && !has_any_nonascii_literals) {
                     if (is_inverted) {
                         auto it = read_until_localized_mask(range, loc, mask);
                         return check_nonempty(it, range);
@@ -670,7 +696,9 @@ namespace scn {
                     return cb_wrapper.on_localized(cp);
                 };
 
-                if (is_mask_exhaustive && mask == std::ctype_base::mask{}) {
+                if (is_mask_exhaustive && is_inverted_mask_exhaustive &&
+                    mask == std::ctype_base::mask{} &&
+                    inverted_mask == std::ctype_base::mask{}) {
                     if (is_inverted) {
                         auto it = read_until_code_point(range, cb);
                         return check_nonempty(it, range);
@@ -680,12 +708,14 @@ namespace scn {
                 }
 
                 if (is_inverted) {
-                    auto it = read_until_localized_mask_or_code_point(
-                        range, loc, mask, cb);
+                    auto it =
+                        read_until_localized_mask_or_inverted_mask_or_code_point(
+                            range, loc, mask, inverted_mask, cb);
                     return check_nonempty(it, range);
                 }
-                auto it = read_while_localized_mask_or_code_point(range, loc,
-                                                                  mask, cb);
+                auto it =
+                    read_while_localized_mask_or_inverted_mask_or_code_point(
+                        range, loc, mask, inverted_mask, cb);
                 return check_nonempty(it, range);
             }
 #endif  // !SCN_DISABLE_LOCALE

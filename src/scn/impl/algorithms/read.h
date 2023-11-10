@@ -582,6 +582,42 @@ namespace scn {
                 return pred(cp) || ctype_facet.is(mask, ch);
             });
         }
+
+        template <typename Range>
+        simple_borrowed_iterator_t<Range>
+        read_until_localized_mask_or_inverted_mask_or_code_point(
+            Range&& range,
+            detail::locale_ref loc,
+            std::ctype_base::mask mask,
+            std::ctype_base::mask inverted_mask,
+            function_ref<bool(char32_t)> pred)
+        {
+            const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
+
+            return read_until_code_point(SCN_FWD(range), [&](char32_t cp) {
+                auto ch = *encode_code_point_as_wide_character(cp, false);
+                return pred(cp) || ctype_facet.is(mask, ch) ||
+                       !ctype_facet.is(inverted_mask, ch);
+            });
+        }
+
+        template <typename Range>
+        simple_borrowed_iterator_t<Range>
+        read_while_localized_mask_or_inverted_mask_or_code_point(
+            Range&& range,
+            detail::locale_ref loc,
+            std::ctype_base::mask mask,
+            std::ctype_base::mask inverted_mask,
+            function_ref<bool(char32_t)> pred)
+        {
+            const auto& ctype_facet = get_facet<std::ctype<wchar_t>>(loc);
+
+            return read_while_code_point(SCN_FWD(range), [&](char32_t cp) {
+                auto ch = *encode_code_point_as_wide_character(cp, false);
+                return pred(cp) || ctype_facet.is(mask, ch) ||
+                       !ctype_facet.is(inverted_mask, ch);
+            });
+        }
 #endif  // !SCN_DISABLE_LOCALE
 
         template <typename Range, typename Iterator>
