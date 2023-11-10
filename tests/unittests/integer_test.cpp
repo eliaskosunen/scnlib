@@ -227,6 +227,7 @@ TEST(ScanIntTest, Empty)
     EXPECT_EQ(result.error().code(), scn::scan_error::end_of_range);
 }
 
+#if !SCN_IS_BIG_ENDIAN
 TEST(ScanIntExhaustiveValidTest, Simple)
 {
     EXPECT_EQ(scn::scan_int_exhaustive_valid<int>("42"), 42);
@@ -240,3 +241,4 @@ TEST(ScanIntExhaustiveValidTest, Large)
     EXPECT_EQ(scn::scan_int_exhaustive_valid<long long>("999999999999"),
               999999999999);
 }
+#endif

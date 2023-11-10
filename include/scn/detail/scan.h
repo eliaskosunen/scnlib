@@ -354,6 +354,11 @@ namespace scn {
                            std::tuple{value}};
     }
 
+    namespace detail {
+        template <bool Val, typename T>
+        inline constexpr bool dependent_bool = Val;
+    }
+
     /**
      * Very fast integer reading.
      *
@@ -375,7 +380,7 @@ namespace scn {
     SCN_NODISCARD auto scan_int_exhaustive_valid(std::string_view source) -> T
     {
         static_assert(
-            !SCN_IS_BIG_ENDIAN,
+            detail::dependent_bool<!SCN_IS_BIG_ENDIAN, T>,
             "scan_int_exhaustive_valid requires a little endian environment");
         return detail::scan_int_exhaustive_valid_impl<T>(source);
     }

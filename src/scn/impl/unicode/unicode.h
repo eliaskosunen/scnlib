@@ -26,6 +26,7 @@
 #include <scn/util/string_view.h>
 
 #include <cstdint>
+#include <optional>
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
