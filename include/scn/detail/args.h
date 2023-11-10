@@ -321,21 +321,20 @@ namespace scn {
         {
             return 0;
         }
-        template <typename Context, typename T, typename... Others>
+        template <typename CharT, typename T, typename... Others>
         constexpr size_t encode_types_impl()
         {
             return static_cast<unsigned>(
-                       mapped_type_constant<
-                           T, typename Context::char_type>::value) |
-                   (encode_types_impl<Context, Others...>() << packed_arg_bits);
+                       mapped_type_constant<T, CharT>::value) |
+                   (encode_types_impl<CharT, Others...>() << packed_arg_bits);
         }
 
-        template <typename Context, typename... Ts>
+        template <typename CharT, typename... Ts>
         constexpr size_t encode_types()
         {
             static_assert(sizeof...(Ts) < (1 << packed_arg_bits));
             return sizeof...(Ts) |
-                   (encode_types_impl<Context, Ts...>() << packed_arg_bits);
+                   (encode_types_impl<CharT, Ts...>() << packed_arg_bits);
         }
 
         template <typename Arg>
@@ -558,6 +557,8 @@ namespace scn {
         : public detail::scan_arg_store_base<Context, sizeof...(Args)> {
         using base = detail::scan_arg_store_base<Context, sizeof...(Args)>;
 
+        using char_type = typename Context::char_type;
+
     public:
         std::tuple<Args...>& args()
         {
@@ -582,11 +583,10 @@ namespace scn {
         static constexpr typename base::value_array_type make_data_array(
             A&... args)
         {
-            return {detail::make_arg<base::is_packed, Context,
-                                     detail::mapped_type_constant<
-                                         detail::remove_cvref_t<A>,
-                                         typename Context::char_type>::value>(
-                args)...};
+            return {detail::make_arg<
+                base::is_packed, Context,
+                detail::mapped_type_constant<detail::remove_cvref_t<A>,
+                                             char_type>::value>(args)...};
         }
 
         constexpr detail::arg_value& get_value_at(std::size_t i)
@@ -605,7 +605,7 @@ namespace scn {
         friend class basic_scan_args<Context>;
 
         static constexpr size_t desc =
-            base::is_packed ? detail::encode_types<Context, Args...>()
+            base::is_packed ? detail::encode_types<char_type, Args...>()
                             : detail::is_unpacked_bit | base::num_args;
     };
 
