@@ -52,14 +52,24 @@ TEST_P(ErasedRangeTest, Test)
     }
     EXPECT_EQ(dest, "abc");
 
-    // FIXME
-#if 0
     dest.clear();
-    for (const char& ch : scn::ranges::reverse(range())) {
+    for (auto&& ch : scn::ranges::views::take(range(), 2)) {
         dest.push_back(ch);
     }
-    EXPECT_EQ(dest, "cba");
-#endif
+    EXPECT_EQ(dest, "ab");
+
+    dest.clear();
+    for (auto&& ch : scn::ranges::views::drop(range(), 1)) {
+        dest.push_back(ch);
+    }
+    EXPECT_EQ(dest, "bc");
+
+    dest.clear();
+    for (auto&& ch : scn::ranges::views::transform(
+             range(), [](char ch) { return ch - ('a' - 'A'); })) {
+        dest.push_back(ch);
+    }
+    EXPECT_EQ(dest, "ABC");
 }
 
 TEST_P(ErasedRangeTest, Empty)
@@ -96,18 +106,16 @@ INSTANTIATE_TEST_SUITE_P(Deque,
                          testing::Values(std::make_shared<scn::erased_range>(
                              std::deque<char>{'a', 'b', 'c'})));
 
-// FIXME
-#if 0
 namespace {
     std::istringstream ss{"abc"};
+    scn::istreambuf_view ssv{ss};
 }  // namespace
 
 // static_assert(scn::ranges::viewable_range<scn::istreambuf_view&>);
 static_assert(scn::ranges::viewable_range<scn::istreambuf_view>);
 static_assert(scn::ranges::viewable_range<scn::istreambuf_subrange&>);
 
-INSTANTIATE_TEST_SUITE_P(StringStream,
-                         ErasedRangeTest,
-                         testing::Values(std::make_shared<scn::erased_range>(
-                             scn::istreambuf_view{ss})));
-#endif
+INSTANTIATE_TEST_SUITE_P(
+    StringStream,
+    ErasedRangeTest,
+    testing::Values(std::make_shared<scn::erased_range>(ssv)));

@@ -228,24 +228,41 @@ namespace scn {
 
             string_type* _get_string()
             {
+// Clang ICEs with assume_aligned builtin
+#if SCN_CLANG && !SCN_HAS_STD_ASSUME_ALIGNED
+                return reinterpret_cast<string_type*>(m_memory);
+#else
                 return reinterpret_cast<string_type*>(
                     SCN_ASSUME_ALIGNED(m_memory, alignof(string_type)));
+#endif
             }
             const string_type* _get_string() const
             {
+#if SCN_CLANG && !SCN_HAS_STD_ASSUME_ALIGNED
+                return reinterpret_cast<const string_type*>(m_memory);
+#else
                 return reinterpret_cast<const string_type*>(
                     SCN_ASSUME_ALIGNED(m_memory, alignof(string_type)));
+#endif
             }
 
             string_view_type* _get_string_view()
             {
+#if SCN_CLANG && !SCN_HAS_STD_ASSUME_ALIGNED
+                return reinterpret_cast<string_view_type*>(m_memory);
+#else
                 return reinterpret_cast<string_view_type*>(
                     SCN_ASSUME_ALIGNED(m_memory, alignof(string_view_type)));
+#endif
             }
             const string_view_type* _get_string_view() const
             {
+#if SCN_CLANG && !SCN_HAS_STD_ASSUME_ALIGNED
+                return reinterpret_cast<const string_view_type*>(m_memory);
+#else
                 return reinterpret_cast<const string_view_type*>(
                     SCN_ASSUME_ALIGNED(m_memory, alignof(string_view_type)));
+#endif
             }
 
             void _copy(const contiguous_range_factory& other)

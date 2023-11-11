@@ -23,6 +23,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -82,7 +83,7 @@ namespace scn {
             void increment_until_index(std::ptrdiff_t i)
             {
                 if (this->m_current_index < 0) {
-                    prime_first_element();
+                    (void)prime_first_element();
                 }
                 if (i > this->m_current_index) {
                     (void)increment_multiple_and_check_end(
@@ -208,8 +209,7 @@ namespace scn {
         template <typename Range>
         explicit basic_erased_range(Range&& range)
         {
-            using erased_impl_type = detail::basic_erased_range_impl<
-                ranges_polyfill::views::all_t<Range&&>>;
+            using erased_impl_type = detail::basic_erased_range_impl<Range>;
             if constexpr (sizeof(erased_impl_type) > small_buffer_size) {
                 m_ptr = new erased_impl_type(SCN_FWD(range));
                 m_destroy = [](impl_base* ptr) {
