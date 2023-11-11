@@ -451,17 +451,23 @@ namespace scn {
                 detail::check_int_type_specs(specs, eh);
             }
 
+            template <typename>
+            struct debug;
+
             template <typename Range, typename T>
             scan_expected<simple_borrowed_iterator_t<Range>>
             read_default(Range&& range, T& value, detail::locale_ref loc)
             {
+                using range_nocvref_t = detail::remove_cvref_t<Range>;
                 SCN_UNUSED(loc);
 
                 integer_reader<CharT> rd{detail::tag_type<T>{}};
-                return read_impl(range, rd,
-                                 &integer_reader<CharT>::template read_source<
-                                     detail::remove_cvref_t<Range>>,
-                                 value, loc);
+                return read_impl<range_nocvref_t>(
+                    range, rd,
+                    [](integer_reader<CharT>& r, auto&&... args) {
+                        return r.read_source(SCN_FWD(args)...);
+                    },
+                    value, loc);
             }
 
             template <typename Range, typename T>
@@ -471,40 +477,45 @@ namespace scn {
                 T& value,
                 detail::locale_ref loc)
             {
+                using range_nocvref_t = detail::remove_cvref_t<Range>;
                 auto rd = get_reader_from_specs(specs);
 
 #if !SCN_DISABLE_LOCALE
                 if (specs.localized) {
-                    return read_impl(
+                    return read_impl<range_nocvref_t>(
                         range, rd,
-                        &integer_reader<CharT>::template read_source_localized<
-                            detail::remove_cvref_t<Range>>,
+                        [](integer_reader<CharT>& r, auto&&... args) {
+                            return r.read_source_localized(SCN_FWD(args)...);
+                        },
                         value, loc);
                 }
 #endif
 
-                return read_impl(range, rd,
-                                 &integer_reader<CharT>::template read_source<
-                                     detail::remove_cvref_t<Range>>,
-                                 value, loc);
+                return read_impl<range_nocvref_t>(
+                    range, rd,
+                    [](integer_reader<CharT>& r, auto&&... args) {
+                        return r.read_source(SCN_FWD(args)...);
+                    },
+                    value, loc);
             }
 
         private:
             template <typename Range>
             using read_source_callback_type =
-                scan_expected<ranges::iterator_t<Range>> (
-                    integer_reader<CharT>::*)(Range, bool, detail::locale_ref);
+                scan_expected<ranges::iterator_t<Range>>(integer_reader<CharT>&,
+                                                         Range,
+                                                         bool,
+                                                         detail::locale_ref);
 
             template <typename Range, typename T>
             scan_expected<ranges::iterator_t<Range>> read_impl(
                 Range range,
                 integer_reader<CharT>& rd,
-                read_source_callback_type<Range> read_source_cb,
+                function_ref<read_source_callback_type<Range>> read_source_cb,
                 T& value,
                 detail::locale_ref loc = {})
             {
-                if (auto r = std::invoke(read_source_cb, rd, range,
-                                         std::is_signed_v<T>, loc);
+                if (auto r = read_source_cb(rd, range, value, loc);
                     SCN_UNLIKELY(!r)) {
                     return unexpected(r.error());
                 }

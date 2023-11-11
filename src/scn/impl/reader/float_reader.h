@@ -605,12 +605,15 @@ namespace scn {
             read_default(Range&& range, T& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
+                using range_nocvref_t = detail::remove_cvref_t<Range>;
 
                 float_reader<CharT> rd{};
-                return read_impl(range, rd,
-                                 &float_reader<CharT>::template read_source<
-                                     detail::remove_cvref_t<Range>>,
-                                 value);
+                return read_impl<range_nocvref_t>(
+                    range, rd,
+                    [](float_reader<CharT>& r, auto&&... args) {
+                        return r.read_source(SCN_FWD(args)...);
+                    },
+                    value);
             }
 
             template <typename Range, typename T>
@@ -620,35 +623,40 @@ namespace scn {
                 T& value,
                 detail::locale_ref loc)
             {
+                using range_nocvref_t = detail::remove_cvref_t<Range>;
                 float_reader<CharT> rd{get_options(specs)};
 
 #if !SCN_DISABLE_LOCALE
                 if (specs.localized) {
-                    return read_impl(
+                    return read_impl<range_nocvref_t>(
                         range, rd,
-                        &float_reader<CharT>::template read_source_localized<
-                            detail::remove_cvref_t<Range>>,
+                        [](float_reader<CharT>& r, auto&&... args) {
+                            return r.read_source_localized(SCN_FWD(args)...);
+                        },
                         value, loc);
                 }
 #endif
 
-                return read_impl(range, rd,
-                                 &float_reader<CharT>::template read_source<
-                                     detail::remove_cvref_t<Range>>,
-                                 value);
+                return read_impl<range_nocvref_t>(
+                    range, rd,
+                    [](float_reader<CharT>& r, auto&&... args) {
+                        return r.read_source(SCN_FWD(args)...);
+                    },
+                    value);
             }
 
         private:
             template <typename Range>
             using read_source_callback_type =
-                scan_expected<ranges::iterator_t<Range>> (
-                    float_reader<CharT>::*)(Range, detail::locale_ref);
+                scan_expected<ranges::iterator_t<Range>>(float_reader<CharT>&,
+                                                         Range,
+                                                         detail::locale_ref);
 
             template <typename Range, typename T>
             scan_expected<ranges::iterator_t<Range>> read_impl(
                 Range range,
                 float_reader<CharT>& rd,
-                read_source_callback_type<Range> read_source_cb,
+                function_ref<read_source_callback_type<Range>> read_source_cb,
                 T& value,
                 detail::locale_ref loc = {})
             {
