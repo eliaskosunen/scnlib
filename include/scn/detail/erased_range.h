@@ -21,8 +21,8 @@
 #include <scn/util/meta.h>
 #include <scn/util/span.h>
 
-#include <memory>
 #include <array>
+#include <memory>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -48,113 +48,146 @@ namespace scn {
             erased_range_impl_base& operator=(erased_range_impl_base&&) =
                 delete;
 
-            std::ptrdiff_t get_current_index() const
+            virtual void reset_current_to_begin() = 0;
+
+            SCN_NODISCARD std::ptrdiff_t get_current_index() const
             {
-                return do_get_current_index();
+                return m_current_index;
             }
 
-            void increment_current(std::ptrdiff_t n = 1)
+            SCN_NODISCARD std::ptrdiff_t get_end_index() const
             {
-                SCN_EXPECT(!is_current_at_end());
-                return do_increment_current(n);
-            }
-            void reset_current_to_begin()
-            {
-                return do_reset_current_to_begin();
-            }
-
-            bool is_current_at_end() const
-            {
-                return is_index_at_end(get_current_index());
-            }
-            bool is_index_at_end(std::ptrdiff_t i) const
-            {
-                return do_is_index_at_end(i);
+                return m_end_index;
             }
 
         protected:
-            virtual std::ptrdiff_t do_get_current_index() const = 0;
-
-            virtual void do_increment_current(std::ptrdiff_t n) = 0;
-            virtual void do_reset_current_to_begin() = 0;
-
-            SCN_NODISCARD virtual bool do_is_index_at_end(
-                std::ptrdiff_t) const = 0;
+            mutable std::ptrdiff_t m_current_index{-1}, m_end_index{-1};
         };
 
         template <typename CharT>
         class basic_erased_range_impl_base : public erased_range_impl_base {
         public:
-            CharT get_current()
+            SCN_NODISCARD virtual std::optional<CharT> prime_first_element()
+                const = 0;
+            SCN_NODISCARD virtual std::optional<CharT>
+            increment_single_and_check_end() = 0;
+            SCN_NODISCARD virtual std::optional<CharT>
+            increment_multiple_and_check_end(std::ptrdiff_t n) = 0;
+
+            SCN_NODISCARD std::optional<CharT> get_cached_current() const
             {
-                SCN_EXPECT(!is_current_at_end());
-                return do_get_current();
+                return m_cached_current;
+            }
+
+            void increment_until_index(std::ptrdiff_t i)
+            {
+                if (this->m_current_index < 0) {
+                    prime_first_element();
+                }
+                if (i > this->m_current_index) {
+                    (void)increment_multiple_and_check_end(
+                        i - this->m_current_index);
+                }
+            }
+
+            CharT deref_at_index(std::ptrdiff_t i)
+            {
+                if (i == this->m_current_index) {
+                    SCN_EXPECT(m_cached_current);
+                    return *m_cached_current;
+                }
+
+                if (i < this->m_current_index) {
+                    this->reset_current_to_begin();
+                }
+                increment_until_index(i);
+                SCN_EXPECT(m_cached_current);
+                return *m_cached_current;
             }
 
         protected:
-            virtual CharT do_get_current() = 0;
+            mutable std::optional<CharT> m_cached_current{std::nullopt};
         };
 
-        template <typename Range, typename CharT>
-        class basic_erased_range_impl
-            : public basic_erased_range_impl_base<CharT> {
-            using base = basic_erased_range_impl_base<CharT>;
+        template <typename Range>
+        class basic_erased_range_impl : public basic_erased_range_impl_base<
+                                            ranges::range_value_t<Range>> {
+            using base =
+                basic_erased_range_impl_base<ranges::range_value_t<Range>>;
+
+            static_assert(ranges::forward_range<Range>);
 
         public:
-            using char_type = CharT;
             using range_type = Range;
-            using range_nocvref_type = remove_cvref_t<range_type>;
+            using char_type = ranges::range_value_t<Range>;
             using iterator = ranges::iterator_t<range_type>;
             using sentinel = ranges::sentinel_t<range_type>;
 
-            basic_erased_range_impl(Range r)
+            template <typename R>
+            basic_erased_range_impl(R&& r)
                 : m_range(SCN_FWD(r)), m_current(ranges::begin(m_range))
             {
             }
 
-        private:
-            std::ptrdiff_t do_get_current_index() const override
-            {
-                return m_current_index;
-            }
-
-            CharT do_get_current() override
-            {
-                return *m_current;
-            }
-            void do_increment_current(std::ptrdiff_t n) override
-            {
-                SCN_EXPECT(n >= 0);
-                std::advance(m_current, n);
-                m_current_index += n;
-            }
-            void do_reset_current_to_begin() override
+            void reset_current_to_begin() override
             {
                 m_current = ranges::begin(m_range);
-                m_current_index = 0;
+                this->m_current_index = -1;
+                this->m_cached_current.reset();
             }
 
-            SCN_NODISCARD bool do_is_index_at_end(
-                std::ptrdiff_t i) const override
+            SCN_NODISCARD std::optional<char_type> prime_first_element()
+                const override
             {
-                SCN_EXPECT(i >= 0);
-                if (i < m_current_index) {
-                    return false;
+                SCN_EXPECT(this->m_current_index < 0);
+                SCN_EXPECT(m_current == ranges::begin(m_range));
+                SCN_EXPECT(!this->m_cached_current);
+
+                this->m_current_index = 0;
+                if (m_current != ranges::end(m_range)) {
+                    this->m_cached_current = *m_current;
                 }
-                return m_current == ranges::end(m_range);
+                else {
+                    this->m_end_index = 0;
+                }
+                return this->m_cached_current;
             }
 
-            ranges_polyfill::views::all_t<Range> m_range;
-            iterator m_current;
-            std::ptrdiff_t m_current_index{0};
-        };
+            SCN_NODISCARD std::optional<char_type>
+            increment_single_and_check_end() override
+            {
+                SCN_EXPECT(m_current != ranges::end(m_range));
+                ++m_current;
+                ++this->m_current_index;
+                return _deref_current();
+            }
 
-        template <typename CharT, typename Range>
-        auto make_unique_erased_range_impl(Range&& r)
-        {
-            return std::make_unique<basic_erased_range_impl<Range, CharT>>(
-                SCN_FWD(r));
-        }
+            SCN_NODISCARD std::optional<char_type>
+            increment_multiple_and_check_end(std::ptrdiff_t n) override
+            {
+                SCN_EXPECT(n >= 0);
+                SCN_EXPECT(m_current != ranges::end(m_range));
+                ranges::advance(m_current, n);
+                this->m_current_index += n;
+                return _deref_current();
+            }
+
+        private:
+            SCN_NODISCARD std::optional<char_type> _deref_current() const
+            {
+                if (m_current == ranges::end(m_range)) {
+                    this->m_cached_current = std::nullopt;
+                    this->m_end_index = this->m_current_index;
+                    return std::nullopt;
+                }
+
+                this->m_cached_current = *m_current;
+                return this->m_cached_current;
+            }
+
+            Range m_range;
+            iterator m_current;
+        };
     }  // namespace detail
 
     /**
@@ -175,23 +208,21 @@ namespace scn {
         template <typename Range>
         explicit basic_erased_range(Range&& range)
         {
-            if constexpr (sizeof(
-                              detail::basic_erased_range_impl<Range, CharT>) >
-                          small_buffer_size) {
-                m_ptr = new detail::basic_erased_range_impl<Range, CharT>(
-                    SCN_FWD(range));
+            using erased_impl_type = detail::basic_erased_range_impl<
+                ranges_polyfill::views::all_t<Range&&>>;
+            if constexpr (sizeof(erased_impl_type) > small_buffer_size) {
+                m_ptr = new erased_impl_type(SCN_FWD(range));
                 m_destroy = [](impl_base* ptr) {
                     SCN_EXPECT(ptr);
                     delete ptr;
                 };
             }
             else {
-                using type = detail::basic_erased_range_impl<Range, CharT>;
                 m_ptr = ::new (static_cast<void*>(m_memory.data()))
-                    type(SCN_FWD(range));
+                    erased_impl_type(SCN_FWD(range));
                 m_destroy = [](impl_base* ptr) {
                     SCN_EXPECT(ptr);
-                    static_cast<type*>(ptr)->~type();
+                    static_cast<erased_impl_type*>(ptr)->~erased_impl_type();
                 };
             }
         }
@@ -231,6 +262,9 @@ namespace scn {
         destroy_t m_destroy;
     };
 
+    template <typename R>
+    basic_erased_range(R) -> basic_erased_range<detail::char_t<R>>;
+
     template <typename CharT>
     class basic_erased_range<CharT>::iterator {
     public:
@@ -252,10 +286,8 @@ namespace scn {
         iterator& operator++()
         {
             SCN_EXPECT(m_impl);
-
             ++m_current;
-            advance_until_index(m_current);
-
+            m_impl->increment_until_index(m_current);
             return *this;
         }
 
@@ -269,9 +301,7 @@ namespace scn {
         CharT operator*() const
         {
             SCN_EXPECT(m_impl);
-
-            advance_until_index(m_current);
-            return m_impl->get_current();
+            return m_impl->deref_at_index(m_current);
         }
 
         friend bool operator==(const iterator& x,
@@ -340,35 +370,9 @@ namespace scn {
 
     private:
         iterator(detail::basic_erased_range_impl_base<char_type>* impl)
-            SCN_NOEXCEPT : m_impl(impl)
+            : m_impl(impl)
         {
-            if (m_impl) {
-                impl->reset_current_to_begin();
-            }
-        }
-
-        iterator(detail::basic_erased_range_impl_base<char_type>* impl,
-                 std::ptrdiff_t current) SCN_NOEXCEPT : m_impl(impl),
-                                                        m_current(current)
-        {
-            if (m_impl) {
-                advance_until_index(m_current);
-            }
-        }
-
-        void advance_until_index(std::ptrdiff_t i) const
-        {
-            if (i == m_impl->get_current_index()) {
-                return;
-            }
-
-            if (i > m_impl->get_current_index()) {
-                return m_impl->increment_current(i -
-                                                 m_impl->get_current_index());
-            }
-
-            m_impl->reset_current_to_begin();
-            return m_impl->increment_current(i);
+            SCN_EXPECT(impl);
         }
 
         bool _is_end() const
@@ -376,7 +380,10 @@ namespace scn {
             if (m_impl == nullptr) {
                 return true;
             }
-            return m_impl->is_index_at_end(m_current);
+            if (m_impl->get_current_index() < 0) {
+                (void)m_impl->prime_first_element();
+            }
+            return m_current == m_impl->get_end_index();
         }
 
         detail::basic_erased_range_impl_base<char_type>* m_impl{nullptr};
