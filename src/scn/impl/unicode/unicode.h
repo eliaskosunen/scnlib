@@ -474,10 +474,8 @@ namespace scn {
                 return 0;
             }
 
-            constexpr auto src_enc = get_encoding<SourceCharT>();
-            constexpr auto dest_enc = get_encoding<DestCharT>();
-
-            if constexpr (src_enc == dest_enc) {
+            if constexpr (get_encoding<SourceCharT>() ==
+                          get_encoding<DestCharT>()) {
                 SCN_EXPECT(output.size() >= input.size());
                 std::memcpy(output.data(), input.data(),
                             input.size() * sizeof(SourceCharT));
@@ -485,6 +483,9 @@ namespace scn {
             }
 
             const auto result = [&]() {
+                constexpr auto src_enc = get_encoding<SourceCharT>();
+                constexpr auto dest_enc = get_encoding<DestCharT>();
+
                 if constexpr (src_enc == encoding::utf8) {
                     if constexpr (dest_enc == encoding::utf16) {
                         return simdutf::convert_utf8_to_utf16_with_errors(

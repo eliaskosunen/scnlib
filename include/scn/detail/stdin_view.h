@@ -21,6 +21,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <optional>
 #include <utility>
 
 namespace scn {
@@ -54,9 +55,9 @@ namespace scn {
             stdin_view make_view();
 
         private:
-            constexpr stdin_manager() = default;
+            stdin_manager() = default;
 
-            std::optional<char> extract_char() const;
+            SCN_NODISCARD std::optional<char> extract_char() const;
 
             void auto_sync();
 
@@ -67,7 +68,6 @@ namespace scn {
 
             std::mutex m_mutex;
             std::string m_putback_buffer{};
-            // std::optional<char> m_latest_read{};
             std::atomic<std::ptrdiff_t> m_end_index{-1};
             std::atomic<bool> m_require_locking{true};
             bool m_never_read{true};
