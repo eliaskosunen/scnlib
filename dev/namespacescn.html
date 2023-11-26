@@ -18,7 +18,7 @@
   <meta content="scanf for modern C++" property="og:description"/>
   <meta content="scanf for modern C++" itemprop="description"/>
   <meta content="telephone=no" name="format-detection"/>
-  <meta content="Poxy v0.13.9" name="generator"/>
+  <meta content="Poxy v0.14.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
 <body class="poxy-has-toc">
@@ -116,16 +116,6 @@
             </dt>
             <dd></dd>
             <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
-              class <a class="m-doc" href="classscn_1_1basic__istreambuf__subrange.html">basic_istreambuf_subrange</a>
-            </dt>
-            <dd></dd>
-            <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
-              class <a class="m-doc" href="classscn_1_1basic__istreambuf__view.html">basic_istreambuf_view</a>
-            </dt>
-            <dd></dd>
-            <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Context</span></span>&gt;</div>
               class <a class="m-doc" href="classscn_1_1basic__scan__arg.html">basic_scan_arg</a>
             </dt>
@@ -219,7 +209,7 @@
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#gad9cf6137bb4fe65d54a41bd28083c028">input</a>(</span><span class="m-doc-wrap"><a class="m-doc" href="classscn_1_1basic__format__string.html">format_<wbr/>string</a>&lt;Args...&gt; format) -&gt; scan_result_type&lt; wistreambuf_view &amp;, Args... &gt; -&gt; auto</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga3754b59b036a5dafa20340a8c074b74f">input</a>(</span><span class="m-doc-wrap"><a class="m-doc" href="classscn_1_1basic__format__string.html">format_<wbr/>string</a>&lt;Args...&gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
@@ -240,8 +230,8 @@
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga17550bab51fac0072f149113faef5e27">prompt</a>(</span><span class="m-doc-wrap">const char* msg,
-              <a class="m-doc" href="classscn_1_1basic__format__string.html">format_<wbr/>string</a>&lt;Args...&gt; format) -&gt; scan_result_type&lt; scn::istreambuf_view &amp;, Args... &gt; -&gt; auto</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#gaf1916a913876ae5c7576c96e21ec0ed3">prompt</a>(</span><span class="m-doc-wrap">const char* msg,
+              <a class="m-doc" href="classscn_1_1basic__format__string.html">format_<wbr/>string</a>&lt;Args...&gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>

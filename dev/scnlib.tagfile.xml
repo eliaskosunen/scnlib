@@ -91,59 +91,6 @@
     </member>
   </compound>
   <compound kind="class">
-    <name>basic_caching_view&lt; detail::basic_input_istreambuf_view&lt; CharT &gt; &gt;</name>
-    <filename>classscn_1_1basic__caching__view.html</filename>
-    <member kind="typedef">
-      <type>detail::basic_input_istreambuf_view&lt; CharT &gt;</type>
-      <name>range_type</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>ad5038ade1e5d85c51da9200e683b2514</anchor>
-      <arglist></arglist>
-    </member>
-    <member kind="typedef">
-      <type>detail::char_t&lt; detail::basic_input_istreambuf_view&lt; CharT &gt; &gt;</type>
-      <name>char_type</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>a5aab639c45aa3f70dbe731314abfac88</anchor>
-      <arglist></arglist>
-    </member>
-    <member kind="function">
-      <type></type>
-      <name>basic_caching_view</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>af4323b7ddcf70d0ddcd17b02fe0d679d</anchor>
-      <arglist>(R &amp;&amp;r)</arglist>
-    </member>
-    <member kind="function">
-      <type>iterator</type>
-      <name>begin</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>a2e59a5ee36c3d3a57da83532637eec2d</anchor>
-      <arglist>() const noexcept</arglist>
-    </member>
-    <member kind="function">
-      <type>void</type>
-      <name>clear</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>a3d6badd33e258fef574a7535d04a095b</anchor>
-      <arglist>()</arglist>
-    </member>
-    <member kind="function">
-      <type>auto &amp;</type>
-      <name>base</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>a6ebc31438ef19ed7a219144c0636b16c</anchor>
-      <arglist>()</arglist>
-    </member>
-    <member kind="function">
-      <type>const auto &amp;</type>
-      <name>base</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>a0de7ff445eebddc70c906746c31653ca</anchor>
-      <arglist>() const</arglist>
-    </member>
-  </compound>
-  <compound kind="class">
     <name>scn::basic_erased_range</name>
     <filename>classscn_1_1basic__erased__range.html</filename>
     <templarg></templarg>
@@ -180,83 +127,11 @@
     <templarg></templarg>
     <templarg>Args</templarg>
   </compound>
-  <compound kind="class">
-    <name>scn::detail::basic_input_istreambuf_view</name>
-    <filename>classscn_1_1detail_1_1basic__input__istreambuf__view.html</filename>
-    <templarg></templarg>
-  </compound>
   <compound kind="struct">
     <name>scn::basic_istream_scanner</name>
     <filename>structscn_1_1basic__istream__scanner.html</filename>
     <templarg></templarg>
     <base>scanner&lt; std::basic_string_view&lt; CharT &gt;, CharT &gt;</base>
-  </compound>
-  <compound kind="class">
-    <name>scn::basic_istreambuf_subrange</name>
-    <filename>classscn_1_1basic__istreambuf__subrange.html</filename>
-    <templarg></templarg>
-    <member kind="function">
-      <type>void</type>
-      <name>sync</name>
-      <anchorfile>classscn_1_1basic__istreambuf__subrange.html</anchorfile>
-      <anchor>a1a858e30d7a7a4b31b355e792a6e0184</anchor>
-      <arglist>()</arglist>
-    </member>
-  </compound>
-  <compound kind="class">
-    <name>scn::basic_istreambuf_view</name>
-    <filename>classscn_1_1basic__istreambuf__view.html</filename>
-    <templarg></templarg>
-    <base>basic_caching_view&lt; detail::basic_input_istreambuf_view&lt; CharT &gt; &gt;</base>
-    <member kind="typedef">
-      <type>detail::basic_input_istreambuf_view&lt; CharT &gt;</type>
-      <name>range_type</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>ad5038ade1e5d85c51da9200e683b2514</anchor>
-      <arglist></arglist>
-    </member>
-    <member kind="function">
-      <type></type>
-      <name>basic_istreambuf_view</name>
-      <anchorfile>classscn_1_1basic__istreambuf__view.html</anchorfile>
-      <anchor>a94ef9dc41595f215ad42d78d79940b63</anchor>
-      <arglist>(istream_type &amp;is)</arglist>
-    </member>
-    <member kind="function">
-      <type></type>
-      <name>basic_istreambuf_view</name>
-      <anchorfile>classscn_1_1basic__istreambuf__view.html</anchorfile>
-      <anchor>a805d9173df8490c16ae853c729b89941</anchor>
-      <arglist>(streambuf_type *s)</arglist>
-    </member>
-    <member kind="function">
-      <type>void</type>
-      <name>sync</name>
-      <anchorfile>classscn_1_1basic__istreambuf__view.html</anchorfile>
-      <anchor>a65e0505d11da7139f69e3b3428ffda21</anchor>
-      <arglist>(iterator it)</arglist>
-    </member>
-    <member kind="function">
-      <type>iterator</type>
-      <name>begin</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>a2e59a5ee36c3d3a57da83532637eec2d</anchor>
-      <arglist>() const noexcept</arglist>
-    </member>
-    <member kind="function">
-      <type>void</type>
-      <name>clear</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>a3d6badd33e258fef574a7535d04a095b</anchor>
-      <arglist>()</arglist>
-    </member>
-    <member kind="function">
-      <type>const auto &amp;</type>
-      <name>base</name>
-      <anchorfile>classscn_1_1basic__caching__view.html</anchorfile>
-      <anchor>a0de7ff445eebddc70c906746c31653ca</anchor>
-      <arglist>() const</arglist>
-    </member>
   </compound>
   <compound kind="struct">
     <name>scn::detail::basic_runtime_format_string</name>
@@ -1006,8 +881,6 @@
     <class kind="class">scn::basic_erased_range</class>
     <class kind="struct">scn::basic_erased_subrange</class>
     <class kind="class">scn::basic_format_string</class>
-    <class kind="class">scn::basic_istreambuf_view</class>
-    <class kind="class">scn::basic_istreambuf_subrange</class>
     <class kind="struct">scn::basic_istream_scanner</class>
     <class kind="class">scn::basic_scan_parse_context</class>
     <class kind="class">scn::scan_result</class>
@@ -1135,15 +1008,15 @@
       <type>auto</type>
       <name>input</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gad9cf6137bb4fe65d54a41bd28083c028</anchor>
-      <arglist>(wformat_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; wistreambuf_view &amp;, Args... &gt;</arglist>
+      <anchor>ga3754b59b036a5dafa20340a8c074b74f</anchor>
+      <arglist>(format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>prompt</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga17550bab51fac0072f149113faef5e27</anchor>
-      <arglist>(const char *msg, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; scn::istreambuf_view &amp;, Args... &gt;</arglist>
+      <anchor>gaf1916a913876ae5c7576c96e21ec0ed3</anchor>
+      <arglist>(const char *msg, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -1184,7 +1057,6 @@
   <compound kind="namespace">
     <name>scn::detail</name>
     <filename>namespacescn_1_1detail.html</filename>
-    <class kind="class">scn::detail::basic_input_istreambuf_view</class>
     <class kind="class">scn::detail::compile_parse_context</class>
     <class kind="struct">scn::detail::basic_runtime_format_string</class>
     <class kind="class">scn::detail::range_streambuf</class>
@@ -1253,15 +1125,15 @@
       <type>auto</type>
       <name>input</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gad9cf6137bb4fe65d54a41bd28083c028</anchor>
-      <arglist>(wformat_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; wistreambuf_view &amp;, Args... &gt;</arglist>
+      <anchor>ga3754b59b036a5dafa20340a8c074b74f</anchor>
+      <arglist>(format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>prompt</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga17550bab51fac0072f149113faef5e27</anchor>
-      <arglist>(const char *msg, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; scn::istreambuf_view &amp;, Args... &gt;</arglist>
+      <anchor>gaf1916a913876ae5c7576c96e21ec0ed3</anchor>
+      <arglist>(const char *msg, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt;</arglist>
     </member>
   </compound>
   <compound kind="group">
