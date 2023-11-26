@@ -361,9 +361,36 @@ jobs:
   install-and-consume:
     runs-on: ubuntu-22.04
 
+    strategy:
+      fail-fast: false
+      matrix:
+        external_deps: [ 0, 1 ]
+
     steps:
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
+
+      - name: Build simdutf
+        if: matrix.external_deps == 1
+        run: |
+          git clone https://github.com/simdutf/simdutf -b v4.0.5 --depth=1
+          cd simdutf
+          mkdir build
+          cd build
+          cmake -G Ninja ..
+          cmake --build .
+          sudo cmake --build . --target install
+
+      - name: Build fast_float
+        if: matrix.external_deps == 1
+        run: |
+          git clone https://github.com/fastfloat/fast_float -b v5.3.0 --depth=1
+          cd fast_float
+          mkdir build
+          cd build
+          cmake -G Ninja ..
+          cmake --build .
+          sudo cmake --build . --target install
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -372,7 +399,13 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}/lib-build
           cd ${{ runner.workspace }}/lib-build
-          cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF $GITHUB_WORKSPACE
+          if [[ ${{ matrix.external_deps }} -eq 1 ]]; then
+            cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF \
+                  -DSCN_USE_EXTERNAL_SIMDUTF=ON -DSCN_USE_EXTERNAL_FAST_FLOAT=ON \
+                  $GITHUB_WORKSPACE
+          else
+            cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF $GITHUB_WORKSPACE
+          fi
           cmake --build . --target scn
           sudo cmake --build . --target install
 
