@@ -209,6 +209,7 @@ function(set_interface_flags target)
 
     disable_msvc_secure_flags(${target} INTERFACE)
     set_bigobj_flags(${target} INTERFACE)
+    target_compile_features(${target} INTERFACE cxx_std_17)
 endfunction()
 
 function(set_library_flags target)

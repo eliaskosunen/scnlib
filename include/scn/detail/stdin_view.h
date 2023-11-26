@@ -145,6 +145,11 @@ namespace scn {
                 }
                 return a.m_current_index == b.m_current_index;
             }
+            friend bool operator!=(const stdin_iterator& a,
+                                   const stdin_iterator& b)
+            {
+                return !(a == b);
+            }
 
         private:
             friend class stdin_manager;

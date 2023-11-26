@@ -5,9 +5,15 @@ endif()
 include(GNUInstallDirs)
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/scn)
 
-install(TARGETS
-            scn
-            fast_float simdutf
+set(targets "scn")
+if(NOT SCN_USE_EXTERNAL_SIMDUTF)
+    list(APPEND targets simdutf)
+endif()
+if(NOT SCN_USE_EXTERNAL_FAST_FLOAT)
+    list(APPEND targets fast_float)
+endif()
+
+install(TARGETS ${targets}
         EXPORT scn-targets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -57,19 +63,3 @@ export(EXPORT scn-targets
 )
 
 export(PACKAGE scn)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

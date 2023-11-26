@@ -15,6 +15,8 @@ if (SCN_TESTS)
     # gtest CMake does some flag overriding we don't want, and it's also quite heavy
     # Do it manually
 
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
     FetchContent_GetProperties(googletest)
     if(NOT googletest)
         FetchContent_Populate(googletest)
@@ -25,7 +27,7 @@ if (SCN_TESTS)
     add_library(scn_gtest
             "${googletest_SOURCE_DIR}/googletest/src/gtest-all.cc"
             "${googletest_SOURCE_DIR}/googlemock/src/gmock-all.cc"
-            )
+    )
     target_include_directories(scn_gtest SYSTEM
             PUBLIC
             "${googletest_SOURCE_DIR}/googletest/include"
@@ -33,7 +35,7 @@ if (SCN_TESTS)
             PRIVATE
             "${googletest_SOURCE_DIR}/googletest"
             "${googletest_SOURCE_DIR}/googlemock"
-            )
+    )
     target_link_libraries(scn_gtest PRIVATE Threads::Threads)
     target_compile_features(scn_gtest PUBLIC cxx_std_14)
     target_compile_options(scn_gtest PRIVATE $<$<CXX_COMPILER_ID:GNU>: -Wno-psabi>)
@@ -55,49 +57,57 @@ endif()
 
 # simdutf
 
-FetchContent_Declare(
-        simdutf
-        GIT_REPOSITORY  https://github.com/simdutf/simdutf.git
-        GIT_TAG         v4.0.3
-        GIT_SHALLOW     TRUE
-)
-
 # simdutf CMake includes tests if BUILD_TESTING is globally ON
 # we don't want to include tests of dependencies, so we need to do some manual work
 
-set(SIMDUTF_BENCHMARKS_BEFORE_SIMDUTF ${SIMDUTF_BENCHMARKS})
-set(BUILD_TESTING_BEFORE_SIMDUTF ${BUILD_TESTING})
+if (SCN_USE_EXTERNAL_SIMDUTF)
+    find_package(simdutf CONFIG REQUIRED 4.0.5)
+else ()
+    FetchContent_Declare(
+            simdutf
+            GIT_REPOSITORY  https://github.com/simdutf/simdutf.git
+            GIT_TAG         v4.0.5
+            GIT_SHALLOW     TRUE
+    )
 
-set(SIMDUTF_BENCHMARKS OFF)
-set(BUILD_TESTING OFF)
+    set(SIMDUTF_BENCHMARKS_BEFORE_SIMDUTF ${SIMDUTF_BENCHMARKS})
+    set(BUILD_TESTING_BEFORE_SIMDUTF ${BUILD_TESTING})
 
-FetchContent_GetProperties(simdutf)
-if(NOT simdutf_POPULATED)
-    FetchContent_Populate(simdutf)
+    set(SIMDUTF_BENCHMARKS OFF)
+    set(BUILD_TESTING OFF)
 
-    add_subdirectory(${simdutf_SOURCE_DIR} ${simdutf_BINARY_DIR} EXCLUDE_FROM_ALL)
+    FetchContent_GetProperties(simdutf)
+    if(NOT simdutf_POPULATED)
+        FetchContent_Populate(simdutf)
+
+        add_subdirectory(${simdutf_SOURCE_DIR} ${simdutf_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
+
+    set(SIMDUTF_BENCHMARKS ${SIMDUTF_BENCHMARKS_BEFORE_SIMDUTF})
+    set(BUILD_TESTING ${BUILD_TESTING_BEFORE_SIMDUTF})
 endif()
-
-set(SIMDUTF_BENCHMARKS ${SIMDUTF_BENCHMARKS_BEFORE_SIMDUTF})
-set(BUILD_TESTING ${BUILD_TESTING_BEFORE_SIMDUTF})
 
 # fast_float
 
-cmake_policy(SET CMP0077 NEW)
-FetchContent_Declare(
-        fast_float
-        GIT_REPOSITORY  https://github.com/fastfloat/fast_float.git
-        GIT_TAG         v5.2.0
-        GIT_SHALLOW     TRUE
-)
+if (SCN_USE_EXTERNAL_FAST_FLOAT)
+    find_package(FastFloat CONFIG REQUIRED 5.3.0)
+else()
+    FetchContent_Declare(
+            fast_float
+            GIT_REPOSITORY  https://github.com/fastfloat/fast_float.git
+            GIT_TAG         v5.3.0
+            GIT_SHALLOW     TRUE
+    )
 
-set(FASTFLOAT_INSTALL OFF CACHE INTERNAL "")
+    cmake_policy(SET CMP0077 NEW)
+    set(FASTFLOAT_INSTALL OFF CACHE INTERNAL "")
 
-FetchContent_GetProperties(fast_float)
-if(NOT fast_float_POPULATED)
-    FetchContent_Populate(fast_float)
+    FetchContent_GetProperties(fast_float)
+    if(NOT fast_float_POPULATED)
+        FetchContent_Populate(fast_float)
 
-    add_subdirectory(${fast_float_SOURCE_DIR} ${fast_float_BINARY_DIR} EXCLUDE_FROM_ALL)
+        add_subdirectory(${fast_float_SOURCE_DIR} ${fast_float_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
 endif()
 
 # make available

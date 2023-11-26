@@ -135,7 +135,7 @@ target_include_directories(scn
 target_link_libraries(scn
         PRIVATE
             simdutf::simdutf
-            fast_float
+            FastFloat::fast_float
         )
 set_library_flags(scn)
 
@@ -146,7 +146,7 @@ add_library(scn_internal INTERFACE)
 target_link_libraries(scn_internal
         INTERFACE
             scn::scn
-            simdutf::simdutf fast_float
+            simdutf::simdutf FastFloat::fast_float
 )
 target_include_directories(scn_internal
         INTERFACE
