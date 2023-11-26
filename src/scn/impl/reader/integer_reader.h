@@ -167,11 +167,12 @@ namespace scn {
                         it, read_digits(make_subrange(it), base_prefix_begin));
                 }
 
-                if (it <= digits_begin) {
+                if (it == digits_begin ||
+                    ranges_polyfill::less_backtrack(it, digits_begin,
+                                                    ranges::begin(range))) {
                     digits_begin = base_prefix_begin;
                 }
 
-                SCN_EXPECT(digits_begin <= it);
                 m_nondigit_prefix_len =
                     ranges::distance(ranges::begin(range), digits_begin);
                 numeric_base::m_buffer.assign(
@@ -515,7 +516,8 @@ namespace scn {
                 T& value,
                 detail::locale_ref loc = {})
             {
-                if (auto r = read_source_cb(rd, range, value, loc);
+                if (auto r =
+                        read_source_cb(rd, range, std::is_signed_v<T>, loc);
                     SCN_UNLIKELY(!r)) {
                     return unexpected(r.error());
                 }

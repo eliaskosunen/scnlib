@@ -19,7 +19,6 @@
 
 #include <scn/detail/context.h>
 #include <scn/detail/erased_range.h>
-#include <scn/detail/istream_range.h>
 #include <scn/detail/scanner.h>
 
 namespace scn {
@@ -61,9 +60,11 @@ namespace scn {
 
         namespace scanner_scan_contexts {
             using sv = basic_scan_context<std::string_view, char>;
+            using in = basic_scan_context<stdin_subrange, char>;
         }  // namespace scanner_scan_contexts
 
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::sv)
+        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::in)
 
 #if !SCN_DISABLE_ERASED_RANGE
         namespace scanner_scan_contexts {
@@ -71,14 +72,6 @@ namespace scn {
         }  // namespace scanner_scan_contexts
 
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
-#endif
-
-#if !SCN_DISABLE_IOSTREAM
-        namespace scanner_scan_contexts {
-            using is = basic_scan_context<istreambuf_subrange, char>;
-        }  // namespace scanner_scan_contexts
-
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::is)
 #endif
     }  // namespace detail
 

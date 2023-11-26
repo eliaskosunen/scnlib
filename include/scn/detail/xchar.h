@@ -136,50 +136,11 @@ namespace scn {
                                                     format, args);
     }
 
-#if !SCN_DISABLE_IOSTREAM
-    namespace detail {
-        scn::wistreambuf_view& internal_wide_stdin();
-    }
-
-    /// \ingroup xchar
-    template <typename... Args>
-    SCN_NODISCARD auto input(wformat_string<Args...> format)
-        -> scan_result_type<wistreambuf_view&, Args...>
-    {
-        return detail::input_impl<Args...>(detail::internal_wide_stdin(),
-                                           format);
-    }
-
-    /// \ingroup xchar
-    template <typename... Args>
-    SCN_NODISCARD auto prompt(const wchar_t* msg,
-                              wformat_string<Args...> format)
-        -> scan_result_type<wistreambuf_view&, Args...>
-    {
-        std::wprintf(L"%s", msg);
-        return detail::input_impl<Args...>(detail::internal_wide_stdin(),
-                                           format);
-    }
-
-    // istream_range
-
-    namespace detail {
-        extern template bool
-        basic_input_istreambuf_view<wchar_t>::read_next_char() const;
-        extern template bool
-        basic_input_istreambuf_view<wchar_t>::iterator::is_at_end() const;
-    }  // namespace detail
-
-    extern template void basic_istreambuf_view<wchar_t>::sync(iterator);
-    extern template void basic_istreambuf_subrange<wchar_t>::sync();
-#endif
-
     // istream_scanner streambuf
 
 #if !SCN_DISABLE_IOSTREAM
     namespace detail {
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(std::wstring_view)
-        SCN_DECLARE_EXTERN_RANGE_STREAMBUF(wistreambuf_subrange)
 #if !SCN_DISABLE_ERASED_RANGE
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(werased_subrange)
 #endif
@@ -194,17 +155,11 @@ namespace scn {
 #if !SCN_DISABLE_ERASED_RANGE
             using wes = basic_scan_context<werased_subrange, wchar_t>;
 #endif
-#if !SCN_DISABLE_IOSTREAM
-            using wis = basic_scan_context<wistreambuf_subrange, wchar_t>;
-#endif
         }  // namespace scanner_scan_contexts
 
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)
 #if !SCN_DISABLE_ERASED_RANGE
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
-#endif
-#if !SCN_DISABLE_IOSTREAM
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wis)
 #endif
 
 #undef SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX

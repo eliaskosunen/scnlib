@@ -511,6 +511,53 @@ namespace scn {
         }  // namespace prev_backtrack_impl
 
         inline constexpr prev_backtrack_impl::fn prev_backtrack{};
+
+        // operator<, for forward_iterators
+        namespace less_backtrack_impl {
+            struct fn {
+            private:
+                template <typename It>
+                static constexpr auto impl(It lhs,
+                                           It rhs,
+                                           It,
+                                           detail::priority_tag<1>)
+                    -> decltype(static_cast<void>(lhs < rhs), true)
+                {
+                    return lhs < rhs;
+                }
+
+                template <typename It>
+                static constexpr auto impl(It lhs,
+                                           It rhs,
+                                           It beg,
+                                           detail::priority_tag<0>)
+                    -> std::enable_if_t<ranges_std::forward_iterator<It>, bool>
+                {
+                    while (true) {
+                        if (beg == rhs) {
+                            return false;
+                        }
+                        if (beg == lhs) {
+                            return true;
+                        }
+                        ++beg;
+                    }
+                }
+
+            public:
+                template <typename It>
+                constexpr auto operator()(It lhs, It rhs, It beg) const
+                    -> decltype(fn::impl(lhs,
+                                         rhs,
+                                         beg,
+                                         detail::priority_tag<1>{}))
+                {
+                    return fn::impl(lhs, rhs, beg, detail::priority_tag<1>{});
+                }
+            };
+        }  // namespace less_backtrack_impl
+
+        inline constexpr less_backtrack_impl::fn less_backtrack{};
     }  // namespace r_pf
 
     SCN_END_NAMESPACE

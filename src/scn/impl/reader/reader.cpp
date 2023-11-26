@@ -178,13 +178,10 @@ namespace scn {
 
         SCN_DEFINE_READER_CUSTOM(detail::scanner_scan_contexts::sv)
         SCN_DEFINE_READER_CUSTOM(detail::scanner_scan_contexts::wsv)
+        SCN_DEFINE_READER_CUSTOM(detail::scanner_scan_contexts::in)
 #if !SCN_DISABLE_ERASED_RANGE
         SCN_DEFINE_READER_CUSTOM(detail::scanner_scan_contexts::es)
         SCN_DEFINE_READER_CUSTOM(detail::scanner_scan_contexts::wes)
-#endif
-#if !SCN_DISABLE_IOSTREAM
-        SCN_DEFINE_READER_CUSTOM(detail::scanner_scan_contexts::is)
-        SCN_DEFINE_READER_CUSTOM(detail::scanner_scan_contexts::wis)
 #endif
 
 #define SCN_DEFINE_READER(Ctx)                   \
@@ -214,13 +211,10 @@ namespace scn {
 
         SCN_DEFINE_READER(detail::scanner_scan_contexts::sv)
         SCN_DEFINE_READER(detail::scanner_scan_contexts::wsv)
+        SCN_DEFINE_READER(detail::scanner_scan_contexts::in)
 #if !SCN_DISABLE_ERASED_RANGE
         SCN_DEFINE_READER(detail::scanner_scan_contexts::es)
         SCN_DEFINE_READER(detail::scanner_scan_contexts::wes)
-#endif
-#if !SCN_DISABLE_IOSTREAM
-        SCN_DEFINE_READER(detail::scanner_scan_contexts::is)
-        SCN_DEFINE_READER(detail::scanner_scan_contexts::wis)
 #endif
 
 #undef SCN_DEFINE_READER_T

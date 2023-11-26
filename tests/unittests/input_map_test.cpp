@@ -91,32 +91,6 @@ TEST(InputMapTest, StdSpanSubrange)
 }
 #endif
 
-TEST(InputMapTest, IstreambufView)
-{
-    std::istringstream iss{"abc"};
-    auto view = scn::istreambuf_view{iss};
-    auto result = scn::detail::scan_map_input_range(view);
-    static_assert(std::is_same_v<decltype(result), scn::istreambuf_subrange>);
-}
-
-TEST(InputMapTest, IstreambufSubrange)
-{
-    std::istringstream iss{"abc"};
-    auto view = scn::istreambuf_view{iss};
-    auto result =
-        scn::detail::scan_map_input_range(scn::istreambuf_subrange{view});
-    static_assert(std::is_same_v<decltype(result), scn::istreambuf_subrange>);
-}
-
-TEST(InputMapTest, SubrangeOfIstreambufView)
-{
-    std::istringstream iss{"abc"};
-    auto view = scn::istreambuf_view{iss};
-    auto subr = scn::ranges::subrange{view};
-    auto result = scn::detail::scan_map_input_range(subr);
-    static_assert(std::is_same_v<decltype(result), scn::istreambuf_subrange>);
-}
-
 TEST(InputMapTest, Vector)
 {
     std::vector<char> input{'a', 'b', 'c'};

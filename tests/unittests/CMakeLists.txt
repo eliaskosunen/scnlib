@@ -33,7 +33,6 @@ add_executable(scn_tests
         format_string_parser_test.cpp
         integer_test.cpp
         input_map_test.cpp
-        istream_range_test.cpp
         istream_scanner_test.cpp
         memory_test.cpp
         ranges_test.cpp

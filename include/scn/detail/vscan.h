@@ -18,7 +18,6 @@
 #pragma once
 
 #include <scn/detail/context.h>
-#include <scn/detail/istream_range.h>
 #include <scn/detail/result.h>
 #include <scn/util/expected.h>
 
@@ -65,12 +64,6 @@ namespace scn {
             std::string_view format,
             scan_args_for<erased_subrange, char> args);
 #endif
-#if !SCN_DISABLE_IOSTREAM
-        vscan_impl_result<istreambuf_subrange> vscan_impl(
-            istreambuf_subrange source,
-            std::string_view format,
-            scan_args_for<istreambuf_subrange, char> args);
-#endif
 
         vscan_impl_result<std::wstring_view> vscan_impl(
             std::wstring_view source,
@@ -81,12 +74,6 @@ namespace scn {
             werased_subrange source,
             std::wstring_view format,
             scan_args_for<werased_subrange, wchar_t> args);
-#endif
-#if !SCN_DISABLE_IOSTREAM
-        vscan_impl_result<wistreambuf_subrange> vscan_impl(
-            wistreambuf_subrange source,
-            std::wstring_view format,
-            scan_args_for<wistreambuf_subrange, wchar_t> args);
 #endif
 
 #if !SCN_DISABLE_LOCALE
@@ -104,14 +91,6 @@ namespace scn {
             std::string_view format,
             scan_args_for<erased_subrange, char> args);
 #endif
-#if !SCN_DISABLE_IOSTREAM
-        template <typename Locale>
-        vscan_impl_result<istreambuf_subrange> vscan_localized_impl(
-            const Locale& loc,
-            istreambuf_subrange source,
-            std::string_view format,
-            scan_args_for<istreambuf_subrange, char> args);
-#endif
 
         template <typename Locale>
         vscan_impl_result<std::wstring_view> vscan_localized_impl(
@@ -127,14 +106,6 @@ namespace scn {
             std::wstring_view format,
             scan_args_for<werased_subrange, wchar_t> args);
 #endif
-#if !SCN_DISABLE_IOSTREAM
-        template <typename Locale>
-        vscan_impl_result<wistreambuf_subrange> vscan_localized_impl(
-            const Locale& loc,
-            wistreambuf_subrange source,
-            std::wstring_view format,
-            scan_args_for<wistreambuf_subrange, wchar_t> args);
-#endif
 #endif  // !SCN_DISABLE_LOCALE
 
         vscan_impl_result<std::string_view> vscan_value_impl(
@@ -145,11 +116,6 @@ namespace scn {
             erased_subrange source,
             scan_arg_for<erased_subrange, char> arg);
 #endif
-#if !SCN_DISABLE_IOSTREAM
-        vscan_impl_result<istreambuf_subrange> vscan_value_impl(
-            istreambuf_subrange source,
-            scan_arg_for<istreambuf_subrange, char> arg);
-#endif
 
         vscan_impl_result<std::wstring_view> vscan_value_impl(
             std::wstring_view source,
@@ -158,25 +124,6 @@ namespace scn {
         vscan_impl_result<werased_subrange> vscan_value_impl(
             werased_subrange source,
             scan_arg_for<werased_subrange, wchar_t> arg);
-#endif
-#if !SCN_DISABLE_IOSTREAM
-        vscan_impl_result<wistreambuf_subrange> vscan_value_impl(
-            wistreambuf_subrange source,
-            scan_arg_for<wistreambuf_subrange, wchar_t> arg);
-#endif
-
-#if !SCN_DISABLE_IOSTREAM
-        vscan_impl_result<istreambuf_subrange> vscan_and_sync_impl(
-            istreambuf_subrange source,
-            std::string_view format,
-            scan_args_for<istreambuf_subrange, char> args);
-#endif
-
-#if !SCN_DISABLE_IOSTREAM
-        vscan_impl_result<wistreambuf_subrange> vscan_and_sync_impl(
-            wistreambuf_subrange source,
-            std::wstring_view format,
-            scan_args_for<wistreambuf_subrange, wchar_t> args);
 #endif
     }  // namespace detail
 
@@ -313,17 +260,17 @@ namespace scn {
         return detail::vscan_value_generic(SCN_FWD(range), arg);
     }
 
-#if !SCN_DISABLE_IOSTREAM
-    namespace detail {
-        template <typename Range>
-        auto vscan_and_sync(Range&& range,
-                            std::string_view format,
-                            scan_args_for<Range, char> args)
-            -> vscan_result<Range>
-        {
-            return detail::vscan_and_sync_generic(SCN_FWD(range), format, args);
-        }
-    }  // namespace detail
+    auto vinput(std::string_view format,
+                scan_args_for<detail::stdin_subrange, char> args)
+        -> vscan_result<detail::stdin_subrange>;
+
+#if !SCN_DISABLE_LOCALE
+    template <typename Locale,
+              typename = std::void_t<decltype(Locale::classic())>>
+    auto vinput(const Locale& loc,
+                std::string_view format,
+                scan_args_for<detail::stdin_subrange, char> args)
+        -> vscan_result<detail::stdin_subrange>;
 #endif
 
     namespace detail {

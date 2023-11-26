@@ -23,7 +23,6 @@
 
 #include <scn/detail/args.h>
 #include <scn/detail/erased_range.h>
-#include <scn/detail/istream_range.h>
 #include <scn/detail/ranges.h>
 #include <scn/detail/scanner_builtin.h>
 #include <scn/util/expected.h>
@@ -123,7 +122,6 @@ namespace scn {
         -> int_type;
 
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(std::string_view)
-        SCN_DECLARE_EXTERN_RANGE_STREAMBUF(istreambuf_subrange)
 #if !SCN_DISABLE_ERASED_RANGE
         SCN_DECLARE_EXTERN_RANGE_STREAMBUF(erased_subrange)
 #endif

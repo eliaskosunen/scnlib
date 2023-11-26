@@ -117,29 +117,6 @@ namespace scn {
 
 #if !SCN_DISABLE_IOSTREAM
 
-    // detail/istream_range.h
-
-    namespace detail {
-        template <typename CharT>
-        class basic_input_istreambuf_view;
-    }
-
-    template <typename CharT>
-    class basic_istreambuf_view;
-
-    ///
-    using istreambuf_view = basic_istreambuf_view<char>;
-    ///
-    using wistreambuf_view = basic_istreambuf_view<wchar_t>;
-
-    template <typename CharT>
-    class basic_istreambuf_subrange;
-
-    ///
-    using istreambuf_subrange = basic_istreambuf_subrange<char>;
-    ///
-    using wistreambuf_subrange = basic_istreambuf_subrange<wchar_t>;
-
     // detail/istream_scanner.h
 
     template <typename CharT>

@@ -81,8 +81,7 @@ namespace scn {
 
         SCN_DEFINE_RANGE_STREAMBUF(std::string_view)
         SCN_DEFINE_RANGE_STREAMBUF(std::wstring_view)
-        SCN_DEFINE_RANGE_STREAMBUF(istreambuf_subrange)
-        SCN_DEFINE_RANGE_STREAMBUF(wistreambuf_subrange)
+        SCN_DEFINE_RANGE_STREAMBUF(stdin_subrange)
 #if !SCN_DISABLE_ERASED_RANGE
         SCN_DEFINE_RANGE_STREAMBUF(erased_subrange)
         SCN_DEFINE_RANGE_STREAMBUF(werased_subrange)

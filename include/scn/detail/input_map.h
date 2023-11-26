@@ -16,7 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/detail/erased_range.h>
-#include <scn/detail/istream_range.h>
+#include <scn/detail/stdin_view.h>
 #include <scn/util/meta.h>
 #include <scn/util/span.h>
 #include <scn/util/string_view.h>
@@ -64,19 +64,11 @@ namespace scn {
                 return {r, N - 1};
             }
 
-#if !SCN_DISABLE_IOSTREAM
-            // istreambuf_view& -> istreambuf_subrange
-            template <typename CharT>
-            static std::enable_if_t<is_valid_char_type<CharT>,
-                                    basic_istreambuf_subrange<CharT>>
-            impl(const basic_istreambuf_view<CharT>& r, priority_tag<4>)
-                SCN_NOEXCEPT_P(std::is_nothrow_constructible_v<
-                               basic_istreambuf_subrange<CharT>,
-                               basic_istreambuf_view<CharT>&>)
+            static stdin_subrange impl(const stdin_view& v, priority_tag<4>)
             {
-                return {r};
+                SCN_EXPECT(v.is_this_locked());
+                return {v};
             }
-#endif
 
 #if !SCN_DISABLE_ERASED_RANGE
             // erased_range& -> erased_subrange
@@ -92,39 +84,10 @@ namespace scn {
             }
 #endif
 
-#if !SCN_DISABLE_IOSTREAM
-            // istreambuf_subrange -> self
-            template <typename CharT>
-            static std::enable_if_t<is_valid_char_type<CharT>,
-                                    basic_istreambuf_subrange<CharT>>
-            impl(basic_istreambuf_subrange<CharT> r, priority_tag<3>)
-                SCN_NOEXCEPT_P(std::is_nothrow_move_constructible_v<
-                               basic_istreambuf_subrange<CharT>>)
+            static stdin_subrange impl(stdin_subrange v, priority_tag<3>)
             {
-                return r;
+                return v;
             }
-            template <typename Iterator,
-                      typename Sentinel,
-                      ranges::subrange_kind Kind,
-                      typename CharT = ranges_std::iter_value_t<Iterator>>
-            static std::enable_if_t<
-                is_valid_char_type<CharT> &&
-                    std::is_same_v<
-                        Iterator,
-                        typename basic_istreambuf_view<CharT>::iterator> &&
-                    std::is_same_v<
-                        Sentinel,
-                        typename basic_istreambuf_view<CharT>::sentinel>,
-                basic_istreambuf_subrange<CharT>>
-            impl(ranges::subrange<Iterator, Sentinel, Kind> r, priority_tag<3>)
-                SCN_NOEXCEPT_P(std::is_nothrow_constructible_v<
-                               basic_istreambuf_subrange<CharT>,
-                               Iterator,
-                               Sentinel>)
-            {
-                return {r.begin(), r.end()};
-            }
-#endif
 
 #if !SCN_DISABLE_ERASED_RANGE
             // erased_subrange -> self
@@ -259,14 +222,8 @@ namespace scn {
         std::basic_string_view<CharT> decay_source_range(
             std::basic_string_view<CharT>);
 
-#if !SCN_DISABLE_IOSTREAM
-        template <typename CharT>
-        basic_istreambuf_subrange<CharT> decay_source_range(
-            basic_istreambuf_subrange<CharT>);
-        template <typename CharT>
-        basic_istreambuf_subrange<CharT> decay_source_range(
-            const basic_istreambuf_view<CharT>&);
-#endif
+        stdin_subrange decay_source_range(stdin_subrange);
+        stdin_subrange decay_source_range(const stdin_view&);
 
 #if !SCN_DISABLE_ERASED_RANGE
         template <typename CharT>

@@ -17,7 +17,6 @@
 
 #include "reader_test_common.h"
 
-#include <scn/detail/istream_range.h>
 #include <scn/impl/reader/float_reader.h>
 
 #include <cmath>

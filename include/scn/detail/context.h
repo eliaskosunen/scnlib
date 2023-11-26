@@ -18,7 +18,6 @@
 #pragma once
 
 #include <scn/detail/args.h>
-#include <scn/detail/istream_range.h>
 #include <scn/detail/locale_ref.h>
 #include <scn/detail/ranges.h>
 #include <scn/util/string_view.h>

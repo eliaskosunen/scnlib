@@ -273,21 +273,6 @@ namespace scn {
                                        SCN_MOVE(default_value));
     }
 
-#if !SCN_DISABLE_IOSTREAM
-
-    namespace detail {
-        scn::istreambuf_view& internal_narrow_stdin();
-
-        template <typename... Args, typename Source, typename Format>
-        auto input_impl(Source& source, Format format)
-            -> scan_result_type<Source&, Args...>
-        {
-            auto args = make_scan_args<decltype(source), Args...>();
-            auto result = detail::vscan_and_sync(SCN_FWD(source), format, args);
-            return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
-        }
-    }  // namespace detail
-
     /**
      * Scan from stdin.
      *
@@ -303,10 +288,14 @@ namespace scn {
      */
     template <typename... Args>
     SCN_NODISCARD auto input(format_string<Args...> format)
-        -> scan_result_type<scn::istreambuf_view&, Args...>
+        -> scan_result_type<detail::stdin_subrange, Args...>
     {
-        return detail::input_impl<Args...>(detail::internal_narrow_stdin(),
-                                           format);
+        auto args = make_scan_args<detail::stdin_subrange, Args...>();
+        auto ret = vinput(format, args);
+        if (SCN_UNLIKELY(!ret)) {
+            return unexpected(ret.error());
+        }
+        return scan_result{*ret, SCN_MOVE(args.args())};
     }
 
     /**
@@ -316,14 +305,11 @@ namespace scn {
      */
     template <typename... Args>
     SCN_NODISCARD auto prompt(const char* msg, format_string<Args...> format)
-        -> scan_result_type<scn::istreambuf_view&, Args...>
+        -> scan_result_type<detail::stdin_subrange, Args...>
     {
         std::printf("%s", msg);
-        return detail::input_impl<Args...>(detail::internal_narrow_stdin(),
-                                           format);
+        return input<Args...>(format);
     }
-
-#endif  // SCN_USE_IOSTREAMS
 
     namespace detail {
         template <typename T>

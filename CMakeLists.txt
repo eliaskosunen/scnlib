@@ -48,7 +48,6 @@ set(SCN_PUBLIC_HEADERS
         include/scn/detail/format_string.h
         include/scn/detail/format_string_parser.h
         include/scn/detail/input_map.h
-        include/scn/detail/istream_range.h
         include/scn/detail/istream_scanner.h
         include/scn/detail/locale_ref.h
         include/scn/detail/parse_context.h
@@ -59,6 +58,7 @@ set(SCN_PUBLIC_HEADERS
         include/scn/detail/scan.h
         include/scn/detail/scanner.h
         include/scn/detail/scanner_builtin.h
+        include/scn/detail/stdin_view.h
         include/scn/detail/unicode.h
         include/scn/detail/visitor.h
         include/scn/detail/vscan.h
@@ -103,10 +103,9 @@ set(SCN_PRIVATE_HEADERS
         )
 set(SCN_PRIVATE_SOURCES
         src/scn/scan.cpp
-        src/scn/istream_range.cpp
         src/scn/istream_scanner.cpp
-
         src/scn/scanner.cpp
+        src/scn/stdin_view.cpp
         src/scn/vscan.cpp
 
         src/scn/impl/locale.cpp

@@ -170,7 +170,6 @@ namespace scn {
                     m_kind != float_kind::inf_long &&
                     m_kind != float_kind::nan_simple &&
                     m_kind != float_kind::nan_with_payload) {
-                    SCN_EXPECT(digits_begin <= it);
                     this->m_buffer.assign(ranges::subrange{digits_begin, it});
                 }
 

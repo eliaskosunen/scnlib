@@ -73,10 +73,7 @@ namespace scn {
 
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::sv)
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)
-#if !SCN_DISABLE_IOSTREAM
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::is)
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wis)
-#endif
+        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::in)
 #if !SCN_DISABLE_ERASED_RANGE
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
         SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)

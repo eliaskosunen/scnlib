@@ -18,7 +18,6 @@
 #include "wrapped_gtest.h"
 
 #include <scn/detail/erased_range.h>
-#include <scn/detail/istream_range.h>
 
 #include <deque>
 
@@ -105,17 +104,3 @@ INSTANTIATE_TEST_SUITE_P(Deque,
                          ErasedRangeTest,
                          testing::Values(std::make_shared<scn::erased_range>(
                              std::deque<char>{'a', 'b', 'c'})));
-
-namespace {
-    std::istringstream ss{"abc"};
-    scn::istreambuf_view ssv{ss};
-}  // namespace
-
-// static_assert(scn::ranges::viewable_range<scn::istreambuf_view&>);
-static_assert(scn::ranges::viewable_range<scn::istreambuf_view>);
-static_assert(scn::ranges::viewable_range<scn::istreambuf_subrange&>);
-
-INSTANTIATE_TEST_SUITE_P(
-    StringStream,
-    ErasedRangeTest,
-    testing::Values(std::make_shared<scn::erased_range>(ssv)));

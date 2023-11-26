@@ -19,7 +19,6 @@
 
 #include "reader_test_common.h"
 
-#include <scn/detail/istream_range.h>
 #include <scn/impl/reader/integer_reader.h>
 
 SCN_CLANG_PUSH

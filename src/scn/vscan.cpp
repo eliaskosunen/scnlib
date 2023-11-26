@@ -379,74 +379,6 @@ namespace scn {
     }  // namespace
 
     namespace detail {
-
-#if !SCN_DISABLE_IOSTREAM
-        SCN_CLANG_PUSH
-        SCN_CLANG_IGNORE("-Wexit-time-destructors")
-        scn::istreambuf_view& internal_narrow_stdin()
-        {
-            static scn::istreambuf_view range{std::cin};
-            return range;
-        }
-        scn::wistreambuf_view& internal_wide_stdin()
-        {
-            static scn::wistreambuf_view range{std::wcin};
-            return range;
-        }
-        SCN_CLANG_POP
-
-        namespace {
-            std::mutex stdin_mutex;
-
-            bool is_global_stdin_view(istreambuf_view& view)
-            {
-                return &view == &detail::internal_narrow_stdin();
-            }
-            bool is_global_stdin_view(wistreambuf_view& view)
-            {
-                return &view == &detail::internal_wide_stdin();
-            }
-
-            template <typename CharT>
-            detail::vscan_impl_result<basic_istreambuf_subrange<CharT>>
-            vscan_and_sync_internal(
-                basic_istreambuf_subrange<CharT> source,
-                std::basic_string_view<CharT> format,
-                scan_args_for<basic_istreambuf_subrange<CharT>, CharT> args)
-            {
-                std::unique_lock<std::mutex> stdin_lock{stdin_mutex,
-                                                        std::defer_lock};
-                auto& view = static_cast<basic_istreambuf_view<CharT>&>(
-                    source.begin().view());
-                if (is_global_stdin_view(view)) {
-                    stdin_lock.lock();
-                }
-
-                auto result = vscan_internal(source, format, args);
-                if (SCN_LIKELY(result)) {
-                    view.sync(*result);
-                }
-                return result;
-            }
-        }  // namespace
-
-        vscan_impl_result<istreambuf_subrange> vscan_and_sync_impl(
-            istreambuf_subrange source,
-            std::string_view format,
-            scan_args_for<istreambuf_subrange, char> args)
-        {
-            return vscan_and_sync_internal(source, format, args);
-        }
-
-        vscan_impl_result<wistreambuf_subrange> vscan_and_sync_impl(
-            wistreambuf_subrange source,
-            std::wstring_view format,
-            scan_args_for<wistreambuf_subrange, wchar_t> args)
-        {
-            return vscan_and_sync_internal(source, format, args);
-        }
-#endif  // !SCN_DISABLE_IOSTREAM
-
         template <typename T>
         auto scan_int_impl(std::string_view source, T& value, int base)
             -> scan_expected<std::string_view::iterator>
@@ -468,6 +400,45 @@ namespace scn {
             return value;
         }
     }  // namespace detail
+
+    auto vinput(std::string_view format,
+                scan_args_for<detail::stdin_subrange, char> args)
+        -> vscan_result<detail::stdin_subrange>
+    {
+        auto source = detail::stdin_manager_instance().make_view();
+        source.acquire();
+        auto it = vscan_internal(detail::stdin_subrange{source}, format, args);
+        if (SCN_UNLIKELY(!it)) {
+            return unexpected(it.error());
+        }
+        source.manager().sync_now(*it);
+        return ranges::subrange{source.begin(), source.end()};
+    }
+
+#if !SCN_DISABLE_LOCALE
+    template <typename Locale, typename>
+    auto vinput(const Locale& loc,
+                std::string_view format,
+                scan_args_for<detail::stdin_subrange, char> args)
+        -> vscan_result<detail::stdin_subrange>
+    {
+        auto source = detail::stdin_manager_instance().make_view();
+        source.acquire();
+        auto it = vscan_internal(detail::stdin_subrange{source}, format, args,
+                                 detail::locale_ref{loc});
+        if (SCN_UNLIKELY(!it)) {
+            return unexpected(it.error());
+        }
+        source.manager().sync_now(*it);
+        return detail::stdin_subrange{source.begin(), source.end()};
+    }
+
+    template auto vinput<std::locale, void>(
+        const std::locale&,
+        std::string_view,
+        scan_args_for<detail::stdin_subrange, char>)
+        -> vscan_result<detail::stdin_subrange>;
+#endif
 
     namespace detail {
 
@@ -504,10 +475,6 @@ namespace scn {
 
         SCN_DEFINE_VSCAN(std::string_view, char)
         SCN_DEFINE_VSCAN(std::wstring_view, wchar_t)
-#if !SCN_DISABLE_IOSTREAM
-        SCN_DEFINE_VSCAN(istreambuf_subrange, char)
-        SCN_DEFINE_VSCAN(wistreambuf_subrange, wchar_t)
-#endif
 #if !SCN_DISABLE_ERASED_RANGE
         SCN_DEFINE_VSCAN(erased_subrange, char)
         SCN_DEFINE_VSCAN(werased_subrange, wchar_t)
