@@ -361,6 +361,9 @@ namespace std::ranges {
     template <>
     inline constexpr bool enable_borrowed_range<scn::detail::stdin_subrange> =
         true;
+
+    template <>
+    inline constexpr bool enable_borrowed_range<scn::stdin_range_marker> = true;
 }  // namespace std::ranges
 
 #else
@@ -374,6 +377,9 @@ inline constexpr bool enable_view<scn::detail::stdin_subrange> = true;
 
 template <>
 inline constexpr bool enable_borrowed_range<scn::detail::stdin_subrange> = true;
+
+template <>
+inline constexpr bool enable_borrowed_range<scn::stdin_range_marker> = true;
 
 NANO_END_NAMESPACE
 

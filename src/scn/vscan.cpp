@@ -402,43 +402,40 @@ namespace scn {
         }
     }  // namespace detail
 
-    auto vinput(std::string_view format,
-                scan_args_for<detail::stdin_subrange, char> args)
-        -> vscan_result<detail::stdin_subrange>
+    scan_error vinput(std::string_view format,
+                      scan_args_for<detail::stdin_subrange, char> args)
     {
         auto source = detail::stdin_manager_instance().make_view();
         source.lock();
         auto it = vscan_internal(detail::stdin_subrange{source}, format, args);
         if (SCN_UNLIKELY(!it)) {
-            return unexpected(it.error());
+            return it.error();
         }
         source.manager().sync_now(*it);
-        return ranges::subrange{source.begin(), source.end()};
+        return {};
     }
 
 #if !SCN_DISABLE_LOCALE
     template <typename Locale, typename>
-    auto vinput(const Locale& loc,
-                std::string_view format,
-                scan_args_for<detail::stdin_subrange, char> args)
-        -> vscan_result<detail::stdin_subrange>
+    scan_error vinput(const Locale& loc,
+                      std::string_view format,
+                      scan_args_for<detail::stdin_subrange, char> args)
     {
         auto source = detail::stdin_manager_instance().make_view();
         source.lock();
         auto it = vscan_internal(detail::stdin_subrange{source}, format, args,
                                  detail::locale_ref{loc});
         if (SCN_UNLIKELY(!it)) {
-            return unexpected(it.error());
+            return it.error();
         }
         source.manager().sync_now(*it);
-        return detail::stdin_subrange{source.begin(), source.end()};
+        return {};
     }
 
-    template auto vinput<std::locale, void>(
+    template scan_error vinput<std::locale, void>(
         const std::locale&,
         std::string_view,
-        scan_args_for<detail::stdin_subrange, char>)
-        -> vscan_result<detail::stdin_subrange>;
+        scan_args_for<detail::stdin_subrange, char>);
 #endif
 
     namespace detail {

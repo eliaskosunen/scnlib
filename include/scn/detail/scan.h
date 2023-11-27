@@ -288,14 +288,14 @@ namespace scn {
      */
     template <typename... Args>
     SCN_NODISCARD auto input(format_string<Args...> format)
-        -> scan_result_type<detail::stdin_subrange, Args...>
+        -> scan_result_type<stdin_range_marker, Args...>
     {
         auto args = make_scan_args<detail::stdin_subrange, Args...>();
-        auto ret = vinput(format, args);
-        if (SCN_UNLIKELY(!ret)) {
-            return unexpected(ret.error());
+        auto err = vinput(format, args);
+        if (SCN_UNLIKELY(!err)) {
+            return unexpected(err);
         }
-        return scan_result{*ret, SCN_MOVE(args.args())};
+        return scan_result{stdin_range_marker{}, SCN_MOVE(args.args())};
     }
 
     /**
@@ -305,7 +305,7 @@ namespace scn {
      */
     template <typename... Args>
     SCN_NODISCARD auto prompt(const char* msg, format_string<Args...> format)
-        -> scan_result_type<detail::stdin_subrange, Args...>
+        -> scan_result_type<stdin_range_marker, Args...>
     {
         std::printf("%s", msg);
         return input<Args...>(format);

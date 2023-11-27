@@ -260,17 +260,15 @@ namespace scn {
         return detail::vscan_value_generic(SCN_FWD(range), arg);
     }
 
-    auto vinput(std::string_view format,
-                scan_args_for<detail::stdin_subrange, char> args)
-        -> vscan_result<detail::stdin_subrange>;
+    scan_error vinput(std::string_view format,
+                      scan_args_for<detail::stdin_subrange, char> args);
 
 #if !SCN_DISABLE_LOCALE
     template <typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
-    auto vinput(const Locale& loc,
-                std::string_view format,
-                scan_args_for<detail::stdin_subrange, char> args)
-        -> vscan_result<detail::stdin_subrange>;
+    scan_error vinput(const Locale& loc,
+                      std::string_view format,
+                      scan_args_for<detail::stdin_subrange, char> args);
 #endif
 
     namespace detail {

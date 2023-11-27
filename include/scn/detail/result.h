@@ -27,23 +27,33 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        template <typename Range, bool Dangling = false>
-        struct dangling_iterator {
-            using type = ranges::iterator_t<Range>;
-        };
-        template <typename Range>
-        struct dangling_iterator<Range, true> {
-            using type = ranges::dangling;
-        };
+        template <typename Range, bool Dangling, bool StdinMarker>
+        constexpr auto dangling_iterator()
+        {
+            if constexpr (StdinMarker) {
+                return type_identity<stdin_range_marker>{};
+            }
+            else if constexpr (Dangling) {
+                return type_identity<ranges::dangling>{};
+            }
+            else {
+                return type_identity<ranges::iterator_t<Range>>{};
+            }
+        }
 
-        template <typename Range, bool Dangling = false>
-        struct dangling_sentinel {
-            using type = ranges::sentinel_t<Range>;
-        };
-        template <typename Range>
-        struct dangling_sentinel<Range, true> {
-            using type = ranges::dangling;
-        };
+        template <typename Range, bool Dangling, bool StdinMarker>
+        constexpr auto dangling_sentinel()
+        {
+            if constexpr (StdinMarker) {
+                return type_identity<stdin_range_marker>{};
+            }
+            else if constexpr (Dangling) {
+                return type_identity<ranges::dangling>{};
+            }
+            else {
+                return type_identity<ranges::sentinel_t<Range>>{};
+            }
+        }
     }  // namespace detail
 
     /**
@@ -65,12 +75,21 @@ namespace scn {
     class scan_result {
         static constexpr bool is_dangling =
             std::is_same_v<detail::remove_cvref_t<Range>, ranges::dangling>;
-        static_assert(ranges::borrowed_range<Range> || is_dangling);
+        static constexpr bool is_stdin_marker =
+            std::is_same_v<detail::remove_cvref_t<Range>, stdin_range_marker>;
+        static_assert(ranges::borrowed_range<Range> || is_dangling ||
+                      is_stdin_marker);
 
     public:
         using range_type = Range;
-        using iterator = detail::dangling_iterator<Range, is_dangling>;
-        using sentinel = detail::dangling_sentinel<Range, is_dangling>;
+        using iterator = typename decltype(detail::dangling_iterator<
+                                           Range,
+                                           is_dangling,
+                                           is_stdin_marker>())::type;
+        using sentinel = typename decltype(detail::dangling_sentinel<
+                                           Range,
+                                           is_dangling,
+                                           is_stdin_marker>())::type;
         using tuple_type = std::tuple<Args...>;
 
         constexpr scan_result() = default;
@@ -89,26 +108,46 @@ namespace scn {
 
         /// Converting constructor from a range and a tuple
         template <typename OtherR,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<range_type, OtherR>>>
+                  std::enable_if_t<
+                      std::is_constructible_v<range_type, OtherR>>* = nullptr>
         scan_result(OtherR&& r, std::tuple<Args...>&& values)
             : m_range(SCN_FWD(r)), m_values(SCN_MOVE(values))
         {
         }
 
-        template <typename OtherR,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<range_type, OtherR>>>
+        template <
+            typename OtherR,
+            std::enable_if_t<
+                std::is_constructible_v<range_type, OtherR> &&
+                std::is_convertible_v<const OtherR&, range_type>>* = nullptr>
+        /*implicit*/ scan_result(const scan_result<OtherR, Args...>& o)
+            : m_range(o.range()), m_values(o.values())
+        {
+        }
+        template <
+            typename OtherR,
+            std::enable_if_t<
+                std::is_constructible_v<range_type, OtherR> &&
+                !std::is_convertible_v<const OtherR&, range_type>>* = nullptr>
         explicit scan_result(const scan_result<OtherR, Args...>& o)
-            : m_range(o.m_range), m_values(o.m_values)
+            : m_range(o.range()), m_values(o.values())
         {
         }
 
         template <typename OtherR,
-                  typename = std::enable_if_t<
-                      std::is_constructible_v<range_type, OtherR>>>
+                  std::enable_if_t<
+                      std::is_constructible_v<range_type, OtherR> &&
+                      std::is_convertible_v<OtherR&&, range_type>>* = nullptr>
+        /*implicit*/ scan_result(scan_result<OtherR, Args...>&& o)
+            : m_range(o.range()), m_values(SCN_MOVE(o.values()))
+        {
+        }
+        template <typename OtherR,
+                  std::enable_if_t<
+                      std::is_constructible_v<range_type, OtherR> &&
+                      !std::is_convertible_v<OtherR&&, range_type>>* = nullptr>
         explicit scan_result(scan_result<OtherR, Args...>&& o)
-            : m_range(SCN_MOVE(o.m_range)), m_values(SCN_MOVE(o.m_values))
+            : m_range(o.range()), m_values(SCN_MOVE(o.values()))
         {
         }
 
@@ -117,8 +156,8 @@ namespace scn {
                       std::is_constructible_v<range_type, OtherR>>>
         scan_result& operator=(const scan_result<OtherR, Args...>& o)
         {
-            m_range = o.m_range;
-            m_values = o.m_values;
+            m_range = o.range();
+            m_values = o.values();
             return *this;
         }
 
@@ -127,8 +166,8 @@ namespace scn {
                       std::is_constructible_v<range_type, OtherR>>>
         scan_result& operator=(scan_result<OtherR, Args...>&& o)
         {
-            m_range = SCN_MOVE(o.m_range);
-            m_values = SCN_MOVE(o.m_values);
+            m_range = o.range();
+            m_values = SCN_MOVE(o.values());
             return *this;
         }
 
@@ -145,6 +184,9 @@ namespace scn {
             if constexpr (is_dangling) {
                 return ranges::dangling{};
             }
+            else if constexpr (is_stdin_marker) {
+                return stdin_range_marker{};
+            }
             else {
                 return m_range.begin();
             }
@@ -155,6 +197,9 @@ namespace scn {
         {
             if constexpr (is_dangling) {
                 return ranges::dangling{};
+            }
+            else if constexpr (is_stdin_marker) {
+                return stdin_range_marker{};
             }
             else {
                 return m_range.end();
@@ -212,8 +257,8 @@ namespace scn {
         }
 
     private:
-        range_type m_range{};
-        tuple_type m_values{};
+        SCN_NO_UNIQUE_ADDRESS range_type m_range{};
+        SCN_NO_UNIQUE_ADDRESS tuple_type m_values{};
     };
 
     template <typename R, typename... Args>
