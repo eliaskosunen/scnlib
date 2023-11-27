@@ -18,6 +18,7 @@
 #pragma once
 
 #include <scn/detail/ranges.h>
+#include <scn/detail/stdin_view.h>
 #include <scn/util/span.h>
 
 #include <algorithm>
@@ -30,7 +31,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-        struct buffered_range_segment_impl_base {
+        struct buffered_range_segment_impl_base : public ranges::view_base {
         public:
             using range_difference_t = std::ptrdiff_t;
 
@@ -65,6 +66,8 @@ namespace scn {
         class buffered_range_segment_null_impl
             : public buffered_range_segment_impl_base {
         public:
+            buffered_range_segment_null_impl() = default;
+
             template <typename... A>
             explicit buffered_range_segment_null_impl(A&...)
             {
@@ -101,6 +104,8 @@ namespace scn {
             using char_type = detail::char_t<range_type>;
             using range_iterator_t = ranges::iterator_t<range_type>;
 
+            buffered_range_segment_string_impl() = default;
+
             buffered_range_segment_string_impl(range_type& range,
                                                range_iterator_t& first)
                 : m_range(&range), m_first(&first)
@@ -109,20 +114,35 @@ namespace scn {
 
             ~buffered_range_segment_string_impl()
             {
-                ranges::advance(*m_first, m_read);
+                if (m_first) {
+                    ranges::advance(*m_first, m_read);
+                }
             }
+
+            buffered_range_segment_string_impl(
+                const buffered_range_segment_string_impl&) = delete;
+            buffered_range_segment_string_impl& operator=(
+                const buffered_range_segment_string_impl&) = delete;
+
+            buffered_range_segment_string_impl(
+                buffered_range_segment_string_impl&&) = default;
+            buffered_range_segment_string_impl& operator=(
+                buffered_range_segment_string_impl&&) = default;
 
             auto begin() const
             {
+                SCN_EXPECT(m_first);
                 return *m_first;
             }
             auto end() const
             {
+                SCN_EXPECT(m_range);
                 return m_range->end();
             }
 
             void advance_iterator()
             {
+                SCN_EXPECT(m_first);
                 ranges::advance(*m_first, m_read);
                 m_read = 0;
             }
@@ -135,12 +155,84 @@ namespace scn {
                              std::numeric_limits<range_difference_t>::max())
             {
                 // no-op
+                SCN_EXPECT(m_range && m_range);
                 SCN_UNUSED(n);
             }
 
         protected:
             range_type* m_range{nullptr};
             range_iterator_t* m_first{};
+        };
+
+        template <typename Range>
+        class buffered_range_segment_stdin_impl
+            : public buffered_range_segment_impl_base {
+        public:
+            using range_type = Range;
+            using char_type = char;
+            using range_iterator_t = ranges::iterator_t<range_type>;
+
+            buffered_range_segment_stdin_impl() = default;
+
+            buffered_range_segment_stdin_impl(range_type& range,
+                                              range_iterator_t& first)
+                : m_range(&range), m_first(&first)
+            {
+            }
+
+            ~buffered_range_segment_stdin_impl()
+            {
+                if (m_first) {
+                    ranges::advance(*m_first, m_read);
+                }
+            }
+
+            buffered_range_segment_stdin_impl(
+                const buffered_range_segment_stdin_impl&) = delete;
+            buffered_range_segment_stdin_impl& operator=(
+                const buffered_range_segment_stdin_impl&) = delete;
+
+            buffered_range_segment_stdin_impl(
+                buffered_range_segment_stdin_impl&&) = default;
+            buffered_range_segment_stdin_impl& operator=(
+                buffered_range_segment_stdin_impl&&) = default;
+
+            auto begin() const
+            {
+                SCN_EXPECT(m_first);
+                return m_avail_buf.begin();
+            }
+            auto end() const
+            {
+                SCN_EXPECT(m_first);
+                return m_avail_buf.end();
+            }
+
+            void advance_iterator()
+            {
+                SCN_EXPECT(m_first);
+                ranges::advance(*m_first, m_read);
+                m_avail_buf = m_avail_buf.substr(m_read);
+                m_read = 0;
+            }
+
+            SCN_NODISCARD range_difference_t potential_size() const
+            {
+                SCN_EXPECT(m_first);
+                return m_first->manager()->in_avail(*m_first).size();
+            }
+            void acquire(range_difference_t n =
+                             std::numeric_limits<range_difference_t>::max())
+            {
+                SCN_EXPECT(m_range && m_first);
+                m_avail_buf =
+                    m_first->manager()->in_avail(*m_first).substr(0, n);
+            }
+
+        protected:
+            range_type* m_range{nullptr};
+            range_iterator_t* m_first{};
+            std::string_view m_avail_buf{};
         };
 
         template <typename Range, typename Iterator>
@@ -160,6 +252,10 @@ namespace scn {
         template <typename Range, typename CharT>
         struct buffered_range_segment_impl<Range, const CharT*> {
             using type = buffered_range_segment_string_impl<Range>;
+        };
+        template <typename Range>
+        struct buffered_range_segment_impl<Range, detail::stdin_iterator> {
+            using type = buffered_range_segment_stdin_impl<Range>;
         };
 
         template <typename Range>

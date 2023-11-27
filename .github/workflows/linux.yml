@@ -113,7 +113,7 @@ jobs:
           #- cxx: clang++-7
           #- cxx: clang++-6.0
           # FIXME: Locally unreproducible ICE
-          #- cxx: clang++-9
+          - cxx: clang++-9
           # FIXME: some weird linker issue: undefined reference to range_default_scanner default constructor
           #- cxx: g++-11
           #  std: 20

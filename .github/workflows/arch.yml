@@ -42,7 +42,7 @@ jobs:
           - arch: armv6
             distro: bullseye
 
-        exclude:
+        #exclude:
           # FIXME: these runs take too long, and time out
           #- arch: aarch64
           #- arch: ppc64le

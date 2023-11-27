@@ -34,9 +34,10 @@ namespace scn {
             if (m_end_index > 0) {
                 m_end_index -= begin.m_current_index;
             }
+            if (m_furthest_read_index > 0) {
+                m_furthest_read_index -= begin.m_current_index;
+            }
             begin.m_current_index = 0;
-            SCN_ENSURE(m_end_index >= begin.m_current_index ||
-                       m_end_index == -1);
         }
 
         auto stdin_manager::extract_char() const -> std::optional<char>
@@ -46,6 +47,13 @@ namespace scn {
                 return std::nullopt;
             }
             return static_cast<char>(ch);
+        }
+
+        std::string_view stdin_manager::in_avail(stdin_iterator first) const
+        {
+            SCN_EXPECT(!first.is_at_end());
+            return std::string_view{m_putback_buffer}.substr(
+                first.m_current_index);
         }
     }  // namespace detail
 

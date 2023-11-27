@@ -54,6 +54,13 @@ namespace scn {
 
             stdin_view make_view();
 
+            std::ptrdiff_t end_index() const
+            {
+                return m_end_index;
+            }
+
+            std::string_view in_avail(stdin_iterator first) const;
+
         private:
             stdin_manager() = default;
 
@@ -68,9 +75,9 @@ namespace scn {
 
             std::mutex m_mutex;
             std::string m_putback_buffer{};
-            std::atomic<std::ptrdiff_t> m_end_index{-1};
-            std::atomic<bool> m_require_locking{true};
+            std::ptrdiff_t m_end_index{-1}, m_furthest_read_index{-1};
             bool m_never_read{true};
+            std::atomic<bool> m_require_locking{true};
         };
 
         inline auto& stdin_manager_instance()
@@ -151,6 +158,11 @@ namespace scn {
                 return !(a == b);
             }
 
+            std::ptrdiff_t index() const
+            {
+                return m_current_index;
+            }
+
         private:
             friend class stdin_manager;
             friend class stdin_view;
@@ -179,6 +191,9 @@ namespace scn {
                     m_parent->m_putback_buffer.push_back(*m_current_cached);
                 }
                 m_parent->m_never_read = false;
+                if (m_parent->m_furthest_read_index < m_current_index) {
+                    m_parent->m_furthest_read_index = m_current_index;
+                }
             }
 
             void increment_current()
