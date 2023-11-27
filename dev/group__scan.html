@@ -77,13 +77,13 @@
           <dl class="m-doc">
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga3754b59b036a5dafa20340a8c074b74f">input</a>(</span><span class="m-doc-wrap">format_string&lt;Args...&gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt; -&gt; auto</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gab52ee1f57d719b472a4febefc27ae6c6">input</a>(</span><span class="m-doc-wrap">format_string&lt;Args...&gt; format) -&gt; scan_result_type&lt; stdin_range_marker, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gaf1916a913876ae5c7576c96e21ec0ed3">prompt</a>(</span><span class="m-doc-wrap">const char* msg,
-              format_string&lt;Args...&gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt; -&gt; auto</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gace37d84fe1981a45f369c9189a67e9d4">prompt</a>(</span><span class="m-doc-wrap">const char* msg,
+              format_string&lt;Args...&gt; format) -&gt; scan_result_type&lt; stdin_range_marker, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
@@ -114,22 +114,22 @@
         </section>
         <section>
           <h2>Function documentation</h2>
-          <section class="m-doc-details" id="ga3754b59b036a5dafa20340a8c074b74f"><div>
+          <section class="m-doc-details" id="gab52ee1f57d719b472a4febefc27ae6c6"><div>
             <h3>
               <div class="m-doc-template">
                 template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename... Args</span></span>&gt;
               </div>
-              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga3754b59b036a5dafa20340a8c074b74f">input</a>(</span><span class="m-doc-wrap">format_string&lt;Args...&gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt;</span></span>
+              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gab52ee1f57d719b472a4febefc27ae6c6">input</a>(</span><span class="m-doc-wrap">format_string&lt;Args...&gt; format) -&gt; scan_result_type&lt; stdin_range_marker, Args... &gt;</span></span>
             </h3>
 <p>Scan from stdin.</p><p>Prefer this over constructing a view over <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/cin.html" target="_blank">std::<wbr/>cin</a></code>, and using <code>scan</code> with it: <code>input</code> deals with synchronization with <code>stdin</code> and <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/cin.html" target="_blank">std::<wbr/>cin</a></code>, and with multiple threads.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">input</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"{}"</span><span class="p">);</span></pre>
           </div></section>
-          <section class="m-doc-details" id="gaf1916a913876ae5c7576c96e21ec0ed3"><div>
+          <section class="m-doc-details" id="gace37d84fe1981a45f369c9189a67e9d4"><div>
             <h3>
               <div class="m-doc-template">
                 template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename... Args</span></span>&gt;
               </div>
-              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gaf1916a913876ae5c7576c96e21ec0ed3">prompt</a>(</span><span class="m-doc-wrap">const char* msg,
-              format_string&lt;Args...&gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt;</span></span>
+              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gace37d84fe1981a45f369c9189a67e9d4">prompt</a>(</span><span class="m-doc-wrap">const char* msg,
+              format_string&lt;Args...&gt; format) -&gt; scan_result_type&lt; stdin_range_marker, Args... &gt;</span></span>
             </h3>
 <p>Write msg to stdout, and call <code>input&lt;Args...&gt;(format)</code></p>
           </div></section>

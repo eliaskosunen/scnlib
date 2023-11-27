@@ -1008,15 +1008,15 @@
       <type>auto</type>
       <name>input</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga3754b59b036a5dafa20340a8c074b74f</anchor>
-      <arglist>(format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt;</arglist>
+      <anchor>gab52ee1f57d719b472a4febefc27ae6c6</anchor>
+      <arglist>(format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; stdin_range_marker, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>prompt</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gaf1916a913876ae5c7576c96e21ec0ed3</anchor>
-      <arglist>(const char *msg, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt;</arglist>
+      <anchor>gace37d84fe1981a45f369c9189a67e9d4</anchor>
+      <arglist>(const char *msg, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; stdin_range_marker, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -1125,15 +1125,15 @@
       <type>auto</type>
       <name>input</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga3754b59b036a5dafa20340a8c074b74f</anchor>
-      <arglist>(format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt;</arglist>
+      <anchor>gab52ee1f57d719b472a4febefc27ae6c6</anchor>
+      <arglist>(format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; stdin_range_marker, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>prompt</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gaf1916a913876ae5c7576c96e21ec0ed3</anchor>
-      <arglist>(const char *msg, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; detail::stdin_subrange, Args... &gt;</arglist>
+      <anchor>gace37d84fe1981a45f369c9189a67e9d4</anchor>
+      <arglist>(const char *msg, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; stdin_range_marker, Args... &gt;</arglist>
     </member>
   </compound>
   <compound kind="group">
