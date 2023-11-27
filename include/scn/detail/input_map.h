@@ -66,7 +66,7 @@ namespace scn {
 
             static stdin_subrange impl(const stdin_view& v, priority_tag<4>)
             {
-                SCN_EXPECT(v.is_this_locked());
+                SCN_EXPECT(v.owns_lock());
                 return {v};
             }
 

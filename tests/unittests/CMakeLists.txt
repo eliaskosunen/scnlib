@@ -72,3 +72,23 @@ add_executable(scn_impl_tests
 target_link_libraries(scn_impl_tests PRIVATE
         scn_gtest scn_tests_base scn_internal)
 add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
+
+add_executable(scn_stdin_test
+        main.cpp
+
+        stdin_test.cpp
+)
+target_link_libraries(scn_stdin_test scn_gtest scn_tests_base)
+
+add_custom_target(scn_stdin_test_prepare ALL
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_LIST_DIR}/stdin_test_runner.sh"
+        "${CMAKE_CURRENT_LIST_DIR}/stdin_test_input.txt"
+        "${CMAKE_BINARY_DIR}/tests/unittests"
+        COMMENT "Copying stdin test runner"
+)
+
+find_program(BASH_PROGRAM bash)
+if (BASH_PROGRAM)
+    add_test(NAME scn_stdin_test COMMAND ${BASH_PROGRAM} "${CMAKE_BINARY_DIR}/tests/unittests/stdin_test_runner.sh")
+endif()

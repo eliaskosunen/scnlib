@@ -217,45 +217,45 @@ namespace scn {
 
             ~stdin_view()
             {
-                if (is_this_locked()) {
+                if (owns_lock()) {
                     m_manager->auto_sync();
-                    release();
+                    unlock();
                 }
             }
 
-            void acquire()
+            void lock()
             {
                 if (m_manager->m_require_locking) {
-                    SCN_EXPECT(!is_this_locked());
+                    SCN_EXPECT(!owns_lock());
                     m_lock.lock();
                 }
             }
-            SCN_NODISCARD bool try_acquire()
+            SCN_NODISCARD bool try_lock()
             {
                 if (m_manager->m_require_locking) {
-                    SCN_EXPECT(!is_this_locked());
+                    SCN_EXPECT(!owns_lock());
                     return m_lock.try_lock();
                 }
                 return true;
             }
-            SCN_NODISCARD bool is_this_locked() const
+            SCN_NODISCARD bool owns_lock() const
             {
                 if (m_manager->m_require_locking) {
                     return m_lock.owns_lock();
                 }
                 return true;
             }
-            void release()
+            void unlock()
             {
                 if (m_manager->m_require_locking) {
-                    SCN_EXPECT(is_this_locked());
-                    m_lock.release();
+                    SCN_EXPECT(owns_lock());
+                    m_lock.unlock();
                 }
             }
 
             stdin_manager& manager()
             {
-                SCN_EXPECT(is_this_locked());
+                SCN_EXPECT(owns_lock());
                 return *m_manager;
             }
 

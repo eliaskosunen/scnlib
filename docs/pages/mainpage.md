@@ -91,8 +91,12 @@ scnlib internally depends on
 <a href="https://github.com/fastfloat/fast_float">fast_float</a> and
 <a href="https://github.com/simdutf/simdutf">simdutf</a>.
 
-The CMake machinery automatically fetches, builds, and links these libraries through `FetchContent`.
+By default, the CMake machinery automatically fetches, builds, and links these libraries through `FetchContent`.
 These libraries are only used in the implementation, and they are not visible to the users of the library.
+
+Alternatively, by setting the CMake options `SCN_USE_EXTERNAL_FAST_FLOAT` or `SCN_USE_EXTERNAL_SIMDUTF` to `ON`,
+these libraries are searched for using `find_package`. Use these options, if you already have these libraries
+installed.
 
 If your standard library doesn't have an available C++20 `<ranges>` implementation,
 a single-header version of <a href="https://github.com/tcbrindle/nanorange">NanoRange</a>

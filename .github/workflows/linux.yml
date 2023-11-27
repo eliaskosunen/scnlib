@@ -110,14 +110,14 @@ jobs:
           - cxx: g++-12
             os: 20.04
           # FIXME?: simdutf has problems with clang 6 and 7 (_ktestc_mask64_u8 undefined)
-          - cxx: clang++-7
-          - cxx: clang++-6.0
+          #- cxx: clang++-7
+          #- cxx: clang++-6.0
           # FIXME: Locally unreproducible ICE
-          - cxx: clang++-9
+          #- cxx: clang++-9
           # FIXME: some weird linker issue: undefined reference to range_default_scanner default constructor
-          - cxx: g++-11
-            std: 20
-            os: 20.04
+          #- cxx: g++-11
+          #  std: 20
+          #  os: 20.04
           # FIXME?: weird incompatibility with libstdc++ 13 inside <chrono>
           # see https://github.com/actions/runner-images/issues/8659
           - cxx: clang++-14

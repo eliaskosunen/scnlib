@@ -44,8 +44,8 @@ jobs:
 
         exclude:
           # FIXME: these runs take too long, and time out
-          - arch: aarch64
-          - arch: ppc64le
+          #- arch: aarch64
+          #- arch: ppc64le
 
     steps:
       - name: Checkout

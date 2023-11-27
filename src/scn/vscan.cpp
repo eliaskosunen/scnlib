@@ -388,6 +388,7 @@ namespace scn {
             auto reader = impl::integer_reader<char>{0, base};
             SCN_TRY(_, reader.read_source(ranges::subrange(beg, source.end()),
                                           std::is_signed_v<T>));
+            SCN_UNUSED(_);
             SCN_TRY(n, reader.parse_value(value));
             return ranges::next(beg, n);
         }
@@ -406,7 +407,7 @@ namespace scn {
         -> vscan_result<detail::stdin_subrange>
     {
         auto source = detail::stdin_manager_instance().make_view();
-        source.acquire();
+        source.lock();
         auto it = vscan_internal(detail::stdin_subrange{source}, format, args);
         if (SCN_UNLIKELY(!it)) {
             return unexpected(it.error());
@@ -423,7 +424,7 @@ namespace scn {
         -> vscan_result<detail::stdin_subrange>
     {
         auto source = detail::stdin_manager_instance().make_view();
-        source.acquire();
+        source.lock();
         auto it = vscan_internal(detail::stdin_subrange{source}, format, args,
                                  detail::locale_ref{loc});
         if (SCN_UNLIKELY(!it)) {
