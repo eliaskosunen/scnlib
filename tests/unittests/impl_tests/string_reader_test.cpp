@@ -87,10 +87,7 @@ TEST(StringReaderTranscodeTest, RvalueContiguousRangeWithDifferentCharacterType)
 struct string_tag {};
 struct string_view_tag {};
 
-template <bool Localized,
-          typename SourceCharT,
-          typename DestCharT,
-          typename DestStringTag>
+template <typename SourceCharT, typename DestCharT, typename DestStringTag>
 struct test_type_pack {
     using source_char_type = SourceCharT;
     using source_string_type = std::basic_string<source_char_type>;
@@ -104,7 +101,6 @@ struct test_type_pack {
     template <template <class> class Reader>
     using reader_type = Reader<source_char_type>;
 
-    static constexpr bool is_localized = Localized;
     static constexpr bool is_source_wide =
         std::is_same_v<source_char_type, wchar_t>;
     static constexpr bool is_dest_wide =
@@ -188,15 +184,8 @@ protected:
     auto read()
     {
         typename T::dest_string_type val{};
-
-        if constexpr (T::is_localized && !SCN_DISABLE_LOCALE) {
-            auto ret = make_reader().read_localized(*widened_source, {}, val);
-            return std::make_pair(ret, val);
-        }
-        else {
-            auto ret = make_reader().read_classic(*widened_source, val);
-            return std::make_pair(ret, val);
-        }
+        auto ret = make_reader().read(*widened_source, val);
+        return std::make_pair(ret, val);
     }
 
     static auto check_value(const typename T::dest_string_type& val,
@@ -209,25 +198,13 @@ protected:
 };
 
 using type_list =
-    testing::Types<test_type_pack<false, char, char, string_tag>,
-                   test_type_pack<false, char, char, string_view_tag>,
-                   test_type_pack<false, char, wchar_t, string_tag>,
+    testing::Types<test_type_pack<char, char, string_tag>,
+                   test_type_pack<char, char, string_view_tag>,
+                   test_type_pack<char, wchar_t, string_tag>,
 
-                   test_type_pack<false, wchar_t, char, string_tag>,
-                   test_type_pack<false, wchar_t, wchar_t, string_tag>,
-                   test_type_pack<false, wchar_t, wchar_t, string_view_tag>
-
-#if !SCN_DISABLE_LOCALE
-                   ,
-                   test_type_pack<true, char, char, string_tag>,
-                   test_type_pack<true, char, char, string_view_tag>,
-                   test_type_pack<true, char, wchar_t, string_tag>,
-
-                   test_type_pack<true, wchar_t, char, string_tag>,
-                   test_type_pack<true, wchar_t, wchar_t, string_tag>,
-                   test_type_pack<true, wchar_t, wchar_t, string_view_tag>
-#endif
-                   >;
+                   test_type_pack<wchar_t, char, string_tag>,
+                   test_type_pack<wchar_t, wchar_t, string_tag>,
+                   test_type_pack<wchar_t, wchar_t, string_view_tag>>;
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")
@@ -376,16 +353,8 @@ protected:
     auto read(const specs_type& specs)
     {
         typename T::dest_string_type val{};
-
-        if constexpr (T::is_localized && !SCN_DISABLE_LOCALE) {
-            auto ret =
-                make_reader().read_localized(*widened_source, {}, specs, val);
-            return std::make_pair(ret, val);
-        }
-        else {
-            auto ret = make_reader().read_classic(*widened_source, specs, val);
-            return std::make_pair(ret, val);
-        }
+        auto ret = make_reader().read(*widened_source, specs, val);
+        return std::make_pair(ret, val);
     }
 
     static auto check_value(const typename T::dest_string_type& val,
@@ -408,47 +377,10 @@ SCN_CLANG_POP
 TYPED_TEST(StringCharacterSetReaderTest, MatchEmpty)
 {
     auto& src = this->set_source("123"sv);
-    auto [ret, val] = this->read(this->make_specs_from_set("[:alpha:]"));
+    auto [ret, val] = this->read(this->make_specs_from_set("[a-z]"));
 
     ASSERT_FALSE(ret);
     SCN_UNUSED(src);
-}
-
-TYPED_TEST(StringCharacterSetReaderTest, AlphaSpecifier)
-{
-    auto& src = this->set_source("abc123"sv);
-    auto [ret, val] = this->read(this->make_specs_from_set("[:alpha:]"));
-
-    ASSERT_TRUE(ret);
-    EXPECT_EQ(*ret, src.begin() + 3);
-    EXPECT_TRUE(this->check_value(val, "abc"));
-}
-TYPED_TEST(StringCharacterSetReaderTest, LettersSpecifier)
-{
-    auto& src = this->set_source("abc123"sv);
-    auto [ret, val] = this->read(this->make_specs_from_set("[\\l]"));
-
-    ASSERT_TRUE(ret);
-    EXPECT_EQ(*ret, src.begin() + 3);
-    EXPECT_TRUE(this->check_value(val, "abc"));
-}
-TYPED_TEST(StringCharacterSetReaderTest, AlnumSpecifier)
-{
-    auto& src = this->set_source("abc123 "sv);
-    auto [ret, val] = this->read(this->make_specs_from_set("[:alnum:]"));
-
-    ASSERT_TRUE(ret);
-    EXPECT_EQ(*ret, src.begin() + 6);
-    EXPECT_TRUE(this->check_value(val, "abc123"));
-}
-TYPED_TEST(StringCharacterSetReaderTest, AlnumSpecifierWithAlphaAndDigit)
-{
-    auto& src = this->set_source("abc123 "sv);
-    auto [ret, val] = this->read(this->make_specs_from_set("[:alpha::digit:]"));
-
-    ASSERT_TRUE(ret);
-    EXPECT_EQ(*ret, src.begin() + 6);
-    EXPECT_TRUE(this->check_value(val, "abc123"));
 }
 
 TYPED_TEST(StringCharacterSetReaderTest, LiteralAbc)
@@ -468,15 +400,6 @@ TYPED_TEST(StringCharacterSetReaderTest, LiteralAToC)
     ASSERT_TRUE(ret);
     EXPECT_EQ(*ret, src.begin() + 3);
     EXPECT_TRUE(this->check_value(val, "abc"));
-}
-TYPED_TEST(StringCharacterSetReaderTest, LiteralAToCAndDigit)
-{
-    auto& src = this->set_source("abc123 "sv);
-    auto [ret, val] = this->read(this->make_specs_from_set("[a-c:digit:]"));
-
-    ASSERT_TRUE(ret);
-    EXPECT_EQ(*ret, src.begin() + 6);
-    EXPECT_TRUE(this->check_value(val, "abc123"));
 }
 
 TYPED_TEST(StringCharacterSetReaderTest, LiteralAWithDiaeresis)

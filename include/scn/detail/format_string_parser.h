@@ -54,67 +54,13 @@ namespace scn {
             pointer,               // 'p'
         };
 
-        enum class character_set_specifier {
-            none = 0,
-
-            space_literal = 1,       // ' '
-            underscore_literal = 2,  // '_'
-
-            space = 4,     // :space:
-            blank = 8,     // :blank:
-            punct = 16,    // :punct:
-            upper = 32,    // :upper:
-            lower = 64,    // :lower:
-            alpha = 128,   // :alpha:
-            digit = 256,   // :digit:
-            xdigit = 512,  // :xdigit:
-            cntrl = 1024,  // :cntrl:
-            last = 2048,
-
-            has_inverted_flag = 4096,  // '^'
-            has_nonascii_literals = 8192,
-
-            alnum = alpha | digit,          // :alnum:
-            graph = alnum | punct,          // :graph:
-            print = graph | space_literal,  // :print:
-
-            letters = alpha,                                // \l
-            inverted_letters = ~letters,                    // \L
-            alnum_underscore = alnum | underscore_literal,  // \w
-            inverted_alnum_underscore = ~alnum_underscore,  // \W
-            whitespace = space,                             // \s
-            inverted_whitespace = ~whitespace,              // \S
-            numbers = digit,                                // \d
-            inverted_numbers = ~numbers                     // \D
-        };
-
-        constexpr character_set_specifier operator|(character_set_specifier a,
-                                                    character_set_specifier b)
-        {
-            return static_cast<character_set_specifier>(
-                static_cast<unsigned>(a) | static_cast<unsigned>(b));
-        }
-        constexpr character_set_specifier operator&(character_set_specifier a,
-                                                    character_set_specifier b)
-        {
-            return static_cast<character_set_specifier>(
-                static_cast<unsigned>(a) & static_cast<unsigned>(b));
-        }
-        constexpr character_set_specifier& operator|=(
-            character_set_specifier& a,
-            character_set_specifier b)
-        {
-            return a = a | b;
-        }
-
         template <typename CharT>
         struct basic_format_specs {
             int width{0};
             std::basic_string_view<CharT> fill{default_fill()};
             presentation_type type{presentation_type::none};
-            character_set_specifier charset_specifiers{
-                character_set_specifier::none};
             std::array<uint8_t, 128 / 8> charset_literals{0};
+            bool charset_has_nonascii{false}, charset_is_inverted{false};
             std::basic_string_view<CharT> charset_string{};
             unsigned arbitrary_base : 6;
             unsigned align : 2;
@@ -207,11 +153,6 @@ namespace scn {
                 m_specs.type = type;
             }
 
-            constexpr void on_charset_specifier(character_set_specifier spec)
-            {
-                m_specs.charset_specifiers |= spec;
-            }
-
             constexpr void on_charset_single(char32_t cp)
             {
                 const auto cp_value = static_cast<unsigned>(cp);
@@ -220,8 +161,7 @@ namespace scn {
                         static_cast<unsigned char>(1ul << (cp_value % 8));
                 }
                 else {
-                    m_specs.charset_specifiers |=
-                        character_set_specifier::has_nonascii_literals;
+                    m_specs.charset_has_nonascii = true;
                 }
             }
 
@@ -241,9 +181,13 @@ namespace scn {
                     }
                 }
                 else {
-                    m_specs.charset_specifiers |=
-                        character_set_specifier::has_nonascii_literals;
+                    m_specs.charset_has_nonascii = true;
                 }
+            }
+
+            constexpr void on_charset_inverted()
+            {
+                m_specs.charset_is_inverted = true;
             }
 
             constexpr void on_character_set_string(
@@ -512,119 +456,6 @@ namespace scn {
             return begin;
         }
 
-        inline constexpr std::
-            tuple<const char*, const wchar_t*, character_set_specifier>
-                set_colon_specifiers[] = {
-                    {"alnum:", L"alnum:", character_set_specifier::alnum},
-                    {"alpha:", L"alpha:", character_set_specifier::alpha},
-                    {"blank:", L"blank:", character_set_specifier::blank},
-                    {"cntrl:", L"cntrl:", character_set_specifier::cntrl},
-                    {"digit:", L"digit:", character_set_specifier::digit},
-                    {"graph:", L"graph:", character_set_specifier::graph},
-                    {"lower:", L"lower:", character_set_specifier::lower},
-                    {"print:", L"print:", character_set_specifier::print},
-                    {"punct:", L"punct:", character_set_specifier::punct},
-                    {"space:", L"space:", character_set_specifier::space},
-                    {"upper:", L"upper:", character_set_specifier::upper},
-                    {"xdigit:", L"xdigit:", character_set_specifier::xdigit}};
-
-        template <typename CharT, typename SpecHandler>
-        constexpr void parse_presentation_set_colon_specifier(
-            const CharT*& begin,
-            const CharT* end,
-            SpecHandler&& handler)
-        {
-            SCN_EXPECT(*begin == CharT{':'});
-            SCN_EXPECT(begin != end);
-            ++begin;
-
-            const auto chars_left = static_cast<size_t>(end - begin);
-
-            character_set_specifier found{};
-            for (const auto& elem : set_colon_specifiers) {
-                const auto [str_ch, str_wch, flag] = elem;
-
-                const auto spec_len = std::char_traits<char>::length(str_ch);
-                if (chars_left < spec_len) {
-                    continue;
-                }
-
-                if constexpr (std::is_same_v<CharT, char>) {
-                    if (std::string_view{&*begin, spec_len} !=
-                        std::string_view{str_ch}) {
-                        continue;
-                    }
-                }
-                else {
-                    if (std::wstring_view{&*begin, spec_len} !=
-                        std::wstring_view{str_wch}) {
-                        continue;
-                    }
-                }
-
-                begin += spec_len;
-                SCN_ENSURE(*(begin - 1) == CharT{':'});
-                found = flag;
-                break;
-            }
-
-            if (SCN_UNLIKELY(found == character_set_specifier{})) {
-                handler.on_error(
-                    "Invalid :colon-delimeted: specifier in a [character set] "
-                    "format string argument");
-            }
-            else {
-                handler.on_charset_specifier(found);
-            }
-        }
-
-        inline constexpr std::pair<char, character_set_specifier>
-            set_backslash_specifiers[] = {
-                {'l', character_set_specifier::letters},
-                {'L', character_set_specifier::inverted_letters},
-                {'w', character_set_specifier::alnum_underscore},
-                {'W', character_set_specifier::inverted_alnum_underscore},
-                {'s', character_set_specifier::whitespace},
-                {'S', character_set_specifier::inverted_whitespace},
-                {'d', character_set_specifier::numbers},
-                {'D', character_set_specifier::inverted_numbers},
-        };
-
-        template <typename CharT, typename SpecHandler>
-        constexpr void parse_presentation_set_backslash_specifier(
-            const CharT*& begin,
-            const CharT* end,
-            SpecHandler&& handler)
-        {
-            SCN_EXPECT(begin != end);
-            SCN_EXPECT(*begin == CharT{'\\'});
-            ++begin;
-
-            for (const auto& elem : set_backslash_specifiers) {
-                if (*begin == static_cast<CharT>(elem.first)) {
-                    handler.on_charset_specifier(elem.second);
-                    ++begin;
-                    return;
-                }
-            }
-
-            if (*begin == '\\') {
-                handler.on_charset_single(char32_t{'\\'});
-                ++begin;
-                return;
-            }
-            if (*begin == ':') {
-                handler.on_charset_single(char32_t{':'});
-                ++begin;
-                return;
-            }
-
-            SCN_UNLIKELY_ATTR
-            handler.on_error(
-                "Invalid \\backslash-prefixed specifier in a [character set] "
-                "format string argument");
-        }
-
         template <typename CharT, typename SpecHandler>
         constexpr char32_t parse_presentation_set_code_point(
             const CharT*& begin,
@@ -657,7 +488,6 @@ namespace scn {
                                                       SpecHandler&& handler)
         {
             SCN_EXPECT(begin != end);
-            SCN_EXPECT(*begin != CharT{':'} && *begin != CharT{'\\'});
 
             auto cp_first =
                 parse_presentation_set_code_point(begin, end, handler);
@@ -709,8 +539,7 @@ namespace scn {
                 return {};
             }
             if (*begin == CharT{'^'}) {
-                handler.on_charset_specifier(
-                    character_set_specifier::has_inverted_flag);
+                handler.on_charset_inverted();
                 ++begin;
                 if (*begin == CharT{']'}) {
                     handler.on_charset_single(char32_t{']'});
@@ -732,16 +561,7 @@ namespace scn {
                             static_cast<size_t>(std::distance(start, ++begin))};
                 }
 
-                if (*begin == CharT{':'}) {
-                    parse_presentation_set_colon_specifier(begin, end, handler);
-                }
-                else if (*begin == CharT{'\\'}) {
-                    parse_presentation_set_backslash_specifier(begin, end,
-                                                               handler);
-                }
-                else {
-                    parse_presentation_set_literal(begin, end, handler);
-                }
+                parse_presentation_set_literal(begin, end, handler);
             }
 
             SCN_UNLIKELY_ATTR
@@ -1123,12 +943,11 @@ namespace scn {
                 if (cat != arg_type_category::integer &&
                     cat != arg_type_category::unsigned_integer &&
                     cat != arg_type_category::floating &&
-                    cat != arg_type_category::boolean &&
-                    cat != arg_type_category::string) {
+                    cat != arg_type_category::boolean) {
                     SCN_UNLIKELY_ATTR
                     return this->on_error(
                         "'L' specifier can only be used with arguments of "
-                        "integer, floating-point, boolean, or string types");
+                        "integer, floating-point, or boolean types");
                 }
 
                 Handler::on_localized();

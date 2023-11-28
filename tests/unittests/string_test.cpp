@@ -119,14 +119,14 @@ TEST(StringTest, CharacterPresentationWideStringFromNarrowSource)
 
 TEST(StringTest, CharacterSetPresentationNarrowStringFromNarrowSource)
 {
-    auto result = scn::scan<std::string>("abc def", "{:[:alpha:]}");
+    auto result = scn::scan<std::string>("abc def", "{:[a-z]}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), " def");
     EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringTest, CharacterSetPresentationWideStringFromWideSource)
 {
-    auto result = scn::scan<std::wstring>(L"abc def", L"{:[:alpha:]}");
+    auto result = scn::scan<std::wstring>(L"abc def", L"{:[a-z]}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), L" def");
     EXPECT_EQ(result->value(), L"abc");
@@ -134,14 +134,14 @@ TEST(StringTest, CharacterSetPresentationWideStringFromWideSource)
 
 TEST(StringTest, CharacterSetPresentationNarrowStringFromWideSource)
 {
-    auto result = scn::scan<std::string>(L"abc def", L"{:[:alpha:]}");
+    auto result = scn::scan<std::string>(L"abc def", L"{:[a-z]}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), L" def");
     EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringTest, CharacterSetPresentationWideStringFromNarrowSource)
 {
-    auto result = scn::scan<std::wstring>("abc def", "{:[:alpha:]}");
+    auto result = scn::scan<std::wstring>("abc def", "{:[a-z]}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), " def");
     EXPECT_EQ(result->value(), L"abc");

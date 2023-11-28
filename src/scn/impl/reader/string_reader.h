@@ -167,7 +167,7 @@ namespace scn {
         class word_reader_impl {
         public:
             template <typename Range, typename ValueCharT>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read(
                 Range&& range,
                 std::basic_string<ValueCharT>& value)
             {
@@ -175,38 +175,14 @@ namespace scn {
                                         value);
             }
 
-#if !SCN_DISABLE_LOCALE
             template <typename Range, typename ValueCharT>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
-                Range&& range,
-                detail::locale_ref loc,
-                std::basic_string<ValueCharT>& value)
-            {
-                return read_string_impl(
-                    range, read_until_localized_space(range, loc), value);
-            }
-#endif
-
-            template <typename Range, typename ValueCharT>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read(
                 Range&& range,
                 std::basic_string_view<ValueCharT>& value)
             {
                 return read_string_view_impl(
                     range, read_until_classic_space(range), value);
             }
-
-#if !SCN_DISABLE_LOCALE
-            template <typename Range, typename ValueCharT>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
-                Range&& range,
-                detail::locale_ref loc,
-                std::basic_string_view<ValueCharT>& value)
-            {
-                return read_string_view_impl(
-                    range, read_until_localized_space(range, loc), value);
-            }
-#endif
         };
 
         template <typename SourceCharT>
@@ -260,14 +236,7 @@ namespace scn {
             }
         };
 
-        detail::character_set_specifier get_charset_specifier_for_ascii(
-            char ch);
-
         struct nonascii_specs_handler {
-            constexpr void on_charset_specifier(detail::character_set_specifier)
-            {
-            }
-
             void on_charset_single(char32_t cp)
             {
                 on_charset_range(cp, cp + 1);
@@ -295,6 +264,11 @@ namespace scn {
                 extra_ranges.push_back(std::make_pair(begin, end));
             }
 
+            constexpr void on_charset_inverted() const
+            {
+                // no-op
+            }
+
             constexpr void on_error(const char* msg)
             {
                 on_error(scan_error{scan_error::invalid_format_string, msg});
@@ -318,12 +292,12 @@ namespace scn {
         class character_set_reader_impl {
         public:
             template <typename Range, typename ValueCharT>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read(
                 Range&& range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string<ValueCharT>& value)
             {
-                auto it = read_source_classic_impl(range, {specs});
+                auto it = read_source_impl(range, {specs});
                 if (SCN_UNLIKELY(!it)) {
                     return unexpected(it.error());
                 }
@@ -331,53 +305,19 @@ namespace scn {
                 return read_string_impl(range, *it, value);
             }
 
-#if !SCN_DISABLE_LOCALE
             template <typename Range, typename ValueCharT>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
-                Range&& range,
-                detail::locale_ref loc,
-                const detail::basic_format_specs<SourceCharT>& specs,
-                std::basic_string<ValueCharT>& value)
-            {
-                auto it = read_source_localized_impl(range, {specs}, loc);
-                if (SCN_UNLIKELY(!it)) {
-                    return unexpected(it.error());
-                }
-
-                return read_string_impl(range, *it, value);
-            }
-#endif
-
-            template <typename Range, typename ValueCharT>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read(
                 Range&& range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 std::basic_string_view<ValueCharT>& value)
             {
-                auto it = read_source_classic_impl(range, {specs});
+                auto it = read_source_impl(range, {specs});
                 if (SCN_UNLIKELY(!it)) {
                     return unexpected(it.error());
                 }
 
                 return read_string_view_impl(range, *it, value);
             }
-
-#if !SCN_DISABLE_LOCALE
-            template <typename Range, typename ValueCharT>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
-                Range&& range,
-                detail::locale_ref loc,
-                const detail::basic_format_specs<SourceCharT>& specs,
-                std::basic_string_view<ValueCharT>& value)
-            {
-                auto it = read_source_localized_impl(range, {specs}, loc);
-                if (SCN_UNLIKELY(!it)) {
-                    return unexpected(it.error());
-                }
-
-                return read_string_view_impl(range, *it, value);
-            }
-#endif
 
         private:
             struct specs_helper {
@@ -396,14 +336,6 @@ namespace scn {
                                 specs.charset_literals[val / 8]) >>
                             (val % 8)) &
                            1u;
-                }
-
-                constexpr bool is_char_set_in_specifiers(char ch) const
-                {
-                    SCN_EXPECT(is_ascii_char(ch));
-                    return (get_charset_specifier_for_ascii(ch) &
-                            specs.charset_specifiers) !=
-                           detail::character_set_specifier::none;
                 }
 
                 bool is_char_set_in_extra_literals(char32_t cp) const
@@ -426,10 +358,7 @@ namespace scn {
 
                 scan_error handle_nonascii()
                 {
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::
-                             has_nonascii_literals) ==
-                        detail::character_set_specifier::none) {
+                    if (!specs.charset_has_nonascii) {
                         return {};
                     }
 
@@ -448,158 +377,30 @@ namespace scn {
                     return {};
                 }
 
-#if !SCN_DISABLE_LOCALE
-                scan_error handle_localized_nonmask(detail::locale_ref loc)
-                {
-                    SCN_UNUSED(loc);
-
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::space_literal) !=
-                        detail::character_set_specifier::none) {
-                        nonascii.extra_ranges.push_back(
-                            std::make_pair(char32_t{' '}, char32_t{' ' + 1}));
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::underscore_literal) !=
-                        detail::character_set_specifier::none) {
-                        nonascii.extra_ranges.push_back(
-                            std::make_pair(char32_t{'_'}, char32_t{'_' + 1}));
-                    }
-
-                    return {};
-                }
-
-                std::pair<std::pair<std::ctype_base::mask, bool>,
-                          std::pair<std::ctype_base::mask, bool>>
-                map_localized_mask() const
-                {
-                    std::ctype_base::mask mask{}, inverted_mask{};
-                    bool is_exhaustive{true}, is_inverted_exhaustive{true};
-
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::space_literal) !=
-                        detail::character_set_specifier::none) {
-                        is_exhaustive = false;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::underscore_literal) !=
-                        detail::character_set_specifier::none) {
-                        is_exhaustive = false;
-                    }
-
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::space) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::space;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::blank) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::blank;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::punct) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::punct;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::upper) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::upper;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::lower) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::lower;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::alpha) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::alpha;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::digit) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::digit;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::xdigit) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::xdigit;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::cntrl) !=
-                        detail::character_set_specifier::none) {
-                        mask |= std::ctype_base::cntrl;
-                    }
-
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::inverted_letters) !=
-                        detail::character_set_specifier::none) {
-                        inverted_mask |= std::ctype_base::alpha;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::
-                             inverted_alnum_underscore) !=
-                        detail::character_set_specifier::none) {
-                        inverted_mask |= std::ctype_base::alnum;
-                        is_inverted_exhaustive = false;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::
-                             inverted_whitespace) !=
-                        detail::character_set_specifier::none) {
-                        inverted_mask |= std::ctype_base::space;
-                    }
-                    if ((specs.charset_specifiers &
-                         detail::character_set_specifier::inverted_numbers) !=
-                        detail::character_set_specifier::none) {
-                        inverted_mask |= std::ctype_base::digit;
-                    }
-
-                    return {{mask, is_exhaustive},
-                            {inverted_mask, is_inverted_exhaustive}};
-                }
-#endif  // !SCN_DISABLE_LOCALE
-
                 const detail::basic_format_specs<SourceCharT>& specs;
                 nonascii_specs_handler nonascii;
             };
 
             struct read_source_callback {
-                bool on_ascii_only(SourceCharT ch) const
+                SCN_NODISCARD bool on_ascii_only(SourceCharT ch) const
                 {
                     if (!is_ascii_char(ch)) {
                         return false;
                     }
 
                     return helper.is_char_set_in_literals(
-                               static_cast<char>(ch)) ||
-                           helper.is_char_set_in_specifiers(
-                               static_cast<char>(ch));
+                        static_cast<char>(ch));
                 }
 
-                bool on_classic_with_extra_ranges(char32_t cp) const
+                SCN_NODISCARD bool on_classic_with_extra_ranges(
+                    char32_t cp) const
                 {
                     if (!is_ascii_char(cp)) {
                         return helper.is_char_set_in_extra_literals(cp);
                     }
 
                     return helper.is_char_set_in_literals(
-                               static_cast<char>(cp)) ||
-                           helper.is_char_set_in_specifiers(
-                               static_cast<char>(cp));
-                }
-
-                bool on_localized(char32_t cp) const
-                {
-                    if (!is_ascii_char(cp)) {
-                        return helper.is_char_set_in_extra_literals(cp);
-                    }
-
-                    return helper.is_char_set_in_literals(
-                               static_cast<char>(cp)) ||
-                           helper.is_char_set_in_extra_literals(cp);
+                        static_cast<char>(cp));
                 }
 
                 const specs_helper& helper;
@@ -607,17 +408,12 @@ namespace scn {
             };
 
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>>
-            read_source_classic_impl(Range&& range, specs_helper helper) const
+            scan_expected<simple_borrowed_iterator_t<Range>> read_source_impl(
+                Range&& range,
+                specs_helper helper) const
             {
-                const bool is_inverted =
-                    (helper.specs.charset_specifiers &
-                     detail::character_set_specifier::has_inverted_flag) !=
-                    detail::character_set_specifier::none;
-                const bool accepts_nonascii =
-                    (helper.specs.charset_specifiers &
-                     detail::character_set_specifier::has_nonascii_literals) !=
-                    detail::character_set_specifier::none;
+                const bool is_inverted = helper.specs.charset_is_inverted;
+                const bool accepts_nonascii = helper.specs.charset_has_nonascii;
 
                 if (auto e = helper.handle_nonascii(); SCN_UNLIKELY(!e)) {
                     return unexpected(e);
@@ -649,76 +445,6 @@ namespace scn {
                 auto it = read_while_code_unit(range, cb);
                 return check_nonempty(it, range);
             }
-
-#if !SCN_DISABLE_LOCALE
-            template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>>
-            read_source_localized_impl(Range&& range,
-                                       specs_helper helper,
-                                       detail::locale_ref loc) const
-            {
-                const bool is_inverted =
-                    (helper.specs.charset_specifiers &
-                     detail::character_set_specifier::has_inverted_flag) !=
-                    detail::character_set_specifier::none;
-
-                if (auto e = helper.handle_nonascii(); SCN_UNLIKELY(!e)) {
-                    return unexpected(e);
-                }
-                if (auto e = helper.handle_localized_nonmask(loc);
-                    SCN_UNLIKELY(!e)) {
-                    return unexpected(e);
-                }
-
-                read_source_callback cb_wrapper{helper, loc};
-
-                const auto [m1, m2] = helper.map_localized_mask();
-                const auto [mask, is_mask_exhaustive] = m1;
-                const auto [inverted_mask, is_inverted_mask_exhaustive] = m2;
-                const bool has_any_ascii_literals =
-                    ranges::any_of(helper.specs.charset_literals,
-                                   [](auto b) SCN_NOEXCEPT { return b != 0; });
-                const bool has_any_nonascii_literals =
-                    !helper.nonascii.extra_ranges.empty();
-
-                if (is_mask_exhaustive && is_inverted_mask_exhaustive &&
-                    inverted_mask == std::ctype_base::mask{} &&
-                    !has_any_ascii_literals && !has_any_nonascii_literals) {
-                    if (is_inverted) {
-                        auto it = read_until_localized_mask(range, loc, mask);
-                        return check_nonempty(it, range);
-                    }
-                    auto it = read_while_localized_mask(range, loc, mask);
-                    return check_nonempty(it, range);
-                }
-
-                const auto cb = [&](char32_t cp) {
-                    return cb_wrapper.on_localized(cp);
-                };
-
-                if (is_mask_exhaustive && is_inverted_mask_exhaustive &&
-                    mask == std::ctype_base::mask{} &&
-                    inverted_mask == std::ctype_base::mask{}) {
-                    if (is_inverted) {
-                        auto it = read_until_code_point(range, cb);
-                        return check_nonempty(it, range);
-                    }
-                    auto it = read_while_code_point(range, cb);
-                    return check_nonempty(it, range);
-                }
-
-                if (is_inverted) {
-                    auto it =
-                        read_until_localized_mask_or_inverted_mask_or_code_point(
-                            range, loc, mask, inverted_mask, cb);
-                    return check_nonempty(it, range);
-                }
-                auto it =
-                    read_while_localized_mask_or_inverted_mask_or_code_point(
-                        range, loc, mask, inverted_mask, cb);
-                return check_nonempty(it, range);
-            }
-#endif  // !SCN_DISABLE_LOCALE
 
             template <typename Iterator, typename Range>
             static scan_expected<Iterator> check_nonempty(const Iterator& it,
@@ -783,8 +509,8 @@ namespace scn {
             read_default(Range&& range, Value& value, detail::locale_ref loc)
             {
                 SCN_UNUSED(loc);
-                return word_reader_impl<SourceCharT>{}.read_classic(
-                    SCN_FWD(range), value);
+                return word_reader_impl<SourceCharT>{}.read(SCN_FWD(range),
+                                                            value);
             }
 
             template <typename Range, typename Value>
@@ -794,20 +520,15 @@ namespace scn {
                 Value& value,
                 detail::locale_ref loc)
             {
-#if !SCN_DISABLE_LOCALE
-                if (specs.localized) {
-                    return read_localized(SCN_FWD(range), loc, specs, value);
-                }
-#endif
-
-                return read_classic(SCN_FWD(range), specs, value);
+                SCN_UNUSED(loc);
+                return read_impl(SCN_FWD(range), specs, value);
             }
 
         protected:
             enum class reader_type { word, character, character_set };
 
             template <typename Range, typename Value>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
+            scan_expected<simple_borrowed_iterator_t<Range>> read_impl(
                 Range&& range,
                 const detail::basic_format_specs<SourceCharT>& specs,
                 Value& value)
@@ -817,7 +538,7 @@ namespace scn {
 
                 switch (m_type) {
                     case reader_type::word:
-                        return word_reader_impl<SourceCharT>{}.read_classic(
+                        return word_reader_impl<SourceCharT>{}.read(
                             SCN_FWD(range), value);
 
                     case reader_type::character:
@@ -825,8 +546,8 @@ namespace scn {
                             SCN_FWD(range), value);
 
                     case reader_type::character_set:
-                        return character_set_reader_impl<SourceCharT>{}
-                            .read_classic(SCN_FWD(range), specs, value);
+                        return character_set_reader_impl<SourceCharT>{}.read(
+                            SCN_FWD(range), specs, value);
 
                     default:
                         SCN_EXPECT(false);
@@ -835,39 +556,6 @@ namespace scn {
 
                 SCN_CLANG_POP
             }
-
-#if !SCN_DISABLE_LOCALE
-            template <typename Range, typename Value>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_localized(
-                Range&& range,
-                detail::locale_ref loc,
-                const detail::basic_format_specs<SourceCharT>& specs,
-                Value& value)
-            {
-                SCN_CLANG_PUSH
-                SCN_CLANG_IGNORE("-Wcovered-switch-default")
-
-                switch (m_type) {
-                    case reader_type::word:
-                        return word_reader_impl<SourceCharT>{}.read_localized(
-                            SCN_FWD(range), loc, value);
-
-                    case reader_type::character:
-                        return character_reader_impl<SourceCharT>{}.read(
-                            SCN_FWD(range), value);
-
-                    case reader_type::character_set:
-                        return character_set_reader_impl<SourceCharT>{}
-                            .read_localized(SCN_FWD(range), loc, specs, value);
-
-                    default:
-                        SCN_EXPECT(false);
-                        SCN_UNREACHABLE;
-                }
-
-                SCN_CLANG_POP
-            }
-#endif
 
             reader_type m_type{reader_type::word};
         };

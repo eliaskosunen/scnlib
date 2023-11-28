@@ -52,7 +52,8 @@ TEST(StringViewTest, StringPresentationWideStringViewFromWideSource)
 
 TEST(StringViewTest, CharacterPresentationWithNoWidthCausesError)
 {
-    auto result = scn::scan<std::string_view>("abc def", scn::runtime_format("{:c}"));
+    auto result =
+        scn::scan<std::string_view>("abc def", scn::runtime_format("{:c}"));
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
 }
@@ -74,14 +75,14 @@ TEST(StringViewTest, CharacterPresentationWideStringViewFromWideSource)
 
 TEST(StringViewTest, CharacterSetPresentationNarrowStringViewFromNarrowSource)
 {
-    auto result = scn::scan<std::string_view>("abc def", "{:[:alpha:]}");
+    auto result = scn::scan<std::string_view>("abc def", "{:[a-z]}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), " def");
     EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringViewTest, CharacterSetPresentationWideStringViewFromWideSource)
 {
-    auto result = scn::scan<std::wstring_view>(L"abc def", L"{:[:alpha:]}");
+    auto result = scn::scan<std::wstring_view>(L"abc def", L"{:[a-z]}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), L" def");
     EXPECT_EQ(result->value(), L"abc");

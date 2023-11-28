@@ -136,25 +136,6 @@ TEST(FormatStringTest, EmptyCharacterSet)
     auto result = scn::scan<std::string>("42", scn::runtime_format("{:[]}"));
     EXPECT_FALSE(result);
 }
-TEST(FormatStringTest, AlphaCharacterSet)
-{
-    auto result = scn::scan<std::string>("abc123", "{:[:alpha:]}");
-    ASSERT_TRUE(result);
-    EXPECT_EQ(std::get<0>(result->values()), "abc");
-}
-TEST(FormatStringTest, AlphaCharacterSetRuntime)
-{
-    auto result =
-        scn::scan<std::string>("abc123", scn::runtime_format("{:[:alpha:]}"));
-    ASSERT_TRUE(result);
-    EXPECT_EQ(std::get<0>(result->values()), "abc");
-}
-TEST(FormatStringTest, AlphaCharacterSetWithStringView)
-{
-    auto result = scn::scan<std::string_view>("abc123", "{:[:alpha:]}");
-    ASSERT_TRUE(result);
-    EXPECT_EQ(std::get<0>(result->values()), "abc");
-}
 TEST(FormatStringTest, InvertedCharacterSet)
 {
     auto result =
@@ -173,26 +154,6 @@ TEST(FormatStringTest, NonTerminatedCharacterSetWithStringView)
     auto result =
         scn::scan<std::string_view>("abc", scn::runtime_format("{:["));
     EXPECT_FALSE(result);
-}
-
-TEST(FormatStringTest, BackslashLettersCharacterSet)
-{
-    auto result = scn::scan<std::string>("abc def", "{:[\\l]}");
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->value(), "abc");
-}
-TEST(FormatStringTest, BackslashLettersCharacterSetRuntime)
-{
-    auto result =
-        scn::scan<std::string>("abc def", scn::runtime_format("{:[\\l]}"));
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->value(), "abc");
-}
-TEST(FormatStringTest, NonTerminatedBackslashSpecifier)
-{
-    auto result =
-        scn::scan<std::string>("abc def", scn::runtime_format("{:[\\"));
-    ASSERT_FALSE(result);
 }
 
 TEST(FormatStringTest, RangeSet)

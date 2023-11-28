@@ -77,7 +77,6 @@ if (SCN_TESTS_LOCALIZED)
     add_executable(scn_localized_tests
             main.cpp
 
-            localized_tests/character_set_test.cpp
             localized_tests/integer_test.cpp
     )
     target_link_libraries(scn_localized_tests scn_gtest scn_tests_base)

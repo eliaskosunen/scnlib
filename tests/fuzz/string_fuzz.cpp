@@ -41,11 +41,11 @@ namespace scn::fuzz {
                 make_input_views(data);
 
             auto f = get_format_strings<char>("{}", "{:L}", "{:s}", "{:64c}",
-                                              "{:64U}", "{:[:alpha:]}");
+                                              "{:64U}", "{:[A-Za-z]}");
             do_basic_run(sv, f);
 
             auto wf = get_format_strings<wchar_t>(
-                L"{}", L"{:L}", L"{:s}", L"{:64c}", L"{:64U}", L"{:[:alpha:]}");
+                L"{}", L"{:L}", L"{:s}", L"{:64c}", L"{:64U}", L"{:[A-Za-z]}");
             do_basic_run(wsv_direct, wf);
             do_basic_run(wsv_reinterpret, wf);
             do_basic_run(wsv_transcode, wf);
