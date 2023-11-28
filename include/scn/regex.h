@@ -17,9 +17,4 @@
 
 #pragma once
 
-#include <scn/scan.h>
-
-#include <scn/istream.h>
-#include <scn/ranges.h>
-#include <scn/regex.h>
-#include <scn/xchar.h>
+#include <scn/detail/regex.h>

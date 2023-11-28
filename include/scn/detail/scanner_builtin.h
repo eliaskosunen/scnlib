@@ -55,6 +55,8 @@ namespace scn {
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(std::wstring, Context)        \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(                              \
         std::basic_string_view<Context::char_type>, Context)               \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(regex_matches, Context)       \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(wregex_matches, Context)      \
     extern template scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 

@@ -35,6 +35,7 @@ set(SCN_PUBLIC_HEADERS
         include/scn/fwd.h
         include/scn/scan.h
         include/scn/ranges.h
+        include/scn/regex.h
         include/scn/istream.h
         include/scn/xchar.h
 
@@ -53,6 +54,7 @@ set(SCN_PUBLIC_HEADERS
         include/scn/detail/parse_context.h
         include/scn/detail/pp.h
         include/scn/detail/pp_detect.h
+        include/scn/detail/regex.h
         include/scn/detail/scanner_range.h
         include/scn/detail/ranges.h
         include/scn/detail/scan.h

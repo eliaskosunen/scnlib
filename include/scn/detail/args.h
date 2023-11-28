@@ -63,6 +63,8 @@ namespace scn {
             wide_string_view_type,
             narrow_string_type,
             wide_string_type,
+            narrow_regex_matches_type,
+            wide_regex_matches_type,
             custom_type,
             last_type = custom_type
         };
@@ -119,6 +121,12 @@ namespace scn {
         SCN_TYPE_CONSTANT(std::wstring,
                           wide_string_type,
                           SCN_DISABLE_TYPE_STRING);
+        SCN_TYPE_CONSTANT(regex_matches,
+                          narrow_regex_matches_type,
+                          SCN_DISABLE_REGEX);
+        SCN_TYPE_CONSTANT(wregex_matches,
+                          wide_regex_matches_type,
+                          SCN_DISABLE_REGEX);
 
 #undef SCN_TYPE_CONSTANT
 
@@ -246,6 +254,9 @@ namespace scn {
             SCN_ARG_MAPPER(std::basic_string_view<char_type>)
             SCN_ARG_MAPPER(std::string)
             SCN_ARG_MAPPER(std::wstring)
+
+            SCN_ARG_MAPPER(regex_matches)
+            SCN_ARG_MAPPER(wregex_matches)
 
 #undef SCN_ARG_MAPPER
 

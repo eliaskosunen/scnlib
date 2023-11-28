@@ -22,6 +22,7 @@
 #include <scn/impl/reader/float_reader.h>
 #include <scn/impl/reader/integer_reader.h>
 #include <scn/impl/reader/pointer_reader.h>
+#include <scn/impl/reader/regex_reader.h>
 #include <scn/impl/reader/string_reader.h>
 
 namespace scn {
@@ -68,6 +69,10 @@ namespace scn {
                 else if constexpr (std::is_same_v<T, std::string> ||
                                    std::is_same_v<T, std::wstring>) {
                     return reader_impl_for_string<CharT>{};
+                }
+                else if constexpr (std::is_same_v<T, regex_matches> ||
+                                   std::is_same_v<T, wregex_matches>) {
+                    return reader_impl_for_regex_matches<CharT>{};
                 }
                 else if constexpr (std::is_same_v<T, void*>) {
                     return reader_impl_for_voidptr<CharT>{};
@@ -207,6 +212,8 @@ namespace scn {
     SCN_DEFINE_READER_T(Ctx, std::wstring)       \
     SCN_DEFINE_READER_T(Ctx, std::string_view)   \
     SCN_DEFINE_READER_T(Ctx, std::wstring_view)  \
+    SCN_DEFINE_READER_T(Ctx, regex_matches)      \
+    SCN_DEFINE_READER_T(Ctx, wregex_matches)     \
     SCN_DEFINE_READER_T(Ctx, monostate)
 
         SCN_DEFINE_READER(detail::scanner_scan_contexts::sv)

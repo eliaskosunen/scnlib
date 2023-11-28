@@ -133,6 +133,8 @@ namespace scn {
     SCN_DECLARE_READER_T(Ctx, std::wstring)       \
     SCN_DECLARE_READER_T(Ctx, std::string_view)   \
     SCN_DECLARE_READER_T(Ctx, std::wstring_view)  \
+    SCN_DECLARE_READER_T(Ctx, regex_matches)      \
+    SCN_DECLARE_READER_T(Ctx, wregex_matches)     \
     SCN_DECLARE_READER_T(Ctx, monostate)
 
         SCN_DECLARE_READER(detail::scanner_scan_contexts::sv)

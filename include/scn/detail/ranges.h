@@ -87,6 +87,8 @@ SCN_CLANG_IGNORE("-Wctad-maybe-unsupported")
 SCN_CLANG_IGNORE("-Wimplicit-int-conversion")
 #endif
 
+#define NANORANGE_NO_STD_FORWARD_DECLARATIONS
+
 #include <scn/external/nanorange/nanorange.hpp>
 
 SCN_CLANG_POP

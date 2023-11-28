@@ -49,6 +49,8 @@ namespace scn {
             float_general,         // 'g', 'G'
             string,                // 's'
             string_set,            // '[...]'
+            regex,                 // '/.../.'
+            regex_escaped,         // '/..\/../.'
             character,             // 'c'
             escaped_character,     // '?'
             pointer,               // 'p'
@@ -62,6 +64,7 @@ namespace scn {
             std::array<uint8_t, 128 / 8> charset_literals{0};
             bool charset_has_nonascii{false}, charset_is_inverted{false};
             std::basic_string_view<CharT> charset_string{};
+            std::basic_string_view<CharT> regex_flags{};
             unsigned arbitrary_base : 6;
             unsigned align : 2;
             bool localized : 1;
@@ -195,6 +198,16 @@ namespace scn {
             {
                 m_specs.charset_string = fmt;
                 on_type(presentation_type::string_set);
+            }
+
+            constexpr void on_regex_pattern(
+                std::basic_string_view<CharT> pattern)
+            {
+                m_specs.charset_string = pattern;
+            }
+            constexpr void on_regex_flags(std::basic_string_view<CharT> flags)
+            {
+                m_specs.regex_flags = flags;
             }
 
             constexpr void on_thsep()
@@ -335,7 +348,9 @@ namespace scn {
                 case 'p':
                     return presentation_type::pointer;
                 case '[':
-                    // Should be handled by parse_presentation_set
+                case '/':
+                    // Should be handled by parse_presentation_set and
+                    // parse_presentation_regex
                     SCN_EXPECT(false);
                     SCN_UNREACHABLE;
                 default:
@@ -571,6 +586,76 @@ namespace scn {
         }
 
         template <typename CharT, typename SpecHandler>
+        constexpr const CharT* parse_presentation_regex(const CharT*& begin,
+                                                        const CharT* end,
+                                                        SpecHandler&& handler)
+        {
+#if !SCN_DISABLE_REGEX
+            SCN_EXPECT(begin != end);
+            SCN_EXPECT(*begin == CharT{'/'});
+
+            auto start = begin;
+            ++begin;
+
+            if (SCN_UNLIKELY(begin == end)) {
+                handler.on_error("Unexpected end of regex in format string");
+                return begin;
+            }
+
+            handler.on_type(presentation_type::regex);
+            for (; begin != end; ++begin) {
+                if (*begin == CharT{'/'}) {
+                    if (*(begin - 1) != CharT{'\\'}) {
+                        break;
+                    }
+                    else {
+                        handler.on_type(presentation_type::regex_escaped);
+                    }
+                }
+            }
+            if (SCN_UNLIKELY(begin == end)) {
+                handler.on_error("Unexpected end of regex in format string");
+                return begin;
+            }
+
+            auto regex_end = begin;
+            auto regex_pattern =
+                make_string_view_from_pointers(start + 1, regex_end);
+            if (SCN_UNLIKELY(regex_pattern.empty())) {
+                handler.on_error("Invalid (empty) regex in format string");
+                return begin;
+            }
+            handler.on_regex_pattern(regex_pattern);
+            ++begin;
+
+            if (SCN_UNLIKELY(begin == end)) {
+                handler.on_error("Unexpected end of regex in format string");
+                return begin;
+            }
+
+            for (; begin != end; ++begin) {
+                if (*begin == CharT{'}'}) {
+                    break;
+                }
+            }
+
+            if (SCN_UNLIKELY(begin == end)) {
+                handler.on_error("Unexpected end of regex in format string");
+                return begin;
+            }
+
+            auto flags_end = begin;
+            handler.on_regex_flags(
+                make_string_view_from_pointers(regex_end + 1, flags_end));
+
+            return begin;
+#else
+            handler.on_error("Regular expression support is disabled");
+            return {};
+#endif
+        }
+
+        template <typename CharT, typename SpecHandler>
         constexpr const CharT* parse_format_specs(const CharT* begin,
                                                   const CharT* end,
                                                   SpecHandler&& handler)
@@ -587,6 +672,9 @@ namespace scn {
                     }
                     handler.on_character_set_string(set);
                     return begin;
+                }
+                if (*begin == CharT{'/'}) {
+                    return parse_presentation_regex(begin, end, handler);
                 }
                 presentation_type type = parse_presentation_type(*begin++);
                 if (SCN_UNLIKELY(type == presentation_type::none)) {
@@ -1057,7 +1145,9 @@ namespace scn {
             check_disallow_thsep(specs, handler);
             if (specs.type == presentation_type::none ||
                 specs.type == presentation_type::string ||
-                specs.type == presentation_type::string_set) {
+                specs.type == presentation_type::string_set ||
+                specs.type == presentation_type::regex ||
+                specs.type == presentation_type::regex_escaped) {
                 return;
             }
             if (specs.type == presentation_type::character) {
@@ -1102,6 +1192,25 @@ namespace scn {
                 SCN_UNLIKELY_ATTR
                 return handler.on_error("Invalid type specifier for boolean");
             }
+        }
+
+        template <typename CharT, typename Handler>
+        constexpr void check_regex_type_specs(
+            const basic_format_specs<CharT>& specs,
+            Handler&& handler)
+        {
+            check_disallow_thsep(specs, handler);
+            if (specs.type == presentation_type::regex ||
+                specs.type == presentation_type::regex_escaped) {
+                return;
+            }
+            if (SCN_UNLIKELY(specs.type == presentation_type::none)) {
+                return handler.on_error(
+                    "Regular expression needs to specified when reading "
+                    "regex_matches");
+            }
+            SCN_UNLIKELY_ATTR
+            handler.on_error("Invalid type specifier for regex_matches");
         }
     }  // namespace detail
 

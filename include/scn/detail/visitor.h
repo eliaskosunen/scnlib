@@ -89,6 +89,10 @@ namespace scn {
                 SCN_VISIT(std::wstring_view);
             case detail::arg_type::wide_string_type:
                 SCN_VISIT(std::wstring);
+            case detail::arg_type::narrow_regex_matches_type:
+                SCN_VISIT(regex_matches);
+            case detail::arg_type::wide_regex_matches_type:
+                SCN_VISIT(wregex_matches);
 
             case detail::arg_type::custom_type:
 #if !SCN_DISABLE_TYPE_CUSTOM

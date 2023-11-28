@@ -1,4 +1,17 @@
 function(get_config_flags flags)
+    if (SCN_DISABLE_REGEX)
+        set(regex_flag -DSCN_DISABLE_REGEX=1)
+    else ()
+        if (SCN_REGEX_BACKEND STREQUAL "std")
+            set(regex_flag -DSCN_REGEX_BACKEND=0)
+        elseif (SCN_REGEX_BACKEND STREQUAL "Boost")
+            set(regex_flag -DSCN_REGEX_BACKEND=1)
+        elseif (SCN_REGEX_BACKEND STREQUAL "re2")
+            set(regex_flag -DSCN_REGEX_BACKEND=2)
+        elseif (SCN_REGEX_BACKEND STREQUAL "ctre")
+            set(regex_flag -DSCN_REGEX_BACKEND=3)
+        endif ()
+    endif ()
     set(${flags}
             $<$<BOOL:${SCN_DISABLE_TYPE_SCHAR}>: -DSCN_DISABLE_TYPE_SCHAR=1>
             $<$<BOOL:${SCN_DISABLE_TYPE_SHORT}>: -DSCN_DISABLE_TYPE_SHORT=1>
@@ -28,6 +41,8 @@ function(get_config_flags flags)
             $<$<BOOL:${SCN_DISABLE_LOCALE}>: -DSCN_DISABLE_LOCALE=1>
             $<$<BOOL:${SCN_DISABLE_ERASED_RANGE}>: -DSCN_DISABLE_ERASED_RANGE=1>
             #$<$<BOOL:${SCN_DISABLE_TRANSCODING}>: -DSCN_DISABLE_TRANSCODING=1>
+
+            ${regex_flag}
             PARENT_SCOPE
     )
 endfunction()

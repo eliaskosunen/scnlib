@@ -1,13 +1,13 @@
 if (NOT SCN_TESTS)
     return()
-endif()
+endif ()
 
 add_library(scn_tests_base INTERFACE)
 target_link_libraries(scn_tests_base INTERFACE scn_sanitizers scn_internal)
 target_compile_options(scn_tests_base INTERFACE
-    $<$<CXX_COMPILER_ID:GNU>:
+        $<$<CXX_COMPILER_ID:GNU>:
         -Wno-unused>
-    $<$<CXX_COMPILER_ID:Clang>:
+        $<$<CXX_COMPILER_ID:Clang>:
         -Wno-unused-variable
         -Wno-used-but-marked-unused
         -Wno-gnu-zero-variadic-macro-arguments
@@ -36,6 +36,7 @@ add_executable(scn_tests
         istream_scanner_test.cpp
         memory_test.cpp
         ranges_test.cpp
+        regex_test.cpp
         result_test.cpp
         scan_test.cpp
         source_test.cpp
@@ -81,7 +82,7 @@ if (SCN_TESTS_LOCALIZED)
     )
     target_link_libraries(scn_localized_tests scn_gtest scn_tests_base)
     add_test(NAME scn_localized_tests COMMAND scn_localized_tests)
-endif()
+endif ()
 
 add_executable(scn_stdin_test
         main.cpp
@@ -101,6 +102,6 @@ add_custom_target(scn_stdin_test_prepare ALL
 find_program(BASH_PROGRAM bash)
 if (BASH_PROGRAM)
     add_test(NAME scn_stdin_test COMMAND ${BASH_PROGRAM} "${CMAKE_BINARY_DIR}/tests/unittests/stdin_test_runner.sh")
-else()
+else ()
     message(WARNING "bash not found, scn_stdin_test not added to CTest")
-endif()
+endif ()

@@ -15,11 +15,18 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#pragma once
+#include "wrapped_gtest.h"
 
-#include <scn/scan.h>
+#include <scn/detail/regex.h>
+#include <scn/detail/scan.h>
 
-#include <scn/istream.h>
-#include <scn/ranges.h>
-#include <scn/regex.h>
-#include <scn/xchar.h>
+using namespace std::string_literals;
+
+TEST(RegexTest, Matches)
+{
+    auto r = scn::scan<scn::regex_matches>("foobar", "{:/[a-zA-Z]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_TRUE(r->range().empty());
+    EXPECT_THAT(r->value().matches,
+                testing::ElementsAre(testing::Optional("foobar"s)));
+}

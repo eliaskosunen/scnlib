@@ -52,6 +52,22 @@
 #endif
 #endif
 
+// SCN_DISABLE_REGEX
+// If 1, disabled regular expression support
+#ifndef SCN_DISABLE_REGEX
+#define SCN_DISABLE_REGEX 0
+#endif
+
+#ifndef SCN_REGEX_BACKEND
+#define SCN_REGEX_BACKEND_STD   0
+#define SCN_REGEX_BACKEND_BOOST 1
+#define SCN_REGEX_BACKEND_RE2   2
+#define SCN_REGEX_BACKEND_CTRE  3
+
+// Default to std::regex
+#define SCN_REGEX_BACKEND       SCN_REGEX_BACKEND_STD
+#endif
+
 // SCN_DISABLE_IOSTREAM
 // If 1, removes all references and functionality related to standard streams.
 #ifndef SCN_DISABLE_IOSTREAM

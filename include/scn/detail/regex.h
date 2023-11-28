@@ -17,9 +17,26 @@
 
 #pragma once
 
-#include <scn/scan.h>
+#if !SCN_DISABLE_REGEX
 
-#include <scn/istream.h>
-#include <scn/ranges.h>
-#include <scn/regex.h>
-#include <scn/xchar.h>
+#include <scn/detail/scanner.h>
+
+#include <optional>
+#include <vector>
+
+#if SCN_REGEX_BACKEND != SCN_REGEX_BACKEND_STD
+#error TODO
+#endif
+
+namespace scn {
+    SCN_BEGIN_NAMESPACE
+
+    template <typename CharT>
+    struct basic_regex_matches {
+        std::vector<std::optional<std::basic_string<CharT>>> matches;
+    };
+
+    SCN_END_NAMESPACE
+}  // namespace scn
+
+#endif

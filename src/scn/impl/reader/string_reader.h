@@ -30,65 +30,6 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-        template <typename SourceCharT, typename DestCharT>
-        scan_error transcode_impl(std::basic_string_view<SourceCharT> src,
-                                  std::basic_string<DestCharT>& dst)
-        {
-            dst.clear();
-            transcode_valid_to_string(src, dst);
-            return {};
-        }
-
-        template <typename SourceCharT, typename DestCharT>
-        scan_error transcode_if_necessary(
-            const contiguous_range_factory<SourceCharT>& source,
-            std::basic_string<DestCharT>& dest)
-        {
-            if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
-                dest.assign(source.view());
-            }
-            else {
-                return transcode_impl(source.view(), dest);
-            }
-
-            return {};
-        }
-
-        template <typename SourceCharT, typename DestCharT>
-        scan_error transcode_if_necessary(
-            contiguous_range_factory<SourceCharT>&& source,
-            std::basic_string<DestCharT>& dest)
-        {
-            if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
-                if (source.stores_allocated_string()) {
-                    dest.assign(SCN_MOVE(source.get_allocated_string()));
-                }
-                else {
-                    dest.assign(source.view());
-                }
-            }
-            else {
-                return transcode_impl(source.view(), dest);
-            }
-
-            return {};
-        }
-
-        template <typename SourceCharT, typename DestCharT>
-        scan_error transcode_if_necessary(
-            string_view_wrapper<SourceCharT> source,
-            std::basic_string<DestCharT>& dest)
-        {
-            if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
-                dest.assign(source.view());
-            }
-            else {
-                return transcode_impl(source.view(), dest);
-            }
-
-            return {};
-        }
-
         template <typename Range, typename Iterator, typename ValueCharT>
         auto read_string_impl(Range& range,
                               Iterator&& result,

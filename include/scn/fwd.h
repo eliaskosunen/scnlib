@@ -244,5 +244,13 @@ namespace scn {
     namespace detail {
     }
 
+    // detail/regex.h:
+
+    template <typename CharT>
+    struct basic_regex_matches;
+
+    using regex_matches = basic_regex_matches<char>;
+    using wregex_matches = basic_regex_matches<wchar_t>;
+
     SCN_END_NAMESPACE
 }  // namespace scn

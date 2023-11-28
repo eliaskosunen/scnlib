@@ -141,6 +141,11 @@ namespace scn {
                     detail::check_pointer_type_specs(specs, checker);
                     break;
 
+                case detail::arg_type::narrow_regex_matches_type:
+                case detail::arg_type::wide_regex_matches_type:
+                    detail::check_regex_type_specs(specs, checker);
+                    break;
+
                     SCN_CLANG_PUSH
                     SCN_CLANG_IGNORE("-Wcovered-switch-default")
 
