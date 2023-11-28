@@ -73,6 +73,17 @@ target_link_libraries(scn_impl_tests PRIVATE
         scn_gtest scn_tests_base scn_internal)
 add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
 
+if (SCN_TESTS_LOCALIZED)
+    add_executable(scn_localized_tests
+            main.cpp
+
+            localized_tests/character_set_test.cpp
+            localized_tests/integer_test.cpp
+    )
+    target_link_libraries(scn_localized_tests scn_gtest scn_tests_base)
+    add_test(NAME scn_localized_tests COMMAND scn_localized_tests)
+endif()
+
 add_executable(scn_stdin_test
         main.cpp
 
@@ -91,4 +102,6 @@ add_custom_target(scn_stdin_test_prepare ALL
 find_program(BASH_PROGRAM bash)
 if (BASH_PROGRAM)
     add_test(NAME scn_stdin_test COMMAND ${BASH_PROGRAM} "${CMAKE_BINARY_DIR}/tests/unittests/stdin_test_runner.sh")
+else()
+    message(WARNING "bash not found, scn_stdin_test not added to CTest")
 endif()

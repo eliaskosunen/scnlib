@@ -1123,11 +1123,12 @@ namespace scn {
                 if (cat != arg_type_category::integer &&
                     cat != arg_type_category::unsigned_integer &&
                     cat != arg_type_category::floating &&
-                    cat != arg_type_category::boolean) {
+                    cat != arg_type_category::boolean &&
+                    cat != arg_type_category::string) {
                     SCN_UNLIKELY_ATTR
                     return this->on_error(
                         "'L' specifier can only be used with arguments of "
-                        "integer, floating-point or boolean types");
+                        "integer, floating-point, boolean, or string types");
                 }
 
                 Handler::on_localized();
