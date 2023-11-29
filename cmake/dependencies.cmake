@@ -61,7 +61,7 @@ endif ()
 # we don't want to include tests of dependencies, so we need to do some manual work
 
 if (SCN_USE_EXTERNAL_SIMDUTF)
-    find_package(simdutf CONFIG REQUIRED 4.0.5)
+    find_package(simdutf 4.0.5 CONFIG REQUIRED)
 else ()
     FetchContent_Declare(
             simdutf
@@ -90,7 +90,7 @@ endif ()
 # fast_float
 
 if (SCN_USE_EXTERNAL_FAST_FLOAT)
-    find_package(FastFloat CONFIG REQUIRED 5.3.0)
+    find_package(FastFloat 5.3.0 CONFIG REQUIRED)
 else ()
     FetchContent_Declare(
             fast_float
@@ -118,6 +118,7 @@ if (SCN_REGEX_BACKEND STREQUAL "Boost")
     endif ()
 
     find_package(Boost REQUIRED COMPONENTS regex)
+    set(SCN_REGEX_BACKEND_TARGET Boost::regex)
 endif ()
 
 # re2
@@ -127,7 +128,8 @@ if (SCN_REGEX_BACKEND STREQUAL "re2")
         message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF is not supported when SCN_REGEX_BACKEND is re2")
     endif ()
 
-    find_package(re2 REQUIRED)
+    find_package(re2 11.0.0 REQUIRED)
+    set(SCN_REGEX_BACKEND_TARGET re2::re2)
 endif ()
 
 # ctre
@@ -145,6 +147,7 @@ if (SCN_REGEX_BACKEND STREQUAL "ctre")
 
         list(APPEND SCN_OPTIONAL_DEPENDENCIES "ctre")
     endif ()
+    set(SCN_REGEX_BACKEND_TARGET ctre::ctre)
 endif ()
 
 # make available

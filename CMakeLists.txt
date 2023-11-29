@@ -14,13 +14,13 @@ if (CMAKE_VERSION VERSION_LESS 3.21)
     get_property(not_top DIRECTORY PROPERTY PARENT_DIRECTORY)
     if (NOT not_top)
         set(PROJECT_IS_TOP_LEVEL ON)
-    endif()
-endif()
+    endif ()
+endif ()
 if (PROJECT_IS_TOP_LEVEL AND NOT SCN_DISABLE_TOP_PROJECT)
     set(SCN_IS_TOP_PROJECT ON)
-else()
+else ()
     set(SCN_IS_TOP_PROJECT OFF)
-endif()
+endif ()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
@@ -73,7 +73,7 @@ set(SCN_PUBLIC_HEADERS
         include/scn/util/meta.h
         include/scn/util/span.h
         include/scn/util/string_view.h
-        )
+)
 set(SCN_PRIVATE_HEADERS
         src/scn/impl/algorithms/common.h
         src/scn/impl/algorithms/contiguous_range_factory.h
@@ -102,7 +102,7 @@ set(SCN_PRIVATE_HEADERS
         src/scn/impl/util/text_width.h
 
         src/scn/impl/locale.h
-        )
+)
 set(SCN_PRIVATE_SOURCES
         src/scn/scan.cpp
         src/scn/istream_scanner.cpp
@@ -117,9 +117,9 @@ set(SCN_PRIVATE_SOURCES
         src/scn/impl/reader/reader.cpp
         src/scn/impl/reader/float_reader.cpp
         src/scn/impl/reader/integer_reader.cpp
-        )
+)
 set(SCN_PRIVATE_SOURCES_WITH_IOSTREAMS
-        )
+)
 
 add_library(scn
         "${SCN_PUBLIC_HEADERS}"
@@ -132,22 +132,23 @@ target_include_directories(scn
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         PRIVATE
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
-        )
-target_link_libraries(scn
-        PRIVATE
-            simdutf::simdutf
-            FastFloat::fast_float
-        )
+)
+target_link_libraries(scn PRIVATE
+        simdutf::simdutf
+        FastFloat::fast_float
+        ${SCN_REGEX_BACKEND_TARGET}
+)
 set_library_flags(scn)
 
 set_property(TARGET scn PROPERTY SOVERSION 2)
 add_library(scn::scn ALIAS scn)
 
 add_library(scn_internal INTERFACE)
-target_link_libraries(scn_internal
-        INTERFACE
-            scn::scn
-            simdutf::simdutf FastFloat::fast_float
+target_link_libraries(scn_internal INTERFACE
+        scn::scn
+        simdutf::simdutf
+        FastFloat::fast_float
+        ${SCN_REGEX_BACKEND_TARGET}
 )
 target_include_directories(scn_internal
         INTERFACE

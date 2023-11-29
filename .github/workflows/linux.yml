@@ -431,6 +431,7 @@ jobs:
           - "-DSCN_DISABLE_IOSTREAM=ON"
           - "-DSCN_DISABLE_LOCALE=ON"
           - "-DSCN_DISABLE_ERASED_RANGE=ON"
+          - "-DSCN_DISABLE_REGEX=ON"
           - "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON"
           - "-DSCN_DISABLE_FROM_CHARS=ON -DSCN_DISABLE_STRTOD=ON"
 
@@ -457,3 +458,47 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --target scn -- -k 0
+
+  regex-backends:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        engine:
+          - std
+          - Boost
+          - re2
+          - pcre
+          - ctre
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Install re2
+        if: matrix.engine == "re2"
+        run: |
+          git clone https://github.com/google/re2 -b 2023-11-01 --depth=1
+          cd re2
+          mkdir build
+          cd build
+          cmake ..
+          cmake -G Ninja --build .
+          sudo cmake --build . --target install
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run CMake
+        run: |
+          mkdir ${{ runner.workspace }}/build
+          cmake -G Ninja -DSCN_CI=ON -DSCN_REGEX_BACKEND=${{ matrix.engine }} \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . -- -k 0
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest --output-on-failure

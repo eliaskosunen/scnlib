@@ -255,8 +255,7 @@ namespace scn {
             SCN_ARG_MAPPER(std::string)
             SCN_ARG_MAPPER(std::wstring)
 
-            SCN_ARG_MAPPER(regex_matches)
-            SCN_ARG_MAPPER(wregex_matches)
+            SCN_ARG_MAPPER(basic_regex_matches<char_type>)
 
 #undef SCN_ARG_MAPPER
 

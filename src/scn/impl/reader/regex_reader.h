@@ -24,6 +24,8 @@
 #include <regex>
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
 #include <boost/regex.hpp>
+#elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
+#include <re2/re2.h>
 #endif
 
 namespace scn {
@@ -47,16 +49,16 @@ namespace scn {
                                              "Regular expression didn't match");
             }
             value.matches.reserve(matches.size());
-            std::transform(matches.begin(), matches.end(),
-                           std::back_inserter(value.matches),
-                           [](auto&& match)
-                               -> std::optional<
-                                   typename basic_regex_matches<CharT>::match> {
-                               if (!match.matched)
-                                   return std::nullopt;
-                               return detail::make_string_view_from_pointers(
-                                   match.first, match.second);
-                           });
+            ranges::transform(
+                matches, std::back_inserter(value.matches),
+                [](auto&& match)
+                    -> std::optional<
+                        typename basic_regex_matches<CharT>::match> {
+                    if (!match.matched)
+                        return std::nullopt;
+                    return detail::make_string_view_from_pointers(match.first,
+                                                                  match.second);
+                });
             return input.begin() +
                    ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
@@ -71,18 +73,56 @@ namespace scn {
                                              "Regular expression didn't match");
             }
             value.matches.reserve(matches.size());
-            std::transform(matches.begin(), matches.end(),
-                           std::back_inserter(value.matches),
-                           [](auto&& match)
-                               -> std::optional<
-                                   typename basic_regex_matches<CharT>::match> {
-                               if (!match.matched)
-                                   return std::nullopt;
-                               return detail::make_string_view_from_pointers(
-                                   match.first, match.second);
-                           });
+            ranges::transform(
+                matches, std::back_inserter(value.matches),
+                [](auto&& match)
+                    -> std::optional<
+                        typename basic_regex_matches<CharT>::match> {
+                    if (!match.matched)
+                        return std::nullopt;
+                    return detail::make_string_view_from_pointers(match.first,
+                                                                  match.second);
+                });
             return input.begin() +
                    ranges::distance(input.data(), matches[0].second);
+#elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
+            static_assert(std::is_same_v<CharT, char>);
+            auto re = re2::RE2{pattern, RE2::Quiet};
+            if (!re.ok()) {
+                return unexpected_scan_error(
+                    scan_error::invalid_format_string,
+                    "Failed to parse regular expression");
+            }
+            size_t max_matches_n =
+                static_cast<size_t>(re.NumberOfCapturingGroups());
+            std::vector<std::optional<std::string_view>> matches(max_matches_n);
+            std::vector<re2::RE2::Arg> match_args(max_matches_n);
+            std::vector<re2::RE2::Arg*> match_argptrs(max_matches_n);
+            ranges::transform(matches, match_args.begin(),
+                              [](auto& val) { return re2::RE2::Arg{&val}; });
+            ranges::transform(match_args, match_argptrs.begin(),
+                              [](auto& arg) { return &arg; });
+            auto new_input = input;
+            bool found = re2::RE2::ConsumeN(
+                &new_input, re, match_argptrs.data(), match_argptrs.size());
+            if (!found) {
+                return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Regular expression didn't match");
+            }
+            value.matches.reserve(matches.size() + 1);
+            value.matches.emplace_back(detail::make_string_view_from_pointers(
+                input.data(), new_input.data()));
+            ranges::transform(
+                matches, std::back_inserter(value.matches),
+                [](auto&& match)
+                    -> std::optional<
+                        typename basic_regex_matches<CharT>::match> {
+                    if (!match)
+                        return std::nullopt;
+                    return *match;
+                });
+            return input.begin() +
+                   ranges::distance(input.data(), new_input.data());
 #else
 #error TODO
 #endif
@@ -125,7 +165,13 @@ namespace scn {
                 else if constexpr (!std::is_same_v<SourceCharT, DestCharT>) {
                     return unexpected_scan_error(
                         scan_error::invalid_scanned_value,
-                        "(TODO) Cannot transcode is regex_matches_reader");
+                        "Cannot transcode is regex_matches_reader");
+                }
+                else if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
+                                   !std::is_same_v<SourceCharT, char>) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Regex backend doesn't support wide strings as input");
                 }
                 else {
                     auto input = detail::make_string_view_from_pointers(
