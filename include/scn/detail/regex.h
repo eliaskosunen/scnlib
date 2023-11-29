@@ -24,7 +24,12 @@
 #include <optional>
 #include <vector>
 
-#if SCN_REGEX_BACKEND != SCN_REGEX_BACKEND_STD
+#if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
+#define SCN_REGEX_SUPPORTS_NAMED_CAPTURES 0
+#elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
+#define SCN_REGEX_SUPPORTS_NAMED_CAPTURES 0
+#else
+#define SCN_REGEX_SUPPORTS_NAMED_CAPTURES 0
 #error TODO
 #endif
 
@@ -33,7 +38,50 @@ namespace scn {
 
     template <typename CharT>
     struct basic_regex_matches {
-        std::vector<std::optional<std::basic_string<CharT>>> matches;
+        class match {
+        public:
+            using char_type = CharT;
+
+            match(std::basic_string_view<CharT> str) : m_str(str) {}
+
+#if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
+            match(std::basic_string_view<CharT> str,
+                  std::basic_string<CharT> name)
+                : m_str(str), m_name(name)
+            {
+            }
+#endif
+
+            std::basic_string_view<CharT> get() const
+            {
+                return m_str;
+            }
+
+            auto operator*() const
+            {
+                return m_str;
+            }
+            auto operator->() const
+            {
+                return &m_str;
+            }
+
+#if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
+            std::optional<std::basic_string_view<CharT>> name() const
+            {
+                return m_name;
+            }
+#endif
+
+        private:
+            std::basic_string_view<CharT> m_str;
+
+#if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
+            std::optional<std::basic_string<CharT>> m_name;
+#endif
+        };
+
+        std::vector<std::optional<match>> matches;
     };
 
     SCN_END_NAMESPACE

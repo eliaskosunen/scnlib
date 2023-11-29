@@ -22,43 +22,71 @@
 
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
 #include <regex>
+#elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
+#include <boost/regex.hpp>
 #endif
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
-#if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
         template <typename CharT>
         auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                                      std::basic_string_view<CharT> input,
                                      basic_regex_matches<CharT>& value)
             -> scan_expected<typename std::basic_string_view<CharT>::iterator>
         {
+#if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
             auto re = std::basic_regex<CharT>{pattern.data(), pattern.size()};
             std::match_results<const CharT*> matches{};
             bool found = std::regex_search(
-                input.data(), input.data() + input.size(), matches, re);
+                input.data(), input.data() + input.size(), matches, re,
+                std::regex_constants::match_continuous);
             if (!found || matches.prefix().matched) {
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Regular expression didn't match");
             }
             value.matches.reserve(matches.size());
-            std::transform(
-                matches.begin(), matches.end(),
-                std::back_inserter(value.matches),
-                [](auto&& match) -> std::optional<std::basic_string<CharT>> {
-                    if (!match.matched)
-                        return std::nullopt;
-                    return match.str();
-                });
+            std::transform(matches.begin(), matches.end(),
+                           std::back_inserter(value.matches),
+                           [](auto&& match)
+                               -> std::optional<
+                                   typename basic_regex_matches<CharT>::match> {
+                               if (!match.matched)
+                                   return std::nullopt;
+                               return detail::make_string_view_from_pointers(
+                                   match.first, match.second);
+                           });
             return input.begin() +
                    ranges::distance(input.data(), matches[0].second);
-        }
-
+#elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
+            auto re = boost::basic_regex<CharT>{pattern.data(), pattern.size(),
+                                                boost::regex_constants::normal};
+            boost::match_results<const CharT*> matches{};
+            bool found = boost::regex_search(
+                input.data(), input.data() + input.size(), matches, re,
+                boost::regex_constants::match_continuous);
+            if (!found || matches.prefix().matched) {
+                return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Regular expression didn't match");
+            }
+            value.matches.reserve(matches.size());
+            std::transform(matches.begin(), matches.end(),
+                           std::back_inserter(value.matches),
+                           [](auto&& match)
+                               -> std::optional<
+                                   typename basic_regex_matches<CharT>::match> {
+                               if (!match.matched)
+                                   return std::nullopt;
+                               return detail::make_string_view_from_pointers(
+                                   match.first, match.second);
+                           });
+            return input.begin() +
+                   ranges::distance(input.data(), matches[0].second);
 #else
 #error TODO
 #endif
+        }
 
         template <typename SourceCharT>
         struct regex_matches_reader

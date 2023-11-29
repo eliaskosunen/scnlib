@@ -58,14 +58,20 @@
 #define SCN_DISABLE_REGEX 0
 #endif
 
-#ifndef SCN_REGEX_BACKEND
+// std::regex
 #define SCN_REGEX_BACKEND_STD   0
+// Boost.Regex
 #define SCN_REGEX_BACKEND_BOOST 1
+// Google RE2
 #define SCN_REGEX_BACKEND_RE2   2
-#define SCN_REGEX_BACKEND_CTRE  3
+// PCRE (Perl Compatible Regular Expressions)
+#define SCN_REGEX_BACKEND_PCRE  3
+// CTRE (Compile-Time Regular Expressions)
+#define SCN_REGEX_BACKEND_CTRE  4
 
 // Default to std::regex
-#define SCN_REGEX_BACKEND       SCN_REGEX_BACKEND_STD
+#ifndef SCN_REGEX_BACKEND
+#define SCN_REGEX_BACKEND SCN_REGEX_BACKEND_STD
 #endif
 
 // SCN_DISABLE_IOSTREAM

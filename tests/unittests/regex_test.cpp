@@ -20,7 +20,7 @@
 #include <scn/detail/regex.h>
 #include <scn/detail/scan.h>
 
-using namespace std::string_literals;
+using namespace std::string_view_literals;
 
 TEST(RegexTest, Matches)
 {
@@ -28,5 +28,6 @@ TEST(RegexTest, Matches)
     ASSERT_TRUE(r);
     EXPECT_TRUE(r->range().empty());
     EXPECT_THAT(r->value().matches,
-                testing::ElementsAre(testing::Optional("foobar"s)));
+                testing::ElementsAre(testing::Optional(testing::Property(
+                    &scn::regex_matches::match::get, "foobar"sv))));
 }
