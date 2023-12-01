@@ -102,12 +102,10 @@ namespace scn {
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Regular expression didn't match");
             }
-            value.matches.resize(matches.size());
+            value.resize(matches.size());
             ranges::transform(
-                matches, value.matches.begin(),
-                [](auto&& match)
-                    -> std::optional<
-                        typename basic_regex_matches<CharT>::match> {
+                matches, value.begin(),
+                [](auto&& match) -> std::optional<basic_regex_match<CharT>> {
                     if (!match.matched)
                         return std::nullopt;
                     return detail::make_string_view_from_pointers(match.first,
@@ -116,6 +114,33 @@ namespace scn {
             return input.begin() +
                    ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
+            std::vector<std::basic_string<CharT>> names;
+            for (size_t i = 0; i < pattern.size();) {
+                if constexpr (std::is_same_v<CharT, char>) {
+                    i = pattern.find("(?<", i);
+                }
+                else {
+                    i = pattern.find(L"(?<", i);
+                }
+
+                if (i == std::basic_string_view<CharT>::npos) {
+                    break;
+                }
+                if (i > 0 && pattern[i - 1] == CharT{'\\'}) {
+                    if (i == 1 || pattern[i - 2] != CharT{'\\'}) {
+                        i += 3;
+                        continue;
+                    }
+                }
+
+                i += 3;
+                auto end_i = pattern.find(CharT{'>'}, i);
+                if (end_i == std::basic_string_view<CharT>::npos) {
+                    break;
+                }
+                names.emplace_back(pattern.substr(i, end_i - i));
+            }
+
             auto re = boost::basic_regex<CharT>{pattern.data(), pattern.size(),
                                                 boost::regex_constants::normal};
             boost::match_results<const CharT*> matches{};
@@ -126,16 +151,25 @@ namespace scn {
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Regular expression didn't match");
             }
-            value.matches.resize(matches.size());
+
+            value.resize(matches.size());
             ranges::transform(
-                matches, value.matches.begin(),
-                [](auto&& match)
-                    -> std::optional<
-                        typename basic_regex_matches<CharT>::match> {
+                matches, value.begin(),
+                [&](auto&& match) -> std::optional<basic_regex_match<CharT>> {
                     if (!match.matched)
                         return std::nullopt;
-                    return detail::make_string_view_from_pointers(match.first,
-                                                                  match.second);
+                    auto sv = detail::make_string_view_from_pointers(
+                        match.first, match.second);
+
+                    if (auto name_it = ranges::find_if(names,
+                                                       [&](const auto& name) {
+                                                           return match ==
+                                                                  matches[name];
+                                                       });
+                        name_it != names.end()) {
+                        return basic_regex_match<CharT>{sv, *name_it};
+                    }
+                    return sv;
                 });
             return input.begin() +
                    ranges::distance(input.data(), matches[0].second);
@@ -163,18 +197,25 @@ namespace scn {
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Regular expression didn't match");
             }
-            value.matches.resize(matches.size() + 1);
-            value.matches[0] = detail::make_string_view_from_pointers(
-                input.data(), new_input.data());
-            ranges::transform(
-                matches, value.matches.begin() + 1,
-                [](auto&& match)
-                    -> std::optional<
-                        typename basic_regex_matches<CharT>::match> {
-                    if (!match)
-                        return std::nullopt;
-                    return *match;
-                });
+            value.resize(matches.size() + 1);
+            value[0] = detail::make_string_view_from_pointers(input.data(),
+                                                              new_input.data());
+            ranges::transform(matches, value.begin() + 1,
+                              [&](auto&& match) -> std::optional<regex_match> {
+                                  if (!match)
+                                      return std::nullopt;
+                                  return *match;
+                              });
+            {
+                const auto& capturing_groups = re.CapturingGroupNames();
+                for (size_t i = 1; i < value.size(); ++i) {
+                    if (auto it = capturing_groups.find(static_cast<int>(i));
+                        it != capturing_groups.end()) {
+                        auto val = value[i]->get();
+                        value[i].emplace(val, it->second);
+                    };
+                }
+            }
             return input.begin() +
                    ranges::distance(input.data(), new_input.data());
 #else

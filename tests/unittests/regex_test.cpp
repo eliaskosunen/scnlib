@@ -32,8 +32,7 @@ TEST(RegexTest, String)
 
 TEST(RegexTest, StringView)
 {
-    auto r =
-        scn::scan<std::string_view>("foobar123", "{:/([a-zA-Z]+)/}");
+    auto r = scn::scan<std::string_view>("foobar123", "{:/([a-zA-Z]+)/}");
     ASSERT_TRUE(r);
     EXPECT_FALSE(r->range().empty());
     EXPECT_EQ(r->value(), "foobar");
@@ -45,12 +44,43 @@ TEST(RegexTest, Matches)
         scn::scan<scn::regex_matches>("foobar123", "{:/([a-zA-Z]+)([0-9]+)/}");
     ASSERT_TRUE(r);
     EXPECT_TRUE(r->range().empty());
-    EXPECT_THAT(r->value().matches,
-                testing::ElementsAre(
-                    testing::Optional(testing::Property(
-                        &scn::regex_matches::match::get, "foobar123"sv)),
-                    testing::Optional(testing::Property(
-                        &scn::regex_matches::match::get, "foobar"sv)),
-                    testing::Optional(testing::Property(
-                        &scn::regex_matches::match::get, "123"sv))));
+    EXPECT_THAT(r->value(), testing::ElementsAre(
+                                testing::Optional(testing::Property(
+                                    &scn::regex_match::get, "foobar123"sv)),
+                                testing::Optional(testing::Property(
+                                    &scn::regex_match::get, "foobar"sv)),
+                                testing::Optional(testing::Property(
+                                    &scn::regex_match::get, "123"sv))));
 }
+
+#if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
+TEST(RegexTest, NamedString)
+{
+    auto r = scn::scan<std::string>("foobar123",
+                                    "{:/(?<prefix>[a-zA-Z]+)([0-9]+)/}");
+    ASSERT_TRUE(r);
+    EXPECT_TRUE(r->range().empty());
+    EXPECT_EQ(r->value(), "foobar123");
+}
+
+TEST(RegexTest, NamedMatches)
+{
+    auto r = scn::scan<scn::regex_matches>("foobar123",
+                                           "{:/(?<prefix>[a-zA-Z]+)([0-9]+)/}");
+    ASSERT_TRUE(r);
+    EXPECT_TRUE(r->range().empty());
+
+    ASSERT_TRUE(r->value()[0]);
+    EXPECT_EQ(r->value()[0]->get(), "foobar123");
+    EXPECT_FALSE(r->value()[0]->name());
+
+    ASSERT_TRUE(r->value()[1]);
+    EXPECT_EQ(r->value()[1]->get(), "foobar");
+    ASSERT_TRUE(r->value()[1]->name());
+    EXPECT_EQ(*r->value()[1]->name(), "prefix");
+
+    ASSERT_TRUE(r->value()[2]);
+    EXPECT_EQ(r->value()[2]->get(), "123");
+    EXPECT_FALSE(r->value()[2]->name());
+}
+#endif
