@@ -22,12 +22,35 @@
 
 using namespace std::string_view_literals;
 
+TEST(RegexTest, String)
+{
+    auto r = scn::scan<std::string>("foobar123", "{:/([a-zA-Z]+)/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "foobar");
+}
+
+TEST(RegexTest, StringView)
+{
+    auto r =
+        scn::scan<std::string_view>("foobar123", "{:/([a-zA-Z]+)/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "foobar");
+}
+
 TEST(RegexTest, Matches)
 {
-    auto r = scn::scan<scn::regex_matches>("foobar", "{:/[a-zA-Z]+/}");
+    auto r =
+        scn::scan<scn::regex_matches>("foobar123", "{:/([a-zA-Z]+)([0-9]+)/}");
     ASSERT_TRUE(r);
     EXPECT_TRUE(r->range().empty());
     EXPECT_THAT(r->value().matches,
-                testing::ElementsAre(testing::Optional(testing::Property(
-                    &scn::regex_matches::match::get, "foobar"sv))));
+                testing::ElementsAre(
+                    testing::Optional(testing::Property(
+                        &scn::regex_matches::match::get, "foobar123"sv)),
+                    testing::Optional(testing::Property(
+                        &scn::regex_matches::match::get, "foobar"sv)),
+                    testing::Optional(testing::Property(
+                        &scn::regex_matches::match::get, "123"sv))));
 }

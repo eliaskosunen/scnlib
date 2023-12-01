@@ -25,7 +25,7 @@ option(SCN_WERROR "Halt compilation in case of a warning" ${SCN_CI})
 
 option(SCN_DISABLE_REGEX "Disable regex support" OFF)
 set(SCN_REGEX_BACKEND "std" CACHE STRING "Regex backend to use")
-set_property(CACHE SCN_REGEX_BACKEND PROPERTY STRINGS "std" "Boost" "re2" "ctre")
+set_property(CACHE SCN_REGEX_BACKEND PROPERTY STRINGS "std" "Boost" "re2")
 
 option(SCN_USE_EXTERNAL_SIMDUTF "Use find_package for simdutf, instead of FetchContent" OFF)
 option(SCN_USE_EXTERNAL_FAST_FLOAT "Use find_package for fast_float, instead of FetchContent" OFF)

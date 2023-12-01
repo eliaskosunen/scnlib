@@ -20,9 +20,6 @@ endif ()
 if ((@SCN_REGEX_BACKEND@ STREQUAL "re2") AND @SCN_USE_EXTERNAL_REGEX_BACKEND@)
     find_dependency(re2 11.0.0)
 endif ()
-if ((@SCN_REGEX_BACKEND@ STREQUAL "ctre") AND @SCN_USE_EXTERNAL_REGEX_BACKEND@)
-    find_dependency(ctre)
-endif ()
 
 check_required_components(scn)
 

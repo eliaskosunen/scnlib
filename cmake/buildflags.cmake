@@ -8,8 +8,6 @@ function(get_config_flags flags)
             set(regex_flag -DSCN_REGEX_BACKEND=1)
         elseif (SCN_REGEX_BACKEND STREQUAL "re2")
             set(regex_flag -DSCN_REGEX_BACKEND=2)
-        elseif (SCN_REGEX_BACKEND STREQUAL "ctre")
-            set(regex_flag -DSCN_REGEX_BACKEND=3)
         endif ()
     endif ()
     set(${flags}

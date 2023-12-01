@@ -64,10 +64,10 @@
 #define SCN_REGEX_BACKEND_BOOST 1
 // Google RE2
 #define SCN_REGEX_BACKEND_RE2   2
-// PCRE (Perl Compatible Regular Expressions)
-#define SCN_REGEX_BACKEND_PCRE  3
-// CTRE (Compile-Time Regular Expressions)
-#define SCN_REGEX_BACKEND_CTRE  4
+// TODO: PCRE (Perl Compatible Regular Expressions)
+// #define SCN_REGEX_BACKEND_PCRE  3
+// TODO: CTRE (Compile-Time Regular Expressions)
+// #define SCN_REGEX_BACKEND_CTRE  4
 
 // Default to std::regex
 #ifndef SCN_REGEX_BACKEND

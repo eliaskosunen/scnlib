@@ -468,8 +468,6 @@ jobs:
           - std
           - Boost
           - re2
-          - pcre
-          - ctre
 
     steps:
       - name: Setup CMake and Ninja

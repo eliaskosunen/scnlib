@@ -20,6 +20,7 @@
 #include <scn/detail/format_string_parser.h>
 #include <scn/impl/algorithms/take_width_view.h>
 #include <scn/impl/reader/common.h>
+#include <scn/impl/reader/regex_reader.h>
 #include <scn/impl/util/ascii_ctype.h>
 #include <scn/impl/util/bits.h>
 
@@ -125,6 +126,59 @@ namespace scn {
                     range, read_until_classic_space(range), value);
             }
         };
+
+#if !SCN_DISABLE_REGEX
+        template <typename SourceCharT>
+        class regex_string_reader_impl {
+        public:
+            template <typename Range, typename ValueCharT>
+            scan_expected<simple_borrowed_iterator_t<Range>> read(
+                Range&& range,
+                std::basic_string_view<SourceCharT> pattern,
+                std::basic_string<ValueCharT>& value)
+            {
+                SCN_TRY(it, impl(range, pattern));
+                return read_string_impl(range, it, value);
+            }
+
+            template <typename Range, typename ValueCharT>
+            scan_expected<simple_borrowed_iterator_t<Range>> read(
+                Range&& range,
+                std::basic_string_view<SourceCharT> pattern,
+                std::basic_string_view<ValueCharT>& value)
+            {
+                SCN_TRY(it, impl(range, pattern));
+                return read_string_view_impl(range, it, value);
+            }
+
+        private:
+            template <typename Range>
+            auto impl(Range&& range,
+                      std::basic_string_view<SourceCharT> pattern)
+                -> scan_expected<simple_borrowed_iterator_t<Range>>
+            {
+                if constexpr (!ranges::contiguous_range<Range>) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Cannot use regex with a non-contiguous source range");
+                }
+                else if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
+                                   !std::is_same_v<SourceCharT, char>) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Regex backend doesn't support wide strings as input");
+                }
+                else {
+                    auto input = detail::make_string_view_from_pointers(
+                        ranges::data(range),
+                        ranges::data(range) + ranges::size(range));
+                    SCN_TRY(it, read_regex_string_impl(pattern, input));
+                    return ranges::begin(range) +
+                           ranges::distance(input.begin(), it);
+                }
+            }
+        };
+#endif
 
         template <typename SourceCharT>
         class character_reader_impl {
@@ -434,6 +488,11 @@ namespace scn {
                     case detail::presentation_type::string_set:
                         m_type = reader_type::character_set;
                         break;
+
+                    case detail::presentation_type::regex:
+                    case detail::presentation_type::regex_escaped:
+                        m_type = reader_type::regex;
+                        break;
                 }
 
                 SCN_CLANG_POP    // -Wswitch-enum, -Wcovered-switch-default
@@ -466,7 +525,7 @@ namespace scn {
             }
 
         protected:
-            enum class reader_type { word, character, character_set };
+            enum class reader_type { word, character, character_set, regex };
 
             template <typename Range, typename Value>
             scan_expected<simple_borrowed_iterator_t<Range>> read_impl(
@@ -489,6 +548,12 @@ namespace scn {
                     case reader_type::character_set:
                         return character_set_reader_impl<SourceCharT>{}.read(
                             SCN_FWD(range), specs, value);
+
+#if !SCN_DISABLE_REGEX
+                    case reader_type::regex:
+                        return regex_string_reader_impl<SourceCharT>{}.read(
+                            SCN_FWD(range), specs.charset_string, value);
+#endif
 
                     default:
                         SCN_EXPECT(false);

@@ -134,21 +134,21 @@ endif ()
 
 # ctre
 
-if (SCN_REGEX_BACKEND STREQUAL "ctre")
-    if (SCN_USE_EXTERNAL_REGEX_BACKEND)
-        find_package(ctre REQUIRED)
-    else ()
-        FetchContent_Declare(
-                ctre
-                GIT_REPOSITORY  https://github.com/hanickadot/compile-time-regular-expressions.git
-                GIT_TAG v3.8.1
-                GIT_SHALLOW TRUE
-        )
-
-        list(APPEND SCN_OPTIONAL_DEPENDENCIES "ctre")
-    endif ()
-    set(SCN_REGEX_BACKEND_TARGET ctre::ctre)
-endif ()
+# if (SCN_REGEX_BACKEND STREQUAL "ctre")
+#     if (SCN_USE_EXTERNAL_REGEX_BACKEND)
+#         find_package(ctre REQUIRED)
+#     else ()
+#         FetchContent_Declare(
+#                 ctre
+#                 GIT_REPOSITORY  https://github.com/hanickadot/compile-time-regular-expressions.git
+#                 GIT_TAG v3.8.1
+#                 GIT_SHALLOW TRUE
+#         )
+#
+#         list(APPEND SCN_OPTIONAL_DEPENDENCIES "ctre")
+#     endif ()
+#     set(SCN_REGEX_BACKEND_TARGET ctre::ctre)
+# endif ()
 
 # make available
 

@@ -18,6 +18,9 @@
 #pragma once
 
 #include <scn/detail/regex.h>
+
+#if !SCN_DISABLE_REGEX
+
 #include <scn/impl/reader/common.h>
 
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
@@ -32,6 +35,57 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+        template <typename CharT>
+        auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
+                                    std::basic_string_view<CharT> input)
+            -> scan_expected<typename std::basic_string_view<CharT>::iterator>
+        {
+#if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
+            auto re = std::basic_regex<CharT>{pattern.data(), pattern.size()};
+            std::match_results<const CharT*> matches{};
+            bool found = std::regex_search(
+                input.data(), input.data() + input.size(), matches, re,
+                std::regex_constants::match_continuous);
+            if (!found || matches.prefix().matched) {
+                return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Regular expression didn't match");
+            }
+            return input.begin() +
+                   ranges::distance(input.data(), matches[0].second);
+#elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
+            auto re = boost::basic_regex<CharT>{pattern.data(), pattern.size(),
+                                                boost::regex_constants::normal};
+            boost::match_results<const CharT*> matches{};
+            bool found = boost::regex_search(
+                input.data(), input.data() + input.size(), matches, re,
+                boost::regex_constants::match_continuous);
+            if (!found || matches.prefix().matched) {
+                return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Regular expression didn't match");
+            }
+            return input.begin() +
+                   ranges::distance(input.data(), matches[0].second);
+#elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
+            static_assert(std::is_same_v<CharT, char>);
+            auto re = re2::RE2{pattern, RE2::Quiet};
+            if (!re.ok()) {
+                return unexpected_scan_error(
+                    scan_error::invalid_format_string,
+                    "Failed to parse regular expression");
+            }
+            auto new_input = input;
+            bool found = re2::RE2::Consume(&new_input, re);
+            if (!found) {
+                return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Regular expression didn't match");
+            }
+            return input.begin() +
+                   ranges::distance(input.data(), new_input.data());
+#else
+#error TODO
+#endif
+        }
+
         template <typename CharT>
         auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                                      std::basic_string_view<CharT> input,
@@ -192,3 +246,5 @@ namespace scn {
 
     SCN_END_NAMESPACE
 }  // namespace scn
+
+#endif
