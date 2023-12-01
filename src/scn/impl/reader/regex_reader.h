@@ -102,9 +102,9 @@ namespace scn {
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Regular expression didn't match");
             }
-            value.matches.reserve(matches.size());
+            value.matches.resize(matches.size());
             ranges::transform(
-                matches, std::back_inserter(value.matches),
+                matches, value.matches.begin(),
                 [](auto&& match)
                     -> std::optional<
                         typename basic_regex_matches<CharT>::match> {
@@ -126,9 +126,9 @@ namespace scn {
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Regular expression didn't match");
             }
-            value.matches.reserve(matches.size());
+            value.matches.resize(matches.size());
             ranges::transform(
-                matches, std::back_inserter(value.matches),
+                matches, value.matches.begin(),
                 [](auto&& match)
                     -> std::optional<
                         typename basic_regex_matches<CharT>::match> {
@@ -163,11 +163,11 @@ namespace scn {
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Regular expression didn't match");
             }
-            value.matches.reserve(matches.size() + 1);
-            value.matches.emplace_back(detail::make_string_view_from_pointers(
-                input.data(), new_input.data()));
+            value.matches.resize(matches.size() + 1);
+            value.matches[0] = detail::make_string_view_from_pointers(
+                input.data(), new_input.data());
             ranges::transform(
-                matches, std::back_inserter(value.matches),
+                matches, value.matches.begin() + 1,
                 [](auto&& match)
                     -> std::optional<
                         typename basic_regex_matches<CharT>::match> {
