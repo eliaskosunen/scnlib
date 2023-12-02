@@ -23,6 +23,27 @@
 
 using namespace std::string_view_literals;
 
+TEST(RegexTest, InvalidRegexString)
+{
+    auto r = scn::scan<std::string>("foobar123", "{:/[a/}");
+    ASSERT_FALSE(r);
+    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_format_string);
+}
+
+TEST(RegexTest, InvalidRegexStringView)
+{
+    auto r = scn::scan<std::string_view>("foobar123", "{:/[a/}");
+    ASSERT_FALSE(r);
+    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_format_string);
+}
+
+TEST(RegexTest, InvalidRegexMatches)
+{
+    auto r = scn::scan<scn::regex_matches>("foobar123", "{:/[a/}");
+    ASSERT_FALSE(r);
+    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_format_string);
+}
+
 TEST(RegexTest, String)
 {
     auto r = scn::scan<std::string>("foobar123", "{:/([a-zA-Z]+)/}");

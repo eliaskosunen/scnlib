@@ -41,28 +41,60 @@ namespace scn {
             -> scan_expected<typename std::basic_string_view<CharT>::iterator>
         {
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
-            auto re = std::basic_regex<CharT>{pattern.data(), pattern.size()};
-            std::match_results<const CharT*> matches{};
-            bool found = std::regex_search(
-                input.data(), input.data() + input.size(), matches, re,
-                std::regex_constants::match_continuous);
-            if (!found || matches.prefix().matched) {
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "Regular expression didn't match");
+            std::basic_regex<CharT> re{};
+            try {
+                re = std::basic_regex<CharT>{pattern.data(), pattern.size()};
             }
+            catch (const std::regex_error& err) {
+                return unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Invalid regex");
+            }
+
+            std::match_results<const CharT*> matches{};
+            try {
+                bool found = std::regex_search(
+                    input.data(), input.data() + input.size(), matches, re,
+                    std::regex_constants::match_continuous);
+                if (!found || matches.prefix().matched) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Regular expression didn't match");
+                }
+            }
+            catch (const std::regex_error& err) {
+                return unexpected_scan_error(
+                    scan_error::invalid_format_string,
+                    "Regex matching failed with an error");
+            }
+
             return input.begin() +
                    ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
-            auto re = boost::basic_regex<CharT>{pattern.data(), pattern.size(),
-                                                boost::regex_constants::normal};
-            boost::match_results<const CharT*> matches{};
-            bool found = boost::regex_search(
-                input.data(), input.data() + input.size(), matches, re,
-                boost::regex_constants::match_continuous);
-            if (!found || matches.prefix().matched) {
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "Regular expression didn't match");
+            auto re =
+                boost::basic_regex<CharT>{pattern.data(), pattern.size(),
+                                          boost::regex_constants::no_except};
+            if (re.status() != 0) {
+                return unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Invalid regex");
             }
+
+            boost::match_results<const CharT*> matches{};
+            try {
+                bool found = boost::regex_search(
+                    input.data(), input.data() + input.size(), matches, re,
+                    boost::regex_constants::match_continuous);
+                if (!found || matches.prefix().matched) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Regular expression didn't match");
+                }
+            }
+            catch (const std::runtime_error& err) {
+                return unexpected_scan_error(
+                    scan_error::invalid_format_string,
+                    "Regex matching failed with an error");
+            }
+
             return input.begin() +
                    ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
@@ -73,6 +105,7 @@ namespace scn {
                     scan_error::invalid_format_string,
                     "Failed to parse regular expression");
             }
+
             auto new_input = input;
             bool found = re2::RE2::Consume(&new_input, re);
             if (!found) {
@@ -81,8 +114,6 @@ namespace scn {
             }
             return input.begin() +
                    ranges::distance(input.data(), new_input.data());
-#else
-#error TODO
 #endif
         }
 
@@ -93,15 +124,32 @@ namespace scn {
             -> scan_expected<typename std::basic_string_view<CharT>::iterator>
         {
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
-            auto re = std::basic_regex<CharT>{pattern.data(), pattern.size()};
-            std::match_results<const CharT*> matches{};
-            bool found = std::regex_search(
-                input.data(), input.data() + input.size(), matches, re,
-                std::regex_constants::match_continuous);
-            if (!found || matches.prefix().matched) {
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "Regular expression didn't match");
+            std::basic_regex<CharT> re{};
+            try {
+                re = std::basic_regex<CharT>{pattern.data(), pattern.size()};
             }
+            catch (const std::regex_error& err) {
+                return unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Invalid regex");
+            }
+
+            std::match_results<const CharT*> matches{};
+            try {
+                bool found = std::regex_search(
+                    input.data(), input.data() + input.size(), matches, re,
+                    std::regex_constants::match_continuous);
+                if (!found || matches.prefix().matched) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Regular expression didn't match");
+                }
+            }
+            catch (const std::regex_error& err) {
+                return unexpected_scan_error(
+                    scan_error::invalid_format_string,
+                    "Regex matching failed with an error");
+            }
+
             value.resize(matches.size());
             ranges::transform(
                 matches, value.begin(),
@@ -141,15 +189,29 @@ namespace scn {
                 names.emplace_back(pattern.substr(i, end_i - i));
             }
 
-            auto re = boost::basic_regex<CharT>{pattern.data(), pattern.size(),
-                                                boost::regex_constants::normal};
+            auto re =
+                boost::basic_regex<CharT>{pattern.data(), pattern.size(),
+                                          boost::regex_constants::no_except};
+            if (re.status() != 0) {
+                return unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Invalid regex");
+            }
+
             boost::match_results<const CharT*> matches{};
-            bool found = boost::regex_search(
-                input.data(), input.data() + input.size(), matches, re,
-                boost::regex_constants::match_continuous);
-            if (!found || matches.prefix().matched) {
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "Regular expression didn't match");
+            try {
+                bool found = boost::regex_search(
+                    input.data(), input.data() + input.size(), matches, re,
+                    boost::regex_constants::match_continuous);
+                if (!found || matches.prefix().matched) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Regular expression didn't match");
+                }
+            }
+            catch (const std::runtime_error& err) {
+                return unexpected_scan_error(
+                    scan_error::invalid_format_string,
+                    "Regex matching failed with an error");
             }
 
             value.resize(matches.size());
@@ -218,8 +280,6 @@ namespace scn {
             }
             return input.begin() +
                    ranges::distance(input.data(), new_input.data());
-#else
-#error TODO
 #endif
         }
 
