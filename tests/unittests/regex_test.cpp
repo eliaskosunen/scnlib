@@ -157,3 +157,37 @@ TEST(RegexTest, TranscodeStringWideToNarrow)
     EXPECT_EQ(r->value(), "foobar");
 }
 #endif
+
+TEST(RegexTest, AlphaCharacterClass)
+{
+    auto r = scn::scan<std::string_view>("foobar123", "{:/[[:alpha:]]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "foobar");
+}
+
+TEST(RegexTest, AlphaCharacterClassWithNonAscii)
+{
+    // [[:alpha:]] is ASCII only
+    auto r = scn::scan<std::string_view>("fööbär123", "{:/[[:alpha:]]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "f");
+}
+
+TEST(RegexTest, LetterUnicodeCharacterClass)
+{
+    // L = Letter
+    auto r = scn::scan<std::string_view>("foobar123", "{:/\\pL+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "foobar");
+}
+
+TEST(RegexTest, LetterUnicodeCharacterClassWithNonAscii)
+{
+    auto r = scn::scan<std::string_view>("fööbär123", "{:/\\pL+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "fööbär");
+}
