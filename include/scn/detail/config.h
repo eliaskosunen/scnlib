@@ -58,6 +58,13 @@
 #define SCN_DISABLE_REGEX 0
 #endif
 
+// SCN_REGEX_BOOST_USE_ICU
+// If 1, use ICU for full Unicode support with the regex backend
+// Only effective when SCN_REGEX_BACKEND is Boost
+#ifndef SCN_REGEX_BOOST_USE_ICU
+#define SCN_REGEX_BOOST_USE_ICU 0
+#endif
+
 // std::regex
 #define SCN_REGEX_BACKEND_STD   0
 // Boost.Regex
@@ -79,6 +86,10 @@
 #error "Invalid regex backend"
 #endif
 
+#if SCN_REGEX_BOOST_USE_ICU && SCN_REGEX_BACKEND != SCN_REGEX_BACKEND_BOOST
+#error "SCN_REGEX_BOOST_USE_ICU requires the Boost SCN_REGEX_BACKEND"
+#endif
+
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
 #define SCN_REGEX_SUPPORTS_NAMED_CAPTURES 0
 #else
@@ -89,6 +100,12 @@
 #define SCN_REGEX_SUPPORTS_WIDE_STRINGS 0
 #else
 #define SCN_REGEX_SUPPORTS_WIDE_STRINGS 1
+#endif
+
+#if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2 || SCN_REGEX_BOOST_USE_ICU
+#define SCN_REGEX_SUPPORTS_UTF8_CLASSIFICATION 1
+#else
+#define SCN_REGEX_SUPPORTS_UTF8_CLASSIFICATION 0
 #endif
 
 // SCN_DISABLE_IOSTREAM

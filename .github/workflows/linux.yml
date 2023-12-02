@@ -464,10 +464,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        engine:
-          - std
-          - Boost
-          - re2
+        include:
+          #- engine: std
+          - engine: Boost
+            icu: OFF
+          - engine: Boost
+            icu: ON
+          - engine: re2
 
     steps:
       - name: Setup CMake and Ninja
@@ -480,8 +483,8 @@ jobs:
           cd re2
           mkdir build
           cd build
-          cmake ..
-          cmake -G Ninja --build .
+          cmake -G Ninja ..
+          cmake --build .
           sudo cmake --build . --target install
 
       - name: Checkout
@@ -490,7 +493,11 @@ jobs:
       - name: Run CMake
         run: |
           mkdir ${{ runner.workspace }}/build
+          if [[ ${{ matrix.engine }} == "Boost" ]]; then
+            icu_flag="-DSCN_REGEX_BOOST_USE_ICU=${{ matrix.icu }}"
+          fi
           cmake -G Ninja -DSCN_CI=ON -DSCN_REGEX_BACKEND=${{ matrix.engine }} \
+                $icu_flag \
                 $GITHUB_WORKSPACE
 
       - name: Build

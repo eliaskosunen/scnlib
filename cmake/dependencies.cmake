@@ -110,45 +110,53 @@ else ()
     endif ()
 endif ()
 
+# std::regex
+
+if (SCN_REGEX_BACKEND STREQUAL "std")
+    if (NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
+        message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is std")
+    endif ()
+    if (SCN_REGEX_BOOST_USE_ICU)
+        message(FATAL_ERROR "SCN_REGEX_BOOST_USE_ICU isn't supported when SCN_REGEX_BACKEND is std")
+    endif ()
+endif ()
+
 # Boost.Regex
 
 if (SCN_REGEX_BACKEND STREQUAL "Boost")
     if (NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
-        message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF is not supported when SCN_REGEX_BACKEND is Boost")
+        message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is Boost")
     endif ()
 
     find_package(Boost REQUIRED COMPONENTS regex)
-    set(SCN_REGEX_BACKEND_TARGET Boost::regex)
+    if (NOT SCN_REGEX_BOOST_USE_ICU)
+        set(SCN_REGEX_BACKEND_TARGET Boost::regex)
+    else ()
+        if (TARGET Boost::regex_icu)
+            set(SCN_REGEX_BACKEND_TARGET Boost::regex_icu)
+        else ()
+            # Boost::regex_icu not defined, do it manually
+            find_package(ICU REQUIRED COMPONENTS data i18n uc)
+            set(SCN_REGEX_BACKEND_TARGET
+                    Boost::regex ICU::data ICU::i18n ICU::uc
+            )
+        endif ()
+    endif ()
 endif ()
 
 # re2
 
 if (SCN_REGEX_BACKEND STREQUAL "re2")
     if (NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
-        message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF is not supported when SCN_REGEX_BACKEND is re2")
+        message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is re2")
+    endif ()
+    if (SCN_REGEX_BOOST_USE_ICU)
+        message(FATAL_ERROR "SCN_REGEX_BOOST_USE_ICU isn't supported when SCN_REGEX_BACKEND is re2")
     endif ()
 
     find_package(re2 11.0.0 REQUIRED)
     set(SCN_REGEX_BACKEND_TARGET re2::re2)
 endif ()
-
-# ctre
-
-# if (SCN_REGEX_BACKEND STREQUAL "ctre")
-#     if (SCN_USE_EXTERNAL_REGEX_BACKEND)
-#         find_package(ctre REQUIRED)
-#     else ()
-#         FetchContent_Declare(
-#                 ctre
-#                 GIT_REPOSITORY  https://github.com/hanickadot/compile-time-regular-expressions.git
-#                 GIT_TAG v3.8.1
-#                 GIT_SHALLOW TRUE
-#         )
-#
-#         list(APPEND SCN_OPTIONAL_DEPENDENCIES "ctre")
-#     endif ()
-#     set(SCN_REGEX_BACKEND_TARGET ctre::ctre)
-# endif ()
 
 # make available
 

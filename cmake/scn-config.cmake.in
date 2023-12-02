@@ -16,7 +16,12 @@ endif ()
 
 if ((@SCN_REGEX_BACKEND@ STREQUAL "Boost") AND @SCN_USE_EXTERNAL_REGEX_BACKEND@)
     find_dependency(Boost COMPONENTS regex)
+
+    if (@SCN_REGEX_USE_ICU@)
+        find_dependency(ICU COMPONENTS data i18n uc)
+    endif ()
 endif ()
+
 if ((@SCN_REGEX_BACKEND@ STREQUAL "re2") AND @SCN_USE_EXTERNAL_REGEX_BACKEND@)
     find_dependency(re2 11.0.0)
 endif ()

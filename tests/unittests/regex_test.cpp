@@ -168,13 +168,24 @@ TEST(RegexTest, AlphaCharacterClass)
 
 TEST(RegexTest, AlphaCharacterClassWithNonAscii)
 {
-    // [[:alpha:]] is ASCII only
+#if SCN_REGEX_BOOST_USE_ICU
+    // [[:alpha:]] uses the ICU with Boost.Regex + ICU
+    auto r = scn::scan<std::string_view>("fööbär123", "{:/[[:alpha:]]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "fööbär");
+#else
+    // [[:alpha:]] is ASCII only with
+    // std::regex and re2, and Boost.Regex without ICU
     auto r = scn::scan<std::string_view>("fööbär123", "{:/[[:alpha:]]+/}");
     ASSERT_TRUE(r);
     EXPECT_FALSE(r->range().empty());
     EXPECT_EQ(r->value(), "f");
+#endif
 }
 
+#if SCN_REGEX_BACKEND != SCN_REGEX_BACKEND_STD
+// std::regex doesnt support Unicode character classes
 TEST(RegexTest, LetterUnicodeCharacterClass)
 {
     // L = Letter
@@ -186,8 +197,33 @@ TEST(RegexTest, LetterUnicodeCharacterClass)
 
 TEST(RegexTest, LetterUnicodeCharacterClassWithNonAscii)
 {
+#if SCN_REGEX_SUPPORTS_UTF8_CLASSIFICATION
     auto r = scn::scan<std::string_view>("fööbär123", "{:/\\pL+/}");
     ASSERT_TRUE(r);
     EXPECT_FALSE(r->range().empty());
     EXPECT_EQ(r->value(), "fööbär");
+#else
+    auto r = scn::scan<std::string_view>("fööbär123", "{:/\\pL+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "f");
+#endif
 }
+
+TEST(RegexTest, EmojiWithSoUnicodeCharacterClass)
+{
+#if SCN_REGEX_SUPPORTS_UTF8_CLASSIFICATION
+    // U+1F600 "GRINNING FACE" and U+1F601 "GRINNING FACE WITH SMILING EYES"
+    auto r = scn::scan<std::string_view>("\xf0\x9f\x98\x80\xf0\x9f\x98\x81 abc",
+                                         "{:/\\p{So}+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "\xf0\x9f\x98\x80\xf0\x9f\x98\x81");
+#else
+    auto r = scn::scan<std::string_view>("\xf0\x9f\x98\x80\xf0\x9f\x98\x81 abc",
+                                         "{:/\\p{So}+/}");
+    ASSERT_FALSE(r);
+    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_format_string);
+#endif
+}
+#endif

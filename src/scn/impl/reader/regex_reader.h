@@ -25,8 +25,14 @@
 
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
 #include <regex>
+#if SCN_REGEX_BOOST_USE_ICU
+#error "Can't use the ICU with std::regex"
+#endif
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
 #include <boost/regex.hpp>
+#if SCN_REGEX_BOOST_USE_ICU
+#include <boost/regex/icu.hpp>
+#endif
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
 #include <re2/re2.h>
 #endif
@@ -43,7 +49,8 @@ namespace scn {
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
             std::basic_regex<CharT> re{};
             try {
-                re = std::basic_regex<CharT>{pattern.data(), pattern.size()};
+                re = std::basic_regex<CharT>{pattern.data(), pattern.size(),
+                                             std::basic_regex<CharT>::nosubs};
             }
             catch (const std::regex_error& err) {
                 return unexpected_scan_error(scan_error::invalid_format_string,
@@ -71,8 +78,16 @@ namespace scn {
                    ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
             auto re =
+#if SCN_REGEX_BOOST_USE_ICU
+                boost::make_u32regex(pattern.data(),
+                                     pattern.data() + pattern.size(),
+                                     boost::regex_constants::no_except |
+                                         boost::regex_constants::nosubs);
+#else
                 boost::basic_regex<CharT>{pattern.data(), pattern.size(),
-                                          boost::regex_constants::no_except};
+                                          boost::regex_constants::no_except |
+                                              boost::regex_constants::nosubs};
+#endif
             if (re.status() != 0) {
                 return unexpected_scan_error(scan_error::invalid_format_string,
                                              "Invalid regex");
@@ -80,9 +95,16 @@ namespace scn {
 
             boost::match_results<const CharT*> matches{};
             try {
-                bool found = boost::regex_search(
-                    input.data(), input.data() + input.size(), matches, re,
-                    boost::regex_constants::match_continuous);
+                bool found =
+#if SCN_REGEX_BOOST_USE_ICU
+                    boost::u32regex_search(
+                        input.data(), input.data() + input.size(), matches, re,
+                        boost::regex_constants::match_continuous);
+#else
+                    boost::regex_search(
+                        input.data(), input.data() + input.size(), matches, re,
+                        boost::regex_constants::match_continuous);
+#endif
                 if (!found || matches.prefix().matched) {
                     return unexpected_scan_error(
                         scan_error::invalid_scanned_value,
@@ -190,8 +212,14 @@ namespace scn {
             }
 
             auto re =
+#if SCN_REGEX_BOOST_USE_ICU
+                boost::make_u32regex(pattern.data(),
+                                     pattern.data() + pattern.size(),
+                                     boost::regex_constants::no_except);
+#else
                 boost::basic_regex<CharT>{pattern.data(), pattern.size(),
                                           boost::regex_constants::no_except};
+#endif
             if (re.status() != 0) {
                 return unexpected_scan_error(scan_error::invalid_format_string,
                                              "Invalid regex");
@@ -199,9 +227,16 @@ namespace scn {
 
             boost::match_results<const CharT*> matches{};
             try {
-                bool found = boost::regex_search(
-                    input.data(), input.data() + input.size(), matches, re,
-                    boost::regex_constants::match_continuous);
+                bool found =
+#if SCN_REGEX_BOOST_USE_ICU
+                    boost::u32regex_search(
+                        input.data(), input.data() + input.size(), matches, re,
+                        boost::regex_constants::match_continuous);
+#else
+                    boost::regex_search(
+                        input.data(), input.data() + input.size(), matches, re,
+                        boost::regex_constants::match_continuous);
+#endif
                 if (!found || matches.prefix().matched) {
                     return unexpected_scan_error(
                         scan_error::invalid_scanned_value,

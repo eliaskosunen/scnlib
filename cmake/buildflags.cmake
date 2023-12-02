@@ -5,7 +5,10 @@ function(get_config_flags flags)
         if (SCN_REGEX_BACKEND STREQUAL "std")
             set(regex_flag -DSCN_REGEX_BACKEND=0)
         elseif (SCN_REGEX_BACKEND STREQUAL "Boost")
-            set(regex_flag -DSCN_REGEX_BACKEND=1)
+            set(regex_flag
+                    -DSCN_REGEX_BACKEND=1
+                    $<$<BOOL:${SCN_REGEX_BOOST_USE_ICU}>: -DSCN_REGEX_BOOST_USE_ICU=1>
+            )
         elseif (SCN_REGEX_BACKEND STREQUAL "re2")
             set(regex_flag -DSCN_REGEX_BACKEND=2)
         endif ()
