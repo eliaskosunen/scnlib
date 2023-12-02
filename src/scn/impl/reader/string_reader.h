@@ -135,9 +135,10 @@ namespace scn {
             scan_expected<simple_borrowed_iterator_t<Range>> read(
                 Range&& range,
                 std::basic_string_view<SourceCharT> pattern,
+                detail::regex_flags flags,
                 std::basic_string<ValueCharT>& value)
             {
-                SCN_TRY(it, impl(range, pattern));
+                SCN_TRY(it, impl(range, pattern, flags));
                 return read_string_impl(range, it, value);
             }
 
@@ -145,16 +146,18 @@ namespace scn {
             scan_expected<simple_borrowed_iterator_t<Range>> read(
                 Range&& range,
                 std::basic_string_view<SourceCharT> pattern,
+                detail::regex_flags flags,
                 std::basic_string_view<ValueCharT>& value)
             {
-                SCN_TRY(it, impl(range, pattern));
+                SCN_TRY(it, impl(range, pattern, flags));
                 return read_string_view_impl(range, it, value);
             }
 
         private:
             template <typename Range>
             auto impl(Range&& range,
-                      std::basic_string_view<SourceCharT> pattern)
+                      std::basic_string_view<SourceCharT> pattern,
+                      detail::regex_flags flags)
                 -> scan_expected<simple_borrowed_iterator_t<Range>>
             {
                 if constexpr (!ranges::contiguous_range<Range>) {
@@ -172,7 +175,7 @@ namespace scn {
                     auto input = detail::make_string_view_from_pointers(
                         ranges::data(range),
                         ranges::data(range) + ranges::size(range));
-                    SCN_TRY(it, read_regex_string_impl(pattern, input));
+                    SCN_TRY(it, read_regex_string_impl(pattern, flags, input));
                     return ranges::begin(range) +
                            ranges::distance(input.begin(), it);
                 }
@@ -552,7 +555,8 @@ namespace scn {
 #if !SCN_DISABLE_REGEX
                     case reader_type::regex:
                         return regex_string_reader_impl<SourceCharT>{}.read(
-                            SCN_FWD(range), specs.charset_string, value);
+                            SCN_FWD(range), specs.charset_string,
+                            specs.regexp_flags, value);
 #endif
 
                     default:

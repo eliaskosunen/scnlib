@@ -477,7 +477,7 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: Install re2
-        if: matrix.engine == "re2"
+        if: matrix.engine == 're2'
         run: |
           git clone https://github.com/google/re2 -b 2023-11-01 --depth=1
           cd re2

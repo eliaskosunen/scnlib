@@ -41,16 +41,95 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+#if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
+        constexpr auto make_regex_flags(detail::regex_flags flags)
+            -> scan_expected<std::regex_constants::syntax_option_type>
+        {
+            std::regex_constants::syntax_option_type result{};
+            if ((flags & detail::regex_flags::multiline) !=
+                detail::regex_flags::none) {
+                result |= std::regex_constants::multiline;
+            }
+            if ((flags & detail::regex_flags::singleline) !=
+                detail::regex_flags::none) {
+                return unexpected_scan_error(
+                    scan_error::invalid_format_string,
+                    "/s flag for regex isn't supported by regex backend");
+            }
+            if ((flags & detail::regex_flags::nocase) !=
+                detail::regex_flags::none) {
+                result |= std::regex_constants::icase;
+            }
+            if ((flags & detail::regex_flags::nocapture) !=
+                detail::regex_flags::none) {
+                result |= std::regex_constants::nosubs;
+            }
+            return result;
+        }
+#elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
+        constexpr auto make_regex_flags(detail::regex_flags flags)
+            -> boost::regex_constants::syntax_option_type
+        {
+            boost::regex_constants::syntax_option_type result{};
+            if ((flags & detail::regex_flags::multiline) ==
+                detail::regex_flags::none) {
+                result |= boost::regex_constants::no_mod_m;
+            }
+            if ((flags & detail::regex_flags::singleline) !=
+                detail::regex_flags::none) {
+                result |= boost::regex_constants::mod_s;
+            }
+            if ((flags & detail::regex_flags::nocase) !=
+                detail::regex_flags::none) {
+                result |= boost::regex_constants::icase;
+            }
+            if ((flags & detail::regex_flags::nocapture) !=
+                detail::regex_flags::none) {
+                result |= boost::regex_constants::nosubs;
+            }
+            return result;
+        }
+#elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
+        auto make_regex_flags(detail::regex_flags flags)
+            -> std::pair<RE2::Options, std::string_view>
+        {
+            RE2::Options opt{RE2::Quiet};
+            std::string_view stringflags{};
+
+            if ((flags & detail::regex_flags::multiline) ==
+                detail::regex_flags::none) {
+                stringflags = "(?m)";
+            }
+            if ((flags & detail::regex_flags::singleline) !=
+                detail::regex_flags::none) {
+                opt.set_dot_nl(true);
+            }
+            if ((flags & detail::regex_flags::nocase) !=
+                detail::regex_flags::none) {
+                opt.set_case_sensitive(false);
+            }
+            if ((flags & detail::regex_flags::nocapture) !=
+                detail::regex_flags::none) {
+                opt.set_never_capture(true);
+            }
+
+            return {opt, stringflags};
+        }
+#endif
+
         template <typename CharT>
         auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
+                                    detail::regex_flags flags,
                                     std::basic_string_view<CharT> input)
             -> scan_expected<typename std::basic_string_view<CharT>::iterator>
         {
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
             std::basic_regex<CharT> re{};
             try {
-                re = std::basic_regex<CharT>{pattern.data(), pattern.size(),
-                                             std::basic_regex<CharT>::nosubs};
+                SCN_TRY(re_flags, make_regex_flags(flags));
+                re = std::basic_regex<CharT>{
+                    pattern.data(), pattern.size(),
+                    re_flags | std::regex_constants::nosubs};
             }
             catch (const std::regex_error& err) {
                 return unexpected_scan_error(scan_error::invalid_format_string,
@@ -81,12 +160,15 @@ namespace scn {
 #if SCN_REGEX_BOOST_USE_ICU
                 boost::make_u32regex(pattern.data(),
                                      pattern.data() + pattern.size(),
-                                     boost::regex_constants::no_except |
+                                     make_regex_flags(flags) |
+                                         boost::regex_constants::no_except |
                                          boost::regex_constants::nosubs);
 #else
-                boost::basic_regex<CharT>{pattern.data(), pattern.size(),
-                                          boost::regex_constants::no_except |
-                                              boost::regex_constants::nosubs};
+                boost::basic_regex<CharT>{
+                    pattern.data(), pattern.size(),
+                    make_regex_flags(flags) |
+                        boost::regex_constants::no_except |
+                        boost::regex_constants::nosubs};
 #endif
             if (re.status() != 0) {
                 return unexpected_scan_error(scan_error::invalid_format_string,
@@ -121,7 +203,18 @@ namespace scn {
                    ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
             static_assert(std::is_same_v<CharT, char>);
-            auto re = re2::RE2{pattern, RE2::Quiet};
+            std::string flagged_pattern{};
+            auto re = [&]() {
+                auto [opts, flagstr] = make_regex_flags(flags);
+                opts.set_never_capture(true);
+                if (flagstr.empty()) {
+                    return re2::RE2{pattern, opts};
+                }
+                flagged_pattern.reserve(flagstr.size() + pattern.size());
+                flagged_pattern.append(flagstr);
+                flagged_pattern.append(pattern);
+                return re2::RE2{flagged_pattern, opts};
+            }();
             if (!re.ok()) {
                 return unexpected_scan_error(
                     scan_error::invalid_format_string,
@@ -141,6 +234,7 @@ namespace scn {
 
         template <typename CharT>
         auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
+                                     detail::regex_flags flags,
                                      std::basic_string_view<CharT> input,
                                      basic_regex_matches<CharT>& value)
             -> scan_expected<typename std::basic_string_view<CharT>::iterator>
@@ -148,7 +242,9 @@ namespace scn {
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
             std::basic_regex<CharT> re{};
             try {
-                re = std::basic_regex<CharT>{pattern.data(), pattern.size()};
+                SCN_TRY(re_flags, make_regex_flags(flags));
+                re = std::basic_regex<CharT>{pattern.data(), pattern.size(),
+                                             re_flags};
             }
             catch (const std::regex_error& err) {
                 return unexpected_scan_error(scan_error::invalid_format_string,
@@ -215,10 +311,13 @@ namespace scn {
 #if SCN_REGEX_BOOST_USE_ICU
                 boost::make_u32regex(pattern.data(),
                                      pattern.data() + pattern.size(),
-                                     boost::regex_constants::no_except);
+                                     make_regex_flags(flags) |
+                                         boost::regex_constants::no_except);
 #else
-                boost::basic_regex<CharT>{pattern.data(), pattern.size(),
-                                          boost::regex_constants::no_except};
+                boost::basic_regex<CharT>{
+                    pattern.data(), pattern.size(),
+                    make_regex_flags(flags) |
+                        boost::regex_constants::no_except};
 #endif
             if (re.status() != 0) {
                 return unexpected_scan_error(scan_error::invalid_format_string,
@@ -272,13 +371,24 @@ namespace scn {
                    ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
             static_assert(std::is_same_v<CharT, char>);
-            auto re = re2::RE2{pattern, RE2::Quiet};
+            std::string flagged_pattern{};
+            auto re = [&]() {
+                auto [opts, flagstr] = make_regex_flags(flags);
+                if (flagstr.empty()) {
+                    return re2::RE2{pattern, opts};
+                }
+                flagged_pattern.reserve(flagstr.size() + pattern.size());
+                flagged_pattern.append(flagstr);
+                flagged_pattern.append(pattern);
+                return re2::RE2{flagged_pattern, opts};
+            }();
             if (!re.ok()) {
                 return unexpected_scan_error(
                     scan_error::invalid_format_string,
                     "Failed to parse regular expression");
             }
-            size_t max_matches_n =
+            // TODO: Optimize into a single batch allocation
+            const auto max_matches_n =
                 static_cast<size_t>(re.NumberOfCapturingGroups());
             std::vector<std::optional<std::string_view>> matches(max_matches_n);
             std::vector<re2::RE2::Arg> match_args(max_matches_n);
@@ -368,6 +478,7 @@ namespace scn {
                         ranges::data(range),
                         ranges::data(range) + ranges::size(range));
                     SCN_TRY(it, read_regex_matches_impl(specs.charset_string,
+                                                        specs.regexp_flags,
                                                         input, value));
                     return ranges::begin(range) +
                            ranges::distance(input.begin(), it);

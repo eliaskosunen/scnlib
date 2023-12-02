@@ -227,3 +227,42 @@ TEST(RegexTest, EmojiWithSoUnicodeCharacterClass)
 #endif
 }
 #endif
+
+TEST(RegexTest, NoCaseFlagStringView)
+{
+    auto r = scn::scan<std::string_view>("FooBar123", "{:/[a-z]+/i}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "FooBar");
+}
+
+TEST(RegexTest, NoCaseFlagMatches)
+{
+    auto r = scn::scan<scn::regex_matches>("FooBar123", "{:/([a-z]+)/i}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_THAT(r->value(),
+                testing::ElementsAre(testing::Optional(testing::Property(
+                                         &scn::regex_match::get, "FooBar"sv)),
+                                     testing::Optional(testing::Property(
+                                         &scn::regex_match::get, "FooBar"sv))));
+}
+
+TEST(RegexTest, NoCaseAndNoCaptureFlagStringView)
+{
+    auto r = scn::scan<std::string_view>("FooBar123", "{:/[a-z]+/in}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "FooBar");
+}
+
+TEST(RegexTest, NoCaseAndNoCaptureFlagMatches)
+{
+    auto r =
+        scn::scan<scn::regex_matches>("FooBar123", "{:/([a-z]+)([0-9]+)/in}");
+    ASSERT_TRUE(r);
+    EXPECT_TRUE(r->range().empty());
+    EXPECT_THAT(r->value(),
+                testing::ElementsAre(testing::Optional(
+                    testing::Property(&scn::regex_match::get, "FooBar123"sv))));
+}

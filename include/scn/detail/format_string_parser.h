@@ -56,6 +56,48 @@ namespace scn {
             pointer,               // 'p'
         };
 
+        enum class regex_flags {
+            none = 0,
+            multiline = 1,   // /m
+            singleline = 2,  // /s
+            nocase = 4,      // /i
+            nocapture = 8,   // /n
+            // TODO?
+            // would probably need to go hand-in-hand with locale,
+            // where it could even be the default/only option -> no flag?
+            // why else would you even use locale with a regex?
+            // collate = 16,
+        };
+
+        constexpr regex_flags operator&(regex_flags a, regex_flags b)
+        {
+            return static_cast<regex_flags>(static_cast<unsigned>(a) &
+                                            static_cast<unsigned>(b));
+        }
+        constexpr regex_flags operator|(regex_flags a, regex_flags b)
+        {
+            return static_cast<regex_flags>(static_cast<unsigned>(a) |
+                                            static_cast<unsigned>(b));
+        }
+        constexpr regex_flags operator^(regex_flags a, regex_flags b)
+        {
+            return static_cast<regex_flags>(static_cast<unsigned>(a) ^
+                                            static_cast<unsigned>(b));
+        }
+
+        constexpr regex_flags& operator&=(regex_flags& a, regex_flags b)
+        {
+            return a = a & b;
+        }
+        constexpr regex_flags& operator|=(regex_flags& a, regex_flags b)
+        {
+            return a = a | b;
+        }
+        constexpr regex_flags& operator^=(regex_flags& a, regex_flags b)
+        {
+            return a = a ^ b;
+        }
+
         template <typename CharT>
         struct basic_format_specs {
             int width{0};
@@ -64,7 +106,7 @@ namespace scn {
             std::array<uint8_t, 128 / 8> charset_literals{0};
             bool charset_has_nonascii{false}, charset_is_inverted{false};
             std::basic_string_view<CharT> charset_string{};
-            std::basic_string_view<CharT> regex_flags{};
+            regex_flags regexp_flags{regex_flags::none};
             unsigned arbitrary_base : 6;
             unsigned align : 2;
             bool localized : 1;
@@ -205,9 +247,9 @@ namespace scn {
             {
                 m_specs.charset_string = pattern;
             }
-            constexpr void on_regex_flags(std::basic_string_view<CharT> flags)
+            constexpr void on_regex_flags(regex_flags flags)
             {
-                m_specs.regex_flags = flags;
+                m_specs.regexp_flags = flags;
             }
 
             constexpr void on_thsep()
@@ -640,20 +682,47 @@ namespace scn {
                 return begin;
             }
 
+            regex_flags flags{regex_flags::none};
+            constexpr std::array<std::pair<char, regex_flags>, 4> flag_map{
+                {{'m', regex_flags::multiline},
+                 {'s', regex_flags::singleline},
+                 {'i', regex_flags::nocase},
+                 {'n', regex_flags::nocapture}}};
             for (; begin != end; ++begin) {
                 if (*begin == CharT{'}'}) {
                     break;
                 }
+                bool found_flag = false;
+                for (auto flag : flag_map) {
+                    if (static_cast<CharT>(flag.first) != *begin) {
+                        continue;
+                    }
+                    if ((flags & flag.second) != regex_flags::none) {
+                        handler.on_error("Flag set multiple times in regex");
+                        return begin;
+                    }
+#if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
+                    if (*begin == CharT{'s'}) {
+                        handler.on_error(
+                            "/s flag for regex isn't supported by regex "
+                            "backend");
+                    }
+#endif
+                    flags |= flag.second;
+                    found_flag = true;
+                    break;
+                }
+                if (!found_flag) {
+                    handler.on_error("Invalid flag in regex");
+                    return begin;
+                }
             }
+            handler.on_regex_flags(flags);
 
             if (SCN_UNLIKELY(begin == end)) {
                 handler.on_error("Unexpected end of regex in format string");
                 return begin;
             }
-
-            auto flags_end = begin;
-            handler.on_regex_flags(
-                make_string_view_from_pointers(regex_end + 1, flags_end));
 
             return begin;
 #else
