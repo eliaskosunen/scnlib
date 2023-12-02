@@ -594,6 +594,13 @@ namespace scn {
             SCN_EXPECT(begin != end);
             SCN_EXPECT(*begin == CharT{'/'});
 
+            if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
+                          std::is_same_v<CharT, wchar_t>) {
+                handler.on_error(
+                    "Regex backend doesn't support wide strings as input");
+                return begin;
+            }
+
             auto start = begin;
             ++begin;
 

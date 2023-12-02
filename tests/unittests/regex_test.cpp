@@ -19,6 +19,7 @@
 
 #include <scn/detail/regex.h>
 #include <scn/detail/scan.h>
+#include <scn/detail/xchar.h>
 
 using namespace std::string_view_literals;
 
@@ -82,5 +83,56 @@ TEST(RegexTest, NamedMatches)
     ASSERT_TRUE(r->value()[2]);
     EXPECT_EQ(r->value()[2]->get(), "123");
     EXPECT_FALSE(r->value()[2]->name());
+}
+#endif
+
+#if SCN_REGEX_SUPPORTS_WIDE_STRINGS
+TEST(RegexTest, WideStringView)
+{
+    auto r = scn::scan<std::wstring_view>(L"foobar123", L"{:/[a-zA-Z]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), L"foobar");
+}
+
+TEST(RegexTest, WideString)
+{
+    auto r = scn::scan<std::wstring>(L"foobar123", L"{:/[a-zA-Z]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), L"foobar");
+}
+
+TEST(RegexTest, WideMatches)
+{
+    auto r = scn::scan<scn::wregex_matches>(L"foobar123",
+                                            L"{:/([a-zA-Z]+)([0-9]+)/}");
+    ASSERT_TRUE(r);
+    EXPECT_TRUE(r->range().empty());
+    EXPECT_THAT(r->value(), testing::ElementsAre(
+                                testing::Optional(testing::Property(
+                                    &scn::wregex_match::get, L"foobar123"sv)),
+                                testing::Optional(testing::Property(
+                                    &scn::wregex_match::get, L"foobar"sv)),
+                                testing::Optional(testing::Property(
+                                    &scn::wregex_match::get, L"123"sv))));
+}
+#endif
+
+TEST(RegexTest, TranscodeStringNarrowToWide)
+{
+    auto r = scn::scan<std::wstring>("foobar123", "{:/[a-zA-Z]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), L"foobar");
+}
+
+#if SCN_REGEX_SUPPORTS_WIDE_STRINGS
+TEST(RegexTest, TranscodeStringWideToNarrow)
+{
+    auto r = scn::scan<std::string>(L"foobar123", L"{:/[a-zA-Z]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "foobar");
 }
 #endif
