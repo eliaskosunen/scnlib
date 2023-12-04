@@ -37,15 +37,16 @@
 #ifdef _MSC_VER
 // _ITERATOR_DEBUG_LEVEL isn't defined in <version> (needed below)
 // <ciso646> is removed in C++20, and including it will cause a warning
-// So, include <yvals.h> from the STL directly, if available, or otherwise fall back on a small C header
+// So, include <yvals.h> from the STL directly, if available, or otherwise fall
+// back on a small C header
 #if SCN_HAS_INCLUDE(<yvals.h>)
 #include <yvals.h>
 #else
 #include <cstddef>
 #endif
-#endif // _MSC_VER
+#endif  // _MSC_VER
 
-#else // has_include(<version>)
+#else  // has_include(<version>)
 #include <ciso646>
 #endif
 
@@ -144,7 +145,8 @@
 #endif
 
 // MSVC debug iterators
-#if SCN_STDLIB_MS_STL && defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL != 0
+#if SCN_STDLIB_MS_STL && defined(_ITERATOR_DEBUG_LEVEL) && \
+    _ITERATOR_DEBUG_LEVEL != 0
 #define SCN_MSVC_DEBUG_ITERATORS 1
 #else
 #define SCN_MSVC_DEBUG_ITERATORS 0
@@ -455,7 +457,8 @@
 #endif
 
 // Detect std::unreachable
-#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L && SCN_STD >= SCN_STD_23
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L && \
+    SCN_STD >= SCN_STD_23
 #define SCN_HAS_STD_UNREACHABLE 1
 #else
 #define SCN_HAS_STD_UNREACHABLE 0
@@ -517,6 +520,13 @@
 #define SCN_HAS_STD_SPAN 1
 #else
 #define SCN_HAS_STD_SPAN 0
+#endif
+
+// Detect std::regex_constants::multiline
+#if SCN_STDLIB_LIBCPP || SCN_STDLIB_GLIBCXX >= 11
+#define SCN_HAS_STD_REGEX_MULTILINE 1
+#else
+#define SCN_HAS_STD_REGEX_MULTILINE 0
 #endif
 
 // Detect endianness

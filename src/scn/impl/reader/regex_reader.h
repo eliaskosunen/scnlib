@@ -48,7 +48,13 @@ namespace scn {
             std::regex_constants::syntax_option_type result{};
             if ((flags & detail::regex_flags::multiline) !=
                 detail::regex_flags::none) {
+#if SCN_HAS_STD_REGEX_MULTILINE
                 result |= std::regex_constants::multiline;
+#else
+                return unexpected_scan_error(
+                    scan_error::invalid_format_string,
+                    "/m flag for regex isn't supported by regex backend");
+#endif
             }
             if ((flags & detail::regex_flags::singleline) !=
                 detail::regex_flags::none) {

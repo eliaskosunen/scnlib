@@ -707,6 +707,13 @@ namespace scn {
                             "/s flag for regex isn't supported by regex "
                             "backend");
                     }
+#if !SCN_HAS_STD_REGEX_MULTILINE
+                    if (*begin == CharT{'m'}) {
+                        handler.on_error(
+                            "/m flag for regex isn't supported by regex "
+                            "backend");
+                    }
+#endif
 #endif
                     flags |= flag.second;
                     found_flag = true;
