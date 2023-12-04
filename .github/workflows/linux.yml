@@ -479,20 +479,23 @@ jobs:
       - name: Install ICU
         if: matrix.icu == 'ON'
         run: |
-          sudo apt-get update
-          sudo apt-get install -yq ibicu-dev
+          ${APT_INSTALL} libicu-dev
 
       - name: Install Boost
         if: matrix.engine == 'Boost'
         run: |
-          sudo apt-get update
-          sudo apt-get install -yq libboost-all-dev
+          ${APT_INSTALL} libboost-regex-dev
 
       - name: Install re2
         if: matrix.engine == 're2'
         run: |
-          sudo apt-get update
-          sudo apt-get install -yq abseil
+          git clone https://github.com/abseil/abseil-cpp -b 20230802.1 --depth=1
+          cd abseil-cpp
+          mkdir build
+          cd build
+          cmake -G Ninja -DABSL_BUILD_TESTING=OFF -DABSL_ENABLE_INSTALL=ON ..
+          sudo cmake --build . --target install
+          cd ../..
           
           git clone https://github.com/google/re2 -b 2023-11-01 --depth=1
           cd re2
@@ -507,7 +510,8 @@ jobs:
 
       - name: Run CMake
         run: |
-          mkdir ${{ runner.workspace }}/build
+          mkdir $GITHUB_WORKSPACE/build
+          cd $GITHUB_WORKSPACE/build
           if [[ ${{ matrix.engine }} == "Boost" ]]; then
             icu_flag="-DSCN_REGEX_BOOST_USE_ICU=${{ matrix.icu }}"
           fi
