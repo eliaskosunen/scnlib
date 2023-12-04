@@ -247,9 +247,9 @@ namespace scn {
     // detail/regex.h:
 
     template <typename CharT>
-    struct basic_regex_match;
+    class basic_regex_match;
     template <typename CharT>
-    struct basic_regex_matches;
+    class basic_regex_matches;
 
     using regex_match = basic_regex_match<char>;
     using wregex_match = basic_regex_match<wchar_t>;

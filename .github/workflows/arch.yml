@@ -89,7 +89,9 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
-          cmake -G "${{ matrix.gen }}" -A ${{ matrix.arch }} -DCMAKE_CROSSCOMPILING=ON -DSCN_CI=ON $GITHUB_WORKSPACE
+          cmake -G "${{ matrix.gen }}" -A ${{ matrix.arch }} -DCMAKE_CROSSCOMPILING=ON \
+                -DSCN_DISABLE_REGEX=ON \
+                -DSCN_CI=ON $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build

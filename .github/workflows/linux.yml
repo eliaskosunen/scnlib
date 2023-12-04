@@ -110,8 +110,8 @@ jobs:
           - cxx: g++-12
             os: 20.04
           # FIXME?: simdutf has problems with clang 6 and 7 (_ktestc_mask64_u8 undefined)
-          #- cxx: clang++-7
-          #- cxx: clang++-6.0
+          - cxx: clang++-7
+          - cxx: clang++-6.0
           # FIXME: Locally unreproducible ICE
           - cxx: clang++-9
           # FIXME: some weird linker issue: undefined reference to range_default_scanner default constructor
@@ -476,9 +476,24 @@ jobs:
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
 
+      - name: Install ICU
+        if: matrix.icu == 'ON'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yq ibicu-dev
+
+      - name: Install Boost
+        if: matrix.engine == 'Boost'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yq libboost-all-dev
+
       - name: Install re2
         if: matrix.engine == 're2'
         run: |
+          sudo apt-get update
+          sudo apt-get install -yq abseil
+          
           git clone https://github.com/google/re2 -b 2023-11-01 --depth=1
           cd re2
           mkdir build

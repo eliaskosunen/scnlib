@@ -19,8 +19,6 @@
 
 #include <scn/detail/regex.h>
 
-#if !SCN_DISABLE_REGEX
-
 #include <scn/impl/reader/common.h>
 
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
@@ -41,6 +39,8 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+#if !SCN_DISABLE_REGEX
+
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
         constexpr auto make_regex_flags(detail::regex_flags flags)
             -> scan_expected<std::regex_constants::syntax_option_type>
@@ -434,6 +434,8 @@ namespace scn {
 #endif
         }
 
+#endif // !SCN_DISABLE_REGEX
+
         template <typename SourceCharT>
         struct regex_matches_reader
             : public reader_base<regex_matches_reader<SourceCharT>,
@@ -499,5 +501,3 @@ namespace scn {
 
     SCN_END_NAMESPACE
 }  // namespace scn
-
-#endif

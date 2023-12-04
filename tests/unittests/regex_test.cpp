@@ -23,6 +23,8 @@
 
 using namespace std::string_view_literals;
 
+#if !SCN_DISABLE_REGEX
+
 TEST(RegexTest, InvalidRegexString)
 {
     auto r = scn::scan<std::string>("foobar123", "{:/[a/}");
@@ -266,3 +268,5 @@ TEST(RegexTest, NoCaseAndNoCaptureFlagMatches)
                 testing::ElementsAre(testing::Optional(
                     testing::Property(&scn::regex_match::get, "FooBar123"sv))));
 }
+
+#endif // !SCN_DISABLE_REGEX
