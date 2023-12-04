@@ -510,8 +510,8 @@ jobs:
 
       - name: Run CMake
         run: |
-          mkdir $GITHUB_WORKSPACE/build
-          cd $GITHUB_WORKSPACE/build
+          mkdir ${{ runner.workspace }}/build
+          cd ${{ runner.workspace }}/build
           if [[ ${{ matrix.engine }} == "Boost" ]]; then
             icu_flag="-DSCN_REGEX_BOOST_USE_ICU=${{ matrix.icu }}"
           fi
