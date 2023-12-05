@@ -58,6 +58,7 @@ set(SCN_PUBLIC_HEADERS
         include/scn/detail/scanner_range.h
         include/scn/detail/ranges.h
         include/scn/detail/scan.h
+        include/scn/detail/scan_buffer.h
         include/scn/detail/scanner.h
         include/scn/detail/scanner_builtin.h
         include/scn/detail/stdin_view.h
@@ -128,10 +129,10 @@ add_library(scn
 )
 target_include_directories(scn
         PUBLIC
-            $<INSTALL_INTERFACE:include>
-            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         PRIVATE
-            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
 target_link_libraries(scn PRIVATE
         simdutf::simdutf
@@ -152,8 +153,8 @@ target_link_libraries(scn_internal INTERFACE
 )
 target_include_directories(scn_internal
         INTERFACE
-            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
 set_interface_flags(scn_internal)
 
