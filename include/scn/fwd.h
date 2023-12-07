@@ -48,39 +48,16 @@ namespace scn {
     template <typename Context>
     class basic_scan_args;
 
-    // detail/caching_view.h
-
-    template <typename Range>
-    class basic_caching_view;
-    template <typename Range>
-    class basic_caching_subrange;
-
     // detail/context.h
 
-    template <typename Range, typename CharT>
+    template <typename CharT>
     class basic_scan_context;
 
-#if !SCN_DISABLE_ERASED_RANGE
+    using scan_context = basic_scan_context<char>;
+    using wscan_context = basic_scan_context<wchar_t>;
 
-    // detail/erased_range.h
-
-    template <typename CharT>
-    class basic_erased_range;
-
-    ///
-    using erased_range = basic_erased_range<char>;
-    ///
-    using werased_range = basic_erased_range<wchar_t>;
-
-    template <typename CharT>
-    struct basic_erased_subrange;
-
-    ///
-    using erased_subrange = basic_erased_subrange<char>;
-    ///
-    using werased_subrange = basic_erased_subrange<wchar_t>;
-
-#endif  // !SCN_DISABLE_ERASED_RANGE
+    using scan_args = basic_scan_args<scan_context>;
+    using wscan_args = basic_scan_args<wscan_context>;
 
     // detail/error.h
 
@@ -162,6 +139,16 @@ namespace scn {
         {
         }
     };
+
+    // detail/scan_buffer.h
+
+    namespace detail {
+        template <typename CharT>
+        class basic_scan_buffer;
+
+        using scan_buffer = basic_scan_buffer<char>;
+        using wscan_buffer = basic_scan_buffer<wchar_t>;
+    }  // namespace detail
 
     // detail/scanner.h
 

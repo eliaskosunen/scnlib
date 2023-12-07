@@ -60,21 +60,9 @@ namespace scn {
     extern template scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
-        namespace scanner_scan_contexts {
-            using sv = basic_scan_context<std::string_view, char>;
-            using in = basic_scan_context<stdin_subrange, char>;
-        }  // namespace scanner_scan_contexts
+        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scan_context)
+        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(wscan_context)
 
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::sv)
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::in)
-
-#if !SCN_DISABLE_ERASED_RANGE
-        namespace scanner_scan_contexts {
-            using es = basic_scan_context<erased_subrange, char>;
-        }  // namespace scanner_scan_contexts
-
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
-#endif
     }  // namespace detail
 
     SCN_END_NAMESPACE

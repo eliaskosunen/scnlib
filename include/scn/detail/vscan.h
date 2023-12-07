@@ -30,101 +30,40 @@ namespace scn {
      * \brief Lower-level scanning API with type-erased arguments
      */
 
-    /**
-     * `basic_scan_arg` type used in the signature of `vscan_value`, when
-     * scanning a range of type `Range`.
-     *
-     * \ingroup vscan
-     */
-    template <typename Range, typename CharT>
-    using scan_arg_for = basic_scan_arg<
-        basic_scan_context<detail::decayed_mapped_source_range<Range>, CharT>>;
-
-    /**
-     * `basic_scan_args` type used in the signature of `vscan`, when scanning a
-     * range of type `Range`.
-     *
-     * \ingroup vscan
-     */
-    template <typename Range, typename CharT>
-    using scan_args_for = basic_scan_args<
-        basic_scan_context<detail::decayed_mapped_source_range<Range>, CharT>>;
-
     namespace detail {
-        template <typename R>
-        using vscan_impl_result = scan_expected<typename R::iterator>;
+        scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
+                                                 std::string_view format,
+                                                 scan_args args);
 
-        vscan_impl_result<std::string_view> vscan_impl(
-            std::string_view source,
-            std::string_view format,
-            scan_args_for<std::string_view, char> args);
-#if !SCN_DISABLE_ERASED_RANGE
-        vscan_impl_result<erased_subrange> vscan_impl(
-            erased_subrange source,
-            std::string_view format,
-            scan_args_for<erased_subrange, char> args);
-#endif
-
-        vscan_impl_result<std::wstring_view> vscan_impl(
-            std::wstring_view source,
-            std::wstring_view format,
-            scan_args_for<std::wstring_view, wchar_t> args);
-#if !SCN_DISABLE_ERASED_RANGE
-        vscan_impl_result<werased_subrange> vscan_impl(
-            werased_subrange source,
-            std::wstring_view format,
-            scan_args_for<werased_subrange, wchar_t> args);
-#endif
+        scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
+                                                 std::wstring_view format,
+                                                 wscan_args args);
 
 #if !SCN_DISABLE_LOCALE
         template <typename Locale>
-        vscan_impl_result<std::string_view> vscan_localized_impl(
+        scan_expected<std::ptrdiff_t> vscan_localized_impl(
             const Locale& loc,
-            std::string_view source,
+            scan_buffer& source,
             std::string_view format,
-            scan_args_for<std::string_view, char> args);
-#if !SCN_DISABLE_ERASED_RANGE
+            scan_args args);
+
         template <typename Locale>
-        vscan_impl_result<erased_subrange> vscan_localized_impl(
+        scan_expected<std::ptrdiff_t> vscan_localized_impl(
             const Locale& loc,
-            erased_subrange source,
+            wscan_buffer& source,
+            std::wstring_view format,
+            wscan_args args);
+#endif
+
+        scan_expected<std::ptrdiff_t> vscan_value_impl(
+            scan_buffer& source,
             std::string_view format,
-            scan_args_for<erased_subrange, char> args);
-#endif
+            basic_scan_arg<scan_context> arg);
 
-        template <typename Locale>
-        vscan_impl_result<std::wstring_view> vscan_localized_impl(
-            const Locale& loc,
-            std::wstring_view source,
+        scan_expected<std::ptrdiff_t> vscan_value_impl(
+            wscan_buffer& source,
             std::wstring_view format,
-            scan_args_for<std::wstring_view, wchar_t> args);
-#if !SCN_DISABLE_ERASED_RANGE
-        template <typename Locale>
-        vscan_impl_result<werased_subrange> vscan_localized_impl(
-            const Locale& loc,
-            werased_subrange source,
-            std::wstring_view format,
-            scan_args_for<werased_subrange, wchar_t> args);
-#endif
-#endif  // !SCN_DISABLE_LOCALE
-
-        vscan_impl_result<std::string_view> vscan_value_impl(
-            std::string_view source,
-            scan_arg_for<std::string_view, char> arg);
-#if !SCN_DISABLE_ERASED_RANGE
-        vscan_impl_result<erased_subrange> vscan_value_impl(
-            erased_subrange source,
-            scan_arg_for<erased_subrange, char> arg);
-#endif
-
-        vscan_impl_result<std::wstring_view> vscan_value_impl(
-            std::wstring_view source,
-            scan_arg_for<std::wstring_view, wchar_t> arg);
-#if !SCN_DISABLE_ERASED_RANGE
-        vscan_impl_result<werased_subrange> vscan_value_impl(
-            werased_subrange source,
-            scan_arg_for<werased_subrange, wchar_t> arg);
-#endif
+            basic_scan_arg<wscan_context> arg);
     }  // namespace detail
 
     /**
@@ -136,81 +75,6 @@ namespace scn {
     using vscan_result =
         scan_expected<borrowed_subrange_with_sentinel_t<Range>>;
 
-    namespace detail {
-        template <typename Range, typename Format, typename Args>
-        auto vscan_generic(Range&& range, Format format, Args args)
-            -> vscan_result<Range>
-        {
-            auto mapped_range = scan_map_input_range(range);
-
-            auto result = vscan_impl(mapped_range, format, args);
-            if (SCN_UNLIKELY(!result)) {
-                return unexpected(result.error());
-            }
-            return map_scan_result_range(SCN_FWD(range), mapped_range.begin(),
-                                         *result);
-        }
-
-        template <typename Locale,
-                  typename Range,
-                  typename Format,
-                  typename Args>
-        auto vscan_localized_generic(const Locale& loc,
-                                     Range&& range,
-                                     Format format,
-                                     Args args) -> vscan_result<Range>
-        {
-#if !SCN_DISABLE_LOCALE
-            auto mapped_range = scan_map_input_range(range);
-
-            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-            auto result = vscan_localized_impl(loc, mapped_range, format, args);
-            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
-
-            if (SCN_UNLIKELY(!result)) {
-                return unexpected(result.error());
-            }
-            return map_scan_result_range(SCN_FWD(range), mapped_range.begin(),
-                                         *result);
-#else
-            static_assert(
-                dependent_false<Locale>::value,
-                "Can't use scan(locale, ...) with SCN_DISABLE_LOCALE on");
-
-            return {};
-#endif
-        };
-
-        template <typename Range, typename Arg>
-        auto vscan_value_generic(Range&& range, Arg arg) -> vscan_result<Range>
-        {
-            auto mapped_range = scan_map_input_range(range);
-
-            auto result = vscan_value_impl(mapped_range, arg);
-            if (SCN_UNLIKELY(!result)) {
-                return unexpected(result.error());
-            }
-            return map_scan_result_range(SCN_FWD(range), mapped_range.begin(),
-                                         *result);
-        }
-
-#if !SCN_DISABLE_IOSTREAM
-        template <typename Range, typename Format, typename Args>
-        auto vscan_and_sync_generic(Range&& range, Format format, Args args)
-            -> vscan_result<Range>
-        {
-            auto mapped_range = scan_map_input_range(range);
-
-            auto result = vscan_and_sync_impl(mapped_range, format, args);
-            if (SCN_UNLIKELY(!result)) {
-                return unexpected(result.error());
-            }
-            return map_scan_result_range(SCN_FWD(range), mapped_range.begin(),
-                                         *result);
-        }
-#endif
-    }  // namespace detail
-
     SCN_GCC_PUSH
     SCN_GCC_IGNORE("-Wnoexcept")
 
@@ -221,11 +85,16 @@ namespace scn {
      * \ingroup vscan
      */
     template <typename Range>
-    auto vscan(Range&& range,
-               std::string_view format,
-               scan_args_for<Range, char> args) -> vscan_result<Range>
+    auto vscan(Range&& range, std::string_view format, scan_args args)
+        -> vscan_result<Range>
     {
-        return detail::vscan_generic(SCN_FWD(range), format, args);
+        auto buffer = detail::make_scan_buffer(range);
+
+        auto result = detail::vscan_impl(buffer, format, args);
+        if (SCN_UNLIKELY(!result)) {
+            return unexpected(result.error());
+        }
+        return detail::make_vscan_result_range(SCN_FWD(range), buffer, *result);
     }
 
     /**
@@ -241,10 +110,25 @@ namespace scn {
     auto vscan(const Locale& loc,
                Range&& range,
                std::string_view format,
-               scan_args_for<Range, char> args) -> vscan_result<Range>
+               scan_args args) -> vscan_result<Range>
     {
-        return detail::vscan_localized_generic(loc, SCN_FWD(range), format,
-                                               args);
+#if !SCN_DISABLE_LOCALE
+        auto buffer = detail::make_scan_buffer(range);
+
+        SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+        auto result = detail::vscan_localized_impl(loc, buffer, format, args);
+        SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+
+        if (SCN_UNLIKELY(!result)) {
+            return unexpected(result.error());
+        }
+        return detail::make_vscan_result_range(SCN_FWD(range), buffer, *result);
+#else
+        static_assert(dependent_false<Locale>::value,
+                      "Can't use scan(locale, ...) with SCN_DISABLE_LOCALE on");
+
+        return {};
+#endif
     }
 
     /**
@@ -254,21 +138,25 @@ namespace scn {
      * \ingroup vscan
      */
     template <typename Range>
-    auto vscan_value(Range&& range, scan_arg_for<Range, char> arg)
-        -> vscan_result<Range>
+    auto vscan_value(Range&& range, scan_args arg) -> vscan_result<Range>
     {
-        return detail::vscan_value_generic(SCN_FWD(range), arg);
+        auto buffer = detail::make_scan_buffer(range);
+
+        auto result = detail::vscan_value_impl(buffer, arg);
+        if (SCN_UNLIKELY(!result)) {
+            return unexpected(result.error());
+        }
+        return detail::make_vscan_result_range(SCN_FWD(range), buffer, *result);
     }
 
-    scan_error vinput(std::string_view format,
-                      scan_args_for<detail::stdin_subrange, char> args);
+    scan_error vinput(std::string_view format, scan_args args);
 
 #if !SCN_DISABLE_LOCALE
     template <typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
     scan_error vinput(const Locale& loc,
                       std::string_view format,
-                      scan_args_for<detail::stdin_subrange, char> args);
+                      scan_args args);
 #endif
 
     namespace detail {

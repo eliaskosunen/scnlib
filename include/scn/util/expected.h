@@ -27,8 +27,8 @@ namespace scn {
      * An `expected<T, scan_error>`.
      *
      * Not a type alias to shorten template names
-*
-* \ingroup result
+     *
+     * \ingroup result
      */
     template <typename T>
     struct scan_expected : public expected<T, scan_error> {
@@ -52,34 +52,7 @@ namespace scn {
 
     namespace detail {
         template <typename T>
-        class always_success_expected
-            : public expected<T, always_success_error> {
-        public:
-            using expected<T, always_success_error>::expected;
-
-            constexpr bool has_value() const SCN_NOEXCEPT
-            {
-                return true;
-            }
-            constexpr explicit operator bool() const SCN_NOEXCEPT
-            {
-                return true;
-            }
-
-            [[noreturn]] always_success_error error() const
-            {
-                SCN_EXPECT(false);
-                SCN_UNREACHABLE;
-            }
-        };
-
-        template <typename T>
-        always_success_expected(T) -> always_success_expected<T>;
-
-        template <typename T>
         struct is_expected_impl<scan_expected<T>> : std::true_type {};
-        template <typename T>
-        struct is_expected_impl<always_success_expected<T>> : std::true_type {};
     }  // namespace detail
 
     SCN_END_NAMESPACE

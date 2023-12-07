@@ -136,17 +136,6 @@ namespace scn {
                                                     format, args);
     }
 
-    // istream_scanner streambuf
-
-#if !SCN_DISABLE_IOSTREAM
-    namespace detail {
-        SCN_DECLARE_EXTERN_RANGE_STREAMBUF(std::wstring_view)
-#if !SCN_DISABLE_ERASED_RANGE
-        SCN_DECLARE_EXTERN_RANGE_STREAMBUF(werased_subrange)
-#endif
-    }   // namespace detail
-#endif  // !SCN_DISABLE_IOSTREAM
-
     // scanner_builtin
 
     namespace detail {

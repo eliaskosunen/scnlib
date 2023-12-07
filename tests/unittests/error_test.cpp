@@ -40,9 +40,6 @@ TEST(ErrorTest, General)
     EXPECT_EQ(eof_error, scn::scan_error::end_of_range);
     EXPECT_EQ(invalid_scanned_value_error,
               scn::scan_error::invalid_scanned_value);
-
-    EXPECT_EQ(good, scn::detail::always_success_error{});
-    EXPECT_NE(eof_error, scn::detail::always_success_error{});
 }
 
 TEST(ErrorTest, HandleError) {}

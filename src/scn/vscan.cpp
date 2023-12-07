@@ -43,11 +43,11 @@ namespace scn {
             return format[0] == CharT{'{'} && format[1] == CharT{'}'};
         }
 
-        template <typename SourceRange, typename CharT>
-        detail::vscan_impl_result<SourceRange> scan_simple_single_argument(
-            SourceRange source,
-            basic_scan_args<basic_scan_context<SourceRange, CharT>> args,
-            basic_scan_arg<basic_scan_context<SourceRange, CharT>> arg,
+        template <typename CharT>
+        scan_expected<std::ptrdiff_t> scan_simple_single_argument(
+            detail::basic_scan_buffer<CharT>& source,
+            basic_scan_args<basic_scan_context<CharT>> args,
+            basic_scan_arg<basic_scan_context<CharT>> arg,
             detail::locale_ref loc = {})
         {
             if (SCN_UNLIKELY(!arg)) {
@@ -55,11 +55,11 @@ namespace scn {
                                              "Argument #0 not found");
             }
 
-            auto reader = impl::default_arg_reader<
-                basic_scan_context<SourceRange, CharT>>{SCN_MOVE(source),
-                                                        SCN_MOVE(args), loc};
+            auto reader = impl::default_arg_reader<basic_scan_context<CharT>>{
+                source.get_forward_buffer(), SCN_MOVE(args), loc};
 
-            return visit_scan_arg(SCN_MOVE(reader), arg);
+            SCN_TRY(it, visit_scan_arg(SCN_MOVE(reader), arg));
+            return it.position();
         }
 
         template <typename Context, typename ID, typename Handler>
@@ -211,23 +211,22 @@ namespace scn {
             std::vector<uint8_t> visited_args_upper{};
         };
 
-        template <typename SourceRange, typename CharT>
+        template <typename CharT>
         struct format_handler : format_handler_base {
             using char_type = CharT;
-            using range_type = SourceRange;
-            using context_type = basic_scan_context<range_type, char_type>;
+            using context_type = basic_scan_context<char_type>;
             using parse_context_type = basic_scan_parse_context<char_type>;
             using format_type = std::basic_string_view<char_type>;
             using args_type = basic_scan_args<context_type>;
 
-            format_handler(range_type source,
+            format_handler(detail::basic_scan_buffer<char_type>& source,
                            format_type format,
                            args_type args,
                            detail::locale_ref loc,
                            std::size_t argcount)
                 : format_handler_base{argcount},
                   parse_ctx{format},
-                  ctx{SCN_MOVE(source), SCN_MOVE(args), SCN_MOVE(loc)}
+                  ctx{source, SCN_MOVE(args), SCN_MOVE(loc)}
             {
             }
 
@@ -344,37 +343,35 @@ namespace scn {
             context_type ctx;
         };
 
-        template <typename SourceRange, typename CharT>
-        detail::vscan_impl_result<SourceRange> vscan_internal(
-            SourceRange source,
+        template <typename CharT>
+        scan_expected<std::ptrdiff_t> vscan_internal(
+            detail::basic_scan_buffer<CharT>& buffer,
             std::basic_string_view<CharT> format,
-            basic_scan_args<basic_scan_context<SourceRange, CharT>> args,
+            basic_scan_args<basic_scan_context<CharT>> args,
             detail::locale_ref loc = {})
         {
             const auto argcount = args.size();
             if (is_simple_single_argument_format_string(format) &&
                 argcount == 1) {
                 auto arg = args.get(0);
-                return scan_simple_single_argument(SCN_MOVE(source),
-                                                   SCN_MOVE(args), arg);
+                return scan_simple_single_argument(buffer, SCN_MOVE(args), arg);
             }
 
-            auto handler = format_handler<SourceRange, CharT>{
-                SCN_MOVE(source), format, SCN_MOVE(args), SCN_MOVE(loc),
-                argcount};
+            auto handler = format_handler<CharT>{buffer, format, SCN_MOVE(args),
+                                                 SCN_MOVE(loc), argcount};
             detail::parse_format_string<false>(format, handler);
             if (SCN_UNLIKELY(!handler)) {
                 return unexpected(handler.error);
             }
-            return handler.ctx.current();
+            return handler.ctx.begin().position();
         }
 
-        template <typename SourceRange, typename CharT>
-        detail::vscan_impl_result<SourceRange> vscan_value_internal(
-            SourceRange source,
-            basic_scan_arg<basic_scan_context<SourceRange, CharT>> arg)
+        template <typename CharT>
+        scan_expected<std::ptrdiff_t> vscan_value_internal(
+            detail::basic_scan_buffer<CharT>& source,
+            basic_scan_arg<basic_scan_context<CharT>> arg)
         {
-            return scan_simple_single_argument(SCN_MOVE(source), {}, arg);
+            return scan_simple_single_argument(source, {}, arg);
         }
     }  // namespace
 
@@ -402,16 +399,15 @@ namespace scn {
         }
     }  // namespace detail
 
-    scan_error vinput(std::string_view format,
-                      scan_args_for<detail::stdin_subrange, char> args)
+    scan_error vinput(std::string_view format, scan_args args)
     {
         auto source = detail::stdin_manager_instance().make_view();
         source.lock();
-        auto it = vscan_internal(detail::stdin_subrange{source}, format, args);
-        if (SCN_UNLIKELY(!it)) {
-            return it.error();
-        }
-        source.manager().sync_now(*it);
+        auto buffer = detail::make_scan_buffer(detail::stdin_subrange{source});
+        SCN_TRY_ERR(n, vscan_internal(buffer, format, args));
+        // TODO: sync by index?
+        auto it = ranges::next(source.begin(), n);
+        source.manager().sync_now(it);
         return {};
     }
 
@@ -419,64 +415,86 @@ namespace scn {
     template <typename Locale, typename>
     scan_error vinput(const Locale& loc,
                       std::string_view format,
-                      scan_args_for<detail::stdin_subrange, char> args)
+                      scan_args args)
     {
         auto source = detail::stdin_manager_instance().make_view();
         source.lock();
-        auto it = vscan_internal(detail::stdin_subrange{source}, format, args,
-                                 detail::locale_ref{loc});
-        if (SCN_UNLIKELY(!it)) {
-            return it.error();
-        }
-        source.manager().sync_now(*it);
+        auto buffer = detail::make_scan_buffer(detail::stdin_subrange{source});
+        SCN_TRY_ERR(
+            n, vscan_internal(buffer, format, args, detail::locale_ref{loc}));
+        auto it = ranges::next(source.begin(), n);
+        source.manager().sync_now(it);
         return {};
     }
 
-    template scan_error vinput<std::locale, void>(
-        const std::locale&,
-        std::string_view,
-        scan_args_for<detail::stdin_subrange, char>);
+    template scan_error vinput<std::locale, void>(const std::locale&,
+                                                  std::string_view,
+                                                  scan_args);
 #endif
 
     namespace detail {
+        scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
+                                                 std::string_view format,
+                                                 scan_args args)
+        {
+            return vscan_internal(source, format, args);
+        }
+
+        scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
+                                                 std::wstring_view format,
+                                                 wscan_args args)
+        {
+            return vscan_internal(source, format, args);
+        }
 
 #if !SCN_DISABLE_LOCALE
-#define SCN_DEFINE_VSCAN_LOCALIZED(Range, CharT)                               \
-    template <typename Locale>                                                 \
-    vscan_impl_result<Range> vscan_localized_impl(                             \
-        const Locale& loc, Range source, std::basic_string_view<CharT> format, \
-        scan_args_for<Range, CharT> args)                                      \
-    {                                                                          \
-        return vscan_internal(SCN_MOVE(source), format, args,                  \
-                              detail::locale_ref{loc});                        \
-    }                                                                          \
-    template vscan_impl_result<Range> vscan_localized_impl<std::locale>(       \
-        const std::locale&, Range, std::basic_string_view<CharT>,              \
-        scan_args_for<Range, CharT>);
-#else
-#define SCN_DEFINE_VSCAN_LOCALIZED(...) /* vscan_localized_impl disabled */
+        template <typename Locale>
+        scan_expected<std::ptrdiff_t> vscan_localized_impl(
+            const Locale& loc,
+            scan_buffer& source,
+            std::string_view format,
+            scan_args args)
+        {
+            return vscan_internal(source, format, args,
+                                  detail::locale_ref{loc});
+        }
+
+        template <typename Locale>
+        scan_expected<std::ptrdiff_t> vscan_localized_impl(
+            const Locale& loc,
+            wscan_buffer& source,
+            std::wstring_view format,
+            wscan_args args)
+        {
+            return vscan_internal(source, format, args,
+                                  detail::locale_ref{loc});
+        }
+
+        template auto vscan_localized_impl<std::locale>(const std::locale&,
+                                                        scan_buffer&,
+                                                        std::string_view,
+                                                        scan_args)
+            -> scan_expected<std::ptrdiff_t>;
+        template auto vscan_localized_impl<std::locale>(const std::locale&,
+                                                        wscan_buffer&,
+                                                        std::wstring_view,
+                                                        wscan_args)
+            -> scan_expected<std::ptrdiff_t>;
 #endif
 
-#define SCN_DEFINE_VSCAN(Range, CharT)                                        \
-    vscan_impl_result<Range> vscan_impl(Range source,                         \
-                                        std::basic_string_view<CharT> format, \
-                                        scan_args_for<Range, CharT> args)     \
-    {                                                                         \
-        return vscan_internal(SCN_MOVE(source), format, args);                \
-    }                                                                         \
-    vscan_impl_result<Range> vscan_value_impl(Range source,                   \
-                                              scan_arg_for<Range, CharT> arg) \
-    {                                                                         \
-        return vscan_value_internal(SCN_MOVE(source), arg);                   \
-    }                                                                         \
-    SCN_DEFINE_VSCAN_LOCALIZED(Range, CharT)
+        scan_expected<std::ptrdiff_t> vscan_value_impl(
+            scan_buffer& source,
+            basic_scan_arg<scan_context> arg)
+        {
+            return vscan_value_internal(source, arg);
+        }
 
-        SCN_DEFINE_VSCAN(std::string_view, char)
-        SCN_DEFINE_VSCAN(std::wstring_view, wchar_t)
-#if !SCN_DISABLE_ERASED_RANGE
-        SCN_DEFINE_VSCAN(erased_subrange, char)
-        SCN_DEFINE_VSCAN(werased_subrange, wchar_t)
-#endif
+        scan_expected<std::ptrdiff_t> vscan_value_impl(
+            wscan_buffer& source,
+            basic_scan_arg<wscan_context> arg)
+        {
+            return vscan_value_internal(source, arg);
+        }
 
 #if !SCN_DISABLE_TYPE_SCHAR
         template auto scan_int_impl(std::string_view, signed char&, int)

@@ -25,14 +25,11 @@
 
 #include <scn/detail/error.h>
 #include <scn/detail/input_map.h>
-#include <scn/detail/ranges.h>
-#include <scn/detail/unicode.h>
 #include <scn/util/expected.h>
 #include <scn/util/meta.h>
 
 #include <array>
 #include <cstddef>
-#include <string>
 #include <tuple>
 
 namespace scn {
@@ -584,9 +581,9 @@ namespace scn {
         {
         }
 
-        template <typename Range, typename... A>
+        template <typename Ctx, typename... A>
         friend constexpr auto make_scan_args();
-        template <typename Range, typename... A>
+        template <typename Ctx, typename... A>
         friend constexpr auto make_scan_args(std::tuple<A...>&& values);
 
         template <typename... A>
@@ -620,34 +617,26 @@ namespace scn {
     };
 
     /**
-     * Constructs a `scan_arg_store` object, associated with `Range`,
+     * Constructs a `scan_arg_store` object, associated with `Context`,
      * that contains value-initialized values of types `Args...`.
      */
-    template <typename Range, typename... Args>
+    template <typename Context = scan_context, typename... Args>
     constexpr auto make_scan_args()
     {
         detail::check_scan_arg_types<Args...>();
 
-        using char_type = detail::char_t<Range>;
-        return scan_arg_store<
-            basic_scan_context<detail::decayed_mapped_source_range<Range>,
-                               char_type>,
-            Args...>{};
+        return scan_arg_store<Context, Args...>{};
     }
     /**
-     * Constructs a `scan_arg_store` object, associated with `Range`,
+     * Constructs a `scan_arg_store` object, associated with `Context`,
      * that contains `values`.
      */
-    template <typename Range, typename... Args>
+    template <typename Context = scan_context, typename... Args>
     constexpr auto make_scan_args(std::tuple<Args...>&& values)
     {
         detail::check_scan_arg_types<Args...>();
 
-        using char_type = detail::char_t<Range>;
-        return scan_arg_store<
-            basic_scan_context<detail::decayed_mapped_source_range<Range>,
-                               char_type>,
-            Args...>{SCN_MOVE(values)};
+        return scan_arg_store<Context, Args...>{SCN_MOVE(values)};
     }
 
     /**

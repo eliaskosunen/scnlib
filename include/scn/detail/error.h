@@ -22,10 +22,6 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        struct always_success_error;
-    }
-
     /**
      * Error class.
      * Used as a return value for functions without a success value.
@@ -48,16 +44,6 @@ namespace scn {
             /// Scanned value was out of range for the desired type.
             /// (e.g. `>2^32` for an `uint32_t`)
             value_out_of_range,
-            /// The source range emitted an error that cannot be recovered
-            /// from. The library can't use the source range in this state.
-            /// Can only happen when using an istream as the input.
-            bad_source_error,
-#if 0
-            /// This operation is only possible with exceptions enabled
-            // exceptions_required,  // currently unused
-            /// This operation is only possible with the heap enabled
-            // heap_required,  // currently unused
-#endif
 
             max_error
         };
@@ -142,72 +128,9 @@ namespace scn {
     }
 
     namespace detail {
-        struct always_success_error {
-            constexpr always_success_error() = default;
-            constexpr always_success_error(scan_error::success_tag_t) {}
-
-            constexpr explicit operator bool() const SCN_NOEXCEPT
-            {
-                return true;
-            }
-            constexpr bool operator!() const SCN_NOEXCEPT
-            {
-                return !(operator bool());
-            }
-
-            constexpr operator enum scan_error::code() const SCN_NOEXCEPT
-            {
-                return scan_error::good;
-            }
-            constexpr operator scan_error() const SCN_NOEXCEPT
-            {
-                return {};
-            }
-
-            SCN_NODISCARD static constexpr enum scan_error::code code()
-                SCN_NOEXCEPT
-            {
-                return scan_error::good;
-            }
-        };
-
         // Intentionally not constexpr, to give out a compile-time error
         scan_error handle_error(scan_error e);
     }  // namespace detail
-
-    constexpr inline bool operator==(scan_error a,
-                                     detail::always_success_error) SCN_NOEXCEPT
-    {
-        return a.operator bool();
-    }
-    constexpr inline bool operator!=(scan_error a,
-                                     detail::always_success_error b)
-        SCN_NOEXCEPT
-    {
-        return !(a == b);
-    }
-
-    constexpr inline bool operator==(detail::always_success_error,
-                                     scan_error b) SCN_NOEXCEPT
-    {
-        return b.operator bool();
-    }
-    constexpr inline bool operator!=(detail::always_success_error a,
-                                     scan_error b) SCN_NOEXCEPT
-    {
-        return !(a == b);
-    }
-
-    constexpr inline bool operator==(detail::always_success_error,
-                                     detail::always_success_error) SCN_NOEXCEPT
-    {
-        return true;
-    }
-    constexpr inline bool operator!=(detail::always_success_error,
-                                     detail::always_success_error) SCN_NOEXCEPT
-    {
-        return false;
-    }
 
     SCN_END_NAMESPACE
 }  // namespace scn

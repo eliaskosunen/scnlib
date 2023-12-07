@@ -22,8 +22,7 @@
 #if !SCN_DISABLE_IOSTREAM
 
 #include <scn/detail/args.h>
-#include <scn/detail/erased_range.h>
-#include <scn/detail/ranges.h>
+#include <scn/detail/context.h>
 #include <scn/detail/scanner_builtin.h>
 #include <scn/util/expected.h>
 
@@ -67,7 +66,7 @@ namespace scn {
          * Used by `basic_istream_scanner`.
          */
         template <typename SourceRange>
-        class range_streambuf
+        class basic_range_streambuf
             : public std::basic_streambuf<detail::char_t<SourceRange>> {
             using base = std::basic_streambuf<detail::char_t<SourceRange>>;
 
@@ -78,7 +77,7 @@ namespace scn {
             using traits_type = typename base::traits_type;
             using int_type = typename base::int_type;
 
-            explicit range_streambuf(range_type range)
+            explicit basic_range_streambuf(range_type range)
                 : m_range(range),
                   m_begin(ranges::begin(m_range)),
                   m_begin_prev(m_begin)
@@ -101,10 +100,51 @@ namespace scn {
             }
 
         private:
-            int_type underflow() override;
-            int_type uflow() override;
-            std::streamsize showmanyc() override;
-            int_type pbackfail(int_type) override;
+            int_type underflow() override
+            {
+                // Already read
+                if (!traits_type::eq_int_type(m_ch, traits_type::eof())) {
+                    return m_ch;
+                }
+
+                if (m_begin == ranges::end(m_range)) {
+                    return traits_type::eof();
+                }
+                m_begin_prev = m_begin;
+                SCN_CLANG_PUSH_IGNORE_UNSAFE_BUFFER_USAGE
+                m_ch = traits_type::to_int_type(*m_begin++);
+                SCN_CLANG_POP_IGNORE_UNSAFE_BUFFER_USAGE
+                return m_ch;
+            }
+
+            int_type uflow() override
+            {
+                auto ret = underflow();
+                if (ret != traits_type::eof()) {
+                    m_ch = traits_type::eof();
+                }
+                return ret;
+            }
+
+            std::streamsize showmanyc() override
+            {
+                return traits_type::eq_int_type(m_ch, traits_type::eof()) ? 0
+                                                                          : 1;
+            }
+
+            int_type pbackfail(int_type) override
+            {
+                SCN_EXPECT(traits_type::eq_int_type(c, traits_type::eof()));
+                SCN_EXPECT(!m_has_put_back);
+                m_has_put_back = true;
+
+                m_begin = m_begin_prev;
+
+                if (m_begin == ranges::end(m_range)) {
+                    return traits_type::eof();
+                }
+                return traits_type::to_int_type(0);
+            }
 
             range_type m_range;
             iterator m_begin;
@@ -113,18 +153,9 @@ namespace scn {
             bool m_has_put_back{false};
         };
 
-#define SCN_DECLARE_EXTERN_RANGE_STREAMBUF(Range)                         \
-    extern template auto range_streambuf<Range>::underflow() -> int_type; \
-    extern template auto range_streambuf<Range>::uflow() -> int_type;     \
-    extern template auto range_streambuf<Range>::showmanyc()              \
-        -> std::streamsize;                                               \
-    extern template auto range_streambuf<Range>::pbackfail(int_type)      \
-        -> int_type;
-
-        SCN_DECLARE_EXTERN_RANGE_STREAMBUF(std::string_view)
-#if !SCN_DISABLE_ERASED_RANGE
-        SCN_DECLARE_EXTERN_RANGE_STREAMBUF(erased_subrange)
-#endif
+        using range_streambuf = basic_range_streambuf<scan_context::range_type>;
+        using wrange_streambuf =
+            basic_range_streambuf<wscan_context::range_type>;
     }  // namespace detail
 
     /**
@@ -148,14 +179,19 @@ namespace scn {
      * \endcode
      */
     template <typename CharT>
-    struct basic_istream_scanner
-        : scanner<std::basic_string_view<CharT>, CharT> {
+    struct basic_istream_scanner {
+        template <typename ParseContext>
+        scan_expected<typename ParseContext::iterator> parse(ParseContext& ctx)
+        {
+            return ctx.begin();
+        }
+
         template <typename T, typename Context>
         scan_expected<typename Context::iterator> scan(T& val,
                                                        Context& ctx) const
         {
-            detail::range_streambuf<typename Context::range_type> streambuf(
-                ctx.range());
+            detail::basic_range_streambuf<typename Context::range_type>
+                streambuf(ctx.range());
             using traits = typename decltype(streambuf)::traits_type;
             std::basic_istream<CharT> stream(std::addressof(streambuf));
 
@@ -166,7 +202,7 @@ namespace scn {
                 }
                 if (SCN_UNLIKELY(stream.bad())) {
                     return unexpected_scan_error(
-                        scan_error::bad_source_error,
+                        scan_error::invalid_scanned_value,
                         "Bad std::istream after reading");
                 }
 

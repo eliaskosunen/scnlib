@@ -19,7 +19,7 @@
 
 #include <scn/detail/args.h>
 #include <scn/detail/locale_ref.h>
-#include <scn/detail/ranges.h>
+#include <scn/detail/scan_buffer.h>
 #include <scn/util/string_view.h>
 
 namespace scn {
@@ -46,21 +46,13 @@ namespace scn {
      *
      * \ingroup ctx
      */
-    template <typename Range, typename CharT>
+    template <typename CharT>
     class basic_scan_context {
     public:
         /// Character type of the input
         using char_type = CharT;
-
-        /**
-         * Contained range type.
-         * In normal operation, one of:
-         *  - `std::basic_string_view<char_type>`
-         *  - `scn::basic_istreambuf_subrange<char_type>`
-         *  - `scn::basic_erased_subrange<char_type>`
-         */
-        using range_type = Range;
-
+        using buffer_type = detail::basic_scan_buffer<char_type>;
+        using range_type = typename buffer_type::range_type;
         using iterator = ranges::iterator_t<range_type>;
         using sentinel = ranges::sentinel_t<range_type>;
         using parse_context_type = basic_scan_parse_context<char_type>;
@@ -73,12 +65,11 @@ namespace scn {
         template <typename T>
         using scanner_type = scanner<T, char_type>;
 
-        template <typename R>
-        constexpr basic_scan_context(R&& r,
+        constexpr basic_scan_context(buffer_type& buf,
                                      basic_scan_args<basic_scan_context> a,
                                      detail::locale_ref loc = {})
-            : m_range(SCN_FWD(r)),
-              m_current(ranges::begin(m_range)),
+            : m_buffer(buf),
+              m_current(buf.get_forward_buffer().begin()),
               m_args(SCN_MOVE(a)),
               m_locale(loc)
         {
@@ -103,25 +94,19 @@ namespace scn {
             return m_args;
         }
 
-        /// \return A view over the input range, starting at `current()`
-        constexpr range_type range() const
-        {
-            if constexpr (detail::is_string_view<range_type>::value) {
-                return detail::make_string_view_from_iterators<char_type>(
-                    current(), ranges::end(m_range));
-            }
-            else {
-                return {current(), ranges::end(m_range)};
-            }
-        }
-
-        /**
-         * \return An iterator pointing to
-         * the beginning of the current input range
-         */
-        constexpr iterator current() const
+        constexpr iterator begin() const
         {
             return m_current;
+        }
+
+        constexpr sentinel end() const
+        {
+            return ranges::end(m_buffer.get_forward_buffer());
+        }
+
+        constexpr auto range() const
+        {
+            return ranges::subrange{begin(), end()};
         }
 
         /// Advances the beginning of the input range to `it`
@@ -129,7 +114,7 @@ namespace scn {
         {
             if constexpr (detail::is_comparable_with_nullptr<iterator>::value) {
                 if (it == nullptr) {
-                    it = ranges::end(m_range);
+                    it = end();
                 }
             }
             m_current = SCN_MOVE(it);
@@ -140,8 +125,17 @@ namespace scn {
             return m_locale;
         }
 
+        buffer_type& internal_buffer()
+        {
+            return m_buffer;
+        }
+        const buffer_type& internal_buffer() const
+        {
+            return m_buffer;
+        }
+
     private:
-        range_type m_range;
+        buffer_type& m_buffer;
         iterator m_current;
         basic_scan_args<basic_scan_context> m_args;
         detail::locale_ref m_locale;

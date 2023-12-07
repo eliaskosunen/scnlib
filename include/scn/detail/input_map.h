@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <scn/detail/erased_range.h>
+#include <scn/detail/scan_buffer.h>
 #include <scn/detail/stdin_view.h>
 #include <scn/util/meta.h>
 #include <scn/util/span.h>
@@ -27,239 +27,181 @@ namespace scn {
     /// Tag type to indicate an invalid range given to `scn::scan`
     struct invalid_input_range {};
 
-    namespace detail::_scan_map_input_range_impl {
+    struct invalid_char_type : invalid_input_range {};
+    struct custom_char_traits : invalid_input_range {};
+    struct stdin_marker_found : invalid_input_range {};
+    struct insufficient_range : invalid_input_range {};
+
+    namespace detail {
         template <typename CharT>
         inline constexpr bool is_valid_char_type =
             std::is_same_v<std::remove_const_t<CharT>, char> ||
             std::is_same_v<std::remove_const_t<CharT>, wchar_t>;
 
-        struct fn {
-        private:
-            // string_view -> string_view
+        namespace _make_scan_buffer {
+            // string_view -> string_buffer
             template <typename CharT>
-            static std::enable_if_t<is_valid_char_type<CharT>,
-                                    std::basic_string_view<CharT>>
-            impl(std::basic_string_view<CharT> r, priority_tag<4>) SCN_NOEXCEPT
+            auto impl(std::basic_string_view<CharT> r,
+                      priority_tag<3>) SCN_NOEXCEPT
             {
-                return r;
+                if constexpr (is_valid_char_type<CharT>) {
+                    return make_string_scan_buffer(r);
+                }
+                else {
+                    return invalid_char_type{};
+                }
             }
 
-            // string& -> string_view
-            template <typename CharT, typename Allocator>
-            static std::enable_if_t<is_valid_char_type<CharT>,
-                                    std::basic_string_view<CharT>>
-            impl(const std::
-                     basic_string<CharT, std::char_traits<CharT>, Allocator>& r,
-                 priority_tag<4>) SCN_NOEXCEPT
+            // string& -> string_buffer
+            template <typename CharT, typename Traits, typename Allocator>
+            auto impl(const std::basic_string<CharT, Traits, Allocator>& r,
+                      priority_tag<3>) SCN_NOEXCEPT
             {
-                return {r.data(), r.size()};
+                if constexpr (!is_valid_char_type<CharT>) {
+                    return invalid_char_type{};
+                }
+                else if constexpr (!std::is_same_v<Traits,
+                                                   std::char_traits<CharT>>) {
+                    return custom_char_traits{};
+                }
+                else {
+                    return make_string_scan_buffer(r);
+                }
             }
 
-            // CharT(&)[] -> string_view
+            // String literals:
+            // CharT(&)[] -> string_buffer
             template <typename CharT, std::size_t N>
-            static std::enable_if_t<is_valid_char_type<CharT>,
-                                    std::basic_string_view<CharT>>
-            impl(const CharT (&r)[N], priority_tag<4>) SCN_NOEXCEPT
+            auto impl(const CharT (&r)[N], priority_tag<3>)
+                SCN_NOEXCEPT->std::enable_if_t<is_valid_char_type<CharT>,
+                                               basic_scan_string_buffer<CharT>>
             {
-                return {r, N - 1};
+                return make_string_scan_buffer(
+                    std::basic_string_view<CharT>{r, N - 1});
             }
 
-            static stdin_subrange impl(const stdin_view& v, priority_tag<4>)
+            // stdin_view -> forward_buffer<stdin_subrange>
+            auto impl(const stdin_view& v, priority_tag<3>)
             {
                 SCN_EXPECT(v.owns_lock());
-                return {v};
+                return make_forward_scan_buffer(stdin_subrange{v});
             }
 
-#if !SCN_DISABLE_ERASED_RANGE
-            // erased_range& -> erased_subrange
-            template <typename CharT>
-            static std::enable_if_t<is_valid_char_type<CharT>,
-                                    basic_erased_subrange<CharT>>
-            impl(const basic_erased_range<CharT>& r, priority_tag<4>)
-                SCN_NOEXCEPT_P(std::is_nothrow_constructible_v<
-                               basic_erased_subrange<CharT>,
-                               basic_erased_range<CharT>&>)
+            // stdin_subrange -> forward_buffer<stdin_subrange>
+            auto impl(stdin_subrange v, priority_tag<2>)
             {
-                return {r};
-            }
-#endif
-
-            static stdin_subrange impl(stdin_subrange v, priority_tag<3>)
-            {
-                return v;
+                return make_forward_scan_buffer(v);
             }
 
-#if !SCN_DISABLE_ERASED_RANGE
-            // erased_subrange -> self
-            template <typename CharT>
-            static std::enable_if_t<is_valid_char_type<CharT>,
-                                    basic_erased_subrange<CharT>>
-            impl(basic_erased_subrange<CharT> r, priority_tag<3>)
-                SCN_NOEXCEPT_P(std::is_nothrow_move_constructible_v<
-                               basic_erased_subrange<CharT>>)
+            // contiguous + sized -> string_buffer
+            template <typename Range,
+                      std::enable_if_t<ranges::contiguous_range<Range> &&
+                                       ranges::sized_range<Range>> = nullptr>
+            auto impl(const Range& r, priority_tag<2>)
             {
-                return r;
+                if constexpr (is_valid_char_type<detail::char_t<Range>>) {
+                    return make_string_scan_buffer(std::basic_string_view{
+                        ranges::data(r),
+                        static_cast<std::size_t>(ranges::size(r))});
+                }
+                else {
+                    return invalid_char_type{};
+                }
             }
-            template <typename Iterator,
-                      typename Sentinel,
-                      ranges::subrange_kind Kind,
-                      typename CharT = ranges_std::iter_value_t<Iterator>>
-            static std::enable_if_t<
-                is_valid_char_type<CharT> &&
-                    std::is_same_v<
-                        Iterator,
-                        typename basic_erased_range<CharT>::iterator> &&
-                    std::is_same_v<
-                        Sentinel,
-                        typename basic_erased_range<CharT>::sentinel>,
-                basic_erased_subrange<CharT>>
-            impl(ranges::subrange<Iterator, Sentinel, Kind> r, priority_tag<3>)
-                SCN_NOEXCEPT_P(std::is_nothrow_constructible_v<
-                               basic_erased_subrange<CharT>,
-                               Iterator,
-                               Sentinel>)
-            {
-                return {r.begin(), r.end()};
-            }
-#endif
 
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Wnoexcept")
-
-            // contiguous + sized + valid-char -> string_view
-            template <typename Range, typename CharT = detail::char_t<Range>>
-            static std::enable_if_t<is_valid_char_type<CharT> &&
-                                        ranges::contiguous_range<Range> &&
-                                        ranges::sized_range<Range>,
-                                    std::basic_string_view<CharT>>
-            impl(const Range& r, priority_tag<2>) SCN_NOEXCEPT_P(
-                noexcept(ranges::data(r)) && noexcept(ranges::size(r)) &&
-                std::is_nothrow_constructible_v<std::basic_string_view<CharT>,
-                                                decltype(ranges::data(r)),
-                                                decltype(ranges::size(r))>)
-            {
-                return {ranges::data(r),
-                        static_cast<std::size_t>(ranges::size(r))};
-            }
             // !contiguous + random-access + iterator can be made into a ptr
             // for MSVC debug iterators
-            //   -> string_view
-            template <typename Range, typename CharT = detail::char_t<Range>>
-            static std::enable_if_t<is_valid_char_type<CharT> &&
-                                        !ranges::contiguous_range<Range> &&
-                                        ranges::random_access_range<Range> &&
-                                        can_make_address_from_iterator<
-                                            ranges::iterator_t<Range>>::value,
-                                    std::basic_string_view<CharT>>
-            impl(const Range& r, priority_tag<2>) SCN_NOEXCEPT_P(
-                noexcept(ranges::begin(r)) && noexcept(ranges::end(r)) &&
-                std::is_nothrow_constructible_v<std::basic_string_view<CharT>,
-                                                const CharT*,
-                                                std::size_t>)
+            //   -> string_buffer
+            template <typename Range,
+                      std::enable_if_t<!ranges::contiguous_range<Range> &&
+                                       ranges::random_access_range<Range> &&
+                                       can_make_address_from_iterator<
+                                           ranges::iterator_t<Range>>::value>* =
+                          nullptr>
+            auto impl(const Range& r, priority_tag<1>)
             {
-                return make_string_view_from_pointers<CharT>(
-                    to_address(ranges::begin(r)), to_address(ranges::end(r)));
-            }
-
-            SCN_GCC_POP
-
-#if !SCN_DISABLE_ERASED_RANGE
-            // forward + proper char type -> erased
-            template <typename Range, typename CharT = detail::char_t<Range>>
-            static std::enable_if_t<is_valid_char_type<CharT> &&
-                                        ranges::forward_range<Range>,
-                                    basic_erased_range<CharT>>
-            impl(const Range& r, priority_tag<1>)
-            {
-                return basic_erased_range<CharT>{r};
-            }
-#endif
-
-            // other -> error
-            template <typename T>
-            static invalid_input_range impl(const T&,
-                                            priority_tag<0>) SCN_NOEXCEPT
-            {
-                if constexpr (std::is_same_v<T, stdin_range_marker>) {
-                    static_assert(
-                        dependent_false<T>::value,
-                        "\n"
-                        "stdin_range_marker cannot be used as an "
-                        "source range type to scn::scan.\n"
-                        "To read from stdin, use scn::input or scn::prompt, "
-                        "and do not provide an explicit source range.");
+                if constexpr (is_valid_char_type<detail::char_t<Range>>) {
+                    return make_string_scan_buffer(
+                        make_string_view_from_pointers(
+                            to_address(ranges::begin(r)),
+                            to_address(ranges::end(r))));
                 }
-
-                return {};
+                else {
+                    return invalid_char_type{};
+                }
             }
 
-        public:
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Wnoexcept")
+            // forward -> forward_buffer<R>
             template <typename Range>
-            auto operator()(const Range& r) const
-                SCN_NOEXCEPT_P(noexcept(fn::impl(r, priority_tag<4>{})))
-                    -> decltype(fn::impl(r, priority_tag<4>{}))
+            auto impl(Range&& r, priority_tag<0>)
             {
-                return fn::impl(r, priority_tag<4>{});
+                if constexpr (std::is_same_v<Range, stdin_range_marker>) {
+                    return stdin_marker_found{};
+                }
+                else if constexpr (!ranges::forward_range<Range>) {
+                    if constexpr (ranges::input_range<Range>) {
+                        return insufficient_range{};
+                    }
+                    else {
+                        return invalid_input_range{};
+                    }
+                }
+                else if constexpr (!is_valid_char_type<detail::char_t<Range>>) {
+                    return invalid_char_type{};
+                }
+                else {
+                    return make_forward_scan_buffer(SCN_FWD(r));
+                }
             }
-            SCN_GCC_POP
-        };
-    }  // namespace detail::_scan_map_input_range_impl
-    namespace detail {
-        inline constexpr auto scan_map_input_range_impl =
-            _scan_map_input_range_impl::fn{};
-
-        template <typename Range>
-        using mapped_source_range =
-            decltype(scan_map_input_range_impl(SCN_DECLVAL(const Range&)));
+        }  // namespace _make_scan_buffer
 
         template <typename Range>
         inline constexpr bool is_scannable_range =
-            !std::is_same_v<mapped_source_range<Range>, invalid_input_range>;
+            !std::is_base_of_v<invalid_input_range,
+                               decltype(_make_scan_buffer::impl(
+                                            SCN_DECLVAL(const Range&)),
+                                        priority_tag<3>{})>;
 
-        template <typename CharT>
-        std::basic_string_view<CharT> decay_source_range(
-            std::basic_string_view<CharT>);
-
-        stdin_subrange decay_source_range(stdin_subrange);
-        stdin_subrange decay_source_range(const stdin_view&);
-
-#if !SCN_DISABLE_ERASED_RANGE
-        template <typename CharT>
-        basic_erased_subrange<CharT> decay_source_range(
-            basic_erased_subrange<CharT>);
-        template <typename CharT>
-        basic_erased_subrange<CharT> decay_source_range(
-            const basic_erased_range<CharT>&);
-#endif
-
-        template <typename R>
-        using decayed_source_range =
-            decltype(decay_source_range(SCN_DECLVAL(R)));
-
-        template <typename R>
-        using decayed_mapped_source_range =
-            decayed_source_range<mapped_source_range<R>>;
-
-        /**
-         * Map a range type given to a generic scanning function (like `scan`)
-         * into something that can be given to a type-erased scanning function
-         * (like `vscan`).
-         *
-         * Maps
-         *  - `string_view` and other contiguous+sized ranges to `string_view`
-         *  - `istreambuf_view` to `istreambuf_subrange`
-         *  - `erased_view` to `erased_subrange`
-         *  - any other forward range to `erased_view`
-         *  - errors (static_assert) on other, invalid range types
-         */
         template <typename Range>
-        auto scan_map_input_range(const Range& r) SCN_NOEXCEPT_P(noexcept(
-            detail::scan_map_input_range_impl(SCN_DECLVAL(const Range&))))
+        auto make_scan_buffer(Range&& range)
         {
+            auto buf =
+                _make_scan_buffer::impl(SCN_FWD(range), priority_tag<3>{});
+
+            using T = decltype(buf);
+            static_assert(!std::is_same_v<T, invalid_char_type>,
+                          "\n"
+                          "Unsupported range type given as input to a scanning "
+                          "function.\n"
+                          "A range needs to have a character type (value type) "
+                          "of either `char` or `wchar_t` to be scannable.\n"
+                          "For proper `wchar_t` support, <scn/xchar.h> needs "
+                          "to be included.\n"
+                          "See the scnlib documentation for more details.");
             static_assert(
-                detail::is_scannable_range<Range>,
+                !std::is_same_v<T, custom_char_traits>,
+                "\n"
+                "Unsupported range type given as input to a scanning "
+                "function.\n"
+                "String types (std::basic_string, and std::basic_string_view) "
+                "need to use std::char_traits. Strings with custom Traits are "
+                "not supported.");
+            static_assert(!std::is_same_v<T, stdin_marker_found>,
+                          "\n"
+                          "Unsupported range type given as input to a scanning "
+                          "function.\n"
+                          "stdin_range_marker cannot be used as an "
+                          "source range type to scn::scan.\n"
+                          "To read from stdin, use scn::input or scn::prompt, "
+                          "and do not provide an explicit source range.");
+            static_assert(!std::is_same_v<T, insufficient_range>,
+                          "\n"
+                          "Unsupported range type given as input to a scanning "
+                          "function.\n"
+                          "In order to be scannable, a range needs to satisfy "
+                          "`forward_range`. `input_range` is not sufficient.");
+            static_assert(
+                !std::is_same_v<T, invalid_input_range>,
                 "\n"
                 "Unsupported range type given as input to a scanning "
                 "function.\n"
@@ -268,9 +210,9 @@ namespace scn {
                 "Examples of scannable ranges are std::string, "
                 "std::string_view, "
                 "std::vector<char>, and scn::istreambuf_view.\n"
-                "See the scn documentation for more details.");
+                "See the scnlib documentation for more details.");
 
-            return detail::scan_map_input_range_impl(r);
+            return buf;
         }
     }  // namespace detail
 

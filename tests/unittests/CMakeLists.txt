@@ -23,11 +23,9 @@ add_executable(scn_tests
         align_and_fill_test.cpp
         args_test.cpp
         buffer_test.cpp
-        caching_view_test.cpp
         char_test.cpp
         context_test.cpp
         custom_type_test.cpp
-        erased_range_test.cpp
         error_test.cpp
         float_test.cpp
         format_string_test.cpp

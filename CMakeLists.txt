@@ -42,9 +42,7 @@ set(SCN_PUBLIC_HEADERS
         include/scn/detail/config.h
 
         include/scn/detail/args.h
-        include/scn/detail/caching_view.h
         include/scn/detail/context.h
-        include/scn/detail/erased_range.h
         include/scn/detail/error.h
         include/scn/detail/format_string.h
         include/scn/detail/format_string_parser.h
@@ -106,7 +104,6 @@ set(SCN_PRIVATE_HEADERS
 )
 set(SCN_PRIVATE_SOURCES
         src/scn/scan.cpp
-        src/scn/istream_scanner.cpp
         src/scn/scanner.cpp
         src/scn/stdin_view.cpp
         src/scn/vscan.cpp

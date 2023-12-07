@@ -127,14 +127,6 @@
 #define SCN_DISABLE_LOCALE 0
 #endif
 
-// SCN_DISABLE_ERASED_RANGE
-// If 1, removes `erased_range`
-// If this and SCN_DISABLE_IOSTREAM are both on,
-// scnlib can only read contiguous+sized ranges
-#ifndef SCN_DISABLE_ERASED_RANGE
-#define SCN_DISABLE_ERASED_RANGE 0
-#endif
-
 // SCN_DISABLE_FROM_CHARS
 // If 1, disallows the float scanner from falling back on std::from_chars,
 // even if it were available

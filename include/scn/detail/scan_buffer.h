@@ -32,13 +32,11 @@ namespace scn {
             using string_type = std::basic_string<char_type>;
             using string_view_type = std::basic_string_view<char_type>;
 
-            contiguous_range_segment() = default;
-
-            contiguous_range_segment(string_view_type sv)
+            explicit contiguous_range_segment(string_view_type sv)
                 : m_buffer(std::in_place_type<string_view_type>, sv)
             {
             }
-            contiguous_range_segment(string_type s)
+            explicit contiguous_range_segment(string_type s)
                 : m_buffer(std::in_place_type<string_type>, SCN_MOVE(s))
             {
             }
@@ -99,9 +97,12 @@ namespace scn {
         template <typename CharT>
         class basic_scan_buffer {
         public:
-            using char_type = CharT;
-
             class forward_iterator;
+
+            using char_type = CharT;
+            using range_type = ranges::subrange<forward_iterator,
+                                                ranges_std::default_sentinel_t>;
+            using contiguous_range_type = std::basic_string_view<char_type>;
 
             basic_scan_buffer(const basic_scan_buffer&) = delete;
             basic_scan_buffer& operator=(const basic_scan_buffer&) = delete;
@@ -132,7 +133,7 @@ namespace scn {
                 return get_contiguous_segment();
             }
 
-            SCN_NODISCARD auto get_forward_buffer();
+            SCN_NODISCARD range_type get_forward_buffer();
 
         protected:
             friend class forward_iterator;
@@ -150,8 +151,8 @@ namespace scn {
             {
             }
 
-            buffer_type m_buffer{};
-            bool m_is_contiguous{false};
+            buffer_type m_buffer;
+            bool m_is_contiguous;
         };
 
         template <typename CharT>
@@ -170,6 +171,10 @@ namespace scn {
                 SCN_UNREACHABLE;
             }
         };
+
+        template <typename CharT>
+        basic_scan_string_buffer(std::basic_string_view<CharT>)
+            -> basic_scan_string_buffer<CharT>;
 
         template <typename CharT>
         class basic_scan_forward_buffer_base : public basic_scan_buffer<CharT> {
@@ -192,14 +197,14 @@ namespace scn {
             using iterator = ranges::iterator_t<Range>;
             using sentinel = ranges::sentinel_t<Range>;
 
-            basic_scan_forward_buffer_impl(const Range& r)
-                : m_range(&r), m_cursor(ranges::begin(*m_range))
+            basic_scan_forward_buffer_impl(Range r)
+                : m_range(SCN_MOVE(r)), m_cursor(ranges::begin(m_range))
             {
             }
 
             std::optional<char_type> read_single() override
             {
-                if (m_cursor == ranges::end(*m_range)) {
+                if (m_cursor == ranges::end(m_range)) {
                     return std::nullopt;
                 }
                 auto ch = *m_cursor;
@@ -209,9 +214,13 @@ namespace scn {
             }
 
         private:
-            const Range* m_range;
+            Range m_range;
             iterator m_cursor;
         };
+
+        template <typename R>
+        basic_scan_forward_buffer_impl(R&&)
+            -> basic_scan_forward_buffer_impl<ranges_polyfill::views::all_t<R>>;
 
         template <typename CharT>
         class basic_scan_buffer<CharT>::forward_iterator {
@@ -227,6 +236,12 @@ namespace scn {
             std::ptrdiff_t position() const
             {
                 return m_position;
+            }
+
+            auto to_contiguous_segment_iterator() const
+            {
+                SCN_EXPECT(m_parent);
+                return m_parent->get_contiguous_segment().begin() + position();
             }
 
             forward_iterator& operator++()
@@ -335,6 +350,7 @@ namespace scn {
 
         template <typename CharT>
         SCN_NODISCARD auto basic_scan_buffer<CharT>::get_forward_buffer()
+            -> range_type
         {
             SCN_EXPECT(!is_contiguous());
             return ranges::subrange{forward_iterator{*this, 0},
@@ -344,17 +360,14 @@ namespace scn {
         template <typename Range>
         auto make_string_scan_buffer(const Range& range)
         {
-            using char_type = ranges::range_value_t<Range>;
-            return basic_scan_string_buffer<char_type>(
-                std::basic_string_view<char_type>{ranges::data(range),
-                                                  ranges::size(range)});
+            return basic_scan_string_buffer(std::basic_string_view{
+                ranges::data(range), ranges::size(range)});
         }
 
         template <typename Range>
-        auto make_forward_scan_buffer(const Range& range)
+        auto make_forward_scan_buffer(Range&& range)
         {
-            using char_type = ranges::range_value_t<Range>;
-            return basic_scan_forward_buffer_impl<Range>(range);
+            return basic_scan_forward_buffer_impl(SCN_FWD(range));
         }
     }  // namespace detail
 
