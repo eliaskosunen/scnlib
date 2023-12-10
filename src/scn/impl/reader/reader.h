@@ -101,7 +101,6 @@ namespace scn {
             using char_type = typename context_type::char_type;
             using args_type = basic_scan_args<context_type>;
 
-            using buffer_type = typename context_type::buffer_type;
             using range_type = typename context_type::range_type;
             using iterator = ranges::iterator_t<range_type>;
 
@@ -110,10 +109,27 @@ namespace scn {
             {
                 if constexpr (!detail::is_type_disabled<T>) {
                     auto rd = make_reader<T, char_type>();
-                    SCN_TRY(it, skip_ws_before_if_required(
-                                    rd.skip_ws_before_read(), range, loc));
-                    return rd.read_default(
-                        ranges::subrange{it, ranges::end(range)}, value, loc);
+                    auto& buffer = *range.begin().parent();
+
+                    if (SCN_UNLIKELY(!buffer.is_contiguous())) {
+                        SCN_TRY(it, skip_ws_before_if_required(
+                                        rd.skip_ws_before_read(), range, loc));
+                        return rd.read_default(
+                            ranges::subrange{it, ranges::end(range)}, value,
+                            loc);
+                    }
+
+                    auto crange =
+                        detail::to_contiguous_buffer_segment<char_type>(range);
+                    SCN_TRY(nows_it,
+                            skip_ws_before_if_required(rd.skip_ws_before_read(),
+                                                       crange, loc));
+                    SCN_TRY(rd_it,
+                            rd.read_default(
+                                ranges::subrange{nows_it, ranges::end(crange)},
+                                value, loc));
+                    return range.begin().unsafe_advance(
+                        ranges::distance(crange.begin(), rd_it));
                 }
                 else {
                     SCN_EXPECT(false);
@@ -126,7 +142,7 @@ namespace scn {
             {
                 if constexpr (!detail::is_type_disabled<void>) {
                     basic_scan_parse_context<char_type> parse_ctx{{}};
-                    context_type ctx{buffer, range.begin(), args, loc};
+                    context_type ctx{range.begin(), args, loc};
                     if (auto e = h.scan(parse_ctx, ctx); !e) {
                         return unexpected(e);
                     }
@@ -139,7 +155,6 @@ namespace scn {
                 }
             }
 
-            buffer_type& buffer;
             range_type range;
             args_type args;
             detail::locale_ref loc;
@@ -157,26 +172,40 @@ namespace scn {
             scan_expected<iterator> operator()(T& value)
             {
                 if constexpr (!detail::is_type_disabled<T>) {
+                    auto& buffer = *range.begin().parent();
                     auto rd = make_reader<T, char_type>();
                     if (auto e = rd.check_specs(specs); !e) {
                         return unexpected(e);
                     }
 
-                    auto it = skip_ws_before_if_required(
-                        rd.skip_ws_before_read(), range, loc);
-                    if (SCN_UNLIKELY(!it)) {
-                        return unexpected(it.error());
+                    auto impl = [&](auto&& range)
+                        -> scan_expected<ranges::iterator_t<decltype(range)>> {
+                        auto it = skip_ws_before_if_required(
+                            rd.skip_ws_before_read(), range, loc);
+                        if (SCN_UNLIKELY(!it)) {
+                            return unexpected(it.error());
+                        }
+
+                        auto subr = ranges::subrange{*it, ranges::end(range)};
+                        if (specs.width != 0) {
+                            SCN_TRY(w_it,
+                                    rd.read_specs(take_width(subr, specs.width),
+                                                  specs, value, loc));
+                            return w_it.base();
+                        }
+
+                        return rd.read_specs(subr, specs, value, loc);
+                    };
+
+                    if (SCN_UNLIKELY(!buffer.is_contiguous())) {
+                        return impl(range);
                     }
 
-                    auto subr = ranges::subrange{*it, ranges::end(range)};
-                    if (specs.width != 0) {
-                        SCN_TRY(w_it,
-                                rd.read_specs(take_width(subr, specs.width),
-                                              specs, value, loc));
-                        return w_it.base();
-                    }
-
-                    return rd.read_specs(subr, specs, value, loc);
+                    auto crange =
+                        detail::to_contiguous_buffer_segment<char_type>(range);
+                    SCN_TRY(it, impl(crange));
+                    return range.begin().unsafe_advance(
+                        ranges::distance(crange.begin(), it));
                 }
                 else {
                     SCN_EXPECT(false);

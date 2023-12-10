@@ -18,6 +18,7 @@
 #pragma once
 
 #include <scn/detail/ranges.h>
+#include <scn/util/string_view.h>
 
 #include <variant>
 
@@ -238,6 +239,15 @@ namespace scn {
                 return m_position;
             }
 
+            basic_scan_buffer<CharT>* parent()
+            {
+                return m_parent;
+            }
+            const basic_scan_buffer<CharT>* parent() const
+            {
+                return m_parent;
+            }
+
             auto to_contiguous_segment_iterator() const
             {
                 SCN_EXPECT(m_parent);
@@ -266,6 +276,13 @@ namespace scn {
                 read_at_cursor();
                 SCN_EXPECT(m_cached_current);
                 return *m_cached_current;
+            }
+
+            forward_iterator& unsafe_advance(std::ptrdiff_t n)
+            {
+                SCN_EXPECT(m_parent && m_parent->is_contiguous());
+                m_position += n;
+                return *this;
             }
 
             friend bool operator==(const forward_iterator& lhs,
@@ -362,6 +379,20 @@ namespace scn {
         static_assert(ranges::forward_range<scan_buffer::range_type>);
         static_assert(
             ranges::contiguous_range<scan_buffer::contiguous_range_type>);
+
+        template <typename CharT>
+        auto to_contiguous_buffer_segment(
+            ranges::subrange<
+                typename basic_scan_buffer<CharT>::forward_iterator,
+                ranges_std::default_sentinel_t> r) ->
+            typename basic_scan_buffer<CharT>::contiguous_range_type
+        {
+            SCN_EXPECT(r.begin().parent() &&
+                       r.begin().parent()->is_contiguous());
+            return make_string_view_from_iterators<CharT>(
+                r.begin().to_contiguous_segment_iterator(),
+                r.begin().parent()->get_contiguous_buffer().end());
+        }
 
         template <typename Range>
         auto make_string_scan_buffer(const Range& range)

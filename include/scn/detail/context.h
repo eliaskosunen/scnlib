@@ -79,11 +79,13 @@ namespace scn {
         {
         }
 
-        constexpr basic_scan_context(buffer_type& buf,
-                                     iterator curr,
+        constexpr basic_scan_context(iterator curr,
                                      basic_scan_args<basic_scan_context> a,
                                      detail::locale_ref loc = {})
-            : m_buffer(buf), m_current(curr), m_args(SCN_MOVE(a)), m_locale(loc)
+            : m_buffer(*curr.parent()),
+              m_current(curr),
+              m_args(SCN_MOVE(a)),
+              m_locale(loc)
         {
         }
 

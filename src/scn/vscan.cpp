@@ -56,7 +56,7 @@ namespace scn {
             }
 
             auto reader = impl::default_arg_reader<basic_scan_context<CharT>>{
-                source, source.get_forward_buffer(), SCN_MOVE(args), loc};
+                source.get_forward_buffer(), SCN_MOVE(args), loc};
             SCN_TRY(it, visit_scan_arg(SCN_MOVE(reader), arg));
             return it.position();
         }
@@ -296,8 +296,7 @@ namespace scn {
 
                 on_visit_scan_arg(
                     impl::default_arg_reader<context_type>{
-                        ctx.internal_buffer(), ctx.range(), ctx.args(),
-                        ctx.locale()},
+                        ctx.range(), ctx.args(), ctx.locale()},
                     arg);
             }
 
