@@ -108,7 +108,7 @@ namespace scn {
             basic_scan_buffer& operator=(const basic_scan_buffer&) = delete;
             basic_scan_buffer(basic_scan_buffer&&) = delete;
             basic_scan_buffer& operator=(basic_scan_buffer&&) = delete;
-            ~basic_scan_buffer() = default;
+            virtual ~basic_scan_buffer() = default;
 
             virtual std::optional<CharT> read_single() = 0;
 
@@ -161,7 +161,7 @@ namespace scn {
 
         public:
             basic_scan_string_buffer(std::basic_string_view<CharT> sv)
-                : base(sv, true)
+                : base(contiguous_range_segment<CharT>{sv}, true)
             {
             }
 
@@ -328,7 +328,9 @@ namespace scn {
                     return;
                 }
 
-                m_cached_current = m_parent->read_single();
+                if (!m_parent->is_contiguous()) {
+                    m_cached_current = m_parent->read_single();
+                }
             }
 
             bool is_at_end() const
@@ -352,10 +354,14 @@ namespace scn {
         SCN_NODISCARD auto basic_scan_buffer<CharT>::get_forward_buffer()
             -> range_type
         {
-            SCN_EXPECT(!is_contiguous());
+            // SCN_EXPECT(!is_contiguous());
             return ranges::subrange{forward_iterator{*this, 0},
                                     ranges_std::default_sentinel};
         }
+
+        static_assert(ranges::forward_range<scan_buffer::range_type>);
+        static_assert(
+            ranges::contiguous_range<scan_buffer::contiguous_range_type>);
 
         template <typename Range>
         auto make_string_scan_buffer(const Range& range)

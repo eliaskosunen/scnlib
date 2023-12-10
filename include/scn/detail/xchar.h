@@ -35,9 +35,8 @@ namespace scn {
 
     /// \ingroup xchar
     template <typename Range>
-    auto vscan(Range&& range,
-               std::wstring_view format,
-               scan_args_for<Range, wchar_t> args) -> vscan_result<Range>
+    auto vscan(Range&& range, std::wstring_view format, wscan_args args)
+        -> vscan_result<Range>
     {
         return detail::vscan_generic(SCN_FWD(range), format, args);
     }
@@ -49,7 +48,7 @@ namespace scn {
     auto vscan(const Locale& loc,
                Range&& range,
                std::wstring_view format,
-               scan_args_for<Range, wchar_t> args) -> vscan_result<Range>
+               wscan_args args) -> vscan_result<Range>
     {
         return detail::vscan_localized_generic(loc, SCN_FWD(range), format,
                                                args);
@@ -57,24 +56,11 @@ namespace scn {
 
     /// \ingroup xchar
     template <typename Range>
-    auto vscan_value(Range&& range, scan_arg_for<Range, wchar_t> arg)
+    auto vscan_value(Range&& range, basic_scan_arg<wscan_context> arg)
         -> vscan_result<Range>
     {
         return detail::vscan_value_generic(SCN_FWD(range), arg);
     }
-
-#if !SCN_DISABLE_IOSTREAM
-    namespace detail {
-        template <typename Range>
-        auto vscan_and_sync(Range&& range,
-                            std::wstring_view format,
-                            scan_args_for<Range, wchar_t> args)
-            -> vscan_result<Range>
-        {
-            return detail::vscan_and_sync_generic(SCN_FWD(range), format, args);
-        }
-    }  // namespace detail
-#endif
 
     // scan
 
@@ -136,24 +122,9 @@ namespace scn {
                                                     format, args);
     }
 
-    // scanner_builtin
-
     namespace detail {
-        namespace scanner_scan_contexts {
-            using wsv = basic_scan_context<std::wstring_view, wchar_t>;
-#if !SCN_DISABLE_ERASED_RANGE
-            using wes = basic_scan_context<werased_subrange, wchar_t>;
-#endif
-        }  // namespace scanner_scan_contexts
-
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)
-#if !SCN_DISABLE_ERASED_RANGE
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
-#endif
-
+        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(wscan_context)
 #undef SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX
-#undef SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE
-
     }  // namespace detail
 
     SCN_END_NAMESPACE

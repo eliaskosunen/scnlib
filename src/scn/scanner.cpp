@@ -73,13 +73,8 @@ namespace scn {
     template scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::sv)
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wsv)
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::in)
-#if !SCN_DISABLE_ERASED_RANGE
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::es)
-        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scanner_scan_contexts::wes)
-#endif
+        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scan_context)
+        SCN_DEFINE_SCANNER_SCAN_FOR_CTX(wscan_context)
     }  // namespace detail
 
     SCN_END_NAMESPACE

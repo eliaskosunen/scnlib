@@ -22,14 +22,13 @@
 
 using ::testing::Test;
 
-using scan_context = scn::basic_scan_context<std::string_view, char>;
-
 TEST(ArgsTest, ArgTypeMapping)
 {
-    static_assert(scn::detail::mapped_type_constant<int, scan_context>::value ==
-                  scn::detail::arg_type::int_type);
+    static_assert(
+        scn::detail::mapped_type_constant<int, scn::scan_context>::value ==
+        scn::detail::arg_type::int_type);
     static_assert(scn::detail::mapped_type_constant<scn::detail::dummy_type,
-                                                    scan_context>::value ==
+                                                    scn::scan_context>::value ==
                   scn::detail::arg_type::custom_type);
 
     // narrow context, narrow char -> valid
@@ -79,8 +78,8 @@ TEST(ArgsTest, ArgTypeMapping)
 
 TEST(ArgsTest, ArgStore)
 {
-    auto store = scn::make_scan_args<std::string_view, int, double>();
-    auto args = scn::basic_scan_args<scan_context>{store};
+    auto store = scn::make_scan_args<scn::scan_context, int, double>();
+    auto args = scn::basic_scan_args<scn::scan_context>{store};
 
     EXPECT_EQ(args.get(0).type(), scn::detail::arg_type::int_type);
     EXPECT_EQ(args.get(1).type(), scn::detail::arg_type::double_type);

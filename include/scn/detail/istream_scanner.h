@@ -132,7 +132,7 @@ namespace scn {
                                                                           : 1;
             }
 
-            int_type pbackfail(int_type) override
+            int_type pbackfail(int_type c) override
             {
                 SCN_EXPECT(traits_type::eq_int_type(c, traits_type::eof()));
                 SCN_EXPECT(!m_has_put_back);

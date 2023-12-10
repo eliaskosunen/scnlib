@@ -411,7 +411,7 @@ namespace scn {
                 : m_parse_context(format_str, num_args, m_types),
                   m_parse_funcs{&parse_format_specs<
                       Args,
-                      basic_scan_context<std::basic_string_view<CharT>, CharT>,
+                      basic_scan_context<CharT>,
                       parse_context_type>...},
                   m_types{arg_type_constant<Args, CharT>::value...}
             {

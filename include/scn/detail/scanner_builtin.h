@@ -61,7 +61,6 @@ namespace scn {
     internal_skip_classic_whitespace(Context::range_type, bool);
 
         SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scan_context)
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(wscan_context)
 
     }  // namespace detail
 

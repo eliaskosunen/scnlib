@@ -279,12 +279,12 @@ namespace scn {
 
         template <typename SourceRange, typename CharT>
         auto make_vscan_result_range(SourceRange&& source,
-                                    const basic_scan_buffer<CharT>& buffer,
-                                    std::ptrdiff_t n)
+                                     const basic_scan_buffer<CharT>& buffer,
+                                     std::ptrdiff_t n)
             -> borrowed_subrange_with_sentinel_t<SourceRange>
         {
             return {ranges::next(ranges::begin(source), n),
-                    make_scan_result_range_end(source)};
+                    make_vscan_result_range_end(source)};
         }
     }  // namespace detail
 

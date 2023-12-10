@@ -81,14 +81,14 @@ namespace scn {
             }
 
             // stdin_view -> forward_buffer<stdin_subrange>
-            auto impl(const stdin_view& v, priority_tag<3>)
+            inline auto impl(const stdin_view& v, priority_tag<3>)
             {
                 SCN_EXPECT(v.owns_lock());
                 return make_forward_scan_buffer(stdin_subrange{v});
             }
 
             // stdin_subrange -> forward_buffer<stdin_subrange>
-            auto impl(stdin_subrange v, priority_tag<2>)
+            inline auto impl(stdin_subrange v, priority_tag<2>)
             {
                 return make_forward_scan_buffer(v);
             }
@@ -133,7 +133,7 @@ namespace scn {
 
             // forward -> forward_buffer<R>
             template <typename Range>
-            auto impl(Range&& r, priority_tag<0>)
+            auto impl(const Range& r, priority_tag<0>)
             {
                 if constexpr (std::is_same_v<Range, stdin_range_marker>) {
                     return stdin_marker_found{};
@@ -150,7 +150,7 @@ namespace scn {
                     return invalid_char_type{};
                 }
                 else {
-                    return make_forward_scan_buffer(SCN_FWD(r));
+                    return make_forward_scan_buffer(r);
                 }
             }
         }  // namespace _make_scan_buffer
@@ -163,12 +163,11 @@ namespace scn {
                                         priority_tag<3>{})>;
 
         template <typename Range>
-        auto make_scan_buffer(Range&& range)
+        auto make_scan_buffer(const Range& range)
         {
-            auto buf =
-                _make_scan_buffer::impl(SCN_FWD(range), priority_tag<3>{});
+            using T =
+                decltype(_make_scan_buffer::impl(range, priority_tag<3>{}));
 
-            using T = decltype(buf);
             static_assert(!std::is_same_v<T, invalid_char_type>,
                           "\n"
                           "Unsupported range type given as input to a scanning "
@@ -212,7 +211,7 @@ namespace scn {
                 "std::vector<char>, and scn::istreambuf_view.\n"
                 "See the scnlib documentation for more details.");
 
-            return buf;
+            return _make_scan_buffer::impl(range, priority_tag<3>{});
         }
     }  // namespace detail
 

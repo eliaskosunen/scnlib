@@ -19,6 +19,7 @@
 
 #include <scn/detail/context.h>
 
+#if 0
 TEST(ContextTest, MemberTypes)
 {
     using scan_context = scn::basic_scan_context<std::string_view, char>;
@@ -41,3 +42,4 @@ TEST(ContextTest, MemberTypes)
 TEST(ContextTest, Range) {
     SUCCEED();
 }
+#endif

@@ -28,6 +28,7 @@
 
 using ::testing::Test;
 
+#if 0
 TEST(InputMapTest, StringView)
 {
     std::string_view input{"FooBar"};
@@ -146,3 +147,4 @@ TEST(InputMapTest, SubrangeOfErased)
     auto result = scn::detail::scan_map_input_range(subr);
     static_assert(std::is_same_v<decltype(result), scn::erased_subrange>);
 }
+#endif

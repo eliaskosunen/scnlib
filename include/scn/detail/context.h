@@ -57,6 +57,10 @@ namespace scn {
         using sentinel = ranges::sentinel_t<range_type>;
         using parse_context_type = basic_scan_parse_context<char_type>;
 
+        using contiguous_range_type =
+            typename buffer_type::contiguous_range_type;
+        using contiguous_iterator = ranges::iterator_t<contiguous_range_type>;
+
         using arg_type = basic_scan_arg<basic_scan_context>;
 
         /**
@@ -72,6 +76,14 @@ namespace scn {
               m_current(buf.get_forward_buffer().begin()),
               m_args(SCN_MOVE(a)),
               m_locale(loc)
+        {
+        }
+
+        constexpr basic_scan_context(buffer_type& buf,
+                                     iterator curr,
+                                     basic_scan_args<basic_scan_context> a,
+                                     detail::locale_ref loc = {})
+            : m_buffer(buf), m_current(curr), m_args(SCN_MOVE(a)), m_locale(loc)
         {
         }
 
@@ -118,6 +130,15 @@ namespace scn {
                 }
             }
             m_current = SCN_MOVE(it);
+        }
+
+        void advance_to(contiguous_iterator it)
+        {
+            SCN_EXPECT(m_buffer.is_contiguous());
+            auto n = ranges::distance(
+                m_current.to_contiguous_segment_iterator(), it);
+            SCN_EXPECT(n >= 0);
+            ranges::advance(m_current, n);
         }
 
         SCN_NODISCARD constexpr detail::locale_ref locale() const

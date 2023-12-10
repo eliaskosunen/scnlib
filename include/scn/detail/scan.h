@@ -75,7 +75,8 @@ namespace scn {
             -> scan_result_type<Source, Args...>
         {
             auto args =
-                make_scan_args<Source, Args...>(SCN_MOVE(default_values));
+                make_scan_args<basic_scan_context<detail::char_t<Source>>,
+                               Args...>(SCN_MOVE(default_values));
             auto result = vscan(SCN_FWD(source), format, args);
             return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
         }
@@ -161,7 +162,8 @@ namespace scn {
             -> scan_result_type<Source, Args...>
         {
             auto args =
-                make_scan_args<Source, Args...>(SCN_MOVE(default_values));
+                make_scan_args<basic_scan_context<detail::char_t<Source>>,
+                               Args...>(SCN_MOVE(default_values));
             auto result = vscan(loc, SCN_FWD(source), format, args);
             return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
         }
@@ -225,21 +227,13 @@ namespace scn {
     }
 
     namespace detail {
-        template <typename Range, typename CharT>
-        using context_type_for_impl =
-            basic_scan_context<decayed_mapped_source_range<Range>, CharT>;
-
-        template <typename Range>
-        using context_type_for =
-            context_type_for_impl<mapped_source_range<Range>,
-                                  detail::char_t<Range>>;
-
         template <typename T, typename Source>
         auto scan_value_impl(Source&& source, T value)
             -> scan_result_type<Source, T>
         {
             auto arg =
-                detail::make_arg<detail::context_type_for<Source>>(value);
+                detail::make_arg<basic_scan_context<detail::char_t<Source>>>(
+                    value);
             SCN_TRY(it, vscan_value(SCN_FWD(source), arg));
             return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(value)}};
         }
@@ -290,7 +284,7 @@ namespace scn {
     SCN_NODISCARD auto input(format_string<Args...> format)
         -> scan_result_type<stdin_range_marker, Args...>
     {
-        auto args = make_scan_args<detail::stdin_subrange, Args...>();
+        auto args = make_scan_args<scan_context, Args...>();
         auto err = vinput(format, args);
         if (SCN_UNLIKELY(!err)) {
             return unexpected(err);

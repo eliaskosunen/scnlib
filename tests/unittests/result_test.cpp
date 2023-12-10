@@ -26,9 +26,6 @@
 
 using ::testing::Test;
 
-using scan_context = scn::basic_scan_context<std::string_view, char>;
-using scan_args = scn::scan_args_for<std::string_view, char>;
-
 #if 0
 namespace {
     scn::scan_result<std::string_view> mock_vscan(std::string_view input,
@@ -158,22 +155,6 @@ TEST(ResultTestReal, ForwardListLvalue)
 TEST(ResultTestReal, ForwardListRvalue)
 {
     auto result = scn::scan(std::forward_list<char>{'a', 'b', 'c'}, "");
-
-    static_assert(std::is_same_v<decltype(result), dangling_scan_result>);
-}
-
-TEST(ResultTestReal, ErasedRangeLvalue)
-{
-    auto source = scn::erased_range{std::string_view{"foobar"}};
-    auto result = scn::scan(source, "");
-
-    static_assert(std::is_same_v<decltype(result),
-                                 scan_result_for<scn::erased_range::iterator,
-                                                 scn::erased_range::sentinel>>);
-}
-TEST(ResultTestReal, ErasedRangeRvalue)
-{
-    auto result = scn::scan(scn::erased_range{"foobar"}, "");
 
     static_assert(std::is_same_v<decltype(result), dangling_scan_result>);
 }
