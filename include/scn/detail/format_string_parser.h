@@ -920,7 +920,6 @@ namespace scn {
             }
 
             handler.on_literal_text(begin, end);
-            return;
         }
 
         template <bool IsConstexpr, typename CharT, typename Handler>

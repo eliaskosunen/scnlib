@@ -265,7 +265,7 @@ namespace scn {
                         ranges::subrange{it, ranges::end(range)});
                     const auto cp = decode_code_point_exhaustive(value.view());
                     if (pred(cp)) {
-                        break;
+                        return it;
                     }
                     it = iter;
                 }

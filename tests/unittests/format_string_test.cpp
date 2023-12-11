@@ -211,6 +211,14 @@ TEST(FormatStringTest, AnyComboOfWhitespaceSkipsAnyWhitespace)
     EXPECT_EQ(b, 'b');
 }
 
+TEST(FormatStringTest, LiteralsAndWhitespace)
+{
+    auto result =
+        scn::scan<std::string>("a b c", scn::runtime_format("a {} c"));
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), "b");
+}
+
 TEST(FormatStringTest, LongFormatString1)
 {
     auto result = scn::scan<std::string>(

@@ -232,8 +232,8 @@ namespace scn {
             void on_literal_text(const CharT* begin, const CharT* end)
             {
                 for (; begin != end; ++begin) {
-                    auto it = ranges::begin(ctx.range());
-                    if (impl::is_range_eof(it, ranges::end(ctx.range()))) {
+                    auto it = ctx.begin();
+                    if (impl::is_range_eof(it, ctx.end())) {
                         SCN_UNLIKELY_ATTR
                         return on_error("Unexpected end of source");
                     }

@@ -282,6 +282,9 @@ namespace scn {
             {
                 SCN_EXPECT(m_parent && m_parent->is_contiguous());
                 m_position += n;
+                SCN_ENSURE(m_position <=
+                           m_parent->get_contiguous_buffer().size());
+                m_cached_current.reset();
                 return *this;
             }
 

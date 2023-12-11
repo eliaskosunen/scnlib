@@ -115,7 +115,7 @@ namespace scn {
 
         constexpr sentinel end() const
         {
-            return ranges::end(m_buffer.get_forward_buffer());
+            return ranges_std::default_sentinel;
         }
 
         constexpr auto range() const
@@ -140,7 +140,7 @@ namespace scn {
             auto n = ranges::distance(
                 m_current.to_contiguous_segment_iterator(), it);
             SCN_EXPECT(n >= 0);
-            ranges::advance(m_current, n);
+            m_current.unsafe_advance(n);
         }
 
         SCN_NODISCARD constexpr detail::locale_ref locale() const
