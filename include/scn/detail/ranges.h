@@ -389,6 +389,15 @@ namespace scn {
 
         template <typename Range>
         using char_t = typename char_t_fn::result<Range>::type;
+
+        template <typename Range>
+        inline constexpr bool is_file_or_narrow_range =
+            std::is_same_v<remove_cvref_t<Range>, std::FILE*> ||
+            std::is_same_v<char_t<Range>, char>;
+
+        template <typename Range>
+        inline constexpr bool is_wide_range =
+            std::is_same_v<char_t<Range>, wchar_t>;
     }  // namespace detail
 
     // borrowed_iterator_t and borrowed_subrange_t, but shorter template

@@ -29,7 +29,7 @@ namespace scn {
 
     struct invalid_char_type : invalid_input_range {};
     struct custom_char_traits : invalid_input_range {};
-    struct stdin_marker_found : invalid_input_range {};
+    struct file_marker_found : invalid_input_range {};
     struct insufficient_range : invalid_input_range {};
 
     namespace detail {
@@ -80,17 +80,10 @@ namespace scn {
                     std::basic_string_view<CharT>{r, N - 1});
             }
 
-            // stdin_view -> forward_buffer<stdin_subrange>
-            inline auto impl(const stdin_view& v, priority_tag<3>)
+            // FILE* -> file_buffer
+            inline auto impl(std::FILE* file, priority_tag<3>)
             {
-                SCN_EXPECT(v.owns_lock());
-                return make_forward_scan_buffer(stdin_subrange{v});
-            }
-
-            // stdin_subrange -> forward_buffer<stdin_subrange>
-            inline auto impl(stdin_subrange v, priority_tag<2>)
-            {
-                return make_forward_scan_buffer(v);
+                return make_file_scan_buffer(file);
             }
 
             // contiguous + sized -> string_buffer
@@ -135,8 +128,8 @@ namespace scn {
             template <typename Range>
             auto impl(const Range& r, priority_tag<0>)
             {
-                if constexpr (std::is_same_v<Range, stdin_range_marker>) {
-                    return stdin_marker_found{};
+                if constexpr (std::is_same_v<Range, file_marker>) {
+                    return file_marker_found{};
                 }
                 else if constexpr (!ranges::forward_range<Range>) {
                     if constexpr (ranges::input_range<Range>) {
@@ -185,14 +178,15 @@ namespace scn {
                 "String types (std::basic_string, and std::basic_string_view) "
                 "need to use std::char_traits. Strings with custom Traits are "
                 "not supported.");
-            static_assert(!std::is_same_v<T, stdin_marker_found>,
+            static_assert(!std::is_same_v<T, file_marker_found>,
                           "\n"
                           "Unsupported range type given as input to a scanning "
                           "function.\n"
-                          "stdin_range_marker cannot be used as an "
+                          "file_marker_found cannot be used as an "
                           "source range type to scn::scan.\n"
                           "To read from stdin, use scn::input or scn::prompt, "
-                          "and do not provide an explicit source range.");
+                          "and do not provide an explicit source range, "
+                          "or use scn::scan with a FILE* directly.");
             static_assert(!std::is_same_v<T, insufficient_range>,
                           "\n"
                           "Unsupported range type given as input to a scanning "

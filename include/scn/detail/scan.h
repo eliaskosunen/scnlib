@@ -68,15 +68,17 @@ namespace scn {
 
     namespace detail {
         // Boilerplate for scan()
-        template <typename... Args, typename Source, typename Format>
+        template <typename CharT,
+                  typename... Args,
+                  typename Source,
+                  typename Format>
         auto scan_impl(Source&& source,
                        Format format,
                        std::tuple<Args...> default_values)
             -> scan_result_type<Source, Args...>
         {
-            auto args =
-                make_scan_args<basic_scan_context<detail::char_t<Source>>,
-                               Args...>(SCN_MOVE(default_values));
+            auto args = make_scan_args<basic_scan_context<CharT>, Args...>(
+                SCN_MOVE(default_values));
             auto result = vscan(SCN_FWD(source), format, args);
             return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
         }
@@ -108,14 +110,14 @@ namespace scn {
      *
      * \ingroup scan
      */
-    template <typename... Args,
-              typename Source,
-              typename = std::enable_if_t<
-                  std::is_same_v<detail::char_t<Source>, char>>>
+    template <
+        typename... Args,
+        typename Source,
+        typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
     SCN_NODISCARD auto scan(Source&& source, format_string<Args...> format)
         -> scan_result_type<Source, Args...>
     {
-        return detail::scan_impl<Args...>(SCN_FWD(source), format, {});
+        return detail::scan_impl<char, Args...>(SCN_FWD(source), format, {});
     }
 
     /**
@@ -136,22 +138,23 @@ namespace scn {
      *
      * \ingroup scan
      */
-    template <typename... Args,
-              typename Source,
-              typename = std::enable_if_t<
-                  std::is_same_v<detail::char_t<Source>, char>>>
+    template <
+        typename... Args,
+        typename Source,
+        typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
     SCN_NODISCARD auto scan(Source&& source,
                             format_string<Args...> format,
                             std::tuple<Args...>&& default_args)
         -> scan_result_type<Source, Args...>
     {
-        return detail::scan_impl<Args...>(SCN_FWD(source), format,
-                                          SCN_MOVE(default_args));
+        return detail::scan_impl<char, Args...>(SCN_FWD(source), format,
+                                                SCN_MOVE(default_args));
     }
 
     namespace detail {
-        // Boilerplate for scan()
-        template <typename... Args,
+        // Boilerplate for scan(const locale&)
+        template <typename CharT,
+                  typename... Args,
                   typename Locale,
                   typename Source,
                   typename Format>
@@ -161,9 +164,8 @@ namespace scn {
                                  std::tuple<Args...> default_values)
             -> scan_result_type<Source, Args...>
         {
-            auto args =
-                make_scan_args<basic_scan_context<detail::char_t<Source>>,
-                               Args...>(SCN_MOVE(default_values));
+            auto args = make_scan_args<basic_scan_context<CharT>, Args...>(
+                SCN_MOVE(default_values));
             auto result = vscan(loc, SCN_FWD(source), format, args);
             return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
         }
@@ -190,19 +192,19 @@ namespace scn {
      *
      * \ingroup locale
      */
-    template <typename... Args,
-              typename Locale,
-              typename Source,
-              typename = std::enable_if_t<
-                  std::is_same_v<detail::char_t<Source>, char>>,
-              typename = std::void_t<decltype(Locale::classic())>>
+    template <
+        typename... Args,
+        typename Locale,
+        typename Source,
+        typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>,
+        typename = std::void_t<decltype(Locale::classic())>>
     SCN_NODISCARD auto scan(const Locale& loc,
                             Source&& source,
                             format_string<Args...> format)
         -> scan_result_type<Source, Args...>
     {
-        return detail::scan_localized_impl<Args...>(loc, SCN_FWD(source),
-                                                    format, {});
+        return detail::scan_localized_impl<char, Args...>(loc, SCN_FWD(source),
+                                                          format, {});
     }
 
     /**
@@ -210,30 +212,28 @@ namespace scn {
      *
      * \ingroup locale
      */
-    template <typename... Args,
-              typename Locale,
-              typename Source,
-              typename = std::enable_if_t<
-                  std::is_same_v<detail::char_t<Source>, char>>,
-              typename = std::void_t<decltype(Locale::classic())>>
+    template <
+        typename... Args,
+        typename Locale,
+        typename Source,
+        typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>,
+        typename = std::void_t<decltype(Locale::classic())>>
     SCN_NODISCARD auto scan(const Locale& loc,
                             Source&& source,
                             format_string<Args...> format,
                             std::tuple<Args...>&& default_args)
         -> scan_result_type<Source, Args...>
     {
-        return detail::scan_localized_impl<Args...>(
+        return detail::scan_localized_impl<char, Args...>(
             loc, SCN_FWD(source), format, SCN_MOVE(default_args));
     }
 
     namespace detail {
-        template <typename T, typename Source>
+        template <typename CharT, typename T, typename Source>
         auto scan_value_impl(Source&& source, T value)
             -> scan_result_type<Source, T>
         {
-            auto arg =
-                detail::make_arg<basic_scan_context<detail::char_t<Source>>>(
-                    value);
+            auto arg = detail::make_arg<basic_scan_context<CharT>>(value);
             SCN_TRY(it, vscan_value(SCN_FWD(source), arg));
             return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(value)}};
         }
@@ -247,11 +247,14 @@ namespace scn {
      *
      * \ingroup scan
      */
-    template <typename T, typename Source>
+    template <
+        typename T,
+        typename Source,
+        typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
     SCN_NODISCARD auto scan_value(Source&& source)
         -> scan_result_type<Source, T>
     {
-        return detail::scan_value_impl(SCN_FWD(source), T{});
+        return detail::scan_value_impl<char>(SCN_FWD(source), T{});
     }
 
     /**
@@ -259,12 +262,15 @@ namespace scn {
      *
      * \ingroup scan
      */
-    template <typename T, typename Source>
+    template <
+        typename T,
+        typename Source,
+        std::enable_if_t<detail::is_file_or_narrow_range<Source>>* = nullptr>
     SCN_NODISCARD auto scan_value(Source&& source, T default_value)
         -> scan_result_type<Source, T>
     {
-        return detail::scan_value_impl(SCN_FWD(source),
-                                       SCN_MOVE(default_value));
+        return detail::scan_value_impl<char>(SCN_FWD(source),
+                                             SCN_MOVE(default_value));
     }
 
     /**
@@ -282,14 +288,14 @@ namespace scn {
      */
     template <typename... Args>
     SCN_NODISCARD auto input(format_string<Args...> format)
-        -> scan_result_type<stdin_range_marker, Args...>
+        -> scan_result_type<file_marker, Args...>
     {
         auto args = make_scan_args<scan_context, Args...>();
         auto err = vinput(format, args);
         if (SCN_UNLIKELY(!err)) {
             return unexpected(err);
         }
-        return scan_result{stdin_range_marker{}, SCN_MOVE(args.args())};
+        return scan_result{file_marker{}, SCN_MOVE(args.args())};
     }
 
     /**
@@ -299,7 +305,7 @@ namespace scn {
      */
     template <typename... Args>
     SCN_NODISCARD auto prompt(const char* msg, format_string<Args...> format)
-        -> scan_result_type<stdin_range_marker, Args...>
+        -> scan_result_type<file_marker, Args...>
     {
         std::printf("%s", msg);
         return input<Args...>(format);

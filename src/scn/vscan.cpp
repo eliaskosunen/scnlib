@@ -400,13 +400,10 @@ namespace scn {
 
     scan_error vinput(std::string_view format, scan_args args)
     {
-        auto source = detail::stdin_manager_instance().make_view();
-        source.lock();
-        auto buffer = detail::make_scan_buffer(detail::stdin_subrange{source});
+        // TODO: lock
+        auto buffer = detail::make_file_scan_buffer(stdin);
         SCN_TRY_ERR(n, vscan_internal(buffer, format, args));
-        // TODO: sync by index?
-        auto it = ranges::next(source.begin(), n);
-        source.manager().sync_now(it);
+        buffer.sync(n);
         return {};
     }
 
@@ -416,13 +413,10 @@ namespace scn {
                       std::string_view format,
                       scan_args args)
     {
-        auto source = detail::stdin_manager_instance().make_view();
-        source.lock();
-        auto buffer = detail::make_scan_buffer(detail::stdin_subrange{source});
+        auto buffer = detail::make_file_scan_buffer(stdin);
         SCN_TRY_ERR(
             n, vscan_internal(buffer, format, args, detail::locale_ref{loc}));
-        auto it = ranges::next(source.begin(), n);
-        source.manager().sync_now(it);
+        buffer.sync(n);
         return {};
     }
 
@@ -436,14 +430,18 @@ namespace scn {
                                                  std::string_view format,
                                                  scan_args args)
         {
-            return vscan_internal(source, format, args);
+            SCN_TRY(n, vscan_internal(source, format, args));
+            source.sync(n);
+            return n;
         }
 
         scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
                                                  std::wstring_view format,
                                                  wscan_args args)
         {
-            return vscan_internal(source, format, args);
+            SCN_TRY(n, vscan_internal(source, format, args));
+            source.sync(n);
+            return n;
         }
 
 #if !SCN_DISABLE_LOCALE
@@ -454,8 +452,10 @@ namespace scn {
             std::string_view format,
             scan_args args)
         {
-            return vscan_internal(source, format, args,
-                                  detail::locale_ref{loc});
+            SCN_TRY(n, vscan_internal(source, format, args,
+                                      detail::locale_ref{loc}));
+            source.sync(n);
+            return n;
         }
 
         template <typename Locale>
@@ -465,8 +465,10 @@ namespace scn {
             std::wstring_view format,
             wscan_args args)
         {
-            return vscan_internal(source, format, args,
-                                  detail::locale_ref{loc});
+            SCN_TRY(n, vscan_internal(source, format, args,
+                                      detail::locale_ref{loc}));
+            source.sync(n);
+            return n;
         }
 
         template auto vscan_localized_impl<std::locale>(const std::locale&,
@@ -485,14 +487,18 @@ namespace scn {
             scan_buffer& source,
             basic_scan_arg<scan_context> arg)
         {
-            return vscan_value_internal(source, arg);
+            SCN_TRY(n, vscan_value_internal(source, arg));
+            source.sync(n);
+            return n;
         }
 
         scan_expected<std::ptrdiff_t> vscan_value_impl(
             wscan_buffer& source,
             basic_scan_arg<wscan_context> arg)
         {
-            return vscan_value_internal(source, arg);
+            SCN_TRY(n, vscan_value_internal(source, arg));
+            source.sync(n);
+            return n;
         }
 
 #if !SCN_DISABLE_TYPE_SCHAR

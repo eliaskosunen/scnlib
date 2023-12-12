@@ -132,10 +132,10 @@ namespace scn {
 
     // detail/scan.h
 
-    struct stdin_range_marker {
-        constexpr stdin_range_marker() SCN_NOEXCEPT = default;
+    struct file_marker {
+        constexpr file_marker() SCN_NOEXCEPT = default;
         template <typename... Args>
-        constexpr stdin_range_marker(Args&&...) SCN_NOEXCEPT
+        constexpr file_marker(Args&&...) SCN_NOEXCEPT
         {
         }
     };

@@ -27,11 +27,11 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        template <typename Range, bool Dangling, bool StdinMarker>
+        template <typename Range, bool Dangling, bool FileMarker>
         constexpr auto dangling_iterator()
         {
-            if constexpr (StdinMarker) {
-                return type_identity<stdin_range_marker>{};
+            if constexpr (FileMarker) {
+                return type_identity<file_marker>{};
             }
             else if constexpr (Dangling) {
                 return type_identity<ranges::dangling>{};
@@ -41,11 +41,11 @@ namespace scn {
             }
         }
 
-        template <typename Range, bool Dangling, bool StdinMarker>
+        template <typename Range, bool Dangling, bool FileMarker>
         constexpr auto dangling_sentinel()
         {
-            if constexpr (StdinMarker) {
-                return type_identity<stdin_range_marker>{};
+            if constexpr (FileMarker) {
+                return type_identity<file_marker>{};
             }
             else if constexpr (Dangling) {
                 return type_identity<ranges::dangling>{};
@@ -75,21 +75,21 @@ namespace scn {
     class scan_result {
         static constexpr bool is_dangling =
             std::is_same_v<detail::remove_cvref_t<Range>, ranges::dangling>;
-        static constexpr bool is_stdin_marker =
-            std::is_same_v<detail::remove_cvref_t<Range>, stdin_range_marker>;
+        static constexpr bool is_file_marker =
+            std::is_same_v<detail::remove_cvref_t<Range>, file_marker>;
         static_assert(ranges::borrowed_range<Range> || is_dangling ||
-                      is_stdin_marker);
+                      is_file_marker);
 
     public:
         using range_type = Range;
         using iterator = typename decltype(detail::dangling_iterator<
                                            Range,
                                            is_dangling,
-                                           is_stdin_marker>())::type;
+                                           is_file_marker>())::type;
         using sentinel = typename decltype(detail::dangling_sentinel<
                                            Range,
                                            is_dangling,
-                                           is_stdin_marker>())::type;
+                                           is_file_marker>())::type;
         using tuple_type = std::tuple<Args...>;
 
         constexpr scan_result() = default;
@@ -184,8 +184,8 @@ namespace scn {
             if constexpr (is_dangling) {
                 return ranges::dangling{};
             }
-            else if constexpr (is_stdin_marker) {
-                return stdin_range_marker{};
+            else if constexpr (is_file_marker) {
+                return file_marker{};
             }
             else {
                 return m_range.begin();
@@ -198,8 +198,8 @@ namespace scn {
             if constexpr (is_dangling) {
                 return ranges::dangling{};
             }
-            else if constexpr (is_stdin_marker) {
-                return stdin_range_marker{};
+            else if constexpr (is_file_marker) {
+                return file_marker{};
             }
             else {
                 return m_range.end();

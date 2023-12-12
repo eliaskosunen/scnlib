@@ -113,6 +113,11 @@ namespace scn {
 
             virtual std::optional<CharT> read_single() = 0;
 
+            virtual void sync(std::ptrdiff_t position)
+            {
+                SCN_UNUSED(position);
+            }
+
             SCN_NODISCARD std::ptrdiff_t characters_read() const
             {
                 return get_contiguous_segment().size();
@@ -222,6 +227,23 @@ namespace scn {
         template <typename R>
         basic_scan_forward_buffer_impl(R&&)
             -> basic_scan_forward_buffer_impl<ranges_polyfill::views::all_t<R>>;
+
+        template <typename CharT>
+        class basic_scan_file_buffer : public basic_scan_buffer<CharT> {
+            using base = basic_scan_buffer<CharT>;
+
+        public:
+            basic_scan_file_buffer(std::FILE* file)
+                : base(std::false_type{}), m_file(file)
+            {
+            }
+
+            std::optional<CharT> read_single() override;
+            void sync(std::ptrdiff_t position) override;
+
+        private:
+            std::FILE* m_file;
+        };
 
         template <typename CharT>
         class basic_scan_buffer<CharT>::forward_iterator {
@@ -383,6 +405,15 @@ namespace scn {
         static_assert(
             ranges::contiguous_range<scan_buffer::contiguous_range_type>);
 
+        extern template auto basic_scan_file_buffer<char>::read_single()
+            -> std::optional<char>;
+        // extern template auto basic_scan_file_buffer<wchar_t>::read_single()
+        //    -> std::optional<wchar_t>;
+
+        extern template void basic_scan_file_buffer<char>::sync(std::ptrdiff_t);
+        // extern template void basic_scan_file_buffer<wchar_t>::sync(
+        //    std::ptrdiff_t);
+
         template <typename CharT>
         auto to_contiguous_buffer_segment(
             ranges::subrange<
@@ -408,6 +439,11 @@ namespace scn {
         auto make_forward_scan_buffer(Range&& range)
         {
             return basic_scan_forward_buffer_impl(SCN_FWD(range));
+        }
+
+        inline auto make_file_scan_buffer(std::FILE* file)
+        {
+            return basic_scan_file_buffer<char>(file);
         }
     }  // namespace detail
 
