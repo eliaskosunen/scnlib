@@ -18,7 +18,6 @@
 #pragma once
 
 #include <scn/detail/context.h>
-#include <scn/detail/erased_range.h>
 #include <scn/detail/scanner.h>
 
 namespace scn {

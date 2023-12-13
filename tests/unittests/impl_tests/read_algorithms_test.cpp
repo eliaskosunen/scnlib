@@ -17,7 +17,6 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/detail/erased_range.h>
 #include <scn/impl/algorithms/read.h>
 
 using namespace std::string_view_literals;

@@ -18,7 +18,6 @@
 #pragma once
 
 #include <scn/detail/args.h>
-#include <scn/detail/erased_range.h>
 #include <scn/detail/error.h>
 
 #include <tuple>

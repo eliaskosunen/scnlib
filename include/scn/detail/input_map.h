@@ -16,7 +16,6 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/detail/scan_buffer.h>
-#include <scn/detail/stdin_view.h>
 #include <scn/util/meta.h>
 #include <scn/util/span.h>
 #include <scn/util/string_view.h>
