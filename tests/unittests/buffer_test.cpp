@@ -28,8 +28,8 @@ TEST(ScanBufferTest, StringView)
                                  scn::detail::basic_scan_string_buffer<char>>);
 
     EXPECT_TRUE(buf.is_contiguous());
-    EXPECT_EQ(buf.characters_read(), 6);
-    EXPECT_EQ(buf.get_contiguous_segment(), "foobar");
+    EXPECT_EQ(buf.chars_available(), 6);
+    EXPECT_EQ(buf.get_contiguous_segment().second, "foobar");
     EXPECT_EQ(buf.get_contiguous_buffer(), "foobar");
 }
 
@@ -43,7 +43,7 @@ TEST(ScanBufferTest, TakeStringView)
             scn::detail::basic_scan_forward_buffer_impl<decltype(range)>>);
 
     EXPECT_FALSE(buf.is_contiguous());
-    EXPECT_EQ(buf.characters_read(), 0);
+    EXPECT_EQ(buf.chars_available(), 0);
 
     auto view = buf.get_forward_buffer();
     auto it = view.begin();
@@ -58,8 +58,8 @@ TEST(ScanBufferTest, TakeStringView)
     std::string dest;
     scn::ranges::copy(buf.get_forward_buffer(), std::back_inserter(dest));
     EXPECT_EQ(dest, "foobar");
-    EXPECT_EQ(buf.characters_read(), 6);
-    EXPECT_EQ(buf.get_contiguous_segment(), "foobar");
+    EXPECT_EQ(buf.chars_available(), 6);
+    EXPECT_EQ(buf.get_contiguous_segment().second, "foobar");
 }
 
 TEST(ScanBufferTest, ReverseStringView)
@@ -72,11 +72,11 @@ TEST(ScanBufferTest, ReverseStringView)
             scn::detail::basic_scan_forward_buffer_impl<decltype(range)>>);
 
     EXPECT_FALSE(buf.is_contiguous());
-    EXPECT_EQ(buf.characters_read(), 0);
+    EXPECT_EQ(buf.chars_available(), 0);
 
     std::string dest;
     scn::ranges::copy(buf.get_forward_buffer(), std::back_inserter(dest));
     EXPECT_EQ(dest, "raboof");
-    EXPECT_EQ(buf.characters_read(), 6);
-    EXPECT_EQ(buf.get_contiguous_segment(), "raboof");
+    EXPECT_EQ(buf.chars_available(), 6);
+    EXPECT_EQ(buf.get_contiguous_segment().second, "raboof");
 }

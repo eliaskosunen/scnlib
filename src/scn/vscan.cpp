@@ -398,9 +398,13 @@ namespace scn {
         }
     }  // namespace detail
 
+    namespace {
+        std::mutex stdin_lock;
+    }
+
     scan_error vinput(std::string_view format, scan_args args)
     {
-        // TODO: lock
+        std::lock_guard guard{stdin_lock};
         auto buffer = detail::make_file_scan_buffer(stdin);
         SCN_TRY_ERR(n, vscan_internal(buffer, format, args));
         buffer.sync(n);
@@ -413,6 +417,7 @@ namespace scn {
                       std::string_view format,
                       scan_args args)
     {
+        std::lock_guard guard{stdin_lock};
         auto buffer = detail::make_file_scan_buffer(stdin);
         SCN_TRY_ERR(
             n, vscan_internal(buffer, format, args, detail::locale_ref{loc}));

@@ -25,48 +25,30 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        template <typename CharT>
-        std::optional<CharT> basic_scan_file_buffer<CharT>::read_single()
+        scan_file_buffer::scan_file_buffer(std::FILE* file)
+            : base(std::false_type{}), m_file(file), m_allow_eagerness(false)
         {
-            SCN_EXPECT(m_file);
-            if constexpr (std::is_same_v<CharT, char>) {
-                auto ch = std::fgetc(m_file);
-                if (SCN_UNLIKELY(ch == EOF)) {
-                    return std::nullopt;
-                }
-                return static_cast<char>(ch);
-            }
-            else {
-                auto ch = std::fgetwc(m_file);
-                if (SCN_UNLIKELY(ch == WEOF)) {
-                    return std::nullopt;
-                }
-                return static_cast<wchar_t>(ch);
-            }
         }
 
-        template <typename CharT>
-        void basic_scan_file_buffer<CharT>::sync(std::ptrdiff_t position)
+        std::optional<char> scan_file_buffer::read_single()
         {
             SCN_EXPECT(m_file);
-            auto buf = this->get_contiguous_segment().substr(position);
-            for (auto ch : ranges::views::reverse(buf)) {
-                if constexpr (std::is_same_v<CharT, char>) {
-                    std::ungetc(static_cast<unsigned char>(ch), m_file);
-                }
-                else {
-                    std::ungetwc(static_cast<wint_t>(ch), m_file);
-                }
+            auto ch = std::fgetc(m_file);
+            if (SCN_UNLIKELY(ch == EOF)) {
+                return std::nullopt;
             }
+            return static_cast<char>(ch);
         }
 
-        template auto basic_scan_file_buffer<char>::read_single()
-            -> std::optional<char>;
-        // template auto basic_scan_file_buffer<wchar_t>::read_single()
-        //     -> std::optional<wchar_t>;
-
-        template void basic_scan_file_buffer<char>::sync(std::ptrdiff_t);
-        // template void basic_scan_file_buffer<wchar_t>::sync(std::ptrdiff_t);
+        void scan_file_buffer::sync(std::ptrdiff_t position)
+        {
+            SCN_EXPECT(m_file);
+            auto [offset, seg] = this->get_contiguous_segment();
+            auto to_put_back = seg.substr(position - offset);
+            for (auto ch : ranges::views::reverse(to_put_back)) {
+                std::ungetc(static_cast<unsigned char>(ch), m_file);
+            }
+        }
     }  // namespace detail
 
     SCN_END_NAMESPACE
