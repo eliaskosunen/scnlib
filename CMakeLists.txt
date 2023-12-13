@@ -95,7 +95,6 @@ set(SCN_PRIVATE_HEADERS
 
         src/scn/impl/util/ascii_ctype.h
         src/scn/impl/util/bits.h
-        src/scn/impl/util/buffered_range.h
         src/scn/impl/util/function_ref.h
         src/scn/impl/util/text_width.h
 

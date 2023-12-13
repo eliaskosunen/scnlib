@@ -522,6 +522,41 @@ namespace scn {
             it = batch_next(it, n);
         }
 
+        // ranges::distance, utilizing .position if available
+        namespace pos_distance_impl {
+            struct fn {
+            private:
+                template <typename It>
+                static constexpr auto impl(It lhs,
+                                           It rhs,
+                                           detail::priority_tag<1>)
+                    -> detail::remove_cvref_t<decltype(rhs.position() -
+                                                       lhs.position())>
+                {
+                    return rhs.position() - lhs.position();
+                }
+
+                template <typename Lhs, typename Rhs>
+                static constexpr auto impl(Lhs lhs,
+                                           Rhs rhs,
+                                           detail::priority_tag<0>)
+                    -> decltype(ranges::distance(lhs, rhs))
+                {
+                    return ranges::distance(lhs, rhs);
+                }
+
+            public:
+                template <typename Lhs, typename Rhs>
+                constexpr auto operator()(Lhs lhs, Rhs rhs) const
+                    -> decltype(fn::impl(lhs, rhs, detail::priority_tag<1>{}))
+                {
+                    return fn::impl(lhs, rhs, detail::priority_tag<1>{});
+                }
+            };
+        }  // namespace pos_distance_impl
+
+        inline constexpr pos_distance_impl::fn pos_distance{};
+
         // prev, for forward_iterators
         namespace prev_backtrack_impl {
             struct fn {

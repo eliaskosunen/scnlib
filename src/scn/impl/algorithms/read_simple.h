@@ -18,7 +18,7 @@
 #pragma once
 
 #include <scn/impl/algorithms/common.h>
-#include <scn/impl/util/buffered_range.h>
+#include <scn/impl/algorithms/eof_check.h>
 #include <scn/util/expected.h>
 
 namespace scn {
@@ -60,13 +60,8 @@ namespace scn {
             }
             else {
                 auto it = ranges::begin(range);
-
-                if constexpr (range_supports_buffered_range_segments<Range>) {
-                    auto buf = buffered_range_segment(range, it);
-                    if (buf.potential_size() >= count) {
-                        buf.set_amount_read(count);
-                        return it;
-                    }
+                if (guaranteed_minimum_size(range) >= count) {
+                    return ranges_polyfill::batch_next(it, count);
                 }
 
                 for (ranges::range_difference_t<Range> i = 0; i < count;

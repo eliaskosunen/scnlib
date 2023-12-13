@@ -132,30 +132,7 @@ namespace scn {
             Range&& range,
             function_ref<bool(detail::char_t<Range>)> pred)
         {
-            if constexpr (ranges::contiguous_range<Range>) {
-                return ranges::find_if(range, pred);
-            }
-            else {
-                auto it = ranges::begin(range);
-                auto buf = buffered_range_segment{range, it};
-                if (buf.potential_size() == 0) {
-                    return ranges::find_if(range, pred);
-                }
-
-                buf.acquire();
-                if (auto buf_it = ranges::find_if(buf, pred);
-                    buf_it != buf.end()) {
-                    buf.set_amount_read(ranges::distance(buf.begin(), buf_it));
-                    buf.advance_iterator();
-                    return it;
-                }
-                else {
-                    buf.set_amount_read(buf.size());
-                    buf.advance_iterator();
-                }
-
-                return ranges::find_if(ranges::subrange{it, range.end()}, pred);
-            }
+            return ranges::find_if(range, pred);
         }
 
         template <typename Range>
@@ -203,62 +180,78 @@ namespace scn {
         }
 
         template <typename Range>
+        simple_borrowed_iterator_t<Range> read_until_code_point_eager(
+            Range&& range,
+            function_ref<bool(char32_t)> pred)
+        {
+            std::array<char32_t, 16> cp_buf{};
+            std::array<uint8_t, 16> idx_buf{};
+            auto it = ranges::begin(range);
+            while (it != ranges::end(range)) {
+                auto chunk_begin = it;
+                size_t code_point_count = 0;
+                uint8_t code_unit_idx = 0;
+                while (code_point_count < cp_buf.size() &&
+                       it != ranges::end(range)) {
+                    if (code_point_length_by_starting_code_unit(*it) != 0) {
+                        idx_buf[code_point_count] = code_unit_idx;
+                        ++code_point_count;
+                    }
+                    ++it;
+                    ++code_unit_idx;
+                }
+
+                auto input = detail::make_string_view_from_pointers(
+                    detail::to_address(chunk_begin), detail::to_address(it));
+                auto codepoints = span{cp_buf.data(), code_point_count};
+                auto transcode_result =
+                    transcode_possibly_invalid(input, codepoints);
+                if (SCN_UNLIKELY(!transcode_result)) {
+                    it = chunk_begin;
+                    auto end = it + code_unit_idx;
+                    while (it != end) {
+                        const auto [iter, value] = read_code_point_into(
+                            ranges::subrange{it, ranges::end(range)});
+                        const auto cp =
+                            decode_code_point_exhaustive(value.view());
+                        if (pred(cp)) {
+                            return it;
+                        }
+                        it = iter;
+                    }
+                    continue;
+                }
+
+                for (size_t i = 0; i < code_point_count; ++i) {
+                    if (pred(cp_buf[i])) {
+                        return chunk_begin + idx_buf[i];
+                    }
+                }
+            }
+
+            return it;
+        }
+
+        template <typename Range>
         simple_borrowed_iterator_t<Range> read_until_code_point(
             Range&& range,
             function_ref<bool(char32_t)> pred)
         {
             if constexpr (ranges::contiguous_range<Range> &&
                           ranges::sized_range<Range>) {
-                std::array<char32_t, 16> cp_buf{};
-                std::array<uint8_t, 16> idx_buf{};
-                auto it = ranges::begin(range);
-                while (it != ranges::end(range)) {
-                    auto chunk_begin = it;
-                    size_t code_point_count = 0;
-                    uint8_t code_unit_idx = 0;
-                    while (code_point_count < cp_buf.size() &&
-                           it != ranges::end(range)) {
-                        if (code_point_length_by_starting_code_unit(*it) != 0) {
-                            idx_buf[code_point_count] = code_unit_idx;
-                            ++code_point_count;
-                        }
-                        ++it;
-                        ++code_unit_idx;
-                    }
-
-                    auto input = detail::make_string_view_from_pointers(
-                        detail::to_address(chunk_begin),
-                        detail::to_address(it));
-                    auto codepoints = span{cp_buf.data(), code_point_count};
-                    auto transcode_result =
-                        transcode_possibly_invalid(input, codepoints);
-                    if (SCN_UNLIKELY(!transcode_result)) {
-                        it = chunk_begin;
-                        auto end = it + code_unit_idx;
-                        while (it != end) {
-                            const auto [iter, value] = read_code_point_into(
-                                ranges::subrange{it, ranges::end(range)});
-                            const auto cp =
-                                decode_code_point_exhaustive(value.view());
-                            if (pred(cp)) {
-                                return it;
-                            }
-                            it = iter;
-                        }
-                        continue;
-                    }
-
-                    for (size_t i = 0; i < code_point_count; ++i) {
-                        if (pred(cp_buf[i])) {
-                            return chunk_begin + idx_buf[i];
-                        }
-                    }
-                }
-
-                return it;
+                return read_until_code_point_eager(SCN_FWD(range), pred);
             }
             else {
-                auto it = ranges::begin(range);
+                auto seg = get_contiguous_beginning(range);
+                if (auto seg_it = read_until_code_point_eager(seg, pred);
+                    seg_it != seg.end()) {
+                    return ranges_polyfill::batch_next(
+                        ranges::begin(range),
+                        ranges::distance(seg.begin(), seg_it));
+                }
+
+                auto it = ranges_polyfill::batch_next(ranges::begin(range),
+                                                      seg.size());
 
                 while (it != ranges::end(range)) {
                     const auto [iter, value] = read_code_point_into(
@@ -295,8 +288,20 @@ namespace scn {
                                     ranges::distance(buf.view().begin(), it));
             }
             else {
+                auto it = ranges::begin(range);
+
+                if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
+                    auto seg = get_contiguous_beginning(range);
+                    if (auto seg_it = find_classic_space_narrow_fast(seg);
+                        seg_it != seg.end()) {
+                        return ranges_polyfill::batch_next(
+                            it, ranges::distance(seg.begin(), seg_it));
+                    }
+                    ranges_polyfill::batch_next(it, seg.size());
+                }
+
                 return read_until_code_point(
-                    SCN_FWD(range),
+                    ranges::subrange{it, ranges::end(range)},
                     [](char32_t cp) SCN_NOEXCEPT { return is_cp_space(cp); });
             }
         }
@@ -308,10 +313,24 @@ namespace scn {
             if constexpr (ranges::contiguous_range<Range> &&
                           ranges::sized_range<Range> &&
                           std::is_same_v<detail::char_t<Range>, char>) {
-                return find_classic_nonspace_narrow_fast(
-                    make_contiguous_buffer(SCN_FWD(range)).view());
+                auto buf = make_contiguous_buffer(SCN_FWD(range));
+                auto it = find_classic_nonspace_narrow_fast(buf.view());
+                return ranges::next(ranges::begin(range),
+                                    ranges::distance(buf.view().begin(), it));
             }
             else {
+                auto it = ranges::begin(range);
+
+                if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
+                    auto seg = get_contiguous_beginning(range);
+                    if (auto seg_it = find_classic_nonspace_narrow_fast(seg);
+                        seg_it != seg.end()) {
+                        return ranges_polyfill::batch_next(
+                            it, ranges::distance(seg.begin(), seg_it));
+                    }
+                    ranges_polyfill::batch_next(it, seg.size());
+                }
+
                 return read_while_code_point(
                     SCN_FWD(range),
                     [](char32_t cp) SCN_NOEXCEPT { return is_cp_space(cp); });

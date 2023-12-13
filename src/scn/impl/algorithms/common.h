@@ -17,14 +17,10 @@
 
 #pragma once
 
-#include <scn/impl/algorithms/eof_check.h>
+#include <scn/detail/ranges.h>
+#include <scn/detail/scan_buffer.h>
 #include <scn/util/meta.h>
 #include <scn/util/string_view.h>
-
-#include <algorithm>
-#include <cstring>
-#include <iterator>
-#include <string_view>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -50,9 +46,91 @@ namespace scn {
         }
 
         template <typename Range>
+        bool is_segment_contiguous(const Range& r)
+        {
+            if constexpr (ranges::contiguous_range<Range> &&
+                          ranges::sized_range<Range>) {
+                return true;
+            }
+            else if constexpr (
+                std::is_same_v<ranges::iterator_t<Range>,
+                               typename detail::basic_scan_buffer<
+                                   detail::char_t<Range>>::forward_iterator>) {
+                SCN_EXPECT(ranges::begin(r).parent());
+                if constexpr (ranges::common_range<Range>) {
+                    return ranges::begin(r).contiguous_segment().end() ==
+                           ranges::end(r).contiguous_segment().end();
+                }
+                else {
+                    return ranges::begin(r).contiguous_segment().end() ==
+                           ranges::begin(r).parent()->current_view().end();
+                }
+            }
+            else {
+                return false;
+            }
+        }
+
+        template <typename Range>
+        std::size_t contiguous_beginning_size(const Range& r)
+        {
+            if constexpr (ranges::contiguous_range<Range> &&
+                          ranges::sized_range<Range>) {
+                return ranges_polyfill::usize(r);
+            }
+            else if constexpr (
+                std::is_same_v<ranges::iterator_t<Range>,
+                               typename detail::basic_scan_buffer<
+                                   detail::char_t<Range>>::forward_iterator>) {
+                SCN_EXPECT(ranges::begin(r).parent());
+                if constexpr (ranges::common_range<Range>) {
+                    auto seg = ranges::begin(r).contiguous_segment();
+                    auto dist =
+                        static_cast<size_t>(ranges_polyfill::pos_distance(
+                            ranges::begin(r), ranges::end(r)));
+                    return std::min(seg.size(), dist);
+                }
+                else {
+                    return ranges::begin(r).contiguous_segment().size();
+                }
+            }
+            else {
+                return false;
+            }
+        }
+
+        template <typename Range>
+        auto get_contiguous_beginning(const Range& r)
+        {
+            if constexpr (ranges::contiguous_range<Range> &&
+                          ranges::sized_range<Range>) {
+                return r;
+            }
+            else if constexpr (
+                std::is_same_v<ranges::iterator_t<Range>,
+                               typename detail::basic_scan_buffer<
+                                   detail::char_t<Range>>::forward_iterator>) {
+                SCN_EXPECT(ranges::begin(r).parent());
+                if constexpr (ranges::common_range<Range>) {
+                    auto seg = ranges::begin(r).contiguous_segment();
+                    auto dist =
+                        static_cast<size_t>(ranges_polyfill::pos_distance(
+                            ranges::begin(r), ranges::end(r)));
+                    return seg.substr(0, std::min(seg.size(), dist));
+                }
+                else {
+                    return ranges::begin(r).contiguous_segment();
+                }
+            }
+            else {
+                return std::basic_string_view<detail::char_t<Range>>{};
+            }
+        }
+
+        template <typename Range>
         auto get_as_contiguous(Range&& r)
         {
-            SCN_EXPECT(is_entire_source_contiguous(r));
+            SCN_EXPECT(is_segment_contiguous(r));
             if constexpr (ranges::contiguous_range<Range> &&
                           ranges::sized_range<Range>) {
                 return r;
@@ -77,96 +155,28 @@ namespace scn {
             }
         }
 
-        /**
-         * No-op output range
-         */
-        template <typename CharT>
-        struct null_output_range {
-            using value_type = CharT;
-
-            constexpr null_output_range() = default;
-
-            constexpr auto begin() const SCN_NOEXCEPT
-            {
-                return iterator{};
-            }
-            constexpr auto end() const SCN_NOEXCEPT
-            {
-                return ranges_std::unreachable_sentinel_t{};
-            }
-
-            struct iterator {
-                using value_type = CharT;
-                using difference_type = std::ptrdiff_t;
-                using pointer = value_type*;
-                using reference = value_type&;
-                using iterator_category = std::output_iterator_tag;
-
-                constexpr iterator() = default;
-
-                constexpr iterator& operator=(CharT) SCN_NOEXCEPT
-                {
-                    return *this;
-                }
-
-                constexpr iterator& operator*() SCN_NOEXCEPT
-                {
-                    return *this;
-                }
-
-                constexpr iterator& operator++() SCN_NOEXCEPT
-                {
-                    return *this;
-                }
-                constexpr iterator operator++(int) SCN_NOEXCEPT
-                {
-                    return *this;
-                }
-            };
-        };
-
-        static_assert(ranges::range<null_output_range<char>>);
-        static_assert(ranges::output_range<null_output_range<char>, char>);
-
-        template <typename InputR, typename OutputR>
-        using copy_result =
-            ranges::in_out_result<simple_borrowed_iterator_t<InputR>,
-                                  simple_borrowed_iterator_t<OutputR>>;
-
-        template <typename InputR, typename OutputR>
-        SCN_NODISCARD copy_result<InputR, OutputR> copy(InputR&& input,
-                                                        OutputR&& output)
+        template <typename Range>
+        std::size_t guaranteed_minimum_size(const Range& r)
         {
-            if constexpr (ranges::contiguous_range<InputR> &&
-                          ranges::contiguous_range<OutputR> &&
-                          ranges::sized_range<InputR> &&
-                          ranges::sized_range<OutputR>) {
-                // Optimization for contiguous + sized ranges -> memmove
-                const auto input_size =
-                    static_cast<size_t>(ranges::size(input));
-                const auto output_size =
-                    static_cast<size_t>(ranges::size(output));
-                const auto items_to_copy = static_cast<std::ptrdiff_t>(
-                    (std::min)(input_size, output_size));
-                std::memmove(ranges::data(output), ranges::data(input),
-                             input_size * sizeof(detail::char_t<InputR>));
-                return {ranges::begin(input) + items_to_copy,
-                        ranges::begin(output) + items_to_copy};
+            if constexpr (ranges::sized_range<Range>) {
+                return ranges_polyfill::usize(r);
             }
-            else if constexpr (detail::is_specialization_of_v<
-                                   OutputR, null_output_range>) {
-                // Optimization for null_output_range
-                return {ranges::next(ranges::begin(input), ranges::end(input)),
-                        ranges::begin(output)};
+            else if constexpr (
+                std::is_same_v<ranges::iterator_t<Range>,
+                               typename detail::basic_scan_buffer<
+                                   detail::char_t<Range>>::forward_iterator>) {
+                if constexpr (ranges::common_range<Range>) {
+                    return static_cast<size_t>(ranges::end(r).position() -
+                                               ranges::begin(r).position());
+                }
+                else {
+                    return static_cast<size_t>(
+                        ranges::begin(r).parent()->chars_available() -
+                        ranges::begin(r).position());
+                }
             }
             else {
-                auto src = ranges::begin(input);
-                auto dst = ranges::begin(output);
-                for (; src != ranges::end(input) && dst != ranges::end(output);
-                     ++src, (void)++dst) {
-                    *dst = *src;
-                }
-                return {src, dst};
+                return 0;
             }
         }
 
@@ -175,140 +185,7 @@ namespace scn {
             SCN_NO_UNIQUE_ADDRESS I iterator;
             SCN_NO_UNIQUE_ADDRESS T value;
         };
-
-        template <typename Container>
-        class back_insert_view
-            : ranges::view_interface<back_insert_view<Container>> {
-        public:
-            friend class iterator;
-
-            using container_type = Container;
-            using value_type = typename Container::value_type;
-
-            constexpr back_insert_view() = default;
-            constexpr explicit back_insert_view(Container& c) SCN_NOEXCEPT
-                : m_container(&c)
-            {
-            }
-
-            auto begin() SCN_NOEXCEPT
-            {
-                return iterator{*this};
-            }
-
-            auto end() SCN_NOEXCEPT
-            {
-                return ranges_std::unreachable_sentinel_t{};
-            }
-
-            Container& container() SCN_NOEXCEPT
-            {
-                return *m_container;
-            }
-            const Container& container() const SCN_NOEXCEPT
-            {
-                return *m_container;
-            }
-
-            class iterator {
-                struct proxy {
-                    proxy& operator=(const value_type& val)
-                    {
-                        c->push_back(val);
-                        return *this;
-                    }
-                    proxy& operator=(value_type&& val)
-                    {
-                        c->push_back(SCN_MOVE(val));
-                        return *this;
-                    }
-
-                    Container* c;
-                };
-
-            public:
-                using value_type = typename Container::value_type;
-                using difference_type = std::ptrdiff_t;
-                using pointer = void;
-                using reference = void;
-                using iterator_category = std::output_iterator_tag;
-
-                constexpr iterator() SCN_NOEXCEPT = default;
-                constexpr explicit iterator(back_insert_view& r) SCN_NOEXCEPT
-                    : m_range{&r}
-                {
-                }
-
-                proxy operator*() SCN_NOEXCEPT
-                {
-                    return {m_range->m_container};
-                }
-
-                iterator& operator++() SCN_NOEXCEPT
-                {
-                    return *this;
-                }
-                iterator operator++(int) SCN_NOEXCEPT
-                {
-                    return *this;
-                }
-
-            private:
-                back_insert_view* m_range{nullptr};
-            };
-
-        private:
-            Container* m_container;
-        };
-
-        template <typename Container>
-        auto back_insert(Container& c) SCN_NOEXCEPT
-        {
-            return back_insert_view<Container>{c};
-        }
     }  // namespace impl
-
-    SCN_END_NAMESPACE
-}  // namespace scn
-
-#if SCN_STD_RANGES
-namespace std::ranges {
-    template <typename Container>
-    inline constexpr bool enable_view<scn::impl::back_insert_view<Container>> =
-        true;
-    template <typename Container>
-    inline constexpr bool
-        enable_borrowed_range<scn::impl::back_insert_view<Container>> = true;
-
-    template <typename CharT>
-    inline constexpr bool
-        enable_borrowed_range<scn::impl::null_output_range<CharT>> = true;
-}  // namespace std::ranges
-
-#else
-
-NANO_BEGIN_NAMESPACE
-
-template <typename Container>
-inline constexpr bool enable_view<scn::impl::back_insert_view<Container>> =
-    true;
-template <typename Container>
-inline constexpr bool
-    enable_borrowed_range<scn::impl::back_insert_view<Container>> = true;
-
-template <typename CharT>
-inline constexpr bool
-    enable_borrowed_range<scn::impl::null_output_range<CharT>> = true;
-
-NANO_END_NAMESPACE
-
-#endif
-
-namespace scn {
-    SCN_BEGIN_NAMESPACE
-
-    static_assert(ranges::range<impl::back_insert_view<std::string>>);
-    static_assert(ranges::view<impl::back_insert_view<std::string>>);
 
     SCN_END_NAMESPACE
 }  // namespace scn
