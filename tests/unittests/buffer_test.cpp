@@ -25,7 +25,9 @@ template <typename Range>
 std::string collect(Range r)
 {
     std::string str;
-    scn::ranges::copy(r, std::back_inserter(str));
+    for (auto it = scn::ranges::begin(r); it != scn::ranges::end(r); ++it) {
+        str.push_back(*it);
+    }
     return str;
 }
 
