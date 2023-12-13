@@ -488,8 +488,9 @@ namespace scn {
                     SCN_TRY(it, read_regex_matches_impl(specs.charset_string,
                                                         specs.regexp_flags,
                                                         input, value));
-                    return ranges::next(ranges::begin(range),
-                                        ranges::distance(input.begin(), it));
+                    return ranges_polyfill::batch_next(
+                        ranges::begin(range),
+                        ranges::distance(input.begin(), it));
                 }
             }
         };

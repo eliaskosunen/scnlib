@@ -186,12 +186,11 @@ namespace scn {
             forward_iterator& batch_advance(std::ptrdiff_t n)
             {
                 SCN_EXPECT(m_parent);
+                SCN_EXPECT(n >= 0);
                 m_position += n;
 
-                if (!m_current_view.empty()) {
-                    SCN_EXPECT(n <= m_current_view.size());
-                    m_current_view = m_current_view.substr(n);
-                }
+                m_current_view = m_current_view.substr(
+                    std::min(static_cast<size_t>(n), m_current_view.size()));
 
                 SCN_ENSURE(m_position <= m_parent->chars_available());
                 return *this;

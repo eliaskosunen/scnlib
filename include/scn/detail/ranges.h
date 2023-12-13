@@ -482,16 +482,66 @@ namespace scn {
 
         inline constexpr usize_impl::fn usize{};
 
+        // ranges::next, utilizing .batch_advance if available
+        namespace batch_next_impl {
+            struct fn {
+            private:
+                template <typename It>
+                static constexpr auto impl(It it,
+                                           std::ptrdiff_t n,
+                                           detail::priority_tag<1>)
+                    -> detail::remove_cvref_t<decltype(it.batch_advance(n), it)>
+                {
+                    it.batch_advance(n);
+                    return it;
+                }
+
+                template <typename It>
+                static constexpr auto impl(It it,
+                                           std::ptrdiff_t n,
+                                           detail::priority_tag<0>)
+                {
+                    return ranges::next(it, n);
+                }
+
+            public:
+                template <typename It>
+                constexpr auto operator()(It it, std::ptrdiff_t n) const
+                    -> decltype(fn::impl(it, n, detail::priority_tag<1>{}))
+                {
+                    return fn::impl(it, n, detail::priority_tag<1>{});
+                }
+            };
+        }  // namespace batch_next_impl
+
+        inline constexpr batch_next_impl::fn batch_next{};
+
+        template <typename It>
+        void batch_advance(It it, std::ptrdiff_t n)
+        {
+            it = batch_next(it, n);
+        }
+
         // prev, for forward_iterators
         namespace prev_backtrack_impl {
             struct fn {
             private:
                 template <typename It>
-                static constexpr auto impl(It it, It, detail::priority_tag<1>)
+                static constexpr auto impl(It it, It, detail::priority_tag<2>)
                     -> std::enable_if_t<ranges_std::bidirectional_iterator<It>,
                                         It>
                 {
                     return ranges::prev(it);
+                }
+
+                template <typename It>
+                static constexpr auto impl(It it,
+                                           It beg,
+                                           detail::priority_tag<1>)
+                    -> detail::remove_cvref_t<
+                        decltype((void)beg.batch_advance(42), it)>
+                {
+                    return beg.batch_advance(it.position() - 1);
                 }
 
                 template <typename It>
@@ -514,9 +564,9 @@ namespace scn {
             public:
                 template <typename It>
                 constexpr auto operator()(It it, It beg) const
-                    -> decltype(fn::impl(it, beg, detail::priority_tag<1>{}))
+                    -> decltype(fn::impl(it, beg, detail::priority_tag<2>{}))
                 {
-                    return fn::impl(it, beg, detail::priority_tag<1>{});
+                    return fn::impl(it, beg, detail::priority_tag<2>{});
                 }
             };
         }  // namespace prev_backtrack_impl
@@ -531,10 +581,22 @@ namespace scn {
                 static constexpr auto impl(It lhs,
                                            It rhs,
                                            It,
-                                           detail::priority_tag<1>)
+                                           detail::priority_tag<2>)
                     -> decltype(static_cast<void>(lhs < rhs), true)
                 {
                     return lhs < rhs;
+                }
+
+                template <typename It>
+                static constexpr auto impl(It lhs,
+                                           It rhs,
+                                           It,
+                                           detail::priority_tag<1>)
+                    -> decltype(static_cast<void>(lhs.position() <
+                                                  rhs.position()),
+                                true)
+                {
+                    return lhs.position() < rhs.position();
                 }
 
                 template <typename It>
@@ -561,9 +623,9 @@ namespace scn {
                     -> decltype(fn::impl(lhs,
                                          rhs,
                                          beg,
-                                         detail::priority_tag<1>{}))
+                                         detail::priority_tag<2>{}))
                 {
-                    return fn::impl(lhs, rhs, beg, detail::priority_tag<1>{});
+                    return fn::impl(lhs, rhs, beg, detail::priority_tag<2>{});
                 }
             };
         }  // namespace less_backtrack_impl
