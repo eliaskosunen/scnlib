@@ -26,26 +26,35 @@ namespace scn {
 
     namespace detail {
         scan_file_buffer::scan_file_buffer(std::FILE* file)
-            : base(std::false_type{}), m_file(file), m_allow_eagerness(false)
+            : base(base::non_contiguous_tag{}), m_file(file)
         {
         }
 
-        std::optional<char> scan_file_buffer::read_single()
+        bool scan_file_buffer::fill()
         {
             SCN_EXPECT(m_file);
+            if (auto prev = m_latest) {
+                this->m_putback_buffer.push_back(*prev);
+            }
             auto ch = std::fgetc(m_file);
             if (SCN_UNLIKELY(ch == EOF)) {
-                return std::nullopt;
+                return false;
             }
-            return static_cast<char>(ch);
+            this->m_current_view =
+                std::basic_string_view<char_type>{&*m_latest, 1};
+            return true;
         }
 
         void scan_file_buffer::sync(std::ptrdiff_t position)
         {
             SCN_EXPECT(m_file);
-            auto [offset, seg] = this->get_contiguous_segment();
-            auto to_put_back = seg.substr(position - offset);
-            for (auto ch : ranges::views::reverse(to_put_back)) {
+            auto former_segment = this->get_segment_starting_at(position);
+            auto latter_segment = this->get_segment_starting_at(
+                static_cast<std::ptrdiff_t>(position + former_segment.size()));
+            for (auto ch : ranges::views::reverse(latter_segment)) {
+                std::ungetc(static_cast<unsigned char>(ch), m_file);
+            }
+            for (auto ch : ranges::views::reverse(former_segment)) {
                 std::ungetc(static_cast<unsigned char>(ch), m_file);
             }
         }

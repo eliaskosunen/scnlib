@@ -109,27 +109,10 @@ namespace scn {
             {
                 if constexpr (!detail::is_type_disabled<T>) {
                     auto rd = make_reader<T, char_type>();
-                    auto& buffer = *range.begin().parent();
-
-                    if (SCN_UNLIKELY(!buffer.is_contiguous())) {
-                        SCN_TRY(it, skip_ws_before_if_required(
-                                        rd.skip_ws_before_read(), range, loc));
-                        return rd.read_default(
-                            ranges::subrange{it, ranges::end(range)}, value,
-                            loc);
-                    }
-
-                    auto crange =
-                        detail::to_contiguous_buffer_segment<char_type>(range);
-                    SCN_TRY(nows_it,
-                            skip_ws_before_if_required(rd.skip_ws_before_read(),
-                                                       crange, loc));
-                    SCN_TRY(rd_it,
-                            rd.read_default(
-                                ranges::subrange{nows_it, ranges::end(crange)},
-                                value, loc));
-                    return range.begin().unsafe_advance(
-                        ranges::distance(crange.begin(), rd_it));
+                    SCN_TRY(it, skip_ws_before_if_required(
+                                    rd.skip_ws_before_read(), range, loc));
+                    return rd.read_default(
+                        ranges::subrange{it, ranges::end(range)}, value, loc);
                 }
                 else {
                     SCN_EXPECT(false);
@@ -172,40 +155,26 @@ namespace scn {
             scan_expected<iterator> operator()(T& value)
             {
                 if constexpr (!detail::is_type_disabled<T>) {
-                    auto& buffer = *range.begin().parent();
                     auto rd = make_reader<T, char_type>();
                     if (auto e = rd.check_specs(specs); !e) {
                         return unexpected(e);
                     }
 
-                    auto impl = [&](auto&& range)
-                        -> scan_expected<ranges::iterator_t<decltype(range)>> {
-                        auto it = skip_ws_before_if_required(
-                            rd.skip_ws_before_read(), range, loc);
-                        if (SCN_UNLIKELY(!it)) {
-                            return unexpected(it.error());
-                        }
-
-                        auto subr = ranges::subrange{*it, ranges::end(range)};
-                        if (specs.width != 0) {
-                            SCN_TRY(w_it,
-                                    rd.read_specs(take_width(subr, specs.width),
-                                                  specs, value, loc));
-                            return w_it.base();
-                        }
-
-                        return rd.read_specs(subr, specs, value, loc);
-                    };
-
-                    if (SCN_UNLIKELY(!buffer.is_contiguous())) {
-                        return impl(range);
+                    auto it = skip_ws_before_if_required(
+                        rd.skip_ws_before_read(), range, loc);
+                    if (SCN_UNLIKELY(!it)) {
+                        return unexpected(it.error());
                     }
 
-                    auto crange =
-                        detail::to_contiguous_buffer_segment<char_type>(range);
-                    SCN_TRY(it, impl(crange));
-                    return range.begin().unsafe_advance(
-                        ranges::distance(crange.begin(), it));
+                    auto subr = ranges::subrange{*it, ranges::end(range)};
+                    if (specs.width != 0) {
+                        SCN_TRY(w_it,
+                                rd.read_specs(take_width(subr, specs.width),
+                                              specs, value, loc));
+                        return w_it.base();
+                    }
+
+                    return rd.read_specs(subr, specs, value, loc);
                 }
                 else {
                     SCN_EXPECT(false);

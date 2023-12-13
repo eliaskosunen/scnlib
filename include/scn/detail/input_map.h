@@ -39,6 +39,22 @@ namespace scn {
             std::is_same_v<std::remove_const_t<CharT>, wchar_t>;
 
         namespace _make_scan_buffer {
+            // buffer -> ref_buffer
+            inline auto impl(scan_buffer::range_type r, priority_tag<4>)
+                SCN_NOEXCEPT->basic_scan_ref_buffer<char>
+            {
+                SCN_EXPECT(r.begin().parent());
+                return basic_scan_ref_buffer{*r.begin().parent(),
+                                             r.begin().position()};
+            }
+            inline auto impl(wscan_buffer::range_type r, priority_tag<4>)
+                SCN_NOEXCEPT->basic_scan_ref_buffer<wchar_t>
+            {
+                SCN_EXPECT(r.begin().parent());
+                return basic_scan_ref_buffer{*r.begin().parent(),
+                                             r.begin().position()};
+            }
+
             // string_view -> string_buffer
             template <typename CharT>
             auto impl(std::basic_string_view<CharT> r,
@@ -89,7 +105,7 @@ namespace scn {
             // contiguous + sized -> string_buffer
             template <typename Range,
                       std::enable_if_t<ranges::contiguous_range<Range> &&
-                                       ranges::sized_range<Range>> = nullptr>
+                                       ranges::sized_range<Range>>* = nullptr>
             auto impl(const Range& r, priority_tag<2>)
             {
                 if constexpr (is_valid_char_type<detail::char_t<Range>>) {
@@ -153,13 +169,13 @@ namespace scn {
             !std::is_base_of_v<invalid_input_range,
                                decltype(_make_scan_buffer::impl(
                                             SCN_DECLVAL(const Range&)),
-                                        priority_tag<3>{})>;
+                                        priority_tag<4>{})>;
 
         template <typename Range>
         auto make_scan_buffer(const Range& range)
         {
             using T =
-                decltype(_make_scan_buffer::impl(range, priority_tag<3>{}));
+                decltype(_make_scan_buffer::impl(range, priority_tag<4>{}));
 
             static_assert(!std::is_same_v<T, invalid_char_type>,
                           "\n"
@@ -205,7 +221,7 @@ namespace scn {
                 "std::vector<char>, and scn::istreambuf_view.\n"
                 "See the scnlib documentation for more details.");
 
-            return _make_scan_buffer::impl(range, priority_tag<3>{});
+            return _make_scan_buffer::impl(range, priority_tag<4>{});
         }
     }  // namespace detail
 

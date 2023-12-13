@@ -19,6 +19,7 @@
 
 #include <scn/impl/algorithms/eof_check.h>
 #include <scn/util/meta.h>
+#include <scn/util/string_view.h>
 
 #include <algorithm>
 #include <cstring>
@@ -29,6 +30,53 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace impl {
+        template <typename Range>
+        bool is_entire_source_contiguous(const Range& r)
+        {
+            if constexpr (ranges::contiguous_range<Range> &&
+                          ranges::sized_range<Range>) {
+                return true;
+            }
+            else if constexpr (
+                std::is_same_v<ranges::iterator_t<Range>,
+                               typename detail::basic_scan_buffer<
+                                   detail::char_t<Range>>::forward_iterator>) {
+                SCN_EXPECT(ranges::begin(r).parent());
+                return ranges::begin(r).parent()->is_contiguous();
+            }
+            else {
+                return false;
+            }
+        }
+
+        template <typename Range>
+        auto get_as_contiguous(Range&& r)
+        {
+            SCN_EXPECT(is_entire_source_contiguous(r));
+            if constexpr (ranges::contiguous_range<Range> &&
+                          ranges::sized_range<Range>) {
+                return r;
+            }
+            else if constexpr (
+                std::is_same_v<ranges::iterator_t<Range>,
+                               typename detail::basic_scan_buffer<
+                                   detail::char_t<Range>>::forward_iterator>) {
+                if constexpr (ranges::common_range<Range>) {
+                    return detail::make_string_view_from_pointers(
+                        ranges::begin(r).to_contiguous_segment_iterator(),
+                        ranges::end(r).to_contiguous_segment_iterator());
+                }
+                else {
+                    return ranges::begin(r).contiguous_segment();
+                }
+            }
+            else {
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
+                return std::basic_string_view<detail::char_t<Range>>{};
+            }
+        }
+
         /**
          * No-op output range
          */

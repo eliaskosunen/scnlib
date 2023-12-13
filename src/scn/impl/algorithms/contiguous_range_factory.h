@@ -171,18 +171,21 @@ namespace scn {
                                        typename detail::basic_scan_buffer<
                                            value_t>::forward_iterator> &&
                                    ranges::common_range<Range>) {
-                    SCN_EXPECT(ranges::begin(range).parent() &&
-                               ranges::end(range).parent());
-                    SCN_EXPECT(ranges::begin(range)
-                                   .parent()
-                                   ->get_contiguous_segment()
-                                   .second == ranges::end(range)
-                                                  .parent()
-                                                  ->get_contiguous_segment()
-                                                  .second);
-                    auto sv = detail::make_string_view_from_iterators<value_t>(
-                        ranges::begin(range).to_contiguous_segment_iterator(),
-                        ranges::end(range).to_contiguous_segment_iterator());
+                    SCN_EXPECT(range.begin().parent() && range.end().parent());
+
+                    auto beg_seg = range.begin().contiguous_segment();
+                    auto end_seg = range.end().contiguous_segment();
+                    if (beg_seg.end() != end_seg.end()) {
+                        auto& str = m_buffer.template emplace<string_type>();
+                        str.reserve(range.end().position() -
+                                    range.begin().position());
+                        std::copy(range.begin(), range.end(),
+                                  std::back_inserter(str));
+                        return;
+                    }
+
+                    auto sv = detail::make_string_view_from_pointers(
+                        beg_seg.data(), end_seg.data());
                     m_buffer.template emplace<string_view_type>(sv);
                 }
                 else {

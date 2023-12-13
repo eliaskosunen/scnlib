@@ -434,7 +434,7 @@ namespace scn {
 #endif
         }
 
-#endif // !SCN_DISABLE_REGEX
+#endif  // !SCN_DISABLE_REGEX
 
         template <typename SourceCharT>
         struct regex_matches_reader
@@ -465,12 +465,7 @@ namespace scn {
                 basic_regex_matches<DestCharT>& value,
                 detail::locale_ref = {})
             {
-                if constexpr (!ranges::contiguous_range<Range>) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "Cannot use regex with a non-contiguous source range");
-                }
-                else if constexpr (!std::is_same_v<SourceCharT, DestCharT>) {
+                if constexpr (!std::is_same_v<SourceCharT, DestCharT>) {
                     return unexpected_scan_error(
                         scan_error::invalid_scanned_value,
                         "Cannot transcode is regex_matches_reader");
@@ -482,14 +477,19 @@ namespace scn {
                         "Regex backend doesn't support wide strings as input");
                 }
                 else {
-                    auto input = detail::make_string_view_from_pointers(
-                        ranges::data(range),
-                        ranges::data(range) + ranges::size(range));
+                    if (!is_entire_source_contiguous(range)) {
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "Cannot use regex with a non-contiguous source "
+                            "range");
+                    }
+
+                    auto input = get_as_contiguous(range);
                     SCN_TRY(it, read_regex_matches_impl(specs.charset_string,
                                                         specs.regexp_flags,
                                                         input, value));
-                    return ranges::begin(range) +
-                           ranges::distance(input.begin(), it);
+                    return ranges::next(ranges::begin(range),
+                                        ranges::distance(input.begin(), it));
                 }
             }
         };

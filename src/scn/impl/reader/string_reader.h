@@ -160,24 +160,24 @@ namespace scn {
                       detail::regex_flags flags)
                 -> scan_expected<simple_borrowed_iterator_t<Range>>
             {
-                if constexpr (!ranges::contiguous_range<Range>) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "Cannot use regex with a non-contiguous source range");
-                }
-                else if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
-                                   !std::is_same_v<SourceCharT, char>) {
+                if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
+                              !std::is_same_v<SourceCharT, char>) {
                     return unexpected_scan_error(
                         scan_error::invalid_scanned_value,
                         "Regex backend doesn't support wide strings as input");
                 }
                 else {
-                    auto input = detail::make_string_view_from_pointers(
-                        ranges::data(range),
-                        ranges::data(range) + ranges::size(range));
+                    if (!is_entire_source_contiguous(range)) {
+                        return unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "Cannot use regex with a non-contiguous source "
+                            "range");
+                    }
+
+                    auto input = get_as_contiguous(range);
                     SCN_TRY(it, read_regex_string_impl(pattern, flags, input));
-                    return ranges::begin(range) +
-                           ranges::distance(input.begin(), it);
+                    return ranges::next(ranges::begin(range),
+                                        ranges::distance(input.begin(), it));
                 }
             }
         };

@@ -21,6 +21,14 @@
 
 using namespace std::string_view_literals;
 
+template <typename Range>
+std::string collect(Range r)
+{
+    std::string str;
+    scn::ranges::copy(r, std::back_inserter(str));
+    return str;
+}
+
 TEST(ScanBufferTest, StringView)
 {
     auto buf = scn::detail::make_string_scan_buffer("foobar"sv);
@@ -29,13 +37,13 @@ TEST(ScanBufferTest, StringView)
 
     EXPECT_TRUE(buf.is_contiguous());
     EXPECT_EQ(buf.chars_available(), 6);
-    EXPECT_EQ(buf.get_contiguous_segment().second, "foobar");
-    EXPECT_EQ(buf.get_contiguous_buffer(), "foobar");
+    EXPECT_EQ(collect(buf.get()), "foobar");
+    EXPECT_EQ(buf.get_contiguous(), "foobar");
 }
 
 TEST(ScanBufferTest, TakeStringView)
 {
-    auto range = scn::ranges::take_view("foobar"sv, 6);
+    auto range = scn::ranges::take_view("foobar"sv, 3);
     auto buf = scn::detail::make_forward_scan_buffer(range);
     static_assert(
         std::is_same_v<
@@ -45,7 +53,7 @@ TEST(ScanBufferTest, TakeStringView)
     EXPECT_FALSE(buf.is_contiguous());
     EXPECT_EQ(buf.chars_available(), 0);
 
-    auto view = buf.get_forward_buffer();
+    auto view = buf.get();
     auto it = view.begin();
     EXPECT_NE(it, view.end());
     EXPECT_EQ(*it, 'f');
@@ -55,11 +63,9 @@ TEST(ScanBufferTest, TakeStringView)
     ++it;
     EXPECT_NE(it, view.end());
 
-    std::string dest;
-    scn::ranges::copy(buf.get_forward_buffer(), std::back_inserter(dest));
-    EXPECT_EQ(dest, "foobar");
-    EXPECT_EQ(buf.chars_available(), 6);
-    EXPECT_EQ(buf.get_contiguous_segment().second, "foobar");
+    EXPECT_EQ(collect(buf.get()), "foo");
+    EXPECT_EQ(buf.chars_available(), 3);
+    EXPECT_EQ(collect(buf.get()), "foo");
 }
 
 TEST(ScanBufferTest, ReverseStringView)
@@ -74,9 +80,6 @@ TEST(ScanBufferTest, ReverseStringView)
     EXPECT_FALSE(buf.is_contiguous());
     EXPECT_EQ(buf.chars_available(), 0);
 
-    std::string dest;
-    scn::ranges::copy(buf.get_forward_buffer(), std::back_inserter(dest));
-    EXPECT_EQ(dest, "raboof");
+    EXPECT_EQ(collect(buf.get()), "raboof");
     EXPECT_EQ(buf.chars_available(), 6);
-    EXPECT_EQ(buf.get_contiguous_segment().second, "raboof");
 }
