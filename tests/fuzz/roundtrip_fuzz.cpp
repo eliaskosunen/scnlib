@@ -96,11 +96,8 @@ namespace scn::fuzz {
             const auto source_str = SCN_MOVE(oss).str();
             do_roundtrip<CharT>(original_value, source_str);
 
-            auto source_iss = populate_iss(source_str);
-            do_roundtrip<CharT>(original_value, source_iss);
-
-            auto source_erased = populate_erased(source_str);
-            do_roundtrip<CharT>(original_value, source_erased);
+            const auto& source_deque = populate_noncontiguous(source_str);
+            do_roundtrip<CharT>(original_value, source_deque);
         }
 
         template <typename Source>

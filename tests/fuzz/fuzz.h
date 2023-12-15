@@ -104,60 +104,28 @@ namespace scn::fuzz {
                                wsv_transcoded);
     }
 
-    inline std::istringstream istringstream_buffer{};
-    inline std::wistringstream wistringstream_buffer{};
+    inline std::deque<char> noncontiguous_buffer{};
+    inline std::deque<wchar_t> wnoncontiguous_buffer{};
 
     template <typename CharT>
-    auto& get_istringstream_buffer()
+    auto& get_noncontiguous_buffer()
     {
         if constexpr (std::is_same_v<CharT, char>) {
-            return istringstream_buffer;
+            return noncontiguous_buffer;
         }
         else {
-            return wistringstream_buffer;
+            return wnoncontiguous_buffer;
         }
     }
 
     template <typename Source>
-    auto populate_iss(Source& source)
+    const auto& populate_noncontiguous(Source& source)
     {
         using char_type = ranges::range_value_t<Source>;
-        std::basic_string<char_type> str;
-        str.resize(source.size());
-        std::copy(source.begin(), source.end(), str.begin());
-
-        auto& iss = get_istringstream_buffer<char_type>();
-        iss = std::basic_istringstream<char_type>{std::move(str)};
-
-        return basic_istreambuf_view<char_type>(iss);
-    }
-
-    inline std::vector<char> erased_buffer;
-    inline std::vector<wchar_t> werased_buffer;
-
-    template <typename CharT>
-    auto& get_erased_buffer()
-    {
-        if constexpr (std::is_same_v<CharT, char>) {
-            return erased_buffer;
-        }
-        else {
-            return werased_buffer;
-        }
-    }
-
-    template <typename Source>
-    auto populate_erased(Source& source)
-    {
-        using char_type = ranges::range_value_t<Source>;
-        std::vector<char_type> str;
-        str.resize(source.size());
-        std::copy(source.begin(), source.end(), str.begin());
-
-        auto& buf = get_erased_buffer<char_type>();
-        buf = std::move(str);
-
-        return erase_range(buf);
+        auto& deque = get_noncontiguous_buffer<char_type>();
+        std::copy(ranges::begin(source), ranges::end(source),
+                  std::back_inserter(deque));
+        return deque;
     }
 
     inline std::vector<std::string_view> format_string_view_buffer(
@@ -200,7 +168,8 @@ namespace scn::fuzz {
             auto it = scn::ranges::begin(source);
             while (true) {
                 auto result = scn::scan<T>(
-                    scn::ranges::subrange{it, scn::ranges::end(source)}, f);
+                    scn::ranges::subrange{it, scn::ranges::end(source)},
+                    scn::runtime_format(f));
                 if (!result) {
                     break;
                 }
@@ -214,7 +183,8 @@ namespace scn::fuzz {
             while (true) {
                 auto result = scn::scan<T>(
                     global_locale,
-                    scn::ranges::subrange{it, scn::ranges::end(source)}, f);
+                    scn::ranges::subrange{it, scn::ranges::end(source)},
+                    scn::runtime_format(f));
                 if (!result) {
                     break;
                 }
@@ -243,11 +213,7 @@ namespace scn::fuzz {
     void do_basic_run(Source data, format_strings_view<CharT> format_strings)
     {
         do_basic_run_for_source<CharT>(data, format_strings);
-
-        auto source_iss = populate_iss(data);
-        do_basic_run_for_source(source_iss, format_strings);
-
-        auto source_erased = populate_erased(data);
-        do_basic_run_for_source(source_erased, format_strings);
+        do_basic_run_for_source<CharT>(populate_noncontiguous(data),
+                                       format_strings);
     }
 }  // namespace scn::fuzz

@@ -23,10 +23,11 @@ namespace scn::fuzz {
         void run_for_type(Source& source)
         {
             {
-                auto _ = scn::scan<T>(source, source);
+                auto _ = scn::scan<T>(source, scn::runtime_format(source));
             }
             {
-                auto _ = scn::scan<T>(global_locale, source, source);
+                auto _ = scn::scan<T>(global_locale, source,
+                                      scn::runtime_format(source));
             }
         }
 

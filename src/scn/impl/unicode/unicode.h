@@ -129,21 +129,21 @@ namespace scn {
             if constexpr (enc == encoding::utf8) {
 #ifndef NDEBUG
                 if (validate_unicode(input)) {
-                    SCN_EXPECT(simdutf::utf32_length_from_utf8(
-                                   reinterpret_cast<const char*>(input.data()),
-                                   input.size()) == 1);
+                    auto len = simdutf::utf32_length_from_utf8(input.data(),
+                                                               input.size());
+                    SCN_EXPECT(len == 1);
                 }
 #endif
-                ret = simdutf::convert_utf8_to_utf32(
-                    reinterpret_cast<const char*>(input.data()), len, &output);
+                ret =
+                    simdutf::convert_utf8_to_utf32(input.data(), len, &output);
             }
             else if constexpr (enc == encoding::utf16) {
 #ifndef NDEBUG
                 if (validate_unicode(input)) {
-                    SCN_EXPECT(
-                        simdutf::utf32_length_from_utf16(
-                            reinterpret_cast<const char16_t*>(input.data()),
-                            input.size()) == 1);
+                    auto len = simdutf::utf32_length_from_utf16(
+                        reinterpret_cast<const char16_t*>(input.data()),
+                        input.size());
+                    SCN_EXPECT(len == 1);
                 }
 #endif
                 ret = simdutf::convert_utf16_to_utf32(

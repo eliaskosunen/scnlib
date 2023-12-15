@@ -19,6 +19,8 @@
 
 #include <scn/detail/scan_buffer.h>
 
+#include <deque>
+
 using namespace std::string_view_literals;
 
 template <typename Range>
@@ -84,4 +86,50 @@ TEST(ScanBufferTest, ReverseStringView)
 
     EXPECT_EQ(collect(buf.get()), "raboof");
     EXPECT_EQ(buf.chars_available(), 6);
+}
+
+TEST(ScanBufferTest, Deque)
+{
+    auto src = "foobar"sv;
+    auto deque = std::deque<char>{};
+    std::copy(src.begin(), src.end(), std::back_inserter(deque));
+
+    auto buf = scn::detail::make_forward_scan_buffer(deque);
+
+    auto it = buf.get().begin();
+    (void)(it != buf.get().end());
+    ++it;
+    (void)*it;
+    ++it;
+    (void)(it != buf.get().end());
+    (void)*it;
+    ++it;
+    ++it;
+    (void)*it;
+
+    it = buf.get().begin();
+    ++it;
+
+    EXPECT_EQ(collect(scn::ranges::subrange{it, buf.get().end()}), "oobar");
+}
+
+TEST(ScanBufferTest, Deque2)
+{
+    auto src = "abc"sv;
+    auto deque = std::deque<char>{};
+    std::copy(src.begin(), src.end(), std::back_inserter(deque));
+
+    auto buf = scn::detail::make_forward_scan_buffer(deque);
+
+    auto it = buf.get().begin();
+    EXPECT_NE(it, buf.get().end());
+    EXPECT_EQ(*it, 'a');
+    ++it;
+    EXPECT_NE(it, buf.get().end());
+    EXPECT_EQ(*it, 'b');
+
+    auto cached_it = it;
+    scn::ranges::advance(it, 4, buf.get().end());
+    EXPECT_EQ(it, buf.get().end());
+    EXPECT_EQ(collect(scn::ranges::subrange{cached_it, it}), "c");
 }

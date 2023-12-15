@@ -259,10 +259,13 @@ namespace scn {
                     if (m_parent->is_contiguous()) {
                         return false;
                     }
-                    if (!m_parent->fill()) {
-                        return false;
+                    while (m_position >= m_parent->chars_available()) {
+                        if (!m_parent->fill()) {
+                            return false;
+                        }
                     }
                 }
+
                 m_current_view = m_parent->get_segment_starting_at(m_position);
                 SCN_ENSURE(!m_current_view.empty());
                 return true;
@@ -351,20 +354,22 @@ namespace scn {
                 if (m_cursor == ranges::end(m_range)) {
                     return false;
                 }
-                if (auto prev = m_latest) {
-                    this->m_putback_buffer.push_back(*prev);
+                if (!this->m_current_view.empty()) {
+                    this->m_putback_buffer.insert(this->m_putback_buffer.end(),
+                                                  this->m_current_view.begin(),
+                                                  this->m_current_view.end());
                 }
                 m_latest = *m_cursor;
                 ++m_cursor;
                 this->m_current_view =
-                    std::basic_string_view<char_type>{&*m_latest, 1};
+                    std::basic_string_view<char_type>{&m_latest, 1};
                 return true;
             }
 
         private:
             Range m_range;
             iterator m_cursor;
-            std::optional<char_type> m_latest{std::nullopt};
+            char_type m_latest{};
         };
 
         template <typename R>

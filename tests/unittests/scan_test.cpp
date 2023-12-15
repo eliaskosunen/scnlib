@@ -19,6 +19,8 @@
 
 #include <scn/detail/scan.h>
 
+#include <deque>
+
 TEST(ScanTest, SingleValue)
 {
     auto result = scn::scan<int>("42", "{}");
@@ -152,12 +154,29 @@ TEST(ScanTest, NumberedArgumentsRepeatedSingleArg)
 
 TEST(ScanTest, NumberedArgumentsRepeatedDoubleArg)
 {
-    auto result = scn::scan<int, int>("123 456", scn::runtime_format("{0} {0}"));
+    auto result =
+        scn::scan<int, int>("123 456", scn::runtime_format("{0} {0}"));
     ASSERT_FALSE(result);
 }
 
 TEST(ScanTest, NumberedArgumentsOutOfRange)
 {
     auto result = scn::scan<int>("123 456", scn::runtime_format("{1}"));
+    ASSERT_FALSE(result);
+}
+
+TEST(ScanTest, FuzzerFailStringInput)
+{
+    auto result = scn::scan<std::string>("]]\360\n", "{}");
+    ASSERT_FALSE(result);
+}
+TEST(ScanTest, FuzzerFailDequeInput)
+{
+    using namespace std::string_view_literals;
+    auto in = "]\360\n"sv;
+    std::deque<char> rng{};
+    std::copy(in.begin(), in.end(), std::back_inserter(rng));
+
+    auto result = scn::scan<std::string>(rng, "{}");
     ASSERT_FALSE(result);
 }
