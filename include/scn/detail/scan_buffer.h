@@ -147,19 +147,30 @@ namespace scn {
                 return m_position;
             }
 
+            bool stores_parent() const
+            {
+                return m_end == nullptr;
+            }
+
             basic_scan_buffer<CharT>* parent()
             {
-                return m_parent;
+                SCN_EXPECT(stores_parent());
+                return static_cast<basic_scan_buffer<CharT>*>(m_begin);
             }
             const basic_scan_buffer<CharT>* parent() const
             {
-                return m_parent;
+                SCN_EXPECT(stores_parent());
+                return static_cast<const basic_scan_buffer<CharT>*>(m_begin);
             }
 
             std::basic_string_view<CharT> contiguous_segment() const
             {
-                SCN_EXPECT(m_parent);
-                return m_parent->get_segment_starting_at(position());
+                if (!stores_parent()) {
+                    return make_string_view_from_pointers(
+                        static_cast<const CharT*>(m_begin) + position(),
+                        static_cast<const CharT*>(m_end));
+                }
+                return parent()->get_segment_starting_at(position());
             }
             auto to_contiguous_segment_iterator() const
             {
@@ -168,7 +179,6 @@ namespace scn {
 
             forward_iterator& operator++()
             {
-                SCN_EXPECT(m_parent);
                 ++m_position;
                 std::ignore = read_at_position();
                 return *this;
@@ -183,34 +193,31 @@ namespace scn {
 
             CharT operator*() const
             {
-                SCN_EXPECT(m_parent);
-                return m_parent->get_character_at(m_position);
+                SCN_EXPECT(m_begin);
+
+                if (!stores_parent()) {
+                    auto ptr = static_cast<const CharT*>(m_begin) + position();
+                    SCN_EXPECT(ptr != m_end);
+                    return *ptr;
+                }
+
+                auto res = read_at_position();
+                SCN_EXPECT(res);
+                return parent()->get_character_at(m_position);
             }
 
             forward_iterator& batch_advance(std::ptrdiff_t n)
             {
-                SCN_EXPECT(m_parent);
                 SCN_EXPECT(n >= 0);
-
                 m_position += n;
-                SCN_ENSURE(m_position <= m_parent->chars_available());
                 return *this;
             }
 
             friend bool operator==(const forward_iterator& lhs,
                                    const forward_iterator& rhs)
             {
-                if (!lhs.m_parent && !rhs.m_parent) {
-                    return true;
-                }
-                if (!lhs.m_parent) {
-                    return ranges_std::default_sentinel == rhs;
-                }
-                if (!rhs.m_parent) {
-                    return lhs == ranges_std::default_sentinel;
-                }
-                SCN_EXPECT(lhs.m_parent == rhs.m_parent);
-                return lhs.m_position == rhs.m_position;
+                return lhs.m_begin == rhs.m_begin &&
+                       lhs.m_position == rhs.m_position;
             }
             friend bool operator!=(const forward_iterator& lhs,
                                    const forward_iterator& rhs)
@@ -243,23 +250,37 @@ namespace scn {
         private:
             friend class basic_scan_buffer<CharT>;
 
-            forward_iterator(basic_scan_buffer<CharT>& parent,
+            forward_iterator(basic_scan_buffer<CharT>* parent,
                              std::ptrdiff_t pos)
-                : m_parent(&parent), m_position(pos)
+                : m_begin(parent), m_end(nullptr), m_position(pos)
+            {
+                SCN_EXPECT(parent);
+                SCN_EXPECT(!parent->is_contiguous());
+            }
+
+            forward_iterator(std::basic_string_view<CharT> view,
+                             std::ptrdiff_t pos)
+                : m_begin(const_cast<CharT*>(view.data())),
+                  m_end(const_cast<CharT*>(view.data() + view.size())),
+                  m_position(pos)
             {
             }
 
             SCN_NODISCARD bool read_at_position() const
             {
-                if (SCN_LIKELY(m_position < m_parent->chars_available())) {
+                SCN_EXPECT(m_begin);
+
+                if (!stores_parent()) {
                     return true;
                 }
 
-                if (m_parent->is_contiguous()) {
-                    return false;
+                if (SCN_LIKELY(m_position < parent()->chars_available())) {
+                    return true;
                 }
-                while (m_position >= m_parent->chars_available()) {
-                    if (!m_parent->fill()) {
+
+                while (m_position >= parent()->chars_available()) {
+                    if (!const_cast<basic_scan_buffer<CharT>*>(parent())
+                             ->fill()) {
                         return false;
                     }
                 }
@@ -268,20 +289,32 @@ namespace scn {
 
             SCN_NODISCARD bool is_at_end() const
             {
-                if (!m_parent) {
+                if (m_end) {
+                    return (static_cast<const CharT*>(m_begin) + position()) ==
+                           m_end;
+                }
+                if (!m_begin) {
                     return true;
                 }
                 return !read_at_position();
             }
 
-            basic_scan_buffer<CharT>* m_parent{nullptr};
+            // If m_end is null, m_begin points to the parent scan_buffer
+            // Otherwise, [m_begin, m_end) is the range of this iterator (and of
+            // the entire range)
+            mutable void* m_begin{nullptr};
+            mutable void* m_end{nullptr};
             std::ptrdiff_t m_position{0};
         };
 
         template <typename CharT>
         SCN_NODISCARD auto basic_scan_buffer<CharT>::get() -> range_type
         {
-            return ranges::subrange{forward_iterator{*this, 0},
+            if (is_contiguous()) {
+                return ranges::subrange{forward_iterator{m_current_view, 0},
+                                        ranges_std::default_sentinel};
+            }
+            return ranges::subrange{forward_iterator{this, 0},
                                     ranges_std::default_sentinel};
         }
 
@@ -385,7 +418,7 @@ namespace scn {
         public:
             basic_scan_ref_buffer(base& other, std::ptrdiff_t starting_pos)
                 : base(other.is_contiguous(), std::basic_string_view<CharT>{}),
-                  m_other(other),
+                  m_other(&other),
                   m_starting_pos(starting_pos)
             {
                 this->m_current_view =
@@ -395,31 +428,45 @@ namespace scn {
                     this->m_current_view.end();
             }
 
+            basic_scan_ref_buffer(std::basic_string_view<CharT> view)
+                : base(true, view), m_other(nullptr)
+            {
+            }
+
             bool fill() override
             {
+                if (!m_other) {
+                    return false;
+                }
+                SCN_EXPECT(m_starting_pos >= 0);
+
                 if (m_fill_needs_to_propagate) {
-                    auto ret = m_other.fill();
-                    this->m_current_view = m_other.current_view();
+                    auto ret = m_other->fill();
+                    this->m_current_view = m_other->current_view();
                     this->m_putback_buffer =
-                        m_other.putback_buffer().substr(m_starting_pos);
+                        m_other->putback_buffer().substr(m_starting_pos);
                     return ret;
                 }
 
                 m_fill_needs_to_propagate = true;
                 this->m_putback_buffer =
                     std::basic_string<CharT>{this->m_current_view};
-                this->m_current_view = m_other.current_view();
+                this->m_current_view = m_other->current_view();
                 return true;
             }
 
         private:
-            base& m_other;
-            std::ptrdiff_t m_starting_pos;
+            base* m_other;
+            std::ptrdiff_t m_starting_pos{-1};
             bool m_fill_needs_to_propagate{false};
         };
 
         template <typename CharT>
-        basic_scan_ref_buffer(basic_scan_buffer<CharT>&)
+        basic_scan_ref_buffer(basic_scan_buffer<CharT>&, std::ptrdiff_t)
+            -> basic_scan_ref_buffer<CharT>;
+
+        template <typename CharT>
+        basic_scan_ref_buffer(std::basic_string_view<CharT>)
             -> basic_scan_ref_buffer<CharT>;
 
         template <typename Range>

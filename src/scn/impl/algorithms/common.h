@@ -37,8 +37,11 @@ namespace scn {
                 std::is_same_v<ranges::iterator_t<Range>,
                                typename detail::basic_scan_buffer<
                                    detail::char_t<Range>>::forward_iterator>) {
-                SCN_EXPECT(ranges::begin(r).parent());
-                return ranges::begin(r).parent()->is_contiguous();
+                auto beg = ranges::begin(r);
+                if (!beg.stores_parent()) {
+                    return true;
+                }
+                return beg.parent()->is_contiguous();
             }
             else {
                 return false;
@@ -56,14 +59,17 @@ namespace scn {
                 std::is_same_v<ranges::iterator_t<Range>,
                                typename detail::basic_scan_buffer<
                                    detail::char_t<Range>>::forward_iterator>) {
-                SCN_EXPECT(ranges::begin(r).parent());
+                auto beg = ranges::begin(r);
                 if constexpr (ranges::common_range<Range>) {
-                    return ranges::begin(r).contiguous_segment().end() ==
+                    return beg.contiguous_segment().end() ==
                            ranges::end(r).contiguous_segment().end();
                 }
                 else {
-                    return ranges::begin(r).contiguous_segment().end() ==
-                           ranges::begin(r).parent()->current_view().end();
+                    if (beg.stores_parent()) {
+                        return beg.contiguous_segment().end() ==
+                               beg.parent()->current_view().end();
+                    }
+                    return true;
                 }
             }
             else {
@@ -82,7 +88,6 @@ namespace scn {
                 std::is_same_v<ranges::iterator_t<Range>,
                                typename detail::basic_scan_buffer<
                                    detail::char_t<Range>>::forward_iterator>) {
-                SCN_EXPECT(ranges::begin(r).parent());
                 if constexpr (ranges::common_range<Range>) {
                     auto seg = ranges::begin(r).contiguous_segment();
                     auto dist =
@@ -110,7 +115,6 @@ namespace scn {
                 std::is_same_v<ranges::iterator_t<Range>,
                                typename detail::basic_scan_buffer<
                                    detail::char_t<Range>>::forward_iterator>) {
-                SCN_EXPECT(ranges::begin(r).parent());
                 if constexpr (ranges::common_range<Range>) {
                     auto seg = ranges::begin(r).contiguous_segment();
                     auto dist =
@@ -170,9 +174,12 @@ namespace scn {
                                                ranges::begin(r).position());
                 }
                 else {
-                    return static_cast<size_t>(
-                        ranges::begin(r).parent()->chars_available() -
-                        ranges::begin(r).position());
+                    if (ranges::begin(r).stores_parent()) {
+                        return static_cast<size_t>(
+                            ranges::begin(r).parent()->chars_available() -
+                            ranges::begin(r).position());
+                    }
+                    return ranges::begin(r).contiguous_segment().size();
                 }
             }
             else {

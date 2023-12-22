@@ -225,7 +225,7 @@ namespace scn {
                            std::size_t argcount)
                 : format_handler_base{argcount},
                   parse_ctx{format},
-                  ctx{source, SCN_MOVE(args), SCN_MOVE(loc)}
+                  ctx{source.get().begin(), SCN_MOVE(args), SCN_MOVE(loc)}
             {
             }
 

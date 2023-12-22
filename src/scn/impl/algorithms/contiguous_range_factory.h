@@ -98,7 +98,7 @@ namespace scn {
             }
 
             contiguous_range_factory(string_view_wrapper<CharT> svw)
-                : m_buffer(std::in_place_type<string_view_type>, svw.view())
+                : m_storage(std::nullopt), m_view(svw.view())
             {
             }
 
@@ -111,33 +111,28 @@ namespace scn {
 
             string_view_type view() const
             {
-                if (!stores_allocated_string()) {
-                    return std::get<string_view_type>(m_buffer);
-                }
-
-                const auto& str = get_allocated_string();
-                return {str.data(), str.size()};
+                return m_view;
             }
 
             constexpr bool stores_allocated_string() const
             {
-                return std::holds_alternative<string_type>(m_buffer);
+                return m_storage.has_value();
             }
 
             string_type& get_allocated_string() &
             {
                 SCN_EXPECT(stores_allocated_string());
-                return std::get<string_type>(m_buffer);
+                return *m_storage;
             }
             const string_type& get_allocated_string() const&
             {
                 SCN_EXPECT(stores_allocated_string());
-                return std::get<string_type>(m_buffer);
+                return *m_storage;
             }
-            string_type get_allocated_string() &&
+            string_type&& get_allocated_string() &&
             {
                 SCN_EXPECT(stores_allocated_string());
-                return std::get<string_type>(SCN_MOVE(m_buffer));
+                return *m_storage;
             }
 
             string_type& make_into_allocated_string()
@@ -146,9 +141,9 @@ namespace scn {
                     return get_allocated_string();
                 }
 
-                auto sv = std::get<string_view_type>(m_buffer);
-                return m_buffer.template emplace<string_type>(sv.data(),
-                                                              sv.size());
+                auto& str = m_storage.emplace(m_view.data(), m_view.size());
+                m_view = string_view_type{str.data(), str.size()};
+                return str;
             }
 
         private:
@@ -159,46 +154,49 @@ namespace scn {
                 if constexpr (ranges::borrowed_range<Range> &&
                               ranges::contiguous_range<Range> &&
                               ranges::sized_range<Range>) {
-                    m_buffer.template emplace<string_view_type>(
-                        ranges::data(range), ranges_polyfill::usize(range));
+                    m_storage.reset();
+                    m_view = string_view_type{ranges::data(range),
+                                              ranges_polyfill::usize(range)};
                 }
                 else if constexpr (std::is_same_v<detail::remove_cvref_t<Range>,
                                                   std::basic_string<CharT>>) {
-                    m_buffer.template emplace<string_type>(SCN_FWD(range));
+                    m_storage.emplace(SCN_FWD(range));
+                    m_view = string_view_type{*m_storage};
                 }
                 else if constexpr (std::is_same_v<
                                        ranges::iterator_t<Range>,
                                        typename detail::basic_scan_buffer<
                                            value_t>::forward_iterator> &&
                                    ranges::common_range<Range>) {
-                    SCN_EXPECT(range.begin().parent() && range.end().parent());
-
                     auto beg_seg = range.begin().contiguous_segment();
                     auto end_seg = range.end().contiguous_segment();
-                    if (beg_seg.end() != end_seg.end()) {
-                        auto& str = m_buffer.template emplace<string_type>();
+                    if (SCN_UNLIKELY(beg_seg.end() != end_seg.end())) {
+                        auto& str = m_storage.emplace();
                         str.reserve(range.end().position() -
                                     range.begin().position());
                         std::copy(range.begin(), range.end(),
                                   std::back_inserter(str));
+                        m_view = string_view_type{str};
                         return;
                     }
 
-                    auto sv = detail::make_string_view_from_pointers(
+                    m_view = detail::make_string_view_from_pointers(
                         beg_seg.data(), end_seg.data());
-                    m_buffer.template emplace<string_view_type>(sv);
+                    m_storage.reset();
                 }
                 else {
-                    auto& str = m_buffer.template emplace<string_type>();
+                    auto& str = m_storage.emplace();
                     if constexpr (ranges::sized_range<Range>) {
                         str.reserve(ranges_polyfill::usize(range));
                     }
                     std::copy(ranges::begin(range), ranges::end(range),
                               std::back_inserter(str));
+                    m_view = string_view_type{str};
                 }
             }
 
-            std::variant<string_view_type, string_type> m_buffer{};
+            std::optional<string_type> m_storage{std::nullopt};
+            string_view_type m_view{};
         };
 
         template <typename Range>

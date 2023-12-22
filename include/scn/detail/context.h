@@ -65,23 +65,10 @@ namespace scn {
         template <typename T>
         using scanner_type = scanner<T, char_type>;
 
-        constexpr basic_scan_context(buffer_type& buf,
-                                     basic_scan_args<basic_scan_context> a,
-                                     detail::locale_ref loc = {})
-            : m_buffer(buf),
-              m_current(buf.get().begin()),
-              m_args(SCN_MOVE(a)),
-              m_locale(loc)
-        {
-        }
-
         constexpr basic_scan_context(iterator curr,
                                      basic_scan_args<basic_scan_context> a,
                                      detail::locale_ref loc = {})
-            : m_buffer(*curr.parent()),
-              m_current(curr),
-              m_args(SCN_MOVE(a)),
-              m_locale(loc)
+            : m_current(curr), m_args(SCN_MOVE(a)), m_locale(loc)
         {
         }
 
@@ -136,7 +123,6 @@ namespace scn {
         }
 
     private:
-        buffer_type& m_buffer;
         iterator m_current;
         basic_scan_args<basic_scan_context> m_args;
         detail::locale_ref m_locale;

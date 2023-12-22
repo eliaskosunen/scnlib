@@ -443,6 +443,7 @@ namespace scn {
 
             SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str)));
 
+#if 0
             auto buf = make_contiguous_buffer(
                 ranges::subrange{ranges::begin(range), it});
 
@@ -460,10 +461,10 @@ namespace scn {
                     return it;
                 }
             }
+#endif
 
             if (SCN_UNLIKELY(!std::equal(
-                    buf.view().begin(), buf.view().end(), str.begin(),
-                    [&](auto a, auto b) {
+                    ranges::begin(range), it, str.begin(), [&](auto a, auto b) {
                         return ascii_tolower(a) ==
                                static_cast<detail::char_t<Range>>(b);
                     }))) {

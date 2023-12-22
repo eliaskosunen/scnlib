@@ -42,14 +42,20 @@ namespace scn {
             inline auto impl(scan_buffer::range_type r, priority_tag<4>)
                 SCN_NOEXCEPT->basic_scan_ref_buffer<char>
             {
-                SCN_EXPECT(r.begin().parent());
+                if (!r.begin().stores_parent()) {
+                    return basic_scan_ref_buffer{
+                        r.begin().contiguous_segment()};
+                }
                 return basic_scan_ref_buffer{*r.begin().parent(),
                                              r.begin().position()};
             }
             inline auto impl(wscan_buffer::range_type r, priority_tag<4>)
                 SCN_NOEXCEPT->basic_scan_ref_buffer<wchar_t>
             {
-                SCN_EXPECT(r.begin().parent());
+                if (!r.begin().stores_parent()) {
+                    return basic_scan_ref_buffer{
+                        r.begin().contiguous_segment()};
+                }
                 return basic_scan_ref_buffer{*r.begin().parent(),
                                              r.begin().position()};
             }
