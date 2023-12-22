@@ -23,15 +23,17 @@
 
 using namespace std::string_view_literals;
 
-template <typename Range>
-std::string collect(Range r)
-{
-    std::string str;
-    for (auto it = scn::ranges::begin(r); it != scn::ranges::end(r); ++it) {
-        str.push_back(*it);
+namespace {
+    template <typename Range>
+    std::string collect(Range r)
+    {
+        std::string str;
+        for (auto it = scn::ranges::begin(r); it != scn::ranges::end(r); ++it) {
+            str.push_back(*it);
+        }
+        return str;
     }
-    return str;
-}
+}  // namespace
 
 TEST(ScanBufferTest, StringView)
 {
@@ -131,5 +133,8 @@ TEST(ScanBufferTest, Deque2)
     auto cached_it = it;
     scn::ranges::advance(it, 4, buf.get().end());
     EXPECT_EQ(it, buf.get().end());
-    EXPECT_EQ(collect(scn::ranges::subrange{cached_it, it}), "c");
+    EXPECT_EQ(collect(scn::ranges::subrange{cached_it,
+                                            std::next(buf.get().begin(), 2)}),
+              "b");
+    EXPECT_EQ(collect(scn::ranges::subrange{cached_it, it}), "bc");
 }

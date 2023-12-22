@@ -41,5 +41,3 @@ TEST(ErrorTest, General)
     EXPECT_EQ(invalid_scanned_value_error,
               scn::scan_error::invalid_scanned_value);
 }
-
-TEST(ErrorTest, HandleError) {}

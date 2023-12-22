@@ -65,7 +65,6 @@ set(SCN_PUBLIC_HEADERS
         include/scn/detail/xchar.h
 
         include/scn/util/algorithm.h
-        include/scn/util/buffer.h
         include/scn/util/expected.h
         include/scn/util/memory.h
         include/scn/util/meta.h

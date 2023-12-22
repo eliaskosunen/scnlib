@@ -70,11 +70,23 @@ namespace scn {
             SCN_NODISCARD std::basic_string_view<CharT> get_segment_starting_at(
                 std::ptrdiff_t pos) const
             {
-                if (pos < m_putback_buffer.size()) {
+                if (SCN_UNLIKELY(pos < m_putback_buffer.size())) {
                     return std::basic_string_view<CharT>(m_putback_buffer)
                         .substr(pos);
                 }
-                return m_current_view.substr(pos - m_putback_buffer.size());
+                const auto start = pos - m_putback_buffer.size();
+                SCN_EXPECT(start <= m_current_view.size());
+                return m_current_view.substr(start);
+            }
+
+            SCN_NODISCARD CharT get_character_at(std::ptrdiff_t pos) const
+            {
+                if (SCN_UNLIKELY(pos < m_putback_buffer.size())) {
+                    return m_putback_buffer[pos];
+                }
+                const auto start = pos - m_putback_buffer.size();
+                SCN_EXPECT(start < m_current_view.size());
+                return m_current_view[start];
             }
 
             SCN_NODISCARD bool is_contiguous() const
@@ -158,10 +170,7 @@ namespace scn {
             {
                 SCN_EXPECT(m_parent);
                 ++m_position;
-                if (SCN_LIKELY(!m_current_view.empty())) {
-                    m_current_view = m_current_view.substr(1);
-                }
-                read_at_position();
+                std::ignore = read_at_position();
                 return *this;
             }
 
@@ -175,23 +184,15 @@ namespace scn {
             CharT operator*() const
             {
                 SCN_EXPECT(m_parent);
-                if (SCN_LIKELY(!m_current_view.empty())) {
-                    return m_current_view.front();
-                }
-                auto view = m_parent->get_segment_starting_at(m_position);
-                SCN_EXPECT(!view.empty());
-                return view.front();
+                return m_parent->get_character_at(m_position);
             }
 
             forward_iterator& batch_advance(std::ptrdiff_t n)
             {
                 SCN_EXPECT(m_parent);
                 SCN_EXPECT(n >= 0);
+
                 m_position += n;
-
-                m_current_view = m_current_view.substr(
-                    std::min(static_cast<size_t>(n), m_current_view.size()));
-
                 SCN_ENSURE(m_position <= m_parent->chars_available());
                 return *this;
             }
@@ -243,35 +244,29 @@ namespace scn {
             friend class basic_scan_buffer<CharT>;
 
             forward_iterator(basic_scan_buffer<CharT>& parent,
-                             std::basic_string_view<CharT> view,
                              std::ptrdiff_t pos)
-                : m_parent(&parent), m_current_view(view), m_position(pos)
+                : m_parent(&parent), m_position(pos)
             {
             }
 
-            bool read_at_position() const
+            SCN_NODISCARD bool read_at_position() const
             {
-                if (!m_current_view.empty()) {
+                if (SCN_LIKELY(m_position < m_parent->chars_available())) {
                     return true;
                 }
 
-                if (m_position >= m_parent->chars_available()) {
-                    if (m_parent->is_contiguous()) {
+                if (m_parent->is_contiguous()) {
+                    return false;
+                }
+                while (m_position >= m_parent->chars_available()) {
+                    if (!m_parent->fill()) {
                         return false;
                     }
-                    while (m_position >= m_parent->chars_available()) {
-                        if (!m_parent->fill()) {
-                            return false;
-                        }
-                    }
                 }
-
-                m_current_view = m_parent->get_segment_starting_at(m_position);
-                SCN_ENSURE(!m_current_view.empty());
                 return true;
             }
 
-            bool is_at_end() const
+            SCN_NODISCARD bool is_at_end() const
             {
                 if (!m_parent) {
                     return true;
@@ -280,21 +275,14 @@ namespace scn {
             }
 
             basic_scan_buffer<CharT>* m_parent{nullptr};
-            mutable std::basic_string_view<CharT> m_current_view{};
             std::ptrdiff_t m_position{0};
         };
 
         template <typename CharT>
         SCN_NODISCARD auto basic_scan_buffer<CharT>::get() -> range_type
         {
-            if (m_putback_buffer.empty()) {
-                return ranges::subrange{
-                    forward_iterator{*this, m_current_view, 0},
-                    ranges_std::default_sentinel};
-            }
-            return ranges::subrange{
-                forward_iterator{*this, std::basic_string_view<CharT>{}, 0},
-                ranges_std::default_sentinel};
+            return ranges::subrange{forward_iterator{*this, 0},
+                                    ranges_std::default_sentinel};
         }
 
         static_assert(ranges::forward_range<scan_buffer::range_type>);

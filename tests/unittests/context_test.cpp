@@ -18,28 +18,3 @@
 #include "wrapped_gtest.h"
 
 #include <scn/detail/context.h>
-
-#if 0
-TEST(ContextTest, MemberTypes)
-{
-    using scan_context = scn::basic_scan_context<std::string_view, char>;
-
-    static_assert(std::is_same_v<scan_context::char_type, char>);
-    static_assert(
-        std::is_same_v<scan_context::range_type, std::string_view>);
-    static_assert(std::is_same_v<scan_context::iterator,
-                                 std::string_view::iterator>);
-    static_assert(std::is_same_v<scan_context::sentinel,
-                                 std::string_view::iterator>);
-    static_assert(std::is_same_v<scan_context::parse_context_type,
-                                 scn::basic_scan_parse_context<char>>);
-    static_assert(std::is_same_v<scan_context::arg_type,
-                                 scn::basic_scan_arg<scan_context>>);
-    static_assert(std::is_same_v<scan_context::scanner_type<int>,
-                                 scn::scanner<int, char>>);
-}
-
-TEST(ContextTest, Range) {
-    SUCCEED();
-}
-#endif
