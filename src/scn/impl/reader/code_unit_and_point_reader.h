@@ -34,7 +34,8 @@ namespace scn {
                 SourceRange&& range,
                 CharT& ch)
             {
-                SCN_TRY(it, read_code_unit(range));
+                SCN_TRY(it, read_code_unit(range).transform_error(
+                                make_eof_scan_error));
                 ch = *ranges::begin(range);
                 return it;
             }

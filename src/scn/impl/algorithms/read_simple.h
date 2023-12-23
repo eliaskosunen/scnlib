@@ -19,7 +19,6 @@
 
 #include <scn/impl/algorithms/common.h>
 #include <scn/impl/algorithms/eof_check.h>
-#include <scn/util/expected.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -32,7 +31,7 @@ namespace scn {
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_code_unit(
+        eof_expected<simple_borrowed_iterator_t<Range>> read_code_unit(
             Range&& range)
         {
             if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
@@ -43,7 +42,7 @@ namespace scn {
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
+        eof_expected<simple_borrowed_iterator_t<Range>>
         read_exactly_n_code_units(Range&& range,
                                   ranges::range_difference_t<Range> count)
         {
@@ -52,8 +51,7 @@ namespace scn {
             if constexpr (ranges::sized_range<Range>) {
                 const auto sz = ranges::ssize(range);
                 if (sz < count) {
-                    return unexpected_scan_error(scan_error::end_of_range,
-                                                 "EOF");
+                    return unexpected(eof_error::eof);
                 }
 
                 return ranges::next(ranges::begin(range), count);
@@ -67,8 +65,7 @@ namespace scn {
                 for (ranges::range_difference_t<Range> i = 0; i < count;
                      ++i, (void)++it) {
                     if (it == ranges::end(range)) {
-                        return unexpected_scan_error(scan_error::end_of_range,
-                                                     "EOF");
+                        return unexpected(eof_error::eof);
                     }
                 }
 

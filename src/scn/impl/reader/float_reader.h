@@ -118,7 +118,8 @@ namespace scn {
             scan_expected<simple_borrowed_iterator_t<Range>> read_source_impl(
                 Range&& range)
             {
-                SCN_TRY(it, numeric_reader_base::read_sign(range, m_sign));
+                SCN_TRY(it, numeric_reader_base::read_sign(range, m_sign)
+                                .transform_error(make_eof_scan_error));
 
                 auto digits_begin = it;
                 auto r = ranges::subrange{it, ranges::end(range)};
@@ -192,45 +193,45 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_dec_digits(
+            parse_expected<simple_borrowed_iterator_t<Range>> read_dec_digits(
                 Range&& range,
                 bool thsep_allowed)
             {
                 if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
                                  thsep_allowed)) {
-                    return read_while_code_unit(
+                    return read_while1_code_unit(
                         SCN_FWD(range), [&](char_type ch) SCN_NOEXCEPT {
                             return numeric_reader_base::char_to_int(ch) < 10 ||
                                    ch == m_locale_options.thousands_sep;
                         });
                 }
 
-                return read_while_code_unit(
+                return read_while1_code_unit(
                     SCN_FWD(range), [](char_type ch) SCN_NOEXCEPT {
                         return numeric_reader_base::char_to_int(ch) < 10;
                     });
             }
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_hex_digits(
+            parse_expected<simple_borrowed_iterator_t<Range>> read_hex_digits(
                 Range&& range,
                 bool thsep_allowed)
             {
                 if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
                                  thsep_allowed)) {
-                    return read_while_code_unit(
+                    return read_while1_code_unit(
                         SCN_FWD(range), [&](char_type ch) SCN_NOEXCEPT {
                             return numeric_reader_base::char_to_int(ch) < 16 ||
                                    ch == m_locale_options.thousands_sep;
                         });
                 }
 
-                return read_while_code_unit(
+                return read_while1_code_unit(
                     SCN_FWD(range), [](char_type ch) SCN_NOEXCEPT {
                         return numeric_reader_base::char_to_int(ch) < 16;
                     });
             }
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_hex_prefix(
+            parse_expected<simple_borrowed_iterator_t<Range>> read_hex_prefix(
                 Range&& range)
             {
                 return read_matching_string_classic_nocase(SCN_FWD(range),
@@ -238,7 +239,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_inf(
+            parse_expected<simple_borrowed_iterator_t<Range>> read_inf(
                 Range&& range)
             {
                 auto it = ranges::begin(range);
@@ -269,7 +270,9 @@ namespace scn {
                 auto it = ranges::begin(range);
                 if (auto r = read_matching_string_classic_nocase(range, "nan");
                     !r) {
-                    return unexpected(r.error());
+                    return r.transform_error(map_parse_error_to_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Invalid floating-point NaN value"));
                 }
                 else {
                     it = *r;
@@ -302,8 +305,9 @@ namespace scn {
                         ranges::subrange{it, ranges::end(range)}, ')')) {
                     return *r;
                 }
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "Invalid NaN payload");
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Invalid floating-point NaN payload");
             }
 
             template <typename Range>
@@ -353,7 +357,9 @@ namespace scn {
                 if (auto r = read_hex_digits(
                         ranges::subrange{it, ranges::end(range)}, true);
                     SCN_UNLIKELY(!r)) {
-                    return unexpected(r.error());
+                    return r.transform_error(map_parse_error_to_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Invalid hexadecimal floating-point value"));
                 }
                 else {
                     digits_count += ranges::distance(it, *r);
@@ -399,7 +405,9 @@ namespace scn {
                 if (auto r = read_dec_digits(
                         ranges::subrange{it, ranges::end(range)}, true);
                     SCN_UNLIKELY(!r)) {
-                    return unexpected(r.error());
+                    return r.transform_error(map_parse_error_to_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Invalid floating-point value"));
                 }
                 else {
                     digits_count += ranges::distance(it, *r);
@@ -454,7 +462,9 @@ namespace scn {
                      ~static_cast<unsigned>(allow_hex)) != 0;
 
                 if (auto r = read_inf(range); !r && m_kind != float_kind::tbd) {
-                    return unexpected(r.error());
+                    return r.transform_error(map_parse_error_to_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Invalid infinite floating-point value"));
                 }
                 else if (r) {
                     return *r;

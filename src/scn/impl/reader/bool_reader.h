@@ -67,15 +67,16 @@ namespace scn {
             {
                 if (auto r = read_matching_code_unit(range, '0')) {
                     value = false;
-                    return r;
+                    return *r;
                 }
                 if (auto r = read_matching_code_unit(range, '1')) {
                     value = true;
-                    return r;
+                    return *r;
                 }
 
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "read_numeric: No match");
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Failed to read numeric boolean value: No match");
             }
 
             template <typename Range>
@@ -84,15 +85,16 @@ namespace scn {
             {
                 if (auto r = read_matching_string_classic(range, "true")) {
                     value = true;
-                    return r;
+                    return *r;
                 }
                 if (auto r = read_matching_string_classic(range, "false")) {
                     value = false;
-                    return r;
+                    return *r;
                 }
 
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "read_textual: No match");
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Failed to read textual boolean value: No match");
             }
 
             unsigned m_options{allow_text | allow_numeric};
@@ -160,11 +162,11 @@ namespace scn {
 
                 if (auto r = read_matching_string(range, shorter.first)) {
                     value = shorter.second;
-                    return r;
+                    return *r;
                 }
                 if (auto r = read_matching_string(range, longer.first)) {
                     value = longer.second;
-                    return r;
+                    return *r;
                 }
 
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
@@ -237,7 +239,7 @@ namespace scn {
                                bool_reader_base::allow_numeric;
                 }
 
-                SCN_GCC_COMPAT_POP // -Wswitch-enum
+                SCN_GCC_COMPAT_POP  // -Wswitch-enum
             }
         };
     }  // namespace impl

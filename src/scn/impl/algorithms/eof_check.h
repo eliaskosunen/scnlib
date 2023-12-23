@@ -19,6 +19,7 @@
 
 #include <scn/detail/error.h>
 #include <scn/detail/ranges.h>
+#include <scn/impl/util/internal_error.h>
 #include <scn/util/memory.h>
 
 namespace scn {
@@ -91,12 +92,12 @@ namespace scn {
         }
 
         template <typename Range>
-        SCN_NODISCARD constexpr scan_error eof_check(const Range& range)
+        SCN_NODISCARD constexpr eof_error eof_check(const Range& range)
         {
             if (SCN_UNLIKELY(is_range_eof(range))) {
-                return {scan_error::end_of_range, "EOF"};
+                return eof_error::eof;
             }
-            return {};
+            return eof_error::good;
         }
     }  // namespace impl
 

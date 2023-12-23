@@ -868,6 +868,9 @@ namespace scn {
         using is_exp_void =
             std::is_void<typename remove_cvref_t<Exp>::value_type>;
 
+        template <typename Exp>
+        using expected_value_type = typename remove_cvref_t<Exp>::value_type;
+
         // and_then
 
         template <
@@ -972,7 +975,7 @@ namespace scn {
         constexpr auto transform_error_impl(Exp&& exp, F&& f)
         {
             if constexpr (std::is_void<Ret>::value) {
-                using result = expected<typename Exp::value_type, monostate>;
+                using result = expected<expected_value_type<Exp>, monostate>;
                 if (SCN_LIKELY(exp.has_value())) {
                     return result(*std::forward<Exp>(exp));
                 }
@@ -982,7 +985,7 @@ namespace scn {
             }
             else {
                 using result =
-                    expected<typename Exp::value_type, remove_cvref_t<Ret>>;
+                    expected<expected_value_type<Exp>, remove_cvref_t<Ret>>;
                 return SCN_LIKELY(exp.has_value())
                            ? result(*std::forward<Exp>(exp))
                            : result(
@@ -1000,7 +1003,7 @@ namespace scn {
         constexpr auto transform_error_impl(Exp&& exp, F&& f)
         {
             if constexpr (std::is_void<Ret>::value) {
-                using result = expected<typename Exp::value_type, monostate>;
+                using result = expected<expected_value_type<Exp>, monostate>;
                 if (SCN_LIKELY(exp.has_value())) {
                     return result();
                 }
@@ -1010,7 +1013,7 @@ namespace scn {
             }
             else {
                 using result =
-                    expected<typename Exp::value_type, remove_cvref_t<Ret>>;
+                    expected<expected_value_type<Exp>, remove_cvref_t<Ret>>;
                 return SCN_LIKELY(exp.has_value())
                            ? result()
                            : result(

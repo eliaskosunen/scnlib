@@ -72,16 +72,16 @@ namespace scn {
 
         protected:
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_sign(
+            eof_expected<simple_borrowed_iterator_t<Range>> read_sign(
                 Range&& range,
                 sign& p_sign)
             {
                 auto r = read_one_of_code_unit(range, "+-");
                 if (SCN_UNLIKELY(!r)) {
-                    if (r.error().code() == scan_error::invalid_scanned_value) {
+                    if (r.error() == parse_error::error) {
                         return ranges::begin(range);
                     }
-                    return unexpected(r.error());
+                    return unexpected(eof_error::eof);
                 }
 
                 auto& it = *r;

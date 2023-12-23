@@ -39,7 +39,7 @@ namespace scn {
         };
 
         template <typename SourceRange>
-        scan_expected<simple_borrowed_iterator_t<SourceRange>>
+        eof_expected<simple_borrowed_iterator_t<SourceRange>>
         skip_classic_whitespace(SourceRange&& range,
                                 bool allow_exhaustion = false)
         {
@@ -56,29 +56,6 @@ namespace scn {
 
             return read_while_classic_space(SCN_FWD(range));
         }
-
-#if !SCN_DISABLE_LOCALE
-        template <typename SourceRange>
-        scan_expected<simple_borrowed_iterator_t<SourceRange>>
-        skip_localized_whitespace(SourceRange&& range,
-                                  detail::locale_ref loc,
-                                  bool allow_exhaustion = false)
-        {
-            if (!allow_exhaustion) {
-                SCN_TRY(it, read_while_localized_mask(range, loc,
-                                                      std::ctype_base::space));
-                if (auto e =
-                        eof_check(ranges::subrange{it, ranges::end(range)});
-                    SCN_UNLIKELY(!e)) {
-                    return unexpected(e);
-                }
-                return it;
-            }
-
-            return read_while_localized_mask(SCN_FWD(range), loc,
-                                             std::ctype_base::space);
-        }
-#endif
 
         template <typename SourceCharT, typename DestCharT>
         scan_error transcode_impl(std::basic_string_view<SourceCharT> src,

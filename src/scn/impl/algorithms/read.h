@@ -78,7 +78,7 @@ namespace scn {
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
+        eof_expected<simple_borrowed_iterator_t<Range>>
         read_exactly_n_code_points(Range&& range,
                                    ranges::range_difference_t<Range> count)
         {
@@ -144,29 +144,25 @@ namespace scn {
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_until1_code_unit(
+        parse_expected<simple_borrowed_iterator_t<Range>> read_until1_code_unit(
             Range&& range,
             function_ref<bool(detail::char_t<Range>)> pred)
         {
             auto it = read_until_code_unit(range, pred);
             if (it == ranges::begin(range)) {
-                return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "read_until1_code_unit: No matching code units");
+                return unexpected(parse_error::error);
             }
             return it;
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_while1_code_unit(
+        parse_expected<simple_borrowed_iterator_t<Range>> read_while1_code_unit(
             Range&& range,
             function_ref<bool(detail::char_t<Range>)> pred)
         {
             auto it = read_while_code_unit(range, pred);
             if (it == ranges::begin(range)) {
-                return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "read_while1_code_unit: No matching code units");
+                return unexpected(parse_error::error);
             }
             return it;
         }
@@ -180,13 +176,12 @@ namespace scn {
         }
 
         template <typename Range>
-        std::optional<simple_borrowed_iterator_t<Range>>
-        read_until_code_point_eager(Range&& range,
-                                    function_ref<bool(char32_t)> pred)
+        simple_borrowed_iterator_t<Range> read_until_code_point_eager(
+            Range&& range,
+            function_ref<bool(char32_t)> pred)
         {
-            if (!is_segment_contiguous(range)) {
-                return std::nullopt;
-            }
+            static_assert(ranges::contiguous_range<Range> &&
+                          ranges::sized_range<Range>);
 
             std::array<char32_t, 16> cp_buf{};
             std::array<uint8_t, 16> idx_buf{};
@@ -243,21 +238,16 @@ namespace scn {
         {
             if constexpr (ranges::contiguous_range<Range> &&
                           ranges::sized_range<Range>) {
-                auto res = read_until_code_point_eager(SCN_FWD(range), pred);
-                SCN_ENSURE(res);
-                return *res;
+                return read_until_code_point_eager(SCN_FWD(range), pred);
             }
             else {
                 auto it = ranges::begin(range);
                 auto seg = get_contiguous_beginning(range);
 
                 if (auto seg_it = read_until_code_point_eager(seg, pred);
-                    seg_it && *seg_it != seg.end()) {
+                    seg_it != seg.end()) {
                     return ranges_polyfill::batch_next(
-                        it, ranges::distance(seg.begin(), *seg_it));
-                }
-                else if (seg_it) {
-                    ranges_polyfill::batch_advance(it, seg.size());
+                        it, ranges::distance(seg.begin(), seg_it));
                 }
 
                 while (it != ranges::end(range)) {
@@ -345,67 +335,62 @@ namespace scn {
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
+        parse_expected<simple_borrowed_iterator_t<Range>>
         read_matching_code_unit(Range&& range, detail::char_t<Range> ch)
         {
             auto it = read_code_unit(range);
             if (SCN_UNLIKELY(!it)) {
-                return unexpected(it.error());
+                return unexpected(make_eof_parse_error(it.error()));
             }
 
             if (SCN_UNLIKELY(*ranges::begin(range) !=
                              static_cast<detail::char_t<Range>>(ch))) {
-                return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "read_matching_code_unit: No match");
+                return unexpected(parse_error::error);
             }
 
-            return it;
+            return *it;
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
+        parse_expected<simple_borrowed_iterator_t<Range>>
         read_matching_code_point(Range&& range, char32_t cp)
         {
             auto [it, value] = read_code_point_into(range);
             auto decoded_cp = decode_code_point_exhaustive(value.view());
             if (SCN_UNLIKELY(cp != decoded_cp)) {
-                return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "read_matching_code_point: No match");
+                return unexpected(parse_error::error);
             }
             return it;
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_matching_string(
+        parse_expected<simple_borrowed_iterator_t<Range>> read_matching_string(
             Range&& range,
             std::basic_string_view<detail::char_t<Range>> str)
         {
-            SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str)));
+            SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str))
+                            .transform_error(make_eof_parse_error));
 
             auto sv = make_contiguous_buffer(
                 ranges::subrange{ranges::begin(range), it});
             if (SCN_UNLIKELY(sv.view() != str)) {
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "read_matching_string: No match");
+                return unexpected(parse_error::error);
             }
             return it;
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
+        parse_expected<simple_borrowed_iterator_t<Range>>
         read_matching_string_classic(Range&& range, std::string_view str)
         {
-            SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str)));
+            SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str))
+                            .transform_error(make_eof_parse_error));
 
             if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
                 auto sv = make_contiguous_buffer(
                     ranges::subrange{ranges::begin(range), it});
                 if (SCN_UNLIKELY(sv.view() != str)) {
-                    return unexpected_scan_error(
-                        scan_error::invalid_scanned_value,
-                        "read_matching_string: No match");
+                    return unexpected(parse_error::error);
                 }
                 return it;
             }
@@ -415,9 +400,7 @@ namespace scn {
                     if (SCN_UNLIKELY(
                             *range_it !=
                             static_cast<detail::char_t<Range>>(str[i]))) {
-                        return unexpected_scan_error(
-                            scan_error::invalid_scanned_value,
-                            "read_matching_string: No match");
+                        return unexpected(parse_error::error);
                     }
                 }
                 return it;
@@ -425,7 +408,7 @@ namespace scn {
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
+        parse_expected<simple_borrowed_iterator_t<Range>>
         read_matching_string_classic_nocase(Range&& range, std::string_view str)
         {
             using char_type = detail::char_t<Range>;
@@ -441,7 +424,8 @@ namespace scn {
                     ch + static_cast<char_type>('a' - 'A'));
             };
 
-            SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str)));
+            SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str))
+                            .transform_error(make_eof_parse_error));
 
 #if 0
             auto buf = make_contiguous_buffer(
@@ -468,22 +452,20 @@ namespace scn {
                         return ascii_tolower(a) ==
                                static_cast<detail::char_t<Range>>(b);
                     }))) {
-                return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "read_matching_string_nocase: No match");
+                return unexpected(parse_error::error);
             }
 
             return it;
         }
 
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>> read_one_of_code_unit(
+        parse_expected<simple_borrowed_iterator_t<Range>> read_one_of_code_unit(
             Range&& range,
             std::string_view str)
         {
             auto it = read_code_unit(range);
             if (SCN_UNLIKELY(!it)) {
-                return unexpected(it.error());
+                return unexpected(make_eof_parse_error(it.error()));
             }
 
             for (auto ch : str) {
@@ -493,14 +475,17 @@ namespace scn {
                 }
             }
 
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "read_one_of_code_unit: No match");
+            return unexpected(parse_error::error);
         }
 
-        template <typename Range, typename Iterator>
-        simple_borrowed_iterator_t<Range> apply_opt(
-            scan_expected<Iterator>&& result,
-            Range&& range)
+        template <typename Range,
+                  template <class>
+                  class Expected,
+
+                  typename Iterator>
+        auto apply_opt(Expected<Iterator>&& result, Range&& range)
+            -> std::enable_if_t<detail::is_expected<Expected<Iterator>>::value,
+                                simple_borrowed_iterator_t<Range>>
         {
             if (!result) {
                 return ranges::begin(range);

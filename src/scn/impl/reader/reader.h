@@ -34,7 +34,7 @@ namespace scn {
 
     namespace impl {
         template <typename Range>
-        scan_expected<simple_borrowed_iterator_t<Range>>
+        eof_expected<simple_borrowed_iterator_t<Range>>
         skip_ws_before_if_required(bool is_required,
                                    Range&& range,
                                    detail::locale_ref loc)
@@ -112,7 +112,8 @@ namespace scn {
                     if (is_segment_contiguous(range)) {
                         auto crange = get_as_contiguous(range);
                         SCN_TRY(it, skip_ws_before_if_required(
-                                        rd.skip_ws_before_read(), crange, loc));
+                                        rd.skip_ws_before_read(), crange, loc)
+                                        .transform_error(make_eof_scan_error));
                         SCN_TRY_ASSIGN(
                             it,
                             rd.read_default(ranges::subrange{it, crange.end()},
@@ -122,7 +123,8 @@ namespace scn {
                             ranges::distance(crange.begin(), it));
                     }
                     SCN_TRY(it, skip_ws_before_if_required(
-                                    rd.skip_ws_before_read(), range, loc));
+                                    rd.skip_ws_before_read(), range, loc)
+                                    .transform_error(make_eof_scan_error));
                     return rd.read_default(
                         ranges::subrange{it, ranges::end(range)}, value, loc);
                 }
@@ -175,7 +177,8 @@ namespace scn {
                     if (is_segment_contiguous(range) && specs.width == 0) {
                         auto crange = get_as_contiguous(range);
                         SCN_TRY(it, skip_ws_before_if_required(
-                                        rd.skip_ws_before_read(), crange, loc));
+                                        rd.skip_ws_before_read(), crange, loc)
+                                        .transform_error(make_eof_scan_error));
                         SCN_TRY_ASSIGN(
                             it,
                             rd.read_specs(ranges::subrange{it, crange.end()},
@@ -186,7 +189,8 @@ namespace scn {
                     }
 
                     SCN_TRY(it, skip_ws_before_if_required(
-                                    rd.skip_ws_before_read(), range, loc));
+                                    rd.skip_ws_before_read(), range, loc)
+                                    .transform_error(make_eof_scan_error));
 
                     auto subr = ranges::subrange{it, ranges::end(range)};
                     if (specs.width != 0) {

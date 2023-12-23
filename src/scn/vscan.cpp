@@ -379,7 +379,8 @@ namespace scn {
         auto scan_int_impl(std::string_view source, T& value, int base)
             -> scan_expected<std::string_view::iterator>
         {
-            SCN_TRY(beg, impl::skip_classic_whitespace(source));
+            SCN_TRY(beg, impl::skip_classic_whitespace(source).transform_error(
+                             impl::make_eof_scan_error));
 
             auto reader = impl::integer_reader<char>{0, base};
             SCN_TRY(_, reader.read_source(ranges::subrange(beg, source.end()),

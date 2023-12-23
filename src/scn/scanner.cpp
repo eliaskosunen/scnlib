@@ -42,7 +42,8 @@ namespace scn {
         scan_expected<ranges::iterator_t<Range>>
         internal_skip_classic_whitespace(Range r, bool allow_exhaustion)
         {
-            return impl::skip_classic_whitespace(r, allow_exhaustion);
+            return impl::skip_classic_whitespace(r, allow_exhaustion)
+                .transform_error(impl::make_eof_scan_error);
         }
 
 #define SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(T, Context)                         \

@@ -153,7 +153,7 @@ namespace scn {
                 SCN_TRY(it, read_sign(range, is_signed));
 
                 auto base_prefix_begin = it;
-                SCN_TRY_ASSIGN(it, read_base_prefix(make_subrange(it)));
+                it = read_base_prefix(make_subrange(it));
 
                 auto digits_begin = it;
                 if (m_zero_parsed) {
@@ -199,7 +199,8 @@ namespace scn {
                 Range&& range,
                 bool is_signed)
             {
-                SCN_TRY(it, numeric_base::read_sign(SCN_FWD(range), m_sign));
+                SCN_TRY(it, numeric_base::read_sign(SCN_FWD(range), m_sign)
+                                .transform_error(make_eof_scan_error));
 
                 if (m_sign == numeric_base::sign::minus_sign) {
                     if (is_signed) {
@@ -221,7 +222,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>>
+            parse_expected<simple_borrowed_iterator_t<Range>>
             read_bin_base_prefix(Range&& range)
             {
                 return read_matching_string_classic_nocase(SCN_FWD(range),
@@ -229,7 +230,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>>
+            parse_expected<simple_borrowed_iterator_t<Range>>
             read_hex_base_prefix(Range&& range)
             {
                 return read_matching_string_classic_nocase(SCN_FWD(range),
@@ -237,7 +238,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>>
+            parse_expected<simple_borrowed_iterator_t<Range>>
             read_oct_base_prefix(Range&& range)
             {
                 if (auto r = read_matching_string_classic_nocase(range, "0o")) {
@@ -249,13 +250,12 @@ namespace scn {
                     return *r;
                 }
 
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "read_oct_base_prefix: No match");
+                return unexpected(parse_error::error);
             }
 
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>>
-            read_base_prefix_for_detection(Range&& range)
+            simple_borrowed_iterator_t<Range> read_base_prefix_for_detection(
+                Range&& range)
             {
                 if (auto r = read_hex_base_prefix(range)) {
                     m_base = 16;
@@ -277,8 +277,7 @@ namespace scn {
             }
 
             template <typename Range>
-            scan_expected<simple_borrowed_iterator_t<Range>> read_base_prefix(
-                Range&& range)
+            simple_borrowed_iterator_t<Range> read_base_prefix(Range&& range)
             {
                 switch (m_base) {
                     case 2:
@@ -328,15 +327,20 @@ namespace scn {
                     if (SCN_UNLIKELY(!digit_matched)) {
                         return unexpected_scan_error(
                             scan_error::invalid_scanned_value,
-                            "No matching characters");
+                            "Failed to parse integer: No digits found");
                     }
                     return it;
                 }
 
                 return read_while1_code_unit(
-                    range, [&](char_type ch) SCN_NOEXCEPT {
-                        return numeric_reader_base::char_to_int(ch) < m_base;
-                    });
+                           range,
+                           [&](char_type ch) SCN_NOEXCEPT {
+                               return numeric_reader_base::char_to_int(ch) <
+                                      m_base;
+                           })
+                    .transform_error(map_parse_error_to_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Failed to parse integer: No digits found"));
             }
 
             template <typename Range>
