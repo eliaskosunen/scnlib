@@ -175,7 +175,8 @@ namespace scn {
                     }
 
                     auto input = get_as_contiguous(range);
-                    SCN_TRY(it, read_regex_string_impl(pattern, flags, input));
+                    SCN_TRY(it, read_regex_string_impl<SourceCharT>(
+                                    pattern, flags, input));
                     return ranges_polyfill::batch_next(
                         ranges::begin(range),
                         ranges::distance(input.begin(), it));

@@ -109,6 +109,18 @@ namespace scn {
             {
                 if constexpr (!detail::is_type_disabled<T>) {
                     auto rd = make_reader<T, char_type>();
+                    if (is_segment_contiguous(range)) {
+                        auto crange = get_as_contiguous(range);
+                        SCN_TRY(it, skip_ws_before_if_required(
+                                        rd.skip_ws_before_read(), crange, loc));
+                        SCN_TRY_ASSIGN(
+                            it,
+                            rd.read_default(ranges::subrange{it, crange.end()},
+                                            value, loc))
+                        return ranges_polyfill::batch_next(
+                            ranges::begin(range),
+                            ranges::distance(crange.begin(), it));
+                    }
                     SCN_TRY(it, skip_ws_before_if_required(
                                     rd.skip_ws_before_read(), range, loc));
                     return rd.read_default(
@@ -156,17 +168,27 @@ namespace scn {
             {
                 if constexpr (!detail::is_type_disabled<T>) {
                     auto rd = make_reader<T, char_type>();
-                    if (auto e = rd.check_specs(specs); !e) {
+                    if (auto e = rd.check_specs(specs); SCN_UNLIKELY(!e)) {
                         return unexpected(e);
                     }
 
-                    auto it = skip_ws_before_if_required(
-                        rd.skip_ws_before_read(), range, loc);
-                    if (SCN_UNLIKELY(!it)) {
-                        return unexpected(it.error());
+                    if (is_segment_contiguous(range) && specs.width == 0) {
+                        auto crange = get_as_contiguous(range);
+                        SCN_TRY(it, skip_ws_before_if_required(
+                                        rd.skip_ws_before_read(), crange, loc));
+                        SCN_TRY_ASSIGN(
+                            it,
+                            rd.read_specs(ranges::subrange{it, crange.end()},
+                                          specs, value, loc))
+                        return ranges_polyfill::batch_next(
+                            ranges::begin(range),
+                            ranges::distance(crange.begin(), it));
                     }
 
-                    auto subr = ranges::subrange{*it, ranges::end(range)};
+                    SCN_TRY(it, skip_ws_before_if_required(
+                                    rd.skip_ws_before_read(), range, loc));
+
+                    auto subr = ranges::subrange{it, ranges::end(range)};
                     if (specs.width != 0) {
                         SCN_TRY(w_it,
                                 rd.read_specs(take_width(subr, specs.width),

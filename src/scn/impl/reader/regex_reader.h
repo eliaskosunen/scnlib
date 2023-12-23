@@ -123,12 +123,20 @@ namespace scn {
         }
 #endif
 
-        template <typename CharT>
-        auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
+        template <typename CharT, typename Pattern, typename Input>
+        auto read_regex_string_impl(Pattern pattern,
                                     detail::regex_flags flags,
-                                    std::basic_string_view<CharT> input)
-            -> scan_expected<typename std::basic_string_view<CharT>::iterator>
+                                    Input input)
+            -> scan_expected<ranges::iterator_t<Input>>
         {
+            static_assert(
+                ranges::contiguous_range<Pattern> &&
+                ranges::borrowed_range<Pattern> &&
+                std::is_same_v<ranges::range_value_t<Pattern>, CharT>);
+            static_assert(ranges::contiguous_range<Input> &&
+                          ranges::borrowed_range<Input> &&
+                          std::is_same_v<ranges::range_value_t<Input>, CharT>);
+
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
             std::basic_regex<CharT> re{};
             try {
@@ -238,13 +246,21 @@ namespace scn {
 #endif
         }
 
-        template <typename CharT>
-        auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
+        template <typename CharT, typename Pattern, typename Input>
+        auto read_regex_matches_impl(Pattern pattern,
                                      detail::regex_flags flags,
-                                     std::basic_string_view<CharT> input,
+                                     Input input,
                                      basic_regex_matches<CharT>& value)
-            -> scan_expected<typename std::basic_string_view<CharT>::iterator>
+            -> scan_expected<ranges::iterator_t<Input>>
         {
+            static_assert(
+                ranges::contiguous_range<Pattern> &&
+                ranges::borrowed_range<Pattern> &&
+                std::is_same_v<ranges::range_value_t<Pattern>, CharT>);
+            static_assert(ranges::contiguous_range<Input> &&
+                          ranges::borrowed_range<Input> &&
+                          std::is_same_v<ranges::range_value_t<Input>, CharT>);
+
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
             std::basic_regex<CharT> re{};
             try {
