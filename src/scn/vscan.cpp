@@ -383,8 +383,9 @@ namespace scn {
                              impl::make_eof_scan_error));
 
             auto reader = impl::integer_reader<char>{0, base};
-            SCN_TRY(_, reader.read_source(ranges::subrange(beg, source.end()),
-                                          std::is_signed_v<T>));
+            SCN_TRY(_, reader.read_source_contiguous_nothsep(
+                           ranges::subrange(beg, source.end()),
+                           std::is_signed_v<T>));
             SCN_UNUSED(_);
             SCN_TRY(n, reader.parse_value(value));
             return ranges::next(beg, n);

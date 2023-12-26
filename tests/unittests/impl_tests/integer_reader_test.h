@@ -684,21 +684,21 @@ TYPED_TEST_P(IntValueReaderTest, Nonsense)
 TYPED_TEST_P(IntValueReaderTest, NonsenseStartingWithZero)
 {
     auto [result, val] = this->simple_test("0helloworld");
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_EQ(val, 0);
     EXPECT_EQ(**result, 'h');
 }
 TYPED_TEST_P(IntValueReaderTest, NonsenseStartingWithHexPrefix)
 {
     auto [result, val] = this->simple_test("0xhelloworld");
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_EQ(val, 0);
     EXPECT_EQ(**result, 'x');
 }
 TYPED_TEST_P(IntValueReaderTest, HexFollowedByNonsense)
 {
     auto [result, val] = this->simple_test("0xehelloworld");
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     EXPECT_EQ(val, 0xe);
     EXPECT_EQ(**result, 'h');
 }

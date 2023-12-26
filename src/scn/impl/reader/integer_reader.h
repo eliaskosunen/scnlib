@@ -43,7 +43,6 @@ namespace scn {
                 return 0;
             }
 
-        protected:
             unsigned m_options{0};
             int m_base{0};
         };
@@ -81,6 +80,54 @@ namespace scn {
                 }
 
                 return read_source_impl(range, is_signed);
+            }
+
+            template <typename Range>
+            SCN_NODISCARD scan_expected<ranges::iterator_t<Range>>
+            read_source_contiguous_nothsep(Range range,
+                                           bool is_signed,
+                                           detail::locale_ref = {})
+            {
+                static_assert(ranges::contiguous_range<Range> &&
+                              ranges::sized_range<Range>);
+
+                SCN_TRY(it, read_sign(range, is_signed));
+
+                auto base_prefix_begin = it;
+                it = read_base_prefix(
+                    ranges::subrange{base_prefix_begin, range.end()});
+
+                auto digits_begin = it;
+                if (m_zero_parsed) {
+                    if (digits_begin == range.end() ||
+                        numeric_reader_base::char_to_int(*digits_begin) >= 8) {
+                        --digits_begin;
+                    }
+                    else {
+                        m_zero_parsed = false;
+                    }
+                }
+                else {
+                    if (digits_begin == range.end() ||
+                        numeric_reader_base::char_to_int(*digits_begin) >=
+                            m_base) {
+                        digits_begin = base_prefix_begin;
+                    }
+                }
+
+                m_nondigit_prefix_len =
+                    ranges::distance(ranges::begin(range), digits_begin);
+                this->m_buffer.assign(
+                    ranges::subrange{digits_begin, range.end()});
+
+                SCN_EXPECT(!this->m_buffer.stores_allocated_string());
+                if (SCN_UNLIKELY(this->m_buffer.view().empty())) {
+                    return unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Failed to parse integer: No digits found");
+                }
+
+                return range.end();
             }
 
 #if !SCN_DISABLE_LOCALE
@@ -177,7 +224,7 @@ namespace scn {
                     ranges::distance(ranges::begin(range), digits_begin);
                 numeric_base::m_buffer.assign(
                     ranges::subrange{digits_begin, it});
-                if (!m_thsep_indices.empty()) {
+                if (SCN_UNLIKELY(!m_thsep_indices.empty())) {
                     numeric_base::m_buffer.make_into_allocated_string();
                     for (size_t i = 0; i < m_thsep_indices.size(); ++i) {
                         const auto idx =
@@ -470,7 +517,13 @@ namespace scn {
                 return read_impl<range_nocvref_t>(
                     range, rd,
                     [](integer_reader<CharT>& r, auto&&... args) {
-                        return r.read_source(SCN_FWD(args)...);
+                        if constexpr (ranges::contiguous_range<Range>) {
+                            return r.read_source_contiguous_nothsep(
+                                SCN_FWD(args)...);
+                        }
+                        else {
+                            return r.read_source(SCN_FWD(args)...);
+                        }
                     },
                     value, loc);
             }
@@ -498,8 +551,19 @@ namespace scn {
 
                 return read_impl<range_nocvref_t>(
                     range, rd,
-                    [](integer_reader<CharT>& r, auto&&... args) {
-                        return r.read_source(SCN_FWD(args)...);
+                    [&](integer_reader<CharT>& r, auto&&... args) {
+                        if constexpr (ranges::contiguous_range<Range>) {
+                            if (specs.thsep) {
+                                return r.read_source(SCN_FWD(args)...);
+                            }
+                            else {
+                                return r.read_source_contiguous_nothsep(
+                                    SCN_FWD(args)...);
+                            }
+                        }
+                        else {
+                            return r.read_source(SCN_FWD(args)...);
+                        }
                     },
                     value, loc);
             }

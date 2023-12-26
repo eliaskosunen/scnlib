@@ -169,7 +169,7 @@ namespace scn {
 
         template <typename CharT>
         class numeric_reader : public numeric_reader_base {
-        protected:
+        public:
             contiguous_range_factory<CharT> m_buffer{};
         };
     }  // namespace impl

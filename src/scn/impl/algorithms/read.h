@@ -414,9 +414,6 @@ namespace scn {
             using char_type = detail::char_t<Range>;
 
             auto ascii_tolower = [](char_type ch) -> char_type {
-                if (!is_ascii_char(ch)) {
-                    return ch;
-                }
                 if (ch < 'A' || ch > 'Z') {
                     return ch;
                 }
