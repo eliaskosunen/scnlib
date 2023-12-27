@@ -142,6 +142,22 @@ namespace scn {
 
             forward_iterator() = default;
 
+            forward_iterator(basic_scan_buffer<CharT>* parent,
+                             std::ptrdiff_t pos)
+                    : m_begin(parent), m_end(nullptr), m_position(pos)
+            {
+                SCN_EXPECT(parent);
+                SCN_EXPECT(!parent->is_contiguous());
+            }
+
+            forward_iterator(std::basic_string_view<CharT> view,
+                             std::ptrdiff_t pos)
+                    : m_begin(const_cast<CharT*>(view.data())),
+                      m_end(const_cast<CharT*>(view.data() + view.size())),
+                      m_position(pos)
+            {
+            }
+
             std::ptrdiff_t position() const
             {
                 return m_position;
@@ -213,6 +229,13 @@ namespace scn {
                 return *this;
             }
 
+            forward_iterator& batch_advance_to(std::ptrdiff_t i)
+            {
+                SCN_EXPECT(i >= m_position);
+                m_position = i;
+                return *this;
+            }
+
             friend bool operator==(const forward_iterator& lhs,
                                    const forward_iterator& rhs)
             {
@@ -249,22 +272,6 @@ namespace scn {
 
         private:
             friend class basic_scan_buffer<CharT>;
-
-            forward_iterator(basic_scan_buffer<CharT>* parent,
-                             std::ptrdiff_t pos)
-                : m_begin(parent), m_end(nullptr), m_position(pos)
-            {
-                SCN_EXPECT(parent);
-                SCN_EXPECT(!parent->is_contiguous());
-            }
-
-            forward_iterator(std::basic_string_view<CharT> view,
-                             std::ptrdiff_t pos)
-                : m_begin(const_cast<CharT*>(view.data())),
-                  m_end(const_cast<CharT*>(view.data() + view.size())),
-                  m_position(pos)
-            {
-            }
 
             SCN_NODISCARD bool read_at_position() const
             {

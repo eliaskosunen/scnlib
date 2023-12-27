@@ -51,24 +51,21 @@ namespace scn {
                     }
                 }
 
-                auto cp_view = make_contiguous_buffer(
-                    ranges::subrange{ranges::begin(range), it});
-                return {it, cp_view};
+                return {it, make_contiguous_buffer(
+                                ranges::subrange{ranges::begin(range), it})};
             }
 
             if (len == 1) {
                 ++it;
-                auto cp_view = make_contiguous_buffer(
-                    ranges::subrange{ranges::begin(range), it});
-                return {it, cp_view};
+                return {it, make_contiguous_buffer(
+                                ranges::subrange{ranges::begin(range), it})};
             }
 
             ranges::advance(it,
                             static_cast<ranges::range_difference_t<Range>>(len),
                             ranges::end(range));
-            auto cp_view = make_contiguous_buffer(
-                ranges::subrange{ranges::begin(range), it});
-            return {it, cp_view};
+            return {it, make_contiguous_buffer(
+                            ranges::subrange{ranges::begin(range), it})};
         }
 
         template <typename Range>

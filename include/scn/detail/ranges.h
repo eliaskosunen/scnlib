@@ -517,7 +517,7 @@ namespace scn {
         inline constexpr batch_next_impl::fn batch_next{};
 
         template <typename It>
-        void batch_advance(It it, std::ptrdiff_t n)
+        void batch_advance(It& it, std::ptrdiff_t n)
         {
             it = batch_next(it, n);
         }

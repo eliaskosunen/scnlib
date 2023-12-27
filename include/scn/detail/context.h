@@ -33,6 +33,34 @@ namespace scn {
             Iterator,
             std::void_t<decltype(SCN_DECLVAL(const Iterator&) == nullptr)>>
             : std::true_type {};
+
+        template <typename CharT, typename Args>
+        struct scan_context_base {
+        public:
+            constexpr auto arg(size_t id) const SCN_NOEXCEPT
+            {
+                return m_args.get(id);
+            }
+
+            constexpr const Args& args() const
+            {
+                return m_args;
+            }
+
+            SCN_NODISCARD constexpr detail::locale_ref locale() const
+            {
+                return m_locale;
+            }
+
+        protected:
+            scan_context_base(Args args, detail::locale_ref loc)
+                : m_args(SCN_MOVE(args)), m_locale(loc)
+            {
+            }
+
+            Args m_args;
+            detail::locale_ref m_locale;
+        };
     }  // namespace detail
 
     /**
@@ -47,7 +75,13 @@ namespace scn {
      * \ingroup ctx
      */
     template <typename CharT>
-    class basic_scan_context {
+    class basic_scan_context : public detail::scan_context_base<
+                                   CharT,
+                                   basic_scan_args<basic_scan_context<CharT>>> {
+        using base = detail::scan_context_base<
+            CharT,
+            basic_scan_args<basic_scan_context<CharT>>>;
+
     public:
         /// Character type of the input
         using char_type = CharT;
@@ -57,6 +91,7 @@ namespace scn {
         using sentinel = ranges::sentinel_t<range_type>;
         using parse_context_type = basic_scan_parse_context<char_type>;
 
+        using args_type = basic_scan_args<basic_scan_context>;
         using arg_type = basic_scan_arg<basic_scan_context>;
 
         /**
@@ -66,9 +101,9 @@ namespace scn {
         using scanner_type = scanner<T, char_type>;
 
         constexpr basic_scan_context(iterator curr,
-                                     basic_scan_args<basic_scan_context> a,
+                                     args_type a,
                                      detail::locale_ref loc = {})
-            : m_current(curr), m_args(SCN_MOVE(a)), m_locale(loc)
+            : base(SCN_MOVE(a), loc), m_current(curr)
         {
         }
 
@@ -80,22 +115,6 @@ namespace scn {
         ~basic_scan_context() = default;
 
         /// Get argument at index `id`
-        constexpr basic_scan_arg<basic_scan_context> arg(size_t id) const
-            SCN_NOEXCEPT
-        {
-            return m_args.get(id);
-        }
-
-        constexpr const basic_scan_args<basic_scan_context>& args() const
-        {
-            return m_args;
-        }
-
-        SCN_NODISCARD constexpr detail::locale_ref locale() const
-        {
-            return m_locale;
-        }
-
         constexpr iterator begin() const
         {
             return m_current;
@@ -114,18 +133,11 @@ namespace scn {
         /// Advances the beginning of the input range to `it`
         void advance_to(iterator it)
         {
-            if constexpr (detail::is_comparable_with_nullptr<iterator>::value) {
-                if (it == nullptr) {
-                    it = end();
-                }
-            }
             m_current = SCN_MOVE(it);
         }
 
     private:
         iterator m_current;
-        basic_scan_args<basic_scan_context> m_args;
-        detail::locale_ref m_locale;
     };
 
     SCN_END_NAMESPACE

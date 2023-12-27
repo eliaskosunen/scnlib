@@ -96,8 +96,8 @@ namespace scn {
 
             case detail::arg_type::custom_type:
 #if !SCN_DISABLE_TYPE_CUSTOM
-                return vis(typename basic_scan_arg<Ctx>::handle(
-                    arg.m_value.custom_value));
+                return vis(
+                    typename Ctx::arg_type::handle(arg.m_value.custom_value));
 #else
                 return vis(monostate_val);
 #endif

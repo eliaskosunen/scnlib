@@ -102,6 +102,35 @@ namespace scn {
             {
             }
 
+            contiguous_range_factory(const contiguous_range_factory&) = delete;
+            contiguous_range_factory& operator=(
+                const contiguous_range_factory&) = delete;
+
+            contiguous_range_factory(contiguous_range_factory&& other)
+                : m_storage(SCN_MOVE(other.m_storage))
+            {
+                if (m_storage) {
+                    m_view = *m_storage;
+                }
+                else {
+                    m_view = other.m_view;
+                }
+            }
+            contiguous_range_factory& operator=(
+                contiguous_range_factory&& other)
+            {
+                m_storage = SCN_MOVE(other.m_storage);
+                if (m_storage) {
+                    m_view = *m_storage;
+                }
+                else {
+                    m_view = other.m_view;
+                }
+                return *this;
+            }
+
+            ~contiguous_range_factory() = default;
+
             template <typename Range,
                       std::enable_if_t<ranges::forward_range<Range>>* = nullptr>
             void assign(Range&& range)

@@ -23,6 +23,7 @@
 #include <scn/detail/xchar.h>
 #include <scn/impl/reader/integer_reader.h>
 #include <scn/impl/reader/reader.h>
+#include <scn/impl/util/contiguous_context.h>
 
 #if !SCN_DISABLE_IOSTREAM
 #include <iostream>
@@ -53,6 +54,14 @@ namespace scn {
             if (SCN_UNLIKELY(!arg)) {
                 return unexpected_scan_error(scan_error::invalid_format_string,
                                              "Argument #0 not found");
+            }
+
+            if (SCN_LIKELY(source.is_contiguous())) {
+                auto reader = impl::default_arg_reader<
+                    impl::basic_contiguous_scan_context<CharT>>{
+                    source.get_contiguous(), SCN_MOVE(args), loc};
+                SCN_TRY(it, visit_scan_arg(SCN_MOVE(reader), arg));
+                return ranges::distance(source.get_contiguous().begin(), it);
             }
 
             auto reader = impl::default_arg_reader<basic_scan_context<CharT>>{
@@ -211,12 +220,76 @@ namespace scn {
         };
 
         template <typename CharT>
+        struct simple_context_wrapper {
+            using context_type = basic_scan_context<CharT>;
+
+            simple_context_wrapper(
+                detail::basic_scan_buffer<CharT>& source,
+                basic_scan_args<basic_scan_context<CharT>> args,
+                detail::locale_ref loc)
+                : ctx(source.get().begin(), SCN_MOVE(args), loc)
+            {
+            }
+
+            basic_scan_context<CharT>& get()
+            {
+                return ctx;
+            }
+            basic_scan_context<CharT>& get_custom()
+            {
+                return ctx;
+            }
+
+            basic_scan_context<CharT> ctx;
+        };
+
+        template <typename CharT>
+        struct contiguous_context_wrapper {
+            using context_type = impl::basic_contiguous_scan_context<CharT>;
+
+            contiguous_context_wrapper(
+                detail::basic_scan_buffer<CharT>& source,
+                basic_scan_args<basic_scan_context<CharT>> args,
+                detail::locale_ref loc)
+                : buffer(source),
+                  contiguous_ctx(source.get_contiguous(), args, loc)
+            {
+            }
+
+            impl::basic_contiguous_scan_context<CharT>& get()
+            {
+                return contiguous_ctx;
+            }
+            basic_scan_context<CharT>& get_custom()
+            {
+                auto it = buffer.get().begin();
+                it.batch_advance_to(contiguous_ctx.begin_position());
+                custom_ctx.emplace(it, contiguous_ctx.args(),
+                                   contiguous_ctx.locale());
+                return *custom_ctx;
+            }
+
+            detail::basic_scan_buffer<CharT>& buffer;
+            impl::basic_contiguous_scan_context<CharT> contiguous_ctx;
+            std::optional<basic_scan_context<CharT>> custom_ctx{std::nullopt};
+        };
+
+        template <bool Contiguous, typename CharT>
+        using context_wrapper_t =
+            std::conditional_t<Contiguous,
+                               contiguous_context_wrapper<CharT>,
+                               simple_context_wrapper<CharT>>;
+
+        template <bool Contiguous, typename CharT>
         struct format_handler : format_handler_base {
-            using char_type = CharT;
-            using context_type = basic_scan_context<char_type>;
-            using parse_context_type = basic_scan_parse_context<char_type>;
+            using context_wrapper_type = context_wrapper_t<Contiguous, CharT>;
+            using context_type = typename context_wrapper_type::context_type;
+            using char_type = typename context_type::char_type;
             using format_type = std::basic_string_view<char_type>;
-            using args_type = basic_scan_args<context_type>;
+
+            using parse_context_type =
+                typename context_type::parse_context_type;
+            using args_type = basic_scan_args<basic_scan_context<char_type>>;
 
             format_handler(detail::basic_scan_buffer<char_type>& source,
                            format_type format,
@@ -225,15 +298,15 @@ namespace scn {
                            std::size_t argcount)
                 : format_handler_base{argcount},
                   parse_ctx{format},
-                  ctx{source.get().begin(), SCN_MOVE(args), SCN_MOVE(loc)}
+                  ctx{source, SCN_MOVE(args), SCN_MOVE(loc)}
             {
             }
 
-            void on_literal_text(const CharT* begin, const CharT* end)
+            void on_literal_text(const char_type* begin, const char_type* end)
             {
                 for (; begin != end; ++begin) {
-                    auto it = ctx.begin();
-                    if (impl::is_range_eof(it, ctx.end())) {
+                    auto it = get_ctx().begin();
+                    if (impl::is_range_eof(it, get_ctx().end())) {
                         SCN_UNLIKELY_ATTR
                         return on_error("Unexpected end of source");
                     }
@@ -246,8 +319,8 @@ namespace scn {
                         return on_error("Invalid encoding in format string");
                     }
                     else if (is_space) {
-                        ctx.advance_to(
-                            impl::read_while_classic_space(ctx.range()));
+                        get_ctx().advance_to(
+                            impl::read_while_classic_space(get_ctx().range()));
                         begin = detail::to_address(std::prev(after_space_it));
                         continue;
                     }
@@ -257,7 +330,7 @@ namespace scn {
                         return on_error(
                             "Unexpected literal character in source");
                     }
-                    ctx.advance_to(ranges::next(it));
+                    get_ctx().advance_to(ranges::next(it));
                 }
             }
 
@@ -285,43 +358,46 @@ namespace scn {
                     on_error(r.error());
                 }
                 else {
-                    ctx.advance_to(*r);
+                    get_ctx().advance_to(*r);
                 }
             }
 
-            void on_replacement_field(std::size_t arg_id, const CharT*)
+            void on_replacement_field(std::size_t arg_id, const char_type*)
             {
-                auto arg = get_arg(ctx, arg_id, *this);
+                auto arg = get_arg(get_ctx(), arg_id, *this);
                 set_arg_as_visited(arg_id);
 
                 on_visit_scan_arg(
-                    impl::default_arg_reader<context_type>{
-                        ctx.range(), ctx.args(), ctx.locale()},
+                    impl::default_arg_reader<context_type>{get_ctx().range(),
+                                                           get_ctx().args(),
+                                                           get_ctx().locale()},
                     arg);
             }
 
-            const CharT* on_format_specs(std::size_t arg_id,
-                                         const CharT* begin,
-                                         const CharT* end)
+            const char_type* on_format_specs(std::size_t arg_id,
+                                             const char_type* begin,
+                                             const char_type* end)
             {
-                auto arg = get_arg(ctx, arg_id, *this);
+                auto arg = get_arg(get_ctx(), arg_id, *this);
                 set_arg_as_visited(arg_id);
 
                 if (arg.type() == detail::arg_type::custom_type) {
                     parse_ctx.advance_to(begin);
                     on_visit_scan_arg(
-                        impl::custom_reader<context_type>{parse_ctx, ctx}, arg);
+                        impl::custom_reader<basic_scan_context<char_type>>{
+                            parse_ctx, get_custom_ctx()},
+                        arg);
                     return parse_ctx.begin();
                 }
 
-                auto specs = detail::basic_format_specs<CharT>{};
-                detail::specs_checker<specs_handler<context_type, CharT>>
-                    handler{specs_handler<context_type, CharT>{specs, parse_ctx,
-                                                               ctx},
+                auto specs = detail::basic_format_specs<char_type>{};
+                detail::specs_checker<specs_handler<context_type, char_type>>
+                    handler{specs_handler<context_type, char_type>{
+                                specs, parse_ctx, get_ctx()},
                             arg.type()};
 
                 begin = detail::parse_format_specs(begin, end, handler);
-                if (begin == end || *begin != CharT{'}'}) {
+                if (begin == end || *begin != char_type{'}'}) {
                     SCN_UNLIKELY_ATTR
                     on_error("Missing '}' in format string");
                     return parse_ctx.begin();
@@ -332,15 +408,38 @@ namespace scn {
                 parse_ctx.advance_to(begin);
 
                 on_visit_scan_arg(
-                    impl::arg_reader<context_type>{ctx.range(), specs,
-                                                   ctx.locale()},
+                    impl::arg_reader<context_type>{get_ctx().range(), specs,
+                                                   get_ctx().locale()},
                     arg);
                 return parse_ctx.begin();
             }
 
+            context_type& get_ctx()
+            {
+                return ctx.get();
+            }
+            auto& get_custom_ctx()
+            {
+                return ctx.get_custom();
+            }
+
             parse_context_type parse_ctx;
-            context_type ctx;
+            context_wrapper_type ctx;
         };
+
+        template <typename CharT, typename Handler>
+        scan_expected<std::ptrdiff_t> vscan_parse_format_string(
+            std::basic_string_view<CharT> format,
+            Handler& handler)
+        {
+            const auto beg = handler.get_ctx().begin();
+            detail::parse_format_string<false>(format, handler);
+            if (SCN_UNLIKELY(!handler)) {
+                return unexpected(handler.error);
+            }
+            return ranges_polyfill::pos_distance(beg,
+                                                 handler.get_ctx().begin());
+        }
 
         template <typename CharT>
         scan_expected<std::ptrdiff_t> vscan_internal(
@@ -356,13 +455,15 @@ namespace scn {
                 return scan_simple_single_argument(buffer, SCN_MOVE(args), arg);
             }
 
-            auto handler = format_handler<CharT>{buffer, format, SCN_MOVE(args),
-                                                 SCN_MOVE(loc), argcount};
-            detail::parse_format_string<false>(format, handler);
-            if (SCN_UNLIKELY(!handler)) {
-                return unexpected(handler.error);
+            if (SCN_LIKELY(buffer.is_contiguous())) {
+                auto handler = format_handler<true, CharT>{
+                    buffer, format, SCN_MOVE(args), SCN_MOVE(loc), argcount};
+                return vscan_parse_format_string(format, handler);
             }
-            return handler.ctx.begin().position();
+
+            auto handler = format_handler<false, CharT>{
+                buffer, format, SCN_MOVE(args), SCN_MOVE(loc), argcount};
+            return vscan_parse_format_string(format, handler);
         }
 
         template <typename CharT>

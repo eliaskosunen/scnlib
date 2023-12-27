@@ -28,6 +28,7 @@
 #include <scn/impl/reader/pointer_reader.h>
 #include <scn/impl/reader/regex_reader.h>
 #include <scn/impl/reader/string_reader.h>
+#include <scn/impl/util/contiguous_context.h>
 
 namespace scn {
     SCN_BEGIN_NAMESPACE
@@ -99,34 +100,43 @@ namespace scn {
         struct default_arg_reader {
             using context_type = Context;
             using char_type = typename context_type::char_type;
-            using args_type = basic_scan_args<context_type>;
+            using args_type = typename context_type::args_type;
 
             using range_type = typename context_type::range_type;
             using iterator = ranges::iterator_t<range_type>;
 
+            template <typename Reader, typename Range, typename T>
+            scan_expected<ranges::iterator_t<Range>> impl(Reader& rd,
+                                                          const Range& rng,
+                                                          T& value)
+            {
+                SCN_TRY(it, skip_ws_before_if_required(rd.skip_ws_before_read(),
+                                                       rng, loc)
+                                .transform_error(make_eof_scan_error));
+                return rd.read_default(ranges::subrange{it, ranges::end(rng)},
+                                       value, loc);
+            }
+
             template <typename T>
             scan_expected<iterator> operator()(T& value)
             {
-                if constexpr (!detail::is_type_disabled<T>) {
+                if constexpr (!detail::is_type_disabled<T> &&
+                              std::is_same_v<
+                                  context_type,
+                                  basic_contiguous_scan_context<char_type>>) {
                     auto rd = make_reader<T, char_type>();
-                    if (is_segment_contiguous(range)) {
-                        auto crange = get_as_contiguous(range);
-                        SCN_TRY(it, skip_ws_before_if_required(
-                                        rd.skip_ws_before_read(), crange, loc)
-                                        .transform_error(make_eof_scan_error));
-                        SCN_TRY_ASSIGN(
-                            it,
-                            rd.read_default(ranges::subrange{it, crange.end()},
-                                            value, loc))
-                        return ranges_polyfill::batch_next(
-                            ranges::begin(range),
-                            ranges::distance(crange.begin(), it));
+                    return impl(rd, range, value);
+                }
+                else if constexpr (!detail::is_type_disabled<T>) {
+                    auto rd = make_reader<T, char_type>();
+                    if (!is_segment_contiguous(range)) {
+                        return impl(rd, range, value);
                     }
-                    SCN_TRY(it, skip_ws_before_if_required(
-                                    rd.skip_ws_before_read(), range, loc)
-                                    .transform_error(make_eof_scan_error));
-                    return rd.read_default(
-                        ranges::subrange{it, ranges::end(range)}, value, loc);
+                    auto crange = get_as_contiguous(range);
+                    SCN_TRY(it, impl(rd, crange, value));
+                    return ranges_polyfill::batch_next(
+                        ranges::begin(range),
+                        ranges::distance(crange.begin(), it));
                 }
                 else {
                     SCN_EXPECT(false);
@@ -134,17 +144,41 @@ namespace scn {
                 }
             }
 
+            basic_scan_context<char_type> make_custom_ctx()
+            {
+                if constexpr (std::is_same_v<
+                                  context_type,
+                                  basic_contiguous_scan_context<char_type>>) {
+                    auto it = typename detail::basic_scan_buffer<
+                        char_type>::forward_iterator{
+                        std::basic_string_view<char_type>(range.data(),
+                                                          range.size()),
+                        0};
+                    return {it, args, loc};
+                }
+                else {
+                    return {range.begin(), args, loc};
+                }
+            }
+
             scan_expected<iterator> operator()(
-                typename basic_scan_arg<context_type>::handle h)
+                typename context_type::arg_type::handle h)
             {
                 if constexpr (!detail::is_type_disabled<void>) {
                     basic_scan_parse_context<char_type> parse_ctx{{}};
-                    context_type ctx{range.begin(), args, loc};
+                    auto ctx = make_custom_ctx();
                     if (auto e = h.scan(parse_ctx, ctx); !e) {
                         return unexpected(e);
                     }
 
-                    return {ctx.begin()};
+                    if constexpr (std::is_same_v<context_type,
+                                                 basic_contiguous_scan_context<
+                                                     char_type>>) {
+                        return range.begin() + ctx.begin().position();
+                    }
+                    else {
+                        return ctx.begin();
+                    }
                 }
                 else {
                     SCN_EXPECT(false);
@@ -165,42 +199,55 @@ namespace scn {
             using range_type = typename context_type::range_type;
             using iterator = ranges::iterator_t<range_type>;
 
+            template <typename Reader, typename Range, typename T>
+            scan_expected<ranges::iterator_t<Range>> impl(Reader& rd,
+                                                          const Range& rng,
+                                                          T& value)
+            {
+                SCN_TRY(it, skip_ws_before_if_required(rd.skip_ws_before_read(),
+                                                       rng, loc)
+                                .transform_error(make_eof_scan_error));
+
+                auto subr = ranges::subrange{it, ranges::end(rng)};
+
+                if (specs.width != 0) {
+                    SCN_TRY(w_it, rd.read_specs(take_width(subr, specs.width),
+                                                specs, value, loc));
+                    return w_it.base();
+                }
+
+                return rd.read_specs(subr, specs, value, loc);
+            }
+
             template <typename T>
             scan_expected<iterator> operator()(T& value)
             {
-                if constexpr (!detail::is_type_disabled<T>) {
+                if constexpr (!detail::is_type_disabled<T> &&
+                              std::is_same_v<
+                                  context_type,
+                                  basic_contiguous_scan_context<char_type>>) {
                     auto rd = make_reader<T, char_type>();
                     if (auto e = rd.check_specs(specs); SCN_UNLIKELY(!e)) {
                         return unexpected(e);
                     }
 
-                    if (is_segment_contiguous(range) && specs.width == 0) {
-                        auto crange = get_as_contiguous(range);
-                        SCN_TRY(it, skip_ws_before_if_required(
-                                        rd.skip_ws_before_read(), crange, loc)
-                                        .transform_error(make_eof_scan_error));
-                        SCN_TRY_ASSIGN(
-                            it,
-                            rd.read_specs(ranges::subrange{it, crange.end()},
-                                          specs, value, loc))
-                        return ranges_polyfill::batch_next(
-                            ranges::begin(range),
-                            ranges::distance(crange.begin(), it));
+                    return impl(rd, range, value);
+                }
+                else if constexpr (!detail::is_type_disabled<T>) {
+                    auto rd = make_reader<T, char_type>();
+                    if (auto e = rd.check_specs(specs); SCN_UNLIKELY(!e)) {
+                        return unexpected(e);
                     }
 
-                    SCN_TRY(it, skip_ws_before_if_required(
-                                    rd.skip_ws_before_read(), range, loc)
-                                    .transform_error(make_eof_scan_error));
-
-                    auto subr = ranges::subrange{it, ranges::end(range)};
-                    if (specs.width != 0) {
-                        SCN_TRY(w_it,
-                                rd.read_specs(take_width(subr, specs.width),
-                                              specs, value, loc));
-                        return w_it.base();
+                    if (!is_segment_contiguous(range) || specs.width != 0) {
+                        return impl(rd, range, value);
                     }
 
-                    return rd.read_specs(subr, specs, value, loc);
+                    auto crange = get_as_contiguous(range);
+                    SCN_TRY(it, impl(rd, crange, value));
+                    return ranges_polyfill::batch_next(
+                        ranges::begin(range),
+                        ranges::distance(crange.begin(), it));
                 }
                 else {
                     SCN_EXPECT(false);
@@ -209,7 +256,7 @@ namespace scn {
             }
 
             scan_expected<iterator> operator()(
-                typename basic_scan_arg<context_type>::handle)
+                typename context_type::arg_type::handle)
             {
                 SCN_EXPECT(false);
                 SCN_UNREACHABLE;
@@ -236,7 +283,7 @@ namespace scn {
             }
 
             scan_expected<iterator> operator()(
-                typename basic_scan_arg<context_type>::handle h) const
+                typename context_type::arg_type::handle h) const
             {
                 if (auto e = h.scan(parse_ctx, ctx); !e) {
                     return unexpected(e);
