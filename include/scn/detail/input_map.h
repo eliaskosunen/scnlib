@@ -66,7 +66,8 @@ namespace scn {
                       priority_tag<3>) SCN_NOEXCEPT
             {
                 if constexpr (is_valid_char_type<CharT>) {
-                    return make_string_scan_buffer(r);
+                    return r;
+                    // return make_string_scan_buffer(r);
                 }
                 else {
                     return invalid_char_type{};
@@ -86,19 +87,23 @@ namespace scn {
                     return custom_char_traits{};
                 }
                 else {
-                    return make_string_scan_buffer(r);
+                    return std::basic_string_view<CharT>{r};
+                    // return make_string_scan_buffer(r);
                 }
             }
 
             // String literals:
             // CharT(&)[] -> string_buffer
-            template <typename CharT, std::size_t N>
-            auto impl(const CharT (&r)[N], priority_tag<3>)
-                SCN_NOEXCEPT->std::enable_if_t<is_valid_char_type<CharT>,
-                                               basic_scan_string_buffer<CharT>>
+            template <typename CharT,
+                      std::size_t N,
+                      std::enable_if_t<is_valid_char_type<CharT>>* = nullptr>
+            auto impl(const CharT (&r)[N], priority_tag<3>) SCN_NOEXCEPT
             {
+                return std::basic_string_view<CharT>{r, N - 1};
+#if 0
                 return make_string_scan_buffer(
                     std::basic_string_view<CharT>{r, N - 1});
+#endif
             }
 
             // FILE* -> file_buffer
@@ -114,9 +119,13 @@ namespace scn {
             auto impl(const Range& r, priority_tag<2>)
             {
                 if constexpr (is_valid_char_type<detail::char_t<Range>>) {
+                    return std::basic_string_view{ranges::data(r),
+                                                  ranges_polyfill::usize(r)};
+#if 0
                     return make_string_scan_buffer(std::basic_string_view{
                         ranges::data(r),
                         static_cast<std::size_t>(ranges::size(r))});
+#endif
                 }
                 else {
                     return invalid_char_type{};
@@ -135,10 +144,15 @@ namespace scn {
             auto impl(const Range& r, priority_tag<1>)
             {
                 if constexpr (is_valid_char_type<detail::char_t<Range>>) {
+                    return make_string_view_from_pointers(
+                        to_address(ranges::begin(r)),
+                        to_address(ranges::end(r)));
+#if 0
                     return make_string_scan_buffer(
                         make_string_view_from_pointers(
                             to_address(ranges::begin(r)),
                             to_address(ranges::end(r))));
+#endif
                 }
                 else {
                     return invalid_char_type{};

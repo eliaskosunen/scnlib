@@ -51,6 +51,7 @@ TEST(InputMapTest, RefBuffer)
     EXPECT_EQ(collect(second.get()), "foobar");
 }
 
+#if 0
 TEST(InputMapTest, StringView)
 {
     auto buf = scn::detail::make_scan_buffer("foobar"sv);
@@ -94,6 +95,7 @@ TEST(InputMapTest, StringViewTake)
                                  scn::detail::basic_scan_string_buffer<char>>);
     EXPECT_EQ(collect(buf.get()), "foo");
 }
+#endif
 
 TEST(InputMapTest, ReversedStringView)
 {

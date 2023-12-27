@@ -74,6 +74,11 @@ namespace scn {
                 return ranges::subrange{begin(), end()};
             }
 
+            constexpr auto underlying_range() const
+            {
+                return m_range;
+            }
+
             void advance_to(iterator it)
             {
                 SCN_EXPECT(it <= end());

@@ -40,15 +40,27 @@ namespace scn {
         scan_expected<borrowed_subrange_with_sentinel_t<Range>>;
 
     namespace detail {
+        scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
+                                                 std::string_view format,
+                                                 scan_args args);
         scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
                                                  std::string_view format,
                                                  scan_args args);
 
+        scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
+                                                 std::wstring_view format,
+                                                 wscan_args args);
         scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
                                                  std::wstring_view format,
                                                  wscan_args args);
 
 #if !SCN_DISABLE_LOCALE
+        template <typename Locale>
+        scan_expected<std::ptrdiff_t> vscan_localized_impl(
+            const Locale& loc,
+            std::string_view source,
+            std::string_view format,
+            scan_args args);
         template <typename Locale>
         scan_expected<std::ptrdiff_t> vscan_localized_impl(
             const Locale& loc,
@@ -59,15 +71,27 @@ namespace scn {
         template <typename Locale>
         scan_expected<std::ptrdiff_t> vscan_localized_impl(
             const Locale& loc,
+            std::wstring_view source,
+            std::wstring_view format,
+            wscan_args args);
+        template <typename Locale>
+        scan_expected<std::ptrdiff_t> vscan_localized_impl(
+            const Locale& loc,
             wscan_buffer& source,
             std::wstring_view format,
             wscan_args args);
 #endif
 
         scan_expected<std::ptrdiff_t> vscan_value_impl(
+            std::string_view source,
+            basic_scan_arg<scan_context> arg);
+        scan_expected<std::ptrdiff_t> vscan_value_impl(
             scan_buffer& source,
             basic_scan_arg<scan_context> arg);
 
+        scan_expected<std::ptrdiff_t> vscan_value_impl(
+            std::wstring_view source,
+            basic_scan_arg<wscan_context> arg);
         scan_expected<std::ptrdiff_t> vscan_value_impl(
             wscan_buffer& source,
             basic_scan_arg<wscan_context> arg);
@@ -84,7 +108,7 @@ namespace scn {
             if (SCN_UNLIKELY(!result)) {
                 return unexpected(result.error());
             }
-            return make_vscan_result_range(SCN_FWD(range), buffer, *result);
+            return make_vscan_result_range(SCN_FWD(range), *result);
         }
 
         template <typename Locale, typename Range, typename CharT>
@@ -106,8 +130,7 @@ namespace scn {
             if (SCN_UNLIKELY(!result)) {
                 return unexpected(result.error());
             }
-            return detail::make_vscan_result_range(SCN_FWD(range), buffer,
-                                                   *result);
+            return detail::make_vscan_result_range(SCN_FWD(range), *result);
 #else
             static_assert(
                 dependent_false<Locale>::value,
@@ -128,8 +151,7 @@ namespace scn {
             if (SCN_UNLIKELY(!result)) {
                 return unexpected(result.error());
             }
-            return detail::make_vscan_result_range(SCN_FWD(range), buffer,
-                                                   *result);
+            return detail::make_vscan_result_range(SCN_FWD(range), *result);
         }
     }  // namespace detail
 

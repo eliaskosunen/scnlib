@@ -276,9 +276,8 @@ namespace scn {
             return source + N - 1;
         }
 
-        template <typename SourceRange, typename CharT>
+        template <typename SourceRange>
         auto make_vscan_result_range(SourceRange&& source,
-                                     const basic_scan_buffer<CharT>& buffer,
                                      std::ptrdiff_t n)
             -> borrowed_subrange_with_sentinel_t<SourceRange>
         {
