@@ -48,6 +48,11 @@ namespace scn {
                 SCN_UNUSED(position);
             }
 
+            void sync_all()
+            {
+                sync(0);
+            }
+
             SCN_NODISCARD std::ptrdiff_t chars_available() const
             {
                 return m_putback_buffer.size() + m_current_view.size();
@@ -144,7 +149,7 @@ namespace scn {
 
             forward_iterator(basic_scan_buffer<CharT>* parent,
                              std::ptrdiff_t pos)
-                    : m_begin(parent), m_end(nullptr), m_position(pos)
+                : m_begin(parent), m_end(nullptr), m_position(pos)
             {
                 SCN_EXPECT(parent);
                 SCN_EXPECT(!parent->is_contiguous());
@@ -152,9 +157,9 @@ namespace scn {
 
             forward_iterator(std::basic_string_view<CharT> view,
                              std::ptrdiff_t pos)
-                    : m_begin(const_cast<CharT*>(view.data())),
-                      m_end(const_cast<CharT*>(view.data() + view.size())),
-                      m_position(pos)
+                : m_begin(const_cast<CharT*>(view.data())),
+                  m_end(const_cast<CharT*>(view.data() + view.size())),
+                  m_position(pos)
             {
             }
 
@@ -409,6 +414,7 @@ namespace scn {
 
         public:
             scan_file_buffer(std::FILE* file);
+            ~scan_file_buffer();
 
             bool fill() override;
             void sync(std::ptrdiff_t position) override;

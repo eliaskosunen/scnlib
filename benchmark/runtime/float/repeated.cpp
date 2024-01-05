@@ -42,7 +42,7 @@ static void scan_float_repeated_scn(benchmark::State& state)
         }
         else {
             s.push(result->value());
-            s.it = scn::detail::to_address(result->begin());
+            s.it = scn::detail::to_address(result->range().begin());
         }
     }
     state.SetBytesProcessed(s.get_bytes_processed(state));
@@ -70,7 +70,7 @@ static void scan_float_repeated_scn_value(benchmark::State& state)
         }
         else {
             s.push(result->value());
-            s.it = scn::detail::to_address(result->begin());
+            s.it = scn::detail::to_address(result->range().begin());
         }
     }
     state.SetBytesProcessed(s.get_bytes_processed(state));

@@ -60,6 +60,9 @@ namespace scn {
                                typename detail::basic_scan_buffer<
                                    detail::char_t<Range>>::forward_iterator>) {
                 auto beg = ranges::begin(r);
+                if (beg.contiguous_segment().empty()) {
+                    return false;
+                }
                 if constexpr (ranges::common_range<Range>) {
                     return beg.contiguous_segment().end() ==
                            ranges::end(r).contiguous_segment().end();

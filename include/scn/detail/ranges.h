@@ -390,13 +390,27 @@ namespace scn {
         template <typename Range>
         using char_t = typename char_t_fn::result<Range>::type;
 
+        template <typename Range, typename = void>
+        inline constexpr bool is_file_or_narrow_range_impl = false;
+        template <>
+        inline constexpr bool is_file_or_narrow_range_impl<std::FILE*, void> =
+            true;
         template <typename Range>
-        inline constexpr bool is_file_or_narrow_range =
-            std::is_same_v<remove_cvref_t<Range>, std::FILE*> ||
+        inline constexpr bool is_file_or_narrow_range_impl<
+            Range,
+            std::enable_if_t<ranges::range<Range>>> =
             std::is_same_v<char_t<Range>, char>;
 
         template <typename Range>
-        inline constexpr bool is_wide_range =
+        inline constexpr bool is_file_or_narrow_range =
+            is_file_or_narrow_range_impl<remove_cvref_t<Range>>;
+
+        template <typename Range, typename = void>
+        inline constexpr bool is_wide_range = false;
+        template <typename Range>
+        inline constexpr bool is_wide_range<
+            Range,
+            std::enable_if_t<ranges::range<remove_cvref_t<Range>>>> =
             std::is_same_v<char_t<Range>, wchar_t>;
     }  // namespace detail
 
@@ -409,7 +423,10 @@ namespace scn {
     };
     template <typename R>
     struct simple_borrowed_iterator<R, false> {
-        using type = ranges::dangling;
+        using type = std::conditional_t<
+            std::is_same_v<detail::remove_cvref_t<R>, std::FILE*>,
+            std::FILE*,
+            ranges::dangling>;
     };
 
     template <typename R>
@@ -422,7 +439,10 @@ namespace scn {
     };
     template <typename R>
     struct simple_borrowed_subrange<R, false> {
-        using type = ranges::dangling;
+        using type = std::conditional_t<
+            std::is_same_v<detail::remove_cvref_t<R>, std::FILE*>,
+            std::FILE*,
+            ranges::dangling>;
     };
 
     template <typename R>
@@ -436,7 +456,10 @@ namespace scn {
     };
     template <typename R>
     struct borrowed_subrange_with_sentinel<R, false> {
-        using type = ranges::dangling;
+        using type = std::conditional_t<
+            std::is_same_v<detail::remove_cvref_t<R>, std::FILE*>,
+            std::FILE*,
+            ranges::dangling>;
     };
 
     template <typename R>

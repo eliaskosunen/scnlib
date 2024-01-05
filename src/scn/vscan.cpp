@@ -25,11 +25,6 @@
 #include <scn/impl/reader/reader.h>
 #include <scn/impl/util/contiguous_context.h>
 
-#if !SCN_DISABLE_IOSTREAM
-#include <iostream>
-#include <mutex>
-#endif
-
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
@@ -546,13 +541,8 @@ namespace scn {
         }
     }  // namespace detail
 
-    namespace {
-        std::mutex stdin_lock;
-    }
-
     scan_error vinput(std::string_view format, scan_args args)
     {
-        std::lock_guard guard{stdin_lock};
         auto buffer = detail::make_file_scan_buffer(stdin);
         SCN_TRY_ERR(n, vscan_internal(buffer, format, args));
         buffer.sync(n);
@@ -565,7 +555,6 @@ namespace scn {
                       std::string_view format,
                       scan_args args)
     {
-        std::lock_guard guard{stdin_lock};
         auto buffer = detail::make_file_scan_buffer(stdin);
         SCN_TRY_ERR(
             n, vscan_internal(buffer, format, args, detail::locale_ref{loc}));
@@ -590,8 +579,13 @@ namespace scn {
                                                  std::string_view format,
                                                  scan_args args)
         {
-            SCN_TRY(n, vscan_internal(source, format, args));
-            source.sync(n);
+            auto n = vscan_internal(source, format, args);
+            if (SCN_LIKELY(n)) {
+                source.sync(*n);
+            }
+            else {
+                source.sync_all();
+            }
             return n;
         }
 
@@ -606,8 +600,13 @@ namespace scn {
                                                  std::wstring_view format,
                                                  wscan_args args)
         {
-            SCN_TRY(n, vscan_internal(source, format, args));
-            source.sync(n);
+            auto n = vscan_internal(source, format, args);
+            if (SCN_LIKELY(n)) {
+                source.sync(*n);
+            }
+            else {
+                source.sync_all();
+            }
             return n;
         }
 
@@ -630,9 +629,14 @@ namespace scn {
             std::string_view format,
             scan_args args)
         {
-            SCN_TRY(n, vscan_internal(source, format, args,
-                                      detail::locale_ref{loc}));
-            source.sync(n);
+            auto n =
+                vscan_internal(source, format, args, detail::locale_ref{loc});
+            if (SCN_LIKELY(n)) {
+                source.sync(*n);
+            }
+            else {
+                source.sync_all();
+            }
             return n;
         }
 
@@ -654,9 +658,14 @@ namespace scn {
             std::wstring_view format,
             wscan_args args)
         {
-            SCN_TRY(n, vscan_internal(source, format, args,
-                                      detail::locale_ref{loc}));
-            source.sync(n);
+            auto n =
+                vscan_internal(source, format, args, detail::locale_ref{loc});
+            if (SCN_LIKELY(n)) {
+                source.sync(*n);
+            }
+            else {
+                source.sync_all();
+            }
             return n;
         }
 

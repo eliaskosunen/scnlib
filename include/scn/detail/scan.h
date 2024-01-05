@@ -288,14 +288,14 @@ namespace scn {
      */
     template <typename... Args>
     SCN_NODISCARD auto input(format_string<Args...> format)
-        -> scan_result_type<file_marker, Args...>
+        -> scan_result_type<std::FILE*, Args...>
     {
         auto args = make_scan_args<scan_context, Args...>();
         auto err = vinput(format, args);
         if (SCN_UNLIKELY(!err)) {
             return unexpected(err);
         }
-        return scan_result{file_marker{}, SCN_MOVE(args.args())};
+        return scan_result{stdin, SCN_MOVE(args.args())};
     }
 
     /**
@@ -305,7 +305,7 @@ namespace scn {
      */
     template <typename... Args>
     SCN_NODISCARD auto prompt(const char* msg, format_string<Args...> format)
-        -> scan_result_type<file_marker, Args...>
+        -> scan_result_type<std::FILE*, Args...>
     {
         std::printf("%s", msg);
         return input<Args...>(format);

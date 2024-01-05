@@ -25,37 +25,283 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
+        namespace {
+            struct file_wrapper_impl_base {
+            private:
+                static auto fgetc_impl(std::FILE* file)
+                {
+#if SCN_POSIX
+                    return ::getc_unlocked(file);
+#elif SCN_WINDOWS
+                    return ::_fgetc_unlock(file);
+#else
+                    return std::fgetc(file);
+#endif
+                }
+
+                static auto ungetc_impl(std::FILE* file, int ch)
+                {
+#if SCN_WINDOWS
+                    return ::ungetc_unlock(ch, file);
+#else
+                    return std::ungetc(ch, file);
+#endif
+                }
+
+            public:
+                static void lock(std::FILE* file)
+                {
+#if SCN_POSIX
+                    ::flockfile(file);
+#elif SCN_WINDOWS
+                    ::_lock_file(file);
+#else
+                    SCN_UNUSED(file);
+#endif
+                }
+                static void unlock(std::FILE* file)
+                {
+#if SCN_POSIX
+                    ::funlockfile(file);
+#elif SCN_WINDOWS
+                    ::_unlock_file(file);
+#else
+                    SCN_UNUSED(file);
+#endif
+                }
+
+                static std::optional<char> read(std::FILE* file)
+                {
+                    auto res = fgetc_impl(file);
+                    if (res == EOF) {
+                        return std::nullopt;
+                    }
+                    return static_cast<char>(res);
+                }
+
+                static void unget(std::FILE* file, char ch)
+                {
+                    auto res =
+                        ungetc_impl(file, static_cast<unsigned char>(ch));
+                    SCN_ENSURE(res != EOF);
+                }
+
+                static std::optional<char> peek(std::FILE* file)
+                {
+                    if (auto res = read(file); res) {
+                        unget(file, *res);
+                        return res;
+                    }
+                    return std::nullopt;
+                }
+            };
+
+            template <typename F, typename = void>
+            struct file_wrapper_impl : file_wrapper_impl_base {
+                constexpr static std::string_view get_current_buffer(F*)
+                {
+                    return {};
+                }
+
+                constexpr static bool has_buffering()
+                {
+                    return false;
+                }
+
+                static bool fill_buffer(F*)
+                {
+                    SCN_EXPECT(false);
+                    SCN_UNREACHABLE;
+                }
+
+                constexpr static void unsafe_advance_to_buffer_end(F*) {}
+
+                static void unsafe_advance_n(F*, std::ptrdiff_t)
+                {
+                    SCN_EXPECT(false);
+                    SCN_UNREACHABLE;
+                }
+            };
+
+            template <typename F>
+            struct file_wrapper_impl<
+                F,
+                std::enable_if_t<sizeof(F::_IO_read_ptr) != 0>>
+                : file_wrapper_impl_base {
+                static std::string_view get_current_buffer(F* file)
+                {
+                    return make_string_view_from_pointers(file->_IO_read_ptr,
+                                                          file->_IO_read_end);
+                }
+
+                constexpr static bool has_buffering()
+                {
+                    return true;
+                }
+
+                static bool fill_buffer(F* file)
+                {
+                    return peek(file).has_value();
+                }
+
+                static void unsafe_advance_to_buffer_end(F* file)
+                {
+                    file->_IO_read_ptr = file->_IO_read_end;
+                }
+
+                static void unsafe_advance_n(F* file, std::ptrdiff_t n)
+                {
+                    file->_IO_read_ptr += n;
+                }
+            };
+
+            template <typename F>
+            struct file_wrapper_impl<F, std::enable_if_t<sizeof(F::_p) != 0>>
+                : file_wrapper_impl_base {
+                static std::string_view get_current_buffer(F* file)
+                {
+                    return {reinterpret_cast<const char*>(file->_p), file->_r};
+                }
+
+                constexpr static bool has_buffering()
+                {
+                    return true;
+                }
+
+                static bool fill_buffer(F* file)
+                {
+                    return peek(file).has_value();
+                }
+
+                static void unsafe_advance_to_buffer_end(F* file)
+                {
+                    file->_p += file->_r;
+                }
+
+                static void unsafe_advance_n(F* file, std::ptrdiff_t n)
+                {
+                    file->_p += n;
+                }
+            };
+
+            using file_wrapper = file_wrapper_impl<std::FILE>;
+
+            bool fill_with_buffering(std::FILE* file,
+                                     std::string_view& current_view)
+            {
+                SCN_EXPECT(file_wrapper::has_buffering());
+
+                if (!current_view.empty()) {
+                    file_wrapper::unsafe_advance_to_buffer_end(file);
+                }
+
+                if (!file_wrapper::fill_buffer(file)) {
+                    current_view = {};
+                    return false;
+                }
+
+                current_view = file_wrapper::get_current_buffer(file);
+                return true;
+            }
+
+            bool fill_without_buffering(std::FILE* file,
+                                        std::string_view& current_view,
+                                        std::optional<char>& latest)
+            {
+                latest = file_wrapper::read(file);
+                if (!latest) {
+                    current_view = {};
+                    return false;
+                }
+                current_view = {&*latest, 1};
+                return true;
+            }
+        }  // namespace
+
         scan_file_buffer::scan_file_buffer(std::FILE* file)
             : base(base::non_contiguous_tag{}), m_file(file)
         {
+            file_wrapper::lock(file);
+        }
+
+        scan_file_buffer::~scan_file_buffer()
+        {
+            file_wrapper::unlock(m_file);
         }
 
         bool scan_file_buffer::fill()
         {
             SCN_EXPECT(m_file);
-            if (auto prev = m_latest) {
-                this->m_putback_buffer.push_back(*prev);
+
+            if (!this->m_current_view.empty()) {
+                this->m_putback_buffer.insert(this->m_putback_buffer.end(),
+                                              this->m_current_view.begin(),
+                                              this->m_current_view.end());
             }
-            auto ch = std::fgetc(m_file);
-            if (SCN_UNLIKELY(ch == EOF)) {
-                return false;
+
+            if (file_wrapper::has_buffering()) {
+                return fill_with_buffering(m_file, this->m_current_view);
             }
-            this->m_current_view =
-                std::basic_string_view<char_type>{&*m_latest, 1};
-            return true;
+
+            return fill_without_buffering(m_file, this->m_current_view,
+                                          this->m_latest);
         }
+
+#if SCN_POSIX
+        namespace {
+            struct file_unlocker {
+                file_unlocker(std::FILE* f) : file(f)
+                {
+                    file_wrapper::unlock(file);
+                }
+                ~file_unlocker()
+                {
+                    file_wrapper::lock(file);
+                }
+
+                std::FILE* file;
+            };
+        }  // namespace
+#endif
 
         void scan_file_buffer::sync(std::ptrdiff_t position)
         {
             SCN_EXPECT(m_file);
-            auto former_segment = this->get_segment_starting_at(position);
-            auto latter_segment = this->get_segment_starting_at(
-                static_cast<std::ptrdiff_t>(position + former_segment.size()));
-            for (auto ch : ranges::views::reverse(latter_segment)) {
-                std::ungetc(static_cast<unsigned char>(ch), m_file);
+
+            if (file_wrapper::has_buffering()) {
+                if (position < this->putback_buffer().size()) {
+#if SCN_POSIX
+                    file_unlocker unlocker{m_file};
+#endif
+                    auto putback_segment =
+                        this->get_segment_starting_at(position);
+                    for (auto ch : ranges::views::reverse(putback_segment)) {
+                        file_wrapper::unget(m_file, ch);
+                    }
+                    return;
+                }
+
+                file_wrapper::unsafe_advance_n(
+                    m_file, position - static_cast<std::ptrdiff_t>(
+                                           this->putback_buffer().size()));
+                return;
             }
-            for (auto ch : ranges::views::reverse(former_segment)) {
-                std::ungetc(static_cast<unsigned char>(ch), m_file);
+
+            const auto chars_avail = this->chars_available();
+            if (position == chars_avail) {
+                return;
+            }
+
+#if SCN_POSIX
+            file_unlocker unlocker{m_file};
+#endif
+            SCN_EXPECT(m_current_view.size() == 1);
+            file_wrapper::unget(m_file, m_current_view.front());
+
+            auto putback_segment =
+                std::string_view{this->putback_buffer()}.substr(position);
+            for (auto ch : ranges::views::reverse(putback_segment)) {
+                file_wrapper::unget(m_file, ch);
             }
         }
     }  // namespace detail

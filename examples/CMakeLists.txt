@@ -16,3 +16,6 @@ target_link_libraries(scn_example_3 scn::scn scn_examples_base)
 
 add_executable(scn_example_4 example_4.cpp)
 target_link_libraries(scn_example_4 scn::scn scn_examples_base)
+
+add_executable(scn_example_5 example_5.cpp)
+target_link_libraries(scn_example_5 scn::scn scn_examples_base)
