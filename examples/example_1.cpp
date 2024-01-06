@@ -17,9 +17,6 @@
 
 #include <scn/scan.h>
 
-#include <fstream>
-#include <streambuf>
-
 int main()
 {
     if (const auto result =

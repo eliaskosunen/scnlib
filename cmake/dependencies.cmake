@@ -37,7 +37,7 @@ if (SCN_TESTS)
             "${googletest_SOURCE_DIR}/googlemock"
     )
     target_link_libraries(scn_gtest PRIVATE Threads::Threads)
-    target_compile_features(scn_gtest PUBLIC cxx_std_14)
+    target_compile_features(scn_gtest PUBLIC cxx_std_17)
     target_compile_options(scn_gtest PRIVATE $<$<CXX_COMPILER_ID:GNU>: -Wno-psabi>)
 endif ()
 

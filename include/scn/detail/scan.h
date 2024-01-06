@@ -308,6 +308,7 @@ namespace scn {
         -> scan_result_type<std::FILE*, Args...>
     {
         std::printf("%s", msg);
+        std::fflush(stdout);
         return input<Args...>(format);
     }
 

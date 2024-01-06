@@ -2,6 +2,7 @@
 
 import fnmatch
 import os
+import pathlib
 import subprocess
 
 
@@ -14,11 +15,15 @@ def find_file(pattern, path):
 
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
-examples_dir = os.path.dirname(find_file('scn_example_*', script_dir))
+examples_bin = find_file('scn_example_*', script_dir)
+examples_dir = os.path.dirname(examples_bin)
+examples_file_extension = ''.join(pathlib.Path(examples_bin).suffixes)
 
 
 def check(i, input, expected_output):
-    result = subprocess.run([f"{examples_dir}/scn_example_{i}"], check=True, input=input, capture_output=True,
+    result = subprocess.run([os.path.join(examples_dir, f"scn_example_{i}{examples_file_extension}")], check=True,
+                            input=input,
+                            capture_output=True,
                             text=True)
     if result.stdout != expected_output:
         raise RuntimeError(

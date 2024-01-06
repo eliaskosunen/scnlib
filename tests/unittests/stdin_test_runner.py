@@ -16,5 +16,6 @@ def find_file(pattern, path):
 script_dir = os.path.abspath(os.path.dirname(__file__))
 stdin_test = find_file('scn_stdin_test*', script_dir)
 
-with open(f"{script_dir}/stdin_test_input.txt", 'r') as input_file:
-    result = subprocess.run([stdin_test], check=True, stdin=input_file, text=True)
+with open(os.path.join(script_dir, 'stdin_test_input.txt'), 'r') as input_file:
+    result = subprocess.run([stdin_test], check=True, stdin=input_file, text=True, capture_output=True)
+    print(f"Output:\n{result.stdout}")

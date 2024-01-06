@@ -33,7 +33,7 @@ namespace scn {
 #if SCN_POSIX
                     return getc_unlocked(file);
 #elif SCN_WINDOWS
-                    return ::_fgetc_nolock(file);
+                    return _fgetc_nolock(file);
 #else
                     return std::fgetc(file);
 #endif
@@ -41,8 +41,8 @@ namespace scn {
 
                 static auto ungetc_impl(std::FILE* file, int ch)
                 {
-#if SCN_WINDOWS
-                    return ::_ungetc_nolock(ch, file);
+#if SCN_WINDOWS && !SCN_MINGW
+                    return _ungetc_nolock(ch, file);
 #else
                     return std::ungetc(ch, file);
 #endif
@@ -72,7 +72,7 @@ namespace scn {
 
                 static void lock_for_unget(std::FILE* file)
                 {
-#if SCN_WINDOWS
+#if SCN_WINDOWS && !SCN_MINGW
                     SCN_UNUSED(file);
 #else
                     lock(file);
@@ -81,7 +81,7 @@ namespace scn {
 
                 static void unlock_for_unget(std::FILE* file)
                 {
-#if SCN_WINDOWS
+#if SCN_WINDOWS && !SCN_MINGW
                     SCN_UNUSED(file);
 #else
                     unlock(file);
@@ -224,50 +224,6 @@ namespace scn {
                     if (auto res = read(file); res) {
                         --file->_p;
                         ++file->_r;
-                        return res;
-                    }
-                    return std::nullopt;
-                }
-            };
-
-            // MinGW libc
-            template <typename F>
-            struct file_wrapper_impl<F, std::enable_if_t<sizeof(F::_ptr) != 0>>
-                : file_wrapper_impl_base {
-                static std::string_view get_current_buffer(F* file)
-                {
-                    return {reinterpret_cast<const char*>(file->_ptr),
-                            static_cast<std::size_t>(file->_cnt)};
-                }
-
-                constexpr static bool has_buffering()
-                {
-                    return true;
-                }
-
-                static bool fill_buffer(F* file)
-                {
-                    return peek(file).has_value();
-                }
-
-                static void unsafe_advance_to_buffer_end(F* file)
-                {
-                    file->_ptr += file->_cnt;
-                }
-
-                static void unsafe_advance_n(F* file, std::ptrdiff_t n)
-                {
-                    file->_ptr += n;
-                }
-
-                static std::optional<char> peek(F* file)
-                {
-                    if (file->_cnt != 0) {
-                        return static_cast<char>(*file->_ptr);
-                    }
-                    if (auto res = read(file); res) {
-                        --file->_ptr;
-                        ++file->_cnt;
                         return res;
                     }
                     return std::nullopt;
