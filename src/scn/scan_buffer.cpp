@@ -31,7 +31,7 @@ namespace scn {
                 static auto fgetc_impl(std::FILE* file)
                 {
 #if SCN_POSIX
-                    return ::getc_unlocked(file);
+                    return getc_unlocked(file);
 #elif SCN_WINDOWS
                     return ::_fgetc_unlock(file);
 #else
@@ -153,6 +153,15 @@ namespace scn {
                 {
                     file->_IO_read_ptr += n;
                 }
+
+                static std::optional<char> peek(F* file)
+                {
+                    if (auto res = read(file); res) {
+                        --file->_IO_read_ptr;
+                        return res;
+                    }
+                    return std::nullopt;
+                }
             };
 
             template <typename F>
@@ -160,7 +169,8 @@ namespace scn {
                 : file_wrapper_impl_base {
                 static std::string_view get_current_buffer(F* file)
                 {
-                    return {reinterpret_cast<const char*>(file->_p), file->_r};
+                    return {reinterpret_cast<const char*>(file->_p),
+                            static_cast<std::size_t>(file->_r)};
                 }
 
                 constexpr static bool has_buffering()
@@ -181,6 +191,15 @@ namespace scn {
                 static void unsafe_advance_n(F* file, std::ptrdiff_t n)
                 {
                     file->_p += n;
+                }
+
+                static std::optional<char> peek(F* file)
+                {
+                    if (auto res = read(file); res) {
+                        --file->_p;
+                        return res;
+                    }
+                    return std::nullopt;
                 }
             };
 
