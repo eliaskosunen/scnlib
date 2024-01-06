@@ -33,7 +33,7 @@ namespace scn {
 #if SCN_POSIX
                     return getc_unlocked(file);
 #elif SCN_WINDOWS
-                    return ::_fgetc_unlock(file);
+                    return ::_fgetc_nolock(file);
 #else
                     return std::fgetc(file);
 #endif
@@ -42,7 +42,7 @@ namespace scn {
                 static auto ungetc_impl(std::FILE* file, int ch)
                 {
 #if SCN_WINDOWS
-                    return ::ungetc_unlock(ch, file);
+                    return ::_ungetc_nolock(ch, file);
 #else
                     return std::ungetc(ch, file);
 #endif
@@ -156,6 +156,9 @@ namespace scn {
 
                 static std::optional<char> peek(F* file)
                 {
+                    if (file->_IO_read_ptr != file->_IO_read_end) {
+                        return file->_IO_read_ptr[0];
+                    }
                     if (auto res = read(file); res) {
                         --file->_IO_read_ptr;
                         return res;
@@ -195,6 +198,9 @@ namespace scn {
 
                 static std::optional<char> peek(F* file)
                 {
+                    if (file->_r != 0) {
+                        return static_cast<char>(*file->_p);
+                    }
                     if (auto res = read(file); res) {
                         --file->_p;
                         return res;
