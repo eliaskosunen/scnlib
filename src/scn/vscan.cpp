@@ -53,9 +53,11 @@ namespace scn {
 
             auto reader = impl::default_arg_reader<
                 impl::basic_contiguous_scan_context<CharT>>{
-                source, SCN_MOVE(args), loc};
+                ranges::subrange<const CharT*>{source.data(),
+                                               source.data() + source.size()},
+                SCN_MOVE(args), loc};
             SCN_TRY(it, visit_scan_arg(SCN_MOVE(reader), arg));
-            return ranges::distance(source.begin(), it);
+            return ranges::distance(source.data(), it);
         }
         template <typename CharT>
         scan_expected<std::ptrdiff_t> scan_simple_single_argument(
@@ -261,7 +263,7 @@ namespace scn {
             using context_type = impl::basic_contiguous_scan_context<CharT>;
 
             contiguous_context_wrapper(
-                std::basic_string_view<CharT> source,
+                ranges::subrange<const CharT*> source,
                 basic_scan_args<basic_scan_context<CharT>> args,
                 detail::locale_ref loc)
                 : contiguous_ctx(source, args, loc)
@@ -476,7 +478,9 @@ namespace scn {
             }
 
             auto handler = format_handler<true, CharT>{
-                source, format, SCN_MOVE(args), SCN_MOVE(loc), argcount};
+                ranges::subrange<const CharT*>{source.data(),
+                                               source.data() + source.size()},
+                format, SCN_MOVE(args), SCN_MOVE(loc), argcount};
             return vscan_parse_format_string(format, handler);
         }
 
@@ -544,9 +548,13 @@ namespace scn {
     scan_error vinput(std::string_view format, scan_args args)
     {
         auto buffer = detail::make_file_scan_buffer(stdin);
-        SCN_TRY_ERR(n, vscan_internal(buffer, format, args));
-        buffer.sync(n);
-        return {};
+        auto n = vscan_internal(buffer, format, args);
+        if (n) {
+            buffer.sync(*n);
+            return {};
+        }
+        buffer.sync_all();
+        return n.error();
     }
 
 #if !SCN_DISABLE_LOCALE
@@ -556,10 +564,13 @@ namespace scn {
                       scan_args args)
     {
         auto buffer = detail::make_file_scan_buffer(stdin);
-        SCN_TRY_ERR(
-            n, vscan_internal(buffer, format, args, detail::locale_ref{loc}));
-        buffer.sync(n);
-        return {};
+        auto n = vscan_internal(buffer, format, args, detail::locale_ref{loc});
+        if (n) {
+            buffer.sync(*n);
+            return {};
+        }
+        buffer.sync_all();
+        return n.error();
     }
 
     template scan_error vinput<std::locale, void>(const std::locale&,
@@ -702,8 +713,13 @@ namespace scn {
             scan_buffer& source,
             basic_scan_arg<scan_context> arg)
         {
-            SCN_TRY(n, vscan_value_internal(source, arg));
-            source.sync(n);
+            auto n = vscan_value_internal(source, arg);
+            if (SCN_LIKELY(n)) {
+                source.sync(*n);
+            }
+            else {
+                source.sync_all();
+            }
             return n;
         }
 
@@ -718,8 +734,13 @@ namespace scn {
             wscan_buffer& source,
             basic_scan_arg<wscan_context> arg)
         {
-            SCN_TRY(n, vscan_value_internal(source, arg));
-            source.sync(n);
+            auto n = vscan_value_internal(source, arg);
+            if (SCN_LIKELY(n)) {
+                source.sync(*n);
+            }
+            else {
+                source.sync_all();
+            }
             return n;
         }
 

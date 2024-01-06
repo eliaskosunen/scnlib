@@ -70,6 +70,24 @@ namespace scn {
 #endif
                 }
 
+                static void lock_for_unget(std::FILE* file)
+                {
+#if SCN_WINDOWS
+                    SCN_UNUSED(file);
+#else
+                    lock(file);
+#endif
+                }
+
+                static void unlock_for_unget(std::FILE* file)
+                {
+#if SCN_WINDOWS
+                    SCN_UNUSED(file);
+#else
+                    unlock(file);
+#endif
+                }
+
                 static std::optional<char> read(std::FILE* file)
                 {
                     auto res = fgetc_impl(file);
@@ -123,6 +141,7 @@ namespace scn {
                 }
             };
 
+            // GNU libc (Linux)
             template <typename F>
             struct file_wrapper_impl<
                 F,
@@ -167,6 +186,7 @@ namespace scn {
                 }
             };
 
+            // BSD libc (Apple)
             template <typename F>
             struct file_wrapper_impl<F, std::enable_if_t<sizeof(F::_p) != 0>>
                 : file_wrapper_impl_base {
@@ -203,6 +223,51 @@ namespace scn {
                     }
                     if (auto res = read(file); res) {
                         --file->_p;
+                        ++file->_r;
+                        return res;
+                    }
+                    return std::nullopt;
+                }
+            };
+
+            // MinGW libc
+            template <typename F>
+            struct file_wrapper_impl<F, std::enable_if_t<sizeof(F::_ptr) != 0>>
+                : file_wrapper_impl_base {
+                static std::string_view get_current_buffer(F* file)
+                {
+                    return {reinterpret_cast<const char*>(file->_ptr),
+                            static_cast<std::size_t>(file->_cnt)};
+                }
+
+                constexpr static bool has_buffering()
+                {
+                    return true;
+                }
+
+                static bool fill_buffer(F* file)
+                {
+                    return peek(file).has_value();
+                }
+
+                static void unsafe_advance_to_buffer_end(F* file)
+                {
+                    file->_ptr += file->_cnt;
+                }
+
+                static void unsafe_advance_n(F* file, std::ptrdiff_t n)
+                {
+                    file->_ptr += n;
+                }
+
+                static std::optional<char> peek(F* file)
+                {
+                    if (file->_cnt != 0) {
+                        return static_cast<char>(*file->_ptr);
+                    }
+                    if (auto res = read(file); res) {
+                        --file->_ptr;
+                        ++file->_cnt;
                         return res;
                     }
                     return std::nullopt;
@@ -272,32 +337,29 @@ namespace scn {
                                           this->m_latest);
         }
 
-#if SCN_POSIX
         namespace {
-            struct file_unlocker {
-                file_unlocker(std::FILE* f) : file(f)
+            struct file_unlocker_for_unget {
+                file_unlocker_for_unget(std::FILE* f) : file(f)
                 {
-                    file_wrapper::unlock(file);
+                    file_wrapper::unlock_for_unget(file);
                 }
-                ~file_unlocker()
+                ~file_unlocker_for_unget()
                 {
-                    file_wrapper::lock(file);
+                    file_wrapper::lock_for_unget(file);
                 }
 
                 std::FILE* file;
             };
         }  // namespace
-#endif
 
         void scan_file_buffer::sync(std::ptrdiff_t position)
         {
             SCN_EXPECT(m_file);
 
             if (file_wrapper::has_buffering()) {
-                if (position < this->putback_buffer().size()) {
-#if SCN_POSIX
-                    file_unlocker unlocker{m_file};
-#endif
+                if (position < static_cast<std::ptrdiff_t>(
+                                   this->putback_buffer().size())) {
+                    file_unlocker_for_unget unlocker{m_file};
                     auto putback_segment =
                         this->get_segment_starting_at(position);
                     for (auto ch : ranges::views::reverse(putback_segment)) {
@@ -317,9 +379,7 @@ namespace scn {
                 return;
             }
 
-#if SCN_POSIX
-            file_unlocker unlocker{m_file};
-#endif
+            file_unlocker_for_unget unlocker{m_file};
             SCN_EXPECT(m_current_view.size() == 1);
             file_wrapper::unget(m_file, m_current_view.front());
 

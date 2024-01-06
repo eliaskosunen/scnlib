@@ -1,5 +1,5 @@
 function(generate_binarysize_test_files template outdir sources)
-    set(binarysize_test_path "${CMAKE_CURRENT_LIST_DIR}/${outdir}/")
+    set(binarysize_test_path "${CMAKE_CURRENT_BINARY_DIR}/${outdir}/")
     set(binarysize_test_main "${binarysize_test_path}/binarysize_test_main.cpp")
     set(binarysize_test_header "${binarysize_test_path}/binarysize_test_all.h")
 

@@ -44,7 +44,9 @@ TEST(ScanBufferTest, StringView)
     EXPECT_TRUE(buf.is_contiguous());
     EXPECT_EQ(buf.chars_available(), 6);
     EXPECT_EQ(collect(buf.get()), "foobar");
-    EXPECT_EQ(buf.get_contiguous(), "foobar");
+    EXPECT_EQ(std::string_view(buf.get_contiguous().data(),
+                               buf.get_contiguous().size()),
+              "foobar");
 }
 
 TEST(ScanBufferTest, TakeStringView)

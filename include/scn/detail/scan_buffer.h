@@ -20,6 +20,7 @@
 #include <scn/detail/ranges.h>
 #include <scn/util/string_view.h>
 
+#include <optional>
 #include <variant>
 
 namespace scn {
@@ -75,7 +76,8 @@ namespace scn {
             SCN_NODISCARD std::basic_string_view<CharT> get_segment_starting_at(
                 std::ptrdiff_t pos) const
             {
-                if (SCN_UNLIKELY(pos < m_putback_buffer.size())) {
+                if (SCN_UNLIKELY(pos < static_cast<std::ptrdiff_t>(
+                                           m_putback_buffer.size()))) {
                     return std::basic_string_view<CharT>(m_putback_buffer)
                         .substr(pos);
                 }
@@ -86,7 +88,8 @@ namespace scn {
 
             SCN_NODISCARD CharT get_character_at(std::ptrdiff_t pos) const
             {
-                if (SCN_UNLIKELY(pos < m_putback_buffer.size())) {
+                if (SCN_UNLIKELY(pos < static_cast<std::ptrdiff_t>(
+                                           m_putback_buffer.size()))) {
                     return m_putback_buffer[pos];
                 }
                 const auto start = pos - m_putback_buffer.size();
@@ -99,10 +102,12 @@ namespace scn {
                 return m_is_contiguous;
             }
 
-            SCN_NODISCARD std::basic_string_view<CharT> get_contiguous() const
+            SCN_NODISCARD auto get_contiguous() const
             {
                 SCN_EXPECT(is_contiguous());
-                return current_view();
+                return ranges::subrange<const CharT*>{
+                    current_view().data(),
+                    current_view().data() + current_view().size()};
             }
 
             SCN_NODISCARD range_type get();

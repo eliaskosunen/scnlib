@@ -528,8 +528,8 @@ namespace scn {
                     (((word & mask) * mul1) + (((word >> 16) & mask) * mul2)) >>
                     32;
 
-                value *= power_of_10(static_cast<int>(n));
-                value += word;
+                value *= static_cast<T>(power_of_10(static_cast<int>(n)));
+                value += static_cast<T>(word);
                 source = source.substr(n);
             }
 

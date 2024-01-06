@@ -21,6 +21,7 @@
 #include <scn/util/string_view.h>
 
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <variant>
 
@@ -199,7 +200,8 @@ namespace scn {
                                    ranges::common_range<Range>) {
                     auto beg_seg = range.begin().contiguous_segment();
                     auto end_seg = range.end().contiguous_segment();
-                    if (SCN_UNLIKELY(beg_seg.end() != end_seg.end())) {
+                    if (SCN_UNLIKELY(detail::to_address(beg_seg.end()) !=
+                                     detail::to_address(end_seg.end()))) {
                         auto& str = m_storage.emplace();
                         str.reserve(range.end().position() -
                                     range.begin().position());
