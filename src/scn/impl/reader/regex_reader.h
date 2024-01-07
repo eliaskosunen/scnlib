@@ -96,7 +96,7 @@ namespace scn {
             return result;
         }
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
-        auto make_regex_flags(detail::regex_flags flags)
+        inline auto make_regex_flags(detail::regex_flags flags)
             -> std::pair<RE2::Options, std::string_view>
         {
             RE2::Options opt{RE2::Quiet};
@@ -235,7 +235,9 @@ namespace scn {
                     "Failed to parse regular expression");
             }
 
-            auto new_input = input;
+            auto new_input = detail::make_string_view_from_pointers(
+                detail::to_address(input.begin()),
+                detail::to_address(input.end()));
             bool found = re2::RE2::Consume(&new_input, re);
             if (!found) {
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
@@ -419,7 +421,9 @@ namespace scn {
                               [](auto& val) { return re2::RE2::Arg{&val}; });
             ranges::transform(match_args, match_argptrs.begin(),
                               [](auto& arg) { return &arg; });
-            auto new_input = input;
+            auto new_input = detail::make_string_view_from_pointers(
+                detail::to_address(input.begin()),
+                detail::to_address(input.end()));
             bool found = re2::RE2::ConsumeN(
                 &new_input, re, match_argptrs.data(), match_argptrs.size());
             if (!found) {

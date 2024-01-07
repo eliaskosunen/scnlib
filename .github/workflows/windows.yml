@@ -142,6 +142,6 @@ jobs:
           mkdir build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-            -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON ..
+            -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_TESTS=ON -DSCN_EXAMPLES=ON ..
           cmake --build . --parallel -- -k 0
           ctest --output-on-failure

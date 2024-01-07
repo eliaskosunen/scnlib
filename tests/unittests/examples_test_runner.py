@@ -11,7 +11,7 @@ def find_file(pattern, path):
         for name in files:
             if fnmatch.fnmatch(name, pattern):
                 return os.path.join(root, name)
-    return None
+    raise RuntimeError(f"Couldn't find pattern '{pattern}' in {path}")
 
 
 script_dir = os.path.abspath(os.path.dirname(__file__))

@@ -197,7 +197,6 @@ namespace scn {
                 SCN_EXPECT(arg && pctx && ctx);
 
                 using context_type = Context;
-                using char_type = typename context_type::char_type;
                 using parse_context_type =
                     typename context_type::parse_context_type;
                 using scanner_type =
@@ -210,6 +209,7 @@ namespace scn {
                 auto& ctx_ref = *static_cast<context_type*>(ctx);
 
                 SCN_TRY_ERR(_, s.parse(pctx_ref));
+                SCN_UNUSED(_);
                 SCN_TRY_ERR(it, s.scan(arg_ref, ctx_ref));
                 ctx_ref.advance_to(SCN_MOVE(it));
 

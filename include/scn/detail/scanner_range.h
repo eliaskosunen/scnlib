@@ -360,6 +360,7 @@ namespace scn {
             SCN_TRY(it, detail::scan_str(ctx.range(), this->m_opening_bracket));
             ctx.advance_to(it);
             SCN_TRY(_, scan_for_each(value, ctx));
+            SCN_UNUSED(_);
             return detail::scan_str(ctx.range(), this->m_closing_bracket);
         }
 
