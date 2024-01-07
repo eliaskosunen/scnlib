@@ -165,11 +165,14 @@ namespace scn {
 
                 static void unsafe_advance_to_buffer_end(F* file)
                 {
+                    SCN_EXPECT(file->_IO_read_ptr && file->_IO_read_end);
                     file->_IO_read_ptr = file->_IO_read_end;
                 }
 
                 static void unsafe_advance_n(F* file, std::ptrdiff_t n)
                 {
+                    SCN_EXPECT(file->_IO_read_ptr);
+                    SCN_EXPECT(file->_IO_read_end - file->_IO_read_ptr >= n);
                     file->_IO_read_ptr += n;
                 }
 
@@ -208,17 +211,22 @@ namespace scn {
 
                 static void unsafe_advance_to_buffer_end(F* file)
                 {
+                    SCN_EXPECT(file->_p != nullptr);
                     file->_p += file->_r;
+                    file->_r = 0;
                 }
 
                 static void unsafe_advance_n(F* file, std::ptrdiff_t n)
                 {
+                    SCN_EXPECT(file->_p != nullptr);
+                    SCN_EXPECT(file->_r >= n);
                     file->_p += n;
+                    file->_r -= n;
                 }
 
                 static std::optional<char> peek(F* file)
                 {
-                    if (file->_r != 0) {
+                    if (file->_p != nullptr && file->_r != 0) {
                         return static_cast<char>(*file->_p);
                     }
                     if (auto res = read(file); res) {
