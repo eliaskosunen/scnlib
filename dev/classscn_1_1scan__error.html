@@ -18,7 +18,7 @@
   <meta content="scanf for modern C++" property="og:description"/>
   <meta content="scanf for modern C++" itemprop="description"/>
   <meta content="telephone=no" name="format-detection"/>
-  <meta content="Poxy v0.14.0" name="generator"/>
+  <meta content="Poxy v0.15.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
 <body class="poxy-has-toc">
@@ -83,7 +83,6 @@
               <a class="m-doc" href="#a0e12e10c5a0b3cabc6a530bdedc438d9a28497597134fa03a4f35abda44d2b41c">invalid_format_string</a>,
               <a class="m-doc" href="#a0e12e10c5a0b3cabc6a530bdedc438d9a1cab3dc5c02b44c825c41a06db524cd6">invalid_scanned_value</a>,
               <a class="m-doc" href="#a0e12e10c5a0b3cabc6a530bdedc438d9a15171fc8941f02fe7d8e1509d98f2e89">value_out_of_range</a>,
-              <a class="m-doc" href="#a0e12e10c5a0b3cabc6a530bdedc438d9a0beae370b2e7ca05f0cfdef66681a95e">bad_source_error</a>,
               <a class="m-doc" href="#a0e12e10c5a0b3cabc6a530bdedc438d9a9e8eed30cf35dbf1aeed73f608ef9181">max_error</a> }</span>
             </dt>
             <dd>Error code.</dd>
@@ -158,12 +157,6 @@
                   <td><a class="m-doc-self" href="#a0e12e10c5a0b3cabc6a530bdedc438d9a15171fc8941f02fe7d8e1509d98f2e89" id="a0e12e10c5a0b3cabc6a530bdedc438d9a15171fc8941f02fe7d8e1509d98f2e89">value_out_of_range</a></td>
                   <td>
 <p>Scanned value was out of range for the desired type. (e.g. <code>&gt;2^32</code> for an <code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/types/integer" target="_blank">uint32_t</a></code>)</p>
-                  </td>
-                </tr>
-                <tr>
-                  <td><a class="m-doc-self" href="#a0e12e10c5a0b3cabc6a530bdedc438d9a0beae370b2e7ca05f0cfdef66681a95e" id="a0e12e10c5a0b3cabc6a530bdedc438d9a0beae370b2e7ca05f0cfdef66681a95e">bad_source_error</a></td>
-                  <td>
-<p>The source range emitted an error that cannot be recovered from. The library can't use the source range in this state. Can only happen when using an istream as the input.</p>
                   </td>
                 </tr>
                 <tr>

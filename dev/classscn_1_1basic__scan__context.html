@@ -18,7 +18,7 @@
   <meta content="scanf for modern C++" property="og:description"/>
   <meta content="scanf for modern C++" itemprop="description"/>
   <meta content="telephone=no" name="format-detection"/>
-  <meta content="Poxy v0.14.0" name="generator"/>
+  <meta content="Poxy v0.15.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
 <body class="poxy-has-toc">
@@ -58,7 +58,7 @@
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
         <h1>
-          <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span>, <span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
+          <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
           <span class="m-breadcrumb"><a href="namespacescn.html">scn</a>::<wbr/></span>basic_scan_context <span class="m-thin">class</span>
         </h1>
         <nav class="m-block m-default poxy-toc" id="poxy-toc">
@@ -77,17 +77,13 @@
         <section id="pub-types">
           <h2><a href="#pub-types">Public types</a></h2>
           <dl class="m-doc">
-            <dt id="ac7cf9411b8c9d42c4689dc277f398c98">
-              using <a class="m-doc-self" href="#ac7cf9411b8c9d42c4689dc277f398c98">char_type</a> = CharT
+            <dt id="a841754690355777f4908a0ac32225b87">
+              using <a class="m-doc-self" href="#a841754690355777f4908a0ac32225b87">char_type</a> = CharT
             </dt>
             <dd>Character type of the input.</dd>
             <dt>
-              using <a class="m-doc" href="#a50e445ded9a07c0730d0c4f99fcd70ba">range_type</a> = Range
-            </dt>
-            <dd></dd>
-            <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span></span>&gt;</div>
-              using <a class="m-doc" href="#a6c6886878616a902ca5f671fc7d84f1f">scanner_type</a> = <a class="m-doc" href="structscn_1_1scanner.html">scanner</a>&lt;T, <a class="m-doc" href="#ac7cf9411b8c9d42c4689dc277f398c98">char_<wbr/>type</a>&gt;
+              using <a class="m-doc" href="#ab4c2fa773d43626ed477e1a1a7d7a6a2">scanner_type</a> = <a class="m-doc" href="structscn_1_1scanner.html">scanner</a>&lt;T, <a class="m-doc" href="#a841754690355777f4908a0ac32225b87">char_<wbr/>type</a>&gt;
             </dt>
             <dd></dd>
           </dl>
@@ -95,80 +91,28 @@
         <section id="pub-methods">
           <h2><a href="#pub-methods">Public functions</a></h2>
           <dl class="m-doc">
-            <dt id="aa13193f122956d89d25e7e0b699d6e9d">
-              <span class="m-doc-wrap-bumper">void <a class="m-doc-self" href="#aa13193f122956d89d25e7e0b699d6e9d">advance_to</a>(</span><span class="m-doc-wrap">iterator it)</span>
+            <dt id="a4e54c3141f24b3189d17da1f82bde263">
+              <span class="m-doc-wrap-bumper">void <a class="m-doc-self" href="#a4e54c3141f24b3189d17da1f82bde263">advance_to</a>(</span><span class="m-doc-wrap">iterator it)</span>
             </dt>
             <dd>Advances the beginning of the input range to <code>it</code></dd>
-            <dt id="acdd8a3754b7eb23165a698733f7e3ef8">
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#acdd8a3754b7eb23165a698733f7e3ef8">arg</a>(</span><span class="m-doc-wrap"><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/types/size_t" target="_blank">size_t</a> id) const -&gt; <a class="m-doc" href="classscn_1_1basic__scan__arg.html">basic_<wbr/>scan_<wbr/>arg</a>&lt;<a class="m-doc" href="classscn_1_1basic__scan__context.html">basic_<wbr/>scan_<wbr/>context</a>&gt; <span class="m-label m-flat m-primary">constexpr</span> <span class="m-label m-flat m-success">noexcept</span></span>
+            <dt id="a849014a08f5f31c89b2d819adbe35b1a">
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#a849014a08f5f31c89b2d819adbe35b1a">begin</a>(</span><span class="m-doc-wrap">) const -&gt; iterator <span class="m-label m-flat m-primary">constexpr</span></span>
             </dt>
             <dd>Get argument at index <code>id</code></dd>
-            <dt>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#a3f34120f593a27ec00008d0fb220b416">current</a>(</span><span class="m-doc-wrap">) const -&gt; iterator <span class="m-label m-flat m-primary">constexpr</span></span>
-            </dt>
-            <dd></dd>
-            <dt>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#abf49afd6d97be49cdc89e5740109e721">range</a>(</span><span class="m-doc-wrap">) const -&gt; <a class="m-doc" href="#a50e445ded9a07c0730d0c4f99fcd70ba">range_<wbr/>type</a> <span class="m-label m-flat m-primary">constexpr</span></span>
-            </dt>
-            <dd></dd>
           </dl>
         </section>
         <section>
           <h2>Typedef documentation</h2>
-          <section class="m-doc-details" id="a50e445ded9a07c0730d0c4f99fcd70ba"><div>
+          <section class="m-doc-details" id="ab4c2fa773d43626ed477e1a1a7d7a6a2"><div>
             <h3>
               <div class="m-doc-template">
-                <span class="m-doc-template-parent">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span>, <span class="m-doc-template-param">typename CharT</span></span>&gt;</span>
-              </div>
-              using <span class="m-doc-details-prefix">scn::basic_scan_context::</span><a class="m-doc-self" href="#a50e445ded9a07c0730d0c4f99fcd70ba">range_type</a> = Range
-            </h3>
-<p>Contained range type. In normal operation, one of:</p><ul><li><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>basic_string_view</a>&lt;char_type&gt;</code></li><li><code>scn::basic_istreambuf_subrange&lt;char_type&gt;</code></li><li><code><a class="m-doc" href="structscn_1_1basic__erased__subrange.html">scn::<wbr/>basic_erased_subrange</a>&lt;char_type&gt;</code></li></ul>
-          </div></section>
-          <section class="m-doc-details" id="a6c6886878616a902ca5f671fc7d84f1f"><div>
-            <h3>
-              <div class="m-doc-template">
-                <span class="m-doc-template-parent">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span>, <span class="m-doc-template-param">typename CharT</span></span>&gt;</span>
+                <span class="m-doc-template-parent">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</span>
                 <br/>
                 template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span></span>&gt;
               </div>
-              using <span class="m-doc-details-prefix">scn::basic_scan_context::</span><a class="m-doc-self" href="#a6c6886878616a902ca5f671fc7d84f1f">scanner_type</a> = <a class="m-doc" href="structscn_1_1scanner.html">scanner</a>&lt;T, <a class="m-doc" href="#ac7cf9411b8c9d42c4689dc277f398c98">char_<wbr/>type</a>&gt;
+              using <span class="m-doc-details-prefix">scn::basic_scan_context::</span><a class="m-doc-self" href="#ab4c2fa773d43626ed477e1a1a7d7a6a2">scanner_type</a> = <a class="m-doc" href="structscn_1_1scanner.html">scanner</a>&lt;T, <a class="m-doc" href="#a841754690355777f4908a0ac32225b87">char_<wbr/>type</a>&gt;
             </h3>
 <p>The scanner type associated with this scanning context.</p>
-          </div></section>
-        </section>
-        <section>
-          <h2>Function documentation</h2>
-          <section class="m-doc-details" id="a3f34120f593a27ec00008d0fb220b416"><div>
-            <h3>
-              <div class="m-doc-template">
-                <span class="m-doc-template-parent">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span>, <span class="m-doc-template-param">typename CharT</span></span>&gt;</span>
-              </div>
-              <span class="m-doc-wrap-bumper">iterator <span class="m-doc-details-prefix">scn::basic_scan_context::</span></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#a3f34120f593a27ec00008d0fb220b416">current</a>(</span><span class="m-doc-wrap">) const <span class="m-label m-primary">constexpr</span></span></span>
-            </h3>
-            <table class="m-table m-fullwidth m-flat">
-              <tfoot>
-                <tr>
-                  <th style="width: 1%">Returns</th>
-                  <td>An iterator pointing to the beginning of the current input range</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div></section>
-          <section class="m-doc-details" id="abf49afd6d97be49cdc89e5740109e721"><div>
-            <h3>
-              <div class="m-doc-template">
-                <span class="m-doc-template-parent">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span>, <span class="m-doc-template-param">typename CharT</span></span>&gt;</span>
-              </div>
-              <span class="m-doc-wrap-bumper"><a class="m-doc" href="#a50e445ded9a07c0730d0c4f99fcd70ba">range_<wbr/>type</a> <span class="m-doc-details-prefix">scn::basic_scan_context::</span></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#abf49afd6d97be49cdc89e5740109e721">range</a>(</span><span class="m-doc-wrap">) const <span class="m-label m-primary">constexpr</span></span></span>
-            </h3>
-            <table class="m-table m-fullwidth m-flat">
-              <tfoot>
-                <tr>
-                  <th style="width: 1%">Returns</th>
-                  <td>A view over the input range, starting at <code><a class="m-doc" href="#a3f34120f593a27ec00008d0fb220b416">current()</a></code></td>
-                </tr>
-              </tfoot>
-            </table>
           </div></section>
         </section>
       </div>

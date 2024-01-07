@@ -18,7 +18,7 @@
   <meta content="scanf for modern C++" property="og:description"/>
   <meta content="scanf for modern C++" itemprop="description"/>
   <meta content="telephone=no" name="format-detection"/>
-  <meta content="Poxy v0.14.0" name="generator"/>
+  <meta content="Poxy v0.15.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
 <body class="poxy-has-toc">
@@ -77,6 +77,11 @@
           <h2><a href="#nested-classes">Classes</a></h2>
           <dl class="m-doc">
             <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename SourceRange</span></span>&gt;</div>
+              class <a class="m-doc" href="classscn_1_1detail_1_1basic__range__streambuf.html">basic_range_streambuf</a>
+            </dt>
+            <dd></dd>
+            <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
               struct <a class="m-doc" href="structscn_1_1detail_1_1basic__runtime__format__string.html">basic_runtime_format_string</a>
             </dt>
@@ -86,11 +91,6 @@
               class <a class="m-doc" href="classscn_1_1detail_1_1compile__parse__context.html">compile_parse_context</a>
             </dt>
             <dd>Parse context with extra data used only for compile-time checks.</dd>
-            <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename SourceRange</span></span>&gt;</div>
-              class <a class="m-doc" href="classscn_1_1detail_1_1range__streambuf.html">range_streambuf</a>
-            </dt>
-            <dd></dd>
           </dl>
         </section>
         <section id="func-members">
@@ -112,11 +112,6 @@
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename It</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ab59057043969a167570dafac73b133ac">min_element</a>(</span><span class="m-doc-wrap">It first,
               It last) -&gt; It <span class="m-label m-flat m-primary">constexpr</span></span>
-            </dt>
-            <dd></dd>
-            <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#a319d3771fa1ca1245130e2a0b69a5528">scan_map_input_range</a>(</span><span class="m-doc-wrap">const Range&amp; r) -&gt; auto <span class="m-label m-flat m-success">noexcept(…)</span></span>
             </dt>
             <dd></dd>
           </dl>
@@ -152,15 +147,6 @@
               It last) <span class="m-label m-primary">constexpr</span></span></span>
             </h3>
 <p>Implementation of <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/algorithm/min_element.html" target="_blank">std::<wbr/>min_element</a></code> without including <code>&lt;algorithm&gt;</code></p>
-          </div></section>
-          <section class="m-doc-details" id="a319d3771fa1ca1245130e2a0b69a5528"><div>
-            <h3>
-              <div class="m-doc-template">
-                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;
-              </div>
-              <span class="m-doc-wrap-bumper">auto <span class="m-doc-details-prefix">scn::<wbr/>detail::<wbr/></span></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#a319d3771fa1ca1245130e2a0b69a5528">scan_map_input_range</a>(</span><span class="m-doc-wrap">const Range&amp; r) <span class="m-label m-success">noexcept(…)</span></span></span>
-            </h3>
-<p>Map a range type given to a generic scanning function (like <code>scan</code>) into something that can be given to a type-erased scanning function (like <code>vscan</code>).</p><p>Maps</p><ul><li><code>string_view</code> and other contiguous+sized ranges to <code>string_view</code></li><li><code>istreambuf_view</code> to <code>istreambuf_subrange</code></li><li><code>erased_view</code> to <code>erased_subrange</code></li><li>any other forward range to <code>erased_view</code></li><li>errors (static_assert) on other, invalid range types</li></ul>
           </div></section>
         </section>
       </div>

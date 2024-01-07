@@ -18,7 +18,7 @@
   <meta content="scanf for modern C++" property="og:description"/>
   <meta content="scanf for modern C++" itemprop="description"/>
   <meta content="telephone=no" name="format-detection"/>
-  <meta content="Poxy v0.14.0" name="generator"/>
+  <meta content="Poxy v0.15.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
 <body class="poxy-has-toc">
@@ -72,12 +72,12 @@
             </li>
           </ul>
         </nav>
-<p>A tuple of scanning arguments, stored by value.</p><p>Implicitly convertible to <code><a class="m-doc" href="classscn_1_1basic__scan__args.html">basic_<wbr/>scan_<wbr/>args</a></code>, to be passed to type-erased along to type-erased scanning functions, like <code><a class="m-doc" href="group__vscan.html#ga63d82cc25940238d66fb9c877d2fab45">scn::<wbr/>vscan</a></code>.</p>
+<p>A tuple of scanning arguments, stored by value.</p><p>Implicitly convertible to <code><a class="m-doc" href="classscn_1_1basic__scan__args.html">basic_<wbr/>scan_<wbr/>args</a></code>, to be passed to type-erased along to type-erased scanning functions, like <code><a class="m-doc" href="group__vscan.html#gad85da110d326532f413f9c81d9fb413b">scn::<wbr/>vscan</a></code>.</p>
         <section id="friends">
           <h2><a href="#friends">Friends</a></h2>
           <dl class="m-doc">
             <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span>, <span class="m-doc-template-param">typename... A</span></span>&gt;</div>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Ctx</span>, <span class="m-doc-template-param">typename... A</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#a3abd0cdf0bb62e5834bd563d9c6edd9a">make_scan_args</a>(</span><span class="m-doc-wrap">) <span class="m-label m-flat m-primary">constexpr</span></span>
             </dt>
             <dd></dd>
@@ -90,11 +90,11 @@
               <div class="m-doc-template">
                 <span class="m-doc-template-parent">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Context</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</span>
                 <br/>
-                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span>, <span class="m-doc-template-param">typename... A</span></span>&gt;
+                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Ctx</span>, <span class="m-doc-template-param">typename... A</span></span>&gt;
               </div>
               <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#a3abd0cdf0bb62e5834bd563d9c6edd9a">make_scan_args</a>(</span><span class="m-doc-wrap">) <span class="m-label m-primary">constexpr</span></span></span>
             </h3>
-<p>Constructs a <code><a class="m-doc" href="classscn_1_1scan__arg__store.html">scan_<wbr/>arg_<wbr/>store</a></code> object, associated with <code>Range</code>, that contains value-initialized values of types <code>Args...</code>.</p>
+<p>Constructs a <code><a class="m-doc" href="classscn_1_1scan__arg__store.html">scan_<wbr/>arg_<wbr/>store</a></code> object, associated with <code>Context</code>, that contains value-initialized values of types <code>Args...</code>.</p>
           </div></section>
         </section>
       </div>

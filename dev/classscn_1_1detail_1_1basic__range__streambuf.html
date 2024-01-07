@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
   <meta charset="utf-8"/>
-  <title>scn::basic_caching_subrange class | scnlib scanf for modern C++</title>
+  <title>scn::detail::basic_range_streambuf class | scnlib scanf for modern C++</title>
   <link href="favicon-dark.png" rel="icon" type="image/png"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <meta content="#22272e" name="theme-color"/>
@@ -18,7 +18,7 @@
   <meta content="scanf for modern C++" property="og:description"/>
   <meta content="scanf for modern C++" itemprop="description"/>
   <meta content="telephone=no" name="format-detection"/>
-  <meta content="Poxy v0.14.0" name="generator"/>
+  <meta content="Poxy v0.15.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
 <body>
@@ -58,10 +58,10 @@
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
         <h1>
-          <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;</div>
-          <span class="m-breadcrumb"><a href="namespacescn.html">scn</a>::<wbr/></span>basic_caching_subrange <span class="m-thin">class</span>
+          <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename SourceRange</span></span>&gt;</div>
+          <span class="m-breadcrumb"><a href="namespacescn.html">scn</a>::<wbr/></span><span class="m-breadcrumb"><a href="namespacescn_1_1detail.html">detail</a>::<wbr/></span>basic_range_streambuf <span class="m-thin">class</span>
         </h1>
-<p>A subrange into a <code><a class="m-doc" href="classscn_1_1basic__caching__view.html">basic_<wbr/>caching_<wbr/>view</a></code>.</p><p>Not a type alias to limit template name length.</p>
+<p>Wraps <code>SourceRange</code>, and makes it a <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/basic_streambuf.html" target="_blank">std::<wbr/>basic_streambuf</a></code>.</p><p>Used by <code><a class="m-doc" href="structscn_1_1basic__istream__scanner.html">basic_<wbr/>istream_<wbr/>scanner</a></code>.</p>
       </div>
     </div>
   </div>
