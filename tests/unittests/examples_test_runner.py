@@ -21,10 +21,14 @@ examples_file_extension = ''.join(pathlib.Path(examples_bin).suffixes)
 
 
 def check(i, input, expected_output):
-    result = subprocess.run([os.path.join(examples_dir, f"scn_example_{i}{examples_file_extension}")], check=True,
+    result = subprocess.run([os.path.join(examples_dir, f"scn_example_{i}{examples_file_extension}")],
+                            shell=True,
                             input=input,
                             capture_output=True,
                             text=True)
+    if result.returncode != 0:
+        print(f"scn_example_{i} stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
+        result.check_returncode()
     if result.stdout != expected_output:
         raise RuntimeError(
             f"scn_example_{i} failed with incorrect output:\n{result.stdout}\nExpected:\n{expected_output}")
