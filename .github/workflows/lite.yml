@@ -119,7 +119,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cxx: [ g++, clang++ ]
+        cxx: [ clang++ ]
         std: [ 17, 20 ]
 
     steps:
@@ -135,7 +135,7 @@ jobs:
         env:
           CXX: ${{ matrix.cxx }}
         run: |
-          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} $GITHUB_WORKSPACE
+          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_USE_ASAN=ON -DSCN_USE_UBSAN=ON $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build

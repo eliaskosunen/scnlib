@@ -26,6 +26,6 @@ int main()
         std::printf("%d, interesting\n", result->value());
     }
     else {
-        std::puts("Well, nevermind then.");
+        std::puts("Well, never mind then.");
     }
 }
