@@ -107,7 +107,7 @@ namespace scn {
                 SCN_EXPECT(m_kind != float_kind::tbd);
 
                 const std::ptrdiff_t sign_len =
-                    m_sign != numeric_reader_base::sign::default_sign ? 1 : 0;
+                    m_sign != sign_type::default_sign ? 1 : 0;
 
                 SCN_TRY(n, parse_value_impl(value));
                 return n + sign_len + ranges::ssize(m_thsep_indices);
@@ -118,8 +118,10 @@ namespace scn {
             scan_expected<simple_borrowed_iterator_t<Range>> read_source_impl(
                 Range&& range)
             {
-                SCN_TRY(it, numeric_reader_base::read_sign(range, m_sign)
-                                .transform_error(make_eof_scan_error));
+                SCN_TRY(sign_result, parse_numeric_sign(range).transform_error(
+                                         make_eof_scan_error));
+                auto it = sign_result.first;
+                m_sign = sign_result.second;
 
                 auto digits_begin = it;
                 auto r = ranges::subrange{it, ranges::end(range)};
@@ -178,7 +180,7 @@ namespace scn {
 
                 if (!m_thsep_indices.empty()) {
                     SCN_EXPECT(m_integral_part_length >= 0);
-                    if (auto e = this->check_thsep_grouping(
+                    if (auto e = check_thsep_grouping(
                             ranges::subrange{
                                 digits_begin,
                                 ranges::next(digits_begin,
@@ -201,15 +203,15 @@ namespace scn {
                                  thsep_allowed)) {
                     return read_while1_code_unit(
                         SCN_FWD(range), [&](char_type ch) SCN_NOEXCEPT {
-                            return numeric_reader_base::char_to_int(ch) < 10 ||
+                            return char_to_int(ch) < 10 ||
                                    ch == m_locale_options.thousands_sep;
                         });
                 }
 
-                return read_while1_code_unit(
-                    SCN_FWD(range), [](char_type ch) SCN_NOEXCEPT {
-                        return numeric_reader_base::char_to_int(ch) < 10;
-                    });
+                return read_while1_code_unit(SCN_FWD(range),
+                                             [](char_type ch) SCN_NOEXCEPT {
+                                                 return char_to_int(ch) < 10;
+                                             });
             }
             template <typename Range>
             parse_expected<simple_borrowed_iterator_t<Range>> read_hex_digits(
@@ -220,15 +222,15 @@ namespace scn {
                                  thsep_allowed)) {
                     return read_while1_code_unit(
                         SCN_FWD(range), [&](char_type ch) SCN_NOEXCEPT {
-                            return numeric_reader_base::char_to_int(ch) < 16 ||
+                            return char_to_int(ch) < 16 ||
                                    ch == m_locale_options.thousands_sep;
                         });
                 }
 
-                return read_while1_code_unit(
-                    SCN_FWD(range), [](char_type ch) SCN_NOEXCEPT {
-                        return numeric_reader_base::char_to_int(ch) < 16;
-                    });
+                return read_while1_code_unit(SCN_FWD(range),
+                                             [](char_type ch) SCN_NOEXCEPT {
+                                                 return char_to_int(ch) < 16;
+                                             });
             }
             template <typename Range>
             parse_expected<simple_borrowed_iterator_t<Range>> read_hex_prefix(
@@ -318,21 +320,16 @@ namespace scn {
                 if (auto r = read_one_of_code_unit(range, exp)) {
                     auto beg_exp_it = ranges::begin(range);
                     auto it = *r;
-                    numeric_reader_base::sign exp_sign{
-                        numeric_reader_base::sign::default_sign};
 
-                    if (auto r_sign = numeric_reader_base::read_sign(
-                            ranges::subrange{it, ranges::end(range)},
-                            exp_sign)) {
-                        it = *r_sign;
+                    if (auto r_sign = parse_numeric_sign(
+                            ranges::subrange{it, ranges::end(range)})) {
+                        it = r_sign->first;
                     }
 
                     if (auto r_exp = read_while1_code_unit(
                             ranges::subrange{it, ranges::end(range)},
-                            [](char_type ch) SCN_NOEXCEPT {
-                                return numeric_reader_base::char_to_int(ch) <
-                                       10;
-                            });
+                            [](char_type ch)
+                                SCN_NOEXCEPT { return char_to_int(ch) < 10; });
                         SCN_UNLIKELY(!r_exp)) {
                         it = beg_exp_it;
                     }
@@ -559,7 +556,7 @@ namespace scn {
             T setsign(T value) const
             {
                 SCN_EXPECT(std::isnan(value) || value >= static_cast<T>(0.0));
-                if (m_sign == numeric_reader_base::sign::minus_sign) {
+                if (m_sign == sign_type::minus_sign) {
                     return -value;
                 }
                 return value;
@@ -572,8 +569,7 @@ namespace scn {
             std::string m_thsep_indices{};
             contiguous_range_factory<CharT> m_nan_payload_buffer{};
             std::ptrdiff_t m_integral_part_length{-1};
-            numeric_reader_base::sign m_sign{
-                numeric_reader_base::sign::default_sign};
+            sign_type m_sign{sign_type::default_sign};
             float_kind m_kind{float_kind::tbd};
         };
 

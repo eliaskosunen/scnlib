@@ -526,21 +526,16 @@ namespace scn {
         {
             SCN_TRY(beg, impl::skip_classic_whitespace(source).transform_error(
                              impl::make_eof_scan_error));
-
-            auto reader = impl::integer_reader<char>{0, base};
-            SCN_TRY(_, reader.read_source_contiguous_nothsep(
-                           ranges::subrange(beg, source.end()),
-                           std::is_signed_v<T>));
-            SCN_UNUSED(_);
-            SCN_TRY(n, reader.parse_value(value));
-            return ranges::next(beg, n);
+            auto reader = impl::reader_impl_for_int<char>{};
+            return reader.read_default_with_base(
+                ranges::subrange{beg, source.end()}, value, base);
         }
 
         template <typename T>
         auto scan_int_exhaustive_valid_impl(std::string_view source) -> T
         {
             T value{};
-            impl::parse_int_value_exhaustive_valid(source, value);
+            impl::parse_integer_value_exhaustive_valid(source, value);
             return value;
         }
     }  // namespace detail
