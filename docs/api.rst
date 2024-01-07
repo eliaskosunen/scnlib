@@ -273,9 +273,9 @@ Width can be any unsigned integer.
 .. code-block:: cpp
 
     std::string str{};
-    auto ret = scn::scan("abcde", "{:3}", s);
-    // str == "123"
-    // ret.range() == "45"
+    auto ret = scn::scan("abcde", "{:3}", str);
+    // str == "abc"
+    // ret.range() == "de"
 
 Localized
 *********
