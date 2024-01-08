@@ -110,10 +110,97 @@ namespace scn {
                 return 1;
             }
 
-            template <typename T>
-            constexpr std::pair<T, T> div(T l, T r) SCN_NOEXCEPT
+            template <typename U>
+            struct limits_type {
+                static_assert(std::is_unsigned_v<U>);
+
+                U uint_max, int_max, abs_int_min;
+            };
+            template <typename U>
+            constexpr limits_type<U> integer_reader_value_limits()
             {
-                return {l / r, l % r};
+                static_assert(std::is_unsigned_v<U>);
+
+                // Max for uint
+                constexpr auto uint_max = static_cast<U>(-1);
+                // Max for sint
+                constexpr auto int_max = static_cast<U>(uint_max / 2);  // >> 1
+                // Absolute value of min for sint
+                constexpr auto abs_int_min = static_cast<U>(int_max + 1);
+
+                return {uint_max, int_max, abs_int_min};
+            }
+
+            template <typename T, typename U>
+            constexpr std::tuple<T, T, T> cutoffs_table_div(T l, U r)
+            {
+                return {l, l / static_cast<T>(r), l % static_cast<T>(r)};
+            }
+
+            template <typename U, U Limit>
+            constexpr std::tuple<U, U, U> cutoffs_table[] = {
+                cutoffs_table_div(Limit, 2),  cutoffs_table_div(Limit, 3),
+                cutoffs_table_div(Limit, 4),  cutoffs_table_div(Limit, 5),
+                cutoffs_table_div(Limit, 6),  cutoffs_table_div(Limit, 7),
+                cutoffs_table_div(Limit, 8),  cutoffs_table_div(Limit, 9),
+                cutoffs_table_div(Limit, 10), cutoffs_table_div(Limit, 11),
+                cutoffs_table_div(Limit, 12), cutoffs_table_div(Limit, 13),
+                cutoffs_table_div(Limit, 14), cutoffs_table_div(Limit, 15),
+                cutoffs_table_div(Limit, 16), cutoffs_table_div(Limit, 17),
+                cutoffs_table_div(Limit, 18), cutoffs_table_div(Limit, 19),
+                cutoffs_table_div(Limit, 20), cutoffs_table_div(Limit, 21),
+                cutoffs_table_div(Limit, 22), cutoffs_table_div(Limit, 23),
+                cutoffs_table_div(Limit, 24), cutoffs_table_div(Limit, 25),
+                cutoffs_table_div(Limit, 26), cutoffs_table_div(Limit, 27),
+                cutoffs_table_div(Limit, 28), cutoffs_table_div(Limit, 29),
+                cutoffs_table_div(Limit, 30), cutoffs_table_div(Limit, 31),
+                cutoffs_table_div(Limit, 32), cutoffs_table_div(Limit, 33),
+                cutoffs_table_div(Limit, 34), cutoffs_table_div(Limit, 35),
+                cutoffs_table_div(Limit, 36)};
+
+            template <typename T>
+            constexpr auto get_cutoff_limits_unsigned(int base)
+            {
+                using utype = std::make_unsigned_t<T>;
+
+                constexpr auto limit =
+                    integer_reader_value_limits<utype>().uint_max;
+
+                SCN_EXPECT(base >= 2 && base <= 36);
+                return cutoffs_table<utype, limit>[static_cast<size_t>(base) -
+                                                   2];
+            };
+
+            template <typename T>
+            constexpr auto get_cutoff_limits_signed(int base, bool is_positive)
+            {
+                using utype = std::make_unsigned_t<T>;
+                SCN_EXPECT(base >= 2 && base <= 36);
+                const auto offset = static_cast<size_t>(base) - 2;
+
+                if (is_positive) {
+                    constexpr auto limit =
+                        integer_reader_value_limits<utype>().int_max;
+                    return cutoffs_table<utype, limit>[offset];
+                }
+                else {
+                    constexpr auto limit =
+                        integer_reader_value_limits<utype>().abs_int_min;
+                    return cutoffs_table<utype, limit>[offset];
+                }
+            };
+
+            template <typename T>
+            constexpr auto get_cutoff_limits(int base, sign_type sign)
+            {
+                if constexpr (std::is_unsigned_v<T>) {
+                    SCN_UNUSED(sign);
+                    return get_cutoff_limits_unsigned<T>(base);
+                }
+                else {
+                    return get_cutoff_limits_signed<T>(
+                        base, sign == sign_type::plus_sign);
+                }
             }
 
             template <typename T>
@@ -132,45 +219,33 @@ namespace scn {
             struct int_reader_state {
                 using utype = std::make_unsigned_t<T>;
 
-                // Max for uint
-                static constexpr auto uint_max = static_cast<utype>(-1);
-                // Max for sint
-                static constexpr auto int_max =
-                    static_cast<utype>(uint_max / 2);  // >> 1
-                // Absolute value of min for sint
-                static constexpr auto abs_int_min =
-                    static_cast<utype>(int_max + 1);
+                static constexpr auto ulimits =
+                    integer_reader_value_limits<utype>();
 
                 int_reader_state(int base, sign_type s)
                     : ubase(static_cast<utype>(base)),
                       sign(s),
-                      limit([&]() -> utype {
-                          if constexpr (std::is_signed_v<T>) {
-                              if (sign == sign_type::minus_sign) {
-                                  return abs_int_min;
-                              }
-                              return int_max;
-                          }
-                          return uint_max;
-                      }()),
-                      cutlimits(scn::impl::div(limit, ubase))
+                      cutlimits(get_cutoff_limits<T>(base, sign))
                 {
                 }
 
+                constexpr auto limit() const
+                {
+                    return std::get<0>(cutlimits);
+                }
                 constexpr auto cutoff() const
                 {
-                    return cutlimits.first;
+                    return std::get<1>(cutlimits);
                 }
                 constexpr auto cutlim() const
                 {
-                    return cutlimits.second;
+                    return std::get<2>(cutlimits);
                 }
 
                 utype accumulator{};
                 const utype ubase;
                 const sign_type sign;
-                const utype limit;
-                const std::pair<utype, utype> cutlimits;
+                const std::tuple<utype, utype, utype> cutlimits;
             };
 
             template <typename UType, typename T>
@@ -308,7 +383,7 @@ namespace scn {
                     if (static_cast<uint64_t>(
                             std::numeric_limits<utype>::max()) <
                             1'0000'0000ull &&
-                        word > static_cast<uint64_t>(state.limit)) {
+                        word > static_cast<uint64_t>(state.limit())) {
                         SCN_UNLIKELY_ATTR
                         return scan_error{scan_error::value_out_of_range,
                                           "Out of range: integer overflow"};
@@ -342,8 +417,9 @@ namespace scn {
                 SCN_EXPECT(accumulator_multiplier != 0);
 
                 if (state.accumulator == 0) {
-                    if (static_cast<uint64_t>(state.limit) >= 1'0000'0000ull &&
-                        word > static_cast<uint64_t>(state.limit)) {
+                    if (static_cast<uint64_t>(state.limit()) >=
+                            1'0000'0000ull &&
+                        word > static_cast<uint64_t>(state.limit())) {
                         SCN_UNLIKELY_ATTR
                         return scan_error{scan_error::value_out_of_range,
                                           "Out of range: integer overflow"};
@@ -355,7 +431,7 @@ namespace scn {
                     // accumulator * multiplier > limit - word
                     // accumulator > (limit - word) / multiplier
                     if (state.accumulator >
-                        ((state.limit - static_cast<utype>(word)) /
+                        ((state.limit() - static_cast<utype>(word)) /
                          accumulator_multiplier)) {
                         SCN_UNLIKELY_ATTR
                         return scan_error{scan_error::value_out_of_range,
@@ -390,7 +466,8 @@ namespace scn {
                              sign_type sign)
             {
                 if (sign == sign_type::minus_sign) {
-                    if (SCN_UNLIKELY(state.accumulator == state.abs_int_min)) {
+                    if (SCN_UNLIKELY(state.accumulator ==
+                                     state.ulimits.abs_int_min)) {
                         value = std::numeric_limits<T>::min();
                     }
                     else {
@@ -422,7 +499,6 @@ namespace scn {
                     value = std::numeric_limits<T>::max();
                 }
             }
-
         }  // namespace
 
         template <typename CharT, typename T>
@@ -526,7 +602,8 @@ namespace scn {
                     (((word & mask) * mul1) + (((word >> 16) & mask) * mul2)) >>
                     32;
 
-                value *= static_cast<T>(power_of_10(static_cast<int>(n)));
+                value *= static_cast<T>(accumulator_multipliers[n]);
+                //value *= static_cast<T>(power_of_10(static_cast<int>(n)));
                 value += static_cast<T>(word);
                 source = source.substr(n);
             }

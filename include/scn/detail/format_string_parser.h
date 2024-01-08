@@ -447,7 +447,6 @@ namespace scn {
             auto potential_fill_len = code_point_length(begin, end);
             if (SCN_UNLIKELY(potential_fill_len == 0 ||
                              std::distance(begin, end) < potential_fill_len)) {
-                SCN_UNLIKELY_ATTR
                 handler.on_error("Invalid encoding in fill character");
                 return begin;
             }
@@ -589,7 +588,6 @@ namespace scn {
             ++begin;
 
             if (SCN_UNLIKELY(begin == end)) {
-                SCN_UNLIKELY_ATTR
                 handler.on_error(
                     "Unexpected end of [character set] specifier in format "
                     "string");
@@ -747,7 +745,6 @@ namespace scn {
                 if (*begin == CharT{'['}) {
                     auto set = parse_presentation_set(begin, end, handler);
                     if (SCN_UNLIKELY(set.size() <= 2)) {
-                        SCN_UNLIKELY_ATTR
                         handler.on_error(
                             "Invalid (empty) [character set] specifier in "
                             "format string");
@@ -761,7 +758,6 @@ namespace scn {
                 }
                 presentation_type type = parse_presentation_type(*begin++);
                 if (SCN_UNLIKELY(type == presentation_type::none)) {
-                    SCN_UNLIKELY_ATTR
                     handler.on_error("Invalid type specifier in format string");
                     return begin;
                 }
