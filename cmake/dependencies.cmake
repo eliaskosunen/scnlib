@@ -61,12 +61,12 @@ endif ()
 # we don't want to include tests of dependencies, so we need to do some manual work
 
 if (SCN_USE_EXTERNAL_SIMDUTF)
-    find_package(simdutf 4.0.5 CONFIG REQUIRED)
+    find_package(simdutf 4.0.0 CONFIG REQUIRED)
 else ()
     FetchContent_Declare(
             simdutf
             GIT_REPOSITORY https://github.com/simdutf/simdutf.git
-            GIT_TAG v4.0.5
+            GIT_TAG v4.0.8
             GIT_SHALLOW TRUE
     )
 
@@ -90,12 +90,12 @@ endif ()
 # fast_float
 
 if (SCN_USE_EXTERNAL_FAST_FLOAT)
-    find_package(FastFloat 5.3.0 CONFIG REQUIRED)
+    find_package(FastFloat 6.0.0 CONFIG REQUIRED)
 else ()
     FetchContent_Declare(
             fast_float
             GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
-            GIT_TAG v5.3.0
+            GIT_TAG v6.0.0
             GIT_SHALLOW TRUE
     )
 

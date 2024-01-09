@@ -23,6 +23,8 @@
 #include <charconv>
 #endif
 
+#include <fast_float/fast_float.h>
+
 template <typename Int>
 static void scan_int_single_scn(benchmark::State& state)
 {
@@ -222,3 +224,26 @@ BENCHMARK_TEMPLATE(scan_int_single_charconv, long long);
 BENCHMARK_TEMPLATE(scan_int_single_charconv, unsigned);
 
 #endif  // SCN_HAS_INTEGER_CHARCONV
+
+template <typename Int>
+static void scan_int_single_fastfloat(benchmark::State& state)
+{
+    single_state<Int> s{get_integer_list<Int>()};
+
+    for (auto _ : state) {
+        s.reset_if_necessary();
+
+        Int i{};
+        auto ret = fast_float::from_chars(s.it->data(),
+                                          s.it->data() + s.it->size(), i);
+        if (ret.ec != std::errc{}) {
+            state.SkipWithError("Benchmark errored");
+            break;
+        }
+        s.push(i);
+    }
+    state.SetBytesProcessed(s.get_bytes_processed(state));
+}
+BENCHMARK_TEMPLATE(scan_int_single_fastfloat, int);
+BENCHMARK_TEMPLATE(scan_int_single_fastfloat, long long);
+BENCHMARK_TEMPLATE(scan_int_single_fastfloat, unsigned);
