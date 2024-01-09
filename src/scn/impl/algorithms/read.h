@@ -404,52 +404,58 @@ namespace scn {
             }
         }
 
+        // Ripped from fast_float
+        inline constexpr bool fast_streq_nocase(const char* a,
+                                                const char* b,
+                                                size_t len)
+        {
+            unsigned char running_diff{0};
+            for (size_t i = 0; i < len; ++i) {
+                running_diff |= static_cast<unsigned char>(a[i] ^ b[i]);
+            }
+            return running_diff == 0 || running_diff == 32;
+        }
+
         template <typename Range>
         parse_expected<simple_borrowed_iterator_t<Range>>
         read_matching_string_classic_nocase(Range&& range, std::string_view str)
         {
             using char_type = detail::char_t<Range>;
 
-            auto ascii_tolower = [](char_type ch) -> char_type {
-                if (ch < 'A' || ch > 'Z') {
-                    return ch;
+            if constexpr (ranges::contiguous_range<Range> &&
+                          std::is_same_v<char_type, char>) {
+                if (ranges::size(range) < str.size()) {
+                    return unexpected(make_eof_parse_error(eof_error::eof));
                 }
-                return static_cast<char_type>(
-                    ch + static_cast<char_type>('a' - 'A'));
-            };
-
-            SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str))
-                            .transform_error(make_eof_parse_error));
-
-#if 0
-            auto buf = make_contiguous_buffer(
-                ranges::subrange{ranges::begin(range), it});
-
-            if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
-                if (buf.stores_allocated_string()) {
-                    for (auto& ch : buf.get_allocated_string()) {
-                        ch = ascii_tolower(ch);
-                    }
-                    if (SCN_UNLIKELY(buf.view() != str)) {
-                        return unexpected_scan_error(
-                            scan_error::invalid_scanned_value,
-                            "read_matching_string_nocase: No match");
-                    }
-
-                    return it;
+                if (!fast_streq_nocase(ranges::data(range), str.data(),
+                                       str.size())) {
+                    return unexpected(parse_error::error);
                 }
+                return ranges::next(ranges::begin(range), str.size());
             }
-#endif
+            else {
+                auto ascii_tolower = [](char_type ch) -> char_type {
+                    if (ch < 'A' || ch > 'Z') {
+                        return ch;
+                    }
+                    return static_cast<char_type>(
+                        ch + static_cast<char_type>('a' - 'A'));
+                };
 
-            if (SCN_UNLIKELY(!std::equal(
-                    ranges::begin(range), it, str.begin(), [&](auto a, auto b) {
-                        return ascii_tolower(a) ==
-                               static_cast<detail::char_t<Range>>(b);
-                    }))) {
-                return unexpected(parse_error::error);
+                SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str))
+                                .transform_error(make_eof_parse_error));
+
+                if (SCN_UNLIKELY(!std::equal(
+                        ranges::begin(range), it, str.begin(),
+                        [&](auto a, auto b) {
+                            return ascii_tolower(a) ==
+                                   static_cast<detail::char_t<Range>>(b);
+                        }))) {
+                    return unexpected(parse_error::error);
+                }
+
+                return it;
             }
-
-            return it;
         }
 
         template <typename Range>
