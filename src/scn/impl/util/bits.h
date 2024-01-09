@@ -136,6 +136,18 @@ namespace scn {
 
             return static_cast<uint32_t>(lookup[(val * 0x077cb531u) >> 27]);
         }
+
+        constexpr uint64_t byteswap(uint64_t val)
+        {
+            return (val & 0xFF00000000000000) >> 56 |
+                   (val & 0x00FF000000000000) >> 40 |
+                   (val & 0x0000FF0000000000) >> 24 |
+                   (val & 0x000000FF00000000) >> 8 |
+                   (val & 0x00000000FF000000) << 8 |
+                   (val & 0x0000000000FF0000) << 24 |
+                   (val & 0x000000000000FF00) << 40 |
+                   (val & 0x00000000000000FF) << 56;
+        }
     }  // namespace impl
 
     SCN_END_NAMESPACE

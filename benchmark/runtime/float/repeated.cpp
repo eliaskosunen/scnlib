@@ -91,7 +91,7 @@ static void scan_float_repeated_sstream(benchmark::State& state)
 
         if (stream.eof()) {
             stream = std::istringstream(s.source);
-            s.values.clear();
+            s.reset();
         }
         else if (stream.fail()) {
             state.SkipWithError("Scan error");

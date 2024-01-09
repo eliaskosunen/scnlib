@@ -14,6 +14,10 @@
 //
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
+//
+//
+// The contents of this file are heavily influenced by fast_float:
+//     https://github.com/fastfloat/fast_float/blob/main/include/fast_float/ascii_number.h
 
 #include <scn/impl/reader/integer_reader.h>
 #include <scn/impl/util/bits.h>
@@ -25,479 +29,203 @@ namespace scn {
 
     namespace impl {
         namespace {
-            constexpr std::array<uint64_t, 20> powers_of_ten{
-                {1ull,
-                 10ull,
-                 100ull,
-                 1000ull,
-                 10'000ull,
-                 100'000ull,
-                 1'000'000ull,
-                 10'000'000ull,
-                 100'000'000ull,
-                 1'000'000'000ull,
-                 10'000'000'000ull,
-                 100'000'000'000ull,
-                 1'000'000'000'000ull,
-                 10'000'000'000'000ull,
-                 100'000'000'000'000ull,
-                 1'000'000'000'000'000ull,
-                 10'000'000'000'000'000ull,
-                 100'000'000'000'000'000ull,
-                 1'000'000'000'000'000'000ull,
-                 10'000'000'000'000'000'000ull}};
-            constexpr uint64_t power_of_10(int pw)
+            uint64_t get_eight_digits_word(const char* input)
             {
-                return powers_of_ten[static_cast<std::size_t>(pw)];
+                uint64_t val{};
+                std::memcpy(&val, input, sizeof(uint64_t));
+                if constexpr (SCN_IS_BIG_ENDIAN) {
+                    val = byteswap(val);
+                }
+                return val;
             }
 
-            constexpr int count_digits(uint64_t x)
+            constexpr uint32_t parse_eight_decimal_digits_unrolled_fast(
+                uint64_t word)
             {
-                if (x >= 10'000'000'000ull) {
-                    if (x >= 100'000'000'000'000ull) {
-                        if (x >= 10'000'000'000'000'000ull) {
-                            if (x >= 100'000'000'000'000'000ull) {
-                                if (x >= 1'000'000'000'000'000'000ull) {
-                                    return 19;
-                                }
-                                return 18;
-                            }
-                            return 17;
-                        }
-                        if (x >= 1'000'000'000'000'000ull) {
-                            return 16;
-                        }
-                        return 15;
-                    }
-                    if (x >= 1'000'000'000'000ull) {
-                        if (x >= 10'000'000'000'000ull) {
-                            return 14;
-                        }
-                        return 13;
-                    }
-                    if (x >= 100'000'000'000ull) {
-                        return 12;
-                    }
-                    return 11;
-                }
-                if (x >= 100'000ull) {
-                    if (x >= 10'000'000ull) {
-                        if (x >= 100'000'000ull) {
-                            if (x >= 1'000'000'000ull) {
-                                return 10;
-                            }
-                            return 9;
-                        }
-                        return 8;
-                    }
-                    if (x >= 1'000'000ull) {
-                        return 7;
-                    }
-                    return 6;
-                }
-                if (x >= 100) {
-                    if (x >= 1000) {
-                        if (x >= 10000) {
-                            return 5;
-                        }
-                        return 4;
-                    }
-                    return 3;
-                }
-                if (x >= 10) {
-                    return 2;
-                }
-                return 1;
+                constexpr uint64_t mask = 0x000000FF000000FF;
+                constexpr uint64_t mul1 =
+                    0x000F424000000064;  // 100 + (1000000ULL << 32)
+                constexpr uint64_t mul2 =
+                    0x0000271000000001;  // 1 + (10000ULL << 32)
+                word -= 0x3030303030303030;
+                word = (word * 10) + (word >> 8);  // val = (val * 2561) >> 8;
+                word =
+                    (((word & mask) * mul1) + (((word >> 16) & mask) * mul2)) >>
+                    32;
+                return static_cast<uint32_t>(word);
             }
 
-            template <typename U>
-            struct limits_type {
-                static_assert(std::is_unsigned_v<U>);
-
-                U uint_max, int_max, abs_int_min;
-            };
-            template <typename U>
-            constexpr limits_type<U> integer_reader_value_limits()
+            constexpr bool is_word_made_of_eight_decimal_digits_fast(
+                uint64_t word)
             {
-                static_assert(std::is_unsigned_v<U>);
-
-                // Max for uint
-                constexpr auto uint_max = static_cast<U>(-1);
-                // Max for sint
-                constexpr auto int_max = static_cast<U>(uint_max / 2);  // >> 1
-                // Absolute value of min for sint
-                constexpr auto abs_int_min = static_cast<U>(int_max + 1);
-
-                return {uint_max, int_max, abs_int_min};
+                return !((((word + 0x4646464646464646) |
+                           (word - 0x3030303030303030)) &
+                          0x8080808080808080));
             }
 
-            template <typename T, typename U>
-            constexpr std::tuple<T, T, T> cutoffs_table_div(T l, U r)
+            void loop_parse_if_eight_decimal_digits(const char*& p,
+                                                    const char* const end,
+                                                    uint64_t& val)
             {
-                return {l, l / static_cast<T>(r), l % static_cast<T>(r)};
+                while (std::distance(p, end) >= 8 &&
+                       is_word_made_of_eight_decimal_digits_fast(
+                           get_eight_digits_word(p))) {
+                    val = val * 100'000'000 +
+                          parse_eight_decimal_digits_unrolled_fast(
+                              get_eight_digits_word(p));
+                    p += 8;
+                }
             }
 
-            template <typename U, U Limit>
-            constexpr std::tuple<U, U, U> cutoffs_table[] = {
-                cutoffs_table_div(Limit, 2),  cutoffs_table_div(Limit, 3),
-                cutoffs_table_div(Limit, 4),  cutoffs_table_div(Limit, 5),
-                cutoffs_table_div(Limit, 6),  cutoffs_table_div(Limit, 7),
-                cutoffs_table_div(Limit, 8),  cutoffs_table_div(Limit, 9),
-                cutoffs_table_div(Limit, 10), cutoffs_table_div(Limit, 11),
-                cutoffs_table_div(Limit, 12), cutoffs_table_div(Limit, 13),
-                cutoffs_table_div(Limit, 14), cutoffs_table_div(Limit, 15),
-                cutoffs_table_div(Limit, 16), cutoffs_table_div(Limit, 17),
-                cutoffs_table_div(Limit, 18), cutoffs_table_div(Limit, 19),
-                cutoffs_table_div(Limit, 20), cutoffs_table_div(Limit, 21),
-                cutoffs_table_div(Limit, 22), cutoffs_table_div(Limit, 23),
-                cutoffs_table_div(Limit, 24), cutoffs_table_div(Limit, 25),
-                cutoffs_table_div(Limit, 26), cutoffs_table_div(Limit, 27),
-                cutoffs_table_div(Limit, 28), cutoffs_table_div(Limit, 29),
-                cutoffs_table_div(Limit, 30), cutoffs_table_div(Limit, 31),
-                cutoffs_table_div(Limit, 32), cutoffs_table_div(Limit, 33),
-                cutoffs_table_div(Limit, 34), cutoffs_table_div(Limit, 35),
-                cutoffs_table_div(Limit, 36)};
-
-            template <typename T>
-            constexpr auto get_cutoff_limits_unsigned(int base)
+            const char* parse_decimal_integer_fast_impl(const char* begin,
+                                                        const char* const end,
+                                                        uint64_t& val)
             {
-                using utype = std::make_unsigned_t<T>;
+                loop_parse_if_eight_decimal_digits(begin, end, val);
 
-                constexpr auto limit =
-                    integer_reader_value_limits<utype>().uint_max;
+                while (begin != end) {
+                    const auto digit = char_to_int(*begin);
+                    if (digit >= 10) {
+                        break;
+                    }
+                    val = 10ull * val + static_cast<uint64_t>(digit);
+                    ++begin;
+                }
 
+                return begin;
+            }
+
+            constexpr size_t maxdigits_u64_table[] = {
+                64, 41, 32, 28, 25, 23, 22, 21, 20, 19, 18, 18,
+                17, 17, 16, 16, 16, 16, 15, 15, 15, 15, 14, 14,
+                14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 13};
+
+            constexpr size_t maxdigits_u64(int base)
+            {
                 SCN_EXPECT(base >= 2 && base <= 36);
-                return cutoffs_table<utype, limit>[static_cast<size_t>(base) -
-                                                   2];
-            };
+                return maxdigits_u64_table[static_cast<size_t>(base - 2)];
+            }
 
-            template <typename T>
-            constexpr auto get_cutoff_limits_signed(int base, bool is_positive)
+            static constexpr uint64_t min_safe_u64_table[] = {
+                9223372036854775808ull,  12157665459056928801ull,
+                4611686018427387904,     7450580596923828125,
+                4738381338321616896,     3909821048582988049,
+                9223372036854775808ull,  12157665459056928801ull,
+                10000000000000000000ull, 5559917313492231481,
+                2218611106740436992,     8650415919381337933,
+                2177953337809371136,     6568408355712890625,
+                1152921504606846976,     2862423051509815793,
+                6746640616477458432,     15181127029874798299ull,
+                1638400000000000000,     3243919932521508681,
+                6221821273427820544,     11592836324538749809ull,
+                876488338465357824,      1490116119384765625,
+                2481152873203736576,     4052555153018976267,
+                6502111422497947648,     10260628712958602189ull,
+                15943230000000000000ull, 787662783788549761,
+                1152921504606846976,     1667889514952984961,
+                2386420683693101056,     3379220508056640625,
+                4738381338321616896};
+
+            constexpr size_t min_safe_u64(int base)
             {
-                using utype = std::make_unsigned_t<T>;
                 SCN_EXPECT(base >= 2 && base <= 36);
-                const auto offset = static_cast<size_t>(base) - 2;
-
-                if (is_positive) {
-                    constexpr auto limit =
-                        integer_reader_value_limits<utype>().int_max;
-                    return cutoffs_table<utype, limit>[offset];
-                }
-                else {
-                    constexpr auto limit =
-                        integer_reader_value_limits<utype>().abs_int_min;
-                    return cutoffs_table<utype, limit>[offset];
-                }
-            };
-
-            template <typename T>
-            constexpr auto get_cutoff_limits(int base, sign_type sign)
-            {
-                if constexpr (std::is_unsigned_v<T>) {
-                    SCN_UNUSED(sign);
-                    return get_cutoff_limits_unsigned<T>(base);
-                }
-                else {
-                    return get_cutoff_limits_signed<T>(
-                        base, sign == sign_type::plus_sign);
-                }
+                return min_safe_u64_table[static_cast<size_t>(base - 2)];
             }
 
             template <typename T>
-            constexpr bool can_do_fast64_at_least_once()
+            constexpr bool check_integer_overflow(uint64_t val,
+                                                  size_t digits_count,
+                                                  int base,
+                                                  bool is_negative)
             {
-                return count_digits(std::numeric_limits<T>::max()) >= 8;
-            }
-
-            template <typename T>
-            constexpr bool can_do_fast64_multiple_times()
-            {
-                return count_digits(std::numeric_limits<T>::max()) > 8;
-            }
-
-            template <typename T>
-            struct int_reader_state {
-                using utype = std::make_unsigned_t<T>;
-
-                static constexpr auto ulimits =
-                    integer_reader_value_limits<utype>();
-
-                int_reader_state(int base, sign_type s)
-                    : ubase(static_cast<utype>(base)),
-                      sign(s),
-                      cutlimits(get_cutoff_limits<T>(base, sign))
-                {
-                }
-
-                constexpr auto limit() const
-                {
-                    return std::get<0>(cutlimits);
-                }
-                constexpr auto cutoff() const
-                {
-                    return std::get<1>(cutlimits);
-                }
-                constexpr auto cutlim() const
-                {
-                    return std::get<2>(cutlimits);
-                }
-
-                utype accumulator{};
-                const utype ubase;
-                const sign_type sign;
-                const std::tuple<utype, utype, utype> cutlimits;
-            };
-
-            template <typename UType, typename T>
-            const char* do_single_char_impl(UType digit,
-                                            int_reader_state<T>& state)
-            {
-                auto overflow_error_msg = [sign = state.sign]() {
-                    if (sign == sign_type::minus_sign) {
-                        return "Out of range: integer overflow";
-                    }
-                    return "Out of range: integer underflow";
-                };
-
-                if (SCN_UNLIKELY(state.accumulator > state.cutoff() ||
-                                 (state.accumulator == state.cutoff() &&
-                                  digit > state.cutlim()))) {
+                auto max_digits = maxdigits_u64(base);
+                if (digits_count > max_digits) {
                     SCN_UNLIKELY_ATTR
-                    return overflow_error_msg();
+                    return true;
+                }
+                if (digits_count == max_digits && val < min_safe_u64(base)) {
+                    SCN_UNLIKELY_ATTR
+                    return true;
+                }
+                if constexpr (!std::is_same_v<T, uint64_t>) {
+                    if (val >
+                        static_cast<uint64_t>(std::numeric_limits<T>::max()) +
+                            static_cast<uint64_t>(is_negative)) {
+                        SCN_UNLIKELY_ATTR
+                        return true;
+                    }
                 }
 
-                SCN_GCC_PUSH
-                SCN_GCC_IGNORE("-Wconversion")
+                SCN_LIKELY_ATTR
+                return false;
+            }
 
-                state.accumulator *= state.ubase;
-                state.accumulator += digit;
+            template <typename T>
+            constexpr T store_result(uint64_t u64val, bool is_negative)
+            {
+                if (is_negative) {
+                    SCN_MSVC_PUSH
+                    SCN_MSVC_IGNORE(4146)
+                    return static_cast<T>(
+                        -std::numeric_limits<T>::max() -
+                        static_cast<T>(u64val - std::numeric_limits<T>::max()));
+                    SCN_MSVC_POP
+                }
 
-                SCN_GCC_POP
+                return static_cast<T>(u64val);
+            }
 
-                return nullptr;
+            template <typename T>
+            auto parse_decimal_integer_fast(std::string_view input,
+                                            T& val,
+                                            bool is_negative)
+                -> scan_expected<const char*>
+            {
+                uint64_t u64val{};
+                auto ptr = parse_decimal_integer_fast_impl(
+                    input.data(), input.data() + input.size(), u64val);
+
+                auto digits_count = static_cast<size_t>(ptr - input.data());
+                if (check_integer_overflow<T>(u64val, digits_count, 10,
+                                              is_negative)) {
+                    return unexpected_scan_error(scan_error::value_out_of_range,
+                                                 "Integer overflow");
+                }
+
+                val = store_result<T>(u64val, is_negative);
+                return ptr;
             }
 
             template <typename CharT, typename T>
-            auto do_single_char(CharT ch, int_reader_state<T>& state)
-                -> std::pair<bool, scan_error>
+            auto parse_regular_integer(std::basic_string_view<CharT> input,
+                                       T& val,
+                                       int base,
+                                       bool is_negative)
+                -> scan_expected<const CharT*>
             {
-                using utype = typename int_reader_state<T>::utype;
+                uint64_t u64val{};
+                const CharT* begin = input.data();
+                const CharT* const end = input.data() + input.size();
 
-                const auto digit = static_cast<utype>(char_to_int(ch));
-                if (digit >= state.ubase) {
-                    return {false, {}};
-                }
-
-                if (auto msg = do_single_char_impl(digit, state);
-                    SCN_UNLIKELY(msg != nullptr)) {
-                    return {false, {scan_error::value_out_of_range, msg}};
-                }
-                return {true, {}};
-            }
-
-            constexpr std::array<uint64_t, 9> accumulator_multipliers{{
-                0,
-                power_of_10(1),
-                power_of_10(2),
-                power_of_10(3),
-                power_of_10(4),
-                power_of_10(5),
-                power_of_10(6),
-                power_of_10(7),
-                power_of_10(8),
-            }};
-
-            template <typename T,
-                      typename State,
-                      typename Iterator,
-                      typename Sentinel>
-            SCN_MAYBE_UNUSED scan_error do_read_decimal_fast64(State& state,
-                                                               Iterator& it,
-                                                               Sentinel end,
-                                                               bool& stop_fast)
-            {
-                SCN_EXPECT(end - it >= 8);
-                uint64_t word{};
-                std::memcpy(&word, &*it, 8);
-
-#if 1
-                constexpr std::size_t digits_in_word = 8;
-
-                // Check if word is all decimal digits, from:
-                // https://lemire.me/blog/2018/09/30/quickly-identifying-a-sequence-of-digits-in-a-string-of-characters/
-                if ((word & (word + 0x0606060606060606ull) &
-                     0xF0F0F0F0F0F0F0F0ull) != 0x3030303030303030ull) {
-                    // Bail out, use simpler loop
-                    stop_fast = true;
-                    return {};
-                }
-#else
-                // Alternative (slower) approach, where we count the number of
-                // decimal digits in the string, and mask them out
-                std::size_t digits_in_word{};
-
-                {
-                    // Check for non-decimal characters,
-                    // mask them out if there's any in the end
-                    // (replace with '0' = 0x30)
-
-                    const auto masked = has_byte_between(word, '0', '9');
-                    digits_in_word =
-                        get_index_of_first_nonmatching_byte(masked);
-                    if (digits_in_word != 8) {
-                        stop_fast = true;
+                while (begin != end) {
+                    const auto digit = char_to_int(*begin);
+                    if (digit >= base) {
+                        break;
                     }
-                    if (digits_in_word == 0) {
-                        return {};
-                    }
-
-                    const uint64_t shift = 8 * (8 - digits_in_word);
-                    word <<= shift;
-                    const uint64_t mask = (~0ull) << shift;
-                    word = (mask & word) | (~mask & 0x3030303030303030ull);
-                }
-#endif
-
-                it += digits_in_word;
-
-                {
-                    // Bit-twiddle ascii decimal chars to become an actual
-                    // integer, from:
-                    // https://lemire.me/blog/2022/01/21/swar-explained-parsing-eight-digits/
-
-                    constexpr uint64_t mask = 0x000000FF000000FFull;
-                    constexpr uint64_t mul1 = 100 + (1000000ull << 32);
-                    constexpr uint64_t mul2 = 1 + (10000ull << 32);
-
-                    word -= 0x3030303030303030ull;
-                    word = (word * 10) + (word >> 8);
-                    word = (((word & mask) * mul1) +
-                            (((word >> 16) & mask) * mul2)) >>
-                           32;
+                    u64val = static_cast<uint64_t>(base) * u64val +
+                             static_cast<uint64_t>(digit);
+                    ++begin;
                 }
 
-                using utype = typename State::utype;
-
-#if SCN_HAS_BUILTIN_OVERFLOW
-                if (state.accumulator == 0) {
-                    if (static_cast<uint64_t>(
-                            std::numeric_limits<utype>::max()) <
-                            1'0000'0000ull &&
-                        word > static_cast<uint64_t>(state.limit())) {
-                        SCN_UNLIKELY_ATTR
-                        return scan_error{scan_error::value_out_of_range,
-                                          "Out of range: integer overflow"};
-                    }
-
-                    state.accumulator = static_cast<utype>(word);
-                }
-                else {
-                    SCN_EXPECT(can_do_fast64_multiple_times<T>());
-                    const utype accumulator_multiplier = static_cast<utype>(
-                        accumulator_multipliers[digits_in_word]);
-
-                    if (SCN_UNLIKELY(
-                            __builtin_mul_overflow(state.accumulator,
-                                                   accumulator_multiplier,
-                                                   &state.accumulator) ||
-                            __builtin_add_overflow(state.accumulator,
-                                                   static_cast<utype>(word),
-                                                   &state.accumulator))) {
-                        SCN_UNLIKELY_ATTR
-                        return scan_error{scan_error::value_out_of_range,
-                                          "Out of range: integer overflow"};
-                    }
-                }
-#else
-                const utype accumulator_multiplier =
-                    can_do_fast64_multiple_times<T>()
-                        ? static_cast<utype>(
-                              accumulator_multipliers[digits_in_word])
-                        : 1;
-                SCN_EXPECT(accumulator_multiplier != 0);
-
-                if (state.accumulator == 0) {
-                    if (static_cast<uint64_t>(state.limit()) >=
-                            1'0000'0000ull &&
-                        word > static_cast<uint64_t>(state.limit())) {
-                        SCN_UNLIKELY_ATTR
-                        return scan_error{scan_error::value_out_of_range,
-                                          "Out of range: integer overflow"};
-                    }
-                }
-                else {
-                    SCN_EXPECT(accumulator_multiplier != 1);
-                    // accumulator * multiplier + word > limit -> overflow
-                    // accumulator * multiplier > limit - word
-                    // accumulator > (limit - word) / multiplier
-                    if (state.accumulator >
-                        ((state.limit() - static_cast<utype>(word)) /
-                         accumulator_multiplier)) {
-                        SCN_UNLIKELY_ATTR
-                        return scan_error{scan_error::value_out_of_range,
-                                          "Out of range: integer overflow"};
-                    }
+                auto digits_count = static_cast<size_t>(begin - input.data());
+                if (check_integer_overflow<T>(u64val, digits_count, base,
+                                              is_negative)) {
+                    return unexpected_scan_error(scan_error::value_out_of_range,
+                                                 "Integer overflow");
                 }
 
-                if (state.accumulator > 0) {
-                    SCN_EXPECT(can_do_fast64_multiple_times<T>());
-                    SCN_EXPECT(accumulator_multiplier != 1);
-
-                    SCN_GCC_PUSH
-                    SCN_GCC_IGNORE("-Wconversion")
-
-                    state.accumulator =
-                        state.accumulator * accumulator_multiplier +
-                        static_cast<utype>(word);
-
-                    SCN_GCC_POP
-                }
-                else {
-                    state.accumulator = static_cast<utype>(word);
-                }
-#endif  // SCN_HAS_BUILTIN_OVERFLOW
-
-                return {};
-            }
-
-            template <typename T>
-            void store_value(const int_reader_state<T>& state,
-                             T& value,
-                             sign_type sign)
-            {
-                if (sign == sign_type::minus_sign) {
-                    if (SCN_UNLIKELY(state.accumulator ==
-                                     state.ulimits.abs_int_min)) {
-                        value = std::numeric_limits<T>::min();
-                    }
-                    else {
-                        SCN_MSVC_PUSH
-                        SCN_MSVC_IGNORE(
-                            4146)  // unary minus applied to unsigned
-                        value =
-                            static_cast<T>(-static_cast<T>(state.accumulator));
-                        SCN_MSVC_POP
-                    }
-                }
-                else {
-                    value = static_cast<T>(state.accumulator);
-                }
-            }
-            template <typename T>
-            void store_value_if_out_of_range(const scan_error& err,
-                                             T& value,
-                                             sign_type sign)
-            {
-                if (err.code() != scan_error::value_out_of_range) {
-                    return;
-                }
-
-                if (sign == sign_type::minus_sign) {
-                    value = std::numeric_limits<T>::min();
-                }
-                else {
-                    value = std::numeric_limits<T>::max();
-                }
+                val = store_result<T>(u64val, is_negative);
+                return begin;
             }
         }  // namespace
 
@@ -513,47 +241,26 @@ namespace scn {
             SCN_EXPECT(sign != sign_type::default_sign);
             SCN_EXPECT(base > 0);
 
-            int_reader_state<T> state{base, sign};
-            auto it = source.begin();
-
-            if (char_to_int(*it) >= base) {
+            if (char_to_int(source[0]) >= base) {
                 SCN_UNLIKELY_ATTR
                 return unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Invalid integer value");
             }
 
-            if constexpr (std::is_same_v<CharT, char> &&
-                          can_do_fast64_at_least_once<T>() && !SCN_IS_32BIT &&
-                          !SCN_IS_BIG_ENDIAN && SCN_HAS_BITS_CTZ) {
-                if (state.ubase == 10) {
-                    for (bool stop_reading = false;
-                         source.end() - it >= 8 && !stop_reading;) {
-                        if (auto err = do_read_decimal_fast64<T>(
-                                state, it, source.end(), stop_reading);
-                            SCN_UNLIKELY(!err)) {
-                            store_value_if_out_of_range(err, value, sign);
-                            return unexpected(err);
-                        }
-                        if constexpr (!can_do_fast64_multiple_times<T>()) {
-                            break;
-                        }
-                    }
+            if constexpr (std::is_same_v<CharT, char>) {
+                if (base == 10) {
+                    SCN_TRY(ptr,
+                            parse_decimal_integer_fast(
+                                source, value, sign == sign_type::minus_sign));
+                    return ranges::next(source.begin(),
+                                        ranges::distance(source.data(), ptr));
                 }
             }
 
-            for (; /*!stop_reading &&*/ it != source.end(); ++it) {
-                if (const auto [keep_going, err] = do_single_char(*it, state);
-                    SCN_UNLIKELY(!err)) {
-                    store_value_if_out_of_range(err, value, sign);
-                    return unexpected(err);
-                }
-                else if (!keep_going) {
-                    break;
-                }
-            }
-
-            store_value(state, value, sign);
-            return it;
+            SCN_TRY(ptr, parse_regular_integer(source, value, base,
+                                               sign == sign_type::minus_sign));
+            return ranges::next(source.begin(),
+                                ranges::distance(source.data(), ptr));
         }
 
         template <typename T>
@@ -572,54 +279,35 @@ namespace scn {
             SCN_EXPECT(!source.empty());
             SCN_EXPECT(char_to_int(source.front()) < 10);
 
-            while (source.size() >= 4) {
-                const auto n = std::min(source.size(), size_t{8});
-                uint64_t word{};
-                std::memcpy(&word, source.data(), n);
+            const char* p = source.data();
+            const char* const end = source.data() + source.size();
 
-#ifndef NDEBUG
-                for (char ch : source.substr(0, n)) {
-                    SCN_EXPECT(char_to_int(ch) < 10);
-                }
-#endif
-
-                // See above, do_read_decimal_fast64
-
-                if (n != 8) {
-                    const uint64_t shift = 8 * (8 - n);
-                    word <<= shift;
-                    const uint64_t mask = (~0ull) << shift;
-                    word = (mask & word) | (~mask & 0x3030303030303030ull);
-                }
-
-                constexpr uint64_t mask = 0x000000FF000000FFull;
-                constexpr uint64_t mul1 = 100 + (1000000ull << 32);
-                constexpr uint64_t mul2 = 1 + (10000ull << 32);
-
-                word -= 0x3030303030303030ull;
-                word = (word * 10) + (word >> 8);
-                word =
-                    (((word & mask) * mul1) + (((word >> 16) & mask) * mul2)) >>
-                    32;
-
-                value *= static_cast<T>(accumulator_multipliers[n]);
-                //value *= static_cast<T>(power_of_10(static_cast<int>(n)));
-                value += static_cast<T>(word);
-                source = source.substr(n);
+            uint64_t u64val{};
+            while (std::distance(p, end) >= 8) {
+                SCN_EXPECT(is_word_made_of_eight_decimal_digits_fast(
+                    get_eight_digits_word(p)));
+                u64val = u64val * 100'000'000 +
+                         parse_eight_decimal_digits_unrolled_fast(
+                             get_eight_digits_word(p));
+                p += 8;
             }
 
-            for (auto ch : source) {
-                auto digit = char_to_int(ch);
+            while (p != end) {
+                const auto digit = char_to_int(*p);
                 SCN_EXPECT(digit < 10);
-                value *= 10;
-                value += digit;
+                u64val = 10ull * u64val + static_cast<uint64_t>(digit);
+                ++p;
+            }
+            SCN_EXPECT(p == end);
+
+            {
+                auto digits_count = static_cast<size_t>(p - source.data());
+                SCN_UNUSED(digits_count);
+                SCN_EXPECT(check_integer_overflow<T>(u64val, digits_count, 10,
+                                                     negative_sign) == false);
             }
 
-            if constexpr (std::is_signed_v<T>) {
-                if (negative_sign) {
-                    value = -value;
-                }
-            }
+            value = store_result<T>(u64val, negative_sign);
         }
 
 #define SCN_DEFINE_INTEGER_READER_TEMPLATE(CharT, IntT)                      \

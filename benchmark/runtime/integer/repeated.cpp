@@ -80,6 +80,34 @@ BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, long long);
 BENCHMARK_TEMPLATE(scan_int_repeated_scn_value, unsigned);
 
 template <typename Int>
+static void scan_int_repeated_scn_decimal(benchmark::State& state)
+{
+    repeated_state<Int> s{get_integer_string<Int>()};
+
+    for (auto _ : state) {
+        auto result = scn::scan<Int>(s.view(), "{:d}");
+
+        if (!result) {
+            if (result.error() == scn::scan_error::end_of_range) {
+                s.reset();
+            }
+            else {
+                state.SkipWithError("Scan error");
+                break;
+            }
+        }
+        else {
+            s.push(result->value());
+            s.it = scn::detail::to_address(result->range().begin());
+        }
+    }
+    state.SetBytesProcessed(s.get_bytes_processed(state));
+}
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_decimal, int);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_decimal, long long);
+BENCHMARK_TEMPLATE(scan_int_repeated_scn_decimal, unsigned);
+
+template <typename Int>
 static void scan_int_repeated_scn_int(benchmark::State& state)
 {
     repeated_state<Int> s{get_integer_string<Int>()};
@@ -123,7 +151,7 @@ static void scan_int_repeated_sstream(benchmark::State& state)
 
         if (stream.eof()) {
             stream = std::istringstream(s.source);
-            s.values.clear();
+            s.reset();
         }
         else if (stream.fail()) {
             state.SkipWithError("Scan error");

@@ -194,12 +194,12 @@ namespace scn {
 
             SCN_NODISCARD bool has_arg_been_visited(size_t id)
             {
-                if (id >= args_count) {
+                if (SCN_UNLIKELY(id >= args_count)) {
                     on_error("Invalid out-of-range argument ID");
                     return false;
                 }
 
-                if (id < 64) {
+                if (SCN_LIKELY(id < 64)) {
                     return (visited_args_lower64 >> id) & 1ull;
                 }
 
@@ -209,17 +209,17 @@ namespace scn {
 
             void set_arg_as_visited(size_t id)
             {
-                if (id >= args_count) {
+                if (SCN_UNLIKELY(id >= args_count)) {
                     on_error("Invalid out-of-range argument ID");
                     return;
                 }
 
-                if (has_arg_been_visited(id)) {
+                if (SCN_UNLIKELY(has_arg_been_visited(id))) {
                     return on_error(
                         "Argument with this ID has already been scanned");
                 }
 
-                if (id < 64) {
+                if (SCN_LIKELY(id < 64)) {
                     visited_args_lower64 |= (1ull << id);
                     return;
                 }

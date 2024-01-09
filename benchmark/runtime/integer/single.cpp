@@ -68,6 +68,28 @@ BENCHMARK_TEMPLATE(scan_int_single_scn_value, long long);
 BENCHMARK_TEMPLATE(scan_int_single_scn_value, unsigned);
 
 template <typename Int>
+static void scan_int_single_scn_decimal(benchmark::State& state)
+{
+    single_state<Int> s{get_integer_list<Int>()};
+
+    for (auto _ : state) {
+        s.reset_if_necessary();
+
+        if (auto result = scn::scan<Int>(*s.it, "{:d}"); !result) {
+            state.SkipWithError("Benchmark errored");
+            break;
+        }
+        else {
+            s.push(result->value());
+        }
+    }
+    state.SetBytesProcessed(s.get_bytes_processed(state));
+}
+BENCHMARK_TEMPLATE(scan_int_single_scn_decimal, int);
+BENCHMARK_TEMPLATE(scan_int_single_scn_decimal, long long);
+BENCHMARK_TEMPLATE(scan_int_single_scn_decimal, unsigned);
+
+template <typename Int>
 static void scan_int_single_scn_int(benchmark::State& state)
 {
     single_state<Int> s{get_integer_list<Int>()};
