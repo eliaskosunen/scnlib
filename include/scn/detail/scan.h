@@ -39,18 +39,18 @@ namespace scn {
      *
      * Example:
      * \code{.cpp}
-     * auto args = scn::make_scan_args<Range, Args...>();
-     * auto result = scn::vscan(std::forward<Range>(range), format, args);
+     * auto args = scn::make_scan_args<Source, Args...>();
+     * auto result = scn::vscan(std::forward<Source>(source), format, args);
      *
      * return scn::make_scan_result(std::move(result), std::move(args));
      * \endcode
      *
      * \ingroup result
      */
-    template <typename ResultRange, typename Context, typename... Args>
-    auto make_scan_result(scan_expected<ResultRange>&& result,
+    template <typename Result, typename Context, typename... Args>
+    auto make_scan_result(scan_expected<Result>&& result,
                           scan_arg_store<Context, Args...>&& args)
-        -> scan_expected<scan_result<ResultRange, Args...>>
+        -> scan_expected<scan_result<Result, Args...>>
     {
         if (SCN_UNLIKELY(!result)) {
             return unexpected(result.error());
@@ -59,12 +59,12 @@ namespace scn {
     }
 
     /**
-     * The return type of `scan`, based on the type of the input range, and the
+     * The return type of `scan`, based on the type of the source, and the
      * types of the scanned arguments.
      */
-    template <typename Range, typename... Args>
+    template <typename Source, typename... Args>
     using scan_result_type = scan_expected<
-        scan_result<borrowed_subrange_with_sentinel_t<Range>, Args...>>;
+        scan_result<detail::scan_result_value_type<Source>, Args...>>;
 
     namespace detail {
         // Boilerplate for scan()
@@ -92,12 +92,12 @@ namespace scn {
      * The following functions use a format string syntax similar to that of
      * `std::format`. See more at \ref format-string.
      *
-     * When these functions take a range `source` as input, that range must
-     * model the `scannable_range` concept. See more at \ref scannable.
+     * When these functions take a `source` as input, it must
+     * model the `scannable_source` concept. See more at \ref scannable.
      */
 
     /**
-     * Scans `Args...` from the range given to it (`source`), according to the
+     * Scans `Args...` from `source`, according to the
      * specifications given in the format string (`format`).
      * Returns the resulting values in an object of type `scan_result`,
      * alongside a `subrange` pointing to the unused input.
@@ -123,7 +123,7 @@ namespace scn {
     /**
      * `scan` with explicitly supplied default values
      *
-     * Can be used, for example, for preallocating a scanned string:
+     * Can be used, for example, for pre-allocating a scanned string:
      *
      * \code{.cpp}
      * std::string str;
@@ -274,11 +274,9 @@ namespace scn {
     }
 
     /**
-     * Scan from stdin.
+     * Scan from `stdin`.
      *
-     * Prefer this over constructing a view over `std::cin`,
-     * and using `scan` with it: `input` deals with synchronization with `stdin`
-     * and `std::cin`, and with multiple threads.
+     * Equivalent to `scn::scan<...>(stdin, ...)`.
      *
      * \code{.cpp}
      * auto result = scn::input<int>("{}");
@@ -323,7 +321,7 @@ namespace scn {
     /**
      * Fast integer reading.
      *
-     * Quickly reads an integer from a std::string_view. Skips preceding
+     * Quickly reads an integer from a `std::string_view`. Skips preceding
      * whitespace.
      *
      * Reads in the specified base,
@@ -349,7 +347,7 @@ namespace scn {
     /**
      * Very fast integer reading.
      *
-     * Quickly reads an integer from a std::string_view.
+     * Quickly reads an integer from a `std::string_view`.
      *
      * Be very careful when using this one!
      * Its speed comes from some very heavy assumptions about the validity of

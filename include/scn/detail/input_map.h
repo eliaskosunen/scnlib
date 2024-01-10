@@ -23,7 +23,45 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
-    /// Tag type to indicate an invalid range given to `scn::scan`
+    /**
+     * \defgroup scannable Scannable sources
+     *
+     * \brief Description of the `scannable_range` and `scannable_source`
+     * concepts.
+     *
+     * A range is considered scannable, if it models at least `forward_range`,
+     * and its character type is correct (its value type is the same as the one
+     * of the format string).
+     * If the range additionally models `contiguous_range` and `sized_range`,
+     * additional optimizations are enabled.
+     *
+     * \code{.cpp}
+     * // Exposition only
+     * template <typename Range, typename CharT>
+     * concept scannable_range =
+     *     ranges::forward_range<Range> &&
+     *     std::same_as<ranges::range_value_t<Range>, CharT>;
+     * \endcode
+     *
+     * Additionally, files (`std::FILE*`) can be scanned from.
+     * Files are always considered to be narrow (`char`-oriented).
+     * Thus, the entire concept is:
+     *
+     * \code{.cpp}
+     * // Exposition only
+     * template <typename Source, typename CharT>
+     * concept scannable_source =
+     *   (std::same_as<std::remove_cvref_t<Source>, std::FILE*> &&
+     *    std::same_as<CharT, char>) ||
+     *   scannable_range<Source, CharT>;
+     * \endcode
+     */
+
+    /**
+     * Tag type to indicate an invalid range given to `scn::scan`
+     *
+     * \ingroup scannable
+     */
     struct invalid_input_range {};
 
     struct invalid_char_type : invalid_input_range {};

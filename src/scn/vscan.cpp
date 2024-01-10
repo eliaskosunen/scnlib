@@ -555,27 +555,6 @@ namespace scn {
         return n.error();
     }
 
-#if !SCN_DISABLE_LOCALE
-    template <typename Locale, typename>
-    scan_error vinput(const Locale& loc,
-                      std::string_view format,
-                      scan_args args)
-    {
-        auto buffer = detail::make_file_scan_buffer(stdin);
-        auto n = vscan_internal(buffer, format, args, detail::locale_ref{loc});
-        if (n) {
-            buffer.sync(*n);
-            return {};
-        }
-        buffer.sync_all();
-        return n.error();
-    }
-
-    template scan_error vinput<std::locale, void>(const std::locale&,
-                                                  std::string_view,
-                                                  scan_args);
-#endif
-
     namespace detail {
         scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
                                                  std::string_view format,

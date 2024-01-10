@@ -30,14 +30,24 @@ namespace scn {
      * \brief Lower-level scanning API with type-erased arguments
      */
 
+    namespace detail {
+        template <typename Source>
+        using scan_result_value_type = std::conditional_t<
+            std::is_same_v<remove_cvref_t<Source>, std::FILE*>,
+            std::FILE*,
+            borrowed_subrange_with_sentinel_t<Source>>;
+    }
+
     /**
      * Result type returned by `vscan`.
      *
+     * The value type of the `scan_expected` is `FILE*` if `Source` is `FILE*`,
+     * `borrowed_subrange_with_sentinel_t<Source>` otherwise.
+     *
      * \ingroup vscan
      */
-    template <typename Range>
-    using vscan_result =
-        scan_expected<borrowed_subrange_with_sentinel_t<Range>>;
+    template <typename Source>
+    using vscan_result = scan_expected<detail::scan_result_value_type<Source>>;
 
     namespace detail {
         scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
@@ -159,59 +169,57 @@ namespace scn {
     SCN_GCC_IGNORE("-Wnoexcept")
 
     /**
-     * Perform actual scanning from `range`, according to `format`, into the
+     * Perform actual scanning from `source`, according to `format`, into the
      * type-erased arguments at `args`. Called by `scan`.
      *
      * \ingroup vscan
      */
-    template <typename Range>
-    auto vscan(Range&& range, std::string_view format, scan_args args)
-        -> vscan_result<Range>
+    template <typename Source>
+    auto vscan(Source&& source, std::string_view format, scan_args args)
+        -> vscan_result<Source>
     {
-        return detail::vscan_generic(SCN_FWD(range), format, args);
+        return detail::vscan_generic(SCN_FWD(source), format, args);
     }
 
     /**
-     * Perform actual scanning from `range`, according to `format`, into the
+     * Perform actual scanning from `source`, according to `format`, into the
      * type-erased arguments at `args`, using `loc`, if requested. Called by
      * `scan`.
      *
      * \ingroup locale
      */
-    template <typename Range,
+    template <typename Source,
               typename Locale,
               typename = std::void_t<decltype(Locale::classic())>>
     auto vscan(const Locale& loc,
-               Range&& range,
+               Source&& source,
                std::string_view format,
-               scan_args args) -> vscan_result<Range>
+               scan_args args) -> vscan_result<Source>
     {
-        return detail::vscan_localized_generic(loc, SCN_FWD(range), format,
+        return detail::vscan_localized_generic(loc, SCN_FWD(source), format,
                                                args);
     }
 
     /**
-     * Perform actual scanning from `range` into the type-erased argument at
+     * Perform actual scanning from `source` into the type-erased argument at
      * `arg`. Called by `scan_value`.
      *
      * \ingroup vscan
      */
-    template <typename Range>
-    auto vscan_value(Range&& range, basic_scan_arg<scan_context> arg)
-        -> vscan_result<Range>
+    template <typename Source>
+    auto vscan_value(Source&& source, basic_scan_arg<scan_context> arg)
+        -> vscan_result<Source>
     {
-        return detail::vscan_value_generic(SCN_FWD(range), arg);
+        return detail::vscan_value_generic(SCN_FWD(source), arg);
     }
 
+    /**
+     * Perform actual scanning from `stdin`, according to `format`, into the
+     * type-erased arguments at `args`. Called by `input`.
+     *
+     * \ingroup vscan
+     */
     scan_error vinput(std::string_view format, scan_args args);
-
-#if !SCN_DISABLE_LOCALE
-    template <typename Locale,
-              typename = std::void_t<decltype(Locale::classic())>>
-    scan_error vinput(const Locale& loc,
-                      std::string_view format,
-                      scan_args args);
-#endif
 
     namespace detail {
         template <typename T>

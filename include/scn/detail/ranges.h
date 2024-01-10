@@ -456,12 +456,15 @@ namespace scn {
     };
     template <typename R>
     struct borrowed_subrange_with_sentinel<R, false> {
-        using type = std::conditional_t<
-            std::is_same_v<detail::remove_cvref_t<R>, std::FILE*>,
-            std::FILE*,
-            ranges::dangling>;
+        using type = ranges::dangling;
     };
 
+    /// Equivalent to
+    /// `ranges::subrange<ranges::iterator_t<R>, ranges::sentinel_t<R>>`
+    /// if `R` is a `borrowed_range`, and `ranges::dangling` otherwise.
+    ///
+    /// Similar to `ranges::borrowed_subrange_t<R>`, expect this preserves
+    /// the range sentinel.
     template <typename R>
     using borrowed_subrange_with_sentinel_t =
         typename borrowed_subrange_with_sentinel<R>::type;

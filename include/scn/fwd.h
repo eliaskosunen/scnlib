@@ -227,10 +227,6 @@ namespace scn {
 
     // util/string_view.h: empty
 
-    /// Private implementation namespace
-    namespace detail {
-    }
-
     // detail/regex.h:
 
     template <typename CharT>

@@ -116,16 +116,18 @@ namespace scn {
             {
             }
 
-            /// Access the ununsed input range
+            /// Access the ununsed source range
             range_type range() const
             {
                 return m_range;
             }
 
+            /// The beginning of the unused source range
             auto begin() const
             {
                 return ranges::begin(m_range);
             }
+            /// The end of the unused source range
             auto end() const
             {
                 return ranges::end(m_range);
@@ -150,6 +152,7 @@ namespace scn {
 
             constexpr scan_result_file_storage(std::FILE* f) : m_file(f) {}
 
+            /// File used for scanning
             range_type range() const
             {
                 return m_file;
@@ -180,6 +183,15 @@ namespace scn {
                 return {};
             }
 
+            ranges::dangling begin() const
+            {
+                return {};
+            }
+            ranges::dangling end() const
+            {
+                return {};
+            }
+
         protected:
             template <typename... Args>
             void assign_range(Args&&...)
@@ -203,9 +215,14 @@ namespace scn {
             }
         }
 
+#if !SCN_DOXYGEN
         template <typename Range>
         using scan_result_base =
             typename decltype(get_scan_result_base<Range>())::type;
+#else
+        template <typename Range>
+        using scan_result_base = scan_result_range_storage<Range>;
+#endif
     }  // namespace detail
 
     /**
@@ -217,6 +234,10 @@ namespace scn {
      * type `scn::scan_result`, wrapped inside a `scn::scan_expected`.
      */
 
+    /**
+     * Type returned by `scan`, contains the unused input as a subrange, and the
+     * scanned values in a tuple.
+     */
     template <typename Range, typename... Args>
     class scan_result : public detail::scan_result_base<Range>,
                         public detail::scan_result_value_storage<Args...> {

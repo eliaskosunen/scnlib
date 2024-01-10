@@ -27,6 +27,9 @@
 namespace scn {
     SCN_BEGIN_NAMESPACE
 
+    /**
+     * A single (sub)expression match.
+     */
     template <typename CharT>
     class basic_regex_match {
     public:
@@ -42,6 +45,7 @@ namespace scn {
         }
 #endif
 
+        /// Matched string
         std::basic_string_view<CharT> get() const
         {
             return m_str;
@@ -57,6 +61,7 @@ namespace scn {
         }
 
 #if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
+        /// The name of this capture, if any.
         std::optional<std::basic_string_view<CharT>> name() const
         {
             return m_name;
@@ -71,6 +76,20 @@ namespace scn {
 #endif
     };
 
+    /**
+     * Can be used to get all subexpression captures of a regex match.
+     * Interface similar to
+     * `std::vector<std::optional<basic_regex_match<CharT>>>`.
+     *
+     * \code{.cpp}
+     * auto result =
+     *     scn::scan<scn::regex_matches>("abc123", "{:/[(a-z]+)([0-9]+)/}");
+     * // result->value() has three elements:
+     * //  [0]: "abc123" (entire match)
+     * //  [1]: "abc" (first subexpression match)
+     * //  [2]: "123" (second subexpression match)
+     * \endcode
+     */
     template <typename CharT>
     class basic_regex_matches
         : private std::vector<std::optional<basic_regex_match<CharT>>> {

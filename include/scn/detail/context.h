@@ -37,6 +37,7 @@ namespace scn {
         template <typename CharT, typename Args>
         struct scan_context_base {
         public:
+            /// Get argument at index `id`
             constexpr auto arg(size_t id) const SCN_NOEXCEPT
             {
                 return m_args.get(id);
@@ -114,23 +115,32 @@ namespace scn {
         basic_scan_context& operator=(basic_scan_context&&) = default;
         ~basic_scan_context() = default;
 
-        /// Get argument at index `id`
+        /**
+         * Returns an iterator pointing to the current position in the source
+         * range.
+         */
         constexpr iterator begin() const
         {
             return m_current;
         }
 
+        /**
+         * Returns a sentinel pointing to the end of the source range.
+         */
         constexpr sentinel end() const
         {
             return ranges_std::default_sentinel;
         }
 
+        /**
+         * Returns a subrange over `[begin(), end())`
+         */
         constexpr auto range() const
         {
             return ranges::subrange{begin(), end()};
         }
 
-        /// Advances the beginning of the input range to `it`
+        /// Advances the beginning of the source range to `it`
         void advance_to(iterator it)
         {
             m_current = SCN_MOVE(it);

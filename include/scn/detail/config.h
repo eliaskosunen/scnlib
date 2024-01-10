@@ -42,9 +42,8 @@
 #define SCN_USE_STD_RANGES 1
 #endif
 
-// TODO
 #if 0
-// SCN_USE_DYNAMIC_ALLOCATION
+// TODO: SCN_USE_DYNAMIC_ALLOCATION
 // If 0, removes all instances of dynamic allocation from the library,
 // including references to standard facilities that may allocate.
 #ifndef SCN_USE_DYNAMIC_ALLOCATION
