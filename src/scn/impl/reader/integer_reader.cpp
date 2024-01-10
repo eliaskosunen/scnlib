@@ -140,11 +140,9 @@ namespace scn {
             {
                 auto max_digits = maxdigits_u64(base);
                 if (digits_count > max_digits) {
-                    SCN_UNLIKELY_ATTR
                     return true;
                 }
                 if (digits_count == max_digits && val < min_safe_u64(base)) {
-                    SCN_UNLIKELY_ATTR
                     return true;
                 }
                 if constexpr (!std::is_same_v<T, uint64_t>) {
@@ -156,7 +154,6 @@ namespace scn {
                     }
                 }
 
-                SCN_LIKELY_ATTR
                 return false;
             }
 
@@ -186,8 +183,8 @@ namespace scn {
                     input.data(), input.data() + input.size(), u64val);
 
                 auto digits_count = static_cast<size_t>(ptr - input.data());
-                if (check_integer_overflow<T>(u64val, digits_count, 10,
-                                              is_negative)) {
+                if (SCN_UNLIKELY(check_integer_overflow<T>(u64val, digits_count,
+                                                           10, is_negative))) {
                     return unexpected_scan_error(scan_error::value_out_of_range,
                                                  "Integer overflow");
                 }
@@ -218,8 +215,8 @@ namespace scn {
                 }
 
                 auto digits_count = static_cast<size_t>(begin - input.data());
-                if (check_integer_overflow<T>(u64val, digits_count, base,
-                                              is_negative)) {
+                if (SCN_UNLIKELY(check_integer_overflow<T>(
+                        u64val, digits_count, base, is_negative))) {
                     return unexpected_scan_error(scan_error::value_out_of_range,
                                                  "Integer overflow");
                 }
