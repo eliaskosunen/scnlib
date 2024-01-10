@@ -678,7 +678,7 @@ namespace scn {
                 const detail::basic_format_specs<CharT>& specs)
             {
                 unsigned options{};
-                if (specs.thsep) {
+                if (specs.localized) {
                     options |= float_reader_base::allow_thsep;
                 }
 

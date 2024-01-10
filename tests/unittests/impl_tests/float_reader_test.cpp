@@ -1025,7 +1025,6 @@ struct thsep_test_state {
                  new numpunct_with_comma_thsep<CharT>{std::move(grouping)}),
           locref(stdloc)
     {
-        specs.thsep = true;
     }
 
     scn::detail::basic_format_specs<CharT> specs{};
@@ -1035,6 +1034,10 @@ struct thsep_test_state {
 
 TYPED_TEST(FloatValueReaderTest, ThousandsSeparators)
 {
+    if constexpr (!TestFixture::is_localized) {
+        return SUCCEED() << "This test requires a localized reader";
+    }
+
     auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
 
     auto [a, _, val] = this->simple_success_specs_and_locale_test(
@@ -1045,6 +1048,10 @@ TYPED_TEST(FloatValueReaderTest, ThousandsSeparators)
 
 TYPED_TEST(FloatValueReaderTest, ThousandsSeparatorsWithInvalidGrouping)
 {
+    if constexpr (!TestFixture::is_localized) {
+        return SUCCEED() << "This test requires a localized reader";
+    }
+
     auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
 
     auto [result, val] = this->simple_specs_and_locale_test(

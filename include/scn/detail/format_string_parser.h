@@ -110,13 +110,11 @@ namespace scn {
             unsigned arbitrary_base : 6;
             unsigned align : 2;
             bool localized : 1;
-            bool thsep : 1;
 
             constexpr basic_format_specs()
                 : arbitrary_base{0},
                   align{static_cast<unsigned>(align_type::none)},
-                  localized{false},
-                  thsep{false}
+                  localized{false}
             {
             }
 
@@ -250,11 +248,6 @@ namespace scn {
             constexpr void on_regex_flags(regex_flags flags)
             {
                 m_specs.regexp_flags = flags;
-            }
-
-            constexpr void on_thsep()
-            {
-                m_specs.thsep = true;
             }
 
             // Intentionally not constexpr
@@ -797,15 +790,6 @@ namespace scn {
                 return begin;
             }
 
-            if (*begin == CharT{'\''}) {
-                handler.on_thsep();
-                ++begin;
-            }
-            if (SCN_UNLIKELY(begin == end)) {
-                handler.on_error("Unexpected end of format string");
-                return begin;
-            }
-
             if (begin != end && *begin != CharT{'}'}) {
                 do_presentation();
             }
@@ -1019,37 +1003,10 @@ namespace scn {
 
                 Handler::on_localized();
             }
-            constexpr void on_thsep()
-            {
-                const auto cat = get_category_for_arg_type(m_arg_type);
-                if (cat != arg_type_category::integer &&
-                    cat != arg_type_category::unsigned_integer &&
-                    cat != arg_type_category::floating) {
-                    SCN_UNLIKELY_ATTR
-                    return this->on_error(
-                        "' specifier (for a thousands separator) can only "
-                        "be "
-                        "used with arguments of integer or floating-point "
-                        "types");
-                }
-
-                Handler::on_thsep();
-            }
 
         private:
             arg_type m_arg_type;
         };
-
-        template <typename CharT, typename Handler>
-        constexpr void check_disallow_thsep(
-            const basic_format_specs<CharT>& specs,
-            Handler&& handler)
-        {
-            if (SCN_UNLIKELY(specs.thsep)) {
-                return handler.on_error(
-                    "' specifier not allowed for this type");
-            }
-        }
 
         template <typename CharT, typename Handler>
         constexpr void check_int_type_specs(
@@ -1079,7 +1036,6 @@ namespace scn {
             const basic_format_specs<CharT>& specs,
             Handler&& handler)
         {
-            check_disallow_thsep(specs, handler);
             if (specs.type > presentation_type::int_hex ||
                 specs.type == presentation_type::int_arbitrary_base) {
                 SCN_UNLIKELY_ATTR
@@ -1093,7 +1049,6 @@ namespace scn {
             const basic_format_specs<CharT>& specs,
             Handler&& handler)
         {
-            check_disallow_thsep(specs, handler);
             if (specs.type != presentation_type::none &&
                 specs.type != presentation_type::character) {
                 SCN_UNLIKELY_ATTR
@@ -1121,7 +1076,6 @@ namespace scn {
             const basic_format_specs<CharT>& specs,
             Handler&& handler)
         {
-            check_disallow_thsep(specs, handler);
             if (specs.type == presentation_type::none ||
                 specs.type == presentation_type::string ||
                 specs.type == presentation_type::string_set ||
@@ -1146,7 +1100,6 @@ namespace scn {
             const basic_format_specs<CharT>& specs,
             Handler&& handler)
         {
-            check_disallow_thsep(specs, handler);
             if (specs.type != presentation_type::none &&
                 specs.type != presentation_type::pointer) {
                 SCN_UNLIKELY_ATTR
@@ -1159,7 +1112,6 @@ namespace scn {
             const basic_format_specs<CharT>& specs,
             Handler&& handler)
         {
-            check_disallow_thsep(specs, handler);
             if (specs.type != presentation_type::none &&
                 specs.type != presentation_type::string &&
                 specs.type != presentation_type::int_generic &&
@@ -1178,7 +1130,6 @@ namespace scn {
             const basic_format_specs<CharT>& specs,
             Handler&& handler)
         {
-            check_disallow_thsep(specs, handler);
             if (specs.type == presentation_type::regex ||
                 specs.type == presentation_type::regex_escaped) {
                 return;

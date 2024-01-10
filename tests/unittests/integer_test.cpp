@@ -158,7 +158,7 @@ TEST(IntegerTest, LongInput)
 TEST(IntegerTest, WonkyInputWithThsep)
 {
     std::string_view input = "-0x,)27614,)24t14741";
-    auto result = scn::scan<int>(input, "{:'}");
+    auto result = scn::scan<int>(input, "{:L}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->begin(), input.begin() + 2);
     EXPECT_EQ(result->value(), 0);
@@ -166,7 +166,7 @@ TEST(IntegerTest, WonkyInputWithThsep)
 TEST(IntegerTest, WonkyInputWithThsep2)
 {
     std::string_view input = "-0b,28";
-    auto result = scn::scan<int>(input, "{:'}");
+    auto result = scn::scan<int>(input, "{:L}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->begin(), input.begin() + 2);
     EXPECT_EQ(result->value(), 0);

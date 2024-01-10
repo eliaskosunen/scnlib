@@ -369,7 +369,7 @@ namespace scn {
                     return std::next(prefix_result.iterator);
                 }
 
-                if (SCN_LIKELY(!specs.thsep)) {
+                if (SCN_LIKELY(!specs.localized)) {
                     SCN_TRY(after_digits_it,
                             parse_integer_digits_without_thsep(
                                 ranges::subrange{prefix_result.iterator,

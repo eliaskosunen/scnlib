@@ -29,7 +29,6 @@ TEST(FormatStringParserTest, DefaultConstructedSpecs)
     EXPECT_EQ(specs.align,
               static_cast<unsigned>(scn::detail::align_type::none));
     EXPECT_EQ(specs.localized, false);
-    EXPECT_EQ(specs.thsep, false);
 }
 
 TEST(FormatStringParserTest, ParsePresentationType)
@@ -55,7 +54,7 @@ namespace scn {
         {
             return a.width == b.width && a.fill == b.fill && a.type == b.type &&
                    a.arbitrary_base == b.arbitrary_base && a.align == b.align &&
-                   a.localized == b.localized && a.thsep == b.thsep;
+                   a.localized == b.localized;
         }
     }  // namespace detail
 

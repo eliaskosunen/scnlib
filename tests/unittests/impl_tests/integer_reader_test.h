@@ -487,7 +487,7 @@ protected:
         SCN_GCC_PUSH
         SCN_GCC_IGNORE("-Wconversion")
         specs.arbitrary_base = arb_base;
-        specs.thsep = thsep;
+        specs.localized = thsep;
         SCN_GCC_POP
         return specs;
     }
@@ -798,7 +798,6 @@ struct thsep_test_state {
                  new numpunct_with_comma_thsep<CharT>{std::move(grouping)}),
           locref(stdloc)
     {
-        specs.thsep = true;
     }
 
     scn::detail::basic_format_specs<CharT> specs{};
@@ -810,6 +809,9 @@ TYPED_TEST_P(IntValueReaderTest, ThousandsSeparators)
 {
     if constexpr (!TestFixture::has_thsep_value()) {
         return SUCCEED() << "Type too small to hold '123,456'";
+    }
+    if constexpr (!TestFixture::is_localized) {
+        return SUCCEED() << "This test requires a localized reader";
     }
 
     auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
@@ -824,6 +826,9 @@ TYPED_TEST_P(IntValueReaderTest, ThousandsSeparatorsWithInvalidGrouping)
 {
     if constexpr (!TestFixture::has_thsep_value()) {
         return SUCCEED() << "Type too small to hold '123,456'";
+    }
+    if constexpr (!TestFixture::is_localized) {
+        return SUCCEED() << "This test requires a localized reader";
     }
 
     auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
