@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
   <meta charset="utf-8"/>
-  <title>scn::detail namespace | scnlib scanf for modern C++</title>
+  <title>scn::basic_regex_matches class | scnlib scanf for modern C++</title>
   <link href="favicon-dark.png" rel="icon" type="image/png"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <meta content="#22272e" name="theme-color"/>
@@ -21,7 +21,7 @@
   <meta content="Poxy v0.15.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
-<body class="poxy-has-toc">
+<body>
 <header><nav id="navigation">
   <div class="m-container">
     <div class="m-row">
@@ -58,97 +58,15 @@
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
         <h1>
-          <span class="m-breadcrumb"><a href="namespacescn.html">scn</a>::<wbr/></span>detail <span class="m-thin">namespace</span>
+          <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
+          <span class="m-breadcrumb"><a href="namespacescn.html">scn</a>::<wbr/></span>basic_regex_matches <span class="m-thin">class</span>
         </h1>
-        <p>Private implementation namespace.</p>
-        <nav class="m-block m-default poxy-toc" id="poxy-toc">
-          <h3>Contents</h3>
-          <ul>
-            <li>
-              Reference
-              <ul>
-                <li><a href="#nested-classes">Classes</a></li>
-                <li><a href="#func-members">Functions</a></li>
-              </ul>
-            </li>
-          </ul>
-        </nav>
-        <section id="nested-classes">
-          <h2><a href="#nested-classes">Classes</a></h2>
-          <dl class="m-doc">
-            <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename SourceRange</span></span>&gt;</div>
-              class <a class="m-doc" href="classscn_1_1detail_1_1basic__range__streambuf.html">basic_range_streambuf</a>
-            </dt>
-            <dd></dd>
-            <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
-              struct <a class="m-doc" href="structscn_1_1detail_1_1basic__runtime__format__string.html">basic_runtime_format_string</a>
-            </dt>
-            <dd></dd>
-            <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
-              class <a class="m-doc" href="classscn_1_1detail_1_1compile__parse__context.html">compile_parse_context</a>
-            </dt>
-            <dd>Parse context with extra data used only for compile-time checks.</dd>
-          </dl>
-        </section>
-        <section id="func-members">
-          <h2><a href="#func-members">Functions</a></h2>
-          <dl class="m-doc">
-            <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ad0498f5a1a64cb0a5af97bf3e649d660">max</a>(</span><span class="m-doc-wrap">T a,
-              T b) -&gt; T <span class="m-label m-flat m-primary">constexpr</span> <span class="m-label m-flat m-success">noexcept</span></span>
-            </dt>
-            <dd></dd>
-            <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#a0bfc48d41e8fab217cecf6ab5fc20fa3">min</a>(</span><span class="m-doc-wrap">T a,
-              T b) -&gt; T <span class="m-label m-flat m-primary">constexpr</span> <span class="m-label m-flat m-success">noexcept</span></span>
-            </dt>
-            <dd></dd>
-            <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename It</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ab59057043969a167570dafac73b133ac">min_element</a>(</span><span class="m-doc-wrap">It first,
-              It last) -&gt; It <span class="m-label m-flat m-primary">constexpr</span></span>
-            </dt>
-            <dd></dd>
-          </dl>
-        </section>
-        <section>
-          <h2>Function documentation</h2>
-          <section class="m-doc-details" id="ad0498f5a1a64cb0a5af97bf3e649d660"><div>
-            <h3>
-              <div class="m-doc-template">
-                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span></span>&gt;
-              </div>
-              <span class="m-doc-wrap-bumper">T <span class="m-doc-details-prefix">scn::<wbr/>detail::<wbr/></span></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ad0498f5a1a64cb0a5af97bf3e649d660">max</a>(</span><span class="m-doc-wrap">T a,
-              T b) <span class="m-label m-primary">constexpr</span> <span class="m-label m-success">noexcept</span></span></span>
-            </h3>
-<p>Implementation of <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/algorithm/max.html" target="_blank">std::<wbr/>max</a></code> without including <code>&lt;algorithm&gt;</code></p>
-          </div></section>
-          <section class="m-doc-details" id="a0bfc48d41e8fab217cecf6ab5fc20fa3"><div>
-            <h3>
-              <div class="m-doc-template">
-                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span></span>&gt;
-              </div>
-              <span class="m-doc-wrap-bumper">T <span class="m-doc-details-prefix">scn::<wbr/>detail::<wbr/></span></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#a0bfc48d41e8fab217cecf6ab5fc20fa3">min</a>(</span><span class="m-doc-wrap">T a,
-              T b) <span class="m-label m-primary">constexpr</span> <span class="m-label m-success">noexcept</span></span></span>
-            </h3>
-<p>Implementation of <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/algorithm/min.html" target="_blank">std::<wbr/>min</a></code> without including <code>&lt;algorithm&gt;</code></p>
-          </div></section>
-          <section class="m-doc-details" id="ab59057043969a167570dafac73b133ac"><div>
-            <h3>
-              <div class="m-doc-template">
-                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename It</span></span>&gt;
-              </div>
-              <span class="m-doc-wrap-bumper">It <span class="m-doc-details-prefix">scn::<wbr/>detail::<wbr/></span></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ab59057043969a167570dafac73b133ac">min_element</a>(</span><span class="m-doc-wrap">It first,
-              It last) <span class="m-label m-primary">constexpr</span></span></span>
-            </h3>
-<p>Implementation of <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/algorithm/min_element.html" target="_blank">std::<wbr/>min_element</a></code> without including <code>&lt;algorithm&gt;</code></p>
-          </div></section>
-        </section>
+<p>Can be used to get all subexpression captures of a regex match. Interface similar to <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/container/vector.html" target="_blank">std::<wbr/>vector</a>&lt;<a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/optional.html" target="_blank">std::<wbr/>optional</a>&lt;<a class="m-doc" href="classscn_1_1basic__regex__match.html">basic_<wbr/>regex_<wbr/>match</a>&lt;CharT&gt;&gt;&gt;</code>.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span>
+    <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="nn">scn</span><span class="o">::</span><span class="nc">regex_matches</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"abc123"</span><span class="p">,</span> <span class="s">"{:/[(a-z]+)([0-9]+)/}"</span><span class="p">);</span>
+<span class="c1">// result-&gt;value() has three elements:</span>
+<span class="c1">//  [0]: "abc123" (entire match)</span>
+<span class="c1">//  [1]: "abc" (first subexpression match)</span>
+<span class="c1">//  [2]: "123" (second subexpression match)</span></pre>
       </div>
     </div>
   </div>

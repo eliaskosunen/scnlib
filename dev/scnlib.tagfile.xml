@@ -8,7 +8,6 @@
     <class kind="class">scn::scan_arg_store</class>
     <class kind="class">scn::basic_scan_args</class>
     <namespace>scn</namespace>
-    <namespace>scn::detail</namespace>
     <member kind="function">
       <type>constexpr decltype(auto)</type>
       <name>visit_scan_arg</name>
@@ -47,6 +46,24 @@
     <filename>classscn_1_1detail_1_1basic__range__streambuf.html</filename>
     <templarg></templarg>
     <base>basic_streambuf&lt; detail::char_t&lt; SourceRange &gt; &gt;</base>
+  </compound>
+  <compound kind="class">
+    <name>scn::basic_regex_match</name>
+    <filename>classscn_1_1basic__regex__match.html</filename>
+    <templarg></templarg>
+    <member kind="function">
+      <type>std::basic_string_view&lt; CharT &gt;</type>
+      <name>get</name>
+      <anchorfile>classscn_1_1basic__regex__match.html</anchorfile>
+      <anchor>a0f6d5994203b49be3655eec5861da63b</anchor>
+      <arglist>() const</arglist>
+    </member>
+  </compound>
+  <compound kind="class">
+    <name>scn::basic_regex_matches</name>
+    <filename>classscn_1_1basic__regex__matches.html</filename>
+    <templarg></templarg>
+    <base protection="private">vector&lt; std::optional&lt; basic_regex_match&lt; CharT &gt; &gt; &gt;</base>
   </compound>
   <compound kind="struct">
     <name>scn::detail::basic_runtime_format_string</name>
@@ -129,6 +146,20 @@
       <name>begin</name>
       <anchorfile>classscn_1_1basic__scan__context.html</anchorfile>
       <anchor>a849014a08f5f31c89b2d819adbe35b1a</anchor>
+      <arglist>() const</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr sentinel</type>
+      <name>end</name>
+      <anchorfile>classscn_1_1basic__scan__context.html</anchorfile>
+      <anchor>a5c0bab0a0cc951fc6ac1d6753e6bb974</anchor>
+      <arglist>() const</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr auto</type>
+      <name>range</name>
+      <anchorfile>classscn_1_1basic__scan__context.html</anchorfile>
+      <anchor>a25e9526263885f3abbe466cbc78fe3bf</anchor>
       <arglist>() const</arglist>
     </member>
     <member kind="function">
@@ -505,6 +536,12 @@
       <arglist>(U &amp;&amp;default_value) const &amp;</arglist>
     </member>
   </compound>
+  <compound kind="class">
+    <name>scn::scan_result</name>
+    <filename>classscn_1_1scan__result.html</filename>
+    <templarg></templarg>
+    <templarg>Args</templarg>
+  </compound>
   <compound kind="struct">
     <name>scn::scanner</name>
     <filename>structscn_1_1scanner.html</filename>
@@ -534,7 +571,6 @@
   <compound kind="namespace">
     <name>scn</name>
     <filename>namespacescn.html</filename>
-    <namespace>scn::detail</namespace>
     <class kind="struct">scn::monostate</class>
     <class kind="class">scn::basic_scan_arg</class>
     <class kind="class">scn::scan_arg_store</class>
@@ -543,26 +579,36 @@
     <class kind="class">scn::basic_format_string</class>
     <class kind="struct">scn::basic_istream_scanner</class>
     <class kind="class">scn::basic_scan_parse_context</class>
+    <class kind="class">scn::scan_result</class>
     <class kind="struct">scn::scanner</class>
     <class kind="struct">scn::discard</class>
     <class kind="class">scn::span</class>
+    <class kind="class">scn::basic_regex_match</class>
+    <class kind="class">scn::basic_regex_matches</class>
     <class kind="class">scn::scan_error</class>
     <class kind="struct">scn::invalid_input_range</class>
     <class kind="struct">scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &amp;&amp;!detail::is_type_disabled&lt; T &gt; &gt; &gt;</class>
     <class kind="struct">scn::scan_expected</class>
     <class kind="class">scn::expected</class>
     <member kind="typedef">
-      <type>scan_expected&lt; scan_result&lt; borrowed_subrange_with_sentinel_t&lt; Range &gt;, Args... &gt; &gt;</type>
-      <name>scan_result_type</name>
+      <type>typename borrowed_subrange_with_sentinel&lt; R &gt;::type</type>
+      <name>borrowed_subrange_with_sentinel_t</name>
       <anchorfile>namespacescn.html</anchorfile>
-      <anchor>a69cd7fb430db69e9ed4d8b76e0ac45f3</anchor>
+      <anchor>accd4219f22e908763e4586fafa83016a</anchor>
       <arglist></arglist>
     </member>
     <member kind="typedef">
-      <type>scan_expected&lt; borrowed_subrange_with_sentinel_t&lt; Range &gt; &gt;</type>
+      <type>scan_expected&lt; scan_result&lt; detail::scan_result_value_type&lt; Source &gt;, Args... &gt; &gt;</type>
+      <name>scan_result_type</name>
+      <anchorfile>namespacescn.html</anchorfile>
+      <anchor>a34296910f1409d0cc59ef0c1a2eaa6f1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="typedef">
+      <type>scan_expected&lt; detail::scan_result_value_type&lt; Source &gt; &gt;</type>
       <name>vscan_result</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>ga6a39b056a6335f4624f8d3c6cff36bfd</anchor>
+      <anchor>ga33c3ff53cea76a1d874175da6dc54039</anchor>
       <arglist></arglist>
     </member>
     <member kind="function">
@@ -597,36 +643,36 @@
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>ga7b1bca208e0e0e9625627991e9fe2ab1</anchor>
-      <arglist>(scan_expected&lt; ResultRange &gt; &amp;&amp;result, scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; ResultRange, Args... &gt;&gt;</arglist>
+      <anchor>gaabf43aef19ef7b2e0714fabe395253a7</anchor>
+      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga1038d2b8ee0cd6fbecdd1f569a000a79</anchor>
-      <arglist>(Source &amp;&amp;source, wformat_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>gaf9c6427afacc1753293020f2e28dcf12</anchor>
+      <arglist>(Source &amp;&amp;source, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga871576cd1220edcb37b41d2233ec1c9a</anchor>
-      <arglist>(Source &amp;&amp;source, wformat_string&lt; Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>gaf4722f6033536207ca57f324b35c018f</anchor>
+      <arglist>(Source &amp;&amp;source, format_string&lt; Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;default_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>ga5dfc1e4814761e718e838e77bad69cb1</anchor>
-      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, wformat_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>ga53e6efd944b89e2538692911508e1f7d</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>gabcb08a60adc08c457e71f37d00535242</anchor>
-      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, wformat_string&lt; Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>gabc5f8bcf30b21efaa34eb4de4b2e2da7</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, format_string&lt; Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;default_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -674,50 +720,50 @@
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>gad85da110d326532f413f9c81d9fb413b</anchor>
-      <arglist>(Range &amp;&amp;range, std::string_view format, scan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
+      <anchor>gadc46b83d39e17f2085d2c6c0963978a2</anchor>
+      <arglist>(Source &amp;&amp;source, std::string_view format, scan_args args) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>gacf7e7ababa2e8ff7b89b9cae2de8ac48</anchor>
-      <arglist>(const Locale &amp;loc, Range &amp;&amp;range, std::string_view format, scan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
+      <anchor>gab5baa54a3e7a6eaccb03c7d1bbd0f9eb</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, std::string_view format, scan_args args) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan_value</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>gab44a09eadf35d1618a236b6c845e19e2</anchor>
-      <arglist>(Range &amp;&amp;range, basic_scan_arg&lt; scan_context &gt; arg) -&gt; vscan_result&lt; Range &gt;</arglist>
-    </member>
-  </compound>
-  <compound kind="namespace">
-    <name>scn::detail</name>
-    <filename>namespacescn_1_1detail.html</filename>
-    <class kind="class">scn::detail::compile_parse_context</class>
-    <class kind="struct">scn::detail::basic_runtime_format_string</class>
-    <class kind="class">scn::detail::basic_range_streambuf</class>
-    <member kind="function">
-      <type>constexpr T</type>
-      <name>max</name>
-      <anchorfile>namespacescn_1_1detail.html</anchorfile>
-      <anchor>ad0498f5a1a64cb0a5af97bf3e649d660</anchor>
-      <arglist>(T a, T b) noexcept</arglist>
+      <anchor>gaf3c242adc2256dcfe5dedbd91187907c</anchor>
+      <arglist>(Source &amp;&amp;source, basic_scan_arg&lt; scan_context &gt; arg) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
     <member kind="function">
-      <type>constexpr It</type>
-      <name>min_element</name>
-      <anchorfile>namespacescn_1_1detail.html</anchorfile>
-      <anchor>ab59057043969a167570dafac73b133ac</anchor>
-      <arglist>(It first, It last)</arglist>
+      <type>scan_error</type>
+      <name>vinput</name>
+      <anchorfile>group__vscan.html</anchorfile>
+      <anchor>ga3bce7ba15b36e95a461c3009a0ea3bca</anchor>
+      <arglist>(std::string_view format, scan_args args)</arglist>
     </member>
     <member kind="function">
-      <type>constexpr T</type>
-      <name>min</name>
-      <anchorfile>namespacescn_1_1detail.html</anchorfile>
-      <anchor>a0bfc48d41e8fab217cecf6ab5fc20fa3</anchor>
-      <arglist>(T a, T b) noexcept</arglist>
+      <type>auto</type>
+      <name>vscan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga9412817569b4484faf59cb0e51daca20</anchor>
+      <arglist>(Range &amp;&amp;range, std::wstring_view format, wscan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>vscan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>gaf3e0ca7b7fba6031fff76387e5c10ad1</anchor>
+      <arglist>(const Locale &amp;loc, Range &amp;&amp;range, std::wstring_view format, wscan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>vscan_value</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>gac887ab8ca0d711b1d2133c17f5bc4775</anchor>
+      <arglist>(Range &amp;&amp;range, basic_scan_arg&lt; wscan_context &gt; arg) -&gt; vscan_result&lt; Range &gt;</arglist>
     </member>
   </compound>
   <compound kind="group">
@@ -728,15 +774,15 @@
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga1038d2b8ee0cd6fbecdd1f569a000a79</anchor>
-      <arglist>(Source &amp;&amp;source, wformat_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>gaf9c6427afacc1753293020f2e28dcf12</anchor>
+      <arglist>(Source &amp;&amp;source, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga871576cd1220edcb37b41d2233ec1c9a</anchor>
-      <arglist>(Source &amp;&amp;source, wformat_string&lt; Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>gaf4722f6033536207ca57f324b35c018f</anchor>
+      <arglist>(Source &amp;&amp;source, format_string&lt; Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;default_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -812,22 +858,22 @@
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>ga5dfc1e4814761e718e838e77bad69cb1</anchor>
-      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, wformat_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>ga53e6efd944b89e2538692911508e1f7d</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, format_string&lt; Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>gabcb08a60adc08c457e71f37d00535242</anchor>
-      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, wformat_string&lt; Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>gabc5f8bcf30b21efaa34eb4de4b2e2da7</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, format_string&lt; Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;default_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>gacf7e7ababa2e8ff7b89b9cae2de8ac48</anchor>
-      <arglist>(const Locale &amp;loc, Range &amp;&amp;range, std::string_view format, scan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
+      <anchor>gab5baa54a3e7a6eaccb03c7d1bbd0f9eb</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, std::string_view format, scan_args args) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
   </compound>
   <compound kind="group">
@@ -841,40 +887,74 @@
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>ga7b1bca208e0e0e9625627991e9fe2ab1</anchor>
-      <arglist>(scan_expected&lt; ResultRange &gt; &amp;&amp;result, scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; ResultRange, Args... &gt;&gt;</arglist>
+      <anchor>gaabf43aef19ef7b2e0714fabe395253a7</anchor>
+      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
+  </compound>
+  <compound kind="group">
+    <name>scannable</name>
+    <title>Scannable sources</title>
+    <filename>group__scannable.html</filename>
+    <class kind="struct">scn::invalid_input_range</class>
   </compound>
   <compound kind="group">
     <name>vscan</name>
     <title>Type-erased scanning API</title>
     <filename>group__vscan.html</filename>
     <member kind="typedef">
-      <type>scan_expected&lt; borrowed_subrange_with_sentinel_t&lt; Range &gt; &gt;</type>
+      <type>scan_expected&lt; detail::scan_result_value_type&lt; Source &gt; &gt;</type>
       <name>vscan_result</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>ga6a39b056a6335f4624f8d3c6cff36bfd</anchor>
+      <anchor>ga33c3ff53cea76a1d874175da6dc54039</anchor>
       <arglist></arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>gad85da110d326532f413f9c81d9fb413b</anchor>
-      <arglist>(Range &amp;&amp;range, std::string_view format, scan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
+      <anchor>gadc46b83d39e17f2085d2c6c0963978a2</anchor>
+      <arglist>(Source &amp;&amp;source, std::string_view format, scan_args args) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan_value</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>gab44a09eadf35d1618a236b6c845e19e2</anchor>
-      <arglist>(Range &amp;&amp;range, basic_scan_arg&lt; scan_context &gt; arg) -&gt; vscan_result&lt; Range &gt;</arglist>
+      <anchor>gaf3c242adc2256dcfe5dedbd91187907c</anchor>
+      <arglist>(Source &amp;&amp;source, basic_scan_arg&lt; scan_context &gt; arg) -&gt; vscan_result&lt; Source &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>scan_error</type>
+      <name>vinput</name>
+      <anchorfile>group__vscan.html</anchorfile>
+      <anchor>ga3bce7ba15b36e95a461c3009a0ea3bca</anchor>
+      <arglist>(std::string_view format, scan_args args)</arglist>
     </member>
   </compound>
   <compound kind="group">
     <name>xchar</name>
     <title>Wide character APIs</title>
     <filename>group__xchar.html</filename>
+    <member kind="function">
+      <type>auto</type>
+      <name>vscan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga9412817569b4484faf59cb0e51daca20</anchor>
+      <arglist>(Range &amp;&amp;range, std::wstring_view format, wscan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>vscan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>gaf3e0ca7b7fba6031fff76387e5c10ad1</anchor>
+      <arglist>(const Locale &amp;loc, Range &amp;&amp;range, std::wstring_view format, wscan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>vscan_value</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>gac887ab8ca0d711b1d2133c17f5bc4775</anchor>
+      <arglist>(Range &amp;&amp;range, basic_scan_arg&lt; wscan_context &gt; arg) -&gt; vscan_result&lt; Range &gt;</arglist>
+    </member>
   </compound>
   <compound kind="page">
     <name>guide</name>

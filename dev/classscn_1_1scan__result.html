@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
   <meta charset="utf-8"/>
-  <title>scn::scan_arg_store class | scnlib scanf for modern C++</title>
+  <title>scn::scan_result class | scnlib scanf for modern C++</title>
   <link href="favicon-dark.png" rel="icon" type="image/png"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <meta content="#22272e" name="theme-color"/>
@@ -58,8 +58,8 @@
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
         <h1>
-          <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Context</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
-          <span class="m-breadcrumb"><a href="namespacescn.html">scn</a>::<wbr/></span>scan_arg_store <span class="m-thin">class</span>
+          <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
+          <span class="m-breadcrumb"><a href="namespacescn.html">scn</a>::<wbr/></span>scan_result <span class="m-thin">class</span>
         </h1>
         <nav class="m-block m-default poxy-toc" id="poxy-toc">
           <h3>Contents</h3>
@@ -67,35 +67,64 @@
             <li>
               Reference
               <ul>
-                <li><a href="#friends">Friends</a></li>
+                <li><a href="#pub-methods">Public functions</a></li>
               </ul>
             </li>
           </ul>
         </nav>
-<p>A tuple of scanning arguments, stored by value.</p><p>Implicitly convertible to <code><a class="m-doc" href="classscn_1_1basic__scan__args.html">basic_<wbr/>scan_<wbr/>args</a></code>, to be passed to type-erased along to type-erased scanning functions, like <code><a class="m-doc" href="group__vscan.html#gadc46b83d39e17f2085d2c6c0963978a2">scn::<wbr/>vscan</a></code>.</p>
-        <section id="friends">
-          <h2><a href="#friends">Friends</a></h2>
+<p>Type returned by <code>scan</code>, contains the unused input as a subrange, and the scanned values in a tuple.</p>
+        <section id="pub-methods">
+          <h2><a href="#pub-methods">Public functions</a></h2>
           <dl class="m-doc">
-            <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Ctx</span>, <span class="m-doc-template-param">typename... A</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#a3abd0cdf0bb62e5834bd563d9c6edd9a">make_scan_args</a>(</span><span class="m-doc-wrap">) <span class="m-label m-flat m-primary">constexpr</span></span>
+            <dt id="144d141b3536351c5e099e765bb9d851e5e273169ef7c331713b6767327de917">
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#144d141b3536351c5e099e765bb9d851e5e273169ef7c331713b6767327de917">begin</a>(</span><span class="m-doc-wrap">) const -&gt; auto</span>
             </dt>
-            <dd></dd>
+            <dd>The beginning of the unused source range.</dd>
+            <dt id="4fb7bf02e806740cfaccad4abdcb733d063808828ad94fda273239f180d065f3">
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#4fb7bf02e806740cfaccad4abdcb733d063808828ad94fda273239f180d065f3">end</a>(</span><span class="m-doc-wrap">) const -&gt; auto</span>
+            </dt>
+            <dd>The end of the unused source range.</dd>
+            <dt id="87b6dc18f656f57ff4209a71d9e28383a14eef03121b3330833fdbd48ecc87ee">
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#87b6dc18f656f57ff4209a71d9e28383a14eef03121b3330833fdbd48ecc87ee">range</a>(</span><span class="m-doc-wrap">) const -&gt; range_type</span>
+            </dt>
+            <dd>Access the ununsed source range.</dd>
+            <dt id="8a5bc412704ebb2ed08afdc49a1da7620e1a073454e7082c84d0c6028b3373f9">
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param"><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/types/size_t" target="_blank">size_t</a> N = sizeof...(Args)</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;N==1&gt;* = nullptr</span></span>&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#8a5bc412704ebb2ed08afdc49a1da7620e1a073454e7082c84d0c6028b3373f9">value</a>(</span><span class="m-doc-wrap">) &amp; -&gt; decltype(auto)</span>
+            </dt>
+            <dd>Access the single scanned value.</dd>
+            <dt id="0623a6d853b86528a1ba7b294c3a310774de071fa2de83bdbc9ff8e1dad3cbde">
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param"><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/types/size_t" target="_blank">size_t</a> N = sizeof...(Args)</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;N==1&gt;* = nullptr</span></span>&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#0623a6d853b86528a1ba7b294c3a310774de071fa2de83bdbc9ff8e1dad3cbde">value</a>(</span><span class="m-doc-wrap">) const &amp; -&gt; decltype(auto)</span>
+            </dt>
+            <dd>Access the single scanned value.</dd>
+            <dt id="1a838c475682657a8a5d3bc937b73e89319039651cf50a4cf68cb191532d994e">
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param"><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/types/size_t" target="_blank">size_t</a> N = sizeof...(Args)</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;N==1&gt;* = nullptr</span></span>&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#1a838c475682657a8a5d3bc937b73e89319039651cf50a4cf68cb191532d994e">value</a>(</span><span class="m-doc-wrap">) &amp;&amp; -&gt; decltype(auto)</span>
+            </dt>
+            <dd>Access the single scanned value.</dd>
+            <dt id="b2ef9980fae7a48a24da3bde1ad3d6f057e9eb0b8c4bb2958d72a45b962e9dca">
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param"><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/types/size_t" target="_blank">size_t</a> N = sizeof...(Args)</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;N==1&gt;* = nullptr</span></span>&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#b2ef9980fae7a48a24da3bde1ad3d6f057e9eb0b8c4bb2958d72a45b962e9dca">value</a>(</span><span class="m-doc-wrap">) const &amp;&amp; -&gt; decltype(auto)</span>
+            </dt>
+            <dd>Access the single scanned value.</dd>
+            <dt id="f0d622e1b00193cfaa1245733d723d6bfa6387f0783f135fb199ac04c1554d1a">
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#f0d622e1b00193cfaa1245733d723d6bfa6387f0783f135fb199ac04c1554d1a">values</a>(</span><span class="m-doc-wrap">) &amp; -&gt; <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">tuple_<wbr/>type</a>&amp;</span>
+            </dt>
+            <dd>Access the scanned values.</dd>
+            <dt id="3e67ec1647e35a567bda30a72ef0f48579137680e842afd765ffec9056b98b04">
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#3e67ec1647e35a567bda30a72ef0f48579137680e842afd765ffec9056b98b04">values</a>(</span><span class="m-doc-wrap">) const &amp; -&gt; const <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">tuple_<wbr/>type</a>&amp;</span>
+            </dt>
+            <dd>Access the scanned values.</dd>
+            <dt id="099a52d07f7d2caadfc31f94b408ff3eec1c4c7f60d37cdec97b334b2c0ba56b">
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#099a52d07f7d2caadfc31f94b408ff3eec1c4c7f60d37cdec97b334b2c0ba56b">values</a>(</span><span class="m-doc-wrap">) &amp;&amp; -&gt; <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">tuple_<wbr/>type</a>&amp;&amp;</span>
+            </dt>
+            <dd>Access the scanned values.</dd>
+            <dt id="d8e994d2f648615792a51b49a4da03ff12162cfb4d6a0914856838d9021c3953">
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc-self" href="#d8e994d2f648615792a51b49a4da03ff12162cfb4d6a0914856838d9021c3953">values</a>(</span><span class="m-doc-wrap">) const &amp;&amp; -&gt; const <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">tuple_<wbr/>type</a>&amp;&amp;</span>
+            </dt>
+            <dd>Access the scanned values.</dd>
           </dl>
-        </section>
-        <section>
-          <h2>Function documentation</h2>
-          <section class="m-doc-details" id="a3abd0cdf0bb62e5834bd563d9c6edd9a"><div>
-            <h3>
-              <div class="m-doc-template">
-                <span class="m-doc-template-parent">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Context</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</span>
-                <br/>
-                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Ctx</span>, <span class="m-doc-template-param">typename... A</span></span>&gt;
-              </div>
-              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#a3abd0cdf0bb62e5834bd563d9c6edd9a">make_scan_args</a>(</span><span class="m-doc-wrap">) <span class="m-label m-primary">constexpr</span></span></span>
-            </h3>
-<p>Constructs a <code><a class="m-doc" href="classscn_1_1scan__arg__store.html">scan_<wbr/>arg_<wbr/>store</a></code> object, associated with <code>Context</code>, that contains value-initialized values of types <code>Args...</code>.</p>
-          </div></section>
         </section>
       </div>
     </div>

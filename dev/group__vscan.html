@@ -76,8 +76,8 @@
           <h2><a href="#typedef-members">Typedefs</a></h2>
           <dl class="m-doc">
             <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;</div>
-              using <a class="m-doc" href="#ga6a39b056a6335f4624f8d3c6cff36bfd">vscan_result</a> = scan_expected&lt;borrowed_subrange_with_sentinel_t&lt;Range&gt;&gt;
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Source</span></span>&gt;</div>
+              using <a class="m-doc" href="#ga33c3ff53cea76a1d874175da6dc54039">vscan_result</a> = scan_expected&lt;detail::scan_result_value_type&lt;Source&gt;&gt;
             </dt>
             <dd></dd>
           </dl>
@@ -86,54 +86,66 @@
           <h2><a href="#func-members">Functions</a></h2>
           <dl class="m-doc">
             <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gad85da110d326532f413f9c81d9fb413b">vscan</a>(</span><span class="m-doc-wrap">Range&amp;&amp; range,
-              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> format,
-              scan_args args) -&gt; vscan_result&lt;Range&gt;</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga3bce7ba15b36e95a461c3009a0ea3bca">vinput</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> format,
+              scan_args args) -&gt; scan_error</span>
             </dt>
             <dd></dd>
             <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gab44a09eadf35d1618a236b6c845e19e2">vscan_value</a>(</span><span class="m-doc-wrap">Range&amp;&amp; range,
-              basic_scan_arg&lt;scan_context&gt; arg) -&gt; vscan_result&lt;Range&gt;</span>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Source</span></span>&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gadc46b83d39e17f2085d2c6c0963978a2">vscan</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
+              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> format,
+              scan_args args) -&gt; vscan_result&lt;Source&gt;</span>
+            </dt>
+            <dd></dd>
+            <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Source</span></span>&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gaf3c242adc2256dcfe5dedbd91187907c">vscan_value</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
+              basic_scan_arg&lt;scan_context&gt; arg) -&gt; vscan_result&lt;Source&gt;</span>
             </dt>
             <dd></dd>
           </dl>
         </section>
         <section>
           <h2>Typedef documentation</h2>
-          <section class="m-doc-details" id="ga6a39b056a6335f4624f8d3c6cff36bfd"><div>
+          <section class="m-doc-details" id="ga33c3ff53cea76a1d874175da6dc54039"><div>
             <h3>
               <div class="m-doc-template">
-                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;
+                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Source</span></span>&gt;
               </div>
-              using <a class="m-doc-self" href="#ga6a39b056a6335f4624f8d3c6cff36bfd">vscan_result</a> = scan_expected&lt;borrowed_subrange_with_sentinel_t&lt;Range&gt;&gt;
+              using <a class="m-doc-self" href="#ga33c3ff53cea76a1d874175da6dc54039">vscan_result</a> = scan_expected&lt;detail::scan_result_value_type&lt;Source&gt;&gt;
             </h3>
-<p>Result type returned by <code>vscan</code>.</p>
+<p>Result type returned by <code>vscan</code>.</p><p>The value type of the <code><a class="m-doc" href="structscn_1_1scan__expected.html">scan_<wbr/>expected</a></code> is <code>FILE*</code> if <code>Source</code> is <code>FILE*</code>, <code>borrowed_subrange_with_sentinel_t&lt;Source&gt;</code> otherwise.</p>
           </div></section>
         </section>
         <section>
           <h2>Function documentation</h2>
-          <section class="m-doc-details" id="gad85da110d326532f413f9c81d9fb413b"><div>
+          <section class="m-doc-details" id="ga3bce7ba15b36e95a461c3009a0ea3bca"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">scan_error </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga3bce7ba15b36e95a461c3009a0ea3bca">vinput</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> format,
+              scan_args args)</span></span>
+            </h3>
+<p>Perform actual scanning from <code>stdin</code>, according to <code>format</code>, into the type-erased arguments at <code>args</code>. Called by <code>input</code>.</p>
+          </div></section>
+          <section class="m-doc-details" id="gadc46b83d39e17f2085d2c6c0963978a2"><div>
             <h3>
               <div class="m-doc-template">
-                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;
+                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Source</span></span>&gt;
               </div>
-              <span class="m-doc-wrap-bumper">vscan_result&lt;Range&gt; </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gad85da110d326532f413f9c81d9fb413b">vscan</a>(</span><span class="m-doc-wrap">Range&amp;&amp; range,
+              <span class="m-doc-wrap-bumper">vscan_result&lt;Source&gt; </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gadc46b83d39e17f2085d2c6c0963978a2">vscan</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
               <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> format,
               scan_args args)</span></span>
             </h3>
-<p>Perform actual scanning from <code>range</code>, according to <code>format</code>, into the type-erased arguments at <code>args</code>. Called by <code>scan</code>.</p>
+<p>Perform actual scanning from <code>source</code>, according to <code>format</code>, into the type-erased arguments at <code>args</code>. Called by <code>scan</code>.</p>
           </div></section>
-          <section class="m-doc-details" id="gab44a09eadf35d1618a236b6c845e19e2"><div>
+          <section class="m-doc-details" id="gaf3c242adc2256dcfe5dedbd91187907c"><div>
             <h3>
               <div class="m-doc-template">
-                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;
+                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Source</span></span>&gt;
               </div>
-              <span class="m-doc-wrap-bumper">vscan_result&lt;Range&gt; </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gab44a09eadf35d1618a236b6c845e19e2">vscan_value</a>(</span><span class="m-doc-wrap">Range&amp;&amp; range,
+              <span class="m-doc-wrap-bumper">vscan_result&lt;Source&gt; </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gaf3c242adc2256dcfe5dedbd91187907c">vscan_value</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
               basic_scan_arg&lt;scan_context&gt; arg)</span></span>
             </h3>
-<p>Perform actual scanning from <code>range</code> into the type-erased argument at <code>arg</code>. Called by <code>scan_value</code>.</p>
+<p>Perform actual scanning from <code>source</code> into the type-erased argument at <code>arg</code>. Called by <code>scan_value</code>.</p>
           </div></section>
         </section>
       </div>
