@@ -8,10 +8,10 @@ if (UNIX)
 endif ()
 
 if (@SCN_USE_EXTERNAL_SIMDUTF@)
-    find_dependency(simdutf 4.0.5)
+    find_dependency(simdutf 4.0.0)
 endif ()
 if (@SCN_USE_EXTERNAL_FAST_FLOAT@)
-    find_dependency(FastFloat 5.3.0)
+    find_dependency(FastFloat 6.0.0)
 endif ()
 
 if ((@SCN_REGEX_BACKEND@ STREQUAL "Boost") AND @SCN_USE_EXTERNAL_REGEX_BACKEND@)

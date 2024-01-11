@@ -107,14 +107,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup ccache
+      - name: Load ccache
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          key: Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
-            linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
-            linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
+            Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -126,6 +134,10 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
@@ -182,14 +194,22 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}/build
 
-      - name: Setup ccache
+      - name: Load ccache
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: macos-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          key: macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
-            macos-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
-            macos-macos12-${{ matrix.cxx }}-std${{ matrix.std }}
+            macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -199,6 +219,10 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --parallel -- -k
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build

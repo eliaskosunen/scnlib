@@ -47,9 +47,22 @@ jobs:
           #- arch: aarch64
           #- arch: ppc64le
 
+    env:
+      CCACHE_DIR: "/tmp/ccache"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Load ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.workflow }}-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.sha }}
+          restore-keys: |
+            ${{ github.workflow }}-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.ref }}
+            ${{ github.workflow }}-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.base_ref }}
+            ${{ github.workflow }}-${{ matrix.distro }}-${{ matrix.arch }}
 
       - uses: uraimo/run-on-arch-action@v2
         name: Build and test
@@ -60,13 +73,36 @@ jobs:
 
           githubToken: ${{ github.token }}
 
+          setup: |
+            mkdir -p ${{ env.CCACHE_DIR }}
+
+          dockerRunArgs: |
+            --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
+
+          env: |
+            CCACHE_ABSSTDERR: true
+            CCACHE_COMPRESS: true
+            CCACHE_COMPRESSLEVEL: 6
+            CCACHE_DIR: ${{ env.CCACHE_DIR }}
+            CCACHE_MAXSIZE: 100M
+            CCACHE_NOHASHDIR: true
+            CCACHE_SLOPPINESS: "pch_defines,time_macros"
+            CCACHE_UNIFY: true
+
           install: |
             apt-get update -yq
-            apt-get install -yq git wget cmake build-essential make g++ ninja-build
+            apt-get install -yq git wget cmake build-essential make g++ ninja-build ccache
 
           run: |
+            ccache --version
+            ccache --zero-stats
+            ccache --show-stats
+            ccache --show-config
+            
             cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
             cmake --build build -- -k 0
+            ccache --show-stats
+            
             ctest --output-on-failure --test-dir build
 
   vs-arm64-crosscompile:

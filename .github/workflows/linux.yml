@@ -233,14 +233,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup ccache
+      - name: Load ccache
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}--ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          key: ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
+            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
             ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
             ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -252,6 +260,10 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
@@ -293,14 +305,22 @@ jobs:
           sudo update-locale
           sudo locale -a
 
-      - name: Setup ccache
+      - name: Load ccache
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.sha }}
           restore-keys: |
+            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.ref }}
             ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.base_ref }}
             ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -313,6 +333,10 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
@@ -382,14 +406,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup ccache
+      - name: Load ccache
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-${{ github.sha }}
+          key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-${{ github.base_ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.ref }}
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.base_ref }}
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -404,6 +436,10 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake --build . -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
@@ -433,14 +469,22 @@ jobs:
         run: |
           ${APT_INSTALL} ccache
 
-      - name: Setup ccache
+      - name: Load ccache
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
           restore-keys: |
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
             ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
             ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -487,6 +531,10 @@ jobs:
           cd ${{ runner.workspace }}/consumer-build
           cmake $GITHUB_WORKSPACE/tests/consumer-test
           cmake --build .
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test consumer
         working-directory: ${{ runner.workspace }}/consumer-build
@@ -554,6 +602,10 @@ jobs:
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
 
+      - name: Install ccache
+        run: |
+          ${APT_INSTALL} ccache
+
       - name: Install ICU
         if: matrix.icu == 'ON'
         run: |
@@ -583,22 +635,26 @@ jobs:
           cmake --build .
           sudo cmake --build . --target install
 
-      - name: Install ccache
-        run: |
-          ${APT_INSTALL} ccache
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup ccache
+      - name: Load ccache
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.sha }}
           restore-keys: |
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.ref }}
             ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.base_ref }}
             ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}
             ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         run: |
@@ -614,6 +670,10 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build

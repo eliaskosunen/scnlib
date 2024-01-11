@@ -73,14 +73,22 @@ jobs:
           mkdir ${{ runner.workspace }}/build
           brew install --overwrite ccache
 
-      - name: Setup ccache
+      - name: Load ccache
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
+            ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
             ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
             ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -92,6 +100,10 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --parallel -- -k
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
