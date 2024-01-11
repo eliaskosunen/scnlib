@@ -16,9 +16,11 @@ option(SCN_BENCHMARKS "Enable runtime benchmarks" ${SCN_ENABLE_EXTRAS})
 option(SCN_BENCHMARKS_BUILDTIME "Enable buildtime benchmarks" ${SCN_ENABLE_EXTRAS})
 option(SCN_BENCHMARKS_BINARYSIZE "Enable binary size benchmarks" ${SCN_ENABLE_EXTRAS})
 
-option(SCN_FUZZING "Enable fuzz tests (clang only)" OFF)
 option(SCN_COVERAGE "Enable coverage reporting" OFF)
 option(SCN_TESTS_LOCALIZED "Enable localized tests (requires en_US.UTF-8 and fi_FI.UTF-8 locales)" OFF)
+
+option(SCN_FUZZING "Enable fuzz tests (clang only)" OFF)
+set(SCN_FUZZING_LDFLAGS "" CACHE STRING "")
 
 option(SCN_PEDANTIC "Enable pedantic compilation flags" ${SCN_ENABLE_EXTRAS})
 option(SCN_WERROR "Halt compilation in case of a warning" ${SCN_CI})

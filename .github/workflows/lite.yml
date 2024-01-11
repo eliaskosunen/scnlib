@@ -219,6 +219,7 @@ jobs:
       - name: Create Build Environment
         run: |
           mkdir ${{ github.workspace }}/build
+          brew install --overwrite ccache
 
       - name: Load ccache
         uses: actions/cache@v3

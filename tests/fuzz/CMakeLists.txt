@@ -1,6 +1,6 @@
 if (NOT SCN_FUZZING)
     return()
-endif()
+endif ()
 
 add_library(scn_fuzz_base INTERFACE)
 target_link_libraries(scn_fuzz_base INTERFACE scn scn_fuzzer simdutf::simdutf)
@@ -9,7 +9,12 @@ function(add_fuzzer name)
     add_executable(scn_fuzz_${name}
             fuzz.h
             ${name}_fuzz.cpp)
-    target_link_libraries(scn_fuzz_${name} PUBLIC scn_fuzz_base)
+    target_link_libraries(scn_fuzz_${name} PRIVATE scn simdutf::simdutf)
+    if (SCN_FUZZING_LDFLAGS)
+        target_link_libraries(scn_fuzz_${name} PRIVATE ${SCN_FUZZING_LDFLAGS})
+    else ()
+        target_link_libraries(scn_fuzz_${name} INTERFACE scn_fuzzer)
+    endif ()
 endfunction()
 
 add_fuzzer(int)
