@@ -33,16 +33,54 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
 
+env:
+  APT_INSTALL: |
+    sudo apt-get install
+      -yq --no-install-suggests --no-install-recommends
+      --allow-unauthenticated --allow-downgrades --allow-change-held-packages
+  CCACHE_ABSSTDERR: true
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_DIR: "/tmp/ccache"
+  CCACHE_MAXSIZE: 100M
+  CCACHE_NOHASHDIR: true
+  CCACHE_SLOPPINESS: "pch_defines,time_macros"
+  CCACHE_UNIFY: true
+  DEBIAN_FRONTEND: noninteractive
+
 jobs:
   lite-linux:
     runs-on: ubuntu-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ 22.04, 20.04 ]
-        std: [ 17, 20 ]
-        # FIXME: using clang-15 explicitly because of https://github.com/actions/runner-images/issues/8659
-        cxx: [ g++, clang++-15 ]
+        include:
+          - os: 22.04
+            std: 17
+            cxx: g++-11
+          - os: 22.04
+            std: 20
+            cxx: g++-11
+          # FIXME: using clang-15 explicitly because of https://github.com/actions/runner-images/issues/8659
+          - os: 22.04
+            std: 17
+            cxx: clang++-15
+          - os: 22.04
+            std: 20
+            cxx: clang++-15
+
+          - os: 20.04
+            std: 17
+            cxx: g++-10
+          - os: 20.04
+            std: 20
+            cxx: g++-10
+
+    env:
+      CXX: ${{ matrix.cxx }}
+      OS: ${{ matrix.os }}
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
     steps:
       - name: Setup CMake and Ninja
@@ -63,14 +101,23 @@ jobs:
           if [[ "${{ matrix.cxx }}" == "clang++-15" ]]; then
             sudo ./llvm.sh 15
           fi
+          
+          ${APT_INSTALL} ccache
 
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          restore-keys: |
+            linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
+
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
-        env:
-          CXX: ${{ matrix.cxx }}
         run: |
           cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
                 -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
@@ -122,6 +169,11 @@ jobs:
         cxx: [ clang++ ]
         std: [ 17, 20 ]
 
+    env:
+      CXX: ${{ matrix.cxx }}
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -130,10 +182,17 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}/build
 
+      - name: Setup ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: macos-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          restore-keys: |
+            macos-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            macos-macos12-${{ matrix.cxx }}-std${{ matrix.std }}
+
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
-        env:
-          CXX: ${{ matrix.cxx }}
         run: |
           cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_USE_ASAN=ON -DSCN_USE_UBSAN=ON $GITHUB_WORKSPACE
 

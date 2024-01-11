@@ -33,6 +33,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
 
+env:
+  CCACHE_ABSSTDERR: true
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_DIR: "/tmp/ccache"
+  CCACHE_MAXSIZE: 100M
+  CCACHE_NOHASHDIR: true
+  CCACHE_SLOPPINESS: "pch_defines,time_macros"
+  CCACHE_UNIFY: true
+
 jobs:
   build:
     runs-on: macos-${{ matrix.os }}
@@ -48,6 +58,12 @@ jobs:
           - os: 12
             cxx: g++-10
 
+    env:
+      CXX: ${{ matrix.cxx }}
+      OS: ${{ matrix.os }}
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,6 +71,16 @@ jobs:
       - name: Create Build Environment
         run: |
           mkdir ${{ runner.workspace }}/build
+          brew install --overwrite ccache
+
+      - name: Setup ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          restore-keys: |
+            ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build

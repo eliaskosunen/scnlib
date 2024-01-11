@@ -38,6 +38,15 @@ env:
     sudo apt-get install
       -yq --no-install-suggests --no-install-recommends
       --allow-unauthenticated --allow-downgrades --allow-change-held-packages
+  CCACHE_ABSSTDERR: true
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_DIR: "/tmp/ccache"
+  CCACHE_MAXSIZE: 100M
+  CCACHE_NOHASHDIR: true
+  CCACHE_SLOPPINESS: "pch_defines,time_macros"
+  CCACHE_UNIFY: true
+  DEBIAN_FRONTEND: noninteractive
 
 jobs:
   ubuntu:
@@ -127,6 +136,12 @@ jobs:
             std: 20
             os: 22.04
 
+    env:
+      CXX: ${{ matrix.cxx }}
+      OS: ${{ matrix.os }}
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
     steps:
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
@@ -143,12 +158,11 @@ jobs:
 
       - name: Install dependencies
         working-directory: ${{ runner.workspace }}/deps
-        env:
-          CXX: ${{ matrix.cxx }}
-          OS: ${{ matrix.os }}
         run: |
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt-get --allow-unauthenticated -yq update
+          
+          ${APT_INSTALL} ccache
           
           if [[ "${CXX}" == "g++-13" ]]; then
             ${APT_INSTALL} g++-13
@@ -219,10 +233,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.workflow }}--ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          restore-keys: |
+            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
+
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
-        env:
-          CXX: ${{ matrix.cxx }}
         run: |
           cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
                 -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
@@ -247,6 +268,13 @@ jobs:
           # seems to be buggy
           - os: 20.04
 
+    env:
+      CC: clang
+      CXX: clang++
+      OS: ${{ matrix.os }}
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
     steps:
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
@@ -256,6 +284,8 @@ jobs:
 
       - name: Create Build Environment
         run: |
+          ${APT_INSTALL} ccache
+          
           mkdir ${{ runner.workspace }}/build
           
           sudo locale-gen en_US.UTF-8
@@ -263,11 +293,17 @@ jobs:
           sudo update-locale
           sudo locale -a
 
+      - name: Setup ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.sha }}
+          restore-keys: |
+            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.base_ref }}
+            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx
+
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
-        env:
-          CC: clang
-          CXX: clang++
         run: |
           cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
                 -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
@@ -319,6 +355,11 @@ jobs:
         std: [ 17, 20 ]
         cxx: [ clang++-17 ]
 
+    env:
+      CXX: ${{ matrix.cxx }}
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
     steps:
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
@@ -334,16 +375,27 @@ jobs:
           chmod +x llvm.sh
           sudo ./llvm.sh 17
           
+          ${APT_INSTALL} ccache
+          
           mkdir ${{ runner.workspace }}/build
 
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-${{ github.sha }}
+          restore-keys: |
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}
+
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-                -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
                 -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
                 -DSCN_USE_ASAN=ON -DSCN_USE_UBSAN=ON \
                 $GITHUB_WORKSPACE
@@ -366,9 +418,32 @@ jobs:
       matrix:
         external_deps: [ 0, 1 ]
 
+    env:
+      CC: gcc-11
+      CXX: g++-11
+      CMAKE_CXX_STANDARD: 17
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
     steps:
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
+
+      - name: Install ccache
+        run: |
+          ${APT_INSTALL} ccache
+
+      - name: Setup ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
+          restore-keys: |
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build simdutf
         if: matrix.external_deps == 1
@@ -391,9 +466,6 @@ jobs:
           cmake -G Ninja ..
           cmake --build .
           sudo cmake --build . --target install
-
-      - name: Checkout
-        uses: actions/checkout@v4
 
       - name: Build scnlib
         run: |
@@ -471,6 +543,13 @@ jobs:
             icu: ON
           - engine: re2
 
+    env:
+      CC: gcc-11
+      CXX: g++-11
+      CMAKE_CXX_STANDARD: 17
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
     steps:
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
@@ -504,8 +583,22 @@ jobs:
           cmake --build .
           sudo cmake --build . --target install
 
+      - name: Install ccache
+        run: |
+          ${APT_INSTALL} ccache
+
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.sha }}
+          restore-keys: |
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.base_ref }}
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}
+            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
 
       - name: Run CMake
         run: |
