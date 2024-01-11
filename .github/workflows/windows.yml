@@ -32,20 +32,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
 
-env:
-  APT_INSTALL: |
-    sudo apt-get install
-      -yq --no-install-suggests --no-install-recommends
-      --allow-unauthenticated --allow-downgrades --allow-change-held-packages
-  CCACHE_ABSSTDERR: true
-  CCACHE_COMPRESS: true
-  CCACHE_COMPRESSLEVEL: 6
-  CCACHE_DIR: ${{ runner.workspace }}/ccache
-  CCACHE_MAXSIZE: 100M
-  CCACHE_NOHASHDIR: true
-  CCACHE_SLOPPINESS: "pch_defines,time_macros"
-  CCACHE_UNIFY: true
-
 jobs:
   msvc:
     runs-on: windows-${{ matrix.os }}
@@ -136,6 +122,14 @@ jobs:
           - sys: clang64
 
     env:
+      CCACHE_ABSSTDERR: true
+      CCACHE_COMPRESS: true
+      CCACHE_COMPRESSLEVEL: 6
+      CCACHE_DIR: ${{ runner.workspace }}/ccache
+      CCACHE_MAXSIZE: 100M
+      CCACHE_NOHASHDIR: true
+      CCACHE_SLOPPINESS: "pch_defines,time_macros"
+      CCACHE_UNIFY: true
       CMAKE_C_COMPILER_LAUNCHER: ccache
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
 

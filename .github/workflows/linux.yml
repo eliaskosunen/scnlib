@@ -344,20 +344,48 @@ jobs:
 
   alpine:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Load ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.workflow }}-alpine-${{ github.sha }}
+          restore-keys: |
+            ${{ github.workflow }}-alpine-${{ github.ref }}
+            ${{ github.workflow }}-alpine-${{ github.base_ref }}
+            ${{ github.workflow }}-alpine
+
       - name: Start docker
         run: |
-          docker run -w /src -dit --name alpine -v $PWD:/src alpine:3.18
+          docker run -w /src -dit --name alpine \
+            -v $PWD:/src \
+            -v ${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }} \
+            -e CCACHE_ABSSTDERR=${{ env.ABSTDERR }} \
+            -e CCACHE_COMPRESS=${{ env.CCACHE_COMPRESS }} \
+            -e CCACHE_DIR=${{ env.CCACHE_DIR }} \
+            -e CCACHE_MAXSIZE=${{ env.CCACHE_MAXSIZE }} \
+            -e CCACHE_NOHASHDIR=${{ env.CCACHE_NOHASHDIR }} \
+            -e CCACHE_SLOPPINESS=${{ env.CCACHE_SLOPPINESS }} \
+            -e CCACHE_UNIFY=${{ env.CCACHE_UNIFY }} \
+            alpine:3.18
           echo 'docker exec alpine "$@";' > alpine-run.sh
           chmod +x alpine-run.sh
 
       - name: Install dependencies
         run: |
           ./alpine-run.sh apk update
-          ./alpine-run.sh apk add build-base cmake g++ linux-headers git bash ninja
+          ./alpine-run.sh apk add build-base cmake g++ linux-headers git bash ninja ccache
+
+      - name: Setup ccache
+        run: |
+          ./alpine-run.sh ccache --version
+          ./alpine-run.sh ccache --zero-stats
+          ./alpine-run.sh ccache --show-stats
+          ./alpine-run.sh ccache --show-config
 
       - name: Run CMake
         run: |
@@ -366,6 +394,7 @@ jobs:
       - name: Build
         run: |
           ./alpine-run.sh cmake --build build -- -k 0
+          ./alpine-run.sh ccache --show-stats
 
       - name: Test
         run: |
