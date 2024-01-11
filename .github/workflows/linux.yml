@@ -380,7 +380,7 @@ jobs:
       - name: Install dependencies
         run: |
           ./alpine-run.sh apk update
-          ./alpine-run.sh apk add build-base cmake g++ linux-headers git bash ninja ccache
+          ./alpine-run.sh apk add build-base cmake g++ linux-headers git bash ninja ccache python3
 
       - name: Setup ccache
         run: |

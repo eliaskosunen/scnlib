@@ -32,6 +32,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
 
+env:
+  CCACHE_ABSSTDERR: true
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_DIR: ${{ github.workspace }}/ccache
+  CCACHE_MAXSIZE: 100M
+  CCACHE_NOHASHDIR: true
+  CCACHE_SLOPPINESS: "pch_defines,time_macros"
+  CCACHE_UNIFY: true
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
 jobs:
   msvc:
     runs-on: windows-${{ matrix.os }}
@@ -48,7 +60,26 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create Build Environment
-        run: cmake -E make_directory ${{ runner.workspace }}/build
+        run: |
+          cmake -E make_directory ${{ runner.workspace }}/build
+          choco install ccache
+
+      - name: Load ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
+          restore-keys: |
+            ${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
+            ${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
+            ${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -59,6 +90,10 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --config ${{ matrix.type }} --parallel
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
@@ -81,7 +116,26 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create Build Environment
-        run: cmake -E make_directory ${{ runner.workspace }}/build
+        run: |
+          cmake -E make_directory ${{ runner.workspace }}/build
+          choco install ccache
+
+      - name: Load ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
+          restore-keys: |
+            ${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
+            ${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
+            ${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -93,6 +147,10 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --config Debug --parallel
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
@@ -121,18 +179,6 @@ jobs:
           - sys: clang32
           - sys: clang64
 
-    env:
-      CCACHE_ABSSTDERR: true
-      CCACHE_COMPRESS: true
-      CCACHE_COMPRESSLEVEL: 6
-      CCACHE_DIR: ${{ github.workspace }}/ccache
-      CCACHE_MAXSIZE: 100M
-      CCACHE_NOHASHDIR: true
-      CCACHE_SLOPPINESS: "pch_defines,time_macros"
-      CCACHE_UNIFY: true
-      CMAKE_C_COMPILER_LAUNCHER: ccache
-      CMAKE_CXX_COMPILER_LAUNCHER: ccache
-
     steps:
       - uses: msys2/setup-msys2@v2
         with:
@@ -146,6 +192,7 @@ jobs:
             cmake:p
             ccache:p
             ninja:p
+            python:p
 
       - name: Checkout
         uses: actions/checkout@v4

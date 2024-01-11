@@ -47,6 +47,8 @@ env:
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
   CCACHE_UNIFY: true
   DEBIAN_FRONTEND: noninteractive
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
 jobs:
   lite-linux:
@@ -79,8 +81,6 @@ jobs:
     env:
       CXX: ${{ matrix.cxx }}
       OS: ${{ matrix.os }}
-      CMAKE_C_COMPILER_LAUNCHER: ccache
-      CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
     steps:
       - name: Setup CMake and Ninja
@@ -150,24 +150,51 @@ jobs:
       matrix:
         os: [ 2019, 2022 ]
         platform: [ x64 ]
+        std: [ 17 ]
         type: [ Debug ]
+
+    env:
+      CCACHE_DIR: ${{ runner.workspace }}/ccache
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Create Build Environment
-        run: cmake -E make_directory ${{ runner.workspace }}/build
+        run: |
+          cmake -E make_directory ${{ runner.workspace }}/build
+          choco install ccache
+
+      - name: Load ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
+          restore-keys: |
+            Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
+            Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
+            Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
-          cmake -A ${{ matrix.platform }} -DSCN_CI=ON $GITHUB_WORKSPACE
+          cmake -A ${{ matrix.platform }} -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --config ${{ matrix.type }} --parallel
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build

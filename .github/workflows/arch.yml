@@ -29,6 +29,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
 
+env:
+  CCACHE_ABSSTDERR: true
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_MAXSIZE: 100M
+  CCACHE_NOHASHDIR: true
+  CCACHE_SLOPPINESS: "pch_defines,time_macros"
+  CCACHE_UNIFY: true
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
 jobs:
   other-archs:
     runs-on: ubuntu-22.04
@@ -80,20 +91,20 @@ jobs:
             --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
 
           env: |
-            CCACHE_ABSSTDERR: true
-            CCACHE_COMPRESS: true
-            CCACHE_COMPRESSLEVEL: 6
+            CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
+            CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
+            CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
             CCACHE_DIR: ${{ env.CCACHE_DIR }}
-            CCACHE_MAXSIZE: 100M
-            CCACHE_NOHASHDIR: true
-            CCACHE_SLOPPINESS: "pch_defines,time_macros"
-            CCACHE_UNIFY: true
+            CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
+            CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
+            CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
+            CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
             CMAKE_C_COMPILER_LAUNCHER: ccache
             CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
           install: |
             apt-get update -yq
-            apt-get install -yq git wget cmake build-essential make g++ ninja-build ccache
+            apt-get install -yq git wget cmake build-essential make g++ ninja-build ccache python3
 
           run: |
             ccache --version
@@ -116,19 +127,34 @@ jobs:
           - gen: Visual Studio 17 2022
             arch: ARM64
 
+    env:
+      CCACHE_DIR: ${{ runner.workspace }}/ccache
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Create Build Environment
-        run: cmake -E make_directory ${{ runner.workspace }}/build
+        run: |
+          cmake -E make_directory ${{ runner.workspace }}/build
+          choco install ccache
+
+      - name: Load ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.sha }}
+          restore-keys: |
+            Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.ref }}
+            Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.base_ref }}
+            Windows-win2022-msvc${{ matrix.arch }}-std17
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
           cmake -G "${{ matrix.gen }}" -A ${{ matrix.arch }} -DCMAKE_CROSSCOMPILING=ON \
-                -DSCN_DISABLE_REGEX=ON \
+                -DSCN_DISABLE_REGEX=ON -DCMAKE_CXX_STANDARD=17 \
                 -DSCN_CI=ON $GITHUB_WORKSPACE
 
       - name: Build
