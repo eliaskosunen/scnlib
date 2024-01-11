@@ -88,6 +88,8 @@ jobs:
             CCACHE_NOHASHDIR: true
             CCACHE_SLOPPINESS: "pch_defines,time_macros"
             CCACHE_UNIFY: true
+            CMAKE_C_COMPILER_LAUNCHER: ccache
+            CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
           install: |
             apt-get update -yq

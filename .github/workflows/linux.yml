@@ -371,6 +371,8 @@ jobs:
             -e CCACHE_NOHASHDIR=${{ env.CCACHE_NOHASHDIR }} \
             -e CCACHE_SLOPPINESS=${{ env.CCACHE_SLOPPINESS }} \
             -e CCACHE_UNIFY=${{ env.CCACHE_UNIFY }} \
+            -e CMAKE_C_COMPILER_LAUNCHER=ccache \
+            -e CMAKE_CXX_COMPILER_LAUNCHER=ccache \
             alpine:3.18
           echo 'docker exec alpine "$@";' > alpine-run.sh
           chmod +x alpine-run.sh

@@ -125,7 +125,7 @@ jobs:
       CCACHE_ABSSTDERR: true
       CCACHE_COMPRESS: true
       CCACHE_COMPRESSLEVEL: 6
-      CCACHE_DIR: ${{ runner.workspace }}/ccache
+      CCACHE_DIR: ${{ github.workspace }}/ccache
       CCACHE_MAXSIZE: 100M
       CCACHE_NOHASHDIR: true
       CCACHE_SLOPPINESS: "pch_defines,time_macros"
