@@ -63,7 +63,6 @@ jobs:
           - os: 22.04
             std: 20
             cxx: g++-11
-          # FIXME: using clang-15 explicitly because of https://github.com/actions/runner-images/issues/8659
           - os: 22.04
             std: 17
             cxx: clang++-15
@@ -154,7 +153,7 @@ jobs:
         type: [ Debug ]
 
     env:
-      CCACHE_DIR: ${{ runner.workspace }}/ccache
+      CCACHE_DIR: ${{ github.workspace }}/ccache
 
     steps:
       - name: Checkout
@@ -162,7 +161,7 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          cmake -E make_directory ${{ runner.workspace }}/build
+          cmake -E make_directory ${{ github.workspace }}/build
           choco install ccache
 
       - name: Load ccache
@@ -183,13 +182,13 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         shell: bash
         run: |
           cmake -A ${{ matrix.platform }} -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: cmake --build . --config ${{ matrix.type }} --parallel
 
       - name: Show ccache stats
@@ -197,7 +196,7 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: ctest -C ${{ matrix.type }} --output-on-failure
 
   lite-macos:
@@ -219,7 +218,7 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          mkdir ${{ runner.workspace }}/build
+          mkdir ${{ github.workspace }}/build
 
       - name: Load ccache
         uses: actions/cache@v3
@@ -239,12 +238,12 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: |
           cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_USE_ASAN=ON -DSCN_USE_UBSAN=ON $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: cmake --build . --parallel -- -k
 
       - name: Show ccache stats
@@ -252,5 +251,5 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: ctest --output-on-failure

@@ -42,14 +42,14 @@ jobs:
 
           sudo apt-get install -yq lcov
 
-          mkdir ${{ runner.workspace }}/build
-          mkdir ${{ runner.workspace }}/report
+          mkdir ${{ github.workspace }}/build
+          mkdir ${{ github.workspace }}/report
 
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Run CMake
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: |
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
                 -DCMAKE_CXX_STANDARD=20 \
@@ -57,20 +57,20 @@ jobs:
                 $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: |
           cmake --build . -- -k 0
 
       - name: Generate Coverage Report
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: |
           ./coverage.sh
-          cp coverage-filtered.info ${{ runner.workspace }}/report/coverage.info
+          cp coverage-filtered.info ${{ github.workspace }}/report/coverage.info
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v3
         with:
-          directory: ${{ runner.workspace }}/report
+          directory: ${{ github.workspace }}/report
           fail_ci_if_error: true
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}

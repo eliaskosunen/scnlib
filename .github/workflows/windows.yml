@@ -61,7 +61,7 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          cmake -E make_directory ${{ runner.workspace }}/build
+          cmake -E make_directory ${{ github.workspace }}/build
           choco install ccache
 
       - name: Load ccache
@@ -82,13 +82,13 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         shell: bash
         run: |
           cmake -A ${{ matrix.platform }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_CI=ON $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: cmake --build . --config ${{ matrix.type }} --parallel
 
       - name: Show ccache stats
@@ -96,7 +96,7 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: ctest -C ${{ matrix.type }} --output-on-failure
 
   clang-cl:
@@ -117,7 +117,7 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          cmake -E make_directory ${{ runner.workspace }}/build
+          cmake -E make_directory ${{ github.workspace }}/build
           choco install ccache
 
       - name: Load ccache
@@ -138,14 +138,14 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         shell: bash
         run: |
           cmake -T ClangCL -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DCMAKE_BUILD_TYPE=Debug \
             -DSCN_CI=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=ON $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: cmake --build . --config Debug --parallel
 
       - name: Show ccache stats
@@ -153,7 +153,7 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ runner.workspace }}/build
+        working-directory: ${{ github.workspace }}/build
         run: ctest -C Debug --output-on-failure
 
   msys:
