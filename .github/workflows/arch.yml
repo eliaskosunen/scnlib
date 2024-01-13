@@ -128,7 +128,7 @@ jobs:
             arch: ARM64
 
     env:
-      CCACHE_DIR: ${{ runner.workspace }}/ccache
+      CCACHE_DIR: D:/ccache
 
     steps:
       - name: Checkout

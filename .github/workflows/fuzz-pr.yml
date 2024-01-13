@@ -36,6 +36,7 @@ jobs:
           language: c++
           github-token: ${{ secrets.GITHUB_TOKEN }}
           sanitizer: ${{ matrix.sanitizer }}
+          storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/eliaskosunen/scnlib-fuzz-corpus.git
 
       - name: Run fuzzers
         id: run
@@ -45,3 +46,4 @@ jobs:
           fuzz-seconds: 600
           mode: 'code-change'
           sanitizer: ${{ matrix.sanitizer }}
+          storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/eliaskosunen/scnlib-fuzz-corpus.git
