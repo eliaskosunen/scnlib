@@ -36,6 +36,7 @@ env:
   CCACHE_ABSSTDERR: true
   CCACHE_COMPRESS: true
   CCACHE_COMPRESSLEVEL: 6
+  CCACHE_DIR: D:/ccache
   CCACHE_MAXSIZE: 100M
   CCACHE_NOHASHDIR: true
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
@@ -53,9 +54,6 @@ jobs:
         platform: [ Win32, x64 ]
         type: [ Debug, Release ]
         std: [ 17, 20 ]
-
-    env:
-      CCACHE_DIR: ${{ runner.workspace }}/ccache
 
     steps:
       - name: Checkout
@@ -180,9 +178,6 @@ jobs:
           # FIXME: bugging out with float parsing
           - sys: clang32
           - sys: clang64
-
-    env:
-      CCACHE_DIR: ${{ runner.workspace }}/ccache
 
     steps:
       - uses: msys2/setup-msys2@v2

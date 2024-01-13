@@ -153,7 +153,7 @@ jobs:
         type: [ Debug ]
 
     env:
-      CCACHE_DIR: ${{ runner.workspace }}/ccache
+      CCACHE_DIR: D:/ccache
 
     steps:
       - name: Checkout

@@ -3,16 +3,6 @@ name: ClusterFuzzLite batch fuzzing
 on:
   schedule:
     - cron: '0 0/6 * * *' # Every 6th hour
-  push:
-    paths:
-      - '.github/**'
-      - 'benchmark/**'
-      - 'cmake/**'
-      - 'examples/**'
-      - 'include/**'
-      - 'src/**'
-      - 'tests/**'
-      - '**/CMakeLists.txt'
   workflow_dispatch:
 
 concurrency:
