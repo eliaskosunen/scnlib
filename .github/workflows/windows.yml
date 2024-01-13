@@ -36,7 +36,6 @@ env:
   CCACHE_ABSSTDERR: true
   CCACHE_COMPRESS: true
   CCACHE_COMPRESSLEVEL: 6
-  CCACHE_DIR: ${{ github.workspace }}/ccache
   CCACHE_MAXSIZE: 100M
   CCACHE_NOHASHDIR: true
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
@@ -55,13 +54,16 @@ jobs:
         type: [ Debug, Release ]
         std: [ 17, 20 ]
 
+    env:
+      CCACHE_DIR: ${{ runner.workspace }}/ccache
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Create Build Environment
         run: |
-          cmake -E make_directory ${{ github.workspace }}/build
+          cmake -E make_directory ${{ runner.workspace }}/build
           choco install ccache
 
       - name: Load ccache
@@ -82,13 +84,13 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
           cmake -A ${{ matrix.platform }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_CI=ON $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --config ${{ matrix.type }} --parallel
 
       - name: Show ccache stats
@@ -96,7 +98,7 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: ctest -C ${{ matrix.type }} --output-on-failure
 
   clang-cl:
@@ -117,7 +119,7 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          cmake -E make_directory ${{ github.workspace }}/build
+          cmake -E make_directory ${{ runner.workspace }}/build
           choco install ccache
 
       - name: Load ccache
@@ -138,14 +140,14 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
           cmake -T ClangCL -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DCMAKE_BUILD_TYPE=Debug \
             -DSCN_CI=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=ON $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --config Debug --parallel
 
       - name: Show ccache stats
@@ -153,7 +155,7 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: ctest -C Debug --output-on-failure
 
   msys:
@@ -178,6 +180,9 @@ jobs:
           # FIXME: bugging out with float parsing
           - sys: clang32
           - sys: clang64
+
+    env:
+      CCACHE_DIR: ${{ runner.workspace }}/ccache
 
     steps:
       - uses: msys2/setup-msys2@v2

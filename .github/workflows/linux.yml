@@ -148,8 +148,8 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          mkdir ${{ github.workspace }}/deps
-          mkdir ${{ github.workspace }}/build
+          mkdir ${{ runner.workspace }}/deps
+          mkdir ${{ runner.workspace }}/build
           
           sudo locale-gen en_US.UTF-8
           sudo locale-gen fi_FI.UTF-8
@@ -157,7 +157,7 @@ jobs:
           sudo locale -a
 
       - name: Install dependencies
-        working-directory: ${{ github.workspace }}/deps
+        working-directory: ${{ runner.workspace }}/deps
         run: |
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt-get --allow-unauthenticated -yq update
@@ -251,14 +251,14 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
                 -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
                 $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: cmake --build . -- -k 0
 
       - name: Show ccache stats
@@ -266,7 +266,7 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: ctest --output-on-failure
 
   libcxx:
@@ -298,7 +298,7 @@ jobs:
         run: |
           ${APT_INSTALL} ccache
           
-          mkdir ${{ github.workspace }}/build
+          mkdir ${{ runner.workspace }}/build
           
           sudo locale-gen en_US.UTF-8
           sudo locale-gen fi_FI.UTF-8
@@ -323,7 +323,7 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
                 -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
@@ -331,7 +331,7 @@ jobs:
                 $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: cmake --build . -- -k 0
 
       - name: Show ccache stats
@@ -339,7 +339,7 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: ctest --output-on-failure
 
   alpine:
@@ -432,7 +432,7 @@ jobs:
           
           ${APT_INSTALL} ccache
           
-          mkdir ${{ github.workspace }}/build
+          mkdir ${{ runner.workspace }}/build
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -455,7 +455,7 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
                 -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
@@ -464,7 +464,7 @@ jobs:
                 $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: |
           cmake --build . -- -k 0
 
@@ -473,7 +473,7 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: |
           ctest --output-on-failure
 
@@ -548,8 +548,8 @@ jobs:
 
       - name: Build scnlib
         run: |
-          mkdir ${{ github.workspace }}/lib-build
-          cd ${{ github.workspace }}/lib-build
+          mkdir ${{ runner.workspace }}/lib-build
+          cd ${{ runner.workspace }}/lib-build
           if [[ ${{ matrix.external_deps }} -eq 1 ]]; then
             cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF \
                   -DSCN_USE_EXTERNAL_SIMDUTF=ON -DSCN_USE_EXTERNAL_FAST_FLOAT=ON \
@@ -562,8 +562,8 @@ jobs:
 
       - name: Build consumer
         run: |
-          mkdir ${{ github.workspace }}/consumer-build
-          cd ${{ github.workspace }}/consumer-build
+          mkdir ${{ runner.workspace }}/consumer-build
+          cd ${{ runner.workspace }}/consumer-build
           cmake $GITHUB_WORKSPACE/tests/consumer-test
           cmake --build .
 
@@ -572,7 +572,7 @@ jobs:
           ccache --show-stats
 
       - name: Test consumer
-        working-directory: ${{ github.workspace }}/consumer-build
+        working-directory: ${{ runner.workspace }}/consumer-build
         run: |
           output="$(echo '42' | ./scn-consumer)"
           test "$output" -eq 42
@@ -604,7 +604,7 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          mkdir ${{ github.workspace }}/build
+          mkdir ${{ runner.workspace }}/build
           ${APT_INSTALL} ccache
           echo "${{ matrix.flags }}" > $GITHUB_WORKSPACE/flags.txt
 
@@ -630,7 +630,7 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         env:
           CC: clang
           CXX: clang++
@@ -639,7 +639,7 @@ jobs:
                 $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --target scn -- -k 0
 
       - name: Show ccache stats
@@ -729,8 +729,8 @@ jobs:
 
       - name: Run CMake
         run: |
-          mkdir ${{ github.workspace }}/build
-          cd ${{ github.workspace }}/build
+          mkdir ${{ runner.workspace }}/build
+          cd ${{ runner.workspace }}/build
           if [[ ${{ matrix.engine }} == "Boost" ]]; then
             icu_flag="-DSCN_REGEX_BOOST_USE_ICU=${{ matrix.icu }}"
           fi
@@ -739,7 +739,7 @@ jobs:
                 $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: cmake --build . -- -k 0
 
       - name: Show ccache stats
@@ -747,5 +747,5 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: ctest --output-on-failure

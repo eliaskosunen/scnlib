@@ -60,8 +60,8 @@ jobs:
 
           sudo apt-get install -yq lcov ccache
 
-          mkdir ${{ github.workspace }}/build
-          mkdir ${{ github.workspace }}/report
+          mkdir ${{ runner.workspace }}/build
+          mkdir ${{ runner.workspace }}/report
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,7 +84,7 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
                 -DCMAKE_CXX_STANDARD=20 \
@@ -92,7 +92,7 @@ jobs:
                 $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: |
           cmake --build . -- -k 0
 
@@ -101,15 +101,15 @@ jobs:
           ccache --show-stats
 
       - name: Generate Coverage Report
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: |
           ./coverage.sh
-          cp coverage-filtered.info ${{ github.workspace }}/report/coverage.info
+          cp coverage-filtered.info ${{ runner.workspace }}/report/coverage.info
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v3
         with:
-          directory: ${{ github.workspace }}/report
+          directory: ${{ runner.workspace }}/report
           fail_ci_if_error: true
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}

@@ -70,7 +70,7 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          mkdir ${{ github.workspace }}/build
+          mkdir ${{ runner.workspace }}/build
           brew install --overwrite ccache
 
       - name: Load ccache
@@ -91,14 +91,14 @@ jobs:
           ccache --show-config
 
       - name: Run CMake
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         env:
           CXX: ${{ matrix.cxx }}
         run: |
           cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --parallel -- -k
 
       - name: Show ccache stats
@@ -106,5 +106,5 @@ jobs:
           ccache --show-stats
 
       - name: Test
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: ctest --output-on-failure

@@ -128,7 +128,7 @@ jobs:
             arch: ARM64
 
     env:
-      CCACHE_DIR: ${{ github.workspace }}/ccache
+      CCACHE_DIR: ${{ runner.workspace }}/ccache
 
     steps:
       - name: Checkout
@@ -136,7 +136,7 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          cmake -E make_directory ${{ github.workspace }}/build
+          cmake -E make_directory ${{ runner.workspace }}/build
           choco install ccache
 
       - name: Load ccache
@@ -150,7 +150,7 @@ jobs:
             Windows-win2022-msvc${{ matrix.arch }}-std17
 
       - name: Run CMake
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
           cmake -G "${{ matrix.gen }}" -A ${{ matrix.arch }} -DCMAKE_CROSSCOMPILING=ON \
@@ -158,5 +158,5 @@ jobs:
                 -DSCN_CI=ON $GITHUB_WORKSPACE
 
       - name: Build
-        working-directory: ${{ github.workspace }}/build
+        working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --parallel
