@@ -121,7 +121,7 @@ namespace scn {
 
             return {opt, stringflags};
         }
-#endif
+#endif  // SCN_REGEX_BACKEND == ...
 
         template <typename CharT, typename Input>
         auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
@@ -241,7 +241,7 @@ namespace scn {
             }
             return input.begin() +
                    ranges::distance(input.data(), new_input.data());
-#endif
+#endif  // SCN_REGEX_BACKEND == ...
         }
 
         template <typename CharT, typename Input>
@@ -443,7 +443,7 @@ namespace scn {
             }
             return input.begin() +
                    ranges::distance(input.data(), new_input.data());
-#endif
+#endif  // SCN_REGEX_BACKEND == ...
         }
 
 #endif  // !SCN_DISABLE_REGEX

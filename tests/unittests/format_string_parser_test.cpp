@@ -26,8 +26,7 @@ TEST(FormatStringParserTest, DefaultConstructedSpecs)
     EXPECT_EQ(specs.fill, " ");
     EXPECT_EQ(specs.type, scn::detail::presentation_type::none);
     EXPECT_EQ(specs.arbitrary_base, 0);
-    EXPECT_EQ(specs.align,
-              static_cast<unsigned>(scn::detail::align_type::none));
+    EXPECT_EQ(specs.align, scn::detail::align_type::none);
     EXPECT_EQ(specs.localized, false);
 }
 
@@ -87,8 +86,7 @@ TEST_F(FormatStringParserAlignTest, NoAlignNoFill)
     auto result = scn::detail::parse_align(
         input.data(), input.data() + input.size(), handler);
     EXPECT_EQ(specs.fill, " ");
-    EXPECT_EQ(specs.align,
-              static_cast<unsigned>(scn::detail::align_type::none));
+    EXPECT_EQ(specs.align, scn::detail::align_type::none);
     EXPECT_EQ(specs, scn::detail::basic_format_specs<char>{});
     EXPECT_EQ(result, input.data());
     EXPECT_EQ(handler.latest_error, nullptr);
@@ -100,8 +98,7 @@ TEST_F(FormatStringParserAlignTest, LeftAlignNoFill)
     auto result = scn::detail::parse_align(
         input.data(), input.data() + input.size(), handler);
     EXPECT_EQ(specs.fill, " ");
-    EXPECT_EQ(specs.align,
-              static_cast<unsigned>(scn::detail::align_type::left));
+    EXPECT_EQ(specs.align, scn::detail::align_type::left);
     EXPECT_EQ(result, input.data() + 1);
     EXPECT_EQ(handler.latest_error, nullptr);
 }
@@ -112,8 +109,7 @@ TEST_F(FormatStringParserAlignTest, RightAlignWithFill)
     auto result = scn::detail::parse_align(
         input.data(), input.data() + input.size(), handler);
     EXPECT_EQ(specs.fill, "_");
-    EXPECT_EQ(specs.align,
-              static_cast<unsigned>(scn::detail::align_type::right));
+    EXPECT_EQ(specs.align, scn::detail::align_type::right);
     EXPECT_EQ(result, input.data() + 2);
     EXPECT_EQ(handler.latest_error, nullptr);
 }

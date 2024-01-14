@@ -27,7 +27,7 @@ namespace scn {
     SCN_BEGIN_NAMESPACE
 
     namespace detail {
-        enum class align_type {
+        enum class align_type : unsigned char {
             none = 0,
             left = 1,   // '<'
             right = 2,  // '>'
@@ -107,16 +107,11 @@ namespace scn {
             bool charset_has_nonascii{false}, charset_is_inverted{false};
             std::basic_string_view<CharT> charset_string{};
             regex_flags regexp_flags{regex_flags::none};
-            unsigned arbitrary_base : 6;
-            unsigned align : 2;
-            bool localized : 1;
+            unsigned char arbitrary_base{0};
+            align_type align{align_type::none};
+            bool localized{false};
 
-            constexpr basic_format_specs()
-                : arbitrary_base{0},
-                  align{static_cast<unsigned>(align_type::none)},
-                  localized{false}
-            {
-            }
+            constexpr basic_format_specs() = default;
 
             SCN_NODISCARD constexpr int get_base(int default_base) const
             {
@@ -167,10 +162,7 @@ namespace scn {
 
             constexpr void on_align(align_type align)
             {
-                SCN_GCC_PUSH
-                SCN_GCC_IGNORE("-Wconversion")
-                m_specs.align = static_cast<unsigned>(align);
-                SCN_GCC_POP
+                m_specs.align = align;
             }
             constexpr void on_fill(std::basic_string_view<CharT> fill)
             {
@@ -643,6 +635,7 @@ namespace scn {
             }
 
             handler.on_type(presentation_type::regex);
+            bool is_escaped = false;
             for (; begin != end; ++begin) {
                 if (*begin == CharT{'/'}) {
                     if (*(begin - 1) != CharT{'\\'}) {
@@ -759,8 +752,7 @@ namespace scn {
             };
 
             if (end - begin > 1 && *(begin + 1) == CharT{'}'} &&
-                is_ascii_letter(*begin) && *begin != CharT{'L'} &&
-                *begin != CharT{'n'}) {
+                is_ascii_letter(*begin) && *begin != CharT{'L'}) {
                 return do_presentation();
             }
 
@@ -851,6 +843,10 @@ namespace scn {
                     handler.on_replacement_field(adapter.arg_id, begin);
                 }
                 else if (*begin == CharT{':'}) {
+                    if (SCN_UNLIKELY(begin + 1 == end)) {
+                        handler.on_error("Unexpected end of replacement field");
+                        return begin;
+                    }
                     begin =
                         handler.on_format_specs(adapter.arg_id, begin + 1, end);
                     if (SCN_UNLIKELY(begin == end || *begin != '}')) {
@@ -1134,10 +1130,15 @@ namespace scn {
                 specs.type == presentation_type::regex_escaped) {
                 return;
             }
-            if (SCN_UNLIKELY(specs.type == presentation_type::none)) {
+            if (SCN_UNLIKELY(specs.type == presentation_type::none ||
+                             specs.charset_string.empty())) {
                 return handler.on_error(
                     "Regular expression needs to specified when reading "
                     "regex_matches");
+            }
+            if (specs.type == presentation_type::regex ||
+                specs.type == presentation_type::regex_escaped) {
+                return;
             }
             SCN_UNLIKELY_ATTR
             handler.on_error("Invalid type specifier for regex_matches");
