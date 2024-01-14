@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head>
   <meta charset="utf-8"/>
-  <title>scnlib scanf for modern C++</title>
+  <title>Regular expressions module | scnlib scanf for modern C++</title>
   <link href="favicon-dark.png" rel="icon" type="image/png"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <meta content="#22272e" name="theme-color"/>
@@ -21,7 +21,7 @@
   <meta content="Poxy v0.15.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
-<body>
+<body class="poxy-has-toc">
 <header><nav id="navigation">
   <div class="m-container">
     <div class="m-row">
@@ -38,7 +38,7 @@
           <ol class="m-col-t-6 m-col-m-none">
             <li><a href="namespaces.html">Namespaces</a></li>
             <li><a href="annotated.html">Classes</a></li>
-            <li><a href="modules.html" id="m-navbar-current">Modules</a></li>
+            <li><a href="modules.html">Modules</a></li>
           </ol>
           <ol class="m-col-t-6 m-col-m-none" start="4">
             <li><a href="pages.html">Pages</a></li>
@@ -57,34 +57,35 @@
   <div class="m-container m-container-inflatable">
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
-        <h1>Modules</h1>
-        <ul class="m-doc">
-          <li>module <a class="m-doc" href="group__scan.html">Basic scanning API</a> <span class="m-doc">The core public-facing interface of the library.</span></li>
-          <li>module <a class="m-doc" href="group__ctx.html">Contexts and scanners</a> <span class="m-doc">Lower-level APIs used for scanning individual values.</span></li>
-          <li>module <a class="m-doc" href="group__format-string.html">Format strings</a> <span class="m-doc">Format string description.</span></li>
-          <li>module <a class="m-doc" href="group__locale.html">Localization</a> <span class="m-doc">Scanning APIs that allow passing in a locale.</span></li>
-          <li>module <a class="m-doc" href="group__regex.html">Regular expressions</a> </li>
-          <li>module <a class="m-doc" href="group__result.html">Result types</a> <span class="m-doc">Result and error types.</span></li>
-          <li>module <a class="m-doc" href="group__scannable.html">Scannable sources</a> <span class="m-doc">Description of the <code>scannable_range</code> and <code>scannable_source</code> concepts.</span></li>
-          <li>module <a class="m-doc" href="group__vscan.html">Type-erased scanning API</a> <span class="m-doc">Lower-level scanning API with type-erased arguments.</span></li>
-          <li>module <a class="m-doc" href="group__xchar.html">Wide character APIs</a> <span class="m-doc">Scanning interfaces taking wide strings (<code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">wchar_t</a></code>).</span></li>
-        </ul>
-        <script>
-        function toggle(e) {
-            e.parentElement.className = e.parentElement.className == 'm-doc-collapsible' ?
-                'm-doc-expansible' : 'm-doc-collapsible';
-            return false;
-        }
-        /* Collapse all nodes marked as such. Doing it via JS instead of
-           directly in markup so disabling it doesn't harm usability. The list
-           is somehow regenerated on every iteration and shrinks as I change
-           the classes. It's not documented anywhere and I'm not sure if this
-           is the same across browsers, so I am going backwards in that list to
-           be sure. */
-        var collapsed = document.getElementsByClassName("collapsed");
-        for(var i = collapsed.length - 1; i >= 0; --i)
-            collapsed[i].className = 'm-doc-expansible';
-        </script>
+        <h1>
+          Regular expressions <span class="m-thin">module</span></h1>
+        <nav class="m-block m-default poxy-toc" id="poxy-toc">
+          <h3>Contents</h3>
+          <ul>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#nested-classes">Classes</a></li>
+              </ul>
+            </li>
+          </ul>
+        </nav>
+<p>In header <code>&lt;scn/regex.h&gt;</code></p><p>scnlib doesn't do the regex processing itself, but delegates that task to an external regex engine. This behavior is controlled by the CMake option <code>SCN_REGEX_BACKEND</code>, which defaults to <code>std</code> (use <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/regex/basic_regex.html" target="_blank">std::<wbr/>regex</a></code>). Other possible options are <code>Boost</code> and <code>re2</code>.</p><p>The exact feature set, syntax, and semantics of the regular expressions may differ between the different backends. See the documentation for each to learn more about the supported syntax. In general:</p><ul><li><code>std</code> is available without external dependencies, but doesn't support named captures, has limited support for flags, and is slow.</li><li><code>Boost</code> has the largest feature set, but is slow.</li><li><code>re2</code> is fast, but doesn't support all regex features.</li></ul><table class="m-table"><caption>Regex backend feature comparison </caption><thead><tr><th>Feature</th><th><code>std</code></th><th><code>Boost</code></th><th><p><code>re2</code></p></th></tr></thead><tbody><tr><td>Named captures</td><td>No</td><td>Yes</td><td><p>Yes</p></td></tr><tr><td>Wide strings (<code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">wchar_t</a></code>) as input</td><td>Yes</td><td>Yes</td><td><p>No</p></td></tr><tr><td>Unicode character classes (i.e. <code>\pL</code>)</td><td>No</td><td>Yes-ish <sup>[1]</sup></td><td><p>Yes</p></td></tr><tr><td>Character classes (like this: <code>[[:alpha:]]</code>) match non-ASCII</td><td>No</td><td>Depends <sup>[2]</sup></td><td>No</td></tr></tbody></table><p><sup>[1][2]</sup>: The behavior of Boost.Regex varies, whether it's using the ICU or not. If it is, character classes like <code>\pL</code> and <code>[[:alpha:]]</code> can match any non-ASCII characters. Otherwise, only ASCII characters are matched.</p><p>To do regex matching, the scanned type must either be a string (<code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string.html" target="_blank">std::<wbr/>basic_string</a></code> or <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>basic_string_view</a></code>), or <code><a class="m-doc" href="classscn_1_1basic__regex__matches.html">scn::<wbr/>basic_regex_matches</a></code>. Due to limitations of the underlying regex engines, the source must be contiguous.</p><table class="m-table"><caption>Possible flags for regex scanning </caption><thead><tr><th>Flag</th><th>Description</th><th><p>Support</p></th></tr></thead><tbody><tr><td><code>/m</code></td><td><code>multiline</code>: <code>^</code> matches the beginning of a line, and <code>$</code> the end of a line.</td><td><p>Supported by <code>Boost</code> and <code>re2</code>. For <code>std</code>, uses <code>std::regex_constants::multiline</code>, which was introduced in C++17, but isn't implemented by MSVC.</p></td></tr><tr><td><code>/s</code></td><td><code>singleline</code>: <code>.</code> matches a newline.</td><td><p>Supported by <code>Boost</code> and <code>re2</code>, not by <code>std</code>.</p></td></tr><tr><td><code>/i</code></td><td><code>icase</code>: Matches are case-insensitive.</td><td><p>Supported by everyone: <code>std</code>, <code>Boost</code>, and <code>re2</code>.</p></td></tr><tr><td><code>/n</code></td><td><code>nosubs</code>: Subexpressions aren't matched and stored separately.</td><td>Supported by everyone: <code>std</code>, <code>Boost</code>, and <code>re2</code>.</td></tr></tbody></table>
+        <section id="nested-classes">
+          <h2><a href="#nested-classes">Classes</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
+              class <a class="m-doc" href="classscn_1_1basic__regex__match.html">scn::basic_regex_match</a>
+            </dt>
+            <dd></dd>
+            <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
+              class <a class="m-doc" href="classscn_1_1basic__regex__matches.html">scn::basic_regex_matches</a>
+            </dt>
+            <dd></dd>
+          </dl>
+        </section>
       </div>
     </div>
   </div>

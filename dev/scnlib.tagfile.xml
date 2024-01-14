@@ -828,6 +828,7 @@
     <filename>group__format-string.html</filename>
     <class kind="struct">scn::detail::basic_runtime_format_string</class>
     <class kind="class">scn::basic_format_string</class>
+    <class kind="struct">scn::discard</class>
     <member kind="function">
       <type>detail::basic_runtime_format_string&lt; char &gt;</type>
       <name>runtime_format</name>
@@ -875,6 +876,15 @@
       <anchor>gab5baa54a3e7a6eaccb03c7d1bbd0f9eb</anchor>
       <arglist>(const Locale &amp;loc, Source &amp;&amp;source, std::string_view format, scan_args args) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
+  </compound>
+  <compound kind="group">
+    <name>regex</name>
+    <title>Regular expressions</title>
+    <filename>group__regex.html</filename>
+    <class kind="class">scn::basic_regex_match</class>
+    <class kind="class">scn::basic_regex_matches</class>
+    <docanchor file="group__regex.html">regex-cmp-table</docanchor>
+    <docanchor file="group__regex.html">regex-flags-table</docanchor>
   </compound>
   <compound kind="group">
     <name>result</name>
@@ -960,45 +970,45 @@
     <name>guide</name>
     <title>Guide</title>
     <filename>guide.html</filename>
-    <docanchor file="guide.html" title="Basic usage">basic</docanchor>
-    <docanchor file="guide.html" title="Error handling and return values">errors</docanchor>
-    <docanchor file="guide.html" title="Standard streams and &lt;tt&gt;stdin&lt;/tt&gt;">stdin</docanchor>
-    <docanchor file="guide.html" title="Format string">format</docanchor>
-    <docanchor file="guide.html" title="&lt;tt&gt;scn::scan_value&lt;/tt&gt;">scan_value</docanchor>
-    <docanchor file="guide.html" title="Unicode and wide source ranges">unicode</docanchor>
-    <docanchor file="guide.html" title="User types">usertypes</docanchor>
-    <docanchor file="guide.html" title="Localization">locale</docanchor>
+    <docanchor file="guide.html" title="Basic usage">g-basic</docanchor>
+    <docanchor file="guide.html" title="Error handling and return values">g-errors</docanchor>
+    <docanchor file="guide.html" title="Files and standard streams">g-files</docanchor>
+    <docanchor file="guide.html" title="Format string">g-format</docanchor>
+    <docanchor file="guide.html" title="Scanning a single value">g-scan_value</docanchor>
+    <docanchor file="guide.html" title="Unicode and wide source ranges">g-unicode</docanchor>
+    <docanchor file="guide.html" title="User types">g-usertypes</docanchor>
+    <docanchor file="guide.html" title="Localization">g-locale</docanchor>
   </compound>
   <compound kind="page">
     <name>migration-2-0</name>
     <title>Migration Guide v1.1 -&gt; v2.0</title>
     <filename>migration-2-0.html</filename>
-    <docanchor file="migration-2-0.html" title="C++17 required">cpp17</docanchor>
+    <docanchor file="migration-2-0.html" title="C++17 required">m2-cpp17</docanchor>
     <docanchor file="migration-2-0.html" title="Header files changed">headers</docanchor>
-    <docanchor file="migration-2-0.html" title="&lt;tt&gt;scan_&lt;/tt&gt; prefix added to many names inside the &lt;tt&gt;scn&lt;/tt&gt; namespace">scan_prefix</docanchor>
-    <docanchor file="migration-2-0.html" title="&lt;tt&gt;scn::scan&lt;/tt&gt; argument passing and return value">scan_arg_passing</docanchor>
-    <docanchor file="migration-2-0.html" title="No more &quot;indirect&quot; ranges: revamped source range error handling">indirect</docanchor>
-    <docanchor file="migration-2-0.html" title="Relaxed source range requirements">range-requirements</docanchor>
-    <docanchor file="migration-2-0.html" title="Returned ranges do not take ownership (may return &lt;tt&gt;dangling&lt;/tt&gt;)">ownership</docanchor>
-    <docanchor file="migration-2-0.html" title="Files removed">files</docanchor>
-    <docanchor file="migration-2-0.html" title="Specializing &lt;tt&gt;scn::scanner&lt;/tt&gt; changed">scanner-specialize</docanchor>
-    <docanchor file="migration-2-0.html" title="&lt;tt&gt;scn::scan_usertype&lt;/tt&gt; removed">scan_usertype</docanchor>
-    <docanchor file="migration-2-0.html" title="&lt;tt&gt;scn::*_parser&lt;/tt&gt; removed">parser</docanchor>
-    <docanchor file="migration-2-0.html" title="Including &lt;tt&gt;&lt;scn/istream.h&gt;&lt;/tt&gt; no longer enables custom scanning for types with &lt;tt&gt;operator&gt;&gt;&lt;/tt&gt; by default">istream-operator</docanchor>
-    <docanchor file="migration-2-0.html" title="&lt;tt&gt;scn::scan_localized&lt;/tt&gt; renamed to &lt;tt&gt;scn::scan&lt;/tt&gt;">scan_localized</docanchor>
-    <docanchor file="migration-2-0.html" title="List operations removed">lists</docanchor>
-    <docanchor file="migration-2-0.html" title="&lt;tt&gt;scn::ignore&lt;/tt&gt; and &lt;tt&gt;scn::getline&lt;/tt&gt; removed">ignore-getline</docanchor>
-    <docanchor file="migration-2-0.html" title="Encoding is always Unicode">encoding</docanchor>
+    <docanchor file="migration-2-0.html" title="&quot;scan_&quot; prefix added to many names">m2-scan_prefix</docanchor>
+    <docanchor file="migration-2-0.html" title="Argument passing and return value">m2-scan_arg_passing</docanchor>
+    <docanchor file="migration-2-0.html" title="No more &quot;indirect&quot; ranges: revamped source range error handling">m2-indirect</docanchor>
+    <docanchor file="migration-2-0.html" title="Relaxed source range requirements">m2-range-requirements</docanchor>
+    <docanchor file="migration-2-0.html" title="Returned ranges do not take ownership">m2-ownership</docanchor>
+    <docanchor file="migration-2-0.html" title="Files removed">m2-files</docanchor>
+    <docanchor file="migration-2-0.html" title="Specializing scn::scanner changed">m2-scanner-specialize</docanchor>
+    <docanchor file="migration-2-0.html" title="scn::scan_usertype removed">m2-scan_usertype</docanchor>
+    <docanchor file="migration-2-0.html" title="scn::*_parser removed">m2-parser</docanchor>
+    <docanchor file="migration-2-0.html" title="Including &lt;scn/istream.h&gt; no longer enables custom scanning for types with an operator&gt;&gt; by default">m2-istream-operator</docanchor>
+    <docanchor file="migration-2-0.html" title="scn::scan_localized renamed to scn::scan">m2-scan_localized</docanchor>
+    <docanchor file="migration-2-0.html" title="List operations removed">m2-lists</docanchor>
+    <docanchor file="migration-2-0.html" title="scn::ignore and scn::getline removed">m2-ignore-getline</docanchor>
+    <docanchor file="migration-2-0.html" title="Encoding is always Unicode">m2-encoding</docanchor>
   </compound>
   <compound kind="page">
     <name>index</name>
     <title>scnlib</title>
     <filename>index.html</filename>
-    <docanchor file="index.html" title="About this documentation">about</docanchor>
-    <docanchor file="index.html" title="Installation">install</docanchor>
-    <docanchor file="index.html" title="Dependencies">deps</docanchor>
-    <docanchor file="index.html" title="Tests and benchmarks">tests</docanchor>
-    <docanchor file="index.html" title="Without CMake">without-cmake</docanchor>
-    <docanchor file="index.html" title="License">license</docanchor>
+    <docanchor file="index.html" title="About this documentation">main-about</docanchor>
+    <docanchor file="index.html" title="Installation">main-install</docanchor>
+    <docanchor file="index.html" title="Dependencies">main-deps</docanchor>
+    <docanchor file="index.html" title="Tests and benchmarks">main-tests</docanchor>
+    <docanchor file="index.html" title="Without CMake">main-without-cmake</docanchor>
+    <docanchor file="index.html" title="License">main-license</docanchor>
   </compound>
 </tagfile>
