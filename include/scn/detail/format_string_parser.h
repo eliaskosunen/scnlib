@@ -1106,10 +1106,6 @@ template <typename CharT, typename Handler>
 constexpr void check_regex_type_specs(const basic_format_specs<CharT>& specs,
                                       Handler&& handler)
 {
-    if (specs.type == presentation_type::regex ||
-        specs.type == presentation_type::regex_escaped) {
-        return;
-    }
     if (SCN_UNLIKELY(specs.type == presentation_type::none ||
                      specs.charset_string.empty())) {
         // clang-format off

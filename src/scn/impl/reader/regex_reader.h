@@ -448,8 +448,9 @@ struct regex_matches_reader
         basic_regex_matches<DestCharT>&,
         detail::locale_ref = {})
     {
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
+        return unexpected_scan_error(
+            scan_error::invalid_format_string,
+            "No regex given in format string for scanning regex_matches");
     }
 
     template <typename Range, typename DestCharT>

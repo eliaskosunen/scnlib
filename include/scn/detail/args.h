@@ -260,6 +260,10 @@ struct arg_mapper {
     {
         return {};
     }
+    static unscannable_char map(basic_regex_matches<other_char_type>&)
+    {
+        return {};
+    }
 
     template <typename T>
     static std::enable_if_t<std::is_constructible_v<scanner<T, char_type>>,
@@ -331,7 +335,7 @@ constexpr auto make_value_impl(Arg&& arg)
         !std::is_same_v<arg_nocvref_t, unscannable_char>;
     static_assert(scannable_char,
                   "Cannot scan an argument of an unsupported character "
-                  "type (char from a wchar_t source)");
+                  "type (i.e. char from a wchar_t source)");
 
     constexpr bool scannable_const =
         !std::is_same_v<arg_nocvref_t, unscannable_const>;

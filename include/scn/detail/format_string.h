@@ -474,6 +474,14 @@ public:
     constexpr void on_replacement_field(size_t id, const CharT*)
     {
         set_arg_as_read(id);
+
+        if (m_types[id] == arg_type::narrow_regex_matches_type ||
+            m_types[id] == arg_type::wide_regex_matches_type) {
+            // clang-format off
+            return on_error("Regular expression needs to specified "
+                            "when reading regex_matches");
+            // clang-format on
+        }
     }
 
     constexpr const CharT* on_format_specs(std::size_t id,

@@ -20,7 +20,7 @@
 
 int main()
 {
-    // build error: Regular expression needs to be specified when reading
+    // build error: Regular expression needs to be specified
     auto result = scn::scan<scn::regex_matches>("42", SCN_STRING("{}"));
     return !result.has_value();
 }

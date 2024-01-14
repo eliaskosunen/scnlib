@@ -19,7 +19,7 @@
 
 int main()
 {
-    // build error: 'L' specifier can only be used with arguments
+    // build error: 'L' specifier can only be used
     auto result = scn::scan<std::string>("42", SCN_STRING("{:L}"));
     return result && result->value() == "42";
 }
