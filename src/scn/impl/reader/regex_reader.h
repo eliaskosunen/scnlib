@@ -123,16 +123,12 @@ namespace scn {
         }
 #endif
 
-        template <typename CharT, typename Pattern, typename Input>
-        auto read_regex_string_impl(Pattern pattern,
+        template <typename CharT, typename Input>
+        auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                                     detail::regex_flags flags,
                                     Input input)
             -> scan_expected<ranges::iterator_t<Input>>
         {
-            static_assert(
-                ranges::contiguous_range<Pattern> &&
-                ranges::borrowed_range<Pattern> &&
-                std::is_same_v<ranges::range_value_t<Pattern>, CharT>);
             static_assert(ranges::contiguous_range<Input> &&
                           ranges::borrowed_range<Input> &&
                           std::is_same_v<ranges::range_value_t<Input>, CharT>);
@@ -248,17 +244,13 @@ namespace scn {
 #endif
         }
 
-        template <typename CharT, typename Pattern, typename Input>
-        auto read_regex_matches_impl(Pattern pattern,
+        template <typename CharT, typename Input>
+        auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                                      detail::regex_flags flags,
                                      Input input,
                                      basic_regex_matches<CharT>& value)
             -> scan_expected<ranges::iterator_t<Input>>
         {
-            static_assert(
-                ranges::contiguous_range<Pattern> &&
-                ranges::borrowed_range<Pattern> &&
-                std::is_same_v<ranges::range_value_t<Pattern>, CharT>);
             static_assert(ranges::contiguous_range<Input> &&
                           ranges::borrowed_range<Input> &&
                           std::is_same_v<ranges::range_value_t<Input>, CharT>);
@@ -456,6 +448,28 @@ namespace scn {
 
 #endif  // !SCN_DISABLE_REGEX
 
+        inline std::string get_unescaped_regex_pattern(std::string_view pattern)
+        {
+            std::string result{pattern};
+            for (size_t n = 0;
+                 (n = result.find("\\/", n)) != std::string::npos;) {
+                result.replace(n, 2, "/");
+                ++n;
+            }
+            return result;
+        }
+        inline std::wstring get_unescaped_regex_pattern(
+            std::wstring_view pattern)
+        {
+            std::wstring result{pattern};
+            for (size_t n = 0;
+                 (n = result.find(L"\\/", n)) != std::wstring::npos;) {
+                result.replace(n, 2, L"/");
+                ++n;
+            }
+            return result;
+        }
+
         template <typename SourceCharT>
         struct regex_matches_reader
             : public reader_base<regex_matches_reader<SourceCharT>,
@@ -505,13 +519,32 @@ namespace scn {
                     }
 
                     auto input = get_as_contiguous(range);
-                    SCN_TRY(it, read_regex_matches_impl(specs.charset_string,
-                                                        specs.regexp_flags,
-                                                        input, value));
+                    SCN_TRY(
+                        it,
+                        impl(input,
+                             specs.type ==
+                                 detail::presentation_type::regex_escaped,
+                             specs.charset_string, specs.regexp_flags, value));
                     return ranges_polyfill::batch_next(
                         ranges::begin(range),
                         ranges::distance(input.begin(), it));
                 }
+            }
+
+        private:
+            template <typename Range, typename DestCharT>
+            auto impl(const Range& input,
+                      bool is_escaped,
+                      std::basic_string_view<SourceCharT> pattern,
+                      detail::regex_flags flags,
+                      basic_regex_matches<DestCharT>& value)
+            {
+                if (is_escaped) {
+                    return read_regex_matches_impl<SourceCharT>(
+                        get_unescaped_regex_pattern(pattern), flags, input,
+                        value);
+                }
+                return read_regex_matches_impl(pattern, flags, input, value);
             }
         };
 

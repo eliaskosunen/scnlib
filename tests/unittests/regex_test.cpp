@@ -269,4 +269,11 @@ TEST(RegexTest, NoCaseAndNoCaptureFlagMatches)
                     testing::Property(&scn::regex_match::get, "FooBar123"sv))));
 }
 
+TEST(RegexTest, EscapedSlashInPattern) {
+    auto r = scn::scan<std::string_view>("foo/bar", "{:/[a-z]+\\/[a-z]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_TRUE(r->range().empty());
+    EXPECT_THAT(r->value(), "foo/bar");
+}
+
 #endif // !SCN_DISABLE_REGEX

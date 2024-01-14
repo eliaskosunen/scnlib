@@ -495,8 +495,11 @@ namespace scn {
                         break;
 
                     case detail::presentation_type::regex:
-                    case detail::presentation_type::regex_escaped:
                         m_type = reader_type::regex;
+                        break;
+
+                    case detail::presentation_type::regex_escaped:
+                        m_type = reader_type::regex_escaped;
                         break;
                 }
 
@@ -530,7 +533,13 @@ namespace scn {
             }
 
         protected:
-            enum class reader_type { word, character, character_set, regex };
+            enum class reader_type {
+                word,
+                character,
+                character_set,
+                regex,
+                regex_escaped,
+            };
 
             template <typename Range, typename Value>
             scan_expected<simple_borrowed_iterator_t<Range>> read_impl(
@@ -558,6 +567,12 @@ namespace scn {
                     case reader_type::regex:
                         return regex_string_reader_impl<SourceCharT>{}.read(
                             SCN_FWD(range), specs.charset_string,
+                            specs.regexp_flags, value);
+
+                    case reader_type::regex_escaped:
+                        return regex_string_reader_impl<SourceCharT>{}.read(
+                            SCN_FWD(range),
+                            get_unescaped_regex_pattern(specs.charset_string),
                             specs.regexp_flags, value);
 #endif
 
