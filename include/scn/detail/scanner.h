@@ -173,6 +173,8 @@ namespace scn {
      * // r.has_value() == true
      * // decltype(r->value()) is scn::discard<int>
      * \endcode
+     *
+     * \ingroup format-string
      */
     template <typename T>
     struct discard {

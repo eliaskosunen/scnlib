@@ -1,4 +1,4 @@
-name: ClusterFuzzLite PR fuzzing
+name: ClusterFuzzLite continuous fuzzing
 
 on:
   push:

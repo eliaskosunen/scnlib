@@ -6,7 +6,7 @@ The new design is more focused and powerful, and closer to `std::format` than pr
 
 This guide isn't exhaustive, because the changes are very extensive, but should be enough to get you started.
 
-\section cpp17 C++17 required
+\section m2-cpp17 C++17 required
 
 v1 required C++11 in order to compile. v2, at least at this point, requires C++17.
 
@@ -16,7 +16,7 @@ The base header is renamed from `<scn/scn.h>` in v1 to `<scn/scan.h>` in v2.
 
 To get support for `wchar_t` input, include `<scn/xchar.h>`. This is done to ease compile times.
 
-\section scan_prefix `scan_` prefix added to many names inside the `scn` namespace
+\section m2-scan_prefix "scan_" prefix added to many names
 
 To prepare for standardization, in v2, many names have the prefix `scan_`,
 or otherwise indicate being related to scanning.
@@ -27,10 +27,10 @@ Changes include:
 |:------------------------------------------------------|:---------------------------------------------------------------------|
 | `scn::error`                                          | `scn::scan_error`                                                    |
 | `scn::basic_arg`, `scn::basic_args`, `scn::arg_store` | `scn::basic_scan_arg`, `scn::basic_scan_args`, `scn::scan_arg_store` |
-| `scn::basic_context`                                  | `scn::basic_scan_context`                                            |
+| `scn::basic_context`                                  | `scn::basic_scan_context`, `scn::scan_context`                       |
 | `scn::basic_parse_context`, `scn::parse_context`      | `scn::basic_scan_parse_context`, `scn::scan_parse_context`           |
 
-\section scan_arg_passing `scn::scan` argument passing and return value
+\section m2-scan_arg_passing Argument passing and return value
 
 The largest change is in how values are returned from `scn::scan` and other scanning functions.
 
@@ -60,7 +60,7 @@ Use `result->range()` to get a `subrange` over the unparsed input,
 If only a single value is read, `result->value()` can be used to access it directly.
 If `result` contains an error, use `result.error()` to access it.
 
-\section indirect No more "indirect" ranges: revamped source range error handling
+\section m2-indirect No more "indirect" ranges: revamped source range error handling
 
 The notion of "indirect" ranges from v1 is removed in v2.
 Indirect ranges were source ranges, the value type of which was `scn::expected<CharT>`, instead of `CharT`.
@@ -85,7 +85,10 @@ std::getline(file, input);
 auto result = scn::scan<int>(input, "{}");
 \endcode
 
-If doing your own I/O isn't possible, or is for some reason unfeasible, a number of other options are available:
+If doing your own I/O isn't possible, or is for some reason unfeasible, some other options are available:
+
+ 1) A `FILE*` can be given as the source to `scn::scan`, or in the case of `stdin`, `scn::input` can be used.
+    
 
  1) A `scn::basic_istreambuf_view`/`scn::basic_istreambuf_subrange` can be given as a source range to `scn::scan`.
     These types wrap an arbitrary `std::basic_istream`/`std::basic_streambuf`.
@@ -93,11 +96,10 @@ If doing your own I/O isn't possible, or is for some reason unfeasible, a number
     and don't want to accidentally read anything extra from the stream, like with `std::cin`.
  
     \code{.cpp}
-    auto range = scn::istreambuf_view{std::cin};
-    auto result = scn::scan<int>(range, "{}");
+    auto result = scn::scan<int>(my_file, "{}");
     \endcode
  
- 2) Signal errors like any other range signals them: by reaching end prematurely, or with exceptions (discouraged).
+ 2) Signal errors like any other range signals them: by reaching the end prematurely, or with exceptions (discouraged).
     If using a custom user-provided range, this is likely the only option.
  
     \code{.cpp}
@@ -120,7 +122,7 @@ If doing your own I/O isn't possible, or is for some reason unfeasible, a number
     }
     \endcode
 
-\section range-requirements Relaxed source range requirements
+\section m2-range-requirements Relaxed source range requirements
 
 The set of allowed source ranges to be given to `scn::scan` is increased in v2, compared to v1.
 
@@ -128,7 +130,7 @@ In v1, a range was scannable, if it was bidirectional, and default and move cons
 
 In v2, the range needs to just be a `forward_range`, and movable.
 
-\section ownership Returned ranges do not take ownership (may return `dangling`)
+\section m2-ownership Returned ranges do not take ownership
 
 In v1, the lifetime semantics of the range returned from `scn::scan` were complicated.
 Usually, the returned range was a view over the given range, i.e. reference semantics were used.
@@ -174,20 +176,19 @@ auto result = scn::scan<int>(std::string{"123 456"}, "{}");
 In other words, in v2, `scn::scan` always returns an iterator pointing to the given range.
 If that's not possible without dangling, it returns `scn::ranges::dangling` instead.
 
-\section files Files removed
+\section m2-files Files removed
 
 In v1, scnlib provided support for reading files with `scn::file`, `scn::owning_file`,
 and `scn::mapped_file`. These caused the library to grow in size, blurred its focus, and were the source of many bugs.
 
 In v2, these have been removed.
 If you need to read from a file, either do your own I/O and give `scn::scan` a string,
-or use `scn::basic_istreambuf_view`.
+or use `scn::scan` with a `FILE*`.
 If you need to use memory mapped files, do the mapping yourself, and give `scn::scan` a view into the mapped memory.
 
 In v2, `scn::cstdin()` and `scn::wcstdin()` have been removed.
 For reading from stdin, use `scn::input` and `scn::prompt`,
-or create your own `scn::basic_istreambuf_view` from `std::(w)cin`,
-remembering to sync the range afterward with `std::(w)cin`.
+or `scn::scan` with `stdin`.
 
 \code{.cpp}
 // v1:
@@ -199,12 +200,10 @@ auto result = scn::scan(scn::cstdin(), "{}", i);
 // v2:
 auto result = scn::input<int>("{}");
 // or
-auto in = scn::istreambuf_view{std::cin};
-auto result = scn::scan<int>(in, "{}");
-in.sync(result->begin());
+auto result = scn::scan<int>(stdin, in, "{}");
 \endcode
 
-\section scanner-specialize Specializing `scn::scanner` changed
+\section m2-scanner-specialize Specializing scn::scanner changed
 
 In v1, `scn::scanner` took the type it was used for as a template parameter.
 Inside it, `parse()` and `scan()` returned a `scn::error`.
@@ -251,7 +250,7 @@ struct scn::scanner<int_and_double, CharT> {
 };
 \endcode
 
-\section scan_usertype `scn::scan_usertype` removed
+\section m2-scan_usertype scn::scan_usertype removed
 
 In v1, `scn::scan_usertype` could be used to make scanning values of custom types easier.
 This helper function was necessary, because the scanning context had complex logic concerning the source range.
@@ -279,18 +278,19 @@ auto scan(int_and_double& val, Context& ctx) const
 }
 \endcode
 
-\section parser `scn::*_parser` removed
+\section m2-parser scn::*_parser removed
 
 In v1, there were helper base classes for creating `scanner::parse`,
 including `scn::empty_parser` and `scn::common_parser`.
 
 In v2, these are removed. Create your own `parse` member functions, or reuse already existing `scanner`s.
 
-\section istream-operator Including `<scn/istream.h>` no longer enables custom scanning for types with `operator>>` by default
+\section m2-istream-operator Including <scn/istream.h> no longer enables custom scanning for types with an operator>> by default
 
 In v1, just by including `<scn/istream.h>`, any type with an `operator>>` would be automatically `scn::scan`able.
 
-In v2, you'll need to explicitly opt-in to this behavior for your own types, by creating a `scn::scanner`,
+In v2, you'll need to explicitly opt in to this behavior for your own types,
+by creating a `scn::scanner`,
 and inheriting from the `scn::basic_istream_scanner<CharT>` class template.
 
 This is done to avoid potentially surprising behavior.
@@ -317,7 +317,7 @@ struct scn::scanner<mytype, CharT> : public scn::basic_istream_scanner<CharT> {}
 auto result = scn::scan<mytype>("123 456", "{}");
 \endcode
 
-\section scan_localized `scn::scan_localized` renamed to `scn::scan`
+\section m2-scan_localized scn::scan_localized renamed to scn::scan
 
 In v1, to use a `std::locale` in scanning, the function `scn::scan_localized` had to be used.
 
@@ -332,7 +332,7 @@ auto ret = scn::scan_localized(locale, "42", "{}", i);
 auto result = scn::scan<int>(locale, "42", "{}");
 \endcode
 
-\section lists List operations removed
+\section m2-lists List operations removed
 
 In v1, there were `scn::scan_list` and `scn::scan_list_ex`,
 that could be used to scan multiple values of the same type into a container.
@@ -365,17 +365,17 @@ auto result = scn::scan<std::vector<int>>("[123, 456]", "{}");
 // result->value() == [123, 456]
 \endcode
 
-\section ignore-getline `scn::ignore` and `scn::getline` removed
+\section m2-ignore-getline scn::ignore and scn::getline removed
 
 In v2, `scn::ignore` can be replaced with simple range operations, like `scn::ranges::views::drop_while`.
 
 `scn::getline` can be replaced with `scn::scan<std::string>(..., "{:[^\n]}")`.
 
-\section encoding Encoding is always Unicode
+\section m2-encoding Encoding is always Unicode
 
 In v1, when scanning in non-localized mode, the input was assumed to be Unicode
 (UTF-8, UTF-16, or UTF-32, based on the character type),
 and whatever the locale specified in localized mode.
 Because of the limited character encoding handling support provided by the standard library, this was buggy.
 
-In v2, all input is assumed to be Unicode, despite what has been set in a possibly supplied locale.
+In v2, all inputs are assumed to be Unicode, despite what has been set in a possibly supplied locale.

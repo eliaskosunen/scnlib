@@ -134,10 +134,10 @@ namespace scn {
             }
 
         protected:
-            template <typename R>
-            void assign_range(R&& r)
+            template <typename Other>
+            void assign_range(Other&& r)
             {
-                m_range = SCN_FWD(r);
+                m_range = r.m_range;
             }
 
         private:
@@ -153,15 +153,15 @@ namespace scn {
             constexpr scan_result_file_storage(std::FILE* f) : m_file(f) {}
 
             /// File used for scanning
-            range_type range() const
+            std::FILE* file() const
             {
                 return m_file;
             }
 
         protected:
-            void assign_range(FILE* f)
+            void assign_range(const scan_result_file_storage& f)
             {
-                m_file = f;
+                m_file = f.m_file;
             }
 
         private:
@@ -318,7 +318,7 @@ namespace scn {
                       std::is_constructible_v<range_type, OtherR>>>
         scan_result& operator=(const scan_result<OtherR, Args...>& o)
         {
-            this->range_assign(o.range());
+            this->assign_range(o);
             this->values() = o.values();
             return *this;
         }
@@ -328,7 +328,7 @@ namespace scn {
                       std::is_constructible_v<range_type, OtherR>>>
         scan_result& operator=(scan_result<OtherR, Args...>&& o)
         {
-            this->range_assign(SCN_MOVE(o.range()));
+            this->assign_range(o);
             this->values() = SCN_MOVE(o.values());
             return *this;
         }

@@ -123,7 +123,7 @@
  * Its effects are different for each type it is used with:
  *
  *  * For integers, it enables locale-specific thousands separators
- *  * For floating-point numbers, it enables locale-specifi thousands and
+ *  * For floating-point numbers, it enables locale-specific thousands and
  *    radix (decimal) separators
  *  * For booleans, it enables locale-specific textual representations (for
  *    `true` and `false`)
@@ -155,7 +155,28 @@
  * preceding whitespace. Errors if no field width is provided.
  * </td>
  * </tr>
+ * <tr>
+ * <td>`[...]`</td>
+ * <td>
+ * Character set matching: copies from the input until a character not specified
+ * in the set is encountered. Character ranges can be specified with `-`, and
+ * the entire selection can be inverted with a prefix `^`. Matches and supports
+ * arbitrary Unicode code points. Does not skip preceding whitespace.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`/<regex>/<flags>`</td>
+ * <td>
+ * Regular expression matching: copies from the input until the input does not
+ * match the regex.
+ * Does not skip preceding whitespace.
+ * \see regex
+ * </td>
+ * </tr>
  * </table>
+ *
+ * \note `std::basic_string_view` can only be scanned, if the source is
+ * contiguous.
  *
  * \subsection type-int Type specifier: integers
  *
@@ -409,10 +430,9 @@ namespace scn {
             explicit constexpr format_string_checker(
                 std::basic_string_view<CharT> format_str)
                 : m_parse_context(format_str, num_args, m_types),
-                  m_parse_funcs{&parse_format_specs<
-                      Args,
-                      basic_scan_context<CharT>,
-                      parse_context_type>...},
+                  m_parse_funcs{&parse_format_specs<Args,
+                                                    basic_scan_context<CharT>,
+                                                    parse_context_type>...},
                   m_types{arg_type_constant<Args, CharT>::value...}
             {
             }

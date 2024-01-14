@@ -1,10 +1,12 @@
 \page guide Guide
 \tableofcontents
 
-\section basic Basic usage
+\section g-basic Basic usage
 
-`scn::scan` can be used to scan various values from a source range.
+`scn::scan` can be used to scan various values from a source.
+That source can either be a range, or a file.
 
+First, we'll talk about ranges.
 A range is an object that has a beginning and an end.
 Examples of ranges are string literals, `std::string` and `std::vector<char>`.
 Objects of these types, and more, can be passed to `scn::scan`.
@@ -17,7 +19,7 @@ Each `{}` means that a single value is to be scanned from the source range.
 Because scnlib uses templates, type information is not required in the format string,
 like it is with `std::scanf` (e.g. `%d`).
 
-The list of the types of the values of the scan are given as template parameters to `scn::scan`.
+The types of the values to scan are given as template parameters to `scn::scan`.
 `scn::scan` returns an object, which contains the read value.
 If only a single value is read, it can be accessed through the member function `value()`,
 otherwise all the read values can be accessed through a `std::tuple` with `values()`.
@@ -82,18 +84,23 @@ std::sscanf("hello world", "%15s", buf);
 // buf == "hello"
 \endcode
 
-\section errors Error handling and return values
+\section g-errors Error handling and return values
 
 scnlib does not use exceptions.
 The library compiles with `-fno-exceptions -fno-rtti` and is perfectly usable without them.
 
-Instead, it uses return values to signal errors: `scn::scan` returns an `scan_expected`.
+Instead, it uses return values to signal errors:
+`scn::scan` returns an `scn::scan_expected`.
 This return value is truthy if the operation succeeded.
-If there was an error, the `.error()` member function can be used to gather more details about the error.
+If there was an error,
+the `scn::scan_expected::error()` member function can be used
+to gather more details about the error.
 
 The actual read values are accessed with either
-`operator->` or member function `.value()` of the returned `scan_expected`.
-This ensures, that if an error occurred, the values are not accidentally accessed.
+`scn::scan_expected::operator->()` or the member function `scn::scan_expected::value()`
+of the returned `scn::scan_expected`.
+This ensures that if an error occurred,
+the values are not accidentally accessed.
 
 \code{.cpp}
 // "foo" is not an integer
@@ -146,13 +153,10 @@ while (auto result = scn::scan<...>(input, ...)) {
 }
 \endcode
 
-\section stdin Standard streams and `stdin`
+\section g-files Files and standard streams
 
 To read from `stdin`, use `scn::input` or `scn::prompt`.
 They work similarly to `scn::scan`, except they do not take an input range as a parameter: `stdin` is implied.
-They take care of synchronization with `std::cin` and C stdio `stdin` buffers,
-so `scn::input` usage can be mixed with both `std::cin` and `std::scanf`.
-`scn::input` does not return a leftover range type.
 
 \code{.cpp}
 if (auto result = scn::input<int>("{}")) {
@@ -165,25 +169,25 @@ if (auto result = scn::prompt<int>("Provide a number: ", "{}"); result) {
 }
 \endcode
 
-`scn::input` is internally implemented by wrapping `std::cin` inside an `scn::istreambuf_view`.
-`scn::istreambuf_view` is a view, that wraps a `std::streambuf`, and provides a range-like interface for it.
-`scn::istreambuf_view` has a member function, `sync`,
-that can be used to synchronize its state with the underlying `std::streambuf`,
-so that it can be used again.
+Instead of `scn::input` and `scn::prompt`,
+`scn::scan` can also be directly used with files (`FILE*`).
+It should be noted, that `scn::input`, `scn::prompt` and `scn::scan` all
+automatically synchronize with the given `FILE`,
+so that they can be used seamlessly alongside both C I/O and C++ iostreams.
+
+When used with files, `scn::scan` doesn't return a range, but the file it was passed,
+which can be accessed with `->file()`. To prevent confusion,
+there's no member `->range()` when using files.
 
 \code{.cpp}
-std::istringstream ss{"123 456"};
-auto ssview = scn::istreambuf_view{ss};
-auto result = scn::scan<int>(ssview, "{}");
-// result->value() == 123
-
-result->begin().sync();
-// ss can now be used again
-int j{};
-ss >> j;
+auto result = scn::input<int>("{}");
+// equivalent to:
+auto result = scn::scan<int>(stdin, "{}");
+// result->file() is stdin
+// result->range() doesn't exist
 \endcode
 
-\section format Format string
+\section g-format Format string
 
 Parsing of a given value can be customized with the format string.
 The format string syntax is based on the one used by {fmt} and `std::format`.
@@ -193,7 +197,7 @@ The type of the value is determined by the list of types given to `scn::scan`.
 
 Any whitespace character in the format string is an instruction to skip all whitespace.
 Some types may do that automatically.
-This behavior is identical to `scanf`.
+This behavior is identical to `std::scanf`.
 
 \code{.cpp}
 // scanning a char doesn't automatically skip whitespace,
@@ -230,7 +234,7 @@ auto result = scn::scan<double>(..., "{:a}");
 auto result = scn::scan<int>(..., "{:x}");
 \endcode
 
-\section scan_value `scn::scan_value`
+\section g-scan_value Scanning a single value
 
 For simple cases, there's `scn::scan_value`.
 It can be used to scan a single value from a source range, as if by using the default format string `"{}"`.
@@ -241,7 +245,7 @@ auto result = scn::scan_value<int>("123");
 // result->range() is empty
 \endcode
 
-\section unicode Unicode and wide source ranges
+\section g-unicode Unicode and wide source ranges
 
 scnlib expects all input given to it to be Unicode.
 All input with the character/value type of `char` is always assumed to be UTF-8.
@@ -253,6 +257,8 @@ including wide string literals and `std::wstring` s.
 Wide strings are expected to be encoded in UTF-16 (with platform endianness), or UTF-32,
 depending on the width of `wchar_t` (2 byte `wchar_t` -> UTF-16, 4 byte `wchar_t` -> UTF-32).
 
+Any other character types are currently not supported.
+
 \code{.cpp}
 auto result = scn::scan<std::wstring>(L"foo bar", L"{}");
 // result->value() == L"foo"
@@ -263,7 +269,7 @@ auto result2 = scn::scan<std::string>(result->range(), L"{}");
 // result2->value() == "bar"
 \endcode
 
-\section usertypes User types
+\section g-usertypes User types
 
 To scan a value of a user-defined type, specialize `scn::scanner`
 with two member functions, `parse` and `scan`.
@@ -338,7 +344,7 @@ template <>
 struct scn::scanner<mytype, char> : scn::istream_scanner {};
 \endcode
 
-\section locale Localization
+\section g-locale Localization
 
 By default, scnlib isn't affected by changes to the global C or C++ locale.
 All functions behave as if the global locale were set to `"C"`.

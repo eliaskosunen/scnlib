@@ -21,7 +21,7 @@ int main() {
 }
 \endcode
 
-\section about About this documentation
+\section main-about About this documentation
 
 This documentation is for the version 2.0 of the library.
 This version is currently experimental, and under development, with no stability guarantees.
@@ -41,7 +41,7 @@ The most important modules are probably:
  - \ref format-string
  - \ref result
 
-\section install Installation
+\section main-install Installation
 
 \note The following instructions assume a Unix-like system with a command line.
 If your development environment is different (e.g. Visual Studio), these steps cannot be followed verbatim.
@@ -75,7 +75,7 @@ Another option would be usage through CMake's `FetchContent` module.
 FetchContent_Declare(
         scn
         GIT_REPOSITORY  https://github.com/eliaskosunen/scnlib
-        GIT_TAG         v2.0.0-beta
+        GIT_TAG         v2.0.0
         GIT_SHALLOW     TRUE
 )
 FetchContent_MakeAvailable(scn)
@@ -85,7 +85,7 @@ FetchContent_MakeAvailable(scn)
 target_link_libraries(my_program scn::scn)
 \endcode
 
-\subsection deps Dependencies
+\subsection main-deps Dependencies
 
 scnlib internally depends on
 <a href="https://github.com/fastfloat/fast_float">fast_float</a> and
@@ -105,7 +105,7 @@ is also bundled with the library, inside the directory `include/scn/external`.
 The tests and benchmarks described below depend on GTest and Google Benchmark, respectively.
 These libraries are also fetched with `FetchContent`, if necessary.
 
-\subsection tests Tests and benchmarks
+\subsection main-tests Tests and benchmarks
 
 To build and run the tests and benchmarks for scnlib, clone the repository, and build it with CMake.
 
@@ -136,7 +136,7 @@ $ ./benchmark/runtime/integer/scn_int_bench
 $ sudo cpupower frequency-set --governor powersave
 \endcode
 
-\subsection without-cmake Without CMake
+\subsection main-without-cmake Without CMake
 
 As mentioned above, the implementation of scnlib depends on fast_float and simdutf.
 If you're not using CMake, you'll need to download and build these libraries yourself.
@@ -163,7 +163,7 @@ $ c++ ... -Lpath-to-scn/build -lscn -Lpath-to-fast-float -lfast_float -Lpath-to-
 Note, that scnlib requires at least C++17,
 so --std=c++17 (or equivalent, or newer) may need to be included in the build flags.
 
-\section license License
+\section main-license License
 
 The library is open source, licensed under the Apache License, version 2.0.  
 Copyright (c) 2017 Elias Kosunen  

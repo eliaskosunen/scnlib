@@ -22,7 +22,7 @@ int main()
     std::puts("Write two integers:");
 
     if (auto result = scn::scan<int>(stdin, "{}")) {
-        if (auto second_result = scn::scan<int>(result->range(), "{}")) {
+        if (auto second_result = scn::scan<int>(result->file(), "{}")) {
             std::printf("Two integers: %d %d\n", result->value(),
                         second_result->value());
             return 0;
