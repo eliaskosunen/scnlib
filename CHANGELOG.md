@@ -1,19 +1,32 @@
 # 2.0.0
 
-_Released 2023-xx-xx_
+_Released 2024-xx-xx_
 
 Changes are in comparison to 2.0.0-beta.
 
 ## Features
 
+ * Regular expression scanning in `<scn/regex.h>`
+ * Scanning of `FILE*`s.
+ * Faster integer scanning with `scn::scan_int`
  * Allow disabling support for:
    * Specific types (`SCN_DISABLE_TYPE_*`)
    * Locales (`SCN_DISABLE_LOCALE`)
    * IOStreams (`SCN_DISABLE_IOSTREAM`)
-   * Type-erased ranges (`SCN_DISABLE_ERASED_RANGE`)
    * Floating-point scanning fallbacks (`SCN_DISABLE_FROM_CHARS`, `SCN_DISABLE_STRTOD`)
    * These can be useful in some constrained environments, where these facilities are either not available or not used
    * Thanks [@cjvaughter (CJ Vaughter)](https://github.com/cjvaughter) for the original implementation in v1 in #70 and #71
+
+## Changes
+
+ * `scn::basic_istreambuf_view` removed.
+   * Sort-of replaced by being able to scan from `FILE`s.
+ * `scn::basic_erased_range` and `scn::basic_caching_view` removed.
+   * Replaced by library-internal `scn::detail::basic_scan_buffer`.
+ * String scanners now require valid Unicode as input, and don't spew out garbage when given some.
+ * Specifiers like `:alpha:` and `\w` removed from `[character set]` matching.
+   Use regular expressions instead, or explicitly state the character range (like `a-zA-Z` for `:alpha:`).
+ * `scn::runtime` renamed to `scn::runtime_format`.
 
 ## Fixes and small changes
 
