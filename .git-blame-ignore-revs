@@ -1,0 +1,3 @@
+# .git-blame-ignore-revs
+# Change clang-format option NamespaceIndentation All -> None
+e27ab49d3eede2feef5392e1970d1a48a0a2984d
