@@ -22,70 +22,67 @@
 #include <array>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace impl {
-        inline constexpr std::array<bool, 256> is_ascii_space_lookup = {
-            {false, false, false, false, false, false, false, false, false,
-             true,  true,  true,  true,  true,  false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, true,  false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false, false, false, false, false, false,
-             false, false, false, false}};
+namespace impl {
+inline constexpr std::array<bool, 256> is_ascii_space_lookup = {
+    {false, false, false, false, false, false, false, false, false, true,
+     true,  true,  true,  true,  false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, true,  false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false, false, false, false, false,
+     false, false, false, false, false, false}};
 
-        constexpr bool is_ascii_space(char ch) SCN_NOEXCEPT
-        {
-            return is_ascii_space_lookup[static_cast<size_t>(
-                static_cast<unsigned char>(ch))];
-        }
+constexpr bool is_ascii_space(char ch) SCN_NOEXCEPT
+{
+    return is_ascii_space_lookup[static_cast<size_t>(
+        static_cast<unsigned char>(ch))];
+}
 
-        constexpr bool is_ascii_space(wchar_t ch) SCN_NOEXCEPT
-        {
-            return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
-        }
+constexpr bool is_ascii_space(wchar_t ch) SCN_NOEXCEPT
+{
+    return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
+}
 
-        constexpr bool is_ascii_char(char ch) SCN_NOEXCEPT
-        {
-            return static_cast<unsigned char>(ch) <= 127;
-        }
+constexpr bool is_ascii_char(char ch) SCN_NOEXCEPT
+{
+    return static_cast<unsigned char>(ch) <= 127;
+}
 
-        constexpr bool is_ascii_char(wchar_t ch) SCN_NOEXCEPT
-        {
+constexpr bool is_ascii_char(wchar_t ch) SCN_NOEXCEPT
+{
 #if WCHAR_MIN < 0
-            return ch >= 0 && ch <= 127;
+    return ch >= 0 && ch <= 127;
 #else
-            return ch <= 127;
+    return ch <= 127;
 #endif
-        }
+}
 
-        constexpr bool is_ascii_char(char32_t cp) SCN_NOEXCEPT
-        {
-            return cp <= 127;
-        }
-    }  // namespace impl
+constexpr bool is_ascii_char(char32_t cp) SCN_NOEXCEPT
+{
+    return cp <= 127;
+}
+}  // namespace impl
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

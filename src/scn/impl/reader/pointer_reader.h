@@ -21,56 +21,56 @@
 #include <scn/impl/reader/integer_reader.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace impl {
-        template <typename CharT>
-        class reader_impl_for_voidptr {
-        public:
-            constexpr reader_impl_for_voidptr() = default;
+namespace impl {
+template <typename CharT>
+class reader_impl_for_voidptr {
+public:
+    constexpr reader_impl_for_voidptr() = default;
 
-            bool skip_ws_before_read() const
-            {
-                return true;
-            }
+    bool skip_ws_before_read() const
+    {
+        return true;
+    }
 
-            static scan_error check_specs(
-                const detail::basic_format_specs<CharT>& specs)
-            {
-                reader_error_handler eh{};
-                detail::check_pointer_type_specs(specs, eh);
-                if (SCN_UNLIKELY(!eh)) {
-                    return {scan_error::invalid_format_string, eh.m_msg};
-                }
-                return {};
-            }
+    static scan_error check_specs(
+        const detail::basic_format_specs<CharT>& specs)
+    {
+        reader_error_handler eh{};
+        detail::check_pointer_type_specs(specs, eh);
+        if (SCN_UNLIKELY(!eh)) {
+            return {scan_error::invalid_format_string, eh.m_msg};
+        }
+        return {};
+    }
 
-            template <typename Range>
-            scan_expected<ranges::iterator_t<Range>>
-            read_default(Range range, void*& value, detail::locale_ref loc)
-            {
-                detail::basic_format_specs<CharT> specs{};
-                specs.type = detail::presentation_type::int_hex;
+    template <typename Range>
+    scan_expected<ranges::iterator_t<Range>>
+    read_default(Range range, void*& value, detail::locale_ref loc)
+    {
+        detail::basic_format_specs<CharT> specs{};
+        specs.type = detail::presentation_type::int_hex;
 
-                std::uintptr_t intvalue{};
-                SCN_TRY(result, reader_impl_for_int<CharT>{}.read_specs(
-                                    range, specs, intvalue, loc));
-                value = reinterpret_cast<void*>(intvalue);
-                return result;
-            }
+        std::uintptr_t intvalue{};
+        SCN_TRY(result, reader_impl_for_int<CharT>{}.read_specs(range, specs,
+                                                                intvalue, loc));
+        value = reinterpret_cast<void*>(intvalue);
+        return result;
+    }
 
-            template <typename Range>
-            scan_expected<ranges::iterator_t<Range>> read_specs(
-                Range range,
-                const detail::basic_format_specs<CharT>& specs,
-                void*& value,
-                detail::locale_ref loc)
-            {
-                SCN_UNUSED(specs);
-                return read_default(range, value, loc);
-            }
-        };
-    }  // namespace impl
+    template <typename Range>
+    scan_expected<ranges::iterator_t<Range>> read_specs(
+        Range range,
+        const detail::basic_format_specs<CharT>& specs,
+        void*& value,
+        detail::locale_ref loc)
+    {
+        SCN_UNUSED(specs);
+        return read_default(range, value, loc);
+    }
+};
+}  // namespace impl
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

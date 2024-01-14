@@ -20,109 +20,107 @@
 #include <scn/util/expected.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace impl {
-        enum class eof_error { good, eof };
+namespace impl {
+enum class eof_error { good, eof };
 
-        inline constexpr bool operator!(eof_error e)
-        {
-            return e != eof_error::good;
-        }
+inline constexpr bool operator!(eof_error e)
+{
+    return e != eof_error::good;
+}
 
-        template <typename T>
-        struct eof_expected : public expected<T, eof_error> {
-            using base = expected<T, eof_error>;
-            using base::base;
+template <typename T>
+struct eof_expected : public expected<T, eof_error> {
+    using base = expected<T, eof_error>;
+    using base::base;
 
-            constexpr eof_expected(const base& other) : base(other) {}
-            constexpr eof_expected(base&& other) : base(SCN_MOVE(other)) {}
-        };
+    constexpr eof_expected(const base& other) : base(other) {}
+    constexpr eof_expected(base&& other) : base(SCN_MOVE(other)) {}
+};
 
-        inline constexpr auto make_eof_scan_error(eof_error err)
-        {
-            SCN_EXPECT(err == eof_error::eof);
-            return scan_error{scan_error::end_of_range, "EOF"};
-        }
+inline constexpr auto make_eof_scan_error(eof_error err)
+{
+    SCN_EXPECT(err == eof_error::eof);
+    return scan_error{scan_error::end_of_range, "EOF"};
+}
 
-        struct SCN_TRIVIAL_ABI parse_error {
-            enum code { good, eof, error };
-            using code_t = code;
+struct SCN_TRIVIAL_ABI parse_error {
+    enum code { good, eof, error };
+    using code_t = code;
 
-            constexpr parse_error() = default;
-            constexpr parse_error(code c) : m_code(c)
-            {
-                SCN_UNLIKELY_ATTR SCN_UNUSED(m_code);
-            }
+    constexpr parse_error() = default;
+    constexpr parse_error(code c) : m_code(c)
+    {
+        SCN_UNLIKELY_ATTR SCN_UNUSED(m_code);
+    }
 
-            constexpr explicit operator bool() const
-            {
-                return m_code == good;
-            }
-            constexpr explicit operator code_t() const
-            {
-                return m_code;
-            }
+    constexpr explicit operator bool() const
+    {
+        return m_code == good;
+    }
+    constexpr explicit operator code_t() const
+    {
+        return m_code;
+    }
 
-            friend constexpr bool operator==(parse_error a, parse_error b)
-            {
-                return a.m_code == b.m_code;
-            }
-            friend constexpr bool operator!=(parse_error a, parse_error b)
-            {
-                return !(a == b);
-            }
+    friend constexpr bool operator==(parse_error a, parse_error b)
+    {
+        return a.m_code == b.m_code;
+    }
+    friend constexpr bool operator!=(parse_error a, parse_error b)
+    {
+        return !(a == b);
+    }
 
-        private:
-            code m_code{good};
-        };
+private:
+    code m_code{good};
+};
 
-        template <typename T>
-        struct parse_expected : public expected<T, parse_error> {
-            using base = expected<T, parse_error>;
-            using base::base;
+template <typename T>
+struct parse_expected : public expected<T, parse_error> {
+    using base = expected<T, parse_error>;
+    using base::base;
 
-            constexpr parse_expected(const base& other) : base(other) {}
-            constexpr parse_expected(base&& other) : base(SCN_MOVE(other)) {}
-        };
+    constexpr parse_expected(const base& other) : base(other) {}
+    constexpr parse_expected(base&& other) : base(SCN_MOVE(other)) {}
+};
 
-        inline constexpr parse_error make_eof_parse_error(eof_error err)
-        {
-            SCN_EXPECT(err == eof_error::eof);
-            return parse_error::eof;
-        }
+inline constexpr parse_error make_eof_parse_error(eof_error err)
+{
+    SCN_EXPECT(err == eof_error::eof);
+    return parse_error::eof;
+}
 
-        inline constexpr scan_error make_scan_error_from_parse_error(
-            parse_error err,
-            enum scan_error::code code,
-            const char* msg)
-        {
-            if (err == parse_error::good) {
-                return {};
-            }
+inline constexpr scan_error make_scan_error_from_parse_error(
+    parse_error err,
+    enum scan_error::code code,
+    const char* msg)
+{
+    if (err == parse_error::good) {
+        return {};
+    }
 
-            if (err == parse_error::eof) {
-                return scan_error{scan_error::end_of_range, "EOF"};
-            }
+    if (err == parse_error::eof) {
+        return scan_error{scan_error::end_of_range, "EOF"};
+    }
 
-            return scan_error{code, msg};
-        }
+    return scan_error{code, msg};
+}
 
-        inline constexpr auto map_parse_error_to_scan_error(
-            enum scan_error::code code,
-            const char* msg)
-        {
-            return [code, msg](parse_error err) {
-                return make_scan_error_from_parse_error(err, code, msg);
-            };
-        }
-    }  // namespace impl
+inline constexpr auto map_parse_error_to_scan_error(enum scan_error::code code,
+                                                    const char* msg)
+{
+    return [code, msg](parse_error err) {
+        return make_scan_error_from_parse_error(err, code, msg);
+    };
+}
+}  // namespace impl
 
-    namespace detail {
-        template <typename T>
-        struct is_expected_impl<scn::impl::parse_expected<T>> : std::true_type {
-        };
-    }  // namespace detail
+namespace detail {
+template <typename T>
+struct is_expected_impl<scn::impl::parse_expected<T>> : std::true_type {};
+}  // namespace detail
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

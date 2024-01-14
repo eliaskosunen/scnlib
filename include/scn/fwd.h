@@ -34,211 +34,210 @@ SCN_GCC_POP
  * scnlib namespace, containing the library interface
  */
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    /// Placeholder monostate type
-    struct monostate {};
+/// Placeholder monostate type
+struct monostate {};
 
-    // detail/args.h
+// detail/args.h
 
-    template <typename Context>
-    class basic_scan_arg;
-    template <typename Context, typename... Args>
-    class scan_arg_store;
-    template <typename Context>
-    class basic_scan_args;
+template <typename Context>
+class basic_scan_arg;
+template <typename Context, typename... Args>
+class scan_arg_store;
+template <typename Context>
+class basic_scan_args;
 
-    // detail/context.h
+// detail/context.h
 
-    template <typename CharT>
-    class basic_scan_context;
+template <typename CharT>
+class basic_scan_context;
 
-    using scan_context = basic_scan_context<char>;
-    using wscan_context = basic_scan_context<wchar_t>;
+using scan_context = basic_scan_context<char>;
+using wscan_context = basic_scan_context<wchar_t>;
 
-    using scan_args = basic_scan_args<scan_context>;
-    using wscan_args = basic_scan_args<wscan_context>;
+using scan_args = basic_scan_args<scan_context>;
+using wscan_args = basic_scan_args<wscan_context>;
 
-    // detail/error.h
+// detail/error.h
 
-    class scan_error;
+class scan_error;
 
-    // detail/format_string.h
+// detail/format_string.h
 
-    template <typename CharT>
-    struct basic_runtime_format_string;
-    template <typename CharT, typename... Args>
-    class basic_format_string;
+template <typename CharT>
+struct basic_runtime_format_string;
+template <typename CharT, typename... Args>
+class basic_format_string;
 
-    namespace detail {
-        template <typename T>
-        struct type_identity {
-            using type = T;
-        };
-        template <typename T>
-        using type_identity_t = typename type_identity<T>::type;
-    }  // namespace detail
+namespace detail {
+template <typename T>
+struct type_identity {
+    using type = T;
+};
+template <typename T>
+using type_identity_t = typename type_identity<T>::type;
+}  // namespace detail
 
-    template <typename... Args>
-    using format_string =
-        basic_format_string<char, detail::type_identity_t<Args>...>;
-    template <typename... Args>
-    using wformat_string =
-        basic_format_string<wchar_t, detail::type_identity_t<Args>...>;
+template <typename... Args>
+using format_string =
+    basic_format_string<char, detail::type_identity_t<Args>...>;
+template <typename... Args>
+using wformat_string =
+    basic_format_string<wchar_t, detail::type_identity_t<Args>...>;
 
-    // detail/format_string_parser.h: empty
+// detail/format_string_parser.h: empty
 
-    // detail/input_map.h
+// detail/input_map.h
 
-    struct invalid_input_range;
+struct invalid_input_range;
 
 #if !SCN_DISABLE_IOSTREAM
 
-    // detail/istream_scanner.h
+// detail/istream_scanner.h
 
-    template <typename CharT>
-    struct basic_istream_scanner;
+template <typename CharT>
+struct basic_istream_scanner;
 
-    ///
-    using istream_scanner = basic_istream_scanner<char>;
-    ///
-    using wistream_scanner = basic_istream_scanner<wchar_t>;
+///
+using istream_scanner = basic_istream_scanner<char>;
+///
+using wistream_scanner = basic_istream_scanner<wchar_t>;
 
 #endif  // SCN_USE_IOSTREAMS
 
-    // detail/locale_ref.h: empty
+// detail/locale_ref.h: empty
 
-    // detail/parse_context.h
+// detail/parse_context.h
 
-    template <typename CharT>
-    class basic_scan_parse_context;
+template <typename CharT>
+class basic_scan_parse_context;
 
-    ///
-    using scan_parse_context = basic_scan_parse_context<char>;
-    ///
-    using wscan_parse_context = basic_scan_parse_context<wchar_t>;
+///
+using scan_parse_context = basic_scan_parse_context<char>;
+///
+using wscan_parse_context = basic_scan_parse_context<wchar_t>;
 
-    namespace detail {
-        template <typename CharT>
-        class compile_parse_context;
+namespace detail {
+template <typename CharT>
+class compile_parse_context;
+}
+
+// detail/ranges.h: empty
+
+// detail/result.h
+
+template <typename Iterator, typename... Args>
+class scan_result;
+
+// detail/scan.h
+
+struct file_marker {
+    constexpr file_marker() SCN_NOEXCEPT = default;
+    template <typename... Args>
+    constexpr file_marker(Args&&...) SCN_NOEXCEPT
+    {
     }
+};
 
-    // detail/ranges.h: empty
+// detail/scan_buffer.h
 
-    // detail/result.h
+namespace detail {
+template <typename CharT>
+class basic_scan_buffer;
 
-    template <typename Iterator, typename... Args>
-    class scan_result;
+using scan_buffer = basic_scan_buffer<char>;
+using wscan_buffer = basic_scan_buffer<wchar_t>;
+}  // namespace detail
 
-    // detail/scan.h
+// detail/scanner.h
 
-    struct file_marker {
-        constexpr file_marker() SCN_NOEXCEPT = default;
-        template <typename... Args>
-        constexpr file_marker(Args&&...) SCN_NOEXCEPT
-        {
-        }
-    };
+/**
+ * Scanner type, can be customized to enable scanning of user-defined types
+ *
+ * \ingroup ctx
+ */
+template <typename T, typename CharT = char, typename Enable = void>
+struct scanner {
+    scanner() = delete;
+};
 
-    // detail/scan_buffer.h
+template <typename T, typename CharT>
+inline constexpr bool has_scanner = std::is_constructible_v<scanner<T, CharT>>;
 
-    namespace detail {
-        template <typename CharT>
-        class basic_scan_buffer;
+template <typename T>
+struct discard;
 
-        using scan_buffer = basic_scan_buffer<char>;
-        using wscan_buffer = basic_scan_buffer<wchar_t>;
-    }  // namespace detail
+// detail/scanner_builtin.h: empty
 
-    // detail/scanner.h
+// detail/unicode.h: empty
 
-    /**
-     * Scanner type, can be customized to enable scanning of user-defined types
-     *
-     * \ingroup ctx
-     */
-    template <typename T, typename CharT = char, typename Enable = void>
-    struct scanner {
-        scanner() = delete;
-    };
+// detail/visitor.h, detail/vscan.h: empty
 
-    template <typename T, typename CharT>
-    inline constexpr bool has_scanner =
-        std::is_constructible_v<scanner<T, CharT>>;
+// util/algorithm.h: empty
 
-    template <typename T>
-    struct discard;
+// util/buffer.h
 
-    // detail/scanner_builtin.h: empty
+namespace detail {
+template <typename T, size_t N>
+class basic_buffer;
+}  // namespace detail
 
-    // detail/unicode.h: empty
+// util/expected.h: empty
 
-    // detail/visitor.h, detail/vscan.h: empty
+// util/memory.h
 
-    // util/algorithm.h: empty
+namespace detail {
+template <typename T, typename = void>
+struct pointer_traits;
+}  // namespace detail
 
-    // util/buffer.h
+// util/meta.h
 
-    namespace detail {
-        template <typename T, size_t N>
-        class basic_buffer;
-    }  // namespace detail
+namespace detail {
+struct dummy_type {};
 
-    // util/expected.h: empty
+template <typename T>
+struct tag_type {
+    using type = T;
+};
 
-    // util/memory.h
+template <typename>
+struct dependent_false : std::false_type {};
 
-    namespace detail {
-        template <typename T, typename = void>
-        struct pointer_traits;
-    }  // namespace detail
+template <typename T>
+struct remove_reference {
+    using type = T;
+};
+template <typename T>
+struct remove_reference<T&> {
+    using type = T;
+};
+template <typename T>
+struct remove_reference<T&&> {
+    using type = T;
+};
+}  // namespace detail
 
-    // util/meta.h
+// util/span.h
 
-    namespace detail {
-        struct dummy_type {};
+template <typename T>
+class span;
 
-        template <typename T>
-        struct tag_type {
-            using type = T;
-        };
+// util/string_view.h: empty
 
-        template <typename>
-        struct dependent_false : std::false_type {};
+// detail/regex.h:
 
-        template <typename T>
-        struct remove_reference {
-            using type = T;
-        };
-        template <typename T>
-        struct remove_reference<T&> {
-            using type = T;
-        };
-        template <typename T>
-        struct remove_reference<T&&> {
-            using type = T;
-        };
-    }  // namespace detail
+template <typename CharT>
+class basic_regex_match;
+template <typename CharT>
+class basic_regex_matches;
 
-    // util/span.h
+using regex_match = basic_regex_match<char>;
+using wregex_match = basic_regex_match<wchar_t>;
 
-    template <typename T>
-    class span;
+using regex_matches = basic_regex_matches<char>;
+using wregex_matches = basic_regex_matches<wchar_t>;
 
-    // util/string_view.h: empty
-
-    // detail/regex.h:
-
-    template <typename CharT>
-    class basic_regex_match;
-    template <typename CharT>
-    class basic_regex_matches;
-
-    using regex_match = basic_regex_match<char>;
-    using wregex_match = basic_regex_match<wchar_t>;
-
-    using regex_matches = basic_regex_matches<char>;
-    using wregex_matches = basic_regex_matches<wchar_t>;
-
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

@@ -18,6 +18,6 @@
 #include <scn/impl/reader/reader.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
-    SCN_END_NAMESPACE
+SCN_BEGIN_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

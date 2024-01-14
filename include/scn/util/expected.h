@@ -21,41 +21,41 @@
 #include <scn/util/expected_impl.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    /**
-     * An `expected<T, scan_error>`.
-     *
-     * Not a type alias to shorten template names
-     *
-     * \ingroup result
-     */
-    template <typename T>
-    struct scan_expected : public expected<T, scan_error> {
-        using expected<T, scan_error>::expected;
+/**
+ * An `expected<T, scan_error>`.
+ *
+ * Not a type alias to shorten template names
+ *
+ * \ingroup result
+ */
+template <typename T>
+struct scan_expected : public expected<T, scan_error> {
+    using expected<T, scan_error>::expected;
 
-        scan_expected(const expected<T, scan_error>& other)
-            : expected<T, scan_error>(other)
-        {
-        }
-        scan_expected(expected<T, scan_error>&& other)
-            : expected<T, scan_error>(SCN_MOVE(other))
-        {
-        }
-    };
-
-    template <typename... Args>
-    auto unexpected_scan_error(Args&&... args)
+    scan_expected(const expected<T, scan_error>& other)
+        : expected<T, scan_error>(other)
     {
-        return unexpected(scan_error{SCN_FWD(args)...});
     }
+    scan_expected(expected<T, scan_error>&& other)
+        : expected<T, scan_error>(SCN_MOVE(other))
+    {
+    }
+};
 
-    namespace detail {
-        template <typename T>
-        struct is_expected_impl<scan_expected<T>> : std::true_type {};
-    }  // namespace detail
+template <typename... Args>
+auto unexpected_scan_error(Args&&... args)
+{
+    return unexpected(scan_error{SCN_FWD(args)...});
+}
 
-    SCN_END_NAMESPACE
+namespace detail {
+template <typename T>
+struct is_expected_impl<scan_expected<T>> : std::true_type {};
+}  // namespace detail
+
+SCN_END_NAMESPACE
 }  // namespace scn
 
 #define SCN_TRY_IMPL_CONCAT(a, b)  a##b

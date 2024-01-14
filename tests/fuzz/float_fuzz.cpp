@@ -18,36 +18,36 @@
 #include "fuzz.h"
 
 namespace scn::fuzz {
-    template <typename CharT, typename Source>
-    void do_basic_run_for_source(Source& source,
-                                 format_strings_view<CharT> format_strings)
-    {
-        do_basic_run_for_type<CharT, float>(source, format_strings);
-        do_basic_run_for_type<CharT, double>(source, format_strings);
-        do_basic_run_for_type<CharT, long double>(source, format_strings);
+template <typename CharT, typename Source>
+void do_basic_run_for_source(Source& source,
+                             format_strings_view<CharT> format_strings)
+{
+    do_basic_run_for_type<CharT, float>(source, format_strings);
+    do_basic_run_for_type<CharT, double>(source, format_strings);
+    do_basic_run_for_type<CharT, long double>(source, format_strings);
+}
+
+namespace {
+void run(span<const uint8_t> data)
+{
+    if (data.size() > max_input_bytes || data.size() == 0) {
+        return;
     }
 
-    namespace {
-        void run(span<const uint8_t> data)
-        {
-            if (data.size() > max_input_bytes || data.size() == 0) {
-                return;
-            }
+    auto [sv, wsv_direct, wsv_reinterpret, wsv_transcode] =
+        make_input_views(data);
 
-            auto [sv, wsv_direct, wsv_reinterpret, wsv_transcode] =
-                make_input_views(data);
+    auto f =
+        get_format_strings<char>("{}", "{:a}", "{:e}", "{:f}", "{:g}", "{:L}");
+    do_basic_run(sv, f);
 
-            auto f = get_format_strings<char>("{}", "{:a}", "{:e}", "{:f}",
-                                              "{:g}", "{:L}");
-            do_basic_run(sv, f);
-
-            auto wf = get_format_strings<wchar_t>(L"{}", L"{:a}", L"{:e}",
-                                                  L"{:f}", L"{:g}", L"{:L}");
-            do_basic_run(wsv_direct, wf);
-            do_basic_run(wsv_reinterpret, wf);
-            do_basic_run(wsv_transcode, wf);
-        }
-    }  // namespace
+    auto wf = get_format_strings<wchar_t>(L"{}", L"{:a}", L"{:e}", L"{:f}",
+                                          L"{:g}", L"{:L}");
+    do_basic_run(wsv_direct, wf);
+    do_basic_run(wsv_reinterpret, wf);
+    do_basic_run(wsv_transcode, wf);
+}
+}  // namespace
 }  // namespace scn::fuzz
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)

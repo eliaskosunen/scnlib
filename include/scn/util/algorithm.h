@@ -22,68 +22,68 @@
 #include <cstring>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        /**
-         * Implementation of `std::max` without including `<algorithm>`
-         */
-        template <typename T>
-        constexpr T max(T a, T b) SCN_NOEXCEPT
-        {
-            return (a < b) ? b : a;
+namespace detail {
+/**
+ * Implementation of `std::max` without including `<algorithm>`
+ */
+template <typename T>
+constexpr T max(T a, T b) SCN_NOEXCEPT
+{
+    return (a < b) ? b : a;
+}
+
+/**
+ * Implementation of `std::min_element` without including `<algorithm>`
+ */
+template <typename It>
+constexpr It min_element(It first, It last)
+{
+    if (first == last) {
+        return last;
+    }
+
+    It smallest = first;
+    ++first;
+    for (; first != last; ++first) {
+        if (*first < *smallest) {
+            smallest = first;
         }
+    }
+    return smallest;
+}
 
-        /**
-         * Implementation of `std::min_element` without including `<algorithm>`
-         */
-        template <typename It>
-        constexpr It min_element(It first, It last)
-        {
-            if (first == last) {
-                return last;
-            }
+/**
+ * Implementation of `std::min` without including `<algorithm>`
+ */
+template <typename T>
+constexpr T min(T a, T b) SCN_NOEXCEPT
+{
+    return (b < a) ? b : a;
+}
 
-            It smallest = first;
-            ++first;
-            for (; first != last; ++first) {
-                if (*first < *smallest) {
-                    smallest = first;
-                }
-            }
-            return smallest;
+template <bool IsConstexpr, typename T, typename Ptr = const T*>
+constexpr Ptr find(Ptr first, Ptr last, T value)
+{
+    for (; first != last; ++first) {
+        if (*first == value) {
+            return first;
         }
+    }
+    return last;
+}
 
-        /**
-         * Implementation of `std::min` without including `<algorithm>`
-         */
-        template <typename T>
-        constexpr T min(T a, T b) SCN_NOEXCEPT
-        {
-            return (b < a) ? b : a;
-        }
+template <>
+inline const char* find<false, char>(const char* first,
+                                     const char* last,
+                                     char value)
+{
+    auto ptr = static_cast<const char*>(
+        std::memchr(first, value, static_cast<size_t>(last - first)));
+    return ptr != nullptr ? ptr : last;
+}
+}  // namespace detail
 
-        template <bool IsConstexpr, typename T, typename Ptr = const T*>
-        constexpr Ptr find(Ptr first, Ptr last, T value)
-        {
-            for (; first != last; ++first) {
-                if (*first == value) {
-                    return first;
-                }
-            }
-            return last;
-        }
-
-        template <>
-        inline const char* find<false, char>(const char* first,
-                                             const char* last,
-                                             char value)
-        {
-            auto ptr = static_cast<const char*>(
-                std::memchr(first, value, static_cast<size_t>(last - first)));
-            return ptr != nullptr ? ptr : last;
-        }
-    }  // namespace detail
-
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

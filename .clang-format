@@ -13,7 +13,7 @@ CommentPragmas: '^ IWYU pragma:'
 Cpp11BracedListStyle: true
 IndentWidth: 4
 Language: Cpp
-NamespaceIndentation: All
+NamespaceIndentation: None
 PackConstructorInitializers: NextLine
 SpaceBeforeCpp11BracedList: false
 SpaceInEmptyParentheses: false

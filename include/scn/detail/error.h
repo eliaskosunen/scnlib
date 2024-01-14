@@ -20,117 +20,117 @@
 #include <scn/fwd.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    /**
-     * Error class.
-     * Used as a return value for functions without a success value.
-     *
-     * \ingroup result
-     */
-    class SCN_TRIVIAL_ABI scan_error {
-    public:
-        /// Error code
-        enum code {
-            /// No error
-            good = 0,
-            /// EOF
-            end_of_range,
-            /// Format string was invalid
-            invalid_format_string,
-            /// Scanned value was invalid for given type.
-            /// e.g. a period '.' when scanning for an int
-            invalid_scanned_value,
-            /// Scanned value was out of range for the desired type.
-            /// (e.g. `>2^32` for an `uint32_t`)
-            value_out_of_range,
+/**
+ * Error class.
+ * Used as a return value for functions without a success value.
+ *
+ * \ingroup result
+ */
+class SCN_TRIVIAL_ABI scan_error {
+public:
+    /// Error code
+    enum code {
+        /// No error
+        good = 0,
+        /// EOF
+        end_of_range,
+        /// Format string was invalid
+        invalid_format_string,
+        /// Scanned value was invalid for given type.
+        /// e.g. a period '.' when scanning for an int
+        invalid_scanned_value,
+        /// Scanned value was out of range for the desired type.
+        /// (e.g. `>2^32` for an `uint32_t`)
+        value_out_of_range,
 
-            max_error
-        };
-
-    private:
-        using code_t = code;
-
-    public:
-        struct success_tag_t {};
-        static constexpr success_tag_t success_tag() SCN_NOEXCEPT
-        {
-            return {};
-        }
-
-        /// Constructs an error with `code::good` and no message.
-        constexpr scan_error() SCN_NOEXCEPT = default;
-        constexpr scan_error(success_tag_t) SCN_NOEXCEPT : scan_error() {}
-
-        /// Constructs an error with `c` and `m`
-        constexpr scan_error(code_t c, const char* m) SCN_NOEXCEPT : m_msg(m),
-                                                                     m_code(c)
-        {
-            SCN_UNLIKELY_ATTR SCN_UNUSED(m_code);
-        }
-
-        /// Evaluated to true if there was no error
-        constexpr explicit operator bool() const SCN_NOEXCEPT
-        {
-            return m_code == good;
-        }
-
-        constexpr explicit operator code_t() const SCN_NOEXCEPT
-        {
-            return m_code;
-        }
-
-        /// Get error code
-        SCN_NODISCARD constexpr code_t code() const SCN_NOEXCEPT
-        {
-            return m_code;
-        }
-        /// Get error message
-        SCN_NODISCARD constexpr auto msg() const SCN_NOEXCEPT->const char*
-        {
-            return m_msg;
-        }
-
-    private:
-        const char* m_msg{nullptr};
-        code_t m_code{good};
+        max_error
     };
 
-    constexpr inline bool operator==(scan_error a, scan_error b) SCN_NOEXCEPT
+private:
+    using code_t = code;
+
+public:
+    struct success_tag_t {};
+    static constexpr success_tag_t success_tag() SCN_NOEXCEPT
     {
-        return a.code() == b.code();
-    }
-    constexpr inline bool operator!=(scan_error a, scan_error b) SCN_NOEXCEPT
-    {
-        return !(a == b);
+        return {};
     }
 
-    constexpr inline bool operator==(scan_error a,
-                                     enum scan_error::code b) SCN_NOEXCEPT
+    /// Constructs an error with `code::good` and no message.
+    constexpr scan_error() SCN_NOEXCEPT = default;
+    constexpr scan_error(success_tag_t) SCN_NOEXCEPT : scan_error() {}
+
+    /// Constructs an error with `c` and `m`
+    constexpr scan_error(code_t c, const char* m) SCN_NOEXCEPT : m_msg(m),
+                                                                 m_code(c)
     {
-        return a.code() == b;
-    }
-    constexpr inline bool operator!=(scan_error a,
-                                     enum scan_error::code b) SCN_NOEXCEPT
-    {
-        return !(a == b);
+        SCN_UNLIKELY_ATTR SCN_UNUSED(m_code);
     }
 
-    constexpr inline bool operator==(enum scan_error::code a,
-                                     scan_error b) SCN_NOEXCEPT
+    /// Evaluated to true if there was no error
+    constexpr explicit operator bool() const SCN_NOEXCEPT
     {
-        return a == b.code();
-    }
-    constexpr inline bool operator!=(enum scan_error::code a,
-                                     scan_error b) SCN_NOEXCEPT
-    {
-        return !(a == b);
+        return m_code == good;
     }
 
-    namespace detail {
-        // Intentionally not constexpr, to give out a compile-time error
-        scan_error handle_error(scan_error e);
-    }  // namespace detail
+    constexpr explicit operator code_t() const SCN_NOEXCEPT
+    {
+        return m_code;
+    }
 
-    SCN_END_NAMESPACE
+    /// Get error code
+    SCN_NODISCARD constexpr code_t code() const SCN_NOEXCEPT
+    {
+        return m_code;
+    }
+    /// Get error message
+    SCN_NODISCARD constexpr auto msg() const SCN_NOEXCEPT->const char*
+    {
+        return m_msg;
+    }
+
+private:
+    const char* m_msg{nullptr};
+    code_t m_code{good};
+};
+
+constexpr inline bool operator==(scan_error a, scan_error b) SCN_NOEXCEPT
+{
+    return a.code() == b.code();
+}
+constexpr inline bool operator!=(scan_error a, scan_error b) SCN_NOEXCEPT
+{
+    return !(a == b);
+}
+
+constexpr inline bool operator==(scan_error a,
+                                 enum scan_error::code b) SCN_NOEXCEPT
+{
+    return a.code() == b;
+}
+constexpr inline bool operator!=(scan_error a,
+                                 enum scan_error::code b) SCN_NOEXCEPT
+{
+    return !(a == b);
+}
+
+constexpr inline bool operator==(enum scan_error::code a,
+                                 scan_error b) SCN_NOEXCEPT
+{
+    return a == b.code();
+}
+constexpr inline bool operator!=(enum scan_error::code a,
+                                 scan_error b) SCN_NOEXCEPT
+{
+    return !(a == b);
+}
+
+namespace detail {
+// Intentionally not constexpr, to give out a compile-time error
+scan_error handle_error(scan_error e);
+}  // namespace detail
+
+SCN_END_NAMESPACE
 }  // namespace scn

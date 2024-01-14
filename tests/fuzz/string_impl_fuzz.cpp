@@ -21,22 +21,21 @@
 #include <scn/impl/unicode/unicode.h>
 
 namespace {
-    template <typename Cb>
-    void do_find(std::string_view sv, Cb cb)
-    {
-        auto it = sv.begin();
-        while (it != sv.end()) {
-            SCN_EXPECT(it < sv.end());
-            auto in =
-                std::string_view{&*it, static_cast<size_t>(sv.end() - it)};
-            SCN_EXPECT(!in.empty());
-            it = cb(in);
-            SCN_ENSURE(it <= sv.end());
-            if (it != sv.end())
-                ++it;
-            SCN_ENSURE(it <= sv.end());
-        }
+template <typename Cb>
+void do_find(std::string_view sv, Cb cb)
+{
+    auto it = sv.begin();
+    while (it != sv.end()) {
+        SCN_EXPECT(it < sv.end());
+        auto in = std::string_view{&*it, static_cast<size_t>(sv.end() - it)};
+        SCN_EXPECT(!in.empty());
+        it = cb(in);
+        SCN_ENSURE(it <= sv.end());
+        if (it != sv.end())
+            ++it;
+        SCN_ENSURE(it <= sv.end());
     }
+}
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)

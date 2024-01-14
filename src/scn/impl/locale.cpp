@@ -20,32 +20,32 @@
 #include <locale>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    // locale_ref
+// locale_ref
 
 #if !SCN_DISABLE_LOCALE
 
-    namespace detail {
-        template <typename Locale>
-        locale_ref::locale_ref(const Locale& loc) : m_locale(&loc)
-        {
-            static_assert(std::is_same_v<Locale, std::locale>);
-        }
+namespace detail {
+template <typename Locale>
+locale_ref::locale_ref(const Locale& loc) : m_locale(&loc)
+{
+    static_assert(std::is_same_v<Locale, std::locale>);
+}
 
-        template <typename Locale>
-        Locale locale_ref::get() const
-        {
-            static_assert(std::is_same_v<Locale, std::locale>);
-            return m_locale ? *static_cast<const std::locale*>(m_locale)
-                            : std::locale{};
-        }
+template <typename Locale>
+Locale locale_ref::get() const
+{
+    static_assert(std::is_same_v<Locale, std::locale>);
+    return m_locale ? *static_cast<const std::locale*>(m_locale)
+                    : std::locale{};
+}
 
-        template locale_ref::locale_ref(const std::locale&);
-        template auto locale_ref::get() const -> std::locale;
-    }  // namespace detail
+template locale_ref::locale_ref(const std::locale&);
+template auto locale_ref::get() const -> std::locale;
+}  // namespace detail
 
 #endif
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

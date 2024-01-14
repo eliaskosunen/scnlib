@@ -20,43 +20,43 @@
 #include <scn/fwd.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        class locale_ref {
+namespace detail {
+class locale_ref {
 #if !SCN_DISABLE_LOCALE
-        public:
-            constexpr locale_ref() = default;
+public:
+    constexpr locale_ref() = default;
 
-            template <typename Locale>
-            explicit locale_ref(const Locale& loc);
+    template <typename Locale>
+    explicit locale_ref(const Locale& loc);
 
-            constexpr explicit operator bool() const SCN_NOEXCEPT
-            {
-                return m_locale != nullptr;
-            }
+    constexpr explicit operator bool() const SCN_NOEXCEPT
+    {
+        return m_locale != nullptr;
+    }
 
-            template <typename Locale>
-            Locale get() const;
+    template <typename Locale>
+    Locale get() const;
 
-        private:
-            const void* m_locale{nullptr};
+private:
+    const void* m_locale{nullptr};
 #else
-        public:
-            constexpr locale_ref() = default;
+public:
+    constexpr locale_ref() = default;
 
-            template <typename T>
-            constexpr explicit locale_ref(T&&)
-            {
-            }
+    template <typename T>
+    constexpr explicit locale_ref(T&&)
+    {
+    }
 
-            constexpr explicit operator bool() const SCN_NOEXCEPT
-            {
-                return true;
-            }
+    constexpr explicit operator bool() const SCN_NOEXCEPT
+    {
+        return true;
+    }
 #endif
-        };
-    }  // namespace detail
+};
+}  // namespace detail
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

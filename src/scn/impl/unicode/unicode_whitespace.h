@@ -21,38 +21,38 @@
 #include <scn/impl/util/ascii_ctype.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace impl {
-        constexpr bool is_cp_space(char32_t cp) SCN_NOEXCEPT
-        {
-            // Pattern_White_Space property
-            return (cp >= 0x09 && cp <= 0x0d) ||
-                   cp == 0x20 ||    // ASCII space characters
-                   cp == 0x85 ||    // NEXT LINE (NEL)
-                   cp == 0x200e ||  // LEFT-TO-RIGHT MARK
-                   cp == 0x200f ||  // RIGHT-TO-LEFT MARK
-                   cp == 0x2028 ||  // LINE SEPARATOR
-                   cp == 0x2029;    // PARAGRAPH SEPARATOR
-        }
+namespace impl {
+constexpr bool is_cp_space(char32_t cp) SCN_NOEXCEPT
+{
+    // Pattern_White_Space property
+    return (cp >= 0x09 && cp <= 0x0d) ||
+           cp == 0x20 ||    // ASCII space characters
+           cp == 0x85 ||    // NEXT LINE (NEL)
+           cp == 0x200e ||  // LEFT-TO-RIGHT MARK
+           cp == 0x200f ||  // RIGHT-TO-LEFT MARK
+           cp == 0x2028 ||  // LINE SEPARATOR
+           cp == 0x2029;    // PARAGRAPH SEPARATOR
+}
 
-        template <typename CharT>
-        struct is_first_char_space_result {
-            ranges::iterator_t<std::basic_string_view<CharT>> iterator;
-            char32_t cp;
-            bool is_space;
-        };
+template <typename CharT>
+struct is_first_char_space_result {
+    ranges::iterator_t<std::basic_string_view<CharT>> iterator;
+    char32_t cp;
+    bool is_space;
+};
 
-        template <typename CharT>
-        inline auto is_first_char_space(std::basic_string_view<CharT> str)
-            -> is_first_char_space_result<CharT>
-        {
-            // TODO: optimize
-            SCN_EXPECT(!str.empty());
-            auto res = get_next_code_point(str);
-            return {res.iterator, res.value, is_cp_space(res.value)};
-        }
-    }  // namespace impl
+template <typename CharT>
+inline auto is_first_char_space(std::basic_string_view<CharT> str)
+    -> is_first_char_space_result<CharT>
+{
+    // TODO: optimize
+    SCN_EXPECT(!str.empty());
+    auto res = get_next_code_point(str);
+    return {res.iterator, res.value, is_cp_space(res.value)};
+}
+}  // namespace impl
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

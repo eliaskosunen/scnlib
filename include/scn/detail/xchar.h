@@ -21,164 +21,162 @@
 #include <scn/detail/scan.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    /**
-     * \defgroup xchar Wide character APIs
-     *
-     * \brief Scanning interfaces taking wide strings (`wchar_t`).
-     *
-     * The header `<scn/xchar.h>` needs to be included for these APIs.
-     */
+/**
+ * \defgroup xchar Wide character APIs
+ *
+ * \brief Scanning interfaces taking wide strings (`wchar_t`).
+ *
+ * The header `<scn/xchar.h>` needs to be included for these APIs.
+ */
 
-    // vscan
+// vscan
 
-    /**
-     * \ingroup xchar
-     *
-     * \see vscan()
-     */
-    template <typename Range>
-    auto vscan(Range&& range, std::wstring_view format, wscan_args args)
-        -> vscan_result<Range>
-    {
-        return detail::vscan_generic(SCN_FWD(range), format, args);
-    }
+/**
+ * \ingroup xchar
+ *
+ * \see vscan()
+ */
+template <typename Range>
+auto vscan(Range&& range, std::wstring_view format, wscan_args args)
+    -> vscan_result<Range>
+{
+    return detail::vscan_generic(SCN_FWD(range), format, args);
+}
 
-    /**
-     * \ingroup xchar
-     *
-     * \see vscan()
-     */
-    template <typename Range,
-              typename Locale,
-              std::void_t<decltype(Locale::classic())>* = nullptr>
-    auto vscan(const Locale& loc,
-               Range&& range,
-               std::wstring_view format,
-               wscan_args args) -> vscan_result<Range>
-    {
-        return detail::vscan_localized_generic(loc, SCN_FWD(range), format,
-                                               args);
-    }
+/**
+ * \ingroup xchar
+ *
+ * \see vscan()
+ */
+template <typename Range,
+          typename Locale,
+          std::void_t<decltype(Locale::classic())>* = nullptr>
+auto vscan(const Locale& loc,
+           Range&& range,
+           std::wstring_view format,
+           wscan_args args) -> vscan_result<Range>
+{
+    return detail::vscan_localized_generic(loc, SCN_FWD(range), format, args);
+}
 
-    /**
-     * \ingroup xchar
-     *
-     * \see vscan_value()
-     */
-    template <typename Range>
-    auto vscan_value(Range&& range, basic_scan_arg<wscan_context> arg)
-        -> vscan_result<Range>
-    {
-        return detail::vscan_value_generic(SCN_FWD(range), arg);
-    }
+/**
+ * \ingroup xchar
+ *
+ * \see vscan_value()
+ */
+template <typename Range>
+auto vscan_value(Range&& range, basic_scan_arg<wscan_context> arg)
+    -> vscan_result<Range>
+{
+    return detail::vscan_value_generic(SCN_FWD(range), arg);
+}
 
-    // scan
+// scan
 
-    /**
-     * \ingroup xchar
-     *
-     * \see scan()
-     */
-    template <typename... Args,
-              typename Source,
-              std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
-    SCN_NODISCARD auto scan(Source&& source, wformat_string<Args...> format)
-        -> scan_result_type<Source, Args...>
-    {
-        return detail::scan_impl<wchar_t, Args...>(SCN_FWD(source), format, {});
-    }
+/**
+ * \ingroup xchar
+ *
+ * \see scan()
+ */
+template <typename... Args,
+          typename Source,
+          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
+SCN_NODISCARD auto scan(Source&& source, wformat_string<Args...> format)
+    -> scan_result_type<Source, Args...>
+{
+    return detail::scan_impl<wchar_t, Args...>(SCN_FWD(source), format, {});
+}
 
-    /**
-     * \ingroup xchar
-     *
-     * \see scan()
-     */
-    template <typename... Args,
-              typename Source,
-              std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
-    SCN_NODISCARD auto scan(Source&& source,
-                            wformat_string<Args...> format,
-                            std::tuple<Args...>&& args)
-        -> scan_result_type<Source, Args...>
-    {
-        return detail::scan_impl<wchar_t, Args...>(SCN_FWD(source), format,
-                                                   SCN_MOVE(args));
-    }
+/**
+ * \ingroup xchar
+ *
+ * \see scan()
+ */
+template <typename... Args,
+          typename Source,
+          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
+SCN_NODISCARD auto scan(Source&& source,
+                        wformat_string<Args...> format,
+                        std::tuple<Args...>&& args)
+    -> scan_result_type<Source, Args...>
+{
+    return detail::scan_impl<wchar_t, Args...>(SCN_FWD(source), format,
+                                               SCN_MOVE(args));
+}
 
-    /**
-     * \ingroup xchar
-     *
-     * \see scan()
-     */
-    template <typename... Args,
-              typename Locale,
-              typename Source,
-              std::enable_if_t<detail::is_wide_range<Source>>* = nullptr,
-              std::void_t<decltype(Locale::classic())>* = nullptr>
-    SCN_NODISCARD auto scan(const Locale& loc,
-                            Source&& source,
-                            wformat_string<Args...> format)
-        -> scan_result_type<Source, Args...>
-    {
-        return detail::scan_localized_impl<wchar_t, Args...>(
-            loc, SCN_FWD(source), format, {});
-    }
+/**
+ * \ingroup xchar
+ *
+ * \see scan()
+ */
+template <typename... Args,
+          typename Locale,
+          typename Source,
+          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr,
+          std::void_t<decltype(Locale::classic())>* = nullptr>
+SCN_NODISCARD auto scan(const Locale& loc,
+                        Source&& source,
+                        wformat_string<Args...> format)
+    -> scan_result_type<Source, Args...>
+{
+    return detail::scan_localized_impl<wchar_t, Args...>(loc, SCN_FWD(source),
+                                                         format, {});
+}
 
-    /**
-     * \ingroup xchar
-     *
-     * \see scan()
-     */
-    template <typename... Args,
-              typename Locale,
-              typename Source,
-              std::enable_if_t<detail::is_wide_range<Source>>* = nullptr,
-              std::void_t<decltype(Locale::classic())>* = nullptr>
-    SCN_NODISCARD auto scan(const Locale& loc,
-                            Source&& source,
-                            wformat_string<Args...> format,
-                            std::tuple<Args...>&& args)
-        -> scan_result_type<Source, Args...>
-    {
-        return detail::scan_localized_impl<wchar_t, Args...>(
-            loc, SCN_FWD(source), format, args);
-    }
+/**
+ * \ingroup xchar
+ *
+ * \see scan()
+ */
+template <typename... Args,
+          typename Locale,
+          typename Source,
+          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr,
+          std::void_t<decltype(Locale::classic())>* = nullptr>
+SCN_NODISCARD auto scan(const Locale& loc,
+                        Source&& source,
+                        wformat_string<Args...> format,
+                        std::tuple<Args...>&& args)
+    -> scan_result_type<Source, Args...>
+{
+    return detail::scan_localized_impl<wchar_t, Args...>(loc, SCN_FWD(source),
+                                                         format, args);
+}
 
-    /**
-     * \ingroup xchar
-     *
-     * \see scan_value()
-     */
-    template <typename T,
-              typename Source,
-              std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
-    SCN_NODISCARD auto scan_value(Source&& source)
-        -> scan_result_type<Source, T>
-    {
-        return detail::scan_value_impl<wchar_t>(SCN_FWD(source), T{});
-    }
+/**
+ * \ingroup xchar
+ *
+ * \see scan_value()
+ */
+template <typename T,
+          typename Source,
+          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
+SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
+{
+    return detail::scan_value_impl<wchar_t>(SCN_FWD(source), T{});
+}
 
-    /**
-     * \ingroup xchar
-     *
-     * \see scan_value()
-     */
-    template <typename T,
-              typename Source,
-              std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
-    SCN_NODISCARD auto scan_value(Source&& source, T default_value)
-        -> scan_result_type<Source, T>
-    {
-        return detail::scan_value_impl<wchar_t>(SCN_FWD(source),
-                                                SCN_MOVE(default_value));
-    }
+/**
+ * \ingroup xchar
+ *
+ * \see scan_value()
+ */
+template <typename T,
+          typename Source,
+          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
+SCN_NODISCARD auto scan_value(Source&& source, T default_value)
+    -> scan_result_type<Source, T>
+{
+    return detail::scan_value_impl<wchar_t>(SCN_FWD(source),
+                                            SCN_MOVE(default_value));
+}
 
-    namespace detail {
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(wscan_context)
+namespace detail {
+SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(wscan_context)
 #undef SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX
-    }  // namespace detail
+}  // namespace detail
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

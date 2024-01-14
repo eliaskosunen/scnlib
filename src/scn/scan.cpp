@@ -18,14 +18,14 @@
 #include <scn/detail/scan.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        scan_error handle_error(scan_error e)
-        {
-            return e;
-        }
-    }  // namespace detail
+namespace detail {
+scan_error handle_error(scan_error e)
+{
+    return e;
+}
+}  // namespace detail
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

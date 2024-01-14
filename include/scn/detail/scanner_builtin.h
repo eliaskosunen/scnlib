@@ -21,12 +21,13 @@
 #include <scn/detail/scanner.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        template <typename Range>
-        scan_expected<ranges::iterator_t<Range>>
-        internal_skip_classic_whitespace(Range r, bool allow_exhaustion);
+namespace detail {
+template <typename Range>
+scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
+    Range r,
+    bool allow_exhaustion);
 
 #define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(T, Context) \
     extern template scan_expected<Context::iterator>         \
@@ -59,9 +60,9 @@ namespace scn {
     extern template scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
-        SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scan_context)
+SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scan_context)
 
-    }  // namespace detail
+}  // namespace detail
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn

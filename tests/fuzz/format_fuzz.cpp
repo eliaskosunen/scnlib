@@ -18,50 +18,50 @@
 #include "fuzz.h"
 
 namespace scn::fuzz {
-    namespace {
-        template <typename T, typename Source>
-        void run_for_type(Source& source)
-        {
-            {
-                auto _ = scn::scan<T>(source, scn::runtime_format(source));
-            }
-            {
-                auto _ = scn::scan<T>(global_locale, source,
-                                      scn::runtime_format(source));
-            }
-        }
+namespace {
+template <typename T, typename Source>
+void run_for_type(Source& source)
+{
+    {
+        auto _ = scn::scan<T>(source, scn::runtime_format(source));
+    }
+    {
+        auto _ =
+            scn::scan<T>(global_locale, source, scn::runtime_format(source));
+    }
+}
 
-        template <typename Source>
-        void run_for_source(Source& source)
-        {
-            using char_type = ranges::range_value_t<Source>;
+template <typename Source>
+void run_for_source(Source& source)
+{
+    using char_type = ranges::range_value_t<Source>;
 
-            run_for_type<char_type>(source);
-            run_for_type<int>(source);
-            run_for_type<unsigned>(source);
-            run_for_type<double>(source);
-            run_for_type<bool>(source);
-            run_for_type<void*>(source);
-            run_for_type<std::string>(source);
-            run_for_type<std::wstring>(source);
-            run_for_type<std::basic_string_view<char_type>>(source);
-        }
+    run_for_type<char_type>(source);
+    run_for_type<int>(source);
+    run_for_type<unsigned>(source);
+    run_for_type<double>(source);
+    run_for_type<bool>(source);
+    run_for_type<void*>(source);
+    run_for_type<std::string>(source);
+    run_for_type<std::wstring>(source);
+    run_for_type<std::basic_string_view<char_type>>(source);
+}
 
-        void run(span<const uint8_t> data)
-        {
-            if (data.size() > max_input_bytes || data.size() == 0) {
-                return;
-            }
+void run(span<const uint8_t> data)
+{
+    if (data.size() > max_input_bytes || data.size() == 0) {
+        return;
+    }
 
-            auto [sv, wsv_direct, wsv_reinterpret, wsv_transcode] =
-                make_input_views(data);
+    auto [sv, wsv_direct, wsv_reinterpret, wsv_transcode] =
+        make_input_views(data);
 
-            run_for_source(sv);
-            run_for_source(wsv_direct);
-            run_for_source(wsv_reinterpret);
-            run_for_source(wsv_transcode);
-        }
-    }  // namespace
+    run_for_source(sv);
+    run_for_source(wsv_direct);
+    run_for_source(wsv_reinterpret);
+    run_for_source(wsv_transcode);
+}
+}  // namespace
 }  // namespace scn::fuzz
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)

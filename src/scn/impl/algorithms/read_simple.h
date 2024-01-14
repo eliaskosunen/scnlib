@@ -21,58 +21,57 @@
 #include <scn/impl/algorithms/eof_check.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace impl {
-        template <typename Range>
-        simple_borrowed_iterator_t<Range> read_all(Range&& range)
-        {
-            return ranges::next(ranges::begin(range), ranges::end(range));
+namespace impl {
+template <typename Range>
+simple_borrowed_iterator_t<Range> read_all(Range&& range)
+{
+    return ranges::next(ranges::begin(range), ranges::end(range));
+}
+
+template <typename Range>
+eof_expected<simple_borrowed_iterator_t<Range>> read_code_unit(Range&& range)
+{
+    if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+        return unexpected(e);
+    }
+
+    return ranges::next(ranges::begin(range));
+}
+
+template <typename Range>
+eof_expected<simple_borrowed_iterator_t<Range>> read_exactly_n_code_units(
+    Range&& range,
+    ranges::range_difference_t<Range> count)
+{
+    SCN_EXPECT(count >= 0);
+
+    if constexpr (ranges::sized_range<Range>) {
+        const auto sz = ranges::ssize(range);
+        if (sz < count) {
+            return unexpected(eof_error::eof);
         }
 
-        template <typename Range>
-        eof_expected<simple_borrowed_iterator_t<Range>> read_code_unit(
-            Range&& range)
-        {
-            if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
-                return unexpected(e);
-            }
-
-            return ranges::next(ranges::begin(range));
+        return ranges::next(ranges::begin(range), count);
+    }
+    else {
+        auto it = ranges::begin(range);
+        if (guaranteed_minimum_size(range) >= count) {
+            return ranges_polyfill::batch_next(it, count);
         }
 
-        template <typename Range>
-        eof_expected<simple_borrowed_iterator_t<Range>>
-        read_exactly_n_code_units(Range&& range,
-                                  ranges::range_difference_t<Range> count)
-        {
-            SCN_EXPECT(count >= 0);
-
-            if constexpr (ranges::sized_range<Range>) {
-                const auto sz = ranges::ssize(range);
-                if (sz < count) {
-                    return unexpected(eof_error::eof);
-                }
-
-                return ranges::next(ranges::begin(range), count);
-            }
-            else {
-                auto it = ranges::begin(range);
-                if (guaranteed_minimum_size(range) >= count) {
-                    return ranges_polyfill::batch_next(it, count);
-                }
-
-                for (ranges::range_difference_t<Range> i = 0; i < count;
-                     ++i, (void)++it) {
-                    if (it == ranges::end(range)) {
-                        return unexpected(eof_error::eof);
-                    }
-                }
-
-                return it;
+        for (ranges::range_difference_t<Range> i = 0; i < count;
+             ++i, (void)++it) {
+            if (it == ranges::end(range)) {
+                return unexpected(eof_error::eof);
             }
         }
-    }  // namespace impl
 
-    SCN_END_NAMESPACE
+        return it;
+    }
+}
+}  // namespace impl
+
+SCN_END_NAMESPACE
 }  // namespace scn

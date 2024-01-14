@@ -22,38 +22,36 @@
 #include <type_traits>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        template <std::size_t I>
-        struct priority_tag : priority_tag<I - 1> {};
-        template <>
-        struct priority_tag<0> {};
+namespace detail {
+template <std::size_t I>
+struct priority_tag : priority_tag<I - 1> {};
+template <>
+struct priority_tag<0> {};
 
-        template <typename T>
-        using integer_type_for_char = typename std::
-            conditional<std::is_signed<T>::value, int, unsigned>::type;
+template <typename T>
+using integer_type_for_char =
+    typename std::conditional<std::is_signed<T>::value, int, unsigned>::type;
 
-        template <typename T>
-        using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+template <typename T>
+using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
-        template <typename T, typename Self>
-        inline constexpr bool is_not_self =
-            !std::is_same_v<remove_cvref_t<T>, Self>;
+template <typename T, typename Self>
+inline constexpr bool is_not_self = !std::is_same_v<remove_cvref_t<T>, Self>;
 
-        template <typename T, template <typename...> class Templ>
-        struct is_specialization_of_impl : std::false_type {};
-        template <typename... T, template <typename...> class Templ>
-        struct is_specialization_of_impl<Templ<T...>, Templ> : std::true_type {
-        };
+template <typename T, template <typename...> class Templ>
+struct is_specialization_of_impl : std::false_type {};
+template <typename... T, template <typename...> class Templ>
+struct is_specialization_of_impl<Templ<T...>, Templ> : std::true_type {};
 
-        template <typename T, template <typename...> class Templ>
-        using is_specialization_of =
-            is_specialization_of_impl<remove_cvref_t<T>, Templ>;
-        template <typename T, template <typename...> class Templ>
-        inline constexpr bool is_specialization_of_v =
-            is_specialization_of<T, Templ>::value;
-    }  // namespace detail
+template <typename T, template <typename...> class Templ>
+using is_specialization_of =
+    is_specialization_of_impl<remove_cvref_t<T>, Templ>;
+template <typename T, template <typename...> class Templ>
+inline constexpr bool is_specialization_of_v =
+    is_specialization_of<T, Templ>::value;
+}  // namespace detail
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn
