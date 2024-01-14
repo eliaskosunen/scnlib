@@ -1,0 +1,30 @@
+include(icm_build_failure_testing)
+
+icm_add_multiple_build_failure_tests(
+    SOURCES
+        brace_as_fill_character.cpp
+        charset_empty.cpp
+        charset_reversed_range.cpp
+        charset_unterminated.cpp
+        integer_with_string_presentation.cpp
+        invalid_unicode_in_format_string.cpp
+        letters_in_argument_id.cpp
+        locale_flag_with_locale_disabled.cpp
+        locale_flag_with_string.cpp
+        negative_argument_id.cpp
+        regex_disabled.cpp
+        regex_empty.cpp
+        regex_flag_invalid.cpp
+        regex_flag_multiple.cpp
+        regex_no_presentation.cpp
+        regex_non_contiguous_source.cpp
+        regex_unterminated.cpp
+        regex_wide_strings.cpp
+        string_view_non_contiguous_source.cpp
+        unterminated_argument_id.cpp
+        unterminated_format_specifier.cpp
+    PREFIX
+        scn-compilefail
+    LIBRARIES
+        scn
+)

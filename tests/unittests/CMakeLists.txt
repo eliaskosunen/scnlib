@@ -115,3 +115,5 @@ if (Python3_FOUND)
 else ()
     message(WARNING "python3 not found, scn_stdin_test and scn_examples_test not added to CTest")
 endif ()
+
+add_subdirectory(compilefail_tests)
