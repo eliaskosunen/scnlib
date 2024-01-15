@@ -161,8 +161,7 @@ public:
              type == arg_type::wide_string_view_type) &&
             !m_is_contiguous) {
             // clang-format off
-            this->
-            on_error("Cannot read a string_view from a non-contiguous source");
+            this->on_error("Cannot read a string_view from a non-contiguous source");
             // clang-format on
             return;
         }
@@ -170,8 +169,7 @@ public:
              type == arg_type::wide_string_view_type) &&
             !m_is_borrowed) {
             // clang-format off
-            this->
-                on_error("Cannot read a string_view from a non-borrowed source");
+            this->on_error("Cannot read a string_view from a non-borrowed source");
             // clang-format on
             return;
         }
@@ -180,8 +178,7 @@ public:
              type == arg_type::wide_regex_matches_type) &&
             !m_is_contiguous) {
             // clang-format off
-            this->
-            on_error("Cannot read a regex_matches from a non-contiguous source");
+            this->on_error("Cannot read a regex_matches from a non-contiguous source");
             // clang-format on
             return;
         }

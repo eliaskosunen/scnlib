@@ -537,8 +537,7 @@ constexpr void parse_presentation_set_literal(const CharT*& begin,
 
         if (SCN_UNLIKELY(cp_second < cp_first)) {
             // clang-format off
-            handler.on_error("Invalid range in [character set] format string "
-                             "argument: Range end before the beginning");
+            handler.on_error("Invalid range in [character set] format string argument: Range end before the beginning");
             // clang-format on
             return;
         }
@@ -564,8 +563,7 @@ constexpr std::basic_string_view<CharT> parse_presentation_set(
 
     if (SCN_UNLIKELY(begin == end)) {
         // clang-format off
-        handler.on_error("Unexpected end of [character set] specifier "
-                         "in format string");
+        handler.on_error("Unexpected end of [character set] specifier in format string");
         // clang-format on
         return {};
     }
@@ -674,15 +672,13 @@ constexpr const CharT* parse_presentation_regex(const CharT*& begin,
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
             if (*begin == CharT{'s'}) {
                 // clang-format off
-                handler.on_error("/s flag for regex isn't supported "
-                                 "by regex backend");
+                handler.on_error("/s flag for regex isn't supported by regex backend");
                 // clang-format on
             }
 #if !SCN_HAS_STD_REGEX_MULTILINE
             if (*begin == CharT{'m'}) {
                 // clang-format off
-                handler.on_error("/m flag for regex isn't supported "
-                                 "by regex backend");
+                handler.on_error("/m flag for regex isn't supported by regex backend");
                 // clang-format on
             }
 #endif
@@ -720,8 +716,7 @@ constexpr const CharT* parse_format_specs(const CharT* begin,
             auto set = parse_presentation_set(begin, end, handler);
             if (SCN_UNLIKELY(set.size() <= 2)) {
                 // clang-format off
-                handler.on_error("Invalid (empty) [character set] specifier "
-                                 "in format string");
+                handler.on_error("Invalid (empty) [character set] specifier in format string");
                 // clang-format on
                 return begin;
             }
@@ -979,8 +974,7 @@ public:
             cat != arg_type_category::boolean) {
             SCN_UNLIKELY_ATTR
             // clang-format off
-            return this->on_error("'L' specifier can only be used "
-                "with arguments of integer, floating-point, or boolean types");
+            return this->on_error("'L' specifier can only be used with arguments of integer, floating-point, or boolean types");
             // clang-format on
         }
 
@@ -1001,15 +995,13 @@ constexpr void check_int_type_specs(const basic_format_specs<CharT>& specs,
     if (specs.localized) {
         if (SCN_UNLIKELY(specs.type == presentation_type::int_binary)) {
             // clang-format off
-            handler.on_error("'b'/'B' specifier not supported for localized "
-                             "integers");
+            handler.on_error("'b'/'B' specifier not supported for localized integers");
             // clang-format on
             return;
         }
         if (SCN_UNLIKELY(specs.type == presentation_type::int_arbitrary_base)) {
             // clang-format off
-            return handler.on_error("Arbitrary bases not supported "
-                                    "for localized integers");
+            return handler.on_error("Arbitrary bases not supported for localized integers");
             // clang-format on
         }
     }
@@ -1064,8 +1056,7 @@ constexpr void check_string_type_specs(const basic_format_specs<CharT>& specs,
     if (specs.type == presentation_type::character) {
         if (SCN_UNLIKELY(specs.width == 0)) {
             // clang-format off
-            return handler.on_error("'c' type specifier for strings requires "
-                                    "the field width to be specified");
+            return handler.on_error("'c' type specifier for strings requires the field width to be specified");
             // clang-format on
         }
         return;
@@ -1109,8 +1100,7 @@ constexpr void check_regex_type_specs(const basic_format_specs<CharT>& specs,
     if (SCN_UNLIKELY(specs.type == presentation_type::none ||
                      specs.charset_string.empty())) {
         // clang-format off
-        return handler.on_error("Regular expression needs to specified "
-                                "when reading regex_matches");
+        return handler.on_error("Regular expression needs to specified when reading regex_matches");
         // clang-format on
     }
     if (specs.type == presentation_type::regex ||

@@ -426,8 +426,7 @@ constexpr typename ParseCtx::iterator parse_format_specs(ParseCtx& parse_ctx)
              specs.type == presentation_type::regex_escaped) &&
             !(ranges::range<Source> && ranges::contiguous_range<Source>)) {
             // clang-format off
-            parse_ctx.on_error("Cannot read a regex from a non-contiguous "
-                               "source");
+            parse_ctx.on_error("Cannot read a regex from a non-contiguous source");
             // clang-format on
         }
     }
@@ -502,8 +501,7 @@ public:
         if (m_types[id] == arg_type::narrow_regex_matches_type ||
             m_types[id] == arg_type::wide_regex_matches_type) {
             // clang-format off
-            return on_error("Regular expression needs to be specified "
-                            "when reading regex_matches");
+            return on_error("Regular expression needs to be specified when reading regex_matches");
             // clang-format on
         }
     }
