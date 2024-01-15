@@ -16,6 +16,7 @@ icm_add_multiple_build_failure_tests(
         regex_empty.cpp
         regex_flag_invalid.cpp
         regex_flag_multiple.cpp
+        regex_matches_non_contiguous_source.cpp
         regex_no_presentation.cpp
         regex_non_contiguous_source.cpp
         regex_unterminated.cpp

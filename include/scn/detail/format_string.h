@@ -397,7 +397,14 @@ template <typename Str>
 inline constexpr bool is_compile_string_v =
     std::is_base_of_v<compile_string, Str>;
 
-template <typename T, typename Ctx, typename ParseCtx>
+template <typename Scanner, typename = void>
+inline constexpr bool scanner_has_format_specs_member_v = false;
+template <typename Scanner>
+inline constexpr bool scanner_has_format_specs_member_v<
+    Scanner,
+    std::void_t<decltype(SCN_DECLVAL(Scanner&)._format_specs())>> = true;
+
+template <typename T, typename Source, typename Ctx, typename ParseCtx>
 constexpr typename ParseCtx::iterator parse_format_specs(ParseCtx& parse_ctx)
 {
     using char_type = typename ParseCtx::char_type;
@@ -406,16 +413,28 @@ constexpr typename ParseCtx::iterator parse_format_specs(ParseCtx& parse_ctx)
         std::remove_reference_t<decltype(arg_mapper<char_type>().map(
             SCN_DECLVAL(T&)))>,
         T>;
-    auto s = scanner<mapped_type, char_type>{};
-    return s.parse(parse_ctx)
-        .transform_error([&](scan_error err) constexpr {
-            parse_ctx.on_error(err.msg());
-            return err;
-        })
-        .value_or(parse_ctx.end());
+    auto s = typename Ctx::template scanner_type<mapped_type>{};
+    auto it = s.parse(parse_ctx)
+                  .transform_error([&](scan_error err) constexpr {
+                      parse_ctx.on_error(err.msg());
+                      return err;
+                  })
+                  .value_or(parse_ctx.end());
+    if constexpr (scanner_has_format_specs_member_v<decltype(s)>) {
+        auto& specs = s._format_specs();
+        if ((specs.type == presentation_type::regex ||
+             specs.type == presentation_type::regex_escaped) &&
+            !(ranges::range<Source> && ranges::contiguous_range<Source>)) {
+            // clang-format off
+            parse_ctx.on_error("Cannot read a regex from a non-contiguous "
+                               "source");
+            // clang-format on
+        }
+    }
+    return it;
 }
 
-template <typename CharT, typename... Args>
+template <typename CharT, typename Source, typename... Args>
 class format_string_checker {
 public:
     using parse_context_type = compile_parse_context<CharT>;
@@ -423,8 +442,12 @@ public:
 
     explicit constexpr format_string_checker(
         std::basic_string_view<CharT> format_str)
-        : m_parse_context(format_str, num_args, m_types),
+        : m_parse_context(format_str,
+                          num_args,
+                          m_types,
+                          type_identity<Source>{}),
           m_parse_funcs{&parse_format_specs<Args,
+                                            Source,
                                             basic_scan_context<CharT>,
                                             parse_context_type>...},
           m_types{arg_type_constant<Args, CharT>::value...}
@@ -473,12 +496,13 @@ public:
 
     constexpr void on_replacement_field(size_t id, const CharT*)
     {
+        m_parse_context.check_arg_can_be_read(id);
         set_arg_as_read(id);
 
         if (m_types[id] == arg_type::narrow_regex_matches_type ||
             m_types[id] == arg_type::wide_regex_matches_type) {
             // clang-format off
-            return on_error("Regular expression needs to specified "
+            return on_error("Regular expression needs to be specified "
                             "when reading regex_matches");
             // clang-format on
         }
@@ -488,6 +512,7 @@ public:
                                            const CharT* begin,
                                            const CharT*)
     {
+        m_parse_context.check_arg_can_be_read(id);
         set_arg_as_read(id);
         m_parse_context.advance_to(begin);
         return id < num_args ? m_parse_funcs[id](m_parse_context) : begin;
@@ -543,19 +568,19 @@ private:
     bool m_visited_args[num_args > 0 ? num_args : 1] = {false};
 };
 
-template <typename... Args, typename Str>
+template <typename Source, typename... Args, typename Str>
 auto check_format_string(const Str&)
     -> std::enable_if_t<!is_compile_string_v<Str>>
 {
     // TODO: SCN_ENFORE_COMPILE_STRING?
 #if 0  // SCN_ENFORE_COMPILE_STRING
-                static_assert(dependent_false<Str>::value,
-                          "SCN_ENFORCE_COMPILE_STRING requires all format "
-                          "strings to use SCN_STRING.");
+    static_assert(dependent_false<Str>::value,
+              "SCN_ENFORCE_COMPILE_STRING requires all format "
+              "strings to use SCN_STRING.");
 #endif
 }
 
-template <typename... Args, typename Str>
+template <typename Source, typename... Args, typename Str>
 auto check_format_string(Str format_str)
     -> std::enable_if_t<is_compile_string_v<Str>>
 {
@@ -566,7 +591,7 @@ auto check_format_string(Str format_str)
     constexpr auto s = std::basic_string_view<char_type>{format_str};
     SCN_GCC_POP
 
-    using checker = format_string_checker<char_type, remove_cvref_t<Args>...>;
+    using checker = format_string_checker<char_type, Source, Args...>;
     constexpr bool invalid_format =
         (parse_format_string<true>(s, checker(s)), true);
     SCN_UNUSED(invalid_format);
@@ -606,8 +631,8 @@ constexpr std::basic_string_view<CharT> compile_string_to_view(
  *
  * \ingroup format-string
  */
-template <typename CharT, typename... Args>
-class basic_format_string {
+template <typename CharT, typename Source, typename... Args>
+class basic_scan_format_string {
 public:
     SCN_CLANG_PUSH
 #if SCN_CLANG >= SCN_COMPILER(10, 0, 0)
@@ -615,32 +640,43 @@ public:
 #endif
     template <
         typename S,
-        typename = std::enable_if_t<
-            std::is_convertible_v<const S&, std::basic_string_view<CharT>>>>
-    SCN_CONSTEVAL basic_format_string(const S& s) : m_str(s)
+        std::enable_if_t<
+            std::is_convertible_v<const S&, std::basic_string_view<CharT>> &&
+            detail::is_not_self<S, basic_scan_format_string>>* = nullptr>
+    SCN_CONSTEVAL basic_scan_format_string(const S& s) : m_str(s)
     {
 #if SCN_HAS_CONSTEVAL
-        using checker =
-            detail::format_string_checker<CharT,
-                                          detail::remove_cvref_t<Args>...>;
+        using checker = detail::format_string_checker<CharT, Source, Args...>;
         const auto e = detail::parse_format_string<true>(m_str, checker(s));
         SCN_UNUSED(e);
 #else
-        detail::check_format_string<Args...>(s);
+        detail::check_format_string<Source, Args...>(s);
 #endif
     }
     SCN_CLANG_POP
 
-    basic_format_string(detail::basic_runtime_format_string<CharT> r)
+    template <
+        typename OtherSource,
+        std::enable_if_t<std::is_same_v<detail::remove_cvref_t<Source>,
+                                        detail::remove_cvref_t<OtherSource>> &&
+                         ranges::borrowed_range<Source> ==
+                             ranges::borrowed_range<OtherSource>>* = nullptr>
+    constexpr basic_scan_format_string(
+        const basic_scan_format_string<CharT, OtherSource, Args...>& other)
+        : m_str(other.get())
+    {
+    }
+
+    basic_scan_format_string(detail::basic_runtime_format_string<CharT> r)
         : m_str(r.str)
     {
     }
 
-    operator std::basic_string_view<CharT>() const
+    constexpr operator std::basic_string_view<CharT>() const
     {
         return m_str;
     }
-    std::basic_string_view<CharT> get() const
+    constexpr std::basic_string_view<CharT> get() const
     {
         return m_str;
     }

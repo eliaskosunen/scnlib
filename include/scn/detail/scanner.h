@@ -62,6 +62,10 @@ public:
         return detail::scanner_scan_for_builtin_type(val, ctx, m_specs);
     }
 
+    constexpr auto& _format_specs() {
+        return m_specs;
+    }
+
 private:
     detail::basic_format_specs<CharT> m_specs;
 };

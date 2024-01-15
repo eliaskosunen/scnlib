@@ -110,7 +110,8 @@ auto scan_impl(Source&& source,
 template <typename... Args,
           typename Source,
           typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
-SCN_NODISCARD auto scan(Source&& source, format_string<Args...> format)
+SCN_NODISCARD auto scan(Source&& source,
+                        scan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
 {
     return detail::scan_impl<char, Args...>(SCN_FWD(source), format, {});
@@ -138,7 +139,7 @@ template <typename... Args,
           typename Source,
           typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
 SCN_NODISCARD auto scan(Source&& source,
-                        format_string<Args...> format,
+                        scan_format_string<Source, Args...> format,
                         std::tuple<Args...>&& default_args)
     -> scan_result_type<Source, Args...>
 {
@@ -194,7 +195,7 @@ template <typename... Args,
           typename = std::void_t<decltype(Locale::classic())>>
 SCN_NODISCARD auto scan(const Locale& loc,
                         Source&& source,
-                        format_string<Args...> format)
+                        scan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
 {
     return detail::scan_localized_impl<char, Args...>(loc, SCN_FWD(source),
@@ -213,7 +214,7 @@ template <typename... Args,
           typename = std::void_t<decltype(Locale::classic())>>
 SCN_NODISCARD auto scan(const Locale& loc,
                         Source&& source,
-                        format_string<Args...> format,
+                        scan_format_string<Source, Args...> format,
                         std::tuple<Args...>&& default_args)
     -> scan_result_type<Source, Args...>
 {
@@ -274,7 +275,7 @@ SCN_NODISCARD auto scan_value(Source&& source, T default_value)
  * \ingroup scan
  */
 template <typename... Args>
-SCN_NODISCARD auto input(format_string<Args...> format)
+SCN_NODISCARD auto input(scan_format_string<std::FILE*, Args...> format)
     -> scan_result_type<std::FILE*, Args...>
 {
     auto args = make_scan_args<scan_context, Args...>();
@@ -291,7 +292,8 @@ SCN_NODISCARD auto input(format_string<Args...> format)
  * \ingroup scan
  */
 template <typename... Args>
-SCN_NODISCARD auto prompt(const char* msg, format_string<Args...> format)
+SCN_NODISCARD auto prompt(const char* msg,
+                          scan_format_string<std::FILE*, Args...> format)
     -> scan_result_type<std::FILE*, Args...>
 {
     std::printf("%s", msg);

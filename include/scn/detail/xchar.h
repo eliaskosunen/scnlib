@@ -83,7 +83,8 @@ auto vscan_value(Range&& range, basic_scan_arg<wscan_context> arg)
 template <typename... Args,
           typename Source,
           std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
-SCN_NODISCARD auto scan(Source&& source, wformat_string<Args...> format)
+SCN_NODISCARD auto scan(Source&& source,
+                        wscan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
 {
     return detail::scan_impl<wchar_t, Args...>(SCN_FWD(source), format, {});
@@ -98,7 +99,7 @@ template <typename... Args,
           typename Source,
           std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
 SCN_NODISCARD auto scan(Source&& source,
-                        wformat_string<Args...> format,
+                        wscan_format_string<Source, Args...> format,
                         std::tuple<Args...>&& args)
     -> scan_result_type<Source, Args...>
 {
@@ -118,7 +119,7 @@ template <typename... Args,
           std::void_t<decltype(Locale::classic())>* = nullptr>
 SCN_NODISCARD auto scan(const Locale& loc,
                         Source&& source,
-                        wformat_string<Args...> format)
+                        wscan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
 {
     return detail::scan_localized_impl<wchar_t, Args...>(loc, SCN_FWD(source),
@@ -137,7 +138,7 @@ template <typename... Args,
           std::void_t<decltype(Locale::classic())>* = nullptr>
 SCN_NODISCARD auto scan(const Locale& loc,
                         Source&& source,
-                        wformat_string<Args...> format,
+                        wscan_format_string<Source, Args...> format,
                         std::tuple<Args...>&& args)
     -> scan_result_type<Source, Args...>
 {

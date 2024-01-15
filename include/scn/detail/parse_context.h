@@ -105,12 +105,21 @@ class compile_parse_context : public basic_scan_parse_context<CharT> {
     using base = basic_scan_parse_context<CharT>;
 
 public:
+    template <typename Source>
     explicit constexpr compile_parse_context(
         std::basic_string_view<CharT> format_str,
         int num_args,
         const arg_type* types,
+        type_identity<Source> source_tag,
         int next_arg_id = 0)
-        : base(format_str, next_arg_id), m_num_args(num_args), m_types(types)
+        : base(format_str, next_arg_id),
+          m_num_args(num_args),
+          m_types(types),
+          m_is_contiguous(ranges::range<Source> &&
+                          ranges::contiguous_range<Source>),
+          m_is_borrowed(
+              (ranges::range<Source> && ranges::borrowed_range<Source>) ||
+              std::is_same_v<detail::remove_cvref_t<Source>, std::FILE*>)
     {
     }
 
@@ -144,9 +153,44 @@ public:
     }
     using base::check_arg_id;
 
+    constexpr void check_arg_can_be_read(std::size_t id)
+    {
+        auto type = get_arg_type(id);
+
+        if ((type == arg_type::narrow_string_view_type ||
+             type == arg_type::wide_string_view_type) &&
+            !m_is_contiguous) {
+            // clang-format off
+            this->
+            on_error("Cannot read a string_view from a non-contiguous source");
+            // clang-format on
+            return;
+        }
+        if ((type == arg_type::narrow_string_view_type ||
+             type == arg_type::wide_string_view_type) &&
+            !m_is_borrowed) {
+            // clang-format off
+            this->
+                on_error("Cannot read a string_view from a non-borrowed source");
+            // clang-format on
+            return;
+        }
+
+        if ((type == arg_type::narrow_regex_matches_type ||
+             type == arg_type::wide_regex_matches_type) &&
+            !m_is_contiguous) {
+            // clang-format off
+            this->
+            on_error("Cannot read a regex_matches from a non-contiguous source");
+            // clang-format on
+            return;
+        }
+    }
+
 private:
     int m_num_args;
     const arg_type* m_types;
+    bool m_is_contiguous, m_is_borrowed;
 
     SCN_GCC_POP  // -Wsign-conversion
 };

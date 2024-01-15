@@ -67,8 +67,8 @@ class scan_error;
 
 template <typename CharT>
 struct basic_runtime_format_string;
-template <typename CharT, typename... Args>
-class basic_format_string;
+template <typename CharT, typename Source, typename... Args>
+class basic_scan_format_string;
 
 namespace detail {
 template <typename T>
@@ -79,12 +79,16 @@ template <typename T>
 using type_identity_t = typename type_identity<T>::type;
 }  // namespace detail
 
-template <typename... Args>
-using format_string =
-    basic_format_string<char, detail::type_identity_t<Args>...>;
-template <typename... Args>
-using wformat_string =
-    basic_format_string<wchar_t, detail::type_identity_t<Args>...>;
+template <typename Source, typename... Args>
+using scan_format_string =
+    basic_scan_format_string<char,
+                             detail::type_identity_t<Source>,
+                             detail::type_identity_t<Args>...>;
+template <typename Source, typename... Args>
+using wscan_format_string =
+    basic_scan_format_string<wchar_t,
+                             detail::type_identity_t<Source>,
+                             detail::type_identity_t<Args>...>;
 
 // detail/format_string_parser.h: empty
 

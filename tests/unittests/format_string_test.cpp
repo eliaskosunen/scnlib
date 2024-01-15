@@ -21,13 +21,13 @@
 
 TEST(FormatStringTest, ConstructFromLiteral)
 {
-    scn::format_string<int> str{"{}"};
+    scn::scan_format_string<std::string_view, int> str{"{}"};
     EXPECT_EQ(str, std::string_view{"{}"});
 }
 
 TEST(FormatStringTest, CompileTimeCheckLiteral)
 {
-    scn::format_string<int> str{SCN_STRING("{}")};
+    scn::scan_format_string<std::string_view, int> str{SCN_STRING("{}")};
     EXPECT_EQ(str, std::string_view{"{}"});
 }
 

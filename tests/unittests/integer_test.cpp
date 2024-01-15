@@ -23,7 +23,7 @@ namespace {
     template <typename... Args>
     std::tuple<testing::AssertionResult, Args...> do_test(
         std::string_view src,
-        scn::format_string<Args...> fmt)
+        scn::scan_format_string<std::string_view, Args...> fmt)
     {
         auto result = scn::scan<Args...>(src, fmt);
         if (!result) {
