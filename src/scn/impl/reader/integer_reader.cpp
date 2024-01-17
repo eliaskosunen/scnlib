@@ -226,17 +226,35 @@ auto parse_integer_value(std::basic_string_view<CharT> source,
                                      "Invalid integer value");
     }
 
+    // Skip leading zeroes
+    auto start = source.data();
+    const auto end = source.data() + source.size();
+    {
+        for (; start != end; ++start) {
+            if (*start != CharT{'0'}) {
+                break;
+            }
+        }
+        if (SCN_UNLIKELY(start == end || char_to_int(*start) >= base)) {
+            value = 0;
+            return ranges::next(source.begin(),
+                                ranges::distance(source.data(), start));
+        }
+    }
+
     if constexpr (std::is_same_v<CharT, char>) {
         if (base == 10) {
             SCN_TRY(ptr, parse_decimal_integer_fast(
-                             source, value, sign == sign_type::minus_sign));
+                             detail::make_string_view_from_pointers(start, end),
+                             value, sign == sign_type::minus_sign));
             return ranges::next(source.begin(),
                                 ranges::distance(source.data(), ptr));
         }
     }
 
-    SCN_TRY(ptr, parse_regular_integer(source, value, base,
-                                       sign == sign_type::minus_sign));
+    SCN_TRY(ptr, parse_regular_integer(
+                     detail::make_string_view_from_pointers(start, end), value,
+                     base, sign == sign_type::minus_sign));
     return ranges::next(source.begin(), ranges::distance(source.data(), ptr));
 }
 

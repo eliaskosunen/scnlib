@@ -1,7 +1,6 @@
 include(icm_build_failure_testing)
 
-icm_add_multiple_build_failure_tests(
-    SOURCES
+set(buildfail_sources
         brace_as_fill_character.cpp
         charset_empty.cpp
         charset_reversed_range.cpp
@@ -24,8 +23,25 @@ icm_add_multiple_build_failure_tests(
         string_view_non_contiguous_source.cpp
         unterminated_argument_id.cpp
         unterminated_format_specifier.cpp
-    PREFIX
-        scn-compilefail
-    LIBRARIES
-        scn
 )
+
+if (SCN_CXX_FRONTEND STREQUAL "GNU" OR SCN_CXX_FRONTEND STREQUAL "Clang")
+    icm_add_multiple_build_failure_tests(
+            SOURCES ${buildfail_sources}
+            PREFIX scn-compilefail
+            LIBRARIES scn
+    )
+else ()
+    # We expect the error messages to contain the call to on_error("..."),
+    # which contains the library error message.
+    # Seemingly, only gcc and clang do that.
+    message(STATUS "Compiler frontend not gcc or clang -- build failure tests don't check the compiler output")
+    foreach (source ${buildfail_sources})
+        get_filename_component(source_name ${source} NAME_WE)
+        icm_add_build_failure_test(
+                NAME scn-compilefail-${source_name}
+                LIBRARIES scn
+                SOURCES ${source}
+        )
+    endforeach ()
+endif ()

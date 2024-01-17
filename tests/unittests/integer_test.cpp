@@ -28,7 +28,8 @@ namespace {
         auto result = scn::scan<Args...>(src, fmt);
         if (!result) {
             return {testing::AssertionFailure()
-                        << "scan failed with " << result.error().code(),
+                        << "scan failed with " << result.error().code() << ": "
+                        << result.error().msg(),
                     Args{}...};
         }
         if (result->begin() != src.end()) {
@@ -93,6 +94,22 @@ TEST(IntegerTest, UnsignedWithUnsignedFormat)
     EXPECT_EQ(val, 42);
 }
 
+TEST(IntegerTest, LeadingZeroesInDecimal) {
+    auto [result, val] = do_test<short>("0000000000000000100", "{:d}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(val, 100);
+}
+TEST(IntegerTest, LeadingZeroesInHexadecimalWithoutPrefix) {
+    auto [result, val] = do_test<short>("0000000000000000100", "{:x}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(val, 0x100);
+}
+TEST(IntegerTest, LeadingZeroesInHexadecimalWithPrefix) {
+    auto [result, val] = do_test<short>("0x0000000000000000100", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(val, 0x100);
+}
+
 TEST(IntegerTest, Pointer)
 {
     char source_buf[64]{};
@@ -101,7 +118,7 @@ TEST(IntegerTest, Pointer)
     std::string_view source{source_buf};
 
     auto [result, val] = do_test<void*>(source, "{}");
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
     ASSERT_NE(val, nullptr);
     EXPECT_EQ(val, &value);
     EXPECT_EQ(*static_cast<const int*>(val), value);
