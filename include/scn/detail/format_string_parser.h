@@ -620,7 +620,6 @@ constexpr const CharT* parse_presentation_regex(const CharT*& begin,
     }
 
     handler.on_type(presentation_type::regex);
-    bool is_escaped = false;
     for (; begin != end; ++begin) {
         if (*begin == CharT{'/'}) {
             if (*(begin - 1) != CharT{'\\'}) {

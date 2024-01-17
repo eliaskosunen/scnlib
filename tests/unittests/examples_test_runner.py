@@ -14,14 +14,19 @@ def find_file(pattern, path):
     raise RuntimeError(f"Couldn't find pattern '{pattern}' in {path}")
 
 
+if os.name == 'nt':
+    examples_file_extension = '.exe'
+else:
+    examples_file_extension = ''
 script_dir = os.path.abspath(os.path.dirname(__file__))
-examples_bin = find_file('scn_example_*', script_dir)
+examples_bin = find_file(f"scn_example_*{examples_file_extension}", script_dir)
 examples_dir = os.path.dirname(examples_bin)
-examples_file_extension = ''.join(pathlib.Path(examples_bin).suffixes)
 
 
 def check(i, input, expected_output):
-    result = subprocess.run([os.path.join(examples_dir, f"scn_example_{i}{examples_file_extension}")],
+    path = os.path.join(examples_dir, f"scn_example_{i}{examples_file_extension}")
+    print(f"Invoking {path}")
+    result = subprocess.run([path],
                             shell=True,
                             input=input,
                             capture_output=True,
