@@ -288,7 +288,7 @@ public:
     template <typename Range, typename ValueCharT>
     scan_expected<simple_borrowed_iterator_t<Range>> read(
         Range&& range,
-        const detail::basic_format_specs<SourceCharT>& specs,
+        const detail::format_specs& specs,
         std::basic_string<ValueCharT>& value)
     {
         auto it = read_source_impl(range, {specs});
@@ -302,7 +302,7 @@ public:
     template <typename Range, typename ValueCharT>
     scan_expected<simple_borrowed_iterator_t<Range>> read(
         Range&& range,
-        const detail::basic_format_specs<SourceCharT>& specs,
+        const detail::format_specs& specs,
         std::basic_string_view<ValueCharT>& value)
     {
         auto it = read_source_impl(range, {specs});
@@ -315,10 +315,7 @@ public:
 
 private:
     struct specs_helper {
-        constexpr specs_helper(const detail::basic_format_specs<SourceCharT>& s)
-            : specs(s)
-        {
-        }
+        constexpr specs_helper(const detail::format_specs& s) : specs(s) {}
 
         constexpr bool is_char_set_in_literals(char ch) const
         {
@@ -352,20 +349,21 @@ private:
                 return {};
             }
 
-            auto it = detail::to_address(specs.charset_string.begin());
+            auto charset_string = specs.charset_string<SourceCharT>();
+            auto it = detail::to_address(charset_string.begin());
             auto set = detail::parse_presentation_set(
-                it, detail::to_address(specs.charset_string.end()), nonascii);
+                it, detail::to_address(charset_string.end()), nonascii);
             if (SCN_UNLIKELY(!nonascii)) {
                 return nonascii.err;
             }
-            SCN_ENSURE(it == detail::to_address(specs.charset_string.end()));
-            SCN_ENSURE(set == specs.charset_string);
+            SCN_ENSURE(it == detail::to_address(charset_string.end()));
+            SCN_ENSURE(set == charset_string);
 
             ranges::sort(nonascii.extra_ranges);
             return {};
         }
 
-        const detail::basic_format_specs<SourceCharT>& specs;
+        const detail::format_specs& specs;
         nonascii_specs_handler nonascii;
     };
 
@@ -451,7 +449,7 @@ class string_reader
 public:
     constexpr string_reader() = default;
 
-    void check_specs_impl(const detail::basic_format_specs<SourceCharT>& specs,
+    void check_specs_impl(const detail::format_specs& specs,
                           reader_error_handler& eh)
     {
         detail::check_string_type_specs(specs, eh);
@@ -507,7 +505,7 @@ public:
     template <typename Range, typename Value>
     scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
         Range&& range,
-        const detail::basic_format_specs<SourceCharT>& specs,
+        const detail::format_specs& specs,
         Value& value,
         detail::locale_ref loc)
     {
@@ -525,10 +523,8 @@ protected:
     };
 
     template <typename Range, typename Value>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_impl(
-        Range&& range,
-        const detail::basic_format_specs<SourceCharT>& specs,
-        Value& value)
+    scan_expected<simple_borrowed_iterator_t<Range>>
+    read_impl(Range&& range, const detail::format_specs& specs, Value& value)
     {
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wcovered-switch-default")
@@ -549,13 +545,14 @@ protected:
 #if !SCN_DISABLE_REGEX
             case reader_type::regex:
                 return regex_string_reader_impl<SourceCharT>{}.read(
-                    SCN_FWD(range), specs.charset_string, specs.regexp_flags,
-                    value);
+                    SCN_FWD(range), specs.charset_string<SourceCharT>(),
+                    specs.regexp_flags, value);
 
             case reader_type::regex_escaped:
                 return regex_string_reader_impl<SourceCharT>{}.read(
                     SCN_FWD(range),
-                    get_unescaped_regex_pattern(specs.charset_string),
+                    get_unescaped_regex_pattern(
+                        specs.charset_string<SourceCharT>()),
                     specs.regexp_flags, value);
 #endif
 

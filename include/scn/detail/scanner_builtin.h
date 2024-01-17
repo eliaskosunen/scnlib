@@ -31,8 +31,7 @@ scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
 
 #define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(T, Context) \
     extern template scan_expected<Context::iterator>         \
-    scanner_scan_for_builtin_type(                           \
-        T&, Context&, const basic_format_specs<Context::char_type>&);
+    scanner_scan_for_builtin_type(T&, Context&, const format_specs&);
 
 #define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(Context)                   \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(char, Context)                \

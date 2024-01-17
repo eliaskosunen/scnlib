@@ -176,7 +176,7 @@ class reader_impl_for_bool
 public:
     reader_impl_for_bool() = default;
 
-    void check_specs_impl(const detail::basic_format_specs<CharT>& specs,
+    void check_specs_impl(const detail::format_specs& specs,
                           reader_error_handler& eh)
     {
         detail::check_bool_type_specs(specs, eh);
@@ -194,7 +194,7 @@ public:
     template <typename Range>
     scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
         Range&& range,
-        const detail::basic_format_specs<CharT>& specs,
+        const detail::format_specs& specs,
         bool& value,
         detail::locale_ref loc) const
     {
@@ -209,8 +209,7 @@ public:
         return rd.read_classic(SCN_FWD(range), value);
     }
 
-    static constexpr unsigned get_options(
-        const detail::basic_format_specs<CharT>& specs)
+    static constexpr unsigned get_options(const detail::format_specs& specs)
     {
         SCN_GCC_COMPAT_PUSH
         SCN_GCC_COMPAT_IGNORE("-Wswitch-enum")

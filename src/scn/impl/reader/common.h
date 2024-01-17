@@ -126,7 +126,7 @@ public:
         return true;
     }
 
-    scan_error check_specs(const detail::basic_format_specs<char_type>& specs)
+    scan_error check_specs(const detail::format_specs& specs)
     {
         reader_error_handler eh{};
         get_derived().check_specs_impl(specs, eh);
@@ -157,7 +157,7 @@ public:
         return true;
     }
 
-    static scan_error check_specs(const detail::basic_format_specs<CharT>&)
+    static scan_error check_specs(const detail::format_specs&)
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
@@ -174,7 +174,7 @@ public:
     template <typename Range>
     scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
         Range&&,
-        const detail::basic_format_specs<CharT>&,
+        const detail::format_specs&,
         monostate&,
         detail::locale_ref)
     {

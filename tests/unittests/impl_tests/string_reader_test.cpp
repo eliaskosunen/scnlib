@@ -303,8 +303,7 @@ template <typename T>
 class StringCharacterSetReaderTest : public testing::Test {
 protected:
     using pack = T;
-    using specs_type =
-        scn::detail::basic_format_specs<typename T::source_char_type>;
+    using specs_type = scn::detail::format_specs;
 
     specs_type make_specs_from_set(std::string_view f)
     {
@@ -317,7 +316,7 @@ protected:
         SCN_GCC_POP
 
         specs_type specs{};
-        scn::detail::specs_setter<typename T::source_char_type> handler{specs};
+        scn::detail::specs_setter handler{specs};
 
         auto [b, e] = [&]() {
             if constexpr (std::is_same_v<typename T::source_char_type, char>) {

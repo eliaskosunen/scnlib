@@ -259,7 +259,7 @@ struct arg_reader {
     }
 
     range_type range;
-    const detail::basic_format_specs<char_type>& specs;
+    const detail::format_specs& specs;
     detail::locale_ref loc;
 };
 

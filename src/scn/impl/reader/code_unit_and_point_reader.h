@@ -78,7 +78,7 @@ public:
     }
 };
 
-template <typename SourceCharT, typename ValueCharT>
+template <typename ValueCharT>
 class char_reader_base {
 public:
     constexpr char_reader_base() = default;
@@ -88,8 +88,7 @@ public:
         return false;
     }
 
-    static scan_error check_specs(
-        const detail::basic_format_specs<SourceCharT>& specs)
+    static scan_error check_specs(const detail::format_specs& specs)
     {
         reader_error_handler eh{};
         if constexpr (std::is_same_v<ValueCharT, char32_t>) {
@@ -106,7 +105,7 @@ public:
 };
 
 template <typename CharT>
-class reader_impl_for_char : public char_reader_base<CharT, char> {
+class reader_impl_for_char : public char_reader_base<char> {
 public:
     template <typename Range>
     scan_expected<ranges::iterator_t<Range>>
@@ -126,7 +125,7 @@ public:
     template <typename Range>
     scan_expected<ranges::iterator_t<Range>> read_specs(
         Range range,
-        const detail::basic_format_specs<CharT>& specs,
+        const detail::format_specs& specs,
         char& value,
         detail::locale_ref loc)
     {
@@ -144,7 +143,7 @@ public:
 };
 
 template <typename CharT>
-class reader_impl_for_wchar : public char_reader_base<CharT, wchar_t> {
+class reader_impl_for_wchar : public char_reader_base<wchar_t> {
 public:
     template <typename Range>
     scan_expected<ranges::iterator_t<Range>>
@@ -162,7 +161,7 @@ public:
     template <typename Range>
     scan_expected<ranges::iterator_t<Range>> read_specs(
         Range range,
-        const detail::basic_format_specs<CharT>& specs,
+        const detail::format_specs& specs,
         wchar_t& value,
         detail::locale_ref loc)
     {
@@ -182,7 +181,7 @@ public:
 };
 
 template <typename CharT>
-class reader_impl_for_code_point : public char_reader_base<CharT, char32_t> {
+class reader_impl_for_code_point : public char_reader_base<char32_t> {
 public:
     template <typename Range>
     scan_expected<ranges::iterator_t<Range>>
@@ -195,7 +194,7 @@ public:
     template <typename Range>
     scan_expected<ranges::iterator_t<Range>> read_specs(
         Range range,
-        const detail::basic_format_specs<CharT>& specs,
+        const detail::format_specs& specs,
         char32_t& value,
         detail::locale_ref loc)
     {

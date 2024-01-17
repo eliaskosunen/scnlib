@@ -98,20 +98,95 @@ constexpr regex_flags& operator^=(regex_flags& a, regex_flags b)
     return a = a ^ b;
 }
 
-template <typename CharT>
-struct basic_format_specs {
+class fill_type {
+public:
+    constexpr void operator=(char c)
+    {
+        m_data[0] = c;
+        m_size = 1;
+    }
+
+    template <typename CharT>
+    constexpr void operator=(std::basic_string_view<CharT> s)
+    {
+        SCN_EXPECT(!s.empty());
+        SCN_EXPECT(s.size() * sizeof(CharT) <= max_size);
+        if constexpr (sizeof(CharT) == 1) {
+            for (size_t i = 0; i < s.size(); ++i) {
+                m_data[i] = s[i];
+            }
+            m_size = static_cast<unsigned char>(s.size());
+        }
+        else if constexpr (sizeof(CharT) == 2) {
+            m_data[0] = static_cast<char>(static_cast<unsigned>(s.front()));
+            m_data[1] =
+                static_cast<char>(static_cast<unsigned>(s.front()) >> 8);
+            if (s.size() == 1) {
+                return;
+            }
+            m_data[2] = static_cast<char>(static_cast<unsigned>(s[1]));
+            m_data[3] = static_cast<char>(static_cast<unsigned>(s[1]) >> 8);
+        }
+        else {
+            const auto front = static_cast<unsigned>(s.front());
+            m_data[0] = static_cast<char>(front);
+            m_data[1] = static_cast<char>(front >> 8);
+            m_data[2] = static_cast<char>(front >> 16);
+            m_data[3] = static_cast<char>(front >> 24);
+        }
+    }
+
+    constexpr size_t size() const
+    {
+        return m_size;
+    }
+
+    template <typename CharT>
+    CharT get() const
+    {
+        SCN_EXPECT(m_size <= sizeof(CharT));
+        CharT r{};
+        std::memcpy(&r, m_data, m_size);
+        return r;
+    }
+
+    template <typename CharT>
+    constexpr const CharT* data() const
+    {
+        if constexpr (std::is_same_v<CharT, char>) {
+            return m_data;
+        }
+        else {
+            return nullptr;
+        }
+    }
+
+    template <typename CharT>
+    std::basic_string_view<CharT> view() const
+    {
+        return {reinterpret_cast<const CharT*>(m_data), m_size};
+    }
+
+private:
+    static constexpr size_t max_size = 4;
+    char m_data[max_size] = {' '};
+    unsigned char m_size{1};
+};
+
+struct format_specs {
     int width{0};
-    std::basic_string_view<CharT> fill{default_fill()};
+    fill_type fill{};
     presentation_type type{presentation_type::none};
     std::array<uint8_t, 128 / 8> charset_literals{0};
     bool charset_has_nonascii{false}, charset_is_inverted{false};
-    std::basic_string_view<CharT> charset_string{};
+    const void* charset_string_data{nullptr};
+    size_t charset_string_size{0};
     regex_flags regexp_flags{regex_flags::none};
     unsigned char arbitrary_base{0};
     align_type align{align_type::none};
     bool localized{false};
 
-    constexpr basic_format_specs() = default;
+    constexpr format_specs() = default;
 
     SCN_NODISCARD constexpr int get_base(int default_base) const
     {
@@ -141,29 +216,23 @@ struct basic_format_specs {
         SCN_GCC_COMPAT_POP
     }
 
-    static constexpr std::basic_string_view<CharT> default_fill()
+    template <typename CharT>
+    std::basic_string_view<CharT> charset_string() const
     {
-        if constexpr (std::is_same_v<CharT, char>) {
-            return " ";
-        }
-        else {
-            return L" ";
-        }
+        return {reinterpret_cast<const CharT*>(charset_string_data),
+                charset_string_size};
     }
 };
 
-template <typename CharT>
 struct specs_setter {
 public:
-    explicit constexpr specs_setter(basic_format_specs<CharT>& specs)
-        : m_specs(specs)
-    {
-    }
+    explicit constexpr specs_setter(format_specs& specs) : m_specs(specs) {}
 
     constexpr void on_align(align_type align)
     {
         m_specs.align = align;
     }
+    template <typename CharT>
     constexpr void on_fill(std::basic_string_view<CharT> fill)
     {
         m_specs.fill = fill;
@@ -225,15 +294,19 @@ public:
         m_specs.charset_is_inverted = true;
     }
 
+    template <typename CharT>
     constexpr void on_character_set_string(std::basic_string_view<CharT> fmt)
     {
-        m_specs.charset_string = fmt;
+        m_specs.charset_string_data = fmt.data();
+        m_specs.charset_string_size = fmt.size();
         on_type(presentation_type::string_set);
     }
 
+    template <typename CharT>
     constexpr void on_regex_pattern(std::basic_string_view<CharT> pattern)
     {
-        m_specs.charset_string = pattern;
+        m_specs.charset_string_data = pattern.data();
+        m_specs.charset_string_size = pattern.size();
     }
     constexpr void on_regex_flags(regex_flags flags)
     {
@@ -263,7 +336,7 @@ public:
     }
 
 protected:
-    basic_format_specs<CharT>& m_specs;
+    format_specs& m_specs;
     scan_error m_error;
 };
 
@@ -984,8 +1057,8 @@ private:
     arg_type m_arg_type;
 };
 
-template <typename CharT, typename Handler>
-constexpr void check_int_type_specs(const basic_format_specs<CharT>& specs,
+template <typename Handler>
+constexpr void check_int_type_specs(const format_specs& specs,
                                     Handler&& handler)
 {
     if (SCN_UNLIKELY(specs.type > presentation_type::int_hex)) {
@@ -1006,8 +1079,8 @@ constexpr void check_int_type_specs(const basic_format_specs<CharT>& specs,
     }
 }
 
-template <typename CharT, typename Handler>
-constexpr void check_char_type_specs(const basic_format_specs<CharT>& specs,
+template <typename Handler>
+constexpr void check_char_type_specs(const format_specs& specs,
                                      Handler&& handler)
 {
     if (specs.type > presentation_type::int_hex ||
@@ -1017,10 +1090,9 @@ constexpr void check_char_type_specs(const basic_format_specs<CharT>& specs,
     }
 }
 
-template <typename CharT, typename Handler>
-constexpr void check_code_point_type_specs(
-    const basic_format_specs<CharT>& specs,
-    Handler&& handler)
+template <typename Handler>
+constexpr void check_code_point_type_specs(const format_specs& specs,
+                                           Handler&& handler)
 {
     if (specs.type != presentation_type::none &&
         specs.type != presentation_type::character) {
@@ -1029,8 +1101,8 @@ constexpr void check_code_point_type_specs(
     }
 }
 
-template <typename CharT, typename Handler>
-constexpr void check_float_type_specs(const basic_format_specs<CharT>& specs,
+template <typename Handler>
+constexpr void check_float_type_specs(const format_specs& specs,
                                       Handler&& handler)
 {
     if (specs.type != presentation_type::none &&
@@ -1041,8 +1113,8 @@ constexpr void check_float_type_specs(const basic_format_specs<CharT>& specs,
     }
 }
 
-template <typename CharT, typename Handler>
-constexpr void check_string_type_specs(const basic_format_specs<CharT>& specs,
+template <typename Handler>
+constexpr void check_string_type_specs(const format_specs& specs,
                                        Handler&& handler)
 {
     if (specs.type == presentation_type::none ||
@@ -1064,8 +1136,8 @@ constexpr void check_string_type_specs(const basic_format_specs<CharT>& specs,
     handler.on_error("Invalid type specifier for string");
 }
 
-template <typename CharT, typename Handler>
-constexpr void check_pointer_type_specs(const basic_format_specs<CharT>& specs,
+template <typename Handler>
+constexpr void check_pointer_type_specs(const format_specs& specs,
                                         Handler&& handler)
 {
     if (specs.type != presentation_type::none &&
@@ -1075,8 +1147,8 @@ constexpr void check_pointer_type_specs(const basic_format_specs<CharT>& specs,
     }
 }
 
-template <typename CharT, typename Handler>
-constexpr void check_bool_type_specs(const basic_format_specs<CharT>& specs,
+template <typename Handler>
+constexpr void check_bool_type_specs(const format_specs& specs,
                                      Handler&& handler)
 {
     if (specs.type != presentation_type::none &&
@@ -1092,12 +1164,12 @@ constexpr void check_bool_type_specs(const basic_format_specs<CharT>& specs,
     }
 }
 
-template <typename CharT, typename Handler>
-constexpr void check_regex_type_specs(const basic_format_specs<CharT>& specs,
+template <typename Handler>
+constexpr void check_regex_type_specs(const format_specs& specs,
                                       Handler&& handler)
 {
     if (SCN_UNLIKELY(specs.type == presentation_type::none ||
-                     specs.charset_string.empty())) {
+                     specs.charset_string_size == 0)) {
         // clang-format off
         return handler.on_error("Regular expression needs to specified when reading regex_matches");
         // clang-format on

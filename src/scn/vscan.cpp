@@ -98,15 +98,16 @@ auto get_arg(Context& ctx, ID id, Handler& handler) ->
 
 struct auto_id {};
 
-template <typename Context, typename CharT>
-class specs_handler : public detail::specs_setter<CharT> {
+template <typename Context>
+class specs_handler : public detail::specs_setter {
 public:
+    using char_type = typename Context::char_type;
     using arg_type = typename Context::arg_type;
 
-    constexpr specs_handler(detail::basic_format_specs<CharT>& specs,
-                            basic_scan_parse_context<CharT>& parse_ctx,
+    constexpr specs_handler(detail::format_specs& specs,
+                            basic_scan_parse_context<char_type>& parse_ctx,
                             Context& ctx)
-        : detail::specs_setter<CharT>(specs), m_parse_ctx(parse_ctx), m_ctx(ctx)
+        : detail::specs_setter(specs), m_parse_ctx(parse_ctx), m_ctx(ctx)
     {
     }
 
@@ -122,7 +123,7 @@ private:
         return get_arg(m_ctx, arg_id, *this);
     }
 
-    basic_scan_parse_context<CharT>& m_parse_ctx;
+    basic_scan_parse_context<char_type>& m_parse_ctx;
     Context& m_ctx;
 };
 
@@ -396,9 +397,9 @@ struct format_handler : format_handler_base {
             return parse_ctx.begin();
         }
 
-        auto specs = detail::basic_format_specs<char_type>{};
-        detail::specs_checker<specs_handler<context_type, char_type>> handler{
-            specs_handler<context_type, char_type>{specs, parse_ctx, get_ctx()},
+        auto specs = detail::format_specs{};
+        detail::specs_checker<specs_handler<context_type>> handler{
+            specs_handler<context_type>{specs, parse_ctx, get_ctx()},
             arg.type()};
 
         begin = detail::parse_format_specs(begin, end, handler);

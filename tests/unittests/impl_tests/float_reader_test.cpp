@@ -542,17 +542,15 @@ protected:
         return std::make_pair(result, val);
     }
     template <typename Source>
-    auto simple_specs_test(
-        Source&& source,
-        const scn::detail::basic_format_specs<char_type>& specs)
+    auto simple_specs_test(Source&& source,
+                           const scn::detail::format_specs& specs)
     {
         return simple_specs_and_locale_test(SCN_FWD(source), specs, {});
     }
     template <typename Source>
-    auto simple_specs_and_locale_test(
-        Source&& source,
-        const scn::detail::basic_format_specs<char_type>& specs,
-        scn::detail::locale_ref loc)
+    auto simple_specs_and_locale_test(Source&& source,
+                                      const scn::detail::format_specs& specs,
+                                      scn::detail::locale_ref loc)
     {
         this->set_source(SCN_FWD(source));
 
@@ -574,16 +572,15 @@ protected:
                                val);
     }
     template <typename Source>
-    auto simple_success_specs_test(
-        Source&& source,
-        const scn::detail::basic_format_specs<char_type>& specs)
+    auto simple_success_specs_test(Source&& source,
+                                   const scn::detail::format_specs& specs)
     {
         return simple_success_specs_and_locale_test(SCN_FWD(source), specs, {});
     }
     template <typename Source>
     auto simple_success_specs_and_locale_test(
         Source&& source,
-        const scn::detail::basic_format_specs<char_type>& specs,
+        const scn::detail::format_specs& specs,
         scn::detail::locale_ref loc)
     {
         this->set_source(SCN_FWD(source));
@@ -604,11 +601,10 @@ protected:
         return check_value_success(result, val, expected_output);
     }
 
-    scn::detail::basic_format_specs<char_type>
-    make_format_specs_with_presentation(
+    scn::detail::format_specs make_format_specs_with_presentation(
         scn::detail::presentation_type type) const
     {
-        scn::detail::basic_format_specs<char_type> specs{};
+        scn::detail::format_specs specs{};
         specs.type = type;
         return specs;
     }
@@ -1027,7 +1023,7 @@ struct thsep_test_state {
     {
     }
 
-    scn::detail::basic_format_specs<CharT> specs{};
+    scn::detail::format_specs specs{};
     std::locale stdloc;
     scn::detail::locale_ref locref;
 };

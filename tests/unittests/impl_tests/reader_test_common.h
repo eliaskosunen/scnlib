@@ -42,7 +42,7 @@ public:
     }
 
     auto read_specs(std::basic_string_view<CharT> source,
-                    const scn::detail::basic_format_specs<CharT>& specs,
+                    const scn::detail::format_specs& specs,
                     ValueT& value)
     {
         auto specs_copy = specs;
@@ -51,11 +51,10 @@ public:
         return m_reader.read_specs(source, specs_copy, value, {});
     }
 
-    auto read_specs_with_locale(
-        std::basic_string_view<CharT> source,
-        const scn::detail::basic_format_specs<CharT>& specs,
-        ValueT& value,
-        scn::detail::locale_ref loc)
+    auto read_specs_with_locale(std::basic_string_view<CharT> source,
+                                const scn::detail::format_specs& specs,
+                                ValueT& value,
+                                scn::detail::locale_ref loc)
     {
         auto specs_copy = specs;
         specs_copy.localized = is_localized;

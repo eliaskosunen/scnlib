@@ -21,9 +21,9 @@
 
 TEST(FormatStringParserTest, DefaultConstructedSpecs)
 {
-    auto specs = scn::detail::basic_format_specs<char>{};
+    auto specs = scn::detail::format_specs{};
     EXPECT_EQ(specs.width, 0);
-    EXPECT_EQ(specs.fill, " ");
+    EXPECT_EQ(specs.fill.get<char>(), ' ');
     EXPECT_EQ(specs.type, scn::detail::presentation_type::none);
     EXPECT_EQ(specs.arbitrary_base, 0);
     EXPECT_EQ(specs.align, scn::detail::align_type::none);
@@ -45,24 +45,23 @@ TEST(FormatStringParserTest, ParsePresentationType)
 }
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    namespace detail {
-        static inline bool operator==(const basic_format_specs<char>& a,
-                                      const basic_format_specs<char>& b)
-        {
-            return a.width == b.width && a.fill == b.fill && a.type == b.type &&
-                   a.arbitrary_base == b.arbitrary_base && a.align == b.align &&
-                   a.localized == b.localized;
-        }
-    }  // namespace detail
+namespace detail {
+static inline bool operator==(const format_specs& a, const format_specs& b)
+{
+    return a.width == b.width && a.fill.view<char>() == b.fill.view<char>() &&
+           a.type == b.type && a.arbitrary_base == b.arbitrary_base &&
+           a.align == b.align && a.localized == b.localized;
+}
+}  // namespace detail
 
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn
 
-struct mock_specs_setter : public scn::detail::specs_setter<char> {
-    constexpr mock_specs_setter(scn::detail::basic_format_specs<char>& specs)
-        : scn::detail::specs_setter<char>(specs)
+struct mock_specs_setter : public scn::detail::specs_setter {
+    constexpr mock_specs_setter(scn::detail::format_specs& specs)
+        : scn::detail::specs_setter(specs)
     {
     }
 
@@ -76,7 +75,7 @@ struct mock_specs_setter : public scn::detail::specs_setter<char> {
 
 class FormatStringParserAlignTest : public testing::Test {
 protected:
-    scn::detail::basic_format_specs<char> specs{};
+    scn::detail::format_specs specs{};
     mock_specs_setter handler{specs};
 };
 
@@ -85,9 +84,9 @@ TEST_F(FormatStringParserAlignTest, NoAlignNoFill)
     std::string_view input{"}"};
     auto result = scn::detail::parse_align(
         input.data(), input.data() + input.size(), handler);
-    EXPECT_EQ(specs.fill, " ");
+    EXPECT_EQ(specs.fill.get<char>(), ' ');
     EXPECT_EQ(specs.align, scn::detail::align_type::none);
-    EXPECT_EQ(specs, scn::detail::basic_format_specs<char>{});
+    EXPECT_EQ(specs, scn::detail::format_specs{});
     EXPECT_EQ(result, input.data());
     EXPECT_EQ(handler.latest_error, nullptr);
 }
@@ -97,7 +96,7 @@ TEST_F(FormatStringParserAlignTest, LeftAlignNoFill)
     std::string_view input{"<}"};
     auto result = scn::detail::parse_align(
         input.data(), input.data() + input.size(), handler);
-    EXPECT_EQ(specs.fill, " ");
+    EXPECT_EQ(specs.fill.get<char>(), ' ');
     EXPECT_EQ(specs.align, scn::detail::align_type::left);
     EXPECT_EQ(result, input.data() + 1);
     EXPECT_EQ(handler.latest_error, nullptr);
@@ -108,7 +107,7 @@ TEST_F(FormatStringParserAlignTest, RightAlignWithFill)
     std::string_view input{"_>}"};
     auto result = scn::detail::parse_align(
         input.data(), input.data() + input.size(), handler);
-    EXPECT_EQ(specs.fill, "_");
+    EXPECT_EQ(specs.fill.get<char>(), '_');
     EXPECT_EQ(specs.align, scn::detail::align_type::right);
     EXPECT_EQ(result, input.data() + 2);
     EXPECT_EQ(handler.latest_error, nullptr);
@@ -119,13 +118,13 @@ TEST_F(FormatStringParserAlignTest, InvalidFillCharacter)
     std::string_view input{"{^}"};
     std::ignore = scn::detail::parse_align(
         input.data(), input.data() + input.size(), handler);
-    EXPECT_EQ(specs, scn::detail::basic_format_specs<char>{});
+    EXPECT_EQ(specs, scn::detail::format_specs{});
     EXPECT_NE(handler.latest_error, nullptr);
 }
 
 class FormatStringParserWidthTest : public ::testing::Test {
 protected:
-    scn::detail::basic_format_specs<char> specs{};
+    scn::detail::format_specs specs{};
     mock_specs_setter handler{specs};
 };
 
@@ -139,7 +138,7 @@ TEST_F(FormatStringParserWidthTest, WidthTooLarge)
 
 class FormatStringParserFormatSpecsTest : public ::testing::Test {
 protected:
-    scn::detail::basic_format_specs<char> specs{};
+    scn::detail::format_specs specs{};
     mock_specs_setter handler{specs};
 };
 
@@ -149,7 +148,7 @@ TEST_F(FormatStringParserFormatSpecsTest, EmptySpecs)
     auto result = scn::detail::parse_format_specs(
         input.data(), input.data() + input.size(), handler);
     EXPECT_EQ(result, input.data());
-    EXPECT_EQ(specs, scn::detail::basic_format_specs<char>{});
+    EXPECT_EQ(specs, scn::detail::format_specs{});
     EXPECT_EQ(handler.latest_error, nullptr);
 }
 

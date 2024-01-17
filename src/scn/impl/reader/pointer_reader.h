@@ -34,8 +34,7 @@ public:
         return true;
     }
 
-    static scan_error check_specs(
-        const detail::basic_format_specs<CharT>& specs)
+    static scan_error check_specs(const detail::format_specs& specs)
     {
         reader_error_handler eh{};
         detail::check_pointer_type_specs(specs, eh);
@@ -49,7 +48,7 @@ public:
     scan_expected<ranges::iterator_t<Range>>
     read_default(Range range, void*& value, detail::locale_ref loc)
     {
-        detail::basic_format_specs<CharT> specs{};
+        detail::format_specs specs{};
         specs.type = detail::presentation_type::int_hex;
 
         std::uintptr_t intvalue{};
@@ -62,7 +61,7 @@ public:
     template <typename Range>
     scan_expected<ranges::iterator_t<Range>> read_specs(
         Range range,
-        const detail::basic_format_specs<CharT>& specs,
+        const detail::format_specs& specs,
         void*& value,
         detail::locale_ref loc)
     {

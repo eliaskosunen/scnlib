@@ -24,10 +24,8 @@ SCN_BEGIN_NAMESPACE
 
 namespace detail {
 template <typename T, typename Context>
-scan_expected<typename Context::iterator> scanner_scan_for_builtin_type(
-    T& val,
-    Context& ctx,
-    const basic_format_specs<typename Context::char_type>& specs)
+scan_expected<typename Context::iterator>
+scanner_scan_for_builtin_type(T& val, Context& ctx, const format_specs& specs)
 {
     if constexpr (!detail::is_type_disabled<T>) {
         return impl::arg_reader<Context>{ctx.range(), specs, {}}(val);
@@ -49,7 +47,7 @@ scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
 
 #define SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(T, Context)                         \
     template scan_expected<Context::iterator> scanner_scan_for_builtin_type( \
-        T&, Context&, const basic_format_specs<Context::char_type>&);
+        T&, Context&, const format_specs&);
 
 #define SCN_DEFINE_SCANNER_SCAN_FOR_CTX(Context)                    \
     SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(Context::char_type, Context)   \

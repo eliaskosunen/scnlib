@@ -444,11 +444,12 @@ inline std::wstring get_unescaped_regex_pattern(std::wstring_view pattern)
 template <typename SourceCharT>
 struct regex_matches_reader
     : public reader_base<regex_matches_reader<SourceCharT>, SourceCharT> {
-    void check_specs_impl(const detail::basic_format_specs<SourceCharT>& specs,
+    void check_specs_impl(const detail::format_specs& specs,
                           reader_error_handler& eh)
     {
         detail::check_regex_type_specs(specs, eh);
-        SCN_EXPECT(!specs.charset_string.empty());
+        SCN_EXPECT(specs.charset_string_data != nullptr);
+        SCN_EXPECT(specs.charset_string_size > 0);
     }
 
     template <typename Range, typename DestCharT>
@@ -465,7 +466,7 @@ struct regex_matches_reader
     template <typename Range, typename DestCharT>
     scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
         Range&& range,
-        const detail::basic_format_specs<SourceCharT>& specs,
+        const detail::format_specs& specs,
         basic_regex_matches<DestCharT>& value,
         detail::locale_ref = {})
     {
@@ -492,7 +493,8 @@ struct regex_matches_reader
             SCN_TRY(it,
                     impl(input,
                          specs.type == detail::presentation_type::regex_escaped,
-                         specs.charset_string, specs.regexp_flags, value));
+                         specs.charset_string<SourceCharT>(),
+                         specs.regexp_flags, value));
             return ranges_polyfill::batch_next(
                 ranges::begin(range), ranges::distance(input.begin(), it));
         }

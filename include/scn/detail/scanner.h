@@ -26,15 +26,11 @@ SCN_BEGIN_NAMESPACE
 namespace detail {
 template <typename T, typename ParseCtx>
 constexpr scan_expected<typename ParseCtx::iterator>
-scanner_parse_for_builtin_type(
-    ParseCtx& pctx,
-    basic_format_specs<typename ParseCtx::char_type>& specs);
+scanner_parse_for_builtin_type(ParseCtx& pctx, format_specs& specs);
 
 template <typename T, typename Context>
-scan_expected<typename Context::iterator> scanner_scan_for_builtin_type(
-    T& val,
-    Context& ctx,
-    const basic_format_specs<typename Context::char_type>& specs);
+scan_expected<typename Context::iterator>
+scanner_scan_for_builtin_type(T& val, Context& ctx, const format_specs& specs);
 }  // namespace detail
 
 /**
@@ -62,20 +58,19 @@ public:
         return detail::scanner_scan_for_builtin_type(val, ctx, m_specs);
     }
 
-    constexpr auto& _format_specs() {
+    constexpr auto& _format_specs()
+    {
         return m_specs;
     }
 
 private:
-    detail::basic_format_specs<CharT> m_specs;
+    detail::format_specs m_specs;
 };
 
 namespace detail {
 template <typename T, typename ParseCtx>
 constexpr scan_expected<typename ParseCtx::iterator>
-scanner_parse_for_builtin_type(
-    ParseCtx& pctx,
-    basic_format_specs<typename ParseCtx::char_type>& specs)
+scanner_parse_for_builtin_type(ParseCtx& pctx, format_specs& specs)
 {
     using char_type = typename ParseCtx::char_type;
 
@@ -85,7 +80,7 @@ scanner_parse_for_builtin_type(
         return begin;
     }
 
-    using handler_type = detail::specs_setter<char_type>;
+    using handler_type = detail::specs_setter;
     const auto type = detail::arg_type_constant<T, char_type>::value;
     auto checker =
         detail::specs_checker<handler_type>(handler_type(specs), type);
