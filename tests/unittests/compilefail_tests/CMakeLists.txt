@@ -12,18 +12,22 @@ set(buildfail_sources
         locale_flag_with_string.cpp
         negative_argument_id.cpp
         regex_disabled.cpp
-        regex_empty.cpp
-        regex_flag_invalid.cpp
-        regex_flag_multiple.cpp
-        regex_matches_non_contiguous_source.cpp
-        regex_no_presentation.cpp
-        regex_non_contiguous_source.cpp
-        regex_unterminated.cpp
-        regex_wide_strings.cpp
         string_view_non_contiguous_source.cpp
         unterminated_argument_id.cpp
         unterminated_format_specifier.cpp
 )
+if (NOT SCN_DISABLE_REGEX)
+    list(APPEND buildfail_sources
+            regex_empty.cpp
+            regex_flag_invalid.cpp
+            regex_flag_multiple.cpp
+            regex_matches_non_contiguous_source.cpp
+            regex_no_presentation.cpp
+            regex_non_contiguous_source.cpp
+            regex_unterminated.cpp
+            regex_wide_strings.cpp
+    )
+endif ()
 
 if (SCN_CXX_FRONTEND STREQUAL "GNU" OR SCN_CXX_FRONTEND STREQUAL "Clang")
     icm_add_multiple_build_failure_tests(

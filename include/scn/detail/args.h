@@ -124,6 +124,8 @@ struct unscannable {};
 struct unscannable_char : unscannable {};
 struct unscannable_const : unscannable {};
 struct unscannable_disabled : unscannable {
+    unscannable_disabled() = default;
+
     template <typename T>
     constexpr unscannable_disabled(T&&)
     {
@@ -237,8 +239,6 @@ struct arg_mapper {
     SCN_ARG_MAPPER(std::string)
     SCN_ARG_MAPPER(std::wstring)
 
-    SCN_ARG_MAPPER(basic_regex_matches<char_type>)
-
 #undef SCN_ARG_MAPPER
 
     static decltype(auto) map(char& val)
@@ -253,6 +253,16 @@ struct arg_mapper {
         else {
             SCN_UNUSED(val);
             return unscannable_char{};
+        }
+    }
+
+    static decltype(auto) map(basic_regex_matches<char_type>& val)
+    {
+        if constexpr (is_type_disabled<char_type>) {
+            return unscannable_disabled{val};
+        }
+        else {
+            return val;
         }
     }
 

@@ -39,6 +39,15 @@ namespace scn {
 SCN_BEGIN_NAMESPACE
 
 namespace impl {
+
+// Forward declaration for C++17 compatibility with regex disabled
+template <typename CharT, typename Input>
+auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
+                             detail::regex_flags flags,
+                             Input input,
+                             basic_regex_matches<CharT>& value)
+    -> scan_expected<ranges::iterator_t<Input>>;
+
 #if !SCN_DISABLE_REGEX
 
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
@@ -411,8 +420,6 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
 #endif  // SCN_REGEX_BACKEND == ...
 }
 
-#endif  // !SCN_DISABLE_REGEX
-
 inline std::string get_unescaped_regex_pattern(std::string_view pattern)
 {
     std::string result{pattern};
@@ -431,6 +438,8 @@ inline std::wstring get_unescaped_regex_pattern(std::wstring_view pattern)
     }
     return result;
 }
+
+#endif  // !SCN_DISABLE_REGEX
 
 template <typename SourceCharT>
 struct regex_matches_reader
@@ -497,11 +506,18 @@ private:
               detail::regex_flags flags,
               basic_regex_matches<DestCharT>& value)
     {
-        if (is_escaped) {
-            return read_regex_matches_impl<SourceCharT>(
-                get_unescaped_regex_pattern(pattern), flags, input, value);
+        if constexpr (detail::is_type_disabled<
+                          basic_regex_matches<DestCharT>>) {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
         }
-        return read_regex_matches_impl(pattern, flags, input, value);
+        else {
+            if (is_escaped) {
+                return read_regex_matches_impl<SourceCharT>(
+                    get_unescaped_regex_pattern(pattern), flags, input, value);
+            }
+            return read_regex_matches_impl(pattern, flags, input, value);
+        }
     }
 };
 
