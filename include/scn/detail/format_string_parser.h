@@ -113,7 +113,10 @@ public:
         SCN_EXPECT(s.size() * sizeof(CharT) <= max_size);
         if constexpr (sizeof(CharT) == 1) {
             for (size_t i = 0; i < s.size(); ++i) {
+                SCN_GCC_PUSH
+                SCN_GCC_IGNORE("-Wstringop-overflow")  // false positive
                 m_data[i] = s[i];
+                SCN_GCC_POP
             }
             m_size = static_cast<unsigned char>(s.size());
         }

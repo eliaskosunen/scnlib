@@ -30,7 +30,7 @@ int main()
 
         std::string buf{};
         buf.resize(256);
-        std::fgets(buf.data(), 255, stdin);
+        std::ignore = std::fgets(buf.data(), 255, stdin);
 
         std::printf("First integer: %d, rest of the line: %s", result->value(),
                     buf.c_str());
@@ -39,7 +39,7 @@ int main()
 
     std::string buf{};
     buf.resize(256);
-    std::fgets(buf.data(), 255, stdin);
+    std::ignore = std::fgets(buf.data(), 255, stdin);
 
     std::printf("Entire line: %s", buf.c_str());
 }
