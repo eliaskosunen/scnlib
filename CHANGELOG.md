@@ -1,6 +1,6 @@
 # 2.0.0
 
-_Released 2024-xx-xx_
+_Released 2024-01-19_
 
 Changes are in comparison to 2.0.0-beta.
 

@@ -24,10 +24,7 @@ int main() {
 \section main-about About this documentation
 
 This documentation is for the version 2.0 of the library.
-This version is currently experimental, and under development, with no stability guarantees.
-For a stable release, see version 1.1.
-Its documentation is hosted over at Read the Docs:
-https://v1.scnlib.dev/.
+For version 1.1, see https://v1.scnlib.dev/.
 
 An introductory guide to the library can be found at \ref guide "Guide".
 Instructions for migrating to v2.0 from v1.1 can be found at \ref migration-2-0 "Migration Guide v1.1 -> v2.0".

@@ -40,10 +40,9 @@ other direction.
 This library is the reference implementation of the ISO C++ standards proposal
 [P1729 "Text Parsing"](https://wg21.link/p1729).
 
-This branch (dev) targets v2.0.0, and is of pre-release quality.
-The master branch contains the latest stable version (v1.1.3) of the library,
-with a substantially different interface, and support for C++11 and C++14.
-Although, that version is unlikely to get updates.
+The previous major release (v1.1.3) is hosted at the `v1`-branch.
+It has a substantially different interface, and support for C++11 and C++14,
+but it's unlikely that it'll get updated.
 
 ## Documentation
 
