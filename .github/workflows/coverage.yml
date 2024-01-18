@@ -34,7 +34,7 @@ env:
   CCACHE_COMPRESS: true
   CCACHE_COMPRESSLEVEL: 6
   CCACHE_DIR: "/tmp/ccache"
-  CCACHE_MAXSIZE: 100M
+  CCACHE_MAXSIZE: 50M
   CCACHE_NOHASHDIR: true
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
   CCACHE_UNIFY: true
@@ -70,11 +70,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: coverage-${{ github.sha }}
+          key: ccache-coverage-${{ github.sha }}
           restore-keys: |
-            coverage-${{ github.ref }}
-            coverage-${{ github.base_ref }}
-            coverage
+            ccache-coverage-${{ github.ref }}
+            ccache-coverage-${{ github.base_ref }}
+            ccache-coverage
 
       - name: Setup ccache
         run: |

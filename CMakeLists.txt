@@ -124,10 +124,10 @@ add_library(scn
 )
 target_include_directories(scn
         PUBLIC
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
 target_link_libraries(scn PRIVATE
         simdutf::simdutf

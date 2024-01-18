@@ -37,7 +37,7 @@ env:
   CCACHE_COMPRESS: true
   CCACHE_COMPRESSLEVEL: 6
   CCACHE_DIR: D:/ccache
-  CCACHE_MAXSIZE: 100M
+  CCACHE_MAXSIZE: 50M
   CCACHE_NOHASHDIR: true
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
   CCACHE_UNIFY: true
@@ -68,11 +68,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
-            ${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
-            ${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
 
       - name: Setup ccache
         run: |
@@ -124,11 +124,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
-            ${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
-            ${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
 
       - name: Setup ccache
         run: |
@@ -201,11 +201,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-win2022-msys-${{ matrix.sys }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-win2022-msys-${{ matrix.sys }}-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-win2022-msys-${{ matrix.sys }}-${{ github.ref }}
-            ${{ github.workflow }}-win2022-msys-${{ matrix.sys }}-${{ github.base_ref }}
-            ${{ github.workflow }}-win2022-msys-${{ matrix.sys }}
+            ccache-${{ github.workflow }}-win2022-msys-${{ matrix.sys }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-win2022-msys-${{ matrix.sys }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-win2022-msys-${{ matrix.sys }}
 
       - name: Setup ccache
         run: |

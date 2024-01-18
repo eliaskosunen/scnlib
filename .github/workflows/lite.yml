@@ -42,7 +42,7 @@ env:
   CCACHE_COMPRESS: true
   CCACHE_COMPRESSLEVEL: 6
   CCACHE_DIR: "/tmp/ccache"
-  CCACHE_MAXSIZE: 100M
+  CCACHE_MAXSIZE: 50M
   CCACHE_NOHASHDIR: true
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
   CCACHE_UNIFY: true
@@ -110,11 +110,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          key: ccache-Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
-            Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
-            Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
-            Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
+            ccache-Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
 
       - name: Setup ccache
         run: |
@@ -168,11 +168,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
+          key: ccache-Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
           restore-keys: |
-            Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
-            Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
-            Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
+            ccache-Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
+            ccache-Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
+            ccache-Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
 
       - name: Setup ccache
         run: |
@@ -225,11 +225,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          key: ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
-            macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
-            macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
-            macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}
+            ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}
 
       - name: Setup ccache
         run: |

@@ -38,7 +38,7 @@ env:
   CCACHE_COMPRESS: true
   CCACHE_COMPRESSLEVEL: 6
   CCACHE_DIR: "/tmp/ccache"
-  CCACHE_MAXSIZE: 100M
+  CCACHE_MAXSIZE: 50M
   CCACHE_NOHASHDIR: true
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
   CCACHE_UNIFY: true
@@ -87,11 +87,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
-            ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
-            ${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
+            ccache-${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
 
       - name: Setup ccache
         run: |

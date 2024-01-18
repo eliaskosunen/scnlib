@@ -33,7 +33,7 @@ env:
   CCACHE_ABSSTDERR: true
   CCACHE_COMPRESS: true
   CCACHE_COMPRESSLEVEL: 6
-  CCACHE_MAXSIZE: 100M
+  CCACHE_MAXSIZE: 50M
   CCACHE_NOHASHDIR: true
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
   CCACHE_UNIFY: true
@@ -69,11 +69,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.sha }}
+          key: ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.ref }}
-            ${{ github.workflow }}-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.base_ref }}
-            ${{ github.workflow }}-${{ matrix.distro }}-${{ matrix.arch }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.ref }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.base_ref }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}
 
       - uses: uraimo/run-on-arch-action@v2
         name: Build and test
@@ -143,11 +143,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.sha }}
+          key: ccache-Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.sha }}
           restore-keys: |
-            Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.ref }}
-            Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.base_ref }}
-            Windows-win2022-msvc${{ matrix.arch }}-std17
+            ccache-Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.ref }}
+            ccache-Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.base_ref }}
+            ccache-Windows-win2022-msvc${{ matrix.arch }}-std17
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build

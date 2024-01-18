@@ -42,7 +42,7 @@ env:
   CCACHE_COMPRESS: true
   CCACHE_COMPRESSLEVEL: 6
   CCACHE_DIR: "/tmp/ccache"
-  CCACHE_MAXSIZE: 100M
+  CCACHE_MAXSIZE: 50M
   CCACHE_NOHASHDIR: true
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
   CCACHE_UNIFY: true
@@ -237,11 +237,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
-            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
-            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
 
       - name: Setup ccache
         run: |
@@ -309,11 +309,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.ref }}
-            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.base_ref }}
-            ${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx
 
       - name: Setup ccache
         run: |
@@ -353,11 +353,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-alpine-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-alpine-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-alpine-${{ github.ref }}
-            ${{ github.workflow }}-alpine-${{ github.base_ref }}
-            ${{ github.workflow }}-alpine
+            ccache-${{ github.workflow }}-alpine-${{ github.ref }}
+            ccache-${{ github.workflow }}-alpine-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-alpine
 
       - name: Start docker
         run: |
@@ -441,11 +441,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.base_ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize
 
       - name: Setup ccache
         run: |
@@ -504,15 +504,15 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.base_ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
 
       - name: Setup ccache
         run: |
@@ -612,15 +612,15 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.base_ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
 
       - name: Setup ccache
         run: |
@@ -710,15 +710,15 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.sha }}
           restore-keys: |
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.base_ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
-            ${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
 
       - name: Setup ccache
         run: |
