@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - dev
     paths:
       - '.github/**'
       - 'cmake/**'
@@ -15,7 +14,6 @@ on:
   pull_request:
     branches:
       - master
-      - dev
     paths:
       - '.github/**'
       - 'cmake/**'

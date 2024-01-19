@@ -5,14 +5,12 @@ on:
   #push:
   #  branches:
   #    - master
-  #    - dev
   #  paths-ignore:
   #    - '**.md'
   #    - '**/docs/**'
   #pull_request:
   #  branches:
   #    - master
-  #    - dev
   #  paths-ignore:
   #    - '**.md'
   #    - '**/docs/**'
