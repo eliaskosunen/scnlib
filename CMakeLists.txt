@@ -22,6 +22,11 @@ else ()
     set(SCN_IS_TOP_PROJECT OFF)
 endif ()
 
+if (SCN_IS_TOP_PROJECT AND NOT CMAKE_BUILD_TYPE)
+    message(WARNING "No CMAKE_BUILD_TYPE set, defaulting to Release")
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "")
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 include(cmake/util.cmake)

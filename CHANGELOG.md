@@ -34,6 +34,9 @@ Changes are in comparison to 2.0.0-beta.
  * Update implementation of `scn::span`
  * Fix handling of literal space characters in format strings
  * Add `COMPONENT` values to CMake install targets
+ * Default to Release-builds in CMake if no `CMAKE_BUILD_TYPE` is set, and we're the top project
+   (see #89, thanks [@ldeng-ustc (Long Deng)](https://github.com/ldeng-ustc) for the idea)
+ * Add install destination for shared libraries (thanks [@uilianries (Uilian Ries)](https://github.com/uilianries))
 
 # 2.0.0-beta
 

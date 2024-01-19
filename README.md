@@ -1,15 +1,15 @@
 # scnlib
 
-[![Linux builds](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml)
-[![macOS builds](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml)
-[![Windows builds](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml)
-[![Other architectures](https://github.com/eliaskosunen/scnlib/actions/workflows/arch.yml/badge.svg?branch=dev)](https://github.com/eliaskosunen/scnlib/actions/workflows/arch.yml)
-[![Code Coverage](https://codecov.io/gh/eliaskosunen/scnlib/branch/dev/graph/badge.svg?token=LyWrDluna1)](https://codecov.io/gh/eliaskosunen/scnlib)
+[![Linux builds](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml/badge.svg)](https://github.com/eliaskosunen/scnlib/actions/workflows/linux.yml)
+[![macOS builds](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml/badge.svg)](https://github.com/eliaskosunen/scnlib/actions/workflows/macos.yml)
+[![Windows builds](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml/badge.svg)](https://github.com/eliaskosunen/scnlib/actions/workflows/windows.yml)
+[![Other architectures](https://github.com/eliaskosunen/scnlib/actions/workflows/arch.yml/badge.svg)](https://github.com/eliaskosunen/scnlib/actions/workflows/arch.yml)
+[![Code Coverage](https://codecov.io/gh/eliaskosunen/scnlib/graph/badge.svg?token=LyWrDluna1)](https://codecov.io/gh/eliaskosunen/scnlib)
 
 [![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver&display_name=tag)](https://github.com/eliaskosunen/scnlib/releases)
 [![License](https://img.shields.io/github/license/eliaskosunen/scnlib.svg)](https://github.com/eliaskosunen/scnlib/blob/master/LICENSE)
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-17%2F20%2F23-blue.svg)](https://img.shields.io/badge/C%2B%2B-17%2F20%2F23-blue.svg)
-[![Documentation](https://img.shields.io/badge/Documentation-v2.scnlib.dev-blue)](https://v2.scnlib.dev)
+[![Documentation](https://img.shields.io/badge/Documentation-scnlib.dev-blue)](https://scnlib.dev)
 
 ```cpp
 #include <scn/scan.h>
