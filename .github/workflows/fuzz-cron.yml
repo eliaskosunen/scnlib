@@ -1,0 +1,52 @@
+name: ClusterFuzzLite cron-jobs
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Once a day at midnight
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz-prune:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build fuzzers
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: c++
+
+      - name: Run fuzzers
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600
+          mode: 'prune'
+          output-sarif: true
+          storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/eliaskosunen/scnlib-fuzz-corpus.git
+
+  fuzz-coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build fuzzers
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: c++
+          sanitizer: coverage
+
+      - name: Run fuzzers
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600
+          mode: 'coverage'
+          sanitizer: 'coverage'
+          storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/eliaskosunen/scnlib-fuzz-corpus.git

@@ -1,0 +1,28 @@
+Checks: '-*,
+clang-analyzer-*,
+cppcoreguidelines-*,
+-cppcoreguidelines-pro-bounds-constant-array-index,
+-cppcoreguidelines-avoid-magic-numbers,
+modernize-*,
+-modernize-use-nodiscard,
+-modernize-use-trailing-return-type,
+misc-*,
+performance-*,
+bugprone-*,
+-bugprone-easily-swappable-parameters,
+hicpp-*,
+-hicpp-braces-around-statements,
+-hicpp-signed-bitwise,
+-hicpp-named-parameter,
+cert-*,
+-cert-dcl21-cpp,
+google-*,
+-google-readability-*,
+google-readability-namespace-comments,
+-google-runtime-int
+'
+CheckOptions:
+  - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: true
+  - key: misc-const-correctness.WarnPointersAsValues
+    value: true

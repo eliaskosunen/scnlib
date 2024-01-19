@@ -10,9 +10,8 @@ on:
       - 'cmake/**'
       - 'include/**'
       - 'src/**'
-      - 'test/**'
+      - 'tests/**'
       - '**/CMakeLists.txt'
-      - '**/.gitmodules'
   pull_request:
     branches:
       - master
@@ -22,14 +21,24 @@ on:
       - 'cmake/**'
       - 'include/**'
       - 'src/**'
-      - 'test/**'
+      - 'tests/**'
       - '**/CMakeLists.txt'
-      - '**/.gitmodules'
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
+
+env:
+  CCACHE_ABSSTDERR: true
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_MAXSIZE: 50M
+  CCACHE_NOHASHDIR: true
+  CCACHE_SLOPPINESS: "pch_defines,time_macros"
+  CCACHE_UNIFY: true
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
 jobs:
   other-archs:
@@ -44,11 +53,27 @@ jobs:
           - arch: armv6
             distro: bullseye
 
+        #exclude:
+          # FIXME: these runs take too long, and time out
+          #- arch: aarch64
+          #- arch: ppc64le
+
+    env:
+      CCACHE_DIR: "/tmp/ccache"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Load ccache
+        uses: actions/cache@v3
         with:
-          submodules: recursive
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.sha }}
+          restore-keys: |
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.ref }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.base_ref }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}
 
       - uses: uraimo/run-on-arch-action@v2
         name: Build and test
@@ -59,13 +84,38 @@ jobs:
 
           githubToken: ${{ github.token }}
 
+          setup: |
+            mkdir -p ${{ env.CCACHE_DIR }}
+
+          dockerRunArgs: |
+            --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
+
+          env: |
+            CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
+            CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
+            CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
+            CCACHE_DIR: ${{ env.CCACHE_DIR }}
+            CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
+            CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
+            CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
+            CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
+            CMAKE_C_COMPILER_LAUNCHER: ccache
+            CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
           install: |
             apt-get update -yq
-            apt-get install -yq git wget cmake build-essential make g++ ninja-build
+            apt-get install -yq git wget cmake build-essential make g++ ninja-build ccache python3
 
           run: |
-            cmake -G Ninja -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -DSCN_BENCHMARKS=OFF -DSCN_EXAMPLES=OFF -B build
+            ccache --version
+            ccache --zero-stats
+            ccache --show-stats
+            ccache --show-config
+            
+            cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
             cmake --build build -- -k 0
+            ccache --show-stats
+            
             ctest --output-on-failure --test-dir build
 
   vs-arm64-crosscompile:
@@ -77,20 +127,35 @@ jobs:
           - gen: Visual Studio 17 2022
             arch: ARM64
 
+    env:
+      CCACHE_DIR: D:/ccache
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Create Build Environment
-        run: cmake -E make_directory ${{ runner.workspace }}/build
+        run: |
+          cmake -E make_directory ${{ runner.workspace }}/build
+          choco install ccache
+
+      - name: Load ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.sha }}
+          restore-keys: |
+            ccache-Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.ref }}
+            ccache-Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.base_ref }}
+            ccache-Windows-win2022-msvc${{ matrix.arch }}-std17
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
-          cmake -G "${{ matrix.gen }}" -A ${{ matrix.arch }} -DCMAKE_CROSSCOMPILING=ON $GITHUB_WORKSPACE
+          cmake -G "${{ matrix.gen }}" -A ${{ matrix.arch }} -DCMAKE_CROSSCOMPILING=ON \
+                -DSCN_DISABLE_REGEX=ON -DCMAKE_CXX_STANDARD=17 \
+                -DSCN_CI=ON $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build

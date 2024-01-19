@@ -1,0 +1,53 @@
+name = "scnlib"
+author = "Elias Kosunen"
+description = "scanf for modern C++"
+cpp = 17
+github = "eliaskosunen/scnlib"
+license = ['Apache-2.0', 'https://github.com/eliaskosunen/scnlib/blob/dev/LICENSE']
+theme = "dark"
+show_includes = false
+navbar = ['namespaces', 'classes', 'modules', 'pages', 'repo']
+
+[warnings]
+enabled = true
+treat_as_errors = false
+undocumented = true
+
+[sources]
+paths = ['pages', '../include/scn']
+recursive_paths = ['../include/scn/detail', '../include/scn/util']
+patterns = ['*.h', '*.hpp', '*.md', '*.dox']
+strip_paths = ['../include', 'pages']
+#extract_all = true
+
+[macros]
+'SCN_DOXYGEN' = '1'
+'SCN_USE_IOSTREAMS' = '1'
+'SCN_NOEXCEPT' = 'noexcept'
+'SCN_NOEXCEPT_P(a)' = 'noexcept(a)'
+'SCN_CONSTEVAL' = 'consteval'
+'SCN_NODISCARD' = '[[nodiscard]]'
+'SCN_MAYBE_UNUSED' = '[[maybe_unused]]'
+'SCN_NO_UNIQUE_ADDRESS' = '[[no_unique_address]]'
+'SCN_MOVE(x)' = 'std::move(x)'
+'SCN_FWD(x)' = 'std::forward<decltype(x)>(x)'
+'SCN_DECLVAL(x)' = 'std::declval<x>()'
+'SCN_BEGIN_NAMESPACE' = ''
+'SCN_END_NAMESPACE' = ''
+'SCN_GCC_PUSH' = ''
+'SCN_GCC_IGNORE(...)' = ''
+'SCN_GCC_POP' = ''
+'SCN_CLANG_PUSH' = ''
+'SCN_CLANG_IGNORE(...)' = ''
+'SCN_CLANG_POP' = ''
+'SCN_GCC_COMPAT_PUSH' = ''
+'SCN_GCC_COMPAT_IGNORE(...)' = ''
+'SCN_GCC_COMPAT_POP' = ''
+'SCN_MSVC_PUSH' = ''
+'SCN_MSVC_IGNORE(...)' = ''
+'SCN_MSVC_POP' = ''
+'NANO_BEGIN_NAMESPACE' = ''
+'NANO_END_NAMESPACE' = ''
+
+[code_blocks]
+macros = ['SCN_[A-Z0-9_]+?']

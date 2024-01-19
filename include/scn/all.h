@@ -15,12 +15,11 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_ALL_H
-#define SCN_ALL_H
+#pragma once
 
-#include "scn.h"
+#include <scn/scan.h>
 
-#include "istream.h"
-#include "tuple_return.h"
-
-#endif  // SCN_ALL_H
+#include <scn/istream.h>
+#include <scn/ranges.h>
+#include <scn/regex.h>
+#include <scn/xchar.h>

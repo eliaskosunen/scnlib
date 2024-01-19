@@ -15,733 +15,713 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_ARGS_H
-#define SCN_DETAIL_ARGS_H
+#pragma once
 
-#include "../reader/common.h"
-#include "../util/array.h"
+/**
+ * @file scn/detail/args.h
+ *
+ * This file is quite directly ported from {fmt} (fmt/core.h and fmt/format.h).
+ */
 
-SCN_GCC_PUSH
-SCN_GCC_IGNORE("-Wnoexcept")
-#include <string>
-SCN_GCC_POP
+#include <scn/detail/error.h>
+#include <scn/detail/input_map.h>
+#include <scn/util/expected.h>
+#include <scn/util/meta.h>
+
+#include <array>
+#include <cstddef>
+#include <tuple>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    /**
-     * Allows reading an rvalue.
-     * Stores an rvalue and returns an lvalue reference to it via `operator()`.
-     * Create one with \ref temp.
-     */
+namespace detail {
+enum class arg_type {
+    none_type,
+    schar_type,
+    short_type,
+    int_type,
+    long_type,
+    llong_type,
+    uchar_type,
+    ushort_type,
+    uint_type,
+    ulong_type,
+    ullong_type,
+    bool_type,
+    narrow_character_type,
+    wide_character_type,
+    code_point_type,
+    pointer_type,
+    float_type,
+    double_type,
+    ldouble_type,
+    narrow_string_view_type,
+    wide_string_view_type,
+    narrow_string_type,
+    wide_string_type,
+    narrow_regex_matches_type,
+    wide_regex_matches_type,
+    custom_type,
+    last_type = custom_type
+};
+
+template <typename>
+inline constexpr bool is_type_disabled = SCN_DISABLE_TYPE_CUSTOM;
+
+template <typename T, typename CharT>
+struct arg_type_constant
+    : std::integral_constant<arg_type, arg_type::custom_type> {
+    using type = T;
+};
+
+#define SCN_TYPE_CONSTANT(Type, C, Disabled)              \
+    template <typename CharT>                             \
+    struct arg_type_constant<Type, CharT>                 \
+        : std::integral_constant<arg_type, arg_type::C> { \
+        using type = Type;                                \
+    };                                                    \
+    template <>                                           \
+    inline constexpr bool is_type_disabled<Type> = Disabled
+
+SCN_TYPE_CONSTANT(signed char, schar_type, SCN_DISABLE_TYPE_SCHAR);
+SCN_TYPE_CONSTANT(short, short_type, SCN_DISABLE_TYPE_SHORT);
+SCN_TYPE_CONSTANT(int, int_type, SCN_DISABLE_TYPE_INT);
+SCN_TYPE_CONSTANT(long, long_type, SCN_DISABLE_TYPE_LONG);
+SCN_TYPE_CONSTANT(long long, llong_type, SCN_DISABLE_TYPE_LONG_LONG);
+SCN_TYPE_CONSTANT(unsigned char, uchar_type, SCN_DISABLE_TYPE_UCHAR);
+SCN_TYPE_CONSTANT(unsigned short, ushort_type, SCN_DISABLE_TYPE_USHORT);
+SCN_TYPE_CONSTANT(unsigned int, uint_type, SCN_DISABLE_TYPE_UINT);
+SCN_TYPE_CONSTANT(unsigned long, ulong_type, SCN_DISABLE_TYPE_ULONG);
+SCN_TYPE_CONSTANT(unsigned long long, ullong_type, SCN_DISABLE_TYPE_ULONG_LONG);
+SCN_TYPE_CONSTANT(bool, bool_type, SCN_DISABLE_TYPE_BOOL);
+SCN_TYPE_CONSTANT(char, narrow_character_type, SCN_DISABLE_TYPE_CHAR);
+SCN_TYPE_CONSTANT(wchar_t, wide_character_type, SCN_DISABLE_TYPE_CHAR);
+SCN_TYPE_CONSTANT(char32_t, code_point_type, SCN_DISABLE_TYPE_CHAR32);
+SCN_TYPE_CONSTANT(void*, pointer_type, SCN_DISABLE_TYPE_POINTER);
+SCN_TYPE_CONSTANT(float, float_type, SCN_DISABLE_TYPE_FLOAT);
+SCN_TYPE_CONSTANT(double, double_type, SCN_DISABLE_TYPE_DOUBLE);
+SCN_TYPE_CONSTANT(long double, ldouble_type, SCN_DISABLE_TYPE_LONG_DOUBLE);
+SCN_TYPE_CONSTANT(std::string_view,
+                  narrow_string_view_type,
+                  SCN_DISABLE_TYPE_STRING_VIEW);
+SCN_TYPE_CONSTANT(std::wstring_view,
+                  wide_string_view_type,
+                  SCN_DISABLE_TYPE_STRING_VIEW);
+SCN_TYPE_CONSTANT(std::string, narrow_string_type, SCN_DISABLE_TYPE_STRING);
+SCN_TYPE_CONSTANT(std::wstring, wide_string_type, SCN_DISABLE_TYPE_STRING);
+SCN_TYPE_CONSTANT(regex_matches, narrow_regex_matches_type, SCN_DISABLE_REGEX);
+SCN_TYPE_CONSTANT(wregex_matches, wide_regex_matches_type, SCN_DISABLE_REGEX);
+
+#undef SCN_TYPE_CONSTANT
+
+struct custom_value_type {
+    void* value;
+    scan_error (*scan)(void* arg, void* pctx, void* ctx);
+};
+
+struct unscannable {};
+struct unscannable_char : unscannable {};
+struct unscannable_const : unscannable {};
+struct unscannable_disabled : unscannable {
+    unscannable_disabled() = default;
+
     template <typename T>
-    struct temporary {
-        temporary(T&& val) : value(SCN_MOVE(val)) {}
+    constexpr unscannable_disabled(T&&)
+    {
+    }
+};
 
-        T& operator()() && noexcept
-        {
-            return value;
-        }
+struct needs_context_tag {};
 
-        T value;
+template <typename Context>
+struct context_tag {
+    using type = Context;
+};
+
+template <typename T, typename Context>
+struct custom_wrapper {
+    using context_type = Context;
+    T& val;
+};
+
+class arg_value {
+public:
+    // trivial default initialization in constexpr
+#if defined(__cpp_constexpr) && __cpp_constexpr >= 201907L && \
+    SCN_STD > SCN_STD_20
+    constexpr
+#endif
+        arg_value() = default;
+
+    template <typename T>
+    explicit constexpr arg_value(T& val) : ref_value{std::addressof(val)}
+    {
+    }
+
+    template <typename T, typename Context>
+    explicit constexpr arg_value(custom_wrapper<T, Context> val)
+        : custom_value{static_cast<void*>(&val.val),
+                       scan_custom_arg<T, Context>}
+    {
+    }
+
+    arg_value(unscannable);
+    arg_value(unscannable_char);
+    arg_value(unscannable_const);
+    arg_value(unscannable_disabled);
+
+    union {
+        void* ref_value{nullptr};
+        custom_value_type custom_value;
     };
+
+private:
+    template <typename T, typename Context>
+    static scan_error scan_custom_arg(void* arg, void* pctx, void* ctx)
+    {
+        static_assert(!is_type_disabled<T>,
+                      "Scanning of custom types is disabled by "
+                      "SCN_DISABLE_TYPE_CUSTOM");
+        SCN_EXPECT(arg && pctx && ctx);
+
+        using context_type = Context;
+        using parse_context_type = typename context_type::parse_context_type;
+        using scanner_type = typename context_type::template scanner_type<T>;
+
+        auto s = scanner_type{};
+
+        auto& arg_ref = *static_cast<T*>(arg);
+        auto& pctx_ref = *static_cast<parse_context_type*>(pctx);
+        auto& ctx_ref = *static_cast<context_type*>(ctx);
+
+        SCN_TRY_ERR(_, s.parse(pctx_ref));
+        SCN_UNUSED(_);
+        SCN_TRY_ERR(it, s.scan(arg_ref, ctx_ref));
+        ctx_ref.advance_to(SCN_MOVE(it));
+
+        return {};
+    }
+};
+
+template <typename CharT>
+struct arg_mapper {
+    using char_type = CharT;
+    using other_char_type =
+        std::conditional_t<std::is_same_v<char_type, char>, wchar_t, char>;
+
+#define SCN_ARG_MAPPER(T)                                                    \
+    static auto map(T& val)                                                  \
+        -> std::conditional_t<is_type_disabled<T>, unscannable_disabled, T&> \
+    {                                                                        \
+        return val;                                                          \
+    }
+
+    SCN_ARG_MAPPER(signed char)
+    SCN_ARG_MAPPER(short)
+    SCN_ARG_MAPPER(int)
+    SCN_ARG_MAPPER(long)
+    SCN_ARG_MAPPER(long long)
+    SCN_ARG_MAPPER(unsigned char)
+    SCN_ARG_MAPPER(unsigned short)
+    SCN_ARG_MAPPER(unsigned)
+    SCN_ARG_MAPPER(unsigned long)
+    SCN_ARG_MAPPER(unsigned long long)
+    SCN_ARG_MAPPER(wchar_t)
+    SCN_ARG_MAPPER(char32_t)
+    SCN_ARG_MAPPER(bool)
+    SCN_ARG_MAPPER(void*)
+    SCN_ARG_MAPPER(float)
+    SCN_ARG_MAPPER(double)
+    SCN_ARG_MAPPER(long double)
+
+    SCN_ARG_MAPPER(std::basic_string_view<char_type>)
+    SCN_ARG_MAPPER(std::string)
+    SCN_ARG_MAPPER(std::wstring)
+
+#undef SCN_ARG_MAPPER
+
+    static decltype(auto) map(char& val)
+    {
+        if constexpr (std::is_same_v<char_type, char> &&
+                      !is_type_disabled<char_type>) {
+            return val;
+        }
+        else if constexpr (is_type_disabled<char_type>) {
+            return unscannable_disabled{val};
+        }
+        else {
+            SCN_UNUSED(val);
+            return unscannable_char{};
+        }
+    }
+
+    static decltype(auto) map(basic_regex_matches<char_type>& val)
+    {
+        if constexpr (is_type_disabled<char_type>) {
+            return unscannable_disabled{val};
+        }
+        else {
+            return val;
+        }
+    }
+
+    static unscannable_char map(std::basic_string_view<other_char_type>&)
+    {
+        return {};
+    }
+    static unscannable_char map(basic_regex_matches<other_char_type>&)
+    {
+        return {};
+    }
+
+    template <typename T>
+    static std::enable_if_t<std::is_constructible_v<scanner<T, char_type>>,
+                            needs_context_tag>
+    map(T&)
+    {
+        return {};
+    }
+
+    template <typename T, typename Context>
+    static std::enable_if_t<std::is_constructible_v<scanner<T, char_type>>,
+                            custom_wrapper<T, Context>>
+    map(T& val, context_tag<Context>)
+    {
+        return {val};
+    }
+
+    static unscannable map(...)
+    {
+        return {};
+    }
+};
+
+template <typename T, typename CharT>
+using mapped_type_constant = arg_type_constant<
+    std::remove_reference_t<decltype(arg_mapper<CharT>().map(SCN_DECLVAL(T&)))>,
+    CharT>;
+
+template <typename T, typename CharT>
+using is_scannable = std::integral_constant<
+    bool,
+    !std::is_base_of_v<
+        unscannable,
+        remove_cvref_t<decltype(arg_mapper<CharT>().map(SCN_DECLVAL(T&)))>>>;
+
+constexpr std::size_t packed_arg_bits = 5;
+static_assert((1 << packed_arg_bits) >= static_cast<int>(arg_type::last_type));
+constexpr std::size_t bits_in_sz = sizeof(std::size_t) * 8;
+constexpr std::size_t max_packed_args = (bits_in_sz - 1) / packed_arg_bits - 1;
+constexpr std::size_t is_unpacked_bit = std::size_t{1} << (bits_in_sz - 1);
+
+template <typename>
+constexpr size_t encode_types_impl()
+{
+    return 0;
+}
+template <typename CharT, typename T, typename... Others>
+constexpr size_t encode_types_impl()
+{
+    return static_cast<unsigned>(mapped_type_constant<T, CharT>::value) |
+           (encode_types_impl<CharT, Others...>() << packed_arg_bits);
+}
+
+template <typename CharT, typename... Ts>
+constexpr size_t encode_types()
+{
+    static_assert(sizeof...(Ts) < (1 << packed_arg_bits));
+    return sizeof...(Ts) |
+           (encode_types_impl<CharT, Ts...>() << packed_arg_bits);
+}
+
+template <typename Arg>
+constexpr auto make_value_impl(Arg&& arg)
+{
+    using arg_nocvref_t = remove_cvref_t<Arg>;
+    static_assert(!std::is_same_v<arg_nocvref_t, needs_context_tag>);
+
+    constexpr bool scannable_char =
+        !std::is_same_v<arg_nocvref_t, unscannable_char>;
+    static_assert(scannable_char,
+                  "Cannot scan an argument of an unsupported character "
+                  "type (i.e. char from a wchar_t source)");
+
+    constexpr bool scannable_const =
+        !std::is_same_v<arg_nocvref_t, unscannable_const>;
+    static_assert(scannable_const, "Cannot scan a const argument");
+
+    constexpr bool scannable_disabled =
+        !std::is_same_v<arg_nocvref_t, unscannable_disabled>;
+    static_assert(scannable_disabled,
+                  "Cannot scan an argument that has been disabled by "
+                  "flag (SCN_DISABLE_TYPE_*)");
+
+    constexpr bool scannable = !std::is_same_v<arg_nocvref_t, unscannable>;
+    static_assert(
+        scannable,
+        "Cannot scan an argument. To make a type T scannable, provide "
+        "a scn::scanner<T, CharT> specialization.");
+
+    return arg_value{arg};
+}
+
+template <typename Context, typename T>
+constexpr auto make_value(T& value)
+{
+    auto&& arg = arg_mapper<typename Context::char_type>().map(value);
+
+    if constexpr (!std::is_same_v<remove_cvref_t<decltype(arg)>,
+                                  needs_context_tag>) {
+        return make_value_impl(SCN_FWD(arg));
+    }
+    else {
+        return make_value_impl(arg_mapper<typename Context::char_type>().map(
+            value, context_tag<Context>{}));
+    }
+}
+
+template <typename... Args>
+constexpr void check_scan_arg_types()
+{
+    static_assert(
+        std::conjunction<std::is_default_constructible<Args>...>::value,
+        "Scan argument types must be default constructible");
+    static_assert(std::conjunction<std::is_destructible<Args>...>::value,
+                  "Scan argument types must be Destructible");
+    static_assert(
+        !std::conjunction<std::false_type, std::is_reference<Args>...>::value,
+        "Scan argument types must not be references");
+}
+
+template <typename Context, typename T>
+constexpr basic_scan_arg<Context> make_arg(T& value)
+{
+    check_scan_arg_types<T>();
+
+    basic_scan_arg<Context> arg;
+    arg.m_type = mapped_type_constant<T, typename Context::char_type>::value;
+    arg.m_value = make_value<Context>(value);
+    return arg;
+}
+
+template <bool is_packed,
+          typename Context,
+          arg_type,
+          typename T,
+          typename = std::enable_if_t<is_packed>>
+constexpr arg_value make_arg(T& value)
+{
+    return make_value<Context>(value);
+}
+template <bool is_packed,
+          typename Context,
+          arg_type,
+          typename T,
+          typename = std::enable_if_t<!is_packed>>
+constexpr basic_scan_arg<Context> make_arg(T&& value)
+{
+    return make_arg<Context>(SCN_FWD(value));
+}
+
+template <typename Context>
+constexpr arg_value& get_arg_value(basic_scan_arg<Context>& arg);
+}  // namespace detail
+
+template <typename Visitor, typename Ctx>
+constexpr decltype(auto) visit_scan_arg(Visitor&& vis,
+                                        basic_scan_arg<Ctx>& arg);
+
+/**
+ * Type-erased scanning argument.
+ *
+ * Contains a pointer to the value contained in a `scan_arg_store`.
+ */
+template <typename Context>
+class basic_scan_arg {
+public:
     /**
-     * Factory function for \ref temporary.
+     * Enables scanning of a user-defined type.
      *
-     * Canonical use case is with \ref scn::span:
-     * \code{.cpp}
-     * std::vector<char> buffer(32, '\0');
-     * auto result = scn::scan("123", "{}", scn::temp(scn::make_span(buffer)));
-     * // buffer == "123"
-     * \endcode
+     * Contains a pointer to the value contained in a `scan_arg_store`, and
+     * a callback for parsing the format string, and scanning the value.
+     *
+     * \see scn::visit_scan_arg
      */
-    template <typename T,
-              typename std::enable_if<
-                  !std::is_lvalue_reference<T>::value>::type* = nullptr>
-    temporary<T> temp(T&& val)
-    {
-        return {SCN_FWD(val)};
-    }
-
-    namespace detail {
-        enum type {
-            none_type = 0,
-            // signed integer
-            schar_type,
-            short_type,
-            int_type,
-            long_type,
-            long_long_type,
-            // unsigned integer
-            uchar_type,
-            ushort_type,
-            uint_type,
-            ulong_type,
-            ulong_long_type,
-            // other integral types
-            bool_type,
-            char_type,
-            code_point_type,
-            last_integer_type = code_point_type,
-            // floats
-            float_type,
-            double_type,
-            long_double_type,
-            last_numeric_type = long_double_type,
-            // other
-            buffer_type,
-            string_type,
-            string_view_type,
-
-            custom_type,
-            last_type = custom_type
-        };
-
-        constexpr bool is_integral(type t) noexcept
-        {
-            return t > none_type && t <= last_integer_type;
-        }
-        constexpr bool is_arithmetic(type t) noexcept
-        {
-            return t > none_type && t <= last_numeric_type;
-        }
-
-        struct custom_value {
-            // using scan_type = error (*)(void*, Context&, ParseCtx&);
-
-            void* value;
-            void (*scan)();
-        };
-
-        template <typename T, typename CharT>
-        struct is_type_disabled {
-            static constexpr bool value = SCN_DISABLE_TYPE_CUSTOM;
-        };
-
-        template <typename CharT>
-        struct is_type_disabled<signed char, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_SCHAR;
-        };
-        template <typename CharT>
-        struct is_type_disabled<short, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_SHORT;
-        };
-        template <typename CharT>
-        struct is_type_disabled<int, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_INT;
-        };
-        template <typename CharT>
-        struct is_type_disabled<long, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_LONG;
-        };
-        template <typename CharT>
-        struct is_type_disabled<long long, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_LONG_LONG;
-        };
-        template <typename CharT>
-        struct is_type_disabled<unsigned char, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_UCHAR;
-        };
-        template <typename CharT>
-        struct is_type_disabled<unsigned short, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_USHORT;
-        };
-        template <typename CharT>
-        struct is_type_disabled<unsigned int, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_UINT;
-        };
-        template <typename CharT>
-        struct is_type_disabled<unsigned long, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_ULONG;
-        };
-        template <typename CharT>
-        struct is_type_disabled<unsigned long long, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_ULONG_LONG;
-        };
-        template <typename CharT>
-        struct is_type_disabled<bool, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_BOOL;
-        };
-        template <typename CharT>
-        struct is_type_disabled<CharT, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_CHAR;
-        };
-        template <typename CharT>
-        struct is_type_disabled<code_point, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_CODE_POINT;
-        };
-        template <typename CharT>
-        struct is_type_disabled<float, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_FLOAT;
-        };
-        template <typename CharT>
-        struct is_type_disabled<double, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_DOUBLE;
-        };
-        template <typename CharT>
-        struct is_type_disabled<long double, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_LONG_DOUBLE;
-        };
-        template <typename CharT>
-        struct is_type_disabled<span<CharT>, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_BUFFER;
-        };
-        template <typename CharT>
-        struct is_type_disabled<std::basic_string<CharT>, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_STRING;
-        };
-        template <typename CharT>
-        struct is_type_disabled<basic_string_view<CharT>, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_STRING_VIEW;
-        };
-#if SCN_HAS_STRING_VIEW
-        template <typename CharT>
-        struct is_type_disabled<std::basic_string_view<CharT>, CharT> {
-            static constexpr bool value = SCN_DISABLE_TYPE_STRING_VIEW;
-        };
-#endif
-
-        template <typename Context, typename ParseCtx, typename T>
-        error scan_custom_arg(void* arg, Context& ctx, ParseCtx& pctx) noexcept
-        {
-            static_assert(
-                !is_type_disabled<T, typename ParseCtx::char_type>::value,
-                "Scanning of custom types is disabled by "
-                "SCN_DISABLE_TYPE_CUSTOM");
-
-            return visitor_boilerplate<scanner<T>>(*static_cast<T*>(arg), ctx,
-                                                   pctx);
-        }
-
-        struct monostate {};
-
-        template <typename Ctx>
-        struct ctx_tag {};
-        template <typename ParseCtx>
-        struct parse_ctx_tag {};
-
-        class value {
-        public:
-            constexpr value() noexcept : m_empty{} {}
-
-            template <typename T>
-            explicit SCN_CONSTEXPR14 value(T& val) noexcept
-                : m_value(std::addressof(val))
-            {
-            }
-
-            template <typename Ctx, typename ParseCtx, typename T>
-            value(ctx_tag<Ctx>, parse_ctx_tag<ParseCtx>, T& val) noexcept
-                : m_custom(
-                      custom_value{std::addressof(val),
-                                   reinterpret_cast<void (*)()>(
-                                       &scan_custom_arg<Ctx, ParseCtx, T>)})
-            {
-            }
-
-            template <typename T>
-            SCN_CONSTEXPR14 T& get_as() noexcept
-            {
-                return *static_cast<T*>(m_value);
-            }
-            template <typename T>
-            constexpr const T& get_as() const noexcept
-            {
-                return *static_cast<const T*>(m_value);
-            }
-
-            SCN_CONSTEXPR14 custom_value& get_custom() noexcept
-            {
-                return m_custom;
-            }
-            SCN_NODISCARD constexpr const custom_value& get_custom()
-                const noexcept
-            {
-                return m_custom;
-            }
-
-        private:
-            union {
-                monostate m_empty;
-                void* m_value;
-                custom_value m_custom;
-            };
-        };
-
-        template <typename CharT, typename T, type Type>
-        struct init {
-            T* val;
-            static const type type_tag = Type;
-
-            constexpr init(T& v) : val(std::addressof(v)) {}
-            template <typename Ctx, typename ParseCtx>
-            SCN_CONSTEXPR14 value get()
-            {
-                SCN_EXPECT(val != nullptr);
-                return value{*val};
-            }
-        };
-        template <typename CharT, typename T>
-        struct init<CharT, T, custom_type> {
-            T* val;
-            static const type type_tag = custom_type;
-
-            constexpr init(T& v) : val(std::addressof(v)) {}
-            template <typename Ctx, typename ParseCtx>
-            SCN_CONSTEXPR14 value get()
-            {
-                SCN_EXPECT(val != nullptr);
-                return {ctx_tag<Ctx>{}, parse_ctx_tag<ParseCtx>{}, *val};
-            }
-        };
-
-        template <typename Context,
-                  typename ParseCtx,
-                  typename T,
-                  typename CharT = typename Context::char_type>
-        SCN_CONSTEXPR14 basic_arg<CharT> make_arg(T& value) noexcept;
-
-#define SCN_MAKE_VALUE(Tag, Type)                                         \
-    template <typename CharT>                                             \
-    constexpr init<CharT, Type, Tag> make_value(Type& val,                \
-                                                priority_tag<1>) noexcept \
-    {                                                                     \
-        return val;                                                       \
-    }
-
-        SCN_MAKE_VALUE(schar_type, signed char)
-        SCN_MAKE_VALUE(short_type, short)
-        SCN_MAKE_VALUE(int_type, int)
-        SCN_MAKE_VALUE(long_type, long)
-        SCN_MAKE_VALUE(long_long_type, long long)
-
-        SCN_MAKE_VALUE(uchar_type, unsigned char)
-        SCN_MAKE_VALUE(ushort_type, unsigned short)
-        SCN_MAKE_VALUE(uint_type, unsigned)
-        SCN_MAKE_VALUE(ulong_type, unsigned long)
-        SCN_MAKE_VALUE(ulong_long_type, unsigned long long)
-
-        SCN_MAKE_VALUE(bool_type, bool)
-        SCN_MAKE_VALUE(code_point_type, code_point)
-
-        SCN_MAKE_VALUE(float_type, float)
-        SCN_MAKE_VALUE(double_type, double)
-        SCN_MAKE_VALUE(long_double_type, long double)
-
-        SCN_MAKE_VALUE(buffer_type, span<CharT>)
-        SCN_MAKE_VALUE(string_type, std::basic_string<CharT>)
-        SCN_MAKE_VALUE(string_view_type, basic_string_view<CharT>)
-
-        template <typename CharT>
-        constexpr init<CharT, CharT, char_type> make_value(
-            CharT& val,
-            priority_tag<1>) noexcept
-        {
-            return val;
-        }
-
-        template <typename CharT, typename T>
-        constexpr inline auto make_value(T& val, priority_tag<0>) noexcept
-            -> init<CharT, T, custom_type>
-        {
-            return val;
-        }
-
-        enum : size_t {
-            packed_arg_bitsize = 5,
-            packed_arg_mask = (1 << packed_arg_bitsize) - 1,
-            max_packed_args = (sizeof(size_t) * 8 - 1) / packed_arg_bitsize,
-            is_unpacked_bit = size_t{1} << (sizeof(size_t) * 8ull - 1ull)
-        };
-    }  // namespace detail
-
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wpadded")
-
-    /// Type-erased scanning argument.
-    template <typename CharT>
-    class SCN_TRIVIAL_ABI basic_arg {
+    class handle {
     public:
-        using char_type = CharT;
-
-        class handle {
-        public:
-            explicit handle(detail::custom_value custom) : m_custom(custom) {}
-
-            template <typename Context, typename ParseCtx>
-            error scan(Context& ctx, ParseCtx& pctx)
-            {
-                return reinterpret_cast<error (*)(void*, Context&, ParseCtx&)>(
-                    m_custom.scan)(m_custom.value, ctx, pctx);
-            }
-
-        private:
-            detail::custom_value m_custom;
-        };
-
-        constexpr basic_arg() = default;
-
-        constexpr explicit operator bool() const noexcept
+        /**
+         * Parse the format string in `parse_ctx`, and scan the value from
+         * `ctx`.
+         *
+         * \return Any error returned by the scanner
+         */
+        scan_error scan(typename Context::parse_context_type& parse_ctx,
+                        Context& ctx) const
         {
-            return m_type != detail::none_type;
-        }
-
-        SCN_NODISCARD constexpr detail::type type() const noexcept
-        {
-            return type;
-        }
-        SCN_NODISCARD constexpr bool is_integral() const noexcept
-        {
-            return detail::is_integral(m_type);
-        }
-        SCN_NODISCARD constexpr bool is_arithmetic() const noexcept
-        {
-            return detail::is_arithmetic(m_type);
+            return m_custom.scan(m_custom.value, &parse_ctx, &ctx);
         }
 
     private:
-        constexpr basic_arg(detail::value v, detail::type t) noexcept
-            : m_value(v), m_type(t)
-        {
-        }
+        explicit handle(detail::custom_value_type custom) : m_custom(custom) {}
 
-        template <typename Ctx, typename ParseCtx, typename T, typename C>
-        friend SCN_CONSTEXPR14 basic_arg<C> detail::make_arg(T& value) noexcept;
+        template <typename Visitor, typename C>
+        friend constexpr decltype(auto) visit_scan_arg(Visitor&& vis,
+                                                       basic_scan_arg<C>& arg);
 
-        template <typename C, typename Visitor>
-        friend SCN_CONSTEXPR14 error visit_arg(Visitor&& vis,
-                                               basic_arg<C>& arg);
-
-        friend class basic_args<CharT>;
-
-        detail::value m_value;
-        detail::type m_type{detail::none_type};
+        detail::custom_value_type m_custom;
     };
 
-    SCN_CLANG_POP
+    /// Construct a `basic_scan_arg` which doesn't contain an argument.
+    constexpr basic_scan_arg() = default;
 
-    template <typename CharT, typename Visitor>
-    SCN_CONSTEXPR14 error visit_arg(Visitor&& vis, basic_arg<CharT>& arg)
+    /**
+     * @return `true` if `*this` contains an argument
+     */
+    constexpr explicit operator bool() const SCN_NOEXCEPT
     {
-        switch (arg.m_type) {
-            case detail::none_type:
-                break;
-
-#if !SCN_DISABLE_TYPE_SCHAR
-            case detail::schar_type:
-                return vis(arg.m_value.template get_as<signed char>());
-#endif
-#if !SCN_DISABLE_TYPE_SHORT
-            case detail::short_type:
-                return vis(arg.m_value.template get_as<short>());
-#endif
-#if !SCN_DISABLE_TYPE_INT
-            case detail::int_type:
-                return vis(arg.m_value.template get_as<int>());
-#endif
-#if !SCN_DISABLE_TYPE_LONG
-            case detail::long_type:
-                return vis(arg.m_value.template get_as<long>());
-#endif
-#if !SCN_DISABLE_TYPE_LONG_LONG
-            case detail::long_long_type:
-                return vis(arg.m_value.template get_as<long long>());
-#endif
-#if !SCN_DISABLE_TYPE_UCHAR
-            case detail::uchar_type:
-                return vis(arg.m_value.template get_as<unsigned char>());
-#endif
-#if !SCN_DISABLE_TYPE_USHORT
-            case detail::ushort_type:
-                return vis(arg.m_value.template get_as<unsigned short>());
-#endif
-#if !SCN_DISABLE_TYPE_UINT
-            case detail::uint_type:
-                return vis(arg.m_value.template get_as<unsigned int>());
-#endif
-#if !SCN_DISABLE_TYPE_ULONG
-            case detail::ulong_type:
-                return vis(arg.m_value.template get_as<unsigned long>());
-#endif
-#if !SCN_DISABLE_TYPE_ULONG_LONG
-            case detail::ulong_long_type:
-                return vis(arg.m_value.template get_as<unsigned long long>());
-#endif
-#if !SCN_DISABLE_TYPE_BOOL
-            case detail::bool_type:
-                return vis(arg.m_value.template get_as<bool>());
-#endif
-#if !SCN_DISABLE_TYPE_CHAR
-            case detail::char_type:
-                return vis(arg.m_value.template get_as<CharT>());
-#endif
-#if !SCN_DISABLE_TYPE_CODE_POINT
-            case detail::code_point_type:
-                return vis(arg.m_value.template get_as<code_point>());
-#endif
-#if !SCN_DISABLE_TYPE_FLOAT
-            case detail::float_type:
-                return vis(arg.m_value.template get_as<float>());
-#endif
-#if !SCN_DISABLE_TYPE_DOUBLE
-            case detail::double_type:
-                return vis(arg.m_value.template get_as<double>());
-#endif
-#if !SCN_DISABLE_TYPE_LONG_DOUBLE
-            case detail::long_double_type:
-                return vis(arg.m_value.template get_as<long double>());
-#endif
-#if !SCN_DISABLE_TYPE_BUFFER
-            case detail::buffer_type:
-                return vis(arg.m_value.template get_as<span<CharT>>());
-#endif
-#if !SCN_DISABLE_TYPE_STRING
-            case detail::string_type:
-                return vis(
-                    arg.m_value.template get_as<std::basic_string<CharT>>());
-#endif
-#if !SCN_DISABLE_TYPE_STRING_VIEW
-            case detail::string_view_type:
-                return vis(
-                    arg.m_value.template get_as<basic_string_view<CharT>>());
-#endif
-#if !SCN_DISABLE_TYPE_CUSTOM
-            case detail::custom_type:
-                return vis(typename basic_arg<CharT>::handle(
-                    arg.m_value.get_custom()));
-#endif
-                SCN_CLANG_PUSH
-                SCN_CLANG_IGNORE("-Wcovered-switch-default")
-            default:
-                return vis(detail::monostate{});
-                SCN_CLANG_POP
-        }
-        SCN_UNREACHABLE;
+        return m_type != detail::arg_type::none_type;
     }
 
-    namespace detail {
-        template <typename CharT, typename T>
-        struct get_type {
-            using value_type = decltype(make_value<CharT>(
-                SCN_DECLVAL(typename std::remove_reference<
-                            typename std::remove_cv<T>::type>::type&),
-                SCN_DECLVAL(priority_tag<1>)));
-            static const type value = value_type::type_tag;
+    SCN_NODISCARD constexpr detail::arg_type type() const
+    {
+        return m_type;
+    }
 
-            static_assert(
-                !is_type_disabled<T, CharT>::value,
-                "Scanning of this type is disabled by SCN_DISABLE_TYPE_*");
-        };
+    SCN_NODISCARD constexpr detail::arg_value& value()
+    {
+        return m_value;
+    }
+    SCN_NODISCARD constexpr const detail::arg_value& value() const
+    {
+        return m_value;
+    }
 
-        template <typename CharT>
-        constexpr size_t get_types()
-        {
-            return 0;
+private:
+    template <typename ContextType, typename T>
+    friend constexpr basic_scan_arg<ContextType> detail::make_arg(T& value);
+
+    template <typename C>
+    friend constexpr detail::arg_value& detail::get_arg_value(
+        basic_scan_arg<C>& arg);
+
+    template <typename Visitor, typename C>
+    friend constexpr decltype(auto) visit_scan_arg(Visitor&& vis,
+                                                   basic_scan_arg<C>& arg);
+
+    friend class basic_scan_args<Context>;
+
+    detail::arg_value m_value{};
+    detail::arg_type m_type{detail::arg_type::none_type};
+};
+
+namespace detail {
+template <typename Context>
+constexpr arg_value& get_arg_value(basic_scan_arg<Context>& arg)
+{
+    return arg.m_value;
+}
+
+template <typename Context, std::size_t NumArgs>
+struct scan_arg_store_base {
+protected:
+    static constexpr std::size_t num_args = NumArgs;
+    static constexpr bool is_packed = num_args <= detail::max_packed_args;
+
+    using value_type = std::
+        conditional_t<is_packed, detail::arg_value, basic_scan_arg<Context>>;
+    using value_array_type = std::array<value_type, num_args>;
+};
+}  // namespace detail
+
+/**
+ * A tuple of scanning arguments, stored by value.
+ *
+ * Implicitly convertible to `basic_scan_args`,
+ * to be passed to type-erased along to type-erased scanning functions,
+ * like `scn::vscan`.
+ */
+template <typename Context, typename... Args>
+class scan_arg_store
+    : public detail::scan_arg_store_base<Context, sizeof...(Args)> {
+    using base = detail::scan_arg_store_base<Context, sizeof...(Args)>;
+
+    using char_type = typename Context::char_type;
+
+public:
+    std::tuple<Args...>& args()
+    {
+        return m_args;
+    }
+
+private:
+    constexpr scan_arg_store() : scan_arg_store(std::tuple<Args...>{}) {}
+
+    constexpr explicit scan_arg_store(std::tuple<Args...>&& a)
+        : m_args{std::move(a)},
+          m_data{std::apply(make_data_array<Args...>, m_args)}
+    {
+    }
+
+    template <typename Ctx, typename... A>
+    friend constexpr auto make_scan_args();
+    template <typename Ctx, typename... A>
+    friend constexpr auto make_scan_args(std::tuple<A...>&& values);
+
+    template <typename... A>
+    static constexpr typename base::value_array_type make_data_array(A&... args)
+    {
+        return {
+            detail::make_arg<base::is_packed, Context,
+                             detail::mapped_type_constant<
+                                 detail::remove_cvref_t<A>, char_type>::value>(
+                args)...};
+    }
+
+    constexpr detail::arg_value& get_value_at(std::size_t i)
+    {
+        if constexpr (base::is_packed) {
+            return m_data[i];
         }
-        template <typename CharT, typename Arg, typename... Args>
-        constexpr size_t get_types()
-        {
-            return static_cast<size_t>(get_type<CharT, Arg>::value) |
-                   (get_types<CharT, Args...>() << 5);
+        else {
+            return detail::get_arg_value(m_data[i]);
+        }
+    }
+
+    std::tuple<Args...> m_args;
+    typename base::value_array_type m_data;
+
+    friend class basic_scan_args<Context>;
+
+    static constexpr size_t desc =
+        base::is_packed ? detail::encode_types<char_type, Args...>()
+                        : detail::is_unpacked_bit | base::num_args;
+};
+
+/**
+ * Constructs a `scan_arg_store` object, associated with `Context`,
+ * that contains value-initialized values of types `Args...`.
+ */
+template <typename Context = scan_context, typename... Args>
+constexpr auto make_scan_args()
+{
+    detail::check_scan_arg_types<Args...>();
+
+    return scan_arg_store<Context, Args...>{};
+}
+/**
+ * Constructs a `scan_arg_store` object, associated with `Context`,
+ * that contains `values`.
+ */
+template <typename Context = scan_context, typename... Args>
+constexpr auto make_scan_args(std::tuple<Args...>&& values)
+{
+    detail::check_scan_arg_types<Args...>();
+
+    return scan_arg_store<Context, Args...>{SCN_MOVE(values)};
+}
+
+/**
+ * A view over a collection of scanning arguments (`scan_arg_store`).
+ *
+ * Passed to `scn::vscan`, where it's automatically constructed from a
+ * `scan_arg_store`.
+ */
+template <typename Context>
+class basic_scan_args {
+public:
+    /// Construct a view over no arguments
+    constexpr basic_scan_args() = default;
+
+    /**
+     * Construct a view over `store`.
+     *
+     * Intentionally not `explicit`.
+     */
+    template <typename... Args>
+    constexpr /*implicit*/ basic_scan_args(
+        scan_arg_store<Context, Args...>& store)
+        : basic_scan_args{scan_arg_store<Context, Args...>::desc,
+                          store.m_data.data()}
+    {
+    }
+
+    /**
+     * \return `basic_scan_arg` at index `id`. Empty `basic_scan_arg` if
+     * there's no argument at index `id`.
+     */
+    SCN_NODISCARD constexpr basic_scan_arg<Context> get(std::size_t id) const
+    {
+        if (SCN_UNLIKELY(!is_packed())) {
+            if (SCN_LIKELY(id < max_size())) {
+                return m_args[id];
+            }
+            return {};
         }
 
-        template <typename Context,
-                  typename ParseCtx,
-                  typename T,
-                  typename CharT>
-        SCN_CONSTEXPR14 basic_arg<CharT> make_arg(T& value) noexcept
-        {
-            basic_arg<CharT> arg;
-            arg.m_type = get_type<CharT, T>::value;
-            arg.m_value = make_value<CharT>(value, priority_tag<1>{})
-                              .template get<Context, ParseCtx>();
-            return arg;
+        if (SCN_UNLIKELY(id >= detail::max_packed_args)) {
+            return {};
         }
 
-        template <bool Packed,
-                  typename Context,
-                  typename ParseCtx,
-                  typename T,
-                  typename CharT = typename Context::char_type>
-        inline auto make_arg(T& v) ->
-            typename std::enable_if<Packed, value>::type
-        {
-            return make_value<CharT>(v, priority_tag<1>{})
-                .template get<Context, ParseCtx>();
-        }
-        template <bool Packed, typename Context, typename ParseCtx, typename T>
-        inline auto make_arg(T& v) -> typename std::
-            enable_if<!Packed, basic_arg<typename Context::char_type>>::type
-        {
-            return make_arg<Context, ParseCtx>(v);
-        }
-    }  // namespace detail
-
-    template <typename CharT, typename... Args>
-    class arg_store {
-        static constexpr const size_t num_args = sizeof...(Args);
-        static const bool is_packed = num_args < detail::max_packed_args;
-
-        friend class basic_args<CharT>;
-
-        static constexpr size_t get_types()
-        {
-            return is_packed ? detail::get_types<CharT, Args...>()
-                             : detail::is_unpacked_bit | num_args;
+        const auto t = type(id);
+        if (SCN_UNLIKELY(t == detail::arg_type::none_type)) {
+            return {};
         }
 
-    public:
-        static constexpr size_t types = get_types();
-        using arg_type = basic_arg<CharT>;
+        basic_scan_arg<Context> arg;
+        arg.m_type = t;
+        arg.m_value = m_values[id];
+        return arg;
+    }
 
-        using value_type =
-            typename std::conditional<is_packed, detail::value, arg_type>::type;
-        static constexpr size_t data_size =
-            num_args + (is_packed && num_args != 0 ? 0 : 1);
-
-        template <typename Ctx, typename ParseCtx>
-        SCN_CONSTEXPR14 arg_store(detail::ctx_tag<Ctx>,
-                                  detail::parse_ctx_tag<ParseCtx>,
-                                  Args&... a) noexcept
-            : m_data{{detail::make_arg<is_packed, Ctx, ParseCtx>(a)...}}
-        {
+    /**
+     * \return Number of arguments in `*this`.
+     */
+    SCN_NODISCARD constexpr std::size_t size() const
+    {
+        if (SCN_UNLIKELY(!is_packed())) {
+            return max_size();
         }
 
-        SCN_CONSTEXPR14 span<value_type> data() noexcept
-        {
-            return make_span(m_data.data(),
-                             static_cast<std::ptrdiff_t>(m_data.size()));
-        }
+        return static_cast<std::size_t>(m_desc &
+                                        ((1 << detail::packed_arg_bits) - 1));
+    }
 
-    private:
-        detail::array<value_type, data_size> m_data;
+private:
+    constexpr basic_scan_args(size_t desc, detail::arg_value* values)
+        : m_desc{desc}, m_values{values}
+    {
+    }
+    constexpr basic_scan_args(size_t desc, basic_scan_args<Context>* args)
+        : m_desc{desc}, m_args{args}
+    {
+    }
+
+    SCN_NODISCARD constexpr bool is_packed() const
+    {
+        return (m_desc & detail::is_unpacked_bit) == 0;
+    }
+
+    SCN_NODISCARD constexpr detail::arg_type type(std::size_t index) const
+    {
+        // First (0th) index is size, types start after that
+        const auto shift = (index + 1) * detail::packed_arg_bits;
+        const std::size_t mask = (1 << detail::packed_arg_bits) - 1;
+        return static_cast<detail::arg_type>((m_desc >> shift) & mask);
+    }
+
+    SCN_NODISCARD constexpr std::size_t max_size() const
+    {
+        return SCN_LIKELY(is_packed()) ? detail::max_packed_args
+                                       : (m_desc & ~detail::is_unpacked_bit);
+    }
+
+    size_t m_desc{0};
+    union {
+        detail::arg_value* m_values;
+        basic_scan_arg<Context>* m_args{nullptr};
     };
+};
 
-    template <typename Context, typename ParseCtx, typename... Args>
-    arg_store<typename Context::char_type, Args...> make_args(Args&... args)
-    {
-        return {detail::ctx_tag<Context>(), detail::parse_ctx_tag<ParseCtx>(),
-                args...};
-    }
-    template <typename WrappedRange,
-              typename Format,
-              typename... Args,
-              typename CharT = typename WrappedRange::char_type>
-    arg_store<CharT, Args...> make_args_for(WrappedRange&,
-                                            Format,
-                                            Args&... args)
-    {
-        using context_type = basic_context<WrappedRange>;
-        using parse_context_type =
-            typename detail::parse_context_template_for_format<
-                Format>::template type<typename context_type::char_type>;
-        return {detail::ctx_tag<context_type>(),
-                detail::parse_ctx_tag<parse_context_type>(), args...};
-    }
-
-    template <typename CharT>
-    class basic_args {
-    public:
-        using arg_type = basic_arg<CharT>;
-
-        constexpr basic_args() noexcept = default;
-
-        template <typename... Args>
-        SCN_CONSTEXPR14 basic_args(arg_store<CharT, Args...>& store) noexcept
-            : m_types(store.types)
-        {
-            set_data(store.m_data.data());
-        }
-
-        SCN_CONSTEXPR14 basic_args(span<arg_type> args) noexcept
-            : m_types(detail::is_unpacked_bit | args.size())
-        {
-            set_data(args.data());
-        }
-
-        SCN_CONSTEXPR14 arg_type get(std::ptrdiff_t i) const noexcept
-        {
-            return do_get(i);
-        }
-
-        SCN_NODISCARD SCN_CONSTEXPR14 bool check_id(
-            std::ptrdiff_t i) const noexcept
-        {
-            if (!is_packed()) {
-                return static_cast<size_t>(i) <
-                       (m_types &
-                        ~static_cast<size_t>(detail::is_unpacked_bit));
-            }
-            return type(i) != detail::none_type;
-        }
-
-        SCN_NODISCARD constexpr size_t max_size() const noexcept
-        {
-            return is_packed()
-                       ? static_cast<size_t>(detail::max_packed_args)
-                       : m_types &
-                             ~static_cast<size_t>(detail::is_unpacked_bit);
-        }
-
-    private:
-        size_t m_types{0};
-        union {
-            detail::value* m_values;
-            arg_type* m_args;
-        };
-
-        SCN_NODISCARD constexpr bool is_packed() const noexcept
-        {
-            return (m_types & detail::is_unpacked_bit) == 0;
-        }
-
-        SCN_NODISCARD SCN_CONSTEXPR14 typename detail::type type(
-            std::ptrdiff_t i) const noexcept
-        {
-            size_t shift = static_cast<size_t>(i) * detail::packed_arg_bitsize;
-            return static_cast<typename detail::type>(
-                (static_cast<size_t>(m_types) >> shift) &
-                detail::packed_arg_mask);
-        }
-
-        SCN_CONSTEXPR14 void set_data(detail::value* values) noexcept
-        {
-            m_values = values;
-        }
-        SCN_CONSTEXPR14 void set_data(arg_type* args) noexcept
-        {
-            m_args = args;
-        }
-
-        SCN_CONSTEXPR14 arg_type do_get(std::ptrdiff_t i) const noexcept
-        {
-            SCN_EXPECT(i >= 0);
-
-            arg_type arg;
-            if (!is_packed()) {
-                auto num_args = static_cast<std::ptrdiff_t>(max_size());
-                if (SCN_LIKELY(i < num_args)) {
-                    arg = m_args[i];
-                }
-                return arg;
-            }
-
-            SCN_EXPECT(m_values);
-            if (SCN_UNLIKELY(
-                    i > static_cast<std::ptrdiff_t>(detail::max_packed_args))) {
-                return arg;
-            }
-
-            arg.m_type = type(i);
-            if (arg.m_type == detail::none_type) {
-                return arg;
-            }
-            arg.m_value = m_values[i];
-            return arg;
-        }
-    };
-
-    SCN_END_NAMESPACE
+SCN_END_NAMESPACE
 }  // namespace scn
-
-#endif  // SCN_DETAIL_ARGS_H

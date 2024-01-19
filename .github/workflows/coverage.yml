@@ -8,9 +8,8 @@ on:
       - 'include/**'
       - 'scripts/**'
       - 'src/**'
-      - 'test/**'
+      - 'tests/**'
       - '**/CMakeLists.txt'
-      - '**/.gitmodules'
   pull_request:
     paths:
       - '.github/**'
@@ -18,14 +17,31 @@ on:
       - 'include/**'
       - 'scripts/**'
       - 'src/**'
-      - 'test/**'
+      - 'tests/**'
       - '**/CMakeLists.txt'
-      - '**/.gitmodules'
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
+
+env:
+  APT_INSTALL: |
+    sudo apt-get install
+      -yq --no-install-suggests --no-install-recommends
+      --allow-unauthenticated --allow-downgrades --allow-change-held-packages
+  CCACHE_ABSSTDERR: true
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_DIR: "/tmp/ccache"
+  CCACHE_MAXSIZE: 50M
+  CCACHE_NOHASHDIR: true
+  CCACHE_SLOPPINESS: "pch_defines,time_macros"
+  CCACHE_UNIFY: true
+  DEBIAN_FRONTEND: noninteractive
+  CXX: g++-11
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
 jobs:
   codecov:
@@ -42,29 +58,47 @@ jobs:
           sudo update-locale
           sudo locale -a
 
-          sudo apt-get install -yq lcov
+          sudo apt-get install -yq lcov ccache
 
           mkdir ${{ runner.workspace }}/build
           mkdir ${{ runner.workspace }}/report
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Load ccache
+        uses: actions/cache@v3
         with:
-          submodules: recursive
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-coverage-${{ github.sha }}
+          restore-keys: |
+            ccache-coverage-${{ github.ref }}
+            ccache-coverage-${{ github.base_ref }}
+            ccache-coverage
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
                 -DCMAKE_CXX_STANDARD=20 \
-                -DSCN_BUILD_LOCALIZED_TESTS=ON -DSCN_COVERAGE=ON \
-                -DSCN_BENCHMARKS=OFF -DSCN_EXAMPLES=OFF \
+                -DSCN_TESTS_LOCALIZED=ON -DSCN_COVERAGE=ON \
                 $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake --build . -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Generate Coverage Report
         working-directory: ${{ runner.workspace }}/build

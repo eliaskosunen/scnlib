@@ -1,0 +1,33 @@
+if (NOT SCN_FUZZING)
+    return()
+endif ()
+
+add_library(scn_fuzz_base INTERFACE)
+target_link_libraries(scn_fuzz_base INTERFACE scn scn_fuzzer simdutf::simdutf)
+
+function(add_fuzzer name)
+    add_executable(scn_fuzz_${name}
+            fuzz.h
+            ${name}_fuzz.cpp)
+    target_link_libraries(scn_fuzz_${name} PRIVATE scn simdutf::simdutf)
+    if (SCN_FUZZING_LDFLAGS)
+        target_link_options(scn_fuzz_${name} PRIVATE ${SCN_FUZZING_LDFLAGS})
+    else ()
+        target_link_libraries(scn_fuzz_${name} PRIVATE scn_fuzzer)
+    endif ()
+endfunction()
+
+add_fuzzer(int)
+add_fuzzer(float)
+add_fuzzer(string)
+add_fuzzer(format)
+add_fuzzer(roundtrip)
+
+add_fuzzer(string_impl)
+target_link_libraries(scn_fuzz_string_impl PRIVATE scn_internal)
+
+add_custom_target(scn_fuzz_prepare ALL
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_LIST_DIR}/run-fuzz.sh"
+        "${CMAKE_BINARY_DIR}/tests/fuzz"
+        COMMENT "Copying fuzzer scripts")

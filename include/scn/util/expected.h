@@ -15,144 +15,64 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_UTIL_EXPECTED_H
-#define SCN_UTIL_EXPECTED_H
+#pragma once
 
-#include "memory.h"
+#include <scn/detail/error.h>
+#include <scn/util/expected_impl.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    /**
-     * expected-like type.
-     * For situations where there can be a value in case of success or an error
-     * code.
-     */
-    template <typename T, typename Error, typename Enable>
-    class expected;
+/**
+ * An `expected<T, scan_error>`.
+ *
+ * Not a type alias to shorten template names
+ *
+ * \ingroup result
+ */
+template <typename T>
+struct scan_expected : public expected<T, scan_error> {
+    using expected<T, scan_error>::expected;
 
-    /**
-     * expected-like type for default-constructible success values.
-     * Not optimized for space-efficiency (both members are stored
-     * simultaneously).
-     * `error` is used as the error value and discriminant flag.
-     */
-    template <typename T, typename Error>
-    class expected<T,
-                   Error,
-                   typename std::enable_if<
-                       std::is_default_constructible<T>::value>::type> {
-    public:
-        using success_type = T;
-        using error_type = Error;
-
-        constexpr expected() = default;
-        constexpr expected(success_type s) : m_s(s) {}
-        constexpr expected(error_type e) : m_e(e) {}
-
-        SCN_NODISCARD constexpr bool has_value() const noexcept
-        {
-            return m_e == Error{};
-        }
-        constexpr explicit operator bool() const noexcept
-        {
-            return has_value();
-        }
-        constexpr bool operator!() const noexcept
-        {
-            return !operator bool();
-        }
-
-        SCN_CONSTEXPR14 success_type& value() & noexcept
-        {
-            return m_s;
-        }
-        constexpr success_type value() const& noexcept
-        {
-            return m_s;
-        }
-        SCN_CONSTEXPR14 success_type value() && noexcept
-        {
-            return SCN_MOVE(m_s);
-        }
-
-        SCN_CONSTEXPR14 error_type& error() noexcept
-        {
-            return m_e;
-        }
-        constexpr error_type error() const noexcept
-        {
-            return m_e;
-        }
-
-    private:
-        success_type m_s{};
-        error_type m_e{error_type::success_tag()};
-    };
-
-    /**
-     * expected-like type for non-default-constructible success values.
-     * Not optimized for space-efficiency.
-     * `error` is used as the error value and discriminant flag.
-     */
-    template <typename T, typename Error>
-    class expected<T,
-                   Error,
-                   typename std::enable_if<
-                       !std::is_default_constructible<T>::value>::type> {
-    public:
-        using success_type = T;
-        using success_storage = detail::erased_storage<T>;
-        using error_type = Error;
-
-        expected(success_type s) : m_s(SCN_MOVE(s)) {}
-        constexpr expected(error_type e) : m_e(e) {}
-
-        SCN_NODISCARD constexpr bool has_value() const noexcept
-        {
-            return m_e == Error{};
-        }
-        constexpr explicit operator bool() const noexcept
-        {
-            return has_value();
-        }
-        constexpr bool operator!() const noexcept
-        {
-            return !operator bool();
-        }
-
-        SCN_CONSTEXPR14 success_type& value() noexcept
-        {
-            return *m_s;
-        }
-        constexpr const success_type& value() const noexcept
-        {
-            return *m_s;
-        }
-
-        SCN_CONSTEXPR14 error_type& error() noexcept
-        {
-            return m_e;
-        }
-        constexpr error_type error() const noexcept
-        {
-            return m_e;
-        }
-
-    private:
-        success_storage m_s{};
-        error_type m_e{error_type::success_tag()};
-    };
-
-    template <typename T,
-              typename U = typename std::remove_cv<
-                  typename std::remove_reference<T>::type>::type>
-    expected<U> make_expected(T&& val)
+    scan_expected(const expected<T, scan_error>& other)
+        : expected<T, scan_error>(other)
     {
-        return expected<U>(std::forward<T>(val));
     }
+    scan_expected(expected<T, scan_error>&& other)
+        : expected<T, scan_error>(SCN_MOVE(other))
+    {
+    }
+};
 
-    SCN_END_NAMESPACE
+template <typename... Args>
+auto unexpected_scan_error(Args&&... args)
+{
+    return unexpected(scan_error{SCN_FWD(args)...});
+}
+
+namespace detail {
+template <typename T>
+struct is_expected_impl<scan_expected<T>> : std::true_type {};
+}  // namespace detail
+
+SCN_END_NAMESPACE
 }  // namespace scn
 
-#endif
+#define SCN_TRY_IMPL_CONCAT(a, b)  a##b
+#define SCN_TRY_IMPL_CONCAT2(a, b) SCN_TRY_IMPL_CONCAT(a, b)
+#define SCN_TRY_TMP                SCN_TRY_IMPL_CONCAT2(_scn_try_tmp_, __LINE__)
+
+#define SCN_TRY_ASSIGN(init, x)                        \
+    auto&& SCN_TRY_TMP = (x);                          \
+    if (SCN_UNLIKELY(!SCN_TRY_TMP)) {                  \
+        return ::scn::unexpected(SCN_TRY_TMP.error()); \
+    }                                                  \
+    init = *SCN_FWD(SCN_TRY_TMP);
+#define SCN_TRY(name, x) SCN_TRY_ASSIGN(auto name, x)
+
+#define SCN_TRY_ERR(name, x)          \
+    auto&& SCN_TRY_TMP = (x);         \
+    if (SCN_UNLIKELY(!SCN_TRY_TMP)) { \
+        return SCN_TRY_TMP.error();   \
+    }                                 \
+    auto name = *SCN_FWD(SCN_TRY_TMP);

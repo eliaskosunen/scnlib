@@ -15,112 +15,140 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#ifndef SCN_DETAIL_CONTEXT_H
-#define SCN_DETAIL_CONTEXT_H
+#pragma once
 
-#include "args.h"
+#include <scn/detail/args.h>
+#include <scn/detail/locale_ref.h>
+#include <scn/detail/scan_buffer.h>
+#include <scn/util/string_view.h>
 
 namespace scn {
-    SCN_BEGIN_NAMESPACE
+SCN_BEGIN_NAMESPACE
 
-    template <typename WrappedRange>
-    class basic_context {
-    public:
-        using range_type = WrappedRange;
-        using iterator = typename range_type::iterator;
-        using sentinel = typename range_type::sentinel;
-        using char_type = typename range_type::char_type;
-        using locale_type = basic_locale_ref<char_type>;
+namespace detail {
+template <typename Iterator, typename = void>
+struct is_comparable_with_nullptr : std::false_type {};
+template <typename Iterator>
+struct is_comparable_with_nullptr<
+    Iterator,
+    std::void_t<decltype(SCN_DECLVAL(const Iterator&) == nullptr)>>
+    : std::true_type {};
 
-        basic_context(range_type&& r) : m_range(SCN_MOVE(r)) {}
-        basic_context(range_type&& r, locale_type&& loc)
-            : m_range(SCN_MOVE(r)), m_locale(SCN_MOVE(loc))
-        {
-        }
-
-        SCN_NODISCARD iterator& begin()
-        {
-            return m_range.begin();
-        }
-        const sentinel& end() const
-        {
-            return m_range.end();
-        }
-
-        range_type& range() & noexcept
-        {
-            return m_range;
-        }
-        const range_type& range() const& noexcept
-        {
-            return m_range;
-        }
-        range_type range() && noexcept
-        {
-            return m_range;
-        }
-
-        locale_type& locale() noexcept
-        {
-            return m_locale;
-        }
-        const locale_type& locale() const noexcept
-        {
-            return m_locale;
-        }
-
-    private:
-        range_type m_range;
-        locale_type m_locale{};
-    };
-
-    template <typename WrappedRange,
-              typename CharT = typename WrappedRange::char_type>
-    basic_context<WrappedRange> make_context(WrappedRange r)
+template <typename CharT, typename Args>
+struct scan_context_base {
+public:
+    /// Get argument at index `id`
+    constexpr auto arg(size_t id) const SCN_NOEXCEPT
     {
-        return {SCN_MOVE(r)};
-    }
-    template <typename WrappedRange, typename LocaleRef>
-    basic_context<WrappedRange> make_context(WrappedRange r, LocaleRef&& loc)
-    {
-        return {SCN_MOVE(r), SCN_FWD(loc)};
+        return m_args.get(id);
     }
 
-    template <typename CharT>
-    auto get_arg(const basic_args<CharT>& args, std::ptrdiff_t id)
-        -> expected<basic_arg<CharT>>
+    constexpr const Args& args() const
     {
-        auto a = args.get(id);
-        if (!a) {
-            return error(error::invalid_format_string,
-                         "Argument id out of range");
-        }
-        return a;
-    }
-    template <typename CharT, typename ParseCtx>
-    auto get_arg(const basic_args<CharT>& args,
-                 ParseCtx& pctx,
-                 std::ptrdiff_t id) -> expected<basic_arg<CharT>>
-    {
-        return pctx.check_arg_id(id) ? get_arg(args, id)
-                                     : error(error::invalid_format_string,
-                                             "Argument id out of range");
-    }
-    template <typename CharT, typename ParseCtx>
-    auto get_arg(const basic_args<CharT>&, ParseCtx&, basic_string_view<CharT>)
-        -> expected<basic_arg<CharT>>
-    {
-        return error(error::invalid_format_string, "Argument id out of range");
+        return m_args;
     }
 
-    template <typename CharT, typename ParseCtx>
-    auto next_arg(const basic_args<CharT>& args, ParseCtx& pctx)
-        -> expected<basic_arg<CharT>>
+    SCN_NODISCARD constexpr detail::locale_ref locale() const
     {
-        return get_arg(args, pctx.next_arg_id());
+        return m_locale;
     }
 
-    SCN_END_NAMESPACE
+protected:
+    scan_context_base(Args args, detail::locale_ref loc)
+        : m_args(SCN_MOVE(args)), m_locale(loc)
+    {
+    }
+
+    Args m_args;
+    detail::locale_ref m_locale;
+};
+}  // namespace detail
+
+/**
+ * \defgroup ctx Contexts and scanners
+ *
+ * \brief Lower-level APIs used for scanning individual values
+ */
+
+/**
+ * Scanning context.
+ *
+ * \ingroup ctx
+ */
+template <typename CharT>
+class basic_scan_context
+    : public detail::
+          scan_context_base<CharT, basic_scan_args<basic_scan_context<CharT>>> {
+    using base =
+        detail::scan_context_base<CharT,
+                                  basic_scan_args<basic_scan_context<CharT>>>;
+
+public:
+    /// Character type of the input
+    using char_type = CharT;
+    using buffer_type = detail::basic_scan_buffer<char_type>;
+    using range_type = typename buffer_type::range_type;
+    using iterator = ranges::iterator_t<range_type>;
+    using sentinel = ranges::sentinel_t<range_type>;
+    using parse_context_type = basic_scan_parse_context<char_type>;
+
+    using args_type = basic_scan_args<basic_scan_context>;
+    using arg_type = basic_scan_arg<basic_scan_context>;
+
+    /**
+     * The scanner type associated with this scanning context.
+     */
+    template <typename T>
+    using scanner_type = scanner<T, char_type>;
+
+    constexpr basic_scan_context(iterator curr,
+                                 args_type a,
+                                 detail::locale_ref loc = {})
+        : base(SCN_MOVE(a), loc), m_current(curr)
+    {
+    }
+
+    basic_scan_context(const basic_scan_context&) = delete;
+    basic_scan_context& operator=(const basic_scan_context&) = delete;
+
+    basic_scan_context(basic_scan_context&&) = default;
+    basic_scan_context& operator=(basic_scan_context&&) = default;
+    ~basic_scan_context() = default;
+
+    /**
+     * Returns an iterator pointing to the current position in the source
+     * range.
+     */
+    constexpr iterator begin() const
+    {
+        return m_current;
+    }
+
+    /**
+     * Returns a sentinel pointing to the end of the source range.
+     */
+    constexpr sentinel end() const
+    {
+        return ranges_std::default_sentinel;
+    }
+
+    /**
+     * Returns a subrange over `[begin(), end())`
+     */
+    constexpr auto range() const
+    {
+        return ranges::subrange{begin(), end()};
+    }
+
+    /// Advances the beginning of the source range to `it`
+    void advance_to(iterator it)
+    {
+        m_current = SCN_MOVE(it);
+    }
+
+private:
+    iterator m_current;
+};
+
+SCN_END_NAMESPACE
 }  // namespace scn
-
-#endif  // SCN_DETAIL_CONTEXT_H

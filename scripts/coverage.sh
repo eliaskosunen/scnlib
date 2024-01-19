@@ -5,7 +5,8 @@ rm -rf ./coverage-*.info ./coverage-html
 lcov --zerocounters --directory .
 
 # Build
-cmake --build . --parallel
+cmake --build . --target scn_tests --parallel
+cmake --build . --target scn_impl_tests --parallel
 
 # Baseline lcov
 lcov --capture --initial --directory . --output-file coverage-base.info
@@ -19,7 +20,7 @@ lcov --add-tracefile coverage-base.info --add-tracefile coverage-test.info --out
 
 # Filter lcov data
 lcov --remove coverage-total.info \
-  '/usr/*' '*/tests/*' '*/examples/*' '*/benchmark/*' '*/include/scn/ranges/*' '*/src/deps/*' \
+  '/usr/*' '*/tests/*' '*/examples/*' '*/benchmark/*' '*/include/scn/external/*' '*/include/scn/util/expected_impl.h' '*/_deps/*' \
   --output-file coverage-filtered.info
 
 # Display summary

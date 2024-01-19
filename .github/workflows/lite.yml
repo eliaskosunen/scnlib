@@ -12,9 +12,8 @@ on:
       - 'examples/**'
       - 'include/**'
       - 'src/**'
-      - 'test/**'
+      - 'tests/**'
       - '**/CMakeLists.txt'
-      - '**/.gitmodules'
   pull_request:
     branches-ignore:
       - master
@@ -26,14 +25,30 @@ on:
       - 'examples/**'
       - 'include/**'
       - 'src/**'
-      - 'test/**'
+      - 'tests/**'
       - '**/CMakeLists.txt'
-      - '**/.gitmodules'
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
+
+env:
+  APT_INSTALL: |
+    sudo apt-get install
+      -yq --no-install-suggests --no-install-recommends
+      --allow-unauthenticated --allow-downgrades --allow-change-held-packages
+  CCACHE_ABSSTDERR: true
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_DIR: "/tmp/ccache"
+  CCACHE_MAXSIZE: 50M
+  CCACHE_NOHASHDIR: true
+  CCACHE_SLOPPINESS: "pch_defines,time_macros"
+  CCACHE_UNIFY: true
+  DEBIAN_FRONTEND: noninteractive
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
 jobs:
   lite-linux:
@@ -41,10 +56,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 22.04, 20.04 ]
-        std: [ 11, 20 ]
-        # FIXME: using clang-15 explicitly because of https://github.com/actions/runner-images/issues/8659
-        cxx: [ g++, clang++-15 ]
+        include:
+          - os: 22.04
+            std: 17
+            cxx: g++-11
+          - os: 22.04
+            std: 20
+            cxx: g++-11
+          - os: 22.04
+            std: 17
+            cxx: clang++-15
+          - os: 22.04
+            std: 20
+            cxx: clang++-15
+
+          - os: 20.04
+            std: 17
+            cxx: g++-10
+          - os: 20.04
+            std: 20
+            cxx: g++-10
+
+    env:
+      CXX: ${{ matrix.cxx }}
+      OS: ${{ matrix.os }}
 
     steps:
       - name: Setup CMake and Ninja
@@ -65,24 +100,43 @@ jobs:
           if [[ "${{ matrix.cxx }}" == "clang++-15" ]]; then
             sudo ./llvm.sh 15
           fi
+          
+          ${APT_INSTALL} ccache
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Load ccache
+        uses: actions/cache@v3
         with:
-          submodules: recursive
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          restore-keys: |
+            ccache-Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
-        env:
-          CXX: ${{ matrix.cxx }}
         run: |
-          cmake -G Ninja -DSCN_WERROR=ON -DSCN_TESTS_LOCALIZED=ON \
+          cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
                 -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
                 $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
@@ -95,26 +149,51 @@ jobs:
       matrix:
         os: [ 2019, 2022 ]
         platform: [ x64 ]
+        std: [ 17 ]
         type: [ Debug ]
+
+    env:
+      CCACHE_DIR: D:/ccache
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Create Build Environment
-        run: cmake -E make_directory ${{ runner.workspace }}/build
+        run: |
+          cmake -E make_directory ${{ runner.workspace }}/build
+          choco install ccache
+
+      - name: Load ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
+          restore-keys: |
+            ccache-Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
+            ccache-Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
+            ccache-Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
-          cmake -A ${{ matrix.platform }} $GITHUB_WORKSPACE
+          cmake -A ${{ matrix.platform }} -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --config ${{ matrix.type }} --parallel
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
@@ -125,29 +204,52 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cxx: [ g++, clang++ ]
-        std: [ 11, 20 ]
+        cxx: [ clang++ ]
+        std: [ 17, 20 ]
+
+    env:
+      CXX: ${{ matrix.cxx }}
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Create Build Environment
         run: |
           mkdir ${{ runner.workspace }}/build
+          brew install --overwrite ccache
+
+      - name: Load ccache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          restore-keys: |
+            ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
-        env:
-          CXX: ${{ matrix.cxx }}
         run: |
-          cmake -DSCN_WERROR=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} $GITHUB_WORKSPACE
+          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_USE_ASAN=ON -DSCN_USE_UBSAN=ON $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --parallel -- -k
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build

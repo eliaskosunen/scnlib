@@ -1,4 +1,4 @@
 ignore:
-  - "test"
-  - "src/deps"
-  - "include/scn/ranges"
+  - "tests"
+  - "include/scn/external"
+  - "include/scn/util/expected_impl.h"

@@ -1,0 +1,35 @@
+# TODO
+name: Checks
+
+on:
+  #push:
+  #  branches:
+  #    - master
+  #    - dev
+  #  paths-ignore:
+  #    - '**.md'
+  #    - '**/docs/**'
+  #pull_request:
+  #  branches:
+  #    - master
+  #    - dev
+  #  paths-ignore:
+  #    - '**.md'
+  #    - '**/docs/**'
+  workflow_dispatch:
+
+jobs:
+  clang-tidy:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        std: [ 17, 20 ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Clang-Tidy
+        run: |
+        #clang-tidy-14 tests/clang-tidy/main.cpp -warnings-as-errors=* -header-filter=.* -extra-arg=-std=c++${{ matrix.std }} --
