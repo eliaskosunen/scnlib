@@ -4,7 +4,7 @@ project(
         scn
         VERSION 2.0.0
         DESCRIPTION "scanf for modern C++"
-        HOMEPAGE_URL "https://v2.scnlib.dev"
+        HOMEPAGE_URL "https://scnlib.dev"
         LANGUAGES CXX
 )
 
