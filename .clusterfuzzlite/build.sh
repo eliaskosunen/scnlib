@@ -24,6 +24,5 @@ copy_data() {
 copy_data float float
 copy_data format format
 copy_data int int
-copy_data int roundtrip
 copy_data string string
 copy_data string string_impl

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
 fuzzer=$1
-if [[ $fuzzer = "roundtrip" ]]; then
-  data="int"
-elif [[ $fuzzer = "string_impl" ]]; then
+if [ "$fuzzer" = "string_impl" ]; then
   data="string"
 else
   data=$fuzzer

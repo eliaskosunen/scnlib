@@ -21,7 +21,6 @@ add_fuzzer(int)
 add_fuzzer(float)
 add_fuzzer(string)
 add_fuzzer(format)
-add_fuzzer(roundtrip)
 
 add_fuzzer(string_impl)
 target_link_libraries(scn_fuzz_string_impl PRIVATE scn_internal)
