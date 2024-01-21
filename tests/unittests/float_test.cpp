@@ -27,3 +27,8 @@ TEST(FloatTest, FloatWithSuffix)
     EXPECT_DOUBLE_EQ(result->value(), 0.0075);
     EXPECT_TRUE(result->range().empty());
 }
+
+TEST(FloatTest, FloatWithDoubleSign) {
+    auto result = scn::scan<double>("--4", "{}");
+    ASSERT_FALSE(result);
+}

@@ -598,6 +598,18 @@ scan_expected<std::ptrdiff_t> dispatch_impl(
         return static_cast<std::ptrdiff_t>(5 + nan_payload.view().size());
     }
 
+    SCN_EXPECT(!data.input.view().empty());
+    if (data.kind == float_reader_base::float_kind::hex_without_prefix) {
+        if (SCN_UNLIKELY(char_to_int(data.input.view().front()) >= 16)) {
+            return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                         "Invalid floating-point digit");
+        }
+    }
+    if (SCN_UNLIKELY(char_to_int(data.input.view().front()) >= 10)) {
+        return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                     "Invalid floating-point digit");
+    }
+
     if constexpr (std::is_same_v<T, long double>) {
         if constexpr (sizeof(double) == sizeof(long double)) {
             // If double == long double (true on Windows),

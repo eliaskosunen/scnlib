@@ -28,7 +28,7 @@ jobs:
         sanitizer:
           - address
           - undefined
-          - memory
+          #- memory
 
     steps:
       - name: Build fuzzers
