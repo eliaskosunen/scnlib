@@ -64,14 +64,15 @@ SCN_GCC_POP
 
 #if SCN_DISABLE_LOCALE
 #define SCN_XLOCALE SCN_XLOCALE_DISABLED
-#elif SCN_HAS_INCLUDE(<xlocale.h>)
+#elif (!defined(__ANDROID_API__) || __ANDROID_API__ >= 28) && \
+    SCN_HAS_INCLUDE(<xlocale.h>)
 #include <xlocale.h>
 #define SCN_XLOCALE SCN_XLOCALE_POSIX
 
 #elif defined(_MSC_VER)
 #define SCN_XLOCALE SCN_XLOCALE_MSVC
 
-#elif defined(__GLIBC__)
+#elif defined(__GLIBC__) && !defined(__ANDROID_API__)
 // glibc
 
 #include <features.h>
@@ -87,7 +88,7 @@ SCN_GCC_POP
 #include <xlocale.h>
 #define SCN_XLOCALE SCN_XLOCALE_POSIX
 
-#endif  // ^^^ else
+#endif  // SCN_DISABLE_LOCALE, others
 
 #ifndef SCN_XLOCALE
 #define SCN_XLOCALE SCN_XLOCALE_OTHER
