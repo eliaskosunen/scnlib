@@ -64,7 +64,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.sha }}
@@ -138,7 +138,7 @@ jobs:
           choco install ccache
 
       - name: Load ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.sha }}

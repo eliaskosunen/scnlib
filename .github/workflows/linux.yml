@@ -232,7 +232,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
@@ -304,7 +304,7 @@ jobs:
           sudo locale -a
 
       - name: Load ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.sha }}
@@ -348,7 +348,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-alpine-${{ github.sha }}
@@ -436,7 +436,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.sha }}
@@ -499,7 +499,7 @@ jobs:
           ${APT_INSTALL} ccache
 
       - name: Load ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.sha }}
@@ -607,7 +607,7 @@ jobs:
           echo "${{ matrix.flags }}" > $GITHUB_WORKSPACE/flags.txt
 
       - name: Load ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.sha }}
@@ -705,7 +705,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Load ccache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.sha }}

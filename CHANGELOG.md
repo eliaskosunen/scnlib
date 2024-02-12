@@ -1,6 +1,6 @@
 # 2.0.1
 
-_Released 2024-02-xx_
+_Released 2024-02-12_
 
 ## Fixes
 
