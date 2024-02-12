@@ -1,3 +1,13 @@
+# 2.0.1
+
+_Released 2024-02-xx_
+
+## Fixes
+
+ * Fix detection of support for `std::regex_constants::multiline` (#98, thanks [@jiayuehua (Jia Yue Hua)](https://github.com/jiayuehua))
+ * Fix builds of `float_reader` on Android SDK < v28 (#99, thanks [@jiayuehua (Jia Yue Hua)](https://github.com/jiayuehua))
+ * Fix typo in README example (#100, thanks [@ednolan (Eddie Nolan)](https://github.com/ednolan))
+
 # 2.0.0
 
 _Released 2024-01-19_
