@@ -34,8 +34,7 @@ void run(span<const uint8_t> data)
         return;
     }
 
-    auto [sv, wsv_direct, wsv_reinterpret, wsv_transcode] =
-        make_input_views(data);
+    auto [sv, wsv_reinterpret, wsv_transcode] = make_input_views(data);
 
     auto f =
         get_format_strings<char>("{}", "{:a}", "{:e}", "{:f}", "{:g}", "{:L}");
@@ -43,9 +42,10 @@ void run(span<const uint8_t> data)
 
     auto wf = get_format_strings<wchar_t>(L"{}", L"{:a}", L"{:e}", L"{:f}",
                                           L"{:g}", L"{:L}");
-    do_basic_run(wsv_direct, wf);
     do_basic_run(wsv_reinterpret, wf);
-    do_basic_run(wsv_transcode, wf);
+    if (!wsv_transcode.empty()) {
+        do_basic_run(wsv_transcode, wf);
+    }
 }
 }  // namespace
 }  // namespace scn::fuzz

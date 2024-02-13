@@ -41,8 +41,6 @@ inline constexpr const size_t max_input_bytes = 4096;
 inline std::locale global_locale{};
 
 inline std::string string_buffer(max_input_bytes, '\0');
-// each byte widened
-inline std::wstring wstring_buffer_direct(max_input_bytes, L'\0');
 // reinterpreted
 inline std::wstring wstring_buffer_reinterpreted(max_input_bytes /
                                                      sizeof(wchar_t),
@@ -59,12 +57,6 @@ inline auto make_input_views(span<const uint8_t> data)
               reinterpret_cast<uint8_t*>(&string_buffer[0]));
     auto sv = std::string_view{string_buffer};
 
-    // wide, direct copy
-    wstring_buffer_direct.resize(data.size());
-    std::copy(data.begin(), data.end(),
-              reinterpret_cast<uint8_t*>(&wstring_buffer_direct[0]));
-    auto wsv_direct = std::wstring_view{wstring_buffer_direct};
-
     // wide, bitwise reinterpret
     const auto wsv_reinterpret_size =
         data.size() < sizeof(wchar_t) ? 1 : (data.size() / sizeof(wchar_t));
@@ -74,10 +66,7 @@ inline auto make_input_views(span<const uint8_t> data)
 
     // wide, transcode to correct encoding (utf16 or utf32)
     std::wstring_view wsv_transcoded;
-    if (!simdutf::validate_utf8(sv.data(), sv.size())) {
-        wsv_transcoded = {wstring_buffer_direct};
-    }
-    else {
+    if (simdutf::validate_utf8(sv.data(), sv.size())) {
         if constexpr (sizeof(wchar_t) == 2) {
             auto size = simdutf::utf16_length_from_utf8(sv.data(), sv.size());
             wstring_buffer_transcoded_wide.resize(size);
@@ -97,7 +86,7 @@ inline auto make_input_views(span<const uint8_t> data)
         wsv_transcoded = {wstring_buffer_transcoded_wide};
     }
 
-    return std::make_tuple(sv, wsv_direct, wsv_reintepreted, wsv_transcoded);
+    return std::make_tuple(sv, wsv_reintepreted, wsv_transcoded);
 }
 
 inline std::deque<char> noncontiguous_buffer{};

@@ -53,13 +53,13 @@ void run(span<const uint8_t> data)
         return;
     }
 
-    auto [sv, wsv_direct, wsv_reinterpret, wsv_transcode] =
-        make_input_views(data);
+    auto [sv, wsv_reinterpret, wsv_transcode] = make_input_views(data);
 
     run_for_source(sv);
-    run_for_source(wsv_direct);
     run_for_source(wsv_reinterpret);
-    run_for_source(wsv_transcode);
+    if (!wsv_transcode.empty()) {
+        run_for_source(wsv_transcode);
+    }
 }
 }  // namespace
 }  // namespace scn::fuzz

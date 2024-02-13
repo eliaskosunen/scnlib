@@ -1,3 +1,11 @@
+# 2.0.2
+
+_Released 2024-xx-xx_
+
+## Fixes
+
+ * Fix segfault when runtime-parsing `{:[^` as a format string.
+
 # 2.0.1
 
 _Released 2024-02-12_

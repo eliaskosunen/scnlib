@@ -646,6 +646,12 @@ constexpr std::basic_string_view<CharT> parse_presentation_set(
     if (*begin == CharT{'^'}) {
         handler.on_charset_inverted();
         ++begin;
+        if (SCN_UNLIKELY(begin == end)) {
+            // clang-format off
+            handler.on_error("Unexpected end of [character set] specifier in format string");
+            // clang-format on
+            return {};
+        }
         if (*begin == CharT{']'}) {
             handler.on_charset_single(char32_t{']'});
             ++begin;
