@@ -28,6 +28,8 @@ int main() {
 }
 ```
 
+Try out in [Compiler Explorer](https://godbolt.org/z/djzKx6Evz).
+
 ## What is this?
 
 `scnlib` is a modern C++ library for replacing `scanf` and `std::istream`.
