@@ -117,8 +117,11 @@ struct default_file_tag {};
 struct gnu_file_tag {};
 struct bsd_file_tag {};
 
-template <typename F, typename Tag = default_file_tag>
-struct file_wrapper_impl : file_wrapper_impl_base {
+template <typename F, typename Tag>
+struct file_wrapper_impl;
+
+template <typename F>
+struct file_wrapper_impl<F, default_file_tag> : file_wrapper_impl_base {
     constexpr static std::string_view get_current_buffer(F*)
     {
         return {};
@@ -254,6 +257,9 @@ inline constexpr bool is_bsd_file<
     std::void_t<decltype(SCN_DECLVAL(F)._p), decltype(SCN_DECLVAL(F)._r)>> =
     true;
 
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wunneeded-internal-declaration")
+
 constexpr auto get_file_tag()
 {
     if constexpr (is_gnu_file<std::FILE>) {
@@ -269,6 +275,8 @@ constexpr auto get_file_tag()
 
 using file_wrapper =
     file_wrapper_impl<std::FILE, decltype(get_file_tag())::type>;
+
+SCN_CLANG_POP
 
 bool fill_with_buffering(std::FILE* file, std::string_view& current_view)
 {
