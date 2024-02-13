@@ -39,7 +39,7 @@ It's faster than `iostream` (see Benchmarks), and type-safe, unlike `scanf`.
 Think [{fmt}](https://github.com/fmtlib/fmt) or C++20 `std::format`, but in the
 other direction.
 
-This library (or rather, the v2 version of it) is the reference implementation of the ISO C++ standards proposal
+This library is the reference implementation of the ISO C++ standards proposal
 [P1729 "Text Parsing"](https://wg21.link/p1729).
 
 The previous major release (v1.1.3) is hosted at the `v1`-branch.

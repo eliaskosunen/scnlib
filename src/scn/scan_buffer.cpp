@@ -113,7 +113,11 @@ public:
     }
 };
 
-template <typename F, typename = void>
+struct default_file_tag {};
+struct gnu_file_tag {};
+struct bsd_file_tag {};
+
+template <typename F, typename Tag = default_file_tag>
 struct file_wrapper_impl : file_wrapper_impl_base {
     constexpr static std::string_view get_current_buffer(F*)
     {
@@ -142,8 +146,7 @@ struct file_wrapper_impl : file_wrapper_impl_base {
 
 // GNU libc (Linux)
 template <typename F>
-struct file_wrapper_impl<F, std::enable_if_t<sizeof(F::_IO_read_ptr) != 0>>
-    : file_wrapper_impl_base {
+struct file_wrapper_impl<F, gnu_file_tag> : file_wrapper_impl_base {
     static std::string_view get_current_buffer(F* file)
     {
         return make_string_view_from_pointers(file->_IO_read_ptr,
@@ -188,8 +191,7 @@ struct file_wrapper_impl<F, std::enable_if_t<sizeof(F::_IO_read_ptr) != 0>>
 
 // BSD libc (Apple)
 template <typename F>
-struct file_wrapper_impl<F, std::enable_if_t<sizeof(F::_p) != 0>>
-    : file_wrapper_impl_base {
+struct file_wrapper_impl<F, bsd_file_tag> : file_wrapper_impl_base {
     static std::string_view get_current_buffer(F* file)
     {
         return {reinterpret_cast<const char*>(file->_p),
@@ -235,7 +237,38 @@ struct file_wrapper_impl<F, std::enable_if_t<sizeof(F::_p) != 0>>
     }
 };
 
-using file_wrapper = file_wrapper_impl<std::FILE>;
+// Non-pretty workaround for MSVC silliness
+template <typename F, typename = void>
+inline constexpr bool is_gnu_file = false;
+template <typename F>
+inline constexpr bool
+    is_gnu_file<F,
+                std::void_t<decltype(SCN_DECLVAL(F)._IO_read_ptr),
+                            decltype(SCN_DECLVAL(F)._IO_read_end)>> = true;
+
+template <typename F, typename = void>
+inline constexpr bool is_bsd_file = false;
+template <typename F>
+inline constexpr bool is_bsd_file<
+    F,
+    std::void_t<decltype(SCN_DECLVAL(F)._p), decltype(SCN_DECLVAL(F)._r)>> =
+    true;
+
+constexpr auto get_file_tag()
+{
+    if constexpr (is_gnu_file<std::FILE>) {
+        return detail::tag_type<gnu_file_tag>{};
+    }
+    else if constexpr (is_bsd_file<std::FILE>) {
+        return detail::tag_type<bsd_file_tag>{};
+    }
+    else {
+        return detail::tag_type<default_file_tag>{};
+    }
+}
+
+using file_wrapper =
+    file_wrapper_impl<std::FILE, decltype(get_file_tag())::type>;
 
 bool fill_with_buffering(std::FILE* file, std::string_view& current_view)
 {
