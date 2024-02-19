@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(
         scn
-        VERSION 2.0.1
+        VERSION 2.0.2
         DESCRIPTION "scanf for modern C++"
         HOMEPAGE_URL "https://scnlib.dev"
         LANGUAGES CXX

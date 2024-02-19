@@ -1,10 +1,12 @@
 # 2.0.2
 
-_Released 2024-xx-xx_
+_Released 2024-02-19_
 
 ## Fixes
 
  * Fix segfault when runtime-parsing `{:[^` as a format string.
+ * Fix compilation of `scan_buffer.cpp` on some MSVC versions.
+ * Remove stray `test/` folder
 
 # 2.0.1
 
