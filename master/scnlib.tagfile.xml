@@ -1010,6 +1010,7 @@
     <docanchor file="index.html" title="Dependencies">main-deps</docanchor>
     <docanchor file="index.html" title="Tests and benchmarks">main-tests</docanchor>
     <docanchor file="index.html" title="Without CMake">main-without-cmake</docanchor>
+    <docanchor file="index.html" title="Configuration">configuration</docanchor>
     <docanchor file="index.html" title="License">main-license</docanchor>
   </compound>
 </tagfile>
