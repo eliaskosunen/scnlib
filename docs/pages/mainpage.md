@@ -95,12 +95,58 @@ Alternatively, by setting the CMake options `SCN_USE_EXTERNAL_FAST_FLOAT` or `SC
 these libraries are searched for using `find_package`. Use these options, if you already have these libraries
 installed.
 
+To enable support for regular expressions, a regex engine backend is required.
+The default option is to use `std::regex`, but an alternative can be picked
+by setting `SCN_REGEX_BACKEND` to `Boost` or `re2` in CMake.
+These libraries are not downloaded with `FetchContent`, but must be found externally.
+
 If your standard library doesn't have an available C++20 `<ranges>` implementation,
 a single-header version of <a href="https://github.com/tcbrindle/nanorange">NanoRange</a>
 is also bundled with the library, inside the directory `include/scn/external`.
 
 The tests and benchmarks described below depend on GTest and Google Benchmark, respectively.
 These libraries are also fetched with `FetchContent`, if necessary.
+
+<table>
+<caption>
+Library dependencies
+</caption>
+
+<tr>
+<th>Dependency</th>
+<th>Version</th>
+<th>Required</th>
+<th>Information</th>
+</tr>
+
+<tr>
+<td>simdutf</td>
+<td>`>= 4.0.0`</td>
+<td>✅</td>
+<td>Downloaded by default with `FetchContent`, controlled with `SCN_USE_EXTERNAL_SIMDUTF`.<br>If not using CMake, must be manually linked with your final build.</td>
+</tr>
+
+<tr>
+<td>fast_float</td>
+<td>`>= 6.0.0`</td>
+<td>✅</td>
+<td>Header only. Downloaded by default with `FetchContent`, controlled with `SCN_USE_EXTERNAL_FAST_FLOAT`.</td>
+</tr>
+
+<tr>
+<td>Boost.Regex</td>
+<td>N/A</td>
+<td>⚠️</td>
+<td>Required if `SCN_REGEX_BACKEND` is `Boost`.<br>Must be available externally (not automatically downloaded).</td>
+</tr>
+
+<tr>
+<td>re2</td>
+<td>`>= 11.0.0`</td>
+<td>⚠️</td>
+<td>Required if `SCN_REGEX_BACKEND` is `re2`.<br>Must be available externally (not automatically downloaded).</td>
+</tr>
+</table>
 
 \subsection main-tests Tests and benchmarks
 
@@ -136,7 +182,10 @@ $ sudo cpupower frequency-set --governor powersave
 \subsection main-without-cmake Without CMake
 
 As mentioned above, the implementation of scnlib depends on fast_float and simdutf.
-If you're not using CMake, you'll need to download and build these libraries yourself.
+If you're not using CMake, you'll need to download and build these libraries yourself,
+and link them with your final binary.
+Note, that fast_float is a header-only library, so there's nothing to link,
+but simdutf isn't.
 
 Headers for scnlib can be found from the `include/` directory, and source files from the `src/` directory.
 
@@ -150,15 +199,244 @@ $ ar rcs libscn.a *.o
 \endcode
 
 `libscn.a` can then be linked, as usual, with your project.
-Don't forget to also include `fast_float` and `simdutf`.
+Don't forget to also include `simdutf` to be linked.
 
 \code{.sh}
 # in your project
-$ c++ ... -Lpath-to-scn/build -lscn -Lpath-to-fast-float -lfast_float -Lpath-to-simdutf -lsimdutf
+$ c++ ... -Lpath-to-scn/build -lscn -Lpath-to-simdutf -lsimdutf
 \endcode
 
 Note, that scnlib requires at least C++17,
-so --std=c++17 (or equivalent, or newer) may need to be included in the build flags.
+so `--std=c++17` (or equivalent, or newer) may need to be included in the build flags.
+
+\subsection configuration Configuration
+
+There are numerous flags that can be used to configure the build of the library.
+All of them can be set through CMake at library build time, and some of them
+directly on the compiler command line, as indicated on the tables below.
+
+<table>
+<caption>
+scnlib configuration options
+</caption>
+
+<tr>
+<th>Option</th>
+<th>CMake</th>
+<th>CLI</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+
+<tr>
+<td>`SCN_DISABLE_REGEX`</td>
+<td>✅</td>
+<td>✅</td>
+<td>`OFF`</td>
+<td>Disable regular expression support</td>
+</tr>
+
+<tr>
+<td>`SCN_REGEX_BACKEND`</td>
+<td>✅</td>
+<td>⚠️</td>
+<td>`"std"`</td>
+<td>Regular expression backend to use<br>(use integer values on the command line)<br>Values: `"std"=0`, `"Boost"`=1`, `"re2"=2`</td>
+</tr>
+
+<tr>
+<td>`SCN_REGEX_BOOST_USE_ICU`</td>
+<td>✅</td>
+<td>✅</td>
+<td>`OFF`</td>
+<td>Use the ICU when using the Boost regex backend<br>(requires `SCN_REGEX_BACKEND` to be `Boost`/`1`)</td>
+</tr>
+
+<tr>
+<td>`SCN_DISABLE_IOSTREAM`</td>
+<td>✅</td>
+<td>✅</td>
+<td>`OFF`</td>
+<td>Disable everything related to iostreams</td>
+</tr>
+
+<tr>
+<td>`SCN_DISABLE_LOCALE`</td>
+<td>✅</td>
+<td>✅</td>
+<td>`OFF`</td>
+<td>Disable everything related to C++ locales (`std::locale`)</td>
+</tr>
+
+<tr>
+<td>`SCN_DISABLE_FROM_CHARS`</td>
+<td>✅</td>
+<td>✅</td>
+<td>`OFF`</td>
+<td>Disable usage of (falling back on) `std::from_chars` when scanning floating-point values</td>
+</tr>
+
+<tr>
+<td>`SCN_DISABLE_STRTOD`</td>
+<td>✅</td>
+<td>✅</td>
+<td>`OFF`</td>
+<td>Disable usage of (falling back on) `std::strtod` when scanning floating-point values</td>
+</tr>
+
+<tr>
+<td>`SCN_DISABLE_(TYPE)`</td>
+<td>✅</td>
+<td>✅</td>
+<td>`OFF`</td>
+<td>Disable support for a specific type</td>
+</tr>
+</table>
+
+Below, `ENABLE_FULL` is true, if `SCN_CI` is set in CMake, or scnlib
+is built as the primary project.
+
+<table>
+<caption>
+CMake build type configuration
+</caption>
+
+<tr>
+<th>Option</th>
+<th>CMake</th>
+<th>CLI</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+
+<tr>
+<td>`SCN_USE_EXTERNAL_SIMDUTF`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Use `find_package` to get simdutf, instead of CMake `FetchContent`</td>
+</tr>
+
+<tr>
+<td>`SCN_USE_EXTERNAL_FAST_FLOAT`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Use `find_package` to get fast_float, instead of CMake `FetchContent`</td>
+</tr>
+
+<tr>
+<td>`SCN_TESTS`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ENABLE_FULL`</td>
+<td>Enable building of tests</td>
+</tr>
+
+<tr>
+<td>`SCN_DOCS`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ENABLE_FULL`</td>
+<td>Enable building of documentation<br>(`scn_docs` target, requires `poxy`)</td>
+</tr>
+
+<tr>
+<td>`SCN_EXAMPLES`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ENABLE_FULL`</td>
+<td>Enable building of examples</td>
+</tr>
+
+<tr>
+<td>`SCN_INSTALL`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ENABLE_FULL`</td>
+<td>Enable `install` target</td>
+</tr>
+
+<tr>
+<td>`SCN_BENCHMARKS`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ENABLE_FULL`</td>
+<td>Enable building of (runtime) benchmarks</td>
+</tr>
+
+<tr>
+<td>`SCN_BENCHMARKS_BUILDTIME`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ENABLE_FULL`</td>
+<td>Enable build-time benchmark targets</td>
+</tr>
+
+<tr>
+<td>`SCN_BENCHMARKS_BINARYSIZE`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ENABLE_FULL`</td>
+<td>Enable binary-size benchmark targets</td>
+</tr>
+
+<tr>
+<td>`SCN_FUZZING`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ENABLE_FULL`</td>
+<td>Enable building of fuzzer targets</td>
+</tr>
+
+<tr>
+<td>`SCN_PEDANTIC`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ENABLE_FULL`</td>
+<td>Enable pedantic compilation flags (mostly warnings)</td>
+</tr>
+
+<tr>
+<td>`SCN_WERROR`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`SCN_CI`</td>
+<td>Enable warnings-as-errors</td>
+</tr>
+
+<tr>
+<td>`SCN_COVERAGE`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Enable code coverage reporting</td>
+</tr>
+
+<tr>
+<td>`SCN_USE_NATIVE_ARCH`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Add `-march=native`</td>
+</tr>
+
+<tr>
+<td>`SCN_USE_HASWELL_ARCH`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Add `-march=haswell`<br>(used for benchmarking to get a more recent, but reasonable architecture)</td>
+</tr>
+
+<tr>
+<td>`SCN_USE_ASAN`, `_UBSAN`, `_MSAN`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Enable sanitizers</td>
+</tr>
+</table>
 
 \section main-license License
 
