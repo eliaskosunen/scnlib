@@ -61,12 +61,12 @@ endif ()
 # we don't want to include tests of dependencies, so we need to do some manual work
 
 if (SCN_USE_EXTERNAL_SIMDUTF)
-    find_package(simdutf 4.0.0 CONFIG REQUIRED)
+    find_package(simdutf 5.2.2 CONFIG REQUIRED)
 else ()
     FetchContent_Declare(
             simdutf
             GIT_REPOSITORY https://github.com/simdutf/simdutf.git
-            GIT_TAG v4.0.8
+            GIT_TAG v5.2.2
             GIT_SHALLOW TRUE
     )
 
