@@ -64,7 +64,7 @@ endif ()
 # we don't want to include tests of dependencies, so we need to do some manual work
 
 if (SCN_USE_EXTERNAL_SIMDUTF)
-    # Can't use the version-flag of `find_package`,
+    # Can't use the single-version-flag of `find_package`,
     # because simdutf only claims compatibility with the same minor version
     # We're compatible with _at least_ v4 and v5
     find_package(simdutf CONFIG REQUIRED)

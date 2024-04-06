@@ -525,7 +525,7 @@ jobs:
       - name: Build simdutf
         if: matrix.external_deps == 1
         run: |
-          git clone https://github.com/simdutf/simdutf -b v4.0.5 --depth=1
+          git clone https://github.com/simdutf/simdutf -b v5.2.3 --depth=1
           cd simdutf
           mkdir build
           cd build
@@ -536,7 +536,7 @@ jobs:
       - name: Build fast_float
         if: matrix.external_deps == 1
         run: |
-          git clone https://github.com/fastfloat/fast_float -b v6.0.0 --depth=1
+          git clone https://github.com/fastfloat/fast_float -b v6.1.1 --depth=1
           cd fast_float
           mkdir build
           cd build
@@ -655,7 +655,8 @@ jobs:
             icu: OFF
           - engine: Boost
             icu: ON
-          - engine: re2
+          # Disabled due to re2 building trouble
+          #- engine: re2
 
     env:
       CC: gcc-11
@@ -685,7 +686,9 @@ jobs:
       - name: Install re2
         if: matrix.engine == 're2'
         run: |
-          git clone https://github.com/abseil/abseil-cpp -b 20230802.1 --depth=1
+          sudo apt-get remove -y libre2-dev
+          
+          git clone https://github.com/abseil/abseil-cpp -b 20240116.1 --depth=1
           cd abseil-cpp
           mkdir build
           cd build
@@ -693,7 +696,7 @@ jobs:
           sudo cmake --build . --target install
           cd ../..
           
-          git clone https://github.com/google/re2 -b 2023-11-01 --depth=1
+          git clone https://github.com/google/re2 -b 2024-04-01 --depth=1
           cd re2
           mkdir build
           cd build
