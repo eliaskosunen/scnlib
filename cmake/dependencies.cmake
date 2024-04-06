@@ -2,6 +2,9 @@ include(FetchContent)
 
 set(SCN_OPTIONAL_DEPENDENCIES "")
 
+set(OLD_CMAKE_FIND_PACKAGE_SORT_ORDER "${CMAKE_FIND_PACKAGE_SORT_ORDER}")
+set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
+
 if (SCN_TESTS)
     # GTest
 
@@ -49,7 +52,7 @@ if (SCN_BENCHMARKS)
     FetchContent_Declare(
             google-benchmark
             GIT_REPOSITORY https://github.com/google/benchmark.git
-            GIT_TAG main
+            GIT_TAG v1.8.3
             GIT_SHALLOW TRUE
     )
     list(APPEND SCN_OPTIONAL_DEPENDENCIES "google-benchmark")
@@ -61,12 +64,18 @@ endif ()
 # we don't want to include tests of dependencies, so we need to do some manual work
 
 if (SCN_USE_EXTERNAL_SIMDUTF)
-    find_package(simdutf 4.0.0 CONFIG REQUIRED)
+    # Can't use the version-flag of `find_package`,
+    # because simdutf only claims compatibility with the same minor version
+    # We're compatible with _at least_ v4 and v5
+    find_package(simdutf CONFIG REQUIRED)
+    if (simdutf_VERSION VERSION_LESS 4.0.0)
+        message(FATAL_ERROR "Incompatible version of simdutf: at least 3.0.0 required, found ${simdutf_VERSION}")
+    endif ()
 else ()
     FetchContent_Declare(
             simdutf
             GIT_REPOSITORY https://github.com/simdutf/simdutf.git
-            GIT_TAG v4.0.8
+            GIT_TAG v5.2.3
             GIT_SHALLOW TRUE
     )
 
@@ -90,12 +99,16 @@ endif ()
 # fast_float
 
 if (SCN_USE_EXTERNAL_FAST_FLOAT)
-    find_package(FastFloat 6.0.0 CONFIG REQUIRED)
+    # Same as above for simdutf
+    find_package(FastFloat CONFIG REQUIRED)
+    if (FastFloat_VERSION VERSION_LESS 5.0.0)
+        message(FATAL_ERROR "Incompatible version of FastFloat: at least 5.0.0 required, found ${FastFloat_VERSION}")
+    endif ()
 else ()
     FetchContent_Declare(
             fast_float
             GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
-            GIT_TAG v6.0.0
+            GIT_TAG v6.1.1
             GIT_SHALLOW TRUE
     )
 
@@ -154,7 +167,10 @@ if (SCN_REGEX_BACKEND STREQUAL "re2")
         message(FATAL_ERROR "SCN_REGEX_BOOST_USE_ICU isn't supported when SCN_REGEX_BACKEND is re2")
     endif ()
 
-    find_package(re2 11.0.0 REQUIRED)
+    find_package(re2 REQUIRED)
+    if (re2_VERSION VERSION_LESS 11.0.0)
+        message(FATAL_ERROR "Incompatible version of re2: at least 11.0.0 required, found ${re2_VERSION}")
+    endif ()
     set(SCN_REGEX_BACKEND_TARGET re2::re2)
 endif ()
 
@@ -163,3 +179,5 @@ endif ()
 FetchContent_MakeAvailable(
         ${SCN_OPTIONAL_DEPENDENCIES}
 )
+
+set(CMAKE_FIND_PACKAGE_SORT_ORDER "${OLD_CMAKE_FIND_PACKAGE_SORT_ORDER}")
