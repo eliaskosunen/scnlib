@@ -177,7 +177,7 @@ private:
 };
 
 struct format_specs {
-    int width{0};
+    int width{0}, precision{0};
     fill_type fill{};
     presentation_type type{presentation_type::none};
     std::array<uint8_t, 128 / 8> charset_literals{0};
@@ -253,6 +253,10 @@ public:
     constexpr void on_width(int width)
     {
         m_specs.width = width;
+    }
+    constexpr void on_precision(int prec)
+    {
+        m_specs.precision = prec;
     }
 
     constexpr void on_type(presentation_type type)
