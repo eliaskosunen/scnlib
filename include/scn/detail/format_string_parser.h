@@ -252,10 +252,22 @@ public:
 
     constexpr void on_width(int width)
     {
+        if (m_specs.precision > width) {
+            // clang-format off
+            return this->on_error("Width (i.e., maximum field length) cannot be smaller than precision (i.e., minimum field length)");
+            // clang-format on
+        }
+
         m_specs.width = width;
     }
     constexpr void on_precision(int prec)
     {
+        if (m_specs.width != 0 && m_specs.width < prec) {
+            // clang-format off
+            return this->on_error("Width (i.e., maximum field length) cannot be smaller than precision (i.e., minimum field length)");
+            // clang-format on
+        }
+
         m_specs.precision = prec;
     }
 
@@ -570,6 +582,26 @@ constexpr const CharT* parse_width(const CharT* begin,
     return begin;
 }
 
+template <typename CharT, typename Handler>
+constexpr const CharT* parse_precision(const CharT* begin,
+                                       const CharT* end,
+                                       Handler&& handler)
+{
+    SCN_EXPECT(begin != end);
+
+    if (*begin >= CharT{'0'} && *begin <= CharT{'9'}) {
+        int prec = parse_simple_int(begin, end);
+        if (SCN_LIKELY(prec != -1)) {
+            handler.on_precision(prec);
+        }
+        else {
+            handler.on_error("Invalid field precision");
+            return begin;
+        }
+    }
+    return begin;
+}
+
 template <typename CharT, typename SpecHandler>
 constexpr char32_t parse_presentation_set_code_point(const CharT*& begin,
                                                      const CharT* end,
@@ -840,6 +872,19 @@ constexpr const CharT* parse_format_specs(const CharT* begin,
     if (SCN_UNLIKELY(begin == end)) {
         handler.on_error("Unexpected end of format string");
         return begin;
+    }
+
+    if (*begin == CharT{'.'}) {
+        ++begin;
+        if (SCN_UNLIKELY(begin == end)) {
+            handler.on_error("Unexpected end of format string");
+            return begin;
+        }
+        begin = parse_precision(begin, end, handler);
+        if (SCN_UNLIKELY(begin == end)) {
+            handler.on_error("Unexpected end of format string");
+            return begin;
+        }
     }
 
     if (*begin == CharT{'L'}) {
