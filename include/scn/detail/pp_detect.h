@@ -51,7 +51,7 @@
 #endif
 
 #define SCN_COMPILER(major, minor, patch) \
-    ((major)*10'000'000 + (minor)*10'000 + (patch))
+    ((major)*10000000 /* 10,000,000 */ + (minor)*10000 /* 10,000 */ + (patch))
 
 #ifdef __INTEL_COMPILER
 // Intel
