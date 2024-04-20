@@ -45,7 +45,7 @@ TEST(AlignAndFillTest, DefaultWithChar2)
 
 TEST(AlignAndFillTest, CustomWidthInt)
 {
-    auto r = scn::scan<int>("     42", "{:6}");
+    auto r = scn::scan<int>("    42", "{:.6}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
@@ -53,7 +53,7 @@ TEST(AlignAndFillTest, CustomWidthInt)
 
 TEST(AlignAndFillTest, CustomWidthChar)
 {
-    auto r = scn::scan<char>("x     ", "{:6}");
+    auto r = scn::scan<char>("x     ", "{:.6}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 'x');
     EXPECT_STREQ(r->begin(), "     ");
@@ -69,7 +69,7 @@ TEST(AlignAndFillTest, DISABLED_RightAlignWithCustomFillAndNoWidth)
 
 TEST(AlignAndFillTest, DISABLED_RightAlignWithCustomFillAndFullWidth)
 {
-    auto r = scn::scan<int>("***42", "{:*>5}");
+    auto r = scn::scan<int>("***42", "{:*>.5}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
@@ -77,7 +77,7 @@ TEST(AlignAndFillTest, DISABLED_RightAlignWithCustomFillAndFullWidth)
 
 TEST(AlignAndFillTest, DISABLED_RightAlignWithCustomFillAndLesserWidth)
 {
-    auto r = scn::scan<int>("***42", "{:*>4}");
+    auto r = scn::scan<int>("***42", "{:*>.4}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 4);
     EXPECT_STREQ(r->begin(), "2");
@@ -93,7 +93,7 @@ TEST(AlignAndFillTest, DISABLED_RightAlignWithCustomFillAndNoWidthButNoFillInInp
 
 TEST(AlignAndFillTest, DISABLED_RightAlignWithCustomFillAndGreaterWidth)
 {
-    auto r = scn::scan<int>("42", "{:*>5}");
+    auto r = scn::scan<int>("42", "{:*>.5}");
     ASSERT_FALSE(r);
 }
 
@@ -107,7 +107,7 @@ TEST(AlignAndFillTest, DISABLED_LeftAlignWithCustomFillAndNoWidth)
 
 TEST(AlignAndFillTest, DISABLED_LeftAlignWithCustomFillAndFullWidth)
 {
-    auto r = scn::scan<int>("42***", "{:*<5}");
+    auto r = scn::scan<int>("42***", "{:*<.5}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
@@ -115,7 +115,7 @@ TEST(AlignAndFillTest, DISABLED_LeftAlignWithCustomFillAndFullWidth)
 
 TEST(AlignAndFillTest, DISABLED_LeftAlignWithCustomFillAndLesserWidth)
 {
-    auto r = scn::scan<int>("42***", "{:*<4}");
+    auto r = scn::scan<int>("42***", "{:*<.4}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 4);
     EXPECT_STREQ(r->begin(), "2");
@@ -131,7 +131,7 @@ TEST(AlignAndFillTest, DISABLED_LeftAlignWithCustomFillAndNoWidthButNoFillInInpu
 
 TEST(AlignAndFillTest, DISABLED_LeftAlignWithCustomFillAndGreaterWidth)
 {
-    auto r = scn::scan<int>("42", "{:*<5}");
+    auto r = scn::scan<int>("42", "{:*<.5}");
     ASSERT_FALSE(r);
 }
 
@@ -167,7 +167,7 @@ TEST(AlignAndFillTest, DISABLED_CenterAlignWithLessFillAtEndOfInput)
 
 TEST(AlignAndFillTest, DISABLED_CenterAlignWithCustomEvenWidth)
 {
-    auto r = scn::scan<int>("**42**", "{:*^6}");
+    auto r = scn::scan<int>("**42**", "{:*^.6}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
@@ -175,7 +175,7 @@ TEST(AlignAndFillTest, DISABLED_CenterAlignWithCustomEvenWidth)
 
 TEST(AlignAndFillTest, DISABLED_CenterAlignWithCustomOddWidth)
 {
-    auto r = scn::scan<int>("*42**", "{:*^5}");
+    auto r = scn::scan<int>("*42**", "{:*^.5}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
@@ -183,7 +183,7 @@ TEST(AlignAndFillTest, DISABLED_CenterAlignWithCustomOddWidth)
 
 TEST(CustomWidthTest, Ascii)
 {
-    auto r = scn::scan<std::string>("abc", "{:2}");
+    auto r = scn::scan<std::string>("abc", "{:.2}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), "ab");
     EXPECT_STREQ(r->begin(), "c");
@@ -191,7 +191,7 @@ TEST(CustomWidthTest, Ascii)
 
 TEST(CustomWidthTest, SingleWidthText)
 {
-    auto r = scn::scan<std::string>("åäö", "{:2}");
+    auto r = scn::scan<std::string>("åäö", "{:.2}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), "åä");
     EXPECT_STREQ(r->begin(), "ö");
@@ -199,7 +199,7 @@ TEST(CustomWidthTest, SingleWidthText)
 
 TEST(CustomWidthTest, DoubleWidthEmoji)
 {
-    auto r = scn::scan<std::string>("😂a", "{:2}");
+    auto r = scn::scan<std::string>("😂a", "{:.2}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), "😂");
     EXPECT_STREQ(r->begin(), "a");

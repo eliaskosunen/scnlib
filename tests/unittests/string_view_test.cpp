@@ -60,14 +60,14 @@ TEST(StringViewTest, CharacterPresentationWithNoWidthCausesError)
 
 TEST(StringViewTest, CharacterPresentationNarrowStringViewFromNarrowSource)
 {
-    auto result = scn::scan<std::string_view>("abc def", "{:4c}");
+    auto result = scn::scan<std::string_view>("abc def", "{:.4c}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), "def");
     EXPECT_EQ(result->value(), "abc ");
 }
 TEST(StringViewTest, CharacterPresentationWideStringViewFromWideSource)
 {
-    auto result = scn::scan<std::wstring_view>(L"abc def", L"{:4c}");
+    auto result = scn::scan<std::wstring_view>(L"abc def", L"{:.4c}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), L"def");
     EXPECT_EQ(result->value(), L"abc ");
@@ -91,7 +91,7 @@ TEST(StringViewTest, CharacterSetPresentationWideStringViewFromWideSource)
 TEST(StringViewTest, InvalidUtf8)
 {
     auto source = std::string_view{"\x82\xf5"};
-    auto result = scn::scan<std::string_view>(source, "{:64c}");
+    auto result = scn::scan<std::string_view>(source, "{:.64c}");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
 #if 0
@@ -110,7 +110,7 @@ TEST(StringViewTest, WonkyInput)
             break;
         }
         auto result = scn::scan<std::string_view>(
-            scn::ranges::subrange{it, source.end()}, "{:64c}");
+            scn::ranges::subrange{it, source.end()}, "{:.64c}");
         if (result) {
             it = result->begin();
         }
@@ -121,7 +121,7 @@ TEST(StringViewTest, WonkyInput2)
     const char source[] = {'o', ' ', '\x0f', '\n', '\n', '\xc3'};
     auto input = std::string_view{source, sizeof(source)};
 
-    auto result = scn::scan<std::string_view>(input, "{:64c}");
+    auto result = scn::scan<std::string_view>(input, "{:.64c}");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
 #if 0

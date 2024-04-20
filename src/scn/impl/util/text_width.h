@@ -264,11 +264,18 @@ std::size_t calculate_text_width(
 #if SCN_POSIX
             set_clocale_classic_guard clocale_guard{LC_CTYPE};
 
-            std::wstring winput;
-            transcode_to_string(input, winput);
-            const auto n = ::wcswidth(winput.data(), winput.size());
-            SCN_ENSURE(n != -1);
-            return static_cast<size_t>(n);
+            if constexpr (std::is_same_v<CharT, char>) {
+                std::wstring winput;
+                transcode_to_string(input, winput);
+                const auto n = ::wcswidth(winput.data(), winput.size());
+                SCN_ENSURE(n != -1);
+                return static_cast<size_t>(n);
+            }
+            else {
+                const auto n = ::wcswidth(input.data(), input.size());
+                SCN_ENSURE(n != -1);
+                return static_cast<size_t>(n);
+            }
 #else
             SCN_ASSERT(false, "No wcswidth");
             SCN_UNREACHABLE;

@@ -89,14 +89,14 @@ TEST(StringTest, CharacterPresentationWithNoWidthCausesError)
 
 TEST(StringTest, CharacterPresentationNarrowStringFromNarrowSource)
 {
-    auto result = scn::scan<std::string>("abc def", "{:4c}");
+    auto result = scn::scan<std::string>("abc def", "{:.4c}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), "def");
     EXPECT_EQ(result->value(), "abc ");
 }
 TEST(StringTest, CharacterPresentationWideStringFromWideSource)
 {
-    auto result = scn::scan<std::wstring>(L"abc def", L"{:4c}");
+    auto result = scn::scan<std::wstring>(L"abc def", L"{:.4c}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), L"def");
     EXPECT_EQ(result->value(), L"abc ");
@@ -104,14 +104,14 @@ TEST(StringTest, CharacterPresentationWideStringFromWideSource)
 
 TEST(StringTest, CharacterPresentationNarrowStringFromWideSource)
 {
-    auto result = scn::scan<std::string>(L"abc def", L"{:4c}");
+    auto result = scn::scan<std::string>(L"abc def", L"{:.4c}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), L"def");
     EXPECT_EQ(result->value(), "abc ");
 }
 TEST(StringTest, CharacterPresentationWideStringFromNarrowSource)
 {
-    auto result = scn::scan<std::wstring>("abc def", "{:4c}");
+    auto result = scn::scan<std::wstring>("abc def", "{:.4c}");
     ASSERT_TRUE(result);
     EXPECT_STREQ(result->begin(), "def");
     EXPECT_EQ(result->value(), L"abc ");
@@ -152,7 +152,7 @@ TEST(StringTest, WonkyInput)
     const char source[] = {'o', ' ', '\x0f', '\n', '\n', '\xc3'};
     auto input = std::string_view{source, sizeof(source)};
 
-    auto result = scn::scan<std::string>(input, "{:64c}");
+    auto result = scn::scan<std::string>(input, "{:.64c}");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
 #if 0

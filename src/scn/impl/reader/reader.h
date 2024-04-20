@@ -207,14 +207,45 @@ struct arg_reader {
                     .transform_error(make_eof_scan_error));
 
         auto subr = ranges::subrange{it, ranges::end(rng)};
-
-        if (specs.width != 0) {
-            SCN_TRY(w_it, rd.read_specs(take_width(subr, specs.width), specs,
-                                        value, loc));
-            return w_it.base();
+        size_t prefix_width = 0;
+        if (SCN_UNLIKELY(specs.precision != 0 || specs.width != 0)) {
+            prefix_width = calculate_text_width(
+                make_contiguous_buffer(ranges::subrange{ranges::begin(rng), it})
+                    .view());
         }
 
-        return rd.read_specs(subr, specs, value, loc);
+        if (SCN_UNLIKELY(specs.precision != 0)) {
+            if (specs.precision <= prefix_width) {
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Too many spaces before value, precision exceeded before "
+                    "reading value");
+            }
+
+            SCN_TRY(w_it,
+                    rd.read_specs(
+                        take_width(subr, static_cast<std::ptrdiff_t>(
+                                             specs.precision - prefix_width)),
+                        specs, value, loc));
+            it = w_it.base();
+        }
+        else {
+            SCN_TRY_ASSIGN(it, rd.read_specs(subr, specs, value, loc));
+        }
+
+        if (SCN_UNLIKELY(specs.width != 0)) {
+            auto value_width = calculate_text_width(
+                make_contiguous_buffer(
+                    ranges::subrange{ranges::begin(subr), it})
+                    .view());
+            if (prefix_width + value_width < specs.width) {
+                return unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Scanned value too narrow, width did not exceed what was "
+                    "specified in the format string");
+            }
+        }
+        return it;
     }
 
     template <typename T>
@@ -237,7 +268,8 @@ struct arg_reader {
                 return unexpected(e);
             }
 
-            if (!is_segment_contiguous(range) || specs.width != 0) {
+            if (!is_segment_contiguous(range) || specs.precision != 0 ||
+                specs.width != 0) {
                 return impl(rd, range, value);
             }
 

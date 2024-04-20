@@ -1183,9 +1183,9 @@ constexpr void check_string_type_specs(const format_specs& specs,
         return;
     }
     if (specs.type == presentation_type::character) {
-        if (SCN_UNLIKELY(specs.width == 0)) {
+        if (SCN_UNLIKELY(specs.precision == 0)) {
             // clang-format off
-            return handler.on_error("'c' type specifier for strings requires the field width to be specified");
+            return handler.on_error("'c' type specifier for strings requires the field precision to be specified");
             // clang-format on
         }
         return;
