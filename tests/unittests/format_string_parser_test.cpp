@@ -23,7 +23,7 @@ TEST(FormatStringParserTest, DefaultConstructedSpecs)
 {
     auto specs = scn::detail::format_specs{};
     EXPECT_EQ(specs.width, 0);
-    EXPECT_EQ(specs.fill.get<char>(), ' ');
+    EXPECT_EQ(specs.fill.get_code_unit<char>(), ' ');
     EXPECT_EQ(specs.type, scn::detail::presentation_type::none);
     EXPECT_EQ(specs.arbitrary_base, 0);
     EXPECT_EQ(specs.align, scn::detail::align_type::none);
@@ -50,7 +50,8 @@ SCN_BEGIN_NAMESPACE
 namespace detail {
 static inline bool operator==(const format_specs& a, const format_specs& b)
 {
-    return a.width == b.width && a.fill.view<char>() == b.fill.view<char>() &&
+    return a.width == b.width &&
+           a.fill.get_code_units<char>() == b.fill.get_code_units<char>() &&
            a.type == b.type && a.arbitrary_base == b.arbitrary_base &&
            a.align == b.align && a.localized == b.localized;
 }
@@ -84,7 +85,7 @@ TEST_F(FormatStringParserAlignTest, NoAlignNoFill)
     std::string_view input{"}"};
     auto result = scn::detail::parse_align(
         input.data(), input.data() + input.size(), handler);
-    EXPECT_EQ(specs.fill.get<char>(), ' ');
+    EXPECT_EQ(specs.fill.get_code_unit<char>(), ' ');
     EXPECT_EQ(specs.align, scn::detail::align_type::none);
     EXPECT_EQ(specs, scn::detail::format_specs{});
     EXPECT_EQ(result, input.data());
@@ -96,7 +97,7 @@ TEST_F(FormatStringParserAlignTest, LeftAlignNoFill)
     std::string_view input{"<}"};
     auto result = scn::detail::parse_align(
         input.data(), input.data() + input.size(), handler);
-    EXPECT_EQ(specs.fill.get<char>(), ' ');
+    EXPECT_EQ(specs.fill.get_code_unit<char>(), ' ');
     EXPECT_EQ(specs.align, scn::detail::align_type::left);
     EXPECT_EQ(result, input.data() + 1);
     EXPECT_EQ(handler.latest_error, nullptr);
@@ -107,7 +108,7 @@ TEST_F(FormatStringParserAlignTest, RightAlignWithFill)
     std::string_view input{"_>}"};
     auto result = scn::detail::parse_align(
         input.data(), input.data() + input.size(), handler);
-    EXPECT_EQ(specs.fill.get<char>(), '_');
+    EXPECT_EQ(specs.fill.get_code_unit<char>(), '_');
     EXPECT_EQ(specs.align, scn::detail::align_type::right);
     EXPECT_EQ(result, input.data() + 2);
     EXPECT_EQ(handler.latest_error, nullptr);

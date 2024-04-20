@@ -170,6 +170,22 @@ simple_borrowed_iterator_t<Range> read_until_code_units(Range&& range,
     return ranges::search(SCN_FWD(range), SCN_FWD(needle)).begin();
 }
 
+template <typename Range, typename CodeUnits>
+simple_borrowed_iterator_t<Range> read_while_code_units(Range&& range,
+                                                        CodeUnits&& needle)
+{
+    auto subr = ranges::subrange{range};
+    while (!subr.empty()) {
+        auto [beg, cp] = read_code_point_into(subr);
+        if (!ranges::equal(cp.view(), needle)) {
+            return subr.begin();
+        }
+        subr = ranges::subrange{beg, subr.end()};
+    }
+    SCN_ENSURE(subr.begin() == subr.end());
+    return subr.begin();
+}
+
 template <typename Range>
 simple_borrowed_iterator_t<Range> read_until_code_point_eager(
     Range&& range,

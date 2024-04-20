@@ -145,7 +145,7 @@ public:
     }
 
     template <typename CharT>
-    CharT get() const
+    CharT get_code_unit() const
     {
         SCN_EXPECT(m_size <= sizeof(CharT));
         CharT r{};
@@ -154,18 +154,7 @@ public:
     }
 
     template <typename CharT>
-    constexpr const CharT* data() const
-    {
-        if constexpr (std::is_same_v<CharT, char>) {
-            return m_data;
-        }
-        else {
-            return nullptr;
-        }
-    }
-
-    template <typename CharT>
-    std::basic_string_view<CharT> view() const
+    std::basic_string_view<CharT> get_code_units() const
     {
         return {reinterpret_cast<const CharT*>(m_data), m_size};
     }
@@ -252,9 +241,9 @@ public:
 
     constexpr void on_width(int width)
     {
-        if (m_specs.precision > width) {
+        if (m_specs.precision != 0 && width > m_specs.precision) {
             // clang-format off
-            return this->on_error("Width (i.e., maximum field length) cannot be smaller than precision (i.e., minimum field length)");
+            return this->on_error("Width (i.e., minimum field length) cannot be larger than precision (i.e., maximum field length)");
             // clang-format on
         }
 
@@ -262,9 +251,9 @@ public:
     }
     constexpr void on_precision(int prec)
     {
-        if (m_specs.width != 0 && m_specs.width < prec) {
+        if (m_specs.width > prec) {
             // clang-format off
-            return this->on_error("Width (i.e., maximum field length) cannot be smaller than precision (i.e., minimum field length)");
+            return this->on_error("Width (i.e., minimum field length) cannot be larger than precision (i.e., maximum field length)");
             // clang-format on
         }
 
@@ -1146,6 +1135,15 @@ constexpr void check_char_type_specs(const format_specs& specs,
         SCN_UNLIKELY_ATTR
         return handler.on_error("Invalid type specifier for character type");
     }
+    if (specs.width > 2) {
+        SCN_UNLIKELY_ATTR
+        return handler.on_error("Invalid width specifier for character type");
+    }
+    if (specs.precision > 2) {
+        SCN_UNLIKELY_ATTR
+        return handler.on_error(
+            "Invalid precision specifier for character type");
+    }
 }
 
 template <typename Handler>
@@ -1155,7 +1153,16 @@ constexpr void check_code_point_type_specs(const format_specs& specs,
     if (specs.type != presentation_type::none &&
         specs.type != presentation_type::character) {
         SCN_UNLIKELY_ATTR
-        return handler.on_error("Invalid type specifier for character type");
+        return handler.on_error("Invalid type specifier for code point type");
+    }
+    if (specs.align == align_type::none && specs.width > 2) {
+        SCN_UNLIKELY_ATTR
+        return handler.on_error("Invalid width specifier for code point type");
+    }
+    if (specs.align == align_type::none && specs.precision > 2) {
+        SCN_UNLIKELY_ATTR
+        return handler.on_error(
+            "Invalid precision specifier for code point type");
     }
 }
 

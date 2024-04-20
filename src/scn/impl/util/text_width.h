@@ -34,45 +34,6 @@ namespace scn {
 SCN_BEGIN_NAMESPACE
 
 namespace impl {
-enum class text_width_algorithm {
-    // Use POSIX wcswidth
-    // Only on POSIX
-    wcswidth,
-
-    // 1 code unit = 1 width unit
-    code_units,
-
-    // 1 code point = 1 width unit
-    code_points,
-
-    // 1 (extended) grapheme cluster = 1 width unit
-    // grapheme_clusters,  // TODO
-
-    // 1 code point = 1 width unit, except some are 2
-    // {fmt} uses this in v10.0.0
-    fmt_v10,
-
-    // Whatever {fmt} uses in its latest version
-    fmt_latest = fmt_v10,
-
-    // 1 (extended) grapheme cluster = 1 width unit, except some are 2
-    // std::format uses this, in C++23
-    // std_format_23,  // TODO
-
-    // Whatever std::format uses in the latest C++ WD
-    // std_format_latest = std_format_23,
-
-    // Width according to UAX #11,
-    // with the "ambiguous" category having a width of 1
-    // uax11,  // TODO
-
-    // Width according to UAX #11,
-    // with the "ambiguous" category having a width of 2
-    // uax11_cjk,  // TODO
-};
-
-inline constexpr auto default_text_width_algorithm =
-    text_width_algorithm::fmt_latest;
 
 constexpr std::size_t calculate_text_width_for_fmt_v10(char32_t cp)
 {
@@ -100,211 +61,37 @@ constexpr std::size_t calculate_text_width_for_fmt_v10(char32_t cp)
 }
 
 template <typename Dependent = void>
-std::size_t calculate_valid_text_width(
-    char32_t cp,
-    text_width_algorithm algo = default_text_width_algorithm)
+std::size_t calculate_valid_text_width(char32_t cp)
 {
-    SCN_GCC_PUSH
-    SCN_GCC_IGNORE("-Wswitch-enum")
-
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wcovered-switch-default")
-
-    switch (algo) {
-        case text_width_algorithm::wcswidth: {
-#if SCN_POSIX
-            set_clocale_classic_guard clocale_guard{LC_CTYPE};
-
-            std::wstring winput;
-            transcode_valid_to_string(std::u32string_view{&cp, 1}, winput);
-            const auto n = ::wcswidth(winput.data(), winput.size());
-            SCN_ENSURE(n != -1);
-            return static_cast<size_t>(n);
-#else
-            SCN_ASSERT(false, "No wcswidth");
-            SCN_UNREACHABLE;
-#endif
-        }
-
-        case text_width_algorithm::code_units: {
-            std::wstring winput;
-            transcode_valid_to_string(std::u32string_view{&cp, 1}, winput);
-            return winput.size();
-        }
-
-        case text_width_algorithm::code_points: {
-            return 1;
-        }
-
-        case text_width_algorithm::fmt_v10: {
-            return calculate_text_width_for_fmt_v10(cp);
-        }
-
-        default:
-            SCN_ASSERT(false, "Not implemented");
-            SCN_UNREACHABLE;
-    }
-    SCN_CLANG_POP    // -Wcovered-switch-default
-        SCN_GCC_POP  // -Wswitch-enum
+    return calculate_text_width_for_fmt_v10(cp);
 }
 
 template <typename CharT>
-std::size_t calculate_valid_text_width(
-    std::basic_string_view<CharT> input,
-    text_width_algorithm algo = default_text_width_algorithm)
+std::size_t calculate_valid_text_width(std::basic_string_view<CharT> input)
 {
-    SCN_GCC_PUSH
-    SCN_GCC_IGNORE("-Wswitch-enum")
-
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wcovered-switch-default")
-
-    switch (algo) {
-        case text_width_algorithm::wcswidth: {
-#if SCN_POSIX
-            set_clocale_classic_guard clocale_guard{LC_CTYPE};
-
-            std::wstring winput;
-            transcode_valid_to_string(input, winput);
-            const auto n = ::wcswidth(winput.data(), winput.size());
-            SCN_ENSURE(n != -1);
-            return static_cast<size_t>(n);
-#else
-            SCN_ASSERT(false, "No wcswidth");
-            SCN_UNREACHABLE;
-#endif
-        }
-
-        case text_width_algorithm::code_units: {
-            return input.size();
-        }
-
-        case text_width_algorithm::code_points: {
-            return count_valid_code_points(input);
-        }
-
-        case text_width_algorithm::fmt_v10: {
-            size_t count{0};
-            for_each_code_point_valid(input, [&count](char32_t cp) {
-                count += calculate_text_width_for_fmt_v10(cp);
-            });
-            return count;
-        }
-
-        default:
-            SCN_ASSERT(false, "Not implemented");
-            SCN_UNREACHABLE;
-    }
-    SCN_CLANG_POP    // -Wcovered-switch-default
-        SCN_GCC_POP  // -Wswitch-enum
+    size_t count{0};
+    for_each_code_point_valid(input, [&count](char32_t cp) {
+        count += calculate_text_width_for_fmt_v10(cp);
+    });
+    return count;
 }
 
 template <typename Dependent = void>
-std::size_t calculate_text_width(
-    char32_t cp,
-    text_width_algorithm algo = default_text_width_algorithm)
+std::size_t calculate_text_width(char32_t cp)
 {
-    SCN_GCC_PUSH
-    SCN_GCC_IGNORE("-Wswitch-enum")
-
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wcovered-switch-default")
-
-    switch (algo) {
-        case text_width_algorithm::wcswidth: {
-#if SCN_POSIX
-            set_clocale_classic_guard clocale_guard{LC_CTYPE};
-
-            std::wstring winput;
-            transcode_to_string(std::u32string_view{&cp, 1}, winput);
-            const auto n = ::wcswidth(winput.data(), winput.size());
-            SCN_ENSURE(n != -1);
-            return static_cast<size_t>(n);
-#else
-            SCN_ASSERT(false, "No wcswidth");
-            SCN_UNREACHABLE;
-#endif
-        }
-
-        case text_width_algorithm::code_units: {
-            std::wstring winput;
-            transcode_to_string(std::u32string_view{&cp, 1}, winput);
-            return winput.size();
-        }
-
-        case text_width_algorithm::code_points: {
-            return 1;
-        }
-
-        case text_width_algorithm::fmt_v10: {
-            return calculate_text_width_for_fmt_v10(cp);
-        }
-
-        default:
-            SCN_ASSERT(false, "Not implemented");
-            SCN_UNREACHABLE;
-    }
-    SCN_CLANG_POP    // -Wcovered-switch-default
-        SCN_GCC_POP  // -Wswitch-enum
+    return calculate_text_width_for_fmt_v10(cp);
 }
 
 template <typename CharT>
-std::size_t calculate_text_width(
-    std::basic_string_view<CharT> input,
-    text_width_algorithm algo = default_text_width_algorithm)
+std::size_t calculate_text_width(std::basic_string_view<CharT> input)
 {
-    SCN_GCC_PUSH
-    SCN_GCC_IGNORE("-Wswitch-enum")
-
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wcovered-switch-default")
-
-    switch (algo) {
-        case text_width_algorithm::wcswidth: {
-#if SCN_POSIX
-            set_clocale_classic_guard clocale_guard{LC_CTYPE};
-
-            if constexpr (std::is_same_v<CharT, char>) {
-                std::wstring winput;
-                transcode_to_string(input, winput);
-                const auto n = ::wcswidth(winput.data(), winput.size());
-                SCN_ENSURE(n != -1);
-                return static_cast<size_t>(n);
-            }
-            else {
-                const auto n = ::wcswidth(input.data(), input.size());
-                SCN_ENSURE(n != -1);
-                return static_cast<size_t>(n);
-            }
-#else
-            SCN_ASSERT(false, "No wcswidth");
-            SCN_UNREACHABLE;
-#endif
-        }
-
-        case text_width_algorithm::code_units: {
-            return input.size();
-        }
-
-        case text_width_algorithm::code_points: {
-            return count_valid_code_points(input);
-        }
-
-        case text_width_algorithm::fmt_v10: {
-            size_t count{0};
-            for_each_code_point(input, [&count](char32_t cp) {
-                count += calculate_text_width_for_fmt_v10(cp);
-            });
-            return count;
-        }
-
-        default:
-            SCN_ASSERT(false, "Not implemented");
-            SCN_UNREACHABLE;
-    }
-    SCN_CLANG_POP    // -Wcovered-switch-default
-        SCN_GCC_POP  // -Wswitch-enum
+    size_t count{0};
+    for_each_code_point(input, [&count](char32_t cp) {
+        count += calculate_text_width_for_fmt_v10(cp);
+    });
+    return count;
 }
+
 }  // namespace impl
 
 SCN_END_NAMESPACE

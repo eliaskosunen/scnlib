@@ -123,6 +123,54 @@ public:
     }
 };
 
+template <typename SourceCharT>
+class custom_word_reader_impl {
+public:
+    template <typename Range, typename ValueCharT>
+    scan_expected<simple_borrowed_iterator_t<Range>> read(
+        Range&& range,
+        const detail::format_specs& specs,
+        std::basic_string<ValueCharT>& value)
+    {
+        if (specs.fill.size() <= sizeof(SourceCharT)) {
+            return read_string_impl(
+                range,
+                read_until_code_unit(
+                    range,
+                    [until = specs.fill.template get_code_unit<SourceCharT>()](
+                        SourceCharT ch) { return ch == until; }),
+                value);
+        }
+        return read_string_impl(
+            range,
+            read_until_code_units(
+                range, specs.fill.template get_code_units<SourceCharT>()),
+            value);
+    }
+
+    template <typename Range, typename ValueCharT>
+    scan_expected<simple_borrowed_iterator_t<Range>> read(
+        Range&& range,
+        const detail::format_specs& specs,
+        std::basic_string_view<ValueCharT>& value)
+    {
+        if (specs.fill.size() <= sizeof(SourceCharT)) {
+            return read_string_view_impl(
+                range,
+                read_until_code_unit(
+                    range,
+                    [until = specs.fill.template get_code_unit<SourceCharT>()](
+                        SourceCharT ch) { return ch == until; }),
+                value);
+        }
+        return read_string_view_impl(
+            range,
+            read_until_code_units(
+                range, specs.fill.template get_code_units<SourceCharT>()),
+            value);
+    }
+};
+
 #if !SCN_DISABLE_REGEX
 template <typename SourceCharT>
 class regex_string_reader_impl {
@@ -464,9 +512,19 @@ public:
 
         switch (specs.type) {
             case detail::presentation_type::none:
-            case detail::presentation_type::string:
                 m_type = reader_type::word;
                 break;
+
+            case detail::presentation_type::string: {
+                if (specs.align == detail::align_type::left ||
+                    specs.align == detail::align_type::center) {
+                    m_type = reader_type::custom_word;
+                }
+                else {
+                    m_type = reader_type::word;
+                }
+                break;
+            }
 
             case detail::presentation_type::character:
                 m_type = reader_type::character;
@@ -516,6 +574,7 @@ public:
 protected:
     enum class reader_type {
         word,
+        custom_word,
         character,
         character_set,
         regex,
@@ -533,6 +592,10 @@ protected:
             case reader_type::word:
                 return word_reader_impl<SourceCharT>{}.read(SCN_FWD(range),
                                                             value);
+
+            case reader_type::custom_word:
+                return custom_word_reader_impl<SourceCharT>{}.read(
+                    SCN_FWD(range), specs, value);
 
             case reader_type::character:
                 return character_reader_impl<SourceCharT>{}.read(SCN_FWD(range),

@@ -501,25 +501,6 @@ public:
         return sentinel<true>{ranges::end(m_base)};
     }
 
-    // We don't want to be sized
-#if 0
-            template <typename V = View,
-                      std::enable_if_t<sized_range<VV>, int> = 0>
-            constexpr auto size()
-            {
-                auto n = ranges::size(base_);
-                return ranges::min(n, static_cast<decltype(n)>(count_));
-            }
-
-            template <typename VV = V,
-                      std::enable_if_t<sized_range<const VV>, int> = 0>
-            constexpr auto size() const
-            {
-                auto n = ranges::size(base_);
-                return ranges::min(n, static_cast<decltype(n)>(count_));
-            }
-#endif
-
 private:
     View m_base{};
     ranges::range_difference_t<View> m_count{0};
@@ -541,8 +522,8 @@ take_width_view(R&&, ranges::range_difference_t<R>)
 
 struct _take_width_fn {
     template <typename R, typename N>
-    constexpr auto operator()(R&& r, N&& n) const
-        -> decltype(take_width_view{SCN_FWD(r), SCN_FWD(n)})
+    constexpr auto operator()(R&& r, N&& n) const -> decltype(take_width_view{
+                                                      SCN_FWD(r), SCN_FWD(n)})
     {
         return take_width_view{SCN_FWD(r), SCN_FWD(n)};
     }
