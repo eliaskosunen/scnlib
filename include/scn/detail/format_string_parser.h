@@ -1135,15 +1135,6 @@ constexpr void check_char_type_specs(const format_specs& specs,
         SCN_UNLIKELY_ATTR
         return handler.on_error("Invalid type specifier for character type");
     }
-    if (specs.width > 2) {
-        SCN_UNLIKELY_ATTR
-        return handler.on_error("Invalid width specifier for character type");
-    }
-    if (specs.precision > 2) {
-        SCN_UNLIKELY_ATTR
-        return handler.on_error(
-            "Invalid precision specifier for character type");
-    }
 }
 
 template <typename Handler>
@@ -1154,15 +1145,6 @@ constexpr void check_code_point_type_specs(const format_specs& specs,
         specs.type != presentation_type::character) {
         SCN_UNLIKELY_ATTR
         return handler.on_error("Invalid type specifier for code point type");
-    }
-    if (specs.align == align_type::none && specs.width > 2) {
-        SCN_UNLIKELY_ATTR
-        return handler.on_error("Invalid width specifier for code point type");
-    }
-    if (specs.align == align_type::none && specs.precision > 2) {
-        SCN_UNLIKELY_ATTR
-        return handler.on_error(
-            "Invalid precision specifier for code point type");
     }
 }
 

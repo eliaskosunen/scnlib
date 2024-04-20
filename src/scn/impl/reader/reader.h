@@ -267,12 +267,12 @@ struct arg_reader {
 
         // Read prefix
         std::ptrdiff_t prefix_width = 0;
-        if (specs.align == detail::align_type::none) {
+        if (specs.align == detail::align_type::none &&
+            rd.skip_ws_before_read()) {
             // Default alignment:
             // Skip preceding whitespace, if required by the reader
-            SCN_TRY_ASSIGN(it, skip_ws_before_if_required(
-                                   rd.skip_ws_before_read(), rng, loc)
-                                   .transform_error(make_eof_scan_error));
+            SCN_TRY_ASSIGN(it, skip_classic_whitespace(rng).transform_error(
+                                   make_eof_scan_error));
 
             if (need_skipped_width) {
                 prefix_width = calculate_text_width(
@@ -322,21 +322,40 @@ struct arg_reader {
 
         // Read postfix
         std::ptrdiff_t postfix_width = 0;
-        if (it != ranges::end(rng) &&
-            (specs.align == detail::align_type::left ||
-             specs.align == detail::align_type::center)) {
-            SCN_TRY(postfix_skip_result,
-                    skip_fill(ranges::subrange{it, ranges::end(rng)},
-                              specs.precision - value_width - prefix_width,
-                              specs.fill, need_skipped_width));
-            std::tie(it, postfix_width) = postfix_skip_result;
+        if (it != ranges::end(rng)) {
+            if (specs.align == detail::align_type::left ||
+                specs.align == detail::align_type::center) {
+                SCN_TRY(postfix_skip_result,
+                        skip_fill(ranges::subrange{it, ranges::end(rng)},
+                                  specs.precision - value_width - prefix_width,
+                                  specs.fill, need_skipped_width));
+                std::tie(it, postfix_width) = postfix_skip_result;
+            }
+            else if (specs.align == detail::align_type::none &&
+                     !rd.skip_ws_before_read() &&
+                     ((specs.width != 0 &&
+                       prefix_width + value_width < specs.width) ||
+                      (specs.precision != 0 &&
+                       prefix_width + value_width < specs.precision))) {
+                SCN_TRY_ASSIGN(it,
+                               skip_classic_whitespace(
+                                   ranges::subrange{it, ranges::end(rng)}, true)
+                                   .transform_error(make_eof_scan_error));
+                if (need_skipped_width) {
+                    postfix_width = calculate_text_width(
+                        make_contiguous_buffer(
+                            ranges::subrange{value_end_it, it})
+                            .view());
+                }
+            }
         }
 
         if (specs.width != 0) {
             if (prefix_width + value_width + postfix_width < specs.width) {
                 return unexpected_scan_error(
                     scan_error::invalid_scanned_value,
-                    "Scanned value too narrow, width did not exceed what was "
+                    "Scanned value too narrow, width did not exceed what "
+                    "was "
                     "specified in the format string");
             }
         }
