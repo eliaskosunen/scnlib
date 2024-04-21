@@ -439,6 +439,83 @@ TEST(AlignAndFillTest, P1729_Ex3rM)
     EXPECT_STREQ(r->begin(), "");
 }
 
+TEST(AlignAndFillTest, PythonParse1)
+{
+    auto r = scn::scan<std::string>("with     a herring", "with {:>} herring");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), "a");
+    EXPECT_STREQ(r->begin(), "");
+}
+TEST(AlignAndFillTest, PythonParse1_All)
+{
+    auto r = scn::scan<std::string, std::string, std::string>(
+        "with     a herring", "{}{:>}{}");
+    ASSERT_TRUE(r);
+    const auto& [v1, v2, v3] = r->values();
+    EXPECT_EQ(v1, "with");
+    EXPECT_EQ(v2, "a");
+    EXPECT_EQ(v3, "herring");
+    EXPECT_STREQ(r->begin(), "");
+}
+TEST(AlignAndFillTest, PythonParse2)
+{
+    auto r =
+        scn::scan<std::string>("spam     lovely     spam", "spam {:^} spam");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), "lovely");
+    EXPECT_STREQ(r->begin(), "");
+}
+TEST(AlignAndFillTest, PythonParse2_All)
+{
+    auto r = scn::scan<std::string, std::string, std::string>(
+        "spam     lovely     spam", "{}{:^}{}");
+    ASSERT_TRUE(r);
+    const auto& [v1, v2, v3] = r->values();
+    EXPECT_EQ(v1, "spam");
+    EXPECT_EQ(v2, "lovely");
+    EXPECT_EQ(v3, "spam");
+    EXPECT_STREQ(r->begin(), "");
+}
+
+TEST(AlignAndFillTest, PythonParse3)
+{
+    auto r = scn::scan<std::string, std::string>("look", "{:.2}{:.2}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(std::get<0>(r->values()), "lo");
+    EXPECT_EQ(std::get<1>(r->values()), "ok");
+    EXPECT_STREQ(r->begin(), "");
+}
+TEST(AlignAndFillTest, PythonParse4)
+{
+    auto r = scn::scan<std::string, std::string>("look at that", "{:4}{:4}");
+    ASSERT_FALSE(r);
+    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
+}
+TEST(AlignAndFillTest, PythonParse5)
+{
+    auto r = scn::scan<std::string, std::string>("look at that", "{:4}{:.4}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(std::get<0>(r->values()), "look");
+    EXPECT_EQ(std::get<1>(r->values()), "at");
+    EXPECT_STREQ(r->begin(), " that");
+}
+TEST(AlignAndFillTest, PythonParse6)
+{
+    auto r = scn::scan<std::string, std::string>("look at that", "{:4}{:.4}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(std::get<0>(r->values()), "look");
+    EXPECT_EQ(std::get<1>(r->values()), "at");
+    EXPECT_STREQ(r->begin(), " that");
+}
+TEST(AlignAndFillTest, PythonParse7)
+{
+    auto r = scn::scan<int, int>("0440", "{:.2}{:.2}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(std::get<0>(r->values()), 4);
+    EXPECT_EQ(std::get<1>(r->values()), 40);
+    EXPECT_STREQ(r->begin(), "");
+}
+
 TEST(CustomPrecisionTest, Ascii)
 {
     auto r = scn::scan<std::string>("abc", "{:.2}");

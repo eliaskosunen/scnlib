@@ -204,46 +204,53 @@ auto skip_fill(Range&& range,
     using char_type = detail::char_t<Range>;
     using result_type = skip_fill_result<simple_borrowed_iterator_t<Range>>;
 
-    auto it = ranges::begin(range);
     if (fill.size() <= sizeof(char_type)) {
         const auto fill_ch = fill.template get_code_unit<char_type>();
         const auto pred = [=](char_type ch) { return ch == fill_ch; };
 
         if (max_width == 0) {
-            it = read_while_code_unit(range, pred);
+            auto it = read_while_code_unit(range, pred);
+
+            if (want_skipped_width) {
+                auto prefix_width =
+                    static_cast<std::ptrdiff_t>(
+                        calculate_text_width(static_cast<char32_t>(fill_ch))) *
+                    ranges::distance(ranges::begin(range), it);
+                return result_type{it, prefix_width};
+            }
+            return result_type{it, 0};
         }
-        else {
-            it =
-                read_while_code_unit(take_width(range, max_width), pred).base();
+
+        auto max_width_view = take_width(range, max_width);
+        auto w_it = read_while_code_unit(max_width_view, pred);
+
+        if (want_skipped_width) {
+            return result_type{w_it.base(), max_width - w_it.count()};
         }
+        return result_type{w_it.base(), 0};
+    }
+
+    const auto fill_chars = fill.template get_code_units<char_type>();
+    if (max_width == 0) {
+        auto it = read_while_code_units(range, fill_chars);
 
         if (want_skipped_width) {
             auto prefix_width =
-                static_cast<std::ptrdiff_t>(
-                    calculate_text_width(static_cast<char32_t>(fill_ch))) *
-                ranges::distance(ranges::begin(range), it);
+                static_cast<std::ptrdiff_t>(calculate_text_width(fill_chars)) *
+                ranges::distance(ranges::begin(range), it) /
+                ranges::ssize(fill_chars);
             return result_type{it, prefix_width};
         }
         return result_type{it, 0};
     }
 
-    const auto fill_chars = fill.template get_code_units<char_type>();
-    if (max_width == 0) {
-        it = read_while_code_units(range, fill_chars);
-    }
-    else {
-        it = read_while_code_units(take_width(range, max_width), fill_chars)
-                 .base();
-    }
+    auto max_width_view = take_width(range, max_width);
+    auto w_it = read_while_code_units(max_width_view, fill_chars);
 
     if (want_skipped_width) {
-        auto prefix_width =
-            static_cast<std::ptrdiff_t>(calculate_text_width(fill_chars)) *
-            ranges::distance(ranges::begin(range), it) /
-            ranges::ssize(fill_chars);
-        return result_type{it, prefix_width};
+        return result_type{w_it.base(), max_width - w_it.count()};
     }
-    return result_type{it, 0};
+    return result_type{w_it.base(), 0};
 }
 
 template <typename Context>
@@ -271,14 +278,23 @@ struct arg_reader {
             rd.skip_ws_before_read()) {
             // Default alignment:
             // Skip preceding whitespace, if required by the reader
-            SCN_TRY_ASSIGN(it, skip_classic_whitespace(rng).transform_error(
-                                   make_eof_scan_error));
+            if (specs.precision != 0) {
+                auto max_width_view = take_width(rng, specs.precision);
+                SCN_TRY(w_it, skip_classic_whitespace(max_width_view)
+                                  .transform_error(make_eof_scan_error));
+                it = w_it.base();
+                prefix_width = specs.precision - w_it.count();
+            }
+            else {
+                SCN_TRY_ASSIGN(it, skip_classic_whitespace(rng).transform_error(
+                                       make_eof_scan_error));
 
-            if (need_skipped_width) {
-                prefix_width = calculate_text_width(
-                    make_contiguous_buffer(
-                        ranges::subrange{ranges::begin(rng), it})
-                        .view());
+                if (need_skipped_width) {
+                    prefix_width = calculate_text_width(
+                        make_contiguous_buffer(
+                            ranges::subrange{ranges::begin(rng), it})
+                            .view());
+                }
             }
         }
         else if (specs.align == detail::align_type::right ||
@@ -291,6 +307,7 @@ struct arg_reader {
         const auto prefix_end_it = it;
 
         // Read value
+        std::ptrdiff_t value_width = 0;
         if (specs.precision != 0) {
             if (specs.precision <= prefix_width) {
                 return unexpected_scan_error(
@@ -299,26 +316,25 @@ struct arg_reader {
                     "reading value");
             }
 
-            SCN_TRY(w_it, rd.read_specs(
-                              take_width(ranges::subrange{it, ranges::end(rng)},
-                                         static_cast<std::ptrdiff_t>(
-                                             specs.precision - prefix_width)),
-                              specs, value, loc));
+            const auto initial_width = specs.precision - prefix_width;
+            auto max_width_view = take_width(
+                ranges::subrange{it, ranges::end(rng)}, initial_width);
+            SCN_TRY(w_it, rd.read_specs(max_width_view, specs, value, loc));
             it = w_it.base();
+            value_width = initial_width - w_it.count();
         }
         else {
             SCN_TRY_ASSIGN(
                 it, rd.read_specs(ranges::subrange{it, ranges::end(rng)}, specs,
                                   value, loc));
+
+            if (need_skipped_width) {
+                value_width = calculate_text_width(
+                    make_contiguous_buffer(ranges::subrange{prefix_end_it, it})
+                        .view());
+            }
         }
         const auto value_end_it = it;
-
-        std::ptrdiff_t value_width = 0;
-        if (need_skipped_width) {
-            value_width = calculate_text_width(
-                make_contiguous_buffer(ranges::subrange{prefix_end_it, it})
-                    .view());
-        }
 
         // Read postfix
         std::ptrdiff_t postfix_width = 0;
@@ -337,15 +353,28 @@ struct arg_reader {
                        prefix_width + value_width < specs.width) ||
                       (specs.precision != 0 &&
                        prefix_width + value_width < specs.precision))) {
-                SCN_TRY_ASSIGN(it,
-                               skip_classic_whitespace(
-                                   ranges::subrange{it, ranges::end(rng)}, true)
-                                   .transform_error(make_eof_scan_error));
-                if (need_skipped_width) {
-                    postfix_width = calculate_text_width(
-                        make_contiguous_buffer(
-                            ranges::subrange{value_end_it, it})
-                            .view());
+                if (specs.precision != 0) {
+                    const auto initial_width =
+                        specs.precision - prefix_width - value_width;
+                    auto max_width_view = take_width(
+                        ranges::subrange{it, ranges::end(rng)}, initial_width);
+                    SCN_TRY(w_it, skip_classic_whitespace(max_width_view, true)
+                                      .transform_error(make_eof_scan_error));
+                    it = w_it.base();
+                    postfix_width = initial_width - w_it.count();
+                }
+                else {
+                    SCN_TRY_ASSIGN(
+                        it, skip_classic_whitespace(
+                                ranges::subrange{it, ranges::end(rng)}, true)
+                                .transform_error(make_eof_scan_error));
+
+                    if (need_skipped_width) {
+                        postfix_width = calculate_text_width(
+                            make_contiguous_buffer(
+                                ranges::subrange{value_end_it, it})
+                                .view());
+                    }
                 }
             }
         }
@@ -355,8 +384,7 @@ struct arg_reader {
                 return unexpected_scan_error(
                     scan_error::invalid_scanned_value,
                     "Scanned value too narrow, width did not exceed what "
-                    "was "
-                    "specified in the format string");
+                    "was specified in the format string");
             }
         }
         if (specs.precision != 0) {
