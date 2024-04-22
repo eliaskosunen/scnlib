@@ -35,14 +35,14 @@ template <typename Source>
 using scan_result_value_type =
     std::conditional_t<std::is_same_v<remove_cvref_t<Source>, std::FILE*>,
                        std::FILE*,
-                       borrowed_subrange_with_sentinel_t<Source>>;
+                       borrowed_tail_subrange_t<Source>>;
 }
 
 /**
  * Result type returned by `vscan`.
  *
  * The value type of the `scan_expected` is `FILE*` if `Source` is `FILE*`,
- * `borrowed_subrange_with_sentinel_t<Source>` otherwise.
+ * `detail::borrowed_tail_subrange_t<Source>` otherwise.
  *
  * \ingroup vscan
  */

@@ -106,7 +106,7 @@ public:
 
 private:
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_source_impl(
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_source_impl(
         Range&& range)
     {
         SCN_TRY(sign_result,
@@ -131,7 +131,8 @@ private:
             }
             else {
                 auto cb = [&](auto&& rr)
-                    -> scan_expected<simple_borrowed_iterator_t<decltype(rr)>> {
+                    -> scan_expected<
+                        detail::simple_borrowed_iterator_t<decltype(rr)>> {
                     auto res = read_all(rr);
                     if (SCN_UNLIKELY(res == ranges::begin(r))) {
                         return unexpected_scan_error(
@@ -178,7 +179,7 @@ private:
     }
 
     template <typename Range>
-    parse_expected<simple_borrowed_iterator_t<Range>> read_dec_digits(
+    parse_expected<detail::simple_borrowed_iterator_t<Range>> read_dec_digits(
         Range&& range,
         bool thsep_allowed)
     {
@@ -196,7 +197,7 @@ private:
             [](char_type ch) SCN_NOEXCEPT { return char_to_int(ch) < 10; });
     }
     template <typename Range>
-    parse_expected<simple_borrowed_iterator_t<Range>> read_hex_digits(
+    parse_expected<detail::simple_borrowed_iterator_t<Range>> read_hex_digits(
         Range&& range,
         bool thsep_allowed)
     {
@@ -214,14 +215,15 @@ private:
             [](char_type ch) SCN_NOEXCEPT { return char_to_int(ch) < 16; });
     }
     template <typename Range>
-    parse_expected<simple_borrowed_iterator_t<Range>> read_hex_prefix(
+    parse_expected<detail::simple_borrowed_iterator_t<Range>> read_hex_prefix(
         Range&& range)
     {
         return read_matching_string_classic_nocase(SCN_FWD(range), "0x");
     }
 
     template <typename Range>
-    parse_expected<simple_borrowed_iterator_t<Range>> read_inf(Range&& range)
+    parse_expected<detail::simple_borrowed_iterator_t<Range>> read_inf(
+        Range&& range)
     {
         auto it = ranges::begin(range);
         if (auto r = read_matching_string_classic_nocase(range, "inf"); !r) {
@@ -244,7 +246,8 @@ private:
     }
 
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_nan(Range&& range)
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_nan(
+        Range&& range)
     {
         auto it = ranges::begin(range);
         if (auto r = read_matching_string_classic_nocase(range, "nan"); !r) {
@@ -286,8 +289,9 @@ private:
     }
 
     template <typename Range>
-    simple_borrowed_iterator_t<Range> read_exponent(Range&& range,
-                                                    std::string_view exp)
+    detail::simple_borrowed_iterator_t<Range> read_exponent(
+        Range&& range,
+        std::string_view exp)
     {
         if (auto r = read_one_of_code_unit(range, exp)) {
             auto beg_exp_it = ranges::begin(range);
@@ -317,7 +321,7 @@ private:
     }
 
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_hexfloat(
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_hexfloat(
         Range&& range)
     {
         auto it = ranges::begin(range);
@@ -359,7 +363,7 @@ private:
     }
 
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_regular_float(
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_regular_float(
         Range&& range)
     {
         const bool allowed_exp = (m_options & allow_scientific) != 0;
@@ -415,10 +419,10 @@ private:
     }
 
     template <typename Range, typename ReadRegular, typename ReadHex>
-    scan_expected<simple_borrowed_iterator_t<Range>> do_read_source_impl(
-        Range&& range,
-        ReadRegular&& read_regular,
-        ReadHex&& read_hex)
+    scan_expected<detail::simple_borrowed_iterator_t<Range>>
+    do_read_source_impl(Range&& range,
+                        ReadRegular&& read_regular,
+                        ReadHex&& read_hex)
     {
         const bool allowed_hex = (m_options & allow_hex) != 0;
         const bool allowed_nonhex =
@@ -571,7 +575,7 @@ public:
     }
 
     template <typename Range, typename T>
-    scan_expected<simple_borrowed_iterator_t<Range>>
+    scan_expected<detail::simple_borrowed_iterator_t<Range>>
     read_default(Range&& range, T& value, detail::locale_ref loc)
     {
         SCN_UNUSED(loc);
@@ -587,7 +591,7 @@ public:
     }
 
     template <typename Range, typename T>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_specs(
         Range&& range,
         const detail::format_specs& specs,
         T& value,

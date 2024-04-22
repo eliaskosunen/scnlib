@@ -103,9 +103,11 @@ namespace ranges_std = nano;
 
 namespace r_pf {
 template <typename T>
-struct _is_initializer_list : std::false_type {};
+struct _is_initializer_list : std::false_type {
+};
 template <typename T>
-struct _is_initializer_list<std::initializer_list<T>> : std::true_type {};
+struct _is_initializer_list<std::initializer_list<T>> : std::true_type {
+};
 
 template <typename Range,
           typename = std::enable_if_t<scn::ranges::range<Range> &&
@@ -396,7 +398,6 @@ inline constexpr bool
     is_wide_range<Range,
                   std::enable_if_t<ranges::range<remove_cvref_t<Range>>>> =
         std::is_same_v<char_t<Range>, wchar_t>;
-}  // namespace detail
 
 // borrowed_iterator_t and borrowed_subrange_t, but shorter template
 // names
@@ -432,11 +433,11 @@ template <typename R>
 using simple_borrowed_subrange_t = typename simple_borrowed_subrange<R>::type;
 
 template <typename R, bool Borrowed = ranges::borrowed_range<R>>
-struct borrowed_subrange_with_sentinel {
+struct borrowed_tail_subrange {
     using type = ranges::subrange<ranges::iterator_t<R>, ranges::sentinel_t<R>>;
 };
 template <typename R>
-struct borrowed_subrange_with_sentinel<R, false> {
+struct borrowed_tail_subrange<R, false> {
     using type = ranges::dangling;
 };
 
@@ -447,8 +448,9 @@ struct borrowed_subrange_with_sentinel<R, false> {
 /// Similar to `ranges::borrowed_subrange_t<R>`, expect this preserves
 /// the range sentinel.
 template <typename R>
-using borrowed_subrange_with_sentinel_t =
-    typename borrowed_subrange_with_sentinel<R>::type;
+using borrowed_tail_subrange_t = typename borrowed_tail_subrange<R>::type;
+
+}  // namespace detail
 
 namespace r_pf {
 

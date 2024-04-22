@@ -44,7 +44,6 @@ struct scanner<T,
                std::enable_if_t<detail::arg_type_constant<T, CharT>::value !=
                                     detail::arg_type::custom_type &&
                                 !detail::is_type_disabled<T>>> {
-public:
     template <typename ParseCtx>
     constexpr auto parse(ParseCtx& pctx)
         -> scan_expected<typename ParseCtx::iterator>
@@ -80,8 +79,8 @@ scanner_parse_for_builtin_type(ParseCtx& pctx, format_specs& specs)
         return begin;
     }
 
-    using handler_type = detail::specs_setter;
-    const auto type = detail::arg_type_constant<T, char_type>::value;
+    using handler_type = specs_setter;
+    const auto type = arg_type_constant<T, char_type>::value;
     auto checker =
         detail::specs_checker<handler_type>(handler_type(specs), type);
 
@@ -92,55 +91,55 @@ scanner_parse_for_builtin_type(ParseCtx& pctx, format_specs& specs)
     }
 
     switch (type) {
-        case detail::arg_type::none_type:
+        case arg_type::none_type:
             SCN_FALLTHROUGH;
-        case detail::arg_type::custom_type:
+        case arg_type::custom_type:
             SCN_ENSURE(false);
             break;
 
-        case detail::arg_type::bool_type:
-            detail::check_bool_type_specs(specs, checker);
+        case arg_type::bool_type:
+            check_bool_type_specs(specs, checker);
             break;
 
-        case detail::arg_type::schar_type:
-        case detail::arg_type::short_type:
-        case detail::arg_type::int_type:
-        case detail::arg_type::long_type:
-        case detail::arg_type::llong_type:
-        case detail::arg_type::uchar_type:
-        case detail::arg_type::ushort_type:
-        case detail::arg_type::uint_type:
-        case detail::arg_type::ulong_type:
-        case detail::arg_type::ullong_type:
-            detail::check_int_type_specs(specs, checker);
+        case arg_type::schar_type:
+        case arg_type::short_type:
+        case arg_type::int_type:
+        case arg_type::long_type:
+        case arg_type::llong_type:
+        case arg_type::uchar_type:
+        case arg_type::ushort_type:
+        case arg_type::uint_type:
+        case arg_type::ulong_type:
+        case arg_type::ullong_type:
+            check_int_type_specs(specs, checker);
             break;
 
-        case detail::arg_type::narrow_character_type:
-        case detail::arg_type::wide_character_type:
-        case detail::arg_type::code_point_type:
-            detail::check_char_type_specs(specs, checker);
+        case arg_type::narrow_character_type:
+        case arg_type::wide_character_type:
+        case arg_type::code_point_type:
+            check_char_type_specs(specs, checker);
             break;
 
-        case detail::arg_type::float_type:
-        case detail::arg_type::double_type:
-        case detail::arg_type::ldouble_type:
-            detail::check_float_type_specs(specs, checker);
+        case arg_type::float_type:
+        case arg_type::double_type:
+        case arg_type::ldouble_type:
+            check_float_type_specs(specs, checker);
             break;
 
-        case detail::arg_type::narrow_string_type:
-        case detail::arg_type::narrow_string_view_type:
-        case detail::arg_type::wide_string_type:
-        case detail::arg_type::wide_string_view_type:
-            detail::check_string_type_specs(specs, checker);
+        case arg_type::narrow_string_type:
+        case arg_type::narrow_string_view_type:
+        case arg_type::wide_string_type:
+        case arg_type::wide_string_view_type:
+            check_string_type_specs(specs, checker);
             break;
 
-        case detail::arg_type::pointer_type:
-            detail::check_pointer_type_specs(specs, checker);
+        case arg_type::pointer_type:
+            check_pointer_type_specs(specs, checker);
             break;
 
-        case detail::arg_type::narrow_regex_matches_type:
-        case detail::arg_type::wide_regex_matches_type:
-            detail::check_regex_type_specs(specs, checker);
+        case arg_type::narrow_regex_matches_type:
+        case arg_type::wide_regex_matches_type:
+            check_regex_type_specs(specs, checker);
             break;
 
             SCN_CLANG_PUSH

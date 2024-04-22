@@ -30,7 +30,7 @@ template <typename CharT>
 class code_unit_reader {
 public:
     template <typename SourceRange>
-    scan_expected<simple_borrowed_iterator_t<SourceRange>> read(
+    scan_expected<detail::simple_borrowed_iterator_t<SourceRange>> read(
         SourceRange&& range,
         CharT& ch)
     {
@@ -47,7 +47,7 @@ template <>
 class code_point_reader<char32_t> {
 public:
     template <typename SourceRange>
-    scan_expected<simple_borrowed_iterator_t<SourceRange>> read(
+    scan_expected<detail::simple_borrowed_iterator_t<SourceRange>> read(
         SourceRange&& range,
         char32_t& cp)
     {
@@ -61,7 +61,7 @@ template <>
 class code_point_reader<wchar_t> {
 public:
     template <typename SourceRange>
-    scan_expected<simple_borrowed_iterator_t<SourceRange>> read(
+    scan_expected<detail::simple_borrowed_iterator_t<SourceRange>> read(
         SourceRange&& range,
         wchar_t& ch)
     {

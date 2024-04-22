@@ -32,23 +32,22 @@ struct parse_integer_prefix_result {
 };
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>> parse_integer_bin_base_prefix(
-    Range&& range)
+parse_expected<detail::simple_borrowed_iterator_t<Range>>
+parse_integer_bin_base_prefix(Range&& range)
 {
     return read_matching_string_classic_nocase(SCN_FWD(range), "0b");
 }
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>> parse_integer_hex_base_prefix(
-    Range&& range)
+parse_expected<detail::simple_borrowed_iterator_t<Range>>
+parse_integer_hex_base_prefix(Range&& range)
 {
     return read_matching_string_classic_nocase(SCN_FWD(range), "0x");
 }
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>> parse_integer_oct_base_prefix(
-    Range&& range,
-    bool& zero_parsed)
+parse_expected<detail::simple_borrowed_iterator_t<Range>>
+parse_integer_oct_base_prefix(Range&& range, bool& zero_parsed)
 {
     if (auto r = read_matching_string_classic_nocase(range, "0o")) {
         return *r;
@@ -63,7 +62,7 @@ parse_expected<simple_borrowed_iterator_t<Range>> parse_integer_oct_base_prefix(
 }
 
 template <typename Range>
-std::tuple<simple_borrowed_iterator_t<Range>, int, bool>
+std::tuple<detail::simple_borrowed_iterator_t<Range>, int, bool>
 parse_integer_base_prefix_for_detection(Range&& range)
 {
     if (auto r = parse_integer_hex_base_prefix(range)) {
@@ -82,7 +81,7 @@ parse_integer_base_prefix_for_detection(Range&& range)
 }
 
 template <typename Range>
-std::tuple<simple_borrowed_iterator_t<Range>, int, bool>
+std::tuple<detail::simple_borrowed_iterator_t<Range>, int, bool>
 parse_integer_base_prefix(Range&& range, int base)
 {
     switch (base) {
@@ -281,7 +280,7 @@ public:
     }
 
     template <typename Range, typename T>
-    scan_expected<simple_borrowed_iterator_t<Range>>
+    scan_expected<detail::simple_borrowed_iterator_t<Range>>
     read_default_with_base(Range&& range, T& value, int base)
     {
         SCN_TRY(prefix_result, parse_integer_prefix(range, base)
@@ -318,7 +317,7 @@ public:
     }
 
     template <typename Range, typename T>
-    scan_expected<simple_borrowed_iterator_t<Range>>
+    scan_expected<detail::simple_borrowed_iterator_t<Range>>
     read_default(Range&& range, T& value, detail::locale_ref loc)
     {
         SCN_UNUSED(loc);
@@ -326,7 +325,7 @@ public:
     }
 
     template <typename Range, typename T>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_specs(
         Range&& range,
         const detail::format_specs& specs,
         T& value,

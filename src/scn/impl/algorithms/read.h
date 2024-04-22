@@ -36,7 +36,7 @@ SCN_BEGIN_NAMESPACE
 namespace impl {
 template <typename Range>
 auto read_code_point_into(Range&& range)
-    -> iterator_value_result<simple_borrowed_iterator_t<Range>,
+    -> iterator_value_result<detail::simple_borrowed_iterator_t<Range>,
                              contiguous_range_factory<detail::char_t<Range>>>
 {
     SCN_EXPECT(ranges::begin(range) != ranges::end(range));
@@ -68,15 +68,15 @@ auto read_code_point_into(Range&& range)
 }
 
 template <typename Range>
-simple_borrowed_iterator_t<Range> read_code_point(Range&& range)
+auto read_code_point(Range&& range) -> detail::simple_borrowed_iterator_t<Range>
 {
     return read_code_point_into(SCN_FWD(range)).iterator;
 }
 
 template <typename Range>
-eof_expected<simple_borrowed_iterator_t<Range>> read_exactly_n_code_points(
-    Range&& range,
-    ranges::range_difference_t<Range> count)
+auto read_exactly_n_code_points(Range&& range,
+                                ranges::range_difference_t<Range> count)
+    -> eof_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     SCN_EXPECT(count >= 0);
 
@@ -101,9 +101,9 @@ eof_expected<simple_borrowed_iterator_t<Range>> read_exactly_n_code_points(
 }
 
 template <typename Range>
-simple_borrowed_iterator_t<Range> read_exactly_n_width_units(
-    Range&& range,
-    ranges::range_difference_t<Range> count)
+auto read_exactly_n_width_units(Range&& range,
+                                ranges::range_difference_t<Range> count)
+    -> detail::simple_borrowed_iterator_t<Range>
 {
     auto it = ranges::begin(range);
     ranges::range_difference_t<Range> acc_width = 0;
@@ -124,25 +124,25 @@ simple_borrowed_iterator_t<Range> read_exactly_n_width_units(
 }
 
 template <typename Range>
-simple_borrowed_iterator_t<Range> read_until_code_unit(
-    Range&& range,
-    function_ref<bool(detail::char_t<Range>)> pred)
+auto read_until_code_unit(Range&& range,
+                          function_ref<bool(detail::char_t<Range>)> pred)
+    -> detail::simple_borrowed_iterator_t<Range>
 {
     return ranges::find_if(range, pred);
 }
 
 template <typename Range>
-simple_borrowed_iterator_t<Range> read_while_code_unit(
-    Range&& range,
-    function_ref<bool(detail::char_t<Range>)> pred)
+auto read_while_code_unit(Range&& range,
+                          function_ref<bool(detail::char_t<Range>)> pred)
+    -> detail::simple_borrowed_iterator_t<Range>
 {
     return read_until_code_unit(SCN_FWD(range), std::not_fn(pred));
 }
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>> read_until1_code_unit(
-    Range&& range,
-    function_ref<bool(detail::char_t<Range>)> pred)
+auto read_until1_code_unit(Range&& range,
+                           function_ref<bool(detail::char_t<Range>)> pred)
+    -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     auto it = read_until_code_unit(range, pred);
     if (it == ranges::begin(range)) {
@@ -152,9 +152,9 @@ parse_expected<simple_borrowed_iterator_t<Range>> read_until1_code_unit(
 }
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>> read_while1_code_unit(
-    Range&& range,
-    function_ref<bool(detail::char_t<Range>)> pred)
+auto read_while1_code_unit(Range&& range,
+                           function_ref<bool(detail::char_t<Range>)> pred)
+    -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     auto it = read_while_code_unit(range, pred);
     if (it == ranges::begin(range)) {
@@ -164,15 +164,15 @@ parse_expected<simple_borrowed_iterator_t<Range>> read_while1_code_unit(
 }
 
 template <typename Range, typename CodeUnits>
-simple_borrowed_iterator_t<Range> read_until_code_units(Range&& range,
-                                                        CodeUnits&& needle)
+auto read_until_code_units(Range&& range, CodeUnits&& needle)
+    -> detail::simple_borrowed_iterator_t<Range>
 {
     return ranges::search(SCN_FWD(range), SCN_FWD(needle)).begin();
 }
 
 template <typename Range, typename CodeUnits>
-simple_borrowed_iterator_t<Range> read_while_code_units(Range&& range,
-                                                        CodeUnits&& needle)
+auto read_while_code_units(Range&& range, CodeUnits&& needle)
+    -> detail::simple_borrowed_iterator_t<Range>
 {
     auto subr = ranges::subrange{range};
     while (!subr.empty()) {
@@ -187,9 +187,9 @@ simple_borrowed_iterator_t<Range> read_while_code_units(Range&& range,
 }
 
 template <typename Range>
-simple_borrowed_iterator_t<Range> read_until_code_point_eager(
-    Range&& range,
-    function_ref<bool(char32_t)> pred)
+auto read_until_code_point_eager(Range&& range,
+                                 function_ref<bool(char32_t)> pred)
+    -> detail::simple_borrowed_iterator_t<Range>
 {
     static_assert(ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>);
@@ -240,9 +240,8 @@ simple_borrowed_iterator_t<Range> read_until_code_point_eager(
 }
 
 template <typename Range>
-simple_borrowed_iterator_t<Range> read_until_code_point(
-    Range&& range,
-    function_ref<bool(char32_t)> pred)
+auto read_until_code_point(Range&& range, function_ref<bool(char32_t)> pred)
+    -> detail::simple_borrowed_iterator_t<Range>
 {
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
@@ -273,15 +272,15 @@ simple_borrowed_iterator_t<Range> read_until_code_point(
 }
 
 template <typename Range>
-simple_borrowed_iterator_t<Range> read_while_code_point(
-    Range&& range,
-    function_ref<bool(char32_t)> pred)
+auto read_while_code_point(Range&& range, function_ref<bool(char32_t)> pred)
+    -> detail::simple_borrowed_iterator_t<Range>
 {
     return read_until_code_point(SCN_FWD(range), std::not_fn(pred));
 }
 
 template <typename Range>
-simple_borrowed_iterator_t<Range> read_until_classic_space(Range&& range)
+auto read_until_classic_space(Range&& range)
+    -> detail::simple_borrowed_iterator_t<Range>
 {
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range> &&
@@ -311,7 +310,8 @@ simple_borrowed_iterator_t<Range> read_until_classic_space(Range&& range)
 }
 
 template <typename Range>
-simple_borrowed_iterator_t<Range> read_while_classic_space(Range&& range)
+auto read_while_classic_space(Range&& range)
+    -> detail::simple_borrowed_iterator_t<Range>
 {
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range> &&
@@ -341,9 +341,8 @@ simple_borrowed_iterator_t<Range> read_while_classic_space(Range&& range)
 }
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>> read_matching_code_unit(
-    Range&& range,
-    detail::char_t<Range> ch)
+auto read_matching_code_unit(Range&& range, detail::char_t<Range> ch)
+    -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     auto it = read_code_unit(range);
     if (SCN_UNLIKELY(!it)) {
@@ -359,9 +358,8 @@ parse_expected<simple_borrowed_iterator_t<Range>> read_matching_code_unit(
 }
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>> read_matching_code_point(
-    Range&& range,
-    char32_t cp)
+auto read_matching_code_point(Range&& range, char32_t cp)
+    -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     auto [it, value] = read_code_point_into(range);
     auto decoded_cp = decode_code_point_exhaustive(value.view());
@@ -372,9 +370,9 @@ parse_expected<simple_borrowed_iterator_t<Range>> read_matching_code_point(
 }
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>> read_matching_string(
-    Range&& range,
-    std::basic_string_view<detail::char_t<Range>> str)
+auto read_matching_string(Range&& range,
+                          std::basic_string_view<detail::char_t<Range>> str)
+    -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str))
                     .transform_error(make_eof_parse_error));
@@ -388,9 +386,8 @@ parse_expected<simple_borrowed_iterator_t<Range>> read_matching_string(
 }
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>> read_matching_string_classic(
-    Range&& range,
-    std::string_view str)
+auto read_matching_string_classic(Range&& range, std::string_view str)
+    -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str))
                     .transform_error(make_eof_parse_error));
@@ -416,9 +413,7 @@ parse_expected<simple_borrowed_iterator_t<Range>> read_matching_string_classic(
 }
 
 // Ripped from fast_float
-inline constexpr bool fast_streq_nocase(const char* a,
-                                        const char* b,
-                                        size_t len)
+constexpr bool fast_streq_nocase(const char* a, const char* b, size_t len)
 {
     unsigned char running_diff{0};
     for (size_t i = 0; i < len; ++i) {
@@ -428,8 +423,8 @@ inline constexpr bool fast_streq_nocase(const char* a,
 }
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>>
-read_matching_string_classic_nocase(Range&& range, std::string_view str)
+auto read_matching_string_classic_nocase(Range&& range, std::string_view str)
+    -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     using char_type = detail::char_t<Range>;
 
@@ -468,9 +463,8 @@ read_matching_string_classic_nocase(Range&& range, std::string_view str)
 }
 
 template <typename Range>
-parse_expected<simple_borrowed_iterator_t<Range>> read_one_of_code_unit(
-    Range&& range,
-    std::string_view str)
+auto read_one_of_code_unit(Range&& range, std::string_view str)
+    -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     auto it = read_code_unit(range);
     if (SCN_UNLIKELY(!it)) {
@@ -493,7 +487,7 @@ template <typename Range,
           typename Iterator>
 auto apply_opt(Expected<Iterator>&& result, Range&& range)
     -> std::enable_if_t<detail::is_expected<Expected<Iterator>>::value,
-                        simple_borrowed_iterator_t<Range>>
+                        detail::simple_borrowed_iterator_t<Range>>
 {
     if (!result) {
         return ranges::begin(range);

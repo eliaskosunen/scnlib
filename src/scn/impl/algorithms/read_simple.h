@@ -25,13 +25,14 @@ SCN_BEGIN_NAMESPACE
 
 namespace impl {
 template <typename Range>
-simple_borrowed_iterator_t<Range> read_all(Range&& range)
+auto read_all(Range&& range) -> detail::simple_borrowed_iterator_t<Range>
 {
     return ranges::next(ranges::begin(range), ranges::end(range));
 }
 
 template <typename Range>
-eof_expected<simple_borrowed_iterator_t<Range>> read_code_unit(Range&& range)
+auto read_code_unit(Range&& range)
+    -> eof_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
         return unexpected(e);
@@ -41,9 +42,9 @@ eof_expected<simple_borrowed_iterator_t<Range>> read_code_unit(Range&& range)
 }
 
 template <typename Range>
-eof_expected<simple_borrowed_iterator_t<Range>> read_exactly_n_code_units(
-    Range&& range,
-    ranges::range_difference_t<Range> count)
+auto read_exactly_n_code_units(Range&& range,
+                               ranges::range_difference_t<Range> count)
+    -> eof_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     SCN_EXPECT(count >= 0);
 

@@ -453,7 +453,7 @@ struct regex_matches_reader
     }
 
     template <typename Range, typename DestCharT>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_default(
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_default(
         Range&&,
         basic_regex_matches<DestCharT>&,
         detail::locale_ref = {})
@@ -464,7 +464,7 @@ struct regex_matches_reader
     }
 
     template <typename Range, typename DestCharT>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_specs(
         Range&& range,
         const detail::format_specs& specs,
         basic_regex_matches<DestCharT>& value,
@@ -524,7 +524,8 @@ private:
 };
 
 template <typename CharT>
-struct reader_impl_for_regex_matches : public regex_matches_reader<CharT> {};
+struct reader_impl_for_regex_matches : public regex_matches_reader<CharT> {
+};
 }  // namespace impl
 
 SCN_END_NAMESPACE

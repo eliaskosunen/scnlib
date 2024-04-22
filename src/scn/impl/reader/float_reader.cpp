@@ -340,7 +340,8 @@ private:
 
 #if SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
 template <typename Float, typename = void>
-struct has_charconv_for : std::false_type {};
+struct has_charconv_for : std::false_type {
+};
 
 template <typename Float>
 struct has_charconv_for<
@@ -348,12 +349,14 @@ struct has_charconv_for<
     std::void_t<decltype(std::from_chars(SCN_DECLVAL(const char*),
                                          SCN_DECLVAL(const char*),
                                          SCN_DECLVAL(Float&)))>>
-    : std::true_type {};
+    : std::true_type {
+};
 
 #if SCN_STDLIB_GLIBCXX
 // libstdc++ has buggy std::from_chars for long double
 template <>
-struct has_charconv_for<long double, void> : std::false_type {};
+struct has_charconv_for<long double, void> : std::false_type {
+};
 #endif
 
 struct SCN_MAYBE_UNUSED from_chars_impl_base : impl_base {

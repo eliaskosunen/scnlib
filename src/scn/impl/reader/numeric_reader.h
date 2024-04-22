@@ -63,7 +63,7 @@ SCN_NODISCARD constexpr uint8_t char_to_int(wchar_t ch)
 }
 
 template <typename Range>
-eof_expected<std::pair<simple_borrowed_iterator_t<Range>, sign_type>>
+eof_expected<std::pair<detail::simple_borrowed_iterator_t<Range>, sign_type>>
 parse_numeric_sign(Range&& range)
 {
     auto r = read_one_of_code_unit(range, "+-");

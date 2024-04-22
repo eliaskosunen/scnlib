@@ -35,10 +35,8 @@ SCN_BEGIN_NAMESPACE
 
 namespace impl {
 template <typename Range>
-eof_expected<simple_borrowed_iterator_t<Range>> skip_ws_before_if_required(
-    bool is_required,
-    Range&& range,
-    detail::locale_ref loc)
+auto skip_ws_before_if_required(bool is_required, Range&& range)
+    -> eof_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
         return unexpected(e);
@@ -109,9 +107,8 @@ struct default_arg_reader {
                                                   const Range& rng,
                                                   T& value)
     {
-        SCN_TRY(it,
-                skip_ws_before_if_required(rd.skip_ws_before_read(), rng, loc)
-                    .transform_error(make_eof_scan_error));
+        SCN_TRY(it, skip_ws_before_if_required(rd.skip_ws_before_read(), rng)
+                        .transform_error(make_eof_scan_error));
         return rd.read_default(ranges::subrange{it, ranges::end(rng)}, value,
                                loc);
     }
@@ -197,12 +194,14 @@ auto skip_fill(Range&& range,
                std::ptrdiff_t max_width,
                const detail::fill_type& fill,
                bool want_skipped_width)
-    -> scan_expected<skip_fill_result<simple_borrowed_iterator_t<Range>>>
+    -> scan_expected<
+        skip_fill_result<detail::simple_borrowed_iterator_t<Range>>>
 {
     SCN_EXPECT(ranges::begin(range) != ranges::end(range));
 
     using char_type = detail::char_t<Range>;
-    using result_type = skip_fill_result<simple_borrowed_iterator_t<Range>>;
+    using result_type =
+        skip_fill_result<detail::simple_borrowed_iterator_t<Range>>;
 
     if (fill.size() <= sizeof(char_type)) {
         const auto fill_ch = fill.template get_code_unit<char_type>();

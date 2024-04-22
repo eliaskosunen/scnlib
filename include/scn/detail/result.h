@@ -338,7 +338,7 @@ auto make_vscan_result_range_end(CharT (&source)[N])
 
 template <typename SourceRange>
 auto make_vscan_result_range(SourceRange&& source, std::ptrdiff_t n)
-    -> borrowed_subrange_with_sentinel_t<SourceRange>
+    -> borrowed_tail_subrange_t<SourceRange>
 {
     return {ranges::next(ranges::begin(source), n),
             make_vscan_result_range_end(source)};

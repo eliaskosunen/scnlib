@@ -31,7 +31,7 @@ struct bool_reader_base {
     constexpr bool_reader_base(unsigned opt) : m_options(opt) {}
 
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_classic(
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_classic(
         Range&& range,
         bool& value) const
     {
@@ -61,7 +61,7 @@ struct bool_reader_base {
 
 protected:
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_numeric(
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_numeric(
         Range&& range,
         bool& value) const
     {
@@ -80,9 +80,8 @@ protected:
     }
 
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_textual_classic(
-        Range&& range,
-        bool& value) const
+    scan_expected<detail::simple_borrowed_iterator_t<Range>>
+    read_textual_classic(Range&& range, bool& value) const
     {
         if (auto r = read_matching_string_classic(range, "true")) {
             value = true;
@@ -107,7 +106,7 @@ struct bool_reader : public bool_reader_base {
 
 #if !SCN_DISABLE_LOCALE
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>>
+    scan_expected<detail::simple_borrowed_iterator_t<Range>>
     read_localized(Range&& range, detail::locale_ref loc, bool& value) const
     {
         scan_error err{scan_error::invalid_scanned_value,
@@ -144,11 +143,11 @@ struct bool_reader : public bool_reader_base {
 
 protected:
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_textual_custom(
-        Range&& range,
-        bool& value,
-        std::basic_string_view<CharT> truename,
-        std::basic_string_view<CharT> falsename) const
+    scan_expected<detail::simple_borrowed_iterator_t<Range>>
+    read_textual_custom(Range&& range,
+                        bool& value,
+                        std::basic_string_view<CharT> truename,
+                        std::basic_string_view<CharT> falsename) const
     {
         const auto is_truename_shorter = truename.size() <= falsename.size();
         const auto shorter = std::pair{
@@ -183,7 +182,7 @@ public:
     }
 
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>>
+    scan_expected<detail::simple_borrowed_iterator_t<Range>>
     read_default(Range&& range, bool& value, detail::locale_ref loc) const
     {
         SCN_UNUSED(loc);
@@ -192,7 +191,7 @@ public:
     }
 
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
+    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_specs(
         Range&& range,
         const detail::format_specs& specs,
         bool& value,

@@ -39,9 +39,8 @@ struct reader_error_handler {
 };
 
 template <typename SourceRange>
-eof_expected<simple_borrowed_iterator_t<SourceRange>> skip_classic_whitespace(
-    SourceRange&& range,
-    bool allow_exhaustion = false)
+auto skip_classic_whitespace(SourceRange&& range, bool allow_exhaustion = false)
+    -> eof_expected<detail::simple_borrowed_iterator_t<SourceRange>>
 {
     if (!allow_exhaustion) {
         auto it = read_while_classic_space(range);
@@ -164,19 +163,19 @@ public:
     }
 
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>>
-    read_default(Range&&, monostate&, detail::locale_ref)
+    auto read_default(Range&&, monostate&, detail::locale_ref)
+        -> scan_expected<detail::simple_borrowed_iterator_t<Range>>
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
 
     template <typename Range>
-    scan_expected<simple_borrowed_iterator_t<Range>> read_specs(
-        Range&&,
-        const detail::format_specs&,
-        monostate&,
-        detail::locale_ref)
+    auto read_specs(Range&&,
+                    const detail::format_specs&,
+                    monostate&,
+                    detail::locale_ref)
+        -> scan_expected<detail::simple_borrowed_iterator_t<Range>>
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
