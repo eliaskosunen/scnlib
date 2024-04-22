@@ -253,6 +253,28 @@ auto skip_fill(Range&& range,
     return result_type{w_it.base(), 0};
 }
 
+static scan_error check_widths_for_arg_reader(const detail::format_specs& specs,
+                                              std::ptrdiff_t prefix_width,
+                                              std::ptrdiff_t value_width,
+                                              std::ptrdiff_t postfix_width)
+{
+    if (specs.width != 0) {
+        if (prefix_width + value_width + postfix_width < specs.width) {
+            return {scan_error::invalid_scanned_value,
+                    "Scanned value too narrow, width did not exceed what "
+                    "was specified in the format string"};
+        }
+    }
+    if (specs.precision != 0) {
+        if (prefix_width + value_width + postfix_width > specs.precision) {
+            return {scan_error::invalid_scanned_value,
+                    "Scanned value too wide, width exceeded the specified "
+                    "precision"};
+        }
+    }
+    return {};
+}
+
 template <typename Context>
 struct arg_reader {
     using context_type = Context;
@@ -261,50 +283,107 @@ struct arg_reader {
     using range_type = typename context_type::range_type;
     using iterator = ranges::iterator_t<range_type>;
 
-    template <typename Reader, typename Range, typename T>
-    scan_expected<ranges::iterator_t<Range>> impl(Reader& rd,
-                                                  const Range& rng,
-                                                  T& value)
+    template <typename Range>
+    auto impl_prefix(const Range& rng, bool rd_skip_ws_before_read)
+        -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
     {
-        auto it = ranges::begin(rng);
-        SCN_EXPECT(it != ranges::end(rng));
+        SCN_EXPECT(ranges::begin(rng) != ranges::end(rng));
 
         const bool need_skipped_width =
             specs.width != 0 || specs.precision != 0;
+        using result_type = skip_fill_result<ranges::iterator_t<Range>>;
 
         // Read prefix
-        std::ptrdiff_t prefix_width = 0;
-        if (specs.align == detail::align_type::none &&
-            rd.skip_ws_before_read()) {
+        if (specs.align == detail::align_type::right ||
+            specs.align == detail::align_type::center) {
+            return skip_fill(rng, specs.precision, specs.fill,
+                             need_skipped_width);
+        }
+        if (specs.align == detail::align_type::none && rd_skip_ws_before_read) {
             // Default alignment:
             // Skip preceding whitespace, if required by the reader
             if (specs.precision != 0) {
                 auto max_width_view = take_width(rng, specs.precision);
                 SCN_TRY(w_it, skip_classic_whitespace(max_width_view)
                                   .transform_error(make_eof_scan_error));
-                it = w_it.base();
-                prefix_width = specs.precision - w_it.count();
+                return result_type{w_it.base(), specs.precision - w_it.count()};
             }
-            else {
-                SCN_TRY_ASSIGN(it, skip_classic_whitespace(rng).transform_error(
-                                       make_eof_scan_error));
+            SCN_TRY(it, skip_classic_whitespace(rng).transform_error(
+                            make_eof_scan_error));
 
-                if (need_skipped_width) {
-                    prefix_width = calculate_text_width(
-                        make_contiguous_buffer(
-                            ranges::subrange{ranges::begin(rng), it})
-                            .view());
-                }
+            if (need_skipped_width) {
+                return result_type{
+                    it, calculate_text_width(
+                            make_contiguous_buffer(
+                                ranges::subrange{ranges::begin(rng), it})
+                                .view())};
             }
+            return result_type{it, 0};
         }
-        else if (specs.align == detail::align_type::right ||
-                 specs.align == detail::align_type::center) {
-            SCN_TRY(prefix_skip_result,
-                    skip_fill(rng, specs.precision, specs.fill,
-                              need_skipped_width));
-            std::tie(it, prefix_width) = prefix_skip_result;
+
+        return result_type{ranges::begin(rng), 0};
+    }
+
+    template <typename Range>
+    auto impl_postfix(const Range& rng,
+                      bool rd_skip_ws_before_read,
+                      std::ptrdiff_t prefix_width,
+                      std::ptrdiff_t value_width)
+        -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
+    {
+        SCN_EXPECT(ranges::begin(rng) != ranges::end(rng));
+
+        const bool need_skipped_width =
+            specs.width != 0 || specs.precision != 0;
+        using result_type = skip_fill_result<ranges::iterator_t<Range>>;
+
+        if (specs.align == detail::align_type::left ||
+            specs.align == detail::align_type::center) {
+            return skip_fill(rng, specs.precision - value_width - prefix_width,
+                             specs.fill, need_skipped_width);
         }
-        const auto prefix_end_it = it;
+        if (specs.align == detail::align_type::none &&
+            !rd_skip_ws_before_read &&
+            ((specs.width != 0 && prefix_width + value_width < specs.width) ||
+             (specs.precision != 0 &&
+              prefix_width + value_width < specs.precision))) {
+            if (specs.precision != 0) {
+                const auto initial_width =
+                    specs.precision - prefix_width - value_width;
+                auto max_width_view = take_width(rng, initial_width);
+                SCN_TRY(w_it, skip_classic_whitespace(max_width_view, true)
+                                  .transform_error(make_eof_scan_error));
+                return result_type{w_it.base(), initial_width - w_it.count()};
+            }
+            SCN_TRY(it, skip_classic_whitespace(rng, true).transform_error(
+                            make_eof_scan_error));
+
+            if (need_skipped_width) {
+                return result_type{
+                    it, calculate_text_width(
+                            make_contiguous_buffer(
+                                ranges::subrange{ranges::begin(rng), it})
+                                .view())};
+            }
+            return result_type{it, 0};
+        }
+        return result_type{ranges::begin(rng), 0};
+    }
+
+    template <typename Reader, typename Range, typename T>
+    scan_expected<ranges::iterator_t<Range>> impl(Reader& rd,
+                                                  const Range& rng,
+                                                  T& value)
+    {
+        SCN_EXPECT(ranges::begin(rng) != ranges::end(rng));
+
+        const bool need_skipped_width =
+            specs.width != 0 || specs.precision != 0;
+
+        // Read prefix
+        SCN_TRY(prefix_result, impl_prefix(rng, rd.skip_ws_before_read()));
+        auto [it, prefix_width] = prefix_result;
+        auto prefix_end_it = it;
 
         // Read value
         std::ptrdiff_t value_width = 0;
@@ -339,61 +418,17 @@ struct arg_reader {
         // Read postfix
         std::ptrdiff_t postfix_width = 0;
         if (it != ranges::end(rng)) {
-            if (specs.align == detail::align_type::left ||
-                specs.align == detail::align_type::center) {
-                SCN_TRY(postfix_skip_result,
-                        skip_fill(ranges::subrange{it, ranges::end(rng)},
-                                  specs.precision - value_width - prefix_width,
-                                  specs.fill, need_skipped_width));
-                std::tie(it, postfix_width) = postfix_skip_result;
-            }
-            else if (specs.align == detail::align_type::none &&
-                     !rd.skip_ws_before_read() &&
-                     ((specs.width != 0 &&
-                       prefix_width + value_width < specs.width) ||
-                      (specs.precision != 0 &&
-                       prefix_width + value_width < specs.precision))) {
-                if (specs.precision != 0) {
-                    const auto initial_width =
-                        specs.precision - prefix_width - value_width;
-                    auto max_width_view = take_width(
-                        ranges::subrange{it, ranges::end(rng)}, initial_width);
-                    SCN_TRY(w_it, skip_classic_whitespace(max_width_view, true)
-                                      .transform_error(make_eof_scan_error));
-                    it = w_it.base();
-                    postfix_width = initial_width - w_it.count();
-                }
-                else {
-                    SCN_TRY_ASSIGN(
-                        it, skip_classic_whitespace(
-                                ranges::subrange{it, ranges::end(rng)}, true)
-                                .transform_error(make_eof_scan_error));
-
-                    if (need_skipped_width) {
-                        postfix_width = calculate_text_width(
-                            make_contiguous_buffer(
-                                ranges::subrange{value_end_it, it})
-                                .view());
-                    }
-                }
-            }
+            SCN_TRY(postfix_result,
+                    impl_postfix(ranges::subrange{it, ranges::end(rng)},
+                                 rd.skip_ws_before_read(), prefix_width,
+                                 value_width));
+            std::tie(it, postfix_width) = postfix_result;
         }
 
-        if (specs.width != 0) {
-            if (prefix_width + value_width + postfix_width < specs.width) {
-                return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "Scanned value too narrow, width did not exceed what "
-                    "was specified in the format string");
-            }
-        }
-        if (specs.precision != 0) {
-            if (prefix_width + value_width + postfix_width > specs.precision) {
-                return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "Scanned value too wide, width exceeded the specified "
-                    "precision");
-            }
+        if (auto e = check_widths_for_arg_reader(specs, prefix_width,
+                                                 value_width, postfix_width);
+            !e) {
+            return unexpected(e);
         }
 
         return it;
