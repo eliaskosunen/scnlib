@@ -17,7 +17,7 @@
 
 #include <scn/detail/scan_buffer.h>
 
-#include <scn/detail/ranges.h>
+#include <scn/impl/ranges_impl.h>
 
 #include <cstdio>
 
@@ -361,7 +361,7 @@ void scan_file_buffer::sync(std::ptrdiff_t position)
             static_cast<std::ptrdiff_t>(this->putback_buffer().size())) {
             file_unlocker_for_unget unlocker{m_file};
             auto putback_segment = this->get_segment_starting_at(position);
-            for (auto ch : ranges::views::reverse(putback_segment)) {
+            for (auto ch : ranges_impl::views::reverse(putback_segment)) {
                 file_wrapper::unget(m_file, ch);
             }
             return;
@@ -384,7 +384,7 @@ void scan_file_buffer::sync(std::ptrdiff_t position)
 
     auto putback_segment =
         std::string_view{this->putback_buffer()}.substr(position);
-    for (auto ch : ranges::views::reverse(putback_segment)) {
+    for (auto ch : ranges_impl::views::reverse(putback_segment)) {
         file_wrapper::unget(m_file, ch);
     }
 }

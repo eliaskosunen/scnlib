@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <scn/detail/ranges.h>
+#include <scn/impl/ranges_impl.h>
 #include <scn/util/string_view.h>
 
 #include <memory>
@@ -41,21 +41,21 @@ struct string_view_wrapper {
     constexpr string_view_wrapper() = default;
 
     template <typename Range,
-              std::enable_if_t<ranges::borrowed_range<Range> &&
-                               ranges::contiguous_range<Range> &&
-                               ranges::sized_range<Range>>* = nullptr>
+              std::enable_if_t<ranges_impl::borrowed_range<Range> &&
+                               ranges_impl::contiguous_range<Range> &&
+                               ranges_impl::sized_range<Range>>* = nullptr>
     constexpr string_view_wrapper(Range&& r)
-        : sv(ranges::data(r), ranges_polyfill::usize(r))
+        : sv(ranges_impl::data(r), ranges_polyfill::usize(r))
     {
     }
 
     template <typename Range,
-              std::enable_if_t<ranges::borrowed_range<Range> &&
-                               ranges::contiguous_range<Range> &&
-                               ranges::sized_range<Range>>* = nullptr>
+              std::enable_if_t<ranges_impl::borrowed_range<Range> &&
+                               ranges_impl::contiguous_range<Range> &&
+                               ranges_impl::sized_range<Range>>* = nullptr>
     void assign(Range&& r)
     {
-        sv = string_view_type{ranges::data(r), ranges_polyfill::usize(r)};
+        sv = string_view_type{ranges_impl::data(r), ranges_polyfill::usize(r)};
     }
 
     constexpr auto view() const
@@ -91,7 +91,7 @@ public:
     contiguous_range_factory() = default;
 
     template <typename Range,
-              std::enable_if_t<ranges::forward_range<Range>>* = nullptr>
+              std::enable_if_t<ranges_impl::forward_range<Range>>* = nullptr>
     contiguous_range_factory(Range&& range)
     {
         emplace_range(SCN_FWD(range));
@@ -131,7 +131,7 @@ public:
     ~contiguous_range_factory() = default;
 
     template <typename Range,
-              std::enable_if_t<ranges::forward_range<Range>>* = nullptr>
+              std::enable_if_t<ranges_impl::forward_range<Range>>* = nullptr>
     void assign(Range&& range)
     {
         emplace_range(SCN_FWD(range));
@@ -178,12 +178,12 @@ private:
     template <typename Range>
     void emplace_range(Range&& range)
     {
-        using value_t = ranges::range_value_t<Range>;
-        if constexpr (ranges::borrowed_range<Range> &&
-                      ranges::contiguous_range<Range> &&
-                      ranges::sized_range<Range>) {
+        using value_t = ranges_impl::range_value_t<Range>;
+        if constexpr (ranges_impl::borrowed_range<Range> &&
+                      ranges_impl::contiguous_range<Range> &&
+                      ranges_impl::sized_range<Range>) {
             m_storage.reset();
-            m_view = string_view_type{ranges::data(range),
+            m_view = string_view_type{ranges_impl::data(range),
                                       ranges_polyfill::usize(range)};
         }
         else if constexpr (std::is_same_v<detail::remove_cvref_t<Range>,
@@ -191,10 +191,10 @@ private:
             m_storage.emplace(SCN_FWD(range));
             m_view = string_view_type{*m_storage};
         }
-        else if constexpr (std::is_same_v<ranges::iterator_t<Range>,
+        else if constexpr (std::is_same_v<ranges_impl::iterator_t<Range>,
                                           typename detail::basic_scan_buffer<
                                               value_t>::forward_iterator> &&
-                           ranges::common_range<Range>) {
+                           ranges_impl::common_range<Range>) {
             auto beg_seg = range.begin().contiguous_segment();
             auto end_seg = range.end().contiguous_segment();
             if (SCN_UNLIKELY(detail::to_address(beg_seg.end()) !=
@@ -212,10 +212,10 @@ private:
         }
         else {
             auto& str = m_storage.emplace();
-            if constexpr (ranges::sized_range<Range>) {
+            if constexpr (ranges_impl::sized_range<Range>) {
                 str.reserve(ranges_polyfill::usize(range));
             }
-            std::copy(ranges::begin(range), ranges::end(range),
+            std::copy(ranges_impl::begin(range), ranges_impl::end(range),
                       std::back_inserter(str));
             m_view = string_view_type{str};
         }
@@ -232,9 +232,9 @@ contiguous_range_factory(Range)
 template <typename Range>
 auto make_contiguous_buffer(Range&& range)
 {
-    if constexpr (ranges::borrowed_range<Range> &&
-                  ranges::contiguous_range<Range> &&
-                  ranges::sized_range<Range>) {
+    if constexpr (ranges_impl::borrowed_range<Range> &&
+                  ranges_impl::contiguous_range<Range> &&
+                  ranges_impl::sized_range<Range>) {
         return string_view_wrapper{SCN_FWD(range)};
     }
     else {

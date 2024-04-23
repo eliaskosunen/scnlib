@@ -29,7 +29,7 @@ namespace detail {
  * Implementation of `std::max` without including `<algorithm>`
  */
 template <typename T>
-constexpr T max(T a, T b) SCN_NOEXCEPT
+constexpr T max(T a, T b) noexcept
 {
     return (a < b) ? b : a;
 }
@@ -58,7 +58,7 @@ constexpr It min_element(It first, It last)
  * Implementation of `std::min` without including `<algorithm>`
  */
 template <typename T>
-constexpr T min(T a, T b) SCN_NOEXCEPT
+constexpr T min(T a, T b) noexcept
 {
     return (b < a) ? b : a;
 }

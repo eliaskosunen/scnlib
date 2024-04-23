@@ -117,7 +117,7 @@ static void scan_int_repeated_scn_int(benchmark::State& state)
     for (auto _ : state) {
         s.skip_classic_ascii_space();
         auto sv = std::string_view{scn::ranges::data(s.view()),
-                                   scn::ranges_polyfill::usize(s.view())};
+                                   scn::ranges::size(s.view())};
 
         auto result = scn::scan_int<Int>(sv);
 

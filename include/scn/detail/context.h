@@ -20,25 +20,22 @@
 #include <scn/detail/args.h>
 #include <scn/detail/locale_ref.h>
 #include <scn/detail/scan_buffer.h>
-#include <scn/util/string_view.h>
 
 namespace scn {
 SCN_BEGIN_NAMESPACE
 
 namespace detail {
-template <typename Iterator, typename = void>
-struct is_comparable_with_nullptr : std::false_type {};
-template <typename Iterator>
-struct is_comparable_with_nullptr<
-    Iterator,
-    std::void_t<decltype(SCN_DECLVAL(const Iterator&) == nullptr)>>
-    : std::true_type {};
+template <typename I>
+using apply_cmp_with_nullptr = decltype(SCN_DECLVAL(const I&) == nullptr);
+template <typename I>
+inline constexpr bool is_comparable_with_nullptr =
+    mp_valid_v<apply_cmp_with_nullptr, I>;
 
-template <typename CharT, typename Args>
-struct scan_context_base {
+template <typename Args>
+class scan_context_base {
 public:
     /// Get argument at index `id`
-    constexpr auto arg(size_t id) const SCN_NOEXCEPT
+    constexpr auto arg(size_t id) const noexcept
     {
         return m_args.get(id);
     }
@@ -48,19 +45,19 @@ public:
         return m_args;
     }
 
-    SCN_NODISCARD constexpr detail::locale_ref locale() const
+    SCN_NODISCARD constexpr locale_ref locale() const
     {
         return m_locale;
     }
 
 protected:
-    scan_context_base(Args args, detail::locale_ref loc)
-        : m_args(SCN_MOVE(args)), m_locale(loc)
+    scan_context_base(Args args, locale_ref loc)
+        : m_args(SCN_MOVE(args)), m_locale(SCN_MOVE(loc))
     {
     }
 
     Args m_args;
-    detail::locale_ref m_locale;
+    locale_ref m_locale;
 };
 }  // namespace detail
 
@@ -76,12 +73,9 @@ protected:
  * \ingroup ctx
  */
 template <typename CharT>
-class basic_scan_context
-    : public detail::
-          scan_context_base<CharT, basic_scan_args<basic_scan_context<CharT>>> {
-    using base =
-        detail::scan_context_base<CharT,
-                                  basic_scan_args<basic_scan_context<CharT>>>;
+class basic_scan_context : public detail::scan_context_base<
+                               basic_scan_args<basic_scan_context<CharT>>> {
+    using base = detail::scan_context_base<basic_scan_args<basic_scan_context>>;
 
 public:
     /// Character type of the input
@@ -129,7 +123,7 @@ public:
      */
     constexpr sentinel end() const
     {
-        return ranges_std::default_sentinel;
+        return ranges::default_sentinel;
     }
 
     /**

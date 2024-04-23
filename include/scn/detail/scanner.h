@@ -176,14 +176,14 @@ template <typename T>
 struct discard {
     constexpr discard() = default;
 
-    constexpr discard(const T&) SCN_NOEXCEPT {}
-    constexpr discard(T&&) SCN_NOEXCEPT {}
+    constexpr discard(const T&) noexcept {}
+    constexpr discard(T&&) noexcept {}
 
-    constexpr discard& operator=(const T&) SCN_NOEXCEPT
+    constexpr discard& operator=(const T&) noexcept
     {
         return *this;
     }
-    constexpr discard& operator=(T&&) SCN_NOEXCEPT
+    constexpr discard& operator=(T&&) noexcept
     {
         return *this;
     }

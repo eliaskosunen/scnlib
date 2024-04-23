@@ -67,20 +67,20 @@ public:
         SCN_UNLIKELY_ATTR SCN_UNUSED(m_unexpected);
     }
 
-    constexpr E& error() & SCN_NOEXCEPT
+    constexpr E& error() & noexcept
     {
         return m_unexpected;
     }
-    constexpr const E& error() const& SCN_NOEXCEPT
+    constexpr const E& error() const& noexcept
     {
         return m_unexpected;
     }
 
-    constexpr E&& error() && SCN_NOEXCEPT
+    constexpr E&& error() && noexcept
     {
         return std::move(m_unexpected);
     }
-    constexpr const E&& error() const&& SCN_NOEXCEPT
+    constexpr const E&& error() const&& noexcept
     {
         return std::move(m_unexpected);
     }
@@ -127,9 +127,8 @@ struct expected_storage_base;
 template <typename T, typename E>
 struct SCN_TRIVIAL_ABI expected_storage_base<T, E, true> {
     constexpr expected_storage_base() : m_value(T{}), m_has_value(true) {}
-    constexpr expected_storage_base(deferred_init_tag_t) SCN_NOEXCEPT
-        : m_deferred_init(),
-          m_has_value(false)
+    constexpr expected_storage_base(deferred_init_tag_t) noexcept
+        : m_deferred_init(), m_has_value(false)
     {
     }
 
@@ -150,41 +149,41 @@ struct SCN_TRIVIAL_ABI expected_storage_base<T, E, true> {
     {
     }
 
-    constexpr T& get_value() & SCN_NOEXCEPT
+    constexpr T& get_value() & noexcept
     {
         return m_value;
     }
-    constexpr const T& get_value() const& SCN_NOEXCEPT
+    constexpr const T& get_value() const& noexcept
     {
         return m_value;
     }
-    constexpr T&& get_value() && SCN_NOEXCEPT
+    constexpr T&& get_value() && noexcept
     {
         return std::move(m_value);
     }
-    constexpr const T&& get_value() const&& SCN_NOEXCEPT
+    constexpr const T&& get_value() const&& noexcept
     {
         return std::move(m_value);
     }
 
-    constexpr unexpected<E>& get_unexpected() & SCN_NOEXCEPT
+    constexpr unexpected<E>& get_unexpected() & noexcept
     {
         return m_unexpected;
     }
-    constexpr const unexpected<E>& get_unexpected() const& SCN_NOEXCEPT
+    constexpr const unexpected<E>& get_unexpected() const& noexcept
     {
         return m_unexpected;
     }
-    constexpr unexpected<E>&& get_unexpected() && SCN_NOEXCEPT
+    constexpr unexpected<E>&& get_unexpected() && noexcept
     {
         return std::move(m_unexpected);
     }
-    constexpr const unexpected<E>&& get_unexpected() const&& SCN_NOEXCEPT
+    constexpr const unexpected<E>&& get_unexpected() const&& noexcept
     {
         return std::move(m_unexpected);
     }
 
-    constexpr bool has_value() const SCN_NOEXCEPT
+    constexpr bool has_value() const noexcept
     {
         return m_has_value;
     }
@@ -220,9 +219,8 @@ private:
 template <typename E>
 struct SCN_TRIVIAL_ABI expected_storage_base<void, E, true> {
     constexpr expected_storage_base() : m_has_value(true) {}
-    constexpr expected_storage_base(deferred_init_tag_t) SCN_NOEXCEPT
-        : m_deferred_init(),
-          m_has_value(false)
+    constexpr expected_storage_base(deferred_init_tag_t) noexcept
+        : m_deferred_init(), m_has_value(false)
     {
     }
 
@@ -237,24 +235,24 @@ struct SCN_TRIVIAL_ABI expected_storage_base<void, E, true> {
     {
     }
 
-    constexpr unexpected<E>& get_unexpected() & SCN_NOEXCEPT
+    constexpr unexpected<E>& get_unexpected() & noexcept
     {
         return m_unexpected;
     }
-    constexpr const unexpected<E>& get_unexpected() const& SCN_NOEXCEPT
+    constexpr const unexpected<E>& get_unexpected() const& noexcept
     {
         return m_unexpected;
     }
-    constexpr unexpected<E>&& get_unexpected() && SCN_NOEXCEPT
+    constexpr unexpected<E>&& get_unexpected() && noexcept
     {
         return std::move(m_unexpected);
     }
-    constexpr const unexpected<E>&& get_unexpected() const&& SCN_NOEXCEPT
+    constexpr const unexpected<E>&& get_unexpected() const&& noexcept
     {
         return std::move(m_unexpected);
     }
 
-    constexpr bool has_value() const SCN_NOEXCEPT
+    constexpr bool has_value() const noexcept
     {
         return m_has_value;
     }
@@ -289,7 +287,7 @@ struct SCN_TRIVIAL_ABI expected_storage_base<T, E, false> {
     {
         construct();
     }
-    constexpr expected_storage_base(deferred_init_tag_t) SCN_NOEXCEPT
+    constexpr expected_storage_base(deferred_init_tag_t) noexcept
         : m_has_value(false)
     {
     }
@@ -322,41 +320,41 @@ struct SCN_TRIVIAL_ABI expected_storage_base<T, E, false> {
         }
     }
 
-    constexpr T& get_value() & SCN_NOEXCEPT
+    constexpr T& get_value() & noexcept
     {
         return *value_ptr();
     }
-    constexpr const T& get_value() const& SCN_NOEXCEPT
+    constexpr const T& get_value() const& noexcept
     {
         return *value_ptr();
     }
-    constexpr T&& get_value() && SCN_NOEXCEPT
+    constexpr T&& get_value() && noexcept
     {
         return std::move(*value_ptr());
     }
-    constexpr const T&& get_value() const&& SCN_NOEXCEPT
+    constexpr const T&& get_value() const&& noexcept
     {
         return std::move(*value_ptr());
     }
 
-    constexpr unexpected<E>& get_unexpected() & SCN_NOEXCEPT
+    constexpr unexpected<E>& get_unexpected() & noexcept
     {
         return *unexpected_ptr();
     }
-    constexpr const unexpected<E>& get_unexpected() const& SCN_NOEXCEPT
+    constexpr const unexpected<E>& get_unexpected() const& noexcept
     {
         return *unexpected_ptr();
     }
-    constexpr unexpected<E>&& get_unexpected() && SCN_NOEXCEPT
+    constexpr unexpected<E>&& get_unexpected() && noexcept
     {
         return std::move(*unexpected_ptr());
     }
-    constexpr const unexpected<E>&& get_unexpected() const&& SCN_NOEXCEPT
+    constexpr const unexpected<E>&& get_unexpected() const&& noexcept
     {
         return std::move(*unexpected_ptr());
     }
 
-    constexpr bool has_value() const SCN_NOEXCEPT
+    constexpr bool has_value() const noexcept
     {
         return m_has_value;
     }
@@ -423,7 +421,7 @@ private:
 template <typename E>
 struct SCN_TRIVIAL_ABI expected_storage_base<void, E, false> {
     constexpr expected_storage_base() : m_has_value(true) {}
-    constexpr expected_storage_base(deferred_init_tag_t) SCN_NOEXCEPT
+    constexpr expected_storage_base(deferred_init_tag_t) noexcept
         : m_has_value(false)
     {
     }
@@ -446,24 +444,24 @@ struct SCN_TRIVIAL_ABI expected_storage_base<void, E, false> {
         }
     }
 
-    constexpr unexpected<E>& get_unexpected() & SCN_NOEXCEPT
+    constexpr unexpected<E>& get_unexpected() & noexcept
     {
         return *unexpected_ptr();
     }
-    constexpr const unexpected<E>& get_unexpected() const& SCN_NOEXCEPT
+    constexpr const unexpected<E>& get_unexpected() const& noexcept
     {
         return *unexpected_ptr();
     }
-    constexpr unexpected<E>&& get_unexpected() && SCN_NOEXCEPT
+    constexpr unexpected<E>&& get_unexpected() && noexcept
     {
         return std::move(*unexpected_ptr());
     }
-    constexpr const unexpected<E>&& get_unexpected() const&& SCN_NOEXCEPT
+    constexpr const unexpected<E>&& get_unexpected() const&& noexcept
     {
         return std::move(*unexpected_ptr());
     }
 
-    constexpr bool has_value() const SCN_NOEXCEPT
+    constexpr bool has_value() const noexcept
     {
         return m_has_value;
     }
@@ -595,9 +593,10 @@ private:
     }
 
 #if SCN_HAS_EXCEPTIONS
-    void assign_value_over_unexpected(const expected_operations_base& other)
-        SCN_NOEXCEPT_P(std::is_nothrow_copy_constructible_v<T> ||
-                       std::is_nothrow_move_constructible_v<T>)
+    void assign_value_over_unexpected(
+        const expected_operations_base&
+            other) noexcept(std::is_nothrow_copy_constructible_v<T> ||
+                            std::is_nothrow_move_constructible_v<T>)
     {
         if constexpr (std::is_nothrow_copy_constructible_v<T>) {
             this->destroy_unexpected();
@@ -622,8 +621,9 @@ private:
         }
     }
 
-    void assign_value_over_unexpected(expected_operations_base&& other)
-        SCN_NOEXCEPT_P(std::is_nothrow_move_constructible_v<T>)
+    void
+    assign_value_over_unexpected(expected_operations_base&& other) noexcept(
+        std::is_nothrow_move_constructible_v<T>)
     {
         if constexpr (std::is_nothrow_move_constructible_v<T>) {
             this->destroy_unexpected();
@@ -814,9 +814,11 @@ template <typename T>
 using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
 template <typename T>
-struct is_expected_impl : std::false_type {};
+struct is_expected_impl : std::false_type {
+};
 template <typename T, typename E>
-struct is_expected_impl<expected<T, E>> : std::true_type {};
+struct is_expected_impl<expected<T, E>> : std::true_type {
+};
 template <typename T>
 using is_expected = is_expected_impl<remove_cvref_t<T>>;
 

@@ -185,15 +185,6 @@
 #define SCN_UNREACHABLE SCN_ASSUME(0)
 #endif
 
-// SCN_NOEXCEPT
-#if SCN_DOXYGEN || (SCN_HAS_EXCEPTIONS && SCN_USE_EXCEPTIONS)
-#define SCN_NOEXCEPT        noexcept
-#define SCN_NOEXCEPT_P(...) noexcept(__VA_ARGS__)
-#else
-#define SCN_NOEXCEPT        /*noexcept*/
-#define SCN_NOEXCEPT_P(...) /*noexcept_p*/
-#endif
-
 // SCN_ASSUME_ALIGNED
 #if SCN_HAS_STD_ASSUME_ALIGNED
 #define SCN_ASSUME_ALIGNED(x, n) ::std::assume_aligned<n>(x)
@@ -203,7 +194,7 @@
 #define SCN_ASSUME_ALIGNED(x, n) __assume_aligned(x, n)
 #else
 #define SCN_ASSUME_ALIGNED(x, n)                                    \
-    ([&](auto&& p) SCN_NOEXCEPT {                                   \
+    ([&](auto&& p) noexcept {                                       \
         SCN_ASSUME(reinterpret_cast<std::uintptr_t>(p) % (n) == 0); \
         return p;                                                   \
     }(x))
@@ -217,8 +208,7 @@
 #define SCN_ENVIRONMENT_SUPPORTS_RANGES 1
 #endif
 
-#if SCN_HAS_CONCEPTS && SCN_HAS_RANGES && SCN_ENVIRONMENT_SUPPORTS_RANGES && \
-    SCN_USE_STD_RANGES
+#if SCN_HAS_CONCEPTS && SCN_HAS_RANGES && SCN_ENVIRONMENT_SUPPORTS_RANGES
 #define SCN_STD_RANGES 1
 #else
 #define SCN_STD_RANGES 0

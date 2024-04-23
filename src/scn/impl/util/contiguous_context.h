@@ -26,16 +26,16 @@ SCN_BEGIN_NAMESPACE
 namespace impl {
 template <typename CharT>
 class basic_contiguous_scan_context
-    : public detail::
-          scan_context_base<CharT, basic_scan_args<basic_scan_context<CharT>>> {
+    : public detail::scan_context_base<
+          basic_scan_args<basic_scan_context<CharT>>> {
     using base =
-        detail::scan_context_base<CharT,
-                                  basic_scan_args<basic_scan_context<CharT>>>;
+        detail::scan_context_base<basic_scan_args<basic_scan_context<CharT>>>;
 
 public:
     using char_type = CharT;
     using buffer_type = detail::basic_scan_buffer<char_type>;
-    using range_type = ranges::subrange<const char_type*, const char_type*>;
+    using range_type =
+        ranges_impl::subrange<const char_type*, const char_type*>;
     using iterator = const char_type*;
     using sentinel = const char_type*;
     using parse_context_type = basic_scan_parse_context<char_type>;
@@ -45,8 +45,8 @@ public:
     using arg_type = basic_scan_arg<parent_context_type>;
 
     template <typename Range,
-              std::enable_if_t<ranges::contiguous_range<Range> &&
-                               ranges::borrowed_range<Range>>* = nullptr>
+              std::enable_if_t<ranges_impl::contiguous_range<Range> &&
+                               ranges_impl::borrowed_range<Range>>* = nullptr>
     constexpr basic_contiguous_scan_context(Range&& r,
                                             args_type a,
                                             detail::locale_ref loc = {})
@@ -68,7 +68,7 @@ public:
 
     constexpr auto range() const
     {
-        return ranges::subrange{begin(), end()};
+        return ranges_impl::subrange{begin(), end()};
     }
 
     constexpr auto underlying_range() const
@@ -79,7 +79,7 @@ public:
     void advance_to(iterator it)
     {
         SCN_EXPECT(it <= end());
-        if constexpr (detail::is_comparable_with_nullptr<iterator>::value) {
+        if constexpr (detail::is_comparable_with_nullptr<iterator>) {
             if (it == nullptr) {
                 it = end();
             }
@@ -95,7 +95,7 @@ public:
 
     std::ptrdiff_t begin_position()
     {
-        return ranges::distance(m_range.begin(), begin());
+        return ranges_impl::distance(m_range.begin(), begin());
     }
 
 private:

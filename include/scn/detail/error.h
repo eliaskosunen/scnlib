@@ -53,40 +53,39 @@ private:
 
 public:
     struct success_tag_t {};
-    static constexpr success_tag_t success_tag() SCN_NOEXCEPT
+    static constexpr success_tag_t success_tag() noexcept
     {
         return {};
     }
 
     /// Constructs an error with `code::good` and no message.
-    constexpr scan_error() SCN_NOEXCEPT = default;
-    constexpr scan_error(success_tag_t) SCN_NOEXCEPT : scan_error() {}
+    constexpr scan_error() noexcept = default;
+    constexpr scan_error(success_tag_t) noexcept : scan_error() {}
 
     /// Constructs an error with `c` and `m`
-    constexpr scan_error(code_t c, const char* m) SCN_NOEXCEPT : m_msg(m),
-                                                                 m_code(c)
+    constexpr scan_error(code_t c, const char* m) noexcept : m_msg(m), m_code(c)
     {
         SCN_UNLIKELY_ATTR SCN_UNUSED(m_code);
     }
 
     /// Evaluated to true if there was no error
-    constexpr explicit operator bool() const SCN_NOEXCEPT
+    constexpr explicit operator bool() const noexcept
     {
         return m_code == good;
     }
 
-    constexpr explicit operator code_t() const SCN_NOEXCEPT
+    constexpr explicit operator code_t() const noexcept
     {
         return m_code;
     }
 
     /// Get error code
-    SCN_NODISCARD constexpr code_t code() const SCN_NOEXCEPT
+    SCN_NODISCARD constexpr code_t code() const noexcept
     {
         return m_code;
     }
     /// Get error message
-    SCN_NODISCARD constexpr auto msg() const SCN_NOEXCEPT->const char*
+    SCN_NODISCARD constexpr auto msg() const noexcept -> const char*
     {
         return m_msg;
     }
@@ -96,33 +95,29 @@ private:
     code_t m_code{good};
 };
 
-constexpr inline bool operator==(scan_error a, scan_error b) SCN_NOEXCEPT
+constexpr inline bool operator==(scan_error a, scan_error b) noexcept
 {
     return a.code() == b.code();
 }
-constexpr inline bool operator!=(scan_error a, scan_error b) SCN_NOEXCEPT
+constexpr inline bool operator!=(scan_error a, scan_error b) noexcept
 {
     return !(a == b);
 }
 
-constexpr inline bool operator==(scan_error a,
-                                 enum scan_error::code b) SCN_NOEXCEPT
+constexpr inline bool operator==(scan_error a, enum scan_error::code b) noexcept
 {
     return a.code() == b;
 }
-constexpr inline bool operator!=(scan_error a,
-                                 enum scan_error::code b) SCN_NOEXCEPT
+constexpr inline bool operator!=(scan_error a, enum scan_error::code b) noexcept
 {
     return !(a == b);
 }
 
-constexpr inline bool operator==(enum scan_error::code a,
-                                 scan_error b) SCN_NOEXCEPT
+constexpr inline bool operator==(enum scan_error::code a, scan_error b) noexcept
 {
     return a == b.code();
 }
-constexpr inline bool operator!=(enum scan_error::code a,
-                                 scan_error b) SCN_NOEXCEPT
+constexpr inline bool operator!=(enum scan_error::code a, scan_error b) noexcept
 {
     return !(a == b);
 }

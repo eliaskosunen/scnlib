@@ -77,7 +77,7 @@ parse_integer_base_prefix_for_detection(Range&& range)
             return {*r, 8, zero_parsed};
         }
     }
-    return {ranges::begin(range), 10, false};
+    return {ranges_impl::begin(range), 10, false};
 }
 
 template <typename Range>
@@ -109,33 +109,33 @@ parse_integer_base_prefix(Range&& range, int base)
 
         default:
             // no base prefix allowed
-            return {ranges::begin(range), base, false};
+            return {ranges_impl::begin(range), base, false};
     }
 }
 
 template <typename Range>
 auto parse_integer_prefix(Range range, int base)
-    -> eof_expected<parse_integer_prefix_result<ranges::iterator_t<Range>>>
+    -> eof_expected<parse_integer_prefix_result<ranges_impl::iterator_t<Range>>>
 {
     SCN_TRY(sign_result, parse_numeric_sign(range));
     auto [base_prefix_begin_it, sign] = sign_result;
 
     auto [digits_begin_it, parsed_base, parsed_zero] =
         parse_integer_base_prefix(
-            ranges::subrange{base_prefix_begin_it, ranges::end(range)}, base);
+            ranges_impl::subrange{base_prefix_begin_it, ranges_impl::end(range)}, base);
 
     if (parsed_zero) {
-        if (digits_begin_it == ranges::end(range) ||
+        if (digits_begin_it == ranges_impl::end(range) ||
             char_to_int(*digits_begin_it) >= 8) {
             digits_begin_it = ranges_polyfill::prev_backtrack(
-                digits_begin_it, ranges::begin(range));
+                digits_begin_it, ranges_impl::begin(range));
         }
         else {
             parsed_zero = false;
         }
     }
     else {
-        if (digits_begin_it == ranges::end(range) ||
+        if (digits_begin_it == ranges_impl::end(range) ||
             char_to_int(*digits_begin_it) >= parsed_base) {
             digits_begin_it = base_prefix_begin_it;
         }
@@ -144,28 +144,29 @@ auto parse_integer_prefix(Range range, int base)
     if (sign == sign_type::default_sign) {
         sign = sign_type::plus_sign;
     }
-    return parse_integer_prefix_result<ranges::iterator_t<Range>>{
+    return parse_integer_prefix_result<ranges_impl::iterator_t<Range>>{
         digits_begin_it, parsed_base, sign, parsed_zero};
 }
 
 template <typename Range>
 auto parse_integer_digits_without_thsep(Range range, int base)
-    -> scan_expected<ranges::iterator_t<Range>>
+    -> scan_expected<ranges_impl::iterator_t<Range>>
 {
     using char_type = detail::char_t<Range>;
 
-    if constexpr (ranges::contiguous_range<Range>) {
+    if constexpr (ranges_impl::contiguous_range<Range>) {
         if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
             return unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "Failed to parse integer: No digits found");
         }
-        return ranges::end(range);
+        return ranges_impl::end(range);
     }
     else {
-        return read_while1_code_unit(
-                   range, [&](char_type ch)
-                              SCN_NOEXCEPT { return char_to_int(ch) < base; })
+        return read_while1_code_unit(range,
+                                     [&](char_type ch) noexcept {
+                                         return char_to_int(ch) < base;
+                                     })
             .transform_error(map_parse_error_to_scan_error(
                 scan_error::invalid_scanned_value,
                 "Failed to parse integer: No digits found"));
@@ -177,18 +178,18 @@ auto parse_integer_digits_with_thsep(
     Range range,
     int base,
     const localized_number_formatting_options<CharT>& locale_options)
-    -> scan_expected<std::tuple<ranges::iterator_t<Range>,
+    -> scan_expected<std::tuple<ranges_impl::iterator_t<Range>,
                                 std::basic_string<CharT>,
                                 std::string>>
 {
     std::basic_string<CharT> output;
     std::string thsep_indices;
-    auto it = ranges::begin(range);
+    auto it = ranges_impl::begin(range);
     bool digit_matched = false;
-    for (; it != ranges::end(range); ++it) {
+    for (; it != ranges_impl::end(range); ++it) {
         if (*it == locale_options.thousands_sep) {
             thsep_indices.push_back(static_cast<char>(
-                ranges_polyfill::pos_distance(ranges::begin(range), it)));
+                ranges_polyfill::pos_distance(ranges_impl::begin(range), it)));
         }
         else if (char_to_int(*it) >= base) {
             break;
@@ -301,19 +302,19 @@ public:
         }
 
         SCN_TRY(after_digits_it, parse_integer_digits_without_thsep(
-                                     ranges::subrange{prefix_result.iterator,
-                                                      ranges::end(range)},
+                                     ranges_impl::subrange{prefix_result.iterator,
+                                                      ranges_impl::end(range)},
                                      prefix_result.parsed_base));
 
         auto buf = make_contiguous_buffer(
-            ranges::subrange{prefix_result.iterator, after_digits_it});
+            ranges_impl::subrange{prefix_result.iterator, after_digits_it});
         SCN_TRY(result_it,
                 parse_integer_value(buf.view(), value, prefix_result.sign,
                                     prefix_result.parsed_base));
 
         return ranges_polyfill::batch_next(
             prefix_result.iterator,
-            ranges::distance(buf.view().begin(), result_it));
+            ranges_impl::distance(buf.view().begin(), result_it));
     }
 
     template <typename Range, typename T>
@@ -359,19 +360,19 @@ public:
         if (SCN_LIKELY(!specs.localized)) {
             SCN_TRY(after_digits_it,
                     parse_integer_digits_without_thsep(
-                        ranges::subrange{prefix_result.iterator,
-                                         ranges::end(range)},
+                        ranges_impl::subrange{prefix_result.iterator,
+                                         ranges_impl::end(range)},
                         prefix_result.parsed_base));
 
             auto buf = make_contiguous_buffer(
-                ranges::subrange{prefix_result.iterator, after_digits_it});
+                ranges_impl::subrange{prefix_result.iterator, after_digits_it});
             SCN_TRY(result_it,
                     parse_integer_value(buf.view(), value, prefix_result.sign,
                                         prefix_result.parsed_base));
 
             return ranges_polyfill::batch_next(
                 prefix_result.iterator,
-                ranges::distance(buf.view().begin(), result_it));
+                ranges_impl::distance(buf.view().begin(), result_it));
         }
 
         auto locale_options =
@@ -384,14 +385,14 @@ public:
         SCN_TRY(
             parse_digits_result,
             parse_integer_digits_with_thsep(
-                ranges::subrange{prefix_result.iterator, ranges::end(range)},
+                ranges_impl::subrange{prefix_result.iterator, ranges_impl::end(range)},
                 prefix_result.parsed_base, locale_options));
         const auto& [after_digits_it, nothsep_source, thsep_indices] =
             parse_digits_result;
 
         if (!thsep_indices.empty()) {
             if (auto e = check_thsep_grouping(
-                    ranges::subrange{prefix_result.iterator, after_digits_it},
+                    ranges_impl::subrange{prefix_result.iterator, after_digits_it},
                     thsep_indices, locale_options.grouping);
                 SCN_UNLIKELY(!e)) {
                 return unexpected(e);
@@ -407,8 +408,8 @@ public:
 
         return ranges_polyfill::batch_next(
             prefix_result.iterator,
-            ranges::distance(nothsep_source_view.begin(), nothsep_source_it) +
-                ranges::ssize(thsep_indices));
+            ranges_impl::distance(nothsep_source_view.begin(), nothsep_source_it) +
+                ranges_impl::ssize(thsep_indices));
     }
 };
 }  // namespace impl

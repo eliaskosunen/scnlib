@@ -20,28 +20,15 @@
 #include <scn/detail/ranges.h>
 #include <scn/util/memory.h>
 
-#if SCN_STD_RANGES
-namespace std::ranges {
-template <typename T>
-inline constexpr bool enable_view<scn::span<T>> = true;
-template <typename T>
-inline constexpr bool enable_borrowed_range<scn::span<T>> = true;
-}  // namespace std::ranges
-#else
-
-NANO_BEGIN_NAMESPACE
-
-template <typename T>
-inline constexpr bool enable_view<scn::span<T>> = true;
-template <typename T>
-inline constexpr bool enable_borrowed_range<scn::span<T>> = true;
-
-NANO_END_NAMESPACE
-
-#endif
+#include <array>
 
 namespace scn {
 SCN_BEGIN_NAMESPACE
+
+namespace ranges {
+template <typename T>
+inline constexpr bool enable_borrowed_range<span<T>> = true;
+}
 
 namespace detail {
 template <typename>
@@ -56,14 +43,14 @@ inline constexpr bool is_std_array<std::array<T, N>> = true;
 
 template <typename It, typename T>
 inline constexpr bool is_span_compatible_iterator =
-    ranges_std::contiguous_iterator<It> &&
+    ranges::random_access_iterator<It> && can_make_address_from_iterator<It> &&
     std::is_convertible_v<
-        std::remove_reference_t<ranges_std::iter_reference_t<It>> (*)[],
+        std::remove_reference_t<ranges::iter_reference_t<It>> (*)[],
         T (*)[]>;
 
 template <typename S, typename It>
 inline constexpr bool is_span_compatible_sentinel =
-    ranges_std::sized_sentinel_for<S, It> && !std::is_convertible_v<S, size_t>;
+    ranges::sized_sentinel_for<S, It> && !std::is_convertible_v<S, size_t>;
 
 template <typename R, typename T>
 inline constexpr bool is_span_compatible_range =
@@ -107,13 +94,13 @@ public:
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-    constexpr span() SCN_NOEXCEPT = default;
+    constexpr span() noexcept = default;
 
     template <typename Iterator,
               std::enable_if_t<
                   detail::is_span_compatible_iterator<Iterator,
                                                       element_type>>* = nullptr>
-    constexpr span(Iterator first, size_type count) SCN_NOEXCEPT
+    constexpr span(Iterator first, size_type count) noexcept
         : m_ptr(detail::to_address(first)),
           m_end(detail::to_address(first) + count)
     {
@@ -124,16 +111,15 @@ public:
         std::enable_if_t<
             detail::is_span_compatible_iterator<Iterator, element_type> &&
             detail::is_span_compatible_sentinel<Sentinel, Iterator>>* = nullptr>
-    constexpr span(Iterator first, Sentinel last)
-        SCN_NOEXCEPT_P(noexcept(last - first))
+    constexpr span(Iterator first,
+                   Sentinel last) noexcept(noexcept(last - first))
         : m_ptr(detail::to_address(first)), m_end(detail::to_address(last))
     {
     }
 
     template <size_t N>
-    constexpr span(detail::type_identity_t<element_type> (&arr)[N]) SCN_NOEXCEPT
-        : m_ptr(arr),
-          m_end(arr + N)
+    constexpr span(detail::type_identity_t<element_type> (&arr)[N]) noexcept
+        : m_ptr(arr), m_end(arr + N)
     {
     }
 
@@ -142,9 +128,8 @@ public:
         size_t N,
         std::enable_if_t<
             std::is_convertible_v<OtherT (*)[], element_type (*)[]>>* = nullptr>
-    constexpr span(std::array<OtherT, N>& arr) SCN_NOEXCEPT
-        : m_ptr(arr.data()),
-          m_end(arr.data() + N)
+    constexpr span(std::array<OtherT, N>& arr) noexcept
+        : m_ptr(arr.data()), m_end(arr.data() + N)
     {
     }
     template <
@@ -152,9 +137,8 @@ public:
         size_t N,
         std::enable_if_t<std::is_convertible_v<const OtherT (*)[],
                                                element_type (*)[]>>* = nullptr>
-    constexpr span(const std::array<OtherT, N>& arr) SCN_NOEXCEPT
-        : m_ptr(arr.data()),
-          m_end(arr.data() + N)
+    constexpr span(const std::array<OtherT, N>& arr) noexcept
+        : m_ptr(arr.data()), m_end(arr.data() + N)
     {
     }
 
@@ -170,78 +154,77 @@ public:
     template <typename OtherT,
               std::enable_if_t<std::is_convertible_v<OtherT (*)[], T (*)[]>>* =
                   nullptr>
-    constexpr span(const span<OtherT>& other) SCN_NOEXCEPT
-        : m_ptr(other.begin()),
-          m_end(other.end())
+    constexpr span(const span<OtherT>& other) noexcept
+        : m_ptr(other.begin()), m_end(other.end())
     {
     }
 
-    constexpr iterator begin() SCN_NOEXCEPT
+    constexpr iterator begin() noexcept
     {
         return m_ptr;
     }
-    constexpr iterator end() SCN_NOEXCEPT
+    constexpr iterator end() noexcept
     {
         return m_end;
     }
-    constexpr reverse_iterator rbegin() SCN_NOEXCEPT
+    constexpr reverse_iterator rbegin() noexcept
     {
         return reverse_iterator{end()};
     }
-    constexpr reverse_iterator rend() SCN_NOEXCEPT
+    constexpr reverse_iterator rend() noexcept
     {
         return reverse_iterator{begin()};
     }
 
-    constexpr const_iterator begin() const SCN_NOEXCEPT
+    constexpr const_iterator begin() const noexcept
     {
         return m_ptr;
     }
-    constexpr const_iterator end() const SCN_NOEXCEPT
+    constexpr const_iterator end() const noexcept
     {
         return m_end;
     }
-    constexpr const_reverse_iterator rbegin() const SCN_NOEXCEPT
+    constexpr const_reverse_iterator rbegin() const noexcept
     {
         return reverse_iterator{end()};
     }
-    constexpr const_reverse_iterator rend() const SCN_NOEXCEPT
+    constexpr const_reverse_iterator rend() const noexcept
     {
         return reverse_iterator{begin()};
     }
 
-    constexpr const_iterator cbegin() const SCN_NOEXCEPT
+    constexpr const_iterator cbegin() const noexcept
     {
         return m_ptr;
     }
-    constexpr const_iterator cend() const SCN_NOEXCEPT
+    constexpr const_iterator cend() const noexcept
     {
         return m_end;
     }
-    constexpr const_reverse_iterator crbegin() const SCN_NOEXCEPT
+    constexpr const_reverse_iterator crbegin() const noexcept
     {
         return reverse_iterator{cend()};
     }
-    constexpr const_reverse_iterator crend() const SCN_NOEXCEPT
+    constexpr const_reverse_iterator crend() const noexcept
     {
         return reverse_iterator{cbegin()};
     }
 
-    constexpr reference operator[](size_type i) const SCN_NOEXCEPT
+    constexpr reference operator[](size_type i) const noexcept
     {
         SCN_EXPECT(size() > i);
         return *(m_ptr + i);
     }
 
-    constexpr pointer data() const SCN_NOEXCEPT
+    constexpr pointer data() const noexcept
     {
         return m_ptr;
     }
-    SCN_NODISCARD constexpr size_type size() const SCN_NOEXCEPT
+    SCN_NODISCARD constexpr size_type size() const noexcept
     {
         return static_cast<size_type>(m_end - m_ptr);
     }
-    SCN_NODISCARD constexpr size_type size_bytes() const SCN_NOEXCEPT
+    SCN_NODISCARD constexpr size_type size_bytes() const noexcept
     {
         return size() * sizeof(element_type);
     }
@@ -280,12 +263,9 @@ span(std::array<T, N>&) -> span<T>;
 template <typename T, size_t N>
 span(const std::array<T, N>&) -> span<T>;
 
-template <
-    typename Iterator,
-    typename End,
-    std::enable_if_t<ranges_std::contiguous_iterator<Iterator>>* = nullptr>
+template <typename Iterator, typename End>
 span(Iterator, End)
-    -> span<std::remove_reference_t<ranges_std::iter_reference_t<Iterator>>>;
+    -> span<std::remove_reference_t<ranges::iter_reference_t<Iterator>>>;
 
 template <typename Range,
           std::enable_if_t<ranges::contiguous_range<Range>>* = nullptr>

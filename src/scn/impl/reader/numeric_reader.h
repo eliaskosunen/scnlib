@@ -69,13 +69,13 @@ parse_numeric_sign(Range&& range)
     auto r = read_one_of_code_unit(range, "+-");
     if (!r) {
         if (r.error() == parse_error::error) {
-            return std::pair{ranges::begin(range), sign_type::default_sign};
+            return std::pair{ranges_impl::begin(range), sign_type::default_sign};
         }
         return unexpected(eof_error::eof);
     }
 
     auto& it = *r;
-    if (*ranges::begin(range) == '-') {
+    if (*ranges_impl::begin(range) == '-') {
         return std::pair{it, sign_type::minus_sign};
     }
     return std::pair{it, sign_type::plus_sign};
@@ -100,7 +100,7 @@ bool check_thsep_grouping_impl(Range& range,
 {
     transform_thsep_indices(
         thsep_indices,
-        ranges::distance(ranges::begin(range), ranges::end(range)));
+        ranges_impl::distance(ranges_impl::begin(range), ranges_impl::end(range)));
 
     auto thsep_it = thsep_indices.rbegin();
     for (auto grouping_it = grouping.begin();
@@ -132,7 +132,7 @@ bool check_thsep_grouping_impl(Range& range,
     return true;
 }
 
-template <typename Range, std::enable_if_t<ranges::view<Range>>* = nullptr>
+template <typename Range, std::enable_if_t<ranges_impl::view<Range>>* = nullptr>
 scan_error check_thsep_grouping(Range&& range,
                                 std::string thsep_indices,
                                 std::string_view grouping)

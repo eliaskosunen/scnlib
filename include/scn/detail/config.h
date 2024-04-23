@@ -34,14 +34,6 @@
 #define SCN_USE_TRIVIAL_ABI 1
 #endif
 
-// SCN_USE_STD_RANGES
-// If 1, uses stdlib <ranges>, if available.
-// If 0, always falls back to bundled nanorange
-// (include/scn/external/nanorange).
-#ifndef SCN_USE_STD_RANGES
-#define SCN_USE_STD_RANGES 1
-#endif
-
 #if 0
 // TODO: SCN_USE_DYNAMIC_ALLOCATION
 // If 0, removes all instances of dynamic allocation from the library,

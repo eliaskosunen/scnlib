@@ -137,9 +137,9 @@ class scan_result;
 // detail/scan.h
 
 struct file_marker {
-    constexpr file_marker() SCN_NOEXCEPT = default;
+    constexpr file_marker() noexcept = default;
     template <typename... Args>
-    constexpr file_marker(Args&&...) SCN_NOEXCEPT
+    constexpr file_marker(Args&&...) noexcept
     {
     }
 };

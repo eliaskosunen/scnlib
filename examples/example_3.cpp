@@ -17,6 +17,8 @@
 
 #include <scn/scan.h>
 
+#include <vector>
+
 int main()
 {
     std::string source{

@@ -17,31 +17,16 @@
 
 #pragma once
 
-#include <scn/util/meta.h>
-
-#include <cstring>
-#include <new>
-
-SCN_GCC_PUSH
-SCN_GCC_IGNORE("-Wnoexcept")
-#include <iterator>
-SCN_GCC_POP
-
-#if SCN_STDLIB_MS_STL
-#include <string>
-#include <string_view>
-#include <vector>
-#if SCN_HAS_STD_SPAN
-#include <span>
-#endif
-#endif
+#include <scn/detail/ranges.h>
 
 namespace scn {
 SCN_BEGIN_NAMESPACE
 
 namespace detail {
+
 template <typename Ptr, typename>
-struct pointer_traits {};
+struct pointer_traits {
+};
 
 template <typename T>
 struct pointer_traits<T*, void> {
@@ -52,36 +37,31 @@ struct pointer_traits<T*, void> {
     template <typename U>
     using rebind = U*;
 
-    template <typename U = T,
-              typename std::enable_if<!std::is_void<U>::value>::type* = nullptr>
-    static constexpr pointer pointer_to(U& r) SCN_NOEXCEPT
+    template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
+    static constexpr pointer pointer_to(U& r) noexcept
     {
         return &r;
     }
 
-    static constexpr pointer to_address(pointer p) SCN_NOEXCEPT
+    static constexpr pointer to_address(pointer p) noexcept
     {
         return p;
     }
 };
 
-template <typename Ptr, typename = void>
-struct difference_type_for_pointer_traits {
-    using type = std::ptrdiff_t;
-};
 template <typename Ptr>
-struct difference_type_for_pointer_traits<
-    Ptr,
-    std::void_t<typename Ptr::difference_type>> {
-    using type = typename Ptr::difference_type;
-};
+using apply_member_difference_type = typename Ptr::difference_type;
+template <typename Ptr>
+using get_member_difference_type =
+    mp_eval_or<std::ptrdiff_t, apply_member_difference_type, Ptr>;
 
 template <typename Ptr, typename ElementType>
-struct pointer_traits_generic_impl {
+struct pointer_traits_generic_base {
     using pointer = Ptr;
     using element_type = ElementType;
-    using difference_type =
-        typename difference_type_for_pointer_traits<Ptr>::type;
+
+    using difference_type = get_member_difference_type<Ptr>;
+    static_assert(std::is_integral_v<difference_type>);
 
     // no rebind (TODO?)
 
@@ -92,110 +72,99 @@ struct pointer_traits_generic_impl {
     }
 };
 
-#if 0
-        template <typename Ptr>
-        struct pointer_traits<Ptr, std::void_t<typename Ptr::element_type>>
-            : pointer_traits_generic_impl<Ptr, typename Ptr::element_type> {};
-
-        template <template <class...> class Template,
-                  typename T,
-                  typename... Args>
-        struct pointer_traits<Template<T, Args...>>
-            : pointer_traits_generic_impl<Template<T, Args...>, T> {};
-#endif
-
 template <typename It, typename = void>
-struct is_wrapped_pointer_iterator : std::false_type {};
+struct wrapped_pointer_iterator;
 
-// Workaround for MSVC _String_view_iterator
-#if SCN_STDLIB_MS_STL
-template <typename Traits>
-struct is_wrapped_pointer_iterator<std::_String_view_iterator<Traits>>
-    : std::true_type {};
-
-template <typename Traits>
-struct is_wrapped_pointer_iterator<std::_String_iterator<Traits>>
-    : std::true_type {};
-template <typename Traits>
-struct is_wrapped_pointer_iterator<std::_String_const_iterator<Traits>>
-    : std::true_type {};
-
-template <typename Vec>
-struct is_wrapped_pointer_iterator<std::_Vector_iterator<Vec>>
-    : std::true_type {};
-template <typename Vec>
-struct is_wrapped_pointer_iterator<std::_Vector_const_iterator<Vec>>
-    : std::true_type {};
-
-#if SCN_HAS_STD_SPAN
-template <typename T>
-struct is_wrapped_pointer_iterator<std::_Span_iterator<T>> : std::true_type {};
+#ifdef _GLIBCXX_DEBUG
+template <typename Elem, typename Container>
+struct wrapped_pointer_iterator<__gnu_debug::_Safe_iterator<Elem*, Container>> {
+    static constexpr auto to_address(
+        const __gnu_debug::_Safe_iterator<Elem*, Container>& it) noexcept
+    {
+        return it.base();
+    }
+};
 #endif
-#endif  // SCN_STDLIB_MS_STL
-
-// Workaround for libstdc++ __normal_iterator
 #if SCN_STDLIB_GLIBCXX
-template <typename ElementType, typename Container>
-struct is_wrapped_pointer_iterator<
-    __gnu_cxx::__normal_iterator<ElementType*, Container>> : std::true_type {};
-#endif  // SCN_STDLIB_GLIBCXX
-
-// Workaround for libc++ __wrap_iter
+template <typename Elem, typename Container>
+struct wrapped_pointer_iterator<
+    __gnu_cxx::__normal_iterator<Elem*, Container>> {
+    static constexpr auto to_address(
+        const __gnu_cxx::__normal_iterator<Elem*, Container>& it) noexcept
+    {
+        return it.base();
+    }
+};
+#endif
 #if SCN_STDLIB_LIBCPP
-template <typename ElementType>
-struct is_wrapped_pointer_iterator<std::__wrap_iter<ElementType*>>
-    : std::true_type {};
-#endif  // SCN_STDLIB_LIBCPP
+template <typename Elem>
+struct wrapped_pointer_iterator<std::__wrap_iter<Elem*>> {
+    static constexpr auto to_address(const std::__wrap_iter<Elem*>& it) noexcept
+    {
+        return it.base();
+    }
+};
+#endif
+
+template <typename I>
+using apply_member_unwrapped = decltype(SCN_DECLVAL(I&)._Unwrapped());
+template <typename It>
+struct wrapped_pointer_iterator<
+    It,
+    std::enable_if_t<ranges::random_access_iterator<It> &&
+                     mp_valid_v<apply_member_unwrapped, It>>> {
+    static constexpr auto to_address(const It& it) noexcept
+    {
+        return it._Unwrapped();
+    }
+};
+
+template <typename I>
+using apply_member_to_address =
+    decltype(wrapped_pointer_iterator<I>::to_address(SCN_DECLVAL(const I&)));
 
 template <typename Iterator>
 struct pointer_traits<
     Iterator,
-    std::enable_if_t<is_wrapped_pointer_iterator<Iterator>::value>>
-    : pointer_traits_generic_impl<
+    std::enable_if_t<mp_valid_v<apply_member_to_address, Iterator>>>
+    : pointer_traits_generic_base<
           Iterator,
           std::remove_reference_t<decltype(*SCN_DECLVAL(Iterator&))>> {
-    static constexpr auto to_address(const Iterator& it) SCN_NOEXCEPT
+    static constexpr auto to_address(const Iterator& it) noexcept
     {
-#if SCN_STDLIB_MS_STL
-        return it._Unwrapped();
-#elif SCN_STDLIB_GLIBCXX || SCN_STDLIB_LIBCPP
-        return it.base();
-#else
-        static_assert(dependent_false<Iterator>::value);
-#endif
+        return wrapped_pointer_iterator<Iterator>::to_address(it);
     }
 };
 
-template <typename It, typename = void>
-struct can_make_address_from_iterator : std::false_type {};
 template <typename It>
-struct can_make_address_from_iterator<
-    It,
-    std::enable_if_t<std::is_pointer_v<decltype(pointer_traits<It>::to_address(
-        SCN_DECLVAL(const It&)))>>> : std::true_type {};
+using apply_ptr_traits_to_address =
+    decltype(pointer_traits<It>::to_address(SCN_DECLVAL(const It&)));
+template <typename It>
+inline constexpr bool can_make_address_from_iterator =
+    std::is_pointer_v<mp_valid_result_t<apply_ptr_traits_to_address, It>>;
 
 template <typename T>
-constexpr T* to_address_impl(T* p, priority_tag<2>) SCN_NOEXCEPT
+constexpr T* to_address_impl(T* p, priority_tag<2>) noexcept
 {
     return p;
 }
 template <typename Ptr>
-constexpr auto to_address_impl(const Ptr& p, priority_tag<1>)
-    SCN_NOEXCEPT->decltype(::scn::detail::pointer_traits<Ptr>::to_address(p))
+constexpr auto to_address_impl(const Ptr& p, priority_tag<1>) noexcept
+    -> decltype(::scn::detail::pointer_traits<Ptr>::to_address(p))
 {
     return ::scn::detail::pointer_traits<Ptr>::to_address(p);
 }
 template <typename Ptr>
-constexpr auto to_address_impl(const Ptr& p, priority_tag<0>)
-    SCN_NOEXCEPT->decltype(::scn::detail::to_address_impl(p.operator->(),
-                                                          priority_tag<2>{}))
+constexpr auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept
+    -> decltype(::scn::detail::to_address_impl(p.operator->(),
+                                               priority_tag<2>{}))
 {
     return ::scn::detail::to_address_impl(p.operator->(), priority_tag<2>{});
 }
 
 template <typename Ptr>
-constexpr auto to_address(Ptr&& p) SCN_NOEXCEPT
-    ->decltype(::scn::detail::to_address_impl(SCN_FWD(p), priority_tag<2>{}))
+constexpr auto to_address(Ptr&& p) noexcept
+    -> decltype(::scn::detail::to_address_impl(SCN_FWD(p), priority_tag<2>{}))
 {
     return ::scn::detail::to_address_impl(SCN_FWD(p), priority_tag<2>{});
 }

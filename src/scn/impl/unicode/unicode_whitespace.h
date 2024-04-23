@@ -24,7 +24,7 @@ namespace scn {
 SCN_BEGIN_NAMESPACE
 
 namespace impl {
-constexpr bool is_cp_space(char32_t cp) SCN_NOEXCEPT
+constexpr bool is_cp_space(char32_t cp) noexcept
 {
     // Pattern_White_Space property
     return (cp >= 0x09 && cp <= 0x0d) ||
@@ -38,7 +38,7 @@ constexpr bool is_cp_space(char32_t cp) SCN_NOEXCEPT
 
 template <typename CharT>
 struct is_first_char_space_result {
-    ranges::iterator_t<std::basic_string_view<CharT>> iterator;
+    ranges_impl::iterator_t<std::basic_string_view<CharT>> iterator;
     char32_t cp;
     bool is_space;
 };

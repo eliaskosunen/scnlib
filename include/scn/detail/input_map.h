@@ -77,16 +77,16 @@ inline constexpr bool is_valid_char_type =
 
 namespace _make_scan_buffer {
 // buffer -> ref_buffer
-inline auto impl(scan_buffer::range_type r,
-                 priority_tag<4>) SCN_NOEXCEPT->basic_scan_ref_buffer<char>
+inline auto impl(scan_buffer::range_type r, priority_tag<4>) noexcept
+    -> basic_scan_ref_buffer<char>
 {
     if (!r.begin().stores_parent()) {
         return basic_scan_ref_buffer{r.begin().contiguous_segment()};
     }
     return basic_scan_ref_buffer{*r.begin().parent(), r.begin().position()};
 }
-inline auto impl(wscan_buffer::range_type r,
-                 priority_tag<4>) SCN_NOEXCEPT->basic_scan_ref_buffer<wchar_t>
+inline auto impl(wscan_buffer::range_type r, priority_tag<4>) noexcept
+    -> basic_scan_ref_buffer<wchar_t>
 {
     if (!r.begin().stores_parent()) {
         return basic_scan_ref_buffer{r.begin().contiguous_segment()};
@@ -96,7 +96,7 @@ inline auto impl(wscan_buffer::range_type r,
 
 // string_view -> string_buffer
 template <typename CharT>
-auto impl(std::basic_string_view<CharT> r, priority_tag<3>) SCN_NOEXCEPT
+auto impl(std::basic_string_view<CharT> r, priority_tag<3>) noexcept
 {
     if constexpr (is_valid_char_type<CharT>) {
         return r;
@@ -110,7 +110,7 @@ auto impl(std::basic_string_view<CharT> r, priority_tag<3>) SCN_NOEXCEPT
 // string& -> string_buffer
 template <typename CharT, typename Traits, typename Allocator>
 auto impl(const std::basic_string<CharT, Traits, Allocator>& r,
-          priority_tag<3>) SCN_NOEXCEPT
+          priority_tag<3>) noexcept
 {
     if constexpr (!is_valid_char_type<CharT>) {
         return invalid_char_type{};
@@ -120,7 +120,6 @@ auto impl(const std::basic_string<CharT, Traits, Allocator>& r,
     }
     else {
         return std::basic_string_view<CharT>{r};
-        // return make_string_scan_buffer(r);
     }
 }
 
@@ -129,13 +128,9 @@ auto impl(const std::basic_string<CharT, Traits, Allocator>& r,
 template <typename CharT,
           std::size_t N,
           std::enable_if_t<is_valid_char_type<CharT>>* = nullptr>
-auto impl(const CharT (&r)[N], priority_tag<3>) SCN_NOEXCEPT
+auto impl(const CharT (&r)[N], priority_tag<3>) noexcept
 {
     return std::basic_string_view<CharT>{r, N - 1};
-#if 0
-                return make_string_scan_buffer(
-                    std::basic_string_view<CharT>{r, N - 1});
-#endif
 }
 
 // FILE* -> file_buffer
@@ -151,13 +146,7 @@ template <typename Range,
 auto impl(const Range& r, priority_tag<2>)
 {
     if constexpr (is_valid_char_type<detail::char_t<Range>>) {
-        return std::basic_string_view{ranges::data(r),
-                                      ranges_polyfill::usize(r)};
-#if 0
-                    return make_string_scan_buffer(std::basic_string_view{
-                        ranges::data(r),
-                        static_cast<std::size_t>(ranges::size(r))});
-#endif
+        return std::basic_string_view{ranges::data(r), ranges::size(r)};
     }
     else {
         return invalid_char_type{};
@@ -171,18 +160,12 @@ template <typename Range,
           std::enable_if_t<!ranges::contiguous_range<Range> &&
                            ranges::random_access_range<Range> &&
                            can_make_address_from_iterator<
-                               ranges::iterator_t<Range>>::value>* = nullptr>
+                               ranges::iterator_t<Range>>>* = nullptr>
 auto impl(const Range& r, priority_tag<1>)
 {
     if constexpr (is_valid_char_type<detail::char_t<Range>>) {
         return make_string_view_from_pointers(to_address(ranges::begin(r)),
                                               to_address(ranges::end(r)));
-#if 0
-                    return make_string_scan_buffer(
-                        make_string_view_from_pointers(
-                            to_address(ranges::begin(r)),
-                            to_address(ranges::end(r))));
-#endif
     }
     else {
         return invalid_char_type{};
@@ -197,7 +180,7 @@ auto impl(const Range& r, priority_tag<0>)
         return file_marker_found{};
     }
     else if constexpr (!ranges::forward_range<Range>) {
-        if constexpr (ranges::input_range<Range>) {
+        if constexpr (ranges::range<Range>) {
             return insufficient_range{};
         }
         else {
@@ -270,6 +253,11 @@ auto make_scan_buffer(const Range& range)
 
     return _make_scan_buffer::impl(range, priority_tag<4>{});
 }
+
+template <typename Range,
+          std::enable_if_t<!std::is_reference_v<Range> &&
+                           !ranges::borrowed_range<Range>>* = nullptr>
+auto make_scan_buffer(Range&&) = delete;
 }  // namespace detail
 
 SCN_END_NAMESPACE

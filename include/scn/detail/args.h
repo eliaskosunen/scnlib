@@ -478,7 +478,7 @@ public:
     /**
      * @return `true` if `*this` contains an argument
      */
-    constexpr explicit operator bool() const SCN_NOEXCEPT
+    constexpr explicit operator bool() const noexcept
     {
         return m_type != detail::arg_type::none_type;
     }

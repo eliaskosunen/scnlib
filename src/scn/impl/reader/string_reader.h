@@ -35,13 +35,13 @@ template <typename Range, typename Iterator, typename ValueCharT>
 auto read_string_impl(Range& range,
                       Iterator&& result,
                       std::basic_string<ValueCharT>& value)
-    -> scan_expected<ranges::iterator_t<Range&>>
+    -> scan_expected<ranges_impl::iterator_t<Range&>>
 {
     static_assert(
         ranges_std::forward_iterator<detail::remove_cvref_t<Iterator>>);
 
     auto src =
-        make_contiguous_buffer(ranges::subrange{ranges::begin(range), result});
+        make_contiguous_buffer(ranges_impl::subrange{ranges_impl::begin(range), result});
     if (!validate_unicode(src.view())) {
         return unexpected_scan_error(scan_error::invalid_scanned_value,
                                      "Invalid encoding in scanned string");
@@ -58,7 +58,7 @@ template <typename Range, typename Iterator, typename ValueCharT>
 auto read_string_view_impl(Range& range,
                            Iterator&& result,
                            std::basic_string_view<ValueCharT>& value)
-    -> scan_expected<ranges::iterator_t<Range&>>
+    -> scan_expected<ranges_impl::iterator_t<Range&>>
 {
     static_assert(
         ranges_std::forward_iterator<detail::remove_cvref_t<Iterator>>);
@@ -66,11 +66,11 @@ auto read_string_view_impl(Range& range,
     auto src = [&]() {
         if constexpr (detail::is_specialization_of_v<Range, take_width_view>) {
             return make_contiguous_buffer(
-                ranges::subrange{ranges::begin(range).base(), result.base()});
+                ranges_impl::subrange{ranges_impl::begin(range).base(), result.base()});
         }
         else {
             return make_contiguous_buffer(
-                ranges::subrange{ranges::begin(range), result});
+                ranges_impl::subrange{ranges_impl::begin(range), result});
         }
     }();
     using src_type = decltype(src);
@@ -90,7 +90,7 @@ auto read_string_view_impl(Range& range,
     else {
         const auto view = src.view();
         value = std::basic_string_view<ValueCharT>(
-            ranges::data(view), ranges_polyfill::usize(view));
+            ranges_impl::data(view), ranges_polyfill::usize(view));
 
         if (!validate_unicode(value)) {
             return unexpected_scan_error(
@@ -222,7 +222,7 @@ private:
             SCN_TRY(it,
                     read_regex_string_impl<SourceCharT>(pattern, flags, input));
             return ranges_polyfill::batch_next(
-                ranges::begin(range), ranges::distance(input.begin(), it));
+                ranges_impl::begin(range), ranges_impl::distance(input.begin(), it));
         }
     }
 };
@@ -384,9 +384,9 @@ private:
             }
 
             const auto cp_val = static_cast<uint32_t>(cp);
-            return ranges::find_if(
+            return ranges_impl::find_if(
                        nonascii.extra_ranges,
-                       [cp_val](const auto& pair) SCN_NOEXCEPT {
+                       [cp_val](const auto& pair) noexcept {
                            return static_cast<uint32_t>(pair.first) <= cp_val &&
                                   static_cast<uint32_t>(pair.second) > cp_val;
                        }) != nonascii.extra_ranges.end();
@@ -408,7 +408,7 @@ private:
             SCN_ENSURE(it == detail::to_address(charset_string.end()));
             SCN_ENSURE(set == charset_string);
 
-            ranges::sort(nonascii.extra_ranges);
+            ranges_impl::sort(nonascii.extra_ranges);
             return {};
         }
 
@@ -482,7 +482,7 @@ private:
     static scan_expected<Iterator> check_nonempty(const Iterator& it,
                                                   const Range& range)
     {
-        if (it == ranges::begin(range)) {
+        if (it == ranges_impl::begin(range)) {
             return unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "No characters matched in [character set]");
@@ -632,8 +632,7 @@ protected:
 };
 
 template <typename SourceCharT>
-class reader_impl_for_string : public string_reader<SourceCharT> {
-};
+class reader_impl_for_string : public string_reader<SourceCharT> {};
 }  // namespace impl
 
 SCN_END_NAMESPACE

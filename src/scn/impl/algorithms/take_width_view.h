@@ -305,21 +305,21 @@ public:
                 }
 #endif
 
-    friend constexpr ranges_std::iter_rvalue_reference_t<It> iter_move(
-        const counted_width_iterator& i)
-        SCN_NOEXCEPT_P(noexcept(ranges::iter_move(i.m_current)))
+    friend constexpr ranges_std::iter_rvalue_reference_t<It>
+    iter_move(const counted_width_iterator& i) noexcept(
+        noexcept(ranges_impl::iter_move(i.m_current)))
     {
-        return ranges::iter_move(i.m_current);
+        return ranges_impl::iter_move(i.m_current);
     }
 
     template <typename OtherIt, typename OtherS>
     friend constexpr auto iter_swap(
         const counted_width_iterator<It, S>& a,
-        const counted_width_iterator<OtherIt, OtherS>& b)
-        SCN_NOEXCEPT_P(noexcept(ranges::iter_swap(a.m_current, b.m_current)))
-            -> std::enable_if_t<ranges_std::indirectly_swappable<OtherIt, It>>
+        const counted_width_iterator<OtherIt, OtherS>&
+            b) noexcept(noexcept(ranges_impl::iter_swap(a.m_current, b.m_current)))
+        -> std::enable_if_t<ranges_std::indirectly_swappable<OtherIt, It>>
     {
-        ranges::iter_swap(a.m_current, b.m_current);
+        ranges_impl::iter_swap(a.m_current, b.m_current);
     }
 
 private:
@@ -341,13 +341,13 @@ private:
             return static_cast<difference_type>(calculate_valid_text_width(cp));
         }
 
-        auto r = read_exactly_n_code_units(ranges::subrange{m_current, m_end},
+        auto r = read_exactly_n_code_units(ranges_impl::subrange{m_current, m_end},
                                            cplen);
         if (SCN_UNLIKELY(!r)) {
             return 0;
         }
 
-        auto cp_view = make_contiguous_buffer(ranges::subrange{m_current, *r});
+        auto cp_view = make_contiguous_buffer(ranges_impl::subrange{m_current, *r});
         if (SCN_UNLIKELY(!validate_unicode(cp_view.view()))) {
             return 0;
         }
@@ -398,16 +398,16 @@ counted_width_iterator(I, S, ranges_std::iter_difference_t<I>)
 using counted_width_iterator_impl::counted_width_iterator;
 
 template <typename View>
-class take_width_view : public ranges::view_interface<take_width_view<View>> {
-    static_assert(ranges::view<View>);
+class take_width_view : public ranges_impl::view_interface<take_width_view<View>> {
+    static_assert(ranges_impl::view<View>);
 
     template <bool IsConst>
     class sentinel {
         friend class sentinel<!IsConst>;
         using Base = std::conditional_t<IsConst, const View, View>;
-        using CWI = counted_width_iterator<ranges::iterator_t<Base>,
-                                           ranges::sentinel_t<Base>>;
-        using underlying = ranges::sentinel_t<Base>;
+        using CWI = counted_width_iterator<ranges_impl::iterator_t<Base>,
+                                           ranges_impl::sentinel_t<Base>>;
+        using underlying = ranges_impl::sentinel_t<Base>;
 
     public:
         constexpr sentinel() = default;
@@ -420,7 +420,7 @@ class take_width_view : public ranges::view_interface<take_width_view<View>> {
                   bool C = IsConst,
                   typename VV = View,
                   std::enable_if_t<
-                      C && ranges_std::convertible_to<ranges::sentinel_t<VV>,
+                      C && ranges_std::convertible_to<ranges_impl::sentinel_t<VV>,
                                                       underlying>>* = nullptr>
         constexpr explicit sentinel(S s) : m_end(SCN_MOVE(s.m_end))
         {
@@ -457,11 +457,11 @@ class take_width_view : public ranges::view_interface<take_width_view<View>> {
     };
 
 public:
-    using value_type = ranges::range_value_t<View>;
+    using value_type = ranges_impl::range_value_t<View>;
 
     take_width_view() = default;
 
-    constexpr take_width_view(View base, ranges::range_difference_t<View> count)
+    constexpr take_width_view(View base, ranges_impl::range_difference_t<View> count)
         : m_base(SCN_MOVE(base)), m_count(count)
     {
     }
@@ -475,55 +475,55 @@ public:
               std::enable_if_t<!ranges_polyfill::simple_view<V>, int> = 0>
     constexpr auto begin()
     {
-        return counted_width_iterator{ranges::begin(m_base),
-                                      ranges::end(m_base), m_count};
+        return counted_width_iterator{ranges_impl::begin(m_base),
+                                      ranges_impl::end(m_base), m_count};
     }
 
     template <typename V = View,
-              std::enable_if_t<ranges::range<const V>, int> = 0>
+              std::enable_if_t<ranges_impl::range<const V>, int> = 0>
     constexpr auto begin() const
     {
-        return counted_width_iterator{ranges::begin(m_base),
-                                      ranges::end(m_base), m_count};
+        return counted_width_iterator{ranges_impl::begin(m_base),
+                                      ranges_impl::end(m_base), m_count};
     }
 
     template <typename V = View,
               std::enable_if_t<!ranges_polyfill::simple_view<V>, int> = 0>
     constexpr auto end()
     {
-        return sentinel<false>{ranges::end(m_base)};
+        return sentinel<false>{ranges_impl::end(m_base)};
     }
 
     template <typename V = View,
-              std::enable_if_t<ranges::range<const V>, int> = 0>
+              std::enable_if_t<ranges_impl::range<const V>, int> = 0>
     constexpr auto end() const
     {
-        return sentinel<true>{ranges::end(m_base)};
+        return sentinel<true>{ranges_impl::end(m_base)};
     }
 
 private:
     View m_base{};
-    ranges::range_difference_t<View> m_count{0};
+    ranges_impl::range_difference_t<View> m_count{0};
 };
 
 static_assert(
-    ranges::input_range<
+    ranges_impl::input_range<
         take_width_view<ranges_polyfill::views::all_t<std::string_view>>>);
 static_assert(
-    ranges::forward_range<
+    ranges_impl::forward_range<
         take_width_view<ranges_polyfill::views::all_t<std::string_view>>>);
 static_assert(
-    ranges::bidirectional_range<
+    ranges_impl::bidirectional_range<
         take_width_view<ranges_polyfill::views::all_t<std::string_view>>>);
 
-template <typename R, std::enable_if_t<ranges::range<R>>* = nullptr>
-take_width_view(R&&, ranges::range_difference_t<R>)
+template <typename R, std::enable_if_t<ranges_impl::range<R>>* = nullptr>
+take_width_view(R&&, ranges_impl::range_difference_t<R>)
     -> take_width_view<ranges_polyfill::views::all_t<R>>;
 
 struct _take_width_fn {
     template <typename R, typename N>
-    constexpr auto operator()(R&& r, N&& n) const -> decltype(take_width_view{
-                                                      SCN_FWD(r), SCN_FWD(n)})
+    constexpr auto operator()(R&& r, N&& n) const
+        -> decltype(take_width_view{SCN_FWD(r), SCN_FWD(n)})
     {
         return take_width_view{SCN_FWD(r), SCN_FWD(n)};
     }

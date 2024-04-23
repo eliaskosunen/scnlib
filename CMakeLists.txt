@@ -57,6 +57,7 @@ set(SCN_PUBLIC_HEADERS
         include/scn/detail/parse_context.h
         include/scn/detail/pp.h
         include/scn/detail/pp_detect.h
+        include/scn/detail/ranges.h
         include/scn/detail/regex.h
         include/scn/detail/scanner_range.h
         include/scn/detail/ranges.h
@@ -84,6 +85,8 @@ set(SCN_PRIVATE_HEADERS
         src/scn/impl/algorithms/read.h
         src/scn/impl/algorithms/take_width_view.h
 
+        src/scn/impl/external/nanorange/nanorange.hpp
+
         src/scn/impl/reader/reader.h
         src/scn/impl/reader/common.h
         src/scn/impl/reader/numeric_reader.h
@@ -104,6 +107,7 @@ set(SCN_PRIVATE_HEADERS
         src/scn/impl/util/text_width.h
 
         src/scn/impl/locale.h
+        src/scn/impl/ranges_impl.h
 )
 set(SCN_PRIVATE_SOURCES
         src/scn/scan.cpp

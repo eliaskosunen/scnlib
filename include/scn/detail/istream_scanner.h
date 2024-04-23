@@ -34,14 +34,16 @@ SCN_BEGIN_NAMESPACE
 
 namespace detail {
 template <typename T, typename CharT, typename Enable = void>
-struct is_streamable_impl : std::false_type {};
+struct is_streamable_impl : std::false_type {
+};
 
 template <typename T, typename CharT>
 struct is_streamable_impl<
     T,
     CharT,
     std::enable_if_t<sizeof(SCN_DECLVAL(std::basic_istream<CharT>&)
-                            << std::declval<T>()) != 0>> : std::true_type {};
+                            << std::declval<T>()) != 0>> : std::true_type {
+};
 
 template <typename CharT>
 struct dummy_context_for_is_streamamble {
@@ -57,7 +59,8 @@ struct is_streamable
                                map(SCN_DECLVAL(T&)))>,
               unscannable&>,
           is_streamable_impl<T, CharT>,
-          std::false_type> {};
+          std::false_type> {
+};
 
 /**
  * Wraps `SourceRange`, and makes it a `std::basic_streambuf`.
@@ -82,16 +85,16 @@ public:
     }
 
     iterator begin() const
-        SCN_NOEXCEPT_P(std::is_nothrow_copy_constructible_v<iterator>)
+        noexcept(std::is_nothrow_copy_constructible_v<iterator>)
     {
         return m_begin;
     }
     iterator begin_prev() const
-        SCN_NOEXCEPT_P(std::is_nothrow_copy_constructible_v<iterator>)
+        noexcept(std::is_nothrow_copy_constructible_v<iterator>)
     {
         return m_begin_prev;
     }
-    int_type last_char() const SCN_NOEXCEPT
+    int_type last_char() const noexcept
     {
         return m_ch;
     }

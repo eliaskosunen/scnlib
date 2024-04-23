@@ -31,7 +31,7 @@ public:
     template <typename Locale>
     explicit locale_ref(const Locale& loc);
 
-    constexpr explicit operator bool() const SCN_NOEXCEPT
+    constexpr explicit operator bool() const noexcept
     {
         return m_locale != nullptr;
     }
@@ -50,7 +50,7 @@ public:
     {
     }
 
-    constexpr explicit operator bool() const SCN_NOEXCEPT
+    constexpr explicit operator bool() const noexcept
     {
         return true;
     }

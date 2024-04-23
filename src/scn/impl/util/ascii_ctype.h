@@ -53,23 +53,23 @@ inline constexpr std::array<bool, 256> is_ascii_space_lookup = {
      false, false, false, false, false, false, false, false, false, false,
      false, false, false, false, false, false}};
 
-constexpr bool is_ascii_space(char ch) SCN_NOEXCEPT
+constexpr bool is_ascii_space(char ch) noexcept
 {
     return is_ascii_space_lookup[static_cast<size_t>(
         static_cast<unsigned char>(ch))];
 }
 
-constexpr bool is_ascii_space(wchar_t ch) SCN_NOEXCEPT
+constexpr bool is_ascii_space(wchar_t ch) noexcept
 {
     return ch == 0x20 || (ch >= 0x09 && ch <= 0x0d);
 }
 
-constexpr bool is_ascii_char(char ch) SCN_NOEXCEPT
+constexpr bool is_ascii_char(char ch) noexcept
 {
     return static_cast<unsigned char>(ch) <= 127;
 }
 
-constexpr bool is_ascii_char(wchar_t ch) SCN_NOEXCEPT
+constexpr bool is_ascii_char(wchar_t ch) noexcept
 {
 #if WCHAR_MIN < 0
     return ch >= 0 && ch <= 127;
@@ -78,7 +78,7 @@ constexpr bool is_ascii_char(wchar_t ch) SCN_NOEXCEPT
 #endif
 }
 
-constexpr bool is_ascii_char(char32_t cp) SCN_NOEXCEPT
+constexpr bool is_ascii_char(char32_t cp) noexcept
 {
     return cp <= 127;
 }

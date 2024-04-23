@@ -340,8 +340,18 @@ template <typename SourceRange>
 auto make_vscan_result_range(SourceRange&& source, std::ptrdiff_t n)
     -> borrowed_tail_subrange_t<SourceRange>
 {
-    return {ranges::next(ranges::begin(source), n),
-            make_vscan_result_range_end(source)};
+    if constexpr (ranges::random_access_iterator<
+                      ranges::iterator_t<SourceRange>>) {
+        return {ranges::begin(source) + n, make_vscan_result_range_end(source)};
+    }
+    else {
+        auto it = ranges::begin(source);
+        while (n > 0) {
+            --n;
+            ++it;
+        }
+        return {SCN_MOVE(it), make_vscan_result_range_end(source)};
+    }
 }
 inline auto make_vscan_result_range(std::FILE* source, std::ptrdiff_t)
 {

@@ -17,7 +17,6 @@
 
 #pragma once
 
-#include <scn/detail/ranges.h>
 #include <scn/impl/algorithms/contiguous_range_factory.h>
 #include <scn/impl/algorithms/find_whitespace.h>
 #include <scn/impl/algorithms/read_simple.h>
@@ -39,32 +38,32 @@ auto read_code_point_into(Range&& range)
     -> iterator_value_result<detail::simple_borrowed_iterator_t<Range>,
                              contiguous_range_factory<detail::char_t<Range>>>
 {
-    SCN_EXPECT(ranges::begin(range) != ranges::end(range));
+    SCN_EXPECT(ranges_impl::begin(range) != ranges_impl::end(range));
 
-    auto it = ranges::begin(range);
+    auto it = ranges_impl::begin(range);
     const auto len = code_point_length_by_starting_code_unit(*it);
 
     if (SCN_UNLIKELY(len == 0)) {
-        for (; it != ranges::end(range); ++it) {
+        for (; it != ranges_impl::end(range); ++it) {
             if (code_point_length_by_starting_code_unit(*it) != 0) {
                 break;
             }
         }
 
         return {it, make_contiguous_buffer(
-                        ranges::subrange{ranges::begin(range), it})};
+                        ranges_impl::subrange{ranges_impl::begin(range), it})};
     }
 
     if (len == 1) {
         ++it;
         return {it, make_contiguous_buffer(
-                        ranges::subrange{ranges::begin(range), it})};
+                        ranges_impl::subrange{ranges_impl::begin(range), it})};
     }
 
-    ranges::advance(it, static_cast<ranges::range_difference_t<Range>>(len),
-                    ranges::end(range));
+    ranges_impl::advance(it, static_cast<ranges_impl::range_difference_t<Range>>(len),
+                    ranges_impl::end(range));
     return {it,
-            make_contiguous_buffer(ranges::subrange{ranges::begin(range), it})};
+            make_contiguous_buffer(ranges_impl::subrange{ranges_impl::begin(range), it})};
 }
 
 template <typename Range>
@@ -75,7 +74,7 @@ auto read_code_point(Range&& range) -> detail::simple_borrowed_iterator_t<Range>
 
 template <typename Range>
 auto read_exactly_n_code_points(Range&& range,
-                                ranges::range_difference_t<Range> count)
+                                ranges_impl::range_difference_t<Range> count)
     -> eof_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     SCN_EXPECT(count >= 0);
@@ -86,9 +85,9 @@ auto read_exactly_n_code_points(Range&& range,
         }
     }
 
-    auto it = ranges::begin(range);
-    for (ranges::range_difference_t<Range> i = 0; i < count; ++i) {
-        auto rng = ranges::subrange{it, ranges::end(range)};
+    auto it = ranges_impl::begin(range);
+    for (ranges_impl::range_difference_t<Range> i = 0; i < count; ++i) {
+        auto rng = ranges_impl::subrange{it, ranges_impl::end(range)};
 
         if (auto e = eof_check(rng); SCN_UNLIKELY(!e)) {
             return unexpected(e);
@@ -102,15 +101,15 @@ auto read_exactly_n_code_points(Range&& range,
 
 template <typename Range>
 auto read_exactly_n_width_units(Range&& range,
-                                ranges::range_difference_t<Range> count)
+                                ranges_impl::range_difference_t<Range> count)
     -> detail::simple_borrowed_iterator_t<Range>
 {
-    auto it = ranges::begin(range);
-    ranges::range_difference_t<Range> acc_width = 0;
+    auto it = ranges_impl::begin(range);
+    ranges_impl::range_difference_t<Range> acc_width = 0;
 
-    while (it != ranges::end(range)) {
+    while (it != ranges_impl::end(range)) {
         auto [iter, val] =
-            read_code_point_into(ranges::subrange{it, ranges::end(range)});
+            read_code_point_into(ranges_impl::subrange{it, ranges_impl::end(range)});
 
         acc_width += calculate_text_width(val.view());
         if (acc_width > count) {
@@ -128,7 +127,7 @@ auto read_until_code_unit(Range&& range,
                           function_ref<bool(detail::char_t<Range>)> pred)
     -> detail::simple_borrowed_iterator_t<Range>
 {
-    return ranges::find_if(range, pred);
+    return ranges_impl::find_if(range, pred);
 }
 
 template <typename Range>
@@ -145,7 +144,7 @@ auto read_until1_code_unit(Range&& range,
     -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     auto it = read_until_code_unit(range, pred);
-    if (it == ranges::begin(range)) {
+    if (it == ranges_impl::begin(range)) {
         return unexpected(parse_error::error);
     }
     return it;
@@ -157,7 +156,7 @@ auto read_while1_code_unit(Range&& range,
     -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     auto it = read_while_code_unit(range, pred);
-    if (it == ranges::begin(range)) {
+    if (it == ranges_impl::begin(range)) {
         return unexpected(parse_error::error);
     }
     return it;
@@ -167,20 +166,20 @@ template <typename Range, typename CodeUnits>
 auto read_until_code_units(Range&& range, CodeUnits&& needle)
     -> detail::simple_borrowed_iterator_t<Range>
 {
-    return ranges::search(SCN_FWD(range), SCN_FWD(needle)).begin();
+    return ranges_impl::search(SCN_FWD(range), SCN_FWD(needle)).begin();
 }
 
 template <typename Range, typename CodeUnits>
 auto read_while_code_units(Range&& range, CodeUnits&& needle)
     -> detail::simple_borrowed_iterator_t<Range>
 {
-    auto subr = ranges::subrange{range};
+    auto subr = ranges_impl::subrange{range};
     while (!subr.empty()) {
         auto [beg, cp] = read_code_point_into(subr);
-        if (!ranges::equal(cp.view(), needle)) {
+        if (!ranges_impl::equal(cp.view(), needle)) {
             return subr.begin();
         }
-        subr = ranges::subrange{beg, subr.end()};
+        subr = ranges_impl::subrange{beg, subr.end()};
     }
     SCN_ENSURE(subr.begin() == subr.end());
     return subr.begin();
@@ -191,17 +190,17 @@ auto read_until_code_point_eager(Range&& range,
                                  function_ref<bool(char32_t)> pred)
     -> detail::simple_borrowed_iterator_t<Range>
 {
-    static_assert(ranges::contiguous_range<Range> &&
-                  ranges::sized_range<Range>);
+    static_assert(ranges_impl::contiguous_range<Range> &&
+                  ranges_impl::sized_range<Range>);
 
     std::array<char32_t, 16> cp_buf{};
     std::array<uint8_t, 16> idx_buf{};
-    auto it = ranges::begin(range);
-    while (it != ranges::end(range)) {
+    auto it = ranges_impl::begin(range);
+    while (it != ranges_impl::end(range)) {
         auto chunk_begin = it;
         size_t code_point_count = 0;
         uint8_t code_unit_idx = 0;
-        while (code_point_count < cp_buf.size() && it != ranges::end(range)) {
+        while (code_point_count < cp_buf.size() && it != ranges_impl::end(range)) {
             if (code_point_length_by_starting_code_unit(*it) != 0) {
                 idx_buf[code_point_count] = code_unit_idx;
                 ++code_point_count;
@@ -219,7 +218,7 @@ auto read_until_code_point_eager(Range&& range,
             it = chunk_begin;
             while (it != end) {
                 const auto [iter, value] =
-                    read_code_point_into(ranges::subrange{it, end});
+                    read_code_point_into(ranges_impl::subrange{it, end});
                 const auto cp = decode_code_point_exhaustive(value.view());
                 if (pred(cp)) {
                     return it;
@@ -243,23 +242,23 @@ template <typename Range>
 auto read_until_code_point(Range&& range, function_ref<bool(char32_t)> pred)
     -> detail::simple_borrowed_iterator_t<Range>
 {
-    if constexpr (ranges::contiguous_range<Range> &&
-                  ranges::sized_range<Range>) {
+    if constexpr (ranges_impl::contiguous_range<Range> &&
+                  ranges_impl::sized_range<Range>) {
         return read_until_code_point_eager(SCN_FWD(range), pred);
     }
     else {
-        auto it = ranges::begin(range);
+        auto it = ranges_impl::begin(range);
         auto seg = get_contiguous_beginning(range);
 
         if (auto seg_it = read_until_code_point_eager(seg, pred);
             seg_it != seg.end()) {
             return ranges_polyfill::batch_next(
-                it, ranges::distance(seg.begin(), seg_it));
+                it, ranges_impl::distance(seg.begin(), seg_it));
         }
 
-        while (it != ranges::end(range)) {
+        while (it != ranges_impl::end(range)) {
             const auto [iter, value] =
-                read_code_point_into(ranges::subrange{it, ranges::end(range)});
+                read_code_point_into(ranges_impl::subrange{it, ranges_impl::end(range)});
             const auto cp = decode_code_point_exhaustive(value.view());
             if (pred(cp)) {
                 return it;
@@ -282,30 +281,30 @@ template <typename Range>
 auto read_until_classic_space(Range&& range)
     -> detail::simple_borrowed_iterator_t<Range>
 {
-    if constexpr (ranges::contiguous_range<Range> &&
-                  ranges::sized_range<Range> &&
+    if constexpr (ranges_impl::contiguous_range<Range> &&
+                  ranges_impl::sized_range<Range> &&
                   std::is_same_v<detail::char_t<Range>, char>) {
         auto buf = make_contiguous_buffer(SCN_FWD(range));
         auto it = find_classic_space_narrow_fast(buf.view());
-        return ranges::next(ranges::begin(range),
-                            ranges::distance(buf.view().begin(), it));
+        return ranges_impl::next(ranges_impl::begin(range),
+                            ranges_impl::distance(buf.view().begin(), it));
     }
     else {
-        auto it = ranges::begin(range);
+        auto it = ranges_impl::begin(range);
 
         if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
             auto seg = get_contiguous_beginning(range);
             if (auto seg_it = find_classic_space_narrow_fast(seg);
                 seg_it != seg.end()) {
                 return ranges_polyfill::batch_next(
-                    it, ranges::distance(seg.begin(), seg_it));
+                    it, ranges_impl::distance(seg.begin(), seg_it));
             }
             ranges_polyfill::batch_next(it, seg.size());
         }
 
         return read_until_code_point(
-            ranges::subrange{it, ranges::end(range)},
-            [](char32_t cp) SCN_NOEXCEPT { return is_cp_space(cp); });
+            ranges_impl::subrange{it, ranges_impl::end(range)},
+            [](char32_t cp) noexcept { return is_cp_space(cp); });
     }
 }
 
@@ -313,30 +312,30 @@ template <typename Range>
 auto read_while_classic_space(Range&& range)
     -> detail::simple_borrowed_iterator_t<Range>
 {
-    if constexpr (ranges::contiguous_range<Range> &&
-                  ranges::sized_range<Range> &&
+    if constexpr (ranges_impl::contiguous_range<Range> &&
+                  ranges_impl::sized_range<Range> &&
                   std::is_same_v<detail::char_t<Range>, char>) {
         auto buf = make_contiguous_buffer(SCN_FWD(range));
         auto it = find_classic_nonspace_narrow_fast(buf.view());
-        return ranges::next(ranges::begin(range),
-                            ranges::distance(buf.view().begin(), it));
+        return ranges_impl::next(ranges_impl::begin(range),
+                            ranges_impl::distance(buf.view().begin(), it));
     }
     else {
-        auto it = ranges::begin(range);
+        auto it = ranges_impl::begin(range);
 
         if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
             auto seg = get_contiguous_beginning(range);
             if (auto seg_it = find_classic_nonspace_narrow_fast(seg);
                 seg_it != seg.end()) {
                 return ranges_polyfill::batch_next(
-                    it, ranges::distance(seg.begin(), seg_it));
+                    it, ranges_impl::distance(seg.begin(), seg_it));
             }
             ranges_polyfill::batch_next(it, seg.size());
         }
 
-        return read_while_code_point(
-            SCN_FWD(range),
-            [](char32_t cp) SCN_NOEXCEPT { return is_cp_space(cp); });
+        return read_while_code_point(SCN_FWD(range), [](char32_t cp) noexcept {
+            return is_cp_space(cp);
+        });
     }
 }
 
@@ -349,7 +348,7 @@ auto read_matching_code_unit(Range&& range, detail::char_t<Range> ch)
         return unexpected(make_eof_parse_error(it.error()));
     }
 
-    if (SCN_UNLIKELY(*ranges::begin(range) !=
+    if (SCN_UNLIKELY(*ranges_impl::begin(range) !=
                      static_cast<detail::char_t<Range>>(ch))) {
         return unexpected(parse_error::error);
     }
@@ -374,11 +373,11 @@ auto read_matching_string(Range&& range,
                           std::basic_string_view<detail::char_t<Range>> str)
     -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
-    SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str))
+    SCN_TRY(it, read_exactly_n_code_units(range, ranges_impl::ssize(str))
                     .transform_error(make_eof_parse_error));
 
     auto sv =
-        make_contiguous_buffer(ranges::subrange{ranges::begin(range), it});
+        make_contiguous_buffer(ranges_impl::subrange{ranges_impl::begin(range), it});
     if (SCN_UNLIKELY(sv.view() != str)) {
         return unexpected(parse_error::error);
     }
@@ -389,19 +388,19 @@ template <typename Range>
 auto read_matching_string_classic(Range&& range, std::string_view str)
     -> parse_expected<detail::simple_borrowed_iterator_t<Range>>
 {
-    SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str))
+    SCN_TRY(it, read_exactly_n_code_units(range, ranges_impl::ssize(str))
                     .transform_error(make_eof_parse_error));
 
     if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
         auto sv =
-            make_contiguous_buffer(ranges::subrange{ranges::begin(range), it});
+            make_contiguous_buffer(ranges_impl::subrange{ranges_impl::begin(range), it});
         if (SCN_UNLIKELY(sv.view() != str)) {
             return unexpected(parse_error::error);
         }
         return it;
     }
     else {
-        auto range_it = ranges::begin(range);
+        auto range_it = ranges_impl::begin(range);
         for (size_t i = 0; i < str.size(); ++i, (void)++range_it) {
             if (SCN_UNLIKELY(*range_it !=
                              static_cast<detail::char_t<Range>>(str[i]))) {
@@ -428,15 +427,15 @@ auto read_matching_string_classic_nocase(Range&& range, std::string_view str)
 {
     using char_type = detail::char_t<Range>;
 
-    if constexpr (ranges::contiguous_range<Range> &&
+    if constexpr (ranges_impl::contiguous_range<Range> &&
                   std::is_same_v<char_type, char>) {
-        if (ranges::size(range) < str.size()) {
+        if (ranges_impl::size(range) < str.size()) {
             return unexpected(make_eof_parse_error(eof_error::eof));
         }
-        if (!fast_streq_nocase(ranges::data(range), str.data(), str.size())) {
+        if (!fast_streq_nocase(ranges_impl::data(range), str.data(), str.size())) {
             return unexpected(parse_error::error);
         }
-        return ranges::next(ranges::begin(range), str.size());
+        return ranges_impl::next(ranges_impl::begin(range), str.size());
     }
     else {
         auto ascii_tolower = [](char_type ch) -> char_type {
@@ -447,11 +446,11 @@ auto read_matching_string_classic_nocase(Range&& range, std::string_view str)
                                           static_cast<char_type>('a' - 'A'));
         };
 
-        SCN_TRY(it, read_exactly_n_code_units(range, ranges::ssize(str))
+        SCN_TRY(it, read_exactly_n_code_units(range, ranges_impl::ssize(str))
                         .transform_error(make_eof_parse_error));
 
         if (SCN_UNLIKELY(!std::equal(
-                ranges::begin(range), it, str.begin(), [&](auto a, auto b) {
+                ranges_impl::begin(range), it, str.begin(), [&](auto a, auto b) {
                     return ascii_tolower(a) ==
                            static_cast<detail::char_t<Range>>(b);
                 }))) {
@@ -472,7 +471,7 @@ auto read_one_of_code_unit(Range&& range, std::string_view str)
     }
 
     for (auto ch : str) {
-        if (*ranges::begin(range) == static_cast<detail::char_t<Range>>(ch)) {
+        if (*ranges_impl::begin(range) == static_cast<detail::char_t<Range>>(ch)) {
             return *it;
         }
     }
@@ -490,7 +489,7 @@ auto apply_opt(Expected<Iterator>&& result, Range&& range)
                         detail::simple_borrowed_iterator_t<Range>>
 {
     if (!result) {
-        return ranges::begin(range);
+        return ranges_impl::begin(range);
     }
     return *result;
 }

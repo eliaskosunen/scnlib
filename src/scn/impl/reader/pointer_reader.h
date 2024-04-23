@@ -45,7 +45,7 @@ public:
     }
 
     template <typename Range>
-    scan_expected<ranges::iterator_t<Range>>
+    scan_expected<ranges_impl::iterator_t<Range>>
     read_default(Range range, void*& value, detail::locale_ref loc)
     {
         detail::format_specs specs{};
@@ -59,7 +59,7 @@ public:
     }
 
     template <typename Range>
-    scan_expected<ranges::iterator_t<Range>> read_specs(
+    scan_expected<ranges_impl::iterator_t<Range>> read_specs(
         Range range,
         const detail::format_specs& specs,
         void*& value,

@@ -21,7 +21,6 @@
 #include <scn/util/string_view.h>
 
 #include <optional>
-#include <variant>
 
 namespace scn {
 SCN_BEGIN_NAMESPACE
@@ -34,7 +33,7 @@ public:
 
     using char_type = CharT;
     using range_type =
-        ranges::subrange<forward_iterator, ranges_std::default_sentinel_t>;
+        ranges::subrange<forward_iterator, ranges::default_sentinel_t>;
 
     basic_scan_buffer(const basic_scan_buffer&) = delete;
     basic_scan_buffer& operator=(const basic_scan_buffer&) = delete;
@@ -201,7 +200,7 @@ public:
     forward_iterator& operator++()
     {
         ++m_position;
-        std::ignore = read_at_position();
+        (void)read_at_position();
         return *this;
     }
 
@@ -253,22 +252,22 @@ public:
     }
 
     friend bool operator==(const forward_iterator& x,
-                           ranges_std::default_sentinel_t)
+                           ranges::default_sentinel_t)
     {
         return x.is_at_end();
     }
-    friend bool operator==(ranges_std::default_sentinel_t,
+    friend bool operator==(ranges::default_sentinel_t,
                            const forward_iterator& x)
     {
         return x.is_at_end();
     }
 
     friend bool operator!=(const forward_iterator& x,
-                           ranges_std::default_sentinel_t)
+                           ranges::default_sentinel_t)
     {
         return !x.is_at_end();
     }
-    friend bool operator!=(ranges_std::default_sentinel_t,
+    friend bool operator!=(ranges::default_sentinel_t,
                            const forward_iterator& x)
     {
         return !x.is_at_end();
@@ -321,10 +320,10 @@ SCN_NODISCARD auto basic_scan_buffer<CharT>::get() -> range_type
 {
     if (is_contiguous()) {
         return ranges::subrange{forward_iterator{m_current_view, 0},
-                                ranges_std::default_sentinel};
+                                ranges::default_sentinel};
     }
     return ranges::subrange{forward_iterator{this, 0},
-                            ranges_std::default_sentinel};
+                            ranges::default_sentinel};
 }
 
 static_assert(ranges::forward_range<scan_buffer::range_type>);
@@ -362,24 +361,31 @@ protected:
 
 template <typename Range>
 class basic_scan_forward_buffer_impl
-    : public basic_scan_forward_buffer_base<ranges::range_value_t<Range>> {
-    using _char_type = ranges::range_value_t<Range>;
+    : public basic_scan_forward_buffer_base<detail::char_t<Range>> {
+    static_assert(ranges::range<const Range> && std::is_object_v<Range>);
+
+    using _char_type = detail::char_t<Range>;
     using base = basic_scan_forward_buffer_base<_char_type>;
 
 public:
     using char_type = _char_type;
     using range_type = Range;
-    using iterator = ranges::iterator_t<Range>;
-    using sentinel = ranges::sentinel_t<Range>;
+    using iterator = ranges::iterator_t<const Range>;
+    using sentinel = ranges::sentinel_t<const Range>;
 
-    basic_scan_forward_buffer_impl(Range r)
-        : m_range(SCN_MOVE(r)), m_cursor(ranges::begin(m_range))
+    template <
+        typename R,
+        std::enable_if_t<is_not_self<R, basic_scan_forward_buffer_impl> &&
+                         std::is_convertible_v<R, const Range&>>* = nullptr>
+    basic_scan_forward_buffer_impl(R&& r)
+        : m_range(std::addressof(static_cast<const Range&>(SCN_FWD(r)))),
+          m_cursor(ranges::begin(*m_range))
     {
     }
 
     bool fill() override
     {
-        if (m_cursor == ranges::end(m_range)) {
+        if (m_cursor == ranges::end(*m_range)) {
             return false;
         }
         if (!this->m_current_view.empty()) {
@@ -394,14 +400,13 @@ public:
     }
 
 private:
-    Range m_range;
+    const Range* m_range;
     iterator m_cursor;
     char_type m_latest{};
 };
 
 template <typename R>
-basic_scan_forward_buffer_impl(R&&)
-    -> basic_scan_forward_buffer_impl<ranges_polyfill::views::all_t<R>>;
+basic_scan_forward_buffer_impl(const R&) -> basic_scan_forward_buffer_impl<R>;
 
 class scan_file_buffer : public basic_scan_buffer<char> {
     using base = basic_scan_buffer<char>;
@@ -481,9 +486,9 @@ auto make_string_scan_buffer(const Range& range)
 }
 
 template <typename Range>
-auto make_forward_scan_buffer(Range&& range)
+auto make_forward_scan_buffer(const Range& range)
 {
-    return basic_scan_forward_buffer_impl(SCN_FWD(range));
+    return basic_scan_forward_buffer_impl(range);
 }
 
 inline auto make_file_scan_buffer(std::FILE* file)

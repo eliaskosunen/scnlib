@@ -35,7 +35,7 @@ public:
         CharT& ch)
     {
         SCN_TRY(it, read_code_unit(range).transform_error(make_eof_scan_error));
-        ch = *ranges::begin(range);
+        ch = *ranges_impl::begin(range);
         return it;
     }
 };
@@ -108,7 +108,7 @@ template <typename CharT>
 class reader_impl_for_char : public char_reader_base<char> {
 public:
     template <typename Range>
-    scan_expected<ranges::iterator_t<Range>>
+    scan_expected<ranges_impl::iterator_t<Range>>
     read_default(Range range, char& value, detail::locale_ref loc)
     {
         SCN_UNUSED(loc);
@@ -123,7 +123,7 @@ public:
     }
 
     template <typename Range>
-    scan_expected<ranges::iterator_t<Range>> read_specs(
+    scan_expected<ranges_impl::iterator_t<Range>> read_specs(
         Range range,
         const detail::format_specs& specs,
         char& value,
@@ -146,7 +146,7 @@ template <typename CharT>
 class reader_impl_for_wchar : public char_reader_base<wchar_t> {
 public:
     template <typename Range>
-    scan_expected<ranges::iterator_t<Range>>
+    scan_expected<ranges_impl::iterator_t<Range>>
     read_default(Range range, wchar_t& value, detail::locale_ref loc)
     {
         SCN_UNUSED(loc);
@@ -159,7 +159,7 @@ public:
     }
 
     template <typename Range>
-    scan_expected<ranges::iterator_t<Range>> read_specs(
+    scan_expected<ranges_impl::iterator_t<Range>> read_specs(
         Range range,
         const detail::format_specs& specs,
         wchar_t& value,
@@ -184,7 +184,7 @@ template <typename CharT>
 class reader_impl_for_code_point : public char_reader_base<char32_t> {
 public:
     template <typename Range>
-    scan_expected<ranges::iterator_t<Range>>
+    scan_expected<ranges_impl::iterator_t<Range>>
     read_default(Range range, char32_t& value, detail::locale_ref loc)
     {
         SCN_UNUSED(loc);
@@ -192,7 +192,7 @@ public:
     }
 
     template <typename Range>
-    scan_expected<ranges::iterator_t<Range>> read_specs(
+    scan_expected<ranges_impl::iterator_t<Range>> read_specs(
         Range range,
         const detail::format_specs& specs,
         char32_t& value,

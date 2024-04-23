@@ -43,7 +43,7 @@ auto skip_ws_before_if_required(bool is_required, Range&& range)
     }
 
     if (!is_required) {
-        return ranges::begin(range);
+        return ranges_impl::begin(range);
     }
 
     return skip_classic_whitespace(SCN_FWD(range));
@@ -100,16 +100,16 @@ struct default_arg_reader {
     using args_type = typename context_type::args_type;
 
     using range_type = typename context_type::range_type;
-    using iterator = ranges::iterator_t<range_type>;
+    using iterator = ranges_impl::iterator_t<range_type>;
 
     template <typename Reader, typename Range, typename T>
-    scan_expected<ranges::iterator_t<Range>> impl(Reader& rd,
+    scan_expected<ranges_impl::iterator_t<Range>> impl(Reader& rd,
                                                   const Range& rng,
                                                   T& value)
     {
         SCN_TRY(it, skip_ws_before_if_required(rd.skip_ws_before_read(), rng)
                         .transform_error(make_eof_scan_error));
-        return rd.read_default(ranges::subrange{it, ranges::end(rng)}, value,
+        return rd.read_default(ranges_impl::subrange{it, ranges_impl::end(rng)}, value,
                                loc);
     }
 
@@ -131,7 +131,7 @@ struct default_arg_reader {
             auto crange = get_as_contiguous(range);
             SCN_TRY(it, impl(rd, crange, value));
             return ranges_polyfill::batch_next(
-                ranges::begin(range), ranges::distance(crange.begin(), it));
+                ranges_impl::begin(range), ranges_impl::distance(crange.begin(), it));
         }
         else {
             SCN_EXPECT(false);
@@ -197,7 +197,7 @@ auto skip_fill(Range&& range,
     -> scan_expected<
         skip_fill_result<detail::simple_borrowed_iterator_t<Range>>>
 {
-    SCN_EXPECT(ranges::begin(range) != ranges::end(range));
+    SCN_EXPECT(ranges_impl::begin(range) != ranges_impl::end(range));
 
     using char_type = detail::char_t<Range>;
     using result_type =
@@ -214,7 +214,7 @@ auto skip_fill(Range&& range,
                 auto prefix_width =
                     static_cast<std::ptrdiff_t>(
                         calculate_text_width(static_cast<char32_t>(fill_ch))) *
-                    ranges::distance(ranges::begin(range), it);
+                    ranges_impl::distance(ranges_impl::begin(range), it);
                 return result_type{it, prefix_width};
             }
             return result_type{it, 0};
@@ -236,8 +236,8 @@ auto skip_fill(Range&& range,
         if (want_skipped_width) {
             auto prefix_width =
                 static_cast<std::ptrdiff_t>(calculate_text_width(fill_chars)) *
-                ranges::distance(ranges::begin(range), it) /
-                ranges::ssize(fill_chars);
+                ranges_impl::distance(ranges_impl::begin(range), it) /
+                ranges_impl::ssize(fill_chars);
             return result_type{it, prefix_width};
         }
         return result_type{it, 0};
@@ -280,17 +280,17 @@ struct arg_reader {
     using char_type = typename context_type::char_type;
 
     using range_type = typename context_type::range_type;
-    using iterator = ranges::iterator_t<range_type>;
+    using iterator = ranges_impl::iterator_t<range_type>;
 
     template <typename Range>
     auto impl_prefix(const Range& rng, bool rd_skip_ws_before_read)
-        -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
+        -> scan_expected<skip_fill_result<ranges_impl::iterator_t<Range>>>
     {
-        SCN_EXPECT(ranges::begin(rng) != ranges::end(rng));
+        SCN_EXPECT(ranges_impl::begin(rng) != ranges_impl::end(rng));
 
         const bool need_skipped_width =
             specs.width != 0 || specs.precision != 0;
-        using result_type = skip_fill_result<ranges::iterator_t<Range>>;
+        using result_type = skip_fill_result<ranges_impl::iterator_t<Range>>;
 
         // Read prefix
         if (specs.align == detail::align_type::right ||
@@ -314,13 +314,13 @@ struct arg_reader {
                 return result_type{
                     it, calculate_text_width(
                             make_contiguous_buffer(
-                                ranges::subrange{ranges::begin(rng), it})
+                                ranges_impl::subrange{ranges_impl::begin(rng), it})
                                 .view())};
             }
             return result_type{it, 0};
         }
 
-        return result_type{ranges::begin(rng), 0};
+        return result_type{ranges_impl::begin(rng), 0};
     }
 
     template <typename Range>
@@ -328,13 +328,13 @@ struct arg_reader {
                       bool rd_skip_ws_before_read,
                       std::ptrdiff_t prefix_width,
                       std::ptrdiff_t value_width)
-        -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
+        -> scan_expected<skip_fill_result<ranges_impl::iterator_t<Range>>>
     {
-        SCN_EXPECT(ranges::begin(rng) != ranges::end(rng));
+        SCN_EXPECT(ranges_impl::begin(rng) != ranges_impl::end(rng));
 
         const bool need_skipped_width =
             specs.width != 0 || specs.precision != 0;
-        using result_type = skip_fill_result<ranges::iterator_t<Range>>;
+        using result_type = skip_fill_result<ranges_impl::iterator_t<Range>>;
 
         if (specs.align == detail::align_type::left ||
             specs.align == detail::align_type::center) {
@@ -361,20 +361,20 @@ struct arg_reader {
                 return result_type{
                     it, calculate_text_width(
                             make_contiguous_buffer(
-                                ranges::subrange{ranges::begin(rng), it})
+                                ranges_impl::subrange{ranges_impl::begin(rng), it})
                                 .view())};
             }
             return result_type{it, 0};
         }
-        return result_type{ranges::begin(rng), 0};
+        return result_type{ranges_impl::begin(rng), 0};
     }
 
     template <typename Reader, typename Range, typename T>
-    scan_expected<ranges::iterator_t<Range>> impl(Reader& rd,
+    scan_expected<ranges_impl::iterator_t<Range>> impl(Reader& rd,
                                                   const Range& rng,
                                                   T& value)
     {
-        SCN_EXPECT(ranges::begin(rng) != ranges::end(rng));
+        SCN_EXPECT(ranges_impl::begin(rng) != ranges_impl::end(rng));
 
         const bool need_skipped_width =
             specs.width != 0 || specs.precision != 0;
@@ -396,19 +396,19 @@ struct arg_reader {
 
             const auto initial_width = specs.precision - prefix_width;
             auto max_width_view = take_width(
-                ranges::subrange{it, ranges::end(rng)}, initial_width);
+                ranges_impl::subrange{it, ranges_impl::end(rng)}, initial_width);
             SCN_TRY(w_it, rd.read_specs(max_width_view, specs, value, loc));
             it = w_it.base();
             value_width = initial_width - w_it.count();
         }
         else {
             SCN_TRY_ASSIGN(
-                it, rd.read_specs(ranges::subrange{it, ranges::end(rng)}, specs,
+                it, rd.read_specs(ranges_impl::subrange{it, ranges_impl::end(rng)}, specs,
                                   value, loc));
 
             if (need_skipped_width) {
                 value_width = calculate_text_width(
-                    make_contiguous_buffer(ranges::subrange{prefix_end_it, it})
+                    make_contiguous_buffer(ranges_impl::subrange{prefix_end_it, it})
                         .view());
             }
         }
@@ -416,9 +416,9 @@ struct arg_reader {
 
         // Read postfix
         std::ptrdiff_t postfix_width = 0;
-        if (it != ranges::end(rng)) {
+        if (it != ranges_impl::end(rng)) {
             SCN_TRY(postfix_result,
-                    impl_postfix(ranges::subrange{it, ranges::end(rng)},
+                    impl_postfix(ranges_impl::subrange{it, ranges_impl::end(rng)},
                                  rd.skip_ws_before_read(), prefix_width,
                                  value_width));
             std::tie(it, postfix_width) = postfix_result;
@@ -461,7 +461,7 @@ struct arg_reader {
             auto crange = get_as_contiguous(range);
             SCN_TRY(it, impl(rd, crange, value));
             return ranges_polyfill::batch_next(
-                ranges::begin(range), ranges::distance(crange.begin(), it));
+                ranges_impl::begin(range), ranges_impl::distance(crange.begin(), it));
         }
         else {
             SCN_EXPECT(false);

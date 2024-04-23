@@ -45,12 +45,12 @@ public:
     }
 
     /// Returns an iterator pointing to the beginning of the format string
-    constexpr auto begin() const SCN_NOEXCEPT
+    constexpr auto begin() const noexcept
     {
         return m_format.data();
     }
     /// Returns an iterator pointing to the end of the format string
-    constexpr auto end() const SCN_NOEXCEPT
+    constexpr auto end() const noexcept
     {
         return m_format.data() + m_format.size();
     }
@@ -192,8 +192,7 @@ private:
     SCN_GCC_POP  // -Wsign-conversion
 };
 
-constexpr inline bool is_constant_evaluated(bool default_value = false)
-    SCN_NOEXCEPT
+constexpr inline bool is_constant_evaluated(bool default_value = false) noexcept
 {
 #ifdef __cpp_lib_is_constant_evaluated
     SCN_UNUSED(default_value);

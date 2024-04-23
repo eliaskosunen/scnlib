@@ -52,7 +52,8 @@ auto unexpected_scan_error(Args&&... args)
 
 namespace detail {
 template <typename T>
-struct is_expected_impl<scan_expected<T>> : std::true_type {};
+struct is_expected_impl<scan_expected<T>> : std::true_type {
+};
 }  // namespace detail
 
 SCN_END_NAMESPACE

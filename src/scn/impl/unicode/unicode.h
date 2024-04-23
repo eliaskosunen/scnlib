@@ -211,7 +211,7 @@ inline scan_expected<wchar_t> encode_code_point_as_wide_character(
 
 template <typename CharT>
 auto get_next_code_point_valid(std::basic_string_view<CharT> input)
-    -> iterator_value_result<ranges::iterator_t<std::basic_string_view<CharT>>,
+    -> iterator_value_result<ranges_impl::iterator_t<std::basic_string_view<CharT>>,
                              char32_t>
 {
     SCN_EXPECT(!input.empty());
@@ -237,13 +237,13 @@ auto get_next_code_point_valid(std::basic_string_view<CharT> input)
     }
 
     return iterator_value_result<
-        ranges::iterator_t<std::basic_string_view<CharT>>, char32_t>{
+        ranges_impl::iterator_t<std::basic_string_view<CharT>>, char32_t>{
         input.begin() + len, static_cast<char32_t>(output)};
 }
 
 template <typename CharT>
 auto get_start_of_next_code_point(std::basic_string_view<CharT> input)
-    -> ranges::iterator_t<std::basic_string_view<CharT>>
+    -> ranges_impl::iterator_t<std::basic_string_view<CharT>>
 {
     auto it = input.begin();
     for (; it != input.end(); ++it) {
@@ -257,7 +257,7 @@ auto get_start_of_next_code_point(std::basic_string_view<CharT> input)
 
 template <typename CharT>
 auto get_next_code_point(std::basic_string_view<CharT> input)
-    -> iterator_value_result<ranges::iterator_t<std::basic_string_view<CharT>>,
+    -> iterator_value_result<ranges_impl::iterator_t<std::basic_string_view<CharT>>,
                              char32_t>
 {
     SCN_EXPECT(!input.empty());
@@ -297,7 +297,7 @@ auto get_next_code_point(std::basic_string_view<CharT> input)
 
 template <typename CharT>
 auto find_start_of_next_valid_code_point(std::basic_string_view<CharT> input)
-    -> ranges::iterator_t<std::basic_string_view<CharT>>
+    -> ranges_impl::iterator_t<std::basic_string_view<CharT>>
 {
     auto it = input.begin();
     while (it != input.end()) {
@@ -306,7 +306,7 @@ auto find_start_of_next_valid_code_point(std::basic_string_view<CharT> input)
             ++it;
             continue;
         }
-        if (len > static_cast<size_t>(ranges::distance(it, input.end()))) {
+        if (len > static_cast<size_t>(ranges_impl::distance(it, input.end()))) {
             return input.end();
         }
 

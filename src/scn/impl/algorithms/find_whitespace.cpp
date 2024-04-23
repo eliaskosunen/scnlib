@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <scn/detail/ranges.h>
 #include <scn/impl/algorithms/find_whitespace.h>
+#include <scn/impl/ranges_impl.h>
 #include <scn/impl/unicode/unicode_whitespace.h>
 #include <scn/impl/util/bits.h>
 
@@ -49,7 +49,7 @@ std::string_view::iterator find_classic_impl(std::string_view source,
                 .substr(0, 8);
 
         if (!has_nonascii_char_64(sv)) {
-            auto tmp_it = ranges::find_if(sv, cu_cb);
+            auto tmp_it = ranges_impl::find_if(sv, cu_cb);
             it = detail::make_string_view_iterator(source, tmp_it);
             if (tmp_it != sv.end()) {
                 break;
@@ -64,7 +64,8 @@ std::string_view::iterator find_classic_impl(std::string_view source,
             if (cp_cb(res.value)) {
                 return it;
             }
-            i += ranges::distance(tmp.data(), detail::to_address(res.iterator));
+            i += ranges_impl::distance(tmp.data(),
+                                       detail::to_address(res.iterator));
             it = detail::make_string_view_iterator(source, res.iterator);
             SCN_ENSURE(it <= source.end());
         }
@@ -73,7 +74,7 @@ std::string_view::iterator find_classic_impl(std::string_view source,
     return detail::make_string_view_iterator(source, it);
 }
 
-bool is_decimal_digit(char ch) SCN_NOEXCEPT
+bool is_decimal_digit(char ch) noexcept
 {
     static constexpr std::array<bool, 256> lookup = {
         {false, false, false, false, false, false, false, false, false, false,
@@ -109,8 +110,8 @@ bool is_decimal_digit(char ch) SCN_NOEXCEPT
 std::string_view::iterator find_nondecimal_digit_simple_impl(
     std::string_view source)
 {
-    return ranges::find_if(
-        source, [](char ch) SCN_NOEXCEPT { return !is_decimal_digit(ch); });
+    return ranges_impl::find_if(
+        source, [](char ch) noexcept { return !is_decimal_digit(ch); });
 }
 }  // namespace
 

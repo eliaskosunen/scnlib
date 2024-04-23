@@ -18,21 +18,22 @@
 #include "wrapped_gtest.h"
 
 #include <scn/detail/scan_buffer.h>
+#include <scn/impl/ranges_impl.h>
 
 #include <deque>
 
 using namespace std::string_view_literals;
 
 namespace {
-    template <typename Range>
-    std::string collect(Range r)
-    {
-        std::string str;
-        for (auto it = scn::ranges::begin(r); it != scn::ranges::end(r); ++it) {
-            str.push_back(*it);
-        }
-        return str;
+template <typename Range>
+std::string collect(Range r)
+{
+    std::string str;
+    for (auto it = scn::ranges::begin(r); it != scn::ranges::end(r); ++it) {
+        str.push_back(*it);
     }
+    return str;
+}
 }  // namespace
 
 TEST(ScanBufferTest, StringView)
@@ -49,9 +50,11 @@ TEST(ScanBufferTest, StringView)
               "foobar");
 }
 
+template <typename> struct debug;
+
 TEST(ScanBufferTest, TakeStringView)
 {
-    auto range = scn::ranges::take_view("foobar"sv, 3);
+    auto range = scn::ranges_impl::take_view("foobar"sv, 3);
     auto buf = scn::detail::make_forward_scan_buffer(range);
     static_assert(
         std::is_same_v<
@@ -78,7 +81,7 @@ TEST(ScanBufferTest, TakeStringView)
 
 TEST(ScanBufferTest, ReverseStringView)
 {
-    auto range = scn::ranges::reverse_view("foobar"sv);
+    auto range = scn::ranges_impl::reverse_view("foobar"sv);
     auto buf = scn::detail::make_forward_scan_buffer(range);
     static_assert(
         std::is_same_v<
@@ -133,7 +136,7 @@ TEST(ScanBufferTest, Deque2)
     EXPECT_EQ(*it, 'b');
 
     auto cached_it = it;
-    scn::ranges::advance(it, 4, buf.get().end());
+    scn::ranges_impl::advance(it, 4, buf.get().end());
     EXPECT_EQ(it, buf.get().end());
     EXPECT_EQ(collect(scn::ranges::subrange{cached_it,
                                             std::next(buf.get().begin(), 2)}),

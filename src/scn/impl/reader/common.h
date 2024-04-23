@@ -44,7 +44,7 @@ auto skip_classic_whitespace(SourceRange&& range, bool allow_exhaustion = false)
 {
     if (!allow_exhaustion) {
         auto it = read_while_classic_space(range);
-        if (auto e = eof_check(ranges::subrange{it, ranges::end(range)});
+        if (auto e = eof_check(ranges_impl::subrange{it, ranges_impl::end(range)});
             SCN_UNLIKELY(!e)) {
             return unexpected(e);
         }

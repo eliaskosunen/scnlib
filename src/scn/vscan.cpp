@@ -57,7 +57,7 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
                                            source.data() + source.size()},
             SCN_MOVE(args), loc};
     SCN_TRY(it, visit_scan_arg(SCN_MOVE(reader), arg));
-    return ranges::distance(source.data(), it);
+    return ranges_impl::distance(source.data(), it);
 }
 template <typename CharT>
 scan_expected<std::ptrdiff_t> scan_simple_single_argument(
@@ -76,7 +76,7 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
             impl::basic_contiguous_scan_context<CharT>>{source.get_contiguous(),
                                                         SCN_MOVE(args), loc};
         SCN_TRY(it, visit_scan_arg(SCN_MOVE(reader), arg));
-        return ranges::distance(source.get_contiguous().begin(), it);
+        return ranges_impl::distance(source.get_contiguous().begin(), it);
     }
 
     auto reader = impl::default_arg_reader<basic_scan_context<CharT>>{
@@ -338,7 +338,7 @@ struct format_handler : format_handler_base {
                 SCN_UNLIKELY_ATTR
                 return on_error("Unexpected literal character in source");
             }
-            get_ctx().advance_to(ranges::next(it));
+            get_ctx().advance_to(ranges_impl::next(it));
         }
     }
 

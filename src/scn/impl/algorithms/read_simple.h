@@ -27,7 +27,7 @@ namespace impl {
 template <typename Range>
 auto read_all(Range&& range) -> detail::simple_borrowed_iterator_t<Range>
 {
-    return ranges::next(ranges::begin(range), ranges::end(range));
+    return ranges_impl::next(ranges_impl::begin(range), ranges_impl::end(range));
 }
 
 template <typename Range>
@@ -38,33 +38,33 @@ auto read_code_unit(Range&& range)
         return unexpected(e);
     }
 
-    return ranges::next(ranges::begin(range));
+    return ranges_impl::next(ranges_impl::begin(range));
 }
 
 template <typename Range>
 auto read_exactly_n_code_units(Range&& range,
-                               ranges::range_difference_t<Range> count)
+                               ranges_impl::range_difference_t<Range> count)
     -> eof_expected<detail::simple_borrowed_iterator_t<Range>>
 {
     SCN_EXPECT(count >= 0);
 
-    if constexpr (ranges::sized_range<Range>) {
-        const auto sz = ranges::ssize(range);
+    if constexpr (ranges_impl::sized_range<Range>) {
+        const auto sz = ranges_impl::ssize(range);
         if (sz < count) {
             return unexpected(eof_error::eof);
         }
 
-        return ranges::next(ranges::begin(range), count);
+        return ranges_impl::next(ranges_impl::begin(range), count);
     }
     else {
-        auto it = ranges::begin(range);
+        auto it = ranges_impl::begin(range);
         if (guaranteed_minimum_size(range) >= count) {
             return ranges_polyfill::batch_next(it, count);
         }
 
-        for (ranges::range_difference_t<Range> i = 0; i < count;
+        for (ranges_impl::range_difference_t<Range> i = 0; i < count;
              ++i, (void)++it) {
-            if (it == ranges::end(range)) {
+            if (it == ranges_impl::end(range)) {
                 return unexpected(eof_error::eof);
             }
         }

@@ -19,6 +19,7 @@
 #include <scn/scan.h>
 
 #include <map>
+#include <vector>
 
 int main()
 {
