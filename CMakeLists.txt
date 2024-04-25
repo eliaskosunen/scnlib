@@ -29,6 +29,8 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+include(GNUInstallDirs)
+
 include(cmake/util.cmake)
 include(cmake/options.cmake)
 include(cmake/buildflags.cmake)
