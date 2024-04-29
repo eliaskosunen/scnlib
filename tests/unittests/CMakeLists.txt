@@ -43,7 +43,7 @@ add_executable(scn_tests
         string_view_test.cpp
         unicode_test.cpp
 )
-target_link_libraries(scn_tests scn_gtest scn_tests_base)
+target_link_libraries(scn_tests ${SCN_GTEST_LIBRARIES} scn_tests_base)
 add_test(NAME scn_tests COMMAND scn_tests)
 
 add_executable(scn_impl_tests
@@ -70,7 +70,7 @@ add_executable(scn_impl_tests
         impl_tests/integer_reader_test.impl_wide_localized.cpp
 )
 target_link_libraries(scn_impl_tests PRIVATE
-        scn_gtest scn_tests_base scn_internal)
+        ${SCN_GTEST_LIBRARIES} scn_tests_base scn_internal)
 add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
 
 if (SCN_TESTS_LOCALIZED)
@@ -79,7 +79,7 @@ if (SCN_TESTS_LOCALIZED)
 
             localized_tests/integer_test.cpp
     )
-    target_link_libraries(scn_localized_tests scn_gtest scn_tests_base)
+    target_link_libraries(scn_localized_tests ${SCN_GTEST_LIBRARIES} scn_tests_base)
     add_test(NAME scn_localized_tests COMMAND scn_localized_tests)
 endif ()
 
@@ -88,7 +88,7 @@ add_executable(scn_stdin_test
 
         stdin_test.cpp
 )
-target_link_libraries(scn_stdin_test scn_gtest scn_tests_base)
+target_link_libraries(scn_stdin_test ${SCN_GTEST_LIBRARIES} scn_tests_base)
 
 add_custom_target(scn_stdin_test_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy
