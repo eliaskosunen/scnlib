@@ -31,6 +31,8 @@ set_property(CACHE SCN_REGEX_BACKEND PROPERTY STRINGS "std" "Boost" "re2")
 option(SCN_REGEX_BOOST_USE_ICU "Use ICU with the regex backend (Boost SCN_REGEX_BACKEND only)" OFF)
 
 option(SCN_USE_EXTERNAL_FAST_FLOAT "Use find_package for fast_float, instead of FetchContent" OFF)
+option(SCN_USE_EXTERNAL_GTEST "Use find_package for GTest, instead of FetchContent" OFF)
+option(SCN_USE_EXTERNAL_BENCHMARK "Use find_package for Benchmark, instead of FetchContent" OFF)
 option(SCN_USE_EXTERNAL_REGEX_BACKEND "Use find_package for SCN_REGEX_BACKEND, instead of FetchContent" ON)
 
 option(SCN_USE_32BIT "Compile as 32-bit (gcc or clang only)" OFF)

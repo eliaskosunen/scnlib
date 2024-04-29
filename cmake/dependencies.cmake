@@ -8,54 +8,67 @@ set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
 if (SCN_TESTS)
     # GTest
 
-    FetchContent_Declare(
-            googletest
-            GIT_REPOSITORY https://github.com/google/googletest.git
-            GIT_TAG main
-            GIT_SHALLOW TRUE
-    )
+    if (SCN_USE_EXTERNAL_GTEST)
+        find_package(GTest CONFIG REQUIRED)
+        set(SCN_GTEST_LIBRARIES
+            GTest::gtest_main
+            GTest::gmock_main
+        )
+    else ()
+        FetchContent_Declare(
+                googletest
+                GIT_REPOSITORY https://github.com/google/googletest.git
+                GIT_TAG main
+                GIT_SHALLOW TRUE
+        )
 
-    # gtest CMake does some flag overriding we don't want, and it's also quite heavy
-    # Do it manually
+        # gtest CMake does some flag overriding we don't want, and it's also quite heavy
+        # Do it manually
 
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-    FetchContent_GetProperties(googletest)
-    if (NOT googletest)
-        FetchContent_Populate(googletest)
+        FetchContent_GetProperties(googletest)
+        if (NOT googletest)
+            FetchContent_Populate(googletest)
+        endif ()
+
+        find_package(Threads)
+
+        add_library(scn_gtest
+                "${googletest_SOURCE_DIR}/googletest/src/gtest-all.cc"
+                "${googletest_SOURCE_DIR}/googlemock/src/gmock-all.cc"
+        )
+        target_include_directories(scn_gtest SYSTEM
+                PUBLIC
+                "${googletest_SOURCE_DIR}/googletest/include"
+                "${googletest_SOURCE_DIR}/googlemock/include"
+                PRIVATE
+                "${googletest_SOURCE_DIR}/googletest"
+                "${googletest_SOURCE_DIR}/googlemock"
+        )
+        target_link_libraries(scn_gtest PRIVATE Threads::Threads)
+        target_compile_features(scn_gtest PUBLIC cxx_std_17)
+        target_compile_options(scn_gtest PRIVATE $<$<CXX_COMPILER_ID:GNU>: -Wno-psabi>)
+        set(SCN_GTEST_LIBRARIES scn_gtest)
     endif ()
-
-    find_package(Threads)
-
-    add_library(scn_gtest
-            "${googletest_SOURCE_DIR}/googletest/src/gtest-all.cc"
-            "${googletest_SOURCE_DIR}/googlemock/src/gmock-all.cc"
-    )
-    target_include_directories(scn_gtest SYSTEM
-            PUBLIC
-            "${googletest_SOURCE_DIR}/googletest/include"
-            "${googletest_SOURCE_DIR}/googlemock/include"
-            PRIVATE
-            "${googletest_SOURCE_DIR}/googletest"
-            "${googletest_SOURCE_DIR}/googlemock"
-    )
-    target_link_libraries(scn_gtest PRIVATE Threads::Threads)
-    target_compile_features(scn_gtest PUBLIC cxx_std_17)
-    target_compile_options(scn_gtest PRIVATE $<$<CXX_COMPILER_ID:GNU>: -Wno-psabi>)
 endif ()
 
 if (SCN_BENCHMARKS)
     # Google Benchmark
 
-    set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "Turn off google benchmark tests")
-    set(BENCHMARK_ENABLE_INSTALL OFF CACHE INTERNAL "Turn off google benchmark install")
-    FetchContent_Declare(
-            google-benchmark
-            GIT_REPOSITORY https://github.com/google/benchmark.git
-            GIT_TAG v1.8.3
-            GIT_SHALLOW TRUE
-    )
-    list(APPEND SCN_OPTIONAL_DEPENDENCIES "google-benchmark")
+    if (SCN_USE_EXTERNAL_BENCHMARK)
+        find_package(benchmark CONFIG REQUIRED)
+    else ()
+        set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "Turn off google benchmark tests")
+        set(BENCHMARK_ENABLE_INSTALL OFF CACHE INTERNAL "Turn off google benchmark install")
+        FetchContent_Declare(
+                google-benchmark
+                GIT_REPOSITORY https://github.com/google/benchmark.git
+                GIT_TAG v1.8.3
+                GIT_SHALLOW TRUE
+        )
+        list(APPEND SCN_OPTIONAL_DEPENDENCIES "google-benchmark")
+    endif ()
 endif ()
 
 # fast_float
