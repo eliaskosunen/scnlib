@@ -94,21 +94,21 @@ add_custom_target(scn_stdin_test_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy
         "${CMAKE_CURRENT_LIST_DIR}/stdin_test_runner.py"
         "${CMAKE_CURRENT_LIST_DIR}/stdin_test_input.txt"
-        "${CMAKE_BINARY_DIR}/tests/unittests"
+        "${CMAKE_CURRENT_BINARY_DIR}"
         COMMENT "Copying stdin test runner"
 )
 add_custom_target(scn_examples_test_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy
         "${CMAKE_CURRENT_LIST_DIR}/examples_test_runner.py"
-        "${CMAKE_BINARY_DIR}"
+        "${PROJECT_BINARY_DIR}"
         COMMENT "Copying examples test runner"
 )
 
 find_package(Python3 COMPONENTS Interpreter)
 if (Python3_FOUND)
-    add_test(NAME scn_stdin_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_BINARY_DIR}/tests/unittests/stdin_test_runner.py")
+    add_test(NAME scn_stdin_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/stdin_test_runner.py")
     if (SCN_EXAMPLES)
-        add_test(NAME scn_examples_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_BINARY_DIR}/examples_test_runner.py")
+        add_test(NAME scn_examples_test COMMAND ${Python3_EXECUTABLE} "${PROJECT_BINARY_DIR}/examples_test_runner.py")
     else()
         message(STATUS "scn_examples_test disabled, because SCN_EXAMPLES is OFF")
     endif()
