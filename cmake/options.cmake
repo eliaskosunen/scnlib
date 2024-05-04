@@ -10,7 +10,7 @@ endif ()
 option(SCN_TESTS "Enable tests" ${SCN_ENABLE_EXTRAS})
 option(SCN_DOCS "Enable docs target" ${SCN_ENABLE_EXTRAS})
 option(SCN_EXAMPLES "Enable examples target" ${SCN_ENABLE_EXTRAS})
-option(SCN_INSTALL "Enable install target" ${SCN_ENABLE_EXTRAS})
+option(SCN_INSTALL "Enable install target" ON)
 
 option(SCN_BENCHMARKS "Enable runtime benchmarks" ${SCN_ENABLE_EXTRAS})
 option(SCN_BENCHMARKS_BUILDTIME "Enable buildtime benchmarks" ${SCN_ENABLE_EXTRAS})
