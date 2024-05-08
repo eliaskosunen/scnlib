@@ -485,20 +485,6 @@
 #define SCN_HAS_BUILTIN_OVERFLOW 0
 #endif
 
-// Detect concepts
-#if defined(__cpp_concepts) && __cpp_concepts >= 201907L
-#define SCN_HAS_CONCEPTS 1
-#else
-#define SCN_HAS_CONCEPTS 0
-#endif
-
-// Detect ranges (202110 = owning_view, P2415, C++20 DR)
-#if defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 202110L
-#define SCN_HAS_RANGES 1
-#else
-#define SCN_HAS_RANGES 0
-#endif
-
 // Detect char8_t
 #if defined(__cpp_char8_t) && __cpp_char8_t >= 201811L
 #define SCN_HAS_CHAR8 1

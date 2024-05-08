@@ -244,37 +244,31 @@ struct with_difference_type {
 };
 
 template <typename, typename = void>
-struct incrementable_traits_helper {
-};
+struct incrementable_traits_helper {};
 
 // Workaround for GCC silliness: void* has no difference_type
 // FIXME: This is required to stop WeaklyIncrementable<void*> being a hard
 // error Can we formulate the concept differently to avoid the need for this
 // hack?
 template <>
-struct incrementable_traits_helper<void*> {
-};
+struct incrementable_traits_helper<void*> {};
 
 template <typename T>
 struct incrementable_traits_helper<T*>
     : detail::conditional_t<std::is_object_v<T>,
                             with_difference_type<std::ptrdiff_t>,
-                            empty> {
-};
+                            empty> {};
 
 template <class I>
 struct incrementable_traits_helper<const I>
-    : incrementable_traits<std::decay_t<I>> {
-};
+    : incrementable_traits<std::decay_t<I>> {};
 
 template <typename, typename = void>
-struct has_member_difference_type : std::false_type {
-};
+struct has_member_difference_type : std::false_type {};
 
 template <typename T>
 struct has_member_difference_type<T, std::void_t<typename T::difference_type>>
-    : std::true_type {
-};
+    : std::true_type {};
 
 template <typename T>
 constexpr bool has_member_difference_type_v =
@@ -300,8 +294,7 @@ struct incrementable_traits_helper<
 }  // namespace detail
 
 template <typename T>
-struct incrementable_traits : detail::incrementable_traits_helper<T> {
-};
+struct incrementable_traits : detail::incrementable_traits_helper<T> {};
 
 template <typename T>
 using iter_difference_t = typename incrementable_traits<T>::difference_type;
@@ -316,37 +309,31 @@ struct with_value_type {
 };
 
 template <typename, typename = void>
-struct readable_traits_helper {
-};
+struct readable_traits_helper {};
 
 template <typename T>
 struct readable_traits_helper<T*>
     : detail::conditional_t<std::is_object_v<T>,
                             with_value_type<std::remove_cv_t<T>>,
-                            empty> {
-};
+                            empty> {};
 
 template <typename I>
 struct readable_traits_helper<I, std::enable_if_t<std::is_array_v<I>>>
-    : readable_traits<std::decay_t<I>> {
-};
+    : readable_traits<std::decay_t<I>> {};
 
 template <typename I>
 struct readable_traits_helper<const I, std::enable_if_t<!std::is_array_v<I>>>
-    : readable_traits<std::decay_t<I>> {
-};
+    : readable_traits<std::decay_t<I>> {};
 
 template <typename T, typename V = typename T::value_type>
 struct member_value_type
-    : detail::conditional_t<std::is_object_v<V>, with_value_type<V>, empty> {
-};
+    : detail::conditional_t<std::is_object_v<V>, with_value_type<V>, empty> {};
 
 template <typename T, typename E = typename T::element_type>
 struct member_element_type
     : detail::conditional_t<std::is_object_v<E>,
                             with_value_type<std::remove_cv_t<E>>,
-                            empty> {
-};
+                            empty> {};
 
 template <typename T>
 using member_value_type_t = typename T::value_type;
@@ -364,15 +351,13 @@ template <typename T>
 struct readable_traits_helper<T,
                               std::enable_if_t<has_member_value_type_v<T> &&
                                                !has_member_element_type_v<T>>>
-    : member_value_type<T> {
-};
+    : member_value_type<T> {};
 
 template <typename T>
 struct readable_traits_helper<T,
                               std::enable_if_t<has_member_element_type_v<T> &&
                                                !has_member_value_type_v<T>>>
-    : member_element_type<T> {
-};
+    : member_element_type<T> {};
 
 // A type which has both value_type and element_type members must specialise
 // readable_traits to tell us which one to prefer -- see
@@ -380,13 +365,11 @@ struct readable_traits_helper<T,
 template <typename T>
 struct readable_traits_helper<T,
                               std::enable_if_t<has_member_element_type_v<T> &&
-                                               has_member_value_type_v<T>>> {
-};
+                                               has_member_value_type_v<T>>> {};
 }  // namespace detail
 
 template <typename T>
-struct readable_traits : detail::readable_traits_helper<T> {
-};
+struct readable_traits : detail::readable_traits_helper<T> {};
 
 template <typename T>
 using iter_value_t = typename readable_traits<T>::value_type;
@@ -437,15 +420,12 @@ struct iterator_category;
 
 namespace detail {
 template <typename T, typename = void>
-struct iterator_category_ {
-};
+struct iterator_category_ {};
 template <typename T>
 struct iterator_category_<T*>
-    : std::enable_if<std::is_object_v<T>, contiguous_iterator_tag> {
-};
+    : std::enable_if<std::is_object_v<T>, contiguous_iterator_tag> {};
 template <typename T>
-struct iterator_category_<const T> : iterator_category<T> {
-};
+struct iterator_category_<const T> : iterator_category<T> {};
 template <typename T>
 struct iterator_category_<T, std::void_t<typename T::iterator_category>> {
     using type = typename T::iterator_category;
@@ -453,16 +433,14 @@ struct iterator_category_<T, std::void_t<typename T::iterator_category>> {
 }  // namespace detail
 
 template <typename T>
-struct iterator_category : detail::iterator_category_<T> {
-};
+struct iterator_category : detail::iterator_category_<T> {};
 template <typename T>
 using iterator_category_t = typename iterator_category<T>::type;
 
 namespace detail {
 
 template <typename T, typename = void>
-struct legacy_iterator_category : iterator_category<T> {
-};
+struct legacy_iterator_category : iterator_category<T> {};
 
 template <typename T>
 struct legacy_iterator_category<
@@ -754,8 +732,8 @@ struct contiguous_iterator_concept {
     template <typename I>
     static auto test(int) -> std::enable_if_t<
         random_access_iterator<I> &&
-            std::is_base_of_v<contiguous_iterator_tag,
-                              iterator_category_t<I>> &&
+            /*std::is_base_of_v<contiguous_iterator_tag,
+                              iterator_category_t<I>> &&*/
             std::is_lvalue_reference_v<iter_reference_t<I>> &&
             std::is_same_v<iter_value_t<I>,
                            remove_cvref_t<iter_reference_t<I>>>,
@@ -1032,6 +1010,38 @@ public:
 
 inline constexpr auto size = detail::size_::fn{};
 
+namespace detail {
+namespace ssize_ {
+struct fn {
+private:
+    template <typename T>
+    using ssize_return_t = std::conditional_t<sizeof(range_difference_t<T>) <
+                                                  sizeof(std::ptrdiff_t),
+                                              std::ptrdiff_t,
+                                              range_difference_t<T>>;
+
+    template <typename T>
+    static constexpr auto impl(T&& t) noexcept(
+        noexcept(ranges::size(std::forward<T>(t))))
+        -> decltype(ranges::size(std::forward<T>(t)), ssize_return_t<T>())
+    {
+        return static_cast<ssize_return_t<T>>(ranges::size(std::forward<T>(t)));
+    }
+
+public:
+    template <typename T>
+    constexpr auto operator()(T&& t) const
+        noexcept(noexcept(fn::impl(std::forward<T>(t))))
+            -> decltype(fn::impl(std::forward<T>(t)))
+    {
+        return fn::impl(std::forward<T>(t));
+    }
+};
+}  // namespace ssize_
+}  // namespace detail
+
+inline constexpr auto ssize = detail::ssize_::fn{};
+
 namespace detail::empty_ {
 struct fn {
 private:
@@ -1203,6 +1213,23 @@ struct contiguous_range_concept {
 template <typename R>
 inline constexpr bool contiguous_range =
     decltype(detail::contiguous_range_concept::test<R>(0))::value;
+
+namespace detail {
+struct common_range_concept {
+    template <typename>
+    static auto test(long) -> std::false_type;
+
+    template <typename T>
+    static auto test(int)
+        -> std::enable_if_t<range<T> &&
+                                std::is_same_v<iterator_t<T>, sentinel_t<T>>,
+                            std::true_type>;
+};
+}  // namespace detail
+
+template <typename T>
+inline constexpr bool common_range =
+    decltype(detail::common_range_concept::test<T>(0))::value;
 
 struct dangling {
     constexpr dangling() noexcept = default;
@@ -1493,39 +1520,6 @@ inline constexpr bool
     is_wide_range<Range,
                   std::enable_if_t<ranges::range<remove_cvref_t<Range>>>> =
         std::is_same_v<char_t<Range>, wchar_t>;
-
-// borrowed_iterator_t and borrowed_subrange_t, but shorter template
-// names
-
-template <typename R, bool Borrowed = ranges::borrowed_range<R>>
-struct simple_borrowed_iterator {
-    using type = simple_iterator_t<R>;
-};
-template <typename R>
-struct simple_borrowed_iterator<R, false> {
-    using type =
-        std::conditional_t<std::is_same_v<remove_cvref_t<R>, std::FILE*>,
-                           std::FILE*,
-                           ranges::dangling>;
-};
-
-template <typename R>
-using simple_borrowed_iterator_t = typename simple_borrowed_iterator<R>::type;
-
-template <typename R, bool Borrowed = ranges::borrowed_range<R>>
-struct simple_borrowed_subrange {
-    using type = ranges::subrange<simple_iterator_t<R>>;
-};
-template <typename R>
-struct simple_borrowed_subrange<R, false> {
-    using type =
-        std::conditional_t<std::is_same_v<remove_cvref_t<R>, std::FILE*>,
-                           std::FILE*,
-                           ranges::dangling>;
-};
-
-template <typename R>
-using simple_borrowed_subrange_t = typename simple_borrowed_subrange<R>::type;
 
 template <typename R, bool Borrowed = ranges::borrowed_range<R>>
 struct borrowed_tail_subrange {

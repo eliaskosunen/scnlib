@@ -85,8 +85,6 @@ set(SCN_PRIVATE_HEADERS
         src/scn/impl/algorithms/read.h
         src/scn/impl/algorithms/take_width_view.h
 
-        src/scn/impl/external/nanorange/nanorange.hpp
-
         src/scn/impl/reader/reader.h
         src/scn/impl/reader/common.h
         src/scn/impl/reader/numeric_reader.h
@@ -104,10 +102,10 @@ set(SCN_PRIVATE_HEADERS
         src/scn/impl/util/bits.h
         src/scn/impl/util/function_ref.h
         src/scn/impl/util/internal_error.h
+        src/scn/impl/util/ranges_impl.h
         src/scn/impl/util/text_width.h
 
         src/scn/impl/locale.h
-        src/scn/impl/ranges_impl.h
 )
 set(SCN_PRIVATE_SOURCES
         src/scn/scan.cpp

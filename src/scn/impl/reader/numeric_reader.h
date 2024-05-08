@@ -63,19 +63,19 @@ SCN_NODISCARD constexpr uint8_t char_to_int(wchar_t ch)
 }
 
 template <typename Range>
-eof_expected<std::pair<detail::simple_borrowed_iterator_t<Range>, sign_type>>
-parse_numeric_sign(Range&& range)
+auto parse_numeric_sign(const Range& range)
+    -> eof_expected<std::pair<ranges::const_iterator_t<Range>, sign_type>>
 {
     auto r = read_one_of_code_unit(range, "+-");
     if (!r) {
         if (r.error() == parse_error::error) {
-            return std::pair{ranges_impl::begin(range), sign_type::default_sign};
+            return std::pair{range.begin(), sign_type::default_sign};
         }
         return unexpected(eof_error::eof);
     }
 
     auto& it = *r;
-    if (*ranges_impl::begin(range) == '-') {
+    if (*range.begin() == '-') {
         return std::pair{it, sign_type::minus_sign};
     }
     return std::pair{it, sign_type::plus_sign};
@@ -94,13 +94,12 @@ inline void transform_thsep_indices(std::string& indices,
 }
 
 template <typename Range>
-bool check_thsep_grouping_impl(Range& range,
+bool check_thsep_grouping_impl(const Range& range,
                                std::string& thsep_indices,
                                std::string_view grouping)
 {
-    transform_thsep_indices(
-        thsep_indices,
-        ranges_impl::distance(ranges_impl::begin(range), ranges_impl::end(range)));
+    transform_thsep_indices(thsep_indices,
+                            ranges::distance(range.begin(), range.end()));
 
     auto thsep_it = thsep_indices.rbegin();
     for (auto grouping_it = grouping.begin();
@@ -132,8 +131,8 @@ bool check_thsep_grouping_impl(Range& range,
     return true;
 }
 
-template <typename Range, std::enable_if_t<ranges_impl::view<Range>>* = nullptr>
-scan_error check_thsep_grouping(Range&& range,
+template <typename Range>
+scan_error check_thsep_grouping(const Range& range,
                                 std::string thsep_indices,
                                 std::string_view grouping)
 {

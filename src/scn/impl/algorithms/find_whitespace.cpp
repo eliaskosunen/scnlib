@@ -16,9 +16,11 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/impl/algorithms/find_whitespace.h>
-#include <scn/impl/ranges_impl.h>
 #include <scn/impl/unicode/unicode_whitespace.h>
 #include <scn/impl/util/bits.h>
+#include <scn/impl/util/ranges_impl.h>
+
+#include <algorithm>
 
 namespace scn {
 SCN_BEGIN_NAMESPACE
@@ -49,7 +51,7 @@ std::string_view::iterator find_classic_impl(std::string_view source,
                 .substr(0, 8);
 
         if (!has_nonascii_char_64(sv)) {
-            auto tmp_it = ranges_impl::find_if(sv, cu_cb);
+            auto tmp_it = std::find_if(sv.begin(), sv.end(), cu_cb);
             it = detail::make_string_view_iterator(source, tmp_it);
             if (tmp_it != sv.end()) {
                 break;
@@ -64,8 +66,7 @@ std::string_view::iterator find_classic_impl(std::string_view source,
             if (cp_cb(res.value)) {
                 return it;
             }
-            i += ranges_impl::distance(tmp.data(),
-                                       detail::to_address(res.iterator));
+            i += ranges::distance(tmp.data(), detail::to_address(res.iterator));
             it = detail::make_string_view_iterator(source, res.iterator);
             SCN_ENSURE(it <= source.end());
         }
@@ -110,8 +111,8 @@ bool is_decimal_digit(char ch) noexcept
 std::string_view::iterator find_nondecimal_digit_simple_impl(
     std::string_view source)
 {
-    return ranges_impl::find_if(
-        source, [](char ch) noexcept { return !is_decimal_digit(ch); });
+    return std::find_if(source.begin(), source.end(),
+                        [](char ch) noexcept { return !is_decimal_digit(ch); });
 }
 }  // namespace
 

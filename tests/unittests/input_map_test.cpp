@@ -17,8 +17,8 @@
 
 #include "wrapped_gtest.h"
 
+#include <scn/impl/util/ranges_impl.h>
 #include <scn/detail/input_map.h>
-#include <scn/impl/ranges_impl.h>
 #include <scn/util/span.h>
 
 #include <deque>
@@ -97,20 +97,6 @@ TEST(InputMapTest, StringViewTake)
     EXPECT_EQ(collect(buf.get()), "foo");
 }
 #endif
-
-TEST(InputMapTest, ReversedStringView)
-{
-    auto view = scn::ranges_impl::reverse_view("foobar"sv);
-    auto buf = scn::detail::make_scan_buffer(view);
-    static_assert(
-        std::is_same_v<decltype(buf),
-                       scn::detail::basic_scan_forward_buffer_impl<
-                           scn::ranges_impl::reverse_view<std::string_view>>>);
-    EXPECT_EQ(collect(buf.get()), "raboof");
-}
-
-template <typename>
-struct debug;
 
 TEST(InputMapTest, Deque)
 {

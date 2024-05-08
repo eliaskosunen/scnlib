@@ -32,16 +32,14 @@ SCN_BEGIN_NAMESPACE
 
 namespace impl {
 template <typename Range, typename Iterator, typename ValueCharT>
-auto read_string_impl(Range& range,
+auto read_string_impl(const Range& range,
                       Iterator&& result,
                       std::basic_string<ValueCharT>& value)
-    -> scan_expected<ranges_impl::iterator_t<Range&>>
+    -> scan_expected<ranges::const_iterator_t<Range>>
 {
-    static_assert(
-        ranges_std::forward_iterator<detail::remove_cvref_t<Iterator>>);
+    static_assert(ranges::forward_iterator<detail::remove_cvref_t<Iterator>>);
 
-    auto src =
-        make_contiguous_buffer(ranges_impl::subrange{ranges_impl::begin(range), result});
+    auto src = make_contiguous_buffer(ranges::subrange{range.begin(), result});
     if (!validate_unicode(src.view())) {
         return unexpected_scan_error(scan_error::invalid_scanned_value,
                                      "Invalid encoding in scanned string");
@@ -55,22 +53,21 @@ auto read_string_impl(Range& range,
 }
 
 template <typename Range, typename Iterator, typename ValueCharT>
-auto read_string_view_impl(Range& range,
+auto read_string_view_impl(const Range& range,
                            Iterator&& result,
                            std::basic_string_view<ValueCharT>& value)
-    -> scan_expected<ranges_impl::iterator_t<Range&>>
+    -> scan_expected<ranges::const_iterator_t<Range>>
 {
-    static_assert(
-        ranges_std::forward_iterator<detail::remove_cvref_t<Iterator>>);
+    static_assert(ranges::forward_iterator<detail::remove_cvref_t<Iterator>>);
 
     auto src = [&]() {
         if constexpr (detail::is_specialization_of_v<Range, take_width_view>) {
             return make_contiguous_buffer(
-                ranges_impl::subrange{ranges_impl::begin(range).base(), result.base()});
+                ranges::subrange{range.begin().base(), result.base()});
         }
         else {
             return make_contiguous_buffer(
-                ranges_impl::subrange{ranges_impl::begin(range), result});
+                ranges::subrange{range.begin(), result});
         }
     }();
     using src_type = decltype(src);
@@ -89,8 +86,7 @@ auto read_string_view_impl(Range& range,
     }
     else {
         const auto view = src.view();
-        value = std::basic_string_view<ValueCharT>(
-            ranges_impl::data(view), ranges_polyfill::usize(view));
+        value = std::basic_string_view<ValueCharT>(view.data(), view.size());
 
         if (!validate_unicode(value)) {
             return unexpected_scan_error(
@@ -106,17 +102,15 @@ template <typename SourceCharT>
 class word_reader_impl {
 public:
     template <typename Range, typename ValueCharT>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read(
-        Range&& range,
-        std::basic_string<ValueCharT>& value)
+    auto read(const Range& range, std::basic_string<ValueCharT>& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return read_string_impl(range, read_until_classic_space(range), value);
     }
 
     template <typename Range, typename ValueCharT>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read(
-        Range&& range,
-        std::basic_string_view<ValueCharT>& value)
+    auto read(const Range& range, std::basic_string_view<ValueCharT>& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return read_string_view_impl(range, read_until_classic_space(range),
                                      value);
@@ -127,10 +121,10 @@ template <typename SourceCharT>
 class custom_word_reader_impl {
 public:
     template <typename Range, typename ValueCharT>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read(
-        Range&& range,
-        const detail::format_specs& specs,
-        std::basic_string<ValueCharT>& value)
+    auto read(const Range& range,
+              const detail::format_specs& specs,
+              std::basic_string<ValueCharT>& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if (specs.fill.size() <= sizeof(SourceCharT)) {
             return read_string_impl(
@@ -149,10 +143,10 @@ public:
     }
 
     template <typename Range, typename ValueCharT>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read(
-        Range&& range,
-        const detail::format_specs& specs,
-        std::basic_string_view<ValueCharT>& value)
+    auto read(const Range& range,
+              const detail::format_specs& specs,
+              std::basic_string_view<ValueCharT>& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if (specs.fill.size() <= sizeof(SourceCharT)) {
             return read_string_view_impl(
@@ -176,22 +170,22 @@ template <typename SourceCharT>
 class regex_string_reader_impl {
 public:
     template <typename Range, typename ValueCharT>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read(
-        Range&& range,
-        std::basic_string_view<SourceCharT> pattern,
-        detail::regex_flags flags,
-        std::basic_string<ValueCharT>& value)
+    auto read(const Range& range,
+              std::basic_string_view<SourceCharT> pattern,
+              detail::regex_flags flags,
+              std::basic_string<ValueCharT>& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_TRY(it, impl(range, pattern, flags));
         return read_string_impl(range, it, value);
     }
 
     template <typename Range, typename ValueCharT>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read(
-        Range&& range,
-        std::basic_string_view<SourceCharT> pattern,
-        detail::regex_flags flags,
-        std::basic_string_view<ValueCharT>& value)
+    auto read(const Range& range,
+              std::basic_string_view<SourceCharT> pattern,
+              detail::regex_flags flags,
+              std::basic_string_view<ValueCharT>& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_TRY(it, impl(range, pattern, flags));
         return read_string_view_impl(range, it, value);
@@ -199,10 +193,10 @@ public:
 
 private:
     template <typename Range>
-    auto impl(Range&& range,
+    auto impl(const Range& range,
               std::basic_string_view<SourceCharT> pattern,
               detail::regex_flags flags)
-        -> scan_expected<detail::simple_borrowed_iterator_t<Range>>
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
                       !std::is_same_v<SourceCharT, char>) {
@@ -221,8 +215,8 @@ private:
             auto input = get_as_contiguous(range);
             SCN_TRY(it,
                     read_regex_string_impl<SourceCharT>(pattern, flags, input));
-            return ranges_polyfill::batch_next(
-                ranges_impl::begin(range), ranges_impl::distance(input.begin(), it));
+            return ranges::next(range.begin(),
+                                ranges::distance(input.begin(), it));
         }
     }
 };
@@ -235,24 +229,24 @@ public:
     // since it's equivalent in behavior
 
     template <typename Range, typename ValueCharT>
-    auto read(Range&& range, std::basic_string<ValueCharT>& value)
-        -> scan_expected<detail::simple_borrowed_iterator_t<Range>>
+    auto read(const Range& range, std::basic_string<ValueCharT>& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return read_impl(
             range,
-            [&](auto&& rng) {
+            [&](const auto& rng) {
                 return read_string_impl(rng, read_all(rng), value);
             },
             detail::priority_tag<1>{});
     }
 
     template <typename Range, typename ValueCharT>
-    auto read(Range&& range, std::basic_string_view<ValueCharT>& value)
-        -> scan_expected<detail::simple_borrowed_iterator_t<Range>>
+    auto read(const Range& range, std::basic_string_view<ValueCharT>& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return read_impl(
             range,
-            [&](auto&& rng) {
+            [&](const auto& rng) {
                 return read_string_view_impl(rng, read_all(rng), value);
             },
             detail::priority_tag<1>{});
@@ -260,18 +254,17 @@ public:
 
 private:
     template <typename View, typename ReadCb>
-    static auto read_impl(take_width_view<View>& range,
+    static auto read_impl(const take_width_view<View>& range,
                           ReadCb&& read_cb,
                           detail::priority_tag<1>)
-        -> scan_expected<
-            detail::simple_borrowed_iterator_t<take_width_view<View>&>>
+        -> scan_expected<ranges::const_iterator_t<take_width_view<View>&>>
     {
         return read_cb(range);
     }
 
     template <typename Range, typename ReadCb>
-    static auto read_impl(Range&&, ReadCb&&, detail::priority_tag<0>)
-        -> scan_expected<detail::simple_borrowed_iterator_t<Range>>
+    static auto read_impl(const Range&, ReadCb&&, detail::priority_tag<0>)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return unexpected_scan_error(
             scan_error::invalid_scanned_value,
@@ -335,10 +328,10 @@ template <typename SourceCharT>
 class character_set_reader_impl {
 public:
     template <typename Range, typename ValueCharT>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read(
-        Range&& range,
-        const detail::format_specs& specs,
-        std::basic_string<ValueCharT>& value)
+    auto read(const Range& range,
+              const detail::format_specs& specs,
+              std::basic_string<ValueCharT>& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         auto it = read_source_impl(range, {specs});
         if (SCN_UNLIKELY(!it)) {
@@ -349,10 +342,10 @@ public:
     }
 
     template <typename Range, typename ValueCharT>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read(
-        Range&& range,
-        const detail::format_specs& specs,
-        std::basic_string_view<ValueCharT>& value)
+    auto read(const Range& range,
+              const detail::format_specs& specs,
+              std::basic_string_view<ValueCharT>& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         auto it = read_source_impl(range, {specs});
         if (SCN_UNLIKELY(!it)) {
@@ -384,8 +377,9 @@ private:
             }
 
             const auto cp_val = static_cast<uint32_t>(cp);
-            return ranges_impl::find_if(
-                       nonascii.extra_ranges,
+            return std::find_if(
+                       nonascii.extra_ranges.begin(),
+                       nonascii.extra_ranges.end(),
                        [cp_val](const auto& pair) noexcept {
                            return static_cast<uint32_t>(pair.first) <= cp_val &&
                                   static_cast<uint32_t>(pair.second) > cp_val;
@@ -408,7 +402,8 @@ private:
             SCN_ENSURE(it == detail::to_address(charset_string.end()));
             SCN_ENSURE(set == charset_string);
 
-            ranges_impl::sort(nonascii.extra_ranges);
+            std::sort(nonascii.extra_ranges.begin(),
+                      nonascii.extra_ranges.end());
             return {};
         }
 
@@ -440,9 +435,8 @@ private:
     };
 
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_source_impl(
-        Range&& range,
-        specs_helper helper) const
+    auto read_source_impl(const Range& range, specs_helper helper) const
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         const bool is_inverted = helper.specs.charset_is_inverted;
         const bool accepts_nonascii = helper.specs.charset_has_nonascii;
@@ -482,7 +476,7 @@ private:
     static scan_expected<Iterator> check_nonempty(const Iterator& it,
                                                   const Range& range)
     {
-        if (it == ranges_impl::begin(range)) {
+        if (it == range.begin()) {
             return unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "No characters matched in [character set]");
@@ -554,22 +548,22 @@ public:
     }
 
     template <typename Range, typename Value>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>>
-    read_default(Range&& range, Value& value, detail::locale_ref loc)
+    auto read_default(const Range& range, Value& value, detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
-        return word_reader_impl<SourceCharT>{}.read(SCN_FWD(range), value);
+        return word_reader_impl<SourceCharT>{}.read(range, value);
     }
 
     template <typename Range, typename Value>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_specs(
-        Range&& range,
-        const detail::format_specs& specs,
-        Value& value,
-        detail::locale_ref loc)
+    auto read_specs(const Range& range,
+                    const detail::format_specs& specs,
+                    Value& value,
+                    detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
-        return read_impl(SCN_FWD(range), specs, value);
+        return read_impl(range, specs, value);
     }
 
 protected:
@@ -583,38 +577,38 @@ protected:
     };
 
     template <typename Range, typename Value>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>>
-    read_impl(Range&& range, const detail::format_specs& specs, Value& value)
+    auto read_impl(const Range& range,
+                   const detail::format_specs& specs,
+                   Value& value)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_CLANG_PUSH
         SCN_CLANG_IGNORE("-Wcovered-switch-default")
 
         switch (m_type) {
             case reader_type::word:
-                return word_reader_impl<SourceCharT>{}.read(SCN_FWD(range),
-                                                            value);
+                return word_reader_impl<SourceCharT>{}.read(range, value);
 
             case reader_type::custom_word:
-                return custom_word_reader_impl<SourceCharT>{}.read(
-                    SCN_FWD(range), specs, value);
+                return custom_word_reader_impl<SourceCharT>{}.read(range, specs,
+                                                                   value);
 
             case reader_type::character:
-                return character_reader_impl<SourceCharT>{}.read(SCN_FWD(range),
-                                                                 value);
+                return character_reader_impl<SourceCharT>{}.read(range, value);
 
             case reader_type::character_set:
                 return character_set_reader_impl<SourceCharT>{}.read(
-                    SCN_FWD(range), specs, value);
+                    range, specs, value);
 
 #if !SCN_DISABLE_REGEX
             case reader_type::regex:
                 return regex_string_reader_impl<SourceCharT>{}.read(
-                    SCN_FWD(range), specs.charset_string<SourceCharT>(),
+                    range, specs.charset_string<SourceCharT>(),
                     specs.regexp_flags, value);
 
             case reader_type::regex_escaped:
                 return regex_string_reader_impl<SourceCharT>{}.read(
-                    SCN_FWD(range),
+                    range,
                     get_unescaped_regex_pattern(
                         specs.charset_string<SourceCharT>()),
                     specs.regexp_flags, value);

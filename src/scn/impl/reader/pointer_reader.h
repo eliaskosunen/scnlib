@@ -45,8 +45,8 @@ public:
     }
 
     template <typename Range>
-    scan_expected<ranges_impl::iterator_t<Range>>
-    read_default(Range range, void*& value, detail::locale_ref loc)
+    auto read_default(const Range& range, void*& value, detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         detail::format_specs specs{};
         specs.type = detail::presentation_type::int_hex;
@@ -59,11 +59,11 @@ public:
     }
 
     template <typename Range>
-    scan_expected<ranges_impl::iterator_t<Range>> read_specs(
-        Range range,
-        const detail::format_specs& specs,
-        void*& value,
-        detail::locale_ref loc)
+    auto read_specs(const Range& range,
+                    const detail::format_specs& specs,
+                    void*& value,
+                    detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(specs);
         return read_default(range, value, loc);

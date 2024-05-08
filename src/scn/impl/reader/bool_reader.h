@@ -31,9 +31,8 @@ struct bool_reader_base {
     constexpr bool_reader_base(unsigned opt) : m_options(opt) {}
 
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_classic(
-        Range&& range,
-        bool& value) const
+    auto read_classic(const Range& range, bool& value) const
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         scan_error err{scan_error::invalid_scanned_value,
                        "Failed to read boolean"};
@@ -61,9 +60,8 @@ struct bool_reader_base {
 
 protected:
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_numeric(
-        Range&& range,
-        bool& value) const
+    auto read_numeric(const Range& range, bool& value) const
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if (auto r = read_matching_code_unit(range, '0')) {
             value = false;
@@ -80,8 +78,8 @@ protected:
     }
 
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>>
-    read_textual_classic(Range&& range, bool& value) const
+    auto read_textual_classic(const Range& range, bool& value) const
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if (auto r = read_matching_string_classic(range, "true")) {
             value = true;
@@ -106,8 +104,10 @@ struct bool_reader : public bool_reader_base {
 
 #if !SCN_DISABLE_LOCALE
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>>
-    read_localized(Range&& range, detail::locale_ref loc, bool& value) const
+    auto read_localized(const Range& range,
+                        detail::locale_ref loc,
+                        bool& value) const
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         scan_error err{scan_error::invalid_scanned_value,
                        "Failed to read boolean"};
@@ -143,11 +143,11 @@ struct bool_reader : public bool_reader_base {
 
 protected:
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>>
-    read_textual_custom(Range&& range,
-                        bool& value,
-                        std::basic_string_view<CharT> truename,
-                        std::basic_string_view<CharT> falsename) const
+    auto read_textual_custom(const Range& range,
+                             bool& value,
+                             std::basic_string_view<CharT> truename,
+                             std::basic_string_view<CharT> falsename) const
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         const auto is_truename_shorter = truename.size() <= falsename.size();
         const auto shorter = std::pair{
@@ -182,20 +182,22 @@ public:
     }
 
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>>
-    read_default(Range&& range, bool& value, detail::locale_ref loc) const
+    auto read_default(const Range& range,
+                      bool& value,
+                      detail::locale_ref loc) const
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
 
-        return bool_reader<CharT>{}.read_classic(SCN_FWD(range), value);
+        return bool_reader<CharT>{}.read_classic(range, value);
     }
 
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_specs(
-        Range&& range,
-        const detail::format_specs& specs,
-        bool& value,
-        detail::locale_ref loc) const
+    auto read_specs(const Range& range,
+                    const detail::format_specs& specs,
+                    bool& value,
+                    detail::locale_ref loc) const
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         const auto rd = bool_reader<CharT>{get_options(specs)};
 

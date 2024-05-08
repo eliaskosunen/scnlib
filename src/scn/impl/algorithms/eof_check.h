@@ -24,7 +24,7 @@ namespace scn {
 SCN_BEGIN_NAMESPACE
 
 namespace impl {
-#if !SCN_STD_RANGES && SCN_MSVC_DEBUG_ITERATORS
+#if SCN_MSVC_DEBUG_ITERATORS
 #define SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND 1
 #else
 #define SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND 0
@@ -34,35 +34,34 @@ template <typename T>
 constexpr bool range_supports_nocopy() noexcept
 {
 #if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
-    return ranges_impl::contiguous_range<T> ||
-           (ranges_impl::random_access_range<T> &&
-            detail::can_make_address_from_iterator<ranges_impl::iterator_t<T>>);
+    return ranges::contiguous_range<T> ||
+           (ranges::random_access_range<T> &&
+            detail::can_make_address_from_iterator<ranges::iterator_t<T>>);
 #else
-    return ranges_impl::contiguous_range<T>;
+    return ranges::contiguous_range<T>;
 #endif
 }
 
 template <typename R>
-constexpr auto range_nocopy_data(R&& r) noexcept
+constexpr auto range_nocopy_data(const R& r) noexcept
 {
     static_assert(range_supports_nocopy<R>());
 #if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
-    return detail::to_address(ranges_impl::begin(SCN_FWD(r)));
+    return detail::to_address(ranges::begin(r));
 #else
-    return ranges_impl::data(SCN_FWD(r));
+    return ranges::data(r);
 #endif
 }
 
 template <typename R>
-constexpr auto range_nocopy_size(R&& r) noexcept
+constexpr auto range_nocopy_size(const R& r) noexcept
 {
     static_assert(range_supports_nocopy<R>());
 #if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
-    return static_cast<size_t>(
-        ranges_impl::distance(detail::to_address(ranges_impl::begin(r)),
-                              detail::to_address(ranges_impl::end(r))));
+    return static_cast<size_t>(ranges::distance(detail::to_address(r.begin()),
+                                                detail::to_address(r.end())));
 #else
-    return static_cast<size_t>(ranges_impl::size(SCN_FWD(r)));
+    return r.size();
 #endif
 }
 
@@ -70,8 +69,8 @@ template <typename I, typename S>
 SCN_NODISCARD constexpr bool is_range_eof(I begin, S end)
 {
 #if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
-    if constexpr (ranges_std::contiguous_iterator<I> ||
-                  (ranges_std::random_access_iterator<I> &&
+    if constexpr (ranges::contiguous_iterator<I> ||
+                  (ranges::random_access_iterator<I> &&
                    detail::can_make_address_from_iterator<I>)) {
         return detail::to_address(begin) == detail::to_address(end);
     }
@@ -83,9 +82,9 @@ SCN_NODISCARD constexpr bool is_range_eof(I begin, S end)
 }
 
 template <typename Range>
-SCN_NODISCARD constexpr bool is_range_eof(const Range& range)
+SCN_NODISCARD constexpr bool is_range_eof(const Range& r)
 {
-    return is_range_eof(ranges_impl::begin(range), ranges_impl::end(range));
+    return is_range_eof(r.begin(), r.end());
 }
 
 template <typename Range>

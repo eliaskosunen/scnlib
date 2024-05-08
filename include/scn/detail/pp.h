@@ -178,7 +178,7 @@
 
 // SCN_UNREACHABLE
 #if SCN_HAS_STD_UNREACHABLE
-#define SCN_UNREACHABLE std::unreachable()
+#define SCN_UNREACHABLE ::std::unreachable()
 #elif SCN_HAS_BUILTIN_UNREACHABLE
 #define SCN_UNREACHABLE __builtin_unreachable()
 #else
@@ -198,20 +198,6 @@
         SCN_ASSUME(reinterpret_cast<std::uintptr_t>(p) % (n) == 0); \
         return p;                                                   \
     }(x))
-#endif
-
-// clang currently can't process libstdc++ ranges::view_interface
-// FIXME: which versions of clang?
-#if SCN_CLANG && SCN_STDLIB_GLIBCXX
-#define SCN_ENVIRONMENT_SUPPORTS_RANGES 0
-#else
-#define SCN_ENVIRONMENT_SUPPORTS_RANGES 1
-#endif
-
-#if SCN_HAS_CONCEPTS && SCN_HAS_RANGES && SCN_ENVIRONMENT_SUPPORTS_RANGES
-#define SCN_STD_RANGES 1
-#else
-#define SCN_STD_RANGES 0
 #endif
 
 #define SCN_UNUSED(x) static_cast<void>(sizeof(x))
@@ -240,3 +226,7 @@
 
 #define SCN_BEGIN_NAMESPACE inline namespace v2 {
 #define SCN_END_NAMESPACE   }
+
+#if SCN_HAS_STD_UNREACHABLE
+#include <utility>
+#endif

@@ -39,12 +39,13 @@ struct reader_error_handler {
 };
 
 template <typename SourceRange>
-auto skip_classic_whitespace(SourceRange&& range, bool allow_exhaustion = false)
-    -> eof_expected<detail::simple_borrowed_iterator_t<SourceRange>>
+auto skip_classic_whitespace(const SourceRange& range,
+                             bool allow_exhaustion = false)
+    -> eof_expected<ranges::const_iterator_t<SourceRange>>
 {
     if (!allow_exhaustion) {
         auto it = read_while_classic_space(range);
-        if (auto e = eof_check(ranges_impl::subrange{it, ranges_impl::end(range)});
+        if (auto e = eof_check(ranges::subrange{it, range.end()});
             SCN_UNLIKELY(!e)) {
             return unexpected(e);
         }
@@ -163,19 +164,19 @@ public:
     }
 
     template <typename Range>
-    auto read_default(Range&&, monostate&, detail::locale_ref)
-        -> scan_expected<detail::simple_borrowed_iterator_t<Range>>
+    auto read_default(const Range&, monostate&, detail::locale_ref)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
 
     template <typename Range>
-    auto read_specs(Range&&,
+    auto read_specs(const Range&,
                     const detail::format_specs&,
                     monostate&,
                     detail::locale_ref)
-        -> scan_expected<detail::simple_borrowed_iterator_t<Range>>
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;

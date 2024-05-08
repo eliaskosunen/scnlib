@@ -38,7 +38,7 @@ constexpr bool is_cp_space(char32_t cp) noexcept
 
 template <typename CharT>
 struct is_first_char_space_result {
-    ranges_impl::iterator_t<std::basic_string_view<CharT>> iterator;
+    ranges::iterator_t<std::basic_string_view<CharT>> iterator;
     char32_t cp;
     bool is_space;
 };

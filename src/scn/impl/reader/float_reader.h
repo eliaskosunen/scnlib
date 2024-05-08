@@ -66,9 +66,8 @@ public:
     explicit constexpr float_reader(unsigned opt) : float_reader_base(opt) {}
 
     template <typename Range>
-    SCN_NODISCARD scan_expected<ranges_impl::iterator_t<Range>> read_source(
-        Range range,
-        detail::locale_ref)
+    SCN_NODISCARD auto read_source(const Range& range, detail::locale_ref)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if (SCN_UNLIKELY(m_options & float_reader_base::allow_thsep)) {
             m_locale_options = localized_number_formatting_options<CharT>{
@@ -80,8 +79,9 @@ public:
 
 #if !SCN_DISABLE_LOCALE
     template <typename Range>
-    SCN_NODISCARD scan_expected<ranges_impl::iterator_t<Range>>
-    read_source_localized(Range range, detail::locale_ref loc)
+    SCN_NODISCARD auto read_source_localized(const Range& range,
+                                             detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         m_locale_options = localized_number_formatting_options<CharT>{loc};
         if (SCN_LIKELY((m_options & float_reader_base::allow_thsep) == 0)) {
@@ -101,13 +101,13 @@ public:
             m_sign != sign_type::default_sign ? 1 : 0;
 
         SCN_TRY(n, parse_value_impl(value));
-        return n + sign_len + ranges_impl::ssize(m_thsep_indices);
+        return n + sign_len + ranges::ssize(m_thsep_indices);
     }
 
 private:
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_source_impl(
-        Range&& range)
+    auto read_source_impl(const Range& range)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_TRY(sign_result,
                 parse_numeric_sign(range).transform_error(make_eof_scan_error));
@@ -115,26 +115,23 @@ private:
         m_sign = sign_result.second;
 
         auto digits_begin = it;
-        auto r = ranges_impl::subrange{it, ranges_impl::end(range)};
-        if constexpr (ranges_impl::contiguous_range<Range> &&
-                      ranges_impl::sized_range<Range>) {
+        auto r = ranges::subrange{it, range.end()};
+        if constexpr (ranges::contiguous_range<Range> &&
+                      ranges::sized_range<Range>) {
             if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 ||
                              m_locale_options.decimal_point != CharT{'.'})) {
                 SCN_TRY_ASSIGN(
                     it,
                     do_read_source_impl(
                         r,
-                        [&](auto&& rr) {
-                            return read_regular_float(SCN_FWD(rr));
-                        },
-                        [&](auto&& rr) { return read_hexfloat(SCN_FWD(rr)); }));
+                        [&](const auto& rr) { return read_regular_float(rr); },
+                        [&](const auto& rr) { return read_hexfloat(rr); }));
             }
             else {
-                auto cb = [&](auto&& rr)
-                    -> scan_expected<
-                        detail::simple_borrowed_iterator_t<decltype(rr)>> {
+                auto cb = [&](const auto& rr)
+                    -> scan_expected<ranges::const_iterator_t<decltype(rr)>> {
                     auto res = read_all(rr);
-                    if (SCN_UNLIKELY(res == ranges_impl::begin(r))) {
+                    if (SCN_UNLIKELY(res == r.begin())) {
                         return unexpected_scan_error(
                             scan_error::invalid_scanned_value,
                             "Invalid float value");
@@ -148,9 +145,8 @@ private:
             SCN_TRY_ASSIGN(
                 it,
                 do_read_source_impl(
-                    r,
-                    [&](auto&& rr) { return read_regular_float(SCN_FWD(rr)); },
-                    [&](auto&& rr) { return read_hexfloat(SCN_FWD(rr)); }));
+                    r, [&](const auto& rr) { return read_regular_float(rr); },
+                    [&](const auto& rr) { return read_hexfloat(rr); }));
         }
 
         SCN_EXPECT(m_kind != float_kind::tbd);
@@ -158,7 +154,7 @@ private:
         if (m_kind != float_kind::inf_short && m_kind != float_kind::inf_long &&
             m_kind != float_kind::nan_simple &&
             m_kind != float_kind::nan_with_payload) {
-            this->m_buffer.assign(ranges_impl::subrange{digits_begin, it});
+            this->m_buffer.assign(ranges::subrange{digits_begin, it});
         }
 
         handle_separators();
@@ -166,9 +162,9 @@ private:
         if (!m_thsep_indices.empty()) {
             SCN_EXPECT(m_integral_part_length >= 0);
             if (auto e = check_thsep_grouping(
-                    ranges_impl::subrange{
+                    ranges::subrange{
                         digits_begin,
-                        ranges_impl::next(digits_begin, m_integral_part_length)},
+                        ranges::next(digits_begin, m_integral_part_length)},
                     m_thsep_indices, m_locale_options.grouping);
                 SCN_UNLIKELY(!e)) {
                 return unexpected(e);
@@ -179,17 +175,15 @@ private:
     }
 
     template <typename Range>
-    parse_expected<detail::simple_borrowed_iterator_t<Range>> read_dec_digits(
-        Range&& range,
-        bool thsep_allowed)
+    auto read_dec_digits(const Range& range, bool thsep_allowed)
+        -> parse_expected<ranges::const_iterator_t<Range>>
     {
         if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
                          thsep_allowed)) {
-            return read_while1_code_unit(
-                SCN_FWD(range), [&](char_type ch) noexcept {
-                    return char_to_int(ch) < 10 ||
-                           ch == m_locale_options.thousands_sep;
-                });
+            return read_while1_code_unit(range, [&](char_type ch) noexcept {
+                return char_to_int(ch) < 10 ||
+                       ch == m_locale_options.thousands_sep;
+            });
         }
 
         return read_while1_code_unit(SCN_FWD(range), [](char_type ch) noexcept {
@@ -197,17 +191,15 @@ private:
         });
     }
     template <typename Range>
-    parse_expected<detail::simple_borrowed_iterator_t<Range>> read_hex_digits(
-        Range&& range,
-        bool thsep_allowed)
+    auto read_hex_digits(const Range& range, bool thsep_allowed)
+        -> parse_expected<ranges::const_iterator_t<Range>>
     {
         if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
                          thsep_allowed)) {
-            return read_while1_code_unit(
-                SCN_FWD(range), [&](char_type ch) noexcept {
-                    return char_to_int(ch) < 16 ||
-                           ch == m_locale_options.thousands_sep;
-                });
+            return read_while1_code_unit(range, [&](char_type ch) noexcept {
+                return char_to_int(ch) < 16 ||
+                       ch == m_locale_options.thousands_sep;
+            });
         }
 
         return read_while1_code_unit(SCN_FWD(range), [](char_type ch) noexcept {
@@ -215,17 +207,17 @@ private:
         });
     }
     template <typename Range>
-    parse_expected<detail::simple_borrowed_iterator_t<Range>> read_hex_prefix(
-        Range&& range)
+    auto read_hex_prefix(const Range& range)
+        -> parse_expected<ranges::const_iterator_t<Range>>
     {
-        return read_matching_string_classic_nocase(SCN_FWD(range), "0x");
+        return read_matching_string_classic_nocase(range, "0x");
     }
 
     template <typename Range>
-    parse_expected<detail::simple_borrowed_iterator_t<Range>> read_inf(
-        Range&& range)
+    auto read_inf(const Range& range)
+        -> parse_expected<ranges::const_iterator_t<Range>>
     {
-        auto it = ranges_impl::begin(range);
+        auto it = range.begin();
         if (auto r = read_matching_string_classic_nocase(range, "inf"); !r) {
             return unexpected(r.error());
         }
@@ -234,7 +226,7 @@ private:
         }
 
         if (auto r = read_matching_string_classic_nocase(
-                ranges_impl::subrange{it, ranges_impl::end(range)}, "inity");
+                ranges::subrange{it, range.end()}, "inity");
             !r) {
             m_kind = float_kind::inf_short;
             return it;
@@ -246,10 +238,10 @@ private:
     }
 
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_nan(
-        Range&& range)
+    auto read_nan(const Range& range)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
-        auto it = ranges_impl::begin(range);
+        auto it = range.begin();
         if (auto r = read_matching_string_classic_nocase(range, "nan"); !r) {
             return r.transform_error(map_parse_error_to_scan_error(
                 scan_error::invalid_scanned_value,
@@ -259,8 +251,8 @@ private:
             it = *r;
         }
 
-        if (auto r = read_matching_code_unit(
-                ranges_impl::subrange{it, ranges_impl::end(range)}, '(');
+        if (auto r =
+                read_matching_code_unit(ranges::subrange{it, range.end()}, '(');
             !r) {
             m_kind = float_kind::nan_simple;
             return it;
@@ -271,17 +263,16 @@ private:
 
         auto payload_beg_it = it;
         it = read_while_code_unit(
-            ranges_impl::subrange{it, ranges_impl::end(range)},
-            [](char_type ch) noexcept {
+            ranges::subrange{it, range.end()}, [](char_type ch) noexcept {
                 return is_ascii_char(ch) &&
                        ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') ||
                         (ch >= 'A' && ch <= 'Z') || ch == '_');
             });
-        m_nan_payload_buffer.assign(ranges_impl::subrange{payload_beg_it, it});
+        m_nan_payload_buffer.assign(ranges::subrange{payload_beg_it, it});
 
         m_kind = float_kind::nan_with_payload;
-        if (auto r = read_matching_code_unit(
-                ranges_impl::subrange{it, ranges_impl::end(range)}, ')')) {
+        if (auto r = read_matching_code_unit(ranges::subrange{it, range.end()},
+                                             ')')) {
             return *r;
         }
         return unexpected_scan_error(scan_error::invalid_scanned_value,
@@ -289,21 +280,20 @@ private:
     }
 
     template <typename Range>
-    detail::simple_borrowed_iterator_t<Range> read_exponent(
-        Range&& range,
-        std::string_view exp)
+    auto read_exponent(const Range& range, std::string_view exp)
+        -> ranges::const_iterator_t<Range>
     {
         if (auto r = read_one_of_code_unit(range, exp)) {
-            auto beg_exp_it = ranges_impl::begin(range);
+            auto beg_exp_it = range.begin();
             auto it = *r;
 
-            if (auto r_sign = parse_numeric_sign(
-                    ranges_impl::subrange{it, ranges_impl::end(range)})) {
+            if (auto r_sign =
+                    parse_numeric_sign(ranges::subrange{it, range.end()})) {
                 it = r_sign->first;
             }
 
             if (auto r_exp = read_while1_code_unit(
-                    ranges_impl::subrange{it, ranges_impl::end(range)},
+                    ranges::subrange{it, range.end()},
                     [](char_type ch) noexcept { return char_to_int(ch) < 10; });
                 SCN_UNLIKELY(!r_exp)) {
                 it = beg_exp_it;
@@ -314,40 +304,36 @@ private:
 
             return it;
         }
-        else {
-            return ranges_impl::begin(range);
-        }
+        return range.begin();
     }
 
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_hexfloat(
-        Range&& range)
+    auto read_hexfloat(const Range& range)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
-        auto it = ranges_impl::begin(range);
+        auto it = range.begin();
 
         std::ptrdiff_t digits_count = 0;
-        if (auto r =
-                read_hex_digits(ranges_impl::subrange{it, ranges_impl::end(range)}, true);
+        if (auto r = read_hex_digits(ranges::subrange{it, range.end()}, true);
             SCN_UNLIKELY(!r)) {
             return r.transform_error(map_parse_error_to_scan_error(
                 scan_error::invalid_scanned_value,
                 "Invalid hexadecimal floating-point value"));
         }
         else {
-            digits_count += ranges_impl::distance(it, *r);
+            digits_count += ranges::distance(it, *r);
             it = *r;
         }
 
         m_integral_part_length = digits_count;
-        if (auto r = read_matching_code_unit(
-                ranges_impl::subrange{it, ranges_impl::end(range)},
-                m_locale_options.decimal_point)) {
+        if (auto r = read_matching_code_unit(ranges::subrange{it, range.end()},
+                                             m_locale_options.decimal_point)) {
             it = *r;
         }
 
-        if (auto r = read_hex_digits(ranges_impl::subrange{it, ranges_impl::end(range)},
-                                     false)) {
-            digits_count += ranges_impl::distance(it, *r);
+        if (auto r =
+                read_hex_digits(ranges::subrange{it, range.end()}, false)) {
+            digits_count += ranges::distance(it, *r);
             it = *r;
         }
 
@@ -356,43 +342,41 @@ private:
                                          "No significand digits in hexfloat");
         }
 
-        it = read_exponent(ranges_impl::subrange{it, ranges_impl::end(range)}, "pP");
+        it = read_exponent(ranges::subrange{it, range.end()}, "pP");
 
         return it;
     }
 
     template <typename Range>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_regular_float(
-        Range&& range)
+    auto read_regular_float(const Range& range)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         const bool allowed_exp = (m_options & allow_scientific) != 0;
         const bool required_exp = allowed_exp && (m_options & allow_fixed) == 0;
 
-        auto it = ranges_impl::begin(range);
+        auto it = ranges::begin(range);
         std::ptrdiff_t digits_count = 0;
 
-        if (auto r =
-                read_dec_digits(ranges_impl::subrange{it, ranges_impl::end(range)}, true);
+        if (auto r = read_dec_digits(ranges::subrange{it, range.end()}, true);
             SCN_UNLIKELY(!r)) {
             return r.transform_error(
                 map_parse_error_to_scan_error(scan_error::invalid_scanned_value,
                                               "Invalid floating-point value"));
         }
         else {
-            digits_count += ranges_impl::distance(it, *r);
+            digits_count += ranges::distance(it, *r);
             it = *r;
         }
 
         m_integral_part_length = digits_count;
-        if (auto r = read_matching_code_unit(
-                ranges_impl::subrange{it, ranges_impl::end(range)},
-                m_locale_options.decimal_point)) {
+        if (auto r = read_matching_code_unit(ranges::subrange{it, range.end()},
+                                             m_locale_options.decimal_point)) {
             it = *r;
         }
 
-        if (auto r = read_dec_digits(ranges_impl::subrange{it, ranges_impl::end(range)},
-                                     false)) {
-            digits_count += ranges_impl::distance(it, *r);
+        if (auto r =
+                read_dec_digits(ranges::subrange{it, range.end()}, false)) {
+            digits_count += ranges::distance(it, *r);
             it = *r;
         }
 
@@ -403,7 +387,7 @@ private:
 
         auto beg_exp_it = it;
         if (allowed_exp) {
-            it = read_exponent(ranges_impl::subrange{it, ranges_impl::end(range)}, "eE");
+            it = read_exponent(ranges::subrange{it, range.end()}, "eE");
         }
         if (required_exp && beg_exp_it == it) {
             return unexpected_scan_error(
@@ -418,10 +402,10 @@ private:
     }
 
     template <typename Range, typename ReadRegular, typename ReadHex>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>>
-    do_read_source_impl(Range&& range,
-                        ReadRegular&& read_regular,
-                        ReadHex&& read_hex)
+    auto do_read_source_impl(const Range& range,
+                             ReadRegular&& read_regular,
+                             ReadHex&& read_hex)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         const bool allowed_hex = (m_options & allow_hex) != 0;
         const bool allowed_nonhex =
@@ -447,7 +431,7 @@ private:
         if (allowed_hex && !allowed_nonhex) {
             // only hex allowed:
             // prefix "0x" allowed, not required
-            auto it = ranges_impl::begin(range);
+            auto it = range.begin();
 
             if (auto r = read_hex_prefix(range)) {
                 m_kind = float_kind::hex_with_prefix;
@@ -457,27 +441,25 @@ private:
                 m_kind = float_kind::hex_without_prefix;
             }
 
-            return read_hex(ranges_impl::subrange{it, ranges_impl::end(range)});
+            return read_hex(ranges::subrange{it, range.end()});
         }
-        else if (!allowed_hex && allowed_nonhex) {
+        if (!allowed_hex && allowed_nonhex) {
             // only nonhex allowed:
             // no prefix allowed
             m_kind = float_kind::generic;
-            return read_regular_float(SCN_FWD(range));
+            return read_regular_float(range);
         }
-        else {
-            // both hex and nonhex allowed:
-            // check for "0x" prefix -> hex,
-            // regular otherwise
+        // both hex and nonhex allowed:
+        // check for "0x" prefix -> hex,
+        // regular otherwise
 
-            if (auto r = read_hex_prefix(range); SCN_UNLIKELY(r)) {
-                m_kind = float_kind::hex_with_prefix;
-                return read_hex(ranges_impl::subrange{*r, ranges_impl::end(range)});
-            }
-
-            m_kind = float_kind::generic;
-            return read_regular(SCN_FWD(range));
+        if (auto r = read_hex_prefix(range); SCN_UNLIKELY(r)) {
+            m_kind = float_kind::hex_with_prefix;
+            return read_hex(ranges::subrange{*r, range.end()});
         }
+
+        m_kind = float_kind::generic;
+        return read_regular(range);
     }
 
     void handle_separators()
@@ -500,13 +482,14 @@ private:
             return;
         }
 
-        auto first = ranges_impl::find(str, m_locale_options.thousands_sep);
+        auto first =
+            std::find(str.begin(), str.end(), m_locale_options.thousands_sep);
         if (first == str.end()) {
             return;
         }
 
         m_thsep_indices.push_back(
-            static_cast<char>(ranges_impl::distance(str.begin(), first)));
+            static_cast<char>(ranges::distance(str.begin(), first)));
 
         for (auto it = first; ++it != str.end();) {
             if (*it != m_locale_options.thousands_sep) {
@@ -514,7 +497,7 @@ private:
             }
             else {
                 m_thsep_indices.push_back(
-                    static_cast<char>(ranges_impl::distance(str.begin(), it)));
+                    static_cast<char>(ranges::distance(str.begin(), it)));
             }
         }
 
@@ -574,14 +557,13 @@ public:
     }
 
     template <typename Range, typename T>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>>
-    read_default(Range&& range, T& value, detail::locale_ref loc)
+    auto read_default(const Range& range, T& value, detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
-        using range_nocvref_t = detail::remove_cvref_t<Range>;
 
         float_reader<CharT> rd{};
-        return read_impl<range_nocvref_t>(
+        return read_impl<Range>(
             range, rd,
             [](float_reader<CharT>& r, auto&&... args) {
                 return r.read_source(SCN_FWD(args)...);
@@ -590,18 +572,17 @@ public:
     }
 
     template <typename Range, typename T>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_specs(
-        Range&& range,
-        const detail::format_specs& specs,
-        T& value,
-        detail::locale_ref loc)
+    auto read_specs(const Range& range,
+                    const detail::format_specs& specs,
+                    T& value,
+                    detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
-        using range_nocvref_t = detail::remove_cvref_t<Range>;
         float_reader<CharT> rd{get_options(specs)};
 
 #if !SCN_DISABLE_LOCALE
         if (specs.localized) {
-            return read_impl<range_nocvref_t>(
+            return read_impl<Range>(
                 range, rd,
                 [](float_reader<CharT>& r, auto&&... args) {
                     return r.read_source_localized(SCN_FWD(args)...);
@@ -610,7 +591,7 @@ public:
         }
 #endif
 
-        return read_impl<range_nocvref_t>(
+        return read_impl<Range>(
             range, rd,
             [](float_reader<CharT>& r, auto&&... args) {
                 return r.read_source(SCN_FWD(args)...);
@@ -621,13 +602,13 @@ public:
 private:
     template <typename Range>
     using read_source_callback_type =
-        scan_expected<ranges_impl::iterator_t<Range>>(float_reader<CharT>&,
-                                                 Range,
-                                                 detail::locale_ref);
+        scan_expected<ranges::const_iterator_t<Range>>(float_reader<CharT>&,
+                                                       Range,
+                                                       detail::locale_ref);
 
     template <typename Range, typename T>
-    scan_expected<ranges_impl::iterator_t<Range>> read_impl(
-        Range range,
+    scan_expected<ranges::const_iterator_t<Range>> read_impl(
+        const Range& range,
         float_reader<CharT>& rd,
         function_ref<read_source_callback_type<Range>> read_source_cb,
         T& value,
@@ -639,7 +620,7 @@ private:
         }
 
         SCN_TRY(n, rd.parse_value(value));
-        return ranges_impl::next(ranges_impl::begin(range), n);
+        return ranges::next(range.begin(), n);
     }
 
     static unsigned get_options(const detail::format_specs& specs)

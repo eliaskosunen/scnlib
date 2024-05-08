@@ -46,7 +46,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                              detail::regex_flags flags,
                              Input input,
                              basic_regex_matches<CharT>& value)
-    -> scan_expected<ranges_impl::iterator_t<Input>>;
+    -> scan_expected<ranges::iterator_t<Input>>;
 
 #if !SCN_DISABLE_REGEX
 
@@ -127,11 +127,11 @@ template <typename CharT, typename Input>
 auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                             detail::regex_flags flags,
                             Input input)
-    -> scan_expected<ranges_impl::iterator_t<Input>>
+    -> scan_expected<ranges::iterator_t<Input>>
 {
-    static_assert(ranges_impl::contiguous_range<Input> &&
-                  ranges_impl::borrowed_range<Input> &&
-                  std::is_same_v<ranges_impl::range_value_t<Input>, CharT>);
+    static_assert(ranges::contiguous_range<Input> &&
+                  ranges::borrowed_range<Input> &&
+                  std::is_same_v<ranges::range_value_t<Input>, CharT>);
 
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
     std::basic_regex<CharT> re{};
@@ -160,7 +160,7 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                                      "Regex matching failed with an error");
     }
 
-    return input.begin() + ranges_impl::distance(input.data(), matches[0].second);
+    return input.begin() + ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
     auto re =
 #if SCN_REGEX_BOOST_USE_ICU
@@ -201,7 +201,8 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                                      "Regex matching failed with an error");
     }
 
-    return input.begin() + ranges_impl::distance(input.data(), matches[0].second);
+    return input.begin() +
+           ranges_impl::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
     static_assert(std::is_same_v<CharT, char>);
     std::string flagged_pattern{};
@@ -228,7 +229,8 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
         return unexpected_scan_error(scan_error::invalid_scanned_value,
                                      "Regular expression didn't match");
     }
-    return input.begin() + ranges_impl::distance(input.data(), new_input.data());
+    return input.begin() +
+           ranges_impl::distance(input.data(), new_input.data());
 #endif  // SCN_REGEX_BACKEND == ...
 }
 
@@ -237,11 +239,11 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                              detail::regex_flags flags,
                              Input input,
                              basic_regex_matches<CharT>& value)
-    -> scan_expected<ranges_impl::iterator_t<Input>>
+    -> scan_expected<ranges::iterator_t<Input>>
 {
-    static_assert(ranges_impl::contiguous_range<Input> &&
-                  ranges_impl::borrowed_range<Input> &&
-                  std::is_same_v<ranges_impl::range_value_t<Input>, CharT>);
+    static_assert(ranges::contiguous_range<Input> &&
+                  ranges::borrowed_range<Input> &&
+                  std::is_same_v<ranges::range_value_t<Input>, CharT>);
 
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
     std::basic_regex<CharT> re{};
@@ -270,15 +272,14 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     }
 
     value.resize(matches.size());
-    ranges_impl::transform(
-        matches, value.begin(),
-        [](auto&& match) -> std::optional<basic_regex_match<CharT>> {
-            if (!match.matched)
-                return std::nullopt;
-            return detail::make_string_view_from_pointers(match.first,
-                                                          match.second);
-        });
-    return input.begin() + ranges_impl::distance(input.data(), matches[0].second);
+    std::transform(matches.begin(), matches.end(), value.begin(),
+                   [](auto&& match) -> std::optional<basic_regex_match<CharT>> {
+                       if (!match.matched)
+                           return std::nullopt;
+                       return detail::make_string_view_from_pointers(
+                           match.first, match.second);
+                   });
+    return input.begin() + ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
     std::vector<std::basic_string<CharT>> names;
     for (size_t i = 0; i < pattern.size();) {
@@ -361,7 +362,8 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
             }
             return sv;
         });
-    return input.begin() + ranges_impl::distance(input.data(), matches[0].second);
+    return input.begin() +
+           ranges_impl::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
     static_assert(std::is_same_v<CharT, char>);
     std::string flagged_pattern{};
@@ -386,9 +388,9 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     std::vector<re2::RE2::Arg> match_args(max_matches_n);
     std::vector<re2::RE2::Arg*> match_argptrs(max_matches_n);
     ranges_impl::transform(matches, match_args.begin(),
-                      [](auto& val) { return re2::RE2::Arg{&val}; });
+                           [](auto& val) { return re2::RE2::Arg{&val}; });
     ranges_impl::transform(match_args, match_argptrs.begin(),
-                      [](auto& arg) { return &arg; });
+                           [](auto& arg) { return &arg; });
     auto new_input = detail::make_string_view_from_pointers(
         detail::to_address(input.begin()), detail::to_address(input.end()));
     bool found = re2::RE2::ConsumeN(&new_input, re, match_argptrs.data(),
@@ -401,11 +403,11 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     value[0] =
         detail::make_string_view_from_pointers(input.data(), new_input.data());
     ranges_impl::transform(matches, value.begin() + 1,
-                      [&](auto&& match) -> std::optional<regex_match> {
-                          if (!match)
-                              return std::nullopt;
-                          return *match;
-                      });
+                           [&](auto&& match) -> std::optional<regex_match> {
+                               if (!match)
+                                   return std::nullopt;
+                               return *match;
+                           });
     {
         const auto& capturing_groups = re.CapturingGroupNames();
         for (size_t i = 1; i < value.size(); ++i) {
@@ -416,7 +418,8 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
             };
         }
     }
-    return input.begin() + ranges_impl::distance(input.data(), new_input.data());
+    return input.begin() +
+           ranges_impl::distance(input.data(), new_input.data());
 #endif  // SCN_REGEX_BACKEND == ...
 }
 
@@ -453,10 +456,10 @@ struct regex_matches_reader
     }
 
     template <typename Range, typename DestCharT>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_default(
-        Range&&,
-        basic_regex_matches<DestCharT>&,
-        detail::locale_ref = {})
+    auto read_default(const Range&,
+                      basic_regex_matches<DestCharT>&,
+                      detail::locale_ref = {})
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return unexpected_scan_error(
             scan_error::invalid_format_string,
@@ -464,11 +467,11 @@ struct regex_matches_reader
     }
 
     template <typename Range, typename DestCharT>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_specs(
-        Range&& range,
-        const detail::format_specs& specs,
-        basic_regex_matches<DestCharT>& value,
-        detail::locale_ref = {})
+    auto read_specs(const Range& range,
+                    const detail::format_specs& specs,
+                    basic_regex_matches<DestCharT>& value,
+                    detail::locale_ref = {})
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if constexpr (!std::is_same_v<SourceCharT, DestCharT>) {
             return unexpected_scan_error(
@@ -495,8 +498,8 @@ struct regex_matches_reader
                          specs.type == detail::presentation_type::regex_escaped,
                          specs.charset_string<SourceCharT>(),
                          specs.regexp_flags, value));
-            return ranges_polyfill::batch_next(
-                ranges_impl::begin(range), ranges_impl::distance(input.begin(), it));
+            return ranges::next(range.begin(),
+                                ranges::distance(input.begin(), it));
         }
     }
 
@@ -524,8 +527,7 @@ private:
 };
 
 template <typename CharT>
-struct reader_impl_for_regex_matches : public regex_matches_reader<CharT> {
-};
+struct reader_impl_for_regex_matches : public regex_matches_reader<CharT> {};
 }  // namespace impl
 
 SCN_END_NAMESPACE

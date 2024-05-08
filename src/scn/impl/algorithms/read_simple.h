@@ -25,46 +25,44 @@ SCN_BEGIN_NAMESPACE
 
 namespace impl {
 template <typename Range>
-auto read_all(Range&& range) -> detail::simple_borrowed_iterator_t<Range>
+auto read_all(const Range& range) -> ranges::const_iterator_t<Range>
 {
-    return ranges_impl::next(ranges_impl::begin(range), ranges_impl::end(range));
+    return ranges::next(range.begin(), range.end());
 }
 
 template <typename Range>
-auto read_code_unit(Range&& range)
-    -> eof_expected<detail::simple_borrowed_iterator_t<Range>>
+auto read_code_unit(const Range& range)
+    -> eof_expected<ranges::const_iterator_t<Range>>
 {
     if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
         return unexpected(e);
     }
 
-    return ranges_impl::next(ranges_impl::begin(range));
+    return ranges::next(range.begin());
 }
 
 template <typename Range>
-auto read_exactly_n_code_units(Range&& range,
-                               ranges_impl::range_difference_t<Range> count)
-    -> eof_expected<detail::simple_borrowed_iterator_t<Range>>
+auto read_exactly_n_code_units(const Range& range, std::ptrdiff_t count)
+    -> eof_expected<ranges::const_iterator_t<Range>>
 {
     SCN_EXPECT(count >= 0);
 
-    if constexpr (ranges_impl::sized_range<Range>) {
-        const auto sz = ranges_impl::ssize(range);
+    if constexpr (ranges::sized_range<Range>) {
+        const auto sz = static_cast<std::ptrdiff_t>(range.size());
         if (sz < count) {
             return unexpected(eof_error::eof);
         }
 
-        return ranges_impl::next(ranges_impl::begin(range), count);
+        return ranges::next(range.begin(), count);
     }
     else {
-        auto it = ranges_impl::begin(range);
+        auto it = range.begin();
         if (guaranteed_minimum_size(range) >= count) {
-            return ranges_polyfill::batch_next(it, count);
+            return ranges::next(it, count);
         }
 
-        for (ranges_impl::range_difference_t<Range> i = 0; i < count;
-             ++i, (void)++it) {
-            if (it == ranges_impl::end(range)) {
+        for (std::ptrdiff_t i = 0; i < count; ++i, (void)++it) {
+            if (it == range.end()) {
                 return unexpected(eof_error::eof);
             }
         }

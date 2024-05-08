@@ -30,12 +30,11 @@ template <typename CharT>
 class code_unit_reader {
 public:
     template <typename SourceRange>
-    scan_expected<detail::simple_borrowed_iterator_t<SourceRange>> read(
-        SourceRange&& range,
-        CharT& ch)
+    auto read(const SourceRange& range, CharT& ch)
+        -> scan_expected<ranges::const_iterator_t<SourceRange>>
     {
         SCN_TRY(it, read_code_unit(range).transform_error(make_eof_scan_error));
-        ch = *ranges_impl::begin(range);
+        ch = *range.begin();
         return it;
     }
 };
@@ -47,11 +46,10 @@ template <>
 class code_point_reader<char32_t> {
 public:
     template <typename SourceRange>
-    scan_expected<detail::simple_borrowed_iterator_t<SourceRange>> read(
-        SourceRange&& range,
-        char32_t& cp)
+    auto read(const SourceRange& range, char32_t& cp)
+        -> scan_expected<ranges::const_iterator_t<SourceRange>>
     {
-        auto result = read_code_point_into(SCN_FWD(range));
+        auto result = read_code_point_into(range);
         cp = decode_code_point_exhaustive_valid(result.value.view());
         return result.iterator;
     }
@@ -61,13 +59,12 @@ template <>
 class code_point_reader<wchar_t> {
 public:
     template <typename SourceRange>
-    scan_expected<detail::simple_borrowed_iterator_t<SourceRange>> read(
-        SourceRange&& range,
-        wchar_t& ch)
+    auto read(const SourceRange& range, wchar_t& ch)
+        -> scan_expected<ranges::const_iterator_t<SourceRange>>
     {
         code_point_reader<char32_t> reader{};
         char32_t cp{};
-        auto ret = reader.read(SCN_FWD(range), cp);
+        auto ret = reader.read(range, cp);
         if (SCN_UNLIKELY(!ret)) {
             return unexpected(ret.error());
         }
@@ -108,8 +105,8 @@ template <typename CharT>
 class reader_impl_for_char : public char_reader_base<char> {
 public:
     template <typename Range>
-    scan_expected<ranges_impl::iterator_t<Range>>
-    read_default(Range range, char& value, detail::locale_ref loc)
+    auto read_default(const Range& range, char& value, detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
         if constexpr (std::is_same_v<CharT, char>) {
@@ -123,11 +120,11 @@ public:
     }
 
     template <typename Range>
-    scan_expected<ranges_impl::iterator_t<Range>> read_specs(
-        Range range,
-        const detail::format_specs& specs,
-        char& value,
-        detail::locale_ref loc)
+    auto read_specs(const Range& range,
+                    const detail::format_specs& specs,
+                    char& value,
+                    detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if (specs.type == detail::presentation_type::none ||
             specs.type == detail::presentation_type::character) {
@@ -146,8 +143,10 @@ template <typename CharT>
 class reader_impl_for_wchar : public char_reader_base<wchar_t> {
 public:
     template <typename Range>
-    scan_expected<ranges_impl::iterator_t<Range>>
-    read_default(Range range, wchar_t& value, detail::locale_ref loc)
+    auto read_default(const Range& range,
+                      wchar_t& value,
+                      detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
         if constexpr (std::is_same_v<CharT, char>) {
@@ -159,11 +158,11 @@ public:
     }
 
     template <typename Range>
-    scan_expected<ranges_impl::iterator_t<Range>> read_specs(
-        Range range,
-        const detail::format_specs& specs,
-        wchar_t& value,
-        detail::locale_ref loc)
+    auto read_specs(const Range& range,
+                    const detail::format_specs& specs,
+                    wchar_t& value,
+                    detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if (specs.type == detail::presentation_type::none ||
             specs.type == detail::presentation_type::character) {
@@ -184,19 +183,21 @@ template <typename CharT>
 class reader_impl_for_code_point : public char_reader_base<char32_t> {
 public:
     template <typename Range>
-    scan_expected<ranges_impl::iterator_t<Range>>
-    read_default(Range range, char32_t& value, detail::locale_ref loc)
+    auto read_default(const Range& range,
+                      char32_t& value,
+                      detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
         return code_point_reader<char32_t>{}.read(range, value);
     }
 
     template <typename Range>
-    scan_expected<ranges_impl::iterator_t<Range>> read_specs(
-        Range range,
-        const detail::format_specs& specs,
-        char32_t& value,
-        detail::locale_ref loc)
+    auto read_specs(const Range& range,
+                    const detail::format_specs& specs,
+                    char32_t& value,
+                    detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(specs);
         return read_default(range, value, loc);

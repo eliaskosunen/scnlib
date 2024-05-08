@@ -65,15 +65,16 @@ TEST(TakeWidthViewTest, TakeMoreThanSource)
 }
 TEST(TakeWidthViewTest, FindCodeUnitNotInRange)
 {
-    auto v = scn::impl::take_width("åäö", 2);
-    auto it = scn::ranges_impl::find(v, ' ');
-    EXPECT_EQ(it, v.end());
+    auto v = scn::impl::take_width("åäö"sv, 2);
+    for (auto it = v.begin(); it != v.end(); ++it) {
+        EXPECT_NE(*it, ' ');
+    }
 }
 TEST(TakeWidthViewTest, BidirectionalSimpleCodePoints)
 {
     auto v = scn::impl::take_width("abc"sv, 2);
 
-    EXPECT_EQ(scn::ranges_impl::distance(v.begin(), v.end()), 2);
+    EXPECT_EQ(scn::ranges::distance(v.begin(), v.end()), 2);
 
     auto it = v.begin();
     EXPECT_NE(it, v.end());
@@ -82,7 +83,7 @@ TEST(TakeWidthViewTest, BidirectionalSimpleCodePoints)
     ++it;
     EXPECT_NE(it, v.end());
     EXPECT_EQ(*it, 'b');
-    EXPECT_EQ(scn::ranges_impl::distance(it, v.end()), 1);
+    EXPECT_EQ(scn::ranges::distance(it, v.end()), 1);
 
     ++it;
     EXPECT_EQ(it, v.end());
@@ -91,23 +92,23 @@ TEST(TakeWidthViewTest, BidirectionalSimpleCodePoints)
     EXPECT_NE(it, v.end());
     EXPECT_NE(it, v.begin());
     EXPECT_EQ(*it, 'b');
-    EXPECT_EQ(scn::ranges_impl::distance(it, v.end()), 1);
-    EXPECT_EQ(scn::ranges_impl::distance(v.begin(), it), 1);
+    EXPECT_EQ(scn::ranges::distance(it, v.end()), 1);
+    EXPECT_EQ(scn::ranges::distance(v.begin(), it), 1);
 
     --it;
     EXPECT_NE(it, v.end());
     EXPECT_EQ(it, v.begin());
     EXPECT_EQ(*it, 'a');
-    EXPECT_EQ(scn::ranges_impl::distance(it, v.end()), 2);
+    EXPECT_EQ(scn::ranges::distance(it, v.end()), 2);
 
-    scn::ranges_impl::advance(it, 2);
+    scn::ranges::advance(it, 2);
     EXPECT_EQ(it, v.end());
 }
 TEST(TakeWidthViewTest, BidirectionalComplexCodePoints)
 {
     auto v = scn::impl::take_width("aä"sv, 2);
 
-    EXPECT_EQ(scn::ranges_impl::distance(v.begin(), v.end()), 3);
+    EXPECT_EQ(scn::ranges::distance(v.begin(), v.end()), 3);
 
     auto it = v.begin();
     EXPECT_NE(it, v.end());
@@ -116,39 +117,39 @@ TEST(TakeWidthViewTest, BidirectionalComplexCodePoints)
     ++it;
     EXPECT_NE(it, v.end());
     EXPECT_EQ(*it, static_cast<char>(0xc3));
-    EXPECT_EQ(scn::ranges_impl::distance(it, v.end()), 2);
-    EXPECT_EQ(scn::ranges_impl::distance(v.begin(), it), 1);
+    EXPECT_EQ(scn::ranges::distance(it, v.end()), 2);
+    EXPECT_EQ(scn::ranges::distance(v.begin(), it), 1);
 
     ++it;
     EXPECT_NE(it, v.end());
     EXPECT_EQ(*it, static_cast<char>(0xa4));
-    EXPECT_EQ(scn::ranges_impl::distance(it, v.end()), 1);
-    EXPECT_EQ(scn::ranges_impl::distance(v.begin(), it), 2);
+    EXPECT_EQ(scn::ranges::distance(it, v.end()), 1);
+    EXPECT_EQ(scn::ranges::distance(v.begin(), it), 2);
 
     ++it;
     EXPECT_EQ(it, v.end());
-    EXPECT_EQ(scn::ranges_impl::distance(v.begin(), it), 3);
+    EXPECT_EQ(scn::ranges::distance(v.begin(), it), 3);
 
     --it;
     EXPECT_NE(it, v.end());
     EXPECT_NE(it, v.begin());
     EXPECT_EQ(*it, static_cast<char>(0xa4));
-    EXPECT_EQ(scn::ranges_impl::distance(it, v.end()), 1);
-    EXPECT_EQ(scn::ranges_impl::distance(v.begin(), it), 2);
+    EXPECT_EQ(scn::ranges::distance(it, v.end()), 1);
+    EXPECT_EQ(scn::ranges::distance(v.begin(), it), 2);
 
     --it;
     EXPECT_NE(it, v.end());
     EXPECT_NE(it, v.begin());
     EXPECT_EQ(*it, static_cast<char>(0xc3));
-    EXPECT_EQ(scn::ranges_impl::distance(it, v.end()), 2);
-    EXPECT_EQ(scn::ranges_impl::distance(v.begin(), it), 1);
+    EXPECT_EQ(scn::ranges::distance(it, v.end()), 2);
+    EXPECT_EQ(scn::ranges::distance(v.begin(), it), 1);
 
     --it;
     EXPECT_NE(it, v.end());
     EXPECT_EQ(it, v.begin());
     EXPECT_EQ(*it, 'a');
-    EXPECT_EQ(scn::ranges_impl::distance(it, v.end()), 3);
+    EXPECT_EQ(scn::ranges::distance(it, v.end()), 3);
 
-    scn::ranges_impl::advance(it, 3);
+    scn::ranges::advance(it, 3);
     EXPECT_EQ(it, v.end());
 }

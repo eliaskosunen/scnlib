@@ -237,8 +237,8 @@ auto parse_integer_value(std::basic_string_view<CharT> source,
         }
         if (SCN_UNLIKELY(start == end || char_to_int(*start) >= base)) {
             value = 0;
-            return ranges_impl::next(source.begin(),
-                                ranges_impl::distance(source.data(), start));
+            return ranges::next(source.begin(),
+                                ranges::distance(source.data(), start));
         }
     }
 
@@ -247,15 +247,15 @@ auto parse_integer_value(std::basic_string_view<CharT> source,
             SCN_TRY(ptr, parse_decimal_integer_fast(
                              detail::make_string_view_from_pointers(start, end),
                              value, sign == sign_type::minus_sign));
-            return ranges_impl::next(source.begin(),
-                                ranges_impl::distance(source.data(), ptr));
+            return ranges::next(source.begin(),
+                                ranges::distance(source.data(), ptr));
         }
     }
 
     SCN_TRY(ptr, parse_regular_integer(
                      detail::make_string_view_from_pointers(start, end), value,
                      base, sign == sign_type::minus_sign));
-    return ranges_impl::next(source.begin(), ranges_impl::distance(source.data(), ptr));
+    return ranges::next(source.begin(), ranges::distance(source.data(), ptr));
 }
 
 template <typename T>

@@ -32,22 +32,22 @@ struct parse_integer_prefix_result {
 };
 
 template <typename Range>
-parse_expected<detail::simple_borrowed_iterator_t<Range>>
-parse_integer_bin_base_prefix(Range&& range)
+auto parse_integer_bin_base_prefix(const Range& range)
+    -> parse_expected<ranges::const_iterator_t<Range>>
 {
-    return read_matching_string_classic_nocase(SCN_FWD(range), "0b");
+    return read_matching_string_classic_nocase(range, "0b");
 }
 
 template <typename Range>
-parse_expected<detail::simple_borrowed_iterator_t<Range>>
-parse_integer_hex_base_prefix(Range&& range)
+auto parse_integer_hex_base_prefix(const Range& range)
+    -> parse_expected<ranges::const_iterator_t<Range>>
 {
-    return read_matching_string_classic_nocase(SCN_FWD(range), "0x");
+    return read_matching_string_classic_nocase(range, "0x");
 }
 
 template <typename Range>
-parse_expected<detail::simple_borrowed_iterator_t<Range>>
-parse_integer_oct_base_prefix(Range&& range, bool& zero_parsed)
+auto parse_integer_oct_base_prefix(const Range& range, bool& zero_parsed)
+    -> parse_expected<ranges::const_iterator_t<Range>>
 {
     if (auto r = read_matching_string_classic_nocase(range, "0o")) {
         return *r;
@@ -62,8 +62,8 @@ parse_integer_oct_base_prefix(Range&& range, bool& zero_parsed)
 }
 
 template <typename Range>
-std::tuple<detail::simple_borrowed_iterator_t<Range>, int, bool>
-parse_integer_base_prefix_for_detection(Range&& range)
+auto parse_integer_base_prefix_for_detection(const Range& range)
+    -> std::tuple<ranges::const_iterator_t<Range>, int, bool>
 {
     if (auto r = parse_integer_hex_base_prefix(range)) {
         return {*r, 16, false};
@@ -77,12 +77,12 @@ parse_integer_base_prefix_for_detection(Range&& range)
             return {*r, 8, zero_parsed};
         }
     }
-    return {ranges_impl::begin(range), 10, false};
+    return {range.begin(), 10, false};
 }
 
 template <typename Range>
-std::tuple<detail::simple_borrowed_iterator_t<Range>, int, bool>
-parse_integer_base_prefix(Range&& range, int base)
+auto parse_integer_base_prefix(const Range& range, int base)
+    -> std::tuple<ranges::const_iterator_t<Range>, int, bool>
 {
     switch (base) {
         case 2:
@@ -105,37 +105,37 @@ parse_integer_base_prefix(Range&& range, int base)
 
         case 0:
             // detect base
-            return parse_integer_base_prefix_for_detection(SCN_FWD(range));
+            return parse_integer_base_prefix_for_detection(range);
 
         default:
             // no base prefix allowed
-            return {ranges_impl::begin(range), base, false};
+            return {range.begin(), base, false};
     }
 }
 
 template <typename Range>
-auto parse_integer_prefix(Range range, int base)
-    -> eof_expected<parse_integer_prefix_result<ranges_impl::iterator_t<Range>>>
+auto parse_integer_prefix(const Range& range, int base) -> eof_expected<
+    parse_integer_prefix_result<ranges::const_iterator_t<Range>>>
 {
     SCN_TRY(sign_result, parse_numeric_sign(range));
     auto [base_prefix_begin_it, sign] = sign_result;
 
     auto [digits_begin_it, parsed_base, parsed_zero] =
         parse_integer_base_prefix(
-            ranges_impl::subrange{base_prefix_begin_it, ranges_impl::end(range)}, base);
+            ranges::subrange{base_prefix_begin_it, range.end()}, base);
 
     if (parsed_zero) {
-        if (digits_begin_it == ranges_impl::end(range) ||
+        if (digits_begin_it == range.end() ||
             char_to_int(*digits_begin_it) >= 8) {
-            digits_begin_it = ranges_polyfill::prev_backtrack(
-                digits_begin_it, ranges_impl::begin(range));
+            digits_begin_it =
+                ranges::prev_backtrack(digits_begin_it, range.begin());
         }
         else {
             parsed_zero = false;
         }
     }
     else {
-        if (digits_begin_it == ranges_impl::end(range) ||
+        if (digits_begin_it == range.end() ||
             char_to_int(*digits_begin_it) >= parsed_base) {
             digits_begin_it = base_prefix_begin_it;
         }
@@ -144,23 +144,23 @@ auto parse_integer_prefix(Range range, int base)
     if (sign == sign_type::default_sign) {
         sign = sign_type::plus_sign;
     }
-    return parse_integer_prefix_result<ranges_impl::iterator_t<Range>>{
-        digits_begin_it, parsed_base, sign, parsed_zero};
+    return parse_integer_prefix_result{digits_begin_it, parsed_base, sign,
+                                       parsed_zero};
 }
 
 template <typename Range>
-auto parse_integer_digits_without_thsep(Range range, int base)
-    -> scan_expected<ranges_impl::iterator_t<Range>>
+auto parse_integer_digits_without_thsep(const Range& range, int base)
+    -> scan_expected<ranges::const_iterator_t<Range>>
 {
     using char_type = detail::char_t<Range>;
 
-    if constexpr (ranges_impl::contiguous_range<Range>) {
+    if constexpr (ranges::contiguous_range<Range>) {
         if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
             return unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "Failed to parse integer: No digits found");
         }
-        return ranges_impl::end(range);
+        return range.end();
     }
     else {
         return read_while1_code_unit(range,
@@ -175,21 +175,21 @@ auto parse_integer_digits_without_thsep(Range range, int base)
 
 template <typename Range, typename CharT>
 auto parse_integer_digits_with_thsep(
-    Range range,
+    const Range& range,
     int base,
     const localized_number_formatting_options<CharT>& locale_options)
-    -> scan_expected<std::tuple<ranges_impl::iterator_t<Range>,
+    -> scan_expected<std::tuple<ranges::const_iterator_t<Range>,
                                 std::basic_string<CharT>,
                                 std::string>>
 {
     std::basic_string<CharT> output;
     std::string thsep_indices;
-    auto it = ranges_impl::begin(range);
+    auto it = range.begin();
     bool digit_matched = false;
-    for (; it != ranges_impl::end(range); ++it) {
+    for (; it != range.end(); ++it) {
         if (*it == locale_options.thousands_sep) {
-            thsep_indices.push_back(static_cast<char>(
-                ranges_polyfill::pos_distance(ranges_impl::begin(range), it)));
+            thsep_indices.push_back(
+                static_cast<char>(ranges::distance(range.begin(), it)));
         }
         else if (char_to_int(*it) >= base) {
             break;
@@ -281,8 +281,8 @@ public:
     }
 
     template <typename Range, typename T>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>>
-    read_default_with_base(Range&& range, T& value, int base)
+    auto read_default_with_base(const Range& range, T& value, int base)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_TRY(prefix_result, parse_integer_prefix(range, base)
                                    .transform_error(make_eof_scan_error));
@@ -301,36 +301,35 @@ public:
             return std::next(prefix_result.iterator);
         }
 
-        SCN_TRY(after_digits_it, parse_integer_digits_without_thsep(
-                                     ranges_impl::subrange{prefix_result.iterator,
-                                                      ranges_impl::end(range)},
-                                     prefix_result.parsed_base));
+        SCN_TRY(after_digits_it,
+                parse_integer_digits_without_thsep(
+                    ranges::subrange{prefix_result.iterator, range.end()},
+                    prefix_result.parsed_base));
 
         auto buf = make_contiguous_buffer(
-            ranges_impl::subrange{prefix_result.iterator, after_digits_it});
+            ranges::subrange{prefix_result.iterator, after_digits_it});
         SCN_TRY(result_it,
                 parse_integer_value(buf.view(), value, prefix_result.sign,
                                     prefix_result.parsed_base));
 
-        return ranges_polyfill::batch_next(
-            prefix_result.iterator,
-            ranges_impl::distance(buf.view().begin(), result_it));
+        return ranges::next(prefix_result.iterator,
+                            ranges::distance(buf.view().begin(), result_it));
     }
 
     template <typename Range, typename T>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>>
-    read_default(Range&& range, T& value, detail::locale_ref loc)
+    auto read_default(const Range& range, T& value, detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
         return read_default_with_base(range, value, 0);
     }
 
     template <typename Range, typename T>
-    scan_expected<detail::simple_borrowed_iterator_t<Range>> read_specs(
-        Range&& range,
-        const detail::format_specs& specs,
-        T& value,
-        detail::locale_ref loc)
+    auto read_specs(const Range& range,
+                    const detail::format_specs& specs,
+                    T& value,
+                    detail::locale_ref loc)
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_TRY(prefix_result, parse_integer_prefix(range, specs.get_base(0))
                                    .transform_error(make_eof_scan_error));
@@ -360,19 +359,18 @@ public:
         if (SCN_LIKELY(!specs.localized)) {
             SCN_TRY(after_digits_it,
                     parse_integer_digits_without_thsep(
-                        ranges_impl::subrange{prefix_result.iterator,
-                                         ranges_impl::end(range)},
+                        ranges::subrange{prefix_result.iterator, range.end()},
                         prefix_result.parsed_base));
 
             auto buf = make_contiguous_buffer(
-                ranges_impl::subrange{prefix_result.iterator, after_digits_it});
+                ranges::subrange{prefix_result.iterator, after_digits_it});
             SCN_TRY(result_it,
                     parse_integer_value(buf.view(), value, prefix_result.sign,
                                         prefix_result.parsed_base));
 
-            return ranges_polyfill::batch_next(
+            return ranges::next(
                 prefix_result.iterator,
-                ranges_impl::distance(buf.view().begin(), result_it));
+                ranges::distance(buf.view().begin(), result_it));
         }
 
         auto locale_options =
@@ -382,17 +380,16 @@ public:
             localized_number_formatting_options<CharT>{loc};
 #endif
 
-        SCN_TRY(
-            parse_digits_result,
-            parse_integer_digits_with_thsep(
-                ranges_impl::subrange{prefix_result.iterator, ranges_impl::end(range)},
-                prefix_result.parsed_base, locale_options));
+        SCN_TRY(parse_digits_result,
+                parse_integer_digits_with_thsep(
+                    ranges::subrange{prefix_result.iterator, range.end()},
+                    prefix_result.parsed_base, locale_options));
         const auto& [after_digits_it, nothsep_source, thsep_indices] =
             parse_digits_result;
 
         if (!thsep_indices.empty()) {
             if (auto e = check_thsep_grouping(
-                    ranges_impl::subrange{prefix_result.iterator, after_digits_it},
+                    ranges::subrange{prefix_result.iterator, after_digits_it},
                     thsep_indices, locale_options.grouping);
                 SCN_UNLIKELY(!e)) {
                 return unexpected(e);
@@ -406,10 +403,10 @@ public:
             parse_integer_value(nothsep_source_view, value, prefix_result.sign,
                                 prefix_result.parsed_base));
 
-        return ranges_polyfill::batch_next(
+        return ranges::next(
             prefix_result.iterator,
-            ranges_impl::distance(nothsep_source_view.begin(), nothsep_source_it) +
-                ranges_impl::ssize(thsep_indices));
+            ranges::distance(nothsep_source_view.begin(), nothsep_source_it) +
+                ranges::ssize(thsep_indices));
     }
 };
 }  // namespace impl

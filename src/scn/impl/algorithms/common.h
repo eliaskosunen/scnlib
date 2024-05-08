@@ -18,7 +18,7 @@
 #pragma once
 
 #include <scn/detail/scan_buffer.h>
-#include <scn/impl/ranges_impl.h>
+#include <scn/impl/util/ranges_impl.h>
 #include <scn/util/string_view.h>
 
 namespace scn {
@@ -28,15 +28,15 @@ namespace impl {
 template <typename Range>
 bool is_entire_source_contiguous(const Range& r)
 {
-    if constexpr (ranges_impl::contiguous_range<Range> &&
-                  ranges_impl::sized_range<Range>) {
+    if constexpr (ranges::contiguous_range<Range> &&
+                  ranges::sized_range<Range>) {
         return true;
     }
     else if constexpr (std::is_same_v<
-                           ranges_impl::iterator_t<Range>,
+                           ranges::const_iterator_t<Range>,
                            typename detail::basic_scan_buffer<
                                detail::char_t<Range>>::forward_iterator>) {
-        auto beg = ranges_impl::begin(r);
+        auto beg = r.begin();
         if (!beg.stores_parent()) {
             return true;
         }
@@ -50,21 +50,21 @@ bool is_entire_source_contiguous(const Range& r)
 template <typename Range>
 bool is_segment_contiguous(const Range& r)
 {
-    if constexpr (ranges_impl::contiguous_range<Range> &&
-                  ranges_impl::sized_range<Range>) {
+    if constexpr (ranges::contiguous_range<Range> &&
+                  ranges::sized_range<Range>) {
         return true;
     }
     else if constexpr (std::is_same_v<
-                           ranges_impl::iterator_t<Range>,
+                           ranges::const_iterator_t<Range>,
                            typename detail::basic_scan_buffer<
                                detail::char_t<Range>>::forward_iterator>) {
-        auto beg = ranges_impl::begin(r);
+        auto beg = r.begin();
         if (beg.contiguous_segment().empty()) {
             return false;
         }
-        if constexpr (ranges_impl::common_range<Range>) {
+        if constexpr (ranges::common_range<Range>) {
             return beg.contiguous_segment().end() ==
-                   ranges_impl::end(r).contiguous_segment().end();
+                   ranges::end(r).contiguous_segment().end();
         }
         else {
             if (beg.stores_parent()) {
@@ -82,22 +82,22 @@ bool is_segment_contiguous(const Range& r)
 template <typename Range>
 std::size_t contiguous_beginning_size(const Range& r)
 {
-    if constexpr (ranges_impl::contiguous_range<Range> &&
-                  ranges_impl::sized_range<Range>) {
-        return ranges_polyfill::usize(r);
+    if constexpr (ranges::contiguous_range<Range> &&
+                  ranges::sized_range<Range>) {
+        return r.size();
     }
     else if constexpr (std::is_same_v<
-                           ranges_impl::iterator_t<Range>,
+                           ranges::const_iterator_t<Range>,
                            typename detail::basic_scan_buffer<
                                detail::char_t<Range>>::forward_iterator>) {
-        if constexpr (ranges_impl::common_range<Range>) {
-            auto seg = ranges_impl::begin(r).contiguous_segment();
-            auto dist = static_cast<size_t>(ranges_polyfill::pos_distance(
-                ranges_impl::begin(r), ranges_impl::end(r)));
+        if constexpr (ranges::common_range<Range>) {
+            auto seg = r.begin().contiguous_segment();
+            auto dist =
+                static_cast<size_t>(ranges::distance(r.begin(), r.end()));
             return std::min(seg.size(), dist);
         }
         else {
-            return ranges_impl::begin(r).contiguous_segment().size();
+            return r.begin().contiguous_segment().size();
         }
     }
     else {
@@ -108,22 +108,22 @@ std::size_t contiguous_beginning_size(const Range& r)
 template <typename Range>
 auto get_contiguous_beginning(const Range& r)
 {
-    if constexpr (ranges_impl::contiguous_range<Range> &&
-                  ranges_impl::sized_range<Range>) {
+    if constexpr (ranges::contiguous_range<Range> &&
+                  ranges::sized_range<Range>) {
         return r;
     }
     else if constexpr (std::is_same_v<
-                           ranges_impl::iterator_t<Range>,
+                           ranges::const_iterator_t<Range>,
                            typename detail::basic_scan_buffer<
                                detail::char_t<Range>>::forward_iterator>) {
-        if constexpr (ranges_impl::common_range<Range>) {
-            auto seg = ranges_impl::begin(r).contiguous_segment();
-            auto dist = static_cast<size_t>(ranges_polyfill::pos_distance(
-                ranges_impl::begin(r), ranges_impl::end(r)));
+        if constexpr (ranges::common_range<Range>) {
+            auto seg = r.begin().contiguous_segment();
+            auto dist =
+                static_cast<size_t>(ranges::distance(r.begin(), r.end()));
             return seg.substr(0, std::min(seg.size(), dist));
         }
         else {
-            return ranges_impl::begin(r).contiguous_segment();
+            return r.begin().contiguous_segment();
         }
     }
     else {
@@ -132,29 +132,31 @@ auto get_contiguous_beginning(const Range& r)
 }
 
 template <typename Range>
-auto get_as_contiguous(Range&& r)
+auto get_as_contiguous(const Range& r)
 {
     SCN_EXPECT(is_segment_contiguous(r));
-    if constexpr (ranges_impl::contiguous_range<Range> &&
-                  ranges_impl::sized_range<Range>) {
+
+    if constexpr (ranges::contiguous_range<Range> &&
+                  ranges::sized_range<Range>) {
         return r;
     }
     else if constexpr (std::is_same_v<
-                           ranges_impl::iterator_t<Range>,
+                           ranges::const_iterator_t<Range>,
                            typename detail::basic_scan_buffer<
                                detail::char_t<Range>>::forward_iterator>) {
-        if constexpr (ranges_impl::common_range<Range>) {
+        if constexpr (ranges::common_range<Range>) {
             return detail::make_string_view_from_pointers(
-                ranges_impl::begin(r).to_contiguous_segment_iterator(),
-                ranges_impl::end(r).to_contiguous_segment_iterator());
+                r.begin().to_contiguous_segment_iterator(),
+                r.end().to_contiguous_segment_iterator());
         }
         else {
-            return ranges_impl::begin(r).contiguous_segment();
+            return r.begin().contiguous_segment();
         }
     }
     else {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
+        // for return type deduction
         return std::basic_string_view<detail::char_t<Range>>{};
     }
 }
@@ -162,24 +164,23 @@ auto get_as_contiguous(Range&& r)
 template <typename Range>
 std::size_t guaranteed_minimum_size(const Range& r)
 {
-    if constexpr (ranges_impl::sized_range<Range>) {
-        return ranges_polyfill::usize(r);
+    if constexpr (ranges::sized_range<Range>) {
+        return r.size();
     }
     else if constexpr (std::is_same_v<
-                           ranges_impl::iterator_t<Range>,
+                           ranges::const_iterator_t<Range>,
                            typename detail::basic_scan_buffer<
                                detail::char_t<Range>>::forward_iterator>) {
-        if constexpr (ranges_impl::common_range<Range>) {
-            return static_cast<size_t>(ranges_impl::end(r).position() -
-                                       ranges_impl::begin(r).position());
+        if constexpr (ranges::common_range<Range>) {
+            return static_cast<size_t>(ranges::distance(r.begin(), r.end()));
         }
         else {
-            if (ranges_impl::begin(r).stores_parent()) {
+            if (r.begin().stores_parent()) {
                 return static_cast<size_t>(
-                    ranges_impl::begin(r).parent()->chars_available() -
-                    ranges_impl::begin(r).position());
+                    r.begin().parent()->chars_available() -
+                    r.begin().position());
             }
-            return ranges_impl::begin(r).contiguous_segment().size();
+            return r.begin().contiguous_segment().size();
         }
     }
     else {
