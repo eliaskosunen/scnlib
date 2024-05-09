@@ -19,7 +19,6 @@
 
 #include <scn/impl/algorithms/contiguous_range_factory.h>
 #include <scn/impl/algorithms/find_whitespace.h>
-#include <scn/impl/algorithms/read_simple.h>
 #include <scn/impl/algorithms/unicode_algorithms.h>
 #include <scn/impl/locale.h>
 #include <scn/impl/util/function_ref.h>
@@ -31,6 +30,53 @@ namespace scn {
 SCN_BEGIN_NAMESPACE
 
 namespace impl {
+template <typename Range>
+auto read_all(const Range& range) -> ranges::const_iterator_t<Range>
+{
+    return ranges::next(range.begin(), range.end());
+}
+
+template <typename Range>
+auto read_code_unit(const Range& range)
+    -> eof_expected<ranges::const_iterator_t<Range>>
+{
+    if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+        return unexpected(e);
+    }
+
+    return ranges::next(range.begin());
+}
+
+template <typename Range>
+auto read_exactly_n_code_units(const Range& range, std::ptrdiff_t count)
+    -> eof_expected<ranges::const_iterator_t<Range>>
+{
+    SCN_EXPECT(count >= 0);
+
+    if constexpr (ranges::sized_range<Range>) {
+        const auto sz = static_cast<std::ptrdiff_t>(range.size());
+        if (sz < count) {
+            return unexpected(eof_error::eof);
+        }
+
+        return ranges::next(range.begin(), count);
+    }
+    else {
+        auto it = range.begin();
+        if (guaranteed_minimum_size(range) >= count) {
+            return ranges::next(it, count);
+        }
+
+        for (std::ptrdiff_t i = 0; i < count; ++i, (void)++it) {
+            if (it == range.end()) {
+                return unexpected(eof_error::eof);
+            }
+        }
+
+        return it;
+    }
+}
+
 template <typename Range>
 auto read_code_point_into(const Range& range)
     -> iterator_value_result<ranges::const_iterator_t<Range>,

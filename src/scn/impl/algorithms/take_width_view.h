@@ -18,7 +18,7 @@
 #pragma once
 
 #include <scn/impl/algorithms/contiguous_range_factory.h>
-#include <scn/impl/algorithms/read_simple.h>
+#include <scn/impl/algorithms/read.h>
 #include <scn/impl/util/text_width.h>
 
 namespace scn {

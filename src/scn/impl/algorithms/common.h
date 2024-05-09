@@ -18,6 +18,7 @@
 #pragma once
 
 #include <scn/detail/scan_buffer.h>
+#include <scn/impl/util/internal_error.h>
 #include <scn/impl/util/ranges_impl.h>
 #include <scn/util/string_view.h>
 
@@ -25,6 +26,78 @@ namespace scn {
 SCN_BEGIN_NAMESPACE
 
 namespace impl {
+#if SCN_MSVC_DEBUG_ITERATORS
+#define SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND 1
+#else
+#define SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND 0
+#endif
+
+template <typename T>
+constexpr bool range_supports_nocopy() noexcept
+{
+#if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
+    return ranges::contiguous_range<T> ||
+           (ranges::random_access_range<T> &&
+            detail::can_make_address_from_iterator<ranges::iterator_t<T>>);
+#else
+    return ranges::contiguous_range<T>;
+#endif
+}
+
+template <typename R>
+constexpr auto range_nocopy_data(const R& r) noexcept
+{
+    static_assert(range_supports_nocopy<R>());
+#if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
+    return detail::to_address(ranges::begin(r));
+#else
+    return ranges::data(r);
+#endif
+}
+
+template <typename R>
+constexpr auto range_nocopy_size(const R& r) noexcept
+{
+    static_assert(range_supports_nocopy<R>());
+#if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
+    return static_cast<size_t>(ranges::distance(detail::to_address(r.begin()),
+                                                detail::to_address(r.end())));
+#else
+    return r.size();
+#endif
+}
+
+template <typename I, typename S>
+SCN_NODISCARD constexpr bool is_range_eof(I begin, S end)
+{
+#if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
+    if constexpr (ranges::contiguous_iterator<I> ||
+                  (ranges::random_access_iterator<I> &&
+                   detail::can_make_address_from_iterator<I>)) {
+        return detail::to_address(begin) == detail::to_address(end);
+    }
+    else
+#endif
+    {
+        return begin == end;
+    }
+}
+
+template <typename Range>
+SCN_NODISCARD constexpr bool is_range_eof(const Range& r)
+{
+    return is_range_eof(r.begin(), r.end());
+}
+
+template <typename Range>
+SCN_NODISCARD constexpr eof_error eof_check(const Range& range)
+{
+    if (SCN_UNLIKELY(is_range_eof(range))) {
+        return eof_error::eof;
+    }
+    return eof_error::good;
+}
+
 template <typename Range>
 bool is_entire_source_contiguous(const Range& r)
 {

@@ -16,9 +16,37 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/detail/scan.h>
+#include <scn/impl/locale.h>
+
+#include <locale>
 
 namespace scn {
 SCN_BEGIN_NAMESPACE
+
+// locale_ref
+
+#if !SCN_DISABLE_LOCALE
+
+namespace detail {
+template <typename Locale>
+locale_ref::locale_ref(const Locale& loc) : m_locale(&loc)
+{
+    static_assert(std::is_same_v<Locale, std::locale>);
+}
+
+template <typename Locale>
+Locale locale_ref::get() const
+{
+    static_assert(std::is_same_v<Locale, std::locale>);
+    return m_locale ? *static_cast<const std::locale*>(m_locale)
+                    : std::locale{};
+}
+
+template locale_ref::locale_ref(const std::locale&);
+template auto locale_ref::get() const -> std::locale;
+}  // namespace detail
+
+#endif
 
 namespace detail {
 scan_error handle_error(scan_error e)

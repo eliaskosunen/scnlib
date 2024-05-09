@@ -80,7 +80,6 @@ set(SCN_PUBLIC_HEADERS
 set(SCN_PRIVATE_HEADERS
         src/scn/impl/algorithms/common.h
         src/scn/impl/algorithms/contiguous_range_factory.h
-        src/scn/impl/algorithms/eof_check.h
         src/scn/impl/algorithms/find_whitespace.h
         src/scn/impl/algorithms/read.h
         src/scn/impl/algorithms/take_width_view.h
@@ -112,11 +111,8 @@ set(SCN_PRIVATE_SOURCES
         src/scn/scanner.cpp
         src/scn/vscan.cpp
 
-        src/scn/impl/locale.cpp
-
         src/scn/impl/algorithms/find_whitespace.cpp
 
-        src/scn/impl/reader/reader.cpp
         src/scn/impl/reader/float_reader.cpp
         src/scn/impl/reader/integer_reader.cpp
 )
