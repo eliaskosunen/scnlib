@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <../../../../include/scn/detail/ranges.h>
+#include <scn/detail/ranges.h>
 
 namespace scn {
 SCN_BEGIN_NAMESPACE
