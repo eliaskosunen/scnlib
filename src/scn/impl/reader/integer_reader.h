@@ -144,8 +144,8 @@ auto parse_integer_prefix(const Range& range, int base) -> eof_expected<
     if (sign == sign_type::default_sign) {
         sign = sign_type::plus_sign;
     }
-    return parse_integer_prefix_result{digits_begin_it, parsed_base, sign,
-                                       parsed_zero};
+    return parse_integer_prefix_result<ranges::const_iterator_t<Range>>{
+        digits_begin_it, parsed_base, sign, parsed_zero};
 }
 
 template <typename Range>
