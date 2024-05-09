@@ -85,15 +85,14 @@ target_link_libraries(my_program scn::scn)
 \subsection main-deps Dependencies
 
 scnlib internally depends on
-<a href="https://github.com/fastfloat/fast_float">fast_float</a> and
-<a href="https://github.com/simdutf/simdutf">simdutf</a>.
+<a href="https://github.com/fastfloat/fast_float">fast_float</a>.
 
-By default, the CMake machinery automatically fetches, builds, and links these libraries through `FetchContent`.
-These libraries are only used in the implementation, and they are not visible to the users of the library.
+By default, the CMake machinery automatically fetches, builds, and links it with `FetchContent`.
+It's only used in the implementation, and it isn't visible to the users of the library.
 
-Alternatively, by setting the CMake options `SCN_USE_EXTERNAL_FAST_FLOAT` or `SCN_USE_EXTERNAL_SIMDUTF` to `ON`,
-these libraries are searched for using `find_package`. Use these options, if you already have these libraries
-installed.
+Alternatively, by setting the CMake option `SCN_USE_EXTERNAL_FAST_FLOAT` to `ON`,
+fast_float is searched for using `find_package`. Use this option,
+if you already have the library installed.
 
 To enable support for regular expressions, a regex engine backend is required.
 The default option is to use `std::regex`, but an alternative can be picked
@@ -117,13 +116,6 @@ Library dependencies
 <th>Version</th>
 <th>Required</th>
 <th>Information</th>
-</tr>
-
-<tr>
-<td>simdutf</td>
-<td>`>= 4.0.0`</td>
-<td>✅</td>
-<td>Downloaded by default with `FetchContent`, controlled with `SCN_USE_EXTERNAL_SIMDUTF`.<br>If not using CMake, must be manually linked with your final build.</td>
 </tr>
 
 <tr>
@@ -181,11 +173,10 @@ $ sudo cpupower frequency-set --governor powersave
 
 \subsection main-without-cmake Without CMake
 
-As mentioned above, the implementation of scnlib depends on fast_float and simdutf.
-If you're not using CMake, you'll need to download and build these libraries yourself,
-and link them with your final binary.
-Note, that fast_float is a header-only library, so there's nothing to link,
-but simdutf isn't.
+As mentioned above, the implementation of scnlib depends on fast_float.
+If you're not using CMake, you'll need to download it yourself, and
+make it available for the build.
+Since fast_float is a header-only library, it doesn't need to be built.
 
 Headers for scnlib can be found from the `include/` directory, and source files from the `src/` directory.
 
@@ -194,16 +185,15 @@ Building and linking the library:
 \code{.sh}
 $ mkdir build
 $ cd build
-$ c++ -c -I../include/ ../src/*.cpp -Ipath-to-fast-float -Ipath-to-simdutf
+$ c++ -c -I../include/ ../src/*.cpp -Ipath-to-fast-float
 $ ar rcs libscn.a *.o
 \endcode
 
 `libscn.a` can then be linked, as usual, with your project.
-Don't forget to also include `simdutf` to be linked.
 
 \code{.sh}
 # in your project
-$ c++ ... -Lpath-to-scn/build -lscn -Lpath-to-simdutf -lsimdutf
+$ c++ ... -Lpath-to-scn/build -lscn
 \endcode
 
 Note, that scnlib requires at least C++17,
@@ -307,14 +297,6 @@ CMake build type configuration
 <th>CLI</th>
 <th>Default</th>
 <th>Description</th>
-</tr>
-
-<tr>
-<td>`SCN_USE_EXTERNAL_SIMDUTF`</td>
-<td>✅</td>
-<td>❌</td>
-<td>`OFF`</td>
-<td>Use `find_package` to get simdutf, instead of CMake `FetchContent`</td>
 </tr>
 
 <tr>

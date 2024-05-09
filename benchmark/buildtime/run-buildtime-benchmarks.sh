@@ -5,14 +5,14 @@ run () {
   shift
 
   echo "$file"
-  /usr/bin/time c++ -x c++ -I../include -L. -L./_deps/simdutf-build/src "./benchmark/buildtime/${file}" -w "$@"
+  /usr/bin/time c++ -x c++ -I../include -L. "./benchmark/buildtime/${file}" -w "$@"
 }
 
 run_benchmarks () {
   run empty.cpp "$@"
   run cstdio.cpp "$@"
   run iostream.cpp "$@"
-  run scnlib.cpp -lscn -lsimdutf "$@"
+  run scnlib.cpp -lscn "$@"
 }
 
 echo "Debug"

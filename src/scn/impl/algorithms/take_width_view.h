@@ -328,7 +328,7 @@ private:
     difference_type _get_cp_length_at_current() const
     {
         return static_cast<difference_type>(
-            code_point_length_by_starting_code_unit(*m_current));
+            detail::code_point_length_by_starting_code_unit(*m_current));
     }
 
     difference_type _get_width_at_current_cp_start(difference_type cplen) const
@@ -349,13 +349,9 @@ private:
             return 0;
         }
 
-        auto cp_view = make_contiguous_buffer(ranges::subrange{m_current, *r});
-        if (SCN_UNLIKELY(!validate_unicode(cp_view.view()))) {
-            return 0;
-        }
-
+        auto cp_str = std::basic_string<value_type>{m_current, *r};
         return static_cast<difference_type>(
-            calculate_valid_text_width(cp_view.view()));
+            calculate_text_width(std::basic_string_view<value_type>{cp_str}));
     }
 
     void _increment_current()

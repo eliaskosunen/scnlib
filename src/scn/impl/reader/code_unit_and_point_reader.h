@@ -50,7 +50,8 @@ public:
         -> scan_expected<ranges::const_iterator_t<SourceRange>>
     {
         auto result = read_code_point_into(range);
-        cp = decode_code_point_exhaustive_valid(result.value.view());
+        cp = detail::decode_code_point_exhaustive_valid(
+            std::basic_string_view<detail::char_t<SourceRange>>{result.value});
         return result.iterator;
     }
 };

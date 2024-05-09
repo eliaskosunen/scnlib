@@ -3,13 +3,13 @@ if (NOT SCN_FUZZING)
 endif ()
 
 add_library(scn_fuzz_base INTERFACE)
-target_link_libraries(scn_fuzz_base INTERFACE scn scn_fuzzer simdutf::simdutf)
+target_link_libraries(scn_fuzz_base INTERFACE scn scn_fuzzer scn_internal)
 
 function(add_fuzzer name)
     add_executable(scn_fuzz_${name}
             fuzz.h
             ${name}_fuzz.cpp)
-    target_link_libraries(scn_fuzz_${name} PRIVATE scn simdutf::simdutf)
+    target_link_libraries(scn_fuzz_${name} PRIVATE scn scn_internal)
     if (SCN_FUZZING_LDFLAGS)
         target_link_options(scn_fuzz_${name} PRIVATE ${SCN_FUZZING_LDFLAGS})
     else ()
@@ -21,9 +21,7 @@ add_fuzzer(int)
 add_fuzzer(float)
 add_fuzzer(string)
 add_fuzzer(format)
-
 add_fuzzer(string_impl)
-target_link_libraries(scn_fuzz_string_impl PRIVATE scn_internal)
 
 add_custom_target(scn_fuzz_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy

@@ -17,18 +17,7 @@
 
 #pragma once
 
-#include <scn/impl/locale.h>
-#include <scn/impl/unicode/unicode.h>
-
-#include <array>
-#include <iterator>
-
-#if SCN_POSIX
-#ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE
-#endif
-#include <cwchar>
-#endif
+#include <scn/impl/algorithms/unicode_algorithms.h>
 
 namespace scn {
 SCN_BEGIN_NAMESPACE
@@ -60,8 +49,7 @@ constexpr std::size_t calculate_text_width_for_fmt_v10(char32_t cp)
     return 1;
 }
 
-template <typename Dependent = void>
-std::size_t calculate_valid_text_width(char32_t cp)
+constexpr std::size_t calculate_valid_text_width(char32_t cp)
 {
     return calculate_text_width_for_fmt_v10(cp);
 }
@@ -76,8 +64,7 @@ std::size_t calculate_valid_text_width(std::basic_string_view<CharT> input)
     return count;
 }
 
-template <typename Dependent = void>
-std::size_t calculate_text_width(char32_t cp)
+constexpr std::size_t calculate_text_width(char32_t cp)
 {
     return calculate_text_width_for_fmt_v10(cp);
 }

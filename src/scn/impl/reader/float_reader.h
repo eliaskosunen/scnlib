@@ -18,6 +18,7 @@
 #pragma once
 
 #include <scn/impl/reader/numeric_reader.h>
+#include <scn/impl/util/ascii_ctype.h>
 
 #include <cmath>
 #include <limits>

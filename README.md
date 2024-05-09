@@ -467,9 +467,6 @@ https://github.com/tcbrindle/NanoRange
 fast_float for floating-point number parsing:  
 https://github.com/fastfloat/fast_float
 
-simdutf for Unicode handling:  
-https://github.com/simdutf/simdutf
-
 ## License
 
 scnlib is licensed under the Apache License, version 2.0.  

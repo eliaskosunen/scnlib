@@ -17,7 +17,7 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/impl/unicode/unicode.h>
+#include <scn/impl/algorithms/unicode_algorithms.h>
 
 #include <fstream>
 #include <sstream>

@@ -67,7 +67,7 @@ constexpr std::size_t utf16_code_point_length_by_starting_code_unit(U16 ch)
 }
 
 template <typename U>
-constexpr std::size_t utf_code_point_length_by_starting_code_unit(U ch)
+constexpr std::size_t code_point_length_by_starting_code_unit(U ch)
 {
     if constexpr (sizeof(U) == 1) {
         return utf8_code_point_length_by_starting_code_unit(ch);
@@ -223,26 +223,50 @@ template <typename CharT>
 inline constexpr char32_t decode_utf16_code_point_exhaustive(
     std::basic_string_view<CharT> input)
 {
-    if constexpr (sizeof(CharT) == 2) {
-        SCN_EXPECT(!input.empty() && input.size() <= 2);
+    static_assert(sizeof(CharT) == 2);
 
-        if (input.size() == 1) {
-            return static_cast<char32_t>(input[0]);
-        }
+    SCN_EXPECT(!input.empty() && input.size() <= 2);
 
-        const auto lead = static_cast<uint32_t>(input[0]) - 0xd800;
-        const auto trail = static_cast<uint32_t>(input[1]) - 0xdc00;
-        const auto cp = (lead << 10) | trail;
-        return static_cast<char32_t>(cp + 0x10000);
+    if (input.size() == 1) {
+        return static_cast<char32_t>(input[0]);
     }
-    else {
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
+
+    const auto lead = static_cast<uint32_t>(input[0]);
+    const auto trail = static_cast<uint32_t>(input[1]);
+    if (lead < 0xd800 || lead > 0xdbff || trail < 0xdc00 || trail > 0xdfff) {
+        SCN_UNLIKELY_ATTR
+        return invalid_code_point;
     }
+
+    const auto cp = ((lead - 0xd800) << 10) | (trail - 0xdc00);
+    return static_cast<char32_t>(cp + 0x10000);
 }
 
 template <typename CharT>
-inline constexpr char32_t decode_utf_code_point_exhaustive(
+inline constexpr char32_t decode_utf16_code_point_exhaustive_valid(
+    std::basic_string_view<CharT> input)
+{
+    static_assert(sizeof(CharT) == 2);
+
+    SCN_EXPECT(!input.empty() && input.size() <= 2);
+
+    if (input.size() == 1) {
+        return static_cast<char32_t>(input[0]);
+    }
+
+    const auto lead = static_cast<uint32_t>(input[0]);
+    const auto trail = static_cast<uint32_t>(input[1]);
+    SCN_EXPECT(lead >= 0xd800);
+    SCN_EXPECT(lead <= 0xdbff);
+    SCN_EXPECT(trail >= 0xdc00);
+    SCN_EXPECT(trail <= 0xdfff);
+
+    const auto cp = ((lead - 0xd800) << 10) | (trail - 0xdc00);
+    return static_cast<char32_t>(cp + 0x10000);
+}
+
+template <typename CharT>
+inline constexpr char32_t decode_code_point_exhaustive(
     std::basic_string_view<CharT> input)
 {
     if constexpr (sizeof(CharT) == 1) {
@@ -253,9 +277,30 @@ inline constexpr char32_t decode_utf_code_point_exhaustive(
     }
     else {
         SCN_EXPECT(input.size() == 1);
+        auto cp = static_cast<char32_t>(input.front());
+        if (SCN_UNLIKELY(cp >= invalid_code_point)) {
+            return invalid_code_point;
+        }
+        return cp;
+    }
+}
+
+template <typename CharT>
+inline constexpr char32_t decode_code_point_exhaustive_valid(
+    std::basic_string_view<CharT> input)
+{
+    if constexpr (sizeof(CharT) == 1) {
+        return decode_utf8_code_point_exhaustive_valid(input);
+    }
+    else if constexpr (sizeof(CharT) == 2) {
+        return decode_utf16_code_point_exhaustive_valid(input);
+    }
+    else {
+        SCN_EXPECT(input.size() == 1);
         return static_cast<char32_t>(input.front());
     }
 }
+
 }  // namespace detail
 
 SCN_END_NAMESPACE

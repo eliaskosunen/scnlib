@@ -16,7 +16,8 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/impl/algorithms/find_whitespace.h>
-#include <scn/impl/unicode/unicode_whitespace.h>
+#include <scn/impl/algorithms/unicode_algorithms.h>
+#include <scn/impl/util/ascii_ctype.h>
 #include <scn/impl/util/bits.h>
 #include <scn/impl/util/ranges_impl.h>
 

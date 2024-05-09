@@ -116,9 +116,6 @@ jobs:
           # gcc 12 isn't available on 20.04 (11 and 13 are in ubuntu-toolchain-r)
           - cxx: g++-12
             os: 20.04
-          # FIXME?: simdutf has problems with clang 6 and 7 (_ktestc_mask64_u8 undefined)
-          - cxx: clang++-7
-          - cxx: clang++-6.0
           # FIXME: Locally unreproducible ICE
           - cxx: clang++-9
           # FIXME: some weird linker issue: undefined reference to range_default_scanner default constructor
@@ -522,17 +519,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build simdutf
-        if: matrix.external_deps == 1
-        run: |
-          git clone https://github.com/simdutf/simdutf -b v5.2.3 --depth=1
-          cd simdutf
-          mkdir build
-          cd build
-          cmake -G Ninja ..
-          cmake --build .
-          sudo cmake --build . --target install
-
       - name: Build fast_float
         if: matrix.external_deps == 1
         run: |
@@ -550,7 +536,7 @@ jobs:
           cd ${{ runner.workspace }}/lib-build
           if [[ ${{ matrix.external_deps }} -eq 1 ]]; then
             cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF \
-                  -DSCN_USE_EXTERNAL_SIMDUTF=ON -DSCN_USE_EXTERNAL_FAST_FLOAT=ON \
+                  -DSCN_USE_EXTERNAL_FAST_FLOAT=ON \
                   $GITHUB_WORKSPACE
           else
             cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF $GITHUB_WORKSPACE

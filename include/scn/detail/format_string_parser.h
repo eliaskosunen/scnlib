@@ -598,13 +598,13 @@ constexpr char32_t parse_presentation_set_code_point(const CharT*& begin,
 {
     SCN_EXPECT(begin != end);
 
-    auto len = utf_code_point_length_by_starting_code_unit(*begin);
+    auto len = code_point_length_by_starting_code_unit(*begin);
     if (SCN_UNLIKELY(len == 0 || static_cast<size_t>(end - begin) < len)) {
         handler.on_error("Invalid encoding in format string");
         return invalid_code_point;
     }
 
-    const auto cp = decode_utf_code_point_exhaustive(
+    const auto cp = decode_code_point_exhaustive(
         std::basic_string_view<CharT>{begin, len});
     if (SCN_UNLIKELY(cp >= invalid_code_point)) {
         handler.on_error("Invalid encoding in format string");

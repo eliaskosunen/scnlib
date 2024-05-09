@@ -58,48 +58,9 @@ if (SCN_BENCHMARKS)
     list(APPEND SCN_OPTIONAL_DEPENDENCIES "google-benchmark")
 endif ()
 
-# simdutf
-
-# simdutf CMake includes tests if BUILD_TESTING is globally ON
-# we don't want to include tests of dependencies, so we need to do some manual work
-
-if (SCN_USE_EXTERNAL_SIMDUTF)
-    # Can't use the single-version-flag of `find_package`,
-    # because simdutf only claims compatibility with the same minor version
-    # We're compatible with _at least_ v4 and v5
-    find_package(simdutf CONFIG REQUIRED)
-    if (simdutf_VERSION VERSION_LESS 4.0.0)
-        message(FATAL_ERROR "Incompatible version of simdutf: at least 3.0.0 required, found ${simdutf_VERSION}")
-    endif ()
-else ()
-    FetchContent_Declare(
-            simdutf
-            GIT_REPOSITORY https://github.com/simdutf/simdutf.git
-            GIT_TAG v5.2.3
-            GIT_SHALLOW TRUE
-    )
-
-    set(SIMDUTF_BENCHMARKS_BEFORE_SIMDUTF ${SIMDUTF_BENCHMARKS})
-    set(BUILD_TESTING_BEFORE_SIMDUTF ${BUILD_TESTING})
-
-    set(SIMDUTF_BENCHMARKS OFF)
-    set(BUILD_TESTING OFF)
-
-    FetchContent_GetProperties(simdutf)
-    if (NOT simdutf_POPULATED)
-        FetchContent_Populate(simdutf)
-
-        add_subdirectory(${simdutf_SOURCE_DIR} ${simdutf_BINARY_DIR} EXCLUDE_FROM_ALL)
-    endif ()
-
-    set(SIMDUTF_BENCHMARKS ${SIMDUTF_BENCHMARKS_BEFORE_SIMDUTF})
-    set(BUILD_TESTING ${BUILD_TESTING_BEFORE_SIMDUTF})
-endif ()
-
 # fast_float
 
 if (SCN_USE_EXTERNAL_FAST_FLOAT)
-    # Same as above for simdutf
     find_package(FastFloat CONFIG REQUIRED)
     if (FastFloat_VERSION VERSION_LESS 5.0.0)
         message(FATAL_ERROR "Incompatible version of FastFloat: at least 5.0.0 required, found ${FastFloat_VERSION}")

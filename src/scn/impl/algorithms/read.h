@@ -20,9 +20,8 @@
 #include <scn/impl/algorithms/contiguous_range_factory.h>
 #include <scn/impl/algorithms/find_whitespace.h>
 #include <scn/impl/algorithms/read_simple.h>
+#include <scn/impl/algorithms/unicode_algorithms.h>
 #include <scn/impl/locale.h>
-#include <scn/impl/unicode/unicode.h>
-#include <scn/impl/unicode/unicode_whitespace.h>
 #include <scn/impl/util/function_ref.h>
 #include <scn/util/span.h>
 
@@ -35,32 +34,27 @@ namespace impl {
 template <typename Range>
 auto read_code_point_into(const Range& range)
     -> iterator_value_result<ranges::const_iterator_t<Range>,
-                             contiguous_range_factory<detail::char_t<Range>>>
+                             std::basic_string<detail::char_t<Range>>>
 {
     SCN_EXPECT(!is_range_eof(range));
+    using string_type = std::basic_string<detail::char_t<Range>>;
 
     auto it = range.begin();
-    const auto len = code_point_length_by_starting_code_unit(*it);
+    const auto len = detail::code_point_length_by_starting_code_unit(*it);
 
     if (SCN_UNLIKELY(len == 0)) {
-        for (; it != range.end(); ++it) {
-            if (code_point_length_by_starting_code_unit(*it) != 0) {
-                break;
-            }
-        }
-
-        return {it,
-                make_contiguous_buffer(ranges::subrange{range.begin(), it})};
+        ++it;
+        it = get_start_for_next_code_point(ranges::subrange{it, range.end()});
+        return {it, string_type{range.begin(), it}};
     }
 
     if (len == 1) {
         ++it;
-        return {it,
-                make_contiguous_buffer(ranges::subrange{range.begin(), it})};
+        return {it, string_type{range.begin(), it}};
     }
 
     ranges::advance(it, static_cast<std::ptrdiff_t>(len), range.end());
-    return {it, make_contiguous_buffer(ranges::subrange{range.begin(), it})};
+    return {it, string_type{range.begin(), it}};
 }
 
 template <typename Range>
@@ -223,88 +217,23 @@ auto read_while_code_units(const Range& range, const CodeUnits& needle)
 }
 
 template <typename Range>
-auto read_until_code_point_eager(const Range& range,
-                                 function_ref<bool(char32_t)> pred)
-    -> ranges::const_iterator_t<Range>
-{
-    static_assert(ranges::contiguous_range<Range> &&
-                  ranges::sized_range<Range>);
-
-    std::array<char32_t, 16> cp_buf{};
-    std::array<uint8_t, 16> idx_buf{};
-    auto it = range.begin();
-    while (it != range.end()) {
-        auto chunk_begin = it;
-        size_t code_point_count = 0;
-        uint8_t code_unit_idx = 0;
-        while (code_point_count < cp_buf.size() && it != range.end()) {
-            if (code_point_length_by_starting_code_unit(*it) != 0) {
-                idx_buf[code_point_count] = code_unit_idx;
-                ++code_point_count;
-            }
-            ++it;
-            ++code_unit_idx;
-        }
-
-        auto input = detail::make_string_view_from_pointers(
-            detail::to_address(chunk_begin), detail::to_address(it));
-        auto codepoints = span{cp_buf.data(), code_point_count};
-        auto transcode_result = transcode_possibly_invalid(input, codepoints);
-        if (SCN_UNLIKELY(!transcode_result)) {
-            auto end = it;
-            it = chunk_begin;
-            while (it != end) {
-                const auto [iter, value] =
-                    read_code_point_into(ranges::subrange{it, end});
-                const auto cp = decode_code_point_exhaustive(value.view());
-                if (pred(cp)) {
-                    return it;
-                }
-                it = iter;
-            }
-            continue;
-        }
-
-        for (size_t i = 0; i < code_point_count; ++i) {
-            if (pred(cp_buf[i])) {
-                return chunk_begin + idx_buf[i];
-            }
-        }
-    }
-
-    return it;
-}
-
-template <typename Range>
 auto read_until_code_point(const Range& range,
                            function_ref<bool(char32_t)> pred)
     -> ranges::const_iterator_t<Range>
 {
-    if constexpr (ranges::contiguous_range<Range> &&
-                  ranges::sized_range<Range>) {
-        return read_until_code_point_eager(range, pred);
-    }
-    else {
-        auto it = range.begin();
-        auto seg = get_contiguous_beginning(range);
-
-        if (auto seg_it = read_until_code_point_eager(seg, pred);
-            seg_it != seg.end()) {
-            return ranges::next(it, ranges::distance(seg.begin(), seg_it));
+    auto it = range.begin();
+    while (it != range.end()) {
+        const auto val =
+            read_code_point_into(ranges::subrange{it, range.end()});
+        const auto cp = detail::decode_code_point_exhaustive(
+            std::basic_string_view<detail::char_t<Range>>{val.value});
+        if (pred(cp)) {
+            return it;
         }
-
-        while (it != range.end()) {
-            const auto [iter, value] =
-                read_code_point_into(ranges::subrange{it, range.end()});
-            const auto cp = decode_code_point_exhaustive(value.view());
-            if (pred(cp)) {
-                return it;
-            }
-            it = iter;
-        }
-
-        return it;
+        it = val.iterator;
     }
+
+    return it;
 }
 
 template <typename Range>

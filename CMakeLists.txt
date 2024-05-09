@@ -84,6 +84,7 @@ set(SCN_PRIVATE_HEADERS
         src/scn/impl/algorithms/find_whitespace.h
         src/scn/impl/algorithms/read.h
         src/scn/impl/algorithms/take_width_view.h
+        src/scn/impl/algorithms/unicode_algorithms.h
 
         src/scn/impl/reader/reader.h
         src/scn/impl/reader/common.h
@@ -95,8 +96,6 @@ set(SCN_PRIVATE_HEADERS
         src/scn/impl/reader/integer_reader.h
         src/scn/impl/reader/pointer_reader.h
         src/scn/impl/reader/string_reader.h
-
-        src/scn/impl/unicode/unicode.h
 
         src/scn/impl/util/ascii_ctype.h
         src/scn/impl/util/bits.h
@@ -137,7 +136,6 @@ target_include_directories(scn
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
 target_link_libraries(scn PRIVATE
-        simdutf::simdutf
         FastFloat::fast_float
         ${SCN_REGEX_BACKEND_TARGET}
 )
@@ -149,7 +147,6 @@ add_library(scn::scn ALIAS scn)
 add_library(scn_internal INTERFACE)
 target_link_libraries(scn_internal INTERFACE
         scn::scn
-        simdutf::simdutf
         FastFloat::fast_float
         ${SCN_REGEX_BACKEND_TARGET}
 )

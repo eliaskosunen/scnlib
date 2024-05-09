@@ -17,7 +17,8 @@
 
 #include <scn/scan.h>
 #include <scn/xchar.h>
-#include <simdutf.h>
+
+#include <scn/impl/algorithms/unicode_algorithms.h>
 
 #include <sstream>
 
@@ -65,26 +66,8 @@ inline auto make_input_views(span<const uint8_t> data)
     auto wsv_reintepreted = std::wstring_view{wstring_buffer_reinterpreted};
 
     // wide, transcode to correct encoding (utf16 or utf32)
-    std::wstring_view wsv_transcoded;
-    if (simdutf::validate_utf8(sv.data(), sv.size())) {
-        if constexpr (sizeof(wchar_t) == 2) {
-            auto size = simdutf::utf16_length_from_utf8(sv.data(), sv.size());
-            wstring_buffer_transcoded_wide.resize(size);
-            (void)simdutf::convert_valid_utf8_to_utf16(
-                sv.data(), sv.size(),
-                reinterpret_cast<char16_t*>(
-                    wstring_buffer_transcoded_wide.data()));
-        }
-        else {
-            auto size = simdutf::utf32_length_from_utf8(sv.data(), sv.size());
-            wstring_buffer_transcoded_wide.resize(size);
-            (void)simdutf::convert_valid_utf8_to_utf32(
-                sv.data(), sv.size(),
-                reinterpret_cast<char32_t*>(
-                    wstring_buffer_transcoded_wide.data()));
-        }
-        wsv_transcoded = {wstring_buffer_transcoded_wide};
-    }
+    scn::impl::transcode_to_string(sv, wstring_buffer_transcoded_wide);
+    std::wstring_view wsv_transcoded{wstring_buffer_transcoded_wide};
 
     return std::make_tuple(sv, wsv_reintepreted, wsv_transcoded);
 }
