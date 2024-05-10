@@ -24,8 +24,6 @@ SCN_GCC_IGNORE("-Wnoexcept")
 SCN_GCC_IGNORE("-Wrestrict")
 
 #include <cstddef>
-#include <cstdint>
-#include <string>
 #include <type_traits>
 
 SCN_GCC_POP

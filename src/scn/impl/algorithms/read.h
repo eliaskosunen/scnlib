@@ -21,7 +21,6 @@
 #include <scn/impl/algorithms/find_whitespace.h>
 #include <scn/impl/algorithms/unicode_algorithms.h>
 #include <scn/impl/locale.h>
-#include <scn/impl/util/function_ref.h>
 #include <scn/util/span.h>
 
 #include <algorithm>

@@ -151,9 +151,8 @@ inline constexpr scan_expected<wchar_t> encode_code_point_as_wide_character(
 }
 
 template <typename SourceCharT, typename DestCharT>
-constexpr void transcode_to_string_impl_to32(
-    std::basic_string_view<SourceCharT> src,
-    std::basic_string<DestCharT>& dest)
+void transcode_to_string_impl_to32(std::basic_string_view<SourceCharT> src,
+                                   std::basic_string<DestCharT>& dest)
 {
     static_assert(sizeof(DestCharT) == 4);
 
@@ -172,7 +171,7 @@ constexpr void transcode_to_string_impl_to32(
     }
 }
 template <typename SourceCharT, typename DestCharT>
-constexpr void transcode_valid_to_string_impl_to32(
+void transcode_valid_to_string_impl_to32(
     std::basic_string_view<SourceCharT> src,
     std::basic_string<DestCharT>& dest)
 {
@@ -190,9 +189,8 @@ constexpr void transcode_valid_to_string_impl_to32(
 }
 
 template <bool VerifiedValid, typename SourceCharT, typename DestCharT>
-constexpr void transcode_to_string_impl_32to8(
-    std::basic_string_view<SourceCharT> src,
-    std::basic_string<DestCharT>& dest)
+void transcode_to_string_impl_32to8(std::basic_string_view<SourceCharT> src,
+                                    std::basic_string<DestCharT>& dest)
 {
     static_assert(sizeof(SourceCharT) == 4);
     static_assert(sizeof(DestCharT) == 1);
@@ -236,9 +234,8 @@ constexpr void transcode_to_string_impl_32to8(
 }
 
 template <bool VerifiedValid, typename SourceCharT, typename DestCharT>
-constexpr void transcode_to_string_impl_32to16(
-    std::basic_string_view<SourceCharT> src,
-    std::basic_string<DestCharT>& dest)
+void transcode_to_string_impl_32to16(std::basic_string_view<SourceCharT> src,
+                                     std::basic_string<DestCharT>& dest)
 {
     static_assert(sizeof(SourceCharT) == 4);
     static_assert(sizeof(DestCharT) == 2);
@@ -261,8 +258,8 @@ constexpr void transcode_to_string_impl_32to16(
 }
 
 template <typename SourceCharT, typename DestCharT>
-constexpr void transcode_to_string(std::basic_string_view<SourceCharT> src,
-                                   std::basic_string<DestCharT>& dest)
+void transcode_to_string(std::basic_string_view<SourceCharT> src,
+                         std::basic_string<DestCharT>& dest)
 {
     static_assert(sizeof(SourceCharT) != sizeof(DestCharT));
 
@@ -292,9 +289,8 @@ constexpr void transcode_to_string(std::basic_string_view<SourceCharT> src,
     }
 }
 template <typename SourceCharT, typename DestCharT>
-constexpr void transcode_valid_to_string(
-    std::basic_string_view<SourceCharT> src,
-    std::basic_string<DestCharT>& dest)
+void transcode_valid_to_string(std::basic_string_view<SourceCharT> src,
+                               std::basic_string<DestCharT>& dest)
 {
     static_assert(sizeof(SourceCharT) != sizeof(DestCharT));
 

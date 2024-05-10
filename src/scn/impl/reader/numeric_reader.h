@@ -18,7 +18,6 @@
 #pragma once
 
 #include <scn/impl/algorithms/read.h>
-#include <scn/impl/reader/common.h>
 
 namespace scn {
 SCN_BEGIN_NAMESPACE

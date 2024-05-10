@@ -20,10 +20,8 @@
 #include <scn/impl/util/ranges_impl.h>
 #include <scn/util/string_view.h>
 
-#include <memory>
 #include <optional>
 #include <type_traits>
-#include <variant>
 
 namespace scn {
 SCN_BEGIN_NAMESPACE

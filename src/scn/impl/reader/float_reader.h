@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <scn/impl/reader/common.h>
 #include <scn/impl/reader/numeric_reader.h>
 #include <scn/impl/util/ascii_ctype.h>
 
