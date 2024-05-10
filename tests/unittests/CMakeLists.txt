@@ -39,6 +39,8 @@ add_executable(scn_tests
         result_test.cpp
         scan_test.cpp
         source_test.cpp
+        standalone_fwd_include_test.cpp
+        standalone_scan_include_test.cpp
         string_test.cpp
         string_view_test.cpp
         unicode_test.cpp

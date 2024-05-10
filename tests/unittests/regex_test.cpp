@@ -17,9 +17,9 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/detail/regex.h>
-#include <scn/detail/scan.h>
-#include <scn/detail/xchar.h>
+#include <scn/regex.h>
+#include <scn/scan.h>
+#include <scn/xchar.h>
 
 using namespace std::string_view_literals;
 
@@ -269,11 +269,12 @@ TEST(RegexTest, NoCaseAndNoCaptureFlagMatches)
                     testing::Property(&scn::regex_match::get, "FooBar123"sv))));
 }
 
-TEST(RegexTest, EscapedSlashInPattern) {
+TEST(RegexTest, EscapedSlashInPattern)
+{
     auto r = scn::scan<std::string_view>("foo/bar", "{:/[a-z]+\\/[a-z]+/}");
     ASSERT_TRUE(r);
     EXPECT_TRUE(r->range().empty());
     EXPECT_THAT(r->value(), "foo/bar");
 }
 
-#endif // !SCN_DISABLE_REGEX
+#endif  // !SCN_DISABLE_REGEX

@@ -19,7 +19,7 @@
 
 #include "reader_test_common.h"
 
-#include <scn/impl/reader/integer_reader.h>
+#include <scn/impl.h>
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wheader-hygiene")

@@ -17,8 +17,8 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/detail/scan.h>
-#include <scn/detail/xchar.h>
+#include <scn/scan.h>
+#include <scn/xchar.h>
 
 TEST(FormatStringTest, ConstructFromLiteral)
 {

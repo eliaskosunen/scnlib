@@ -47,7 +47,7 @@ if __name__ == '__main__':
     text = re.sub(r'''(\s|^)VERSION\s+[0-9](?:[.][0-9]){2}''', rf"\1VERSION {version_str}", text, count=1, flags=re.I)
     write_text_file(path, text)
 
-    path = root / r'include/scn/detail/config.h'
+    path = root / r'include/scn/fwd.h'
     text = read_text_file(path)
     text = re.sub(r'''(\s*#\s*define\s+SCN_VERSION)\s+SCN_COMPILER\([0-9]+,\s*[0-9]+,\s*[0-9]+\)''',
                   rf"\1 SCN_COMPILER({version[0]}, {version[1]}, {version[2]})", text)

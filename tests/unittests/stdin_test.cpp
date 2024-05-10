@@ -16,6 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/scan.h>
+
 #include <iostream>
 
 #include "wrapped_gtest.h"

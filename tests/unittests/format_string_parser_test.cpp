@@ -17,7 +17,7 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/detail/format_string_parser.h>
+#include <scn/scan.h>
 
 TEST(FormatStringParserTest, DefaultConstructedSpecs)
 {

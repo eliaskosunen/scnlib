@@ -15,10 +15,9 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "scn/fwd.h"
 #include "test_common.h"
 
-#include <scn/detail/scan.h>
+#include <scn/scan.h>
 
 #include <deque>
 #include <forward_list>

@@ -15,7 +15,6 @@ undocumented = true
 
 [sources]
 paths = ['pages', '../include/scn']
-recursive_paths = ['../include/scn/detail', '../include/scn/util']
 patterns = ['*.h', '*.hpp', '*.md', '*.dox']
 strip_paths = ['../include', 'pages']
 #extract_all = true

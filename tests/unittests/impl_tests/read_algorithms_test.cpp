@@ -17,7 +17,7 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/impl/algorithms/read.h>
+#include <scn/impl.h>
 
 using namespace std::string_view_literals;
 

@@ -17,7 +17,7 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/detail/error.h>
+#include <scn/scan.h>
 
 TEST(ErrorTest, General)
 {

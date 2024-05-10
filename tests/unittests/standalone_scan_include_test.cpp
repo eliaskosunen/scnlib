@@ -15,23 +15,6 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#pragma once
+#include <scn/scan.h>
 
-#include <scn/util/string_view.h>
-
-namespace scn {
-SCN_BEGIN_NAMESPACE
-
-namespace impl {
-std::string_view::iterator find_classic_space_narrow_fast(
-    std::string_view source);
-
-std::string_view::iterator find_classic_nonspace_narrow_fast(
-    std::string_view source);
-
-std::string_view::iterator find_nondecimal_digit_narrow_fast(
-    std::string_view source);
-}  // namespace impl
-
-SCN_END_NAMESPACE
-}  // namespace scn
+// empty

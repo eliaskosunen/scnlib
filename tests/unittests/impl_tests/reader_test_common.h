@@ -19,7 +19,7 @@
 
 #include "../test_common.h"
 
-#include <scn/impl/reader/reader.h>
+#include <scn/impl.h>
 
 template <bool Localized,
           typename CharT,

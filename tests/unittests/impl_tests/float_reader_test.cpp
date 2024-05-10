@@ -17,7 +17,7 @@
 
 #include "reader_test_common.h"
 
-#include <scn/impl/reader/float_reader.h>
+#include <scn/impl.h>
 
 #include <cmath>
 

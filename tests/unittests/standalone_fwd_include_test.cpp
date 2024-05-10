@@ -15,11 +15,6 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#pragma once
+#include <scn/fwd.h>
 
-#include <scn/scan.h>
-
-#include <scn/istream.h>
-#include <scn/ranges.h>
-#include <scn/regex.h>
-#include <scn/xchar.h>
+// empty

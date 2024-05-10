@@ -17,7 +17,7 @@
 
 #include "reader_test_common.h"
 
-#include <scn/impl/reader/bool_reader.h>
+#include <scn/impl.h>
 
 using namespace std::string_view_literals;
 

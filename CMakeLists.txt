@@ -36,87 +36,18 @@ include(cmake/dependencies.cmake)
 include(cmake/sanitizers.cmake)
 
 set(SCN_PUBLIC_HEADERS
-        include/scn/all.h
         include/scn/fwd.h
         include/scn/scan.h
         include/scn/ranges.h
         include/scn/regex.h
         include/scn/istream.h
         include/scn/xchar.h
-
-        include/scn/detail/config.h
-
-        include/scn/detail/args.h
-        include/scn/detail/context.h
-        include/scn/detail/error.h
-        include/scn/detail/format_string.h
-        include/scn/detail/format_string_parser.h
-        include/scn/detail/input_map.h
-        include/scn/detail/istream_scanner.h
-        include/scn/detail/locale_ref.h
-        include/scn/detail/parse_context.h
-        include/scn/detail/pp.h
-        include/scn/detail/pp_detect.h
-        include/scn/detail/ranges.h
-        include/scn/detail/regex.h
-        include/scn/detail/scanner_range.h
-        include/scn/detail/ranges.h
-        include/scn/detail/scan.h
-        include/scn/detail/scan_buffer.h
-        include/scn/detail/scanner.h
-        include/scn/detail/scanner_builtin.h
-        include/scn/detail/unicode.h
-        include/scn/detail/visitor.h
-        include/scn/detail/vscan.h
-        include/scn/detail/xchar.h
-
-        include/scn/util/algorithm.h
-        include/scn/util/expected.h
-        include/scn/util/memory.h
-        include/scn/util/meta.h
-        include/scn/util/span.h
-        include/scn/util/string_view.h
 )
 set(SCN_PRIVATE_HEADERS
-        src/scn/impl/algorithms/common.h
-        src/scn/impl/algorithms/contiguous_range_factory.h
-        src/scn/impl/algorithms/find_whitespace.h
-        src/scn/impl/algorithms/read.h
-        src/scn/impl/algorithms/take_width_view.h
-        src/scn/impl/algorithms/unicode_algorithms.h
-
-        src/scn/impl/reader/reader.h
-        src/scn/impl/reader/common.h
-        src/scn/impl/reader/numeric_reader.h
-
-        src/scn/impl/reader/code_unit_and_point_reader.h
-        src/scn/impl/reader/bool_reader.h
-        src/scn/impl/reader/float_reader.h
-        src/scn/impl/reader/integer_reader.h
-        src/scn/impl/reader/pointer_reader.h
-        src/scn/impl/reader/string_reader.h
-
-        src/scn/impl/util/ascii_ctype.h
-        src/scn/impl/util/bits.h
-        src/scn/impl/util/function_ref.h
-        src/scn/impl/util/internal_error.h
-        src/scn/impl/util/ranges_impl.h
-        src/scn/impl/util/text_width.h
-
-        src/scn/impl/locale.h
+        src/scn/impl.h
 )
 set(SCN_PRIVATE_SOURCES
-        src/scn/scan.cpp
-        src/scn/scan_buffer.cpp
-        src/scn/scanner.cpp
-        src/scn/vscan.cpp
-
-        src/scn/impl/algorithms/find_whitespace.cpp
-
-        src/scn/impl/reader/float_reader.cpp
-        src/scn/impl/reader/integer_reader.cpp
-)
-set(SCN_PRIVATE_SOURCES_WITH_IOSTREAMS
+        src/scn/impl.cpp
 )
 
 add_library(scn

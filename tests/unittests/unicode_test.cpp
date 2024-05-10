@@ -17,7 +17,7 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/detail/unicode.h>
+#include <scn/scan.h>
 
 using namespace std::string_view_literals;
 

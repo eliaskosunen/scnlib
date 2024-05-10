@@ -17,8 +17,7 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/detail/scan_buffer.h>
-#include <scn/impl/util/ranges_impl.h>
+#include <scn/scan.h>
 
 #include <deque>
 

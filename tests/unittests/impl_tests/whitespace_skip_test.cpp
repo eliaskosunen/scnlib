@@ -17,8 +17,7 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/impl/reader/common.h>
-#include <scn/util/memory.h>
+#include <scn/impl.h>
 
 namespace {
     std::ptrdiff_t PositionOfFirstNonSpace(std::string_view src)

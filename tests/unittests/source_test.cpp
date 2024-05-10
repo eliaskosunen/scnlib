@@ -17,8 +17,7 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/detail/result.h>
-#include <scn/detail/scan.h>
+#include <scn/scan.h>
 
 using ::testing::Test;
 

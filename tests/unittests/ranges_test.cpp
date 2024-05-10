@@ -21,8 +21,8 @@
 #include <set>
 #include <vector>
 
-#include <scn/detail/scan.h>
-#include <scn/detail/scanner_range.h>
+#include <scn/ranges.h>
+#include <scn/scan.h>
 
 TEST(RangesTest, VectorSequence)
 {

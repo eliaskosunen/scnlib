@@ -17,7 +17,7 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/impl/util/bits.h>
+#include <scn/impl.h>
 
 TEST(BitsTest, CountTrailingZeroes)
 {

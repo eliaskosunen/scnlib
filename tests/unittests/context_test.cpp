@@ -17,4 +17,4 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/detail/context.h>
+#include <scn/scan.h>

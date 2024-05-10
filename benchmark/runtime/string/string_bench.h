@@ -17,7 +17,7 @@
 
 #include "bench_helpers.h"
 
-#include <scn/impl/algorithms/unicode_algorithms.h>
+#include <scn/impl.h>
 
 #include <fstream>
 #include <random>

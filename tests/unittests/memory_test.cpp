@@ -17,7 +17,7 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/util/memory.h>
+#include <scn/scan.h>
 
 TEST(ToAddressTest, Pointer)
 {

@@ -15,8 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <scn/detail/istream_scanner.h>
-#include <scn/detail/scan.h>
+#include <scn/istream.h>
 
 #include "wrapped_gtest.h"
 

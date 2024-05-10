@@ -17,7 +17,7 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/impl/algorithms/contiguous_range_factory.h>
+#include <scn/impl.h>
 
 TEST(StringViewWrapperTest, DefaultConstructible)
 {

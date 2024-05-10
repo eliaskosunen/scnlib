@@ -17,7 +17,7 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/impl/util/function_ref.h>
+#include <scn/impl.h>
 
 int identity_fn(int a)
 {
