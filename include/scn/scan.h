@@ -23,7 +23,6 @@
 #include <array>
 #include <cstdio>
 #include <cstring>
-#include <cwchar>
 #include <iterator>
 #include <limits>
 #include <optional>
@@ -4864,9 +4863,11 @@ auto make_scan_buffer(const Range& range)
     return _make_scan_buffer::impl(range, priority_tag<4>{});
 }
 
-template <typename Range,
-          std::enable_if_t<!std::is_reference_v<Range> &&
-                           !ranges::borrowed_range<Range>>* = nullptr>
+template <
+    typename Range,
+    std::enable_if_t<
+        !std::is_reference_v<Range> && !ranges::borrowed_range<Range> &&
+        !std::is_same_v<std::FILE*, std::remove_reference_t<Range>>>* = nullptr>
 auto make_scan_buffer(Range&&) = delete;
 }  // namespace detail
 

@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <clocale>
 #include <cmath>
+#include <cwchar>
 #include <functional>
 #include <vector>
 
