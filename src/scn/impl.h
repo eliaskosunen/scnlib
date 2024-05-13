@@ -2645,25 +2645,6 @@ public:
                 }
 #endif
 
-#if 0
-    friend constexpr ranges::iter_rvalue_reference_t<It>
-    iter_move(const counted_width_iterator& i) noexcept(
-        noexcept(ranges_impl::iter_move(i.m_current)))
-    {
-        return ranges_impl::iter_move(i.m_current);
-    }
-
-    template <typename OtherIt, typename OtherS>
-    friend constexpr auto iter_swap(
-        const counted_width_iterator<It, S>& a,
-        const counted_width_iterator<OtherIt, OtherS>&
-            b) noexcept(noexcept(ranges_impl::iter_swap(a.m_current, b.m_current)))
-        -> std::enable_if_t<ranges_std::indirectly_swappable<OtherIt, It>>
-    {
-        ranges_impl::iter_swap(a.m_current, b.m_current);
-    }
-#endif
-
 private:
     difference_type _get_cp_length_at_current() const
     {
@@ -3351,9 +3332,8 @@ auto parse_integer_base_prefix(const Range& range, int base)
 }
 
 template <typename Range>
-auto parse_integer_prefix(const Range& range, int base)
-    -> eof_expected<
-        parse_integer_prefix_result<ranges::const_iterator_t<Range>>>
+auto parse_integer_prefix(const Range& range, int base) -> eof_expected<
+    parse_integer_prefix_result<ranges::const_iterator_t<Range>>>
 {
     SCN_TRY(sign_result, parse_numeric_sign(range));
     auto [base_prefix_begin_it, sign] = sign_result;
@@ -3906,8 +3886,8 @@ private:
     }
 
     template <typename Range>
-    auto read_exponent(const Range& range,
-                       std::string_view exp) -> ranges::const_iterator_t<Range>
+    auto read_exponent(const Range& range, std::string_view exp)
+        -> ranges::const_iterator_t<Range>
     {
         if (auto r = read_one_of_code_unit(range, exp)) {
             auto beg_exp_it = range.begin();
@@ -4151,9 +4131,9 @@ private:
     float_kind m_kind{float_kind::tbd};
 };
 
-#define SCN_DECLARE_FLOAT_READER_TEMPLATE(CharT, FloatT)        \
-    extern template auto float_reader<CharT>::parse_value_impl( \
-        FloatT&) -> scan_expected<std::ptrdiff_t>;
+#define SCN_DECLARE_FLOAT_READER_TEMPLATE(CharT, FloatT)                \
+    extern template auto float_reader<CharT>::parse_value_impl(FloatT&) \
+        -> scan_expected<std::ptrdiff_t>;
 
 #if !SCN_DISABLE_TYPE_FLOAT
 SCN_DECLARE_FLOAT_READER_TEMPLATE(char, float)
@@ -4452,8 +4432,7 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                                      "Regex matching failed with an error");
     }
 
-    return input.begin() +
-           ranges_impl::distance(input.data(), matches[0].second);
+    return input.begin() + ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
     static_assert(std::is_same_v<CharT, char>);
     std::string flagged_pattern{};
@@ -4480,8 +4459,7 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
         return unexpected_scan_error(scan_error::invalid_scanned_value,
                                      "Regular expression didn't match");
     }
-    return input.begin() +
-           ranges_impl::distance(input.data(), new_input.data());
+    return input.begin() + ranges::distance(input.data(), new_input.data());
 #endif  // SCN_REGEX_BACKEND == ...
 }
 
@@ -4597,24 +4575,23 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     }
 
     value.resize(matches.size());
-    ranges_impl::transform(
-        matches, value.begin(),
+    std::transform(
+        matches.begin(), matches.end(), value.begin(),
         [&](auto&& match) -> std::optional<basic_regex_match<CharT>> {
             if (!match.matched)
                 return std::nullopt;
             auto sv = detail::make_string_view_from_pointers(match.first,
                                                              match.second);
 
-            if (auto name_it = ranges_impl::find_if(
-                    names,
+            if (auto name_it = std::find_if(
+                    names.begin(), names.end(),
                     [&](const auto& name) { return match == matches[name]; });
                 name_it != names.end()) {
                 return basic_regex_match<CharT>{sv, *name_it};
             }
             return sv;
         });
-    return input.begin() +
-           ranges_impl::distance(input.data(), matches[0].second);
+    return input.begin() + ranges::distance(input.data(), matches[0].second);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
     static_assert(std::is_same_v<CharT, char>);
     std::string flagged_pattern{};
@@ -4638,10 +4615,10 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     std::vector<std::optional<std::string_view>> matches(max_matches_n);
     std::vector<re2::RE2::Arg> match_args(max_matches_n);
     std::vector<re2::RE2::Arg*> match_argptrs(max_matches_n);
-    ranges_impl::transform(matches, match_args.begin(),
-                           [](auto& val) { return re2::RE2::Arg{&val}; });
-    ranges_impl::transform(match_args, match_argptrs.begin(),
-                           [](auto& arg) { return &arg; });
+    std::transform(matches.begin(), matches.end(), match_args.begin(),
+                   [](auto& val) { return re2::RE2::Arg{&val}; });
+    std::transform(match_args.begin(), match_args.end(), match_argptrs.begin(),
+                   [](auto& arg) { return &arg; });
     auto new_input = detail::make_string_view_from_pointers(
         detail::to_address(input.begin()), detail::to_address(input.end()));
     bool found = re2::RE2::ConsumeN(&new_input, re, match_argptrs.data(),
@@ -4653,12 +4630,12 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     value.resize(matches.size() + 1);
     value[0] =
         detail::make_string_view_from_pointers(input.data(), new_input.data());
-    ranges_impl::transform(matches, value.begin() + 1,
-                           [&](auto&& match) -> std::optional<regex_match> {
-                               if (!match)
-                                   return std::nullopt;
-                               return *match;
-                           });
+    std::transform(matches.begin(), matches.end(), value.begin() + 1,
+                   [&](auto&& match) -> std::optional<regex_match> {
+                       if (!match)
+                           return std::nullopt;
+                       return *match;
+                   });
     {
         const auto& capturing_groups = re.CapturingGroupNames();
         for (size_t i = 1; i < value.size(); ++i) {
@@ -4669,8 +4646,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
             };
         }
     }
-    return input.begin() +
-           ranges_impl::distance(input.data(), new_input.data());
+    return input.begin() + ranges::distance(input.data(), new_input.data());
 #endif  // SCN_REGEX_BACKEND == ...
 }
 
@@ -5465,8 +5441,10 @@ struct bool_reader : public bool_reader_base {
 
 #if !SCN_DISABLE_LOCALE
     template <typename Range>
-    auto read_localized(const Range& range, detail::locale_ref loc, bool& value)
-        const -> scan_expected<ranges::const_iterator_t<Range>>
+    auto read_localized(const Range& range,
+                        detail::locale_ref loc,
+                        bool& value) const
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         scan_error err{scan_error::invalid_scanned_value,
                        "Failed to read boolean"};
@@ -5541,8 +5519,10 @@ public:
     }
 
     template <typename Range>
-    auto read_default(const Range& range, bool& value, detail::locale_ref loc)
-        const -> scan_expected<ranges::const_iterator_t<Range>>
+    auto read_default(const Range& range,
+                      bool& value,
+                      detail::locale_ref loc) const
+        -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
 
@@ -5601,8 +5581,8 @@ template <typename CharT>
 class code_unit_reader {
 public:
     template <typename SourceRange>
-    auto read(const SourceRange& range,
-              CharT& ch) -> scan_expected<ranges::const_iterator_t<SourceRange>>
+    auto read(const SourceRange& range, CharT& ch)
+        -> scan_expected<ranges::const_iterator_t<SourceRange>>
     {
         SCN_TRY(it, read_code_unit(range).transform_error(make_eof_scan_error));
         ch = *range.begin();
@@ -5899,9 +5879,8 @@ struct default_arg_reader {
     using iterator = ranges::iterator_t<range_type>;
 
     template <typename Reader, typename Range, typename T>
-    auto impl(Reader& rd,
-              const Range& rng,
-              T& value) -> scan_expected<ranges::iterator_t<Range>>
+    auto impl(Reader& rd, const Range& rng, T& value)
+        -> scan_expected<ranges::iterator_t<Range>>
     {
         SCN_TRY(it, skip_ws_before_if_required(rd.skip_ws_before_read(), rng)
                         .transform_error(make_eof_scan_error));
@@ -6162,9 +6141,8 @@ struct arg_reader {
     }
 
     template <typename Reader, typename Range, typename T>
-    auto impl(Reader& rd,
-              const Range& rng,
-              T& value) -> scan_expected<ranges::iterator_t<Range>>
+    auto impl(Reader& rd, const Range& rng, T& value)
+        -> scan_expected<ranges::iterator_t<Range>>
     {
         SCN_EXPECT(!is_range_eof(rng));
 
@@ -6203,7 +6181,6 @@ struct arg_reader {
                         .view());
             }
         }
-        const auto value_end_it = it;
 
         // Read postfix
         std::ptrdiff_t postfix_width = 0;

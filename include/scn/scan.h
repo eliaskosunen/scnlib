@@ -1901,7 +1901,8 @@ using std::input_iterator_tag;
 using std::output_iterator_tag;
 using std::random_access_iterator_tag;
 
-#if SCN_HAS_CONCEPTS && SCN_HAS_RANGES
+#if SCN_STD >= SCN_STD_20 && defined(__cpp_lib_ranges) && \
+    __cpp_lib_ranges >= 201911L
 using std::contiguous_iterator_tag;
 #else
 struct contiguous_iterator_tag : random_access_iterator_tag {};
@@ -3010,11 +3011,11 @@ struct borrowed_tail_subrange<R, false> {
 };
 
 /// Equivalent to
-/// `ranges_impl::subrange<ranges_impl::iterator_t<R>,
-/// ranges_impl::sentinel_t<R>>` if `R` is a `borrowed_range`, and
-/// `ranges_impl::dangling` otherwise.
+/// `ranges::subrange<ranges::iterator_t<R>,
+/// ranges::sentinel_t<R>>` if `R` is a `borrowed_range`, and
+/// `ranges::dangling` otherwise.
 ///
-/// Similar to `ranges_impl::borrowed_subrange_t<R>`, expect this preserves
+/// Similar to `ranges::borrowed_subrange_t<R>`, expect this preserves
 /// the range sentinel.
 template <typename R>
 using borrowed_tail_subrange_t = typename borrowed_tail_subrange<R>::type;
