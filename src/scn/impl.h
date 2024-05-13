@@ -1362,30 +1362,39 @@ void transcode_to_string(std::basic_string_view<SourceCharT> src,
 {
     static_assert(sizeof(SourceCharT) != sizeof(DestCharT));
 
-    if constexpr (sizeof(DestCharT) == 4) {
-        transcode_to_string_impl_to32(src, dest);
+    if constexpr (sizeof(SourceCharT) == 1) {
+        if constexpr (sizeof(DestCharT) == 2) {
+            std::u32string tmp;
+            transcode_to_string_impl_to32(src, tmp);
+            return transcode_to_string_impl_32to16<false>(
+                std::u32string_view{tmp}, dest);
+        }
+        else if constexpr (sizeof(DestCharT) == 4) {
+            return transcode_to_string_impl_to32(src, dest);
+        }
+    }
+    else if constexpr (sizeof(SourceCharT) == 2) {
+        if constexpr (sizeof(DestCharT) == 1) {
+            std::u32string tmp;
+            transcode_to_string_impl_to32(src, tmp);
+            return transcode_to_string_impl_32to8<false>(
+                std::u32string_view{tmp}, dest);
+        }
+        else if constexpr (sizeof(DestCharT) == 4) {
+            return trasncode_to_string_impl_to32(src, dest);
+        }
     }
     else if constexpr (sizeof(SourceCharT) == 4) {
         if constexpr (sizeof(DestCharT) == 1) {
-            transcode_to_string_impl_32to8<false>(src, dest);
+            return transcode_to_string_impl_32to8<false>(src, dest);
         }
-        else {
-            transcode_to_string_impl_32to16<false>(src, dest);
-        }
-    }
-    else if constexpr (sizeof(DestCharT) == 2) {
-        // TODO: optimize by removing utf32 step
-        std::u32string tmp;
-        transcode_to_string_impl_to32(src, tmp);
-        if constexpr (sizeof(DestCharT) == 1) {
-            transcode_to_string_impl_32to8<false>(std::u32string_view{tmp},
-                                                  dest);
-        }
-        else {
-            transcode_to_string_impl_32to16<false>(std::u32string_view{tmp},
-                                                   dest);
+        else if constexpr (sizeof(DestCharT) == 2) {
+            return transcode_to_string_impl_32to16<false>(src, dest);
         }
     }
+
+    SCN_EXPECT(false);
+    SCN_UNREACHABLE;
 }
 template <typename SourceCharT, typename DestCharT>
 void transcode_valid_to_string(std::basic_string_view<SourceCharT> src,
@@ -1394,30 +1403,40 @@ void transcode_valid_to_string(std::basic_string_view<SourceCharT> src,
     static_assert(sizeof(SourceCharT) != sizeof(DestCharT));
 
     SCN_EXPECT(validate_unicode(src));
-    if constexpr (sizeof(DestCharT) == 4) {
-        transcode_valid_to_string_impl_to32(src, dest);
+    if constexpr (sizeof(SourceCharT) == 1) {
+        if constexpr (sizeof(DestCharT) == 2) {
+            // TODO: Optimize, remove utf32-step, go direct utf8->utf16
+            std::u32string tmp;
+            transcode_valid_to_string_impl_to32(src, tmp);
+            return transcode_to_string_impl_32to16<true>(
+                std::u32string_view{tmp}, dest);
+        }
+        else if constexpr (sizeof(DestCharT) == 4) {
+            return transcode_valid_to_string_impl_to32(src, dest);
+        }
+    }
+    else if constexpr (sizeof(SourceCharT) == 2) {
+        if constexpr (sizeof(DestCharT) == 1) {
+            std::u32string tmp;
+            transcode_valid_to_string_impl_to32(src, tmp);
+            return transcode_to_string_impl_32to8<true>(
+                std::u32string_view{tmp}, dest);
+        }
+        else if constexpr (sizeof(DestCharT) == 4) {
+            return trasncode_valid_to_string_impl_to32(src, dest);
+        }
     }
     else if constexpr (sizeof(SourceCharT) == 4) {
         if constexpr (sizeof(DestCharT) == 1) {
-            transcode_to_string_impl_32to8<true>(src, dest);
+            return transcode_to_string_impl_32to8<true>(src, dest);
         }
-        else {
-            transcode_to_string_impl_32to16<true>(src, dest);
-        }
-    }
-    else if constexpr (sizeof(DestCharT) == 2) {
-        // TODO: optimize by removing utf32 step
-        std::u32string tmp;
-        transcode_valid_to_string_impl_to32(src, tmp);
-        if constexpr (sizeof(DestCharT) == 1) {
-            transcode_to_string_impl_32to8<true>(std::u32string_view{tmp},
-                                                 dest);
-        }
-        else {
-            transcode_to_string_impl_32to16<true>(std::u32string_view{tmp},
-                                                  dest);
+        else if constexpr (sizeof(DestCharT) == 2) {
+            return transcode_to_string_impl_32to16<true>(src, dest);
         }
     }
+
+    SCN_EXPECT(false);
+    SCN_UNREACHABLE;
 }
 
 template <typename CharT>
@@ -3332,8 +3351,9 @@ auto parse_integer_base_prefix(const Range& range, int base)
 }
 
 template <typename Range>
-auto parse_integer_prefix(const Range& range, int base) -> eof_expected<
-    parse_integer_prefix_result<ranges::const_iterator_t<Range>>>
+auto parse_integer_prefix(const Range& range, int base)
+    -> eof_expected<
+        parse_integer_prefix_result<ranges::const_iterator_t<Range>>>
 {
     SCN_TRY(sign_result, parse_numeric_sign(range));
     auto [base_prefix_begin_it, sign] = sign_result;
@@ -3886,8 +3906,8 @@ private:
     }
 
     template <typename Range>
-    auto read_exponent(const Range& range, std::string_view exp)
-        -> ranges::const_iterator_t<Range>
+    auto read_exponent(const Range& range,
+                       std::string_view exp) -> ranges::const_iterator_t<Range>
     {
         if (auto r = read_one_of_code_unit(range, exp)) {
             auto beg_exp_it = range.begin();
@@ -4131,9 +4151,9 @@ private:
     float_kind m_kind{float_kind::tbd};
 };
 
-#define SCN_DECLARE_FLOAT_READER_TEMPLATE(CharT, FloatT)                \
-    extern template auto float_reader<CharT>::parse_value_impl(FloatT&) \
-        -> scan_expected<std::ptrdiff_t>;
+#define SCN_DECLARE_FLOAT_READER_TEMPLATE(CharT, FloatT)        \
+    extern template auto float_reader<CharT>::parse_value_impl( \
+        FloatT&) -> scan_expected<std::ptrdiff_t>;
 
 #if !SCN_DISABLE_TYPE_FLOAT
 SCN_DECLARE_FLOAT_READER_TEMPLATE(char, float)
@@ -5445,10 +5465,8 @@ struct bool_reader : public bool_reader_base {
 
 #if !SCN_DISABLE_LOCALE
     template <typename Range>
-    auto read_localized(const Range& range,
-                        detail::locale_ref loc,
-                        bool& value) const
-        -> scan_expected<ranges::const_iterator_t<Range>>
+    auto read_localized(const Range& range, detail::locale_ref loc, bool& value)
+        const -> scan_expected<ranges::const_iterator_t<Range>>
     {
         scan_error err{scan_error::invalid_scanned_value,
                        "Failed to read boolean"};
@@ -5523,10 +5541,8 @@ public:
     }
 
     template <typename Range>
-    auto read_default(const Range& range,
-                      bool& value,
-                      detail::locale_ref loc) const
-        -> scan_expected<ranges::const_iterator_t<Range>>
+    auto read_default(const Range& range, bool& value, detail::locale_ref loc)
+        const -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
 
@@ -5585,8 +5601,8 @@ template <typename CharT>
 class code_unit_reader {
 public:
     template <typename SourceRange>
-    auto read(const SourceRange& range, CharT& ch)
-        -> scan_expected<ranges::const_iterator_t<SourceRange>>
+    auto read(const SourceRange& range,
+              CharT& ch) -> scan_expected<ranges::const_iterator_t<SourceRange>>
     {
         SCN_TRY(it, read_code_unit(range).transform_error(make_eof_scan_error));
         ch = *range.begin();
@@ -5883,8 +5899,9 @@ struct default_arg_reader {
     using iterator = ranges::iterator_t<range_type>;
 
     template <typename Reader, typename Range, typename T>
-    auto impl(Reader& rd, const Range& rng, T& value)
-        -> scan_expected<ranges::iterator_t<Range>>
+    auto impl(Reader& rd,
+              const Range& rng,
+              T& value) -> scan_expected<ranges::iterator_t<Range>>
     {
         SCN_TRY(it, skip_ws_before_if_required(rd.skip_ws_before_read(), rng)
                         .transform_error(make_eof_scan_error));
@@ -6145,8 +6162,9 @@ struct arg_reader {
     }
 
     template <typename Reader, typename Range, typename T>
-    auto impl(Reader& rd, const Range& rng, T& value)
-        -> scan_expected<ranges::iterator_t<Range>>
+    auto impl(Reader& rd,
+              const Range& rng,
+              T& value) -> scan_expected<ranges::iterator_t<Range>>
     {
         SCN_EXPECT(!is_range_eof(rng));
 

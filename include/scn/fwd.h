@@ -337,6 +337,12 @@
 #define SCN_MSVC_IGNORE(x)
 #endif
 
+#ifdef __has_include
+#define SCN_HAS_INCLUDE(x) __has_include(x)
+#else
+#define SCN_HAS_INCLUDE(x) 0
+#endif
+
 /////////////////////////////////////////////////////////////////
 // Standard library includes
 /////////////////////////////////////////////////////////////////
@@ -349,19 +355,18 @@ SCN_GCC_IGNORE("-Wrestrict")
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
-#include <utility>
+
+#if SCN_MSVC && SCN_HAS_INCLUDE(<yvals.h>)
+// The above headers don't define _ITERATOR_DEBUG_LEVEL,
+// so include <yvals.h> directly
+#include <yvals.h>
+#endif
 
 SCN_GCC_POP
 
 /////////////////////////////////////////////////////////////////
 // Environment detection (preprocessor only)
 /////////////////////////////////////////////////////////////////
-
-#ifdef __has_include
-#define SCN_HAS_INCLUDE(x) __has_include(x)
-#else
-#define SCN_HAS_INCLUDE(x) 0
-#endif
 
 #define SCN_STD_17 201703L
 #define SCN_STD_20 202002L
@@ -667,14 +672,6 @@ SCN_GCC_POP
 #define SCN_HAS_BUILTIN_ASSUME 0
 #endif
 
-// Detect std::assume_aligned
-#if defined(__cpp_lib_assume_aligned) && \
-    __cpp_lib_assume_aligned >= 201811L && SCN_STD >= SCN_STD_20
-#define SCN_HAS_STD_ASSUME_ALIGNED 1
-#else
-#define SCN_HAS_STD_ASSUME_ALIGNED 0
-#endif
-
 // Detect __builtin_assume_aligned
 #if SCN_HAS_BUILTIN(__builtin_assume_aligned) || SCN_GCC
 #define SCN_HAS_BUILTIN_ASSUME_ALIGNED 1
@@ -687,14 +684,6 @@ SCN_GCC_POP
 #define SCN_HAS_ASSUME_ALIGNED 1
 #else
 #define SCN_HAS_ASSUME_ALIGNED 0
-#endif
-
-// Detect std::unreachable
-#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L && \
-    SCN_STD >= SCN_STD_23
-#define SCN_HAS_STD_UNREACHABLE 1
-#else
-#define SCN_HAS_STD_UNREACHABLE 0
 #endif
 
 // Detect __builtin_unreachable
@@ -864,8 +853,6 @@ SCN_GCC_POP
 #define SCN_ASSUME(x) __assume(x)
 #elif SCN_HAS_BUILTIN_ASSUME
 #define SCN_ASSUME(x) __builtin_assume(x)
-#elif SCN_HAS_STD_UNREACHABLE
-#define SCN_ASSUME(x) ((x) ? static_cast<void>(0) : ::std::unreachable())
 #elif SCN_HAS_BUILTIN_UNREACHABLE
 #define SCN_ASSUME(x) ((x) ? static_cast<void>(0) : __builtin_unreachable())
 #else
@@ -873,26 +860,26 @@ SCN_GCC_POP
 #endif
 
 // SCN_UNREACHABLE
-#if SCN_HAS_STD_UNREACHABLE
-#define SCN_UNREACHABLE ::std::unreachable()
-#elif SCN_HAS_BUILTIN_UNREACHABLE
+#if SCN_HAS_BUILTIN_UNREACHABLE
 #define SCN_UNREACHABLE __builtin_unreachable()
 #else
 #define SCN_UNREACHABLE SCN_ASSUME(0)
 #endif
 
 // SCN_ASSUME_ALIGNED
-#if SCN_HAS_STD_ASSUME_ALIGNED
-#define SCN_ASSUME_ALIGNED(x, n) ::std::assume_aligned<n>(x)
-#elif SCN_HAS_BUILTIN_ASSUME_ALIGNED
+#if SCN_HAS_BUILTIN_ASSUME_ALIGNED
 #define SCN_ASSUME_ALIGNED(x, n) __builtin_assume_aligned(x, n)
 #elif SCN_HAS_ASSUME_ALIGNED
 #define SCN_ASSUME_ALIGNED(x, n) __assume_aligned(x, n)
 #else
-#define SCN_ASSUME_ALIGNED(x, n)                                    \
-    ([&](auto&& p) noexcept {                                       \
-        SCN_ASSUME(reinterpret_cast<std::uintptr_t>(p) % (n) == 0); \
-        return p;                                                   \
+#define SCN_ASSUME_ALIGNED(x, n)                                           \
+    ([&](auto* p) noexcept -> decltype(p) {                                \
+        if ((reinterpret_cast<std::uintptr_t>(p) & ((1 << n) - 1)) == 0) { \
+            return p;                                                      \
+        }                                                                  \
+        else {                                                             \
+            SCN_UNREACHABLE;                                               \
+        }                                                                  \
     }(x))
 #endif
 

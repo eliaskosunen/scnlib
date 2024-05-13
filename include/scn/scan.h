@@ -17,7 +17,7 @@
 
 #pragma once
 
-// Includes <cassert>, <cstddef>, <cstdint>, <type_traits>, and <utility>
+// Includes <cassert>, <cstddef>, <cstdint>, and <type_traits>
 #include <scn/fwd.h>
 
 #include <array>
