@@ -21,6 +21,94 @@
 
 #include <cmath>
 
+// Detect architecture
+#if defined(__x86_64__) || defined(_M_AMD64)
+#define SCN_IS_X86_64 1
+#define SCN_IS_32BIT  0
+#elif defined(__i386__) || defined(_M_IX86)
+#define SCN_IS_X86_32 1
+#define SCN_IS_32BIT  1
+
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#define SCN_IS_ARM64 1
+#define SCN_IS_32BIT 0
+#elif defined(__arm__) || defined(_M_ARM)
+#define SCN_IS_ARM32 1
+#define SCN_IS_32BIT 1
+
+#elif defined(__PPC64__) || defined(_M_PPC64)
+#define SCN_IS_PPC64 1
+#define SCN_IS_32BIT 0
+#elif defined(__PPC__) || defined(_M_PPC)
+#define SCN_IS_PPC32 1
+#define SCN_IS_32BIT 1
+
+#elif defined(__s390__)
+#define SCN_IS_S390  1
+#define SCN_IS_32BIT 1
+
+#endif  // defined __x86_64__ || defined _M_AMD64
+
+#ifndef SCN_IS_X86_64
+#define SCN_IS_X86_64 0
+#endif
+#ifndef SCN_IS_X86_32
+#define SCN_IS_X86_32 0
+#endif
+#ifndef SCN_IS_ARM64
+#define SCN_IS_ARM64 0
+#endif
+#ifndef SCN_IS_ARM32
+#define SCN_IS_ARM32 0
+#endif
+#ifndef SCN_IS_PPC64
+#define SCN_IS_PPC64 0
+#endif
+#ifndef SCN_IS_PPC32
+#define SCN_IS_PPC32 0
+#endif
+#ifndef SCN_IS_S390
+#define SCN_IS_S390 0
+#endif
+
+#ifndef SCN_IS_32BIT
+#define SCN_IS_32BIT 0
+#endif
+
+#if SCN_IS_X86_64 || SCN_IS_X86_32
+#define SCN_IS_X86 1
+#else
+#define SCN_IS_X86 0
+#endif
+
+#if SCN_IS_ARM64 || SCN_IS_ARM32
+#define SCN_IS_ARM 1
+#else
+#define SCN_IS_ARM 0
+#endif
+
+#if SCN_IS_PPC64 || SCN_IS_PPC32
+#define SCN_IS_PPC 1
+#else
+#define SCN_IS_PPC 0
+#endif
+
+// long double width
+#if (SCN_WINDOWS && !SCN_GCC_COMPAT) || SCN_IS_ARM32 || \
+    (SCN_IS_ARM64 && SCN_APPLE)
+#define SCN_LONG_DOUBLE_WIDTH 64
+#elif SCN_IS_ARM64 && !SCN_APPLE && !SCN_WINDOWS
+#define SCN_LONG_DOUBLE_WIDTH 128
+#elif SCN_IS_X86
+#define SCN_LONG_DOUBLE_WIDTH 80
+#elif SCN_IS_PPC
+// PPC long double is wonky
+#define SCN_LONG_DOUBLE_WIDTH 0
+#else
+// don't know enough
+#define SCN_LONG_DOUBLE_WIDTH 0
+#endif
+
 template <typename T>
 void dump_bytes(T val)
 {

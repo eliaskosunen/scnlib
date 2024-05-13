@@ -452,12 +452,6 @@ SCN_GCC_POP
 #define SCN_HAS_CPP_ATTRIBUTE(x) 0
 #endif
 
-#ifdef __has_feature
-#define SCN_HAS_FEATURE(x) __has_feature(x)
-#else
-#define SCN_HAS_FEATURE(x) 0
-#endif
-
 #ifdef __has_builtin
 #define SCN_HAS_BUILTIN(x) __has_builtin(x)
 #else
@@ -651,13 +645,6 @@ SCN_GCC_POP
 #define SCN_HAS_FLOAT_CHARCONV   0
 #endif
 
-// Detect std::launder
-#if defined(__cpp_lib_launder) && __cpp_lib_launder >= 201606
-#define SCN_HAS_LAUNDER 1
-#else
-#define SCN_HAS_LAUNDER 0
-#endif
-
 // Detect <bit> operations
 #if defined(__cpp_lib_bitops) && __cpp_lib_bitops >= 201907L && \
     SCN_STD >= SCN_STD_20
@@ -796,94 +783,6 @@ SCN_GCC_POP
 
 #endif  // defined __BYTE_ORDER__ && defined __ORDER_BIG_ENDIAN__
 
-// Detect architecture
-#if defined(__x86_64__) || defined(_M_AMD64)
-#define SCN_IS_X86_64 1
-#define SCN_IS_32BIT  0
-#elif defined(__i386__) || defined(_M_IX86)
-#define SCN_IS_X86_32 1
-#define SCN_IS_32BIT  1
-
-#elif defined(__aarch64__) || defined(_M_ARM64)
-#define SCN_IS_ARM64 1
-#define SCN_IS_32BIT 0
-#elif defined(__arm__) || defined(_M_ARM)
-#define SCN_IS_ARM32 1
-#define SCN_IS_32BIT 1
-
-#elif defined(__PPC64__) || defined(_M_PPC64)
-#define SCN_IS_PPC64 1
-#define SCN_IS_32BIT 0
-#elif defined(__PPC__) || defined(_M_PPC)
-#define SCN_IS_PPC32 1
-#define SCN_IS_32BIT 1
-
-#elif defined(__s390__)
-#define SCN_IS_S390  1
-#define SCN_IS_32BIT 1
-
-#endif  // defined __x86_64__ || defined _M_AMD64
-
-#ifndef SCN_IS_X86_64
-#define SCN_IS_X86_64 0
-#endif
-#ifndef SCN_IS_X86_32
-#define SCN_IS_X86_32 0
-#endif
-#ifndef SCN_IS_ARM64
-#define SCN_IS_ARM64 0
-#endif
-#ifndef SCN_IS_ARM32
-#define SCN_IS_ARM32 0
-#endif
-#ifndef SCN_IS_PPC64
-#define SCN_IS_PPC64 0
-#endif
-#ifndef SCN_IS_PPC32
-#define SCN_IS_PPC32 0
-#endif
-#ifndef SCN_IS_S390
-#define SCN_IS_S390 0
-#endif
-
-#ifndef SCN_IS_32BIT
-#define SCN_IS_32BIT 0
-#endif
-
-#if SCN_IS_X86_64 || SCN_IS_X86_32
-#define SCN_IS_X86 1
-#else
-#define SCN_IS_X86 0
-#endif
-
-#if SCN_IS_ARM64 || SCN_IS_ARM32
-#define SCN_IS_ARM 1
-#else
-#define SCN_IS_ARM 0
-#endif
-
-#if SCN_IS_PPC64 || SCN_IS_PPC32
-#define SCN_IS_PPC 1
-#else
-#define SCN_IS_PPC 0
-#endif
-
-// long double width
-#if (SCN_WINDOWS && !SCN_GCC_COMPAT) || SCN_IS_ARM32 || \
-    (SCN_IS_ARM64 && SCN_APPLE)
-#define SCN_LONG_DOUBLE_WIDTH 64
-#elif SCN_IS_ARM64 && !SCN_APPLE && !SCN_WINDOWS
-#define SCN_LONG_DOUBLE_WIDTH 128
-#elif SCN_IS_X86
-#define SCN_LONG_DOUBLE_WIDTH 80
-#elif SCN_IS_PPC
-// PPC long double is wonky
-#define SCN_LONG_DOUBLE_WIDTH 0
-#else
-// don't know enough
-#define SCN_LONG_DOUBLE_WIDTH 0
-#endif
-
 /////////////////////////////////////////////////////////////////
 // Helper macros
 /////////////////////////////////////////////////////////////////
@@ -965,6 +864,8 @@ SCN_GCC_POP
 #define SCN_ASSUME(x) __assume(x)
 #elif SCN_HAS_BUILTIN_ASSUME
 #define SCN_ASSUME(x) __builtin_assume(x)
+#elif SCN_HAS_STD_UNREACHABLE
+#define SCN_ASSUME(x) ((x) ? static_cast<void>(0) : ::std::unreachable())
 #elif SCN_HAS_BUILTIN_UNREACHABLE
 #define SCN_ASSUME(x) ((x) ? static_cast<void>(0) : __builtin_unreachable())
 #else
@@ -1019,7 +920,7 @@ SCN_GCC_POP
 #define SCN_FWD(x)          static_cast<decltype(x)&&>(x)
 #define SCN_DECLVAL(T)      static_cast<T (*)()>(nullptr)()
 
-#define SCN_BEGIN_NAMESPACE inline namespace v2 {
+#define SCN_BEGIN_NAMESPACE inline namespace v3 {
 #define SCN_END_NAMESPACE   }
 
 /////////////////////////////////////////////////////////////////

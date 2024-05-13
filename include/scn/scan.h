@@ -1509,9 +1509,6 @@ private:
     }
 };
 
-SCN_END_NAMESPACE
-}  // namespace scn
-
 /////////////////////////////////////////////////////////////////
 // <ranges> implementation
 /////////////////////////////////////////////////////////////////
@@ -1521,9 +1518,6 @@ SCN_END_NAMESPACE
 //   https://github.com/tcbrindle/NanoRange
 // NanoRange is provided under the Boost license.
 //   Copyright (c) 2018 Tristan Brindle (tcbrindle at gmail dot com)
-
-namespace scn {
-SCN_BEGIN_NAMESPACE
 
 namespace ranges {
 
@@ -2946,19 +2940,6 @@ inline constexpr default_sentinel_t default_sentinel{};
 }  // namespace ranges
 
 namespace detail {
-namespace simple_iterator_t_fn {
-template <typename T>
-constexpr auto impl()
-{
-    return tag_type<decltype(ranges::begin(SCN_DECLVAL(T&)))>{};
-}
-
-template <typename Range>
-using result = decltype(impl<Range>());
-}  // namespace simple_iterator_t_fn
-
-template <typename Range>
-using simple_iterator_t = typename simple_iterator_t_fn::result<Range>::type;
 
 namespace char_t_fn {
 template <typename T, typename = typename T::value_type>
@@ -3045,12 +3026,6 @@ template <typename CharT, typename Traits>
 inline constexpr bool
     enable_borrowed_range<std::basic_string_view<CharT, Traits>> = true;
 }
-
-SCN_END_NAMESPACE
-}  // namespace scn
-
-namespace scn {
-SCN_BEGIN_NAMESPACE
 
 /////////////////////////////////////////////////////////////////
 // Metaprogramming facilities
