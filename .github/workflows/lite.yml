@@ -4,6 +4,7 @@ on:
   push:
     branches-ignore:
       - master
+      - v*/dev
     paths:
       - '.github/**'
       - 'benchmark/**'
@@ -16,6 +17,7 @@ on:
   pull_request:
     branches-ignore:
       - master
+      - v*/dev
     paths:
       - '.github/**'
       - 'benchmark/**'

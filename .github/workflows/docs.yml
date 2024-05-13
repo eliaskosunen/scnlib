@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - v*/dev
     paths:
       - "**.h"
       - "**.hpp"
