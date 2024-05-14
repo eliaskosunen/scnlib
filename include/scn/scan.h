@@ -30,6 +30,10 @@
 #include <string_view>
 #include <tuple>
 
+#if SCN_GCC && SCN_GCC_< SCN_COMPILER(8, 0, 0)
+#include <functional>
+#endif
+
 /////////////////////////////////////////////////////////////////
 // <expected> implementation
 /////////////////////////////////////////////////////////////////
@@ -847,7 +851,7 @@ constexpr decltype(auto) trivial_invoke(F&& f, Args&&... args)
 {
 #if SCN_GCC && SCN_GCC < SCN_COMPILER(8,0,0)
     // Pessimize on gcc 7, compiler bug
-    return f(std::forward<Args>(args)...);
+    return std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
 #else
     return std::forward<F>(f)(std::forward<Args>(args)...);
 #endif

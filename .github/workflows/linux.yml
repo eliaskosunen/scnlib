@@ -79,49 +79,11 @@ jobs:
         std: [ 17, 20 ]
         include:
           # Explicitly pick out pre-installed clang + os pairs -- apt.llvm.org likes to fail on us
-          - os: 20.04
-            cxx: clang++-10
-            std: 17
-          - os: 20.04
-            cxx: clang++-10
-            std: 20
-          - os: 20.04
-            cxx: clang++-11
-            std: 17
-          - os: 20.04
-            cxx: clang++-11
-            std: 20
-          - os: 20.04
-            cxx: clang++-12
-            std: 17
-          - os: 20.04
-            cxx: clang++-12
-            std: 20
-
-          - os: 22.04
-            cxx: clang++-13
-            std: 17
-          - os: 22.04
-            cxx: clang++-13
-            std: 20
-          - os: 22.04
-            cxx: clang++-14
-            std: 17
-          - os: 22.04
-            cxx: clang++-14
-            std: 20
-          - os: 22.04
-            cxx: clang++-15
-            std: 17
-          - os: 22.04
-            cxx: clang++-15
-            std: 20
-
           - os: 24.04
-            cxx: clang++-16
+            cxx: clang++-18
             std: 17
           - os: 24.04
-            cxx: clang++-16
+            cxx: clang++-18
             std: 20
           - os: 24.04
             cxx: clang++-17
@@ -130,21 +92,55 @@ jobs:
             cxx: clang++-17
             std: 20
           - os: 24.04
-            cxx: clang++-18
+            cxx: clang++-16
             std: 17
           - os: 24.04
-            cxx: clang++-18
+            cxx: clang++-16
             std: 20
 
-          # clang 6.0, 7, and 8 from apt
+          - os: 22.04
+            cxx: clang++-15
+            std: 17
+          - os: 22.04
+            cxx: clang++-15
+            std: 20
+          - os: 22.04
+            cxx: clang++-14
+            std: 17
+          # FIXME?: weird incompatibility with libstdc++ 13 inside <chrono>
+          # see https://github.com/actions/runner-images/issues/8659
+          #- os: 22.04
+          #  cxx: clang++-14
+          #  std: 20
+          - os: 22.04
+            cxx: clang++-13
+            std: 17
+          #- os: 22.04
+          #  cxx: clang++-13
+          #  std: 20
+
+          - os: 20.04
+            cxx: clang++-12
+            std: 17
+          - os: 20.04
+            cxx: clang++-12
+            std: 20
+          - os: 20.04
+            cxx: clang++-11
+            std: 17
+          - os: 20.04
+            cxx: clang++-11
+            std: 20
+          - os: 20.04
+            cxx: clang++-10
+            std: 17
+          - os: 20.04
+            cxx: clang++-10
+            std: 20
+
+          # clang 8 from apt
           - os: 20.04
             cxx: clang++-8
-            std: 17
-          - os: 20.04
-            cxx: clang++-7
-            std: 17
-          - os: 20.04
-            cxx: clang++-6.0
             std: 17
 
           # newest pre-installed gcc on 24.04, including C++23
@@ -180,17 +176,6 @@ jobs:
           # gcc 12 isn't available on 20.04 (11 and 13 are in ubuntu-toolchain-r)
           - cxx: g++-12
             os: 20.04
-
-          # FIXME: Locally unreproducible ICE
-          #- cxx: clang++-9
-          # FIXME?: weird incompatibility with libstdc++ 13 inside <chrono>
-          # see https://github.com/actions/runner-images/issues/8659
-          - os: 22.04
-            cxx: clang++-14
-            std: 20
-          - os: 22.04
-            cxx: clang++-13
-            std: 20
 
     env:
       CXX: ${{ matrix.cxx }}
@@ -419,13 +404,12 @@ jobs:
           ./alpine-run.sh bash -c "cd build && ctest --output-on-failure"
 
   asan-and-ubsan:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         std: [ 17, 20 ]
-        # clang 15 would be the newest available on 22.04, but that ICEs
-        cxx: [ clang++-14 ]
+        cxx: [ clang++-16 ]
 
     env:
       CXX: ${{ matrix.cxx }}
