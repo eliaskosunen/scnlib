@@ -12,6 +12,7 @@ on:
       - "**.md"
       - "docs/**"
       - "**/docs.yml"
+      - '.github/**'
   release:
     types: [published]
   workflow_dispatch:

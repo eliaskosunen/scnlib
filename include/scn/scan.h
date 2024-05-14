@@ -845,7 +845,12 @@ using expected_value_type = typename remove_cvref_t<Exp>::value_type;
 template <typename F, typename... Args>
 constexpr decltype(auto) trivial_invoke(F&& f, Args&&... args)
 {
+#if SCN_GCC && SCN_GCC < SCN_COMPILER(8,0,0)
+    // Pessimize on gcc 7, compiler bug
+    return f(std::forward<Args>(args)...);
+#else
     return std::forward<F>(f)(std::forward<Args>(args)...);
+#endif
 }
 
 // and_then
