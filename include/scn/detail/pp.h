@@ -21,6 +21,10 @@
 
 #include <cassert>
 
+#if SCN_HAS_STD_UNREACHABLE
+#include <utility>
+#endif
+
 #define SCN_STRINGIFY_APPLY(x) #x
 #define SCN_STRINGIFY(x)       SCN_STRINGIFY_APPLY(x)
 
