@@ -7,6 +7,7 @@ license = ['Apache-2.0', 'https://github.com/eliaskosunen/scnlib/blob/dev/LICENS
 theme = "dark"
 show_includes = false
 navbar = ['namespaces', 'classes', 'modules', 'pages', 'repo']
+changelog = true
 
 [warnings]
 enabled = true

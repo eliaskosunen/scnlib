@@ -1776,16 +1776,29 @@ struct incrementable_traits_helper<
     using difference_type = typename T::difference_type;
 };
 
+template <typename T, typename = void>
+struct subtraction_result_type {
+    using type = void;
+};
+template <typename T>
+struct subtraction_result_type<
+    T,
+    std::void_t<decltype(std::declval<const T&>() -
+                         std::declval<const T&>())>> {
+    using type = decltype(std::declval<const T&>() - std::declval<const T&>());
+};
+
+template <typename T>
+inline constexpr bool enable_incrtraits_subtractable =
+    !std::is_pointer_v<T> && !has_member_difference_type_v<T> &&
+    std::is_integral_v<typename subtraction_result_type<T>::type>;
+
 template <typename T>
 struct incrementable_traits_helper<
     T,
-    std::enable_if_t<!std::is_pointer_v<T> &&
-                     !has_member_difference_type_v<T> &&
-                     std::is_integral_v<decltype(std::declval<const T&>() -
-                                                 std::declval<const T&>())>>>
+    std::enable_if_t<enable_incrtraits_subtractable<T>>>
     : with_difference_type<
-          std::make_signed_t<decltype(std::declval<T>() - std::declval<T>())>> {
-};
+          std::make_signed_t<typename subtraction_result_type<T>::type>> {};
 }  // namespace detail
 
 template <typename T>
