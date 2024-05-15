@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - v*/dev
     paths:
       - "**.h"
       - "**.hpp"
@@ -11,6 +12,7 @@ on:
       - "**.md"
       - "docs/**"
       - "**/docs.yml"
+      - '.github/**'
   release:
     types: [published]
   workflow_dispatch:

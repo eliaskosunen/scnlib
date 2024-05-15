@@ -4,6 +4,7 @@ on:
   push:
     branches-ignore:
       - master
+      - v*/dev
     paths:
       - '.github/**'
       - 'benchmark/**'
@@ -16,6 +17,7 @@ on:
   pull_request:
     branches-ignore:
       - master
+      - v*/dev
     paths:
       - '.github/**'
       - 'benchmark/**'
@@ -92,13 +94,6 @@ jobs:
           sudo update-locale
           sudo locale -a
 
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-
-          if [[ "${{ matrix.cxx }}" == "clang++-15" ]]; then
-            sudo ./llvm.sh 15
-          fi
-          
           ${APT_INSTALL} ccache
 
       - name: Checkout

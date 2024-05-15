@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - v*/dev
     paths:
       - '.github/**'
       - 'benchmark/**'
@@ -16,6 +17,7 @@ on:
   pull_request:
     branches:
       - master
+      - v*/dev
     paths:
       - '.github/**'
       - 'benchmark/**'
@@ -53,7 +55,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ 22.04, 20.04 ]
-        std: [ 17, 20 ]
         cxx:
           - g++-13
           - g++-12
@@ -62,77 +63,124 @@ jobs:
           - g++-9
           - g++-8
           - g++-7
-          - clang++-17
-          - clang++-16
-          - clang++-15
-          - clang++-14
-          - clang++-13
-          - clang++-12
-          - clang++-11
-          - clang++-10
-          - clang++-9
-          - clang++-8
-          - clang++-7
-          - clang++-6.0
+        #  - clang++-18
+        #  - clang++-17
+        #  - clang++-16
+        #  - clang++-15
+        #  - clang++-14
+        #  - clang++-13
+        #  - clang++-12
+        #  - clang++-11
+        #  - clang++-10
+        #  - clang++-9
+        #  - clang++-8
+        #  - clang++-7
+        #  - clang++-6.0
+        std: [ 17, 20 ]
         include:
-          # C++23 on latest gcc and clang on 22.04
-          - cxx: g++-13
+          # Explicitly pick out pre-installed clang + os pairs -- apt.llvm.org likes to fail on us
+          - os: 24.04
+            cxx: clang++-18
+            std: 17
+          - os: 24.04
+            cxx: clang++-18
+            std: 20
+          - os: 24.04
+            cxx: clang++-17
+            std: 17
+          - os: 24.04
+            cxx: clang++-17
+            std: 20
+          - os: 24.04
+            cxx: clang++-16
+            std: 17
+          - os: 24.04
+            cxx: clang++-16
+            std: 20
+
+          - os: 22.04
+            cxx: clang++-15
+            std: 17
+          - os: 22.04
+            cxx: clang++-15
+            std: 20
+          - os: 22.04
+            cxx: clang++-14
+            std: 17
+          # FIXME?: weird incompatibility with libstdc++ 13 inside <chrono>
+          # see https://github.com/actions/runner-images/issues/8659
+          #- os: 22.04
+          #  cxx: clang++-14
+          #  std: 20
+          - os: 22.04
+            cxx: clang++-13
+            std: 17
+          #- os: 22.04
+          #  cxx: clang++-13
+          #  std: 20
+
+          - os: 20.04
+            cxx: clang++-12
+            std: 17
+          - os: 20.04
+            cxx: clang++-12
+            std: 20
+          - os: 20.04
+            cxx: clang++-11
+            std: 17
+          - os: 20.04
+            cxx: clang++-11
+            std: 20
+          - os: 20.04
+            cxx: clang++-10
+            std: 17
+          - os: 20.04
+            cxx: clang++-10
+            std: 20
+
+          # clang 8 from apt
+          - os: 20.04
+            cxx: clang++-8
+            std: 17
+
+          # newest pre-installed gcc on 24.04, including C++23
+          - os: 24.04
+            cxx: g++-14
+            std: 17
+          - os: 24.04
+            cxx: g++-14
+            std: 20
+          - os: 24.04
+            cxx: g++-14
             std: 23
-            os: 22.04
-          - cxx: clang++-17
+
+          # newest pre-installed clang on 24.04, with C++23
+          - os: 24.04
+            cxx: clang++-18
             std: 23
-            os: 22.04
+
         exclude:
-          # gcc 8, gcc 7, and clang 6-8 have lacking C++20 support
+          # gcc 8, gcc 7, and clang 8 have lacking C++20 support
           - cxx: g++-8
             std: 20
           - cxx: g++-7
             std: 20
           - cxx: clang++-8
             std: 20
-          - cxx: clang++-7
-            std: 20
-          - cxx: clang++-6.0
-            std: 20
+
           # gcc 8, clang 12, and before aren't available on 22.04
           - cxx: g++-8
             os: 22.04
           - cxx: g++-7
             os: 22.04
-          - cxx: clang++-12
-            os: 22.04
-          - cxx: clang++-11
-            os: 22.04
-          - cxx: clang++-10
-            os: 22.04
-          - cxx: clang++-9
-            os: 22.04
-          - cxx: clang++-8
-            os: 22.04
-          - cxx: clang++-7
-            os: 22.04
-          - cxx: clang++-6.0
-            os: 22.04
           # gcc 12 isn't available on 20.04 (11 and 13 are in ubuntu-toolchain-r)
           - cxx: g++-12
             os: 20.04
-          # FIXME?: simdutf has problems with clang 6 and 7 (_ktestc_mask64_u8 undefined)
-          - cxx: clang++-7
-          - cxx: clang++-6.0
-          # FIXME: Locally unreproducible ICE
-          - cxx: clang++-9
+
           # FIXME: some weird linker issue: undefined reference to range_default_scanner default constructor
-          #- cxx: g++-11
-          #  std: 20
-          #  os: 20.04
-          # FIXME?: weird incompatibility with libstdc++ 13 inside <chrono>
-          # see https://github.com/actions/runner-images/issues/8659
-          - cxx: clang++-14
+          - cxx: g++-11
+            os: 20.04
             std: 20
-            os: 22.04
-          - cxx: clang++-13
-            std: 20
-            os: 22.04
 
     env:
       CXX: ${{ matrix.cxx }}
@@ -184,48 +232,8 @@ jobs:
             ${APT_INSTALL} g++-7
           fi
           
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          
-          if [[ "${CXX}" == "clang++-18" ]]; then
-            sudo ./llvm.sh 18
-          fi
-          if [[ "${CXX}" == "clang++-17" ]]; then
-            sudo ./llvm.sh 17
-          fi
-          if [[ "${CXX}" == "clang++-16" ]]; then
-            sudo ./llvm.sh 16
-          fi
-          if [[ "${CXX}" == "clang++-15" ]]; then
-            sudo ./llvm.sh 15
-          fi
-          if [[ "${CXX}" == "clang++-14" ]]; then
-            sudo ./llvm.sh 14
-          fi
-          if [[ "${CXX}" == "clang++-13" ]]; then
-            sudo ./llvm.sh 13
-          fi
-          if [[ "${CXX}" == "clang++-12" ]]; then
-            sudo ./llvm.sh 12
-          fi
-          if [[ "${CXX}" == "clang++-11" ]]; then
-            sudo ./llvm.sh 11
-          fi
-          if [[ "${CXX}" == "clang++-10" ]]; then
-            sudo ./llvm.sh 10
-          fi
-          if [[ "${CXX}" == "clang++-9" ]]; then
-            sudo ./llvm.sh 9
-          fi
-          
           if [[ "${CXX}" == "clang++-8" ]]; then
             ${APT_INSTALL} clang-8
-          fi
-          if [[ "${CXX}" == "clang++-7" ]]; then
-            ${APT_INSTALL} clang-7
-          fi
-          if [[ "${CXX}" == "clang++-6.0" ]]; then
-            ${APT_INSTALL} clang-6.0
           fi
 
       - name: Checkout
@@ -401,12 +409,12 @@ jobs:
           ./alpine-run.sh bash -c "cd build && ctest --output-on-failure"
 
   asan-and-ubsan:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         std: [ 17, 20 ]
-        cxx: [ clang++-17 ]
+        cxx: [ clang++-16 ]
 
     env:
       CXX: ${{ matrix.cxx }}
@@ -423,10 +431,6 @@ jobs:
           sudo locale-gen fi_FI.UTF-8
           sudo update-locale
           sudo locale -a
-          
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 17
           
           ${APT_INSTALL} ccache
           
