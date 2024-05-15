@@ -59,9 +59,9 @@
       <div class="m-col-l-10 m-push-l-1">
         <h1>
           <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
-          <span class="m-breadcrumb"><span class="poxy-dead-link">scn</span>::<wbr/></span>basic_istream_scanner <span class="m-thin">struct</span>
+          <span class="m-breadcrumb"><a href="namespacescn.html">scn</a>::<wbr/></span>basic_istream_scanner <span class="m-thin">struct</span>
         </h1>
-<p>Implements the <code>scn::scanner</code> interface, by reading the value with <code>operator&gt;&gt;</code>.</p><p>Example:</p><pre class="m-code"><span class="cp">#include</span> <span class="cpf">&lt;scn/istream.h&gt;</span><span class="c1"> // required for basic_istream_scanner</span>
+<p>Implements the <code><a class="m-doc" href="structscn_1_1scanner.html">scn::<wbr/>scanner</a></code> interface, by reading the value with <code>operator&gt;&gt;</code>.</p><p>Example:</p><pre class="m-code"><span class="cp">#include</span> <span class="cpf">&lt;scn/istream.h&gt;</span><span class="c1"> // required for basic_istream_scanner</span>
 
 <span class="k">struct</span> <span class="nc">mytype</span> <span class="p">{</span>
   <span class="k">friend</span> <span class="nn">std</span><span class="o">::</span><span class="nc">istream</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="nn">std</span><span class="o">::</span><span class="nc">istream</span><span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">mytype</span><span class="o">&amp;</span><span class="p">);</span>
@@ -69,7 +69,7 @@
 
 <span class="c1">// Use mytype::operator&gt;&gt; for scanning with scnlib</span>
 <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">CharT</span><span class="o">&gt;</span>
-<span class="k">struct</span> <span class="nn">scn</span><span class="o">::</span><span class="n">scanner</span><span class="o">&lt;</span><span class="n">mytype</span><span class="o">&gt;</span> <span class="o">:</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">basic_istream_scanner</span><span class="o">&lt;</span><span class="n">CharT</span><span class="o">&gt;</span> <span class="p">{};</span>
+<span class="k">struct</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">scanner</span><span class="o">&lt;</span><span class="n">mytype</span><span class="o">&gt;</span> <span class="o">:</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">basic_istream_scanner</span><span class="o">&lt;</span><span class="n">CharT</span><span class="o">&gt;</span> <span class="p">{};</span>
 
 <span class="k">auto</span> <span class="p">[</span><span class="n">result</span><span class="p">,</span> <span class="n">myvalue</span><span class="p">]</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="n">mytype</span><span class="o">&gt;</span><span class="p">(...);</span></pre>
       </div>

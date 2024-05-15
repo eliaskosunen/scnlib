@@ -112,7 +112,7 @@
             </h3>
 <p><code>scan</code> using an explicit locale.</p><p>Has no effect on its own, locale-specific scanning still needs to be opted-into on an argument-by-argument basis, with the <code>L</code> format string specifier.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">double</span><span class="o">&gt;</span><span class="p">(</span>
     <span class="nn">std</span><span class="o">::</span><span class="nc">locale</span><span class="p">{</span><span class="s">"fi_FI.UTF-8"</span><span class="p">},</span> <span class="s">"3,14, "</span><span class="p">{</span><span class="o">:L</span><span class="p">}</span><span class="s">");</span>
-<span class="c1">// result-&gt;value() == 3.14</span></pre>
+<span class="c1">// result-&gt;value() == 3.14</span></pre><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scan()</a></p></aside>
           </div></section>
           <section class="m-doc-details" id="gad2f34da1b90202d28a82bf8caa75ca4d"><div>
             <h3>
@@ -124,7 +124,7 @@
               scan_format_string&lt;Source, Args...&gt; format,
               <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; default_args) -&gt; scan_result_type&lt; Source, Args... &gt;</span></span>
             </h3>
-<p><code>scan</code> with a locale and default values</p>
+<p><code>scan</code> with a locale and default values</p><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scan()</a></p></aside>
           </div></section>
           <section class="m-doc-details" id="gab5baa54a3e7a6eaccb03c7d1bbd0f9eb"><div>
             <h3>

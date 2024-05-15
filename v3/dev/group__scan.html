@@ -121,7 +121,7 @@
               </div>
               <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga3d9bf446b9f090ff62dd6bd3bf42e4a2">input</a>(</span><span class="m-doc-wrap">scan_format_string&lt;<a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/c/FILE.html" target="_blank">std::<wbr/>FILE</a>*, Args...&gt; format) -&gt; scan_result_type&lt; std::FILE *, Args... &gt;</span></span>
             </h3>
-<p>Scan from <code>stdin</code>.</p><p>Equivalent to <code>scn::scan&lt;...&gt;(stdin, ...)</code>.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">input</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"{}"</span><span class="p">);</span></pre>
+<p>Scan from <code>stdin</code>.</p><p>Equivalent to <code><a class="m-doc" href="#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a>&lt;...&gt;(stdin, ...)</code>.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">input</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"{}"</span><span class="p">);</span></pre>
           </div></section>
           <section class="m-doc-details" id="ga2860ab85b607d9cafcbf268e4f57db35"><div>
             <h3>
@@ -142,7 +142,7 @@
               scan_format_string&lt;Source, Args...&gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</span></span>
             </h3>
 <p>Scans <code>Args...</code> from <code>source</code>, according to the specifications given in the format string (<code>format</code>). Returns the resulting values in an object of type <code><a class="m-doc" href="classscn_1_1scan__result.html">scan_<wbr/>result</a></code>, alongside a <code>subrange</code> pointing to the unused input.</p><p>Example:</p><pre class="m-code"><span class="k">if</span> <span class="p">(</span><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"123"</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">))</span>
-    <span class="k">int</span> <span class="n">value</span> <span class="o">=</span> <span class="n">result</span><span class="o">-&gt;</span><span class="nf">value</span><span class="p">();</span></pre>
+    <span class="k">int</span> <span class="n">value</span> <span class="o">=</span> <span class="n">result</span><span class="o">-&gt;</span><span class="nf">value</span><span class="p">();</span></pre><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="#gab691a605c387f6510a9c2559b026af04">scan()</a></p></aside>
           </div></section>
           <section class="m-doc-details" id="ga2d3cbf7cb0c9a5e97f59ace9d2d2a3db"><div>
             <h3>
@@ -160,7 +160,7 @@
 <span class="c1">// does not allocate</span>
 <span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="nn">std</span><span class="o">::</span><span class="nc">string</span><span class="o">&gt;</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">,</span>
                                      <span class="p">{</span><span class="nn">std</span><span class="o">::</span><span class="nf">move</span><span class="p">(</span><span class="n">str</span><span class="p">)});</span>
-<span class="c1">// Access the read string with result-&gt;value()</span></pre>
+<span class="c1">// Access the read string with result-&gt;value()</span></pre><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="#gab691a605c387f6510a9c2559b026af04">scan()</a></p></aside>
           </div></section>
           <section class="m-doc-details" id="gaad8ea03c53fc8eda13f7c2d1a7381b07"><div>
             <h3>
@@ -169,7 +169,7 @@
               </div>
               <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gaad8ea03c53fc8eda13f7c2d1a7381b07">scan_value</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source) -&gt; scan_result_type&lt; Source, T &gt;</span></span>
             </h3>
-<p><code>scan</code> a single value, with default options.</p><p>Essentially equivalent to: <code>scn::scan&lt;T&gt;(source, "{}")</code>, except it can skip parsing the format string, gaining performance.</p><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="#gaad8ea03c53fc8eda13f7c2d1a7381b07">scan_<wbr/>value()</a></p></aside>
+<p><code>scan</code> a single value, with default options.</p><p>Essentially equivalent to: <code><a class="m-doc" href="#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a>&lt;T&gt;(source, "{}")</code>, except it can skip parsing the format string, gaining performance.</p><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="#gaad8ea03c53fc8eda13f7c2d1a7381b07">scan_<wbr/>value()</a></p></aside>
           </div></section>
           <section class="m-doc-details" id="gad6f64551ee4609a1c20e72163a1347f1"><div>
             <h3>
