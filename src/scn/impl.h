@@ -6023,10 +6023,11 @@ auto skip_fill(const Range& range,
     return result_type{w_it.base(), 0};
 }
 
-static scan_error check_widths_for_arg_reader(const detail::format_specs& specs,
-                                              std::ptrdiff_t prefix_width,
-                                              std::ptrdiff_t value_width,
-                                              std::ptrdiff_t postfix_width)
+SCN_MAYBE_UNUSED constexpr scan_error check_widths_for_arg_reader(
+    const detail::format_specs& specs,
+    std::ptrdiff_t prefix_width,
+    std::ptrdiff_t value_width,
+    std::ptrdiff_t postfix_width)
 {
     if (specs.width != 0) {
         if (prefix_width + value_width + postfix_width < specs.width) {

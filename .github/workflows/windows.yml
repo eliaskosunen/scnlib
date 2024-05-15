@@ -107,9 +107,6 @@ jobs:
         os: [ 2019, 2022 ]
         std: [ 17, 20 ]
         platform: [ x64 ]
-        exclude:
-          # clang-cl ICEs with MSVC STL <ranges>
-          - std: 20
 
     steps:
       - name: Checkout
