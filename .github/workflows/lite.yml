@@ -57,24 +57,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # gcc 14 on 24.04 with C++17, C++20, and C++23
+          - os: 24.04
+            std: 17
+            cxx: g++-14
+          - os: 24.04
+            std: 20
+            cxx: g++-14
+          - os: 24.04
+            std: 23
+            cxx: g++-14
+
+          # gcc 11 on 22.04 with C++17
           - os: 22.04
             std: 17
             cxx: g++-11
-          - os: 22.04
-            std: 20
-            cxx: g++-11
+
+          # clang 15 on 22.04 with C++17
           - os: 22.04
             std: 17
-            cxx: clang++-15
-          - os: 22.04
-            std: 20
             cxx: clang++-15
 
+          # gcc 10 on 20.04 with C++17
           - os: 20.04
             std: 17
-            cxx: g++-10
-          - os: 20.04
-            std: 20
             cxx: g++-10
 
     env:
@@ -198,7 +204,7 @@ jobs:
       fail-fast: false
       matrix:
         cxx: [ clang++ ]
-        std: [ 17, 20 ]
+        std: [ 17 ]
 
     env:
       CXX: ${{ matrix.cxx }}

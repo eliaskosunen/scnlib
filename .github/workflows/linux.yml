@@ -76,74 +76,45 @@ jobs:
         #  - clang++-8
         #  - clang++-7
         #  - clang++-6.0
-        std: [ 17, 20 ]
+        std: [ 17 ]
         include:
           # Explicitly pick out pre-installed clang + os pairs -- apt.llvm.org likes to fail on us
           - os: 24.04
             cxx: clang++-18
             std: 17
           - os: 24.04
-            cxx: clang++-18
-            std: 20
-          - os: 24.04
             cxx: clang++-17
             std: 17
           - os: 24.04
-            cxx: clang++-17
-            std: 20
-          - os: 24.04
             cxx: clang++-16
             std: 17
-          - os: 24.04
-            cxx: clang++-16
-            std: 20
 
           - os: 22.04
             cxx: clang++-15
             std: 17
-          - os: 22.04
-            cxx: clang++-15
-            std: 20
           - os: 22.04
             cxx: clang++-14
             std: 17
-          # FIXME?: weird incompatibility with libstdc++ 13 inside <chrono>
-          # see https://github.com/actions/runner-images/issues/8659
-          #- os: 22.04
-          #  cxx: clang++-14
-          #  std: 20
           - os: 22.04
             cxx: clang++-13
             std: 17
-          #- os: 22.04
-          #  cxx: clang++-13
-          #  std: 20
 
           - os: 20.04
             cxx: clang++-12
             std: 17
           - os: 20.04
-            cxx: clang++-12
-            std: 20
-          - os: 20.04
             cxx: clang++-11
             std: 17
           - os: 20.04
-            cxx: clang++-11
-            std: 20
-          - os: 20.04
             cxx: clang++-10
             std: 17
-          - os: 20.04
-            cxx: clang++-10
-            std: 20
 
           # clang 8 from apt
           - os: 20.04
             cxx: clang++-8
             std: 17
 
-          # newest pre-installed gcc on 24.04, including C++23
+          # newest pre-installed gcc on 24.04, including C++20 and C++23
           - os: 24.04
             cxx: g++-14
             std: 17
@@ -154,20 +125,18 @@ jobs:
             cxx: g++-14
             std: 23
 
-          # newest pre-installed clang on 24.04, with C++23
+          # newest pre-installed clang on 24.04, including C++20 and C++23
+          - os: 24.04
+            cxx: clang++-18
+            std: 17
+          - os: 24.04
+            cxx: clang++-18
+            std: 20
           - os: 24.04
             cxx: clang++-18
             std: 23
 
         exclude:
-          # gcc 8, gcc 7, and clang 8 have lacking C++20 support
-          - cxx: g++-8
-            std: 20
-          - cxx: g++-7
-            std: 20
-          - cxx: clang++-8
-            std: 20
-
           # gcc 8, clang 12, and before aren't available on 22.04
           - cxx: g++-8
             os: 22.04
@@ -275,11 +244,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 22.04, 20.04 ]
-        std: [ 17, 20 ]
-        exclude:
-          # seems to be buggy
-          - os: 20.04
+        os: [ 24.04, 22.04, 20.04 ]
+        std: [ 17 ]
+        include:
+          - os: 24.04
+            std: 20
+          - os: 24.04
+            std: 23
 
     env:
       CC: clang

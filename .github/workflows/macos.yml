@@ -51,9 +51,12 @@ jobs:
       matrix:
         os: [ 14, 12 ]
         cxx: [ brew-clang++, clang++, g++-13, g++-12, g++-11 ]
-        std: [ 17, 20 ]
+        std: [ 17 ]
 
         include:
+          - os: 14
+            cxx: brew-clang++
+            std: 20
           - os: 14
             cxx: brew-clang++
             std: 23

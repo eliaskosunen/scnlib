@@ -53,7 +53,16 @@ jobs:
         os: [ 2019, 2022 ]
         platform: [ Win32, x64 ]
         type: [ Debug, Release ]
-        std: [ 17, 20 ]
+        std: [ 17 ]
+        include:
+          - os: 2019
+            platform: x64
+            type: Debug
+            std: 20
+          - os: 2022
+            platform: x64
+            type: Debug
+            std: 20
 
     steps:
       - name: Checkout
