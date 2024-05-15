@@ -23,7 +23,7 @@ cmd_args = sys.argv[1:]
 if len(cmd_args) != 1:
     raise RuntimeError(
         f"Expected a single command-line argument, containing path to example binaries, got {cmd_args} instead")
-examples_dir = cmd_args[0]
+examples_dir = os.path.normpath(cmd_args[0])
 
 
 def check(i, input, expected_output):
