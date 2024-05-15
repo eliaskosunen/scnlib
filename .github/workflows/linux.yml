@@ -244,12 +244,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 24.04, 22.04, 20.04 ]
+        # 24.04 doesn't have libc++ (yet?)
+        os: [ 22.04, 20.04 ]
         std: [ 17 ]
         include:
-          - os: 24.04
+          - os: 22.04
             std: 20
-          - os: 24.04
+          - os: 22.04
             std: 23
 
     env:
