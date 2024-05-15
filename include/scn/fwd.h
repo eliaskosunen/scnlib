@@ -22,7 +22,7 @@
 #endif
 
 #define SCN_COMPILER(major, minor, patch) \
-    ((major) * 10'000'000 + (minor) * 10'000 + (patch))
+    ((major) * 10000000 + (minor) * 10000 + (patch))
 
 #define SCN_VERSION SCN_COMPILER(3, 0, 0)
 
