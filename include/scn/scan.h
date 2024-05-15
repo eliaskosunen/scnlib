@@ -30,10 +30,6 @@
 #include <string_view>
 #include <tuple>
 
-#if SCN_GCC && SCN_GCC_< SCN_COMPILER(8, 0, 0)
-#include <functional>
-#endif
-
 /////////////////////////////////////////////////////////////////
 // <expected> implementation
 /////////////////////////////////////////////////////////////////
@@ -846,15 +842,13 @@ using is_exp_void = std::is_void<typename remove_cvref_t<Exp>::value_type>;
 template <typename Exp>
 using expected_value_type = typename remove_cvref_t<Exp>::value_type;
 
-template <typename F, typename... Args>
+template <
+    typename F,
+    typename... Args,
+    typename = std::void_t<decltype(SCN_DECLVAL(F&&)(SCN_DECLVAL(Args&&)...))>>
 constexpr decltype(auto) trivial_invoke(F&& f, Args&&... args)
 {
-#if SCN_GCC && SCN_GCC < SCN_COMPILER(8,0,0)
-    // Pessimize on gcc 7, compiler bug
-    return std::invoke(std::forward<F>(f), std::forward<Args>(args)...);
-#else
     return std::forward<F>(f)(std::forward<Args>(args)...);
-#endif
 }
 
 // and_then
@@ -3743,7 +3737,10 @@ inline constexpr char32_t decode_utf8_code_point_exhaustive(
         return cp;
     }
 
+#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(8, 0, 0)
+    // gcc 7 thinks we'll get here, even when we won't
     SCN_EXPECT(false);
+#endif
     SCN_UNREACHABLE;
 }
 
@@ -3798,7 +3795,10 @@ inline constexpr char32_t decode_utf8_code_point_exhaustive_valid(
         return cp;
     }
 
+#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(8, 0, 0)
+    // gcc 7 thinks we'll get here, even when we won't
     SCN_EXPECT(false);
+#endif
     SCN_UNREACHABLE;
 }
 

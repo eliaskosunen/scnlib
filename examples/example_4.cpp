@@ -36,5 +36,5 @@ int main()
             std::printf(R"([{%d: %d, %d: %d}, {%d: %d}])", a.first, a.second,
                         b.first, b.second, c.first, c.second);
         })
-        .transform_error([](auto) { std::puts("failure"); });
+        .transform_error([](scn::scan_error) { std::puts("failure"); });
 }
