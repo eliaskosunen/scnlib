@@ -180,9 +180,9 @@ jobs:
 
         exclude:
           # Buggy float parsing
-          - clang32
-          - clang64
-          - msys
+          - sys: clang32
+          - sys: clang64
+          - sys: msys
 
     steps:
       - uses: msys2/setup-msys2@v2
