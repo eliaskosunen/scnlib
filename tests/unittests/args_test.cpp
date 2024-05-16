@@ -24,11 +24,10 @@ using ::testing::Test;
 
 TEST(ArgsTest, ArgTypeMapping)
 {
-    static_assert(
-        scn::detail::mapped_type_constant<int, scn::scan_context>::value ==
-        scn::detail::arg_type::int_type);
+    static_assert(scn::detail::mapped_type_constant<int, char>::value ==
+                  scn::detail::arg_type::int_type);
     static_assert(scn::detail::mapped_type_constant<scn::detail::dummy_type,
-                                                    scn::scan_context>::value ==
+                                                    char>::value ==
                   scn::detail::arg_type::custom_type);
 
     // narrow context, narrow char -> valid

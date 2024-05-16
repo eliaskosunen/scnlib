@@ -206,6 +206,9 @@ private:
 
 template <typename CharT>
 struct arg_mapper {
+    static_assert(std::is_same_v<CharT, char> ||
+                  std::is_same_v<CharT, wchar_t>);
+
     using char_type = CharT;
     using other_char_type =
         std::conditional_t<std::is_same_v<char_type, char>, wchar_t, char>;
