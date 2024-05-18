@@ -109,6 +109,10 @@ protected:
     {
         return std::make_pair(int_type{077}, "0o77"sv);
     }
+    static auto get_oct_followed_by_dec()
+    {
+        return std::make_tuple(int_type{8}, "08"sv);
+    }
 
     static auto get_bin()
     {
@@ -532,8 +536,12 @@ TYPED_TEST_P(IntValueReaderTest, Hex)
 }
 TYPED_TEST_P(IntValueReaderTest, HexDetect)
 {
-    const auto [val, src] = this->get_hex_prefixed();
-    EXPECT_TRUE(this->simple_default_test(src, val));
+    const auto [orig_val, src] = this->get_hex_prefixed();
+    const auto [a, _, val] = this->simple_success_specs_test(
+        src, this->make_format_specs_with_presentation_and_base(
+                 scn::detail::presentation_type::int_generic));
+    EXPECT_TRUE(a);
+    EXPECT_EQ(val, orig_val);
 }
 
 TYPED_TEST_P(IntValueReaderTest, Oct)
@@ -547,31 +555,65 @@ TYPED_TEST_P(IntValueReaderTest, Oct)
 }
 TYPED_TEST_P(IntValueReaderTest, OctDetect)
 {
-    const auto [val, src] = this->get_oct_prefixed();
-    EXPECT_TRUE(this->simple_default_test(src, val));
+    const auto [orig_val, src] = this->get_oct_prefixed();
+    const auto [a, _, val] = this->simple_success_specs_test(
+        src, this->make_format_specs_with_presentation_and_base(
+                 scn::detail::presentation_type::int_generic));
+    EXPECT_TRUE(a);
+    EXPECT_EQ(val, orig_val);
+}
+TYPED_TEST_P(IntValueReaderTest, OctAltDefault)
+{
+    const auto [_, src] = this->get_oct_prefixed_alt();
+    const auto [result, val] = this->simple_specs_test(
+        src, this->make_format_specs_with_presentation_and_base(
+                 scn::detail::presentation_type::none));
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 0);
 }
 TYPED_TEST_P(IntValueReaderTest, OctAltDetected)
 {
-    if (this->is_localized) {
-        return SUCCEED() << "Alternative octal representation '0o' not "
-                            "supported by localized int readers";
-    }
-
     const auto [orig_val, src] = this->get_oct_prefixed_alt();
+    const auto [a, _, val] = this->simple_success_specs_test(
+        src, this->make_format_specs_with_presentation_and_base(
+                 scn::detail::presentation_type::int_generic));
+    EXPECT_TRUE(a);
+    EXPECT_EQ(val, orig_val);
+}
+TYPED_TEST_P(IntValueReaderTest, OctFollowedByDec)
+{
+    const auto [_, src] = this->get_oct_followed_by_dec();
+    const auto [result, val] = this->simple_specs_test(
+        src, this->make_format_specs_with_presentation_and_base(
+                 scn::detail::presentation_type::int_octal));
+    ASSERT_TRUE(result);
+    EXPECT_NE(scn::detail::to_address(result.value()),
+              scn::detail::to_address(this->widened_source->end()));
+    EXPECT_EQ(val, 0);
+}
+TYPED_TEST_P(IntValueReaderTest, OctFollowedByDecDefault)
+{
+    const auto [orig_val, src] = this->get_oct_followed_by_dec();
     const auto [a, _, val] = this->simple_success_specs_test(
         src, this->make_format_specs_with_presentation_and_base(
                  scn::detail::presentation_type::none));
     EXPECT_TRUE(a);
     EXPECT_EQ(val, orig_val);
 }
+TYPED_TEST_P(IntValueReaderTest, OctFollowedByDecDetected)
+{
+    const auto [_, src] = this->get_oct_followed_by_dec();
+    const auto [result, val] = this->simple_specs_test(
+        src, this->make_format_specs_with_presentation_and_base(
+                 scn::detail::presentation_type::int_generic));
+    ASSERT_TRUE(result);
+    EXPECT_NE(scn::detail::to_address(result.value()),
+              scn::detail::to_address(this->widened_source->end()));
+    EXPECT_EQ(val, 0);
+}
 
 TYPED_TEST_P(IntValueReaderTest, Bin)
 {
-    if (this->is_localized) {
-        return SUCCEED() << "Binary numbers not "
-                            "supported by localized int readers";
-    }
-
     const auto [orig_val, src] = this->get_bin();
     const auto [a, _, val] = this->simple_success_specs_test(
         src, this->make_format_specs_with_presentation_and_base(
@@ -581,22 +623,16 @@ TYPED_TEST_P(IntValueReaderTest, Bin)
 }
 TYPED_TEST_P(IntValueReaderTest, BinDetect)
 {
-    if (this->is_localized) {
-        return SUCCEED() << "Binary numbers not "
-                            "supported by localized int readers";
-    }
-
-    const auto [val, src] = this->get_bin_prefixed();
-    EXPECT_TRUE(this->simple_default_test(src, val));
+    const auto [orig_val, src] = this->get_bin_prefixed();
+    const auto [a, _, val] = this->simple_success_specs_test(
+        src, this->make_format_specs_with_presentation_and_base(
+                 scn::detail::presentation_type::int_generic));
+    EXPECT_TRUE(a);
+    EXPECT_EQ(val, orig_val);
 }
 
 TYPED_TEST_P(IntValueReaderTest, Ternary)
 {
-    if (this->is_localized) {
-        return SUCCEED() << "Arbitrary base numbers not "
-                            "supported by localized int readers";
-    }
-
     const auto [orig_val, src] = this->get_ternary();
     const auto [a, _, val] = this->simple_success_specs_test(
         src, this->make_format_specs_with_presentation_and_base(
@@ -675,10 +711,6 @@ TYPED_TEST_P(IntValueReaderTest, SeventeenDigits)
 
 TYPED_TEST_P(IntValueReaderTest, StartsAsDecimalNumber)
 {
-    if (SCN_STDLIB_LIBCPP && this->is_localized) {
-        return SUCCEED() << "This test doesn't work on libc++ num_get";
-    }
-
     auto [result, val] = this->simple_test("123abc");
     ASSERT_TRUE(result);
     EXPECT_EQ(val, 123);
@@ -706,12 +738,12 @@ TYPED_TEST_P(IntValueReaderTest, NonsenseStartingWithHexPrefix)
     EXPECT_EQ(val, 0);
     EXPECT_EQ(**result, 'x');
 }
-TYPED_TEST_P(IntValueReaderTest, HexFollowedByNonsense)
+TYPED_TEST_P(IntValueReaderTest, HexFollowedByNonsenseWithDefault)
 {
     auto [result, val] = this->simple_test("0xehelloworld");
     ASSERT_TRUE(result);
-    EXPECT_EQ(val, 0xe);
-    EXPECT_EQ(**result, 'h');
+    EXPECT_EQ(val, 0);
+    EXPECT_EQ(**result, 'x');
 }
 
 TYPED_TEST_P(IntValueReaderTest, OnlyPlusSign)
@@ -881,6 +913,10 @@ REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
                             Oct,
                             OctDetect,
                             OctAltDetected,
+                            OctAltDefault,
+                            OctFollowedByDec,
+                            OctFollowedByDecDetected,
+                            OctFollowedByDecDefault,
                             Bin,
                             BinDetect,
                             Ternary,
@@ -897,7 +933,7 @@ REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
                             Nonsense,
                             NonsenseStartingWithZero,
                             NonsenseStartingWithHexPrefix,
-                            HexFollowedByNonsense,
+                            HexFollowedByNonsenseWithDefault,
                             OnlyPlusSign,
                             OnlyMinusSign,
                             OnlyHexPrefix,

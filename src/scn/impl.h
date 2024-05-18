@@ -3539,7 +3539,7 @@ public:
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
-        return read_default_with_base(range, value, 0);
+        return read_default_with_base(range, value, 10);
     }
 
     template <typename Range, typename T>
@@ -3549,7 +3549,7 @@ public:
                     detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
-        SCN_TRY(prefix_result, parse_integer_prefix(range, specs.get_base(0))
+        SCN_TRY(prefix_result, parse_integer_prefix(range, specs.get_base())
                                    .transform_error(make_eof_scan_error));
 
         if (prefix_result.sign == sign_type::minus_sign) {

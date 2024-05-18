@@ -6257,14 +6257,15 @@ struct format_specs {
 
     constexpr format_specs() = default;
 
-    SCN_NODISCARD constexpr int get_base(int default_base) const
+    SCN_NODISCARD constexpr int get_base() const
     {
         SCN_GCC_COMPAT_PUSH
         SCN_GCC_COMPAT_IGNORE("-Wswitch-enum")
         switch (type) {
             case presentation_type::none:
+                return 10;
             case presentation_type::int_generic:
-                return default_base;
+                return 0;
             case presentation_type::int_arbitrary_base:
                 return arbitrary_base;
 
