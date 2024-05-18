@@ -195,8 +195,8 @@ TEST(ScanTest, DeconstructedTimestamp)
 }
 TEST(ScanTest, DeconstructedTimestamp2)
 {
-    auto res = scn::scan<int, int, int, int, int>(
-        "2024-03-23T09:20:33.576864", "{:4}-{:2}-{:2}T{:2}:{:2}:");
+    auto res = scn::scan<int, int, int, int, int>("2024-03-23T09:20:33.576864",
+                                                  "{:4}-{:2}-{:2}T{:2}:{:2}:");
     ASSERT_TRUE(res);
     EXPECT_EQ(std::get<0>(res->values()), 2024);
     EXPECT_EQ(std::get<1>(res->values()), 3);
@@ -204,4 +204,31 @@ TEST(ScanTest, DeconstructedTimestamp2)
     EXPECT_EQ(std::get<3>(res->values()), 9);
     EXPECT_EQ(std::get<4>(res->values()), 20);
     EXPECT_STREQ(res->range().data(), "33.576864");
+}
+
+TEST(ScanTest, LotsOfArguments)
+{
+    auto res = scn::scan<int, int, int, int, int, int, int, double>(
+        "1 2 3 4 5 6 7 8.9", "{} {} {} {} {} {} {} {}");
+    ASSERT_TRUE(res);
+    auto [a1, a2, a3, a4, a5, a6, a7, a8] = res->values();
+    EXPECT_EQ(a1, 1);
+    EXPECT_EQ(a2, 2);
+    EXPECT_EQ(a3, 3);
+    EXPECT_EQ(a4, 4);
+    EXPECT_EQ(a5, 5);
+    EXPECT_EQ(a6, 6);
+    EXPECT_EQ(a7, 7);
+    EXPECT_DOUBLE_EQ(a8, 8.9);
+}
+TEST(ScanTest, EvenMoreArguments)
+{
+    auto res = scn::scan<int, int, int, int, int, int, int, int, int, int, int,
+                         int, int, int, int, int, int, int, int, int, int, int,
+                         int, int, int, int, int, int, int, int, int, int, int>(
+        "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 "
+        "27 28 29 30 31 32 33",
+        "{} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} "
+        "{} {} {} {} {} {} {} {} {} {}");
+    ASSERT_TRUE(res);
 }
