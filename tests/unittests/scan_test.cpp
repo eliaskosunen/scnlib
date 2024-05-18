@@ -180,3 +180,28 @@ TEST(ScanTest, FuzzerFailDequeInput)
     auto result = scn::scan<std::string>(rng, "{}");
     ASSERT_FALSE(result);
 }
+
+TEST(ScanTest, DeconstructedTimestamp)
+{
+    auto res = scn::scan<int, int, int, int, int, double>(
+        "2024-03-23T09:20:33.576864", "{:4d}-{:2d}-{:2d}T{:2d}:{:2d}:{}");
+    ASSERT_TRUE(res);
+    EXPECT_EQ(std::get<0>(res->values()), 2024);
+    EXPECT_EQ(std::get<1>(res->values()), 3);
+    EXPECT_EQ(std::get<2>(res->values()), 23);
+    EXPECT_EQ(std::get<3>(res->values()), 9);
+    EXPECT_EQ(std::get<4>(res->values()), 20);
+    EXPECT_DOUBLE_EQ(std::get<5>(res->values()), 33.576864);
+}
+TEST(ScanTest, DeconstructedTimestamp2)
+{
+    auto res = scn::scan<int, int, int, int, int>(
+        "2024-03-23T09:20:33.576864", "{:4d}-{:2d}-{:2d}T{:2d}:{:2d}:");
+    ASSERT_TRUE(res);
+    EXPECT_EQ(std::get<0>(res->values()), 2024);
+    EXPECT_EQ(std::get<1>(res->values()), 3);
+    EXPECT_EQ(std::get<2>(res->values()), 23);
+    EXPECT_EQ(std::get<3>(res->values()), 9);
+    EXPECT_EQ(std::get<4>(res->values()), 20);
+    EXPECT_STREQ(res->range().data(), "33.576864");
+}

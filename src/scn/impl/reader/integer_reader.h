@@ -332,7 +332,7 @@ public:
         T& value,
         detail::locale_ref loc)
     {
-        SCN_TRY(prefix_result, parse_integer_prefix(range, specs.get_base(0))
+        SCN_TRY(prefix_result, parse_integer_prefix(range, specs.get_base())
                                    .transform_error(make_eof_scan_error));
 
         if (prefix_result.sign == sign_type::minus_sign) {

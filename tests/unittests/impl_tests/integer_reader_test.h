@@ -109,6 +109,10 @@ protected:
     {
         return std::make_pair(int_type{077}, "0o77"sv);
     }
+    static auto get_oct_followed_by_dec()
+    {
+        return std::make_pair(int_type{0}, "08"sv);
+    }
 
     static auto get_bin()
     {
@@ -564,6 +568,28 @@ TYPED_TEST_P(IntValueReaderTest, OctAltDetected)
     EXPECT_TRUE(a);
     EXPECT_EQ(val, orig_val);
 }
+TYPED_TEST_P(IntValueReaderTest, OctFollowedByDec)
+{
+    const auto [orig_val, src] = this->get_oct_followed_by_dec();
+    const auto [result, val] = this->simple_specs_test(
+        src, this->make_format_specs_with_presentation_and_base(
+                 scn::detail::presentation_type::int_octal));
+    ASSERT_TRUE(result);
+    EXPECT_NE(scn::detail::to_address(result.value()),
+              scn::detail::to_address(this->widened_source->end()));
+    EXPECT_EQ(val, orig_val);
+}
+TYPED_TEST_P(IntValueReaderTest, OctFollowedByDecDetected)
+{
+    const auto [orig_val, src] = this->get_oct_followed_by_dec();
+    const auto [result, val] = this->simple_specs_test(
+        src, this->make_format_specs_with_presentation_and_base(
+                 scn::detail::presentation_type::none));
+    ASSERT_TRUE(result);
+    EXPECT_NE(scn::detail::to_address(result.value()),
+              scn::detail::to_address(this->widened_source->end()));
+    EXPECT_EQ(val, orig_val);
+}
 
 TYPED_TEST_P(IntValueReaderTest, Bin)
 {
@@ -881,6 +907,8 @@ REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
                             Oct,
                             OctDetect,
                             OctAltDetected,
+                            OctFollowedByDec,
+                            OctFollowedByDecDetected,
                             Bin,
                             BinDetect,
                             Ternary,

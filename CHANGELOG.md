@@ -4,6 +4,9 @@ _Released 2024-05-xx_
 
 ## Fixes
 
+ * Fix documentation: default format type specifier for integers is `i`, not `d`:
+   when not explicitly specified by a format specifier, the base of an integer is determined based on its prefix:
+   `0x...` is hexadecimal, `0...` or `0o...` is octal, `0b...` is binary, and everything else is decimal.
  * Small CMake adjustments to better support use as a subproject (#113, thanks [@frankmiller (Frank Miller)](https://github.com/frankmiller))
  * Fix misplaced include of `GNUInstallDirs` in CMake (#111, thanks [@WangWeiLin-MV](https://github.com/WangWeiLin-MV))
  * Allow for externally installed versions for GTest and Google Benchmark (#112, thanks [@xvitaly (Vitaly)](https://github.com/xvitaly))

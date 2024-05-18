@@ -243,7 +243,7 @@
  * <tr>
  * <td>none</td>
  * <td>
- * Same as `d`.
+ * Same as `i`.
  * </td>
  * </tr>
  * </table>
