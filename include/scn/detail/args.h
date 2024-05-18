@@ -152,7 +152,7 @@ public:
     SCN_STD > SCN_STD_20
     constexpr
 #endif
-        arg_value() = default;
+    arg_value() = default;
 
     template <typename T>
     explicit constexpr arg_value(T& val) : ref_value{std::addressof(val)}
@@ -333,9 +333,14 @@ constexpr size_t encode_types_impl()
 template <typename CharT, typename... Ts>
 constexpr size_t encode_types()
 {
-    static_assert(sizeof...(Ts) < (1 << packed_arg_bits));
-    return sizeof...(Ts) |
-           (encode_types_impl<CharT, Ts...>() << packed_arg_bits);
+    if constexpr (sizeof...(Ts) < (1 << packed_arg_bits)) {
+        return sizeof...(Ts) |
+               (encode_types_impl<CharT, Ts...>() << packed_arg_bits);
+    }
+    else {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
 }
 
 template <typename Arg>
@@ -695,7 +700,7 @@ private:
         : m_desc{desc}, m_values{values}
     {
     }
-    constexpr basic_scan_args(size_t desc, basic_scan_args<Context>* args)
+    constexpr basic_scan_args(size_t desc, basic_scan_arg<Context>* args)
         : m_desc{desc}, m_args{args}
     {
     }
