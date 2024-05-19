@@ -19,7 +19,7 @@
 
 #include <scn/detail/pp_detect.h>
 
-#define SCN_VERSION SCN_COMPILER(2, 0, 2)
+#define SCN_VERSION SCN_COMPILER(2, 0, 3)
 
 // SCN_USE_EXCEPTIONS
 // If 0, removes all `noexcept` annotations,

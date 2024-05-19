@@ -1,6 +1,6 @@
 # 2.0.3
 
-_Released 2024-05-xx_
+_Released 2024-05-19_
 
 ## Fixes
 
