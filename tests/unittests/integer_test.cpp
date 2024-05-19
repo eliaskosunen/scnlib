@@ -20,25 +20,25 @@
 #include <scn/detail/scan.h>
 
 namespace {
-    template <typename... Args>
-    std::tuple<testing::AssertionResult, Args...> do_test(
-        std::string_view src,
-        scn::scan_format_string<std::string_view, Args...> fmt)
-    {
-        auto result = scn::scan<Args...>(src, fmt);
-        if (!result) {
-            return {testing::AssertionFailure()
-                        << "scan failed with " << result.error().code() << ": "
-                        << result.error().msg(),
-                    Args{}...};
-        }
-        if (result->begin() != src.end()) {
-            return {testing::AssertionFailure() << "result iterator not at end",
-                    Args{}...};
-        }
-        return std::tuple_cat(std::tuple{testing::AssertionSuccess()},
-                              result->values());
+template <typename... Args>
+std::tuple<testing::AssertionResult, Args...> do_test(
+    std::string_view src,
+    scn::scan_format_string<std::string_view, Args...> fmt)
+{
+    auto result = scn::scan<Args...>(src, fmt);
+    if (!result) {
+        return {testing::AssertionFailure()
+                    << "scan failed with " << result.error().code() << ": "
+                    << result.error().msg(),
+                Args{}...};
     }
+    if (result->begin() != src.end()) {
+        return {testing::AssertionFailure() << "result iterator not at end",
+                Args{}...};
+    }
+    return std::tuple_cat(std::tuple{testing::AssertionSuccess()},
+                          result->values());
+}
 }  // namespace
 
 TEST(IntegerTest, Simple)
@@ -94,17 +94,20 @@ TEST(IntegerTest, UnsignedWithUnsignedFormat)
     EXPECT_EQ(val, 42);
 }
 
-TEST(IntegerTest, LeadingZeroesInDecimal) {
+TEST(IntegerTest, LeadingZeroesInDecimal)
+{
     auto [result, val] = do_test<short>("0000000000000000100", "{:d}");
     ASSERT_TRUE(result);
     EXPECT_EQ(val, 100);
 }
-TEST(IntegerTest, LeadingZeroesInHexadecimalWithoutPrefix) {
+TEST(IntegerTest, LeadingZeroesInHexadecimalWithoutPrefix)
+{
     auto [result, val] = do_test<short>("0000000000000000100", "{:x}");
     ASSERT_TRUE(result);
     EXPECT_EQ(val, 0x100);
 }
-TEST(IntegerTest, LeadingZeroesInHexadecimalWithPrefix) {
+TEST(IntegerTest, LeadingZeroesInHexadecimalWithPrefix)
+{
     auto [result, val] = do_test<short>("0x0000000000000000100", "{}");
     ASSERT_TRUE(result);
     EXPECT_EQ(val, 0x100);
@@ -125,42 +128,42 @@ TEST(IntegerTest, Pointer)
 }
 
 namespace {
-    std::string_view get_long_input()
-    {
-        return "1452555457 -184798174 -1652546625 -2047874506 328160201 "
-               "-1742626756 -2104166651 -361330339 -1064849314 -1140256799 "
-               "-77457874 1035003058 -1608973386 -364576541 924414610 "
-               "-565032411 2113656804 66526789 -520585648 1079228960 "
-               "-1012538263 -791727985 -858355297 -852074158 969974399 "
-               "1642644672 -1952912297 880585823 873842844 -473822935 "
-               "-1816376564 -1005862253 -661864658 -1307402335 1630039865 "
-               "840811653 -1586244752 1109303204 1328768838 1848854057 "
-               "1406603349 -1204313777 -1703869320 -1019691744 2042313234 "
-               "-810580417 -101344325 -1122229352 -104477533 -419004291 "
-               "-1160309244 -1186534409 1427634555 -226701969 423863886 "
-               "1406499283 -1729619223 -463219595 -1522636674 1694345924 "
-               "1419806805 115071386 -445258046 -993164105 854616875 "
-               "1000331309 -1311414169 1691697359 -193402913 -1427871577 "
-               "1878558562 -1033215863 -325223198 -1299704348 -324671872 "
-               "1752548020 -790926043 -1304924709 -851161885 29627141 "
-               "-1291891913 -1965349957 677096279 -728279334 -1696288799 "
-               "-1870884715 1350724467 -880882936 871236574 -767014908 "
-               "-1997582959 -1568170814 -230983998 1512649082 2016579559 "
-               "600570696 -1052567846 1967307875 -512726237 -1957472780 "
-               "-1656353216 2108184007 1236084848 1610008127 1710656200 "
-               "126598604 -148883527 -1161501624 -1090318495 -34680478 "
-               "1316194429 -1705032293 1575287842 -1177882817 1065014342 "
-               "416929349 -1917198405 852065756 -1412594178 -1605733035 "
-               "-1956303950 610686248 713602964 1417685924 -718145659 "
-               "1361788393 524810647 -756671677 496364848 2011161096 "
-               "-864257237 -197094037 1330741570 -816189669 -235680849 "
-               "-1523110578 1882201631 -2126884251 609616291 -1335875805 "
-               "-854354418 -410917675 -236519164 -447207753 1202334876 "
-               "803903497 -605856953 907537779 -365278899 2146027685 "
-               "1760175337 -502436335 417469866 1214405189 554749409 "
-               "1479834401 1538757135 538313906 72685284 -909183582 "
-               "1439501153 ";
-    }
+std::string_view get_long_input()
+{
+    return "1452555457 -184798174 -1652546625 -2047874506 328160201 "
+           "-1742626756 -2104166651 -361330339 -1064849314 -1140256799 "
+           "-77457874 1035003058 -1608973386 -364576541 924414610 "
+           "-565032411 2113656804 66526789 -520585648 1079228960 "
+           "-1012538263 -791727985 -858355297 -852074158 969974399 "
+           "1642644672 -1952912297 880585823 873842844 -473822935 "
+           "-1816376564 -1005862253 -661864658 -1307402335 1630039865 "
+           "840811653 -1586244752 1109303204 1328768838 1848854057 "
+           "1406603349 -1204313777 -1703869320 -1019691744 2042313234 "
+           "-810580417 -101344325 -1122229352 -104477533 -419004291 "
+           "-1160309244 -1186534409 1427634555 -226701969 423863886 "
+           "1406499283 -1729619223 -463219595 -1522636674 1694345924 "
+           "1419806805 115071386 -445258046 -993164105 854616875 "
+           "1000331309 -1311414169 1691697359 -193402913 -1427871577 "
+           "1878558562 -1033215863 -325223198 -1299704348 -324671872 "
+           "1752548020 -790926043 -1304924709 -851161885 29627141 "
+           "-1291891913 -1965349957 677096279 -728279334 -1696288799 "
+           "-1870884715 1350724467 -880882936 871236574 -767014908 "
+           "-1997582959 -1568170814 -230983998 1512649082 2016579559 "
+           "600570696 -1052567846 1967307875 -512726237 -1957472780 "
+           "-1656353216 2108184007 1236084848 1610008127 1710656200 "
+           "126598604 -148883527 -1161501624 -1090318495 -34680478 "
+           "1316194429 -1705032293 1575287842 -1177882817 1065014342 "
+           "416929349 -1917198405 852065756 -1412594178 -1605733035 "
+           "-1956303950 610686248 713602964 1417685924 -718145659 "
+           "1361788393 524810647 -756671677 496364848 2011161096 "
+           "-864257237 -197094037 1330741570 -816189669 -235680849 "
+           "-1523110578 1882201631 -2126884251 609616291 -1335875805 "
+           "-854354418 -410917675 -236519164 -447207753 1202334876 "
+           "803903497 -605856953 907537779 -365278899 2146027685 "
+           "1760175337 -502436335 417469866 1214405189 554749409 "
+           "1479834401 1538757135 538313906 72685284 -909183582 "
+           "1439501153 ";
+}
 }  // namespace
 
 TEST(IntegerTest, LongInput)
@@ -187,6 +190,231 @@ TEST(IntegerTest, WonkyInputWithThsep2)
     ASSERT_TRUE(result);
     EXPECT_EQ(result->begin(), input.begin() + 2);
     EXPECT_EQ(result->value(), 0);
+}
+
+TEST(IntegerTest, BinaryFollowedByDec_Default)
+{
+    std::string_view input = "0b12";
+    auto result = scn::scan<int>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 1);
+}
+TEST(IntegerTest, BinaryFollowedByDec_Decimal)
+{
+    std::string_view input = "0b12";
+    auto result = scn::scan<int>(input, "{:d}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.begin() + 1);
+    EXPECT_EQ(result->value(), 0);
+}
+TEST(IntegerTest, BinaryFollowedByDec_Generic)
+{
+    std::string_view input = "0b12";
+    auto result = scn::scan<int>(input, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 1);
+}
+TEST(IntegerTest, BinaryFollowedByDec_Binary)
+{
+    std::string_view input = "0b12";
+    auto result = scn::scan<int>(input, "{:b}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 1);
+}
+
+TEST(IntegerTest, BinaryNoPrefixFollowedByDec_Default)
+{
+    std::string_view input = "12";
+    auto result = scn::scan<int>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end());
+    EXPECT_EQ(result->value(), 12);
+}
+TEST(IntegerTest, BinaryNoPrefixFollowedByDec_Decimal)
+{
+    std::string_view input = "12";
+    auto result = scn::scan<int>(input, "{:d}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end());
+    EXPECT_EQ(result->value(), 12);
+}
+TEST(IntegerTest, BinaryNoPrefixFollowedByDec_Generic)
+{
+    std::string_view input = "12";
+    auto result = scn::scan<int>(input, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end());
+    EXPECT_EQ(result->value(), 12);
+}
+TEST(IntegerTest, BinaryNoPrefixFollowedByDec_Binary)
+{
+    std::string_view input = "12";
+    auto result = scn::scan<int>(input, "{:b}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 1);
+}
+
+TEST(IntegerTest, OctalFollowedByDec_Default)
+{
+    std::string_view input = "078";
+    auto result = scn::scan<int>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 7);
+}
+TEST(IntegerTest, OctalFollowedByDec_Decimal)
+{
+    std::string_view input = "078";
+    auto result = scn::scan<int>(input, "{:d}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end());
+    EXPECT_EQ(result->value(), 78);
+}
+TEST(IntegerTest, OctalFollowedByDec_Generic)
+{
+    std::string_view input = "078";
+    auto result = scn::scan<int>(input, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 7);
+}
+TEST(IntegerTest, OctalFollowedByDec_Octal)
+{
+    std::string_view input = "078";
+    auto result = scn::scan<int>(input, "{:o}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 7);
+}
+
+TEST(IntegerTest, OctalNoPrefixFollowedByDec_Default)
+{
+    std::string_view input = "78";
+    auto result = scn::scan<int>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end());
+    EXPECT_EQ(result->value(), 78);
+}
+TEST(IntegerTest, OctalNoPrefixFollowedByDec_Decimal)
+{
+    std::string_view input = "78";
+    auto result = scn::scan<int>(input, "{:d}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end());
+    EXPECT_EQ(result->value(), 78);
+}
+TEST(IntegerTest, OctalNoPrefixFollowedByDec_Generic)
+{
+    std::string_view input = "78";
+    auto result = scn::scan<int>(input, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end());
+    EXPECT_EQ(result->value(), 78);
+}
+TEST(IntegerTest, OctalNoPrefixFollowedByDec_Octal)
+{
+    std::string_view input = "78";
+    auto result = scn::scan<int>(input, "{:o}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 7);
+}
+
+TEST(IntegerTest, OctalLongPrefixFollowedByDec_Default)
+{
+    std::string_view input = "0o78";
+    auto result = scn::scan<int>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 7);
+}
+TEST(IntegerTest, OctalLongPrefixFollowedByDec_Decimal)
+{
+    std::string_view input = "0o78";
+    auto result = scn::scan<int>(input, "{:d}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.begin() + 1);
+    EXPECT_EQ(result->value(), 0);
+}
+TEST(IntegerTest, OctalLongPrefixFollowedByDec_Generic)
+{
+    std::string_view input = "0o78";
+    auto result = scn::scan<int>(input, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 7);
+}
+TEST(IntegerTest, OctalLongPrefixFollowedByDec_Octal)
+{
+    std::string_view input = "0o78";
+    auto result = scn::scan<int>(input, "{:o}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 7);
+}
+
+TEST(IntegerTest, HexFollowedByNonDigit_Default)
+{
+    std::string_view input = "0xfg";
+    auto result = scn::scan<int>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 0xf);
+}
+TEST(IntegerTest, HexFollowedByNonDigit_Decimal)
+{
+    std::string_view input = "0xfg";
+    auto result = scn::scan<int>(input, "{:d}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.begin() + 1);
+    EXPECT_EQ(result->value(), 0);
+}
+TEST(IntegerTest, HexFollowedByNonDigit_Generic)
+{
+    std::string_view input = "0xfg";
+    auto result = scn::scan<int>(input, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 0xf);
+}
+TEST(IntegerTest, HexFollowedByNonDigit_Hex)
+{
+    std::string_view input = "0xfg";
+    auto result = scn::scan<int>(input, "{:x}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 0xf);
+}
+
+TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Default)
+{
+    std::string_view input = "fg";
+    auto result = scn::scan<int>(input, "{}");
+    ASSERT_FALSE(result);
+}
+TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Decimal)
+{
+    std::string_view input = "fg";
+    auto result = scn::scan<int>(input, "{:d}");
+    ASSERT_FALSE(result);
+}
+TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Generic)
+{
+    std::string_view input = "fg";
+    auto result = scn::scan<int>(input, "{:i}");
+    ASSERT_FALSE(result);
+}
+TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Hex)
+{
+    std::string_view input = "fg";
+    auto result = scn::scan<int>(input, "{:x}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end() - 1);
+    EXPECT_EQ(result->value(), 0xf);
 }
 
 TEST(ScanIntTest, Simple)
