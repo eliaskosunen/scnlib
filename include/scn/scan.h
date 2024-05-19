@@ -5375,7 +5375,6 @@ protected:
         conditional_t<is_packed, detail::arg_value, basic_scan_arg<Context>>;
     using value_array_type = std::array<value_type, num_args>;
 };
-}  // namespace detail
 
 /**
  * A tuple of scanning arguments, stored by value.
@@ -5385,19 +5384,12 @@ protected:
  * like `scn::vscan`.
  */
 template <typename Context, typename... Args>
-class scan_arg_store
-    : public detail::scan_arg_store_base<Context, sizeof...(Args)> {
-    using base = detail::scan_arg_store_base<Context, sizeof...(Args)>;
+class scan_arg_store : public scan_arg_store_base<Context, sizeof...(Args)> {
+    using base = scan_arg_store_base<Context, sizeof...(Args)>;
 
     using char_type = typename Context::char_type;
 
 public:
-    std::tuple<Args...>& args()
-    {
-        return m_args;
-    }
-
-private:
     constexpr scan_arg_store() : scan_arg_store(std::tuple<Args...>{}) {}
 
     constexpr explicit scan_arg_store(std::tuple<Args...>&& a)
@@ -5406,22 +5398,22 @@ private:
     {
     }
 
-    template <typename Ctx, typename... A>
-    friend constexpr auto make_scan_args();
-    template <typename Ctx, typename... A>
-    friend constexpr auto make_scan_args(std::tuple<A...>&& values);
+    std::tuple<Args...>& args()
+    {
+        return m_args;
+    }
 
+private:
     template <typename... A>
     static constexpr typename base::value_array_type make_data_array(A&... args)
     {
-        return {
-            detail::make_arg<base::is_packed, Context,
-                             detail::mapped_type_constant<
-                                 detail::remove_cvref_t<A>, char_type>::value>(
-                args)...};
+        return {detail::make_arg<
+            base::is_packed, Context,
+            mapped_type_constant<remove_cvref_t<A>, char_type>::value>(
+            args)...};
     }
 
-    constexpr detail::arg_value& get_value_at(std::size_t i)
+    constexpr arg_value& get_value_at(std::size_t i)
     {
         if constexpr (base::is_packed) {
             return m_data[i];
@@ -5440,6 +5432,7 @@ private:
         base::is_packed ? detail::encode_types<char_type, Args...>()
                         : detail::is_unpacked_bit | base::num_args;
 };
+}  // namespace detail
 
 /**
  * Constructs a `scan_arg_store` object, associated with `Context`,
@@ -5450,7 +5443,7 @@ constexpr auto make_scan_args()
 {
     detail::check_scan_arg_types<Args...>();
 
-    return scan_arg_store<Context, Args...>{};
+    return detail::scan_arg_store<Context, Args...>{};
 }
 /**
  * Constructs a `scan_arg_store` object, associated with `Context`,
@@ -5461,7 +5454,7 @@ constexpr auto make_scan_args(std::tuple<Args...>&& values)
 {
     detail::check_scan_arg_types<Args...>();
 
-    return scan_arg_store<Context, Args...>{SCN_MOVE(values)};
+    return detail::scan_arg_store<Context, Args...>{SCN_MOVE(values)};
 }
 
 /**
@@ -5483,8 +5476,8 @@ public:
      */
     template <typename... Args>
     constexpr /*implicit*/ basic_scan_args(
-        scan_arg_store<Context, Args...>& store)
-        : basic_scan_args{scan_arg_store<Context, Args...>::desc,
+        detail::scan_arg_store<Context, Args...>& store)
+        : basic_scan_args{detail::scan_arg_store<Context, Args...>::desc,
                           store.m_data.data()}
     {
     }
@@ -8764,7 +8757,7 @@ SCN_GCC_POP  // -Wnoexcept
  */
 template <typename Result, typename Context, typename... Args>
 auto make_scan_result(scan_expected<Result>&& result,
-                      scan_arg_store<Context, Args...>&& args)
+                      detail::scan_arg_store<Context, Args...>&& args)
     -> scan_expected<scan_result<Result, Args...>>
 {
     if (SCN_UNLIKELY(!result)) {

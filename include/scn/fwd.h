@@ -925,10 +925,13 @@ struct monostate {};
 
 template <typename Context>
 class basic_scan_arg;
-template <typename Context, typename... Args>
-class scan_arg_store;
 template <typename Context>
 class basic_scan_args;
+
+namespace detail {
+template <typename Context, typename... Args>
+class scan_arg_store;
+}
 
 template <typename CharT>
 class basic_scan_context;
