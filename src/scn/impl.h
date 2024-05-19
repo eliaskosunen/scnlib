@@ -2100,7 +2100,7 @@ auto read_until_classic_space(const Range& range)
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range> &&
                   std::is_same_v<detail::char_t<Range>, char>) {
-        auto buf = make_contiguous_buffer(SCN_FWD(range));
+        auto buf = make_contiguous_buffer(range);
         auto it = find_classic_space_narrow_fast(buf.view());
         return ranges::next(range.begin(),
                             ranges::distance(buf.view().begin(), it));
@@ -2130,7 +2130,7 @@ auto read_while_classic_space(const Range& range)
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range> &&
                   std::is_same_v<detail::char_t<Range>, char>) {
-        auto buf = make_contiguous_buffer(SCN_FWD(range));
+        auto buf = make_contiguous_buffer(range);
         auto it = find_classic_nonspace_narrow_fast(buf.view());
         return ranges::next(range.begin(),
                             ranges::distance(buf.view().begin(), it));
@@ -2147,7 +2147,7 @@ auto read_while_classic_space(const Range& range)
             ranges::advance(it, seg.size());
         }
 
-        return read_while_code_point(SCN_FWD(range), [](char32_t cp) noexcept {
+        return read_while_code_point(range, [](char32_t cp) noexcept {
             return is_cp_space(cp);
         });
     }
@@ -2970,7 +2970,7 @@ auto skip_classic_whitespace(const SourceRange& range,
         return it;
     }
 
-    return read_while_classic_space(SCN_FWD(range));
+    return read_while_classic_space(range);
 }
 
 template <typename SourceCharT, typename DestCharT>
@@ -3792,7 +3792,7 @@ private:
             });
         }
 
-        return read_while1_code_unit(SCN_FWD(range), [](char_type ch) noexcept {
+        return read_while1_code_unit(range, [](char_type ch) noexcept {
             return char_to_int(ch) < 10;
         });
     }
@@ -3808,7 +3808,7 @@ private:
             });
         }
 
-        return read_while1_code_unit(SCN_FWD(range), [](char_type ch) noexcept {
+        return read_while1_code_unit(range, [](char_type ch) noexcept {
             return char_to_int(ch) < 16;
         });
     }
@@ -5540,11 +5540,11 @@ public:
 
 #if !SCN_DISABLE_LOCALE
         if (specs.localized) {
-            return rd.read_localized(SCN_FWD(range), loc, value);
+            return rd.read_localized(range, loc, value);
         }
 #endif
 
-        return rd.read_classic(SCN_FWD(range), value);
+        return rd.read_classic(range, value);
     }
 
     static constexpr unsigned get_options(const detail::format_specs& specs)
