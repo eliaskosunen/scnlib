@@ -252,6 +252,9 @@ jobs:
             std: 20
           - os: 22.04
             std: 23
+        exclude:
+          # Fails to configure (CMake) google benchmark
+          - os: 20.04
 
     env:
       CC: clang
