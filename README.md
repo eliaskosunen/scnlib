@@ -112,13 +112,10 @@ int main() {
 ```cpp
 #include <scn/scan.h>
 
-// scn::ranges is
-//  - std::ranges on C++20 or later (if available)
-//  - nano::ranges on C++17 (bundled implementation)
-namespace ranges = scn::ranges;
+#include <ranges>
 
 int main() {
-    auto result = scn::scan<int>("123" | ranges::views::reverse, "{}");
+    auto result = scn::scan<int>("123" | std::views::reverse, "{}");
     // result == true
     // result->begin() is an iterator into a reverse_view
     // result->range() is empty
