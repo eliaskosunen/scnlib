@@ -98,7 +98,7 @@ $ make install</pre><pre class="m-code"><span class="c"># Find scnlib package</s
 <span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">my_program</span> <span class="s">scn::scn</span><span class="p">)</span></pre><p>Another option would be usage through CMake's <code>FetchContent</code> module.</p><pre class="m-code"><span class="nb">FetchContent_Declare</span><span class="p">(</span>
         <span class="s">scn</span>
         <span class="s">GIT_REPOSITORY</span>  <span class="s">https://github.com/eliaskosunen/scnlib</span>
-        <span class="s">GIT_TAG</span>         <span class="s">v2.0.2</span>
+        <span class="s">GIT_TAG</span>         <span class="s">v2.0.3</span>
         <span class="s">GIT_SHALLOW</span>     <span class="s">TRUE</span>
 <span class="p">)</span>
 <span class="nb">FetchContent_MakeAvailable</span><span class="p">(</span><span class="s">scn</span><span class="p">)</span>

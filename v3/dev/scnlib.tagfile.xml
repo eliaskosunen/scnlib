@@ -69,8 +69,8 @@
       <type>constexpr</type>
       <name>basic_scan_args</name>
       <anchorfile>classscn_1_1basic__scan__args.html</anchorfile>
-      <anchor>a4616a3805721fcbdf6fed9fe21b5292f</anchor>
-      <arglist>(scan_arg_store&lt; Context, Args... &gt; &amp;store)</arglist>
+      <anchor>ab5e8250e4e6c0ee74952ea72f93df981</anchor>
+      <arglist>(detail::scan_arg_store&lt; Context, Args... &gt; &amp;store)</arglist>
     </member>
     <member kind="function">
       <type>constexpr basic_scan_arg&lt; Context &gt;</type>
@@ -348,17 +348,10 @@
     <filename>structscn_1_1monostate.html</filename>
   </compound>
   <compound kind="class">
-    <name>scn::scan_arg_store</name>
-    <filename>classscn_1_1scan__arg__store.html</filename>
+    <name>scn::detail::scan_arg_store</name>
+    <filename>classscn_1_1detail_1_1scan__arg__store.html</filename>
     <templarg></templarg>
     <templarg>Args</templarg>
-    <member kind="friend" protection="private">
-      <type>constexpr friend auto</type>
-      <name>make_scan_args</name>
-      <anchorfile>classscn_1_1scan__arg__store.html</anchorfile>
-      <anchor>a3abd0cdf0bb62e5834bd563d9c6edd9a</anchor>
-      <arglist>()</arglist>
-    </member>
   </compound>
   <compound kind="class">
     <name>scn::scan_error</name>
@@ -544,7 +537,6 @@
     <filename>namespacescn.html</filename>
     <class kind="struct">scn::monostate</class>
     <class kind="class">scn::basic_scan_arg</class>
-    <class kind="class">scn::scan_arg_store</class>
     <class kind="class">scn::basic_scan_args</class>
     <class kind="class">scn::basic_scan_context</class>
     <class kind="class">scn::basic_scan_format_string</class>
@@ -635,8 +627,8 @@
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>gaabf43aef19ef7b2e0714fabe395253a7</anchor>
-      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
+      <anchor>gae1bc4ab968b5fc7479d420e1baa685ac</anchor>
+      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -861,8 +853,8 @@
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>gaabf43aef19ef7b2e0714fabe395253a7</anchor>
-      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
+      <anchor>gae1bc4ab968b5fc7479d420e1baa685ac</anchor>
+      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
   </compound>
   <compound kind="group">

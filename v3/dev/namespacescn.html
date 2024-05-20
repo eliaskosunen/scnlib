@@ -136,11 +136,6 @@
             </dt>
             <dd>Placeholder monostate type.</dd>
             <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Context</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
-              class <a class="m-doc" href="classscn_1_1scan__arg__store.html">scan_arg_store</a>
-            </dt>
-            <dd></dd>
-            <dt>
               class <a class="m-doc" href="classscn_1_1scan__error.html">scan_error</a>
             </dt>
             <dd></dd>
@@ -201,8 +196,8 @@
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename Result</span>, <span class="m-doc-template-param">typename Context</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__result.html#gaabf43aef19ef7b2e0714fabe395253a7">make_scan_result</a>(</span><span class="m-doc-wrap"><a class="m-doc" href="structscn_1_1scan__expected.html">scan_<wbr/>expected</a>&lt;Result&gt;&amp;&amp; result,
-              <a class="m-doc" href="classscn_1_1scan__arg__store.html">scan_<wbr/>arg_<wbr/>store</a>&lt;Context, Args...&gt;&amp;&amp; args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt; -&gt; auto</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__result.html#gae1bc4ab968b5fc7479d420e1baa685ac">make_scan_result</a>(</span><span class="m-doc-wrap"><a class="m-doc" href="structscn_1_1scan__expected.html">scan_<wbr/>expected</a>&lt;Result&gt;&amp;&amp; result,
+              <a class="m-doc" href="classscn_1_1detail_1_1scan__arg__store.html">detail::<wbr/>scan_arg_store</a>&lt;Context, Args...&gt;&amp;&amp; args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
@@ -341,7 +336,7 @@
               </div>
               <span class="m-doc-wrap-bumper">auto <span class="m-doc-details-prefix">scn::<wbr/></span></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#abfa0ace2ff551e76af6128040195010d">make_scan_args</a>(</span><span class="m-doc-wrap">) <span class="m-label m-primary">constexpr</span></span></span>
             </h3>
-<p>Constructs a <code><a class="m-doc" href="classscn_1_1scan__arg__store.html">scan_<wbr/>arg_<wbr/>store</a></code> object, associated with <code>Context</code>, that contains value-initialized values of types <code>Args...</code>.</p>
+<p>Constructs a <code>scan_arg_store</code> object, associated with <code>Context</code>, that contains value-initialized values of types <code>Args...</code>.</p>
           </div></section>
           <section class="m-doc-details" id="a47bcbc8d33e38e412b1f87ec7ed3cc96"><div>
             <h3>
@@ -350,7 +345,7 @@
               </div>
               <span class="m-doc-wrap-bumper">auto <span class="m-doc-details-prefix">scn::<wbr/></span></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#a47bcbc8d33e38e412b1f87ec7ed3cc96">make_scan_args</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; values) <span class="m-label m-primary">constexpr</span></span></span>
             </h3>
-<p>Constructs a <code><a class="m-doc" href="classscn_1_1scan__arg__store.html">scan_<wbr/>arg_<wbr/>store</a></code> object, associated with <code>Context</code>, that contains <code>values</code>.</p>
+<p>Constructs a <code>scan_arg_store</code> object, associated with <code>Context</code>, that contains <code>values</code>.</p>
           </div></section>
           <section class="m-doc-details" id="abc01dfea9c68651aa1663d24ba843c84"><div>
             <h3>
