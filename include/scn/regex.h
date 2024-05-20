@@ -21,7 +21,6 @@
 
 #if !SCN_DISABLE_REGEX
 
-#include <optional>
 #include <vector>
 
 namespace scn {

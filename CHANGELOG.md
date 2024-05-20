@@ -1,3 +1,31 @@
+# 3.0.0
+
+_Released 2024-XX-YY_
+
+# Breaking changes
+
+ * The default behavior for scanning integers is now `d` (decimal) instead of `i` (detect base from prefix)
+ * A large part of the bundled `<ranges>`-implementation is removed.
+   Only the parts strictly needed for the library are included.
+   * The library no longer uses a stdlib provided `<ranges>`, even if available.
+ * `scan_arg_store` and `borrowed_subrange_with_sentinel` are removed from the public interface
+ * The meaning of the "width" field in format specifiers is changed to mean the _minimum_ field width
+   (like in `std::format`), instead of the _maximum_ (sort of like in `scanf`)
+
+# Features
+
+ * The "precision" field is added as a format specifier,
+   which specifies the maximum fields width to scan (like in `std::format`)
+ * Support for field fill and alignment is added
+ 
+# Changes
+
+ * The dependency on `simdutf` is removed. The library now has no external dependencies to compiled libraries
+   (FastFloat, an internal dependency, is a header-only library)
+ * The number of source files is dramatically decreased: there are now just the public headers, 
+   a private implementation header, and a private implementation source file. This cuts down the time needed to
+   compile the library, and any user code including it to a half (yes, really!)
+
 # 2.0.3
 
 _Released 2024-05-19_

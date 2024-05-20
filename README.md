@@ -187,9 +187,10 @@ Including the following environments:
 
 * 32-bit and 64-bit builds on Windows
 * libc++ on Linux
-* AppleClang on macOS 11 (Big Sur) and 12 (Monterey)
+* gcc on Alpine Linux
+* AppleClang and gcc on macOS 12 (Monterey) and 14 (Sonoma)
 * clang-cl with VS 2019 and 2022
-* MinGW
+* MinGW and MSys2
 * GCC on armv6, armv7, aarch64, riscv64, s390x, and ppc64le
 * Visual Studio 2022, cross compiling to arm64
 
