@@ -27,6 +27,7 @@ on:
       - 'src/**'
       - 'tests/**'
       - '**/CMakeLists.txt'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
@@ -180,10 +181,14 @@ jobs:
           # llvm, ucrt, libc++
           - clang32
           - clang64
+          # gcc, cygwin, libstdc++ (64-bit)
+          - msys
+
         exclude:
-          # FIXME: bugging out with float parsing
+          # Buggy float parsing
           - sys: clang32
           - sys: clang64
+          - sys: msys
 
     steps:
       - uses: msys2/setup-msys2@v2

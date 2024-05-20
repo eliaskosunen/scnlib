@@ -111,7 +111,7 @@ protected:
     }
     static auto get_oct_followed_by_dec()
     {
-        return std::make_tuple(int_type{8}, "08"sv);
+        return std::make_pair(int_type{8}, "08"sv);
     }
 
     static auto get_bin()
