@@ -5135,6 +5135,12 @@ struct scan_arg_store<scan_arg_store_kind::builtin, Context, Args...> {
     {
     }
 
+    scan_arg_store(const scan_arg_store&) = delete;
+    scan_arg_store& operator=(const scan_arg_store&) = delete;
+    scan_arg_store(scan_arg_store&&) = delete;
+    scan_arg_store& operator=(scan_arg_store&&) = delete;
+    ~scan_arg_store() = default;
+
     template <typename... A>
     static constexpr std::array<void*, sizeof...(A)> make_data_array(A&... a)
     {
@@ -5168,6 +5174,12 @@ struct scan_arg_store<scan_arg_store_kind::packed, Context, Args...> {
         : args(SCN_MOVE(d)), data(std::apply(make_data_array<Args...>, args))
     {
     }
+
+    scan_arg_store(const scan_arg_store&) = delete;
+    scan_arg_store& operator=(const scan_arg_store&) = delete;
+    scan_arg_store(scan_arg_store&&) = delete;
+    scan_arg_store& operator=(scan_arg_store&&) = delete;
+    ~scan_arg_store() = default;
 
     template <typename... A>
     static constexpr std::array<arg_value, sizeof...(A)> make_data_array(
@@ -5203,6 +5215,12 @@ struct scan_arg_store<scan_arg_store_kind::unpacked, Context, Args...> {
     {
     }
 
+    scan_arg_store(const scan_arg_store&) = delete;
+    scan_arg_store& operator=(const scan_arg_store&) = delete;
+    scan_arg_store(scan_arg_store&&) = delete;
+    scan_arg_store& operator=(scan_arg_store&&) = delete;
+    ~scan_arg_store() = default;
+
     template <typename... A>
     static constexpr std::array<basic_scan_arg<Context>, sizeof...(A)>
     make_data_array(A&... a)
@@ -5225,17 +5243,6 @@ struct scan_arg_store<scan_arg_store_kind::unpacked, Context, Args...> {
 
     std::tuple<Args...> args;
     std::array<basic_scan_arg<Context>, sizeof...(Args)> data;
-};
-
-template <typename Context, std::size_t NumArgs>
-struct scan_arg_store_base {
-protected:
-    static constexpr std::size_t num_args = NumArgs;
-    static constexpr bool is_packed = num_args <= detail::max_packed_args;
-
-    using value_type = std::
-        conditional_t<is_packed, detail::arg_value, basic_scan_arg<Context>>;
-    using value_array_type = std::array<value_type, num_args>;
 };
 
 template <typename CharT>
