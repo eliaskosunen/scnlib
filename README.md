@@ -310,14 +310,14 @@ Lower is better.
 
 ![Release result, chart](benchmark/binarysize/graph-release.png)
 
-Size of `scnlib` shared library (`.so`): 1.4M
+Size of `scnlib` shared library (`.so`): 1.7M
 
 | Method         | Executable size | Stripped size |
-|:---------------|----------------:|--------------:|
-| empty          |            16.1 |          14.6 |
-| `std::scanf`   |            17.4 |          14.8 |
-| `std::istream` |            17.8 |          14.8 |
-| `scn::input`   |            17.7 |          14.8 |
+| :------------- | --------------: | ------------: |
+| empty          |             7.6 |           4.4 |
+| `std::scanf`   |            10.4 |           5.8 |
+| `std::istream` |            11.1 |           6.2 |
+| `scn::input`   |            11.2 |           6.4 |
 
 #### Minimized (MinSizeRel) build (`-Os -DNDEBUG` + LTO)
 
@@ -326,31 +326,30 @@ Size of `scnlib` shared library (`.so`): 1.4M
 Size of `scnlib` shared library (`.so`): 1.1M
 
 | Method         | Executable size | Stripped size |
-|:---------------|----------------:|--------------:|
-| empty          |            16.1 |          14.6 |
-| `std::scanf`   |            17.3 |          14.8 |
-| `std::istream` |            17.7 |          14.8 |
-| `scn::input`   |            18.8 |          14.8 |
+| :------------- | --------------: | ------------: |
+| empty          |             7.5 |           4.4 |
+| `std::scanf`   |            10.3 |           5.8 |
+| `std::istream` |            11.0 |           6.1 |
+| `scn::input`   |            12.4 |           6.6 |
 
 #### Debug build (`-g -O0`)
 
 ![Debug result, chart](benchmark/binarysize/graph-debug.png)
 
-Size of `scnlib` shared library (`.so`): 19M
+Size of `scnlib` shared library (`.so`): 20M
 
 | Method         | Executable size | Stripped size |
-|:---------------|----------------:|--------------:|
-| empty          |            25.6 |          14.6 |
-| `std::scanf`   |             569 |          26.9 |
-| `std::istream` |             527 |          18.8 |
-| `scn::input`   |            2112 |          42.8 |
+| :------------- | --------------: | ------------: |
+| empty          |            18.4 |           5.2 |
+| `std::scanf`   |             429 |          11.8 |
+| `std::istream` |             438 |           9.4 |
+| `scn::input`   |            2234 |          51.3 |
 
 #### Conclusions
 
 When using optimized builds, depending on compiler flags, scnlib provides a
 binary, the size of which is within ~5% of what would be produced with `scanf`
-or `<iostream>`s. Interestingly, when doing a MinSizeRel-build,
-the scnlib binary is bigger, than when doing a Release-build.
+or `<iostream>`s.
 In a Debug-environment, scnlib is ~5x bigger when compared to `scanf`
 or `<iostream>`. After `strip`ing the binaries,
 these differences largely go away, except in Debug builds.
@@ -363,7 +362,7 @@ This is done to simulate a small project.
 `scnlib` is linked dynamically, to level the playing field with the standard
 library, which is also dynamically linked.
 
-The code was compiled on Fedora 39, with gcc 13.2.1.
+The code was compiled on Fedora 40, with gcc 14.1.1.
 See the directory `benchmark/binarysize` for the source code.
 
 You can run these benchmarks yourself by enabling the CMake
@@ -395,9 +394,9 @@ Lower is better.
 | Method       | Debug | Release |
 |:-------------|------:|--------:|
 | empty        |  0.05 |    0.05 |
-| `scanf`      |  0.20 |    0.19 |
-| `<iostream>` |  0.26 |    0.25 |
-| `scn::input` |  1.06 |    0.97 |
+| `scanf`      |  0.22 |    0.20 |
+| `<iostream>` |  0.28 |    0.27 |
+| `scn::input` |  0.54 |    0.45 |
 
 #### Memory consumption
 
@@ -407,15 +406,15 @@ Lower is better.
 | Method       | Debug | Release |
 |:-------------|------:|--------:|
 | empty        |  21.0 |    23.3 |
-| `scanf`      |  54.7 |    52.4 |
-| `<iostream>` |  66.4 |    63.9 |
-| `scn::input` |   203 |     185 |
+| `scanf`      |  56.3 |    53.6 |
+| `<iostream>` |  67.8 |    65.0 |
+| `scn::input` |   102 |    91.0 |
 
 #### Conclusions
 
-Code using scnlib takes around 3x-5x longer to compile compared to `<iostream>`,
-and also uses around 3x-4x more memory.
-Debug and Release builds make no major difference.
+Code using scnlib takes around 2x longer to compile compared to `<iostream>`,
+and also uses around 1.5x more memory.
+Release builds seem to be slightly faster as compared to Debug builds.
 
 #### About
 
@@ -424,8 +423,8 @@ libraries.
 The time taken to compile the library itself is not taken into account (the
 standard library is precompiled, anyway).
 
-These tests were run on a Fedora 39 machine, with an AMD Ryzen 7 5700X
-processor, using gcc version 13.2.1.
+These tests were run on a Fedora 40 machine, with an AMD Ryzen 7 5700X
+processor, using gcc version 14.1.1.
 The compiler flags used for a Debug build were `-g`, and `-O3 -DNDEBUG` for a
 Release build.
 
@@ -455,11 +454,11 @@ https://github.com/r1chardj0n3s/parse
 
 ### Third-party libraries
 
-NanoRange for C++17 Ranges implementation:  
-https://github.com/tcbrindle/NanoRange
-
 fast_float for floating-point number parsing:  
 https://github.com/fastfloat/fast_float
+
+NanoRange for a minimal `<ranges>` implementation:  
+https://github.com/tcbrindle/NanoRange
 
 ## License
 
