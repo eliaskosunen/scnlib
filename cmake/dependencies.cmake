@@ -82,7 +82,7 @@ if (SCN_USE_EXTERNAL_SIMDUTF)
     # We're compatible with _at least_ v4 and v5
     find_package(simdutf CONFIG REQUIRED)
     if (simdutf_VERSION VERSION_LESS 4.0.0)
-        message(FATAL_ERROR "Incompatible version of simdutf: at least 3.0.0 required, found ${simdutf_VERSION}")
+        message(FATAL_ERROR "Incompatible version of simdutf: at least 4.0.0 required, found ${simdutf_VERSION}")
     endif ()
 else ()
     FetchContent_Declare(
