@@ -1,3 +1,20 @@
+# 2.0.3
+
+_Released 2024-05-19_
+
+## Fixes
+
+ * Fix documentation: default format type specifier for integers is `i`, not `d`:
+   when not explicitly specified by a format specifier, the base of an integer is determined based on its prefix:
+   `0x...` is hexadecimal, `0...` or `0o...` is octal, `0b...` is binary, and everything else is decimal.
+ * Fix a compilation error which would occur when scanning more than 11 arguments with `scn::scan`.
+ * Small CMake adjustments to better support use as a subproject (#113, thanks [@frankmiller (Frank Miller)](https://github.com/frankmiller))
+ * Fix misplaced include of `GNUInstallDirs` in CMake (#111, thanks [@WangWeiLin-MV](https://github.com/WangWeiLin-MV))
+ * Allow for externally installed versions for GTest and Google Benchmark (#112, thanks [@xvitaly (Vitaly)](https://github.com/xvitaly))
+ * Adjust the definition of `SCN_COMPILER` to fix usage with a recent Clang using modules (#109, thanks [@Delta-dev-99 (Armando Martin)](https://github.com/Delta-dev-99))
+ * Allow for more versions of dependencies (simdutf, fast_float)
+ * Fix C++23 build failure caused by missing inclusion of `<utility>` for `std::unreachable`
+
 # 2.0.2
 
 _Released 2024-02-19_
