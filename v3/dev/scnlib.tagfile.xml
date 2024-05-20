@@ -59,20 +59,6 @@
     <filename>classscn_1_1basic__scan__args.html</filename>
     <templarg></templarg>
     <member kind="function">
-      <type>constexpr</type>
-      <name>basic_scan_args</name>
-      <anchorfile>classscn_1_1basic__scan__args.html</anchorfile>
-      <anchor>aceef198d06e0f4372a81aadfe63c3f90</anchor>
-      <arglist>()=default</arglist>
-    </member>
-    <member kind="function">
-      <type>constexpr</type>
-      <name>basic_scan_args</name>
-      <anchorfile>classscn_1_1basic__scan__args.html</anchorfile>
-      <anchor>ab5e8250e4e6c0ee74952ea72f93df981</anchor>
-      <arglist>(detail::scan_arg_store&lt; Context, Args... &gt; &amp;store)</arglist>
-    </member>
-    <member kind="function">
       <type>constexpr basic_scan_arg&lt; Context &gt;</type>
       <name>get</name>
       <anchorfile>classscn_1_1basic__scan__args.html</anchorfile>
@@ -348,12 +334,6 @@
     <filename>structscn_1_1monostate.html</filename>
   </compound>
   <compound kind="class">
-    <name>scn::detail::scan_arg_store</name>
-    <filename>classscn_1_1detail_1_1scan__arg__store.html</filename>
-    <templarg></templarg>
-    <templarg>Args</templarg>
-  </compound>
-  <compound kind="class">
     <name>scn::scan_error</name>
     <filename>classscn_1_1scan__error.html</filename>
     <member kind="enumeration">
@@ -627,8 +607,8 @@
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>gae1bc4ab968b5fc7479d420e1baa685ac</anchor>
-      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
+      <anchor>gaa008c625aba591eee8560b18a91b5f6b</anchor>
+      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Kind, Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -853,8 +833,8 @@
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>gae1bc4ab968b5fc7479d420e1baa685ac</anchor>
-      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
+      <anchor>gaa008c625aba591eee8560b18a91b5f6b</anchor>
+      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Kind, Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
   </compound>
   <compound kind="group">
