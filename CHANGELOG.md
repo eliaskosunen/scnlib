@@ -11,6 +11,7 @@ _Released 2024-XX-YY_
  * `scan_arg_store` and `borrowed_subrange_with_sentinel` are removed from the public interface
  * The meaning of the "width" field in format specifiers is changed to mean the _minimum_ field width
    (like in `std::format`), instead of the _maximum_ (sort of like in `scanf`)
+ * `scn::span` is removed
 
 # Features
 

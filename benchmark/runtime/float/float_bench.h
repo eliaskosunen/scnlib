@@ -68,10 +68,10 @@ std::vector<std::string> make_float_list(std::size_t n)
 }
 
 template <typename Float>
-scn::span<std::string> get_float_list()
+const auto& get_float_list()
 {
     static auto list = make_float_list<Float>(2 << 12);
-    return {list};
+    return list;
 }
 
 template <typename Float>

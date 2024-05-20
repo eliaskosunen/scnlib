@@ -38,10 +38,10 @@ std::vector<std::string> make_integer_list(std::size_t n)
 }
 
 template <typename Int>
-scn::span<std::string> get_integer_list()
+const auto& get_integer_list()
 {
     static auto list = make_integer_list<Int>(2 << 12);
-    return {list};
+    return list;
 }
 
 template <typename Int>

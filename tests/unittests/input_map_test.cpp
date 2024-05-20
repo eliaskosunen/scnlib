@@ -76,15 +76,17 @@ TEST(InputMapTest, StdString)
     EXPECT_EQ(collect(buf.get()), "foobar");
 }
 
+#if SCN_HAS_STD_SPAN
 TEST(InputMapTest, Span)
 {
     auto str = "foobar"sv;
     auto buf = scn::detail::make_scan_buffer(
-        scn::span<const char>{str.data(), str.size()});
+        std::span<const char>{str.data(), str.size()});
     static_assert(std::is_same_v<decltype(buf),
                                  scn::detail::basic_scan_string_buffer<char>>);
     EXPECT_EQ(collect(buf.get()), "foobar");
 }
+#endif
 
 TEST(InputMapTest, StringViewTake)
 {

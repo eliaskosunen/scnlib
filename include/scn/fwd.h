@@ -1072,9 +1072,6 @@ template <typename T, typename Self>
 inline constexpr bool is_not_self = !std::is_same_v<remove_cvref_t<T>, Self>;
 }  // namespace detail
 
-template <typename T>
-class span;
-
 template <typename CharT>
 class basic_regex_match;
 template <typename CharT>

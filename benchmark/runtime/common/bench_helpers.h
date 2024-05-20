@@ -63,7 +63,7 @@ inline bool is_classic_ascii_space(char ch)
 
 template <typename T>
 struct single_state {
-    single_state(scn::span<std::string> src) : source(src), it(source.begin())
+    single_state(const std::vector<std::string>& src) : source(src), it(source.begin())
     {
     }
 
@@ -84,8 +84,8 @@ struct single_state {
         return state.iterations() * static_cast<int64_t>(sizeof(T));
     }
 
-    scn::span<std::string> source;
-    typename scn::span<std::string>::iterator it;
+    const std::vector<std::string>& source;
+    typename std::vector<std::string>::const_iterator it;
 };
 
 template <typename T>
