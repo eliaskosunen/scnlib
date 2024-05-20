@@ -507,11 +507,6 @@
     <templarg></templarg>
     <templarg></templarg>
   </compound>
-  <compound kind="class">
-    <name>scn::span</name>
-    <filename>classscn_1_1span.html</filename>
-    <templarg></templarg>
-  </compound>
   <compound kind="namespace">
     <name>scn</name>
     <filename>namespacescn.html</filename>
@@ -525,7 +520,6 @@
     <class kind="class">scn::scan_result</class>
     <class kind="struct">scn::scanner</class>
     <class kind="struct">scn::discard</class>
-    <class kind="class">scn::span</class>
     <class kind="class">scn::basic_regex_match</class>
     <class kind="class">scn::basic_regex_matches</class>
     <class kind="class">scn::expected</class>
