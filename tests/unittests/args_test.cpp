@@ -83,7 +83,7 @@ TEST(ArgsTest, ArgStore)
     EXPECT_EQ(args.get(1).type(), scn::detail::arg_type::double_type);
 
     *static_cast<int*>(args.get(0).value().ref_value) = 42;
-    EXPECT_EQ(std::get<0>(store.args()), 42);
+    EXPECT_EQ(std::get<0>(store.get_tuple()), 42);
 
-    EXPECT_DOUBLE_EQ(std::get<1>(store.args()), 0.0);
+    EXPECT_DOUBLE_EQ(std::get<1>(store.get_tuple()), 0.0);
 }
