@@ -3612,6 +3612,94 @@ constexpr auto make_string_view_iterator_from_pointer(
 }
 
 /////////////////////////////////////////////////////////////////
+// Simple default-initializing, non-copyable/movable tuple
+/////////////////////////////////////////////////////////////////
+
+template <size_t I, typename T>
+struct tuple_leaf {
+    tuple_leaf() = default;
+
+    tuple_leaf(T&& val) : value(SCN_MOVE(val)) {}
+
+    tuple_leaf(const tuple_leaf&) = delete;
+    tuple_leaf& operator=(const tuple_leaf&) = delete;
+    tuple_leaf(tuple_leaf&&) = delete;
+    tuple_leaf& operator=(tuple_leaf&&) = delete;
+    ~tuple_leaf() = default;
+
+    // default-initialized on purpose
+    T value;
+};
+
+template <size_t I, typename... Items>
+struct tuple_impl;
+
+template <size_t I>
+struct tuple_impl<I> {};
+
+template <size_t I, typename Head, typename... Tail>
+struct tuple_impl<I, Head, Tail...> : tuple_leaf<I, Head>,
+                                      tuple_impl<I + 1, Tail...> {
+    tuple_impl() = default;
+
+    tuple_impl(Head&& h, Tail&&... t)
+        : tuple_leaf<I, Head>(SCN_MOVE(h)),
+          tuple_impl<I + 1, Tail...>(SCN_MOVE(t)...)
+    {
+    }
+};
+
+template <size_t I, typename Head, typename... Tail>
+Head& tuple_get(tuple_impl<I, Head, Tail...>& tuple)
+{
+    return tuple.template tuple_leaf<I, Head>::value;
+}
+
+template <typename... Ts>
+using tuple = tuple_impl<0, Ts...>;
+
+template <typename Tuple>
+struct tuple_size;
+template <typename... Ts>
+struct tuple_size<tuple<Ts...>>
+    : std::integral_constant<size_t, sizeof...(Ts)> {};
+
+template <size_t... Is>
+auto index_over(std::index_sequence<Is...>)
+{
+    return [](auto&& f) -> decltype(auto) {
+        return SCN_FWD(f)(std::integral_constant<size_t, Is>{}...);
+    };
+}
+
+template <typename F, typename Tuple>
+decltype(auto) tuple_apply(F&& f, Tuple&& tup)
+{
+    constexpr size_t sz = tuple_size<remove_cvref_t<Tuple>>::value;
+    auto indexer = index_over(std::make_index_sequence<sz>{});
+    return indexer([&](auto... Is) -> decltype(auto) {
+        return std::forward<F>(f)(tuple_get<Is>(std::forward<Tuple>(tup))...);
+    });
+}
+
+template <typename... Ts>
+std::tuple<Ts...> to_std_tuple(tuple<Ts...>&& tup)
+{
+    auto indexer = index_over(std::make_index_sequence<sizeof...(Ts)>{});
+    return indexer([&](auto... Is) -> std::tuple<Ts...> {
+        return {SCN_MOVE(tuple_get<Is>(tup))...};
+    });
+}
+
+template <typename... Ts>
+detail::tuple<Ts...> from_std_tuple(std::tuple<Ts...>&& tup)
+{
+    return std::apply(
+        [&](Ts&&... vals) { return detail::tuple<Ts...>(SCN_MOVE(vals)...); },
+        SCN_MOVE(tup));
+}
+
+/////////////////////////////////////////////////////////////////
 // Lightweight Unicode facilities
 /////////////////////////////////////////////////////////////////
 
@@ -4978,12 +5066,12 @@ template <typename... Args>
 constexpr void check_scan_arg_types()
 {
     static_assert(
-        std::conjunction<std::is_default_constructible<Args>...>::value,
+        std::conjunction_v<std::is_default_constructible<Args>...>,
         "Scan argument types must be default constructible");
-    static_assert(std::conjunction<std::is_destructible<Args>...>::value,
+    static_assert(std::conjunction_v<std::is_destructible<Args>...>,
                   "Scan argument types must be Destructible");
     static_assert(
-        !std::conjunction<std::false_type, std::is_reference<Args>...>::value,
+        !std::conjunction_v<std::false_type, std::is_reference<Args>...>,
         "Scan argument types must not be references");
 }
 
@@ -5128,10 +5216,14 @@ struct scan_arg_store;
 
 template <typename Context, typename... Args>
 struct scan_arg_store<scan_arg_store_kind::builtin, Context, Args...> {
-    constexpr scan_arg_store() = default;
+    constexpr scan_arg_store()
+        : data(detail::tuple_apply(make_data_array<Args...>, args))
+    {
+    }
 
     constexpr scan_arg_store(std::tuple<Args...>&& d)
-        : args(SCN_MOVE(d)), data(std::apply(make_data_array<Args...>, args))
+        : args(detail::from_std_tuple(SCN_MOVE(d))),
+          data(detail::tuple_apply(make_data_array<Args...>, args))
     {
     }
 
@@ -5152,9 +5244,9 @@ struct scan_arg_store<scan_arg_store_kind::builtin, Context, Args...> {
         return data.data();
     }
 
-    constexpr auto& get_tuple()
+    constexpr auto get_tuple() &&
     {
-        return args;
+        return detail::to_std_tuple(SCN_MOVE(args));
     }
 
     static constexpr scan_arg_store_kind kind = scan_arg_store_kind::builtin;
@@ -5162,16 +5254,20 @@ struct scan_arg_store<scan_arg_store_kind::builtin, Context, Args...> {
         encode_types<typename Context::char_type, Args...>() |
         is_builtin_only_bit;
 
-    std::tuple<Args...> args{};
+    detail::tuple<Args...> args;
     std::array<void*, sizeof...(Args)> data;
 };
 
 template <typename Context, typename... Args>
 struct scan_arg_store<scan_arg_store_kind::packed, Context, Args...> {
-    constexpr scan_arg_store() : scan_arg_store(std::tuple<Args...>{}) {}
+    constexpr scan_arg_store()
+        : data(detail::tuple_apply(make_data_array<Args...>, args))
+    {
+    }
 
     constexpr scan_arg_store(std::tuple<Args...>&& d)
-        : args(SCN_MOVE(d)), data(std::apply(make_data_array<Args...>, args))
+        : args(detail::from_std_tuple(SCN_MOVE(d))),
+          data(detail::tuple_apply(make_data_array<Args...>, args))
     {
     }
 
@@ -5193,25 +5289,29 @@ struct scan_arg_store<scan_arg_store_kind::packed, Context, Args...> {
         return data.data();
     }
 
-    constexpr auto& get_tuple()
+    constexpr auto get_tuple() &&
     {
-        return args;
+        return detail::to_std_tuple(SCN_MOVE(args));
     }
 
     static constexpr scan_arg_store_kind kind = scan_arg_store_kind::packed;
     static constexpr size_t desc =
         encode_types<typename Context::char_type, Args...>();
 
-    std::tuple<Args...> args;
+    detail::tuple<Args...> args;
     std::array<arg_value, sizeof...(Args)> data;
 };
 
 template <typename Context, typename... Args>
 struct scan_arg_store<scan_arg_store_kind::unpacked, Context, Args...> {
-    constexpr scan_arg_store() : scan_arg_store(std::tuple<Args...>{}) {}
+    constexpr scan_arg_store()
+        : data(detail::tuple_apply(make_data_array<Args...>, args))
+    {
+    }
 
     constexpr scan_arg_store(std::tuple<Args...>&& d)
-        : args(SCN_MOVE(d)), data(std::apply(make_data_array<Args...>, args))
+        : args(detail::from_std_tuple(SCN_MOVE(d))),
+          data(detail::tuple_apply(make_data_array<Args...>, args))
     {
     }
 
@@ -5233,15 +5333,15 @@ struct scan_arg_store<scan_arg_store_kind::unpacked, Context, Args...> {
         return data.data();
     }
 
-    constexpr auto& get_tuple()
+    constexpr auto get_tuple() &&
     {
-        return args;
+        return detail::to_std_tuple(SCN_MOVE(args));
     }
 
     static constexpr scan_arg_store_kind kind = scan_arg_store_kind::unpacked;
     static constexpr size_t desc = is_unpacked_bit | sizeof...(Args);
 
-    std::tuple<Args...> args;
+    detail::tuple<Args...> args;
     std::array<basic_scan_arg<Context>, sizeof...(Args)> data;
 };
 
@@ -5256,26 +5356,6 @@ constexpr bool all_types_builtin()
     return mapped_type_constant<T, CharT>::value != arg_type::custom_type &&
            all_types_builtin<CharT, Args...>();
 }
-
-template <typename Context, typename... Args>
-constexpr auto make_scan_arg_store(std::tuple<Args...>&& values)
-{
-    if constexpr (sizeof...(Args) < max_packed_args) {
-        if constexpr (all_types_builtin<typename Context::char_type,
-                                        Args...>()) {
-            return scan_arg_store<scan_arg_store_kind::builtin, Context,
-                                  Args...>{SCN_MOVE(values)};
-        }
-        else {
-            return scan_arg_store<scan_arg_store_kind::packed, Context,
-                                  Args...>{SCN_MOVE(values)};
-        }
-    }
-    else {
-        return scan_arg_store<scan_arg_store_kind::unpacked, Context, Args...>{
-            SCN_MOVE(values)};
-    }
-}
 }  // namespace detail
 
 /**
@@ -5287,7 +5367,21 @@ constexpr auto make_scan_args()
 {
     detail::check_scan_arg_types<Args...>();
 
-    return detail::make_scan_arg_store<Context, Args...>(std::tuple<Args...>{});
+    if constexpr (sizeof...(Args) < detail::max_packed_args) {
+        if constexpr (detail::all_types_builtin<typename Context::char_type,
+                                                Args...>()) {
+            return detail::scan_arg_store<detail::scan_arg_store_kind::builtin,
+                                          Context, Args...>{};
+        }
+        else {
+            return detail::scan_arg_store<detail::scan_arg_store_kind::packed,
+                                          Context, Args...>{};
+        }
+    }
+    else {
+        return detail::scan_arg_store<detail::scan_arg_store_kind::unpacked,
+                                      Context, Args...>{};
+    }
 }
 /**
  * Constructs a `scan_arg_store` object, associated with `Context`,
@@ -5298,7 +5392,21 @@ constexpr auto make_scan_args(std::tuple<Args...>&& values)
 {
     detail::check_scan_arg_types<Args...>();
 
-    return detail::make_scan_arg_store<Context, Args...>(SCN_MOVE(values));
+    if constexpr (sizeof...(Args) < detail::max_packed_args) {
+        if constexpr (detail::all_types_builtin<typename Context::char_type,
+                                                Args...>()) {
+            return detail::scan_arg_store<detail::scan_arg_store_kind::builtin,
+                                          Context, Args...>{SCN_MOVE(values)};
+        }
+        else {
+            return detail::scan_arg_store<detail::scan_arg_store_kind::packed,
+                                          Context, Args...>{SCN_MOVE(values)};
+        }
+    }
+    else {
+        return detail::scan_arg_store<detail::scan_arg_store_kind::unpacked,
+                                      Context, Args...>{SCN_MOVE(values)};
+    }
 }
 
 /**
@@ -8631,7 +8739,7 @@ auto make_scan_result(scan_expected<Result>&& result,
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
-    return scan_result{SCN_MOVE(*result), SCN_MOVE(args.get_tuple())};
+    return scan_result{SCN_MOVE(*result), SCN_MOVE(args).get_tuple()};
 }
 
 /**
@@ -8641,21 +8749,6 @@ auto make_scan_result(scan_expected<Result>&& result,
 template <typename Source, typename... Args>
 using scan_result_type =
     scan_expected<scan_result<detail::scan_result_value_type<Source>, Args...>>;
-
-namespace detail {
-// Boilerplate for scan()
-template <typename CharT, typename... Args, typename Source, typename Format>
-auto scan_impl(Source&& source,
-               Format format,
-               std::tuple<Args...> default_values)
-    -> scan_result_type<Source, Args...>
-{
-    auto args = make_scan_args<basic_scan_context<CharT>, Args...>(
-        SCN_MOVE(default_values));
-    auto result = vscan(SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
-}
-}  // namespace detail
 
 /**
  * \defgroup scan Basic scanning API
@@ -8690,7 +8783,9 @@ SCN_NODISCARD auto scan(Source&& source,
                         scan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
 {
-    return detail::scan_impl<char, Args...>(SCN_FWD(source), format, {});
+    auto args = make_scan_args<scan_context, Args...>();
+    auto result = vscan(SCN_FWD(source), format, args);
+    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
 }
 
 /**
@@ -8716,32 +8811,13 @@ template <typename... Args,
           typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
 SCN_NODISCARD auto scan(Source&& source,
                         scan_format_string<Source, Args...> format,
-                        std::tuple<Args...>&& default_args)
+                        std::tuple<Args...>&& initial_args)
     -> scan_result_type<Source, Args...>
 {
-    return detail::scan_impl<char, Args...>(SCN_FWD(source), format,
-                                            SCN_MOVE(default_args));
-}
-
-namespace detail {
-// Boilerplate for scan(const locale&)
-template <typename CharT,
-          typename... Args,
-          typename Locale,
-          typename Source,
-          typename Format>
-auto scan_localized_impl(const Locale& loc,
-                         Source&& source,
-                         Format format,
-                         std::tuple<Args...> default_values)
-    -> scan_result_type<Source, Args...>
-{
-    auto args = make_scan_args<basic_scan_context<CharT>, Args...>(
-        SCN_MOVE(default_values));
-    auto result = vscan(loc, SCN_FWD(source), format, args);
+    auto args = make_scan_args<scan_context, Args...>(SCN_FWD(initial_args));
+    auto result = vscan(SCN_FWD(source), format, args);
     return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
 }
-}  // namespace detail
 
 /**
  * \defgroup locale Localization
@@ -8774,8 +8850,9 @@ SCN_NODISCARD auto scan(const Locale& loc,
                         scan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
 {
-    return detail::scan_localized_impl<char, Args...>(loc, SCN_FWD(source),
-                                                      format, {});
+    auto args = make_scan_args<scan_context, Args...>();
+    auto result = vscan(loc, SCN_FWD(source), format, args);
+    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
 }
 
 /**
@@ -8791,22 +8868,13 @@ template <typename... Args,
 SCN_NODISCARD auto scan(const Locale& loc,
                         Source&& source,
                         scan_format_string<Source, Args...> format,
-                        std::tuple<Args...>&& default_args)
+                        std::tuple<Args...>&& initial_args)
     -> scan_result_type<Source, Args...>
 {
-    return detail::scan_localized_impl<char, Args...>(
-        loc, SCN_FWD(source), format, SCN_MOVE(default_args));
+    auto args = make_scan_args<scan_context, Args...>(SCN_FWD(initial_args));
+    auto result = vscan(loc, SCN_FWD(source), format, args);
+    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
 }
-
-namespace detail {
-template <typename CharT, typename T, typename Source>
-auto scan_value_impl(Source&& source, T value) -> scan_result_type<Source, T>
-{
-    auto arg = detail::make_arg<basic_scan_context<CharT>>(value);
-    SCN_TRY(it, vscan_value(SCN_FWD(source), arg));
-    return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(value)}};
-}
-}  // namespace detail
 
 /**
  * `scan` a single value, with default options.
@@ -8821,7 +8889,10 @@ template <typename T,
           typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
 SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
 {
-    return detail::scan_value_impl<char>(SCN_FWD(source), T{});
+    T value;
+    auto arg = detail::make_arg<scan_context>(value);
+    SCN_TRY(it, vscan_value(SCN_FWD(source), arg));
+    return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(value)}};
 }
 
 /**
@@ -8832,11 +8903,12 @@ SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
 template <typename T,
           typename Source,
           std::enable_if_t<detail::is_file_or_narrow_range<Source>>* = nullptr>
-SCN_NODISCARD auto scan_value(Source&& source, T default_value)
+SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
     -> scan_result_type<Source, T>
 {
-    return detail::scan_value_impl<char>(SCN_FWD(source),
-                                         SCN_MOVE(default_value));
+    auto arg = detail::make_arg<scan_context>(initial_value);
+    SCN_TRY(it, vscan_value(SCN_FWD(source), arg));
+    return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(initial_value)}};
 }
 
 /**
@@ -8859,7 +8931,7 @@ SCN_NODISCARD auto input(scan_format_string<std::FILE*, Args...> format)
     if (SCN_UNLIKELY(!err)) {
         return unexpected(err);
     }
-    return scan_result{stdin, SCN_MOVE(args.get_tuple())};
+    return scan_result{stdin, SCN_MOVE(args).get_tuple()};
 }
 
 /**
