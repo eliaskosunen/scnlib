@@ -615,8 +615,8 @@
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga2d3cbf7cb0c9a5e97f59ace9d2d2a3db</anchor>
-      <arglist>(Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;default_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>ga5c5be28ffa2a787c050d30914ab76a4b</anchor>
+      <arglist>(Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -629,8 +629,8 @@
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>gad2f34da1b90202d28a82bf8caa75ca4d</anchor>
-      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;default_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>ga579fa74ff6da85cb5b8f101d93ce8e09</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -643,8 +643,8 @@
       <type>auto</type>
       <name>scan_value</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gad6f64551ee4609a1c20e72163a1347f1</anchor>
-      <arglist>(Source &amp;&amp;source, T default_value) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
+      <anchor>ga0b383313772b592bdea70a12cbdd53b7</anchor>
+      <arglist>(Source &amp;&amp;source, T initial_value) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -711,8 +711,8 @@
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga2d3cbf7cb0c9a5e97f59ace9d2d2a3db</anchor>
-      <arglist>(Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;default_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>ga5c5be28ffa2a787c050d30914ab76a4b</anchor>
+      <arglist>(Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -725,8 +725,8 @@
       <type>auto</type>
       <name>scan_value</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gad6f64551ee4609a1c20e72163a1347f1</anchor>
-      <arglist>(Source &amp;&amp;source, T default_value) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
+      <anchor>ga0b383313772b592bdea70a12cbdd53b7</anchor>
+      <arglist>(Source &amp;&amp;source, T initial_value) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -803,8 +803,8 @@
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>gad2f34da1b90202d28a82bf8caa75ca4d</anchor>
-      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;default_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+      <anchor>ga579fa74ff6da85cb5b8f101d93ce8e09</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
   </compound>
   <compound kind="group">

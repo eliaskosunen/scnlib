@@ -213,9 +213,9 @@
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga2d3cbf7cb0c9a5e97f59ace9d2d2a3db">scan</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga5c5be28ffa2a787c050d30914ab76a4b">scan</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
               <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;Source, Args...&gt; format,
-              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; default_args) -&gt; scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
+              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; initial_args) -&gt; scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
@@ -227,10 +227,10 @@
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Locale</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/void_t.html" target="_blank">std::<wbr/>void_t</a>&lt;decltype(Locale::classic())&gt;</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__locale.html#gad2f34da1b90202d28a82bf8caa75ca4d">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__locale.html#ga579fa74ff6da85cb5b8f101d93ce8e09">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;Source, Args...&gt; format,
-              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; default_args) -&gt; scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
+              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; initial_args) -&gt; scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
@@ -251,8 +251,8 @@
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;* = nullptr</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#gad6f64551ee4609a1c20e72163a1347f1">scan_value</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
-              T default_value) -&gt; scan_result_type&lt; Source, T &gt; -&gt; auto</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga0b383313772b592bdea70a12cbdd53b7">scan_value</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
+              T initial_value) -&gt; scan_result_type&lt; Source, T &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
