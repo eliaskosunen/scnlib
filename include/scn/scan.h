@@ -5156,9 +5156,9 @@ struct scan_arg_store<scan_arg_store_kind::builtin, Context, Args...> {
         return data.data();
     }
 
-    constexpr auto get_tuple() &&
+    constexpr auto& get_tuple()
     {
-        return SCN_MOVE(args);
+        return args;
     }
 
     static constexpr scan_arg_store_kind kind = scan_arg_store_kind::builtin;
@@ -5201,9 +5201,9 @@ struct scan_arg_store<scan_arg_store_kind::packed, Context, Args...> {
         return data.data();
     }
 
-    constexpr auto get_tuple() &&
+    constexpr auto& get_tuple()
     {
-        return SCN_MOVE(args);
+        return args;
     }
 
     static constexpr scan_arg_store_kind kind = scan_arg_store_kind::packed;
@@ -5245,9 +5245,9 @@ struct scan_arg_store<scan_arg_store_kind::unpacked, Context, Args...> {
         return data.data();
     }
 
-    constexpr auto get_tuple() &&
+    constexpr auto& get_tuple()
     {
-        return SCN_MOVE(args);
+        return args;
     }
 
     static constexpr scan_arg_store_kind kind = scan_arg_store_kind::unpacked;
@@ -8651,7 +8651,7 @@ auto make_scan_result(scan_expected<Result>&& result,
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
-    return scan_result{SCN_MOVE(*result), SCN_MOVE(args).get_tuple()};
+    return scan_result{SCN_MOVE(*result), SCN_MOVE(args.get_tuple())};
 }
 
 /**
@@ -8843,7 +8843,7 @@ SCN_NODISCARD auto input(scan_format_string<std::FILE*, Args...> format)
     if (SCN_UNLIKELY(!err)) {
         return unexpected(err);
     }
-    return scan_result{stdin, SCN_MOVE(args).get_tuple()};
+    return scan_result{stdin, SCN_MOVE(args.get_tuple())};
 }
 
 /**
