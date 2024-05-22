@@ -3612,94 +3612,6 @@ constexpr auto make_string_view_iterator_from_pointer(
 }
 
 /////////////////////////////////////////////////////////////////
-// Simple default-initializing, non-copyable/movable tuple
-/////////////////////////////////////////////////////////////////
-
-template <size_t I, typename T>
-struct tuple_leaf {
-    tuple_leaf() = default;
-
-    tuple_leaf(T&& val) : value(SCN_MOVE(val)) {}
-
-    tuple_leaf(const tuple_leaf&) = delete;
-    tuple_leaf& operator=(const tuple_leaf&) = delete;
-    tuple_leaf(tuple_leaf&&) = delete;
-    tuple_leaf& operator=(tuple_leaf&&) = delete;
-    ~tuple_leaf() = default;
-
-    // default-initialized on purpose
-    T value;
-};
-
-template <size_t I, typename... Items>
-struct tuple_impl;
-
-template <size_t I>
-struct tuple_impl<I> {};
-
-template <size_t I, typename Head, typename... Tail>
-struct tuple_impl<I, Head, Tail...> : tuple_leaf<I, Head>,
-                                      tuple_impl<I + 1, Tail...> {
-    tuple_impl() = default;
-
-    tuple_impl(Head&& h, Tail&&... t)
-        : tuple_leaf<I, Head>(SCN_MOVE(h)),
-          tuple_impl<I + 1, Tail...>(SCN_MOVE(t)...)
-    {
-    }
-};
-
-template <size_t I, typename Head, typename... Tail>
-Head& tuple_get(tuple_impl<I, Head, Tail...>& tuple)
-{
-    return tuple.template tuple_leaf<I, Head>::value;
-}
-
-template <typename... Ts>
-using tuple = tuple_impl<0, Ts...>;
-
-template <typename Tuple>
-struct tuple_size;
-template <typename... Ts>
-struct tuple_size<tuple<Ts...>>
-    : std::integral_constant<size_t, sizeof...(Ts)> {};
-
-template <size_t... Is>
-auto index_over(std::index_sequence<Is...>)
-{
-    return [](auto&& f) -> decltype(auto) {
-        return SCN_FWD(f)(std::integral_constant<size_t, Is>{}...);
-    };
-}
-
-template <typename F, typename Tuple>
-decltype(auto) tuple_apply(F&& f, Tuple&& tup)
-{
-    constexpr size_t sz = tuple_size<remove_cvref_t<Tuple>>::value;
-    auto indexer = index_over(std::make_index_sequence<sz>{});
-    return indexer([&](auto... Is) -> decltype(auto) {
-        return std::forward<F>(f)(tuple_get<Is>(std::forward<Tuple>(tup))...);
-    });
-}
-
-template <typename... Ts>
-std::tuple<Ts...> to_std_tuple(tuple<Ts...>&& tup)
-{
-    auto indexer = index_over(std::make_index_sequence<sizeof...(Ts)>{});
-    return indexer([&](auto... Is) -> std::tuple<Ts...> {
-        return {SCN_MOVE(tuple_get<Is>(tup))...};
-    });
-}
-
-template <typename... Ts>
-detail::tuple<Ts...> from_std_tuple(std::tuple<Ts...>&& tup)
-{
-    return std::apply(
-        [&](Ts&&... vals) { return detail::tuple<Ts...>(SCN_MOVE(vals)...); },
-        SCN_MOVE(tup));
-}
-
-/////////////////////////////////////////////////////////////////
 // Lightweight Unicode facilities
 /////////////////////////////////////////////////////////////////
 
@@ -5217,13 +5129,13 @@ struct scan_arg_store;
 template <typename Context, typename... Args>
 struct scan_arg_store<scan_arg_store_kind::builtin, Context, Args...> {
     constexpr scan_arg_store()
-        : data(detail::tuple_apply(make_data_array<Args...>, args))
+        : data(std::apply(make_data_array<Args...>, args))
     {
     }
 
     constexpr scan_arg_store(std::tuple<Args...>&& d)
-        : args(detail::from_std_tuple(SCN_MOVE(d))),
-          data(detail::tuple_apply(make_data_array<Args...>, args))
+        : args(SCN_MOVE(d)),
+          data(std::apply(make_data_array<Args...>, args))
     {
     }
 
@@ -5246,7 +5158,7 @@ struct scan_arg_store<scan_arg_store_kind::builtin, Context, Args...> {
 
     constexpr auto get_tuple() &&
     {
-        return detail::to_std_tuple(SCN_MOVE(args));
+        return SCN_MOVE(args);
     }
 
     static constexpr scan_arg_store_kind kind = scan_arg_store_kind::builtin;
@@ -5254,20 +5166,20 @@ struct scan_arg_store<scan_arg_store_kind::builtin, Context, Args...> {
         encode_types<typename Context::char_type, Args...>() |
         is_builtin_only_bit;
 
-    detail::tuple<Args...> args;
+    std::tuple<Args...> args;
     std::array<void*, sizeof...(Args)> data;
 };
 
 template <typename Context, typename... Args>
 struct scan_arg_store<scan_arg_store_kind::packed, Context, Args...> {
     constexpr scan_arg_store()
-        : data(detail::tuple_apply(make_data_array<Args...>, args))
+        : data(std::apply(make_data_array<Args...>, args))
     {
     }
 
     constexpr scan_arg_store(std::tuple<Args...>&& d)
-        : args(detail::from_std_tuple(SCN_MOVE(d))),
-          data(detail::tuple_apply(make_data_array<Args...>, args))
+        : args(SCN_MOVE(d)),
+          data(std::apply(make_data_array<Args...>, args))
     {
     }
 
@@ -5291,27 +5203,27 @@ struct scan_arg_store<scan_arg_store_kind::packed, Context, Args...> {
 
     constexpr auto get_tuple() &&
     {
-        return detail::to_std_tuple(SCN_MOVE(args));
+        return SCN_MOVE(args);
     }
 
     static constexpr scan_arg_store_kind kind = scan_arg_store_kind::packed;
     static constexpr size_t desc =
         encode_types<typename Context::char_type, Args...>();
 
-    detail::tuple<Args...> args;
+    std::tuple<Args...> args;
     std::array<arg_value, sizeof...(Args)> data;
 };
 
 template <typename Context, typename... Args>
 struct scan_arg_store<scan_arg_store_kind::unpacked, Context, Args...> {
     constexpr scan_arg_store()
-        : data(detail::tuple_apply(make_data_array<Args...>, args))
+        : data(std::apply(make_data_array<Args...>, args))
     {
     }
 
     constexpr scan_arg_store(std::tuple<Args...>&& d)
-        : args(detail::from_std_tuple(SCN_MOVE(d))),
-          data(detail::tuple_apply(make_data_array<Args...>, args))
+        : args(SCN_MOVE(d)),
+          data(std::apply(make_data_array<Args...>, args))
     {
     }
 
@@ -5335,13 +5247,13 @@ struct scan_arg_store<scan_arg_store_kind::unpacked, Context, Args...> {
 
     constexpr auto get_tuple() &&
     {
-        return detail::to_std_tuple(SCN_MOVE(args));
+        return SCN_MOVE(args);
     }
 
     static constexpr scan_arg_store_kind kind = scan_arg_store_kind::unpacked;
     static constexpr size_t desc = is_unpacked_bit | sizeof...(Args);
 
-    detail::tuple<Args...> args;
+    std::tuple<Args...> args;
     std::array<basic_scan_arg<Context>, sizeof...(Args)> data;
 };
 

@@ -86,4 +86,5 @@ TEST(ArgsTest, ArgStore)
 
     auto tup = std::move(store).get_tuple();
     EXPECT_EQ(std::get<0>(tup), 42);
+    EXPECT_DOUBLE_EQ(std::get<1>(tup), 0.0);
 }
