@@ -44,14 +44,6 @@
 namespace scn {
 SCN_BEGIN_NAMESPACE
 
-/**
- * A C++23-like `expected`.
- *
- * \ingroup result
- */
-template <typename T, typename E>
-class expected;
-
 template <typename E>
 class SCN_TRIVIAL_ABI unexpected {
     static_assert(std::is_destructible<E>::value);
@@ -7154,8 +7146,15 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * replacement-field   ::= '{' [arg-id] [':' format-spec] '}'
  * arg-id              ::= positive-integer
  *
- * format-spec         ::= [width] ['L'] [type]
+ * format-spec         ::= [fill-and-align]
+ *                         [width] [precision]
+ *                         ['L'] [type]
+ * fill-and-align      ::= [fill] align
+ * fill                ::= any character other than
+ *                         '{' or '}'
+ * align               ::= one of '<' '>' '^'
  * width               ::= positive-integer
+ * precision           ::= '.' nonnegative-integer
  * type                ::= 'a' | 'A' | 'b' | 'B' | 'c' | 'd' |
  *                         'e' | 'E' | 'f' | 'F' | 'g' | 'G' |
  *                         'o' | 'p' | 's' | 'x' | 'X' | 'i' | 'u'
@@ -7190,16 +7189,59 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * auto e = scn::scan<int, int>("2 to 300", "{0} to {2}");
  * \endcode
  *
- * \subsection width Width
+ * \section fill-and-align Fill and align
  *
- * Width specifies the maximum number of characters that will be read from
- * the source range. It can be any unsigned integer. When using the `'c'`
- * type specifier for strings, specifying the width is required.
+ * Alignment allows for skipping character before and/or after a value.
+ * There are three possible values for alignment:
  *
- * \code{.cpp}
- * auto r = scn::scan<std::string>("abcde", "{:3}");
- * // r->value() == "abc"
- * \endcode
+ * <table>
+ * <caption id="align-table">
+ * Alignment options
+ * </caption>
+ *
+ * <tr><th>Option</th> <th>Meaning</th></tr>
+ *
+ * <tr>
+ * <td>`<`</td>
+ * <td>
+ * Align the value to the left (skips fill characters after the value)
+ * </td>
+ * </tr>
+ *
+ * <tr>
+ * <td>`>`</td>
+ * <td>
+ * Align the value to the right (skips fill characters before the value)
+ * </td>
+ * </tr>
+ *
+ * <tr>
+ * <td>`^`</td>
+ * <td>
+ * Align the value to the center
+ * (skips fill characters both before and after the value)
+ * </td>
+ * </tr>
+ * </table>
+ *
+ * The fill character can be any Unicode code point, except for `{` and `}`.
+ * The default fill is any whitespace character, as specified above.
+ *
+ * For format type specifiers other than `c` (default for `char` and `wchar_t`,
+ * available for `string` and `string_view`), `[...]`, and the regex `/.../`,
+ * the default alignment is `>`.
+ * In practice, this means that leading whitespace is skipped by default.
+ * For the `c` format type specifier, there's no default alignment,
+ * and no fill characters are skipped, including whitespace.
+ *
+ * The number of fill characters consumed can be controlled with the width and
+ * precision specifiers.
+ *
+ * \section width Width
+ *
+ * Width specifies the minimum number of characters that will be read from
+ * the source range. It can be any unsigned integer. Any fill characters skipped
+ * are included in the width.
  *
  * For the purposes of width calculation, the same algorithm is used that in
  * {fmt}. Every code point has a width of one, except the following ones
@@ -7210,6 +7252,12 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * * U+4DC0 – U+4DFF (Yijing Hexagram Symbols)
  * * U+1F300 – U+1F5FF (Miscellaneous Symbols and Pictographs)
  * * U+1F900 – U+1F9FF (Supplemental Symbols and Pictographs)
+ *
+ * \section precision Precision
+ *
+ * Precision specifies the maximum number of characters that will be read from
+ * the source range. The method for counting characters is the same as above,
+ * with the width field.
  *
  * \section localized Localized
  *
@@ -7238,15 +7286,18 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * <tr>
  * <td>none, `s`</td>
  * <td>
- * Copies from the input until a whitespace character is encountered.
- * Preceding whitespace is skipped.
+ * Copies from the input until a whitespace character is encountered, or,
+ * if using the `<` (left) or `^` (center) alignment,
+ * a fill character is encountered.
  * </td>
  * </tr>
  * <tr>
  * <td>`c`</td>
  * <td>
- * Copies from the input until the field width is exhausted. Does not skip
- * preceding whitespace. Errors if no field width is provided.
+ * Copies from the input until the field width is exhausted.
+ * Has no default alignment
+ * (doesn't skip preceding whitespace, if no alignment is specified).
+ * Errors if no field precision is provided.
  * </td>
  * </tr>
  * <tr>
@@ -7255,7 +7306,9 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * Character set matching: copies from the input until a character not specified
  * in the set is encountered. Character ranges can be specified with `-`, and
  * the entire selection can be inverted with a prefix `^`. Matches and supports
- * arbitrary Unicode code points. Does not skip preceding whitespace.
+ * arbitrary Unicode code points.
+ * Has no default alignment
+ * (doesn't skip preceding whitespace, if no alignment is specified).
  * </td>
  * </tr>
  * <tr>
@@ -7263,21 +7316,21 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * <td>
  * Regular expression matching: copies from the input until the input does not
  * match the regex.
- * Does not skip preceding whitespace.
+ * Has no default alignment
+ * (doesn't skip preceding whitespace, if no alignment is specified).
  * \see regex
  * </td>
  * </tr>
  * </table>
  *
- * \note `std::basic_string_view` can only be scanned, if the source is
+ * \note `std::basic_string_view` can only be scanned if the source is
  * contiguous.
  *
  * \subsection type-int Type specifier: integers
  *
- * Integer values are scanned as if by using `std::from_chars`, except:
- *  * A positive `+` sign and a base prefix (like `0x`) are always
- *    allowed to be present
- *  * Preceding whitespace is skipped.
+ * Integer values are scanned as if by using `std::from_chars`,
+ * except a positive `+` sign and a base prefix (like `0x`) are always
+ * allowed to be present.
  *
  * <table>
  * <caption id="type-int-table">
@@ -7369,10 +7422,9 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  *
  * \subsection type-float Type specifier: floating-point values
  *
- * Floating-point values are scanned as if by using `std::from_chars`, except:
- *  * A positive `+` sign and a base prefix (like `0x`) are always
- *    allowed to be present
- *  * Preceding whitespace is skipped.
+ * Floating-point values are scanned as if by using `std::from_chars`,
+ * except a positive `+` sign and a base prefix (like `0x`) are always
+ * allowed to be present.
  *
  * <table>
  * <caption id="type-float-table">
@@ -7849,6 +7901,42 @@ protected:
  * \defgroup ctx Contexts and scanners
  *
  * \brief Lower-level APIs used for scanning individual values
+ *
+ * \section user-defined Scanning user-defined types
+ *
+ * User-defined types can be scanned by specializing the class template
+ * `scn::scanner`.
+ *
+ * \code{.cpp}
+ * struct mytype {
+ *   int key;
+ *   std::string value;
+ * };
+ *
+ * template <>
+ * struct scn::scanner<mytype> {
+ *   template <typename ParseContext>
+ *   constexpr auto parse(ParseCtx& pctx)
+ *     -> scan_expected<typename ParseContext::iterator> {
+ *     // parse() implementation just returning begin():
+ *     // only permits empty format specifiers
+ *     return pctx.begin();
+ *   }
+ *
+ *   template <typename Context>
+ *   auto scan(mytype& val, Context& ctx)
+ *     -> scan_expected<typename Context::iterator> {
+ *     return scn::scan<int, std::string>(ctx.range(), "{}: {}")
+ *       .transform([&](auto result) {
+ *         std::tie(val.key, val.value) = std::move(result->values());
+ *         return result.begin();
+ *       });
+ *   }
+ * };
+ * \endcode
+ *
+ * See also
+ * \ref g-usertypes
  */
 
 /**
@@ -8550,7 +8638,7 @@ SCN_GCC_POP  // -Wnoexcept
  * Note: Because `vscan` places the values it scanned into the argument
  * store passed to it, the call to `make_scan_result` needs to happen
  * strictly after calling `vscan`. This means, that this is UB:
- * `return scn::make_scan_result(scn::vscan(...), std::move(args));`
+ * `return scn::make_scan_result(scn::vscan(...), std::move(args.args()));`
  *
  * Example:
  * \code{.cpp}
@@ -8796,6 +8884,8 @@ inline constexpr bool is_scan_int_type =
  * Reads in the specified base,
  * allowing a base prefix. Set `base` to `0` to detect the base from the
  * input. `base` must either be `0`, or in range `[2, 36]`.
+ *
+ * \ingroup scan
  */
 template <typename T, std::enable_if_t<detail::is_scan_int_type<T>>* = nullptr>
 SCN_NODISCARD auto scan_int(std::string_view source, int base = 10)
@@ -8826,6 +8916,8 @@ inline constexpr bool dependent_bool = Val;
  *  - The parsed value does not overflow.
  *  - The input is a valid base-10 integer.
  * Breaking these assumptions will lead to UB.
+ *
+ * \ingroup scan
  */
 template <typename T, std::enable_if_t<detail::is_scan_int_type<T>>* = nullptr>
 SCN_NODISCARD auto scan_int_exhaustive_valid(std::string_view source) -> T

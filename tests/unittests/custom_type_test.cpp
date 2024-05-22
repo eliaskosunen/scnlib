@@ -55,6 +55,30 @@ struct scn::scanner<mytype2, char> : scn::scanner<std::string, char> {
     }
 };
 
+struct mytype3 {
+    int i{};
+};
+
+template <>
+struct scn::scanner<mytype3> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx)
+        -> scan_expected<typename ParseCtx::iterator>
+    {
+        return pctx.begin();
+    }
+
+    template <typename Context>
+    auto scan(mytype3& val, Context& ctx) const
+        -> scan_expected<typename Context::iterator>
+    {
+        return scn::scan<int>(ctx.range(), "{}").transform([&](auto result) {
+            val = {result.value()};
+            return result.begin();
+        });
+    }
+};
+
 TEST(CustomTypeTest, Simple)
 {
     auto result = scn::scan<mytype>("123 456", "{}");
@@ -109,4 +133,17 @@ TEST(CustomTypeTest, WhiteSpaceNotSkipped)
     EXPECT_STREQ(result->range().data(), "bc");
 
     EXPECT_EQ(result->value().ch, 'a');
+}
+
+TEST(CustomTypeTest, OnlyEmptyFormatStringAllowed)
+{
+    auto result = scn::scan<mytype3>("42", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().i, 42);
+}
+
+TEST(CustomTypeTest, OnlyEmptyFormatStringAllowed_Failure)
+{
+    auto result = scn::scan<mytype3>("42", scn::runtime_format("{:d}"));
+    ASSERT_FALSE(result);
 }

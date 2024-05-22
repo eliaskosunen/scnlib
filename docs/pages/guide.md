@@ -283,7 +283,7 @@ struct mytype {
 template <>
 struct scn::scanner<mytype, char> {
     template <typename ParseContext>
-    auto parse(ParseContext& pctx)
+    constexpr auto parse(ParseContext& pctx)
         -> scan_expected<typename ParseContext::iterator>;
 
     template <typename Context>
@@ -302,7 +302,7 @@ struct scn::scanner<mytype, char> : scn::scanner<std::string_view, char> {};
 
 // Accept only empty
 template <typename ParseContext>
-auto parse(ParseContext& pctx) -> scan_expected<typename ParseContext::iterator> {
+constexpr auto parse(ParseContext& pctx) -> scan_expected<typename ParseContext::iterator> {
     return pctx.begin();
 }
 \endcode

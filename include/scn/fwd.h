@@ -939,6 +939,14 @@ using wscan_args = basic_scan_args<wscan_context>;
 
 class scan_error;
 
+/**
+ * A C++23-like `expected`.
+ *
+ * \ingroup result
+ */
+template <typename T, typename E>
+class expected;
+
 template <typename CharT>
 struct basic_runtime_format_string;
 template <typename CharT, typename Source, typename... Args>
@@ -1017,7 +1025,40 @@ using wscan_buffer = basic_scan_buffer<wchar_t>;
  */
 template <typename T, typename CharT = char, typename Enable = void>
 struct scanner {
+    /// Default fallback implementation, not constructible, always an error.
     scanner() = delete;
+
+    /**
+     * Parse the format string contained in `pctx`, and populate `*this` with
+     * the parsed format specifier values, to be used later in `scan()`.
+     *
+     * Should be `constexpr` to allow for compile-time format string checking.
+     *
+     * A common pattern is to inherit a `scanner` implementation from another
+     * `scanner`, while only overriding `scan()`, and keeping the same
+     * `parse()`, or at least delegating to it.
+     *
+     * \return On success, an iterator pointing to the `}` character at the end
+     * of the replacement field in the format string.
+     * Will cause an error, if the returned iterator doesn't point to a `}`
+     * character.
+     */
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& pctx)
+        -> expected<typename ParseContext::iterator, scan_error> = delete;
+
+    /**
+     * Scan a value of type `T` from `ctx` into `value`,
+     * using the format specs in `*this`, populated by `parse()`.
+     *
+     * `value` is guaranteed to only be default initialized.
+     *
+     * \return On success, an iterator pointing past the last character consumed
+     * from `ctx`.
+     */
+    template <typename Context>
+    auto scan(T& value, Context& ctx) const
+        -> expected<typename Context::iterator, scan_error> = delete;
 };
 
 template <typename T, typename CharT>

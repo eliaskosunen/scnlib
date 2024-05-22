@@ -127,7 +127,7 @@ int main() {
 
 int main() {
     std::vector<int> vec{};
-    auto input = scn::ranges::subrange{std::string_view{"123 456 789"}};
+    auto input = scn::ranges::subrange{"123 456 789"sv};
     
     while (auto result = scn::scan<int>(input), "{}")) {
         vec.push_back(result->value());

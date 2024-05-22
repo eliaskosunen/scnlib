@@ -58,6 +58,13 @@ TEST(AlignAndFillTest, CustomWidthDefaultAlignChar)
     EXPECT_EQ(r->value(), 'x');
     EXPECT_STREQ(r->begin(), "");
 }
+TEST(AlignAndFillTest, CustomWidthDefaultAlignCharWithMoreInput)
+{
+    auto r = scn::scan<char>("x       ", "{:6}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), 'x');
+    EXPECT_STREQ(r->begin(), "");
+}
 
 TEST(AlignAndFillTest, CustomPrecDefaultAlignInt)
 {

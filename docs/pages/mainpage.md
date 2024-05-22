@@ -12,7 +12,7 @@ The code lives over at GitHub, at https://github.com/eliaskosunen/scnlib.
 #include <print> // for std::print, C++23
 
 int main() {
-    auto result = scn::scan<int, double>("[42, 3.14]", "[{}, {}]");
+    auto result = scn::scan<int, double>("42, 3.14", "{}, {}");
     if (result) {
         auto [first, second] = result->values();
         std::println("first: {}, second: {}", first, second);
