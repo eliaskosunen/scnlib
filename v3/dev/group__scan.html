@@ -100,6 +100,17 @@
             </dt>
             <dd></dd>
             <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_scan_int_type&lt;T&gt;&gt;* = nullptr</span></span>&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gabc01dfea9c68651aa1663d24ba843c84">scan_int</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> source,
+              int base = 10) -&gt; scan_result_type&lt; <a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/string/basic_string_view" target="_blank">std::string_view</a>, T &gt; -&gt; auto</span>
+            </dt>
+            <dd></dd>
+            <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_scan_int_type&lt;T&gt;&gt;* = nullptr</span></span>&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga75b7263129ec499db37ea67eb01eab30">scan_int_exhaustive_valid</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> source) -&gt; T -&gt; auto</span>
+            </dt>
+            <dd></dd>
+            <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gaad8ea03c53fc8eda13f7c2d1a7381b07">scan_value</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source) -&gt; scan_result_type&lt; Source, T &gt; -&gt; auto</span>
             </dt>
@@ -161,6 +172,25 @@
 <span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="nn">std</span><span class="o">::</span><span class="nc">string</span><span class="o">&gt;</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">,</span>
                                      <span class="p">{</span><span class="nn">std</span><span class="o">::</span><span class="nf">move</span><span class="p">(</span><span class="n">str</span><span class="p">)});</span>
 <span class="c1">// Access the read string with result-&gt;value()</span></pre><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="#gab691a605c387f6510a9c2559b026af04">scan()</a></p></aside>
+          </div></section>
+          <section class="m-doc-details" id="gabc01dfea9c68651aa1663d24ba843c84"><div>
+            <h3>
+              <div class="m-doc-template">
+                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_scan_int_type&lt;T&gt;&gt;* = nullptr</span></span>&gt;
+              </div>
+              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gabc01dfea9c68651aa1663d24ba843c84">scan_int</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> source,
+              int base = 10) -&gt; scan_result_type&lt; <a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/string/basic_string_view" target="_blank">std::string_view</a>, T &gt;</span></span>
+            </h3>
+<p>Fast integer reading.</p><p>Quickly reads an integer from a <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a></code>. Skips preceding whitespace.</p><p>Reads in the specified base, allowing a base prefix. Set <code>base</code> to <code>0</code> to detect the base from the input. <code>base</code> must either be <code>0</code>, or in range <code>[2, 36]</code>.</p>
+          </div></section>
+          <section class="m-doc-details" id="ga75b7263129ec499db37ea67eb01eab30"><div>
+            <h3>
+              <div class="m-doc-template">
+                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_scan_int_type&lt;T&gt;&gt;* = nullptr</span></span>&gt;
+              </div>
+              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga75b7263129ec499db37ea67eb01eab30">scan_int_exhaustive_valid</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> source) -&gt; T</span></span>
+            </h3>
+<p>Very fast integer reading.</p><p>Quickly reads an integer from a <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a></code>.</p><p>Be very careful when using this one! Its speed comes from some very heavy assumptions about the validity of the input:</p><ul><li><code>source</code> must not be empty.</li><li><code>source</code> contains nothing but the integer: no leading or trailing whitespace, no extra junk. Leading <code>-</code> is allowed for signed types, no <code>+</code> is allowed.</li><li>The parsed value does not overflow.</li><li>The input is a valid base-10 integer. Breaking these assumptions will lead to UB.</li></ul>
           </div></section>
           <section class="m-doc-details" id="gaad8ea03c53fc8eda13f7c2d1a7381b07"><div>
             <h3>

@@ -492,14 +492,77 @@
     <templarg></templarg>
     <templarg></templarg>
     <templarg></templarg>
+    <member kind="function">
+      <type></type>
+      <name>scanner</name>
+      <anchorfile>structscn_1_1scanner.html</anchorfile>
+      <anchor>a96f00cd68bb1770cf4212d4f27ae1b15</anchor>
+      <arglist>()=delete</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr auto</type>
+      <name>parse</name>
+      <anchorfile>structscn_1_1scanner.html</anchorfile>
+      <anchor>a9769f0277c91431282203ae727fb63c6</anchor>
+      <arglist>(ParseContext &amp;pctx) -&gt; expected&lt; typename ParseContext::iterator, scan_error &gt;=delete</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>structscn_1_1scanner.html</anchorfile>
+      <anchor>a38a71e2cc328d6dd35e31fbe34feb1ca</anchor>
+      <arglist>(T &amp;value, Context &amp;ctx) const -&gt; expected&lt; typename Context::iterator, scan_error &gt;=delete</arglist>
+    </member>
   </compound>
   <compound kind="class">
     <name>scanner&lt; CharT, T &gt;</name>
     <filename>structscn_1_1scanner.html</filename>
+    <member kind="function">
+      <type></type>
+      <name>scanner</name>
+      <anchorfile>structscn_1_1scanner.html</anchorfile>
+      <anchor>a96f00cd68bb1770cf4212d4f27ae1b15</anchor>
+      <arglist>()=delete</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr auto</type>
+      <name>parse</name>
+      <anchorfile>structscn_1_1scanner.html</anchorfile>
+      <anchor>a9769f0277c91431282203ae727fb63c6</anchor>
+      <arglist>(ParseContext &amp;pctx) -&gt; expected&lt; typename ParseContext::iterator, scan_error &gt;=delete</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>structscn_1_1scanner.html</anchorfile>
+      <anchor>a38a71e2cc328d6dd35e31fbe34feb1ca</anchor>
+      <arglist>(CharT &amp;value, Context &amp;ctx) const -&gt; expected&lt; typename Context::iterator, scan_error &gt;=delete</arglist>
+    </member>
   </compound>
   <compound kind="class">
     <name>scanner&lt; T, CharT &gt;</name>
     <filename>structscn_1_1scanner.html</filename>
+    <member kind="function">
+      <type></type>
+      <name>scanner</name>
+      <anchorfile>structscn_1_1scanner.html</anchorfile>
+      <anchor>a96f00cd68bb1770cf4212d4f27ae1b15</anchor>
+      <arglist>()=delete</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr auto</type>
+      <name>parse</name>
+      <anchorfile>structscn_1_1scanner.html</anchorfile>
+      <anchor>a9769f0277c91431282203ae727fb63c6</anchor>
+      <arglist>(ParseContext &amp;pctx) -&gt; expected&lt; typename ParseContext::iterator, scan_error &gt;=delete</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>structscn_1_1scanner.html</anchorfile>
+      <anchor>a38a71e2cc328d6dd35e31fbe34feb1ca</anchor>
+      <arglist>(T &amp;value, Context &amp;ctx) const -&gt; expected&lt; typename Context::iterator, scan_error &gt;=delete</arglist>
+    </member>
   </compound>
   <compound kind="struct">
     <name>scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &amp;&amp;!detail::is_type_disabled&lt; T &gt; &gt; &gt;</name>
@@ -514,6 +577,7 @@
     <class kind="class">scn::basic_scan_arg</class>
     <class kind="class">scn::basic_scan_args</class>
     <class kind="class">scn::basic_scan_context</class>
+    <class kind="class">scn::expected</class>
     <class kind="class">scn::basic_scan_format_string</class>
     <class kind="struct">scn::basic_istream_scanner</class>
     <class kind="class">scn::basic_scan_parse_context</class>
@@ -522,7 +586,6 @@
     <class kind="struct">scn::discard</class>
     <class kind="class">scn::basic_regex_match</class>
     <class kind="class">scn::basic_regex_matches</class>
-    <class kind="class">scn::expected</class>
     <class kind="class">scn::scan_error</class>
     <class kind="struct">scn::scan_expected</class>
     <class kind="struct">scn::invalid_input_range</class>
@@ -663,15 +726,15 @@
     <member kind="function">
       <type>auto</type>
       <name>scan_int</name>
-      <anchorfile>namespacescn.html</anchorfile>
-      <anchor>abc01dfea9c68651aa1663d24ba843c84</anchor>
+      <anchorfile>group__scan.html</anchorfile>
+      <anchor>gabc01dfea9c68651aa1663d24ba843c84</anchor>
       <arglist>(std::string_view source, int base=10) -&gt; scan_result_type&lt; std::string_view, T &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan_int_exhaustive_valid</name>
-      <anchorfile>namespacescn.html</anchorfile>
-      <anchor>a75b7263129ec499db37ea67eb01eab30</anchor>
+      <anchorfile>group__scan.html</anchorfile>
+      <anchor>ga75b7263129ec499db37ea67eb01eab30</anchor>
       <arglist>(std::string_view source) -&gt; T</arglist>
     </member>
     <member kind="function">
@@ -742,6 +805,20 @@
       <anchor>ga2860ab85b607d9cafcbf268e4f57db35</anchor>
       <arglist>(const char *msg, scan_format_string&lt; std::FILE *, Args... &gt; format) -&gt; scan_result_type&lt; std::FILE *, Args... &gt;</arglist>
     </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan_int</name>
+      <anchorfile>group__scan.html</anchorfile>
+      <anchor>gabc01dfea9c68651aa1663d24ba843c84</anchor>
+      <arglist>(std::string_view source, int base=10) -&gt; scan_result_type&lt; std::string_view, T &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan_int_exhaustive_valid</name>
+      <anchorfile>group__scan.html</anchorfile>
+      <anchor>ga75b7263129ec499db37ea67eb01eab30</anchor>
+      <arglist>(std::string_view source) -&gt; T</arglist>
+    </member>
   </compound>
   <compound kind="group">
     <name>ctx</name>
@@ -751,6 +828,7 @@
     <class kind="class">scn::basic_scan_parse_context</class>
     <class kind="class">scn::basic_scan_context</class>
     <class kind="struct">scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &amp;&amp;!detail::is_type_disabled&lt; T &gt; &gt; &gt;</class>
+    <docanchor file="group__ctx.html" title="Scanning user-defined types">user-defined</docanchor>
   </compound>
   <compound kind="group">
     <name>format-string</name>
@@ -767,7 +845,10 @@
       <arglist>(std::string_view s)</arglist>
     </member>
     <docanchor file="group__format-string.html" title="Argument IDs">arg-ids</docanchor>
+    <docanchor file="group__format-string.html" title="Fill and align">fill-and-align</docanchor>
+    <docanchor file="group__format-string.html">align-table</docanchor>
     <docanchor file="group__format-string.html" title="Width">width</docanchor>
+    <docanchor file="group__format-string.html" title="Precision">precision</docanchor>
     <docanchor file="group__format-string.html" title="Localized">localized</docanchor>
     <docanchor file="group__format-string.html" title="Type specifier">type</docanchor>
     <docanchor file="group__format-string.html" title="Type specifier: strings">type-string</docanchor>
@@ -908,27 +989,6 @@
     <docanchor file="guide.html" title="Unicode and wide source ranges">g-unicode</docanchor>
     <docanchor file="guide.html" title="User types">g-usertypes</docanchor>
     <docanchor file="guide.html" title="Localization">g-locale</docanchor>
-  </compound>
-  <compound kind="page">
-    <name>migration-2-0</name>
-    <title>Migration Guide v1.1 -&gt; v2.0</title>
-    <filename>migration-2-0.html</filename>
-    <docanchor file="migration-2-0.html" title="C++17 required">m2-cpp17</docanchor>
-    <docanchor file="migration-2-0.html" title="Header files changed">headers</docanchor>
-    <docanchor file="migration-2-0.html" title="&quot;scan_&quot; prefix added to many names">m2-scan_prefix</docanchor>
-    <docanchor file="migration-2-0.html" title="Argument passing and return value">m2-scan_arg_passing</docanchor>
-    <docanchor file="migration-2-0.html" title="No more &quot;indirect&quot; ranges: revamped source range error handling">m2-indirect</docanchor>
-    <docanchor file="migration-2-0.html" title="Relaxed source range requirements">m2-range-requirements</docanchor>
-    <docanchor file="migration-2-0.html" title="Returned ranges do not take ownership">m2-ownership</docanchor>
-    <docanchor file="migration-2-0.html" title="Files removed">m2-files</docanchor>
-    <docanchor file="migration-2-0.html" title="Specializing scn::scanner changed">m2-scanner-specialize</docanchor>
-    <docanchor file="migration-2-0.html" title="scn::scan_usertype removed">m2-scan_usertype</docanchor>
-    <docanchor file="migration-2-0.html" title="scn::*_parser removed">m2-parser</docanchor>
-    <docanchor file="migration-2-0.html" title="Including &lt;scn/istream.h&gt; no longer enables custom scanning for types with an operator&gt;&gt; by default">m2-istream-operator</docanchor>
-    <docanchor file="migration-2-0.html" title="scn::scan_localized renamed to scn::scan">m2-scan_localized</docanchor>
-    <docanchor file="migration-2-0.html" title="List operations removed">m2-lists</docanchor>
-    <docanchor file="migration-2-0.html" title="scn::ignore and scn::getline removed">m2-ignore-getline</docanchor>
-    <docanchor file="migration-2-0.html" title="Encoding is always Unicode">m2-encoding</docanchor>
   </compound>
   <compound kind="page">
     <name>poxy_changelog</name>
