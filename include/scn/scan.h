@@ -4623,7 +4623,7 @@ auto make_scan_buffer(Range&&) = delete;
 /////////////////////////////////////////////////////////////////
 
 namespace detail {
-enum class arg_type {
+enum class arg_type : unsigned char {
     none_type,
     schar_type,
     short_type,
@@ -4901,7 +4901,7 @@ static_assert((1 << packed_arg_bits) >= static_cast<int>(arg_type::last_type));
 constexpr std::size_t bits_in_sz = sizeof(std::size_t) * 8;
 constexpr std::size_t max_packed_args = (bits_in_sz - 2) / packed_arg_bits - 1;
 constexpr std::size_t is_unpacked_bit = std::size_t{1} << (bits_in_sz - 1);
-constexpr std::size_t is_builtin_only_bit = std::size_t{1} << (bits_in_sz - 2);
+constexpr std::size_t has_custom_types_bit = std::size_t{1} << (bits_in_sz - 2);
 
 template <typename>
 constexpr size_t encode_types_impl()
@@ -5159,10 +5159,10 @@ template <scan_arg_store_kind Kind, typename CharT, typename... Args>
 constexpr size_t compute_arg_store_desc()
 {
     if constexpr (Kind == scan_arg_store_kind::builtin) {
-        return encode_types<CharT, Args...>() | is_builtin_only_bit;
+        return encode_types<CharT, Args...>();
     }
     else if constexpr (Kind == scan_arg_store_kind::packed) {
-        return encode_types<CharT, Args...>();
+        return encode_types<CharT, Args...>() | has_custom_types_bit;
     }
     else {
         return sizeof...(Args) | is_unpacked_bit;
@@ -5202,6 +5202,12 @@ struct scan_arg_store {
             mapped_type_constant<remove_cvref_t<A>,
                                  typename Context::char_type>::value>(args)...};
     }
+
+    scan_arg_store(const scan_arg_store&) = delete;
+    scan_arg_store(scan_arg_store&&) = delete;
+    scan_arg_store& operator=(const scan_arg_store&) = delete;
+    scan_arg_store& operator=(scan_arg_store&&) = delete;
+    ~scan_arg_store() = default;
 
     std::tuple<Args...> args;
     argptrs_type argptrs;
@@ -5315,7 +5321,7 @@ private:
     }
     SCN_NODISCARD constexpr bool is_only_builtin() const
     {
-        return (m_desc & detail::is_builtin_only_bit) != 0;
+        return (m_desc & detail::has_custom_types_bit) == 0;
     }
 
     SCN_NODISCARD constexpr detail::arg_type type(std::size_t index) const
@@ -5330,7 +5336,7 @@ private:
     {
         return SCN_LIKELY(is_packed()) ? detail::max_packed_args
                                        : (m_desc & ~detail::is_unpacked_bit &
-                                          ~detail::is_builtin_only_bit);
+                                          ~detail::has_custom_types_bit);
     }
 
     size_t m_desc{0};
@@ -5647,6 +5653,12 @@ public:
 
     ~scan_result() = default;
 
+    template <typename Context>
+    scan_result(range_type r, detail::scan_arg_store<Context, Args...>& store)
+        : range_base(SCN_MOVE(r)), value_base(SCN_MOVE(store.args))
+    {
+    }
+
     scan_result(range_type r, tuple_type&& values)
         : range_base(SCN_MOVE(r)), value_base(SCN_MOVE(values))
     {
@@ -5658,6 +5670,16 @@ public:
     scan_result(OtherR&& r, tuple_type&& values)
         : range_base(detail::scan_result_convert_tag{}, SCN_FWD(r)),
           value_base(SCN_MOVE(values))
+    {
+    }
+
+    template <typename OtherR,
+              typename Context,
+              std::enable_if_t<std::is_constructible_v<range_type, OtherR>>* =
+                  nullptr>
+    scan_result(OtherR&& r, detail::scan_arg_store<Context, Args...>& store)
+        : range_base(detail::scan_result_convert_tag{}, SCN_FWD(r)),
+          value_base(SCN_MOVE(store.args))
     {
     }
 
@@ -5722,6 +5744,9 @@ public:
 
 template <typename R, typename... Args>
 scan_result(R, std::tuple<Args...>) -> scan_result<R, Args...>;
+template <typename R, typename Ctx, typename... Args>
+scan_result(R, detail::scan_arg_store<Ctx, Args...>&)
+    -> scan_result<R, Args...>;
 
 namespace detail {
 template <typename SourceRange>
@@ -8539,13 +8564,13 @@ SCN_GCC_POP  // -Wnoexcept
  */
 template <typename Result, typename Context, typename... Args>
 auto make_scan_result(scan_expected<Result>&& result,
-                      detail::scan_arg_store<Context, Args...>&& args)
+                      detail::scan_arg_store<Context, Args...>& args)
     -> scan_expected<scan_result<Result, Args...>>
 {
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
-    return scan_result{SCN_MOVE(*result), SCN_MOVE(args.args)};
+    return scan_result{SCN_MOVE(*result), args};
 }
 
 /**
@@ -8590,8 +8615,7 @@ SCN_NODISCARD auto scan(Source&& source,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<scan_context, Args...>();
-    auto result = vscan(SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
+    return make_scan_result(vscan(SCN_FWD(source), format, args), args);
 }
 
 /**
@@ -8621,8 +8645,7 @@ SCN_NODISCARD auto scan(Source&& source,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<scan_context, Args...>(SCN_FWD(initial_args));
-    auto result = vscan(SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
+    return make_scan_result(vscan(SCN_FWD(source), format, args), args);
 }
 
 /**
@@ -8657,8 +8680,7 @@ SCN_NODISCARD auto scan(const Locale& loc,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<scan_context, Args...>();
-    auto result = vscan(loc, SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
+    return make_scan_result(vscan(loc, SCN_FWD(source), format, args), args);
 }
 
 /**
@@ -8678,8 +8700,7 @@ SCN_NODISCARD auto scan(const Locale& loc,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<scan_context, Args...>(SCN_FWD(initial_args));
-    auto result = vscan(loc, SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
+    return make_scan_result(vscan(loc, SCN_FWD(source), format, args), args);
 }
 
 /**
@@ -8737,7 +8758,7 @@ SCN_NODISCARD auto input(scan_format_string<std::FILE*, Args...> format)
     if (SCN_UNLIKELY(!err)) {
         return unexpected(err);
     }
-    return scan_result{stdin, SCN_MOVE(args.args)};
+    return scan_result{stdin, args};
 }
 
 /**

@@ -87,8 +87,7 @@ SCN_NODISCARD auto scan(Source&& source,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<wscan_context, Args...>();
-    auto result = vscan(SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
+    return make_scan_result(vscan(SCN_FWD(source), format, args), args);
 }
 
 /**
@@ -105,8 +104,7 @@ SCN_NODISCARD auto scan(Source&& source,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<wscan_context, Args...>(SCN_MOVE(initial_args));
-    auto result = vscan(SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
+    return make_scan_result(vscan(SCN_FWD(source), format, args), args);
 }
 
 /**
@@ -125,8 +123,7 @@ SCN_NODISCARD auto scan(const Locale& loc,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<wscan_context, Args...>();
-    auto result = vscan(loc, SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
+    return make_scan_result(vscan(loc, SCN_FWD(source), format, args), args);
 }
 
 /**
@@ -146,8 +143,7 @@ SCN_NODISCARD auto scan(const Locale& loc,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<wscan_context, Args...>(SCN_MOVE(initial_args));
-    auto result = vscan(loc, SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args));
+    return make_scan_result(vscan(loc, SCN_FWD(source), format, args), args);
 }
 
 /**
