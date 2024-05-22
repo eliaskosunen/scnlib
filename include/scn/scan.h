@@ -4977,9 +4977,8 @@ constexpr auto make_value(T& value)
 template <typename... Args>
 constexpr void check_scan_arg_types()
 {
-    static_assert(
-        std::conjunction_v<std::is_default_constructible<Args>...>,
-        "Scan argument types must be default constructible");
+    static_assert(std::conjunction_v<std::is_default_constructible<Args>...>,
+                  "Scan argument types must be default constructible");
     static_assert(std::conjunction_v<std::is_destructible<Args>...>,
                   "Scan argument types must be Destructible");
     static_assert(
@@ -5124,26 +5123,25 @@ enum class scan_arg_store_kind {
 };
 
 template <scan_arg_store_kind Kind, typename Context, typename... Args>
-struct scan_arg_store;
+struct scan_arg_store_impl;
 
 template <typename Context, typename... Args>
-struct scan_arg_store<scan_arg_store_kind::builtin, Context, Args...> {
-    constexpr scan_arg_store()
+struct scan_arg_store_impl<scan_arg_store_kind::builtin, Context, Args...> {
+    constexpr scan_arg_store_impl()
         : data(std::apply(make_data_array<Args...>, args))
     {
     }
 
-    constexpr scan_arg_store(std::tuple<Args...>&& d)
-        : args(SCN_MOVE(d)),
-          data(std::apply(make_data_array<Args...>, args))
+    constexpr scan_arg_store_impl(std::tuple<Args...>&& d)
+        : args(SCN_MOVE(d)), data(std::apply(make_data_array<Args...>, args))
     {
     }
 
-    scan_arg_store(const scan_arg_store&) = delete;
-    scan_arg_store& operator=(const scan_arg_store&) = delete;
-    scan_arg_store(scan_arg_store&&) = delete;
-    scan_arg_store& operator=(scan_arg_store&&) = delete;
-    ~scan_arg_store() = default;
+    scan_arg_store_impl(const scan_arg_store_impl&) = delete;
+    scan_arg_store_impl& operator=(const scan_arg_store_impl&) = delete;
+    scan_arg_store_impl(scan_arg_store_impl&&) = delete;
+    scan_arg_store_impl& operator=(scan_arg_store_impl&&) = delete;
+    ~scan_arg_store_impl() = default;
 
     template <typename... A>
     static constexpr std::array<void*, sizeof...(A)> make_data_array(A&... a)
@@ -5171,23 +5169,22 @@ struct scan_arg_store<scan_arg_store_kind::builtin, Context, Args...> {
 };
 
 template <typename Context, typename... Args>
-struct scan_arg_store<scan_arg_store_kind::packed, Context, Args...> {
-    constexpr scan_arg_store()
+struct scan_arg_store_impl<scan_arg_store_kind::packed, Context, Args...> {
+    constexpr scan_arg_store_impl()
         : data(std::apply(make_data_array<Args...>, args))
     {
     }
 
-    constexpr scan_arg_store(std::tuple<Args...>&& d)
-        : args(SCN_MOVE(d)),
-          data(std::apply(make_data_array<Args...>, args))
+    constexpr scan_arg_store_impl(std::tuple<Args...>&& d)
+        : args(SCN_MOVE(d)), data(std::apply(make_data_array<Args...>, args))
     {
     }
 
-    scan_arg_store(const scan_arg_store&) = delete;
-    scan_arg_store& operator=(const scan_arg_store&) = delete;
-    scan_arg_store(scan_arg_store&&) = delete;
-    scan_arg_store& operator=(scan_arg_store&&) = delete;
-    ~scan_arg_store() = default;
+    scan_arg_store_impl(const scan_arg_store_impl&) = delete;
+    scan_arg_store_impl& operator=(const scan_arg_store_impl&) = delete;
+    scan_arg_store_impl(scan_arg_store_impl&&) = delete;
+    scan_arg_store_impl& operator=(scan_arg_store_impl&&) = delete;
+    ~scan_arg_store_impl() = default;
 
     template <typename... A>
     static constexpr std::array<arg_value, sizeof...(A)> make_data_array(
@@ -5215,23 +5212,22 @@ struct scan_arg_store<scan_arg_store_kind::packed, Context, Args...> {
 };
 
 template <typename Context, typename... Args>
-struct scan_arg_store<scan_arg_store_kind::unpacked, Context, Args...> {
-    constexpr scan_arg_store()
+struct scan_arg_store_impl<scan_arg_store_kind::unpacked, Context, Args...> {
+    constexpr scan_arg_store_impl()
         : data(std::apply(make_data_array<Args...>, args))
     {
     }
 
-    constexpr scan_arg_store(std::tuple<Args...>&& d)
-        : args(SCN_MOVE(d)),
-          data(std::apply(make_data_array<Args...>, args))
+    constexpr scan_arg_store_impl(std::tuple<Args...>&& d)
+        : args(SCN_MOVE(d)), data(std::apply(make_data_array<Args...>, args))
     {
     }
 
-    scan_arg_store(const scan_arg_store&) = delete;
-    scan_arg_store& operator=(const scan_arg_store&) = delete;
-    scan_arg_store(scan_arg_store&&) = delete;
-    scan_arg_store& operator=(scan_arg_store&&) = delete;
-    ~scan_arg_store() = default;
+    scan_arg_store_impl(const scan_arg_store_impl&) = delete;
+    scan_arg_store_impl& operator=(const scan_arg_store_impl&) = delete;
+    scan_arg_store_impl(scan_arg_store_impl&&) = delete;
+    scan_arg_store_impl& operator=(scan_arg_store_impl&&) = delete;
+    ~scan_arg_store_impl() = default;
 
     template <typename... A>
     static constexpr std::array<basic_scan_arg<Context>, sizeof...(A)>
@@ -5268,6 +5264,18 @@ constexpr bool all_types_builtin()
     return mapped_type_constant<T, CharT>::value != arg_type::custom_type &&
            all_types_builtin<CharT, Args...>();
 }
+
+template <typename Context, typename... Args>
+struct scan_arg_store
+    : scan_arg_store_impl<
+          sizeof...(Args) < max_packed_args
+              ? (all_types_builtin<typename Context::char_type, Args...>()
+                     ? scan_arg_store_kind::builtin
+                     : scan_arg_store_kind::packed)
+              : scan_arg_store_kind::unpacked,
+          Context,
+          Args...> {};
+
 }  // namespace detail
 
 /**
@@ -5278,22 +5286,7 @@ template <typename Context = scan_context, typename... Args>
 constexpr auto make_scan_args()
 {
     detail::check_scan_arg_types<Args...>();
-
-    if constexpr (sizeof...(Args) < detail::max_packed_args) {
-        if constexpr (detail::all_types_builtin<typename Context::char_type,
-                                                Args...>()) {
-            return detail::scan_arg_store<detail::scan_arg_store_kind::builtin,
-                                          Context, Args...>{};
-        }
-        else {
-            return detail::scan_arg_store<detail::scan_arg_store_kind::packed,
-                                          Context, Args...>{};
-        }
-    }
-    else {
-        return detail::scan_arg_store<detail::scan_arg_store_kind::unpacked,
-                                      Context, Args...>{};
-    }
+    return detail::scan_arg_store<Context, Args...>{};
 }
 /**
  * Constructs a `scan_arg_store` object, associated with `Context`,
@@ -5303,22 +5296,7 @@ template <typename Context = scan_context, typename... Args>
 constexpr auto make_scan_args(std::tuple<Args...>&& values)
 {
     detail::check_scan_arg_types<Args...>();
-
-    if constexpr (sizeof...(Args) < detail::max_packed_args) {
-        if constexpr (detail::all_types_builtin<typename Context::char_type,
-                                                Args...>()) {
-            return detail::scan_arg_store<detail::scan_arg_store_kind::builtin,
-                                          Context, Args...>{SCN_MOVE(values)};
-        }
-        else {
-            return detail::scan_arg_store<detail::scan_arg_store_kind::packed,
-                                          Context, Args...>{SCN_MOVE(values)};
-        }
-    }
-    else {
-        return detail::scan_arg_store<detail::scan_arg_store_kind::unpacked,
-                                      Context, Args...>{SCN_MOVE(values)};
-    }
+    return detail::scan_arg_store<Context, Args...>{SCN_MOVE(values)};
 }
 
 /**
@@ -5334,9 +5312,9 @@ public:
 
     template <typename... Args>
     constexpr /*implicit*/ basic_scan_args(
-        detail::scan_arg_store<detail::scan_arg_store_kind::builtin,
-                               Context,
-                               Args...>& store)
+        detail::scan_arg_store_impl<detail::scan_arg_store_kind::builtin,
+                                    Context,
+                                    Args...>& store)
         : m_desc(store.desc), m_builtin_values(store.get_data())
     {
         SCN_ENSURE(is_packed());
@@ -5345,9 +5323,9 @@ public:
 
     template <typename... Args>
     constexpr /*implicit*/ basic_scan_args(
-        detail::scan_arg_store<detail::scan_arg_store_kind::packed,
-                               Context,
-                               Args...>& store)
+        detail::scan_arg_store_impl<detail::scan_arg_store_kind::packed,
+                                    Context,
+                                    Args...>& store)
         : m_desc(store.desc), m_values(store.get_data())
     {
         SCN_ENSURE(is_packed());
@@ -5356,9 +5334,9 @@ public:
 
     template <typename... Args>
     constexpr /*implicit*/ basic_scan_args(
-        detail::scan_arg_store<detail::scan_arg_store_kind::unpacked,
-                               Context,
-                               Args...>& store)
+        detail::scan_arg_store_impl<detail::scan_arg_store_kind::unpacked,
+                                    Context,
+                                    Args...>& store)
         : m_desc(store.desc), m_args(store.get_data())
     {
         SCN_ENSURE(!is_packed());
@@ -8640,12 +8618,9 @@ SCN_GCC_POP  // -Wnoexcept
  *
  * \ingroup result
  */
-template <typename Result,
-          detail::scan_arg_store_kind Kind,
-          typename Context,
-          typename... Args>
+template <typename Result, typename Context, typename... Args>
 auto make_scan_result(scan_expected<Result>&& result,
-                      detail::scan_arg_store<Kind, Context, Args...>&& args)
+                      detail::scan_arg_store<Context, Args...>&& args)
     -> scan_expected<scan_result<Result, Args...>>
 {
     if (SCN_UNLIKELY(!result)) {
