@@ -601,8 +601,8 @@
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>gaa008c625aba591eee8560b18a91b5f6b</anchor>
-      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Kind, Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
+      <anchor>gae1bc4ab968b5fc7479d420e1baa685ac</anchor>
+      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -827,8 +827,8 @@
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>gaa008c625aba591eee8560b18a91b5f6b</anchor>
-      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Kind, Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
+      <anchor>gae1bc4ab968b5fc7479d420e1baa685ac</anchor>
+      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Context, Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
   </compound>
   <compound kind="group">
