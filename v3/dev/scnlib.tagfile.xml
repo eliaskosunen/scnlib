@@ -601,8 +601,8 @@
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>gad0f4993a0fb83e4e53fa14ad3326aa84</anchor>
-      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Context, Args... &gt; &amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
+      <anchor>ga780b6c90730183f167ad1115da09fa18</anchor>
+      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, std::tuple&lt; Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
@@ -827,8 +827,8 @@
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>gad0f4993a0fb83e4e53fa14ad3326aa84</anchor>
-      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, detail::scan_arg_store&lt; Context, Args... &gt; &amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
+      <anchor>ga780b6c90730183f167ad1115da09fa18</anchor>
+      <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, std::tuple&lt; Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
   </compound>
   <compound kind="group">
