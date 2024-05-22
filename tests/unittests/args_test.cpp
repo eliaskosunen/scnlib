@@ -84,7 +84,7 @@ TEST(ArgsTest, ArgStore)
 
     *static_cast<int*>(args.get(0).value().ref_value) = 42;
 
-    auto tup = std::move(store.args);
+    auto tup = std::move(store.args());
     EXPECT_EQ(std::get<0>(tup), 42);
     EXPECT_DOUBLE_EQ(std::get<1>(tup), 0.0);
 }

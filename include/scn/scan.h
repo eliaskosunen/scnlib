@@ -5173,7 +5173,8 @@ constexpr size_t compute_arg_store_desc()
 }
 
 template <typename Context, typename... Args>
-struct scan_arg_store {
+class scan_arg_store {
+public:
     static constexpr scan_arg_store_kind kind =
         determine_arg_store_kind<typename Context::char_type, Args...>();
     static constexpr size_t desc =
@@ -5188,12 +5189,13 @@ struct scan_arg_store {
     using argptrs_type = std::array<argptr_type, sizeof...(Args)>;
 
     constexpr scan_arg_store()
-        : argptrs(std::apply(make_argptrs<Args...>, args))
+        : m_argptrs(std::apply(make_argptrs<Args...>, m_args))
     {
     }
 
     constexpr explicit scan_arg_store(std::tuple<Args...>&& a)
-        : args(std::move(a)), argptrs(std::apply(make_argptrs<Args...>, args))
+        : m_args(std::move(a)),
+          m_argptrs(std::apply(make_argptrs<Args...>, m_args))
     {
     }
 
@@ -5212,8 +5214,19 @@ struct scan_arg_store {
     scan_arg_store& operator=(scan_arg_store&&) = delete;
     ~scan_arg_store() = default;
 
-    std::tuple<Args...> args;
-    argptrs_type argptrs;
+    std::tuple<Args...>& args()
+    {
+        return m_args;
+    }
+
+    argptrs_type& arg_pointers()
+    {
+        return m_argptrs;
+    }
+
+private:
+    std::tuple<Args...> m_args;
+    argptrs_type m_argptrs;
 };
 
 }  // namespace detail
@@ -5253,7 +5266,7 @@ public:
     template <typename... Args>
     constexpr /*implicit*/ basic_scan_args(
         detail::scan_arg_store<Context, Args...>& store)
-        : basic_scan_args(store.desc, store.argptrs.data())
+        : basic_scan_args(store.desc, store.arg_pointers().data())
     {
     }
 
@@ -5656,12 +5669,6 @@ public:
 
     ~scan_result() = default;
 
-    template <typename Context>
-    scan_result(range_type r, detail::scan_arg_store<Context, Args...>& store)
-        : range_base(SCN_MOVE(r)), value_base(SCN_MOVE(store.args))
-    {
-    }
-
     scan_result(range_type r, tuple_type&& values)
         : range_base(SCN_MOVE(r)), value_base(SCN_MOVE(values))
     {
@@ -5673,16 +5680,6 @@ public:
     scan_result(OtherR&& r, tuple_type&& values)
         : range_base(detail::scan_result_convert_tag{}, SCN_FWD(r)),
           value_base(SCN_MOVE(values))
-    {
-    }
-
-    template <typename OtherR,
-              typename Context,
-              std::enable_if_t<std::is_constructible_v<range_type, OtherR>>* =
-                  nullptr>
-    scan_result(OtherR&& r, detail::scan_arg_store<Context, Args...>& store)
-        : range_base(detail::scan_result_convert_tag{}, SCN_FWD(r)),
-          value_base(SCN_MOVE(store.args))
     {
     }
 
@@ -8557,23 +8554,22 @@ SCN_GCC_POP  // -Wnoexcept
  *
  * Example:
  * \code{.cpp}
- * auto args = scn::make_scan_args<Source, Args...>();
+ * auto args = scn::make_scan_args<scan_context, Args...>();
  * auto result = scn::vscan(std::forward<Source>(source), format, args);
- *
- * return scn::make_scan_result(std::move(result), std::move(args));
+ * return scn::make_scan_result(std::move(result), std::move(args.args()));
  * \endcode
  *
  * \ingroup result
  */
-template <typename Result, typename Context, typename... Args>
+template <typename Result, typename... Args>
 auto make_scan_result(scan_expected<Result>&& result,
-                      detail::scan_arg_store<Context, Args...>& args)
+                      std::tuple<Args...>&& args)
     -> scan_expected<scan_result<Result, Args...>>
 {
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
-    return scan_result{SCN_MOVE(*result), args};
+    return scan_result{SCN_MOVE(*result), SCN_MOVE(args)};
 }
 
 /**
@@ -8618,7 +8614,8 @@ SCN_NODISCARD auto scan(Source&& source,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<scan_context, Args...>();
-    return make_scan_result(vscan(SCN_FWD(source), format, args), args);
+    auto result = vscan(SCN_FWD(source), format, args);
+    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
 }
 
 /**
@@ -8648,7 +8645,8 @@ SCN_NODISCARD auto scan(Source&& source,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<scan_context, Args...>(SCN_FWD(initial_args));
-    return make_scan_result(vscan(SCN_FWD(source), format, args), args);
+    auto result = vscan(SCN_FWD(source), format, args);
+    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
 }
 
 /**
@@ -8683,7 +8681,8 @@ SCN_NODISCARD auto scan(const Locale& loc,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<scan_context, Args...>();
-    return make_scan_result(vscan(loc, SCN_FWD(source), format, args), args);
+    auto result = vscan(loc, SCN_FWD(source), format, args);
+    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
 }
 
 /**
@@ -8703,7 +8702,8 @@ SCN_NODISCARD auto scan(const Locale& loc,
     -> scan_result_type<Source, Args...>
 {
     auto args = make_scan_args<scan_context, Args...>(SCN_FWD(initial_args));
-    return make_scan_result(vscan(loc, SCN_FWD(source), format, args), args);
+    auto result = vscan(loc, SCN_FWD(source), format, args);
+    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
 }
 
 /**
@@ -8761,7 +8761,7 @@ SCN_NODISCARD auto input(scan_format_string<std::FILE*, Args...> format)
     if (SCN_UNLIKELY(!err)) {
         return unexpected(err);
     }
-    return scan_result{stdin, args};
+    return scan_result{stdin, SCN_MOVE(args.args())};
 }
 
 /**
