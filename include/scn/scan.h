@@ -5149,9 +5149,12 @@ constexpr scan_arg_store_kind determine_arg_store_kind()
     if (sizeof...(Args) > max_packed_args) {
         return scan_arg_store_kind::unpacked;
     }
+#if !(SCN_CLANG && SCN_APPLE)
+    // This doesn't work on Apple Clang. I don't know why
     if (all_types_builtin<CharT, Args...>()) {
         return scan_arg_store_kind::builtin;
     }
+#endif
     return scan_arg_store_kind::packed;
 }
 
