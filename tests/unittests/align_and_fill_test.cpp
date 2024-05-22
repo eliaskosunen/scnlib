@@ -516,6 +516,14 @@ TEST(AlignAndFillTest, PythonParse7)
     EXPECT_STREQ(r->begin(), "");
 }
 
+TEST(AlignAndFillTest, LeftAlignedWithSpaces)
+{
+    auto r = scn::scan<int>("42  ", "{: <.3}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), 42);
+    EXPECT_STREQ(r->begin(), " ");
+}
+
 TEST(CustomPrecisionTest, Ascii)
 {
     auto r = scn::scan<std::string>("abc", "{:.2}");

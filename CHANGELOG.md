@@ -4,20 +4,108 @@ _Released 2024-XX-YY_
 
 # Breaking changes
 
- * The default behavior for scanning integers is now `d` (decimal) instead of `i` (detect base from prefix)
+ * The default behavior for scanning integers is now `d` (decimal) instead of `i` (detect base from prefix).
+
+```cpp
+// v3
+auto result = scn::scan<int>("077", "{}");
+// result->value() == 77
+result = scn::scan<int>("078", "{}");
+// result->value() == 78
+
+// v2
+auto result = scn::scan<int>("077", "{}");
+// result->value() == 63
+result = scn::scan<int>("078", "{}");
+// result->value() == 7
+// result->range() == "8"
+// (Because of the '0' prefix, an octal number is expected,
+//  and '8' is not a valid octal digit, so reading is stopped)
+```
+
  * A large part of the bundled `<ranges>`-implementation is removed.
    Only the parts strictly needed for the library are included.
    * The library no longer uses a stdlib provided `<ranges>`, even if available.
+   * This cut down compile times massively for library consumers
+   * You now may need to specialize `scn::ranges::enable_borrowed_range` for your own range types,
+     even if you've already specialized `std::ranges::enable_borrowed_range`.
+     Specializations of `std::basic_string_view` are already borrowed out of the box.
+
+```cpp
+// std::span is a borrowed_range,
+// but scnlib doesn't know about it
+auto result = scn::scan<...>(std::span{...}, ...);
+// decltype(result->range()) is scn::ranges::dangling
+
+namespace scn::ranges {
+template <typename T, size_t E>
+inline constexpr bool enable_borrowed_range<std::span<T, E>> = true;
+}
+
+auto result = scn::scan<...>(std::span{...}, ...);
+// decltype(result->range()) is a scn::ranges::subrange<const T*>
+```
+
+ * `scn::span` is removed
  * `scan_arg_store` and `borrowed_subrange_with_sentinel` are removed from the public interface
+ * `scan_arg_store` is changed to be non-copyable and non-movable, for correctness reasons
+   (it holds references to itself, copying and moving would be needlessly expensive)
+ * The interface of `make_scan_result` is changed to take a `tuple` instead of the now unmovable `scan_arg_store`.
+
+```cpp
+// v3
+auto args = make_scan_args<scan_context, Args...>();
+auto result = vscan(source, format, args);
+return make_scan_result(std::move(result), std::move(args.args()));
+
+// v2
+auto args = make_scan_args<scan_context, Args...>();
+auto result = vscan(source, format, args);
+return make_scan_result(std::move(result), std::move(args));
+```
+
  * The meaning of the "width" field in format specifiers is changed to mean the _minimum_ field width
    (like in `std::format`), instead of the _maximum_ (sort of like in `scanf`)
- * `scn::span` is removed
+
+```cpp
+// v3
+auto result = std::scan<int>("123", "{:2}");
+// result->value() == 123
+// result->range() == ""
+
+// v2
+auto result = std::scan<int>("123", "{:2}");
+// result->value() == 12
+// result->range() == "3"
+```
 
 # Features
 
  * The "precision" field is added as a format specifier,
    which specifies the maximum fields width to scan (like in `std::format`)
- * Support for field fill and alignment is added
+
+```cpp
+// Scan up to 2 width units
+auto result = scn::scan<int>("123", "{:.2}");
+// result->value() == 12
+// result->range() == "3"
+```
+
+* Support for field fill and alignment is added.
+  This interacts well with the new width and precision fields
+
+```cpp
+// Read an integer, aligned to the right ('>'), with asterisks ('*')
+auto result = std::scan<int>("***42", "{:*>}");
+// result->value() == 42
+// result->range() == ""
+
+// Read an integer, aligned to the left ('<'), with spaces (' '),
+// with a maximum total width of 3
+auto result = std::scan<int>("42  ", "{: <.3}");
+// result->value() == 42
+// result->range() == " "
+```
  
 # Changes
 

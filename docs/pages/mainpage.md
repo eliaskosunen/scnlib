@@ -23,11 +23,10 @@ int main() {
 
 \section main-about About this documentation
 
-This documentation is for the version 2.0 of the library.
-For version 1.1, see https://v1.scnlib.dev/.
+This documentation is for the version 3.0 of the library.
+For version 2.0.3, see https://scnlib.dev/v2.0.3/.
 
 An introductory guide to the library can be found at \ref guide "Guide".
-Instructions for migrating to v2.0 from v1.1 can be found at \ref migration-2-0 "Migration Guide v1.1 -> v2.0".
 
 The API documentation is organized into modules, that can be found under Modules, behind the link at the top of the page.
 It can be searched directly using the search function in the navbar, or by pressing the TAB key.
@@ -72,7 +71,7 @@ Another option would be usage through CMake's `FetchContent` module.
 FetchContent_Declare(
         scn
         GIT_REPOSITORY  https://github.com/eliaskosunen/scnlib
-        GIT_TAG         v2.0.3
+        GIT_TAG         v3.0.0
         GIT_SHALLOW     TRUE
 )
 FetchContent_MakeAvailable(scn)
@@ -91,7 +90,7 @@ By default, the CMake machinery automatically fetches, builds, and links it with
 It's only used in the implementation, and it isn't visible to the users of the library.
 
 Alternatively, by setting the CMake option `SCN_USE_EXTERNAL_FAST_FLOAT` to `ON`,
-fast_float is searched for using `find_package`. Use this option,
+fast_float is searched for using `find_package`. Use this option
 if you already have the library installed.
 
 To enable support for regular expressions, a regex engine backend is required.
@@ -99,12 +98,9 @@ The default option is to use `std::regex`, but an alternative can be picked
 by setting `SCN_REGEX_BACKEND` to `Boost` or `re2` in CMake.
 These libraries are not downloaded with `FetchContent`, but must be found externally.
 
-If your standard library doesn't have an available C++20 `<ranges>` implementation,
-a single-header version of <a href="https://github.com/tcbrindle/nanorange">NanoRange</a>
-is also bundled with the library, inside the directory `include/scn/external`.
-
 The tests and benchmarks described below depend on GTest and Google Benchmark, respectively.
-These libraries are also fetched with `FetchContent`, if necessary.
+These libraries are also fetched with `FetchContent`, if necessary,
+controllable with `SCN_USE_EXTERNAL_GTEST` and `SCN_USE_EXTERNAL_BENCHMARK`, respectively.
 
 <table>
 <caption>
@@ -305,6 +301,22 @@ CMake build type configuration
 <td>❌</td>
 <td>`OFF`</td>
 <td>Use `find_package` to get fast_float, instead of CMake `FetchContent`</td>
+</tr>
+
+<tr>
+<td>`SCN_USE_EXTERNAL_GTEST`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Use `find_package` to get GTest, instead of CMake `FetchContent`</td>
+</tr>
+
+<tr>
+<td>`SCN_USE_EXTERNAL_BENCHMARK`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Use `find_package` to get Google Benchmark, instead of CMake `FetchContent`</td>
 </tr>
 
 <tr>
