@@ -44,6 +44,286 @@
 namespace scn {
 SCN_BEGIN_NAMESPACE
 
+/////////////////////////////////////////////////////////////////
+// Metaprogramming facilities
+/////////////////////////////////////////////////////////////////
+
+namespace detail {
+
+template <typename T>
+using integer_type_for_char =
+    std::conditional_t<std::is_signed_v<T>, int, unsigned>;
+
+template <typename T, template <typename...> class Templ>
+struct is_specialization_of_impl : std::false_type {};
+template <typename... T, template <typename...> class Templ>
+struct is_specialization_of_impl<Templ<T...>, Templ> : std::true_type {};
+
+template <typename T, template <typename...> class Templ>
+using is_specialization_of =
+    is_specialization_of_impl<remove_cvref_t<T>, Templ>;
+template <typename T, template <typename...> class Templ>
+inline constexpr bool is_specialization_of_v =
+    is_specialization_of<T, Templ>::value;
+
+// from mp11:
+
+template <typename T>
+struct mp_identity {
+    using type = T;
+};
+template <typename T>
+using mp_identity_t = typename mp_identity<T>::type;
+
+template <bool B>
+using mp_bool = std::integral_constant<bool, B>;
+template <typename T>
+using mp_to_bool = mp_bool<static_cast<bool>(T::value)>;
+template <typename T>
+using mp_not = mp_bool<!T::value>;
+
+template <bool C, typename T, typename... E>
+struct mp_if_c_impl;
+template <typename T, typename... E>
+struct mp_if_c_impl<true, T, E...> {
+    using type = T;
+};
+template <typename T, typename E>
+struct mp_if_c_impl<false, T, E> {
+    using type = E;
+};
+
+template <bool C, typename T, typename... E>
+using mp_if_c = typename mp_if_c_impl<C, T, E...>::type;
+template <typename C, typename T, typename... E>
+using mp_if = typename mp_if_c_impl<static_cast<bool>(C::value), T, E...>::type;
+
+template <template <typename...> class F, typename... T>
+struct mp_valid_impl {
+    template <template <typename...> class G, typename = G<T...>>
+    static std::true_type check(int);
+    template <template <typename...> class>
+    static std::false_type check(...);
+
+    using type = decltype(check<F>(0));
+};
+
+template <template <typename...> class F, typename... T>
+using mp_valid = typename mp_valid_impl<F, T...>::type;
+template <template <typename...> class F, typename... T>
+inline constexpr bool mp_valid_v = mp_valid<F, T...>::value;
+
+struct mp_nonesuch {};
+template <template <typename...> class F, typename... T>
+struct mp_defer_impl {
+    using type = F<T...>;
+};
+
+template <template <typename...> class F, typename... T>
+using mp_defer = mp_if<mp_valid<F, T...>, mp_defer_impl<F, T...>, mp_nonesuch>;
+
+template <bool C, class T, template <class...> class F, class... U>
+struct mp_eval_if_c_impl;
+
+template <class T, template <class...> class F, class... U>
+struct mp_eval_if_c_impl<true, T, F, U...> {
+    using type = T;
+};
+
+template <class T, template <class...> class F, class... U>
+struct mp_eval_if_c_impl<false, T, F, U...> : mp_defer<F, U...> {};
+
+template <bool C, class T, template <class...> class F, class... U>
+using mp_eval_if_c = typename mp_eval_if_c_impl<C, T, F, U...>::type;
+template <class C, class T, template <class...> class F, class... U>
+using mp_eval_if =
+    typename mp_eval_if_c_impl<static_cast<bool>(C::value), T, F, U...>::type;
+template <class C, class T, class Q, class... U>
+using mp_eval_if_q = typename mp_eval_if_c_impl<static_cast<bool>(C::value),
+                                                T,
+                                                Q::template fn,
+                                                U...>::type;
+
+// mp_eval_if_not
+template <class C, class T, template <class...> class F, class... U>
+using mp_eval_if_not = mp_eval_if<mp_not<C>, T, F, U...>;
+template <class C, class T, class Q, class... U>
+using mp_eval_if_not_q = mp_eval_if<mp_not<C>, T, Q::template fn, U...>;
+
+// mp_eval_or
+template <class T, template <class...> class F, class... U>
+using mp_eval_or = mp_eval_if_not<mp_valid<F, U...>, T, F, U...>;
+template <class T, class Q, class... U>
+using mp_eval_or_q = mp_eval_or<T, Q::template fn, U...>;
+
+// mp_valid_and_true
+template <template <class...> class F, class... T>
+using mp_valid_and_true = mp_eval_or<std::false_type, F, T...>;
+template <class Q, class... T>
+using mp_valid_and_true_q = mp_valid_and_true<Q::template fn, T...>;
+
+// extension
+template <template <typename...> class F, typename... T>
+using mp_valid_result =
+    mp_if<mp_valid<F, T...>, mp_defer_impl<F, T...>, mp_identity<void>>;
+template <template <typename...> class F, typename... T>
+using mp_valid_result_t = typename mp_valid_result<F, T...>::type;
+
+/////////////////////////////////////////////////////////////////
+// pointer_traits and to_address
+/////////////////////////////////////////////////////////////////
+
+template <typename Ptr, typename>
+struct pointer_traits {};
+
+template <typename T>
+struct pointer_traits<T*, void> {
+    using pointer = T*;
+    using element_type = T;
+    using difference_type = std::ptrdiff_t;
+
+    template <typename U>
+    using rebind = U*;
+
+    template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
+    static constexpr pointer pointer_to(U& r) noexcept
+    {
+        return &r;
+    }
+
+    static constexpr pointer to_address(pointer p) noexcept
+    {
+        return p;
+    }
+};
+
+template <typename Ptr>
+using apply_member_difference_type = typename Ptr::difference_type;
+template <typename Ptr>
+using get_member_difference_type =
+    mp_eval_or<std::ptrdiff_t, apply_member_difference_type, Ptr>;
+
+template <typename Ptr, typename ElementType>
+struct pointer_traits_generic_base {
+    using pointer = Ptr;
+    using element_type = ElementType;
+
+    using difference_type = get_member_difference_type<Ptr>;
+    static_assert(std::is_integral_v<difference_type>);
+
+    // no rebind (TODO?)
+
+    template <typename P = Ptr>
+    static auto pointer_to(ElementType& r) -> decltype(P::pointer_to(r))
+    {
+        return Ptr::pointer_to(r);
+    }
+};
+
+template <typename It, typename = void>
+struct wrapped_pointer_iterator;
+
+#ifdef _GLIBCXX_DEBUG
+template <typename Elem, typename Container>
+struct wrapped_pointer_iterator<__gnu_debug::_Safe_iterator<Elem*, Container>> {
+    static constexpr auto to_address(
+        const __gnu_debug::_Safe_iterator<Elem*, Container>& it) noexcept
+    {
+        return it.base();
+    }
+};
+#endif
+#if SCN_STDLIB_GLIBCXX
+template <typename Elem, typename Container>
+struct wrapped_pointer_iterator<
+    __gnu_cxx::__normal_iterator<Elem*, Container>> {
+    static constexpr auto to_address(
+        const __gnu_cxx::__normal_iterator<Elem*, Container>& it) noexcept
+    {
+        return it.base();
+    }
+};
+#endif
+#if SCN_STDLIB_LIBCPP
+template <typename Elem>
+struct wrapped_pointer_iterator<std::__wrap_iter<Elem*>> {
+    static constexpr auto to_address(const std::__wrap_iter<Elem*>& it) noexcept
+    {
+        return it.base();
+    }
+};
+#endif
+
+template <typename I>
+using apply_deref = decltype(*SCN_DECLVAL(I&));
+template <typename I>
+using apply_incr = decltype(++SCN_DECLVAL(I&));
+template <typename I>
+using apply_member_unwrapped = decltype(SCN_DECLVAL(I&)._Unwrapped());
+template <typename It>
+struct wrapped_pointer_iterator<
+    It,
+    std::enable_if_t<mp_valid_v<apply_deref, It> &&
+                     mp_valid_v<apply_incr, It> &&
+                     mp_valid_v<apply_member_unwrapped, It>>> {
+    static constexpr auto to_address(const It& it) noexcept
+    {
+        return it._Unwrapped();
+    }
+};
+
+template <typename I>
+using apply_member_to_address =
+    decltype(wrapped_pointer_iterator<I>::to_address(SCN_DECLVAL(const I&)));
+
+template <typename Iterator>
+struct pointer_traits<
+    Iterator,
+    std::enable_if_t<mp_valid_v<apply_member_to_address, Iterator>>>
+    : pointer_traits_generic_base<
+          Iterator,
+          std::remove_reference_t<decltype(*SCN_DECLVAL(Iterator&))>> {
+    static constexpr auto to_address(const Iterator& it) noexcept
+    {
+        return wrapped_pointer_iterator<Iterator>::to_address(it);
+    }
+};
+
+template <typename It>
+using apply_ptr_traits_to_address =
+    decltype(pointer_traits<It>::to_address(SCN_DECLVAL(const It&)));
+template <typename It>
+inline constexpr bool can_make_address_from_iterator =
+    std::is_pointer_v<mp_valid_result_t<apply_ptr_traits_to_address, It>>;
+
+template <typename T>
+constexpr T* to_address_impl(T* p, priority_tag<2>) noexcept
+{
+    return p;
+}
+template <typename Ptr>
+constexpr auto to_address_impl(const Ptr& p, priority_tag<1>) noexcept
+    -> decltype(::scn::detail::pointer_traits<Ptr>::to_address(p))
+{
+    return ::scn::detail::pointer_traits<Ptr>::to_address(p);
+}
+template <typename Ptr>
+constexpr auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept
+    -> decltype(::scn::detail::to_address_impl(p.operator->(),
+                                               priority_tag<2>{}))
+{
+    return ::scn::detail::to_address_impl(p.operator->(), priority_tag<2>{});
+}
+
+template <typename Ptr>
+constexpr auto to_address(Ptr&& p) noexcept
+    -> decltype(::scn::detail::to_address_impl(SCN_FWD(p), priority_tag<2>{}))
+{
+    return ::scn::detail::to_address_impl(SCN_FWD(p), priority_tag<2>{});
+}
+
+}  // namespace detail
+
 template <typename E>
 class SCN_TRIVIAL_ABI unexpected {
     static_assert(std::is_destructible_v<E>);
@@ -2349,6 +2629,7 @@ struct contiguous_iterator_concept {
         random_access_iterator<I> &&
             /*std::is_base_of_v<contiguous_iterator_tag,
                               iterator_category_t<I>> &&*/
+            detail::can_make_address_from_iterator<I> &&
             std::is_lvalue_reference_v<iter_reference_t<I>> &&
             std::is_same_v<iter_value_t<I>,
                            remove_cvref_t<iter_reference_t<I>>>,
@@ -3151,133 +3432,10 @@ inline constexpr bool
 }
 
 /////////////////////////////////////////////////////////////////
-// Metaprogramming facilities
+// Small generic algorithms
 /////////////////////////////////////////////////////////////////
 
 namespace detail {
-
-template <typename T>
-using integer_type_for_char =
-    std::conditional_t<std::is_signed_v<T>, int, unsigned>;
-
-template <typename T, template <typename...> class Templ>
-struct is_specialization_of_impl : std::false_type {};
-template <typename... T, template <typename...> class Templ>
-struct is_specialization_of_impl<Templ<T...>, Templ> : std::true_type {};
-
-template <typename T, template <typename...> class Templ>
-using is_specialization_of =
-    is_specialization_of_impl<remove_cvref_t<T>, Templ>;
-template <typename T, template <typename...> class Templ>
-inline constexpr bool is_specialization_of_v =
-    is_specialization_of<T, Templ>::value;
-
-// from mp11:
-
-template <typename T>
-struct mp_identity {
-    using type = T;
-};
-template <typename T>
-using mp_identity_t = typename mp_identity<T>::type;
-
-template <bool B>
-using mp_bool = std::integral_constant<bool, B>;
-template <typename T>
-using mp_to_bool = mp_bool<static_cast<bool>(T::value)>;
-template <typename T>
-using mp_not = mp_bool<!T::value>;
-
-template <bool C, typename T, typename... E>
-struct mp_if_c_impl;
-template <typename T, typename... E>
-struct mp_if_c_impl<true, T, E...> {
-    using type = T;
-};
-template <typename T, typename E>
-struct mp_if_c_impl<false, T, E> {
-    using type = E;
-};
-
-template <bool C, typename T, typename... E>
-using mp_if_c = typename mp_if_c_impl<C, T, E...>::type;
-template <typename C, typename T, typename... E>
-using mp_if = typename mp_if_c_impl<static_cast<bool>(C::value), T, E...>::type;
-
-template <template <typename...> class F, typename... T>
-struct mp_valid_impl {
-    template <template <typename...> class G, typename = G<T...>>
-    static std::true_type check(int);
-    template <template <typename...> class>
-    static std::false_type check(...);
-
-    using type = decltype(check<F>(0));
-};
-
-template <template <typename...> class F, typename... T>
-using mp_valid = typename mp_valid_impl<F, T...>::type;
-template <template <typename...> class F, typename... T>
-inline constexpr bool mp_valid_v = mp_valid<F, T...>::value;
-
-struct mp_nonesuch {};
-template <template <typename...> class F, typename... T>
-struct mp_defer_impl {
-    using type = F<T...>;
-};
-
-template <template <typename...> class F, typename... T>
-using mp_defer = mp_if<mp_valid<F, T...>, mp_defer_impl<F, T...>, mp_nonesuch>;
-
-template <bool C, class T, template <class...> class F, class... U>
-struct mp_eval_if_c_impl;
-
-template <class T, template <class...> class F, class... U>
-struct mp_eval_if_c_impl<true, T, F, U...> {
-    using type = T;
-};
-
-template <class T, template <class...> class F, class... U>
-struct mp_eval_if_c_impl<false, T, F, U...> : mp_defer<F, U...> {};
-
-template <bool C, class T, template <class...> class F, class... U>
-using mp_eval_if_c = typename mp_eval_if_c_impl<C, T, F, U...>::type;
-template <class C, class T, template <class...> class F, class... U>
-using mp_eval_if =
-    typename mp_eval_if_c_impl<static_cast<bool>(C::value), T, F, U...>::type;
-template <class C, class T, class Q, class... U>
-using mp_eval_if_q = typename mp_eval_if_c_impl<static_cast<bool>(C::value),
-                                                T,
-                                                Q::template fn,
-                                                U...>::type;
-
-// mp_eval_if_not
-template <class C, class T, template <class...> class F, class... U>
-using mp_eval_if_not = mp_eval_if<mp_not<C>, T, F, U...>;
-template <class C, class T, class Q, class... U>
-using mp_eval_if_not_q = mp_eval_if<mp_not<C>, T, Q::template fn, U...>;
-
-// mp_eval_or
-template <class T, template <class...> class F, class... U>
-using mp_eval_or = mp_eval_if_not<mp_valid<F, U...>, T, F, U...>;
-template <class T, class Q, class... U>
-using mp_eval_or_q = mp_eval_or<T, Q::template fn, U...>;
-
-// mp_valid_and_true
-template <template <class...> class F, class... T>
-using mp_valid_and_true = mp_eval_or<std::false_type, F, T...>;
-template <class Q, class... T>
-using mp_valid_and_true_q = mp_valid_and_true<Q::template fn, T...>;
-
-// extension
-template <template <typename...> class F, typename... T>
-using mp_valid_result =
-    mp_if<mp_valid<F, T...>, mp_defer_impl<F, T...>, mp_identity<void>>;
-template <template <typename...> class F, typename... T>
-using mp_valid_result_t = typename mp_valid_result<F, T...>::type;
-
-/////////////////////////////////////////////////////////////////
-// Small generic algorithms
-/////////////////////////////////////////////////////////////////
 
 /**
  * Implementation of `std::min_element` without including `<algorithm>`
@@ -3492,158 +3650,10 @@ struct is_expected_impl<scan_expected<T>> : std::true_type {};
     auto name = *SCN_FWD(SCN_TRY_TMP);
 
 /////////////////////////////////////////////////////////////////
-// pointer_traits and to_address
+// string_view utilities
 /////////////////////////////////////////////////////////////////
 
 namespace detail {
-
-template <typename Ptr, typename>
-struct pointer_traits {};
-
-template <typename T>
-struct pointer_traits<T*, void> {
-    using pointer = T*;
-    using element_type = T;
-    using difference_type = std::ptrdiff_t;
-
-    template <typename U>
-    using rebind = U*;
-
-    template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
-    static constexpr pointer pointer_to(U& r) noexcept
-    {
-        return &r;
-    }
-
-    static constexpr pointer to_address(pointer p) noexcept
-    {
-        return p;
-    }
-};
-
-template <typename Ptr>
-using apply_member_difference_type = typename Ptr::difference_type;
-template <typename Ptr>
-using get_member_difference_type =
-    mp_eval_or<std::ptrdiff_t, apply_member_difference_type, Ptr>;
-
-template <typename Ptr, typename ElementType>
-struct pointer_traits_generic_base {
-    using pointer = Ptr;
-    using element_type = ElementType;
-
-    using difference_type = get_member_difference_type<Ptr>;
-    static_assert(std::is_integral_v<difference_type>);
-
-    // no rebind (TODO?)
-
-    template <typename P = Ptr>
-    static auto pointer_to(ElementType& r) -> decltype(P::pointer_to(r))
-    {
-        return Ptr::pointer_to(r);
-    }
-};
-
-template <typename It, typename = void>
-struct wrapped_pointer_iterator;
-
-#ifdef _GLIBCXX_DEBUG
-template <typename Elem, typename Container>
-struct wrapped_pointer_iterator<__gnu_debug::_Safe_iterator<Elem*, Container>> {
-    static constexpr auto to_address(
-        const __gnu_debug::_Safe_iterator<Elem*, Container>& it) noexcept
-    {
-        return it.base();
-    }
-};
-#endif
-#if SCN_STDLIB_GLIBCXX
-template <typename Elem, typename Container>
-struct wrapped_pointer_iterator<
-    __gnu_cxx::__normal_iterator<Elem*, Container>> {
-    static constexpr auto to_address(
-        const __gnu_cxx::__normal_iterator<Elem*, Container>& it) noexcept
-    {
-        return it.base();
-    }
-};
-#endif
-#if SCN_STDLIB_LIBCPP
-template <typename Elem>
-struct wrapped_pointer_iterator<std::__wrap_iter<Elem*>> {
-    static constexpr auto to_address(const std::__wrap_iter<Elem*>& it) noexcept
-    {
-        return it.base();
-    }
-};
-#endif
-
-template <typename I>
-using apply_member_unwrapped = decltype(SCN_DECLVAL(I&)._Unwrapped());
-template <typename It>
-struct wrapped_pointer_iterator<
-    It,
-    std::enable_if_t<ranges::random_access_iterator<It> &&
-                     mp_valid_v<apply_member_unwrapped, It>>> {
-    static constexpr auto to_address(const It& it) noexcept
-    {
-        return it._Unwrapped();
-    }
-};
-
-template <typename I>
-using apply_member_to_address =
-    decltype(wrapped_pointer_iterator<I>::to_address(SCN_DECLVAL(const I&)));
-
-template <typename Iterator>
-struct pointer_traits<
-    Iterator,
-    std::enable_if_t<mp_valid_v<apply_member_to_address, Iterator>>>
-    : pointer_traits_generic_base<
-          Iterator,
-          std::remove_reference_t<decltype(*SCN_DECLVAL(Iterator&))>> {
-    static constexpr auto to_address(const Iterator& it) noexcept
-    {
-        return wrapped_pointer_iterator<Iterator>::to_address(it);
-    }
-};
-
-template <typename It>
-using apply_ptr_traits_to_address =
-    decltype(pointer_traits<It>::to_address(SCN_DECLVAL(const It&)));
-template <typename It>
-inline constexpr bool can_make_address_from_iterator =
-    std::is_pointer_v<mp_valid_result_t<apply_ptr_traits_to_address, It>>;
-
-template <typename T>
-constexpr T* to_address_impl(T* p, priority_tag<2>) noexcept
-{
-    return p;
-}
-template <typename Ptr>
-constexpr auto to_address_impl(const Ptr& p, priority_tag<1>) noexcept
-    -> decltype(::scn::detail::pointer_traits<Ptr>::to_address(p))
-{
-    return ::scn::detail::pointer_traits<Ptr>::to_address(p);
-}
-template <typename Ptr>
-constexpr auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept
-    -> decltype(::scn::detail::to_address_impl(p.operator->(),
-                                               priority_tag<2>{}))
-{
-    return ::scn::detail::to_address_impl(p.operator->(), priority_tag<2>{});
-}
-
-template <typename Ptr>
-constexpr auto to_address(Ptr&& p) noexcept
-    -> decltype(::scn::detail::to_address_impl(SCN_FWD(p), priority_tag<2>{}))
-{
-    return ::scn::detail::to_address_impl(SCN_FWD(p), priority_tag<2>{});
-}
-
-/////////////////////////////////////////////////////////////////
-// string_view utilities
-/////////////////////////////////////////////////////////////////
 
 template <typename T>
 struct is_string_view : std::false_type {};

@@ -109,6 +109,18 @@ TEST(InputMapTest, Deque)
     EXPECT_EQ(collect(buf.get()), "foobar");
 }
 
+TEST(InputMapTest, DequeSubrange)
+{
+    auto str = std::deque<char>{'f', 'o', 'o', 'b', 'a', 'r'};
+    auto subr = scn::ranges::subrange{str.begin(), str.end()};
+    auto buf = scn::detail::make_scan_buffer(subr);
+    static_assert(
+        std::is_same_v<decltype(buf),
+                       scn::detail::basic_scan_forward_buffer_impl<
+                           scn::ranges::subrange<std::deque<char>::iterator>>>);
+    EXPECT_EQ(collect(buf.get()), "foobar");
+}
+
 TEST(InputMapTest, File)
 {
     auto buf = scn::detail::make_scan_buffer(stdin);
