@@ -1880,10 +1880,21 @@ auto read_exactly_n_code_units(Range range, std::ptrdiff_t count)
     }
 }
 
+template <typename Iterator, typename CharT>
+struct read_code_point_into_result {
+    Iterator iterator;
+    std::basic_string<CharT> codepoint;
+
+    bool is_valid() const
+    {
+        return !codepoint.empty();
+    }
+};
+
 template <typename Range>
 auto read_code_point_into(Range range)
-    -> iterator_value_result<ranges::const_iterator_t<Range>,
-                             std::basic_string<detail::char_t<Range>>>
+    -> read_code_point_into_result<ranges::const_iterator_t<Range>,
+                                   detail::char_t<Range>>
 {
     SCN_EXPECT(!is_range_eof(range));
     using string_type = std::basic_string<detail::char_t<Range>>;
@@ -1894,7 +1905,7 @@ auto read_code_point_into(Range range)
     if (SCN_UNLIKELY(len == 0)) {
         ++it;
         it = get_start_for_next_code_point(ranges::subrange{it, range.end()});
-        return {it, string_type{range.begin(), it}};
+        return {it, {}};
     }
 
     if (len == 1) {
@@ -1933,28 +1944,6 @@ auto read_exactly_n_code_points(Range range, std::ptrdiff_t count)
         }
 
         it = read_code_point(rng);
-    }
-
-    return it;
-}
-
-template <typename Range>
-auto read_exactly_n_width_units(Range range, std::ptrdiff_t count)
-    -> ranges::const_iterator_t<Range>
-{
-    auto it = range.begin();
-    std::ptrdiff_t acc_width = 0;
-
-    while (it != range.end()) {
-        auto [iter, val] =
-            read_code_point_into(ranges::subrange{it, range.end()});
-
-        acc_width += calculate_text_width(val.view());
-        if (acc_width > count) {
-            break;
-        }
-
-        it = iter;
     }
 
     return it;
@@ -2066,18 +2055,19 @@ auto read_while_code_units(Range range, const CodeUnits& needle)
 }
 
 template <typename Range>
-auto read_until_code_point(Range range,
-                           function_ref<bool(char32_t)> pred)
+auto read_until_code_point(Range range, function_ref<bool(char32_t)> pred)
     -> ranges::const_iterator_t<Range>
 {
     auto it = range.begin();
     while (it != range.end()) {
         const auto val =
             read_code_point_into(ranges::subrange{it, range.end()});
-        const auto cp = detail::decode_code_point_exhaustive(
-            std::basic_string_view<detail::char_t<Range>>{val.value});
-        if (pred(cp)) {
-            return it;
+        if (SCN_LIKELY(val.is_valid())) {
+            const auto cp = detail::decode_code_point_exhaustive(
+                std::basic_string_view<detail::char_t<Range>>{val.codepoint});
+            if (pred(cp)) {
+                return it;
+            }
         }
         it = val.iterator;
     }
@@ -2086,16 +2076,14 @@ auto read_until_code_point(Range range,
 }
 
 template <typename Range>
-auto read_while_code_point(Range range,
-                           function_ref<bool(char32_t)> pred)
+auto read_while_code_point(Range range, function_ref<bool(char32_t)> pred)
     -> ranges::const_iterator_t<Range>
 {
     return read_until_code_point(range, std::not_fn(pred));
 }
 
 template <typename Range>
-auto read_until_classic_space(Range range)
-    -> ranges::const_iterator_t<Range>
+auto read_until_classic_space(Range range) -> ranges::const_iterator_t<Range>
 {
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range> &&
@@ -2124,8 +2112,7 @@ auto read_until_classic_space(Range range)
 }
 
 template <typename Range>
-auto read_while_classic_space(Range range)
-    -> ranges::const_iterator_t<Range>
+auto read_while_classic_space(Range range) -> ranges::const_iterator_t<Range>
 {
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range> &&
@@ -2173,12 +2160,15 @@ template <typename Range>
 auto read_matching_code_point(Range range, char32_t cp)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
-    auto [it, value] = read_code_point_into(range);
-    auto decoded_cp = decode_code_point_exhaustive(value.view());
+    auto val = read_code_point_into(range);
+    if (!val.is_valid()) {
+        return unexpected(parse_error::error);
+    }
+    auto decoded_cp = decode_code_point_exhaustive(val.codepoint);
     if (SCN_UNLIKELY(cp != decoded_cp)) {
         return unexpected(parse_error::error);
     }
-    return it;
+    return val.iterator;
 }
 
 template <typename Range>
@@ -2235,8 +2225,7 @@ constexpr bool fast_streq_nocase(const char* a, const char* b, size_t len)
 }
 
 template <typename Range>
-auto read_matching_string_classic_nocase(Range range,
-                                         std::string_view str)
+auto read_matching_string_classic_nocase(Range range, std::string_view str)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
     using char_type = detail::char_t<Range>;
@@ -3841,8 +3830,7 @@ private:
     }
 
     template <typename Range>
-    auto read_nan(Range range)
-        -> scan_expected<ranges::const_iterator_t<Range>>
+    auto read_nan(Range range) -> scan_expected<ranges::const_iterator_t<Range>>
     {
         auto it = range.begin();
         if (auto r = read_matching_string_classic_nocase(range, "nan"); !r) {
@@ -5303,9 +5291,7 @@ protected:
     };
 
     template <typename Range, typename Value>
-    auto read_impl(Range range,
-                   const detail::format_specs& specs,
-                   Value& value)
+    auto read_impl(Range range, const detail::format_specs& specs, Value& value)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_CLANG_PUSH
@@ -5438,9 +5424,7 @@ struct bool_reader : public bool_reader_base {
 
 #if !SCN_DISABLE_LOCALE
     template <typename Range>
-    auto read_localized(Range range,
-                        detail::locale_ref loc,
-                        bool& value) const
+    auto read_localized(Range range, detail::locale_ref loc, bool& value) const
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         scan_error err{scan_error::invalid_scanned_value,
@@ -5516,9 +5500,7 @@ public:
     }
 
     template <typename Range>
-    auto read_default(Range range,
-                      bool& value,
-                      detail::locale_ref loc) const
+    auto read_default(Range range, bool& value, detail::locale_ref loc) const
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
@@ -5598,8 +5580,13 @@ public:
         -> scan_expected<ranges::const_iterator_t<SourceRange>>
     {
         auto result = read_code_point_into(range);
+        if (SCN_UNLIKELY(!result.is_valid())) {
+            return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                         "Invalid code point");
+        }
         cp = detail::decode_code_point_exhaustive_valid(
-            std::basic_string_view<detail::char_t<SourceRange>>{result.value});
+            std::basic_string_view<detail::char_t<SourceRange>>{
+                result.codepoint});
         return result.iterator;
     }
 };
@@ -5692,9 +5679,7 @@ template <typename CharT>
 class reader_impl_for_wchar : public char_reader_base<wchar_t> {
 public:
     template <typename Range>
-    auto read_default(Range range,
-                      wchar_t& value,
-                      detail::locale_ref loc)
+    auto read_default(Range range, wchar_t& value, detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
@@ -5732,9 +5717,7 @@ template <typename CharT>
 class reader_impl_for_code_point : public char_reader_base<char32_t> {
 public:
     template <typename Range>
-    auto read_default(Range range,
-                      char32_t& value,
-                      detail::locale_ref loc)
+    auto read_default(Range range, char32_t& value, detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
