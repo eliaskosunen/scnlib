@@ -164,6 +164,10 @@ whatever means you like:
 `make install` + `find_package`, `FetchContent`, `git submodule` + `add_subdirectory`,
 or something else.
 
+There are community-maintained packages available
+on [Conan](https://conan.io/center/recipes/scnlib) and
+on [vcpkg](https://github.com/microsoft/vcpkg/tree/master/ports/scnlib).
+
 The `scnlib` CMake target is `scn::scn`
 
 ```cmake

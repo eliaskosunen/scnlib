@@ -939,13 +939,13 @@ SCN_NODISCARD constexpr bool is_range_eof(I begin, S end)
 }
 
 template <typename Range>
-SCN_NODISCARD constexpr bool is_range_eof(const Range& r)
+SCN_NODISCARD constexpr bool is_range_eof(Range r)
 {
     return is_range_eof(r.begin(), r.end());
 }
 
 template <typename Range>
-SCN_NODISCARD constexpr eof_error eof_check(const Range& range)
+SCN_NODISCARD constexpr eof_error eof_check(Range range)
 {
     if (SCN_UNLIKELY(is_range_eof(range))) {
         return eof_error::eof;
@@ -954,7 +954,7 @@ SCN_NODISCARD constexpr eof_error eof_check(const Range& range)
 }
 
 template <typename Range>
-bool is_entire_source_contiguous(const Range& r)
+bool is_entire_source_contiguous(Range r)
 {
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
@@ -976,7 +976,7 @@ bool is_entire_source_contiguous(const Range& r)
 }
 
 template <typename Range>
-bool is_segment_contiguous(const Range& r)
+bool is_segment_contiguous(Range r)
 {
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
@@ -1008,7 +1008,7 @@ bool is_segment_contiguous(const Range& r)
 }
 
 template <typename Range>
-std::size_t contiguous_beginning_size(const Range& r)
+std::size_t contiguous_beginning_size(Range r)
 {
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
@@ -1034,7 +1034,7 @@ std::size_t contiguous_beginning_size(const Range& r)
 }
 
 template <typename Range>
-auto get_contiguous_beginning(const Range& r)
+auto get_contiguous_beginning(Range r)
 {
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
@@ -1060,7 +1060,7 @@ auto get_contiguous_beginning(const Range& r)
 }
 
 template <typename Range>
-auto get_as_contiguous(const Range& r)
+auto get_as_contiguous(Range r)
 {
     SCN_EXPECT(is_segment_contiguous(r));
 
@@ -1090,7 +1090,7 @@ auto get_as_contiguous(const Range& r)
 }
 
 template <typename Range>
-std::size_t guaranteed_minimum_size(const Range& r)
+std::size_t guaranteed_minimum_size(Range r)
 {
     if constexpr (ranges::sized_range<Range>) {
         return r.size();
@@ -1149,7 +1149,7 @@ constexpr bool validate_unicode(std::basic_string_view<CharT> src)
 }
 
 template <typename Range>
-constexpr auto get_start_for_next_code_point(const Range& input)
+constexpr auto get_start_for_next_code_point(Range input)
     -> ranges::const_iterator_t<Range>
 {
     auto it = input.begin();
@@ -1834,13 +1834,13 @@ std::string_view::iterator find_nondecimal_digit_narrow_fast(
     std::string_view source);
 
 template <typename Range>
-auto read_all(const Range& range) -> ranges::const_iterator_t<Range>
+auto read_all(Range range) -> ranges::const_iterator_t<Range>
 {
     return ranges::next(range.begin(), range.end());
 }
 
 template <typename Range>
-auto read_code_unit(const Range& range)
+auto read_code_unit(Range range)
     -> eof_expected<ranges::const_iterator_t<Range>>
 {
     if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
@@ -1851,7 +1851,7 @@ auto read_code_unit(const Range& range)
 }
 
 template <typename Range>
-auto read_exactly_n_code_units(const Range& range, std::ptrdiff_t count)
+auto read_exactly_n_code_units(Range range, std::ptrdiff_t count)
     -> eof_expected<ranges::const_iterator_t<Range>>
 {
     SCN_EXPECT(count >= 0);
@@ -1881,7 +1881,7 @@ auto read_exactly_n_code_units(const Range& range, std::ptrdiff_t count)
 }
 
 template <typename Range>
-auto read_code_point_into(const Range& range)
+auto read_code_point_into(Range range)
     -> iterator_value_result<ranges::const_iterator_t<Range>,
                              std::basic_string<detail::char_t<Range>>>
 {
@@ -1907,13 +1907,13 @@ auto read_code_point_into(const Range& range)
 }
 
 template <typename Range>
-auto read_code_point(const Range& range) -> ranges::const_iterator_t<Range>
+auto read_code_point(Range range) -> ranges::const_iterator_t<Range>
 {
     return read_code_point_into(range).iterator;
 }
 
 template <typename Range>
-auto read_exactly_n_code_points(const Range& range, std::ptrdiff_t count)
+auto read_exactly_n_code_points(Range range, std::ptrdiff_t count)
     -> eof_expected<ranges::const_iterator_t<Range>>
 {
     SCN_EXPECT(count >= 0);
@@ -1939,7 +1939,7 @@ auto read_exactly_n_code_points(const Range& range, std::ptrdiff_t count)
 }
 
 template <typename Range>
-auto read_exactly_n_width_units(const Range& range, std::ptrdiff_t count)
+auto read_exactly_n_width_units(Range range, std::ptrdiff_t count)
     -> ranges::const_iterator_t<Range>
 {
     auto it = range.begin();
@@ -1961,7 +1961,7 @@ auto read_exactly_n_width_units(const Range& range, std::ptrdiff_t count)
 }
 
 template <typename Range>
-auto read_until_code_unit(const Range& range,
+auto read_until_code_unit(Range range,
                           function_ref<bool(detail::char_t<Range>)> pred)
     -> ranges::const_iterator_t<Range>
 {
@@ -1980,7 +1980,7 @@ auto read_until_code_unit(const Range& range,
 }
 
 template <typename Range>
-auto read_while_code_unit(const Range& range,
+auto read_while_code_unit(Range range,
                           function_ref<bool(detail::char_t<Range>)> pred)
     -> ranges::const_iterator_t<Range>
 {
@@ -1988,7 +1988,7 @@ auto read_while_code_unit(const Range& range,
 }
 
 template <typename Range>
-auto read_until1_code_unit(const Range& range,
+auto read_until1_code_unit(Range range,
                            function_ref<bool(detail::char_t<Range>)> pred)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
@@ -2000,7 +2000,7 @@ auto read_until1_code_unit(const Range& range,
 }
 
 template <typename Range>
-auto read_while1_code_unit(const Range& range,
+auto read_while1_code_unit(Range range,
                            function_ref<bool(detail::char_t<Range>)> pred)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
@@ -2012,7 +2012,7 @@ auto read_while1_code_unit(const Range& range,
 }
 
 template <typename Range, typename CodeUnits>
-auto read_until_code_units(const Range& range, const CodeUnits& needle)
+auto read_until_code_units(Range range, const CodeUnits& needle)
     -> ranges::const_iterator_t<Range>
 {
     static_assert(ranges::common_range<CodeUnits>);
@@ -2042,7 +2042,7 @@ auto read_until_code_units(const Range& range, const CodeUnits& needle)
 }
 
 template <typename Range, typename CodeUnits>
-auto read_while_code_units(const Range& range, const CodeUnits& needle)
+auto read_while_code_units(Range range, const CodeUnits& needle)
     -> ranges::const_iterator_t<Range>
 {
     static_assert(ranges::common_range<CodeUnits>);
@@ -2066,7 +2066,7 @@ auto read_while_code_units(const Range& range, const CodeUnits& needle)
 }
 
 template <typename Range>
-auto read_until_code_point(const Range& range,
+auto read_until_code_point(Range range,
                            function_ref<bool(char32_t)> pred)
     -> ranges::const_iterator_t<Range>
 {
@@ -2086,7 +2086,7 @@ auto read_until_code_point(const Range& range,
 }
 
 template <typename Range>
-auto read_while_code_point(const Range& range,
+auto read_while_code_point(Range range,
                            function_ref<bool(char32_t)> pred)
     -> ranges::const_iterator_t<Range>
 {
@@ -2094,7 +2094,7 @@ auto read_while_code_point(const Range& range,
 }
 
 template <typename Range>
-auto read_until_classic_space(const Range& range)
+auto read_until_classic_space(Range range)
     -> ranges::const_iterator_t<Range>
 {
     if constexpr (ranges::contiguous_range<Range> &&
@@ -2124,7 +2124,7 @@ auto read_until_classic_space(const Range& range)
 }
 
 template <typename Range>
-auto read_while_classic_space(const Range& range)
+auto read_while_classic_space(Range range)
     -> ranges::const_iterator_t<Range>
 {
     if constexpr (ranges::contiguous_range<Range> &&
@@ -2147,14 +2147,13 @@ auto read_while_classic_space(const Range& range)
             ranges::advance(it, seg.size());
         }
 
-        return read_while_code_point(range, [](char32_t cp) noexcept {
-            return is_cp_space(cp);
-        });
+        return read_while_code_point(
+            range, [](char32_t cp) noexcept { return is_cp_space(cp); });
     }
 }
 
 template <typename Range>
-auto read_matching_code_unit(const Range& range, detail::char_t<Range> ch)
+auto read_matching_code_unit(Range range, detail::char_t<Range> ch)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
     auto it = read_code_unit(range);
@@ -2171,7 +2170,7 @@ auto read_matching_code_unit(const Range& range, detail::char_t<Range> ch)
 }
 
 template <typename Range>
-auto read_matching_code_point(const Range& range, char32_t cp)
+auto read_matching_code_point(Range range, char32_t cp)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
     auto [it, value] = read_code_point_into(range);
@@ -2183,7 +2182,7 @@ auto read_matching_code_point(const Range& range, char32_t cp)
 }
 
 template <typename Range>
-auto read_matching_string(const Range& range,
+auto read_matching_string(Range range,
                           std::basic_string_view<detail::char_t<Range>> str)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
@@ -2199,7 +2198,7 @@ auto read_matching_string(const Range& range,
 }
 
 template <typename Range>
-auto read_matching_string_classic(const Range& range, std::string_view str)
+auto read_matching_string_classic(Range range, std::string_view str)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
     SCN_TRY(it, read_exactly_n_code_units(
@@ -2236,7 +2235,7 @@ constexpr bool fast_streq_nocase(const char* a, const char* b, size_t len)
 }
 
 template <typename Range>
-auto read_matching_string_classic_nocase(const Range& range,
+auto read_matching_string_classic_nocase(Range range,
                                          std::string_view str)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
@@ -2278,7 +2277,7 @@ auto read_matching_string_classic_nocase(const Range& range,
 }
 
 template <typename Range>
-auto read_one_of_code_unit(const Range& range, std::string_view str)
+auto read_one_of_code_unit(Range range, std::string_view str)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
     auto it = read_code_unit(range);
@@ -2296,7 +2295,7 @@ auto read_one_of_code_unit(const Range& range, std::string_view str)
 }
 
 template <typename Range, template <class> class Expected, typename Iterator>
-auto apply_opt(Expected<Iterator>&& result, const Range& range)
+auto apply_opt(Expected<Iterator>&& result, Range range)
     -> std::enable_if_t<detail::is_expected<Expected<Iterator>>::value,
                         ranges::const_iterator_t<Range>>
 {
@@ -3085,7 +3084,7 @@ public:
     }
 
     template <typename Range>
-    auto read_default(const Range&, monostate&, detail::locale_ref)
+    auto read_default(Range, monostate&, detail::locale_ref)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_EXPECT(false);
@@ -3093,7 +3092,7 @@ public:
     }
 
     template <typename Range>
-    auto read_specs(const Range&,
+    auto read_specs(Range,
                     const detail::format_specs&,
                     monostate&,
                     detail::locale_ref)
@@ -3130,11 +3129,11 @@ inline constexpr std::array<uint8_t, 256> char_to_int_table = {
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
     255};
 
-SCN_NODISCARD constexpr uint8_t char_to_int(char ch)
+SCN_NODISCARD SCN_FORCE_INLINE constexpr uint8_t char_to_int(char ch)
 {
     return char_to_int_table[static_cast<unsigned char>(ch)];
 }
-SCN_NODISCARD constexpr uint8_t char_to_int(wchar_t ch)
+SCN_NODISCARD SCN_FORCE_INLINE constexpr uint8_t char_to_int(wchar_t ch)
 {
 #if WCHAR_MIN < 0
     if (ch >= 0 && ch <= 255) {
@@ -3147,7 +3146,7 @@ SCN_NODISCARD constexpr uint8_t char_to_int(wchar_t ch)
 }
 
 template <typename Range>
-auto parse_numeric_sign(const Range& range)
+auto parse_numeric_sign(Range range)
     -> eof_expected<std::pair<ranges::const_iterator_t<Range>, sign_type>>
 {
     auto r = read_one_of_code_unit(range, "+-");
@@ -3178,7 +3177,7 @@ inline void transform_thsep_indices(std::string& indices,
 }
 
 template <typename Range>
-bool check_thsep_grouping_impl(const Range& range,
+bool check_thsep_grouping_impl(Range range,
                                std::string& thsep_indices,
                                std::string_view grouping)
 {
@@ -3216,7 +3215,7 @@ bool check_thsep_grouping_impl(const Range& range,
 }
 
 template <typename Range>
-scan_error check_thsep_grouping(const Range& range,
+scan_error check_thsep_grouping(Range range,
                                 std::string thsep_indices,
                                 std::string_view grouping)
 {
@@ -3250,21 +3249,21 @@ struct parse_integer_prefix_result {
 };
 
 template <typename Range>
-auto parse_integer_bin_base_prefix(const Range& range)
+auto parse_integer_bin_base_prefix(Range range)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
     return read_matching_string_classic_nocase(range, "0b");
 }
 
 template <typename Range>
-auto parse_integer_hex_base_prefix(const Range& range)
+auto parse_integer_hex_base_prefix(Range range)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
     return read_matching_string_classic_nocase(range, "0x");
 }
 
 template <typename Range>
-auto parse_integer_oct_base_prefix(const Range& range, bool& zero_parsed)
+auto parse_integer_oct_base_prefix(Range range, bool& zero_parsed)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
     if (auto r = read_matching_string_classic_nocase(range, "0o")) {
@@ -3280,7 +3279,7 @@ auto parse_integer_oct_base_prefix(const Range& range, bool& zero_parsed)
 }
 
 template <typename Range>
-auto parse_integer_base_prefix_for_detection(const Range& range)
+auto parse_integer_base_prefix_for_detection(Range range)
     -> std::tuple<ranges::const_iterator_t<Range>, int, bool>
 {
     if (auto r = parse_integer_hex_base_prefix(range)) {
@@ -3299,7 +3298,7 @@ auto parse_integer_base_prefix_for_detection(const Range& range)
 }
 
 template <typename Range>
-auto parse_integer_base_prefix(const Range& range, int base)
+auto parse_integer_base_prefix(Range range, int base)
     -> std::tuple<ranges::const_iterator_t<Range>, int, bool>
 {
     switch (base) {
@@ -3332,7 +3331,7 @@ auto parse_integer_base_prefix(const Range& range, int base)
 }
 
 template <typename Range>
-auto parse_integer_prefix(const Range& range, int base) -> eof_expected<
+auto parse_integer_prefix(Range range, int base) -> eof_expected<
     parse_integer_prefix_result<ranges::const_iterator_t<Range>>>
 {
     SCN_TRY(sign_result, parse_numeric_sign(range));
@@ -3367,7 +3366,7 @@ auto parse_integer_prefix(const Range& range, int base) -> eof_expected<
 }
 
 template <typename Range>
-auto parse_integer_digits_without_thsep(const Range& range, int base)
+auto parse_integer_digits_without_thsep(Range range, int base)
     -> scan_expected<ranges::const_iterator_t<Range>>
 {
     using char_type = detail::char_t<Range>;
@@ -3393,7 +3392,7 @@ auto parse_integer_digits_without_thsep(const Range& range, int base)
 
 template <typename Range, typename CharT>
 auto parse_integer_digits_with_thsep(
-    const Range& range,
+    Range range,
     int base,
     const localized_number_formatting_options<CharT>& locale_options)
     -> scan_expected<std::tuple<ranges::const_iterator_t<Range>,
@@ -3499,7 +3498,7 @@ public:
     }
 
     template <typename Range, typename T>
-    auto read_default_with_base(const Range& range, T& value, int base)
+    auto read_default_with_base(Range range, T& value, int base)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_TRY(prefix_result, parse_integer_prefix(range, base)
@@ -3535,7 +3534,7 @@ public:
     }
 
     template <typename Range, typename T>
-    auto read_default(const Range& range, T& value, detail::locale_ref loc)
+    auto read_default(Range range, T& value, detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
@@ -3543,7 +3542,7 @@ public:
     }
 
     template <typename Range, typename T>
-    auto read_specs(const Range& range,
+    auto read_specs(Range range,
                     const detail::format_specs& specs,
                     T& value,
                     detail::locale_ref loc)
@@ -3672,7 +3671,7 @@ public:
     explicit constexpr float_reader(unsigned opt) : float_reader_base(opt) {}
 
     template <typename Range>
-    SCN_NODISCARD auto read_source(const Range& range, detail::locale_ref)
+    SCN_NODISCARD auto read_source(Range range, detail::locale_ref)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if (SCN_UNLIKELY(m_options & float_reader_base::allow_thsep)) {
@@ -3685,7 +3684,7 @@ public:
 
 #if !SCN_DISABLE_LOCALE
     template <typename Range>
-    SCN_NODISCARD auto read_source_localized(const Range& range,
+    SCN_NODISCARD auto read_source_localized(Range range,
                                              detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
@@ -3712,7 +3711,7 @@ public:
 
 private:
     template <typename Range>
-    auto read_source_impl(const Range& range)
+    auto read_source_impl(Range range)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_TRY(sign_result,
@@ -3781,7 +3780,7 @@ private:
     }
 
     template <typename Range>
-    auto read_dec_digits(const Range& range, bool thsep_allowed)
+    auto read_dec_digits(Range range, bool thsep_allowed)
         -> parse_expected<ranges::const_iterator_t<Range>>
     {
         if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
@@ -3792,12 +3791,11 @@ private:
             });
         }
 
-        return read_while1_code_unit(range, [](char_type ch) noexcept {
-            return char_to_int(ch) < 10;
-        });
+        return read_while1_code_unit(
+            range, [](char_type ch) noexcept { return char_to_int(ch) < 10; });
     }
     template <typename Range>
-    auto read_hex_digits(const Range& range, bool thsep_allowed)
+    auto read_hex_digits(Range range, bool thsep_allowed)
         -> parse_expected<ranges::const_iterator_t<Range>>
     {
         if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
@@ -3808,19 +3806,18 @@ private:
             });
         }
 
-        return read_while1_code_unit(range, [](char_type ch) noexcept {
-            return char_to_int(ch) < 16;
-        });
+        return read_while1_code_unit(
+            range, [](char_type ch) noexcept { return char_to_int(ch) < 16; });
     }
     template <typename Range>
-    auto read_hex_prefix(const Range& range)
+    auto read_hex_prefix(Range range)
         -> parse_expected<ranges::const_iterator_t<Range>>
     {
         return read_matching_string_classic_nocase(range, "0x");
     }
 
     template <typename Range>
-    auto read_inf(const Range& range)
+    auto read_inf(Range range)
         -> parse_expected<ranges::const_iterator_t<Range>>
     {
         auto it = range.begin();
@@ -3844,7 +3841,7 @@ private:
     }
 
     template <typename Range>
-    auto read_nan(const Range& range)
+    auto read_nan(Range range)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         auto it = range.begin();
@@ -3886,7 +3883,7 @@ private:
     }
 
     template <typename Range>
-    auto read_exponent(const Range& range, std::string_view exp)
+    auto read_exponent(Range range, std::string_view exp)
         -> ranges::const_iterator_t<Range>
     {
         if (auto r = read_one_of_code_unit(range, exp)) {
@@ -3914,7 +3911,7 @@ private:
     }
 
     template <typename Range>
-    auto read_hexfloat(const Range& range)
+    auto read_hexfloat(Range range)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         auto it = range.begin();
@@ -3954,7 +3951,7 @@ private:
     }
 
     template <typename Range>
-    auto read_regular_float(const Range& range)
+    auto read_regular_float(Range range)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         const bool allowed_exp = (m_options & allow_scientific) != 0;
@@ -4008,7 +4005,7 @@ private:
     }
 
     template <typename Range, typename ReadRegular, typename ReadHex>
-    auto do_read_source_impl(const Range& range,
+    auto do_read_source_impl(Range range,
                              ReadRegular&& read_regular,
                              ReadHex&& read_hex)
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -4163,7 +4160,7 @@ public:
     }
 
     template <typename Range, typename T>
-    auto read_default(const Range& range, T& value, detail::locale_ref loc)
+    auto read_default(Range range, T& value, detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
@@ -4178,7 +4175,7 @@ public:
     }
 
     template <typename Range, typename T>
-    auto read_specs(const Range& range,
+    auto read_specs(Range range,
                     const detail::format_specs& specs,
                     T& value,
                     detail::locale_ref loc)
@@ -4214,7 +4211,7 @@ private:
 
     template <typename Range, typename T>
     scan_expected<ranges::const_iterator_t<Range>> read_impl(
-        const Range& range,
+        Range range,
         float_reader<CharT>& rd,
         function_ref<read_source_callback_type<Range>> read_source_cb,
         T& value,
@@ -4683,7 +4680,7 @@ struct regex_matches_reader
     }
 
     template <typename Range, typename DestCharT>
-    auto read_default(const Range&,
+    auto read_default(Range,
                       basic_regex_matches<DestCharT>&,
                       detail::locale_ref = {})
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -4694,7 +4691,7 @@ struct regex_matches_reader
     }
 
     template <typename Range, typename DestCharT>
-    auto read_specs(const Range& range,
+    auto read_specs(Range range,
                     const detail::format_specs& specs,
                     basic_regex_matches<DestCharT>& value,
                     detail::locale_ref = {})
@@ -4732,7 +4729,7 @@ struct regex_matches_reader
 
 private:
     template <typename Range, typename DestCharT>
-    auto impl(const Range& input,
+    auto impl(Range input,
               bool is_escaped,
               std::basic_string_view<SourceCharT> pattern,
               detail::regex_flags flags,
@@ -4761,7 +4758,7 @@ struct reader_impl_for_regex_matches : public regex_matches_reader<CharT> {};
 /////////////////////////////////////////////////////////////////
 
 template <typename Range, typename Iterator, typename ValueCharT>
-auto read_string_impl(const Range& range,
+auto read_string_impl(Range range,
                       Iterator&& result,
                       std::basic_string<ValueCharT>& value)
     -> scan_expected<ranges::const_iterator_t<Range>>
@@ -4782,7 +4779,7 @@ auto read_string_impl(const Range& range,
 }
 
 template <typename Range, typename Iterator, typename ValueCharT>
-auto read_string_view_impl(const Range& range,
+auto read_string_view_impl(Range range,
                            Iterator&& result,
                            std::basic_string_view<ValueCharT>& value)
     -> scan_expected<ranges::const_iterator_t<Range>>
@@ -4831,14 +4828,14 @@ template <typename SourceCharT>
 class word_reader_impl {
 public:
     template <typename Range, typename ValueCharT>
-    auto read(const Range& range, std::basic_string<ValueCharT>& value)
+    auto read(Range range, std::basic_string<ValueCharT>& value)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return read_string_impl(range, read_until_classic_space(range), value);
     }
 
     template <typename Range, typename ValueCharT>
-    auto read(const Range& range, std::basic_string_view<ValueCharT>& value)
+    auto read(Range range, std::basic_string_view<ValueCharT>& value)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return read_string_view_impl(range, read_until_classic_space(range),
@@ -4850,7 +4847,7 @@ template <typename SourceCharT>
 class custom_word_reader_impl {
 public:
     template <typename Range, typename ValueCharT>
-    auto read(const Range& range,
+    auto read(Range range,
               const detail::format_specs& specs,
               std::basic_string<ValueCharT>& value)
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -4872,7 +4869,7 @@ public:
     }
 
     template <typename Range, typename ValueCharT>
-    auto read(const Range& range,
+    auto read(Range range,
               const detail::format_specs& specs,
               std::basic_string_view<ValueCharT>& value)
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -4899,7 +4896,7 @@ template <typename SourceCharT>
 class regex_string_reader_impl {
 public:
     template <typename Range, typename ValueCharT>
-    auto read(const Range& range,
+    auto read(Range range,
               std::basic_string_view<SourceCharT> pattern,
               detail::regex_flags flags,
               std::basic_string<ValueCharT>& value)
@@ -4910,7 +4907,7 @@ public:
     }
 
     template <typename Range, typename ValueCharT>
-    auto read(const Range& range,
+    auto read(Range range,
               std::basic_string_view<SourceCharT> pattern,
               detail::regex_flags flags,
               std::basic_string_view<ValueCharT>& value)
@@ -4922,7 +4919,7 @@ public:
 
 private:
     template <typename Range>
-    auto impl(const Range& range,
+    auto impl(Range range,
               std::basic_string_view<SourceCharT> pattern,
               detail::regex_flags flags)
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -4958,7 +4955,7 @@ public:
     // since it's equivalent in behavior
 
     template <typename Range, typename ValueCharT>
-    auto read(const Range& range, std::basic_string<ValueCharT>& value)
+    auto read(Range range, std::basic_string<ValueCharT>& value)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return read_impl(
@@ -4970,7 +4967,7 @@ public:
     }
 
     template <typename Range, typename ValueCharT>
-    auto read(const Range& range, std::basic_string_view<ValueCharT>& value)
+    auto read(Range range, std::basic_string_view<ValueCharT>& value)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return read_impl(
@@ -4992,7 +4989,7 @@ private:
     }
 
     template <typename Range, typename ReadCb>
-    static auto read_impl(const Range&, ReadCb&&, detail::priority_tag<0>)
+    static auto read_impl(Range, ReadCb&&, detail::priority_tag<0>)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return unexpected_scan_error(
@@ -5057,7 +5054,7 @@ template <typename SourceCharT>
 class character_set_reader_impl {
 public:
     template <typename Range, typename ValueCharT>
-    auto read(const Range& range,
+    auto read(Range range,
               const detail::format_specs& specs,
               std::basic_string<ValueCharT>& value)
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -5071,7 +5068,7 @@ public:
     }
 
     template <typename Range, typename ValueCharT>
-    auto read(const Range& range,
+    auto read(Range range,
               const detail::format_specs& specs,
               std::basic_string_view<ValueCharT>& value)
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -5164,7 +5161,7 @@ private:
     };
 
     template <typename Range>
-    auto read_source_impl(const Range& range, specs_helper helper) const
+    auto read_source_impl(Range range, specs_helper helper) const
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         const bool is_inverted = helper.specs.charset_is_inverted;
@@ -5203,7 +5200,7 @@ private:
 
     template <typename Iterator, typename Range>
     static scan_expected<Iterator> check_nonempty(const Iterator& it,
-                                                  const Range& range)
+                                                  Range range)
     {
         if (it == range.begin()) {
             return unexpected_scan_error(
@@ -5277,7 +5274,7 @@ public:
     }
 
     template <typename Range, typename Value>
-    auto read_default(const Range& range, Value& value, detail::locale_ref loc)
+    auto read_default(Range range, Value& value, detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
@@ -5285,7 +5282,7 @@ public:
     }
 
     template <typename Range, typename Value>
-    auto read_specs(const Range& range,
+    auto read_specs(Range range,
                     const detail::format_specs& specs,
                     Value& value,
                     detail::locale_ref loc)
@@ -5306,7 +5303,7 @@ protected:
     };
 
     template <typename Range, typename Value>
-    auto read_impl(const Range& range,
+    auto read_impl(Range range,
                    const detail::format_specs& specs,
                    Value& value)
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -5368,7 +5365,7 @@ struct bool_reader_base {
     constexpr bool_reader_base(unsigned opt) : m_options(opt) {}
 
     template <typename Range>
-    auto read_classic(const Range& range, bool& value) const
+    auto read_classic(Range range, bool& value) const
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         scan_error err{scan_error::invalid_scanned_value,
@@ -5397,7 +5394,7 @@ struct bool_reader_base {
 
 protected:
     template <typename Range>
-    auto read_numeric(const Range& range, bool& value) const
+    auto read_numeric(Range range, bool& value) const
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if (auto r = read_matching_code_unit(range, '0')) {
@@ -5415,7 +5412,7 @@ protected:
     }
 
     template <typename Range>
-    auto read_textual_classic(const Range& range, bool& value) const
+    auto read_textual_classic(Range range, bool& value) const
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if (auto r = read_matching_string_classic(range, "true")) {
@@ -5441,7 +5438,7 @@ struct bool_reader : public bool_reader_base {
 
 #if !SCN_DISABLE_LOCALE
     template <typename Range>
-    auto read_localized(const Range& range,
+    auto read_localized(Range range,
                         detail::locale_ref loc,
                         bool& value) const
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -5480,7 +5477,7 @@ struct bool_reader : public bool_reader_base {
 
 protected:
     template <typename Range>
-    auto read_textual_custom(const Range& range,
+    auto read_textual_custom(Range range,
                              bool& value,
                              std::basic_string_view<CharT> truename,
                              std::basic_string_view<CharT> falsename) const
@@ -5519,7 +5516,7 @@ public:
     }
 
     template <typename Range>
-    auto read_default(const Range& range,
+    auto read_default(Range range,
                       bool& value,
                       detail::locale_ref loc) const
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -5530,7 +5527,7 @@ public:
     }
 
     template <typename Range>
-    auto read_specs(const Range& range,
+    auto read_specs(Range range,
                     const detail::format_specs& specs,
                     bool& value,
                     detail::locale_ref loc) const
@@ -5657,7 +5654,7 @@ template <typename CharT>
 class reader_impl_for_char : public char_reader_base<char> {
 public:
     template <typename Range>
-    auto read_default(const Range& range, char& value, detail::locale_ref loc)
+    auto read_default(Range range, char& value, detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
@@ -5672,7 +5669,7 @@ public:
     }
 
     template <typename Range>
-    auto read_specs(const Range& range,
+    auto read_specs(Range range,
                     const detail::format_specs& specs,
                     char& value,
                     detail::locale_ref loc)
@@ -5695,7 +5692,7 @@ template <typename CharT>
 class reader_impl_for_wchar : public char_reader_base<wchar_t> {
 public:
     template <typename Range>
-    auto read_default(const Range& range,
+    auto read_default(Range range,
                       wchar_t& value,
                       detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -5710,7 +5707,7 @@ public:
     }
 
     template <typename Range>
-    auto read_specs(const Range& range,
+    auto read_specs(Range range,
                     const detail::format_specs& specs,
                     wchar_t& value,
                     detail::locale_ref loc)
@@ -5735,7 +5732,7 @@ template <typename CharT>
 class reader_impl_for_code_point : public char_reader_base<char32_t> {
 public:
     template <typename Range>
-    auto read_default(const Range& range,
+    auto read_default(Range range,
                       char32_t& value,
                       detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
@@ -5745,7 +5742,7 @@ public:
     }
 
     template <typename Range>
-    auto read_specs(const Range& range,
+    auto read_specs(Range range,
                     const detail::format_specs& specs,
                     char32_t& value,
                     detail::locale_ref loc)
@@ -5781,7 +5778,7 @@ public:
     }
 
     template <typename Range>
-    auto read_default(const Range& range, void*& value, detail::locale_ref loc)
+    auto read_default(Range range, void*& value, detail::locale_ref loc)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         detail::format_specs specs{};
@@ -5795,7 +5792,7 @@ public:
     }
 
     template <typename Range>
-    auto read_specs(const Range& range,
+    auto read_specs(Range range,
                     const detail::format_specs& specs,
                     void*& value,
                     detail::locale_ref loc)
@@ -5811,7 +5808,7 @@ public:
 /////////////////////////////////////////////////////////////////
 
 template <typename Range>
-auto skip_ws_before_if_required(bool is_required, const Range& range)
+auto skip_ws_before_if_required(bool is_required, Range range)
     -> eof_expected<ranges::iterator_t<Range>>
 {
     if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
@@ -5879,7 +5876,7 @@ struct default_arg_reader {
     using iterator = ranges::iterator_t<range_type>;
 
     template <typename Reader, typename Range, typename T>
-    auto impl(Reader& rd, const Range& rng, T& value)
+    auto impl(Reader& rd, Range rng, T& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
         SCN_TRY(it, skip_ws_before_if_required(rd.skip_ws_before_read(), rng)
@@ -5964,7 +5961,7 @@ template <typename Iterator>
 using skip_fill_result = std::pair<Iterator, std::ptrdiff_t>;
 
 template <typename Range>
-auto skip_fill(const Range& range,
+auto skip_fill(Range range,
                std::ptrdiff_t max_width,
                const detail::fill_type& fill,
                bool want_skipped_width)
@@ -6055,7 +6052,7 @@ struct arg_reader {
     using iterator = ranges::iterator_t<range_type>;
 
     template <typename Range>
-    auto impl_prefix(const Range& rng, bool rd_skip_ws_before_read)
+    auto impl_prefix(Range rng, bool rd_skip_ws_before_read)
         -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
     {
         SCN_EXPECT(!is_range_eof(rng));
@@ -6096,7 +6093,7 @@ struct arg_reader {
     }
 
     template <typename Range>
-    auto impl_postfix(const Range& rng,
+    auto impl_postfix(Range rng,
                       bool rd_skip_ws_before_read,
                       std::ptrdiff_t prefix_width,
                       std::ptrdiff_t value_width)
@@ -6142,7 +6139,7 @@ struct arg_reader {
     }
 
     template <typename Reader, typename Range, typename T>
-    auto impl(Reader& rd, const Range& rng, T& value)
+    auto impl(Reader& rd, Range rng, T& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
         SCN_EXPECT(!is_range_eof(rng));

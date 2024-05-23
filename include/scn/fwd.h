@@ -845,6 +845,14 @@ SCN_GCC_POP
 #define SCN_IMPLICIT /*implicit*/
 #endif
 
+#if SCN_GCC || SCN_CLANG
+#define SCN_FORCE_INLINE __attribute__((always_inline))
+#elif SCN_MSVC
+#define SCN_FORCE_INLINE __forceinline
+#else
+#define SCN_FORCE_INLINE inline
+#endif
+
 // SCN_LIKELY & SCN_UNLIKELY
 #if SCN_HAS_BUILTIN_EXPECT
 #define SCN_LIKELY(x)   __builtin_expect(!!(x), 1)

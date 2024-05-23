@@ -175,16 +175,20 @@ protected:
     }
 
     template <typename Source>
-    auto& set_source(Source&& s)
+    auto set_source(Source&& s)
     {
         widened_source = T::make_widened_source(SCN_FWD(s));
-        return *widened_source;
+        return std::basic_string_view<typename T::source_char_type>{
+            *widened_source};
     }
 
     auto read()
     {
         typename T::dest_string_type val{};
-        auto ret = make_reader().read(*widened_source, val);
+        auto ret = make_reader().read(
+            std::basic_string_view<typename T::source_char_type>{
+                *widened_source},
+            val);
         return std::make_pair(ret, val);
     }
 
@@ -215,7 +219,7 @@ SCN_CLANG_POP
 
 TYPED_TEST(StringWordReaderTest, All)
 {
-    auto& src = this->set_source("foo"sv);
+    auto src = this->set_source("foo"sv);
     auto [ret, val] = this->read();
 
     ASSERT_TRUE(ret);
@@ -225,7 +229,7 @@ TYPED_TEST(StringWordReaderTest, All)
 
 TYPED_TEST(StringWordReaderTest, Word)
 {
-    auto& src = this->set_source("foo bar"sv);
+    auto src = this->set_source("foo bar"sv);
     auto [ret, val] = this->read();
 
     ASSERT_TRUE(ret);
@@ -343,16 +347,20 @@ protected:
     }
 
     template <typename Source>
-    auto& set_source(Source&& s)
+    auto set_source(Source&& s)
     {
         widened_source = T::make_widened_source(SCN_FWD(s));
-        return *widened_source;
+        return std::basic_string_view<typename T::source_char_type>{
+            *widened_source};
     }
 
     auto read(const specs_type& specs)
     {
         typename T::dest_string_type val{};
-        auto ret = make_reader().read(*widened_source, specs, val);
+        auto ret = make_reader().read(
+            std::basic_string_view<typename T::source_char_type>{
+                *widened_source},
+            specs, val);
         return std::make_pair(ret, val);
     }
 
@@ -375,7 +383,7 @@ SCN_CLANG_POP
 
 TYPED_TEST(StringCharacterSetReaderTest, MatchEmpty)
 {
-    auto& src = this->set_source("123"sv);
+    auto src = this->set_source("123"sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[a-z]"));
 
     ASSERT_FALSE(ret);
@@ -384,7 +392,7 @@ TYPED_TEST(StringCharacterSetReaderTest, MatchEmpty)
 
 TYPED_TEST(StringCharacterSetReaderTest, LiteralAbc)
 {
-    auto& src = this->set_source("abc123"sv);
+    auto src = this->set_source("abc123"sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[abc]"));
 
     ASSERT_TRUE(ret);
@@ -393,7 +401,7 @@ TYPED_TEST(StringCharacterSetReaderTest, LiteralAbc)
 }
 TYPED_TEST(StringCharacterSetReaderTest, LiteralAToC)
 {
-    auto& src = this->set_source("abc123"sv);
+    auto src = this->set_source("abc123"sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[a-c]"));
 
     ASSERT_TRUE(ret);
@@ -403,7 +411,7 @@ TYPED_TEST(StringCharacterSetReaderTest, LiteralAToC)
 
 TYPED_TEST(StringCharacterSetReaderTest, LiteralAWithDiaeresis)
 {
-    auto& src = this->set_source("äa"sv);
+    auto src = this->set_source("äa"sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[ä]"));
 
     ASSERT_TRUE(ret);
@@ -412,7 +420,7 @@ TYPED_TEST(StringCharacterSetReaderTest, LiteralAWithDiaeresis)
 }
 TYPED_TEST(StringCharacterSetReaderTest, MultipleLiteralNonAsciiCharacters)
 {
-    auto& src = this->set_source("öäa"sv);
+    auto src = this->set_source("öäa"sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[äö]"));
 
     ASSERT_TRUE(ret);

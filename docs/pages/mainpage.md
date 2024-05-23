@@ -116,7 +116,7 @@ Library dependencies
 
 <tr>
 <td>fast_float</td>
-<td>`>= 6.0.0`</td>
+<td>`>= 5.0.0`</td>
 <td>✅</td>
 <td>Header only. Downloaded by default with `FetchContent`, controlled with `SCN_USE_EXTERNAL_FAST_FLOAT`.</td>
 </tr>
