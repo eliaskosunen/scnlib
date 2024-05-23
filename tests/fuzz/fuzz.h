@@ -15,10 +15,9 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#include <scn/impl.h>
 #include <scn/scan.h>
 #include <scn/xchar.h>
-
-#include <scn/impl/algorithms/unicode_algorithms.h>
 
 #include <sstream>
 
@@ -48,21 +47,20 @@ inline std::wstring wstring_buffer_reinterpreted(max_input_bytes /
                                                  L'\0');
 inline std::wstring wstring_buffer_transcoded_wide(max_input_bytes, L'\0');
 
-inline auto make_input_views(span<const uint8_t> data)
+inline auto make_input_views(const uint8_t* data, size_t size)
 {
-    SCN_EXPECT(data.size() <= max_input_bytes);
+    SCN_EXPECT(size <= max_input_bytes);
 
     // narrow
-    string_buffer.resize(data.size());
-    std::copy(data.begin(), data.end(),
-              reinterpret_cast<uint8_t*>(&string_buffer[0]));
+    string_buffer.resize(size);
+    std::copy(data, data + size, reinterpret_cast<uint8_t*>(&string_buffer[0]));
     auto sv = std::string_view{string_buffer};
 
     // wide, bitwise reinterpret
     const auto wsv_reinterpret_size =
-        data.size() < sizeof(wchar_t) ? 1 : (data.size() / sizeof(wchar_t));
+        size < sizeof(wchar_t) ? 1 : (size / sizeof(wchar_t));
     wstring_buffer_reinterpreted.resize(wsv_reinterpret_size);
-    std::memcpy(wstring_buffer_reinterpreted.data(), data.data(), data.size());
+    std::memcpy(wstring_buffer_reinterpreted.data(), data, size);
     auto wsv_reintepreted = std::wstring_view{wstring_buffer_reinterpreted};
 
     // wide, transcode to correct encoding (utf16 or utf32)
@@ -115,21 +113,21 @@ auto& get_format_string_view_buffer()
 }
 
 template <typename CharT>
-using format_strings_view = span<const std::basic_string_view<CharT>>;
+using format_strings_type = std::vector<std::basic_string_view<CharT>>;
 
 template <typename CharT, typename... Args>
-format_strings_view<CharT> get_format_strings(Args... strings)
+const format_strings_type<CharT>& get_format_strings(Args... strings)
 {
     std::array<const CharT*, sizeof...(Args)> tmp = {{strings...}};
     auto& buf = get_format_string_view_buffer<CharT>();
     buf.resize(sizeof...(Args));
     std::copy(tmp.begin(), tmp.end(), buf.begin());
-    return {buf.data(), buf.size()};
+    return buf;
 }
 
 template <typename CharT, typename T, typename Source>
 void do_basic_run_for_type(Source& source,
-                           format_strings_view<CharT> format_strings)
+                           const format_strings_type<CharT>& format_strings)
 {
     // Regular scan
     for (const auto& f : format_strings) {
@@ -175,10 +173,10 @@ void do_basic_run_for_type(Source& source,
 }
 
 template <typename CharT, typename Source>
-void do_basic_run_for_source(Source&, format_strings_view<CharT>);
+void do_basic_run_for_source(Source&, const format_strings_type<CharT>&);
 
 template <typename CharT, typename Source>
-void do_basic_run(Source data, format_strings_view<CharT> format_strings)
+void do_basic_run(Source data, const format_strings_type<CharT>& format_strings)
 {
     do_basic_run_for_source<CharT>(data, format_strings);
     do_basic_run_for_source<CharT>(populate_noncontiguous(data),

@@ -17,8 +17,7 @@
 
 #include "fuzz.h"
 
-#include <scn/impl/algorithms/find_whitespace.h>
-#include <scn/impl/unicode/unicode.h>
+#include <scn/impl.h>
 
 namespace {
 template <typename Cb>

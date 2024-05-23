@@ -20,7 +20,7 @@
 namespace scn::fuzz {
 template <typename CharT, typename Source>
 void do_basic_run_for_source(Source& source,
-                             format_strings_view<CharT> format_strings)
+                             const format_strings_type<CharT>& format_strings)
 {
     do_basic_run_for_type<CharT, signed char>(source, format_strings);
     do_basic_run_for_type<CharT, unsigned char>(source, format_strings);
@@ -31,22 +31,22 @@ void do_basic_run_for_source(Source& source,
 }
 
 namespace {
-void run(span<const uint8_t> data)
+void run(const uint8_t* data, size_t size)
 {
-    if (data.size() > max_input_bytes || data.size() == 0) {
+    if (size > max_input_bytes || size == 0) {
         return;
     }
 
-    auto [sv, wsv_reinterpret, wsv_transcode] = make_input_views(data);
+    auto [sv, wsv_reinterpret, wsv_transcode] = make_input_views(data, size);
 
-    auto f =
+    const auto& f =
         get_format_strings<char>("{}", "{:i}", "{:d}", "{:L}", "{:x}", "{:b}",
                                  "{:o}", "{:B36}", "{:'}", "{:'L}");
     do_basic_run(sv, f);
 
-    auto wf = get_format_strings<wchar_t>(L"{}", L"{:i}", L"{:d}", L"{:L}",
-                                          L"{:x}", L"{:b}", L"{:o}", L"{:B36}",
-                                          L"{:'}", L"{:'L}");
+    const auto& wf = get_format_strings<wchar_t>(
+        L"{}", L"{:i}", L"{:d}", L"{:L}", L"{:x}", L"{:b}", L"{:o}", L"{:B36}",
+        L"{:'}", L"{:'L}");
     do_basic_run(wsv_reinterpret, wf);
     if (!wsv_transcode.empty()) {
         do_basic_run(wsv_transcode, wf);
@@ -57,6 +57,6 @@ void run(span<const uint8_t> data)
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-    scn::fuzz::run({data, size});
+    scn::fuzz::run(data, size);
     return 0;
 }

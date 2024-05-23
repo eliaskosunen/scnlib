@@ -47,13 +47,13 @@ void run_for_source(Source& source)
     run_for_type<std::basic_string_view<char_type>>(source);
 }
 
-void run(span<const uint8_t> data)
+void run(const uint8_t* data, size_t size)
 {
-    if (data.size() > max_input_bytes || data.size() == 0) {
+    if (size > max_input_bytes || size == 0) {
         return;
     }
 
-    auto [sv, wsv_reinterpret, wsv_transcode] = make_input_views(data);
+    auto [sv, wsv_reinterpret, wsv_transcode] = make_input_views(data, size);
 
     run_for_source(sv);
     run_for_source(wsv_reinterpret);
@@ -66,6 +66,6 @@ void run(span<const uint8_t> data)
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-    scn::fuzz::run({data, size});
+    scn::fuzz::run(data, size);
     return 0;
 }

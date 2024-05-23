@@ -1899,7 +1899,7 @@ auto read_code_point_into(Range range)
 
     if (len == 1) {
         ++it;
-        return {it, string_type{range.begin(), it}};
+        return {it, string_type(1, *range.begin())};
     }
 
     ranges::advance(it, static_cast<std::ptrdiff_t>(len), range.end());
@@ -5967,8 +5967,6 @@ auto skip_fill(Range range,
                bool want_skipped_width)
     -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
 {
-    SCN_EXPECT(!is_range_eof(range));
-
     using char_type = detail::char_t<Range>;
     using result_type = skip_fill_result<ranges::iterator_t<Range>>;
 
@@ -6055,8 +6053,6 @@ struct arg_reader {
     auto impl_prefix(Range rng, bool rd_skip_ws_before_read)
         -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
     {
-        SCN_EXPECT(!is_range_eof(rng));
-
         const bool need_skipped_width =
             specs.width != 0 || specs.precision != 0;
         using result_type = skip_fill_result<ranges::iterator_t<Range>>;
@@ -6099,8 +6095,6 @@ struct arg_reader {
                       std::ptrdiff_t value_width)
         -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
     {
-        SCN_EXPECT(!is_range_eof(rng));
-
         const bool need_skipped_width =
             specs.width != 0 || specs.precision != 0;
         using result_type = skip_fill_result<ranges::iterator_t<Range>>;
@@ -6142,8 +6136,6 @@ struct arg_reader {
     auto impl(Reader& rd, Range rng, T& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        SCN_EXPECT(!is_range_eof(rng));
-
         const bool need_skipped_width =
             specs.width != 0 || specs.precision != 0;
 
