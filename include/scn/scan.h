@@ -599,9 +599,10 @@ struct SCN_TRIVIAL_ABI expected_operations_base<T, E, false>
 private:
     template <typename Other>
     void construct_common(Other&& other) noexcept(
-        noexcept(construct(std::forward<Other>(other).get_value())) &&
-        noexcept(
-            construct_unexpected(std::forward<Other>(other).get_unexpected())))
+        noexcept(expected_storage_base<T, E>::construct(
+            std::forward<Other>(other).get_value())) &&
+        noexcept(expected_storage_base<T, E>::construct_unexpected(
+            std::forward<Other>(other).get_unexpected())))
     {
         if (other.has_value()) {
             this->construct(std::forward<Other>(other).get_value());
