@@ -209,30 +209,31 @@ Lower is better.
 
 ![Integer result, chart](benchmark/runtime/results/int.png)
 
-| Test                     | Test 1 `"single"` | Test 2 `"repeated"` |
-|:-------------------------|------------------:|--------------------:|
-| `scn::scan`              |              27.2 |                34.4 |
-| `scn::scan_value`        |              22.2 |                29.9 |
-| `scn::scan_int`          |              16.8 |                24.7 |
-| `std::stringstream`      |               112 |                56.2 |
-| `sscanf`                 |              72.1 |                 477 |
-| `strtol`                 |              16.5 |                24.5 |
-| `std::from_chars`        |              8.16 |                13.5 |
-| `fast_float::from_chars` |              7.23 |                12.0 |
+| Test                             | Test 1 `"single"` | Test 2 `"repeated"` | Test average |
+|:---------------------------------|------------------:|--------------------:|-------------:|
+| `scn::scan`                      |              23.8 |                30.4 |         27.1 |
+| `scn::scan_value`                |              20.5 |                27.4 |         24.0 |
+| `scn::scan_int`                  |              16.5 |                24.1 |         20.3 |
+| `scn::scan_int_exhaustive_valid` |              4.08 |                   - |         4.08 |
+| `std::stringstream`              |               117 |                53.9 |         85.5 |
+| `sscanf`                         |              71.3 |                 474 |        272.7 |
+| `strtol`                         |              16.3 |                23.8 |         20.1 |
+| `std::from_chars`                |              8.73 |                13.0 |         10.9 |
+| `fast_float::from_chars`         |              6.87 |                11.8 |         9.35 |
 
 #### Floating-point number parsing (`double`)
 
 ![Float result, chart](benchmark/runtime/results/float.png)
 
-| Test                     | Test 1 `"single"` | Test 2 `"repeated"` |
-|:-------------------------|------------------:|--------------------:|
-| `scn::scan`              |              66.3 |                82.7 |
-| `scn::scan_value`        |              61.9 |                76.7 |
-| `std::stringstream`      |               270 |                 272 |
-| `sscanf`                 |               161 |                 713 |
-| `strtod`                 |              85.1 |                 155 |
-| `std::from_chars`        |              15.7 |                29.1 |
-| `fast_float::from_chars` |              16.6 |                29.1 |
+| Test                     | Test 1 `"single"` | Test 2 `"repeated"` | Test Average |
+|:-------------------------|------------------:|--------------------:|-------------:|
+| `scn::scan`              |              55.8 |                63.7 |         59.7 |
+| `scn::scan_value`        |              52.1 |                58.8 |         55.5 |
+| `std::stringstream`      |               294 |                 271 |          283 |
+| `sscanf`                 |               159 |                 704 |          432 |
+| `strtod`                 |              79.1 |                 153 |          116 |
+| `std::from_chars`        |              18.0 |                28.1 |         23.0 |
+| `fast_float::from_chars` |              20.6 |                27.8 |         24.2 |
 
 #### String "word" (whitespace-separated character sequence) parsing (`string` and `string_view`)
 
@@ -240,12 +241,12 @@ Lower is better.
 
 | Test                           |      |
 |:-------------------------------|-----:|
-| `scn::scan<string>`            | 32.4 |
-| `scn::scan<string_view>`       | 25.2 |
-| `scn::scan_value<string>`      | 24.5 |
-| `scn::scan_value<string_view>` | 20.7 |
-| `std::stringstream`            |  127 |
-| `sscanf`                       | 99.7 |
+| `scn::scan<string>`            | 24.5 |
+| `scn::scan<string_view>`       | 22.2 |
+| `scn::scan_value<string>`      | 23.1 |
+| `scn::scan_value<string_view>` | 21.0 |
+| `std::stringstream`            |  134 |
+| `sscanf`                       | 58.4 |
 
 #### Conclusions
 
@@ -256,6 +257,7 @@ Lower is better.
 * `scn::scan_value` is slightly faster compared to `scn::scan`
 * `scn::scan_int` is faster than both `scn::scan` and `scn::scan_value`
 * `strtol` is ~on-par with `scn::scan_int`.
+* `scn::scan_int_exhaustive_valid` is blazing-fast.
 
 #### About
 
@@ -275,18 +277,16 @@ Above,
 
 The difference between "Test 1" and "Test 2" is most pronounced when using
 a `stringstream`, which is relatively expensive to construct,
-and seems to be adding around ~100ns of runtime.
+and seems to be adding around ~50ns of runtime.
 With `sscanf`, it seems like using the `%n` specifier and skipping whitespace
 are really expensive (~400ns of runtime).
 With `scn::scan` and `std::from_chars`, there's really no state to construct,
 and the results for "Test 1" and "Test 2" are thus quite similar.
 
-These benchmarks were run on a Fedora 39 machine, running Linux kernel version
-6.6.8, with an AMD Ryzen 7 5700X processor, and compiled with clang version
-17.0.6,
+These benchmarks were run on a Fedora 40 machine, running Linux kernel version
+6.8.9, with an AMD Ryzen 7 5700X processor, and compiled with clang version 18.1.1,
 with `-O3 -DNDEBUG -march=haswell` and LTO enabled.
-C++20 was used, with the library-bundled ranges implementation (`nanorange`).
-These benchmarks were run on 2024-01-09 (commit 629c3c5).
+These benchmarks were run on 2024-05-23 (commit 3fd830de).
 
 The source code for these benchmarks can be found in the `benchmark` directory.
 You can run these benchmarks yourself by enabling the CMake

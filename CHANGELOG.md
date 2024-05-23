@@ -108,6 +108,8 @@ auto result = std::scan<int>("42  ", "{:<.3}");
 // result->value() == 42
 // result->range() == " "
 ```
+
+ * In general, there seems to be a ~10% to 20% improvement in run-time performance.
  
 ### Changes
 
