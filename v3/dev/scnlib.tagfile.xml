@@ -198,120 +198,120 @@
     <templarg></templarg>
     <templarg></templarg>
     <member kind="function">
-      <type>constexpr</type>
+      <type>constexpr SCN_IMPLICIT</type>
       <name>expected</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a6f2f302f05730a53c5e080398a01c4e1</anchor>
-      <arglist>(U &amp;&amp;val)</arglist>
+      <anchor>ab0ede791bf9f0f4da21cfd9c9e96d952</anchor>
+      <arglist>(U &amp;&amp;val) noexcept(std::is_nothrow_constructible_v&lt; base, std::in_place_t, U &amp;&amp; &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>expected</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a9be136013b9dc083a4f0edd52de4b9ec</anchor>
-      <arglist>(std::in_place_t, Args &amp;&amp;... args)</arglist>
+      <anchor>ac04a05ab9b458b8199a100f26df047ff</anchor>
+      <arglist>(std::in_place_t, Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; base, std::in_place_t, Args &amp;&amp;... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>expected</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a9a4a554f55ff36b103a63d30999efa1e</anchor>
-      <arglist>(unexpect_t, Args &amp;&amp;... args)</arglist>
+      <anchor>a0b4be5dc98e2f248f7570ad9bced65d3</anchor>
+      <arglist>(unexpect_t, Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; base, unexpect_t, Args &amp;&amp;... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>decltype(auto)</type>
       <name>emplace</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>af56e7e1f1caa4e01f15310fe32ac48df</anchor>
-      <arglist>(Args &amp;&amp;... args)</arglist>
+      <anchor>aa75fb5aee07b1a60f4ed9e96a6da602d</anchor>
+      <arglist>(Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; T, Args... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr error_type &amp;</type>
       <name>error</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a1cf23a75fd9e87a66d4e5539e0d3b968</anchor>
-      <arglist>() &amp;</arglist>
+      <anchor>ab4d3e2664179f1b3aed37f92645f083f</anchor>
+      <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>value</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>aa759914c72bd6b9137bff5073d8ced85</anchor>
-      <arglist>() &amp;</arglist>
+      <anchor>a9a4cf2d34c7bd3275eb2d4907fe3571e</anchor>
+      <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>operator*</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a07d7a97f1258d71bc27d2810f8278639</anchor>
-      <arglist>() &amp;</arglist>
+      <anchor>aee58cbcd4c0b8b1a3634d923b705e372</anchor>
+      <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr T</type>
       <name>value_or</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a6d9136e7cdeb7bbc8a8681a18cb807a9</anchor>
-      <arglist>(U &amp;&amp;default_value) const &amp;</arglist>
+      <anchor>ae6a19e324a2a05087781b86e6dfbe826</anchor>
+      <arglist>(U &amp;&amp;default_value) const &amp;noexcept(std::is_nothrow_copy_constructible_v&lt; T &gt; &amp;&amp;std::is_nothrow_constructible_v&lt; T, U &amp;&amp; &gt;)</arglist>
     </member>
   </compound>
   <compound kind="class">
     <name>expected&lt; T, scan_error &gt;</name>
     <filename>classscn_1_1expected.html</filename>
     <member kind="function">
-      <type>constexpr</type>
+      <type>constexpr SCN_IMPLICIT</type>
       <name>expected</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a6f2f302f05730a53c5e080398a01c4e1</anchor>
-      <arglist>(U &amp;&amp;val)</arglist>
+      <anchor>ab0ede791bf9f0f4da21cfd9c9e96d952</anchor>
+      <arglist>(U &amp;&amp;val) noexcept(std::is_nothrow_constructible_v&lt; base, std::in_place_t, U &amp;&amp; &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>expected</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a9be136013b9dc083a4f0edd52de4b9ec</anchor>
-      <arglist>(std::in_place_t, Args &amp;&amp;... args)</arglist>
+      <anchor>ac04a05ab9b458b8199a100f26df047ff</anchor>
+      <arglist>(std::in_place_t, Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; base, std::in_place_t, Args &amp;&amp;... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>expected</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a9a4a554f55ff36b103a63d30999efa1e</anchor>
-      <arglist>(unexpect_t, Args &amp;&amp;... args)</arglist>
+      <anchor>a0b4be5dc98e2f248f7570ad9bced65d3</anchor>
+      <arglist>(unexpect_t, Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; base, unexpect_t, Args &amp;&amp;... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>decltype(auto)</type>
       <name>emplace</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>af56e7e1f1caa4e01f15310fe32ac48df</anchor>
-      <arglist>(Args &amp;&amp;... args)</arglist>
+      <anchor>aa75fb5aee07b1a60f4ed9e96a6da602d</anchor>
+      <arglist>(Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; T, Args... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr error_type &amp;</type>
       <name>error</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a1cf23a75fd9e87a66d4e5539e0d3b968</anchor>
-      <arglist>() &amp;</arglist>
+      <anchor>ab4d3e2664179f1b3aed37f92645f083f</anchor>
+      <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>value</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>aa759914c72bd6b9137bff5073d8ced85</anchor>
-      <arglist>() &amp;</arglist>
+      <anchor>a9a4cf2d34c7bd3275eb2d4907fe3571e</anchor>
+      <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>operator*</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a07d7a97f1258d71bc27d2810f8278639</anchor>
-      <arglist>() &amp;</arglist>
+      <anchor>aee58cbcd4c0b8b1a3634d923b705e372</anchor>
+      <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr T</type>
       <name>value_or</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a6d9136e7cdeb7bbc8a8681a18cb807a9</anchor>
-      <arglist>(U &amp;&amp;default_value) const &amp;</arglist>
+      <anchor>ae6a19e324a2a05087781b86e6dfbe826</anchor>
+      <arglist>(U &amp;&amp;default_value) const &amp;noexcept(std::is_nothrow_copy_constructible_v&lt; T &gt; &amp;&amp;std::is_nothrow_constructible_v&lt; T, U &amp;&amp; &gt;)</arglist>
     </member>
   </compound>
   <compound kind="class">
@@ -448,36 +448,36 @@
       <type>decltype(auto)</type>
       <name>emplace</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>af56e7e1f1caa4e01f15310fe32ac48df</anchor>
-      <arglist>(Args &amp;&amp;... args)</arglist>
+      <anchor>aa75fb5aee07b1a60f4ed9e96a6da602d</anchor>
+      <arglist>(Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; T, Args... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr error_type &amp;</type>
       <name>error</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a1cf23a75fd9e87a66d4e5539e0d3b968</anchor>
-      <arglist>() &amp;</arglist>
+      <anchor>ab4d3e2664179f1b3aed37f92645f083f</anchor>
+      <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>value</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>aa759914c72bd6b9137bff5073d8ced85</anchor>
-      <arglist>() &amp;</arglist>
+      <anchor>a9a4cf2d34c7bd3275eb2d4907fe3571e</anchor>
+      <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>operator*</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a07d7a97f1258d71bc27d2810f8278639</anchor>
-      <arglist>() &amp;</arglist>
+      <anchor>aee58cbcd4c0b8b1a3634d923b705e372</anchor>
+      <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr T</type>
       <name>value_or</name>
       <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a6d9136e7cdeb7bbc8a8681a18cb807a9</anchor>
-      <arglist>(U &amp;&amp;default_value) const &amp;</arglist>
+      <anchor>ae6a19e324a2a05087781b86e6dfbe826</anchor>
+      <arglist>(U &amp;&amp;default_value) const &amp;noexcept(std::is_nothrow_copy_constructible_v&lt; T &gt; &amp;&amp;std::is_nothrow_constructible_v&lt; T, U &amp;&amp; &gt;)</arglist>
     </member>
   </compound>
   <compound kind="class">
