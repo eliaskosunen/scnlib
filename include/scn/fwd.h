@@ -596,6 +596,14 @@ SCN_GCC_POP
 #define SCN_HAS_TRIVIAL_ABI 0
 #endif
 
+// Detect explicit(bool)
+#if defined(__cpp_conditional_explicit) && \
+    __cpp_conditional_explicit >= 201806L && SCN_STD >= SCN_STD_20
+#define SCN_HAS_CONDITIONAL_EXPLICIT 1
+#else
+#define SCN_HAS_CONDITIONAL_EXPLICIT 0
+#endif
+
 // Detect <charconv>
 
 #if SCN_STD >= SCN_STD_17
@@ -828,6 +836,13 @@ SCN_GCC_POP
 #define SCN_TRIVIAL_ABI [[clang::trivial_abi]]
 #else
 #define SCN_TRIVIAL_ABI /*trivial_abi*/
+#endif
+
+// SCN_IMPLICIT
+#if SCN_HAS_CONDITIONAL_EXPLICIT
+#define SCN_IMPLICIT explicit(false)
+#else
+#define SCN_IMPLICIT /*implicit*/
 #endif
 
 // SCN_LIKELY & SCN_UNLIKELY
