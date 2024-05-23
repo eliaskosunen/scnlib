@@ -89,6 +89,7 @@ const auto& populate_noncontiguous(Source& source)
 {
     using char_type = ranges::range_value_t<Source>;
     auto& deque = get_noncontiguous_buffer<char_type>();
+    deque.clear();
     std::copy(ranges::begin(source), ranges::end(source),
               std::back_inserter(deque));
     return deque;
