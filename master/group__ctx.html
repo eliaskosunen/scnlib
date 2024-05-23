@@ -63,6 +63,7 @@
         <nav class="m-block m-default poxy-toc" id="poxy-toc">
           <h3>Contents</h3>
           <ul>
+            <li><a href="#user-defined">Scanning user-defined types</a></li>
             <li>
               Reference
               <ul>
@@ -71,6 +72,31 @@
             </li>
           </ul>
         </nav>
+<section id="user-defined"><h2><a href="#user-defined">Scanning user-defined types</a></h2><p>User-defined types can be scanned by specializing the class template <code><a class="m-doc" href="structscn_1_1scanner.html">scn::<wbr/>scanner</a></code>.</p><pre class="m-code"><span class="k">struct</span> <span class="nc">mytype</span> <span class="p">{</span>
+  <span class="k">int</span> <span class="n">key</span><span class="p">;</span>
+  <span class="nn">std</span><span class="o">::</span><span class="nc">string</span> <span class="n">value</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">scanner</span><span class="o">&lt;</span><span class="n">mytype</span><span class="o">&gt;</span> <span class="p">{</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">ParseContext</span><span class="o">&gt;</span>
+  <span class="k">constexpr</span> <span class="k">auto</span> <span class="nf">parse</span><span class="p">(</span><span class="n">ParseCtx</span><span class="o">&amp;</span> <span class="n">pctx</span><span class="p">)</span>
+    <span class="o">-&gt;</span> <span class="n">scan_expected</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">ParseContext</span><span class="o">::</span><span class="n">iterator</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="c1">// parse() implementation just returning begin():</span>
+    <span class="c1">// only permits empty format specifiers</span>
+    <span class="k">return</span> <span class="n">pctx</span><span class="p">.</span><span class="nf">begin</span><span class="p">();</span>
+  <span class="p">}</span>
+
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Context</span><span class="o">&gt;</span>
+  <span class="k">auto</span> <span class="nf">scan</span><span class="p">(</span><span class="n">mytype</span><span class="o">&amp;</span> <span class="n">val</span><span class="p">,</span> <span class="n">Context</span><span class="o">&amp;</span> <span class="n">ctx</span><span class="p">)</span>
+    <span class="o">-&gt;</span> <span class="n">scan_expected</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Context</span><span class="o">::</span><span class="n">iterator</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="p">,</span> <span class="nn">std</span><span class="o">::</span><span class="nc">string</span><span class="o">&gt;</span><span class="p">(</span><span class="n">ctx</span><span class="p">.</span><span class="nf">range</span><span class="p">(),</span> <span class="s">"{}: {}"</span><span class="p">)</span>
+      <span class="p">.</span><span class="nf">transform</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="n">result</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nn">std</span><span class="o">::</span><span class="nf">tie</span><span class="p">(</span><span class="n">val</span><span class="p">.</span><span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">.</span><span class="n">value</span><span class="p">)</span> <span class="o">=</span> <span class="nn">std</span><span class="o">::</span><span class="nf">move</span><span class="p">(</span><span class="n">result</span><span class="o">-&gt;</span><span class="nf">values</span><span class="p">());</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">.</span><span class="nf">begin</span><span class="p">();</span>
+      <span class="p">});</span>
+  <span class="p">}</span>
+<span class="p">};</span></pre><p>See also <a class="m-doc" href="guide.html#g-usertypes">User types</a></p></section>
         <section id="nested-classes">
           <h2><a href="#nested-classes">Classes</a></h2>
           <dl class="m-doc">
@@ -143,6 +169,7 @@
         
 <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib" target="_blank">GitHub</a>
 • <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/issues" target="_blank">Report an issue</a>
+• <a href="poxy_changelog.html">Changelog</a>
 • <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/blob/dev/LICENSE" target="_blank">License</a>
 • <a download="" href="scnlib.tagfile.xml" target="_blank" type="text/xml">Doxygen tagfile</a>
 <br/><br/>

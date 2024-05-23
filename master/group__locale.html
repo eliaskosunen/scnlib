@@ -83,10 +83,10 @@
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Locale</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/void_t.html" target="_blank">std::<wbr/>void_t</a>&lt;decltype(Locale::classic())&gt;</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gad2f34da1b90202d28a82bf8caa75ca4d">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga579fa74ff6da85cb5b8f101d93ce8e09">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               scan_format_string&lt;Source, Args...&gt; format,
-              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; default_args) -&gt; scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
+              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; initial_args) -&gt; scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
@@ -114,15 +114,15 @@
     <span class="nn">std</span><span class="o">::</span><span class="nc">locale</span><span class="p">{</span><span class="s">"fi_FI.UTF-8"</span><span class="p">},</span> <span class="s">"3,14, "</span><span class="p">{</span><span class="o">:L</span><span class="p">}</span><span class="s">");</span>
 <span class="c1">// result-&gt;value() == 3.14</span></pre><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scan()</a></p></aside>
           </div></section>
-          <section class="m-doc-details" id="gad2f34da1b90202d28a82bf8caa75ca4d"><div>
+          <section class="m-doc-details" id="ga579fa74ff6da85cb5b8f101d93ce8e09"><div>
             <h3>
               <div class="m-doc-template">
                 template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Locale</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/void_t.html" target="_blank">std::<wbr/>void_t</a>&lt;decltype(Locale::classic())&gt;</span></span>&gt;
               </div>
-              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gad2f34da1b90202d28a82bf8caa75ca4d">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
+              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga579fa74ff6da85cb5b8f101d93ce8e09">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               scan_format_string&lt;Source, Args...&gt; format,
-              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; default_args) -&gt; scan_result_type&lt; Source, Args... &gt;</span></span>
+              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</span></span>
             </h3>
 <p><code>scan</code> with a locale and default values</p><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scan()</a></p></aside>
           </div></section>
@@ -186,6 +186,7 @@
         
 <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib" target="_blank">GitHub</a>
 • <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/issues" target="_blank">Report an issue</a>
+• <a href="poxy_changelog.html">Changelog</a>
 • <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/blob/dev/LICENSE" target="_blank">License</a>
 • <a download="" href="scnlib.tagfile.xml" target="_blank" type="text/xml">Doxygen tagfile</a>
 <br/><br/>

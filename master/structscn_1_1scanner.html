@@ -21,7 +21,7 @@
   <meta content="Poxy v0.17.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
-<body>
+<body class="poxy-has-toc">
 <header><nav id="navigation">
   <div class="m-container">
     <div class="m-row">
@@ -61,7 +61,86 @@
           <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param">typename CharT = char</span>, <span class="m-doc-template-param">typename Enable = void</span></span>&gt;</div>
           <span class="m-breadcrumb"><a href="namespacescn.html">scn</a>::<wbr/></span>scanner <span class="m-thin">struct</span>
         </h1>
+        <nav class="m-block m-default poxy-toc" id="poxy-toc">
+          <h3>Contents</h3>
+          <ul>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#typeless-methods">Constructors, destructors, conversion operators</a></li>
+                <li><a href="#pub-methods">Public functions</a></li>
+              </ul>
+            </li>
+          </ul>
+        </nav>
 <p>Scanner type, can be customized to enable scanning of user-defined types</p>
+        <section id="typeless-methods">
+          <h2><a href="#typeless-methods">Constructors, destructors, conversion operators</a></h2>
+          <dl class="m-doc">
+            <dt id="a96f00cd68bb1770cf4212d4f27ae1b15">
+              <span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#a96f00cd68bb1770cf4212d4f27ae1b15">scanner</a>(</span><span class="m-doc-wrap">) <span class="m-label m-flat m-danger">deleted</span></span>
+            </dt>
+            <dd>Default fallback implementation, not constructible, always an error.</dd>
+          </dl>
+        </section>
+        <section id="pub-methods">
+          <h2><a href="#pub-methods">Public functions</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename ParseContext</span></span>&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#a9769f0277c91431282203ae727fb63c6">parse</a>(</span><span class="m-doc-wrap">ParseContext&amp; pctx) -&gt; expected&lt; typename ParseContext::iterator, scan_error &gt; -&gt; auto <span class="m-label m-flat m-danger">deleted</span> <span class="m-label m-flat m-primary">constexpr</span></span>
+            </dt>
+            <dd></dd>
+            <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Context</span></span>&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#a38a71e2cc328d6dd35e31fbe34feb1ca">scan</a>(</span><span class="m-doc-wrap">T&amp; value,
+              Context&amp; ctx) const -&gt; expected&lt; typename Context::iterator, scan_error &gt; -&gt; auto <span class="m-label m-flat m-danger">deleted</span></span>
+            </dt>
+            <dd></dd>
+          </dl>
+        </section>
+        <section>
+          <h2>Function documentation</h2>
+          <section class="m-doc-details" id="a9769f0277c91431282203ae727fb63c6"><div>
+            <h3>
+              <div class="m-doc-template">
+                <span class="m-doc-template-parent">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param">typename CharT</span>, <span class="m-doc-template-param">typename Enable</span></span>&gt;</span>
+                <br/>
+                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename ParseContext</span></span>&gt;
+              </div>
+              <span class="m-doc-wrap-bumper">auto <span class="m-doc-details-prefix">scn::scanner::</span></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#a9769f0277c91431282203ae727fb63c6">parse</a>(</span><span class="m-doc-wrap">ParseContext&amp; pctx) -&gt; expected&lt; typename ParseContext::iterator, scan_error &gt; <span class="m-label m-danger">deleted</span> <span class="m-label m-primary">constexpr</span></span></span>
+            </h3>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>On success, an iterator pointing to the <code>}</code> character at the end of the replacement field in the format string. Will cause an error, if the returned iterator doesn't point to a <code>}</code> character.</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>Parse the format string contained in <code>pctx</code>, and populate <code>*this</code> with the parsed format specifier values, to be used later in <code><a class="m-doc" href="#a38a71e2cc328d6dd35e31fbe34feb1ca">scan()</a></code>.</p><p>Should be <code>constexpr</code> to allow for compile-time format string checking.</p><p>A common pattern is to inherit a <code>scanner</code> implementation from another <code>scanner</code>, while only overriding <code><a class="m-doc" href="#a38a71e2cc328d6dd35e31fbe34feb1ca">scan()</a></code>, and keeping the same <code><a class="m-doc" href="#a9769f0277c91431282203ae727fb63c6">parse()</a></code>, or at least delegating to it.</p>
+          </div></section>
+          <section class="m-doc-details" id="a38a71e2cc328d6dd35e31fbe34feb1ca"><div>
+            <h3>
+              <div class="m-doc-template">
+                <span class="m-doc-template-parent">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param">typename CharT</span>, <span class="m-doc-template-param">typename Enable</span></span>&gt;</span>
+                <br/>
+                template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Context</span></span>&gt;
+              </div>
+              <span class="m-doc-wrap-bumper">auto <span class="m-doc-details-prefix">scn::scanner::</span></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#a38a71e2cc328d6dd35e31fbe34feb1ca">scan</a>(</span><span class="m-doc-wrap">T&amp; value,
+              Context&amp; ctx) const -&gt; expected&lt; typename Context::iterator, scan_error &gt; <span class="m-label m-danger">deleted</span></span></span>
+            </h3>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>On success, an iterator pointing past the last character consumed from <code>ctx</code>.</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>Scan a value of type <code>T</code> from <code>ctx</code> into <code>value</code>, using the format specs in <code>*this</code>, populated by <code><a class="m-doc" href="#a9769f0277c91431282203ae727fb63c6">parse()</a></code>.</p><p><code>value</code> is guaranteed to only be default initialized.</p>
+          </div></section>
+        </section>
       </div>
     </div>
   </div>
@@ -109,6 +188,7 @@
         
 <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib" target="_blank">GitHub</a>
 • <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/issues" target="_blank">Report an issue</a>
+• <a href="poxy_changelog.html">Changelog</a>
 • <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/blob/dev/LICENSE" target="_blank">License</a>
 • <a download="" href="scnlib.tagfile.xml" target="_blank" type="text/xml">Doxygen tagfile</a>
 <br/><br/>
