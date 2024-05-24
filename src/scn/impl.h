@@ -4098,11 +4098,10 @@ private:
     template <typename T>
     T setsign(T value) const
     {
-        SCN_EXPECT(std::isnan(value) || value >= static_cast<T>(0.0));
         if (m_sign == sign_type::minus_sign) {
-            return -value;
+            return std::copysign(value, -1.0);
         }
-        return value;
+        return std::copysign(value, 1.0);
     }
 
     template <typename T>
