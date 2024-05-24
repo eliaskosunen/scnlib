@@ -4099,9 +4099,9 @@ private:
     T setsign(T value) const
     {
         if (m_sign == sign_type::minus_sign) {
-            return std::copysign(value, -1.0);
+            return std::copysign(value, T{-1.0});
         }
-        return std::copysign(value, 1.0);
+        return std::copysign(value, T{1.0});
     }
 
     template <typename T>
