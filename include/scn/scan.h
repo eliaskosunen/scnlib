@@ -859,16 +859,25 @@ struct SCN_TRIVIAL_ABI expected_operations_base<T, E, false>
         construct_common(std::move(other));
     }
 
-    expected_operations_base&
-    operator=(const expected_operations_base& other) noexcept(
-        noexcept(assign_common(other)))
+    expected_operations_base& operator=(const expected_operations_base& other)
+    // gcc 11 and lower evaluate noexcept in a weird context
+#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
+        noexcept(noexcept(
+            SCN_DECLVAL(expected_operations_base&).assign_common(other)))
+#else
+        noexcept(noexcept(assign_common(other)))
+#endif
     {
         assign_common(other);
         return *this;
     }
-    expected_operations_base&
-    operator=(expected_operations_base&& other) noexcept(
-        noexcept(assign_common(std::move(other))))
+    expected_operations_base& operator=(expected_operations_base&& other)
+#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
+        noexcept(noexcept(SCN_DECLVAL(expected_operations_base&)
+                              .assign_common(std::move(other))))
+#else
+        noexcept(noexcept(assign_common(std::move(other))))
+#endif
     {
         assign_common(std::move(other));
         return *this;
@@ -894,11 +903,27 @@ private:
     }
 
     template <typename Other>
-    void assign_common(Other&& other) noexcept(
-        noexcept(reassign_value(std::forward<Other>(other))) &&
-        noexcept(reassign_unexpected(std::forward<Other>(other))) &&
-        noexcept(assign_value_over_unexpected(std::forward<Other>(other))) &&
-        noexcept(assign_unexpected_over_value(std::forward<Other>(other))))
+    void assign_common(Other&& other)
+#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
+        noexcept(
+            noexcept(SCN_DECLVAL(expected_operations_base&)
+                         .reassign_value(std::forward<Other>(other))) &&
+            noexcept(SCN_DECLVAL(expected_operations_base&)
+                         .reassign_unexpected(std::forward<Other>(other))) &&
+            noexcept(SCN_DECLVAL(expected_operations_base&)
+                         .assign_value_over_unexpected(
+                             std::forward<Other>(other))) &&
+            noexcept(
+                SCN_DECLVAL(expected_operations_base&)
+                    .assign_unexpected_over_value(std::forward<Other>(other))))
+#else
+        noexcept(
+            noexcept(reassign_value(std::forward<Other>(other))) &&
+            noexcept(reassign_unexpected(std::forward<Other>(other))) &&
+            noexcept(
+                assign_value_over_unexpected(std::forward<Other>(other))) &&
+            noexcept(assign_unexpected_over_value(std::forward<Other>(other))))
+#endif
     {
         if (this->has_value()) {
             if (other.has_value()) {
