@@ -19,6 +19,8 @@
 
 #include <scn/impl.h>
 
+#include <deque>
+
 using namespace std::string_view_literals;
 
 // read_all
