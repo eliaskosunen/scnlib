@@ -134,6 +134,7 @@ void do_basic_run_for_type(Source& source,
     for (const auto& f : format_strings) {
         auto it = scn::ranges::begin(source);
         while (true) {
+            SCN_EXPECT(it <= scn::ranges::end(source));
             auto result = scn::scan<T>(
                 scn::ranges::subrange{it, scn::ranges::end(source)},
                 scn::runtime_format(f));
@@ -148,6 +149,7 @@ void do_basic_run_for_type(Source& source,
     for (const auto& f : format_strings) {
         auto it = scn::ranges::begin(source);
         while (true) {
+            SCN_EXPECT(it <= scn::ranges::end(source));
             auto result = scn::scan<T>(
                 global_locale,
                 scn::ranges::subrange{it, scn::ranges::end(source)},
@@ -163,6 +165,7 @@ void do_basic_run_for_type(Source& source,
     {
         auto it = scn::ranges::begin(source);
         while (true) {
+            SCN_EXPECT(it <= scn::ranges::end(source));
             auto result = scn::scan_value<T>(
                 scn::ranges::subrange{it, scn::ranges::end(source)});
             if (!result) {

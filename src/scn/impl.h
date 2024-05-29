@@ -3333,8 +3333,7 @@ auto parse_integer_prefix(Range range, int base) -> eof_expected<
     if (parsed_zero) {
         if (digits_begin_it == range.end() ||
             char_to_int(*digits_begin_it) >= 8) {
-            digits_begin_it =
-                ranges::prev_backtrack(digits_begin_it, range.begin());
+            digits_begin_it = base_prefix_begin_it;
         }
         else {
             parsed_zero = false;

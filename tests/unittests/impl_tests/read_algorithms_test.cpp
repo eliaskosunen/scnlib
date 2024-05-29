@@ -21,10 +21,24 @@
 
 using namespace std::string_view_literals;
 
-// FIXME
-#if 0
-
 // read_all
+
+auto make_non_contiguous_buffer_range(std::string_view in)
+{
+    static std::deque<char> mem;
+    mem.clear();
+    std::copy(in.begin(), in.end(), std::back_inserter(mem));
+
+    static std::optional<
+        scn::detail::basic_scan_forward_buffer_impl<std::deque<char>>>
+        buffer;
+    buffer = std::nullopt;
+    buffer.emplace(mem);
+
+    return scn::ranges::subrange{
+        scn::detail::basic_scan_buffer<char>::forward_iterator{&*buffer, 0},
+        scn::ranges::default_sentinel};
+}
 
 TEST(ReadAllTest, Contiguous)
 {
@@ -34,14 +48,9 @@ TEST(ReadAllTest, Contiguous)
 }
 TEST(ReadAllTest, NonContiguous)
 {
-    auto src = scn::erased_range{"foo"sv};
+    auto src = make_non_contiguous_buffer_range("foo");
     auto it = scn::impl::read_all(src);
     EXPECT_EQ(it, src.end());
-}
-TEST(ReadAllTest, NonBorrowed)
-{
-    auto it = scn::impl::read_all(scn::erased_range{"foo"sv});
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
 }
 
 // read_code_unit
@@ -55,17 +64,10 @@ TEST(ReadCodeUnitTest, Contiguous)
 }
 TEST(ReadCodeUnitTest, NonContiguous)
 {
-    auto src = scn::erased_range{"foo"sv};
+    auto src = make_non_contiguous_buffer_range("foo");
     auto it = scn::impl::read_code_unit(src);
     ASSERT_TRUE(it);
     EXPECT_EQ(*it, scn::ranges::next(src.begin()));
-}
-TEST(ReadCodeUnitTest, NonBorrowed)
-{
-    auto it = scn::impl::read_code_unit(scn::erased_range{"foo"sv});
-    ASSERT_TRUE(it);
-    static_assert(std::is_same_v<decltype(it),
-                                 scn::scan_expected<scn::ranges::dangling>>);
 }
 TEST(ReadCodeUnitTest, ContiguousEnd)
 {
@@ -75,13 +77,8 @@ TEST(ReadCodeUnitTest, ContiguousEnd)
 }
 TEST(ReadCodeUnitTest, NonContiguousEnd)
 {
-    auto src = scn::erased_range{""sv};
+    auto src = make_non_contiguous_buffer_range("");
     auto it = scn::impl::read_code_unit(src);
-    ASSERT_FALSE(it);
-}
-TEST(ReadCodeUnitTest, NonBorrowedEnd)
-{
-    auto it = scn::impl::read_code_unit(scn::erased_range{""sv});
     ASSERT_FALSE(it);
 }
 
@@ -96,18 +93,10 @@ TEST(ReadExactlyNCodeUnitsTest, ReadAllContiguous)
 }
 TEST(ReadExactlyNCodeUnitsTest, ReadAllNonContiguous)
 {
-    auto src = scn::erased_range{"foo"sv};
+    auto src = make_non_contiguous_buffer_range("foo");
     auto it = scn::impl::read_exactly_n_code_units(src, 3);
     ASSERT_TRUE(it);
     EXPECT_EQ(*it, src.end());
-}
-TEST(ReadExactlyNCodeUnitsTest, ReadAllNonBorrowed)
-{
-    auto it =
-        scn::impl::read_exactly_n_code_units(scn::erased_range{"foo"sv}, 3);
-    ASSERT_TRUE(it);
-    static_assert(std::is_same_v<decltype(it),
-                                 scn::scan_expected<scn::ranges::dangling>>);
 }
 TEST(ReadExactlyNCodeUnitsTest, ReadLessContiguous)
 {
@@ -118,16 +107,10 @@ TEST(ReadExactlyNCodeUnitsTest, ReadLessContiguous)
 }
 TEST(ReadExactlyNCodeUnitsTest, ReadLessNonContiguous)
 {
-    auto src = scn::erased_range{"foo"sv};
+    auto src = make_non_contiguous_buffer_range("foo");
     auto it = scn::impl::read_exactly_n_code_units(src, 2);
     ASSERT_TRUE(it);
     EXPECT_EQ(*it, scn::ranges::next(src.begin(), 2));
-}
-TEST(ReadExactlyNCodeUnitsTest, ReadLessNonBorrowed)
-{
-    auto it =
-        scn::impl::read_exactly_n_code_units(scn::erased_range{"foo"sv}, 2);
-    ASSERT_TRUE(it);
 }
 TEST(ReadExactlyNCodeUnitsTest, ReadMoreContiguous)
 {
@@ -137,14 +120,8 @@ TEST(ReadExactlyNCodeUnitsTest, ReadMoreContiguous)
 }
 TEST(ReadExactlyNCodeUnitsTest, ReadMoreNonContiguous)
 {
-    auto src = scn::erased_range{"foo"sv};
+    auto src = make_non_contiguous_buffer_range("foo");
     auto it = scn::impl::read_exactly_n_code_units(src, 4);
-    ASSERT_FALSE(it);
-}
-TEST(ReadExactlyNCodeUnitsTest, ReadMoreNonBorrowed)
-{
-    auto it =
-        scn::impl::read_exactly_n_code_units(scn::erased_range{"foo"sv}, 4);
     ASSERT_FALSE(it);
 }
 
@@ -155,46 +132,28 @@ TEST(ReadCodePointIntoTest, SingleCodeUnitCodePointFromContiguous)
     auto src = "ab"sv;
     auto [it, cp] = scn::impl::read_code_point_into(src);
     EXPECT_EQ(it, src.begin() + 1);
-    EXPECT_EQ(cp.view(), "a"sv);
-    EXPECT_FALSE(cp.stores_allocated_string());
+    EXPECT_EQ(cp, "a");
 }
 TEST(ReadCodePointIntoTest, SingleCodeUnitCodePointFromNonContiguous)
 {
-    auto src = scn::erased_range{"ab"sv};
+    auto src = make_non_contiguous_buffer_range("ab");
     auto [it, cp] = scn::impl::read_code_point_into(src);
     EXPECT_EQ(it, scn::ranges::next(src.begin()));
-    EXPECT_EQ(cp.view(), "a"sv);
-    EXPECT_TRUE(cp.stores_allocated_string());
-}
-TEST(ReadCodePointIntoTest, SingleCodeUnitCodePointFromNonBorrowed)
-{
-    auto [it, cp] = scn::impl::read_code_point_into(scn::erased_range{"ab"sv});
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
-    EXPECT_EQ(cp.view(), "a"sv);
-    EXPECT_TRUE(cp.stores_allocated_string());
+    EXPECT_EQ(cp, "a"sv);
 }
 TEST(ReadCodePointIntoTest, MultipleCodeUnitCodePointFromContiguous)
 {
     auto src = "äö"sv;
     auto [it, cp] = scn::impl::read_code_point_into(src);
     EXPECT_EQ(it, src.begin() + 2);
-    EXPECT_EQ(cp.view(), "ä"sv);
-    EXPECT_FALSE(cp.stores_allocated_string());
+    EXPECT_EQ(cp, "ä"sv);
 }
 TEST(ReadCodePointIntoTest, MultipleCodeUnitCodePointFromNonContiguous)
 {
-    auto src = scn::erased_range{"äö"sv};
+    auto src = make_non_contiguous_buffer_range("äö");
     auto [it, cp] = scn::impl::read_code_point_into(src);
     EXPECT_EQ(it, scn::ranges::next(src.begin(), 2));
-    EXPECT_EQ(cp.view(), "ä"sv);
-    EXPECT_TRUE(cp.stores_allocated_string());
-}
-TEST(ReadCodePointIntoTest, MultipleCodeUnitCodePointFromNonBorrowed)
-{
-    auto [it, cp] = scn::impl::read_code_point_into(scn::erased_range{"äö"sv});
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
-    EXPECT_EQ(cp.view(), "ä"sv);
-    EXPECT_TRUE(cp.stores_allocated_string());
+    EXPECT_EQ(cp, "ä"sv);
 }
 
 // read_exactly_n_code_points
@@ -208,18 +167,10 @@ TEST(ReadExactlyNCodePointsTest, ReadAllContiguous)
 }
 TEST(ReadExactlyNCodePointsTest, ReadAllNonContiguous)
 {
-    auto src = scn::erased_range{"aäö"sv};
+    auto src = make_non_contiguous_buffer_range("aäö");
     auto it = scn::impl::read_exactly_n_code_points(src, 3);
     ASSERT_TRUE(it);
     EXPECT_EQ(*it, src.end());
-}
-TEST(ReadExactlyNCodePointsTest, ReadAllNonBorrowed)
-{
-    auto it =
-        scn::impl::read_exactly_n_code_points(scn::erased_range{"aäö"sv}, 3);
-    ASSERT_TRUE(it);
-    static_assert(std::is_same_v<decltype(it),
-                                 scn::scan_expected<scn::ranges::dangling>>);
 }
 TEST(ReadExactlyNCodePointsTest, ReadLessContiguous)
 {
@@ -230,16 +181,10 @@ TEST(ReadExactlyNCodePointsTest, ReadLessContiguous)
 }
 TEST(ReadExactlyNCodePointsTest, ReadLessNonContiguous)
 {
-    auto src = scn::erased_range{"aäö"sv};
+    auto src = make_non_contiguous_buffer_range("aäö");
     auto it = scn::impl::read_exactly_n_code_points(src, 2);
     ASSERT_TRUE(it);
     EXPECT_EQ(*it, scn::ranges::next(src.begin(), 3));
-}
-TEST(ReadExactlyNCodePointsTest, ReadLessNonBorrowed)
-{
-    auto it =
-        scn::impl::read_exactly_n_code_points(scn::erased_range{"aäö"sv}, 2);
-    ASSERT_TRUE(it);
 }
 TEST(ReadExactlyNCodePointsTest, ReadMoreContiguous)
 {
@@ -249,14 +194,8 @@ TEST(ReadExactlyNCodePointsTest, ReadMoreContiguous)
 }
 TEST(ReadExactlyNCodePointsTest, ReadMoreNonContiguous)
 {
-    auto src = scn::erased_range{"aäö"sv};
+    auto src = make_non_contiguous_buffer_range("aäö");
     auto it = scn::impl::read_exactly_n_code_points(src, 4);
-    ASSERT_FALSE(it);
-}
-TEST(ReadExactlyNCodePointsTest, ReadMoreNonBorrowed)
-{
-    auto it =
-        scn::impl::read_exactly_n_code_points(scn::erased_range{"aäö"sv}, 4);
     ASSERT_FALSE(it);
 }
 
@@ -275,15 +214,9 @@ TEST(ReadUntilCodeUnit, ReadSomeContiguous)
 }
 TEST(ReadUntilCodeUnit, ReadSomeNonContiguous)
 {
-    auto src = scn::erased_range{"a b"sv};
+    auto src = make_non_contiguous_buffer_range("a b");
     auto it = scn::impl::read_until_code_unit(src, is_literal_space);
     EXPECT_EQ(*it, ' ');
-}
-TEST(ReadUntilCodeUnit, ReadSomeNonBorrowed)
-{
-    auto it = scn::impl::read_until_code_unit(scn::erased_range{"a b"sv},
-                                              is_literal_space);
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
 }
 TEST(ReadUntilCodeUnit, ReadNoneContiguous)
 {
@@ -294,16 +227,10 @@ TEST(ReadUntilCodeUnit, ReadNoneContiguous)
 }
 TEST(ReadUntilCodeUnit, ReadNoneNonContiguous)
 {
-    auto src = scn::erased_range{" ab"sv};
+    auto src = make_non_contiguous_buffer_range(" ab");
     auto it = scn::impl::read_until_code_unit(src, is_literal_space);
     EXPECT_EQ(it, src.begin());
     EXPECT_EQ(*it, ' ');
-}
-TEST(ReadUntilCodeUnit, ReadNoneNonBorrowed)
-{
-    auto it = scn::impl::read_until_code_unit(scn::erased_range{" ab"sv},
-                                              is_literal_space);
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
 }
 TEST(ReadUntilCodeUnit, ReadAllContiguous)
 {
@@ -313,15 +240,9 @@ TEST(ReadUntilCodeUnit, ReadAllContiguous)
 }
 TEST(ReadUntilCodeUnit, ReadAllNonContiguous)
 {
-    auto src = scn::erased_range{"abc"sv};
+    auto src = make_non_contiguous_buffer_range("abc");
     auto it = scn::impl::read_until_code_unit(src, is_literal_space);
     EXPECT_EQ(it, src.end());
-}
-TEST(ReadUntilCodeUnit, ReadAllNonBorrowed)
-{
-    auto it = scn::impl::read_until_code_unit(scn::erased_range{"abc"sv},
-                                              is_literal_space);
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
 }
 
 // read_while_code_unit
@@ -339,15 +260,9 @@ TEST(ReadWhileCodeUnit, ReadSomeContiguous)
 }
 TEST(ReadWhileCodeUnit, ReadSomeNonContiguous)
 {
-    auto src = scn::erased_range{"a b"sv};
+    auto src = make_non_contiguous_buffer_range("a b");
     auto it = scn::impl::read_while_code_unit(src, is_not_literal_space);
     EXPECT_EQ(*it, ' ');
-}
-TEST(ReadWhileCodeUnit, ReadSomeNonBorrowed)
-{
-    auto it = scn::impl::read_while_code_unit(scn::erased_range{"a b"sv},
-                                              is_not_literal_space);
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
 }
 TEST(ReadWhileCodeUnit, ReadNoneContiguous)
 {
@@ -358,16 +273,10 @@ TEST(ReadWhileCodeUnit, ReadNoneContiguous)
 }
 TEST(ReadWhileCodeUnit, ReadNoneNonContiguous)
 {
-    auto src = scn::erased_range{" ab"sv};
+    auto src = make_non_contiguous_buffer_range(" ab");
     auto it = scn::impl::read_while_code_unit(src, is_not_literal_space);
     EXPECT_EQ(it, src.begin());
     EXPECT_EQ(*it, ' ');
-}
-TEST(ReadWhileCodeUnit, ReadNoneNonBorrowed)
-{
-    auto it = scn::impl::read_while_code_unit(scn::erased_range{" ab"sv},
-                                              is_not_literal_space);
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
 }
 TEST(ReadWhileCodeUnit, ReadAllContiguous)
 {
@@ -377,15 +286,9 @@ TEST(ReadWhileCodeUnit, ReadAllContiguous)
 }
 TEST(ReadWhileCodeUnit, ReadAllNonContiguous)
 {
-    auto src = scn::erased_range{"abc"sv};
+    auto src = make_non_contiguous_buffer_range("abc");
     auto it = scn::impl::read_while_code_unit(src, is_not_literal_space);
     EXPECT_EQ(it, src.end());
-}
-TEST(ReadWhileCodeUnit, ReadAllNonBorrowed)
-{
-    auto it = scn::impl::read_while_code_unit(scn::erased_range{"abc"sv},
-                                              is_not_literal_space);
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
 }
 
 // read_until1_code_unit
@@ -451,15 +354,9 @@ TEST(ReadUntilCodePoint, ReadSomeContiguous)
 }
 TEST(ReadUntilCodePoint, ReadSomeNonContiguous)
 {
-    auto src = scn::erased_range{"a😊b"sv};
+    auto src = make_non_contiguous_buffer_range("a😊b");
     auto it = scn::impl::read_until_code_point(src, is_smiling_emoji);
     EXPECT_EQ(it, scn::ranges::next(src.begin(), 1));
-}
-TEST(ReadUntilCodePoint, ReadSomeNonBorrowed)
-{
-    auto it = scn::impl::read_until_code_point(scn::erased_range{"a😊b"sv},
-                                               is_smiling_emoji);
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
 }
 TEST(ReadUntilCodePoint, ReadNoneContiguous)
 {
@@ -469,15 +366,9 @@ TEST(ReadUntilCodePoint, ReadNoneContiguous)
 }
 TEST(ReadUntilCodePoint, ReadNoneNonContiguous)
 {
-    auto src = scn::erased_range{"😊ab"sv};
+    auto src = make_non_contiguous_buffer_range("😊ab");
     auto it = scn::impl::read_until_code_point(src, is_smiling_emoji);
     EXPECT_EQ(it, src.begin());
-}
-TEST(ReadUntilCodePoint, ReadNoneNonBorrowed)
-{
-    auto it = scn::impl::read_until_code_point(scn::erased_range{"😊ab"sv},
-                                               is_smiling_emoji);
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
 }
 TEST(ReadUntilCodePoint, ReadAllContiguous)
 {
@@ -487,15 +378,9 @@ TEST(ReadUntilCodePoint, ReadAllContiguous)
 }
 TEST(ReadUntilCodePoint, ReadAllNonContiguous)
 {
-    auto src = scn::erased_range{"abc"sv};
+    auto src = make_non_contiguous_buffer_range("abc");
     auto it = scn::impl::read_until_code_point(src, is_smiling_emoji);
     EXPECT_EQ(it, src.end());
-}
-TEST(ReadUntilCodePoint, ReadAllNonBorrowed)
-{
-    auto it = scn::impl::read_until_code_point(scn::erased_range{"abc"sv},
-                                               is_smiling_emoji);
-    static_assert(std::is_same_v<decltype(it), scn::ranges::dangling>);
 }
 
 // read_matching_code_unit
@@ -510,18 +395,11 @@ TEST(ReadMatchingCodeUnit, MatchContiguous)
 }
 TEST(ReadMatchingCodeUnit, MatchNonContiguous)
 {
-    auto src = scn::erased_range{"abc"sv};
+    auto src = make_non_contiguous_buffer_range("abc");
     auto it = scn::impl::read_matching_code_unit(src, 'a');
     ASSERT_TRUE(it);
     EXPECT_EQ(*it, scn::ranges::next(src.begin(), 1));
     EXPECT_EQ(**it, 'b');
-}
-TEST(ReadMatchingCodeUnit, MatchNonBorrowed)
-{
-    auto it =
-        scn::impl::read_matching_code_unit(scn::erased_range{"abc"sv}, 'a');
-    ASSERT_TRUE(it);
-    static_assert(std::is_same_v<decltype(*it), scn::ranges::dangling&>);
 }
 TEST(ReadMatchingCodeUnit, NoMatchContiguous)
 {
@@ -531,16 +409,81 @@ TEST(ReadMatchingCodeUnit, NoMatchContiguous)
 }
 TEST(ReadMatchingCodeUnit, NoMatchNonContiguous)
 {
-    auto src = scn::erased_range{"abc"sv};
+    auto src = make_non_contiguous_buffer_range("abc");
     auto it = scn::impl::read_matching_code_unit(src, 'b');
     ASSERT_FALSE(it);
 }
-TEST(ReadMatchingCodeUnit, NoMatchNonBorrowed)
-{
-    auto it =
-        scn::impl::read_matching_code_unit(scn::erased_range{"abc"sv}, 'b');
-    ASSERT_FALSE(it);
-    static_assert(std::is_same_v<decltype(*it), scn::ranges::dangling&>);
-}
 
-#endif
+TEST(ReadWhileClassicSpace, SingleMatchContiguous)
+{
+    auto src = " abc"sv;
+    auto it = scn::impl::read_while_classic_space(src);
+    EXPECT_EQ(it, src.begin() + 1);
+    EXPECT_EQ(*it, 'a');
+}
+TEST(ReadWhileClassicSpace, SingleMatchNonContiguous)
+{
+    auto src = make_non_contiguous_buffer_range(" abc");
+    auto it = scn::impl::read_while_classic_space(src);
+    EXPECT_EQ(it, scn::ranges::next(src.begin(), 1));
+    EXPECT_EQ(*it, 'a');
+}
+TEST(ReadWhileClassicSpace, NoMatchContiguous)
+{
+    auto src = "abc"sv;
+    auto it = scn::impl::read_while_classic_space(src);
+    EXPECT_EQ(it, src.begin());
+    EXPECT_EQ(*it, 'a');
+}
+TEST(ReadWhileClassicSpace, NoMatchNonContiguous)
+{
+    auto src = make_non_contiguous_buffer_range("abc");
+    auto it = scn::impl::read_while_classic_space(src);
+    EXPECT_EQ(it, src.begin());
+    EXPECT_EQ(*it, 'a');
+}
+TEST(ReadWhileClassicSpace, MatchAllContiguous)
+{
+    auto src = "   "sv;
+    auto it = scn::impl::read_while_classic_space(src);
+    EXPECT_EQ(it, src.end());
+}
+TEST(ReadWhileClassicSpace, MatchAllNonContiguous)
+{
+    auto src = make_non_contiguous_buffer_range("   ");
+    auto it = scn::impl::read_while_classic_space(src);
+    EXPECT_EQ(it, src.end());
+}
+TEST(ReadWhileClassicSpace, EmptyContiguous)
+{
+    auto src = ""sv;
+    auto it = scn::impl::read_while_classic_space(src);
+    EXPECT_EQ(it, src.begin());
+    EXPECT_EQ(it, src.end());
+}
+TEST(ReadWhileClassicSpace, EmptyNonContiguous)
+{
+    auto src = make_non_contiguous_buffer_range("");
+    auto it = scn::impl::read_while_classic_space(src);
+    EXPECT_EQ(it, src.begin());
+    EXPECT_EQ(it, src.end());
+}
+TEST(ReadWhileClassicSpace, RepeatedNonContiguous)
+{
+    auto src = make_non_contiguous_buffer_range("0\n0");
+
+    auto it = scn::impl::read_while_classic_space(src);
+    EXPECT_EQ(it, src.begin());
+    EXPECT_EQ(*it, '0');
+
+    ++it;
+    it = scn::impl::read_while_classic_space(
+        scn::ranges::subrange{it, src.end()});
+    EXPECT_NE(it, src.end());
+    EXPECT_EQ(*it, '0');
+
+    ++it;
+    it = scn::impl::read_while_classic_space(
+        scn::ranges::subrange{it, src.end()});
+    EXPECT_EQ(it, src.end());
+}

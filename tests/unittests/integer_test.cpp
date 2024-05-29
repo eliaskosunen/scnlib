@@ -19,6 +19,8 @@
 
 #include <scn/scan.h>
 
+#include <deque>
+
 namespace {
 template <typename... Args>
 std::tuple<testing::AssertionResult, Args...> do_test(
@@ -415,6 +417,88 @@ TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Hex)
     ASSERT_TRUE(result);
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 0xf);
+}
+
+TEST(IntegerTest, Fuzz_RepeatedString)
+{
+    std::string_view input = "0\n0";
+
+    auto it = input.begin();
+    auto result =
+        scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 0);
+    ASSERT_NE(result->begin(), input.end());
+    EXPECT_EQ(*result->begin(), '\n');
+    it = result->begin();
+
+    result =
+        scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 0);
+    EXPECT_TRUE(result->range().empty());
+    it = result->begin();
+
+    result =
+        scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
+    EXPECT_FALSE(result);
+}
+TEST(IntegerTest, Fuzz_RepeatedDeque)
+{
+    std::deque<char> input{'0', '\n', '0'};
+
+    auto it = input.begin();
+    auto result =
+        scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 0);
+    ASSERT_NE(result->begin(), input.end());
+    EXPECT_EQ(*result->begin(), '\n');
+    it = result->begin();
+
+    result =
+        scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 0);
+    EXPECT_TRUE(result->range().empty());
+    it = result->begin();
+
+    result =
+        scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
+    EXPECT_FALSE(result);
+}
+
+TEST(IntegerTest, Fuzz_RepeatedString2)
+{
+    std::string_view input = "\n0";
+
+    auto it = input.begin();
+    auto result =
+        scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 0);
+    EXPECT_EQ(result->begin(), input.end());
+    it = result->begin();
+
+    result =
+        scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
+    EXPECT_FALSE(result);
+}
+TEST(IntegerTest, Fuzz_RepeatedDeque2)
+{
+    std::deque<char> input{'\n', '0'};
+
+    auto it = input.begin();
+    auto result =
+        scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 0);
+    EXPECT_EQ(result->begin(), input.end());
+    it = result->begin();
+
+    result =
+        scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
+    EXPECT_FALSE(result);
 }
 
 TEST(ScanIntTest, Simple)

@@ -4353,6 +4353,10 @@ protected:
     }
 };
 
+template <typename I, typename S>
+using less_than_compare =
+    decltype(SCN_DECLVAL(const I&) < SCN_DECLVAL(const S&));
+
 template <typename Range>
 class basic_scan_forward_buffer_impl
     : public basic_scan_forward_buffer_base<detail::char_t<Range>> {
@@ -4382,6 +4386,9 @@ public:
         if (m_cursor == ranges::end(*m_range)) {
             return false;
         }
+        if constexpr (mp_valid_v<less_than_compare, iterator, sentinel>) {
+            SCN_EXPECT(m_cursor < ranges::end(*m_range));
+        }
         if (!this->m_current_view.empty()) {
             this->m_putback_buffer.insert(this->m_putback_buffer.end(),
                                           this->m_current_view.begin(),
@@ -4390,6 +4397,9 @@ public:
         m_latest = *m_cursor;
         ++m_cursor;
         this->m_current_view = std::basic_string_view<char_type>{&m_latest, 1};
+        if constexpr (mp_valid_v<less_than_compare, iterator, sentinel>) {
+            SCN_EXPECT(m_cursor <= ranges::end(*m_range));
+        }
         return true;
     }
 
