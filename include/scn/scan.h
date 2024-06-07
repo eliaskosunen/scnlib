@@ -191,7 +191,7 @@ struct pointer_traits<T*, void> {
         return &r;
     }
 
-    static constexpr pointer to_address(pointer p) noexcept
+    SCN_FORCE_INLINE static constexpr pointer to_address(pointer p) noexcept
     {
         return p;
     }
@@ -226,7 +226,7 @@ struct wrapped_pointer_iterator;
 #ifdef _GLIBCXX_DEBUG
 template <typename Elem, typename Container>
 struct wrapped_pointer_iterator<__gnu_debug::_Safe_iterator<Elem*, Container>> {
-    static constexpr auto to_address(
+    SCN_FORCE_INLINE static constexpr auto to_address(
         const __gnu_debug::_Safe_iterator<Elem*, Container>& it) noexcept
     {
         return it.base();
@@ -237,7 +237,7 @@ struct wrapped_pointer_iterator<__gnu_debug::_Safe_iterator<Elem*, Container>> {
 template <typename Elem, typename Container>
 struct wrapped_pointer_iterator<
     __gnu_cxx::__normal_iterator<Elem*, Container>> {
-    static constexpr auto to_address(
+    SCN_FORCE_INLINE static constexpr auto to_address(
         const __gnu_cxx::__normal_iterator<Elem*, Container>& it) noexcept
     {
         return it.base();
@@ -247,7 +247,8 @@ struct wrapped_pointer_iterator<
 #if SCN_STDLIB_LIBCPP
 template <typename Elem>
 struct wrapped_pointer_iterator<std::__wrap_iter<Elem*>> {
-    static constexpr auto to_address(const std::__wrap_iter<Elem*>& it) noexcept
+    SCN_FORCE_INLINE static constexpr auto to_address(
+        const std::__wrap_iter<Elem*>& it) noexcept
     {
         return it.base();
     }
@@ -266,7 +267,7 @@ struct wrapped_pointer_iterator<
     std::enable_if_t<mp_valid_v<apply_deref, It> &&
                      mp_valid_v<apply_incr, It> &&
                      mp_valid_v<apply_member_unwrapped, It>>> {
-    static constexpr auto to_address(const It& it) noexcept
+    SCN_FORCE_INLINE static constexpr auto to_address(const It& it) noexcept
     {
         return it._Unwrapped();
     }
@@ -283,7 +284,8 @@ struct pointer_traits<
     : pointer_traits_generic_base<
           Iterator,
           std::remove_reference_t<decltype(*SCN_DECLVAL(Iterator&))>> {
-    static constexpr auto to_address(const Iterator& it) noexcept
+    SCN_FORCE_INLINE static constexpr auto to_address(
+        const Iterator& it) noexcept
     {
         return wrapped_pointer_iterator<Iterator>::to_address(it);
     }
@@ -297,18 +299,20 @@ inline constexpr bool can_make_address_from_iterator =
     std::is_pointer_v<mp_valid_result_t<apply_ptr_traits_to_address, It>>;
 
 template <typename T>
-constexpr T* to_address_impl(T* p, priority_tag<2>) noexcept
+SCN_FORCE_INLINE constexpr T* to_address_impl(T* p, priority_tag<2>) noexcept
 {
     return p;
 }
 template <typename Ptr>
-constexpr auto to_address_impl(const Ptr& p, priority_tag<1>) noexcept
+SCN_FORCE_INLINE constexpr auto to_address_impl(const Ptr& p,
+                                                priority_tag<1>) noexcept
     -> decltype(::scn::detail::pointer_traits<Ptr>::to_address(p))
 {
     return ::scn::detail::pointer_traits<Ptr>::to_address(p);
 }
 template <typename Ptr>
-constexpr auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept
+SCN_FORCE_INLINE constexpr auto to_address_impl(const Ptr& p,
+                                                priority_tag<0>) noexcept
     -> decltype(::scn::detail::to_address_impl(p.operator->(),
                                                priority_tag<2>{}))
 {
@@ -316,7 +320,7 @@ constexpr auto to_address_impl(const Ptr& p, priority_tag<0>) noexcept
 }
 
 template <typename Ptr>
-constexpr auto to_address(Ptr&& p) noexcept
+SCN_FORCE_INLINE constexpr auto to_address(Ptr&& p) noexcept
     -> decltype(::scn::detail::to_address_impl(SCN_FWD(p), priority_tag<2>{}))
 {
     return ::scn::detail::to_address_impl(SCN_FWD(p), priority_tag<2>{});

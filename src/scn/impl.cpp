@@ -1922,11 +1922,12 @@ struct format_handler : format_handler_base {
                 get_ctx().advance_to(
                     impl::read_while_classic_space(get_ctx().range()));
                 // And, skip all whitespace in the format string
-                // (call to std::prev because of the for loop ++begin)
-                begin =
-                    detail::to_address(std::prev(impl::read_while_classic_space(
-                        detail::make_string_view_from_pointers(after_space_it,
-                                                               end))));
+                auto begin_it = impl::read_while_classic_space(
+                    detail::make_string_view_from_pointers(
+                        detail::to_address(after_space_it),
+                        detail::to_address(end)));
+                // (-1 because of the for loop ++begin)
+                begin = detail::to_address(begin_it) - 1;
                 continue;
             }
 
