@@ -2,7 +2,7 @@
 
 ## 3.0.0
 
-_Released 2024-XX-YY_
+_Released 2024-06-08_
 
 ### Breaking changes
 
