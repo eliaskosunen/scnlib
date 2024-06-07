@@ -148,7 +148,7 @@
             <li><a href="#autotoc_md42">0.1</a></li>
           </ul>
         </nav>
-<section id="autotoc_md0"><h3><a href="#autotoc_md0">3.0.0</a></h3><p><em>Released 2024-XX-YY</em></p><section id="autotoc_md1"><h4><a href="#autotoc_md1">Breaking changes</a></h4><ul><li>The default behavior for scanning integers is now <code>d</code> (decimal) instead of <code>i</code> (detect base from prefix).</li></ul><pre class="m-code"><span class="c1">// v3</span>
+<section id="autotoc_md0"><h3><a href="#autotoc_md0">3.0.0</a></h3><p><em>Released 2024-06-08</em></p><section id="autotoc_md1"><h4><a href="#autotoc_md1">Breaking changes</a></h4><ul><li>The default behavior for scanning integers is now <code>d</code> (decimal) instead of <code>i</code> (detect base from prefix).</li></ul><pre class="m-code"><span class="c1">// v3</span>
 <span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"077"</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">);</span>
 <span class="c1">// result-&gt;value() == 77</span>
 <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"078"</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">);</span>
