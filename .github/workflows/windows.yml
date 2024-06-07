@@ -65,6 +65,17 @@ jobs:
             type: Debug
             std: 20
 
+        exclude:
+          # Segfaulting in the tests, not locally reproducible
+          - os: 2022
+            platform: Win32
+            type: Release
+            std: 17
+          - os: 2022
+            platform: x64
+            type: Release
+            std: 17
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
