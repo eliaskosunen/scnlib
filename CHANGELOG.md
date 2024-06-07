@@ -119,6 +119,10 @@ auto result = std::scan<int>("42  ", "{:<.3}");
    a private implementation header, and a private implementation source file. This cuts down the time needed to
    compile the library, and any user code including it to a half (yes, really!)
 
+### Fixes
+
+ * Fix skipping of multiple characters of whitespace in the format string (reported in #116, thanks [@Jonathan-Greve (Jonathan Bjørn Greve)](https://github.com/Jonathan-Greve))
+
 ## 2.0.3
 
 _Released 2024-05-19_

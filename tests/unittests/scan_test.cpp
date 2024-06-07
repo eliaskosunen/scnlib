@@ -232,3 +232,20 @@ TEST(ScanTest, EvenMoreArguments)
         "{} {} {} {} {} {} {} {} {} {}");
     ASSERT_TRUE(res);
 }
+
+TEST(ScanTest, DoubleNewline)
+{
+    auto res = scn::scan<int>("1\n\n", "{}\n\n");
+    ASSERT_TRUE(res);
+    EXPECT_EQ(res->value(), 1);
+    EXPECT_EQ(res->begin(), res->end());
+}
+TEST(ScanTest, DoubleNewline2)
+{
+    auto res = scn::scan<int, int>("1\n\n2", "{}\n\n{}");
+    ASSERT_TRUE(res);
+    auto [a, b] =res->values();
+    EXPECT_EQ(a, 1);
+    EXPECT_EQ(b, 2);
+    EXPECT_EQ(res->begin(), res->end());
+}

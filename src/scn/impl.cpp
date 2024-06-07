@@ -1914,12 +1914,19 @@ struct format_handler : format_handler_base {
             if (auto [after_space_it, cp, is_space] = impl::is_first_char_space(
                     detail::make_string_view_from_pointers(begin, end));
                 cp == detail::invalid_code_point) {
+                SCN_UNLIKELY_ATTR
                 return on_error("Invalid encoding in format string");
             }
             else if (is_space) {
+                // Skip all whitespace in input
                 get_ctx().advance_to(
                     impl::read_while_classic_space(get_ctx().range()));
-                begin = detail::to_address(std::prev(after_space_it));
+                // And, skip all whitespace in the format string
+                // (call to std::prev because of the for loop ++begin)
+                begin =
+                    detail::to_address(std::prev(impl::read_while_classic_space(
+                        detail::make_string_view_from_pointers(after_space_it,
+                                                               end))));
                 continue;
             }
 
