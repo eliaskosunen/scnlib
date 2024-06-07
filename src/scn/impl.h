@@ -6082,6 +6082,10 @@ struct arg_reader {
 
         if (specs.align == detail::align_type::left ||
             specs.align == detail::align_type::center) {
+            if (specs.precision != 0 &&
+                specs.precision - value_width - prefix_width == 0) {
+                return result_type{rng.begin(), 0};
+            }
             return skip_fill(rng, specs.precision - value_width - prefix_width,
                              specs.fill, need_skipped_width);
         }
@@ -6121,8 +6125,19 @@ struct arg_reader {
             specs.width != 0 || specs.precision != 0;
 
         // Read prefix
-        SCN_TRY(prefix_result, impl_prefix(rng, rd.skip_ws_before_read()));
-        auto [it, prefix_width] = prefix_result;
+        auto it = rng.begin();
+        std::ptrdiff_t prefix_width = 0;
+        if (specs.precision != 0) {
+            auto max_width_view = take_width(rng, specs.precision);
+            SCN_TRY(prefix_result,
+                    impl_prefix(max_width_view, rd.skip_ws_before_read()));
+            it = prefix_result.first.base();
+            prefix_width = prefix_result.second;
+        }
+        else {
+            SCN_TRY(prefix_result, impl_prefix(rng, rd.skip_ws_before_read()));
+            std::tie(it, prefix_width) = prefix_result;
+        }
         auto prefix_end_it = it;
 
         // Read value
@@ -6131,8 +6146,8 @@ struct arg_reader {
             if (specs.precision <= prefix_width) {
                 return unexpected_scan_error(
                     scan_error::invalid_scanned_value,
-                    "Too many spaces before value, precision exceeded before "
-                    "reading value");
+                    "Too many fill characters before value, "
+                    "precision exceeded before reading value");
             }
 
             const auto initial_width = specs.precision - prefix_width;

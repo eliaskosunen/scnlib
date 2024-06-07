@@ -222,6 +222,30 @@ TEST(AlignAndFillTest, NoWidth_EqualPrec_CenterAlign_CorrectFill)
     EXPECT_STREQ(r->begin(), "");
 }
 
+TEST(AlignAndFillTest, NoWidth_LesserPrec_CenterAlign_CorrectFill)
+{
+    auto r = scn::scan<int>("**42**", "{:*^.5}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), 42);
+    EXPECT_STREQ(r->begin(), "*");
+}
+
+TEST(AlignAndFillTest, NoWidth_EvenLesserPrec_CenterAlign_CorrectFill)
+{
+    auto r = scn::scan<int>("**42**", "{:*^.4}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), 42);
+    EXPECT_STREQ(r->begin(), "**");
+}
+
+TEST(AlignAndFillTest, NoWidth_EvenMoreLesserPrec_CenterAlign_CorrectFill)
+{
+    auto r = scn::scan<int>("**42**", "{:*^.3}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), 4);
+    EXPECT_STREQ(r->begin(), "2**");
+}
+
 TEST(AlignAndFillTest, P1729_Ex3r0)
 {
     auto r = scn::scan<int>("    42", "{}");
