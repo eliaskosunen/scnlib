@@ -70,7 +70,7 @@ target_link_libraries(scn PRIVATE
 )
 set_library_flags(scn)
 
-set_property(TARGET scn PROPERTY SOVERSION 2)
+set_property(TARGET scn PROPERTY SOVERSION 3)
 add_library(scn::scn ALIAS scn)
 
 add_library(scn_internal INTERFACE)

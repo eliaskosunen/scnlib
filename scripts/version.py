@@ -64,3 +64,4 @@ if __name__ == '__main__':
     print(' - Add an entry to CHANGELOG.md')
     print(' - Update `latest` symlink in gh-pages, if necessary')
     print(' - Update definition of SCN_BEGIN_NAMESPACE, if necessary')
+    print(' - Bump SOVERSION, if necessary')
