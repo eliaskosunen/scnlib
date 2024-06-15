@@ -9,10 +9,15 @@ if (SCN_TESTS)
     # GTest
 
     if (SCN_USE_EXTERNAL_GTEST)
-        find_package(GTest CONFIG REQUIRED)
+        if ((NOT TARGET GTest::gtest_main) OR (NOT TARGET GTest::gmock_main))
+            find_package(GTest CONFIG REQUIRED)
+        else ()
+            message(STATUS "GTest targets already defined, not doing find_package(GTest)")
+        endif ()
+
         set(SCN_GTEST_LIBRARIES
-            GTest::gtest_main
-            GTest::gmock_main
+                GTest::gtest_main
+                GTest::gmock_main
         )
     else ()
         FetchContent_Declare(
@@ -32,7 +37,9 @@ if (SCN_TESTS)
             FetchContent_Populate(googletest)
         endif ()
 
-        find_package(Threads)
+        if (NOT TARGET Threads::Threads)
+            find_package(Threads)
+        endif ()
 
         add_library(scn_gtest
                 "${googletest_SOURCE_DIR}/googletest/src/gtest-all.cc"
@@ -57,7 +64,11 @@ if (SCN_BENCHMARKS)
     # Google Benchmark
 
     if (SCN_USE_EXTERNAL_BENCHMARK)
-        find_package(benchmark CONFIG REQUIRED)
+        if (NOT TARGET benchmark::benchmark)
+            find_package(benchmark CONFIG REQUIRED)
+        else ()
+            message(STATUS "Target benchmark::benchmark already defined, not doing find_package(benchmark)")
+        endif ()
     else ()
         set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "Turn off google benchmark tests")
         set(BENCHMARK_ENABLE_INSTALL OFF CACHE INTERNAL "Turn off google benchmark install")
@@ -74,9 +85,13 @@ endif ()
 # fast_float
 
 if (SCN_USE_EXTERNAL_FAST_FLOAT)
-    find_package(FastFloat CONFIG REQUIRED)
-    if (FastFloat_VERSION VERSION_LESS 5.0.0)
-        message(FATAL_ERROR "Incompatible version of FastFloat: at least 5.0.0 required, found ${FastFloat_VERSION}")
+    if (NOT TARGET FastFloat::fast_float)
+        find_package(FastFloat CONFIG REQUIRED)
+        if (FastFloat_VERSION VERSION_LESS 5.0.0)
+            message(FATAL_ERROR "Incompatible version of FastFloat: at least 5.0.0 required, found ${FastFloat_VERSION}")
+        endif ()
+    else ()
+        message(STATUS "Target FastFloat::fast_float already defined, not doing find_package(FastFloat)")
     endif ()
 else ()
     FetchContent_Declare(
@@ -115,7 +130,12 @@ if (SCN_REGEX_BACKEND STREQUAL "Boost")
         message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is Boost")
     endif ()
 
-    find_package(Boost REQUIRED COMPONENTS regex)
+    if (NOT TARGET Boost::regex)
+        find_package(Boost REQUIRED COMPONENTS regex)
+    else ()
+        message(STATUS "Target Boost::regex already defined, not doing find_package(Boost COMPONENTS regex)")
+    endif ()
+
     if (NOT SCN_REGEX_BOOST_USE_ICU)
         set(SCN_REGEX_BACKEND_TARGET Boost::regex)
     else ()
@@ -123,7 +143,12 @@ if (SCN_REGEX_BACKEND STREQUAL "Boost")
             set(SCN_REGEX_BACKEND_TARGET Boost::regex_icu)
         else ()
             # Boost::regex_icu not defined, do it manually
-            find_package(ICU REQUIRED COMPONENTS data i18n uc)
+            if ((NOT TARGET ICU::data) OR (NOT TARGET ICU::i18n) OR (NOT TARGET ICU::uc))
+                find_package(ICU REQUIRED COMPONENTS data i18n uc)
+            else ()
+                message(STATUS "ICU targets already defined, not doing find_package(ICU)")
+            endif ()
+
             set(SCN_REGEX_BACKEND_TARGET
                     Boost::regex ICU::data ICU::i18n ICU::uc
             )
@@ -141,10 +166,15 @@ if (SCN_REGEX_BACKEND STREQUAL "re2")
         message(FATAL_ERROR "SCN_REGEX_BOOST_USE_ICU isn't supported when SCN_REGEX_BACKEND is re2")
     endif ()
 
-    find_package(re2 REQUIRED)
-    if (re2_VERSION VERSION_LESS 11.0.0)
-        message(FATAL_ERROR "Incompatible version of re2: at least 11.0.0 required, found ${re2_VERSION}")
+    if (NOT TARGET re2::re2)
+        find_package(re2 REQUIRED)
+        if (re2_VERSION VERSION_LESS 11.0.0)
+            message(FATAL_ERROR "Incompatible version of re2: at least 11.0.0 required, found ${re2_VERSION}")
+        endif ()
+    else ()
+        message(STATUS "Target re2::re2 already defined, not doing find_package(re2)")
     endif ()
+
     set(SCN_REGEX_BACKEND_TARGET re2::re2)
 endif ()
 
