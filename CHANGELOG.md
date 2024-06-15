@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.0.1
+
+_Released 2024-06-15_
+
+ * Bump `SOVERSION` to 3. (reported in #117, thanks [@xvitaly (Vitaly)](https://github.com/xvitaly))
+ * Call `find_package` in CMake iff a target is not already defined (reported in #118, thanks [@ajtribick](https://github.com/ajtribick))
+ * Remove `find_dependency(Threads)` from `scn-config.cmake`
+
 ## 3.0.0
 
 _Released 2024-06-08_

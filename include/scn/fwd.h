@@ -24,7 +24,7 @@
 #define SCN_COMPILER(major, minor, patch) \
     ((major) * 10000000 + (minor) * 10000 + (patch))
 
-#define SCN_VERSION SCN_COMPILER(3, 0, 0)
+#define SCN_VERSION SCN_COMPILER(3, 0, 1)
 
 /////////////////////////////////////////////////////////////////
 // Library configuration
