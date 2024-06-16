@@ -113,6 +113,8 @@ BENCHMARK_TEMPLATE(scan_int_single_scn_int, int);
 BENCHMARK_TEMPLATE(scan_int_single_scn_int, long long);
 BENCHMARK_TEMPLATE(scan_int_single_scn_int, unsigned);
 
+// scan_int_exhaustive_valid requires little-endian
+#if !SCN_IS_BIG_ENDIAN
 template <typename Int>
 static void scan_int_single_scn_int_exhaustive_valid(benchmark::State& state)
 {
@@ -129,6 +131,7 @@ static void scan_int_single_scn_int_exhaustive_valid(benchmark::State& state)
 BENCHMARK_TEMPLATE(scan_int_single_scn_int_exhaustive_valid, int);
 BENCHMARK_TEMPLATE(scan_int_single_scn_int_exhaustive_valid, long long);
 BENCHMARK_TEMPLATE(scan_int_single_scn_int_exhaustive_valid, unsigned);
+#endif
 
 template <typename Int>
 static void scan_int_single_sstream(benchmark::State& state)
