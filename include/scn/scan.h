@@ -7348,7 +7348,7 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  *
  * // Manual indexing
  * auto b = scn::scan<int, int>("2 to 300", "{1} to {0}");
- * // b->values() == (3, 200)
+ * // b->values() == (300, 2)
  *
  * // INVALID:
  * // Automatic and manual indexing is mixed
