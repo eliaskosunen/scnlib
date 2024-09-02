@@ -850,6 +850,11 @@ protected:
     {
 #if SCN_XLOCALE == SCN_XLOCALE_POSIX
         static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", NULL);
+#ifdef __EMSCRIPTEN__
+        if constexpr (std::is_floating_point_v<T>) {
+            return static_cast<T>(::wcstold_l(str, str_end, cloc));
+        }
+#else
         if constexpr (std::is_same_v<T, float>) {
             return ::wcstof_l(str, str_end, cloc);
         }
@@ -859,6 +864,7 @@ protected:
         else if constexpr (std::is_same_v<T, long double>) {
             return ::wcstold_l(str, str_end, cloc);
         }
+#endif
 #elif SCN_XLOCALE == SCN_XLOCALE_MSVC
         static _locale_t cloc = ::_create_locale(LC_ALL, "C");
         if constexpr (std::is_same_v<T, float>) {
