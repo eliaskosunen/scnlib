@@ -193,7 +193,7 @@ std::string_view::iterator find_classic_space_narrow_fast(
 {
     return find_classic_impl(
         source, [](char ch) { return is_ascii_space(ch); },
-        [](char32_t cp) { return is_cp_space(cp); });
+        [](char32_t cp) { return detail::is_cp_space(cp); });
 }
 
 std::string_view::iterator find_classic_nonspace_narrow_fast(
@@ -201,7 +201,7 @@ std::string_view::iterator find_classic_nonspace_narrow_fast(
 {
     return find_classic_impl(
         source, [](char ch) { return !is_ascii_space(ch); },
-        [](char32_t cp) { return !is_cp_space(cp); });
+        [](char32_t cp) { return !detail::is_cp_space(cp); });
 }
 
 std::string_view::iterator find_nondecimal_digit_narrow_fast(

@@ -19,131 +19,168 @@
 
 #include <scn/scan.h>
 
-struct mytype {
-    int i{}, j{};
+// Simple wrapper over an `int`, inherits all its scanning properties
+struct integer_wrapper {
+    int value{};
 };
 
 template <>
-struct scn::scanner<mytype, char> : scn::scanner<std::string, char> {
+struct scn::scanner<integer_wrapper, char> : scn::scanner<int, char> {
     template <typename Context>
-    scn::scan_expected<typename Context::iterator> scan(mytype& val,
+    scn::scan_expected<typename Context::iterator> scan(integer_wrapper& val,
                                                         Context& ctx) const
     {
-        return scn::scan<int, int>(ctx.range(), "{} {}")
-            .transform([&](auto result) {
-                std::tie(val.i, val.j) = result.values();
-                return result.begin();
-            });
+        return scn::scanner<int, char>::scan(val.value, ctx);
     }
 };
 
-struct mytype2 {
-    char ch{};
+TEST(CustomTypeTest, IntegerWrapperWithDefaultFormatString)
+{
+    auto result = scn::scan<integer_wrapper>("123", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result->begin(), '\0');
+
+    const auto val = result->value().value;
+    EXPECT_EQ(val, 123);
+}
+
+TEST(CustomTypeTest, IntegerWrapperWithCustomFormatString)
+{
+    auto result = scn::scan<integer_wrapper>("123", "{:x}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result->begin(), '\0');
+
+    const auto val = result->value().value;
+    EXPECT_EQ(val, 0x123);
+}
+
+// Wrapper over a variant,
+// with fully custom format string parsing
+struct variant_wrapper {
+    std::variant<int, char, double, std::string> value{};
 };
 
 template <>
-struct scn::scanner<mytype2, char> : scn::scanner<std::string, char> {
+struct scn::scanner<variant_wrapper, char> {
+    template <typename ParseContext>
+    constexpr scn::scan_expected<typename ParseContext::iterator> parse(
+        ParseContext& pctx)
+    {
+        if (pctx.begin() == pctx.end() || *pctx.begin() == '}') {
+            return scn::unexpected(pctx.on_error(
+                "Invalid format string: format specifier required"));
+        }
+
+        auto it = pctx.begin();
+        switch (*it) {
+            case 'i':
+                format = format_int;
+                break;
+            case 'c':
+                format = format_char;
+                break;
+            case 'f':
+                format = format_double;
+                break;
+            case 's':
+                format = format_string;
+                break;
+            default:
+                return scn::unexpected(pctx.on_error(
+                    "Invalid format string: invalid format specifier"));
+        }
+        return ++it;
+    }
+
     template <typename Context>
-    scn::scan_expected<typename Context::iterator> scan(mytype2& val,
+    scn::scan_expected<typename Context::iterator> scan(variant_wrapper& val,
                                                         Context& ctx) const
     {
-        return scn::scan<scn::discard<char>, char>(ctx.range(), "{} {}")
-            .transform([&](auto result) {
-                std::tie(std::ignore, val.ch) = result.values();
-                return result.begin();
-            });
-    }
-};
+        switch (format) {
+            case format_int: {
+                return scn::scanner<int, char>{}.scan(val.value.emplace<int>(),
+                                                      ctx);
+            }
+            case format_char:
+                return scn::scanner<char, char>{}.scan(
+                    val.value.emplace<char>(), ctx);
+            case format_double:
+                return scn::scanner<double, char>{}.scan(
+                    val.value.emplace<double>(), ctx);
+            case format_string:
+                return scn::scanner<std::string, char>{}.scan(
+                    val.value.emplace<std::string>(), ctx);
+        }
 
-struct mytype3 {
-    int i{};
-};
-
-template <>
-struct scn::scanner<mytype3> {
-    template <typename ParseCtx>
-    constexpr auto parse(ParseCtx& pctx)
-        -> scan_expected<typename ParseCtx::iterator>
-    {
-        return pctx.begin();
+        SCN_UNREACHABLE;
     }
 
-    template <typename Context>
-    auto scan(mytype3& val, Context& ctx) const
-        -> scan_expected<typename Context::iterator>
-    {
-        return scn::scan<int>(ctx.range(), "{}").transform([&](auto result) {
-            val = {result.value()};
-            return result.begin();
-        });
-    }
+private:
+    enum {
+        format_int,
+        format_char,
+        format_double,
+        format_string,
+    } format{};
 };
 
-TEST(CustomTypeTest, Simple)
+TEST(CustomTypeTest, VariantWrapperWithDefaultFormatString)
 {
-    auto result = scn::scan<mytype>("123 456", "{}");
+    auto result = scn::scan<variant_wrapper>("123", "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
+}
+
+TEST(CustomTypeTest, VariantWrapperWithIntegerFormat)
+{
+    auto result = scn::scan<variant_wrapper>("123", "{:i}");
     ASSERT_TRUE(result);
     EXPECT_EQ(*result->begin(), '\0');
 
-    const auto& val = std::get<0>(result->values());
-    EXPECT_EQ(val.i, 123);
-    EXPECT_EQ(val.j, 456);
+    const auto& val = result->value().value;
+    ASSERT_TRUE(std::holds_alternative<int>(val));
+    EXPECT_EQ(std::get<int>(val), 123);
 }
 
-TEST(CustomTypeTest, DISABLED_CustomFormatString)
+TEST(CustomTypeTest, VariantWrapperWithCharFormat)
 {
-    auto input = std::string_view{"123 456"};
-    auto result = scn::scan<mytype>(input, "{:6}");
+    auto result = scn::scan<variant_wrapper>("123", "{:c}");
     ASSERT_TRUE(result);
-    EXPECT_EQ(result->begin(), input.end() - 1);
-    EXPECT_EQ(result->value().i, 123);
-    EXPECT_EQ(result->value().j, 45);
+    EXPECT_STREQ(result->begin(), "23");
+
+    const auto& val = result->value().value;
+    ASSERT_TRUE(std::holds_alternative<char>(val));
+    EXPECT_EQ(std::get<char>(val), '1');
 }
 
-TEST(CustomTypeTest, Multiple)
+TEST(CustomTypeTest, VariantWrapperWithDoubleFormat)
 {
-    auto result = scn::scan<mytype, mytype>("12 34 56 78", "{} {}");
-    ASSERT_TRUE(result);
-    EXPECT_EQ(*result->begin(), '\0');
-
-    const auto& [a, b] = result->values();
-    EXPECT_EQ(a.i, 12);
-    EXPECT_EQ(a.j, 34);
-    EXPECT_EQ(b.i, 56);
-    EXPECT_EQ(b.j, 78);
-}
-
-TEST(CustomTypeTest, Surrounded)
-{
-    auto result = scn::scan<int, mytype, int>("1 2 3 4", "{} {} {}");
+    auto result = scn::scan<variant_wrapper>("123", "{:f}");
     ASSERT_TRUE(result);
     EXPECT_EQ(*result->begin(), '\0');
 
-    const auto& [a, val, b] = result->values();
-    EXPECT_EQ(a, 1);
-    EXPECT_EQ(val.i, 2);
-    EXPECT_EQ(val.j, 3);
-    EXPECT_EQ(b, 4);
+    const auto& val = result->value().value;
+    ASSERT_TRUE(std::holds_alternative<double>(val));
+    EXPECT_DOUBLE_EQ(std::get<double>(val), 123.0);
 }
 
-TEST(CustomTypeTest, WhiteSpaceNotSkipped)
+TEST(CustomTypeTest, VariantWrapperWithStringFormat)
 {
-    auto result = scn::scan<mytype2>(" abc", "{}");
+    auto result = scn::scan<variant_wrapper>("123", "{:s}");
     ASSERT_TRUE(result);
-    EXPECT_STREQ(result->range().data(), "bc");
+    EXPECT_EQ(*result->begin(), '\0');
 
-    EXPECT_EQ(result->value().ch, 'a');
+    const auto& val = result->value().value;
+    ASSERT_TRUE(std::holds_alternative<std::string>(val));
+    EXPECT_EQ(std::get<std::string>(val), "123");
 }
 
-TEST(CustomTypeTest, OnlyEmptyFormatStringAllowed)
+TEST(CustomTypeTest, VariantWrapperInvalidFormat)
 {
-    auto result = scn::scan<mytype3>("42", "{}");
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->value().i, 42);
-}
+    auto result =
+        scn::scan<variant_wrapper>("123", scn::runtime_format("{:d}"));
+    ASSERT_FALSE(result);
 
-TEST(CustomTypeTest, OnlyEmptyFormatStringAllowed_Failure)
-{
-    auto result = scn::scan<mytype3>("42", scn::runtime_format("{:d}"));
+    result = scn::scan<variant_wrapper>("123", scn::runtime_format("{}"));
     ASSERT_FALSE(result);
 }
