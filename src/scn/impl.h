@@ -1195,18 +1195,6 @@ constexpr auto get_next_code_point_valid(std::basic_string_view<CharT> input)
             detail::decode_code_point_exhaustive_valid(input.substr(0, len))};
 }
 
-constexpr bool is_cp_space(char32_t cp) noexcept
-{
-    // Pattern_White_Space property
-    return (cp >= 0x09 && cp <= 0x0d) ||
-           cp == 0x20 ||    // ASCII space characters
-           cp == 0x85 ||    // NEXT LINE (NEL)
-           cp == 0x200e ||  // LEFT-TO-RIGHT MARK
-           cp == 0x200f ||  // RIGHT-TO-LEFT MARK
-           cp == 0x2028 ||  // LINE SEPARATOR
-           cp == 0x2029;    // PARAGRAPH SEPARATOR
-}
-
 template <typename CharT>
 struct is_first_char_space_result {
     ranges::iterator_t<std::basic_string_view<CharT>> iterator;
@@ -1221,7 +1209,7 @@ inline constexpr auto is_first_char_space(std::basic_string_view<CharT> str)
     // TODO: optimize
     SCN_EXPECT(!str.empty());
     auto res = get_next_code_point(str);
-    return {res.iterator, res.value, is_cp_space(res.value)};
+    return {res.iterator, res.value, detail::is_cp_space(res.value)};
 }
 
 inline constexpr scan_expected<wchar_t> encode_code_point_as_wide_character(
@@ -2107,7 +2095,7 @@ auto read_until_classic_space(Range range) -> ranges::const_iterator_t<Range>
 
         return read_until_code_point(
             ranges::subrange{it, range.end()},
-            [](char32_t cp) noexcept { return is_cp_space(cp); });
+            [](char32_t cp) noexcept { return detail::is_cp_space(cp); });
     }
 }
 
@@ -2134,8 +2122,9 @@ auto read_while_classic_space(Range range) -> ranges::const_iterator_t<Range>
             ranges::advance(it, seg.size());
         }
 
-        return read_while_code_point(
-            range, [](char32_t cp) noexcept { return is_cp_space(cp); });
+        return read_while_code_point(range, [](char32_t cp) noexcept {
+            return detail::is_cp_space(cp);
+        });
     }
 }
 

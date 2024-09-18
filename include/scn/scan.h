@@ -3218,9 +3218,7 @@ public:
               typename = std::enable_if_t<contiguous_iterator<iterator_t<R>>>>
     constexpr auto data()
     {
-        return ranges::empty(derived())
-                   ? nullptr
-                   : std::addressof(*ranges::begin(derived()));
+        return detail::to_address(ranges::begin(derived()));
     }
 
     template <typename R = D,
@@ -3228,9 +3226,7 @@ public:
                   range<const R> && contiguous_iterator<iterator_t<const R>>>>
     constexpr auto data() const
     {
-        return ranges::empty(derived())
-                   ? nullptr
-                   : std::addressof(*ranges::begin(derived()));
+        return detail::to_address(ranges::begin(derived()));
     }
 
     template <typename R = D,
@@ -4042,6 +4038,18 @@ inline constexpr char32_t decode_code_point_exhaustive_valid(
     }
 }
 
+inline constexpr bool is_cp_space(char32_t cp) noexcept
+{
+    // Pattern_White_Space property
+    return (cp >= 0x09 && cp <= 0x0d) ||
+           cp == 0x20 ||    // ASCII space characters
+           cp == 0x85 ||    // NEXT LINE (NEL)
+           cp == 0x200e ||  // LEFT-TO-RIGHT MARK
+           cp == 0x200f ||  // RIGHT-TO-LEFT MARK
+           cp == 0x2028 ||  // LINE SEPARATOR
+           cp == 0x2029;    // PARAGRAPH SEPARATOR
+}
+
 }  // namespace detail
 
 /////////////////////////////////////////////////////////////////
@@ -4192,6 +4200,7 @@ public:
 
     bool stores_parent() const
     {
+        assert(m_begin);
         return m_end == nullptr;
     }
 
@@ -4937,8 +4946,9 @@ private:
         auto& pctx_ref = *static_cast<parse_context_type*>(pctx);
         auto& ctx_ref = *static_cast<context_type*>(ctx);
 
-        SCN_TRY_ERR(_, s.parse(pctx_ref));
-        SCN_UNUSED(_);
+        SCN_TRY_ERR(fmt_it, s.parse(pctx_ref));
+        pctx_ref.advance_to(fmt_it);
+
         SCN_TRY_ERR(it, s.scan(arg_ref, ctx_ref));
         ctx_ref.advance_to(SCN_MOVE(it));
 
@@ -7867,7 +7877,7 @@ private:
 };
 
 template <typename Source, typename... Args, typename Str>
-auto check_format_string(const Str&)
+constexpr auto check_format_string(const Str&)
     -> std::enable_if_t<!is_compile_string_v<Str>>
 {
     // TODO: SCN_ENFORE_COMPILE_STRING?
@@ -7879,7 +7889,7 @@ auto check_format_string(const Str&)
 }
 
 template <typename Source, typename... Args, typename Str>
-auto check_format_string(Str format_str)
+constexpr auto check_format_string(Str format_str)
     -> std::enable_if_t<is_compile_string_v<Str>>
 {
     using char_type = typename Str::char_type;
