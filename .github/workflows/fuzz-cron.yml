@@ -16,16 +16,16 @@ jobs:
     steps:
       - name: Build fuzzers
         id: build
-        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        uses: eliaskosunen/clusterfuzzlite/actions/build_fuzzers@main
         with:
           language: c++
 
       - name: Run fuzzers
         id: run
-        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        uses: eliaskosunen/clusterfuzzlite/actions/run_fuzzers@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          fuzz-seconds: 1200
+          fuzz-seconds: 86400
           mode: 'prune'
           output-sarif: true
           storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/eliaskosunen/scnlib-fuzz-corpus.git
@@ -36,14 +36,14 @@ jobs:
     steps:
       - name: Build fuzzers
         id: build
-        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        uses: eliaskosunen/clusterfuzzlite/actions/build_fuzzers@main
         with:
           language: c++
           sanitizer: coverage
 
       - name: Run fuzzers
         id: run
-        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        uses: eliaskosunen/clusterfuzzlite/actions/run_fuzzers@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fuzz-seconds: 600

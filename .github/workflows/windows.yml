@@ -6,7 +6,7 @@ on:
       - master
       - v*/dev
     paths:
-      - '.github/**'
+      - '.github/workflows/windows.yml'
       - 'benchmark/**'
       - 'cmake/**'
       - 'examples/**'
@@ -19,7 +19,7 @@ on:
       - master
       - v*/dev
     paths:
-      - '.github/**'
+      - '.github/workflows/windows.yml'
       - 'benchmark/**'
       - 'cmake/**'
       - 'examples/**'

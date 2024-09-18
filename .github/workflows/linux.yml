@@ -6,7 +6,7 @@ on:
       - master
       - v*/dev
     paths:
-      - '.github/**'
+      - '.github/workflows/linux.yml'
       - 'benchmark/**'
       - 'cmake/**'
       - 'examples/**'
@@ -19,7 +19,7 @@ on:
       - master
       - v*/dev
     paths:
-      - '.github/**'
+      - '.github/workflows/linux.yml'
       - 'benchmark/**'
       - 'cmake/**'
       - 'examples/**'
@@ -480,10 +480,10 @@ jobs:
           restore-keys: |
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.ref }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
 
       - name: Setup ccache
@@ -539,7 +539,7 @@ jobs:
           test "$output" -eq 42
 
   disabled-envs:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -551,7 +551,7 @@ jobs:
           - "-DSCN_DISABLE_FROM_CHARS=ON -DSCN_DISABLE_STRTOD=ON"
 
     env:
-      CXX: g++-11
+      CXX: g++-14
       CMAKE_CXX_STANDARD: 17
       CMAKE_C_COMPILER_LAUNCHER: ccache
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
@@ -573,14 +573,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashFiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashFiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashFiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashFiles('$GITHUB_WORKSPACE/flags.txt') }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashfiles('$GITHUB_WORKSPACE/flags.txt') }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
 
       - name: Setup ccache
@@ -592,9 +592,6 @@ jobs:
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
-        env:
-          CC: clang
-          CXX: clang++
         run: |
           cmake -G Ninja -DSCN_CI=ON ${{ matrix.flags }} \
                 $GITHUB_WORKSPACE

@@ -23,14 +23,14 @@ jobs:
     steps:
       - name: Build fuzzers
         id: build
-        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        uses: eliaskosunen/clusterfuzzlite/actions/build_fuzzers@main
         with:
           language: c++
           sanitizer: ${{ matrix.sanitizer }}
 
       - name: Run fuzzers
         id: run
-        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        uses: eliaskosunen/clusterfuzzlite/actions/run_fuzzers@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fuzz-seconds: 1800

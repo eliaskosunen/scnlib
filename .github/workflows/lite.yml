@@ -6,7 +6,7 @@ on:
       - master
       - v*/dev
     paths:
-      - '.github/**'
+      - '.github/workflows/lite.yml'
       - 'benchmark/**'
       - 'cmake/**'
       - 'examples/**'
@@ -19,7 +19,7 @@ on:
       - master
       - v*/dev
     paths:
-      - '.github/**'
+      - '.github/workflows/lite.yml'
       - 'benchmark/**'
       - 'cmake/**'
       - 'examples/**'
@@ -160,6 +160,7 @@ jobs:
 
       - name: Create Build Environment
         run: |
+          $ErrorActionPreference = 'Stop'
           cmake -E make_directory ${{ runner.workspace }}/build
           choco install ccache
 

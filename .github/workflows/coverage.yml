@@ -3,7 +3,7 @@ name: Coverage
 on:
   push:
     paths:
-      - '.github/**'
+      - '.github/workflows/coverage.yml'
       - 'cmake/**'
       - 'include/**'
       - 'scripts/**'
@@ -12,7 +12,7 @@ on:
       - '**/CMakeLists.txt'
   pull_request:
     paths:
-      - '.github/**'
+      - '.github/workflows/coverage.yml'
       - 'cmake/**'
       - 'include/**'
       - 'scripts/**'

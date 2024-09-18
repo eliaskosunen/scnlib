@@ -6,7 +6,7 @@ on:
       - master
       - v*/dev
     paths:
-      - '.github/**'
+      - '.github/workflows/arch.yml'
       - 'cmake/**'
       - 'include/**'
       - 'src/**'
@@ -17,7 +17,7 @@ on:
       - master
       - v*/dev
     paths:
-      - '.github/**'
+      - '.github/workflows/arch.yml'
       - 'cmake/**'
       - 'include/**'
       - 'src/**'

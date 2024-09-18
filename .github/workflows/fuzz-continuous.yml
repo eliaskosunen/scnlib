@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - '.github/**'
+      - '.github/workflows/fuzz-continuous.yml'
       - 'benchmark/**'
       - 'cmake/**'
       - 'examples/**'
@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Build fuzzers
         id: build
-        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        uses: eliaskosunen/clusterfuzzlite/actions/build_fuzzers@main
         with:
           language: c++
           sanitizer: ${{ matrix.sanitizer }}
