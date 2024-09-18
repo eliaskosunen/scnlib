@@ -15,9 +15,13 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#include <scn/chrono.h>
 #include <scn/impl.h>
 
+#if !SCN_DISABLE_LOCALE
 #include <locale>
+#include <sstream>
+#endif
 
 #ifndef SCN_DISABLE_FAST_FLOAT
 #define SCN_DISABLE_FAST_FLOAT 0
@@ -1998,6 +2002,1577 @@ template auto scan_int_impl(std::string_view, unsigned long long&, int)
 template auto scan_int_exhaustive_valid_impl(std::string_view)
     -> unsigned long long;
 #endif
+
+///////////////////////////////////////////////////////////////////////////////
+// <chrono> scanning
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct datetime_setter;
+
+template <typename T>
+struct unreachable_datetime_setter {
+    template <typename Handler>
+    static void set_subsec(Handler&, T&, setter_state&, double)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    template <typename Handler>
+    static void set_sec(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    template <typename Handler>
+    static void set_min(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    template <typename Handler>
+    static void set_hour24(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    template <typename Handler>
+    static void set_hour12(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    template <typename Handler>
+    static void set_mday(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    template <typename Handler>
+    static void set_mon(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    template <typename Handler>
+    static void set_full_year(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    template <typename Handler>
+    static void set_century(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    template <typename Handler>
+    static void set_short_year(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    template <typename Handler>
+    static void set_wday(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    template <typename Handler>
+    static void set_yday(Handler&, T&, setter_state&, int)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    template <typename Handler>
+    static void set_tz_offset(Handler&, T&, setter_state&, std::chrono::minutes)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    template <typename Handler>
+    static void set_tz_name(Handler&, T&, setter_state&, const std::string&)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    static void handle_am_pm(T&, setter_state&)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    static void handle_short_year_and_century(T&, setter_state&)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+};
+
+template <>
+struct datetime_setter<std::tm> {
+    template <typename Handler>
+    static void set_subsec(Handler& h, std::tm&, setter_state&, double)
+    {
+        h.set_error({scan_error::invalid_format_string,
+                     "Subsecond precision not supported with std::tm"});
+    }
+
+    template <typename Handler>
+    static void set_sec(Handler& h, std::tm& t, setter_state& st, int s)
+    {
+        if (SCN_UNLIKELY(s < 0 || s > 60)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for tm_sec"});
+        }
+        t.tm_sec = s;
+        st.set_sec(h);
+    }
+    template <typename Handler>
+    static void set_min(Handler& h, std::tm& t, setter_state& st, int m)
+    {
+        if (SCN_UNLIKELY(m < 0 || m > 59)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for tm_min"});
+        }
+        t.tm_min = m;
+        st.set_min(h);
+    }
+    template <typename Handler>
+    static void set_hour24(Handler& hdl, std::tm& t, setter_state& st, int h)
+    {
+        if (SCN_UNLIKELY(h < 0 || h > 23)) {
+            return hdl.set_error(
+                {scan_error::value_out_of_range, "Invalid value for tm_hour"});
+        }
+        t.tm_hour = h;
+        st.set_hour24(hdl);
+    }
+    template <typename Handler>
+    static void set_hour12(Handler& hdl, std::tm& t, setter_state& st, int h)
+    {
+        if (SCN_UNLIKELY(h < 1 || h > 12)) {
+            return hdl.set_error({scan_error::value_out_of_range,
+                                  "Invalid value for 12-hour tm_hour"});
+        }
+        t.tm_hour = h;
+        st.set_hour12(hdl);
+    }
+    template <typename Handler>
+    static void set_mday(Handler& h, std::tm& t, setter_state& st, int d)
+    {
+        if (SCN_UNLIKELY(d < 1 || d > 31)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for tm_mday"});
+        }
+        t.tm_mday = d;
+        st.set_mday(h);
+    }
+    template <typename Handler>
+    static void set_mon(Handler& h, std::tm& t, setter_state& st, int m)
+    {
+        if (SCN_UNLIKELY(m < 1 || m > 12)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for tm_mon"});
+        }
+        t.tm_mon = m - 1;
+        st.set_mon(h);
+    }
+    template <typename Handler>
+    static void set_full_year(Handler& h, std::tm& t, setter_state& st, int y)
+    {
+        if (SCN_UNLIKELY(y < std::numeric_limits<int>::min() + 1900)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for tm_year"});
+        }
+        t.tm_year = y - 1900;
+        st.set_full_year(h);
+    }
+    template <typename Handler>
+    static void set_century(Handler& h, std::tm&, setter_state& st, int c)
+    {
+        // TODO: range check
+        st.century_value = c;
+        st.set_century(h);
+    }
+    template <typename Handler>
+    static void set_short_year(Handler& h, std::tm&, setter_state& st, int y)
+    {
+        if (SCN_UNLIKELY(y < 0 || y > 99)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for tm_year"});
+        }
+        st.short_year_value = y;
+        st.set_short_year(h);
+    }
+    template <typename Handler>
+    static void set_wday(Handler& h, std::tm& t, setter_state& st, int d)
+    {
+        if (SCN_UNLIKELY(d < 0 || d > 6)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for tm_wday"});
+        }
+        t.tm_wday = d;
+        st.set_wday(h);
+    }
+    template <typename Handler>
+    static void set_yday(Handler& h, std::tm& t, setter_state& st, int d)
+    {
+        if (SCN_UNLIKELY(d < 0 || d > 365)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for tm_yday"});
+        }
+        t.tm_yday = d;
+        st.set_yday(h);
+    }
+
+    template <typename Handler>
+    static void set_tz_offset(Handler& h,
+                              std::tm& t,
+                              setter_state& st,
+                              std::chrono::minutes o)
+    {
+        if constexpr (mp_valid<has_tm_gmtoff_predicate, std::tm>::value) {
+            t.tm_gmtoff =
+                std::chrono::duration_cast<std::chrono::seconds>(o).count();
+            return st.set_tzoff(h);
+        }
+        else {
+            return h.set_error(
+                {scan_error::invalid_format_string, "tm_gmtoff not supported"});
+        }
+    }
+
+    template <typename Handler>
+    static void set_tz_name(Handler& h,
+                            std::tm&,
+                            setter_state&,
+                            const std::string&)
+    {
+        return h.set_error(
+            {scan_error::invalid_format_string, "tm_zone not supported"});
+    }
+
+    static void handle_am_pm(std::tm& t, setter_state& st)
+    {
+        return st.handle_am_pm(t.tm_hour);
+    }
+
+    static void handle_short_year_and_century(std::tm& t, setter_state& st)
+    {
+        st.handle_short_year_and_century(t.tm_year, 1900);
+    }
+};
+
+template <>
+struct datetime_setter<datetime_components> {
+    template <typename Handler>
+    static void set_subsec(Handler& h,
+                           datetime_components& t,
+                           setter_state& st,
+                           double s)
+    {
+        assert(s >= 0.0 && s < 1.0);
+        t.subsec = s;
+        st.set_subsec(h);
+    }
+    template <typename Handler>
+    static void set_sec(Handler& h,
+                        datetime_components& t,
+                        setter_state& st,
+                        int s)
+    {
+        if (SCN_UNLIKELY(s < 0 || s > 60)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for seconds"});
+        }
+        t.sec = s;
+        st.set_sec(h);
+    }
+    template <typename Handler>
+    static void set_min(Handler& h,
+                        datetime_components& t,
+                        setter_state& st,
+                        int m)
+    {
+        if (SCN_UNLIKELY(m < 0 || m > 59)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for minutes"});
+        }
+        t.min = m;
+        st.set_min(h);
+    }
+    template <typename Handler>
+    static void set_hour24(Handler& hdl,
+                           datetime_components& t,
+                           setter_state& st,
+                           int h)
+    {
+        if (SCN_UNLIKELY(h < 0 || h > 23)) {
+            return hdl.set_error(
+                {scan_error::value_out_of_range, "Invalid value for hours"});
+        }
+        t.hour = h;
+        st.set_hour24(hdl);
+    }
+    template <typename Handler>
+    static void set_hour12(Handler& hdl,
+                           datetime_components& t,
+                           setter_state& st,
+                           int h)
+    {
+        if (SCN_UNLIKELY(h < 1 || h > 12)) {
+            return hdl.set_error({scan_error::value_out_of_range,
+                                  "Invalid value for hours (12-hour clock)"});
+        }
+        t.hour = h;
+        st.set_hour12(hdl);
+    }
+    template <typename Handler>
+    static void set_mday(Handler& h,
+                         datetime_components& t,
+                         setter_state& st,
+                         int d)
+    {
+        if (SCN_UNLIKELY(d < 1 || d > 31)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for mday"});
+        }
+        t.mday = d;
+        st.set_mday(h);
+    }
+    template <typename Handler>
+    static void set_mon(Handler& h,
+                        datetime_components& t,
+                        setter_state& st,
+                        int m)
+    {
+        if (SCN_UNLIKELY(m < 1 || m > 12)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for mon"});
+        }
+        t.mon = month{static_cast<unsigned>(m)};
+        st.set_mon(h);
+    }
+    template <typename Handler>
+    static void set_full_year(Handler& h,
+                              datetime_components& t,
+                              setter_state& st,
+                              int y)
+    {
+        t.year = y;
+        st.set_full_year(h);
+    }
+    template <typename Handler>
+    static void set_century(Handler& h,
+                            datetime_components& t,
+                            setter_state& st,
+                            int c)
+    {
+        if (!t.year) {
+            t.year = c * 100;
+        }
+        else {
+            t.year = *t.year + c * 100;
+        }
+        st.set_century(h);
+    }
+    template <typename Handler>
+    static void set_short_year(Handler& h,
+                               datetime_components& t,
+                               setter_state& st,
+                               int y)
+    {
+        if (!t.year) {
+            t.year = y;
+        }
+        else {
+            t.year = *t.year + y;
+        }
+        st.set_short_year(h);
+    }
+    template <typename Handler>
+    static void set_wday(Handler& h,
+                         datetime_components& t,
+                         setter_state& st,
+                         int d)
+    {
+        if (SCN_UNLIKELY(d < 0 || d > 6)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for wday"});
+        }
+        t.wday = weekday{static_cast<unsigned>(d)};
+        st.set_wday(h);
+    }
+    template <typename Handler>
+    static void set_yday(Handler& h,
+                         datetime_components& t,
+                         setter_state& st,
+                         int d)
+    {
+        if (SCN_UNLIKELY(d < 0 || d > 6)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for yday"});
+        }
+        t.yday = d;
+        st.set_yday(h);
+    }
+
+    template <typename Handler>
+    static void set_tz_offset(Handler& h,
+                              datetime_components& t,
+                              setter_state& st,
+                              std::chrono::minutes o)
+    {
+        t.tz_offset = o;
+        return st.set_tzoff(h);
+    }
+
+    template <typename Handler>
+    static void set_tz_name(Handler& h,
+                            datetime_components& t,
+                            setter_state& st,
+                            std::string n)
+    {
+        t.tz_name = std::move(n);
+        return st.set_tzname(h);
+    }
+
+    static void handle_am_pm(datetime_components& t, setter_state& st)
+    {
+        assert(t.hour);
+        st.handle_am_pm(*t.hour);
+    }
+
+    static void handle_short_year_and_century(datetime_components& t,
+                                              setter_state& st)
+    {
+        assert(t.year);
+        st.handle_short_year_and_century(*t.year, 0);
+    }
+};
+
+template <>
+struct datetime_setter<tm_with_tz> : datetime_setter<std::tm> {
+    template <typename Handler>
+    static void set_tz_offset(Handler& h,
+                              tm_with_tz& t,
+                              setter_state& st,
+                              std::chrono::minutes o)
+    {
+        if constexpr (mp_valid<has_tm_gmtoff_predicate, std::tm>::value) {
+            t.tz_offset = o;
+            return datetime_setter<std::tm>::set_tz_offset(h, t, st, o);
+        }
+        else {
+            t.tz_offset = o;
+            return st.set_tzoff(h);
+        }
+    }
+
+    template <typename Handler>
+    static void set_tz_name(Handler& h,
+                            tm_with_tz& t,
+                            setter_state& st,
+                            std::string n)
+    {
+        t.tz_name = std::move(n);
+        return st.set_tzname(h);
+    }
+};
+
+template <>
+struct datetime_setter<weekday> : unreachable_datetime_setter<weekday> {
+    template <typename Handler>
+    static void set_wday(Handler& h, weekday& t, setter_state& st, int d)
+    {
+        if (SCN_UNLIKELY(d < 0 || d > 6)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for wday"});
+        }
+        t = weekday{static_cast<unsigned>(d)};
+        st.set_wday(h);
+    }
+};
+
+template <>
+struct datetime_setter<day> : unreachable_datetime_setter<day> {
+    template <typename Handler>
+    static void set_mday(Handler& h, day& t, setter_state& st, int d)
+    {
+        if (SCN_UNLIKELY(d < 1 || d > 31)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for mday"});
+        }
+        t = day{static_cast<unsigned>(d)};
+        st.set_mday(h);
+    }
+};
+
+template <>
+struct datetime_setter<month> : unreachable_datetime_setter<month> {
+    template <typename Handler>
+    static void set_mon(Handler& h, month& t, setter_state& st, int m)
+    {
+        if (SCN_UNLIKELY(m < 1 || m > 31)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for month"});
+        }
+        t = month{static_cast<unsigned>(m)};
+        st.set_mon(h);
+    }
+};
+
+template <>
+struct datetime_setter<year> : unreachable_datetime_setter<year> {
+    template <typename Handler>
+    static void set_full_year(Handler& h, year& t, setter_state& st, int y)
+    {
+        t = year{static_cast<int>(y)};
+        st.set_full_year(h);
+    }
+    template <typename Handler>
+    static void set_century(Handler& h, year& t, setter_state& st, int c)
+    {
+        t = year{static_cast<int>(t) + c * 100};
+        st.set_century(h);
+    }
+    template <typename Handler>
+    static void set_short_year(Handler& h, year& t, setter_state& st, int y)
+    {
+        t = year{static_cast<int>(t) + y};
+        st.set_short_year(h);
+    }
+};
+
+template <>
+struct datetime_setter<month_day> : unreachable_datetime_setter<month_day> {
+    template <typename Handler>
+    static void set_mon(Handler& h, month_day& t, setter_state& st, int m)
+    {
+        if (SCN_UNLIKELY(m < 1 || m > 31)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for month"});
+        }
+        t = month_day{month{static_cast<unsigned>(m)}, t.day()};
+        st.set_mon(h);
+    }
+
+    template <typename Handler>
+    static void set_mday(Handler& h, month_day& t, setter_state& st, int d)
+    {
+        if (SCN_UNLIKELY(d < 1 || d > 31)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for mday"});
+        }
+        t = month_day{t.month(), day{static_cast<unsigned>(d)}};
+        st.set_mday(h);
+    }
+};
+
+template <>
+struct datetime_setter<year_month> : unreachable_datetime_setter<year_month> {
+    template <typename Handler>
+    static void set_full_year(Handler& h,
+                              year_month& t,
+                              setter_state& st,
+                              int y)
+    {
+        t = year_month{year{static_cast<int>(y)}, t.month()};
+        st.set_full_year(h);
+    }
+    template <typename Handler>
+    static void set_century(Handler& h, year_month& t, setter_state& st, int c)
+    {
+        t = year_month{year{static_cast<int>(t.year()) + c * 100}, t.month()};
+        st.set_century(h);
+    }
+    template <typename Handler>
+    static void set_short_year(Handler& h,
+                               year_month& t,
+                               setter_state& st,
+                               int y)
+    {
+        t = year_month{year{static_cast<int>(t.year()) + y}, t.month()};
+        st.set_short_year(h);
+    }
+    template <typename Handler>
+    static void set_mon(Handler& h, year_month& t, setter_state& st, int m)
+    {
+        if (SCN_UNLIKELY(m < 1 || m > 31)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for month"});
+        }
+        t = year_month{t.year(), month{static_cast<unsigned>(m)}};
+        st.set_mon(h);
+    }
+};
+
+template <>
+struct datetime_setter<year_month_day>
+    : unreachable_datetime_setter<year_month_day> {
+    template <typename Handler>
+    static void set_full_year(Handler& h,
+                              year_month_day& t,
+                              setter_state& st,
+                              int y)
+    {
+        t = year_month_day{year{static_cast<int>(y)}, t.month(), t.day()};
+        st.set_full_year(h);
+    }
+    template <typename Handler>
+    static void set_century(Handler& h,
+                            year_month_day& t,
+                            setter_state& st,
+                            int c)
+    {
+        t = year_month_day{year{static_cast<int>(t.year()) + c * 100},
+                           t.month(), t.day()};
+        st.set_century(h);
+    }
+    template <typename Handler>
+    static void set_short_year(Handler& h,
+                               year_month_day& t,
+                               setter_state& st,
+                               int y)
+    {
+        t = year_month_day{year{static_cast<int>(t.year()) + y}, t.month(),
+                           t.day()};
+        st.set_short_year(h);
+    }
+    template <typename Handler>
+    static void set_mon(Handler& h, year_month_day& t, setter_state& st, int m)
+    {
+        if (SCN_UNLIKELY(m < 1 || m > 31)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for month"});
+        }
+        t = year_month_day{t.year(), month{static_cast<unsigned>(m)}, t.day()};
+        st.set_mon(h);
+    }
+    template <typename Handler>
+    static void set_mday(Handler& h, year_month_day& t, setter_state& st, int d)
+    {
+        if (SCN_UNLIKELY(d < 1 || d > 31)) {
+            return h.set_error(
+                {scan_error::value_out_of_range, "Invalid value for mday"});
+        }
+        t = year_month_day{t.year(), t.month(), day{static_cast<unsigned>(d)}};
+        st.set_mday(h);
+    }
+};
+
+template <typename T, typename Range, typename CharT>
+class tm_reader {
+public:
+    using type = T;
+    using setter = datetime_setter<T>;
+    using iterator = ranges::iterator_t<Range>;
+
+    tm_reader(Range r, T& t, locale_ref loc)
+        : m_range(SCN_MOVE(r)),
+          m_begin(ranges::begin(m_range)),
+          m_tm(t),
+          m_loc(loc)
+    {
+    }
+
+    void on_text(const CharT* beg, const CharT* end)
+    {
+        while (beg != end) {
+            if (m_begin == ranges::end(m_range)) {
+                return set_error({scan_error::end_of_range, "EOF"});
+            }
+            if (*beg != *m_begin) {
+                return on_error("Invalid literal character");
+            }
+            ++beg;
+            ++m_begin;
+        }
+    }
+    void on_whitespace()
+    {
+        if (auto res = internal_skip_classic_whitespace(
+                ranges::subrange{m_begin, ranges::end(m_range)}, true);
+            res) {
+            m_begin = SCN_MOVE(*res);
+        }
+        else {
+            set_error(res.error());
+        }
+    }
+
+    void on_localized()
+    {
+        m_st.localized = true;
+    }
+
+    void on_full_year(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%EY", L"%EY")) {
+                setter::set_full_year(*this, m_tm, m_st, t->tm_year + 1900);
+            }
+            return;
+        }
+#endif
+
+        int yr = read_classic_unsigned_integer(4, 4);
+        setter::set_full_year(*this, m_tm, m_st, yr);
+    }
+    void on_short_year(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%Ey", L"%Ey")) {
+                setter::set_short_year(*this, m_tm, m_st,
+                                       (t->tm_year + 1900) % 100);
+            }
+            return;
+        }
+#endif
+
+        int yr = read_classic_unsigned_integer(2, 2);
+        setter::set_short_year(*this, m_tm, m_st, yr);
+    }
+    void on_century(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%EC", L"%EC")) {
+                setter::set_century(*this, m_tm, m_st,
+                                    (t->tm_year + 1900) / 100);
+            }
+            return;
+        }
+#endif
+
+        int c = read_classic_unsigned_integer(2, 2);
+        setter::set_century(*this, m_tm, m_st, c);
+    }
+    void on_iso_week_based_year()
+    {
+        unimplemented();
+    }
+    void on_iso_week_based_short_year()
+    {
+        unimplemented();
+    }
+    void on_loc_offset_year()
+    {
+        unimplemented();
+    }
+
+    void on_month_name()
+    {
+#if !SCN_DISABLE_FAST_FLOAT
+        if (m_st.localized) {
+            if (auto t = read_localized("%b", L"%b")) {
+                setter::set_mon(*this, m_tm, m_st, t->tm_mon + 1);
+            }
+            return;
+        }
+#endif
+
+        std::array<std::pair<std::string_view, int>, 12> long_mapping = {{
+            {"January", 1},
+            {"February", 2},
+            {"March", 3},
+            {"April", 4},
+            {"May", 5},
+            {"June", 6},
+            {"July", 7},
+            {"August", 8},
+            {"September", 9},
+            {"October", 10},
+            {"November", 11},
+            {"December", 12},
+        }};
+        if (auto m = try_one_of_str_nocase(long_mapping)) {
+            return setter::set_mon(*this, m_tm, m_st, *m);
+        }
+        std::array<std::pair<std::string_view, int>, 11> short_mapping = {{
+            {"Jan", 1},
+            {"Feb", 2},
+            {"Mar", 3},
+            {"Apr", 4},
+            {"Jun", 6},
+            {"Jul", 7},
+            {"Aug", 8},
+            {"Sep", 9},
+            {"Oct", 10},
+            {"Nov", 11},
+            {"Dec", 12},
+        }};
+        if (auto m = try_one_of_str_nocase(short_mapping)) {
+            return setter::set_mon(*this, m_tm, m_st, *m);
+        }
+        set_error({scan_error::invalid_scanned_value, "Invalid month name"});
+    }
+    void on_dec_month(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%Om", L"%Om")) {
+                setter::set_mon(*this, m_tm, m_st, t->tm_mon + 1);
+            }
+            return;
+        }
+#endif
+
+        int mon = read_classic_unsigned_integer(1, 2);
+        setter::set_mon(*this, m_tm, m_st, mon);
+    }
+
+    void on_dec0_week_of_year(numeric_system sys = numeric_system::standard)
+    {
+        unimplemented();
+    }
+    void on_dec1_week_of_year()
+    {
+        unimplemented();
+    }
+    void on_iso_week_of_year()
+    {
+        unimplemented();
+    }
+    void on_day_of_year()
+    {
+        int yday = read_classic_unsigned_integer(1, 3);
+        setter::set_yday(*this, m_tm, m_st, yday - 1);
+    }
+    void on_day_of_month(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%Od", L"%Od")) {
+                setter::set_mday(*this, m_tm, m_st, t->tm_mday);
+            }
+            return;
+        }
+#endif
+
+        int mday = read_classic_unsigned_integer(1, 2);
+        setter::set_mday(*this, m_tm, m_st, mday);
+    }
+
+    void on_weekday_name()
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized) {
+            if (auto t = read_localized("%a", L"%a")) {
+                setter::set_wday(*this, m_tm, m_st, t->tm_wday);
+            }
+            return;
+        }
+#endif
+
+        std::array<std::pair<std::string_view, int>, 7> long_mapping = {{
+            {"Sunday", 0},
+            {"Monday", 1},
+            {"Tuesday", 2},
+            {"Wednesday", 3},
+            {"Thursday", 4},
+            {"Friday", 5},
+            {"Saturday", 6},
+        }};
+        if (auto d = try_one_of_str_nocase(long_mapping)) {
+            return setter::set_wday(*this, m_tm, m_st, *d);
+        }
+        std::array<std::pair<std::string_view, int>, 7> short_mapping = {{
+            {"Sun", 0},
+            {"Mon", 1},
+            {"Tue", 2},
+            {"Wed", 3},
+            {"Thu", 4},
+            {"Fri", 5},
+            {"Sat", 6},
+        }};
+        if (auto d = try_one_of_str_nocase(short_mapping)) {
+            return setter::set_wday(*this, m_tm, m_st, *d);
+        }
+        return set_error(
+            {scan_error::invalid_scanned_value, "Invalid weekday name"});
+    }
+    void on_dec0_weekday(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%Ow", L"%Ow")) {
+                setter::set_wday(*this, m_tm, m_st, t->tm_wday);
+            }
+            return;
+        }
+#endif
+
+        int wday = read_classic_unsigned_integer(1, 1);
+        setter::set_wday(*this, m_tm, m_st, wday);
+    }
+    void on_dec1_weekday(numeric_system sys = numeric_system::standard)
+    {
+        auto adjust_wday = [](int d) {
+            if (d == 0) {
+                return 6;
+            }
+            return d - 1;
+        };
+
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%Ow", L"%Ow")) {
+                setter::set_wday(*this, m_tm, m_st, adjust_wday(t->tm_wday));
+            }
+            return;
+        }
+#endif
+
+        int wday = read_classic_unsigned_integer(1, 1);
+        setter::set_wday(*this, m_tm, m_st, adjust_wday(wday));
+    }
+
+    void on_24_hour(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%OH", L"%OH")) {
+                setter::set_hour24(*this, m_tm, m_st, t->tm_hour);
+            }
+            return;
+        }
+#endif
+
+        int hr = read_classic_unsigned_integer(1, 2);
+        setter::set_hour24(*this, m_tm, m_st, hr);
+    }
+    void on_12_hour(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%OI", L"%OI")) {
+                setter::set_hour12(*this, m_tm, m_st, t->tm_hour);
+            }
+            return;
+        }
+#endif
+
+        int hr = read_classic_unsigned_integer(1, 2);
+        setter::set_hour12(*this, m_tm, m_st, hr);
+    }
+    void on_minute(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%OM", L"%OM")) {
+                setter::set_min(*this, m_tm, m_st, t->tm_min);
+            }
+            return;
+        }
+#endif
+
+        int min = read_classic_unsigned_integer(1, 2);
+        setter::set_min(*this, m_tm, m_st, min);
+    }
+    void on_second(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized && sys != numeric_system::standard) {
+            if (auto t = read_localized("%OS", L"%OS")) {
+                setter::set_sec(*this, m_tm, m_st, t->tm_sec);
+            }
+            return;
+        }
+#endif
+
+        int sec = read_classic_unsigned_integer(1, 2);
+        setter::set_sec(*this, m_tm, m_st, sec);
+    }
+    void on_subsecond(numeric_system sys = numeric_system::standard)
+    {
+        int whole = read_classic_unsigned_integer(1, 2);
+        setter::set_sec(*this, m_tm, m_st, whole);
+
+        if (!m_st.localized || sys == numeric_system::standard) {
+            if (!consume_ch('.')) {
+                return set_error({scan_error::invalid_scanned_value,
+                                  "Expected `.` in subsecond value"});
+            }
+        }
+#if !SCN_DISABLE_LOCALE
+        else {
+            auto& state = get_localized_read_state();
+            CharT sep = state.numpunct_facet->decimal_point();
+            if (!consume_ch(sep)) {
+                return set_error(
+                    {scan_error::invalid_scanned_value,
+                     "Expected decimal separator in subsecond value"});
+            }
+        }
+#endif
+
+        auto str_res = scan<std::string>(
+            ranges::subrange{m_begin, m_range.end()}, []() -> decltype(auto) {
+                if constexpr (std::is_same_v<CharT, char>) {
+                    return "{:[0-9]}";
+                }
+                else {
+                    return L"{:[0-9]}";
+                }
+            }());
+        if (!str_res) {
+            return set_error(str_res.error());
+        }
+        if (str_res->begin() == m_begin) {
+            return set_error({scan_error::invalid_scanned_value,
+                              "Expected digits after `.` in subsecond value"});
+        }
+        m_begin = str_res->begin();
+
+        auto subsecond_str = std::move(str_res->value());
+        subsecond_str.insert(0, "0.");
+        auto dbl_res = scan<double>(subsecond_str, "{}");
+        if (!dbl_res) {
+            return set_error(dbl_res.error());
+        }
+
+        setter::set_subsec(*this, m_tm, m_st, dbl_res->value());
+    }
+
+    void on_tz_offset(numeric_system sys = numeric_system::standard)
+    {
+        // [+|-]
+        if (m_begin == ranges::end(m_range)) {
+            return set_error({scan_error::end_of_range, "EOF"});
+        }
+        bool is_minus = false;
+        {
+            const auto sign_ch = *m_begin;
+            if (sign_ch == CharT{'+'}) {
+                ++m_begin;
+            }
+            else if (sign_ch == CharT{'-'}) {
+                is_minus = true;
+                ++m_begin;
+            }
+        }
+        if (m_begin == ranges::end(m_range)) {
+            return set_error({scan_error::end_of_range, "EOF"});
+        }
+
+        int hour = 0;
+        int minute = 0;
+        if (sys == numeric_system::standard) {
+            // hh[[:]mm]
+            hour = read_classic_unsigned_integer(2, 2);
+            if (m_begin != ranges::end(m_range)) {
+                auto it_before_colon = m_begin;
+                if (*m_begin == CharT{':'}) {
+                    ++m_begin;
+                }
+                if (m_begin == ranges::end(m_range) || *m_begin < CharT{'0'} ||
+                    *m_begin > CharT{'9'}) {
+                    m_begin = it_before_colon;
+                }
+                else {
+                    minute = read_classic_unsigned_integer(2, 2);
+                }
+            }
+        }
+        else {
+            // h[h][:mm]
+            hour = read_classic_unsigned_integer(1, 2);
+            if (m_begin != ranges::end(m_range)) {
+                auto it_before_colon = m_begin;
+                if (*m_begin == CharT{':'}) {
+                    ++m_begin;
+                    if (m_begin == ranges::end(m_range) ||
+                        *m_begin < CharT{'0'} || *m_begin > CharT{'9'}) {
+                        m_begin = it_before_colon;
+                    }
+                    else {
+                        minute = read_classic_unsigned_integer(2, 2);
+                    }
+                }
+            }
+        }
+
+        setter::set_tz_offset(
+            *this, m_tm, m_st,
+            std::chrono::minutes{(is_minus ? -1 : 1) * (hour * 60 + minute)});
+    }
+    void on_tz_name()
+    {
+        auto res = scan<std::string>(
+            ranges::subrange{m_begin, m_range.end()}, []() -> decltype(auto) {
+                if constexpr (std::is_same_v<CharT, char>) {
+                    return "{:[a-zA-Z0-9-+_/]}";
+                }
+                else {
+                    return L"{:[a-zA-Z0-9-+_/]}";
+                }
+            }());
+        if (!res) {
+            set_error(res.error());
+        }
+        else {
+            setter::set_tz_name(*this, m_tm, m_st, std::move(res->value()));
+        }
+        m_begin = res->begin();
+    }
+
+    void on_loc_datetime(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized) {
+            const auto t = [&]() {
+                if (sys != numeric_system::standard) {
+                    return read_localized("%Ec", L"%Ec");
+                }
+                return read_localized("%c", L"%c");
+            }();
+
+            if (t) {
+                setter::set_full_year(*this, m_tm, m_st, t->tm_year + 1900);
+                setter::set_mon(*this, m_tm, m_st, t->tm_mon + 1);
+                setter::set_mday(*this, m_tm, m_st, t->tm_mday);
+                setter::set_hour24(*this, m_tm, m_st, t->tm_hour);
+                setter::set_min(*this, m_tm, m_st, t->tm_min);
+                setter::set_sec(*this, m_tm, m_st, t->tm_sec);
+            }
+            return;
+        }
+#endif
+        // %c == %a %b %d %H:%M:%S %Y
+        constexpr CharT colon = ':';
+        on_weekday_name();
+        on_whitespace();
+        on_month_name();
+        on_whitespace();
+        on_day_of_month();
+        on_whitespace();
+        on_24_hour();
+        on_text(&colon, &colon + 1);
+        on_minute();
+        on_text(&colon, &colon + 1);
+        on_second();
+        on_whitespace();
+        on_full_year();
+    }
+    void on_loc_date(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized) {
+            const auto t = [&]() {
+                if (sys != numeric_system::standard) {
+                    return read_localized("%Ex", L"%Ex");
+                }
+                return read_localized("%x", L"%x");
+            }();
+
+            if (t) {
+                setter::set_full_year(*this, m_tm, m_st, t->tm_year + 1900);
+                setter::set_mon(*this, m_tm, m_st, t->tm_mon + 1);
+                setter::set_mday(*this, m_tm, m_st, t->tm_mday);
+            }
+            return;
+        }
+#endif
+
+        // %x == %m/%d/%Y
+        constexpr CharT slash = '/';
+        on_dec_month();
+        on_text(&slash, &slash + 1);
+        on_day_of_month();
+        on_text(&slash, &slash + 1);
+        on_full_year();
+    }
+    void on_loc_time(numeric_system sys = numeric_system::standard)
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized) {
+            const auto t = [&]() {
+                if (sys != numeric_system::standard) {
+                    return read_localized("%EX", L"%EX");
+                }
+                return read_localized("%X", L"%X");
+            }();
+
+            if (t) {
+                setter::set_hour24(*this, m_tm, m_st, t->tm_hour);
+                setter::set_min(*this, m_tm, m_st, t->tm_min);
+                setter::set_sec(*this, m_tm, m_st, t->tm_sec);
+            }
+            return;
+        }
+#endif
+        // %X == %H:%M:%S
+        on_iso_time();
+    }
+    void on_us_date()
+    {
+        // %m/%d/%y
+        constexpr CharT slash = '/';
+        on_dec_month();
+        on_text(&slash, &slash + 1);
+        on_day_of_month();
+        on_text(&slash, &slash + 1);
+        on_short_year();
+    }
+    void on_iso_date()
+    {
+        // %Y-%m-%d
+        constexpr CharT dash = '-';
+        on_full_year();
+        on_text(&dash, &dash + 1);
+        on_dec_month();
+        on_text(&dash, &dash + 1);
+        on_day_of_month();
+    }
+    void on_loc_12_hour_time()
+    {
+#if !SCN_DISABLE_LOCALE
+        if (m_st.localized) {
+            if (auto t = read_localized("%r", L"%r")) {
+                setter::set_hour24(*this, m_tm, m_st, t->tm_hour);
+                setter::set_min(*this, m_tm, m_st, t->tm_min);
+                setter::set_sec(*this, m_tm, m_st, t->tm_sec);
+            }
+            return;
+        }
+#endif
+        // %r == %I:%M:%S %p
+        constexpr CharT colon = ':';
+        on_12_hour();
+        on_text(&colon, &colon + 1);
+        on_minute();
+        on_text(&colon, &colon + 1);
+        on_second();
+        on_whitespace();
+        on_am_pm();
+    }
+    void on_24_hour_time()
+    {
+        // %H:%M
+        constexpr CharT colon = ':';
+        on_24_hour();
+        on_text(&colon, &colon + 1);
+        on_minute();
+    }
+    void on_iso_time()
+    {
+        // %H:%M:%S
+        constexpr CharT colon = ':';
+        on_24_hour();
+        on_text(&colon, &colon + 1);
+        on_minute();
+        on_text(&colon, &colon + 1);
+        on_second();
+    }
+    void on_am_pm()
+    {
+        std::array<std::pair<std::string_view, bool>, 4> mapping = {{
+            {"am", false},
+            {"a.m.", false},
+            {"pm", true},
+            {"p.m.", true},
+        }};
+        if (auto b = try_one_of_str_nocase(mapping)) {
+            m_st.is_pm = *b;
+            return m_st.set_am_pm(*this);
+        }
+        set_error(
+            {scan_error::invalid_scanned_value, "Invalid am/pm specifier"});
+    }
+
+    void on_epoch_offset()
+    {
+        unimplemented();
+    }
+    void on_duration_tick_count()
+    {
+        unimplemented();
+    }
+    void on_duration_suffix()
+    {
+        unimplemented();
+    }
+
+    void verify()
+    {
+        m_st.verify(*this);
+        if (m_st.am_pm_set && m_st.hour12_set) {
+            setter::handle_am_pm(m_tm, m_st);
+        }
+        if (!m_st.full_year_set && (m_st.short_year_set || m_st.century_set)) {
+            setter::handle_short_year_and_century(m_tm, m_st);
+        }
+    }
+
+    scan_error get_error() const
+    {
+        return m_error;
+    }
+
+    void on_error(const char* msg)
+    {
+        set_error({scan_error::invalid_format_string, msg});
+    }
+
+    void set_error(scan_error e)
+    {
+        assert(!e);
+        if (m_error == scan_error::success_tag()) {
+            m_error = e;
+        }
+    }
+
+    iterator get_iterator() const
+    {
+        return m_begin;
+    }
+
+private:
+    void unimplemented()
+    {
+        on_error("Unimplemented");
+    }
+
+    int read_classic_unsigned_integer(int min_digits, int max_digits)
+    {
+        int digits_read = 0;
+        int accumulator = 0;
+        while (m_begin != m_range.end()) {
+            const auto ch = *m_begin;
+            if (ch < CharT{'0'} || ch > CharT{'9'}) {
+                break;
+            }
+            ++m_begin;
+            ++digits_read;
+            accumulator = accumulator * 10 + static_cast<int>(ch - CharT{'0'});
+            if (digits_read >= max_digits) {
+                break;
+            }
+        }
+        if (digits_read < min_digits) {
+            set_error(scan_error{scan_error::invalid_scanned_value,
+                                 "Too few integer digits"});
+            return -1;
+        }
+        return accumulator;
+    }
+
+    bool consume_ch(char ch)
+    {
+        if (m_begin == m_range.end()) {
+            return false;
+        }
+        if (*m_begin == static_cast<CharT>(ch)) {
+            ++m_begin;
+            return true;
+        }
+        return false;
+    }
+
+    template <typename OptT, std::size_t N>
+    std::optional<OptT> try_one_of_str_nocase(
+        std::array<std::pair<std::string_view, OptT>, N>& options)
+    {
+        auto start_it = m_begin;
+        std::size_t options_available = N;
+        std::size_t chars_consumed = 0;
+        while (options_available >= 1 &&
+               options.front().first.size() > chars_consumed) {
+            std::size_t i = 0;
+            if (m_begin == m_range.end()) {
+                options_available = 0;
+                break;
+            }
+            const auto ch = *m_begin;
+            ++m_begin;
+            while (i < options_available) {
+                const auto cmp = static_cast<unsigned>(
+                    ch ^ options[i].first[chars_consumed]);
+                if (options[i].first.size() <= chars_consumed ||
+                    (cmp != 0 && cmp != 32)) {
+                    std::rotate(options.begin() + i, options.begin() + i + 1,
+                                options.end());
+                    --options_available;
+                    continue;
+                }
+                ++i;
+            }
+            ++chars_consumed;
+        }
+        if (options_available != 1) {
+            m_begin = start_it;
+            return std::nullopt;
+        }
+        return options.front().second;
+    }
+
+#if !SCN_DISABLE_LOCALE
+    struct localized_read_state {
+        using time_facet_type = std::time_get<CharT, iterator>;
+        using numpunct_facet_type = std::numpunct<CharT>;
+
+        std::locale locale;
+        const time_facet_type* time_facet;
+        const numpunct_facet_type* numpunct_facet;
+        std::basic_stringstream<CharT> dummy_stream;
+    };
+
+    localized_read_state& get_localized_read_state()
+    {
+        if (!m_loc_state) {
+            auto loc = [&]() {
+                if (m_st.localized) {
+                    return m_loc.get<std::locale>();
+                }
+                return std::locale::classic();
+            }();
+            if (!std::has_facet<typename localized_read_state::time_facet_type>(
+                    loc)) {
+                loc = std::locale(
+                    loc, new typename localized_read_state::time_facet_type{});
+            }
+            if (!std::has_facet<
+                    typename localized_read_state::numpunct_facet_type>(loc)) {
+                loc = std::locale(
+                    loc,
+                    new typename localized_read_state::numpunct_facet_type{});
+            }
+
+            m_loc_state = localized_read_state{
+                SCN_MOVE(loc),
+                &std::use_facet<typename localized_read_state::time_facet_type>(
+                    loc),
+                &std::use_facet<
+                    typename localized_read_state::numpunct_facet_type>(loc),
+                {}};
+
+            m_loc_state->dummy_stream.imbue(m_loc_state->locale);
+        }
+
+        return *m_loc_state;
+    }
+
+    std::optional<std::tm> do_read_localized(std::basic_string_view<CharT> fmt)
+    {
+        const auto& facet = *get_localized_read_state().time_facet;
+        std::ios_base::iostate err{std::ios_base::goodbit};
+        std::tm tm{};
+        auto [begin, end] = [&]() {
+            if constexpr (std::is_same_v<
+                              iterator,
+                              remove_cvref_t<decltype(m_range.end())>>) {
+                return std::pair{m_range.begin(), m_range.end()};
+            }
+            else {
+                using common_iterator_type =
+                    typename basic_scan_buffer<CharT>::common_forward_iterator;
+                return std::pair{common_iterator_type{m_range.begin()},
+                                 common_iterator_type{m_range.end()}};
+            }
+        }();
+        auto iter = facet.get(begin, end, m_loc_state->dummy_stream, err, &tm,
+                              fmt.data(), fmt.data() + fmt.size());
+        if ((err & std::ios_base::failbit) != 0) {
+            set_error({scan_error::invalid_scanned_value,
+                       "Failed to scan localized datetime"});
+            return std::nullopt;
+        }
+        m_begin = SCN_MOVE(iter);
+        return tm;
+    }
+
+    std::optional<std::tm> read_localized(std::string_view fmt,
+                                          std::wstring_view wfmt)
+    {
+        if constexpr (std::is_same_v<CharT, char>) {
+            return do_read_localized(fmt);
+        }
+        else {
+            return do_read_localized(wfmt);
+        }
+    }
+
+    std::optional<localized_read_state> m_loc_state;
+#else
+    std::optional<std::tm> read_localized(std::string_view, std::wstring_view)
+    {
+        set_error(
+            {scan_error::invalid_format_string,
+             "Failed to scan localized datetime with SCN_DISABLE_LOCALE on"});
+        return std::nullopt;
+    }
+#endif  // !SCN_DISABLE_LOCALE
+
+    Range m_range;
+    iterator m_begin;
+    T& m_tm;
+    setter_state m_st{};
+    locale_ref m_loc{};
+    scan_error m_error{};
+};
+
+template <typename CharT, typename T, typename Context>
+auto chrono_scan_inner_impl(std::basic_string_view<CharT> fmt,
+                            T& t,
+                            Context& ctx)
+    -> scan_expected<typename Context::iterator>
+{
+    {
+        SCN_TRY(it,
+                detail::internal_skip_classic_whitespace(ctx.range(), false));
+        ctx.advance_to(SCN_MOVE(it));
+    }
+
+    auto r = detail::tm_reader<T, typename Context::range_type, CharT>(
+        ctx.range(), t, ctx.locale());
+    detail::parse_chrono_format_specs(fmt.data(), fmt.data() + fmt.size(), r);
+    if (auto e = r.get_error(); SCN_UNLIKELY(!e)) {
+        return unexpected(e);
+    }
+    return r.get_iterator();
+}
+
+template <typename CharT, typename T, typename Context>
+auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str, T& t, Context& ctx)
+    -> scan_expected<typename Context::iterator>
+{
+    if (ctx.begin().stores_parent()) {
+        // ctx.begin() stores parent (buffer) -> not contiguous
+        return chrono_scan_inner_impl(fmt_str, t, ctx);
+    }
+
+    auto contiguous_ctx = impl::basic_contiguous_scan_context<CharT>(
+        ctx.begin().contiguous_segment(), ctx.args(), ctx.locale());
+    auto begin = contiguous_ctx.begin();
+    SCN_TRY(it, chrono_scan_inner_impl(fmt_str, t, contiguous_ctx));
+    return ctx.begin().batch_advance(std::distance(begin, it));
+}
+
+template auto chrono_scan_impl(std::string_view, std::tm&, scan_context&)
+    -> scan_expected<scan_context::iterator>;
+template auto chrono_scan_impl(std::string_view, tm_with_tz&, scan_context&)
+    -> scan_expected<scan_context::iterator>;
+template auto chrono_scan_impl(std::string_view,
+                               datetime_components&,
+                               scan_context&)
+    -> scan_expected<scan_context::iterator>;
+
+template auto chrono_scan_impl(std::wstring_view, std::tm&, wscan_context&)
+    -> scan_expected<wscan_context::iterator>;
+template auto chrono_scan_impl(std::wstring_view, tm_with_tz&, wscan_context&)
+    -> scan_expected<wscan_context::iterator>;
+template auto chrono_scan_impl(std::wstring_view,
+                               datetime_components&,
+                               wscan_context&)
+    -> scan_expected<wscan_context::iterator>;
 
 }  // namespace detail
 

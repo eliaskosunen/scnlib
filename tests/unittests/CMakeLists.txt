@@ -24,6 +24,7 @@ add_executable(scn_tests
         args_test.cpp
         buffer_test.cpp
         char_test.cpp
+        chrono_test.cpp
         context_test.cpp
         custom_type_test.cpp
         error_test.cpp
@@ -79,7 +80,7 @@ if (SCN_TESTS_LOCALIZED)
     add_executable(scn_localized_tests
             main.cpp
 
-            localized_tests/integer_test.cpp
+            localized_tests/localized_chrono_test.cpp
     )
     target_link_libraries(scn_localized_tests ${SCN_GTEST_LIBRARIES} scn_tests_base)
     add_test(NAME scn_localized_tests COMMAND scn_localized_tests)

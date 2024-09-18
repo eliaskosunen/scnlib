@@ -4061,10 +4061,12 @@ template <typename CharT>
 class basic_scan_buffer {
 public:
     class forward_iterator;
+    class common_forward_iterator;
 
     using char_type = CharT;
     using range_type =
         ranges::subrange<forward_iterator, ranges::default_sentinel_t>;
+    using common_range_type = ranges::subrange<common_forward_iterator>;
 
     basic_scan_buffer(const basic_scan_buffer&) = delete;
     basic_scan_buffer& operator=(const basic_scan_buffer&) = delete;
@@ -4141,9 +4143,11 @@ public:
     }
 
     SCN_NODISCARD range_type get();
+    SCN_NODISCARD common_range_type get_common_range();
 
 protected:
     friend class forward_iterator;
+    friend class common_forward_iterator;
 
     struct contiguous_tag {};
     struct non_contiguous_tag {};
@@ -4349,6 +4353,74 @@ private:
 };
 
 template <typename CharT>
+class basic_scan_buffer<CharT>::common_forward_iterator
+    : public basic_scan_buffer<CharT>::forward_iterator {
+    using base = basic_scan_buffer<CharT>::forward_iterator;
+
+public:
+    common_forward_iterator() = default;
+
+    explicit common_forward_iterator(forward_iterator it)
+        : base(it), m_is_end(it.is_at_end())
+    {
+    }
+    explicit common_forward_iterator(ranges::default_sentinel_t)
+        : base(), m_is_end(true)
+    {
+    }
+
+    common_forward_iterator& operator++()
+    {
+        base::operator++();
+        m_is_end = base::is_at_end();
+        return *this;
+    }
+
+    common_forward_iterator operator++(int)
+    {
+        auto copy = *this;
+        operator++();
+        return copy;
+    }
+
+    common_forward_iterator& batch_advance(std::ptrdiff_t n)
+    {
+        base::batch_advance(n);
+        m_is_end = base::is_at_end();
+        return *this;
+    }
+
+    common_forward_iterator& batch_advance_to(std::ptrdiff_t i)
+    {
+        base::batch_advance_to(i);
+        m_is_end = base::is_at_end();
+        return *this;
+    }
+
+    friend bool operator==(const common_forward_iterator& lhs,
+                           const common_forward_iterator& rhs)
+    {
+        if (lhs.m_is_end && rhs.m_is_end) {
+            return true;
+        }
+        if (lhs.m_is_end != rhs.m_is_end) {
+            return false;
+        }
+        return static_cast<const forward_iterator&>(lhs) ==
+               static_cast<const forward_iterator&>(rhs);
+    }
+
+    friend bool operator!=(const common_forward_iterator& lhs,
+                           const common_forward_iterator& rhs)
+    {
+        return !(lhs == rhs);
+    }
+
+private:
+    bool m_is_end{};
+};
+
+template <typename CharT>
 SCN_NODISCARD auto basic_scan_buffer<CharT>::get() -> range_type
 {
     if (is_contiguous()) {
@@ -4357,6 +4429,15 @@ SCN_NODISCARD auto basic_scan_buffer<CharT>::get() -> range_type
     }
     return ranges::subrange{forward_iterator{this, 0},
                             ranges::default_sentinel};
+}
+
+template <typename CharT>
+SCN_NODISCARD auto basic_scan_buffer<CharT>::get_common_range()
+    -> common_range_type
+{
+    auto r = get();
+    return ranges::subrange{common_forward_iterator{r.begin()},
+                            common_forward_iterator{r.end()}};
 }
 
 static_assert(ranges::forward_range<scan_buffer::range_type>);
