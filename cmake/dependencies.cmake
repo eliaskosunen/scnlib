@@ -84,7 +84,19 @@ endif ()
 
 # fast_float
 
-if (SCN_USE_EXTERNAL_FAST_FLOAT)
+if (SCN_DISABLE_FAST_FLOAT)
+    message(STATUS "FastFloat disabled, using <charconv> / std::from_chars instead")
+    try_compile(
+            SCN_CHARCONV_SUCCESS
+            "${CMAKE_CURRENT_BINARY_DIR}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/charconv_compile_test.cpp"
+    )
+    if (NOT SCN_CHARCONV_SUCCESS)
+        message(FATAL_ERROR
+                "FastFloat is disabled, but your stdlib doesn't support std::from_chars with floating-point values")
+    endif ()
+    set(SCN_FAST_FLOAT_TARGET)
+elseif (SCN_USE_EXTERNAL_FAST_FLOAT)
     if (NOT TARGET FastFloat::fast_float)
         find_package(FastFloat CONFIG REQUIRED)
         if (FastFloat_VERSION VERSION_LESS 5.0.0)
@@ -93,6 +105,7 @@ if (SCN_USE_EXTERNAL_FAST_FLOAT)
     else ()
         message(STATUS "Target FastFloat::fast_float already defined, not doing find_package(FastFloat)")
     endif ()
+    set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
 else ()
     FetchContent_Declare(
             fast_float
@@ -110,6 +123,8 @@ else ()
 
         add_subdirectory(${fast_float_SOURCE_DIR} ${fast_float_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif ()
+
+    set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
 endif ()
 
 # std::regex

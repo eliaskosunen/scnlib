@@ -65,7 +65,7 @@ target_include_directories(scn
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
 target_link_libraries(scn PRIVATE
-        FastFloat::fast_float
+        ${SCN_FAST_FLOAT_TARGET}
         ${SCN_REGEX_BACKEND_TARGET}
 )
 set_library_flags(scn)
@@ -76,7 +76,7 @@ add_library(scn::scn ALIAS scn)
 add_library(scn_internal INTERFACE)
 target_link_libraries(scn_internal INTERFACE
         scn::scn
-        FastFloat::fast_float
+        ${SCN_FAST_FLOAT_TARGET}
         ${SCN_REGEX_BACKEND_TARGET}
 )
 target_include_directories(scn_internal
