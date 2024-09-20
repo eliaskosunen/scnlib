@@ -19,6 +19,12 @@
 
 #include <locale>
 
+#ifndef SCN_DISABLE_FAST_FLOAT
+#define SCN_DISABLE_FAST_FLOAT 0
+#endif
+
+#if !SCN_DISABLE_FAST_FLOAT
+
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
 SCN_GCC_IGNORE("-Wnoexcept")
@@ -48,6 +54,8 @@ SCN_CLANG_IGNORE("-Wreserved-identifier")
 
 SCN_CLANG_POP
 SCN_GCC_POP
+
+#endif  // !SCN_DISABLE_FAST_FLOAT
 
 #if SCN_HAS_FLOAT_CHARCONV
 #include <charconv>
@@ -1055,6 +1063,8 @@ scan_expected<std::ptrdiff_t> fast_float_fallback(impl_init_data<CharT> data,
     }
 }
 
+#if !SCN_DISABLE_FAST_FLOAT
+
 struct fast_float_impl_base : impl_base {
     fast_float::chars_format get_flags() const
     {
@@ -1125,6 +1135,8 @@ private:
     contiguous_range_factory<CharT>& m_input;
 };
 
+#endif  // !SCN_DISABLE_FAST_FLOAT
+
 ////////////////////////////////////////////////////////////////////
 // Dispatch implementation
 ////////////////////////////////////////////////////////////////////
@@ -1192,6 +1204,7 @@ scan_expected<std::ptrdiff_t> dispatch_impl(
                                      "Invalid floating-point digit");
     }
 
+#if !SCN_DISABLE_FAST_FLOAT
     if constexpr (std::is_same_v<T, long double>) {
         if constexpr (sizeof(double) == sizeof(long double)) {
             // If double == long double (true on Windows),
@@ -1211,6 +1224,12 @@ scan_expected<std::ptrdiff_t> dispatch_impl(
         // Default to fast_float
         return fast_float_impl<CharT, T>{data}(value);
     }
+#else
+    static_assert(SCN_HAS_FLOAT_CHARCONV,
+                  "SCN_DISABLE_FAST_FLOAT needs std::from_chars for floats");
+
+    return fast_float_fallback(data, value);
+#endif
 }
 }  // namespace
 
