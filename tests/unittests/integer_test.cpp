@@ -177,6 +177,7 @@ TEST(IntegerTest, LongInput)
     EXPECT_EQ(std::get<0>(result->values()), 1452555457);
 }
 
+#if !SCN_DISABLE_LOCALE
 TEST(IntegerTest, WonkyInputWithThsep)
 {
     std::string_view input = "-0x,)27614,)24t14741";
@@ -193,6 +194,7 @@ TEST(IntegerTest, WonkyInputWithThsep2)
     EXPECT_EQ(result->begin(), input.begin() + 2);
     EXPECT_EQ(result->value(), 0);
 }
+#endif
 
 TEST(IntegerTest, BinaryFollowedByDec_Default)
 {
