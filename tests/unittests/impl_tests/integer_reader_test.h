@@ -902,6 +902,14 @@ TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
     EXPECT_TRUE(this->check_failure_with_code(
         result, val, scn::scan_error::invalid_scanned_value));
 }
+#else
+TYPED_TEST_P(IntValueReaderTest, ThousandsSeparators) {}
+TYPED_TEST_P(IntValueReaderTest, ThousandsSeparatorsWithInvalidGrouping) {}
+TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparators) {}
+TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
+{
+}
+
 #endif
 
 REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,

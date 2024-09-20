@@ -160,6 +160,7 @@ jobs:
 
       - name: Create Build Environment
         run: |
+          $ErrorActionPreference = 'Stop'
           cmake -E make_directory ${{ runner.workspace }}/build
           choco install ccache
 
