@@ -579,7 +579,6 @@ protected:
     template <typename Result>
     [[nodiscard]] testing::AssertionResult check_failure_with_code(
         const Result& result,
-        float_type val,
         enum scn::scan_error::code c) const
     {
         if (result) {
@@ -590,31 +589,6 @@ protected:
             return testing::AssertionFailure()
                    << "Result failed with wrong error code: "
                    << result.error().code() << ", expected " << c;
-        }
-        if (auto a = check_floating_eq(val, static_cast<float_type>(0.0)); !a) {
-            return a;
-        }
-        return testing::AssertionSuccess();
-    }
-
-    template <typename Result>
-    [[nodiscard]] testing::AssertionResult check_failure_with_code_and_value(
-        const Result& result,
-        float_type val,
-        enum scn::scan_error::code c,
-        float_type expected_value) const
-    {
-        if (result) {
-            return testing::AssertionFailure()
-                   << "Result good, expected failure";
-        }
-        if (result.error().code() != c) {
-            return testing::AssertionFailure()
-                   << "Result failed with wrong error code: "
-                   << result.error().code() << ", expected " << c;
-        }
-        if (auto a = check_floating_eq(val, expected_value); !a) {
-            return a;
         }
         return testing::AssertionSuccess();
     }
@@ -801,11 +775,9 @@ TYPED_TEST(FloatValueReaderTest, NaNWithPayload)
 
 TYPED_TEST(FloatValueReaderTest, Overflow)
 {
-    auto [result, val] =
-        this->simple_test("9999999999999.9999e999999999999999");
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_out_of_range,
-        std::numeric_limits<typename TestFixture::float_type>::infinity()));
+    auto [result, _] = this->simple_test("9999999999999.9999e999999999999999");
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, scn::scan_error::value_positive_overflow));
 }
 
 TYPED_TEST(FloatValueReaderTest, Subnormal)
@@ -878,24 +850,21 @@ TYPED_TEST(FloatValueReaderTest, MinimumSubnrmalFromHex)
 
 TYPED_TEST(FloatValueReaderTest, Underflow)
 {
-    auto [result, val] = this->simple_test(this->get_underflow());
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_out_of_range,
-        float_zero<typename TestFixture::float_type>()));
+    auto [result, _] = this->simple_test(this->get_underflow());
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, scn::scan_error::value_positive_underflow));
 }
 TYPED_TEST(FloatValueReaderTest, UnderflowFromHex)
 {
-    auto [result, val] = this->simple_test(this->get_underflow_hex());
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_out_of_range,
-        float_zero<typename TestFixture::float_type>()));
+    auto [result, _] = this->simple_test(this->get_underflow_hex());
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, scn::scan_error::value_positive_underflow));
 }
 TYPED_TEST(FloatValueReaderTest, UnderflowNeg)
 {
-    auto [result, val] = this->simple_test(this->get_underflow_neg());
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_out_of_range,
-        -float_zero<typename TestFixture::float_type>()));
+    auto [result, _] = this->simple_test(this->get_underflow_neg());
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, scn::scan_error::value_negative_underflow));
 }
 
 TYPED_TEST(FloatValueReaderTest, Maximum)
@@ -917,32 +886,28 @@ TYPED_TEST(FloatValueReaderTest, MaximumFromHex)
 
 TYPED_TEST(FloatValueReaderTest, BarelyOverflow)
 {
-    auto [result, val] = this->simple_test(this->get_overflow());
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_out_of_range,
-        std::numeric_limits<typename TestFixture::float_type>::infinity()));
+    auto [result, _] = this->simple_test(this->get_overflow());
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, scn::scan_error::value_positive_overflow));
 }
 TYPED_TEST(FloatValueReaderTest, BarelyOverflowFromHex)
 {
-    auto [result, val] = this->simple_test(this->get_overflow_hex());
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_out_of_range,
-        std::numeric_limits<typename TestFixture::float_type>::infinity()));
+    auto [result, _] = this->simple_test(this->get_overflow_hex());
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, scn::scan_error::value_positive_overflow));
 }
 
 TYPED_TEST(FloatValueReaderTest, BarelyOverflowNeg)
 {
-    auto [result, val] = this->simple_test(this->get_overflow_neg());
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_out_of_range,
-        -std::numeric_limits<typename TestFixture::float_type>::infinity()));
+    auto [result, _] = this->simple_test(this->get_overflow_neg());
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, scn::scan_error::value_negative_overflow));
 }
 TYPED_TEST(FloatValueReaderTest, BarelyOverflowNegFromHex)
 {
-    auto [result, val] = this->simple_test(this->get_overflow_neg_hex());
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_out_of_range,
-        -std::numeric_limits<typename TestFixture::float_type>::infinity()));
+    auto [result, _] = this->simple_test(this->get_overflow_neg_hex());
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, scn::scan_error::value_negative_overflow));
 }
 
 TYPED_TEST(FloatValueReaderTest, PresentationScientificValueScientific)
@@ -956,27 +921,27 @@ TYPED_TEST(FloatValueReaderTest, PresentationScientificValueScientific)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationScientificValueFixed)
 {
-    auto [result, val] = this->simple_specs_test(
+    auto [result, _] = this->simple_specs_test(
         "12.3", this->make_format_specs_with_presentation(
                     scn::detail::presentation_type::float_scientific));
     EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::invalid_scanned_value));
+        result, scn::scan_error::invalid_scanned_value));
 }
 TYPED_TEST(FloatValueReaderTest, PresentationScientificValueHexWithPrefix)
 {
-    auto [result, val] = this->simple_specs_test(
+    auto [result, _] = this->simple_specs_test(
         "0x1.fp3", this->make_format_specs_with_presentation(
                        scn::detail::presentation_type::float_scientific));
     EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::invalid_scanned_value));
+        result, scn::scan_error::invalid_scanned_value));
 }
 TYPED_TEST(FloatValueReaderTest, PresentationScientificValueHexWithoutPrefix)
 {
-    auto [result, val] = this->simple_specs_test(
+    auto [result, _] = this->simple_specs_test(
         "1.fp3", this->make_format_specs_with_presentation(
                      scn::detail::presentation_type::float_scientific));
     EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::invalid_scanned_value));
+        result, scn::scan_error::invalid_scanned_value));
 }
 
 TYPED_TEST(FloatValueReaderTest, PresentationFixedValueScientific)
@@ -1138,10 +1103,10 @@ TYPED_TEST(FloatValueReaderTest, ThousandsSeparatorsWithInvalidGrouping)
 
     auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
 
-    auto [result, val] = this->simple_specs_and_locale_test(
+    auto [a, _, val] = this->simple_success_specs_and_locale_test(
         "12,34,56.789", state.specs, state.locref);
-    EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::invalid_scanned_value));
+    EXPECT_TRUE(a);
+    EXPECT_TRUE(check_floating_eq(val, this->get_thsep_number()));
 }
 
 TYPED_TEST(FloatValueReaderTest, ExoticThousandsSeparators)
@@ -1166,10 +1131,10 @@ TYPED_TEST(FloatValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
 
     auto state = thsep_test_state<typename TestFixture::char_type>{"\1\2"};
 
-    auto [result, val] = this->simple_specs_and_locale_test(
+    auto [a, _, val] = this->simple_success_specs_and_locale_test(
         "123,456.789", state.specs, state.locref);
-    EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::invalid_scanned_value));
+    EXPECT_TRUE(a);
+    EXPECT_TRUE(check_floating_eq(val, this->get_thsep_number()));
 }
 
 template <typename CharT>

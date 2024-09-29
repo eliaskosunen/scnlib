@@ -192,7 +192,7 @@ struct basic_istream_scanner {
                 return unexpected_scan_error(scan_error::end_of_range, "EOF");
             }
             if (SCN_UNLIKELY(stream.bad())) {
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
+                return unexpected_scan_error(scan_error::invalid_source_state,
                                              "Bad std::istream after reading");
             }
 
