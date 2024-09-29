@@ -304,124 +304,133 @@ TEST(AlignAndFillTest, P1729_Ex3r7)
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3r7_PrecInsteadofWidth)
+TEST(AlignAndFillTest, P1729_Ex3r8)
 {
     auto r = scn::scan<int>("***42", "{:*>.4}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 4);
     EXPECT_STREQ(r->begin(), "2");
 }
-TEST(AlignAndFillTest, P1729_Ex3r7_BothPrecAndWidth)
+TEST(AlignAndFillTest, P1729_Ex3r9)
 {
     auto r = scn::scan<int>("***42", "{:*>4.4}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 4);
     EXPECT_STREQ(r->begin(), "2");
 }
-TEST(AlignAndFillTest, P1729_Ex3r8)
+
+TEST(AlignAndFillTest, P1729_Ex3r10)
 {
     auto r = scn::scan<int>("42", "{:*>}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3r9)
+TEST(AlignAndFillTest, P1729_Ex3r11)
 {
     auto r = scn::scan<int>("42", "{:*>5}");
     ASSERT_FALSE(r);
     EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
 }
-TEST(AlignAndFillTest, P1729_Ex3r9_PrecInsteadofWidth)
+TEST(AlignAndFillTest, P1729_Ex3r12)
 {
     auto r = scn::scan<int>("42", "{:*>.5}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3r9_BothPrecAndWidth)
+TEST(AlignAndFillTest, P1729_Ex3r13)
 {
     auto r = scn::scan<int>("42", "{:*>5.5}");
     ASSERT_FALSE(r);
     EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
 }
 
-TEST(AlignAndFillTest, P1729_Ex3rA)
+TEST(AlignAndFillTest, P1729_Ex3r14)
 {
     auto r = scn::scan<int>("42***", "{:*<}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rB)
+TEST(AlignAndFillTest, P1729_Ex3r15)
 {
     auto r = scn::scan<int>("42***", "{:*<5}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rC)
+TEST(AlignAndFillTest, P1729_Ex3r16)
 {
     auto r = scn::scan<int>("42***", "{:*<4}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rC_PrecInsteadofWidth)
+TEST(AlignAndFillTest, P1729_Ex3r17)
 {
     auto r = scn::scan<int>("42***", "{:*<.4}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "*");
 }
-TEST(AlignAndFillTest, P1729_Ex3rD)
+TEST(AlignAndFillTest, P1729_Ex3r18)
+{
+    auto r = scn::scan<int>("42***", "{:*<4.4}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), 42);
+    EXPECT_STREQ(r->begin(), "*");
+}
+
+TEST(AlignAndFillTest, P1729_Ex3r19)
 {
     auto r = scn::scan<int>("42", "{:*<}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rE)
+TEST(AlignAndFillTest, P1729_Ex3r20)
 {
     auto r = scn::scan<int>("42", "{:*<5}");
     ASSERT_FALSE(r);
     EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
 }
-TEST(AlignAndFillTest, P1729_Ex3rE_PrecInsteadofWidth)
+TEST(AlignAndFillTest, P1729_Ex3r21)
 {
     auto r = scn::scan<int>("42", "{:*<.5}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rE_BothPrecAndWidth)
+TEST(AlignAndFillTest, P1729_Ex3r22)
 {
     auto r = scn::scan<int>("42", "{:*<5.5}");
     ASSERT_FALSE(r);
     EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
 }
 
-TEST(AlignAndFillTest, P1729_Ex3rF)
+TEST(AlignAndFillTest, P1729_Ex3r23)
 {
     auto r = scn::scan<int>("42", "{:*^}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rG)
+TEST(AlignAndFillTest, P1729_Ex3r24)
 {
     auto r = scn::scan<int>("*42*", "{:*^}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rH)
+TEST(AlignAndFillTest, P1729_Ex3r25)
 {
     auto r = scn::scan<int>("*42**", "{:*^}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rI)
+TEST(AlignAndFillTest, P1729_Ex3r26)
 {
     auto r = scn::scan<int>("**42*", "{:*^}");
     ASSERT_TRUE(r);
@@ -429,45 +438,45 @@ TEST(AlignAndFillTest, P1729_Ex3rI)
     EXPECT_STREQ(r->begin(), "");
 }
 
-TEST(AlignAndFillTest, P1729_Ex3rJ)
+TEST(AlignAndFillTest, P1729_Ex3r27)
 {
     auto r = scn::scan<int>("**42**", "{:*^6}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rK)
+TEST(AlignAndFillTest, P1729_Ex3r28)
 {
     auto r = scn::scan<int>("*42**", "{:*^5}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rL)
+TEST(AlignAndFillTest, P1729_Ex3r29)
+{
+    auto r = scn::scan<int>("**42*", "{:*^5}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), 42);
+    EXPECT_STREQ(r->begin(), "");
+}
+TEST(AlignAndFillTest, P1729_Ex3r30)
 {
     auto r = scn::scan<int>("**42*", "{:*^6}");
     ASSERT_FALSE(r);
     EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
 }
-TEST(AlignAndFillTest, P1729_Ex3rL_PrecInsteadofWidth)
+TEST(AlignAndFillTest, P1729_Ex3r31)
 {
     auto r = scn::scan<int>("**42*", "{:*^.6}");
     ASSERT_TRUE(r);
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3rL_BothPrecAndWidth)
+TEST(AlignAndFillTest, P1729_Ex3r32)
 {
     auto r = scn::scan<int>("**42*", "{:*^6.6}");
     ASSERT_FALSE(r);
     EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
-}
-TEST(AlignAndFillTest, P1729_Ex3rM)
-{
-    auto r = scn::scan<int>("**42*", "{:*^5}");
-    ASSERT_TRUE(r);
-    EXPECT_EQ(r->value(), 42);
-    EXPECT_STREQ(r->begin(), "");
 }
 
 TEST(AlignAndFillTest, PythonParse1)
