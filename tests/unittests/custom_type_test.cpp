@@ -19,6 +19,46 @@
 
 #include <scn/scan.h>
 
+// Simple wrapper over a `char`, doesn't allow a custom format string
+struct char_wrapper {
+    char value{};
+};
+
+template <>
+struct scn::scanner<char_wrapper, char> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx)
+        -> scn::scan_expected<typename ParseCtx::iterator>
+    {
+        return pctx.begin();
+    }
+
+    template <typename Context>
+    auto scan(char_wrapper& val, Context& ctx) const
+        -> scn::scan_expected<typename Context::iterator>
+    {
+        return scn::scan<char>(ctx.range(), "{}")
+            .transform([&val](const auto& result) {
+                val.value = result.value();
+                return result.begin();
+            });
+    }
+};
+
+TEST(CustomTypeTest, CharWrapperWithDefaultFormatString)
+{
+    auto result = scn::scan<char_wrapper>("c", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result->begin(), '\0');
+    EXPECT_EQ(result->value().value, 'c');
+}
+
+TEST(CustomTypeTest, CharWrapperWithCustomFormatString)
+{
+    auto result = scn::scan<char_wrapper>("c", scn::runtime_format("{:c}"));
+    ASSERT_FALSE(result);
+}
+
 // Simple wrapper over an `int`, inherits all its scanning properties
 struct integer_wrapper {
     int value{};
