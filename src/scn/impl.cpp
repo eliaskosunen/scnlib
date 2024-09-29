@@ -446,7 +446,8 @@ protected:
 
         if (c_errno == ERANGE && is_float_zero(value)) {
             SCN_UNLIKELY_ATTR
-            return {scan_error::value_out_of_range, "strtod failed: underflow"};
+            return {scan_error::value_positive_underflow,
+                    "strtod failed: underflow"};
         }
 
         SCN_GCC_COMPAT_PUSH
@@ -456,7 +457,8 @@ protected:
             m_kind != float_reader_base::float_kind::inf_long &&
             std::abs(value) == std::numeric_limits<T>::infinity()) {
             SCN_UNLIKELY_ATTR
-            return {scan_error::value_out_of_range, "strtod failed: overflow"};
+            return {scan_error::value_positive_overflow,
+                    "strtod failed: overflow"};
         }
 
         SCN_GCC_COMPAT_POP  // -Wfloat-equal
@@ -887,7 +889,21 @@ scan_expected<std::ptrdiff_t> float_reader<CharT>::parse_value_impl(T& value)
 {
     auto n = dispatch_impl<CharT>({this->m_buffer, m_kind, m_options},
                                   m_nan_payload_buffer, value);
-    value = this->setsign(value);
+    if (SCN_LIKELY(n)) {
+        value = this->setsign(value);
+        return n;
+    }
+
+    if (n.error().code() == scan_error::value_positive_overflow &&
+        m_sign == sign_type::minus_sign) {
+        return unexpected_scan_error(scan_error::value_negative_overflow,
+                                     n.error().msg());
+    }
+    if (n.error().code() == scan_error::value_positive_underflow &&
+        m_sign == sign_type::minus_sign) {
+        return unexpected_scan_error(scan_error::value_negative_underflow,
+                                     n.error().msg());
+    }
     return n;
 }
 
@@ -1078,7 +1094,9 @@ auto parse_decimal_integer_fast(std::string_view input,
     auto digits_count = static_cast<size_t>(ptr - input.data());
     if (SCN_UNLIKELY(
             check_integer_overflow<T>(u64val, digits_count, 10, is_negative))) {
-        return unexpected_scan_error(scan_error::value_out_of_range,
+        return unexpected_scan_error(is_negative
+                                         ? scan_error::value_negative_overflow
+                                         : scan_error::value_positive_overflow,
                                      "Integer overflow");
     }
 
@@ -1109,7 +1127,9 @@ auto parse_regular_integer(std::basic_string_view<CharT> input,
     auto digits_count = static_cast<size_t>(begin - input.data());
     if (SCN_UNLIKELY(check_integer_overflow<T>(u64val, digits_count, base,
                                                is_negative))) {
-        return unexpected_scan_error(scan_error::value_out_of_range,
+        return unexpected_scan_error(is_negative
+                                         ? scan_error::value_negative_overflow
+                                         : scan_error::value_positive_overflow,
                                      "Integer overflow");
     }
 
@@ -2126,8 +2146,8 @@ struct datetime_setter<std::tm> {
     static void set_sec(Handler& h, std::tm& t, setter_state& st, int s)
     {
         if (SCN_UNLIKELY(s < 0 || s > 60)) {
-            return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for tm_sec"});
+            return h.set_error({scan_error::invalid_scanned_value,
+                                "Invalid value for tm_sec"});
         }
         t.tm_sec = s;
         st.set_sec(h);
@@ -2136,8 +2156,8 @@ struct datetime_setter<std::tm> {
     static void set_min(Handler& h, std::tm& t, setter_state& st, int m)
     {
         if (SCN_UNLIKELY(m < 0 || m > 59)) {
-            return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for tm_min"});
+            return h.set_error({scan_error::invalid_scanned_value,
+                                "Invalid value for tm_min"});
         }
         t.tm_min = m;
         st.set_min(h);
@@ -2146,8 +2166,8 @@ struct datetime_setter<std::tm> {
     static void set_hour24(Handler& hdl, std::tm& t, setter_state& st, int h)
     {
         if (SCN_UNLIKELY(h < 0 || h > 23)) {
-            return hdl.set_error(
-                {scan_error::value_out_of_range, "Invalid value for tm_hour"});
+            return hdl.set_error({scan_error::invalid_scanned_value,
+                                  "Invalid value for tm_hour"});
         }
         t.tm_hour = h;
         st.set_hour24(hdl);
@@ -2156,7 +2176,7 @@ struct datetime_setter<std::tm> {
     static void set_hour12(Handler& hdl, std::tm& t, setter_state& st, int h)
     {
         if (SCN_UNLIKELY(h < 1 || h > 12)) {
-            return hdl.set_error({scan_error::value_out_of_range,
+            return hdl.set_error({scan_error::invalid_scanned_value,
                                   "Invalid value for 12-hour tm_hour"});
         }
         t.tm_hour = h;
@@ -2166,8 +2186,8 @@ struct datetime_setter<std::tm> {
     static void set_mday(Handler& h, std::tm& t, setter_state& st, int d)
     {
         if (SCN_UNLIKELY(d < 1 || d > 31)) {
-            return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for tm_mday"});
+            return h.set_error({scan_error::invalid_scanned_value,
+                                "Invalid value for tm_mday"});
         }
         t.tm_mday = d;
         st.set_mday(h);
@@ -2176,8 +2196,8 @@ struct datetime_setter<std::tm> {
     static void set_mon(Handler& h, std::tm& t, setter_state& st, int m)
     {
         if (SCN_UNLIKELY(m < 1 || m > 12)) {
-            return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for tm_mon"});
+            return h.set_error({scan_error::invalid_scanned_value,
+                                "Invalid value for tm_mon"});
         }
         t.tm_mon = m - 1;
         st.set_mon(h);
@@ -2186,8 +2206,8 @@ struct datetime_setter<std::tm> {
     static void set_full_year(Handler& h, std::tm& t, setter_state& st, int y)
     {
         if (SCN_UNLIKELY(y < std::numeric_limits<int>::min() + 1900)) {
-            return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for tm_year"});
+            return h.set_error({scan_error::invalid_scanned_value,
+                                "Invalid value for tm_year"});
         }
         t.tm_year = y - 1900;
         st.set_full_year(h);
@@ -2203,8 +2223,8 @@ struct datetime_setter<std::tm> {
     static void set_short_year(Handler& h, std::tm&, setter_state& st, int y)
     {
         if (SCN_UNLIKELY(y < 0 || y > 99)) {
-            return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for tm_year"});
+            return h.set_error({scan_error::invalid_scanned_value,
+                                "Invalid value for tm_year"});
         }
         st.short_year_value = y;
         st.set_short_year(h);
@@ -2213,8 +2233,8 @@ struct datetime_setter<std::tm> {
     static void set_wday(Handler& h, std::tm& t, setter_state& st, int d)
     {
         if (SCN_UNLIKELY(d < 0 || d > 6)) {
-            return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for tm_wday"});
+            return h.set_error({scan_error::invalid_scanned_value,
+                                "Invalid value for tm_wday"});
         }
         t.tm_wday = d;
         st.set_wday(h);
@@ -2223,8 +2243,8 @@ struct datetime_setter<std::tm> {
     static void set_yday(Handler& h, std::tm& t, setter_state& st, int d)
     {
         if (SCN_UNLIKELY(d < 0 || d > 365)) {
-            return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for tm_yday"});
+            return h.set_error({scan_error::invalid_scanned_value,
+                                "Invalid value for tm_yday"});
         }
         t.tm_yday = d;
         st.set_yday(h);
@@ -2287,8 +2307,8 @@ struct datetime_setter<datetime_components> {
                         int s)
     {
         if (SCN_UNLIKELY(s < 0 || s > 60)) {
-            return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for seconds"});
+            return h.set_error({scan_error::invalid_scanned_value,
+                                "Invalid value for seconds"});
         }
         t.sec = s;
         st.set_sec(h);
@@ -2300,8 +2320,8 @@ struct datetime_setter<datetime_components> {
                         int m)
     {
         if (SCN_UNLIKELY(m < 0 || m > 59)) {
-            return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for minutes"});
+            return h.set_error({scan_error::invalid_scanned_value,
+                                "Invalid value for minutes"});
         }
         t.min = m;
         st.set_min(h);
@@ -2314,7 +2334,7 @@ struct datetime_setter<datetime_components> {
     {
         if (SCN_UNLIKELY(h < 0 || h > 23)) {
             return hdl.set_error(
-                {scan_error::value_out_of_range, "Invalid value for hours"});
+                {scan_error::invalid_scanned_value, "Invalid value for hours"});
         }
         t.hour = h;
         st.set_hour24(hdl);
@@ -2326,7 +2346,7 @@ struct datetime_setter<datetime_components> {
                            int h)
     {
         if (SCN_UNLIKELY(h < 1 || h > 12)) {
-            return hdl.set_error({scan_error::value_out_of_range,
+            return hdl.set_error({scan_error::invalid_scanned_value,
                                   "Invalid value for hours (12-hour clock)"});
         }
         t.hour = h;
@@ -2340,7 +2360,7 @@ struct datetime_setter<datetime_components> {
     {
         if (SCN_UNLIKELY(d < 1 || d > 31)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for mday"});
+                {scan_error::invalid_scanned_value, "Invalid value for mday"});
         }
         t.mday = d;
         st.set_mday(h);
@@ -2353,7 +2373,7 @@ struct datetime_setter<datetime_components> {
     {
         if (SCN_UNLIKELY(m < 1 || m > 12)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for mon"});
+                {scan_error::invalid_scanned_value, "Invalid value for mon"});
         }
         t.mon = month{static_cast<unsigned>(m)};
         st.set_mon(h);
@@ -2403,7 +2423,7 @@ struct datetime_setter<datetime_components> {
     {
         if (SCN_UNLIKELY(d < 0 || d > 6)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for wday"});
+                {scan_error::invalid_scanned_value, "Invalid value for wday"});
         }
         t.wday = weekday{static_cast<unsigned>(d)};
         st.set_wday(h);
@@ -2416,7 +2436,7 @@ struct datetime_setter<datetime_components> {
     {
         if (SCN_UNLIKELY(d < 0 || d > 6)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for yday"});
+                {scan_error::invalid_scanned_value, "Invalid value for yday"});
         }
         t.yday = d;
         st.set_yday(h);
@@ -2492,7 +2512,7 @@ struct datetime_setter<weekday> : unreachable_datetime_setter<weekday> {
     {
         if (SCN_UNLIKELY(d < 0 || d > 6)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for wday"});
+                {scan_error::invalid_scanned_value, "Invalid value for wday"});
         }
         t = weekday{static_cast<unsigned>(d)};
         st.set_wday(h);
@@ -2506,7 +2526,7 @@ struct datetime_setter<day> : unreachable_datetime_setter<day> {
     {
         if (SCN_UNLIKELY(d < 1 || d > 31)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for mday"});
+                {scan_error::invalid_scanned_value, "Invalid value for mday"});
         }
         t = day{static_cast<unsigned>(d)};
         st.set_mday(h);
@@ -2520,7 +2540,7 @@ struct datetime_setter<month> : unreachable_datetime_setter<month> {
     {
         if (SCN_UNLIKELY(m < 1 || m > 31)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for month"});
+                {scan_error::invalid_scanned_value, "Invalid value for month"});
         }
         t = month{static_cast<unsigned>(m)};
         st.set_mon(h);
@@ -2556,7 +2576,7 @@ struct datetime_setter<month_day> : unreachable_datetime_setter<month_day> {
     {
         if (SCN_UNLIKELY(m < 1 || m > 31)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for month"});
+                {scan_error::invalid_scanned_value, "Invalid value for month"});
         }
         t = month_day{month{static_cast<unsigned>(m)}, t.day()};
         st.set_mon(h);
@@ -2567,7 +2587,7 @@ struct datetime_setter<month_day> : unreachable_datetime_setter<month_day> {
     {
         if (SCN_UNLIKELY(d < 1 || d > 31)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for mday"});
+                {scan_error::invalid_scanned_value, "Invalid value for mday"});
         }
         t = month_day{t.month(), day{static_cast<unsigned>(d)}};
         st.set_mday(h);
@@ -2605,7 +2625,7 @@ struct datetime_setter<year_month> : unreachable_datetime_setter<year_month> {
     {
         if (SCN_UNLIKELY(m < 1 || m > 31)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for month"});
+                {scan_error::invalid_scanned_value, "Invalid value for month"});
         }
         t = year_month{t.year(), month{static_cast<unsigned>(m)}};
         st.set_mon(h);
@@ -2649,7 +2669,7 @@ struct datetime_setter<year_month_day>
     {
         if (SCN_UNLIKELY(m < 1 || m > 31)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for month"});
+                {scan_error::invalid_scanned_value, "Invalid value for month"});
         }
         t = year_month_day{t.year(), month{static_cast<unsigned>(m)}, t.day()};
         st.set_mon(h);
@@ -2659,7 +2679,7 @@ struct datetime_setter<year_month_day>
     {
         if (SCN_UNLIKELY(d < 1 || d > 31)) {
             return h.set_error(
-                {scan_error::value_out_of_range, "Invalid value for mday"});
+                {scan_error::invalid_scanned_value, "Invalid value for mday"});
         }
         t = year_month_day{t.year(), t.month(), day{static_cast<unsigned>(d)}};
         st.set_mday(h);

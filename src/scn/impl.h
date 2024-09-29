@@ -1335,8 +1335,8 @@ inline constexpr scan_expected<wchar_t> encode_code_point_as_wide_character(
             return static_cast<wchar_t>(cp);
         }
         if (error_on_overflow) {
-            return unexpected_scan_error(scan_error::value_out_of_range,
-                                         "Non-BOM code point can't be "
+            return unexpected_scan_error(scan_error::value_positive_overflow,
+                                         "Non-BMP code point can't be "
                                          "narrowed to a single 2-byte "
                                          "wchar_t code unit");
         }
@@ -3251,72 +3251,6 @@ auto parse_numeric_sign(Range range)
     return std::pair{it, sign_type::plus_sign};
 }
 
-inline void transform_thsep_indices(std::string& indices,
-                                    std::ptrdiff_t last_thsep_index)
-{
-    for (auto thsep_it = indices.rbegin(); thsep_it != indices.rend();
-         ++thsep_it) {
-        const auto tmp = *thsep_it;
-        *thsep_it = static_cast<char>(last_thsep_index - tmp - 1);
-        last_thsep_index = static_cast<std::ptrdiff_t>(tmp);
-    }
-    indices.insert(indices.begin(), static_cast<char>(last_thsep_index));
-}
-
-template <typename Range>
-bool check_thsep_grouping_impl(Range range,
-                               std::string& thsep_indices,
-                               std::string_view grouping)
-{
-    transform_thsep_indices(thsep_indices,
-                            ranges::distance(range.begin(), range.end()));
-
-    auto thsep_it = thsep_indices.rbegin();
-    for (auto grouping_it = grouping.begin();
-         grouping_it != grouping.end() && thsep_it != thsep_indices.rend() - 1;
-         ++grouping_it, (void)++thsep_it) {
-        if (*thsep_it != *grouping_it) {
-            return false;
-        }
-    }
-
-    SCN_CLANG_PUSH
-    // false positive
-    SCN_CLANG_IGNORE("-Wzero-as-null-pointer-constant")
-
-    for (; thsep_it < thsep_indices.rend() - 1; ++thsep_it) {
-        if (*thsep_it != grouping.back()) {
-            return false;
-        }
-    }
-
-    if (thsep_it == thsep_indices.rend() - 1) {
-        if (*thsep_it > grouping.back()) {
-            return false;
-        }
-    }
-
-    SCN_CLANG_POP
-
-    return true;
-}
-
-template <typename Range>
-scan_error check_thsep_grouping(Range range,
-                                std::string thsep_indices,
-                                std::string_view grouping)
-{
-    SCN_EXPECT(!thsep_indices.empty());
-
-    if (!check_thsep_grouping_impl(range, thsep_indices, grouping)) {
-        SCN_UNLIKELY_ATTR
-        return {scan_error::invalid_scanned_value,
-                "Invalid thousands separator grouping"};
-    }
-
-    return {};
-}
-
 template <typename CharT>
 class numeric_reader {
 public:
@@ -3690,15 +3624,6 @@ public:
         const auto& [after_digits_it, nothsep_source, thsep_indices] =
             parse_digits_result;
 
-        if (!thsep_indices.empty()) {
-            if (auto e = check_thsep_grouping(
-                    ranges::subrange{prefix_result.iterator, after_digits_it},
-                    thsep_indices, locale_options.grouping);
-                SCN_UNLIKELY(!e)) {
-                return unexpected(e);
-            }
-        }
-
         auto nothsep_source_view =
             std::basic_string_view<CharT>{nothsep_source};
         SCN_TRY(
@@ -3849,18 +3774,6 @@ private:
         }
 
         handle_separators();
-
-        if (!m_thsep_indices.empty()) {
-            SCN_EXPECT(m_integral_part_length >= 0);
-            if (auto e = check_thsep_grouping(
-                    ranges::subrange{
-                        digits_begin,
-                        ranges::next(digits_begin, m_integral_part_length)},
-                    m_thsep_indices, m_locale_options.grouping);
-                SCN_UNLIKELY(!e)) {
-                return unexpected(e);
-            }
-        }
 
         return it;
     }

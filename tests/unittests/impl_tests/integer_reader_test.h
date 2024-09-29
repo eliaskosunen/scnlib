@@ -300,13 +300,8 @@ protected:
         else {
             const auto [of_value, src] = digits;
             const auto [result, val] = simple_test(src);
-#if 0
-            return check_failure_with_code_and_value(
-                result, val, scn::scan_error::value_out_of_range, of_value);
-#else
-            return check_failure_with_code(result, val,
-                                           scn::scan_error::value_out_of_range);
-#endif
+            return check_failure_with_code(
+                result, val, scn::scan_error::value_positive_overflow);
         }
     }
 
@@ -656,14 +651,8 @@ TYPED_TEST_P(IntValueReaderTest, Overflow)
 {
     const auto src = this->get_overflow();
     const auto [result, val] = this->simple_test(src);
-#if 0
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_out_of_range,
-       std::numeric_limits<typename TestFixture::int_type>::max()));
-#else
     EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::value_out_of_range));
-#endif
+        result, val, scn::scan_error::value_positive_overflow));
 }
 TYPED_TEST_P(IntValueReaderTest, Underflow)
 {
@@ -673,14 +662,8 @@ TYPED_TEST_P(IntValueReaderTest, Underflow)
 
     const auto src = this->get_underflow();
     const auto [result, val] = this->simple_test(src);
-#if 0
-    EXPECT_TRUE(this->check_failure_with_code_and_value(
-        result, val, scn::scan_error::value_out_of_range,
-        std::numeric_limits<typename TestFixture::int_type>::min()));
-#else
     EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::value_out_of_range));
-#endif
+        result, val, scn::scan_error::value_negative_overflow));
 }
 
 TYPED_TEST_P(IntValueReaderTest, FourDigits)
@@ -861,10 +844,10 @@ TYPED_TEST_P(IntValueReaderTest, ThousandsSeparatorsWithInvalidGrouping)
 
     auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
 
-    auto [result, val] = this->simple_specs_and_locale_test(
+    auto [a, _, val] = this->simple_success_specs_and_locale_test(
         "12,34,56", state.specs, state.locref);
-    EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::invalid_scanned_value));
+    EXPECT_TRUE(a);
+    EXPECT_EQ(val, this->get_thsep_value());
 }
 
 TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparators)
@@ -897,10 +880,10 @@ TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
 
     auto state = thsep_test_state<typename TestFixture::char_type>{"\1\2"};
 
-    auto [result, val] = this->simple_specs_and_locale_test(
+    auto [a, _, val] = this->simple_success_specs_and_locale_test(
         "123,456", state.specs, state.locref);
-    EXPECT_TRUE(this->check_failure_with_code(
-        result, val, scn::scan_error::invalid_scanned_value));
+    EXPECT_TRUE(a);
+    EXPECT_EQ(val, this->get_thsep_value());
 }
 #else
 TYPED_TEST_P(IntValueReaderTest, ThousandsSeparators) {}

@@ -3530,16 +3530,35 @@ public:
     enum code {
         /// No error
         good = 0,
+
         /// EOF
         end_of_range,
+
         /// Format string was invalid
         invalid_format_string,
+
         /// Scanned value was invalid for given type.
-        /// e.g. a period '.' when scanning for an int
         invalid_scanned_value,
-        /// Scanned value was out of range for the desired type.
-        /// (e.g. `>2^32` for an `uint32_t`)
-        value_out_of_range,
+
+        /// Source range is in an invalid state,
+        /// failed to continue reading.
+        invalid_source_state,
+
+        /// Value out of range, too large (higher than the maximum value)
+        /// i.e. >2^32 for int32
+        value_positive_overflow,
+
+        /// Value out of range, too small (lower than the minimum value)
+        /// i.e. <2^32 for int32
+        value_negative_overflow,
+
+        /// Value out of range, magnitude too small, sign +
+        /// (between 0 and the smallest subnormal float)
+        value_positive_underflow,
+
+        /// Value out of range, magnitude too small, sign -
+        /// (between 0 and the smallest subnormal float)
+        value_negative_underflow,
 
         max_error
     };
@@ -3584,6 +3603,29 @@ public:
     SCN_NODISCARD constexpr auto msg() const noexcept -> const char*
     {
         return m_msg;
+    }
+
+    SCN_NODISCARD constexpr std::errc to_errc() const noexcept
+    {
+        switch (m_code) {
+            case good:
+                return {};
+            case end_of_range:
+            case invalid_format_string:
+            case invalid_scanned_value:
+                return std::errc::invalid_argument;
+            case invalid_source_state:
+                return std::errc::io_error;
+            case value_positive_overflow:
+            case value_negative_overflow:
+            case value_positive_underflow:
+            case value_negative_underflow:
+                return std::errc::result_out_of_range;
+            case max_error:
+            default:
+                assert(false);
+                SCN_UNREACHABLE;
+        }
     }
 
 private:

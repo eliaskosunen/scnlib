@@ -549,7 +549,7 @@ TEST(ScanIntTest, RangeError)
     std::string_view input = "999999999999999999999999999999999999";
     auto result = scn::scan_int<int>(input);
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::value_out_of_range);
+    EXPECT_EQ(result.error().code(), scn::scan_error::value_positive_overflow);
 }
 TEST(ScanIntTest, Empty)
 {
