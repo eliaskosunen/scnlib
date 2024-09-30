@@ -27,8 +27,7 @@ struct char_wrapper {
 template <>
 struct scn::scanner<char_wrapper, char> {
     template <typename ParseCtx>
-    constexpr auto parse(ParseCtx& pctx)
-        -> scn::scan_expected<typename ParseCtx::iterator>
+    constexpr auto parse(ParseCtx& pctx) -> typename ParseCtx::iterator
     {
         return pctx.begin();
     }
@@ -103,12 +102,11 @@ struct variant_wrapper {
 template <>
 struct scn::scanner<variant_wrapper, char> {
     template <typename ParseContext>
-    constexpr scn::scan_expected<typename ParseContext::iterator> parse(
-        ParseContext& pctx)
+    constexpr typename ParseContext::iterator parse(ParseContext& pctx)
     {
         if (pctx.begin() == pctx.end() || *pctx.begin() == '}') {
-            return scn::unexpected(pctx.on_error(
-                "Invalid format string: format specifier required"));
+            throw scn::scan_format_string_error(
+                "Invalid format string: format specifier required");
         }
 
         auto it = pctx.begin();
@@ -126,8 +124,8 @@ struct scn::scanner<variant_wrapper, char> {
                 format = format_string;
                 break;
             default:
-                return scn::unexpected(pctx.on_error(
-                    "Invalid format string: invalid format specifier"));
+                pctx.on_error(
+                    "Invalid format string: invalid format specifier");
         }
         return ++it;
     }
