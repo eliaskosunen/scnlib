@@ -338,7 +338,7 @@ public:
     }
 
     template <typename ParseCtx>
-    constexpr scan_expected<typename ParseCtx::iterator> parse(ParseCtx& pctx)
+    constexpr typename ParseCtx::iterator parse(ParseCtx& pctx)
     {
         return pctx.begin();
     }
@@ -415,7 +415,7 @@ public:
     }
 
     template <typename ParseCtx>
-    constexpr scan_expected<typename ParseCtx::iterator> parse(ParseCtx& pctx)
+    constexpr typename ParseCtx::iterator parse(ParseCtx& pctx)
     {
         // TODO
         return m_underlying.parse(pctx);
@@ -489,7 +489,7 @@ public:
     }
 
     template <typename ParseCtx>
-    constexpr scan_expected<typename ParseCtx::iterator> parse(ParseCtx& pctx)
+    constexpr typename ParseCtx::iterator parse(ParseCtx& pctx)
     {
         return m_underlying.parse(pctx);
     }

@@ -589,6 +589,13 @@ SCN_GCC_POP
 #define SCN_HAS_LIKELY_ATTR 0
 #endif  // SCN_STD >= 20
 
+// Detect __attribute__((cold))
+#if SCN_GCC || SCN_CLANG
+#define SCN_COLD __attribute__((cold, noinline))
+#else
+#define SCN_COLD /* cold */
+#endif
+
 // Detect [[clang::trivial_abi]]
 #if SCN_HAS_CPP_ATTRIBUTE(clang::trivial_abi)
 #define SCN_HAS_TRIVIAL_ABI 1
@@ -1061,14 +1068,17 @@ struct scanner {
      * `scanner`, while only overriding `scan()`, and keeping the same
      * `parse()`, or at least delegating to it.
      *
+     * To report errors, an exception derived from `std::exception` can be
+     * thrown, or `ParseContext::on_error` can be called.
+     *
      * \return On success, an iterator pointing to the `}` character at the end
      * of the replacement field in the format string.
      * Will cause an error, if the returned iterator doesn't point to a `}`
      * character.
      */
     template <typename ParseContext>
-    constexpr auto parse(ParseContext& pctx)
-        -> expected<typename ParseContext::iterator, scan_error> = delete;
+    constexpr auto parse(ParseContext& pctx) ->
+        typename ParseContext::iterator = delete;
 
     /**
      * Scan a value of type `T` from `ctx` into `value`,

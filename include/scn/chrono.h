@@ -1466,15 +1466,15 @@ struct tm_format_checker {
 
 template <typename T, typename CharT, typename ParseCtx>
 constexpr auto chrono_parse_impl(ParseCtx& pctx,
-                                 std::basic_string_view<CharT>& fmt_str)
-    -> scan_expected<typename ParseCtx::iterator>
+                                 std::basic_string_view<CharT>& fmt_str) ->
+    typename ParseCtx::iterator
 {
     auto it = pctx.begin();
     auto end = pctx.end();
     if (it == end || *it == CharT{'}'}) {
-        return unexpected(scan_error{
-            scan_error::invalid_format_string,
-            "Format string without specifiers is not valid for this type"});
+        pctx.on_error(
+            "Format string without specifiers is not valid for this type");
+        return it;
     }
 
     auto checker = detail::tm_format_checker<T>{};
@@ -1483,7 +1483,8 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
         fmt_str = detail::make_string_view_from_iterators<CharT>(it, end);
     }
     if (auto e = checker.get_error(); SCN_UNLIKELY(!e)) {
-        return unexpected(e);
+        assert(e.code() == scan_error::invalid_format_string);
+        pctx.on_error(e.msg());
     }
     return end;
 }
@@ -1495,8 +1496,7 @@ auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str, T& t, Context& ctx)
 template <typename CharT, typename T>
 struct chrono_datetime_scanner {
     template <typename ParseCtx>
-    constexpr auto parse(ParseCtx& pctx)
-        -> scan_expected<typename ParseCtx::iterator>
+    constexpr auto parse(ParseCtx& pctx) -> typename ParseCtx::iterator
     {
         return detail::chrono_parse_impl<T, CharT>(pctx, m_fmt_str);
     }
@@ -1536,12 +1536,10 @@ private:
 
 public:
     template <typename ParseCtx>
-    constexpr scan_expected<typename ParseCtx::iterator> parse(ParseCtx& pctx)
+    constexpr typename ParseCtx::iterator parse(ParseCtx& pctx)
     {
         if (pctx.begin() == pctx.end() || *pctx.begin() == CharT{'}'}) {
-            return unexpected(
-                scan_error{scan_error::invalid_format_string,
-                           "Default format not supported for this type"});
+            pctx.on_error("Default format not supported for this type");
         }
         return base::parse(pctx);
     }

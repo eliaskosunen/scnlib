@@ -326,6 +326,7 @@ template auto locale_ref::get() const -> std::locale;
 namespace detail {
 scan_error handle_error(scan_error e)
 {
+    SCN_UNLIKELY_ATTR
     return e;
 }
 }  // namespace detail

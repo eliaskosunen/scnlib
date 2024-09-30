@@ -3662,8 +3662,31 @@ constexpr inline bool operator!=(enum scan_error::code a, scan_error b) noexcept
 
 namespace detail {
 // Intentionally not constexpr, to give out a compile-time error
-scan_error handle_error(scan_error e);
+SCN_COLD scan_error handle_error(scan_error e);
 }  // namespace detail
+
+#if SCN_HAS_EXCEPTIONS
+class scan_format_string_error : public std::runtime_error {
+public:
+    explicit scan_format_string_error(const std::string& what_arg)
+        : runtime_error(what_arg)
+    {
+    }
+
+    explicit scan_format_string_error(const char* what_arg)
+        : runtime_error(what_arg)
+    {
+    }
+
+    template <std::size_t N>
+    explicit scan_format_string_error(const char (&what_arg)[N])
+        : runtime_error(what_arg), _internal_literal_msg(what_arg)
+    {
+    }
+
+    const char* _internal_literal_msg{nullptr};
+};
+#endif
 
 /**
  * An `expected<T, scan_error>`.
@@ -5375,7 +5398,32 @@ private:
         auto& pctx_ref = *static_cast<parse_context_type*>(pctx);
         auto& ctx_ref = *static_cast<context_type*>(ctx);
 
-        SCN_TRY_ERR(fmt_it, s.parse(pctx_ref));
+#if SCN_HAS_EXCEPTIONS
+        auto fmt_it = pctx_ref.begin();
+        try {
+            fmt_it = s.parse(pctx_ref);
+        }
+        catch (const scan_format_string_error& ex) {
+            // scan_error takes a const char*.
+            // scan_format_string_error (or, actually, std::runtime_error)
+            // stores a reference-counted string,
+            // that will go out of scope here.
+            // We need to provide a const char* that will stay in scope.
+            // If scan_format_string_error was thrown with a string literal,
+            // use that, otherwise refer to a thread_local std::string
+            if (ex._internal_literal_msg) {
+                return {scan_error::invalid_format_string,
+                        ex._internal_literal_msg};
+            }
+            thread_local std::string err_msg{ex.what()};
+            return {scan_error::invalid_format_string, err_msg.c_str()};
+        }
+#else
+        auto fmt_it = s.parse(pctx_ref);
+#endif
+        if (auto e = pctx_ref.get_error(); SCN_UNLIKELY(!e)) {
+            return e;
+        }
         pctx_ref.advance_to(fmt_it);
 
         SCN_TRY_ERR(it, s.scan(arg_ref, ctx_ref));
@@ -6024,16 +6072,22 @@ public:
         do_check_arg_id(id);
     }
 
-    constexpr scan_error on_error(const char* msg) const
+    scan_error on_error(const char* msg)
     {
-        return detail::handle_error(
-            scan_error{scan_error::invalid_format_string, msg});
+        return m_error = detail::handle_error(
+                   scan_error{scan_error::invalid_format_string, msg});
+    }
+
+    scan_error get_error()
+    {
+        return m_error;
     }
 
 protected:
     constexpr void do_check_arg_id(size_t id);
 
     std::basic_string_view<CharT> m_format;
+    scan_error m_error{};
     int m_next_arg_id{0};
 };
 
@@ -8150,23 +8204,47 @@ inline constexpr bool scanner_has_format_specs_member_v<
     Scanner,
     std::void_t<decltype(SCN_DECLVAL(Scanner&)._format_specs())>> = true;
 
-template <typename T, typename Source, typename Ctx, typename ParseCtx>
-constexpr typename ParseCtx::iterator parse_format_specs(ParseCtx& parse_ctx)
+template <typename Scanner, typename ParseCtx>
+using dt_scanner_parse =
+    decltype(SCN_DECLVAL(Scanner&).parse(SCN_DECLVAL(ParseCtx&)));
+template <typename Scanner, typename T, typename Ctx>
+using dt_scanner_scan = decltype(SCN_DECLVAL(const Scanner&)
+                                     .scan(SCN_DECLVAL(T&), SCN_DECLVAL(Ctx&)));
+
+template <typename Scanner,
+          typename Source,
+          typename T,
+          typename Ctx,
+          typename ParseCtx>
+constexpr typename ParseCtx::iterator parse_format_specs_impl(
+    ParseCtx& parse_ctx)
 {
-    using char_type = typename ParseCtx::char_type;
-    using mapped_type = std::conditional_t<
-        mapped_type_constant<T, char_type>::value != arg_type::custom_type,
-        std::remove_reference_t<decltype(arg_mapper<char_type>().map(
-            SCN_DECLVAL(T&)))>,
-        T>;
-    auto s = typename Ctx::template scanner_type<mapped_type>{};
-    auto it = s.parse(parse_ctx)
-                  .transform_error([&](scan_error err) constexpr {
-                      parse_ctx.on_error(err.msg());
-                      return err;
-                  })
-                  .value_or(parse_ctx.end());
-    if constexpr (scanner_has_format_specs_member_v<decltype(s)>) {
+    static_assert(
+        std::is_default_constructible_v<Scanner>,
+        "Specializations of scn::scanner must be default constructible");
+    static_assert(mp_valid<dt_scanner_parse, Scanner, ParseCtx>::value,
+                  "Specializations of scn::scanner must have a "
+                  "parse(ParseContext&) member function.");
+    static_assert(
+        std::is_same_v<mp_eval_or<void, dt_scanner_parse, Scanner, ParseCtx>,
+                       typename ParseCtx::iterator>,
+        "scn::scanner::parse(ParseContext&) must return "
+        "ParseContext::iterator. To report an error from scanner::parse, "
+        "either throw an exception derived from scn::scan_format_string_error, "
+        "or call ParseContext::on_error.");
+    static_assert(mp_valid<dt_scanner_scan, Scanner, T, Ctx>::value,
+                  "Specializations of scn::scanner must have a "
+                  "scan(T&, Context&) const member function.");
+    static_assert(
+        std::is_same_v<mp_eval_or<void, dt_scanner_scan, Scanner, T, Ctx>,
+                       scan_expected<typename Ctx::iterator>>,
+        "scn::scanner::scan(T&, Context&) must return "
+        "scan_expected<Context::iterator>.");
+
+    auto s = Scanner{};
+    auto it = s.parse(parse_ctx);
+
+    if constexpr (scanner_has_format_specs_member_v<Scanner>) {
         auto& specs = s._format_specs();
         if ((specs.type == presentation_type::regex ||
              specs.type == presentation_type::regex_escaped) &&
@@ -8177,6 +8255,20 @@ constexpr typename ParseCtx::iterator parse_format_specs(ParseCtx& parse_ctx)
         }
     }
     return it;
+}
+
+template <typename T, typename Source, typename Ctx, typename ParseCtx>
+constexpr typename ParseCtx::iterator parse_format_specs(ParseCtx& parse_ctx)
+{
+    using char_type = typename ParseCtx::char_type;
+    using mapped_type = std::conditional_t<
+        mapped_type_constant<T, char_type>::value != arg_type::custom_type,
+        std::remove_reference_t<decltype(arg_mapper<char_type>().map(
+            SCN_DECLVAL(T&)))>,
+        T>;
+    using scanner_type = typename Ctx::template scanner_type<mapped_type>;
+    return parse_format_specs_impl<scanner_type, Source, T, Ctx, ParseCtx>(
+        parse_ctx);
 }
 
 template <typename CharT, typename Source, typename... Args>
@@ -8199,7 +8291,7 @@ public:
     {
     }
 
-    constexpr void on_literal_text(const CharT* begin, const CharT* end) const
+    constexpr void on_literal_text(const CharT* begin, const CharT* end)
     {
         // TODO: Do we want to validate Unicode in format strings?
         // We're dealing with text, so we probably do.
@@ -8256,7 +8348,7 @@ public:
         return id < num_args ? m_parse_funcs[id](m_parse_context) : begin;
     }
 
-    constexpr void check_args_exhausted() const
+    constexpr void check_args_exhausted()
     {
         if (num_args == 0) {
             return;
@@ -8268,7 +8360,7 @@ public:
         }
     }
 
-    void on_error(const char* msg) const
+    void on_error(const char* msg)
     {
         SCN_UNLIKELY_ATTR
         m_parse_context.on_error(msg);
@@ -8621,8 +8713,9 @@ private:
 
 namespace detail {
 template <typename T, typename ParseCtx>
-constexpr scan_expected<typename ParseCtx::iterator>
-scanner_parse_for_builtin_type(ParseCtx& pctx, format_specs& specs);
+constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
+    ParseCtx& pctx,
+    format_specs& specs);
 
 template <typename T, typename Context>
 scan_expected<typename Context::iterator>
@@ -8645,8 +8738,7 @@ struct scanner<T,
                                     detail::arg_type::custom_type &&
                                 !detail::is_type_disabled<T>>> {
     template <typename ParseCtx>
-    constexpr auto parse(ParseCtx& pctx)
-        -> scan_expected<typename ParseCtx::iterator>
+    constexpr auto parse(ParseCtx& pctx) -> typename ParseCtx::iterator
     {
         return detail::scanner_parse_for_builtin_type<T>(pctx, m_specs);
     }
@@ -8668,8 +8760,9 @@ private:
 
 namespace detail {
 template <typename T, typename ParseCtx>
-constexpr scan_expected<typename ParseCtx::iterator>
-scanner_parse_for_builtin_type(ParseCtx& pctx, format_specs& specs)
+constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
+    ParseCtx& pctx,
+    format_specs& specs)
 {
     using char_type = typename ParseCtx::char_type;
 
@@ -8686,9 +8779,6 @@ scanner_parse_for_builtin_type(ParseCtx& pctx, format_specs& specs)
 
     const auto it =
         detail::parse_format_specs(to_address(begin), to_address(end), checker);
-    if (auto e = checker.get_error(); SCN_UNLIKELY(!e)) {
-        return unexpected(e);
-    }
 
     switch (type) {
         case arg_type::none_type:
@@ -8752,11 +8842,7 @@ scanner_parse_for_builtin_type(ParseCtx& pctx, format_specs& specs)
             SCN_CLANG_POP
     }
 
-    if (auto e = checker.get_error(); SCN_UNLIKELY(!e)) {
-        return unexpected(e);
-    }
-
-    return {it};
+    return it;
 }
 }  // namespace detail
 
