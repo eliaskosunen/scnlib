@@ -958,11 +958,18 @@ class basic_scan_arg;
 template <typename Context>
 class basic_scan_args;
 
-template <typename CharT>
+template <typename Range, typename CharT>
 class basic_scan_context;
 
-using scan_context = basic_scan_context<char>;
-using wscan_context = basic_scan_context<wchar_t>;
+namespace detail {
+struct buffer_range_tag {};
+
+template <typename CharT>
+using default_context = basic_scan_context<buffer_range_tag, CharT>;
+}
+
+using scan_context = basic_scan_context<detail::buffer_range_tag, char>;
+using wscan_context = basic_scan_context<detail::buffer_range_tag, wchar_t>;
 
 using scan_args = basic_scan_args<scan_context>;
 using wscan_args = basic_scan_args<wscan_context>;

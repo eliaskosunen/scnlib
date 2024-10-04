@@ -1675,8 +1675,8 @@ constexpr bool is_simple_single_argument_format_string(
 template <typename CharT>
 scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     std::basic_string_view<CharT> source,
-    basic_scan_args<basic_scan_context<CharT>> args,
-    basic_scan_arg<basic_scan_context<CharT>> arg,
+    basic_scan_args<detail::default_context<CharT>> args,
+    basic_scan_arg<detail::default_context<CharT>> arg,
     detail::locale_ref loc = {})
 {
     if (SCN_UNLIKELY(!arg)) {
@@ -1695,8 +1695,8 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
 template <typename CharT>
 scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     detail::basic_scan_buffer<CharT>& source,
-    basic_scan_args<basic_scan_context<CharT>> args,
-    basic_scan_arg<basic_scan_context<CharT>> arg,
+    basic_scan_args<detail::default_context<CharT>> args,
+    basic_scan_arg<detail::default_context<CharT>> arg,
     detail::locale_ref loc = {})
 {
     if (SCN_UNLIKELY(!arg)) {
@@ -1712,15 +1712,14 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
         return ranges::distance(source.get_contiguous().begin(), it);
     }
 
-    auto reader = impl::default_arg_reader<basic_scan_context<CharT>>{
+    auto reader = impl::default_arg_reader<detail::default_context<CharT>>{
         source.get(), SCN_MOVE(args), loc};
     SCN_TRY(it, visit_scan_arg(SCN_MOVE(reader), arg));
     return it.position();
 }
 
 template <typename Context, typename ID, typename Handler>
-auto get_arg(Context& ctx, ID id, Handler& handler) ->
-    typename Context::arg_type
+auto get_arg(Context& ctx, ID id, Handler& handler)
 {
     auto arg = ctx.arg(id);
     if (SCN_UNLIKELY(!arg)) {
@@ -1735,7 +1734,6 @@ template <typename Context>
 class specs_handler : public detail::specs_setter {
 public:
     using char_type = typename Context::char_type;
-    using arg_type = typename Context::arg_type;
 
     constexpr specs_handler(detail::format_specs& specs,
                             basic_scan_parse_context<char_type>& parse_ctx,
@@ -1745,12 +1743,12 @@ public:
     }
 
 private:
-    constexpr arg_type get_arg(auto_id)
+    constexpr auto get_arg(auto_id)
     {
         return get_arg(m_ctx, m_parse_ctx.next_arg_id(), *this);
     }
 
-    constexpr arg_type get_arg(std::size_t arg_id)
+    constexpr auto get_arg(std::size_t arg_id)
     {
         m_parse_ctx.check_arg_id(arg_id);
         return get_arg(m_ctx, arg_id, *this);
@@ -1864,34 +1862,35 @@ struct format_handler_base {
 
 template <typename CharT>
 struct simple_context_wrapper {
-    using context_type = basic_scan_context<CharT>;
+    using context_type = detail::default_context<CharT>;
 
     simple_context_wrapper(detail::basic_scan_buffer<CharT>& source,
-                           basic_scan_args<basic_scan_context<CharT>> args,
+                           basic_scan_args<detail::default_context<CharT>> args,
                            detail::locale_ref loc)
         : ctx(source.get().begin(), SCN_MOVE(args), loc)
     {
     }
 
-    basic_scan_context<CharT>& get()
+    detail::default_context<CharT>& get()
     {
         return ctx;
     }
-    basic_scan_context<CharT>& get_custom()
+    detail::default_context<CharT>& get_custom()
     {
         return ctx;
     }
 
-    basic_scan_context<CharT> ctx;
+    detail::default_context<CharT> ctx;
 };
 
 template <typename CharT>
 struct contiguous_context_wrapper {
     using context_type = impl::basic_contiguous_scan_context<CharT>;
 
-    contiguous_context_wrapper(ranges::subrange<const CharT*> source,
-                               basic_scan_args<basic_scan_context<CharT>> args,
-                               detail::locale_ref loc)
+    contiguous_context_wrapper(
+        ranges::subrange<const CharT*> source,
+        basic_scan_args<detail::default_context<CharT>> args,
+        detail::locale_ref loc)
         : contiguous_ctx(source, args, loc)
     {
     }
@@ -1900,7 +1899,7 @@ struct contiguous_context_wrapper {
     {
         return contiguous_ctx;
     }
-    basic_scan_context<CharT>& get_custom()
+    detail::default_context<CharT>& get_custom()
     {
         if (!buffer) {
             buffer.emplace(detail::make_string_view_from_pointers(
@@ -1916,7 +1915,7 @@ struct contiguous_context_wrapper {
 
     impl::basic_contiguous_scan_context<CharT> contiguous_ctx;
     std::optional<detail::basic_scan_string_buffer<CharT>> buffer{std::nullopt};
-    std::optional<basic_scan_context<CharT>> custom_ctx{std::nullopt};
+    std::optional<detail::default_context<CharT>> custom_ctx{std::nullopt};
 };
 
 template <bool Contiguous, typename CharT>
@@ -1932,7 +1931,8 @@ struct format_handler : format_handler_base {
     using format_type = std::basic_string_view<char_type>;
 
     using parse_context_type = typename context_type::parse_context_type;
-    using args_type = basic_scan_args<basic_scan_context<char_type>>;
+    using args_type = basic_scan_args<detail::default_context<char_type>>;
+    using arg_type = basic_scan_arg<detail::default_context<char_type>>;
 
     template <typename Source>
     format_handler(Source&& source,
@@ -1995,7 +1995,7 @@ struct format_handler : format_handler_base {
 
     template <typename Visitor>
     void on_visit_scan_arg(Visitor&& visitor,
-                           typename context_type::arg_type arg)
+                           arg_type arg)
     {
         if (!*this || !arg) {
             SCN_UNLIKELY_ATTR
@@ -2032,7 +2032,7 @@ struct format_handler : format_handler_base {
         if (arg.type() == detail::arg_type::custom_type) {
             parse_ctx.advance_to(begin);
             on_visit_scan_arg(
-                impl::custom_reader<basic_scan_context<char_type>>{
+                impl::custom_reader<detail::default_context<char_type>>{
                     parse_ctx, get_custom_ctx()},
                 arg);
             return parse_ctx.begin();
@@ -2091,7 +2091,7 @@ template <typename CharT>
 scan_expected<std::ptrdiff_t> vscan_internal(
     std::basic_string_view<CharT> source,
     std::basic_string_view<CharT> format,
-    basic_scan_args<basic_scan_context<CharT>> args,
+    basic_scan_args<detail::default_context<CharT>> args,
     detail::locale_ref loc = {})
 {
     const auto argcount = args.size();
@@ -2111,7 +2111,7 @@ template <typename CharT>
 scan_expected<std::ptrdiff_t> vscan_internal(
     detail::basic_scan_buffer<CharT>& buffer,
     std::basic_string_view<CharT> format,
-    basic_scan_args<basic_scan_context<CharT>> args,
+    basic_scan_args<detail::default_context<CharT>> args,
     detail::locale_ref loc = {})
 {
     const auto argcount = args.size();
@@ -2138,7 +2138,7 @@ scan_expected<std::ptrdiff_t> vscan_internal(
 template <typename Source, typename CharT>
 scan_expected<std::ptrdiff_t> vscan_value_internal(
     Source&& source,
-    basic_scan_arg<basic_scan_context<CharT>> arg)
+    basic_scan_arg<detail::default_context<CharT>> arg)
 {
     return scan_simple_single_argument(SCN_FWD(source), {}, arg);
 }
