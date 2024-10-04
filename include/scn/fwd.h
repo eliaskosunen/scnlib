@@ -1094,9 +1094,6 @@ struct scanner {
         -> expected<typename Context::iterator, scan_error> = delete;
 };
 
-template <typename T, typename CharT>
-inline constexpr bool has_scanner = std::is_constructible_v<scanner<T, CharT>>;
-
 template <typename T>
 struct discard;
 
