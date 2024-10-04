@@ -2944,32 +2944,31 @@ inline constexpr bool enable_borrowed_range<::scn::impl::take_width_view<R>> =
 // contiguous_scan_context
 /////////////////////////////////////////////////////////////////
 
-namespace impl {
 template <typename CharT>
-class basic_contiguous_scan_context
-    : public detail::scan_context_base<
-          basic_scan_args<basic_scan_context<CharT>>> {
-    using base =
-        detail::scan_context_base<basic_scan_args<basic_scan_context<CharT>>>;
+class basic_scan_context<ranges::subrange<const CharT*, const CharT*>, CharT>
+    : public detail::scan_context_base<basic_scan_args<
+          basic_scan_context<detail::buffer_range_tag, CharT>>> {
+    using base = detail::scan_context_base<
+        basic_scan_args<basic_scan_context<detail::buffer_range_tag, CharT>>>;
+
+    using parent_context_type =
+        basic_scan_context<detail::buffer_range_tag, CharT>;
+    using args_type = basic_scan_args<parent_context_type>;
+    using arg_type = basic_scan_arg<parent_context_type>;
 
 public:
     using char_type = CharT;
-    using buffer_type = detail::basic_scan_buffer<char_type>;
     using range_type = ranges::subrange<const char_type*, const char_type*>;
     using iterator = const char_type*;
     using sentinel = const char_type*;
     using parse_context_type = basic_scan_parse_context<char_type>;
 
-    using parent_context_type = basic_scan_context<char_type>;
-    using args_type = basic_scan_args<parent_context_type>;
-    using arg_type = basic_scan_arg<parent_context_type>;
-
     template <typename Range,
               std::enable_if_t<ranges::contiguous_range<Range> &&
                                ranges::borrowed_range<Range>>* = nullptr>
-    constexpr basic_contiguous_scan_context(Range&& r,
-                                            args_type a,
-                                            detail::locale_ref loc = {})
+    constexpr basic_scan_context(Range&& r,
+                                 args_type a,
+                                 detail::locale_ref loc = {})
         : base(SCN_MOVE(a), loc),
           m_range(SCN_FWD(r)),
           m_current(m_range.begin())
@@ -3022,6 +3021,11 @@ private:
     range_type m_range;
     iterator m_current;
 };
+
+namespace impl {
+template <typename CharT>
+using basic_contiguous_scan_context =
+    basic_scan_context<ranges::subrange<const CharT*, const CharT*>, CharT>;
 
 struct reader_error_handler {
     constexpr void on_error(const char* msg)
@@ -5862,7 +5866,7 @@ template <typename Context>
 struct default_arg_reader {
     using context_type = Context;
     using char_type = typename context_type::char_type;
-    using args_type = typename context_type::args_type;
+    using args_type = basic_scan_args<detail::default_context<char_type>>;
 
     using range_type = typename context_type::range_type;
     using iterator = ranges::iterator_t<range_type>;
@@ -5902,7 +5906,7 @@ struct default_arg_reader {
         }
     }
 
-    basic_scan_context<char_type> make_custom_ctx()
+    detail::default_context<char_type> make_custom_ctx()
     {
         if constexpr (std::is_same_v<
                           context_type,
@@ -5920,7 +5924,7 @@ struct default_arg_reader {
     }
 
     scan_expected<iterator> operator()(
-        typename context_type::arg_type::handle h)
+        typename basic_scan_arg<detail::default_context<char_type>>::handle h)
     {
         if constexpr (!detail::is_type_disabled<void>) {
             basic_scan_parse_context<char_type> parse_ctx{{}};
@@ -6234,7 +6238,9 @@ struct arg_reader {
         }
     }
 
-    scan_expected<iterator> operator()(typename context_type::arg_type::handle)
+    scan_expected<iterator> operator()(
+        typename basic_scan_arg<detail::default_context<char_type>>::handle)
+        const
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
@@ -6260,7 +6266,8 @@ struct custom_reader {
     }
 
     scan_expected<iterator> operator()(
-        typename context_type::arg_type::handle h) const
+        typename basic_scan_arg<detail::default_context<char_type>>::handle h)
+        const
     {
         if (auto e = h.scan(parse_ctx, ctx); !e) {
             return unexpected(e);

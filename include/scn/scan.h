@@ -6021,6 +6021,7 @@ class basic_scan_parse_context {
 public:
     using char_type = CharT;
     using iterator = typename std::basic_string_view<CharT>::const_pointer;
+    using const_iterator = iterator;
 
     /**
      * Construct a `basic_scan_parse_context` over a format string `format`.
@@ -6031,6 +6032,13 @@ public:
         : m_format{format}, m_next_arg_id{next_arg_id}
     {
     }
+
+    basic_scan_parse_context(const basic_scan_parse_context&) = delete;
+    basic_scan_parse_context& operator=(const basic_scan_parse_context&) =
+        delete;
+    basic_scan_parse_context(basic_scan_parse_context&&) = delete;
+    basic_scan_parse_context& operator=(basic_scan_parse_context&&) = delete;
+    ~basic_scan_parse_context() = default;
 
     /// Returns an iterator pointing to the beginning of the format string
     constexpr auto begin() const noexcept
@@ -8295,7 +8303,7 @@ public:
                           type_identity<Source>{}),
           m_parse_funcs{&parse_format_specs<Args,
                                             Source,
-                                            basic_scan_context<CharT>,
+                                            default_context<CharT>,
                                             parse_context_type>...},
           m_types{arg_type_constant<Args, CharT>::value...}
     {
@@ -8649,22 +8657,25 @@ protected:
  *
  * \ingroup ctx
  */
-template <typename CharT>
-class basic_scan_context : public detail::scan_context_base<
-                               basic_scan_args<basic_scan_context<CharT>>> {
+template <typename Range, typename CharT>
+class basic_scan_context
+    : public detail::scan_context_base<
+          basic_scan_args<basic_scan_context<Range, CharT>>> {
     using base = detail::scan_context_base<basic_scan_args<basic_scan_context>>;
+
+    using args_type = basic_scan_args<basic_scan_context>;
+    using arg_type = basic_scan_arg<basic_scan_context>;
 
 public:
     /// Character type of the input
     using char_type = CharT;
-    using buffer_type = detail::basic_scan_buffer<char_type>;
-    using range_type = typename buffer_type::range_type;
+    using range_type = std::conditional_t<
+        std::is_same_v<Range, detail::buffer_range_tag>,
+        typename detail::basic_scan_buffer<char_type>::range_type,
+        Range>;
     using iterator = ranges::iterator_t<range_type>;
     using sentinel = ranges::sentinel_t<range_type>;
     using parse_context_type = basic_scan_parse_context<char_type>;
-
-    using args_type = basic_scan_args<basic_scan_context>;
-    using arg_type = basic_scan_arg<basic_scan_context>;
 
     /**
      * The scanner type associated with this scanning context.
@@ -9013,7 +9024,7 @@ constexpr decltype(auto) visit_scan_arg(Visitor&& vis, basic_scan_arg<Ctx>& arg)
         case detail::arg_type::custom_type:
 #if !SCN_DISABLE_TYPE_CUSTOM
             return vis(
-                typename Ctx::arg_type::handle(arg.m_value.custom_value));
+                typename basic_scan_arg<Ctx>::handle(arg.m_value.custom_value));
 #else
             return vis(monostate_val);
 #endif
@@ -9121,7 +9132,7 @@ scan_expected<std::ptrdiff_t> vscan_value_impl(
 template <typename Range, typename CharT>
 auto vscan_generic(Range&& range,
                    std::basic_string_view<CharT> format,
-                   basic_scan_args<basic_scan_context<CharT>> args)
+                   basic_scan_args<detail::default_context<CharT>> args)
     -> vscan_result<Range>
 {
     auto buffer = make_scan_buffer(range);
@@ -9134,11 +9145,11 @@ auto vscan_generic(Range&& range,
 }
 
 template <typename Locale, typename Range, typename CharT>
-auto vscan_localized_generic(const Locale& loc,
-                             Range&& range,
-                             std::basic_string_view<CharT> format,
-                             basic_scan_args<basic_scan_context<CharT>> args)
-    -> vscan_result<Range>
+auto vscan_localized_generic(
+    const Locale& loc,
+    Range&& range,
+    std::basic_string_view<CharT> format,
+    basic_scan_args<detail::default_context<CharT>> args) -> vscan_result<Range>
 {
 #if !SCN_DISABLE_LOCALE
     auto buffer = detail::make_scan_buffer(range);
@@ -9161,7 +9172,7 @@ auto vscan_localized_generic(const Locale& loc,
 
 template <typename Range, typename CharT>
 auto vscan_value_generic(Range&& range,
-                         basic_scan_arg<basic_scan_context<CharT>> arg)
+                         basic_scan_arg<detail::default_context<CharT>> arg)
     -> vscan_result<Range>
 {
     auto buffer = detail::make_scan_buffer(range);
