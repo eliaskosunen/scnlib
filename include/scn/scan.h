@@ -5302,6 +5302,7 @@ SCN_TYPE_CONSTANT(char, narrow_character_type, SCN_DISABLE_TYPE_CHAR);
 SCN_TYPE_CONSTANT(wchar_t, wide_character_type, SCN_DISABLE_TYPE_CHAR);
 SCN_TYPE_CONSTANT(char32_t, code_point_type, SCN_DISABLE_TYPE_CHAR32);
 SCN_TYPE_CONSTANT(void*, pointer_type, SCN_DISABLE_TYPE_POINTER);
+SCN_TYPE_CONSTANT(const void*, pointer_type, SCN_DISABLE_TYPE_POINTER);
 SCN_TYPE_CONSTANT(float, float_type, SCN_DISABLE_TYPE_FLOAT);
 SCN_TYPE_CONSTANT(double, double_type, SCN_DISABLE_TYPE_DOUBLE);
 SCN_TYPE_CONSTANT(long double, ldouble_type, SCN_DISABLE_TYPE_LONG_DOUBLE);
@@ -5460,6 +5461,7 @@ struct arg_mapper {
     SCN_ARG_MAPPER(char32_t)
     SCN_ARG_MAPPER(bool)
     SCN_ARG_MAPPER(void*)
+    SCN_ARG_MAPPER(const void*)
     SCN_ARG_MAPPER(float)
     SCN_ARG_MAPPER(double)
     SCN_ARG_MAPPER(long double)
@@ -5504,18 +5506,17 @@ struct arg_mapper {
         return {};
     }
 
-    template <typename T>
-    static std::enable_if_t<std::is_constructible_v<scanner<T, char_type>>,
-                            needs_context_tag>
-    map(T&)
+    template <typename T,
+              std::void_t<decltype(scanner<T, char_type>{})>* = nullptr>
+    static needs_context_tag map(T&)
     {
         return {};
     }
 
-    template <typename T, typename Context>
-    static std::enable_if_t<std::is_constructible_v<scanner<T, char_type>>,
-                            custom_wrapper<T, Context>>
-    map(T& val, context_tag<Context>)
+    template <typename T,
+              typename Context,
+              std::void_t<decltype(scanner<T, char_type>{})>* = nullptr>
+    static custom_wrapper<T, Context> map(T& val, context_tag<Context>)
     {
         return {val};
     }
@@ -5570,7 +5571,7 @@ constexpr size_t encode_types()
     }
 }
 
-template <typename Arg>
+template <typename T, typename Arg>
 constexpr auto make_value_impl(Arg&& arg)
 {
     using arg_nocvref_t = remove_cvref_t<Arg>;
@@ -5608,10 +5609,10 @@ constexpr auto make_value(T& value)
 
     if constexpr (!std::is_same_v<remove_cvref_t<decltype(arg)>,
                                   needs_context_tag>) {
-        return make_value_impl(SCN_FWD(arg));
+        return make_value_impl<T>(SCN_FWD(arg));
     }
     else {
-        return make_value_impl(arg_mapper<typename Context::char_type>().map(
+        return make_value_impl<T>(arg_mapper<typename Context::char_type>().map(
             value, context_tag<Context>{}));
     }
 }
@@ -8260,15 +8261,24 @@ constexpr typename ParseCtx::iterator parse_format_specs_impl(
 template <typename T, typename Source, typename Ctx, typename ParseCtx>
 constexpr typename ParseCtx::iterator parse_format_specs(ParseCtx& parse_ctx)
 {
-    using char_type = typename ParseCtx::char_type;
-    using mapped_type = std::conditional_t<
-        mapped_type_constant<T, char_type>::value != arg_type::custom_type,
+    using char_type = typename Ctx::char_type;
+    using map_result =
         std::remove_reference_t<decltype(arg_mapper<char_type>().map(
-            SCN_DECLVAL(T&)))>,
-        T>;
-    using scanner_type = typename Ctx::template scanner_type<mapped_type>;
-    return parse_format_specs_impl<scanner_type, Source, T, Ctx, ParseCtx>(
-        parse_ctx);
+            SCN_DECLVAL(T&)))>;
+    if constexpr (std::is_base_of_v<unscannable, map_result>) {
+        // Error will be reported by static_assert in make_value(),
+        // let's not muddy the compiler error by making more of them.
+        return parse_ctx.begin();
+    }
+    else {
+        using mapped_type =
+            std::conditional_t<arg_type_constant<T, char_type>::value !=
+                                   arg_type::custom_type,
+                               map_result, T>;
+        using scanner_type = typename Ctx::template scanner_type<mapped_type>;
+        return parse_format_specs_impl<scanner_type, Source, T, Ctx, ParseCtx>(
+            parse_ctx);
+    }
 }
 
 template <typename CharT, typename Source, typename... Args>

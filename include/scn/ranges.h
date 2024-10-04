@@ -42,34 +42,27 @@ public:
 SCN_GCC_POP
 
 template <typename T, typename = void>
-struct is_map : std::false_type {
-};
+struct is_map : std::false_type {};
 template <typename T>
-struct is_map<T, std::void_t<typename T::mapped_type>> : std::true_type {
-};
+struct is_map<T, std::void_t<typename T::mapped_type>> : std::true_type {};
 
 template <typename T, typename = void>
-struct is_set : std::false_type {
-};
+struct is_set : std::false_type {};
 template <typename T>
 struct is_set<
     T,
     std::void_t<std::enable_if_t<!is_map<T>::value>, typename T::key_type>>
-    : std::true_type {
-};
+    : std::true_type {};
 
 template <typename T, typename = void>
-struct is_tuple_like_impl : std::false_type {
-};
+struct is_tuple_like_impl : std::false_type {};
 template <typename T>
 struct is_tuple_like_impl<T, std::void_t<decltype(std::tuple_size<T>::value)>>
-    : std::true_type {
-};
+    : std::true_type {};
 
 // TODO
 template <typename T, typename CharT, bool = is_tuple_like_impl<T>::value>
-struct is_tuple_scannable_impl : std::false_type {
-};
+struct is_tuple_scannable_impl : std::false_type {};
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wctor-dtor-privacy")
@@ -87,7 +80,7 @@ private:
         std::index_sequence<Is...>{},
         std::integer_sequence<
             bool,
-            (has_scanner<std::tuple_element_t<Is, T>, CharT>)...>{}));
+            (is_scannable<std::tuple_element_t<Is, T>, CharT>::value)...>{}));
 
 public:
     static constexpr bool value = decltype(check(
@@ -99,12 +92,14 @@ template <typename CharT>
 struct range_mapper {
     using mapper = arg_mapper<CharT>;
 
-    template <typename T, std::enable_if_t<has_scanner<T, CharT>>* = nullptr>
+    template <typename T,
+              std::enable_if_t<is_scannable<T, CharT>::value>* = nullptr>
     static auto map(T& value) -> T&
     {
         return value;
     }
-    template <typename T, std::enable_if_t<!has_scanner<T, CharT>>* = nullptr>
+    template <typename T,
+              std::enable_if_t<!is_scannable<T, CharT>::value>* = nullptr>
     static auto map(T& value) -> decltype(mapper().map(value))
     {
         return mapper().map(value);
@@ -120,12 +115,10 @@ template <typename T>
 struct is_tuple_like
     : std::integral_constant<bool,
                              detail::is_tuple_like_impl<T>::value &&
-                                 !ranges::range<T>> {
-};
+                                 !ranges::range<T>> {};
 
 template <typename T, typename CharT>
-struct is_tuple_scannable : detail::is_tuple_scannable_impl<T, CharT> {
-};
+struct is_tuple_scannable : detail::is_tuple_scannable_impl<T, CharT> {};
 
 template <typename Tuple, typename F, std::size_t... Is>
 void tuple_for_each(std::index_sequence<Is...>, Tuple&& tuple, F&& f)
@@ -151,8 +144,7 @@ struct is_range
           bool,
           ranges::range<T> && !detail::is_std_string_like<T>::value &&
               !std::is_convertible_v<T, std::basic_string<CharT>> &&
-              !std::is_convertible_v<T, std::basic_string_view<CharT>>> {
-};
+              !std::is_convertible_v<T, std::basic_string_view<CharT>>> {};
 
 template <typename Source, typename CharT>
 scan_expected<ranges::iterator_t<Source>> scan_str(
@@ -171,35 +163,29 @@ scan_expected<ranges::iterator_t<Source>> scan_str(
 }
 
 template <typename Range, typename Element, typename Enable = void>
-struct has_push_back : std::false_type {
-};
+struct has_push_back : std::false_type {};
 template <typename Range, typename Element>
 struct has_push_back<Range,
                      Element,
                      decltype(SCN_DECLVAL(Range&).push_back(
-                         SCN_DECLVAL(Element&&)))> : std::true_type {
-};
+                         SCN_DECLVAL(Element&&)))> : std::true_type {};
 
 template <typename Range, typename Element, typename Enable = void>
-struct has_push : std::false_type {
-};
+struct has_push : std::false_type {};
 template <typename Range, typename Element>
 struct has_push<Range,
                 Element,
                 decltype(SCN_DECLVAL(Range&).push(SCN_DECLVAL(Element&&)))>
-    : std::true_type {
-};
+    : std::true_type {};
 
 template <typename Range, typename Element, typename Enable = void>
-struct has_element_insert : std::false_type {
-};
+struct has_element_insert : std::false_type {};
 template <typename Range, typename Element>
 struct has_element_insert<
     Range,
     Element,
     std::void_t<decltype(SCN_DECLVAL(Range&).insert(SCN_DECLVAL(Element&&)))>>
-    : std::true_type {
-};
+    : std::true_type {};
 
 template <typename Range,
           typename Element,
@@ -222,15 +208,12 @@ void add_element_to_range(Range& r, Element&& elem)
 }
 
 template <typename Range, typename Enable = void>
-struct has_max_size : std::false_type {
-};
+struct has_max_size : std::false_type {};
 template <typename Range>
 struct has_max_size<Range, decltype(SCN_DECLVAL(const Range&).max_size())>
-    : std::true_type {
-};
+    : std::true_type {};
 
-template <typename Range,
-          typename DiffT = ranges::range_difference_t<Range>>
+template <typename Range, typename DiffT = ranges::range_difference_t<Range>>
 DiffT range_max_size(const Range& r)
 {
     if constexpr (has_max_size<Range>::value) {
@@ -316,11 +299,9 @@ private:
 };
 
 template <typename T>
-struct is_std_pair : std::false_type {
-};
+struct is_std_pair : std::false_type {};
 template <typename First, typename Second>
-struct is_std_pair<std::pair<First, Second>> : std::true_type {
-};
+struct is_std_pair<std::pair<First, Second>> : std::true_type {};
 }  // namespace detail
 
 template <typename Tuple, typename CharT>
@@ -446,15 +427,14 @@ enum class range_format {
 namespace detail {
 template <typename T>
 struct default_range_format_kind
-    : std::integral_constant<
-          range_format,
-          std::is_same_v<ranges::range_reference_t<T>, T>
-              ? range_format::disabled
-              : (is_map<T>::value
-                     ? range_format::map
-                     : (is_set<T>::value ? range_format::set
-                                         : range_format::sequence))> {
-};
+    : std::integral_constant<range_format,
+                             std::is_same_v<ranges::range_reference_t<T>, T>
+                                 ? range_format::disabled
+                                 : (is_map<T>::value
+                                        ? range_format::map
+                                        : (is_set<T>::value
+                                               ? range_format::set
+                                               : range_format::sequence))> {};
 
 template <typename T, typename Enable = void>
 struct range_value_type_for_scanner_processor {
@@ -523,8 +503,7 @@ struct range_format_kind
     : std::conditional_t<
           detail::is_range<T, CharT>::value,
           detail::default_range_format_kind<T>,
-          std::integral_constant<range_format, range_format::disabled>> {
-};
+          std::integral_constant<range_format, range_format::disabled>> {};
 
 template <typename Range, typename CharT>
 struct scanner<Range,
@@ -533,8 +512,7 @@ struct scanner<Range,
                                 range_format::disabled>>
     : detail::range_default_scanner<range_format_kind<Range, CharT>::value,
                                     Range,
-                                    CharT> {
-};
+                                    CharT> {};
 
 SCN_END_NAMESPACE
 }  // namespace scn

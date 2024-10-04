@@ -244,8 +244,18 @@ TEST(ScanTest, DoubleNewline2)
 {
     auto res = scn::scan<int, int>("1\n\n2", "{}\n\n{}");
     ASSERT_TRUE(res);
-    auto [a, b] =res->values();
+    auto [a, b] = res->values();
     EXPECT_EQ(a, 1);
     EXPECT_EQ(b, 2);
     EXPECT_EQ(res->begin(), res->end());
+}
+
+TEST(ScanTest, Pointer)
+{
+    auto res =
+        scn::scan<void*, const void*>("0xdeadbeef 0XABBAABBA", "{} {:p}");
+    ASSERT_TRUE(res);
+    auto [a, b] = res->values();
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(a), 0xdeadbeef);
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(b), 0xABBAABBA);
 }
