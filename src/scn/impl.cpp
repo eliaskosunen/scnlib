@@ -2706,7 +2706,7 @@ public:
     {
         while (beg != end) {
             if (m_begin == ranges::end(m_range)) {
-                return set_error({scan_error::end_of_range, "EOF"});
+                return set_error({scan_error::end_of_input, "EOF"});
             }
             if (*beg != *m_begin) {
                 return on_error("Invalid literal character");
@@ -3067,7 +3067,7 @@ public:
     {
         // [+|-]
         if (m_begin == ranges::end(m_range)) {
-            return set_error({scan_error::end_of_range, "EOF"});
+            return set_error({scan_error::end_of_input, "EOF"});
         }
         bool is_minus = false;
         {
@@ -3081,7 +3081,7 @@ public:
             }
         }
         if (m_begin == ranges::end(m_range)) {
-            return set_error({scan_error::end_of_range, "EOF"});
+            return set_error({scan_error::end_of_input, "EOF"});
         }
 
         int hour = 0;

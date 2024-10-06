@@ -555,7 +555,7 @@ TEST(ScanIntTest, Empty)
 {
     auto result = scn::scan_int<int>("");
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::end_of_range);
+    EXPECT_EQ(result.error().code(), scn::scan_error::end_of_input);
 }
 
 #if !SCN_IS_BIG_ENDIAN

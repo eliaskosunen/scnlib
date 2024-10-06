@@ -189,7 +189,7 @@ struct basic_istream_scanner {
 
         if (!(stream >> val)) {
             if (stream.eof()) {
-                return unexpected_scan_error(scan_error::end_of_range, "EOF");
+                return unexpected_scan_error(scan_error::end_of_input, "EOF");
             }
             if (SCN_UNLIKELY(stream.bad())) {
                 return unexpected_scan_error(scan_error::invalid_source_state,

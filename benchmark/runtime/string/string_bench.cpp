@@ -42,7 +42,7 @@ static void bench_string_scn(benchmark::State& state)
             benchmark::DoNotOptimize(result->value());
             subr = result->range();
         }
-        else if (result.error() == scn::scan_error::end_of_range) {
+        else if (result.error() == scn::scan_error::end_of_input) {
             subr = scn::ranges::subrange{input};
         }
         else {
@@ -75,7 +75,7 @@ static void bench_string_scn_value(benchmark::State& state)
             benchmark::DoNotOptimize(result->value());
             subr = result->range();
         }
-        else if (result.error() == scn::scan_error::end_of_range) {
+        else if (result.error() == scn::scan_error::end_of_input) {
             subr = scn::ranges::subrange{input};
         }
         else {

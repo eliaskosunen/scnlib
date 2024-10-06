@@ -34,7 +34,7 @@ static void scan_float_repeated_scn(benchmark::State& state)
         auto result = scn::scan<Float>(s.view(), "{}");
 
         if (!result) {
-            if (result.error() == scn::scan_error::end_of_range) {
+            if (result.error() == scn::scan_error::end_of_input) {
                 s.reset();
             }
             else {
@@ -62,7 +62,7 @@ static void scan_float_repeated_scn_value(benchmark::State& state)
         auto result = scn::scan_value<Float>(s.view());
 
         if (!result) {
-            if (result.error() == scn::scan_error::end_of_range) {
+            if (result.error() == scn::scan_error::end_of_input) {
                 s.reset();
             }
             else {
