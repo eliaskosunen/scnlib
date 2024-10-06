@@ -1450,7 +1450,7 @@ struct tm_format_checker {
     void set_error(scan_error e)
     {
         assert(!e);
-        if (err == scan_error::success_tag()) {
+        if (err == scan_error::success()) {
             detail::handle_error(err = e);
         }
     }

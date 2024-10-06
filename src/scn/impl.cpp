@@ -3346,7 +3346,7 @@ public:
     void set_error(scan_error e)
     {
         assert(!e);
-        if (m_error == scan_error::success_tag()) {
+        if (m_error == scan_error::success()) {
             m_error = e;
         }
     }

@@ -3567,20 +3567,35 @@ private:
     using code_t = code;
 
 public:
-    struct success_tag_t {};
-    static constexpr success_tag_t success_tag() noexcept
+    struct [[deprecated(
+        "Use scan_error() or scan_error::success()")]] success_tag_t {};
+
+    [[deprecated(
+        "Use scan_error() or "
+        "scan_error::success()")]] static constexpr success_tag_t
+    success_tag() noexcept
     {
         return {};
     }
 
     /// Constructs an error with `code::good` and no message.
     constexpr scan_error() noexcept = default;
-    constexpr scan_error(success_tag_t) noexcept : scan_error() {}
+
+    [[deprecated("Use scan_error() or scan_error::success()")]] constexpr
+    scan_error(success_tag_t) noexcept
+        : scan_error()
+    {
+    }
 
     /// Constructs an error with `c` and `m`
     constexpr scan_error(code_t c, const char* m) noexcept : m_msg(m), m_code(c)
     {
         SCN_UNLIKELY_ATTR SCN_UNUSED(m_code);
+    }
+
+    SCN_NODISCARD static constexpr scan_error success() noexcept
+    {
+        return {};
     }
 
     /// Evaluated to true if there was no error
@@ -6171,6 +6186,9 @@ struct scan_result_convert_tag {};
 
 template <typename Range>
 struct scan_result_range_storage {
+    static_assert(is_specialization_of_v<Range, ranges::subrange>,
+                  "scan_result<Range> accepts only subranges as Ranges");
+
 public:
     using range_type = Range;
     using iterator = ranges::iterator_t<Range>;
