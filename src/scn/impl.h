@@ -796,7 +796,7 @@ struct eof_expected : public expected<T, eof_error> {
 inline constexpr auto make_eof_scan_error(eof_error err)
 {
     SCN_EXPECT(err == eof_error::eof);
-    return scan_error{scan_error::end_of_range, "EOF"};
+    return scan_error{scan_error::end_of_input, "EOF"};
 }
 
 struct SCN_TRIVIAL_ABI parse_error {
@@ -856,7 +856,7 @@ inline constexpr scan_error make_scan_error_from_parse_error(
     }
 
     if (err == parse_error::eof) {
-        return scan_error{scan_error::end_of_range, "EOF"};
+        return scan_error{scan_error::end_of_input, "EOF"};
     }
 
     return scan_error{code, msg};

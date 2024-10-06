@@ -3532,7 +3532,7 @@ public:
         good = 0,
 
         /// EOF
-        end_of_range,
+        end_of_input,
 
         /// Format string was invalid
         invalid_format_string,
@@ -3625,7 +3625,7 @@ public:
         switch (m_code) {
             case good:
                 return {};
-            case end_of_range:
+            case end_of_input:
             case invalid_format_string:
             case invalid_scanned_value:
                 return std::errc::invalid_argument;

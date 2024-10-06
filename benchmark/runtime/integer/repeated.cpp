@@ -34,7 +34,7 @@ static void scan_int_repeated_scn(benchmark::State& state)
         auto result = scn::scan<Int>(s.view(), "{}");
 
         if (!result) {
-            if (result.error() == scn::scan_error::end_of_range) {
+            if (result.error() == scn::scan_error::end_of_input) {
                 s.reset();
             }
             else {
@@ -62,7 +62,7 @@ static void scan_int_repeated_scn_value(benchmark::State& state)
         auto result = scn::scan_value<Int>(s.view());
 
         if (!result) {
-            if (result.error() == scn::scan_error::end_of_range) {
+            if (result.error() == scn::scan_error::end_of_input) {
                 s.reset();
             }
             else {
@@ -90,7 +90,7 @@ static void scan_int_repeated_scn_decimal(benchmark::State& state)
         auto result = scn::scan<Int>(s.view(), "{:d}");
 
         if (!result) {
-            if (result.error() == scn::scan_error::end_of_range) {
+            if (result.error() == scn::scan_error::end_of_input) {
                 s.reset();
             }
             else {
@@ -122,7 +122,7 @@ static void scan_int_repeated_scn_int(benchmark::State& state)
         auto result = scn::scan_int<Int>(sv);
 
         if (!result) {
-            if (result.error() == scn::scan_error::end_of_range) {
+            if (result.error() == scn::scan_error::end_of_input) {
                 s.reset();
             }
             else {
