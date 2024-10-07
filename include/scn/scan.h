@@ -5633,15 +5633,30 @@ constexpr auto make_value(T& value)
 }
 
 template <typename... Args>
-constexpr void check_scan_arg_types()
+constexpr bool check_scan_arg_types()
 {
-    static_assert(std::conjunction_v<std::is_default_constructible<Args>...>,
+    constexpr bool default_constructible_constraint =
+        std::conjunction_v<std::is_default_constructible<Args>...>;
+    static_assert(default_constructible_constraint,
                   "Scan argument types must be default constructible");
-    static_assert(std::conjunction_v<std::is_destructible<Args>...>,
+
+    constexpr bool destructible_constraint =
+        std::conjunction_v<std::is_destructible<Args>...>;
+    static_assert(destructible_constraint,
                   "Scan argument types must be Destructible");
-    static_assert(
-        !std::conjunction_v<std::false_type, std::is_reference<Args>...>,
-        "Scan argument types must not be references");
+
+    constexpr bool non_reference_constraint =
+        !std::conjunction_v<std::false_type, std::is_reference<Args>...>;
+    static_assert(non_reference_constraint,
+                  "Scan argument types must not be references");
+
+    constexpr bool movable_constraint =
+        std::conjunction_v<std::is_move_constructible<Args>...>;
+    static_assert(movable_constraint,
+                  "Scan argument types must be move constructible");
+
+    return default_constructible_constraint && destructible_constraint &&
+           non_reference_constraint && movable_constraint;
 }
 
 enum class scan_arg_store_kind {
@@ -5846,17 +5861,14 @@ public:
                            basic_scan_arg<Context>>>;
     using argptrs_type = std::array<argptr_type, sizeof...(Args)>;
 
-    constexpr scan_arg_store()
-        : m_argptrs(std::apply(make_argptrs<Args...>, m_args))
+    constexpr explicit scan_arg_store(std::tuple<Args...>& args)
+        : args(std::apply(make_argptrs<Args...>, args))
     {
     }
 
-    constexpr explicit scan_arg_store(std::tuple<Args...>&& a)
-        : m_args(std::move(a)),
-          m_argptrs(std::apply(make_argptrs<Args...>, m_args))
-    {
-    }
+    argptrs_type args;
 
+private:
     template <typename... A>
     static constexpr argptrs_type make_argptrs(A&... args)
     {
@@ -5865,49 +5877,22 @@ public:
             mapped_type_constant<remove_cvref_t<A>,
                                  typename Context::char_type>::value>(args)...};
     }
-
-    scan_arg_store(const scan_arg_store&) = delete;
-    scan_arg_store(scan_arg_store&&) = delete;
-    scan_arg_store& operator=(const scan_arg_store&) = delete;
-    scan_arg_store& operator=(scan_arg_store&&) = delete;
-    ~scan_arg_store() = default;
-
-    std::tuple<Args...>& args()
-    {
-        return m_args;
-    }
-
-    argptrs_type& arg_pointers()
-    {
-        return m_argptrs;
-    }
-
-private:
-    std::tuple<Args...> m_args;
-    argptrs_type m_argptrs;
 };
 
 }  // namespace detail
 
-/**
- * Constructs a `scan_arg_store` object, associated with `Context`,
- * that contains value-initialized values of types `Args...`.
- */
 template <typename Context = scan_context, typename... Args>
-constexpr auto make_scan_args()
+constexpr auto make_scan_args(std::tuple<Args...>& values)
 {
     detail::check_scan_arg_types<Args...>();
-    return detail::scan_arg_store<Context, Args...>{};
+    return detail::scan_arg_store<Context, Args...>(values);
 }
-/**
- * Constructs a `scan_arg_store` object, associated with `Context`,
- * that contains `values`.
- */
-template <typename Context = scan_context, typename... Args>
-constexpr auto make_scan_args(std::tuple<Args...>&& values)
+
+template <typename... Args>
+constexpr auto make_wscan_args(std::tuple<Args...>& values)
 {
     detail::check_scan_arg_types<Args...>();
-    return detail::scan_arg_store<Context, Args...>{SCN_MOVE(values)};
+    return detail::scan_arg_store<wscan_context, Args...>(values);
 }
 
 /**
@@ -5923,8 +5908,8 @@ public:
 
     template <typename... Args>
     SCN_IMPLICIT constexpr basic_scan_args(
-        detail::scan_arg_store<Context, Args...>& store)
-        : basic_scan_args(store.desc, store.arg_pointers().data())
+        const detail::scan_arg_store<Context, Args...>& store)
+        : basic_scan_args(store.desc, store.args.data())
     {
     }
 
@@ -5975,16 +5960,17 @@ public:
     }
 
 private:
-    constexpr explicit basic_scan_args(size_t desc, void** data)
+    constexpr explicit basic_scan_args(size_t desc, void* const* data)
         : m_desc(desc), m_builtin_values(data)
     {
     }
-    constexpr explicit basic_scan_args(size_t desc, detail::arg_value* data)
+    constexpr explicit basic_scan_args(size_t desc,
+                                       const detail::arg_value* data)
         : m_desc(desc), m_values(data)
     {
     }
     constexpr explicit basic_scan_args(size_t desc,
-                                       basic_scan_arg<Context>* data)
+                                       const basic_scan_arg<Context>* data)
         : m_desc(desc), m_args(data)
     {
     }
@@ -6015,9 +6001,9 @@ private:
 
     size_t m_desc{0};
     union {
-        void** m_builtin_values;
-        detail::arg_value* m_values;
-        basic_scan_arg<Context>* m_args{nullptr};
+        void* const* m_builtin_values;
+        const detail::arg_value* m_values;
+        const basic_scan_arg<Context>* m_args{nullptr};
     };
 };
 
@@ -6223,6 +6209,12 @@ public:
         return ranges::end(m_range);
     }
 
+    template <typename Other>
+    void set_range(Other&& r)
+    {
+        m_range = std::forward<Other>(r);
+    }
+
 protected:
     template <typename Other>
     void assign_range(Other&& r)
@@ -6246,6 +6238,11 @@ public:
     std::FILE* file() const
     {
         return m_file;
+    }
+
+    void set_range(std::FILE* f)
+    {
+        m_file = f;
     }
 
 protected:
@@ -6280,6 +6277,11 @@ struct scan_result_dangling {
     ranges::dangling end() const
     {
         return {};
+    }
+
+    template <typename... Args>
+    void set_range(Args&&...)
+    {
     }
 
 protected:
@@ -9358,43 +9360,41 @@ SCN_GCC_POP  // -Wnoexcept
 /////////////////////////////////////////////////////////////////
 
 /**
- * Convenience function to construct the value to return from `scan`,
- * based on the return value of `vscan`, and the argument store.
- *
- * Takes its arguments by rvalue reference to disallow extraneous copying.
- *
- * Note: Because `vscan` places the values it scanned into the argument
- * store passed to it, the call to `make_scan_result` needs to happen
- * strictly after calling `vscan`. This means, that this is UB:
- * `return scn::make_scan_result(scn::vscan(...), std::move(args.args()));`
- *
- * Example:
- * \code{.cpp}
- * auto args = scn::make_scan_args<scan_context, Args...>();
- * auto result = scn::vscan(std::forward<Source>(source), format, args);
- * return scn::make_scan_result(std::move(result), std::move(args.args()));
- * \endcode
- *
- * \ingroup result
- */
-template <typename Result, typename... Args>
-auto make_scan_result(scan_expected<Result>&& result,
-                      std::tuple<Args...>&& args)
-    -> scan_expected<scan_result<Result, Args...>>
-{
-    if (SCN_UNLIKELY(!result)) {
-        return unexpected(result.error());
-    }
-    return scan_result{SCN_MOVE(*result), SCN_MOVE(args)};
-}
-
-/**
  * The return type of `scan`, based on the type of the source, and the
  * types of the scanned arguments.
  */
 template <typename Source, typename... Args>
 using scan_result_type =
     scan_expected<scan_result<detail::scan_result_value_type<Source>, Args...>>;
+
+template <typename Result,
+          typename Range,
+          std::enable_if_t<std::conjunction_v<
+              detail::is_specialization_of<Result, scan_result>,
+              std::is_same<typename Result::range_type, Range>>>* = nullptr>
+void fill_scan_result(scan_expected<Result>& out, scan_expected<Range>&& in)
+{
+    if (SCN_UNLIKELY(!in)) {
+        out = unexpected(in.error());
+    }
+    else {
+        out->set_range(SCN_MOVE(*in));
+    }
+}
+
+template <typename Source, typename... Args>
+auto make_scan_result()
+{
+    return scan_result_type<Source, Args...>();
+}
+
+template <typename Source, typename... Args>
+auto make_scan_result(std::tuple<Args...>&& initial_values)
+{
+    using type = scan_result_type<Source, Args...>;
+    using subrange_type = typename type::value_type::range_type;
+    return type{std::in_place, subrange_type{}, SCN_MOVE(initial_values)};
+}
 
 /**
  * \defgroup scan Basic scanning API
@@ -9429,9 +9429,10 @@ SCN_NODISCARD auto scan(Source&& source,
                         scan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
 {
-    auto args = make_scan_args<scan_context, Args...>();
-    auto result = vscan(SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
+    auto result = make_scan_result<Source, Args...>();
+    fill_scan_result(result, vscan(SCN_FWD(source), format,
+                                   make_scan_args(result->values())));
+    return result;
 }
 
 /**
@@ -9460,9 +9461,10 @@ SCN_NODISCARD auto scan(Source&& source,
                         std::tuple<Args...>&& initial_args)
     -> scan_result_type<Source, Args...>
 {
-    auto args = make_scan_args<scan_context, Args...>(SCN_FWD(initial_args));
-    auto result = vscan(SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
+    auto result = make_scan_result<Source>(SCN_MOVE(initial_args));
+    fill_scan_result(result, vscan(SCN_FWD(source), format,
+                                   make_scan_args(result->values())));
+    return result;
 }
 
 /**
@@ -9496,9 +9498,10 @@ SCN_NODISCARD auto scan(const Locale& loc,
                         scan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
 {
-    auto args = make_scan_args<scan_context, Args...>();
-    auto result = vscan(loc, SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
+    auto result = make_scan_result<Source, Args...>();
+    fill_scan_result(result, vscan(loc, SCN_FWD(source), format,
+                                   make_scan_args(result->values())));
+    return result;
 }
 
 /**
@@ -9517,9 +9520,10 @@ SCN_NODISCARD auto scan(const Locale& loc,
                         std::tuple<Args...>&& initial_args)
     -> scan_result_type<Source, Args...>
 {
-    auto args = make_scan_args<scan_context, Args...>(SCN_FWD(initial_args));
-    auto result = vscan(loc, SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
+    auto result = make_scan_result<Source>(SCN_MOVE(initial_args));
+    fill_scan_result(result, vscan(loc, SCN_FWD(source), format,
+                                   make_scan_args(result->values())));
+    return result;
 }
 
 /**
@@ -9535,10 +9539,11 @@ template <typename T,
           typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
 SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
 {
-    T value;
-    auto arg = detail::make_arg<scan_context>(value);
-    SCN_TRY(it, vscan_value(SCN_FWD(source), arg));
-    return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(value)}};
+    auto result = make_scan_result<Source, T>();
+    fill_scan_result(
+        result, vscan_value(SCN_FWD(source),
+                            detail::make_arg<scan_context>(result->value())));
+    return result;
 }
 
 /**
@@ -9552,9 +9557,12 @@ template <typename T,
 SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
     -> scan_result_type<Source, T>
 {
-    auto arg = detail::make_arg<scan_context>(initial_value);
-    SCN_TRY(it, vscan_value(SCN_FWD(source), arg));
-    return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(initial_value)}};
+    auto result =
+        make_scan_result<Source>(std::tuple<T>{SCN_MOVE(initial_value)});
+    fill_scan_result(
+        result, vscan_value(SCN_FWD(source),
+                            detail::make_arg<scan_context>(result->value())));
+    return result;
 }
 
 /**
@@ -9572,12 +9580,13 @@ template <typename... Args>
 SCN_NODISCARD auto input(scan_format_string<std::FILE*, Args...> format)
     -> scan_result_type<std::FILE*, Args...>
 {
-    auto args = make_scan_args<scan_context, Args...>();
-    auto err = vinput(format, args);
+    auto result = scan_result_type<std::FILE*, Args...>(std::in_place, stdin,
+                                                        std::tuple<Args...>{});
+    auto err = vinput(format, make_scan_args(result->values()));
     if (SCN_UNLIKELY(!err)) {
-        return unexpected(err);
+        result = unexpected(err);
     }
-    return scan_result{stdin, SCN_MOVE(args.args())};
+    return result;
 }
 
 /**
@@ -9619,9 +9628,15 @@ template <typename T, std::enable_if_t<detail::is_scan_int_type<T>>* = nullptr>
 SCN_NODISCARD auto scan_int(std::string_view source, int base = 10)
     -> scan_result_type<std::string_view, T>
 {
-    T value{};
-    SCN_TRY(it, detail::scan_int_impl(source, value, base));
-    return scan_result{ranges::subrange{it, source.end()}, std::tuple{value}};
+    auto result = scan_result_type<std::string_view, T>();
+    if (auto r = detail::scan_int_impl(source, result->value(), base);
+        SCN_LIKELY(r)) {
+        result->set_range(ranges::subrange{*r, source.end()});
+    }
+    else {
+        result = unexpected(r.error());
+    }
+    return result;
 }
 
 namespace detail {

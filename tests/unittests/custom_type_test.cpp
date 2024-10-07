@@ -222,3 +222,109 @@ TEST(CustomTypeTest, VariantWrapperInvalidFormat)
     result = scn::scan<variant_wrapper>("123", scn::runtime_format("{}"));
     ASSERT_FALSE(result);
 }
+
+struct type_without_default_constructor {
+    type_without_default_constructor() = delete;
+    explicit type_without_default_constructor(int v) : val(v) {}
+
+    int val;
+};
+
+template <>
+struct scn::scanner<type_without_default_constructor> : scn::scanner<int> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx)
+    {
+        return pctx.begin();
+    }
+
+    template <typename Context>
+    auto scan(type_without_default_constructor& val, Context& ctx) const
+        -> scan_expected<typename Context::iterator>
+    {
+        return scn::scanner<int>::scan(val.val, ctx);
+    }
+};
+
+#if 0
+TEST(CustomTypeTest, TypeWithoutDefaultConstructor)
+{
+    auto result = scn::scan<type_without_default_constructor>("123", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().val, 123);
+}
+#endif
+
+struct non_copyable_type {
+    non_copyable_type() = default;
+    explicit non_copyable_type(int v) : val(v) {}
+
+    non_copyable_type(const non_copyable_type&) = delete;
+    non_copyable_type& operator=(const non_copyable_type&) = delete;
+
+    non_copyable_type(non_copyable_type&&) = default;
+    non_copyable_type& operator=(non_copyable_type&&) = default;
+
+    int val;
+};
+
+template <>
+struct scn::scanner<non_copyable_type> : scn::scanner<int> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx)
+    {
+        return pctx.begin();
+    }
+
+    template <typename Context>
+    auto scan(non_copyable_type& val, Context& ctx) const
+        -> scan_expected<typename Context::iterator>
+    {
+        return scn::scanner<int>::scan(val.val, ctx);
+    }
+};
+
+TEST(CustomTypeTest, NonCopyableType)
+{
+    auto result = scn::scan<non_copyable_type>("123", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().val, 123);
+}
+
+struct non_movable_type {
+    non_movable_type() = default;
+    explicit non_movable_type(int v) : val(v) {}
+
+    non_movable_type(const non_movable_type&) = delete;
+    non_movable_type& operator=(const non_movable_type&) = delete;
+
+    non_movable_type(non_movable_type&&) = delete;
+    non_movable_type& operator=(non_movable_type&&) = delete;
+
+    int val;
+};
+
+#if 0
+template <>
+struct scn::scanner<non_movable_type> : scn::scanner<int> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx)
+    {
+        return pctx.begin();
+    }
+
+    template <typename Context>
+    auto scan(non_movable_type& val, Context& ctx) const
+        -> scan_expected<typename Context::iterator>
+    {
+        return scn::scanner<int>::scan(val.val, ctx);
+    }
+};
+
+TEST(CustomTypeTest, NonMovableType)
+{
+    auto result = scn::scan<non_movable_type>("123", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().val, 123);
+}
+#endif

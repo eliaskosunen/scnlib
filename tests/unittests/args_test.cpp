@@ -76,15 +76,15 @@ TEST(ArgsTest, ArgTypeMapping)
 
 TEST(ArgsTest, ArgStore)
 {
-    auto store = scn::make_scan_args<scn::scan_context, int, double>();
-    auto args = scn::basic_scan_args<scn::scan_context>{store};
+    std::tuple<int, double> args_tuple{};
+    auto store = scn::make_scan_args(args_tuple);
+    auto args = scn::basic_scan_args{store};
 
     EXPECT_EQ(args.get(0).type(), scn::detail::arg_type::int_type);
     EXPECT_EQ(args.get(1).type(), scn::detail::arg_type::double_type);
 
     *static_cast<int*>(args.get(0).value().ref_value) = 42;
 
-    auto tup = std::move(store.args());
-    EXPECT_EQ(std::get<0>(tup), 42);
-    EXPECT_DOUBLE_EQ(std::get<1>(tup), 0.0);
+    EXPECT_EQ(std::get<0>(args_tuple), 42);
+    EXPECT_DOUBLE_EQ(std::get<1>(args_tuple), 0.0);
 }

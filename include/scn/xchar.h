@@ -86,9 +86,11 @@ SCN_NODISCARD auto scan(Source&& source,
                         wscan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
 {
-    auto args = make_scan_args<wscan_context, Args...>();
-    auto result = vscan(SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
+    auto result = make_scan_result<Source, Args...>();
+    fill_scan_result(result,
+                     vscan(SCN_FWD(source), format,
+                           make_scan_args<wscan_context>(result->values())));
+    return result;
 }
 
 /**
@@ -104,9 +106,11 @@ SCN_NODISCARD auto scan(Source&& source,
                         std::tuple<Args...>&& initial_args)
     -> scan_result_type<Source, Args...>
 {
-    auto args = make_scan_args<wscan_context, Args...>(SCN_MOVE(initial_args));
-    auto result = vscan(SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
+    auto result = make_scan_result<Source>(SCN_MOVE(initial_args));
+    fill_scan_result(result,
+                     vscan(SCN_FWD(source), format,
+                           make_scan_args<wscan_context>(result->values())));
+    return result;
 }
 
 /**
@@ -124,9 +128,11 @@ SCN_NODISCARD auto scan(const Locale& loc,
                         wscan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
 {
-    auto args = make_scan_args<wscan_context, Args...>();
-    auto result = vscan(loc, SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
+    auto result = make_scan_result<Source, Args...>();
+    fill_scan_result(result,
+                     vscan(loc, SCN_FWD(source), format,
+                           make_scan_args<wscan_context>(result->values())));
+    return result;
 }
 
 /**
@@ -145,9 +151,11 @@ SCN_NODISCARD auto scan(const Locale& loc,
                         std::tuple<Args...>&& initial_args)
     -> scan_result_type<Source, Args...>
 {
-    auto args = make_scan_args<wscan_context, Args...>(SCN_MOVE(initial_args));
-    auto result = vscan(loc, SCN_FWD(source), format, args);
-    return make_scan_result(SCN_MOVE(result), SCN_MOVE(args.args()));
+    auto result = make_scan_result<Source>(SCN_MOVE(initial_args));
+    fill_scan_result(result,
+                     vscan(loc, SCN_FWD(source), format,
+                           make_scan_args<wscan_context>(result->values())));
+    return result;
 }
 
 /**
@@ -160,10 +168,11 @@ template <typename T,
           std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
 SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
 {
-    T value;
-    auto arg = detail::make_arg<wscan_context>(value);
-    SCN_TRY(it, vscan_value(SCN_FWD(source), arg));
-    return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(value)}};
+    auto result = make_scan_result<Source, T>();
+    fill_scan_result(
+        result, vscan_value(SCN_FWD(source),
+                            detail::make_arg<wscan_context>(result->value())));
+    return result;
 }
 
 /**
@@ -177,9 +186,12 @@ template <typename T,
 SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
     -> scan_result_type<Source, T>
 {
-    auto arg = detail::make_arg<wscan_context>(initial_value);
-    SCN_TRY(it, vscan_value(SCN_FWD(source), arg));
-    return scan_result{SCN_MOVE(it), std::tuple{SCN_MOVE(initial_value)}};
+    auto result =
+        make_scan_result<Source>(std::tuple<T>{SCN_MOVE(initial_value)});
+    fill_scan_result(
+        result, vscan_value(SCN_FWD(source),
+                            detail::make_arg<wscan_context>(result->value())));
+    return result;
 }
 
 namespace detail {
