@@ -846,7 +846,7 @@ inline constexpr parse_error make_eof_parse_error(eof_error err)
     return parse_error::eof;
 }
 
-inline constexpr scan_error make_scan_error_from_parse_error(
+inline constexpr scan_expected<void> make_scan_error_from_parse_error(
     parse_error err,
     enum scan_error::code code,
     const char* msg)
@@ -856,17 +856,18 @@ inline constexpr scan_error make_scan_error_from_parse_error(
     }
 
     if (err == parse_error::eof) {
-        return scan_error{scan_error::end_of_input, "EOF"};
+        return unexpected_scan_error(scan_error::end_of_input, "EOF");
     }
 
-    return scan_error{code, msg};
+    return unexpected_scan_error(code, msg);
 }
 
 inline constexpr auto map_parse_error_to_scan_error(enum scan_error::code code,
                                                     const char* msg)
 {
     return [code, msg](parse_error err) {
-        return make_scan_error_from_parse_error(err, code, msg);
+        assert(err != parse_error::good);
+        return make_scan_error_from_parse_error(err, code, msg).error();
     };
 }
 }  // namespace impl
@@ -3064,8 +3065,8 @@ auto skip_classic_whitespace(const SourceRange& range,
 }
 
 template <typename SourceCharT, typename DestCharT>
-scan_error transcode_impl(std::basic_string_view<SourceCharT> src,
-                          std::basic_string<DestCharT>& dst)
+scan_expected<void> transcode_impl(std::basic_string_view<SourceCharT> src,
+                                   std::basic_string<DestCharT>& dst)
 {
     dst.clear();
     transcode_valid_to_string(src, dst);
@@ -3073,7 +3074,7 @@ scan_error transcode_impl(std::basic_string_view<SourceCharT> src,
 }
 
 template <typename SourceCharT, typename DestCharT>
-scan_error transcode_if_necessary(
+scan_expected<void> transcode_if_necessary(
     const contiguous_range_factory<SourceCharT>& source,
     std::basic_string<DestCharT>& dest)
 {
@@ -3088,7 +3089,7 @@ scan_error transcode_if_necessary(
 }
 
 template <typename SourceCharT, typename DestCharT>
-scan_error transcode_if_necessary(
+scan_expected<void> transcode_if_necessary(
     contiguous_range_factory<SourceCharT>&& source,
     std::basic_string<DestCharT>& dest)
 {
@@ -3108,8 +3109,9 @@ scan_error transcode_if_necessary(
 }
 
 template <typename SourceCharT, typename DestCharT>
-scan_error transcode_if_necessary(string_view_wrapper<SourceCharT> source,
-                                  std::basic_string<DestCharT>& dest)
+scan_expected<void> transcode_if_necessary(
+    string_view_wrapper<SourceCharT> source,
+    std::basic_string<DestCharT>& dest)
 {
     if constexpr (std::is_same_v<SourceCharT, DestCharT>) {
         dest.assign(source.view());
@@ -3137,12 +3139,13 @@ public:
         return true;
     }
 
-    scan_error check_specs(const detail::format_specs& specs)
+    scan_expected<void> check_specs(const detail::format_specs& specs)
     {
         reader_error_handler eh{};
         get_derived().check_specs_impl(specs, eh);
         if (SCN_UNLIKELY(!eh)) {
-            return {scan_error::invalid_format_string, eh.m_msg};
+            return unexpected_scan_error(scan_error::invalid_format_string,
+                                         eh.m_msg);
         }
         return {};
     }
@@ -3168,7 +3171,7 @@ public:
         return true;
     }
 
-    static scan_error check_specs(const detail::format_specs&)
+    static scan_expected<void> check_specs(const detail::format_specs&)
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
@@ -4771,11 +4774,8 @@ auto read_string_impl(Range range,
         return unexpected_scan_error(scan_error::invalid_scanned_value,
                                      "Invalid encoding in scanned string");
     }
-    if (auto e = transcode_if_necessary(SCN_MOVE(src), value);
-        SCN_UNLIKELY(!e)) {
-        return unexpected(e);
-    }
 
+    SCN_TRY_DISCARD(transcode_if_necessary(SCN_MOVE(src), value));
     return SCN_MOVE(result);
 }
 
@@ -5039,16 +5039,16 @@ struct nonascii_specs_handler {
     constexpr void on_error(scan_error e)
     {
         SCN_UNLIKELY_ATTR
-        err = e;
+        err = unexpected(e);
     }
 
-    constexpr explicit operator bool() const
+    constexpr scan_expected<void> get_error() const
     {
-        return static_cast<bool>(err);
+        return err;
     }
 
     std::vector<std::pair<char32_t, char32_t>> extra_ranges;
-    scan_error err;
+    scan_expected<void> err;
 };
 
 template <typename SourceCharT>
@@ -5113,7 +5113,7 @@ private:
                        }) != nonascii.extra_ranges.end();
         }
 
-        scan_error handle_nonascii()
+        scan_expected<void> handle_nonascii()
         {
             if (!specs.charset_has_nonascii) {
                 return {};
@@ -5123,9 +5123,7 @@ private:
             auto it = detail::to_address(charset_string.begin());
             auto set = detail::parse_presentation_set(
                 it, detail::to_address(charset_string.end()), nonascii);
-            if (SCN_UNLIKELY(!nonascii)) {
-                return nonascii.err;
-            }
+            SCN_TRY_DISCARD(nonascii.get_error());
             SCN_ENSURE(it == detail::to_address(charset_string.end()));
             SCN_ENSURE(set == charset_string);
 
@@ -5168,9 +5166,7 @@ private:
         const bool is_inverted = helper.specs.charset_is_inverted;
         const bool accepts_nonascii = helper.specs.charset_has_nonascii;
 
-        if (auto e = helper.handle_nonascii(); SCN_UNLIKELY(!e)) {
-            return unexpected(e);
-        }
+        SCN_TRY_DISCARD(helper.handle_nonascii());
 
         read_source_callback cb_wrapper{helper};
 
@@ -5634,7 +5630,7 @@ public:
         return false;
     }
 
-    static scan_error check_specs(const detail::format_specs& specs)
+    static scan_expected<void> check_specs(const detail::format_specs& specs)
     {
         reader_error_handler eh{};
         if constexpr (std::is_same_v<ValueCharT, char32_t>) {
@@ -5644,7 +5640,8 @@ public:
             detail::check_char_type_specs(specs, eh);
         }
         if (SCN_UNLIKELY(!eh)) {
-            return {scan_error::invalid_format_string, eh.m_msg};
+            return unexpected_scan_error(scan_error::invalid_format_string,
+                                         eh.m_msg);
         }
         return {};
     }
@@ -5763,12 +5760,13 @@ public:
         return true;
     }
 
-    static scan_error check_specs(const detail::format_specs& specs)
+    static scan_expected<void> check_specs(const detail::format_specs& specs)
     {
         reader_error_handler eh{};
         detail::check_pointer_type_specs(specs, eh);
         if (SCN_UNLIKELY(!eh)) {
-            return {scan_error::invalid_format_string, eh.m_msg};
+            return unexpected_scan_error(scan_error::invalid_format_string,
+                                         eh.m_msg);
         }
         return {};
     }
@@ -5929,9 +5927,7 @@ struct default_arg_reader {
         if constexpr (!detail::is_type_disabled<void>) {
             basic_scan_parse_context<char_type> parse_ctx{{}};
             auto ctx = make_custom_ctx();
-            if (auto e = h.scan(parse_ctx, ctx); !e) {
-                return unexpected(e);
-            }
+            SCN_TRY_DISCARD(h.scan(parse_ctx, ctx));
 
             if constexpr (std::is_same_v<
                               context_type,
@@ -6014,7 +6010,7 @@ auto skip_fill(Range range,
     return result_type{w_it.base(), 0};
 }
 
-SCN_MAYBE_UNUSED constexpr scan_error check_widths_for_arg_reader(
+SCN_MAYBE_UNUSED constexpr scan_expected<void> check_widths_for_arg_reader(
     const detail::format_specs& specs,
     std::ptrdiff_t prefix_width,
     std::ptrdiff_t value_width,
@@ -6022,16 +6018,18 @@ SCN_MAYBE_UNUSED constexpr scan_error check_widths_for_arg_reader(
 {
     if (specs.width != 0) {
         if (prefix_width + value_width + postfix_width < specs.width) {
-            return {scan_error::invalid_scanned_value,
-                    "Scanned value too narrow, width did not exceed what "
-                    "was specified in the format string"};
+            return unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Scanned value too narrow, width did not exceed what "
+                "was specified in the format string");
         }
     }
     if (specs.precision != 0) {
         if (prefix_width + value_width + postfix_width > specs.precision) {
-            return {scan_error::invalid_scanned_value,
-                    "Scanned value too wide, width exceeded the specified "
-                    "precision"};
+            return unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Scanned value too wide, width exceeded the specified "
+                "precision");
         }
     }
     return {};
@@ -6193,12 +6191,8 @@ struct arg_reader {
             std::tie(it, postfix_width) = postfix_result;
         }
 
-        if (auto e = check_widths_for_arg_reader(specs, prefix_width,
-                                                 value_width, postfix_width);
-            !e) {
-            return unexpected(e);
-        }
-
+        SCN_TRY_DISCARD(check_widths_for_arg_reader(
+            specs, prefix_width, value_width, postfix_width));
         return it;
     }
 
@@ -6210,17 +6204,12 @@ struct arg_reader {
                           context_type,
                           basic_contiguous_scan_context<char_type>>) {
             auto rd = make_reader<T, char_type>();
-            if (auto e = rd.check_specs(specs); SCN_UNLIKELY(!e)) {
-                return unexpected(e);
-            }
-
+            SCN_TRY_DISCARD(rd.check_specs(specs));
             return impl(rd, range, value);
         }
         else if constexpr (!detail::is_type_disabled<T>) {
             auto rd = make_reader<T, char_type>();
-            if (auto e = rd.check_specs(specs); SCN_UNLIKELY(!e)) {
-                return unexpected(e);
-            }
+            SCN_TRY_DISCARD(rd.check_specs(specs));
 
             if (!is_segment_contiguous(range) || specs.precision != 0 ||
                 specs.width != 0) {
@@ -6269,9 +6258,7 @@ struct custom_reader {
         typename basic_scan_arg<detail::default_context<char_type>>::handle h)
         const
     {
-        if (auto e = h.scan(parse_ctx, ctx); !e) {
-            return unexpected(e);
-        }
+        SCN_TRY_DISCARD(h.scan(parse_ctx, ctx));
         return {ctx.begin()};
     }
 

@@ -1439,7 +1439,7 @@ struct tm_format_checker {
         st.verify(*this);
     }
 
-    [[nodiscard]] constexpr scan_error get_error() const
+    [[nodiscard]] constexpr scan_expected<void> get_error() const
     {
         return err;
     }
@@ -1449,9 +1449,8 @@ struct tm_format_checker {
     }
     void set_error(scan_error e)
     {
-        assert(!e);
-        if (err == scan_error::success()) {
-            detail::handle_error(err = e);
+        if (err.has_value()) {
+            err = unexpected(detail::handle_error(e));
         }
     }
 
@@ -1460,7 +1459,7 @@ struct tm_format_checker {
         on_error("Unimplemented");
     }
 
-    scan_error err{};
+    scan_expected<void> err{};
     setter_state st{};
 };
 
@@ -1483,8 +1482,8 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
         fmt_str = detail::make_string_view_from_iterators<CharT>(it, end);
     }
     if (auto e = checker.get_error(); SCN_UNLIKELY(!e)) {
-        assert(e.code() == scan_error::invalid_format_string);
-        pctx.on_error(e.msg());
+        assert(e.error().code() == scan_error::invalid_format_string);
+        pctx.on_error(e.error().msg());
     }
     return end;
 }

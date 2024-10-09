@@ -392,10 +392,7 @@ protected:
         const auto saved_errno = errno;
         auto chars_read = end - src;
 
-        if (auto e = this->check_error(chars_read, saved_errno, value);
-            SCN_UNLIKELY(!e)) {
-            return unexpected(e);
-        }
+        SCN_TRY_DISCARD(this->check_error(chars_read, saved_errno, value));
 
         if (m_kind == float_reader_base::float_kind::hex_without_prefix &&
             chars_read >= 2) {
@@ -428,27 +425,28 @@ protected:
         return input.get_allocated_string().c_str();
     }
 
-    SCN_NODISCARD scan_error check_error(std::ptrdiff_t chars_read,
-                                         int c_errno,
-                                         T value) const
+    SCN_NODISCARD scan_expected<void> check_error(std::ptrdiff_t chars_read,
+                                                  int c_errno,
+                                                  T value) const
     {
         if (is_float_zero(value) && chars_read == 0) {
             SCN_UNLIKELY_ATTR
-            return {scan_error::invalid_scanned_value,
-                    "strtod failed: No conversion"};
+            return unexpected_scan_error(scan_error::invalid_scanned_value,
+                                         "strtod failed: No conversion");
         }
 
         if (m_kind == float_reader_base::float_kind::hex_with_prefix &&
             (m_options & float_reader_base::allow_hex) == 0) {
             SCN_UNLIKELY_ATTR
-            return {scan_error::invalid_scanned_value,
-                    "Hexfloats disallowed by format string"};
+            return unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Hexfloats disallowed by format string");
         }
 
         if (c_errno == ERANGE && is_float_zero(value)) {
             SCN_UNLIKELY_ATTR
-            return {scan_error::value_positive_underflow,
-                    "strtod failed: underflow"};
+            return unexpected_scan_error(scan_error::value_positive_underflow,
+                                         "strtod failed: underflow");
         }
 
         SCN_GCC_COMPAT_PUSH
@@ -458,8 +456,8 @@ protected:
             m_kind != float_reader_base::float_kind::inf_long &&
             std::abs(value) == std::numeric_limits<T>::infinity()) {
             SCN_UNLIKELY_ATTR
-            return {scan_error::value_positive_overflow,
-                    "strtod failed: overflow"};
+            return unexpected_scan_error(scan_error::value_positive_overflow,
+                                         "strtod failed: overflow");
         }
 
         SCN_GCC_COMPAT_POP  // -Wfloat-equal
@@ -1445,20 +1443,14 @@ struct format_handler_base {
     void on_error(const char* msg)
     {
         SCN_UNLIKELY_ATTR
-        error = scan_error{scan_error::invalid_format_string, msg};
+        error = unexpected_scan_error(scan_error::invalid_format_string, msg);
     }
     void on_error(scan_error err)
     {
-        if (SCN_UNLIKELY(err != scan_error::good)) {
-            error = err;
-        }
+        error = unexpected(err);
     }
 
-    explicit constexpr operator bool() const
-    {
-        return static_cast<bool>(error);
-    }
-    SCN_NODISCARD scan_error get_error() const
+    SCN_NODISCARD scan_expected<void> get_error() const
     {
         return error;
     }
@@ -1499,7 +1491,7 @@ struct format_handler_base {
     }
 
     std::size_t args_count;
-    scan_error error{};
+    scan_expected<void> error{};
     uint64_t visited_args_lower64{0};
     std::vector<uint8_t> visited_args_upper{};
 };
@@ -1638,10 +1630,9 @@ struct format_handler : format_handler_base {
     }
 
     template <typename Visitor>
-    void on_visit_scan_arg(Visitor&& visitor,
-                           arg_type arg)
+    void on_visit_scan_arg(Visitor&& visitor, arg_type arg)
     {
-        if (!*this || !arg) {
+        if (!get_error() || !arg) {
             SCN_UNLIKELY_ATTR
             return;
         }
@@ -1693,7 +1684,7 @@ struct format_handler : format_handler_base {
             on_error("Missing '}' in format string");
             return parse_ctx.begin();
         }
-        if (SCN_UNLIKELY(!handler)) {
+        if (SCN_UNLIKELY(!handler.get_error())) {
             return parse_ctx.begin();
         }
         parse_ctx.advance_to(begin);
@@ -1725,8 +1716,8 @@ scan_expected<std::ptrdiff_t> vscan_parse_format_string(
 {
     const auto beg = handler.get_ctx().begin();
     detail::parse_format_string<false>(format, handler);
-    if (SCN_UNLIKELY(!handler)) {
-        return unexpected(handler.error);
+    if (auto err = handler.get_error(); SCN_UNLIKELY(!err)) {
+        return unexpected(err.error());
     }
     return ranges::distance(beg, handler.get_ctx().begin());
 }
@@ -1809,7 +1800,7 @@ auto scan_int_exhaustive_valid_impl(std::string_view source) -> T
 }
 }  // namespace detail
 
-scan_error vinput(std::string_view format, scan_args args)
+scan_expected<void> vinput(std::string_view format, scan_args args)
 {
     auto buffer = detail::make_file_scan_buffer(stdin);
     auto n = vscan_internal(buffer, format, args);
@@ -1818,7 +1809,7 @@ scan_error vinput(std::string_view format, scan_args args)
         return {};
     }
     buffer.sync_all();
-    return n.error();
+    return unexpected(n.error());
 }
 
 namespace detail {
@@ -3333,7 +3324,7 @@ public:
         }
     }
 
-    scan_error get_error() const
+    scan_expected<void> get_error() const
     {
         return m_error;
     }
@@ -3345,9 +3336,8 @@ public:
 
     void set_error(scan_error e)
     {
-        assert(!e);
-        if (m_error == scan_error::success()) {
-            m_error = e;
+        if (m_error.has_value()) {
+            m_error = unexpected(e);
         }
     }
 
@@ -3537,7 +3527,7 @@ private:
     T& m_tm;
     setter_state m_st{};
     locale_ref m_loc{};
-    scan_error m_error{};
+    scan_expected<void> m_error{};
 };
 
 template <typename CharT, typename T, typename Context>
@@ -3556,7 +3546,7 @@ auto chrono_scan_inner_impl(std::basic_string_view<CharT> fmt,
         ctx.range(), t, ctx.locale());
     detail::parse_chrono_format_specs(fmt.data(), fmt.data() + fmt.size(), r);
     if (auto e = r.get_error(); SCN_UNLIKELY(!e)) {
-        return unexpected(e);
+        return unexpected(e.error());
     }
     return r.get_iterator();
 }

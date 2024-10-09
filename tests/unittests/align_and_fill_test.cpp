@@ -564,6 +564,14 @@ TEST(AlignAndFillTest, LeftAlignedWithSpaces)
     EXPECT_STREQ(r->begin(), " ");
 }
 
+TEST(AlignAndFillTest, DoubleWideFillChar)
+{
+    auto r = scn::scan<int>("🤡🤡1🤡🤡🤡", "{:🤡^6}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), 1);
+    EXPECT_EQ(*r->begin(), '\0');
+}
+
 TEST(CustomPrecisionTest, Ascii)
 {
     auto r = scn::scan<std::string>("abc", "{:.2}");

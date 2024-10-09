@@ -410,8 +410,9 @@ static constexpr deferred_init_tag_t deferred_init_tag{};
 
 template <typename T,
           typename E,
-          bool IsTriviallyDestructible = std::is_trivially_destructible_v<T> &&
-                                         std::is_trivially_destructible_v<E>>
+          bool IsTriviallyDestructible =
+              (std::is_void_v<T> || std::is_trivially_destructible_v<T>)&&std::
+                  is_trivially_destructible_v<E>>
 struct expected_storage_base;
 
 template <typename T, typename E>
@@ -830,21 +831,26 @@ private:
 template <typename T, typename U>
 using is_void_or = std::conditional_t<std::is_void_v<T>, std::true_type, U>;
 
-template <typename T,
-          typename E,
-          bool IsTriviallyCopyable =
-              std::conjunction_v<std::is_trivially_copyable<T>,
-                                 std::is_trivially_copyable<E>>>
+template <typename T, typename E, typename Enable = void>
 struct expected_operations_base;
 
 template <typename T, typename E>
-struct SCN_TRIVIAL_ABI expected_operations_base<T, E, true>
+struct SCN_TRIVIAL_ABI expected_operations_base<
+    T,
+    E,
+    std::enable_if_t<(
+        std::is_void_v<T> ||
+        std::is_trivially_copyable_v<T>)&&std::is_trivially_copyable_v<E>>>
     : expected_storage_base<T, E> {
     using expected_storage_base<T, E>::expected_storage_base;
 };
 
 template <typename T, typename E>
-struct SCN_TRIVIAL_ABI expected_operations_base<T, E, false>
+struct SCN_TRIVIAL_ABI expected_operations_base<
+    T,
+    E,
+    std::enable_if_t<!std::is_void_v<T> && (!std::is_trivially_copyable_v<T> ||
+                                            !std::is_trivially_copyable_v<E>)>>
     : expected_storage_base<T, E> {
     using expected_storage_base<T, E>::expected_storage_base;
 
@@ -1030,6 +1036,124 @@ private:
     }
 };
 
+template <typename E>
+struct SCN_TRIVIAL_ABI
+    expected_operations_base<void,
+                             E,
+                             std::enable_if_t<!std::is_trivially_copyable_v<E>>>
+    : expected_storage_base<void, E> {
+    using expected_storage_base<void, E>::expected_storage_base;
+
+    expected_operations_base(const expected_operations_base& other) noexcept(
+        std::is_nothrow_copy_constructible_v<E>)
+        : expected_storage_base<void, E>(deferred_init_tag)
+    {
+        construct_common(other);
+    }
+    expected_operations_base(expected_operations_base&& other) noexcept(
+        std::is_nothrow_move_constructible_v<E>)
+        : expected_storage_base<void, E>(deferred_init_tag)
+    {
+        construct_common(std::move(other));
+    }
+
+    expected_operations_base& operator=(const expected_operations_base& other)
+    // gcc 11 and lower evaluate noexcept in a weird context
+#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
+        noexcept(noexcept(
+            SCN_DECLVAL(expected_operations_base&).assign_common(other)))
+#else
+        noexcept(noexcept(assign_common(other)))
+#endif
+    {
+        assign_common(other);
+        return *this;
+    }
+    expected_operations_base& operator=(expected_operations_base&& other)
+#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
+        noexcept(noexcept(SCN_DECLVAL(expected_operations_base&)
+                              .assign_common(std::move(other))))
+#else
+        noexcept(noexcept(assign_common(std::move(other))))
+#endif
+    {
+        assign_common(std::move(other));
+        return *this;
+    }
+
+    ~expected_operations_base() = default;
+
+private:
+    template <typename Other>
+    void construct_common(Other&& other) noexcept(
+        noexcept(expected_storage_base<void, E>::construct_unexpected(
+            std::forward<Other>(other).get_unexpected())))
+    {
+        if (other.has_value()) {
+            this->construct();
+        }
+        else {
+            this->construct_unexpected(
+                std::forward<Other>(other).get_unexpected());
+        }
+    }
+
+    template <typename Other>
+    void assign_common(Other&& other)
+#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
+        noexcept(
+            noexcept(SCN_DECLVAL(expected_operations_base&)
+                         .reassign_unexpected(std::forward<Other>(other))) &&
+            noexcept(
+                SCN_DECLVAL(expected_operations_base&)
+                    .assign_unexpected_over_value(std::forward<Other>(other))))
+#else
+        noexcept(
+            noexcept(reassign_unexpected(std::forward<Other>(other))) &&
+            noexcept(assign_unexpected_over_value(std::forward<Other>(other))))
+#endif
+    {
+        if (this->has_value()) {
+            if (other.has_value()) {
+                return reassign_value();
+            }
+            return assign_unexpected_over_value(std::forward<Other>(other));
+        }
+
+        if (other.has_value()) {
+            return assign_value_over_unexpected();
+        }
+        return reassign_unexpected(std::forward<Other>(other));
+    }
+
+    void reassign_value() noexcept {}
+
+    template <typename Other>
+    void reassign_unexpected(Other&& other) noexcept(
+        std::is_nothrow_assignable_v<
+            E,
+            decltype(std::forward<Other>(other).get_unexpected())>)
+    {
+        this->get_unexpected() = std::forward<Other>(other).get_unexpected();
+    }
+
+    void assign_value_over_unexpected() noexcept
+    {
+        this->destroy_unexpected();
+        this->construct();
+    }
+
+    template <typename Other>
+    void assign_unexpected_over_value(Other&& other) noexcept(
+        std::is_nothrow_constructible_v<
+            E,
+            decltype(std::forward<Other>(other).get_unexpected())>)
+    {
+        this->destroy_value();
+        this->construct_unexpected(std::forward<Other>(other).get_unexpected());
+    }
+};
+
 /*
  * Base class trickery to conditionally mark copy and move
  * constructors of an expected as =deleted.
@@ -1042,12 +1166,13 @@ private:
  *
  * Rationale for doing this with base classes is above.
  */
-template <typename T,
-          typename E,
-          bool EnableCopy = (std::is_copy_constructible_v<T> &&
-                             std::is_copy_constructible_v<E>),
-          bool EnableMove = (std::is_move_constructible_v<T> &&
-                             std::is_move_constructible_v<E>)>
+template <
+    typename T,
+    typename E,
+    bool EnableCopy = ((std::is_copy_constructible_v<T> ||
+                        std::is_void_v<T>)&&std::is_copy_constructible_v<E>),
+    bool EnableMove = ((std::is_move_constructible_v<T> ||
+                        std::is_void_v<T>)&&std::is_move_constructible_v<E>)>
 struct expected_delete_ctor_base;
 
 // Implementation for types that are both copy and move
@@ -1104,12 +1229,14 @@ struct SCN_TRIVIAL_ABI expected_delete_ctor_base<T, E, true, false> {
 template <
     typename T,
     typename E,
-    bool EnableCopy =
-        (std::is_copy_constructible_v<T> && std::is_copy_constructible_v<E> &&
-         std::is_copy_assignable_v<T> && std::is_copy_assignable_v<E>),
-    bool EnableMove =
-        (std::is_move_constructible_v<T> && std::is_move_constructible_v<E> &&
-         std::is_move_assignable_v<T> && std::is_move_assignable_v<E>)>
+    bool EnableCopy = ((std::is_copy_constructible_v<T> ||
+                        std::is_void_v<T>)&&std::is_copy_constructible_v<E> &&
+                       (std::is_copy_assignable_v<T> ||
+                        std::is_void_v<T>)&&std::is_copy_assignable_v<E>),
+    bool EnableMove = ((std::is_move_constructible_v<T> ||
+                        std::is_void_v<T>)&&std::is_move_constructible_v<E> &&
+                       (std::is_move_assignable_v<T> ||
+                        std::is_void_v<T>)&&std::is_move_assignable_v<E>)>
 struct expected_delete_assign_base;
 
 template <typename T, typename E>
@@ -3528,9 +3655,6 @@ class SCN_TRIVIAL_ABI scan_error {
 public:
     /// Error code
     enum code {
-        /// No error
-        good = 0,
-
         /// EOF
         end_of_input,
 
@@ -3567,41 +3691,10 @@ private:
     using code_t = code;
 
 public:
-    struct [[deprecated(
-        "Use scan_error() or scan_error::success()")]] success_tag_t {};
-
-    [[deprecated(
-        "Use scan_error() or "
-        "scan_error::success()")]] static constexpr success_tag_t
-    success_tag() noexcept
-    {
-        return {};
-    }
-
-    /// Constructs an error with `code::good` and no message.
-    constexpr scan_error() noexcept = default;
-
-    [[deprecated("Use scan_error() or scan_error::success()")]] constexpr
-    scan_error(success_tag_t) noexcept
-        : scan_error()
-    {
-    }
-
     /// Constructs an error with `c` and `m`
     constexpr scan_error(code_t c, const char* m) noexcept : m_msg(m), m_code(c)
     {
         SCN_UNLIKELY_ATTR SCN_UNUSED(m_code);
-    }
-
-    SCN_NODISCARD static constexpr scan_error success() noexcept
-    {
-        return {};
-    }
-
-    /// Evaluated to true if there was no error
-    constexpr explicit operator bool() const noexcept
-    {
-        return m_code == good;
     }
 
     constexpr explicit operator code_t() const noexcept
@@ -3623,8 +3716,6 @@ public:
     SCN_NODISCARD constexpr std::errc to_errc() const noexcept
     {
         switch (m_code) {
-            case good:
-                return {};
             case end_of_input:
             case invalid_format_string:
             case invalid_scanned_value:
@@ -3644,8 +3735,8 @@ public:
     }
 
 private:
-    const char* m_msg{nullptr};
-    code_t m_code{good};
+    const char* m_msg;
+    code_t m_code;
 };
 
 constexpr inline bool operator==(scan_error a, scan_error b) noexcept
@@ -3681,25 +3772,42 @@ SCN_COLD scan_error handle_error(scan_error e);
 }  // namespace detail
 
 #if SCN_HAS_EXCEPTIONS
-class scan_format_string_error : public std::runtime_error {
+
+namespace detail {
+
+class scan_format_string_error_base : public std::runtime_error {
 public:
-    explicit scan_format_string_error(const std::string& what_arg)
+    explicit scan_format_string_error_base(const std::string& what_arg)
         : runtime_error(what_arg)
     {
     }
 
-    explicit scan_format_string_error(const char* what_arg)
+    explicit scan_format_string_error_base(const char* what_arg)
         : runtime_error(what_arg)
     {
     }
 
     template <std::size_t N>
-    explicit scan_format_string_error(const char (&what_arg)[N])
-        : runtime_error(what_arg), _internal_literal_msg(what_arg)
+    explicit scan_format_string_error_base(const char (&what_arg)[N])
+        : runtime_error(what_arg), m_internal_literal_msg(what_arg)
     {
     }
 
-    const char* _internal_literal_msg{nullptr};
+    friend const char* get_internal_literal_msg(
+        const scan_format_string_error_base& m)
+    {
+        return m.m_internal_literal_msg;
+    }
+
+private:
+    const char* m_internal_literal_msg{nullptr};
+};
+
+}  // namespace detail
+
+class scan_format_string_error : public detail::scan_format_string_error_base {
+public:
+    using scan_format_string_error_base::scan_format_string_error_base;
 };
 #endif
 
@@ -3724,10 +3832,9 @@ struct scan_expected : public expected<T, scan_error> {
     }
 };
 
-template <typename... Args>
-auto unexpected_scan_error(Args&&... args)
+constexpr auto unexpected_scan_error(enum scan_error::code c, const char* m)
 {
-    return unexpected(scan_error{SCN_FWD(args)...});
+    return unexpected(scan_error{c, m});
 }
 
 namespace detail {
@@ -3739,6 +3846,11 @@ struct is_expected_impl<scan_expected<T>> : std::true_type {};
 #define SCN_TRY_IMPL_CONCAT2(a, b) SCN_TRY_IMPL_CONCAT(a, b)
 #define SCN_TRY_TMP                SCN_TRY_IMPL_CONCAT2(_scn_try_tmp_, __LINE__)
 
+#define SCN_TRY_DISCARD(x)                                      \
+    if (auto&& SCN_TRY_TMP = (x); SCN_UNLIKELY(!SCN_TRY_TMP)) { \
+        return ::scn::unexpected(SCN_TRY_TMP.error());          \
+    }
+
 #define SCN_TRY_ASSIGN(init, x)                        \
     auto&& SCN_TRY_TMP = (x);                          \
     if (SCN_UNLIKELY(!SCN_TRY_TMP)) {                  \
@@ -3746,13 +3858,6 @@ struct is_expected_impl<scan_expected<T>> : std::true_type {};
     }                                                  \
     init = *SCN_FWD(SCN_TRY_TMP);
 #define SCN_TRY(name, x) SCN_TRY_ASSIGN(auto name, x)
-
-#define SCN_TRY_ERR(name, x)          \
-    auto&& SCN_TRY_TMP = (x);         \
-    if (SCN_UNLIKELY(!SCN_TRY_TMP)) { \
-        return SCN_TRY_TMP.error();   \
-    }                                 \
-    auto name = *SCN_FWD(SCN_TRY_TMP);
 
 /////////////////////////////////////////////////////////////////
 // string_view utilities
@@ -5336,7 +5441,7 @@ SCN_TYPE_CONSTANT(wregex_matches, wide_regex_matches_type, SCN_DISABLE_REGEX);
 
 struct custom_value_type {
     void* value;
-    scan_error (*scan)(void* arg, void* pctx, void* ctx);
+    auto (*scan)(void* arg, void* pctx, void* ctx) -> scan_expected<void>;
 };
 
 struct unscannable {};
@@ -5397,7 +5502,7 @@ public:
 
 private:
     template <typename T, typename Context>
-    static scan_error scan_custom_arg(void* arg, void* pctx, void* ctx)
+    static scan_expected<void> scan_custom_arg(void* arg, void* pctx, void* ctx)
     {
         static_assert(!is_type_disabled<T>,
                       "Scanning of custom types is disabled by "
@@ -5419,7 +5524,7 @@ private:
         try {
             fmt_it = s.parse(pctx_ref);
         }
-        catch (const scan_format_string_error& ex) {
+        catch (const detail::scan_format_string_error_base& ex) {
             // scan_error takes a const char*.
             // scan_format_string_error (or, actually, std::runtime_error)
             // stores a reference-counted string,
@@ -5427,12 +5532,14 @@ private:
             // We need to provide a const char* that will stay in scope.
             // If scan_format_string_error was thrown with a string literal,
             // use that, otherwise refer to a thread_local std::string
-            if (ex._internal_literal_msg) {
-                return {scan_error::invalid_format_string,
-                        ex._internal_literal_msg};
+            if (const char* m = get_internal_literal_msg(ex)) {
+                return unexpected_scan_error(scan_error::invalid_format_string,
+                                             m);
             }
-            thread_local std::string err_msg{ex.what()};
-            return {scan_error::invalid_format_string, err_msg.c_str()};
+            thread_local std::string err_msg{};
+            err_msg = ex.what();
+            return unexpected_scan_error(scan_error::invalid_format_string,
+                                         err_msg.c_str());
         }
 #else
         auto fmt_it = s.parse(pctx_ref);
@@ -5442,7 +5549,7 @@ private:
         }
         pctx_ref.advance_to(fmt_it);
 
-        SCN_TRY_ERR(it, s.scan(arg_ref, ctx_ref));
+        SCN_TRY(it, s.scan(arg_ref, ctx_ref));
         ctx_ref.advance_to(SCN_MOVE(it));
 
         return {};
@@ -5738,8 +5845,9 @@ public:
          *
          * \return Any error returned by the scanner
          */
-        scan_error scan(typename Context::parse_context_type& parse_ctx,
-                        Context& ctx) const
+        scan_expected<void> scan(
+            typename Context::parse_context_type& parse_ctx,
+            Context& ctx) const
         {
             return m_custom.scan(m_custom.value, &parse_ctx, &ctx);
         }
@@ -6084,11 +6192,12 @@ public:
 
     scan_error on_error(const char* msg)
     {
-        return m_error = detail::handle_error(
-                   scan_error{scan_error::invalid_format_string, msg});
+        m_error = unexpected(detail::handle_error(
+            scan_error{scan_error::invalid_format_string, msg}));
+        return m_error.error();
     }
 
-    scan_error get_error()
+    scan_expected<void> get_error()
     {
         return m_error;
     }
@@ -6097,7 +6206,7 @@ protected:
     constexpr void do_check_arg_id(size_t id);
 
     std::basic_string_view<CharT> m_format;
-    scan_error m_error{};
+    scan_expected<void> m_error{};
     int m_next_arg_id{0};
 };
 
@@ -6886,27 +6995,22 @@ public:
     void on_error(const char* msg)
     {
         SCN_UNLIKELY_ATTR
-        m_error = scan_error{scan_error::invalid_format_string, msg};
+        m_error = unexpected_scan_error(scan_error::invalid_format_string, msg);
     }
     void on_error(scan_error err)
     {
-        SCN_LIKELY(err);
-        m_error = err;
+        SCN_UNLIKELY_ATTR
+        m_error = unexpected(err);
     }
 
-    constexpr explicit operator bool() const
-    {
-        return static_cast<bool>(m_error);
-    }
-
-    constexpr scan_error get_error() const
+    constexpr scan_expected<void> get_error() const
     {
         return m_error;
     }
 
 protected:
     format_specs& m_specs;
-    scan_error m_error;
+    scan_expected<void> m_error;
 };
 
 template <typename CharT>
@@ -7248,7 +7352,7 @@ constexpr std::basic_string_view<CharT> parse_presentation_set(
     }
 
     while (begin != end) {
-        if (SCN_UNLIKELY(!handler)) {
+        if (SCN_UNLIKELY(!handler.get_error())) {
             break;
         }
 
@@ -7542,7 +7646,7 @@ constexpr void parse_format_string_impl(std::basic_string_view<CharT> format,
             handler.on_literal_text(begin, it - 1);
 
             begin = it = parse_replacement_field(it - 1, end, handler);
-            if (!handler) {
+            if (!handler.get_error()) {
                 return;
             }
         }
@@ -7561,8 +7665,9 @@ constexpr void parse_format_string_impl(std::basic_string_view<CharT> format,
 }
 
 template <bool IsConstexpr, typename CharT, typename Handler>
-constexpr scan_error parse_format_string(std::basic_string_view<CharT> format,
-                                         Handler&& handler)
+constexpr scan_expected<void> parse_format_string(
+    std::basic_string_view<CharT> format,
+    Handler&& handler)
 {
     parse_format_string_impl<IsConstexpr>(format, handler);
     handler.check_args_exhausted();
@@ -8407,11 +8512,7 @@ public:
     // Only to satisfy the concept and eliminate compiler errors,
     // because errors are reported by failing to compile on_error above
     // (it's not constexpr)
-    constexpr explicit operator bool() const
-    {
-        return true;
-    }
-    constexpr scan_error get_error() const
+    constexpr scan_expected<void> get_error() const
     {
         return {};
     }
@@ -9258,7 +9359,7 @@ auto vscan_value(Source&& source, basic_scan_arg<scan_context> arg)
  *
  * \ingroup vscan
  */
-scan_error vinput(std::string_view format, scan_args args);
+scan_expected<void> vinput(std::string_view format, scan_args args);
 
 namespace detail {
 template <typename T>

@@ -21,23 +21,37 @@
 
 TEST(ErrorTest, General)
 {
-    const auto good = scn::scan_error{};
     const auto eof_error =
         scn::scan_error{scn::scan_error::end_of_input, "EOF"};
     const auto invalid_scanned_value_error =
         scn::scan_error{scn::scan_error::invalid_scanned_value, ""};
 
-    EXPECT_TRUE(good);
-    EXPECT_FALSE(eof_error);
-    EXPECT_FALSE(invalid_scanned_value_error);
-
-    EXPECT_EQ(good.code(), scn::scan_error::good);
     EXPECT_EQ(eof_error.code(), scn::scan_error::end_of_input);
     EXPECT_EQ(invalid_scanned_value_error.code(),
               scn::scan_error::invalid_scanned_value);
 
-    EXPECT_EQ(good, scn::scan_error::good);
     EXPECT_EQ(eof_error, scn::scan_error::end_of_input);
     EXPECT_EQ(invalid_scanned_value_error,
+              scn::scan_error::invalid_scanned_value);
+}
+
+TEST(ErrorTest, ExpectedVoid)
+{
+    const auto good = scn::scan_expected<void>{};
+    const auto eof_error = scn::scan_expected<void>{
+        scn::unexpected(scn::scan_error{scn::scan_error::end_of_input, "EOF"})};
+    const auto invalid_scanned_value_error = scn::scan_expected<void>{
+        scn::unexpected_scan_error(scn::scan_error::invalid_scanned_value, "")};
+
+    EXPECT_TRUE(good);
+    EXPECT_FALSE(eof_error);
+    EXPECT_FALSE(invalid_scanned_value_error);
+
+    EXPECT_EQ(eof_error.error().code(), scn::scan_error::end_of_input);
+    EXPECT_EQ(invalid_scanned_value_error.error().code(),
+              scn::scan_error::invalid_scanned_value);
+
+    EXPECT_EQ(eof_error.error(), scn::scan_error::end_of_input);
+    EXPECT_EQ(invalid_scanned_value_error.error(),
               scn::scan_error::invalid_scanned_value);
 }

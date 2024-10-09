@@ -330,8 +330,7 @@ public:
     {
         SCN_TRY(it, detail::scan_str(ctx.range(), this->m_opening_bracket));
         ctx.advance_to(it);
-        SCN_TRY(_, scan_for_each(value, ctx));
-        SCN_UNUSED(_);
+        SCN_TRY_DISCARD(scan_for_each(value, ctx));
         return detail::scan_str(ctx.range(), this->m_closing_bracket);
     }
 
@@ -340,7 +339,7 @@ private:
     scan_expected<typename Context::iterator> scan_for_each(Tuple& value,
                                                             Context& ctx) const
     {
-        scan_error err{};
+        scan_expected<void> err{};
         int index{};
 
         auto callback = [&](auto& val) {
@@ -354,7 +353,7 @@ private:
                     ctx.advance_to(e.value());
                 }
                 else {
-                    err = SCN_MOVE(e.error());
+                    err = unexpected(e.error());
                     return;
                 }
             }
@@ -365,13 +364,13 @@ private:
                 ++index;
             }
             else {
-                err = SCN_MOVE(e.error());
+                err = unexpected(e.error());
             }
         };
 
         detail::tuple_for_each(value, callback);
         if (SCN_UNLIKELY(!err)) {
-            return unexpected(err);
+            return unexpected(err.error());
         }
         return ctx.range().begin();
     }
