@@ -330,7 +330,7 @@ TEST(AlignAndFillTest, P1729_Ex3r11)
 {
     auto r = scn::scan<int>("42", "{:*>5}");
     ASSERT_FALSE(r);
-    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
+    EXPECT_EQ(r.error().code(), scn::scan_error::length_too_short);
 }
 TEST(AlignAndFillTest, P1729_Ex3r12)
 {
@@ -343,7 +343,7 @@ TEST(AlignAndFillTest, P1729_Ex3r13)
 {
     auto r = scn::scan<int>("42", "{:*>5.5}");
     ASSERT_FALSE(r);
-    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
+    EXPECT_EQ(r.error().code(), scn::scan_error::length_too_short);
 }
 
 TEST(AlignAndFillTest, P1729_Ex3r14)
@@ -393,7 +393,7 @@ TEST(AlignAndFillTest, P1729_Ex3r20)
 {
     auto r = scn::scan<int>("42", "{:*<5}");
     ASSERT_FALSE(r);
-    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
+    EXPECT_EQ(r.error().code(), scn::scan_error::length_too_short);
 }
 TEST(AlignAndFillTest, P1729_Ex3r21)
 {
@@ -406,7 +406,7 @@ TEST(AlignAndFillTest, P1729_Ex3r22)
 {
     auto r = scn::scan<int>("42", "{:*<5.5}");
     ASSERT_FALSE(r);
-    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
+    EXPECT_EQ(r.error().code(), scn::scan_error::length_too_short);
 }
 
 TEST(AlignAndFillTest, P1729_Ex3r23)
@@ -463,7 +463,7 @@ TEST(AlignAndFillTest, P1729_Ex3r30)
 {
     auto r = scn::scan<int>("**42*", "{:*^6}");
     ASSERT_FALSE(r);
-    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
+    EXPECT_EQ(r.error().code(), scn::scan_error::length_too_short);
 }
 TEST(AlignAndFillTest, P1729_Ex3r31)
 {
@@ -476,7 +476,41 @@ TEST(AlignAndFillTest, P1729_Ex3r32)
 {
     auto r = scn::scan<int>("**42*", "{:*^6.6}");
     ASSERT_FALSE(r);
+    EXPECT_EQ(r.error().code(), scn::scan_error::length_too_short);
+}
+
+TEST(AlignAndFillTest, P1729_Ex3r33)
+{
+    auto r = scn::scan<int>("#*42*", "{:*^}");
+    ASSERT_FALSE(r);
     EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
+}
+TEST(AlignAndFillTest, P1729_Ex3r34)
+{
+    auto r = scn::scan<int>("#*42*", "#{:*^}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), 42);
+    EXPECT_STREQ(r->begin(), "");
+}
+TEST(AlignAndFillTest, P1729_Ex3r35)
+{
+    auto r = scn::scan<int>("#*42*", "#{:#^}");
+    ASSERT_FALSE(r);
+    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
+}
+
+TEST(AlignAndFillTest, P1729_Ex3r36)
+{
+    auto r = scn::scan<int>("***42*", "{:*^3}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), 42);
+    EXPECT_STREQ(r->begin(), "");
+}
+TEST(AlignAndFillTest, P1729_Ex3r37)
+{
+    auto r = scn::scan<int>("***42*", "{:*^.3}");
+    ASSERT_FALSE(r);
+    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_fill);
 }
 
 TEST(AlignAndFillTest, PythonParse1)
@@ -529,7 +563,7 @@ TEST(AlignAndFillTest, PythonParse4)
 {
     auto r = scn::scan<std::string, std::string>("look at that", "{:4}{:4}");
     ASSERT_FALSE(r);
-    EXPECT_EQ(r.error().code(), scn::scan_error::invalid_scanned_value);
+    EXPECT_EQ(r.error().code(), scn::scan_error::length_too_short);
 }
 TEST(AlignAndFillTest, PythonParse5)
 {

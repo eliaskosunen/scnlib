@@ -3655,14 +3655,27 @@ class SCN_TRIVIAL_ABI scan_error {
 public:
     /// Error code
     enum code {
-        /// EOF
+        /// Input ended unexpectedly.
         end_of_input,
 
-        /// Format string was invalid
+        /// Format string was invalid.
+        /// Often a compile-time error, if supported or enabled.
         invalid_format_string,
 
-        /// Scanned value was invalid for given type.
+        /// Scanned value was invalid for given type,
+        /// or a value of the given couldn't be scanned.
         invalid_scanned_value,
+
+        /// Literal character specified in format string not found in source.
+        invalid_literal,
+
+        /// Too many fill characters scanned,
+        /// field precision (max width) exceeded.
+        invalid_fill,
+
+        /// Scanned field width was shorter than
+        /// what was specified as the minimum field width.
+        length_too_short,
 
         /// Source range is in an invalid state,
         /// failed to continue reading.
@@ -3719,6 +3732,9 @@ public:
             case end_of_input:
             case invalid_format_string:
             case invalid_scanned_value:
+            case invalid_literal:
+            case invalid_fill:
+            case length_too_short:
                 return std::errc::invalid_argument;
             case invalid_source_state:
                 return std::errc::io_error;
@@ -9685,7 +9701,7 @@ SCN_NODISCARD auto input(scan_format_string<std::FILE*, Args...> format)
                                                         std::tuple<Args...>{});
     auto err = vinput(format, make_scan_args(result->values()));
     if (SCN_UNLIKELY(!err)) {
-        result = unexpected(err);
+        result = unexpected(err.error());
     }
     return result;
 }

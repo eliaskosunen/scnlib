@@ -1417,7 +1417,8 @@ struct format_handler_base {
                                       : (1ull << args_count_lower64) - 1;
 
             if (visited_args_lower64 != mask) {
-                return on_error("Argument list not exhausted");
+                return on_error({scan_error::invalid_format_string,
+                                 "Argument list not exhausted"});
             }
         }
 
@@ -1429,14 +1430,16 @@ struct format_handler_base {
         for (auto it = visited_args_upper.begin();
              it != visited_args_upper.end() - 1; ++it) {
             if (*it != std::numeric_limits<uint8_t>::max()) {
-                return on_error("Argument list not exhausted");
+                return on_error({scan_error::invalid_format_string,
+                                 "Argument list not exhausted"});
             }
             last_args_count -= 8;
         }
 
         const auto mask = static_cast<uint8_t>(1u << last_args_count) - 1;
         if (visited_args_upper.back() != mask) {
-            return on_error("Argument list not exhausted");
+            return on_error({scan_error::invalid_format_string,
+                             "Argument list not exhausted"});
         }
     }
 
@@ -1458,7 +1461,8 @@ struct format_handler_base {
     SCN_NODISCARD bool has_arg_been_visited(size_t id)
     {
         if (SCN_UNLIKELY(id >= args_count)) {
-            on_error("Invalid out-of-range argument ID");
+            on_error({scan_error::invalid_format_string,
+                      "Argument ID out-of-range"});
             return false;
         }
 
@@ -1473,12 +1477,14 @@ struct format_handler_base {
     void set_arg_as_visited(size_t id)
     {
         if (SCN_UNLIKELY(id >= args_count)) {
-            on_error("Invalid out-of-range argument ID");
+            on_error({scan_error::invalid_format_string,
+                      "Argument ID out-of-range"});
             return;
         }
 
         if (SCN_UNLIKELY(has_arg_been_visited(id))) {
-            return on_error("Argument with this ID has already been scanned");
+            on_error({scan_error::invalid_format_string,
+                      "Argument with this ID has already been scanned"});
         }
 
         if (SCN_LIKELY(id < 64)) {
@@ -1588,14 +1594,16 @@ struct format_handler : format_handler_base {
             auto it = get_ctx().begin();
             if (impl::is_range_eof(it, get_ctx().end())) {
                 SCN_UNLIKELY_ATTR
-                return on_error("Unexpected end of source");
+                return on_error(
+                    {scan_error::invalid_literal, "Unexpected end of source"});
             }
 
             if (auto [after_space_it, cp, is_space] = impl::is_first_char_space(
                     detail::make_string_view_from_pointers(begin, end));
                 cp == detail::invalid_code_point) {
                 SCN_UNLIKELY_ATTR
-                return on_error("Invalid encoding in format string");
+                return on_error({scan_error::invalid_format_string,
+                                 "Invalid encoding in format string"});
             }
             else if (is_space) {
                 // Skip all whitespace in input
@@ -1613,7 +1621,8 @@ struct format_handler : format_handler_base {
 
             if (*it != *begin) {
                 SCN_UNLIKELY_ATTR
-                return on_error("Unexpected literal character in source");
+                return on_error({scan_error::invalid_literal,
+                                 "Unexpected literal character in source"});
             }
             get_ctx().advance_to(ranges::next(it));
         }
@@ -1681,7 +1690,8 @@ struct format_handler : format_handler_base {
         begin = detail::parse_format_specs(begin, end, handler);
         if (begin == end || *begin != char_type{'}'}) {
             SCN_UNLIKELY_ATTR
-            on_error("Missing '}' in format string");
+            on_error({scan_error::invalid_format_string,
+                      "Missing '}' in format string"});
             return parse_ctx.begin();
         }
         if (SCN_UNLIKELY(!handler.get_error())) {

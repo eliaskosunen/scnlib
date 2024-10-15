@@ -4703,19 +4703,19 @@ struct regex_matches_reader
     {
         if constexpr (!std::is_same_v<SourceCharT, DestCharT>) {
             return unexpected_scan_error(
-                scan_error::invalid_scanned_value,
+                scan_error::invalid_format_string,
                 "Cannot transcode is regex_matches_reader");
         }
         else if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
                            !std::is_same_v<SourceCharT, char>) {
             return unexpected_scan_error(
-                scan_error::invalid_scanned_value,
+                scan_error::invalid_format_string,
                 "Regex backend doesn't support wide strings as input");
         }
         else {
             if (!is_entire_source_contiguous(range)) {
                 return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
+                    scan_error::invalid_format_string,
                     "Cannot use regex with a non-contiguous source "
                     "range");
             }
@@ -4801,12 +4801,12 @@ auto read_string_view_impl(Range range,
 
     if (src.stores_allocated_string()) {
         return unexpected_scan_error(
-            scan_error::invalid_scanned_value,
+            scan_error::invalid_format_string,
             "Cannot read a string_view from this source range (not "
             "contiguous)");
     }
     if constexpr (!std::is_same_v<typename src_type::char_type, ValueCharT>) {
-        return unexpected_scan_error(scan_error::invalid_scanned_value,
+        return unexpected_scan_error(scan_error::invalid_format_string,
                                      "Cannot read a string_view from "
                                      "this source range (would require "
                                      "transcoding)");
@@ -4928,13 +4928,13 @@ private:
         if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
                       !std::is_same_v<SourceCharT, char>) {
             return unexpected_scan_error(
-                scan_error::invalid_scanned_value,
+                scan_error::invalid_format_string,
                 "Regex backend doesn't support wide strings as input");
         }
         else {
             if (!is_entire_source_contiguous(range)) {
                 return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
+                    scan_error::invalid_format_string,
                     "Cannot use regex with a non-contiguous source "
                     "range");
             }
@@ -4994,8 +4994,8 @@ private:
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         return unexpected_scan_error(
-            scan_error::invalid_scanned_value,
-            "character_reader requires take_width_view");
+            scan_error::invalid_format_string,
+            "Cannot read characters {:c} without maximum field width");
     }
 };
 
@@ -5491,8 +5491,9 @@ protected:
             return *r;
         }
 
-        return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                     "read_textual: No match");
+        return unexpected_scan_error(
+            scan_error::invalid_scanned_value,
+            "Failed to read textual boolean: No match");
     }
 };
 
@@ -6019,18 +6020,15 @@ SCN_MAYBE_UNUSED constexpr scan_expected<void> check_widths_for_arg_reader(
     if (specs.width != 0) {
         if (prefix_width + value_width + postfix_width < specs.width) {
             return unexpected_scan_error(
-                scan_error::invalid_scanned_value,
+                scan_error::length_too_short,
                 "Scanned value too narrow, width did not exceed what "
                 "was specified in the format string");
         }
     }
     if (specs.precision != 0) {
-        if (prefix_width + value_width + postfix_width > specs.precision) {
-            return unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "Scanned value too wide, width exceeded the specified "
-                "precision");
-        }
+        // Ensured by take_width_view
+        SCN_ENSURE(prefix_width + value_width + postfix_width <=
+                   specs.precision);
     }
     return {};
 }
@@ -6158,7 +6156,7 @@ struct arg_reader {
         if (specs.precision != 0) {
             if (specs.precision <= prefix_width) {
                 return unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
+                    scan_error::invalid_fill,
                     "Too many fill characters before value, "
                     "precision exceeded before reading value");
             }
