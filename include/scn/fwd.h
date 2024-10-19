@@ -740,10 +740,10 @@ SCN_GCC_POP
 
 // Detect std::regex_constants::multiline:
 // libc++ 15 and later, or libstdc++ 11.4 or later
-// (2021-09-29 is the date of the commit introducing `multiline`,
+// (2023-05-28 is the date of the commit introducing `multiline`,
 //  libstdc++ doesn't support checking for minor versions)
 #if SCN_STDLIB_LIBCPP >= 15000 || SCN_STDLIB_GLIBCXX >= 12 || \
-    (SCN_STDLIB_GLIBCXX == 11 && __GLIBCXX__ >= 20210929L)
+    (SCN_STDLIB_GLIBCXX == 11 && __GLIBCXX__ >= 20230528L)
 #define SCN_HAS_STD_REGEX_MULTILINE 1
 #else
 #define SCN_HAS_STD_REGEX_MULTILINE 0
