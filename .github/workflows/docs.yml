@@ -30,11 +30,37 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare repository (on push)
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          git fetch origin ${{ branch }}:refs/remotes/origin/${{ branch }} --tags --force
+          git remote set-head origin -a
+          git checkout ${{ branch }}
+          git pull --force
+
+      - name: Prepare repository (on release)
+        if: ${{ github.event_name == 'release' }}
+        run: |
+          git fetch origin master:refs/remotes/origin/master --tags --force
+          git remote set-head origin -a
+          git checkout ${{ github.ref_name }}
+          git pull --force
+
+      - name: Prepare repository (on workflow_dispatch)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          git fetch origin master:refs/remotes/origin/master --tags --force
+          git remote set-head origin -a
+          git checkout ${{ github.ref_name }}
+          git pull --force
 
       - name: Generate docs
         run: |
           cd docs
-          poxy --verbose
+          poxy --verbose --git-tags
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
