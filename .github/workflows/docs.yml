@@ -35,9 +35,9 @@ jobs:
       - name: Prepare repository (on push)
         if: ${{ github.event_name == 'push' }}
         run: |
-          git fetch origin ${{ branch }}:refs/remotes/origin/${{ branch }} --tags --force
+          git fetch origin ${{ github.ref_name }}:refs/remotes/origin/${{ github.ref_name }} --tags --force
           git remote set-head origin -a
-          git checkout ${{ branch }}
+          git checkout ${{ github.ref_name }}
           git pull --force
 
       - name: Prepare repository (on release)
@@ -59,7 +59,7 @@ jobs:
       - name: Generate docs
         run: |
           cd docs
-          poxy --verbose --git-tags
+          poxy --verbose --git-tags --min-version v2.0.0
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
