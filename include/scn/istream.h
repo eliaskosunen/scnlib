@@ -29,16 +29,14 @@ SCN_BEGIN_NAMESPACE
 
 namespace detail {
 template <typename T, typename CharT, typename Enable = void>
-struct is_streamable_impl : std::false_type {
-};
+struct is_streamable_impl : std::false_type {};
 
 template <typename T, typename CharT>
 struct is_streamable_impl<
     T,
     CharT,
     std::enable_if_t<sizeof(SCN_DECLVAL(std::basic_istream<CharT>&)
-                            << std::declval<T>()) != 0>> : std::true_type {
-};
+                            << std::declval<T>()) != 0>> : std::true_type {};
 
 template <typename CharT>
 struct dummy_context_for_is_streamamble {
@@ -54,8 +52,7 @@ struct is_streamable
                                map(SCN_DECLVAL(T&)))>,
               unscannable&>,
           is_streamable_impl<T, CharT>,
-          std::false_type> {
-};
+          std::false_type> {};
 
 /**
  * Wraps `SourceRange`, and makes it a `std::basic_streambuf`.
@@ -189,16 +186,19 @@ struct basic_istream_scanner {
 
         if (!(stream >> val)) {
             if (stream.eof()) {
-                return unexpected_scan_error(scan_error::end_of_input, "EOF");
+                return detail::unexpected_scan_error(scan_error::end_of_input,
+                                                     "EOF");
             }
             if (SCN_UNLIKELY(stream.bad())) {
-                return unexpected_scan_error(scan_error::invalid_source_state,
-                                             "Bad std::istream after reading");
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_source_state,
+                    "Bad std::istream after reading");
             }
 
             SCN_UNLIKELY_ATTR
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "Failed to read with std::istream");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Failed to read with std::istream");
         }
 
         if (traits::eq_int_type(streambuf.last_char(), traits::eof())) {

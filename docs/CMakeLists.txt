@@ -25,6 +25,7 @@ add_custom_command(
         DEPENDS
             "${CMAKE_CURRENT_LIST_DIR}/pages/guide.md"
             "${CMAKE_CURRENT_LIST_DIR}/pages/mainpage.md"
+            "${CMAKE_CURRENT_LIST_DIR}/../CHANGELOG.md"
             "${SCN_ABSOLUTE_PUBLIC_HEADERS}"
         COMMENT "Generating docs"
         VERBATIM)

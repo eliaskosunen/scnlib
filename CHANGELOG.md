@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.0.0
+
+_Released 2024-xx-xx_
+
+TODO
+
+## 3.0.2
+
+_Released 2024-xx-xx_
+
+TODO
+
 ## 3.0.1
 
 _Released 2024-06-15_
