@@ -4,13 +4,50 @@
 
 _Released 2024-xx-xx_
 
-TODO
+### Breaking changes
+
+ * `scanner::parse` now returns `Iterator`, not `scan_expected<Iterator>`
+   * Errors are reported by throwing a `scan_format_string_error`, or by calling `ParseContext::on_error`.
+ * Optimize the way `scan` calls `vscan` to remove extra copies/moves
+```cpp
+// Dummy-implementation of `scan`
+// Before (v3):
+auto args = make_scan_args<scan_context, Args...>();
+auto result = vscan(std::forward<Source>(source), format, args);
+return make_scan_result(std::move(result), std::move(args.args()));
+
+// Now (v4):
+auto result = make_scan_result<Source, Args...>();
+fill_scan_result(result, vscan(std::forward<Source>(source), format,
+                               make_scan_args(result->values())));
+return result;
+```
+ * Changes to `scan_error`
+   * Success state removed: use `expected<void, scan_error>` instead.
+   * `scan_error::value_out_of_range` split into `value_positive_overflow`, `value_negative_overflow`,
+     `value_positive_underflow`, and `value_negative_overflow`.
+   * `end_of_range` renamed to `end_of_input`.
+   * `invalid_literal`, `invalid_fill`, `length_too_short`, and `invalid_source_state` added.
+ * `basic_scan_context` is now templated on the range type
+
+### Features
+
+ * `<chrono>` scanning
+ * Scanning of pointers (`void*` and `const void*`)
+ * Ability to disable dependency on FastFloat with `SCN_DISABLE_FAST_FLOAT`
+   * FastFloat used to be the only required external dependency
+   * If disabled, `std::from_chars` for floating-point values is required
+
+### Changes
+
+ * `visit_scan_arg` deprecated, `basic_scan_arg::visit` added
+ * Remove thousands separator checking when scanning localized numbers
 
 ## 3.0.2
 
 _Released 2024-xx-xx_
 
-TODO
+ * Fix formatting options of user-defined types sometimes being ignored
 
 ## 3.0.1
 
