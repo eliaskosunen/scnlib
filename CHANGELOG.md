@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.2
+
+_Released 2024-xx-xx_
+
+* Fix formatting options of user-defined types sometimes being ignored
+
 ## 3.0.1
 
 _Released 2024-06-15_
