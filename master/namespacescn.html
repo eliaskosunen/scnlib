@@ -18,7 +18,7 @@
   <meta content="scanf for modern C++" property="og:description"/>
   <meta content="scanf for modern C++" itemprop="description"/>
   <meta content="telephone=no" name="format-detection"/>
-  <meta content="Poxy v0.17.1" name="generator"/>
+  <meta content="Poxy v0.19.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
 <body class="poxy-has-toc">
@@ -176,7 +176,7 @@
           <dl class="m-doc">
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga3d9bf446b9f090ff62dd6bd3bf42e4a2">input</a>(</span><span class="m-doc-wrap"><a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;<a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/c/FILE.html" target="_blank">std::<wbr/>FILE</a>*, Args...&gt; format) -&gt; scan_result_type&lt; std::FILE *, Args... &gt; -&gt; auto</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga3d9bf446b9f090ff62dd6bd3bf42e4a2">input</a>(</span><span class="m-doc-wrap"><a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;<a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/c/FILE.html" target="_blank">std::<wbr/>FILE</a>*, Args...&gt; format) →  scan_result_type&lt; std::FILE *, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
@@ -186,43 +186,43 @@
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Context = scan_context</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#a47bcbc8d33e38e412b1f87ec7ed3cc96">make_scan_args</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; values) -&gt; auto <span class="m-label m-flat m-primary">constexpr</span></span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#a47bcbc8d33e38e412b1f87ec7ed3cc96">make_scan_args</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; values) →  auto <span class="m-label m-flat m-primary">constexpr</span></span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Result</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__result.html#ga780b6c90730183f167ad1115da09fa18">make_scan_result</a>(</span><span class="m-doc-wrap"><a class="m-doc" href="structscn_1_1scan__expected.html">scan_<wbr/>expected</a>&lt;Result&gt;&amp;&amp; result,
-              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt; -&gt; auto</span>
+              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; args) →  scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga2860ab85b607d9cafcbf268e4f57db35">prompt</a>(</span><span class="m-doc-wrap">const char* msg,
-              <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;<a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/c/FILE.html" target="_blank">std::<wbr/>FILE</a>*, Args...&gt; format) -&gt; scan_result_type&lt; std::FILE *, Args... &gt; -&gt; auto</span>
+              <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;<a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/c/FILE.html" target="_blank">std::<wbr/>FILE</a>*, Args...&gt; format) →  scan_result_type&lt; std::FILE *, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__format-string.html#ga014577dcd48ad3a5658203de948a9579">runtime_format</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> s) -&gt; <a class="m-doc" href="structscn_1_1detail_1_1basic__runtime__format__string.html">detail::<wbr/>basic_runtime_format_string</a>&lt;char&gt;</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__format-string.html#ga014577dcd48ad3a5658203de948a9579">runtime_format</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> s) →  <a class="m-doc" href="structscn_1_1detail_1_1basic__runtime__format__string.html">detail::<wbr/>basic_runtime_format_string</a>&lt;char&gt;</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scan</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
-              <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;Source, Args...&gt; format) -&gt; scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
+              <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;Source, Args...&gt; format) →  scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga5c5be28ffa2a787c050d30914ab76a4b">scan</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
               <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;Source, Args...&gt; format,
-              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; initial_args) -&gt; scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
+              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; initial_args) →  scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Locale</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/void_t.html" target="_blank">std::<wbr/>void_t</a>&lt;decltype(Locale::classic())&gt;</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__locale.html#gaeaf87124fedc94865510addcc42087b6">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
-              <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;Source, Args...&gt; format) -&gt; scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
+              <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;Source, Args...&gt; format) →  scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
@@ -230,47 +230,47 @@
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__locale.html#ga579fa74ff6da85cb5b8f101d93ce8e09">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scan_<wbr/>format_<wbr/>string</a>&lt;Source, Args...&gt; format,
-              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; initial_args) -&gt; scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
+              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; initial_args) →  scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_scan_int_type&lt;T&gt;&gt;* = nullptr</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#gabc01dfea9c68651aa1663d24ba843c84">scan_int</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> source,
-              int base = 10) -&gt; scan_result_type&lt; <a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/string/basic_string_view" target="_blank">std::string_view</a>, T &gt; -&gt; auto</span>
+              int base = 10) →  scan_result_type&lt; <a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/string/basic_string_view" target="_blank">std::string_view</a>, T &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_scan_int_type&lt;T&gt;&gt;* = nullptr</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga75b7263129ec499db37ea67eb01eab30">scan_int_exhaustive_valid</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> source) -&gt; T -&gt; auto</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga75b7263129ec499db37ea67eb01eab30">scan_int_exhaustive_valid</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> source) →  T -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#gaad8ea03c53fc8eda13f7c2d1a7381b07">scan_value</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source) -&gt; scan_result_type&lt; Source, T &gt; -&gt; auto</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#gaad8ea03c53fc8eda13f7c2d1a7381b07">scan_value</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source) →  scan_result_type&lt; Source, T &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;* = nullptr</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__scan.html#ga0b383313772b592bdea70a12cbdd53b7">scan_value</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
-              T initial_value) -&gt; scan_result_type&lt; Source, T &gt; -&gt; auto</span>
+              T initial_value) →  scan_result_type&lt; Source, T &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__vscan.html#ga3bce7ba15b36e95a461c3009a0ea3bca">vinput</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> format,
-              <a class="m-doc" href="classscn_1_1basic__scan__args.html">scan_<wbr/>args</a> args) -&gt; <a class="m-doc" href="classscn_1_1scan__error.html">scan_<wbr/>error</a></span>
+              <a class="m-doc" href="classscn_1_1basic__scan__args.html">scan_<wbr/>args</a> args) →  <a class="m-doc" href="classscn_1_1scan__error.html">scan_<wbr/>error</a></span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Visitor</span>, <span class="m-doc-template-param">typename Ctx</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#aaef2be62bdb069536e2729b6bb4d7f1c">visit_scan_arg</a>(</span><span class="m-doc-wrap">Visitor&amp;&amp; vis,
-              <a class="m-doc" href="classscn_1_1basic__scan__arg.html">basic_<wbr/>scan_<wbr/>arg</a>&lt;Ctx&gt;&amp; arg) -&gt; decltype(auto) <span class="m-label m-flat m-primary">constexpr</span></span>
+              <a class="m-doc" href="classscn_1_1basic__scan__arg.html">basic_<wbr/>scan_<wbr/>arg</a>&lt;Ctx&gt;&amp; arg) →  decltype(auto) <span class="m-label m-flat m-primary">constexpr</span></span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Source</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__vscan.html#gadc46b83d39e17f2085d2c6c0963978a2">vscan</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
               <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> format,
-              <a class="m-doc" href="classscn_1_1basic__scan__args.html">scan_<wbr/>args</a> args) -&gt; vscan_result&lt;Source&gt;</span>
+              <a class="m-doc" href="classscn_1_1basic__scan__args.html">scan_<wbr/>args</a> args) →  vscan_result&lt;Source&gt;</span>
             </dt>
             <dd></dd>
             <dt>
@@ -278,14 +278,14 @@
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__locale.html#gab5baa54a3e7a6eaccb03c7d1bbd0f9eb">vscan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> format,
-              <a class="m-doc" href="classscn_1_1basic__scan__args.html">scan_<wbr/>args</a> args) -&gt; vscan_result&lt;Source&gt;</span>
+              <a class="m-doc" href="classscn_1_1basic__scan__args.html">scan_<wbr/>args</a> args) →  vscan_result&lt;Source&gt;</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__xchar.html#ga9412817569b4484faf59cb0e51daca20">vscan</a>(</span><span class="m-doc-wrap">Range&amp;&amp; range,
               <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>wstring_view</a> format,
-              <a class="m-doc" href="classscn_1_1basic__scan__args.html">wscan_<wbr/>args</a> args) -&gt; vscan_result&lt;Range&gt;</span>
+              <a class="m-doc" href="classscn_1_1basic__scan__args.html">wscan_<wbr/>args</a> args) →  vscan_result&lt;Range&gt;</span>
             </dt>
             <dd></dd>
             <dt>
@@ -293,19 +293,19 @@
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__xchar.html#gaf3e0ca7b7fba6031fff76387e5c10ad1">vscan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Range&amp;&amp; range,
               <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>wstring_view</a> format,
-              <a class="m-doc" href="classscn_1_1basic__scan__args.html">wscan_<wbr/>args</a> args) -&gt; vscan_result&lt;Range&gt;</span>
+              <a class="m-doc" href="classscn_1_1basic__scan__args.html">wscan_<wbr/>args</a> args) →  vscan_result&lt;Range&gt;</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Source</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__vscan.html#gaf3c242adc2256dcfe5dedbd91187907c">vscan_value</a>(</span><span class="m-doc-wrap">Source&amp;&amp; source,
-              <a class="m-doc" href="classscn_1_1basic__scan__arg.html">basic_<wbr/>scan_<wbr/>arg</a>&lt;<a class="m-doc" href="classscn_1_1basic__scan__context.html">scan_<wbr/>context</a>&gt; arg) -&gt; vscan_result&lt;Source&gt;</span>
+              <a class="m-doc" href="classscn_1_1basic__scan__arg.html">basic_<wbr/>scan_<wbr/>arg</a>&lt;<a class="m-doc" href="classscn_1_1basic__scan__context.html">scan_<wbr/>context</a>&gt; arg) →  vscan_result&lt;Source&gt;</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="group__xchar.html#gac887ab8ca0d711b1d2133c17f5bc4775">vscan_value</a>(</span><span class="m-doc-wrap">Range&amp;&amp; range,
-              <a class="m-doc" href="classscn_1_1basic__scan__arg.html">basic_<wbr/>scan_<wbr/>arg</a>&lt;<a class="m-doc" href="classscn_1_1basic__scan__context.html">wscan_<wbr/>context</a>&gt; arg) -&gt; vscan_result&lt;Range&gt;</span>
+              <a class="m-doc" href="classscn_1_1basic__scan__arg.html">basic_<wbr/>scan_<wbr/>arg</a>&lt;<a class="m-doc" href="classscn_1_1basic__scan__context.html">wscan_<wbr/>context</a>&gt; arg) →  vscan_result&lt;Range&gt;</span>
             </dt>
             <dd></dd>
           </dl>

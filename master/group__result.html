@@ -18,7 +18,7 @@
   <meta content="scanf for modern C++" property="og:description"/>
   <meta content="scanf for modern C++" itemprop="description"/>
   <meta content="telephone=no" name="format-detection"/>
-  <meta content="Poxy v0.17.1" name="generator"/>
+  <meta content="Poxy v0.19.0" name="generator"/>
   <meta content="strict-origin-when-cross-origin" name="referrer"/>
 </head>
 <body class="poxy-has-toc">
@@ -98,7 +98,7 @@
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Result</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
               <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga780b6c90730183f167ad1115da09fa18">make_scan_result</a>(</span><span class="m-doc-wrap">scan_expected&lt;Result&gt;&amp;&amp; result,
-              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt; -&gt; auto</span>
+              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; args) →  scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt; -&gt; auto</span>
             </dt>
             <dd></dd>
           </dl>
@@ -111,7 +111,7 @@
                 template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Result</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;
               </div>
               <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga780b6c90730183f167ad1115da09fa18">make_scan_result</a>(</span><span class="m-doc-wrap">scan_expected&lt;Result&gt;&amp;&amp; result,
-              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</span></span>
+              <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; args) →  scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</span></span>
             </h3>
 <p>Convenience function to construct the value to return from <code>scan</code>, based on the return value of <code>vscan</code>, and the argument store.</p><p>Takes its arguments by rvalue reference to disallow extraneous copying.</p><p>Note: Because <code>vscan</code> places the values it scanned into the argument store passed to it, the call to <code>make_scan_result</code> needs to happen strictly after calling <code>vscan</code>. This means, that this is UB: <code>return <a class="m-doc" href="#ga780b6c90730183f167ad1115da09fa18">scn::<wbr/>make_scan_result</a>(scn::vscan(...), std::move(args.args()));</code></p><p>Example:</p><pre class="m-code"><span class="k">auto</span> <span class="n">args</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">make_scan_args</span><span class="o">&lt;</span><span class="n">scan_context</span><span class="p">,</span> <span class="n">Args</span><span class="p">...</span><span class="o">&gt;</span><span class="p">();</span>
 <span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">vscan</span><span class="p">(</span><span class="nn">std</span><span class="o">::</span><span class="nf">forward</span><span class="o">&lt;</span><span class="n">Source</span><span class="o">&gt;</span><span class="p">(</span><span class="n">source</span><span class="p">),</span> <span class="n">format</span><span class="p">,</span> <span class="n">args</span><span class="p">);</span>
