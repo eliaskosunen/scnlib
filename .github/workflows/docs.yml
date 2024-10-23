@@ -30,18 +30,44 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare repository (on push)
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          git fetch origin ${{ github.ref_name }}:refs/remotes/origin/${{ github.ref_name }} --tags --force
+          git remote set-head origin -a
+          git checkout ${{ github.ref_name }}
+          git pull --force
+
+      - name: Prepare repository (on release)
+        if: ${{ github.event_name == 'release' }}
+        run: |
+          git fetch origin master:refs/remotes/origin/master --tags --force
+          git remote set-head origin -a
+          git checkout ${{ github.ref_name }}
+          git pull --force
+
+      - name: Prepare repository (on workflow_dispatch)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          git fetch origin ${{ github.ref_name }}:refs/remotes/origin/${{ github.ref_name }} --tags --force
+          git remote set-head origin -a
+          git checkout ${{ github.ref_name }}
+          git pull --force
 
       - name: Generate docs
         run: |
           cd docs
-          poxy --verbose
+          poxy --verbose --git-tags --min-version v2.0.0 --no-squash-patches
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/html
-          destination_dir: ${{ github.ref_name }}
+          keep_files: true
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: Update documentation (GitHub actions deploy)
