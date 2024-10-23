@@ -80,10 +80,12 @@ TEST(ArgsTest, ArgStore)
     auto store = scn::make_scan_args(args_tuple);
     auto args = scn::basic_scan_args{store};
 
-    EXPECT_EQ(args.get(0).type(), scn::detail::arg_type::int_type);
-    EXPECT_EQ(args.get(1).type(), scn::detail::arg_type::double_type);
+    EXPECT_EQ(scn::detail::get_arg_type(args.get(0)),
+              scn::detail::arg_type::int_type);
+    EXPECT_EQ(scn::detail::get_arg_type(args.get(1)),
+              scn::detail::arg_type::double_type);
 
-    *static_cast<int*>(args.get(0).value().ref_value) = 42;
+    *static_cast<int*>(scn::detail::get_arg_value(args.get(0)).ref_value) = 42;
 
     EXPECT_EQ(std::get<0>(args_tuple), 42);
     EXPECT_DOUBLE_EQ(std::get<1>(args_tuple), 0.0);

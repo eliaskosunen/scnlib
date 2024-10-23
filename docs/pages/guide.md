@@ -138,10 +138,10 @@ auto [other_result, i] = scn::scan<int>(result->range(), "{}");
 
 The return type of `->range()` is a view into the range `scn::scan` was given.
 Its type may not be the same as the source range, but its iterator and sentinel types are the same.
-If the range given to `scn::scan` does not model `ranges::borrowed_range`
-(essentially, the returned range would dangle), the returned range is of type `ranges::dangling`.
+If the range given to `scn::scan` does not model `scn::ranges::borrowed_range`
+(essentially, the returned range would dangle), the returned range is of type `scn::ranges::dangling`.
 
-Because the range type returned by `scn::scan` is always a `subrange` over its input,
+Because the range type returned by `scn::scan` is always a `scn::ranges::subrange` over its input,
 it's easy to use `scn::scan` in loops, as long as the input type is a `subrange` to begin with.
 If it's not, consider making it one with `scn::ranges::subrange{your-input-range}`.
 
@@ -284,7 +284,7 @@ template <>
 struct scn::scanner<mytype, char> {
     template <typename ParseContext>
     constexpr auto parse(ParseContext& pctx)
-        -> scan_expected<typename ParseContext::iterator>;
+        -> typename ParseContext::iterator;
 
     template <typename Context>
     auto scan(mytype& val, Context& ctx)
@@ -302,10 +302,13 @@ struct scn::scanner<mytype, char> : scn::scanner<std::string_view, char> {};
 
 // Accept only empty
 template <typename ParseContext>
-constexpr auto parse(ParseContext& pctx) -> scan_expected<typename ParseContext::iterator> {
+constexpr auto parse(ParseContext& pctx) -> typename ParseContext::iterator {
     return pctx.begin();
 }
 \endcode
+
+`parse` can report errors by throwing an exception of type `scn::scan_format_string_error`,
+or by calling the `on_error` member function on the `ParseContext`.
 
 `scan` parses the actual value, using the supplied `Context`.
 The context has a member function, `current`, to get an iterator pointing to the next character in the source range,

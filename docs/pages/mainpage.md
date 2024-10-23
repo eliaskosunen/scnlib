@@ -9,7 +9,7 @@ The code lives over at GitHub, at https://github.com/eliaskosunen/scnlib.
 
 \code{.cpp}
 #include <scn/scan.h>
-#include <print> // for std::print, C++23
+#include <print> // for std::println, C++23
 
 int main() {
     auto result = scn::scan<int, double>("42, 3.14", "{}, {}");
@@ -23,8 +23,9 @@ int main() {
 
 \section main-about About this documentation
 
-This documentation is for the version 3.0 of the library.
-For other versions, use the dropdown on the top right.
+This documentation is for the version 4.0 of the library.
+For other versions, see the dropdown in the upper right corner of the website.
+See <b><a href="./md_poxy_changelog.html">Changelog</a></b> for more.
 
 An introductory guide to the library can be found at \ref guide "Guide".
 Answers to frequently asked questions are listed at \ref faq "FAQ".
@@ -72,7 +73,7 @@ Another option would be usage through CMake's `FetchContent` module.
 FetchContent_Declare(
         scn
         GIT_REPOSITORY  https://github.com/eliaskosunen/scnlib
-        GIT_TAG         v3.0.2
+        GIT_TAG         v4.0.0
         GIT_SHALLOW     TRUE
 )
 FetchContent_MakeAvailable(scn)
@@ -84,7 +85,7 @@ target_link_libraries(my_program scn::scn)
 
 \subsection main-deps Dependencies
 
-scnlib internally depends on
+scnlib internally optionally depends on
 <a href="https://github.com/fastfloat/fast_float">fast_float</a>.
 
 By default, the CMake machinery automatically fetches, builds, and links it with `FetchContent`.
@@ -118,8 +119,8 @@ Library dependencies
 <tr>
 <td>fast_float</td>
 <td>`>= 5.0.0`</td>
-<td>✅</td>
-<td>Header only. Downloaded by default with `FetchContent`, controlled with `SCN_USE_EXTERNAL_FAST_FLOAT`.</td>
+<td>⚠️</td>
+<td>Required if `SCN_DISABLE_FAST_FLOAT` is `OFF`.<br>Header only. Downloaded by default with `FetchContent`, controlled with `SCN_USE_EXTERNAL_FAST_FLOAT`.</td>
 </tr>
 
 <tr>
@@ -216,6 +217,14 @@ scnlib configuration options
 </tr>
 
 <tr>
+<td>`SCN_DISABLE_FAST_FLOAT`</td>
+<td>✅</td>
+<td>✅</td>
+<td>`OFF`</td>
+<td>Disable external dependency on FastFloat.<br>Using `ON` requires standard library support for floating-point `std::from_chars`.<sup>1</sup></td>
+</tr>
+
+<tr>
 <td>`SCN_DISABLE_REGEX`</td>
 <td>✅</td>
 <td>✅</td>
@@ -228,7 +237,7 @@ scnlib configuration options
 <td>✅</td>
 <td>⚠️</td>
 <td>`"std"`</td>
-<td>Regular expression backend to use<br>(use integer values on the command line)<br>Values: `"std"=0`, `"Boost"`=1`, `"re2"=2`</td>
+<td>Regular expression backend to use<br> (use integer values on the command line)<br>Values: `"std"=0`, `"Boost"=1`, `"re2"=2`</td>
 </tr>
 
 <tr>
@@ -279,6 +288,9 @@ scnlib configuration options
 <td>Disable support for a specific type</td>
 </tr>
 </table>
+
+<sup>1</sup>: As on October 2024, `std::from_chars` with floating-point values is supported on libstdc++ v11 and newer,
+and MSVC 19.24 (VS 2019 16.4) or newer. libc++ doesn't provide any support yet.
 
 Below, `ENABLE_FULL` is true, if `SCN_CI` is set in CMake, or scnlib
 is built as the primary project.

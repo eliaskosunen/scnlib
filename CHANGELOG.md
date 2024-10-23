@@ -1,16 +1,16 @@
 # Changelog
 
+## 4.0.0
+
+_Released 2024-xx-xx_
+
+TODO
+
 ## 3.0.2
 
-_Released 2024-11-03_
+_Released 2024-xx-xx_
 
- * Fix formatting options of user-defined types sometimes being ignored
- * Fix unnecessary blocking in `scn::input`
- * Fix usage of `std::regex_constants::multiline` on libstdc++ v11 (#130, thanks [@jiayuehua (Jia Yue Hua)](https://github.com/jiayuehua))
- * Fix build failures on Emscripten
- * Update documentation to have a version-dropdown
- * Fix typo in documentation about manual indexing (#122, thanks [@lynxlynxlynx (Jaka Kranjc)](https://github.com/lynxlynxlynx))
- * Fix typos in README (#120, thanks [@zencatalyst (Kasra Hashemi)](https://github.com/zencatalyst))
+TODO
 
 ## 3.0.1
 

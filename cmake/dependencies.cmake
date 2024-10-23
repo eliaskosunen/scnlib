@@ -110,7 +110,7 @@ else ()
     FetchContent_Declare(
             fast_float
             GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
-            GIT_TAG v6.1.1
+            GIT_TAG v6.1.6
             GIT_SHALLOW TRUE
     )
 

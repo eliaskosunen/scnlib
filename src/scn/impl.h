@@ -856,10 +856,10 @@ inline constexpr scan_expected<void> make_scan_error_from_parse_error(
     }
 
     if (err == parse_error::eof) {
-        return unexpected_scan_error(scan_error::end_of_input, "EOF");
+        return detail::unexpected_scan_error(scan_error::end_of_input, "EOF");
     }
 
-    return unexpected_scan_error(code, msg);
+    return detail::unexpected_scan_error(code, msg);
 }
 
 inline constexpr auto map_parse_error_to_scan_error(enum scan_error::code code,
@@ -1336,10 +1336,11 @@ inline constexpr scan_expected<wchar_t> encode_code_point_as_wide_character(
             return static_cast<wchar_t>(cp);
         }
         if (error_on_overflow) {
-            return unexpected_scan_error(scan_error::value_positive_overflow,
-                                         "Non-BMP code point can't be "
-                                         "narrowed to a single 2-byte "
-                                         "wchar_t code unit");
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_overflow,
+                "Non-BMP code point can't be "
+                "narrowed to a single 2-byte "
+                "wchar_t code unit");
         }
         // Return the lead surrogate
         return static_cast<wchar_t>(
@@ -3144,8 +3145,8 @@ public:
         reader_error_handler eh{};
         get_derived().check_specs_impl(specs, eh);
         if (SCN_UNLIKELY(!eh)) {
-            return unexpected_scan_error(scan_error::invalid_format_string,
-                                         eh.m_msg);
+            return detail::unexpected_scan_error(
+                scan_error::invalid_format_string, eh.m_msg);
         }
         return {};
     }
@@ -3400,7 +3401,7 @@ auto parse_integer_digits_without_thsep(Range range, int base)
 
     if constexpr (ranges::contiguous_range<Range>) {
         if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
-            return unexpected_scan_error(
+            return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "Failed to parse integer: No digits found");
         }
@@ -3444,7 +3445,7 @@ auto parse_integer_digits_with_thsep(
         }
     }
     if (SCN_UNLIKELY(!digit_matched)) {
-        return unexpected_scan_error(
+        return detail::unexpected_scan_error(
             scan_error::invalid_scanned_value,
             "Failed to parse integer: No digits found");
     }
@@ -3533,7 +3534,7 @@ public:
 
         if constexpr (!std::is_signed_v<T>) {
             if (prefix_result.sign == sign_type::minus_sign) {
-                return unexpected_scan_error(
+                return detail::unexpected_scan_error(
                     scan_error::invalid_scanned_value,
                     "Unexpected '-' sign when parsing an "
                     "unsigned value");
@@ -3580,7 +3581,7 @@ public:
 
         if (prefix_result.sign == sign_type::minus_sign) {
             if constexpr (!std::is_signed_v<T>) {
-                return unexpected_scan_error(
+                return detail::unexpected_scan_error(
                     scan_error::invalid_scanned_value,
                     "Unexpected '-' sign when parsing an "
                     "unsigned value");
@@ -3588,7 +3589,7 @@ public:
             else {
                 if (specs.type ==
                     detail::presentation_type::int_unsigned_decimal) {
-                    return unexpected_scan_error(
+                    return detail::unexpected_scan_error(
                         scan_error::invalid_scanned_value,
                         "'u'-option disallows negative values");
                 }
@@ -3755,7 +3756,7 @@ private:
                     -> scan_expected<ranges::const_iterator_t<decltype(rr)>> {
                     auto res = read_all(rr);
                     if (SCN_UNLIKELY(res == r.begin())) {
-                        return unexpected_scan_error(
+                        return detail::unexpected_scan_error(
                             scan_error::invalid_scanned_value,
                             "Invalid float value");
                     }
@@ -3883,8 +3884,9 @@ private:
                                              ')')) {
             return *r;
         }
-        return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                     "Invalid floating-point NaN payload");
+        return detail::unexpected_scan_error(
+            scan_error::invalid_scanned_value,
+            "Invalid floating-point NaN payload");
     }
 
     template <typename Range>
@@ -3946,8 +3948,9 @@ private:
         }
 
         if (SCN_UNLIKELY(digits_count == 0)) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "No significand digits in hexfloat");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "No significand digits in hexfloat");
         }
 
         it = read_exponent(ranges::subrange{it, range.end()}, "pP");
@@ -3989,8 +3992,9 @@ private:
         }
 
         if (SCN_UNLIKELY(digits_count == 0)) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "No significand digits in float");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "No significand digits in float");
         }
 
         auto beg_exp_it = it;
@@ -3998,7 +4002,7 @@ private:
             it = read_exponent(ranges::subrange{it, range.end()}, "eE");
         }
         if (required_exp && beg_exp_it == it) {
-            return unexpected_scan_error(
+            return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "No exponent given to scientific float");
         }
@@ -4291,14 +4295,14 @@ constexpr auto make_regex_flags(detail::regex_flags flags)
 #if SCN_HAS_STD_REGEX_MULTILINE
         result |= std::regex_constants::multiline;
 #else
-        return unexpected_scan_error(
+        return detail::unexpected_scan_error(
             scan_error::invalid_format_string,
             "/m flag for regex isn't supported by regex backend");
 #endif
     }
     if ((flags & detail::regex_flags::singleline) !=
         detail::regex_flags::none) {
-        return unexpected_scan_error(
+        return detail::unexpected_scan_error(
             scan_error::invalid_format_string,
             "/s flag for regex isn't supported by regex backend");
     }
@@ -4373,8 +4377,8 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                                      re_flags | std::regex_constants::nosubs};
     }
     catch (const std::regex_error& err) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Invalid regex");
+        return detail::unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Invalid regex");
     }
 
     std::match_results<const CharT*> matches{};
@@ -4383,13 +4387,15 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                                        input.data() + input.size(), matches, re,
                                        std::regex_constants::match_continuous);
         if (!found || matches.prefix().matched) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "Regular expression didn't match");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Regular expression didn't match");
         }
     }
     catch (const std::regex_error& err) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Regex matching failed with an error");
+        return detail::unexpected_scan_error(
+            scan_error::invalid_format_string,
+            "Regex matching failed with an error");
     }
 
     return input.begin() + ranges::distance(input.data(), matches[0].second);
@@ -4407,8 +4413,8 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                                       boost::regex_constants::nosubs};
 #endif
     if (re.status() != 0) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Invalid regex");
+        return detail::unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Invalid regex");
     }
 
     boost::match_results<const CharT*> matches{};
@@ -4424,13 +4430,15 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                                 boost::regex_constants::match_continuous);
 #endif
         if (!found || matches.prefix().matched) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "Regular expression didn't match");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Regular expression didn't match");
         }
     }
     catch (const std::runtime_error& err) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Regex matching failed with an error");
+        return detail::unexpected_scan_error(
+            scan_error::invalid_format_string,
+            "Regex matching failed with an error");
     }
 
     return input.begin() + ranges::distance(input.data(), matches[0].second);
@@ -4449,16 +4457,17 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
         return re2::RE2{flagged_pattern, opts};
     }();
     if (!re.ok()) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Failed to parse regular expression");
+        return detail::unexpected_scan_error(
+            scan_error::invalid_format_string,
+            "Failed to parse regular expression");
     }
 
     auto new_input = detail::make_string_view_from_pointers(
         detail::to_address(input.begin()), detail::to_address(input.end()));
     bool found = re2::RE2::Consume(&new_input, re);
     if (!found) {
-        return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                     "Regular expression didn't match");
+        return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Regular expression didn't match");
     }
     return input.begin() + ranges::distance(input.data(), new_input.data());
 #endif  // SCN_REGEX_BACKEND == ...
@@ -4482,8 +4491,8 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
         re = std::basic_regex<CharT>{pattern.data(), pattern.size(), re_flags};
     }
     catch (const std::regex_error& err) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Invalid regex");
+        return detail::unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Invalid regex");
     }
 
     std::match_results<const CharT*> matches{};
@@ -4492,13 +4501,15 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                                        input.data() + input.size(), matches, re,
                                        std::regex_constants::match_continuous);
         if (!found || matches.prefix().matched) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "Regular expression didn't match");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Regular expression didn't match");
         }
     }
     catch (const std::regex_error& err) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Regex matching failed with an error");
+        return detail::unexpected_scan_error(
+            scan_error::invalid_format_string,
+            "Regex matching failed with an error");
     }
 
     value.resize(matches.size());
@@ -4549,8 +4560,8 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
             make_regex_flags(flags) | boost::regex_constants::no_except};
 #endif
     if (re.status() != 0) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Invalid regex");
+        return detail::unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Invalid regex");
     }
 
     boost::match_results<const CharT*> matches{};
@@ -4566,13 +4577,15 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                                 boost::regex_constants::match_continuous);
 #endif
         if (!found || matches.prefix().matched) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "Regular expression didn't match");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Regular expression didn't match");
         }
     }
     catch (const std::runtime_error& err) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Regex matching failed with an error");
+        return detail::unexpected_scan_error(
+            scan_error::invalid_format_string,
+            "Regex matching failed with an error");
     }
 
     value.resize(matches.size());
@@ -4607,8 +4620,9 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
         return re2::RE2{flagged_pattern, opts};
     }();
     if (!re.ok()) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Failed to parse regular expression");
+        return detail::unexpected_scan_error(
+            scan_error::invalid_format_string,
+            "Failed to parse regular expression");
     }
     // TODO: Optimize into a single batch allocation
     const auto max_matches_n =
@@ -4625,8 +4639,8 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     bool found = re2::RE2::ConsumeN(&new_input, re, match_argptrs.data(),
                                     match_argptrs.size());
     if (!found) {
-        return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                     "Regular expression didn't match");
+        return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Regular expression didn't match");
     }
     value.resize(matches.size() + 1);
     value[0] =
@@ -4689,7 +4703,7 @@ struct regex_matches_reader
                       detail::locale_ref = {})
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
-        return unexpected_scan_error(
+        return detail::unexpected_scan_error(
             scan_error::invalid_format_string,
             "No regex given in format string for scanning regex_matches");
     }
@@ -4702,19 +4716,19 @@ struct regex_matches_reader
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         if constexpr (!std::is_same_v<SourceCharT, DestCharT>) {
-            return unexpected_scan_error(
+            return detail::unexpected_scan_error(
                 scan_error::invalid_format_string,
                 "Cannot transcode is regex_matches_reader");
         }
         else if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
                            !std::is_same_v<SourceCharT, char>) {
-            return unexpected_scan_error(
+            return detail::unexpected_scan_error(
                 scan_error::invalid_format_string,
                 "Regex backend doesn't support wide strings as input");
         }
         else {
             if (!is_entire_source_contiguous(range)) {
-                return unexpected_scan_error(
+                return detail::unexpected_scan_error(
                     scan_error::invalid_format_string,
                     "Cannot use regex with a non-contiguous source "
                     "range");
@@ -4771,8 +4785,9 @@ auto read_string_impl(Range range,
 
     auto src = make_contiguous_buffer(ranges::subrange{range.begin(), result});
     if (!validate_unicode(src.view())) {
-        return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                     "Invalid encoding in scanned string");
+        return detail::unexpected_scan_error(
+            scan_error::invalid_scanned_value,
+            "Invalid encoding in scanned string");
     }
 
     SCN_TRY_DISCARD(transcode_if_necessary(SCN_MOVE(src), value));
@@ -4800,23 +4815,23 @@ auto read_string_view_impl(Range range,
     using src_type = decltype(src);
 
     if (src.stores_allocated_string()) {
-        return unexpected_scan_error(
+        return detail::unexpected_scan_error(
             scan_error::invalid_format_string,
             "Cannot read a string_view from this source range (not "
             "contiguous)");
     }
     if constexpr (!std::is_same_v<typename src_type::char_type, ValueCharT>) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Cannot read a string_view from "
-                                     "this source range (would require "
-                                     "transcoding)");
+        return detail::unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Cannot read a string_view from "
+                                             "this source range (would require "
+                                             "transcoding)");
     }
     else {
         const auto view = src.view();
         value = std::basic_string_view<ValueCharT>(view.data(), view.size());
 
         if (!validate_unicode(value)) {
-            return unexpected_scan_error(
+            return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "Invalid encoding in scanned string_view");
         }
@@ -4927,13 +4942,13 @@ private:
     {
         if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
                       !std::is_same_v<SourceCharT, char>) {
-            return unexpected_scan_error(
+            return detail::unexpected_scan_error(
                 scan_error::invalid_format_string,
                 "Regex backend doesn't support wide strings as input");
         }
         else {
             if (!is_entire_source_contiguous(range)) {
-                return unexpected_scan_error(
+                return detail::unexpected_scan_error(
                     scan_error::invalid_format_string,
                     "Cannot use regex with a non-contiguous source "
                     "range");
@@ -4993,7 +5008,7 @@ private:
     static auto read_impl(Range, ReadCb&&, detail::priority_tag<0>)
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
-        return unexpected_scan_error(
+        return detail::unexpected_scan_error(
             scan_error::invalid_format_string,
             "Cannot read characters {:c} without maximum field width");
     }
@@ -5200,7 +5215,7 @@ private:
                                                   Range range)
     {
         if (it == range.begin()) {
-            return unexpected_scan_error(
+            return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "No characters matched in [character set]");
         }
@@ -5401,7 +5416,7 @@ protected:
             return *r;
         }
 
-        return unexpected_scan_error(
+        return detail::unexpected_scan_error(
             scan_error::invalid_scanned_value,
             "Failed to read numeric boolean value: No match");
     }
@@ -5419,7 +5434,7 @@ protected:
             return *r;
         }
 
-        return unexpected_scan_error(
+        return detail::unexpected_scan_error(
             scan_error::invalid_scanned_value,
             "Failed to read textual boolean value: No match");
     }
@@ -5491,7 +5506,7 @@ protected:
             return *r;
         }
 
-        return unexpected_scan_error(
+        return detail::unexpected_scan_error(
             scan_error::invalid_scanned_value,
             "Failed to read textual boolean: No match");
     }
@@ -5591,8 +5606,8 @@ public:
     {
         auto result = read_code_point_into(range);
         if (SCN_UNLIKELY(!result.is_valid())) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "Invalid code point");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value, "Invalid code point");
         }
         cp = detail::decode_code_point_exhaustive_valid(
             std::basic_string_view<detail::char_t<SourceRange>>{
@@ -5641,8 +5656,8 @@ public:
             detail::check_char_type_specs(specs, eh);
         }
         if (SCN_UNLIKELY(!eh)) {
-            return unexpected_scan_error(scan_error::invalid_format_string,
-                                         eh.m_msg);
+            return detail::unexpected_scan_error(
+                scan_error::invalid_format_string, eh.m_msg);
         }
         return {};
     }
@@ -5766,8 +5781,8 @@ public:
         reader_error_handler eh{};
         detail::check_pointer_type_specs(specs, eh);
         if (SCN_UNLIKELY(!eh)) {
-            return unexpected_scan_error(scan_error::invalid_format_string,
-                                         eh.m_msg);
+            return detail::unexpected_scan_error(
+                scan_error::invalid_format_string, eh.m_msg);
         }
         return {};
     }
@@ -6019,7 +6034,7 @@ SCN_MAYBE_UNUSED constexpr scan_expected<void> check_widths_for_arg_reader(
 {
     if (specs.width != 0) {
         if (prefix_width + value_width + postfix_width < specs.width) {
-            return unexpected_scan_error(
+            return detail::unexpected_scan_error(
                 scan_error::length_too_short,
                 "Scanned value too narrow, width did not exceed what "
                 "was specified in the format string");
@@ -6155,7 +6170,7 @@ struct arg_reader {
         std::ptrdiff_t value_width = 0;
         if (specs.precision != 0) {
             if (specs.precision <= prefix_width) {
-                return unexpected_scan_error(
+                return detail::unexpected_scan_error(
                     scan_error::invalid_fill,
                     "Too many fill characters before value, "
                     "precision exceeded before reading value");

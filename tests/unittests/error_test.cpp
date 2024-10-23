@@ -40,8 +40,9 @@ TEST(ErrorTest, ExpectedVoid)
     const auto good = scn::scan_expected<void>{};
     const auto eof_error = scn::scan_expected<void>{
         scn::unexpected(scn::scan_error{scn::scan_error::end_of_input, "EOF"})};
-    const auto invalid_scanned_value_error = scn::scan_expected<void>{
-        scn::unexpected_scan_error(scn::scan_error::invalid_scanned_value, "")};
+    const auto invalid_scanned_value_error =
+        scn::scan_expected<void>{scn::detail::unexpected_scan_error(
+            scn::scan_error::invalid_scanned_value, "")};
 
     EXPECT_TRUE(good);
     EXPECT_FALSE(eof_error);

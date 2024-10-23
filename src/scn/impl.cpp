@@ -431,22 +431,24 @@ protected:
     {
         if (is_float_zero(value) && chars_read == 0) {
             SCN_UNLIKELY_ATTR
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "strtod failed: No conversion");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "strtod failed: No conversion");
         }
 
         if (m_kind == float_reader_base::float_kind::hex_with_prefix &&
             (m_options & float_reader_base::allow_hex) == 0) {
             SCN_UNLIKELY_ATTR
-            return unexpected_scan_error(
+            return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "Hexfloats disallowed by format string");
         }
 
         if (c_errno == ERANGE && is_float_zero(value)) {
             SCN_UNLIKELY_ATTR
-            return unexpected_scan_error(scan_error::value_positive_underflow,
-                                         "strtod failed: underflow");
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_underflow,
+                "strtod failed: underflow");
         }
 
         SCN_GCC_COMPAT_PUSH
@@ -456,8 +458,8 @@ protected:
             m_kind != float_reader_base::float_kind::inf_long &&
             std::abs(value) == std::numeric_limits<T>::infinity()) {
             SCN_UNLIKELY_ATTR
-            return unexpected_scan_error(scan_error::value_positive_overflow,
-                                         "strtod failed: overflow");
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_overflow, "strtod failed: overflow");
         }
 
         SCN_GCC_COMPAT_POP  // -Wfloat-equal
@@ -617,8 +619,9 @@ protected:
 
             flags &= ~std::chars_format::hex;
             if (flags == std::chars_format{}) {
-                return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "from_chars: Expected a hexfloat");
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "from_chars: Expected a hexfloat");
             }
         }
 
@@ -664,8 +667,9 @@ public:
             *flags);
 
         if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "from_chars: invalid_argument");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "from_chars: invalid_argument");
         }
         if (result.ec == std::errc::result_out_of_range) {
 #if !SCN_DISABLE_STRTOD
@@ -674,7 +678,7 @@ public:
             //  -> fall back to strtod
             return strtod_impl<char, T>{{ m_input, m_kind, m_options }}(value);
 #else
-            return unexpected_scan_error(
+            return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "from_chars: invalid_argument, fallback to strtod "
                 "disabled");
@@ -705,7 +709,7 @@ scan_expected<std::ptrdiff_t> fast_float_fallback(impl_init_data<CharT> data,
 #if !SCN_DISABLE_STRTOD
         return strtod_impl<CharT, T>{data}(value);
 #else
-        return unexpected_scan_error(
+        return detail::unexpected_scan_error(
             scan_error::invalid_scanned_value,
             "fast_float failed, and fallbacks are disabled");
 #endif
@@ -751,8 +755,9 @@ struct fast_float_impl : fast_float_impl_base {
             view.data(), view.data() + view.size(), value, flags);
 
         if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "fast_float: invalid_argument");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "fast_float: invalid_argument");
         }
         if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
             // may just be very large: fall back
@@ -844,13 +849,14 @@ scan_expected<std::ptrdiff_t> dispatch_impl(
     SCN_EXPECT(!data.input.view().empty());
     if (data.kind == float_reader_base::float_kind::hex_without_prefix) {
         if (SCN_UNLIKELY(char_to_int(data.input.view().front()) >= 16)) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "Invalid floating-point digit");
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Invalid floating-point digit");
         }
     }
     if (SCN_UNLIKELY(char_to_int(data.input.view().front()) >= 10)) {
-        return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                     "Invalid floating-point digit");
+        return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Invalid floating-point digit");
     }
 
 #if !SCN_DISABLE_FAST_FLOAT
@@ -895,13 +901,13 @@ scan_expected<std::ptrdiff_t> float_reader<CharT>::parse_value_impl(T& value)
 
     if (n.error().code() == scan_error::value_positive_overflow &&
         m_sign == sign_type::minus_sign) {
-        return unexpected_scan_error(scan_error::value_negative_overflow,
-                                     n.error().msg());
+        return detail::unexpected_scan_error(
+            scan_error::value_negative_overflow, n.error().msg());
     }
     if (n.error().code() == scan_error::value_positive_underflow &&
         m_sign == sign_type::minus_sign) {
-        return unexpected_scan_error(scan_error::value_negative_underflow,
-                                     n.error().msg());
+        return detail::unexpected_scan_error(
+            scan_error::value_negative_underflow, n.error().msg());
     }
     return n;
 }
@@ -1093,10 +1099,10 @@ auto parse_decimal_integer_fast(std::string_view input,
     auto digits_count = static_cast<size_t>(ptr - input.data());
     if (SCN_UNLIKELY(
             check_integer_overflow<T>(u64val, digits_count, 10, is_negative))) {
-        return unexpected_scan_error(is_negative
-                                         ? scan_error::value_negative_overflow
-                                         : scan_error::value_positive_overflow,
-                                     "Integer overflow");
+        return detail::unexpected_scan_error(
+            is_negative ? scan_error::value_negative_overflow
+                        : scan_error::value_positive_overflow,
+            "Integer overflow");
     }
 
     val = store_result<T>(u64val, is_negative);
@@ -1126,10 +1132,10 @@ auto parse_regular_integer(std::basic_string_view<CharT> input,
     auto digits_count = static_cast<size_t>(begin - input.data());
     if (SCN_UNLIKELY(check_integer_overflow<T>(u64val, digits_count, base,
                                                is_negative))) {
-        return unexpected_scan_error(is_negative
-                                         ? scan_error::value_negative_overflow
-                                         : scan_error::value_positive_overflow,
-                                     "Integer overflow");
+        return detail::unexpected_scan_error(
+            is_negative ? scan_error::value_negative_overflow
+                        : scan_error::value_positive_overflow,
+            "Integer overflow");
     }
 
     val = store_result<T>(u64val, is_negative);
@@ -1151,8 +1157,8 @@ auto parse_integer_value(std::basic_string_view<CharT> source,
 
     if (char_to_int(source[0]) >= base) {
         SCN_UNLIKELY_ATTR
-        return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                     "Invalid integer value");
+        return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Invalid integer value");
     }
 
     // Skip leading zeroes
@@ -1322,8 +1328,8 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     detail::locale_ref loc = {})
 {
     if (SCN_UNLIKELY(!arg)) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Argument #0 not found");
+        return detail::unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Argument #0 not found");
     }
 
     auto reader =
@@ -1331,7 +1337,7 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
             ranges::subrange<const CharT*>{source.data(),
                                            source.data() + source.size()},
             SCN_MOVE(args), loc};
-    SCN_TRY(it, visit_scan_arg(SCN_MOVE(reader), arg));
+    SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
     return ranges::distance(source.data(), it);
 }
 template <typename CharT>
@@ -1342,21 +1348,21 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     detail::locale_ref loc = {})
 {
     if (SCN_UNLIKELY(!arg)) {
-        return unexpected_scan_error(scan_error::invalid_format_string,
-                                     "Argument #0 not found");
+        return detail::unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Argument #0 not found");
     }
 
     if (SCN_LIKELY(source.is_contiguous())) {
         auto reader = impl::default_arg_reader<
             impl::basic_contiguous_scan_context<CharT>>{source.get_contiguous(),
                                                         SCN_MOVE(args), loc};
-        SCN_TRY(it, visit_scan_arg(SCN_MOVE(reader), arg));
+        SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
         return ranges::distance(source.get_contiguous().begin(), it);
     }
 
     auto reader = impl::default_arg_reader<detail::default_context<CharT>>{
         source.get(), SCN_MOVE(args), loc};
-    SCN_TRY(it, visit_scan_arg(SCN_MOVE(reader), arg));
+    SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
     return it.position();
 }
 
@@ -1446,7 +1452,8 @@ struct format_handler_base {
     void on_error(const char* msg)
     {
         SCN_UNLIKELY_ATTR
-        error = unexpected_scan_error(scan_error::invalid_format_string, msg);
+        error = detail::unexpected_scan_error(scan_error::invalid_format_string,
+                                              msg);
     }
     void on_error(scan_error err)
     {
@@ -1646,7 +1653,7 @@ struct format_handler : format_handler_base {
             return;
         }
 
-        auto r = visit_scan_arg(SCN_FWD(visitor), arg);
+        auto r = arg.visit(SCN_FWD(visitor));
         if (SCN_UNLIKELY(!r)) {
             on_error(r.error());
         }
@@ -1673,7 +1680,7 @@ struct format_handler : format_handler_base {
         auto arg = get_arg(get_ctx(), arg_id, *this);
         set_arg_as_visited(arg_id);
 
-        if (arg.type() == detail::arg_type::custom_type) {
+        if (detail::get_arg_type(arg) == detail::arg_type::custom_type) {
             parse_ctx.advance_to(begin);
             on_visit_scan_arg(
                 impl::custom_reader<detail::default_context<char_type>>{
@@ -1685,7 +1692,7 @@ struct format_handler : format_handler_base {
         auto specs = detail::format_specs{};
         detail::specs_checker<specs_handler<context_type>> handler{
             specs_handler<context_type>{specs, parse_ctx, get_ctx()},
-            arg.type()};
+            detail::get_arg_type(arg)};
 
         begin = detail::parse_format_specs(begin, end, handler);
         if (begin == end || *begin != char_type{'}'}) {

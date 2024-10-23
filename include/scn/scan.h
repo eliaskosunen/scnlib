@@ -30,17 +30,6 @@
 #include <string_view>
 #include <tuple>
 
-/////////////////////////////////////////////////////////////////
-// <expected> implementation
-/////////////////////////////////////////////////////////////////
-
-// The following implementation of expected is based on TartanLlama/expected,
-// but is heavily modified.
-//
-// The original source is here:
-//     https://github.com/TartanLlama/expected
-// which is licensed under CC0 (Public Domain).
-
 namespace scn {
 SCN_BEGIN_NAMESPACE
 
@@ -328,6 +317,20 @@ SCN_FORCE_INLINE constexpr auto to_address(Ptr&& p) noexcept
 
 }  // namespace detail
 
+/////////////////////////////////////////////////////////////////
+// <expected> implementation
+/////////////////////////////////////////////////////////////////
+
+// The following implementation of expected is based on TartanLlama/expected,
+// but is heavily modified.
+//
+// The original source is here:
+//     https://github.com/TartanLlama/expected
+// which is licensed under CC0 (Public Domain).
+
+/**
+ * \see `std::unexpected`
+ */
 template <typename E>
 class SCN_TRIVIAL_ABI unexpected {
     static_assert(std::is_destructible_v<E>);
@@ -517,7 +520,14 @@ private:
 
 template <typename E>
 struct SCN_TRIVIAL_ABI expected_storage_base<void, E, true> {
+#if SCN_STD >= SCN_STD_20
     constexpr expected_storage_base() noexcept : m_has_value(true) {}
+#else
+    constexpr expected_storage_base() noexcept
+        : m_deferred_init(), m_has_value(true)
+    {
+    }
+#endif
 
     explicit constexpr expected_storage_base(deferred_init_tag_t) noexcept
         : m_deferred_init(), m_has_value(false)
@@ -1505,6 +1515,9 @@ using enable_from_other =
                      !std::is_convertible_v<const expected<U, G>&&, T>>;
 }  // namespace detail
 
+/**
+ * \see `std::expected`
+ */
 template <typename T, typename E>
 class SCN_TRIVIAL_ABI expected
     : private detail::expected_operations_base<T, E>,
@@ -2058,12 +2071,15 @@ private:
 // <ranges> implementation
 /////////////////////////////////////////////////////////////////
 
-// The following is a very minimal <ranges> implementation,
-// which is a heavily stripped-down and adapted version of NanoRange:
-//   https://github.com/tcbrindle/NanoRange
-// NanoRange is provided under the Boost license.
-//   Copyright (c) 2018 Tristan Brindle (tcbrindle at gmail dot com)
-
+/**
+ * Contains a very minimal `<ranges>` implementation.
+ *
+ * This is a heavily stripped-down and adapted version of NanoRange:
+ * https://github.com/tcbrindle/NanoRange.
+ *
+ * NanoRange is provided under the Boost license.
+ * Copyright (c) 2018 Tristan Brindle (tcbrindle at gmail dot com)
+ */
 namespace ranges {
 
 namespace detail {
@@ -3136,6 +3152,9 @@ public:
 
 inline constexpr auto empty = detail::empty_::fn{};
 
+/**
+ * \see `std::ranges::borrowed_range`
+ */
 template <typename T>
 inline constexpr bool borrowed_range =
     range<T> && (std::is_lvalue_reference_v<T> ||
@@ -3283,6 +3302,9 @@ template <typename T>
 inline constexpr bool common_range =
     decltype(detail::common_range_concept::test<T>(0))::value;
 
+/**
+ * \see `std::ranges::dangling`
+ */
 struct dangling {
     constexpr dangling() noexcept = default;
 
@@ -3292,6 +3314,9 @@ struct dangling {
     }
 };
 
+/**
+ * \see `std::ranges::borrowed_iterator_t`
+ */
 template <typename R>
 using borrowed_iterator_t =
     std::conditional_t<borrowed_range<R>, iterator_t<R>, dangling>;
@@ -3485,6 +3510,9 @@ subrange(R&&) -> subrange<iterator_t<R>, sentinel_t<R>>;
 
 }  // namespace detail::subrange_
 
+/**
+ * \see `std::ranges::subrange`
+ */
 using detail::subrange_::subrange;
 
 template <typename I, typename S>
@@ -3648,6 +3676,8 @@ inline const char* find<false, char>(const char* first,
 /**
  * Error class.
  * Used as a return value for functions without a success value.
+ * Doesn't have a success state, and isn't default constructible:
+ * use `expected<void, scan_error>` to achieve that.
  *
  * \ingroup result
  */
@@ -3726,6 +3756,7 @@ public:
         return m_msg;
     }
 
+    /// Convert to a `std::errc`.
     SCN_NODISCARD constexpr std::errc to_errc() const noexcept
     {
         switch (m_code) {
@@ -3755,29 +3786,29 @@ private:
     code_t m_code;
 };
 
-constexpr inline bool operator==(scan_error a, scan_error b) noexcept
+constexpr bool operator==(scan_error a, scan_error b) noexcept
 {
     return a.code() == b.code();
 }
-constexpr inline bool operator!=(scan_error a, scan_error b) noexcept
+constexpr bool operator!=(scan_error a, scan_error b) noexcept
 {
     return !(a == b);
 }
 
-constexpr inline bool operator==(scan_error a, enum scan_error::code b) noexcept
+constexpr bool operator==(scan_error a, enum scan_error::code b) noexcept
 {
     return a.code() == b;
 }
-constexpr inline bool operator!=(scan_error a, enum scan_error::code b) noexcept
+constexpr bool operator!=(scan_error a, enum scan_error::code b) noexcept
 {
     return !(a == b);
 }
 
-constexpr inline bool operator==(enum scan_error::code a, scan_error b) noexcept
+constexpr bool operator==(enum scan_error::code a, scan_error b) noexcept
 {
     return a == b.code();
 }
-constexpr inline bool operator!=(enum scan_error::code a, scan_error b) noexcept
+constexpr bool operator!=(enum scan_error::code a, scan_error b) noexcept
 {
     return !(a == b);
 }
@@ -3798,17 +3829,20 @@ public:
     {
     }
 
-    explicit scan_format_string_error_base(const char* what_arg)
+    explicit scan_format_string_error_base(std::false_type,
+                                           const char* what_arg)
         : runtime_error(what_arg)
     {
     }
 
-    template <std::size_t N>
-    explicit scan_format_string_error_base(const char (&what_arg)[N])
+    explicit scan_format_string_error_base(std::true_type, const char* what_arg)
         : runtime_error(what_arg), m_internal_literal_msg(what_arg)
     {
     }
 
+    // Doing everything in a `detail::` base class
+    // to make this a `friend` inside that namespace
+    // (essentially private)
     friend const char* get_internal_literal_msg(
         const scan_format_string_error_base& m)
     {
@@ -3821,16 +3855,44 @@ private:
 
 }  // namespace detail
 
+/**
+ * An exception type used to report format string parsing errors.
+ */
 class scan_format_string_error : public detail::scan_format_string_error_base {
 public:
-    using scan_format_string_error_base::scan_format_string_error_base;
+    // Not `using` constructors to document them explicitly.
+
+    /**
+     * Construct from a `std::string`.
+     */
+    explicit scan_format_string_error(const std::string& what_arg)
+        : scan_format_string_error_base(what_arg)
+    {
+    }
+
+    /**
+     * Construct from a `const char*`.
+     */
+    explicit scan_format_string_error(const char* what_arg)
+        : scan_format_string_error_base(std::false_type{}, what_arg)
+    {
+    }
+
+    /**
+     * Construct from a string literal.
+     */
+    template <std::size_t N>
+    explicit scan_format_string_error(const char (&what_arg)[N])
+        : scan_format_string_error_base(std::true_type{}, what_arg)
+    {
+    }
 };
 #endif
 
 /**
  * An `expected<T, scan_error>`.
  *
- * Not a type alias to shorten template names
+ * Not a type alias to shorten template names.
  *
  * \ingroup result
  */
@@ -3848,12 +3910,12 @@ struct scan_expected : public expected<T, scan_error> {
     }
 };
 
+namespace detail {
 constexpr auto unexpected_scan_error(enum scan_error::code c, const char* m)
 {
     return unexpected(scan_error{c, m});
 }
 
-namespace detail {
 template <typename T>
 struct is_expected_impl<scan_expected<T>> : std::true_type {};
 }  // namespace detail
@@ -5831,11 +5893,18 @@ constexpr basic_scan_arg<Context> make_arg(T&& value)
 
 template <typename Context>
 constexpr arg_value& get_arg_value(basic_scan_arg<Context>& arg);
-}  // namespace detail
+template <typename Context>
+constexpr arg_value get_arg_value(const basic_scan_arg<Context>& arg);
 
-template <typename Visitor, typename Ctx>
-constexpr decltype(auto) visit_scan_arg(Visitor&& vis,
-                                        basic_scan_arg<Ctx>& arg);
+template <typename Context>
+constexpr arg_type& get_arg_type(basic_scan_arg<Context>& arg);
+template <typename Context>
+constexpr arg_type get_arg_type(const basic_scan_arg<Context>& arg);
+
+template <typename Visitor, typename Context>
+constexpr decltype(auto) visit_impl(Visitor&& vis,
+                                    basic_scan_arg<Context>& arg);
+}  // namespace detail
 
 /**
  * Type-erased scanning argument.
@@ -5872,8 +5941,9 @@ public:
         explicit handle(detail::custom_value_type custom) : m_custom(custom) {}
 
         template <typename Visitor, typename C>
-        friend constexpr decltype(auto) visit_scan_arg(Visitor&& vis,
-                                                       basic_scan_arg<C>& arg);
+        friend constexpr decltype(auto) detail::visit_impl(
+            Visitor&& vis,
+            basic_scan_arg<C>& arg);
 
         detail::custom_value_type m_custom;
     };
@@ -5889,31 +5959,37 @@ public:
         return m_type != detail::arg_type::none_type;
     }
 
-    SCN_NODISCARD constexpr detail::arg_type type() const
-    {
-        return m_type;
-    }
+    /**
+     * Visit a `basic_scan_arg` with `Visitor`.
+     * Calls `vis` with the value stored in `*this`.
+     * If no value is contained in `*this`, calls `vis` with a `monostate`.
+     *
+     * \return `vis(x)`, where `x` is either a reference to the value contained
+     * in `*this`, or a `basic_scan_arg::handle`.
+     */
+    template <typename Visitor>
+    constexpr decltype(auto) visit(Visitor&& vis);
 
-    SCN_NODISCARD constexpr detail::arg_value& value()
-    {
-        return m_value;
-    }
-    SCN_NODISCARD constexpr const detail::arg_value& value() const
-    {
-        return m_value;
-    }
+    template <typename R, typename Visitor>
+    constexpr R visit(Visitor&& vis);
 
 private:
     template <typename ContextType, typename T>
     friend constexpr basic_scan_arg<ContextType> detail::make_arg(T& value);
 
     template <typename C>
+    friend constexpr detail::arg_type& detail::get_arg_type(
+        basic_scan_arg<C>& arg);
+    template <typename C>
+    friend constexpr detail::arg_type detail::get_arg_type(
+        const basic_scan_arg<C>& arg);
+
+    template <typename C>
     friend constexpr detail::arg_value& detail::get_arg_value(
         basic_scan_arg<C>& arg);
-
-    template <typename Visitor, typename C>
-    friend constexpr decltype(auto) visit_scan_arg(Visitor&& vis,
-                                                   basic_scan_arg<C>& arg);
+    template <typename C>
+    friend constexpr detail::arg_value detail::get_arg_value(
+        const basic_scan_arg<C>& arg);
 
     friend class basic_scan_args<Context>;
 
@@ -5923,7 +5999,25 @@ private:
 
 namespace detail {
 template <typename Context>
+constexpr arg_type& get_arg_type(basic_scan_arg<Context>& arg)
+{
+    return arg.m_type;
+}
+
+template <typename Context>
+constexpr arg_type get_arg_type(const basic_scan_arg<Context>& arg)
+{
+    return arg.m_type;
+}
+
+template <typename Context>
 constexpr arg_value& get_arg_value(basic_scan_arg<Context>& arg)
+{
+    return arg.m_value;
+}
+
+template <typename Context>
+constexpr arg_value get_arg_value(const basic_scan_arg<Context>& arg)
 {
     return arg.m_value;
 }
@@ -6005,6 +6099,9 @@ private:
 
 }  // namespace detail
 
+/**
+ * Creates a type-erased argument store over the arguments in `values`.
+ */
 template <typename Context = scan_context, typename... Args>
 constexpr auto make_scan_args(std::tuple<Args...>& values)
 {
@@ -6206,6 +6303,12 @@ public:
         do_check_arg_id(id);
     }
 
+    /**
+     * Fail format string parsing with the message `msg`.
+     * Calling this member function is not a constant expression,
+     * causing a compile-time error, if compile-time format string checking is
+     * enabled.
+     */
     scan_error on_error(const char* msg)
     {
         m_error = unexpected(detail::handle_error(
@@ -8032,14 +8135,18 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * </table>
  *
  * The fill character can be any Unicode code point, except for `{` and `}`.
- * The default fill is any whitespace character, as specified above.
+ * The default fill is the space character `' '`.
  *
  * For format type specifiers other than `c` (default for `char` and `wchar_t`,
  * available for `string` and `string_view`), `[...]`, and the regex `/.../`,
  * the default alignment is `>`.
- * In practice, this means that leading whitespace is skipped by default.
- * For the `c` format type specifier, there's no default alignment,
- * and no fill characters are skipped, including whitespace.
+ * Otherwise, the default alignment is `<`.
+ *
+ * In addition to the skipping of fill characters,
+ * for format type specifiers with the `>` default alignment,
+ * preceding whitespace is automatically skipped.
+ * This preceding whitespace isn't counted as part of the field width,
+ * as described below.
  *
  * The number of fill characters consumed can be controlled with the width and
  * precision specifiers.
@@ -8048,7 +8155,7 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  *
  * Width specifies the minimum number of characters that will be read from
  * the source range. It can be any unsigned integer. Any fill characters skipped
- * are included in the width.
+ * are included in the width
  *
  * For the purposes of width calculation, the same algorithm is used that in
  * {fmt}. Every code point has a width of one, except the following ones
@@ -8102,8 +8209,7 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * <td>`c`</td>
  * <td>
  * Copies from the input until the field width is exhausted.
- * Has no default alignment
- * (doesn't skip preceding whitespace, if no alignment is specified).
+ * Doesn't skip preceding whitespace.
  * Errors if no field precision is provided.
  * </td>
  * </tr>
@@ -8114,8 +8220,7 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * in the set is encountered. Character ranges can be specified with `-`, and
  * the entire selection can be inverted with a prefix `^`. Matches and supports
  * arbitrary Unicode code points.
- * Has no default alignment
- * (doesn't skip preceding whitespace, if no alignment is specified).
+ * Doesn't skip preceding whitespace.
  * </td>
  * </tr>
  * <tr>
@@ -8123,8 +8228,7 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * <td>
  * Regular expression matching: copies from the input until the input does not
  * match the regex.
- * Has no default alignment
- * (doesn't skip preceding whitespace, if no alignment is specified).
+ * Doesn't skip preceding whitespace.
  * \see regex
  * </td>
  * </tr>
@@ -8767,7 +8871,7 @@ protected:
  * struct scn::scanner<mytype> {
  *   template <typename ParseContext>
  *   constexpr auto parse(ParseCtx& pctx)
- *     -> scan_expected<typename ParseContext::iterator> {
+ *     -> typename ParseContext::iterator {
  *     // parse() implementation just returning begin():
  *     // only permits empty format specifiers
  *     return pctx.begin();
@@ -9087,28 +9191,22 @@ SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scan_context)
 // visit_scan_arg
 /////////////////////////////////////////////////////////////////
 
-/**
- * Visit a `basic_scan_arg` with `Visitor`.
- * Calls `vis` with the value stored in `arg`.
- * If no value is contained in `arg`, calls `vis` with a `monostate`.
- *
- * \return `vis(x)`, where `x` is either a reference to the value contained
- * in `arg`, or a `basic_scan_arg::handle`.
- */
+namespace detail {
+
 template <typename Visitor, typename Ctx>
-constexpr decltype(auto) visit_scan_arg(Visitor&& vis, basic_scan_arg<Ctx>& arg)
+constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
 {
-#define SCN_VISIT(Type)                                         \
-    if constexpr (!detail::is_type_disabled<Type>) {            \
-        return vis(*static_cast<Type*>(arg.m_value.ref_value)); \
-    }                                                           \
-    else {                                                      \
-        return vis(monostate_val);                              \
+#define SCN_VISIT(Type)                                                \
+    if constexpr (!detail::is_type_disabled<Type>) {                   \
+        return vis(*static_cast<Type*>(get_arg_value(arg).ref_value)); \
+    }                                                                  \
+    else {                                                             \
+        return vis(monostate_val);                                     \
     }
 
     monostate monostate_val{};
 
-    switch (arg.m_type) {
+    switch (get_arg_type(arg)) {
         case detail::arg_type::schar_type:
             SCN_VISIT(signed char);
         case detail::arg_type::short_type:
@@ -9160,8 +9258,8 @@ constexpr decltype(auto) visit_scan_arg(Visitor&& vis, basic_scan_arg<Ctx>& arg)
 
         case detail::arg_type::custom_type:
 #if !SCN_DISABLE_TYPE_CUSTOM
-            return vis(
-                typename basic_scan_arg<Ctx>::handle(arg.m_value.custom_value));
+            return vis(typename basic_scan_arg<Ctx>::handle(
+                get_arg_value(arg).custom_value));
 #else
             return vis(monostate_val);
 #endif
@@ -9182,6 +9280,29 @@ constexpr decltype(auto) visit_scan_arg(Visitor&& vis, basic_scan_arg<Ctx>& arg)
 
     SCN_ENSURE(false);
     SCN_UNREACHABLE;
+}
+
+}  // namespace detail
+
+template <typename Visitor, typename Ctx>
+[[deprecated("Use basic_scan_arg::visit instead")]] constexpr decltype(auto)
+visit_scan_arg(Visitor&& vis, basic_scan_arg<Ctx>& arg)
+{
+    return detail::visit_impl(SCN_FWD(vis), arg);
+}
+
+template <typename Context>
+template <typename Visitor>
+constexpr decltype(auto) basic_scan_arg<Context>::visit(Visitor&& vis)
+{
+    return detail::visit_impl(SCN_FWD(vis), *this);
+}
+
+template <typename Context>
+template <typename R, typename Visitor>
+constexpr R basic_scan_arg<Context>::visit(Visitor&& vis)
+{
+    return detail::visit_impl(SCN_FWD(vis), *this);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -9484,6 +9605,11 @@ template <typename Source, typename... Args>
 using scan_result_type =
     scan_expected<scan_result<detail::scan_result_value_type<Source>, Args...>>;
 
+/**
+ * If `in` contains a successful result as returned from `vscan`,
+ * the range contained in `out` is set to `*in`.
+ * Otherwise, `unexpected(in.error())` is stored in `out`.
+ */
 template <typename Result,
           typename Range,
           std::enable_if_t<std::conjunction_v<
@@ -9499,6 +9625,10 @@ void fill_scan_result(scan_expected<Result>& out, scan_expected<Range>&& in)
     }
 }
 
+/**
+ * Returns an empty result type for a source of type `Source`, and arguments of
+ * type `Args...`.
+ */
 template <typename Source, typename... Args>
 auto make_scan_result()
 {
