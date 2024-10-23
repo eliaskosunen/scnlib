@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - v*/dev
     paths:
       - "**.h"
       - "**.hpp"
@@ -62,24 +61,12 @@ jobs:
           cd docs
           poxy --verbose --git-tags --min-version v2.0.0 --no-squash-patches
 
-      - name: Deploy (master)
+      - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.ref_name == 'master' || github.event_name == 'release' }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/html
           keep_files: true
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-          commit_message: Update documentation (GitHub actions deploy)
-
-      - name: Deploy (branch)
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.ref_name != 'master' && github.event_name != 'release' }}
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/html
-          destination_dir: ref/${{ github.ref_name }}
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: Update documentation (GitHub actions deploy)
