@@ -80,8 +80,8 @@ option(SCN_DISABLE_TYPE_CUSTOM "Disable scanning of user types" OFF)
 
 option(SCN_DISABLE_IOSTREAM "Disable iostreams" OFF)
 option(SCN_DISABLE_LOCALE "Disable all localization" OFF)
-# TODO:
-#option(SCN_DISABLE_TRANSCODING "Disable scanning of wide characters and strings from narrow sources, and vice versa" OFF)
+option(SCN_DISABLE_STRTOD "Disallow falling back on std::strtod when scanning floating-point values" OFF)
+option(SCN_DISABLE_CHRONO "Disable <chrono> and <ctime> scanners" OFF)
 
 option(SCN_DISABLE_FROM_CHARS "Disallow falling back on std::from_chars when scanning floating-point values" OFF)
 option(SCN_DISABLE_STRTOD "Disallow falling back on std::strtod when scanning floating-point values" OFF)

@@ -2036,6 +2036,8 @@ template auto scan_int_exhaustive_valid_impl(std::string_view)
 // <chrono> scanning
 ///////////////////////////////////////////////////////////////////////////////
 
+#if !SCN_DISABLE_CHRONO
+
 template <typename T>
 struct datetime_setter;
 
@@ -3021,6 +3023,7 @@ public:
     }
     void on_subsecond(numeric_system sys = numeric_system::standard)
     {
+#if !SCN_DISABLE_TYPE_STRING && !SCN_DISABLE_TYPE_DOUBLE
         int whole = read_classic_unsigned_integer(1, 2);
         setter::set_sec(*this, m_tm, m_st, whole);
 
@@ -3040,7 +3043,7 @@ public:
                      "Expected decimal separator in subsecond value"});
             }
         }
-#endif
+#endif  // !SCN_DISABLE_LOCALE
 
         auto str_res = scan<std::string>(
             ranges::subrange{m_begin, m_range.end()}, []() -> decltype(auto) {
@@ -3068,6 +3071,12 @@ public:
         }
 
         setter::set_subsec(*this, m_tm, m_st, dbl_res->value());
+
+#else  // !SCN_DISABLE_TYPE_STRING && !SCN_DISABLE_TYPE_DOUBLE
+        SCN_UNUSED(sys);
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+#endif
     }
 
     void on_tz_offset(numeric_system sys = numeric_system::standard)
@@ -3602,6 +3611,8 @@ template auto chrono_scan_impl(std::wstring_view,
     -> scan_expected<wscan_context::iterator>;
 
 }  // namespace detail
+
+#endif  // !SCN_DISABLE_CHRONO
 
 SCN_END_NAMESPACE
 }  // namespace scn

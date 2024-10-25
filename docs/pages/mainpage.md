@@ -281,6 +281,14 @@ scnlib configuration options
 </tr>
 
 <tr>
+<td>`SCN_DISABLE_CHRONO`</td>
+<td>✅</td>
+<td>✅</td>
+<td>`OFF`</td>
+<td>Disable all `&lt;chrono&gt;` and `&lt;ctime&gt;` scanners</td>
+</tr>
+
+<tr>
 <td>`SCN_DISABLE_(TYPE)`</td>
 <td>✅</td>
 <td>✅</td>

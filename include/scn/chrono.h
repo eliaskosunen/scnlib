@@ -22,6 +22,10 @@
 #include <chrono>
 #include <ctime>
 
+#if SCN_DISABLE_CHRONO
+#error "scn/chrono.h included, but SCN_DISABLE_CHRONO is true"
+#endif
+
 namespace scn {
 SCN_BEGIN_NAMESPACE
 
@@ -1319,6 +1323,10 @@ struct tm_format_checker {
     {
         if (!always_supports_field<T, field_tags::subsec>::value) {
             on_error("Sub-seconds not supported with this type");
+        }
+        if constexpr (SCN_DISABLE_TYPE_STRING || SCN_DISABLE_TYPE_DOUBLE) {
+            on_error(
+                "Support for strings and doubles required for sub-seconds");
         }
         st.set_subsec(*this);
     }

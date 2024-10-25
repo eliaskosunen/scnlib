@@ -17,10 +17,11 @@
 
 #include "../wrapped_gtest.h"
 
-#include <scn/chrono.h>
 #include <scn/scan.h>
 
-#if !SCN_DISABLE_LOCALE
+#if !SCN_DISABLE_LOCALE && !SCN_DISABLE_CHRONO
+
+#include <scn/chrono.h>
 
 namespace {
 
@@ -308,4 +309,4 @@ TEST(LocalizedChronoTest, Datetime)
 
 }  // namespace
 
-#endif  // !SCN_DISABLE_LOCALE
+#endif  // !SCN_DISABLE_LOCALE && !SCN_DISABLE_CHRONO

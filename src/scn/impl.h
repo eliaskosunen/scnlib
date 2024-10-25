@@ -2972,7 +2972,7 @@ public:
                                  args_type a,
                                  detail::locale_ref loc = {})
         : base(SCN_MOVE(a), loc),
-          m_range(SCN_FWD(r)),
+          m_range(ranges::data(r), ranges::data(r) + ranges::size(r)),
           m_current(m_range.begin())
     {
     }

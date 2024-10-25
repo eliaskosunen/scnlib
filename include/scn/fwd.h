@@ -101,13 +101,6 @@
 #define SCN_DISABLE_IOSTREAM 0
 #endif
 
-// SCN_DISABLE_TRANSCODING
-// If 1, removes the ability to read narrow data from wide sources,
-// and vice versa
-#ifndef SCN_DISABLE_TRANSCODING
-#define SCN_DISABLE_TRANSCODING 0
-#endif
-
 // SCN_DISABLE_LOCALE
 // If 1, removes all references to std::locale, and C locale
 #ifndef SCN_DISABLE_LOCALE
@@ -126,6 +119,12 @@
 // even if it were available
 #ifndef SCN_DISABLE_STRTOD
 #define SCN_DISABLE_STRTOD 0
+#endif
+
+// SCN_DISABLE_CHRONO
+// If 1, disables all <chrono> and <ctime> scanners
+#ifndef SCN_DISABLE_CHRONO
+#define SCN_DISABLE_CHRONO 0
 #endif
 
 // SCN_DISABLE_TYPE_*
@@ -935,7 +934,7 @@ SCN_GCC_POP
     static_cast<    \
         typename ::scn::detail::remove_reference<decltype(x)>::type&&>(x)
 #define SCN_FWD(x)          static_cast<decltype(x)&&>(x)
-#define SCN_DECLVAL(...)      static_cast<__VA_ARGS__ (*)()>(nullptr)()
+#define SCN_DECLVAL(...)    static_cast<__VA_ARGS__ (*)()>(nullptr)()
 
 #define SCN_BEGIN_NAMESPACE inline namespace v4 {
 #define SCN_END_NAMESPACE   }
@@ -966,7 +965,7 @@ struct buffer_range_tag {};
 
 template <typename CharT>
 using default_context = basic_scan_context<buffer_range_tag, CharT>;
-}
+}  // namespace detail
 
 using scan_context = basic_scan_context<detail::buffer_range_tag, char>;
 using wscan_context = basic_scan_context<detail::buffer_range_tag, wchar_t>;

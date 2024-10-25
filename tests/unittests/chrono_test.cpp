@@ -17,8 +17,11 @@
 
 #include "wrapped_gtest.h"
 
-#include <scn/chrono.h>
 #include <scn/scan.h>
+
+#if !SCN_DISABLE_CHRONO
+
+#include <scn/chrono.h>
 
 namespace {
 
@@ -320,3 +323,5 @@ TEST(ChronoScanTest, Fuzz1)
 }
 
 }  // namespace
+
+#endif  // !SCN_DISABLE_CHRONO
