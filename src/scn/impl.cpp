@@ -2266,9 +2266,8 @@ struct datetime_setter<std::tm> {
                               std::chrono::minutes o)
     {
         if constexpr (mp_valid<has_tm_gmtoff_predicate, std::tm>::value) {
-            t.tm_gmtoff =
-                std::chrono::duration_cast<std::chrono::seconds>(o).count();
-            return st.set_tzoff(h);
+            assign_gmtoff(t,
+                          std::chrono::duration_cast<std::chrono::seconds>(o));
         }
         else {
             return h.set_error(
@@ -3480,7 +3479,7 @@ private:
                     loc),
                 &std::use_facet<
                     typename localized_read_state::numpunct_facet_type>(loc),
-                {}};
+                std::basic_stringstream<CharT>{}};
 
             m_loc_state->dummy_stream.imbue(m_loc_state->locale);
         }

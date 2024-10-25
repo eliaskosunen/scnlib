@@ -29,7 +29,7 @@ auto const en_locale = []() {
         return std::locale("en_US.UTF-8");
     }
     catch (...) {
-        std::fputs("en_US.UTF-8 local required for scn_localized_tests",
+        std::fputs("en_US.UTF-8 locale required for scn_localized_tests",
                    stderr);
         std::abort();
     }
@@ -40,7 +40,7 @@ auto const fi_locale = []() {
         return std::locale("fi_FI.UTF-8");
     }
     catch (...) {
-        std::fputs("fi_FI.UTF-8 local required for scn_localized_tests",
+        std::fputs("fi_FI.UTF-8 locale required for scn_localized_tests",
                    stderr);
         std::abort();
     }

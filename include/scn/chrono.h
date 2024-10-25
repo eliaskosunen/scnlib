@@ -249,7 +249,22 @@ private:
 namespace detail {
 template <typename T>
 using has_tm_gmtoff_predicate = decltype(T::tm_gmtoff);
+
+template <typename T>
+void assign_gmtoff(T& tm, std::chrono::seconds val)
+{
+    static_assert(std::is_same_v<T, std::tm>);
+    if constexpr (mp_valid<has_tm_gmtoff_predicate, T>::value) {
+        tm.tm_gmtoff = val.count();
+    }
+    else {
+        SCN_UNUSED(tm);
+        SCN_UNUSED(val);
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
 }
+}  // namespace detail
 
 /**
  * An alternative to `std::tm`,
@@ -303,9 +318,9 @@ struct datetime_components {
         };
         if constexpr (detail::mp_valid<detail::has_tm_gmtoff_predicate,
                                        std::tm>::value) {
-            t.tm_gmtoff = std::chrono::duration_cast<std::chrono::seconds>(
-                              tz_offset.value_or(std::chrono::minutes{0}))
-                              .count();
+            detail::assign_gmtoff(
+                t, std::chrono::duration_cast<std::chrono::seconds>(
+                       tz_offset.value_or(std::chrono::minutes{0})));
         }
         return t;
     }

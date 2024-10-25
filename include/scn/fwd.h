@@ -935,7 +935,7 @@ SCN_GCC_POP
     static_cast<    \
         typename ::scn::detail::remove_reference<decltype(x)>::type&&>(x)
 #define SCN_FWD(x)          static_cast<decltype(x)&&>(x)
-#define SCN_DECLVAL(T)      static_cast<T (*)()>(nullptr)()
+#define SCN_DECLVAL(...)      static_cast<__VA_ARGS__ (*)()>(nullptr)()
 
 #define SCN_BEGIN_NAMESPACE inline namespace v4 {
 #define SCN_END_NAMESPACE   }
