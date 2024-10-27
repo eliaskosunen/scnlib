@@ -90,6 +90,7 @@ if (SCN_DISABLE_FAST_FLOAT)
             SCN_CHARCONV_SUCCESS
             "${CMAKE_CURRENT_BINARY_DIR}"
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/charconv_compile_test.cpp"
+            CXX_STANDARD_REQUIRED 17
     )
     if (NOT SCN_CHARCONV_SUCCESS)
         message(FATAL_ERROR
