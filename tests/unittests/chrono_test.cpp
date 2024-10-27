@@ -317,8 +317,8 @@ TEST(ChronoScanTest, Fuzz1)
     ASSERT_FALSE(result);
 
     auto str = std::string_view{""};
-    result = scn::scan<std::tm>(scn::ranges::subrange{str.begin(), str.end()},
-                                "{:%D}");
+    result = scn::scan<std::tm>(
+        scn::ranges::subrange{str.data(), str.data() + str.size()}, "{:%D}");
     ASSERT_FALSE(result);
 }
 

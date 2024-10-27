@@ -1502,7 +1502,7 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
     auto checker = detail::tm_format_checker<T>{};
     end = detail::parse_chrono_format_specs(it, end, checker);
     if (end != it) {
-        fmt_str = detail::make_string_view_from_iterators<CharT>(it, end);
+        fmt_str = detail::make_string_view_from_pointers(it, end);
     }
     if (auto e = checker.get_error(); SCN_UNLIKELY(!e)) {
         assert(e.error().code() == scan_error::invalid_format_string);
