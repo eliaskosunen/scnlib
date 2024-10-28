@@ -51,11 +51,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 14, 12 ]
+        os: [ 14 ]
         cxx: [ brew-clang++, clang++, g++-14, g++-13, g++-12 ]
         std: [ 17 ]
 
         include:
+          # brew-clang++ with later standards on macos 14
           - os: 14
             cxx: brew-clang++
             std: 20
@@ -63,18 +64,13 @@ jobs:
             cxx: brew-clang++
             std: 23
 
-        exclude:
-          # macos 14 + gcc ICEs in the linker
-          - os: 14
-            cxx: g++-13
-          - os: 14
-            cxx: g++-12
-          - os: 14
-            cxx: g++-11
-
-          # Fails at CMake-configure time inside Google benchmark
-          - os: 12
-            cxx: g++-13
+          # macos 15 with built-in clang++ and brew-clang++
+          - os: 15
+            cxx: clang++
+            std: 17
+          - os: 15
+            cxx: brew-clang++
+            std: 17
 
     env:
       CXX: ${{ matrix.cxx }}
