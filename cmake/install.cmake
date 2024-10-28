@@ -5,9 +5,9 @@ endif()
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/scn)
 
 set(targets "scn")
-if(NOT SCN_USE_EXTERNAL_FAST_FLOAT)
+if (NOT SCN_DISABLE_FAST_FLOAT AND NOT SCN_USE_EXTERNAL_FAST_FLOAT)
     list(APPEND targets fast_float)
-endif()
+endif ()
 
 install(TARGETS ${targets}
         EXPORT scn-targets
