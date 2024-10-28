@@ -555,7 +555,7 @@ jobs:
           - "-DSCN_DISABLE_FAST_FLOAT=ON"
 
     env:
-      CXX: g++-13
+      CXX: g++-14
       CMAKE_CXX_STANDARD: 17
       CMAKE_C_COMPILER_LAUNCHER: ccache
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
