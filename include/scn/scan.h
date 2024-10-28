@@ -6277,6 +6277,7 @@ public:
     {
         m_specs.fill = fill;
     }
+    template <bool Dependent = true>
     constexpr void on_localized()
     {
         if constexpr (!SCN_DISABLE_LOCALE) {
