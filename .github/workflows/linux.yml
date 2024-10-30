@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - v*/dev
+      - ci/*
     paths:
       - '.github/workflows/linux.yml'
       - 'benchmark/**'
@@ -18,6 +19,7 @@ on:
     branches:
       - master
       - v*/dev
+      - ci/*
     paths:
       - '.github/workflows/linux.yml'
       - 'benchmark/**'
@@ -710,3 +712,55 @@ jobs:
       - name: Test
         working-directory: ${{ runner.workspace }}/build
         run: ctest --output-on-failure
+
+  emscripten:
+    runs-on: ubuntu-22.04
+
+    env:
+      CMAKE_CXX_STANDARD: 17
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Install ccache
+        run: |
+          ${APT_INSTALL} ccache
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.workflow }}-emscripten-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ github.workflow }}-emscripten-${{ github.ref }}
+            ccache-${{ github.workflow }}-emscripten-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-emscripten
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
+
+      - name: Setup EMSDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Run CMake
+        run: |
+          mkdir ${{ runner.workspace }}/build
+          cd ${{ runner.workspace }}/build
+          emcmake cmake -DSCN_CI=ON -DSCN_BENCHMARKS=OFF $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          emmake cmake --build . --parallel

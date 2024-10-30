@@ -5,6 +5,7 @@
 _Released 2024-xx-xx_
 
  * Fix formatting options of user-defined types sometimes being ignored
+ * Fix build failures on Emscripten
  * Update documentation to have a version-dropdown
 
 ## 3.0.1

@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - v*/dev
+      - ci/*
     paths:
       - '.github/workflows/arch.yml'
       - 'cmake/**'
@@ -16,6 +17,7 @@ on:
     branches:
       - master
       - v*/dev
+      - ci/*
     paths:
       - '.github/workflows/arch.yml'
       - 'cmake/**'
