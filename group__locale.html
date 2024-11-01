@@ -6,7 +6,9 @@
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <meta content="#22272e" name="theme-color"/>
   <link href="poxy/poxy.css" referrerpolicy="no-referrer" rel="stylesheet"/>
+  <script src="poxy/jquery-3.6.0.slim.min.js"></script>
   <script src="poxy/poxy.js"></script>
+  <script src="monospace-headers.js"></script>
   <script>initialize_theme("dark");</script>
   <meta content="scnlib" name="twitter:title"/>
   <meta content="scnlib" property="og:title"/>
@@ -77,14 +79,14 @@
           <dl class="m-doc">
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Locale</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/void_t.html" target="_blank">std::<wbr/>void_t</a>&lt;decltype(Locale::classic())&gt;</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gaeaf87124fedc94865510addcc42087b6">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga9a6e88166a7405b3543be539b256bf19">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               scan_format_string&lt;Source, Args...&gt; format) →  scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Locale</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/void_t.html" target="_blank">std::<wbr/>void_t</a>&lt;decltype(Locale::classic())&gt;</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga579fa74ff6da85cb5b8f101d93ce8e09">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gad8c7621d3cea56d52c969a41ea206b97">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               scan_format_string&lt;Source, Args...&gt; format,
               <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; initial_args) →  scan_result_type&lt; Source, Args... &gt; -&gt; auto</span>
@@ -92,7 +94,7 @@
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename Locale</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/void_t.html" target="_blank">std::<wbr/>void_t</a>&lt;decltype(Locale::classic())&gt;</span></span>&gt;</div>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#gab5baa54a3e7a6eaccb03c7d1bbd0f9eb">vscan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga1be29aec384d3100148ad2e19b62717a">vscan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> format,
               scan_args args) →  vscan_result&lt;Source&gt;</span>
@@ -102,37 +104,37 @@
         </section>
         <section>
           <h2>Function documentation</h2>
-          <section class="m-doc-details" id="gaeaf87124fedc94865510addcc42087b6"><div>
+          <section class="m-doc-details" id="ga9a6e88166a7405b3543be539b256bf19"><div>
             <h3>
               <div class="m-doc-template">
                 template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Locale</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/void_t.html" target="_blank">std::<wbr/>void_t</a>&lt;decltype(Locale::classic())&gt;</span></span>&gt;
               </div>
-              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gaeaf87124fedc94865510addcc42087b6">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
+              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga9a6e88166a7405b3543be539b256bf19">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               scan_format_string&lt;Source, Args...&gt; format) →  scan_result_type&lt; Source, Args... &gt;</span></span>
             </h3>
 <p><code>scan</code> using an explicit locale.</p><p>Has no effect on its own, locale-specific scanning still needs to be opted-into on an argument-by-argument basis, with the <code>L</code> format string specifier.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">double</span><span class="o">&gt;</span><span class="p">(</span>
     <span class="nn">std</span><span class="o">::</span><span class="nc">locale</span><span class="p">{</span><span class="s">"fi_FI.UTF-8"</span><span class="p">},</span> <span class="s">"3,14, "</span><span class="p">{</span><span class="o">:L</span><span class="p">}</span><span class="s">");</span>
-<span class="c1">// result-&gt;value() == 3.14</span></pre><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scan()</a></p></aside>
+<span class="c1">// result-&gt;value() == 3.14</span></pre>
           </div></section>
-          <section class="m-doc-details" id="ga579fa74ff6da85cb5b8f101d93ce8e09"><div>
+          <section class="m-doc-details" id="gad8c7621d3cea56d52c969a41ea206b97"><div>
             <h3>
               <div class="m-doc-template">
                 template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename... Args</span>, <span class="m-doc-template-param">typename Locale</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/enable_if.html" target="_blank">std::<wbr/>enable_if_t</a>&lt;detail::is_file_or_narrow_range&lt;Source&gt;&gt;</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/void_t.html" target="_blank">std::<wbr/>void_t</a>&lt;decltype(Locale::classic())&gt;</span></span>&gt;
               </div>
-              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga579fa74ff6da85cb5b8f101d93ce8e09">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
+              <span class="m-doc-wrap-bumper">auto </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gad8c7621d3cea56d52c969a41ea206b97">scan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               scan_format_string&lt;Source, Args...&gt; format,
               <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a>&lt;Args...&gt;&amp;&amp; initial_args) →  scan_result_type&lt; Source, Args... &gt;</span></span>
             </h3>
-<p><code>scan</code> with a locale and default values</p><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scan()</a></p></aside>
+<p><code>scan</code> with a locale and default values</p>
           </div></section>
-          <section class="m-doc-details" id="gab5baa54a3e7a6eaccb03c7d1bbd0f9eb"><div>
+          <section class="m-doc-details" id="ga1be29aec384d3100148ad2e19b62717a"><div>
             <h3>
               <div class="m-doc-template">
                 template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename Locale</span>, <span class="m-doc-template-param">typename = <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/types/void_t.html" target="_blank">std::<wbr/>void_t</a>&lt;decltype(Locale::classic())&gt;</span></span>&gt;
               </div>
-              <span class="m-doc-wrap-bumper">vscan_result&lt;Source&gt; </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#gab5baa54a3e7a6eaccb03c7d1bbd0f9eb">vscan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
+              <span class="m-doc-wrap-bumper">vscan_result&lt;Source&gt; </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga1be29aec384d3100148ad2e19b62717a">vscan</a>(</span><span class="m-doc-wrap">const Locale&amp; loc,
               Source&amp;&amp; source,
               <a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> format,
               scan_args args)</span></span>

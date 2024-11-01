@@ -1,572 +1,705 @@
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <tagfile doxygen_version="1.9.1">
   <compound kind="struct">
-    <name>scn::basic_istream_scanner</name>
-    <filename>structscn_1_1basic__istream__scanner.html</filename>
+    <name>scn::v3::basic_istream_scanner</name>
+    <filename>structscn_1_1v3_1_1basic__istream__scanner.html</filename>
     <templarg></templarg>
   </compound>
   <compound kind="class">
-    <name>scn::detail::basic_range_streambuf</name>
-    <filename>classscn_1_1detail_1_1basic__range__streambuf.html</filename>
+    <name>scn::v3::detail::basic_range_streambuf</name>
+    <filename>classscn_1_1v3_1_1detail_1_1basic__range__streambuf.html</filename>
     <templarg></templarg>
     <base>basic_streambuf&lt; detail::char_t&lt; SourceRange &gt; &gt;</base>
   </compound>
   <compound kind="class">
-    <name>scn::basic_regex_match</name>
-    <filename>classscn_1_1basic__regex__match.html</filename>
+    <name>scn::v3::basic_regex_match</name>
+    <filename>classscn_1_1v3_1_1basic__regex__match.html</filename>
     <templarg></templarg>
     <member kind="function">
       <type>std::basic_string_view&lt; CharT &gt;</type>
       <name>get</name>
-      <anchorfile>classscn_1_1basic__regex__match.html</anchorfile>
-      <anchor>a0f6d5994203b49be3655eec5861da63b</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__regex__match.html</anchorfile>
+      <anchor>a8e27a9f0031037cc2b28f5681cfa69c6</anchor>
       <arglist>() const</arglist>
     </member>
   </compound>
   <compound kind="class">
-    <name>scn::basic_regex_matches</name>
-    <filename>classscn_1_1basic__regex__matches.html</filename>
+    <name>scn::v3::basic_regex_matches</name>
+    <filename>classscn_1_1v3_1_1basic__regex__matches.html</filename>
     <templarg></templarg>
     <base protection="private">vector&lt; std::optional&lt; basic_regex_match&lt; CharT &gt; &gt; &gt;</base>
   </compound>
   <compound kind="struct">
-    <name>scn::detail::basic_runtime_format_string</name>
-    <filename>structscn_1_1detail_1_1basic__runtime__format__string.html</filename>
+    <name>scn::v3::detail::basic_runtime_format_string</name>
+    <filename>structscn_1_1v3_1_1detail_1_1basic__runtime__format__string.html</filename>
     <templarg></templarg>
   </compound>
   <compound kind="class">
-    <name>scn::basic_scan_arg</name>
-    <filename>classscn_1_1basic__scan__arg.html</filename>
+    <name>scn::v3::basic_scan_arg</name>
+    <filename>classscn_1_1v3_1_1basic__scan__arg.html</filename>
     <templarg></templarg>
-    <class kind="class">scn::basic_scan_arg::handle</class>
+    <class kind="class">scn::v3::basic_scan_arg::handle</class>
     <member kind="function">
       <type>constexpr</type>
       <name>basic_scan_arg</name>
-      <anchorfile>classscn_1_1basic__scan__arg.html</anchorfile>
-      <anchor>a44d0fb24270445ce71e0acf2b7244a7b</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__arg.html</anchorfile>
+      <anchor>a7cf65188bf45e94fd804d08af0e876e5</anchor>
       <arglist>()=default</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>operator bool</name>
-      <anchorfile>classscn_1_1basic__scan__arg.html</anchorfile>
-      <anchor>a7ad80a65f90fd3ccfee1bb895a7cb45d</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__arg.html</anchorfile>
+      <anchor>a4385d648d480d638dc9d2e243b7f7a17</anchor>
       <arglist>() const noexcept</arglist>
     </member>
   </compound>
   <compound kind="class">
-    <name>scn::basic_scan_args</name>
-    <filename>classscn_1_1basic__scan__args.html</filename>
+    <name>scn::v3::basic_scan_args</name>
+    <filename>classscn_1_1v3_1_1basic__scan__args.html</filename>
     <templarg></templarg>
     <member kind="function">
       <type>constexpr basic_scan_arg&lt; Context &gt;</type>
       <name>get</name>
-      <anchorfile>classscn_1_1basic__scan__args.html</anchorfile>
-      <anchor>a1bb2c528090351e09bbdbb7655cc27c3</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__args.html</anchorfile>
+      <anchor>ac88a6c4fcc1cceaa63ae6d25449563ac</anchor>
       <arglist>(std::size_t id) const</arglist>
     </member>
     <member kind="function">
       <type>constexpr std::size_t</type>
       <name>size</name>
-      <anchorfile>classscn_1_1basic__scan__args.html</anchorfile>
-      <anchor>a1dbb82b6cb70ce6ccd29cd8369d892df</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__args.html</anchorfile>
+      <anchor>aa431746413edc1f5347abaf232cad648</anchor>
       <arglist>() const</arglist>
     </member>
   </compound>
   <compound kind="class">
-    <name>scn::basic_scan_context</name>
-    <filename>classscn_1_1basic__scan__context.html</filename>
+    <name>scn::v3::basic_scan_context</name>
+    <filename>classscn_1_1v3_1_1basic__scan__context.html</filename>
     <templarg></templarg>
     <member kind="typedef">
       <type>CharT</type>
       <name>char_type</name>
-      <anchorfile>classscn_1_1basic__scan__context.html</anchorfile>
-      <anchor>a841754690355777f4908a0ac32225b87</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__context.html</anchorfile>
+      <anchor>a00bc05a40d95c47fded4ac21afa962b7</anchor>
       <arglist></arglist>
     </member>
     <member kind="typedef">
       <type>scanner&lt; T, char_type &gt;</type>
       <name>scanner_type</name>
-      <anchorfile>classscn_1_1basic__scan__context.html</anchorfile>
-      <anchor>ab4c2fa773d43626ed477e1a1a7d7a6a2</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__context.html</anchorfile>
+      <anchor>aa39a7906b81d6b5f89676cb853c5bab4</anchor>
       <arglist></arglist>
     </member>
     <member kind="function">
       <type>constexpr iterator</type>
       <name>begin</name>
-      <anchorfile>classscn_1_1basic__scan__context.html</anchorfile>
-      <anchor>a849014a08f5f31c89b2d819adbe35b1a</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__context.html</anchorfile>
+      <anchor>a8b32f507195edf0ea29f041c825fadf2</anchor>
       <arglist>() const</arglist>
     </member>
     <member kind="function">
       <type>constexpr sentinel</type>
       <name>end</name>
-      <anchorfile>classscn_1_1basic__scan__context.html</anchorfile>
-      <anchor>a5c0bab0a0cc951fc6ac1d6753e6bb974</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__context.html</anchorfile>
+      <anchor>ad908cb7723ebed7bf050eb42cd289862</anchor>
       <arglist>() const</arglist>
     </member>
     <member kind="function">
       <type>constexpr auto</type>
       <name>range</name>
-      <anchorfile>classscn_1_1basic__scan__context.html</anchorfile>
-      <anchor>a25e9526263885f3abbe466cbc78fe3bf</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__context.html</anchorfile>
+      <anchor>a5e0292938e979508d4f04cb62ebef808</anchor>
       <arglist>() const</arglist>
     </member>
     <member kind="function">
       <type>void</type>
       <name>advance_to</name>
-      <anchorfile>classscn_1_1basic__scan__context.html</anchorfile>
-      <anchor>a4e54c3141f24b3189d17da1f82bde263</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__context.html</anchorfile>
+      <anchor>a7f4b30fc19e113d920d82e78f353ce3b</anchor>
       <arglist>(iterator it)</arglist>
     </member>
   </compound>
   <compound kind="class">
-    <name>scn::basic_scan_format_string</name>
-    <filename>classscn_1_1basic__scan__format__string.html</filename>
+    <name>scn::v3::basic_scan_format_string</name>
+    <filename>classscn_1_1v3_1_1basic__scan__format__string.html</filename>
     <templarg></templarg>
     <templarg></templarg>
     <templarg>Args</templarg>
   </compound>
   <compound kind="class">
-    <name>scn::basic_scan_parse_context</name>
-    <filename>classscn_1_1basic__scan__parse__context.html</filename>
+    <name>scn::v3::basic_scan_parse_context</name>
+    <filename>classscn_1_1v3_1_1basic__scan__parse__context.html</filename>
     <templarg></templarg>
     <member kind="function">
       <type>constexpr</type>
       <name>basic_scan_parse_context</name>
-      <anchorfile>classscn_1_1basic__scan__parse__context.html</anchorfile>
-      <anchor>addb0e257dc2abd7f78de48707f5a7b84</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__parse__context.html</anchorfile>
+      <anchor>a757489d9cdb93514140664468b80afb5</anchor>
       <arglist>(std::basic_string_view&lt; CharT &gt; format, int next_arg_id=0)</arglist>
     </member>
     <member kind="function">
       <type>constexpr auto</type>
       <name>begin</name>
-      <anchorfile>classscn_1_1basic__scan__parse__context.html</anchorfile>
-      <anchor>ad50abf46509743cb5acd10c37e2e76b2</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__parse__context.html</anchorfile>
+      <anchor>a4d2f01717d34d11e88f9e4cfb25c2dbc</anchor>
       <arglist>() const noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr auto</type>
       <name>end</name>
-      <anchorfile>classscn_1_1basic__scan__parse__context.html</anchorfile>
-      <anchor>a27613344c5dca87da4ded31dcb3ec6a3</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__parse__context.html</anchorfile>
+      <anchor>a1dede2ac373f82987eb4f4d3f53a9eb7</anchor>
       <arglist>() const noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr void</type>
       <name>advance_to</name>
-      <anchorfile>classscn_1_1basic__scan__parse__context.html</anchorfile>
-      <anchor>a206877196ee14806f50c2af5f271865f</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__parse__context.html</anchorfile>
+      <anchor>a1045d75cd2d7b45eb9fae471a1c7c35e</anchor>
       <arglist>(iterator it)</arglist>
     </member>
   </compound>
   <compound kind="class">
-    <name>scn::detail::compile_parse_context</name>
-    <filename>classscn_1_1detail_1_1compile__parse__context.html</filename>
+    <name>scn::v3::detail::compile_parse_context</name>
+    <filename>classscn_1_1v3_1_1detail_1_1compile__parse__context.html</filename>
     <templarg></templarg>
-    <base>scn::basic_scan_parse_context</base>
+    <base>scn::v3::basic_scan_parse_context</base>
     <member kind="function">
       <type>constexpr auto</type>
       <name>begin</name>
-      <anchorfile>classscn_1_1basic__scan__parse__context.html</anchorfile>
-      <anchor>ad50abf46509743cb5acd10c37e2e76b2</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__parse__context.html</anchorfile>
+      <anchor>a4d2f01717d34d11e88f9e4cfb25c2dbc</anchor>
       <arglist>() const noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr auto</type>
       <name>end</name>
-      <anchorfile>classscn_1_1basic__scan__parse__context.html</anchorfile>
-      <anchor>a27613344c5dca87da4ded31dcb3ec6a3</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__parse__context.html</anchorfile>
+      <anchor>a1dede2ac373f82987eb4f4d3f53a9eb7</anchor>
       <arglist>() const noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr void</type>
       <name>advance_to</name>
-      <anchorfile>classscn_1_1basic__scan__parse__context.html</anchorfile>
-      <anchor>a206877196ee14806f50c2af5f271865f</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__parse__context.html</anchorfile>
+      <anchor>a1045d75cd2d7b45eb9fae471a1c7c35e</anchor>
       <arglist>(iterator it)</arglist>
     </member>
   </compound>
   <compound kind="struct">
-    <name>scn::discard</name>
-    <filename>structscn_1_1discard.html</filename>
+    <name>scn::v3::discard</name>
+    <filename>structscn_1_1v3_1_1discard.html</filename>
     <templarg></templarg>
   </compound>
   <compound kind="class">
-    <name>scn::expected</name>
-    <filename>classscn_1_1expected.html</filename>
+    <name>scn::v3::expected</name>
+    <filename>classscn_1_1v3_1_1expected.html</filename>
     <templarg></templarg>
     <templarg></templarg>
     <member kind="function">
       <type>constexpr SCN_IMPLICIT</type>
       <name>expected</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>ab0ede791bf9f0f4da21cfd9c9e96d952</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>adbf4744a32c7fcc486c4312e8b2b25b9</anchor>
       <arglist>(U &amp;&amp;val) noexcept(std::is_nothrow_constructible_v&lt; base, std::in_place_t, U &amp;&amp; &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>expected</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>ac04a05ab9b458b8199a100f26df047ff</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>ab8de0ab9ca4ddedd9c4ddbbfa5135886</anchor>
       <arglist>(std::in_place_t, Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; base, std::in_place_t, Args &amp;&amp;... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>expected</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a0b4be5dc98e2f248f7570ad9bced65d3</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>abc60e4bb01c4d80346a13cdba09cf0e7</anchor>
       <arglist>(unexpect_t, Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; base, unexpect_t, Args &amp;&amp;... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>decltype(auto)</type>
       <name>emplace</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>aa75fb5aee07b1a60f4ed9e96a6da602d</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>aa46a5924f62a6f346ad3843fb3d9b1e7</anchor>
       <arglist>(Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; T, Args... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr error_type &amp;</type>
       <name>error</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>ab4d3e2664179f1b3aed37f92645f083f</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a6fe29bffdf5b8c7515a46ac7bb39cef7</anchor>
       <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>value</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a9a4cf2d34c7bd3275eb2d4907fe3571e</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a47d3d107843c2b6e33cd753bf7c95148</anchor>
       <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>operator*</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>aee58cbcd4c0b8b1a3634d923b705e372</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a77a3e6686ea868dffc2e7aa7af190786</anchor>
       <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr T</type>
       <name>value_or</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>ae6a19e324a2a05087781b86e6dfbe826</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a93d8022a0fd67c4905dfba63ab885c20</anchor>
       <arglist>(U &amp;&amp;default_value) const &amp;noexcept(std::is_nothrow_copy_constructible_v&lt; T &gt; &amp;&amp;std::is_nothrow_constructible_v&lt; T, U &amp;&amp; &gt;)</arglist>
     </member>
   </compound>
   <compound kind="class">
     <name>expected&lt; T, scan_error &gt;</name>
-    <filename>classscn_1_1expected.html</filename>
+    <filename>classscn_1_1v3_1_1expected.html</filename>
     <member kind="function">
       <type>constexpr SCN_IMPLICIT</type>
       <name>expected</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>ab0ede791bf9f0f4da21cfd9c9e96d952</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>adbf4744a32c7fcc486c4312e8b2b25b9</anchor>
       <arglist>(U &amp;&amp;val) noexcept(std::is_nothrow_constructible_v&lt; base, std::in_place_t, U &amp;&amp; &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>expected</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>ac04a05ab9b458b8199a100f26df047ff</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>ab8de0ab9ca4ddedd9c4ddbbfa5135886</anchor>
       <arglist>(std::in_place_t, Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; base, std::in_place_t, Args &amp;&amp;... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>expected</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a0b4be5dc98e2f248f7570ad9bced65d3</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>abc60e4bb01c4d80346a13cdba09cf0e7</anchor>
       <arglist>(unexpect_t, Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; base, unexpect_t, Args &amp;&amp;... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>decltype(auto)</type>
       <name>emplace</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>aa75fb5aee07b1a60f4ed9e96a6da602d</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>aa46a5924f62a6f346ad3843fb3d9b1e7</anchor>
       <arglist>(Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; T, Args... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr error_type &amp;</type>
       <name>error</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>ab4d3e2664179f1b3aed37f92645f083f</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a6fe29bffdf5b8c7515a46ac7bb39cef7</anchor>
       <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>value</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a9a4cf2d34c7bd3275eb2d4907fe3571e</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a47d3d107843c2b6e33cd753bf7c95148</anchor>
       <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>operator*</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>aee58cbcd4c0b8b1a3634d923b705e372</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a77a3e6686ea868dffc2e7aa7af190786</anchor>
       <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr T</type>
       <name>value_or</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>ae6a19e324a2a05087781b86e6dfbe826</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a93d8022a0fd67c4905dfba63ab885c20</anchor>
+      <arglist>(U &amp;&amp;default_value) const &amp;noexcept(std::is_nothrow_copy_constructible_v&lt; T &gt; &amp;&amp;std::is_nothrow_constructible_v&lt; T, U &amp;&amp; &gt;)</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr SCN_IMPLICIT</type>
+      <name>expected</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>adbf4744a32c7fcc486c4312e8b2b25b9</anchor>
+      <arglist>(U &amp;&amp;val) noexcept(std::is_nothrow_constructible_v&lt; base, std::in_place_t, U &amp;&amp; &gt;)</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr</type>
+      <name>expected</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>ab8de0ab9ca4ddedd9c4ddbbfa5135886</anchor>
+      <arglist>(std::in_place_t, Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; base, std::in_place_t, Args &amp;&amp;... &gt;)</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr</type>
+      <name>expected</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>abc60e4bb01c4d80346a13cdba09cf0e7</anchor>
+      <arglist>(unexpect_t, Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; base, unexpect_t, Args &amp;&amp;... &gt;)</arglist>
+    </member>
+    <member kind="function">
+      <type>decltype(auto)</type>
+      <name>emplace</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>aa46a5924f62a6f346ad3843fb3d9b1e7</anchor>
+      <arglist>(Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; T, Args... &gt;)</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr error_type &amp;</type>
+      <name>error</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a6fe29bffdf5b8c7515a46ac7bb39cef7</anchor>
+      <arglist>() &amp;noexcept</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr U &amp;</type>
+      <name>value</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a47d3d107843c2b6e33cd753bf7c95148</anchor>
+      <arglist>() &amp;noexcept</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr U &amp;</type>
+      <name>operator*</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a77a3e6686ea868dffc2e7aa7af190786</anchor>
+      <arglist>() &amp;noexcept</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr T</type>
+      <name>value_or</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a93d8022a0fd67c4905dfba63ab885c20</anchor>
       <arglist>(U &amp;&amp;default_value) const &amp;noexcept(std::is_nothrow_copy_constructible_v&lt; T &gt; &amp;&amp;std::is_nothrow_constructible_v&lt; T, U &amp;&amp; &gt;)</arglist>
     </member>
   </compound>
   <compound kind="class">
-    <name>scn::basic_scan_arg::handle</name>
-    <filename>classscn_1_1basic__scan__arg_1_1handle.html</filename>
+    <name>scn::v3::basic_scan_arg::handle</name>
+    <filename>classscn_1_1v3_1_1basic__scan__arg_1_1handle.html</filename>
     <member kind="function">
       <type>scan_error</type>
       <name>scan</name>
-      <anchorfile>classscn_1_1basic__scan__arg_1_1handle.html</anchorfile>
-      <anchor>a5820b344c68d104fc697a72dab9cb848</anchor>
+      <anchorfile>classscn_1_1v3_1_1basic__scan__arg_1_1handle.html</anchorfile>
+      <anchor>a812832241c51a0b18dc7155cac81a708</anchor>
       <arglist>(typename Context::parse_context_type &amp;parse_ctx, Context &amp;ctx) const</arglist>
     </member>
   </compound>
   <compound kind="struct">
-    <name>scn::invalid_input_range</name>
-    <filename>structscn_1_1invalid__input__range.html</filename>
+    <name>scn::v3::invalid_input_range</name>
+    <filename>structscn_1_1v3_1_1invalid__input__range.html</filename>
   </compound>
   <compound kind="struct">
-    <name>scn::monostate</name>
-    <filename>structscn_1_1monostate.html</filename>
+    <name>scn::v3::monostate</name>
+    <filename>structscn_1_1v3_1_1monostate.html</filename>
   </compound>
   <compound kind="class">
-    <name>scn::scan_error</name>
-    <filename>classscn_1_1scan__error.html</filename>
+    <name>scn::v3::scan_error</name>
+    <filename>classscn_1_1v3_1_1scan__error.html</filename>
     <member kind="enumeration">
       <type></type>
       <name>code</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1</anchor>
       <arglist></arglist>
     </member>
     <member kind="enumvalue">
       <name>good</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9abe580874d2083db8d40e483a204c6810</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1ae7093a6b32a5f20182bfa824c04ef0f3</anchor>
       <arglist></arglist>
     </member>
     <member kind="enumvalue">
       <name>end_of_range</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9a5bd386cea105b197913afd1795a30cae</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1a2c962b321c8d74271d2e8bb2d9dbaa16</anchor>
       <arglist></arglist>
     </member>
     <member kind="enumvalue">
       <name>invalid_format_string</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9a28497597134fa03a4f35abda44d2b41c</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1a2f3a0672c0b7aa62fde3083af2f74847</anchor>
       <arglist></arglist>
     </member>
     <member kind="enumvalue">
       <name>invalid_scanned_value</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9a1cab3dc5c02b44c825c41a06db524cd6</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1a6d1a674652b5dc329018f089cae48f8f</anchor>
       <arglist></arglist>
     </member>
     <member kind="enumvalue">
       <name>value_out_of_range</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9a15171fc8941f02fe7d8e1509d98f2e89</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1a013f6fb56ec50250c1a8c51138d89423</anchor>
       <arglist></arglist>
     </member>
     <member kind="enumvalue">
       <name>good</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9abe580874d2083db8d40e483a204c6810</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1ae7093a6b32a5f20182bfa824c04ef0f3</anchor>
       <arglist></arglist>
     </member>
     <member kind="enumvalue">
       <name>end_of_range</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9a5bd386cea105b197913afd1795a30cae</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1a2c962b321c8d74271d2e8bb2d9dbaa16</anchor>
       <arglist></arglist>
     </member>
     <member kind="enumvalue">
       <name>invalid_format_string</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9a28497597134fa03a4f35abda44d2b41c</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1a2f3a0672c0b7aa62fde3083af2f74847</anchor>
       <arglist></arglist>
     </member>
     <member kind="enumvalue">
       <name>invalid_scanned_value</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9a1cab3dc5c02b44c825c41a06db524cd6</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1a6d1a674652b5dc329018f089cae48f8f</anchor>
       <arglist></arglist>
     </member>
     <member kind="enumvalue">
       <name>value_out_of_range</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a0e12e10c5a0b3cabc6a530bdedc438d9a15171fc8941f02fe7d8e1509d98f2e89</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a82326a4a2b52db30ccb5b4e161288ea1a013f6fb56ec50250c1a8c51138d89423</anchor>
       <arglist></arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>scan_error</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a33c40821b1d0a145335ee43cef0fa75d</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a51387112e290bf907a3d60b5673bef6a</anchor>
       <arglist>() noexcept=default</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>scan_error</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a2f08c4a0ec7812b10fffab9cd70a2686</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>addfdad251e54e645f75379057ea307a5</anchor>
       <arglist>(code_t c, const char *m) noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr</type>
       <name>operator bool</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>af2f75805eb8211d7f98017aa64a14720</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>ac062598822e3f58776a123f6cb38dd99</anchor>
       <arglist>() const noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr code_t</type>
       <name>code</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>a4da617ce5b605b593e1d999035bcb6f9</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>ab4497941a19206958e54d4d3331e34a5</anchor>
       <arglist>() const noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr auto</type>
       <name>msg</name>
-      <anchorfile>classscn_1_1scan__error.html</anchorfile>
-      <anchor>aadebf39452369ab887d3eda8ba0a30ce</anchor>
+      <anchorfile>classscn_1_1v3_1_1scan__error.html</anchorfile>
+      <anchor>a833e73efc7408ee19edf793f163b6523</anchor>
       <arglist>() const noexcept -&gt; const char *</arglist>
     </member>
   </compound>
   <compound kind="struct">
-    <name>scn::scan_expected</name>
-    <filename>structscn_1_1scan__expected.html</filename>
+    <name>scn::v3::scan_expected</name>
+    <filename>structscn_1_1v3_1_1scan__expected.html</filename>
     <templarg></templarg>
     <base>expected&lt; T, scan_error &gt;</base>
     <member kind="function">
       <type>decltype(auto)</type>
       <name>emplace</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>aa75fb5aee07b1a60f4ed9e96a6da602d</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>aa46a5924f62a6f346ad3843fb3d9b1e7</anchor>
+      <arglist>(Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; T, Args... &gt;)</arglist>
+    </member>
+    <member kind="function">
+      <type>decltype(auto)</type>
+      <name>emplace</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>aa46a5924f62a6f346ad3843fb3d9b1e7</anchor>
       <arglist>(Args &amp;&amp;... args) noexcept(std::is_nothrow_constructible_v&lt; T, Args... &gt;)</arglist>
     </member>
     <member kind="function">
       <type>constexpr error_type &amp;</type>
       <name>error</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>ab4d3e2664179f1b3aed37f92645f083f</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a6fe29bffdf5b8c7515a46ac7bb39cef7</anchor>
+      <arglist>() &amp;noexcept</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr error_type &amp;</type>
+      <name>error</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a6fe29bffdf5b8c7515a46ac7bb39cef7</anchor>
       <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>value</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>a9a4cf2d34c7bd3275eb2d4907fe3571e</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a47d3d107843c2b6e33cd753bf7c95148</anchor>
+      <arglist>() &amp;noexcept</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr U &amp;</type>
+      <name>value</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a47d3d107843c2b6e33cd753bf7c95148</anchor>
       <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr U &amp;</type>
       <name>operator*</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>aee58cbcd4c0b8b1a3634d923b705e372</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a77a3e6686ea868dffc2e7aa7af190786</anchor>
+      <arglist>() &amp;noexcept</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr U &amp;</type>
+      <name>operator*</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a77a3e6686ea868dffc2e7aa7af190786</anchor>
       <arglist>() &amp;noexcept</arglist>
     </member>
     <member kind="function">
       <type>constexpr T</type>
       <name>value_or</name>
-      <anchorfile>classscn_1_1expected.html</anchorfile>
-      <anchor>ae6a19e324a2a05087781b86e6dfbe826</anchor>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a93d8022a0fd67c4905dfba63ab885c20</anchor>
+      <arglist>(U &amp;&amp;default_value) const &amp;noexcept(std::is_nothrow_copy_constructible_v&lt; T &gt; &amp;&amp;std::is_nothrow_constructible_v&lt; T, U &amp;&amp; &gt;)</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr T</type>
+      <name>value_or</name>
+      <anchorfile>classscn_1_1v3_1_1expected.html</anchorfile>
+      <anchor>a93d8022a0fd67c4905dfba63ab885c20</anchor>
       <arglist>(U &amp;&amp;default_value) const &amp;noexcept(std::is_nothrow_copy_constructible_v&lt; T &gt; &amp;&amp;std::is_nothrow_constructible_v&lt; T, U &amp;&amp; &gt;)</arglist>
     </member>
   </compound>
   <compound kind="class">
-    <name>scn::scan_result</name>
-    <filename>classscn_1_1scan__result.html</filename>
+    <name>scn::v3::scan_result</name>
+    <filename>classscn_1_1v3_1_1scan__result.html</filename>
     <templarg></templarg>
     <templarg>Args</templarg>
   </compound>
   <compound kind="struct">
-    <name>scn::scanner</name>
-    <filename>structscn_1_1scanner.html</filename>
+    <name>scn::v3::scanner</name>
+    <filename>structscn_1_1v3_1_1scanner.html</filename>
     <templarg></templarg>
     <templarg></templarg>
     <templarg></templarg>
     <member kind="function">
       <type></type>
       <name>scanner</name>
-      <anchorfile>structscn_1_1scanner.html</anchorfile>
-      <anchor>a96f00cd68bb1770cf4212d4f27ae1b15</anchor>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ad28f2ee31f7352c73444bf4b81ad2155</anchor>
       <arglist>()=delete</arglist>
     </member>
     <member kind="function">
       <type>constexpr auto</type>
       <name>parse</name>
-      <anchorfile>structscn_1_1scanner.html</anchorfile>
-      <anchor>a9769f0277c91431282203ae727fb63c6</anchor>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ac229a8489a1112f3f3c6c3f6c554a38f</anchor>
       <arglist>(ParseContext &amp;pctx) -&gt; expected&lt; typename ParseContext::iterator, scan_error &gt;=delete</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
-      <anchorfile>structscn_1_1scanner.html</anchorfile>
-      <anchor>a38a71e2cc328d6dd35e31fbe34feb1ca</anchor>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ab8a602b3b70a22aac424d256289079d4</anchor>
       <arglist>(T &amp;value, Context &amp;ctx) const -&gt; expected&lt; typename Context::iterator, scan_error &gt;=delete</arglist>
     </member>
   </compound>
   <compound kind="class">
     <name>scanner&lt; CharT, T &gt;</name>
-    <filename>structscn_1_1scanner.html</filename>
+    <filename>structscn_1_1v3_1_1scanner.html</filename>
     <member kind="function">
       <type></type>
       <name>scanner</name>
-      <anchorfile>structscn_1_1scanner.html</anchorfile>
-      <anchor>a96f00cd68bb1770cf4212d4f27ae1b15</anchor>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ad28f2ee31f7352c73444bf4b81ad2155</anchor>
       <arglist>()=delete</arglist>
     </member>
     <member kind="function">
       <type>constexpr auto</type>
       <name>parse</name>
-      <anchorfile>structscn_1_1scanner.html</anchorfile>
-      <anchor>a9769f0277c91431282203ae727fb63c6</anchor>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ac229a8489a1112f3f3c6c3f6c554a38f</anchor>
       <arglist>(ParseContext &amp;pctx) -&gt; expected&lt; typename ParseContext::iterator, scan_error &gt;=delete</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
-      <anchorfile>structscn_1_1scanner.html</anchorfile>
-      <anchor>a38a71e2cc328d6dd35e31fbe34feb1ca</anchor>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ab8a602b3b70a22aac424d256289079d4</anchor>
+      <arglist>(CharT &amp;value, Context &amp;ctx) const -&gt; expected&lt; typename Context::iterator, scan_error &gt;=delete</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>scanner</name>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ad28f2ee31f7352c73444bf4b81ad2155</anchor>
+      <arglist>()=delete</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr auto</type>
+      <name>parse</name>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ac229a8489a1112f3f3c6c3f6c554a38f</anchor>
+      <arglist>(ParseContext &amp;pctx) -&gt; expected&lt; typename ParseContext::iterator, scan_error &gt;=delete</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ab8a602b3b70a22aac424d256289079d4</anchor>
       <arglist>(CharT &amp;value, Context &amp;ctx) const -&gt; expected&lt; typename Context::iterator, scan_error &gt;=delete</arglist>
     </member>
   </compound>
   <compound kind="class">
     <name>scanner&lt; T, CharT &gt;</name>
-    <filename>structscn_1_1scanner.html</filename>
+    <filename>structscn_1_1v3_1_1scanner.html</filename>
     <member kind="function">
       <type></type>
       <name>scanner</name>
-      <anchorfile>structscn_1_1scanner.html</anchorfile>
-      <anchor>a96f00cd68bb1770cf4212d4f27ae1b15</anchor>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ad28f2ee31f7352c73444bf4b81ad2155</anchor>
       <arglist>()=delete</arglist>
     </member>
     <member kind="function">
       <type>constexpr auto</type>
       <name>parse</name>
-      <anchorfile>structscn_1_1scanner.html</anchorfile>
-      <anchor>a9769f0277c91431282203ae727fb63c6</anchor>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ac229a8489a1112f3f3c6c3f6c554a38f</anchor>
       <arglist>(ParseContext &amp;pctx) -&gt; expected&lt; typename ParseContext::iterator, scan_error &gt;=delete</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
-      <anchorfile>structscn_1_1scanner.html</anchorfile>
-      <anchor>a38a71e2cc328d6dd35e31fbe34feb1ca</anchor>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ab8a602b3b70a22aac424d256289079d4</anchor>
+      <arglist>(T &amp;value, Context &amp;ctx) const -&gt; expected&lt; typename Context::iterator, scan_error &gt;=delete</arglist>
+    </member>
+    <member kind="function">
+      <type></type>
+      <name>scanner</name>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ad28f2ee31f7352c73444bf4b81ad2155</anchor>
+      <arglist>()=delete</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr auto</type>
+      <name>parse</name>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ac229a8489a1112f3f3c6c3f6c554a38f</anchor>
+      <arglist>(ParseContext &amp;pctx) -&gt; expected&lt; typename ParseContext::iterator, scan_error &gt;=delete</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>structscn_1_1v3_1_1scanner.html</anchorfile>
+      <anchor>ab8a602b3b70a22aac424d256289079d4</anchor>
       <arglist>(T &amp;value, Context &amp;ctx) const -&gt; expected&lt; typename Context::iterator, scan_error &gt;=delete</arglist>
     </member>
   </compound>
   <compound kind="struct">
-    <name>scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &amp;&amp;!detail::is_type_disabled&lt; T &gt; &gt; &gt;</name>
-    <filename>structscn_1_1scanner_3_01_t_00_01_char_t_00_01std_1_1enable__if__t_3_01detail_1_1arg__type__cons3aa1d3b11a8950d2c816ed76e7e2c811.html</filename>
+    <name>scn::v3::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &amp;&amp;!detail::is_type_disabled&lt; T &gt; &gt; &gt;</name>
+    <filename>structscn_1_1v3_1_1scanner_3_01_t_00_01_char_t_00_01std_1_1enable__if__t_3_01detail_1_1arg__type448fabb21483cdafd8c674c7554fe38d.html</filename>
     <templarg></templarg>
     <templarg></templarg>
   </compound>
@@ -594,169 +727,218 @@
       <type>scan_expected&lt; detail::scan_result_value_type&lt; Source &gt; &gt;</type>
       <name>vscan_result</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>ga33c3ff53cea76a1d874175da6dc54039</anchor>
+      <anchor>ga7171d1e0a3700b82168f982100a58ea1</anchor>
       <arglist></arglist>
     </member>
     <member kind="typedef">
       <type>scan_expected&lt; scan_result&lt; detail::scan_result_value_type&lt; Source &gt;, Args... &gt; &gt;</type>
       <name>scan_result_type</name>
       <anchorfile>namespacescn.html</anchorfile>
-      <anchor>ab6ab7df298a089272225a9b2a7683db0</anchor>
+      <anchor>a7423fc4b612affc45437e75b3957c617</anchor>
       <arglist></arglist>
     </member>
     <member kind="function">
       <type>constexpr decltype(auto)</type>
       <name>visit_scan_arg</name>
       <anchorfile>namespacescn.html</anchorfile>
-      <anchor>aaef2be62bdb069536e2729b6bb4d7f1c</anchor>
+      <anchor>a31716370f4e843aa739c9c28a28f540e</anchor>
       <arglist>(Visitor &amp;&amp;vis, basic_scan_arg&lt; Ctx &gt; &amp;arg)</arglist>
     </member>
     <member kind="function">
       <type>constexpr auto</type>
       <name>make_scan_args</name>
       <anchorfile>namespacescn.html</anchorfile>
-      <anchor>abfa0ace2ff551e76af6128040195010d</anchor>
+      <anchor>ab2d884bec2b277cd5f65fdb45c5258e7</anchor>
       <arglist>()</arglist>
     </member>
     <member kind="function">
       <type>constexpr auto</type>
       <name>make_scan_args</name>
       <anchorfile>namespacescn.html</anchorfile>
-      <anchor>a47bcbc8d33e38e412b1f87ec7ed3cc96</anchor>
+      <anchor>a11d175d99076a099e1694c19529da757</anchor>
       <arglist>(std::tuple&lt; Args... &gt; &amp;&amp;values)</arglist>
     </member>
     <member kind="function">
       <type>detail::basic_runtime_format_string&lt; char &gt;</type>
       <name>runtime_format</name>
       <anchorfile>group__format-string.html</anchorfile>
-      <anchor>ga014577dcd48ad3a5658203de948a9579</anchor>
+      <anchor>ga5a59bbd506f0ec9fee5e7f36d637b4e8</anchor>
       <arglist>(std::string_view s)</arglist>
+    </member>
+    <member kind="function">
+      <type>constexpr decltype(auto)</type>
+      <name>visit_scan_arg</name>
+      <anchorfile>namespacescn.html</anchorfile>
+      <anchor>a31716370f4e843aa739c9c28a28f540e</anchor>
+      <arglist>(Visitor &amp;&amp;vis, basic_scan_arg&lt; Ctx &gt; &amp;arg)</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>gadc46b83d39e17f2085d2c6c0963978a2</anchor>
+      <anchor>ga0cd460cb8259cfc6218b72fc8b456323</anchor>
       <arglist>(Source &amp;&amp;source, std::string_view format, scan_args args) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>gab5baa54a3e7a6eaccb03c7d1bbd0f9eb</anchor>
+      <anchor>ga1be29aec384d3100148ad2e19b62717a</anchor>
       <arglist>(const Locale &amp;loc, Source &amp;&amp;source, std::string_view format, scan_args args) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan_value</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>gaf3c242adc2256dcfe5dedbd91187907c</anchor>
+      <anchor>ga456a3e24b86eb39348ab00335d412b9a</anchor>
       <arglist>(Source &amp;&amp;source, basic_scan_arg&lt; scan_context &gt; arg) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
     <member kind="function">
       <type>scan_error</type>
       <name>vinput</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>ga3bce7ba15b36e95a461c3009a0ea3bca</anchor>
+      <anchor>gaa998a1ae795a0f07b298aeb3581a05a8</anchor>
       <arglist>(std::string_view format, scan_args args)</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>ga780b6c90730183f167ad1115da09fa18</anchor>
+      <anchor>ga366064361cb3f5b51083bac8d5117580</anchor>
       <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, std::tuple&lt; Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gab691a605c387f6510a9c2559b026af04</anchor>
+      <anchor>gab99ba8b517dab1f3c3a39c142ac290d9</anchor>
       <arglist>(Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga5c5be28ffa2a787c050d30914ab76a4b</anchor>
+      <anchor>ga8a16ed6a78e3483476af6ccd7e967dc3</anchor>
       <arglist>(Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>gaeaf87124fedc94865510addcc42087b6</anchor>
+      <anchor>ga9a6e88166a7405b3543be539b256bf19</anchor>
       <arglist>(const Locale &amp;loc, Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>ga579fa74ff6da85cb5b8f101d93ce8e09</anchor>
+      <anchor>gad8c7621d3cea56d52c969a41ea206b97</anchor>
       <arglist>(const Locale &amp;loc, Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan_value</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gaad8ea03c53fc8eda13f7c2d1a7381b07</anchor>
+      <anchor>gaae487b408d6f524548d36d44be44ba6a</anchor>
       <arglist>(Source &amp;&amp;source) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan_value</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga0b383313772b592bdea70a12cbdd53b7</anchor>
+      <anchor>ga8a1090f3117d01077f9c6c8173c65e72</anchor>
       <arglist>(Source &amp;&amp;source, T initial_value) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>input</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga3d9bf446b9f090ff62dd6bd3bf42e4a2</anchor>
+      <anchor>gab717eee4c5bf204b7ab84a67ff4312f9</anchor>
       <arglist>(scan_format_string&lt; std::FILE *, Args... &gt; format) -&gt; scan_result_type&lt; std::FILE *, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>prompt</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga2860ab85b607d9cafcbf268e4f57db35</anchor>
+      <anchor>ga6c2e3bb9c50fda900029956f8ba49db0</anchor>
       <arglist>(const char *msg, scan_format_string&lt; std::FILE *, Args... &gt; format) -&gt; scan_result_type&lt; std::FILE *, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan_int</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gabc01dfea9c68651aa1663d24ba843c84</anchor>
+      <anchor>ga7f4f933e29bd742f3ae62e2e94210aa3</anchor>
       <arglist>(std::string_view source, int base=10) -&gt; scan_result_type&lt; std::string_view, T &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan_int_exhaustive_valid</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga75b7263129ec499db37ea67eb01eab30</anchor>
+      <anchor>ga228fd478e5ce4a825ca4716452b9f5ae</anchor>
       <arglist>(std::string_view source) -&gt; T</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__xchar.html</anchorfile>
-      <anchor>ga9412817569b4484faf59cb0e51daca20</anchor>
+      <anchor>gaf8f49c6722d29dd7bcbbe7630dd739af</anchor>
       <arglist>(Range &amp;&amp;range, std::wstring_view format, wscan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__xchar.html</anchorfile>
-      <anchor>gaf3e0ca7b7fba6031fff76387e5c10ad1</anchor>
+      <anchor>gabfbaf79d3772a2fb7407c16572e74716</anchor>
       <arglist>(const Locale &amp;loc, Range &amp;&amp;range, std::wstring_view format, wscan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan_value</name>
       <anchorfile>group__xchar.html</anchorfile>
-      <anchor>gac887ab8ca0d711b1d2133c17f5bc4775</anchor>
+      <anchor>gac25b78814c5244837131d231c3cab9d2</anchor>
       <arglist>(Range &amp;&amp;range, basic_scan_arg&lt; wscan_context &gt; arg) -&gt; vscan_result&lt; Range &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga9298859fb25112640b4e7771ede64582</anchor>
+      <arglist>(Source &amp;&amp;source, wscan_format_string&lt; Source, Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga792a3615d9f9dfb67838aca38739fd6d</anchor>
+      <arglist>(Source &amp;&amp;source, wscan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga6c3585f97e510aabb9a4f4173ddb8567</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, wscan_format_string&lt; Source, Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga39a3b2314139c142e3b7e3efa501bc05</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, wscan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan_value</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>gaae487b408d6f524548d36d44be44ba6a</anchor>
+      <arglist>(Source &amp;&amp;source) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan_value</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga8a1090f3117d01077f9c6c8173c65e72</anchor>
+      <arglist>(Source &amp;&amp;source, T initial_value) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
     </member>
   </compound>
   <compound kind="group">
@@ -767,56 +949,56 @@
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gab691a605c387f6510a9c2559b026af04</anchor>
+      <anchor>gab99ba8b517dab1f3c3a39c142ac290d9</anchor>
       <arglist>(Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga5c5be28ffa2a787c050d30914ab76a4b</anchor>
+      <anchor>ga8a16ed6a78e3483476af6ccd7e967dc3</anchor>
       <arglist>(Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan_value</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gaad8ea03c53fc8eda13f7c2d1a7381b07</anchor>
+      <anchor>gaae487b408d6f524548d36d44be44ba6a</anchor>
       <arglist>(Source &amp;&amp;source) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan_value</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga0b383313772b592bdea70a12cbdd53b7</anchor>
+      <anchor>ga8a1090f3117d01077f9c6c8173c65e72</anchor>
       <arglist>(Source &amp;&amp;source, T initial_value) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>input</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga3d9bf446b9f090ff62dd6bd3bf42e4a2</anchor>
+      <anchor>gab717eee4c5bf204b7ab84a67ff4312f9</anchor>
       <arglist>(scan_format_string&lt; std::FILE *, Args... &gt; format) -&gt; scan_result_type&lt; std::FILE *, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>prompt</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga2860ab85b607d9cafcbf268e4f57db35</anchor>
+      <anchor>ga6c2e3bb9c50fda900029956f8ba49db0</anchor>
       <arglist>(const char *msg, scan_format_string&lt; std::FILE *, Args... &gt; format) -&gt; scan_result_type&lt; std::FILE *, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan_int</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>gabc01dfea9c68651aa1663d24ba843c84</anchor>
+      <anchor>ga7f4f933e29bd742f3ae62e2e94210aa3</anchor>
       <arglist>(std::string_view source, int base=10) -&gt; scan_result_type&lt; std::string_view, T &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan_int_exhaustive_valid</name>
       <anchorfile>group__scan.html</anchorfile>
-      <anchor>ga75b7263129ec499db37ea67eb01eab30</anchor>
+      <anchor>ga228fd478e5ce4a825ca4716452b9f5ae</anchor>
       <arglist>(std::string_view source) -&gt; T</arglist>
     </member>
   </compound>
@@ -824,24 +1006,24 @@
     <name>ctx</name>
     <title>Contexts and scanners</title>
     <filename>group__ctx.html</filename>
-    <class kind="struct">scn::scanner</class>
-    <class kind="class">scn::basic_scan_parse_context</class>
-    <class kind="class">scn::basic_scan_context</class>
-    <class kind="struct">scn::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &amp;&amp;!detail::is_type_disabled&lt; T &gt; &gt; &gt;</class>
+    <class kind="struct">scn::v3::scanner</class>
+    <class kind="class">scn::v3::basic_scan_parse_context</class>
+    <class kind="class">scn::v3::basic_scan_context</class>
+    <class kind="struct">scn::v3::scanner&lt; T, CharT, std::enable_if_t&lt; detail::arg_type_constant&lt; T, CharT &gt;::value !=detail::arg_type::custom_type &amp;&amp;!detail::is_type_disabled&lt; T &gt; &gt; &gt;</class>
     <docanchor file="group__ctx.html" title="Scanning user-defined types">user-defined</docanchor>
   </compound>
   <compound kind="group">
     <name>format-string</name>
     <title>Format strings</title>
     <filename>group__format-string.html</filename>
-    <class kind="struct">scn::detail::basic_runtime_format_string</class>
-    <class kind="class">scn::basic_scan_format_string</class>
-    <class kind="struct">scn::discard</class>
+    <class kind="struct">scn::v3::detail::basic_runtime_format_string</class>
+    <class kind="class">scn::v3::basic_scan_format_string</class>
+    <class kind="struct">scn::v3::discard</class>
     <member kind="function">
       <type>detail::basic_runtime_format_string&lt; char &gt;</type>
       <name>runtime_format</name>
       <anchorfile>group__format-string.html</anchorfile>
-      <anchor>ga014577dcd48ad3a5658203de948a9579</anchor>
+      <anchor>ga5a59bbd506f0ec9fee5e7f36d637b4e8</anchor>
       <arglist>(std::string_view s)</arglist>
     </member>
     <docanchor file="group__format-string.html" title="Argument IDs">arg-ids</docanchor>
@@ -870,21 +1052,21 @@
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>gab5baa54a3e7a6eaccb03c7d1bbd0f9eb</anchor>
+      <anchor>ga1be29aec384d3100148ad2e19b62717a</anchor>
       <arglist>(const Locale &amp;loc, Source &amp;&amp;source, std::string_view format, scan_args args) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>gaeaf87124fedc94865510addcc42087b6</anchor>
+      <anchor>ga9a6e88166a7405b3543be539b256bf19</anchor>
       <arglist>(const Locale &amp;loc, Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>scan</name>
       <anchorfile>group__locale.html</anchorfile>
-      <anchor>ga579fa74ff6da85cb5b8f101d93ce8e09</anchor>
+      <anchor>gad8c7621d3cea56d52c969a41ea206b97</anchor>
       <arglist>(const Locale &amp;loc, Source &amp;&amp;source, scan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
     </member>
   </compound>
@@ -892,8 +1074,8 @@
     <name>regex</name>
     <title>Regular expressions</title>
     <filename>group__regex.html</filename>
-    <class kind="class">scn::basic_regex_match</class>
-    <class kind="class">scn::basic_regex_matches</class>
+    <class kind="class">scn::v3::basic_regex_match</class>
+    <class kind="class">scn::v3::basic_regex_matches</class>
     <docanchor file="group__regex.html">regex-cmp-table</docanchor>
     <docanchor file="group__regex.html">regex-flags-table</docanchor>
   </compound>
@@ -901,14 +1083,14 @@
     <name>result</name>
     <title>Result types</title>
     <filename>group__result.html</filename>
-    <class kind="class">scn::expected</class>
-    <class kind="class">scn::scan_error</class>
-    <class kind="struct">scn::scan_expected</class>
+    <class kind="class">scn::v3::expected</class>
+    <class kind="class">scn::v3::scan_error</class>
+    <class kind="struct">scn::v3::scan_expected</class>
     <member kind="function">
       <type>auto</type>
       <name>make_scan_result</name>
       <anchorfile>group__result.html</anchorfile>
-      <anchor>ga780b6c90730183f167ad1115da09fa18</anchor>
+      <anchor>ga366064361cb3f5b51083bac8d5117580</anchor>
       <arglist>(scan_expected&lt; Result &gt; &amp;&amp;result, std::tuple&lt; Args... &gt; &amp;&amp;args) -&gt; scan_expected&lt; scan_result&lt; Result, Args... &gt;&gt;</arglist>
     </member>
   </compound>
@@ -916,7 +1098,7 @@
     <name>scannable</name>
     <title>Scannable sources</title>
     <filename>group__scannable.html</filename>
-    <class kind="struct">scn::invalid_input_range</class>
+    <class kind="struct">scn::v3::invalid_input_range</class>
   </compound>
   <compound kind="group">
     <name>vscan</name>
@@ -926,28 +1108,28 @@
       <type>scan_expected&lt; detail::scan_result_value_type&lt; Source &gt; &gt;</type>
       <name>vscan_result</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>ga33c3ff53cea76a1d874175da6dc54039</anchor>
+      <anchor>ga7171d1e0a3700b82168f982100a58ea1</anchor>
       <arglist></arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>gadc46b83d39e17f2085d2c6c0963978a2</anchor>
+      <anchor>ga0cd460cb8259cfc6218b72fc8b456323</anchor>
       <arglist>(Source &amp;&amp;source, std::string_view format, scan_args args) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan_value</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>gaf3c242adc2256dcfe5dedbd91187907c</anchor>
+      <anchor>ga456a3e24b86eb39348ab00335d412b9a</anchor>
       <arglist>(Source &amp;&amp;source, basic_scan_arg&lt; scan_context &gt; arg) -&gt; vscan_result&lt; Source &gt;</arglist>
     </member>
     <member kind="function">
       <type>scan_error</type>
       <name>vinput</name>
       <anchorfile>group__vscan.html</anchorfile>
-      <anchor>ga3bce7ba15b36e95a461c3009a0ea3bca</anchor>
+      <anchor>gaa998a1ae795a0f07b298aeb3581a05a8</anchor>
       <arglist>(std::string_view format, scan_args args)</arglist>
     </member>
   </compound>
@@ -959,23 +1141,71 @@
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__xchar.html</anchorfile>
-      <anchor>ga9412817569b4484faf59cb0e51daca20</anchor>
+      <anchor>gaf8f49c6722d29dd7bcbbe7630dd739af</anchor>
       <arglist>(Range &amp;&amp;range, std::wstring_view format, wscan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan</name>
       <anchorfile>group__xchar.html</anchorfile>
-      <anchor>gaf3e0ca7b7fba6031fff76387e5c10ad1</anchor>
+      <anchor>gabfbaf79d3772a2fb7407c16572e74716</anchor>
       <arglist>(const Locale &amp;loc, Range &amp;&amp;range, std::wstring_view format, wscan_args args) -&gt; vscan_result&lt; Range &gt;</arglist>
     </member>
     <member kind="function">
       <type>auto</type>
       <name>vscan_value</name>
       <anchorfile>group__xchar.html</anchorfile>
-      <anchor>gac887ab8ca0d711b1d2133c17f5bc4775</anchor>
+      <anchor>gac25b78814c5244837131d231c3cab9d2</anchor>
       <arglist>(Range &amp;&amp;range, basic_scan_arg&lt; wscan_context &gt; arg) -&gt; vscan_result&lt; Range &gt;</arglist>
     </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga9298859fb25112640b4e7771ede64582</anchor>
+      <arglist>(Source &amp;&amp;source, wscan_format_string&lt; Source, Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga792a3615d9f9dfb67838aca38739fd6d</anchor>
+      <arglist>(Source &amp;&amp;source, wscan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga6c3585f97e510aabb9a4f4173ddb8567</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, wscan_format_string&lt; Source, Args... &gt; format) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga39a3b2314139c142e3b7e3efa501bc05</anchor>
+      <arglist>(const Locale &amp;loc, Source &amp;&amp;source, wscan_format_string&lt; Source, Args... &gt; format, std::tuple&lt; Args... &gt; &amp;&amp;initial_args) -&gt; scan_result_type&lt; Source, Args... &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan_value</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>gaae487b408d6f524548d36d44be44ba6a</anchor>
+      <arglist>(Source &amp;&amp;source) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
+    </member>
+    <member kind="function">
+      <type>auto</type>
+      <name>scan_value</name>
+      <anchorfile>group__xchar.html</anchorfile>
+      <anchor>ga8a1090f3117d01077f9c6c8173c65e72</anchor>
+      <arglist>(Source &amp;&amp;source, T initial_value) -&gt; scan_result_type&lt; Source, T &gt;</arglist>
+    </member>
+  </compound>
+  <compound kind="page">
+    <name>faq</name>
+    <title>FAQ</title>
+    <filename>faq.html</filename>
+    <docanchor file="faq.html" title="Why doesn&apos;t &lt;tt&gt;scn::scan(input, &quot;{},{}&quot;)&lt;/tt&gt; work?">faq-1</docanchor>
   </compound>
   <compound kind="page">
     <name>guide</name>

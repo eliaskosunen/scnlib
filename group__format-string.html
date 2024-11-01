@@ -6,7 +6,9 @@
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
   <meta content="#22272e" name="theme-color"/>
   <link href="poxy/poxy.css" referrerpolicy="no-referrer" rel="stylesheet"/>
+  <script src="poxy/jquery-3.6.0.slim.min.js"></script>
   <script src="poxy/poxy.js"></script>
+  <script src="monospace-headers.js"></script>
   <script>initialize_theme("dark");</script>
   <meta content="scnlib" name="twitter:title"/>
   <meta content="scnlib" property="og:title"/>
@@ -88,7 +90,7 @@
             </li>
           </ul>
         </nav>
-<p>The format string syntax is heavily influenced by {fmt} and <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/format/format.html" target="_blank">std::<wbr/>format</a></code>, and is largely compatible with it. Scanning functions, such as <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> and <code><a class="m-doc" href="group__scan.html#ga3d9bf446b9f090ff62dd6bd3bf42e4a2">scn::<wbr/>input</a></code>, use the format string syntax described in this section.</p><p>Format strings consist of:</p><ul><li>Replacement fields, which are surrounded by curly braces <code>{}</code>.</li><li>Non-whitespace characters (except <code>{}</code>; for literal braces, use <code>{{</code> and <code>}}</code>), which consume exactly one identical character from the input</li><li>Whitespace characters, which consume any and all available consecutive whitespace from the input.</li></ul><p>Literal characters are matched by code point one-to-one, with no normalization being done. <code>Ä</code> (U+00C4, UTF-8 0xc3 0x84) only matches another U+00C4, and not, for example, U+00A8 (DIAERESIS) and U+0041 (LATIN CAPITAL LETTER A).</p><p>Characters (code points) are considered to be whitespace characters by the Unicode Pattern_White_Space property, as defined by UAX31-R3a. These code points are:</p><ul><li>ASCII whitespace characters ("\t\n\v\f\r ")</li><li>U+0085 (next line)</li><li>U+200E and U+200F (LEFT-TO-RIGHT MARK and RIGHT-TO-LEFT MARK)</li><li>U+2028 and U+2029 (LINE SEPARATOR and PARAGRAPH SEPARATOR)</li></ul><p>The grammar for a replacement field is as follows:</p><pre class="m-code"><span class="n">replacement</span><span class="o">-</span><span class="n">field</span>   <span class="o">::=</span> <span class="sc">'{'</span> <span class="p">[</span><span class="n">arg</span><span class="o">-</span><span class="n">id</span><span class="p">]</span> <span class="p">[</span><span class="sc">':'</span> <span class="n">format</span><span class="o">-</span><span class="n">spec</span><span class="p">]</span> <span class="sc">'}'</span>
+<p>The format string syntax is heavily influenced by {fmt} and <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/format/format.html" target="_blank">std::<wbr/>format</a></code>, and is largely compatible with it. Scanning functions, such as <code>scn::scan</code> and <code>scn::input</code>, use the format string syntax described in this section.</p><p>Format strings consist of:</p><ul><li>Replacement fields, which are surrounded by curly braces <code>{}</code>.</li><li>Non-whitespace characters (except <code>{}</code>; for literal braces, use <code>{{</code> and <code>}}</code>), which consume exactly one identical character from the input</li><li>Whitespace characters, which consume any and all available consecutive whitespace from the input.</li></ul><p>Literal characters are matched by code point one-to-one, with no normalization being done. <code>Ä</code> (U+00C4, UTF-8 0xc3 0x84) only matches another U+00C4, and not, for example, U+00A8 (DIAERESIS) and U+0041 (LATIN CAPITAL LETTER A).</p><p>Characters (code points) are considered to be whitespace characters by the Unicode Pattern_White_Space property, as defined by UAX31-R3a. These code points are:</p><ul><li>ASCII whitespace characters ("\t\n\v\f\r ")</li><li>U+0085 (next line)</li><li>U+200E and U+200F (LEFT-TO-RIGHT MARK and RIGHT-TO-LEFT MARK)</li><li>U+2028 and U+2029 (LINE SEPARATOR and PARAGRAPH SEPARATOR)</li></ul><p>The grammar for a replacement field is as follows:</p><pre class="m-code"><span class="n">replacement</span><span class="o">-</span><span class="n">field</span>   <span class="o">::=</span> <span class="sc">'{'</span> <span class="p">[</span><span class="n">arg</span><span class="o">-</span><span class="n">id</span><span class="p">]</span> <span class="p">[</span><span class="sc">':'</span> <span class="n">format</span><span class="o">-</span><span class="n">spec</span><span class="p">]</span> <span class="sc">'}'</span>
 <span class="n">arg</span><span class="o">-</span><span class="n">id</span>              <span class="o">::=</span> <span class="n">positive</span><span class="o">-</span><span class="n">integer</span>
 
 <span class="n">format</span><span class="o">-</span><span class="n">spec</span>         <span class="o">::=</span> <span class="p">[</span><span class="n">fill</span><span class="o">-</span><span class="n">and</span><span class="o">-</span><span class="n">align</span><span class="p">]</span>
@@ -126,17 +128,17 @@
           <dl class="m-doc">
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename CharT</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
-              class <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scn::basic_scan_format_string</a>
+              class <a class="m-doc" href="classscn_1_1v3_1_1basic__scan__format__string.html">scn::v3::basic_scan_format_string</a>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
-              struct <a class="m-doc" href="structscn_1_1detail_1_1basic__runtime__format__string.html">scn::detail::basic_runtime_format_string</a>
+              struct <a class="m-doc" href="structscn_1_1v3_1_1detail_1_1basic__runtime__format__string.html">scn::v3::detail::basic_runtime_format_string</a>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span></span>&gt;</div>
-              struct <a class="m-doc" href="structscn_1_1discard.html">scn::discard</a>
+              struct <a class="m-doc" href="structscn_1_1v3_1_1discard.html">scn::v3::discard</a>
             </dt>
             <dd></dd>
           </dl>
@@ -145,16 +147,16 @@
           <h2><a href="#func-members">Functions</a></h2>
           <dl class="m-doc">
             <dt>
-              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga014577dcd48ad3a5658203de948a9579">runtime_format</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> s) →  detail::basic_runtime_format_string&lt;char&gt;</span>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga5a59bbd506f0ec9fee5e7f36d637b4e8">runtime_format</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> s) →  detail::basic_runtime_format_string&lt;char&gt;</span>
             </dt>
             <dd></dd>
           </dl>
         </section>
         <section>
           <h2>Function documentation</h2>
-          <section class="m-doc-details" id="ga014577dcd48ad3a5658203de948a9579"><div>
+          <section class="m-doc-details" id="ga5a59bbd506f0ec9fee5e7f36d637b4e8"><div>
             <h3>
-              <span class="m-doc-wrap-bumper">detail::basic_runtime_format_string&lt;char&gt; </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga014577dcd48ad3a5658203de948a9579">runtime_format</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> s)</span></span>
+              <span class="m-doc-wrap-bumper">detail::basic_runtime_format_string&lt;char&gt; </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga5a59bbd506f0ec9fee5e7f36d637b4e8">runtime_format</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> s)</span></span>
             </h3>
 <p>Create a runtime format string</p><p>Can be used to avoid compile-time format string checking</p>
           </div></section>
