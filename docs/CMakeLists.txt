@@ -23,8 +23,10 @@ add_custom_command(
         OUTPUT "${CMAKE_CURRENT_LIST_DIR}/html"
         MAIN_DEPENDENCY "${CMAKE_CURRENT_LIST_DIR}/poxy.toml"
         DEPENDS
+            "${CMAKE_CURRENT_LIST_DIR}/pages/faq.md"
             "${CMAKE_CURRENT_LIST_DIR}/pages/guide.md"
             "${CMAKE_CURRENT_LIST_DIR}/pages/mainpage.md"
+            "${CMAKE_CURRENT_LIST_DIR}/script/monospace-headers.js"
             "${SCN_ABSOLUTE_PUBLIC_HEADERS}"
         COMMENT "Generating docs"
         VERBATIM)

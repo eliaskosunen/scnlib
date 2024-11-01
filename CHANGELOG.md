@@ -2,7 +2,7 @@
 
 ## 3.0.2
 
-_Released 2024-xx-xx_
+_Released 2024-11-xx_
 
  * Fix formatting options of user-defined types sometimes being ignored
  * Fix build failures on Emscripten
