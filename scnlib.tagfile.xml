@@ -1205,7 +1205,7 @@
     <name>faq</name>
     <title>FAQ</title>
     <filename>faq.html</filename>
-    <docanchor file="faq.html" title="Why doesn&apos;t &lt;tt&gt;scn::scan(input, &quot;{},{}&quot;)&lt;/tt&gt; work?">faq-1</docanchor>
+    <docanchor file="faq.html" title="Why doesn&apos;t &lt;tt&gt;scn::scan(input, &quot;{},{}&quot;)&lt;/tt&gt; work like I expected it to work?">faq-1</docanchor>
   </compound>
   <compound kind="page">
     <name>guide</name>
