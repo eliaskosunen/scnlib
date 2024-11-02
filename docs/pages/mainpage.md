@@ -24,7 +24,7 @@ int main() {
 \section main-about About this documentation
 
 This documentation is for the version 3.0 of the library.
-For version 2.0.3, see https://scnlib.dev/v2.0.3/.
+For other versions, use the dropdown on the top right.
 
 An introductory guide to the library can be found at \ref guide "Guide".
 Answers to frequently asked questions are listed at \ref faq "FAQ".

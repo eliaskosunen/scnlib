@@ -1,7 +1,7 @@
 \page faq FAQ
 \tableofcontents
 
-\section faq-1 Why doesn't `scn::scan(input, "{},{}")` work?
+\section faq-1 Why doesn't `scn::scan(input, "{},{}")` work like I expected it to work?
 
 The format string given to `scn::scan` is not a pattern, or a regular expression.
 Instead, not unlike `std::scanf`, the format string is evaluated left-to-right,
