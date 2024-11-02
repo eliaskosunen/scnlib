@@ -9,6 +9,7 @@ _Released 2024-11-xx_
  * Fix build failures on Emscripten
  * Update documentation to have a version-dropdown
  * Fix typo in documentation about manual indexing (#122, thanks [@lynxlynxlynx (Jaka Kranjc)](https://github.com/lynxlynxlynx))
+ * Fix typos in README (#120, thanks [@zencatalyst (Kasra Hashemi)](https://github.com/zencatalyst))
 
 ## 3.0.1
 

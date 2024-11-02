@@ -355,7 +355,7 @@ When using optimized builds, depending on compiler flags, scnlib provides a
 binary, the size of which is within ~5% of what would be produced with `scanf`
 or `<iostream>`s.
 In a Debug-environment, scnlib is ~5x bigger when compared to `scanf`
-or `<iostream>`. After *stripping* the binaries,
+or `<iostream>`. After `strip`ping the binaries,
 these differences largely go away, except in Debug builds.
 
 #### About
@@ -424,7 +424,8 @@ Release builds seem to be slightly faster as compared to Debug builds.
 
 These tests measure the time it takes to compile a binary when using different
 libraries.
-The time taken to compile the library itself is not taken into account (the standard library is precompiled, anyway).
+The time taken to compile the library itself is not taken into account
+(the standard library is precompiled, anyway).
 
 These tests were run on a Fedora 40 machine, with an AMD Ryzen 7 5700X
 processor, using GCC version 14.1.1.
