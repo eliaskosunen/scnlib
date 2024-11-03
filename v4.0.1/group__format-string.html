@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8"/>
+  <title>Format strings module | scnlib scanf for modern C++</title>
+  <link href="favicon-dark.png" rel="icon" type="image/png"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta content="#22272e" name="theme-color"/>
+  <link href="../poxy/poxy.css" referrerpolicy="no-referrer" rel="stylesheet"/>
+  <script src="../poxy/jquery-3.6.0.slim.min.js"></script>
+  <script src="../poxy/poxy.js"></script>
+  <script src="monospace-headers.js"></script>
+  <script>initialize_theme("dark");</script>
+  <meta content="scnlib" name="twitter:title"/>
+  <meta content="scnlib" property="og:title"/>
+  <meta content="scnlib" itemprop="name"/>
+  <meta content="Elias Kosunen" name="author"/>
+  <meta content="Elias Kosunen" property="article:author"/>
+  <meta content="scanf for modern C++" name="description"/>
+  <meta content="scanf for modern C++" name="twitter:description"/>
+  <meta content="scanf for modern C++" property="og:description"/>
+  <meta content="scanf for modern C++" itemprop="description"/>
+  <meta content="telephone=no" name="format-detection"/>
+  <meta content="Poxy v0.19.1" name="generator"/>
+  <meta content="strict-origin-when-cross-origin" name="referrer"/>
+</head>
+<body class="poxy-has-toc">
+<header><nav id="navigation">
+  <div class="m-container">
+    <div class="m-row">
+      <a class="m-col-t-8 m-col-m-none m-left-m" href="index.html" id="m-navbar-brand">scnlib <span class="m-thin">scanf for modern C++</span></a>
+      <div class="m-col-t-4 m-hide-m m-text-right m-nopadr">
+        <a class="m-doc-search-icon" href="#search" onclick="return showSearch()" title="Search"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+          <path d="m6 0c-3.31 0-6 2.69-6 6 0 3.31 2.69 6 6 6 1.49 0 2.85-0.541 3.89-1.44-0.0164 0.338 0.147 0.759 0.5 1.15l3.22 3.79c0.552 0.614 1.45 0.665 2 0.115 0.55-0.55 0.499-1.45-0.115-2l-3.79-3.22c-0.392-0.353-0.812-0.515-1.15-0.5 0.895-1.05 1.44-2.41 1.44-3.89 0-3.31-2.69-6-6-6zm0 1.56a4.44 4.44 0 0 1 4.44 4.44 4.44 4.44 0 0 1-4.44 4.44 4.44 4.44 0 0 1-4.44-4.44 4.44 4.44 0 0 1 4.44-4.44z" id="m-doc-search-icon-path"></path>
+        </svg></a>
+        <a href="#navigation" id="m-navbar-show" title="Show navigation"></a>
+        <a href="#" id="m-navbar-hide" title="Hide navigation"></a>
+      </div>
+      <div class="m-col-t-12 m-show-m m-col-m-none m-right-m" id="m-navbar-collapse">
+        <div class="m-row">
+          <ol class="m-col-t-6 m-col-m-none">
+            <li><a href="namespaces.html">Namespaces</a></li>
+            <li><a href="annotated.html">Classes</a></li>
+            <li><a href="modules.html">Modules</a></li>
+            <li><a href="pages.html">Pages</a></li>
+          </ol>
+          <ol class="m-col-t-6 m-col-m-none" start="5">
+            <li><a class="poxy-icon repo github poxy-external" href="https://github.com/eliaskosunen/scnlib" target="_blank" title="View on GitHub"><svg id="poxy-icon-repo" version="1.1" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><path d="M25,1.23a24.37,24.37,0,0,0-7.7,47.5C18.51,49,19,48.2,19,47.56s0-2.12,0-4.15c-6.78,1.47-8.21-3.27-8.21-3.27C9.61,37.33,8,36.58,8,36.58c-2.21-1.51.17-1.48.17-1.48a5.12,5.12,0,0,1,3.73,2.51c2.17,3.72,5.7,2.65,7.09,2a5.25,5.25,0,0,1,1.55-3.26c-5.41-.61-11.1-2.7-11.1-12A9.41,9.41,0,0,1,12,17.79a8.75,8.75,0,0,1,.24-6.45s2-.66,6.7,2.49a23.1,23.1,0,0,1,12.2,0c4.66-3.15,6.7-2.49,6.7-2.49A8.75,8.75,0,0,1,38,17.79a9.41,9.41,0,0,1,2.51,6.54c0,9.36-5.7,11.42-11.13,12a5.83,5.83,0,0,1,1.65,4.51c0,3.26,0,5.89,0,6.69,0,.65.44,1.41,1.68,1.17A24.38,24.38,0,0,0,25,1.23Z" fill="currentColor"></path></svg></a></li>
+            <li class="poxy-navbar-version-selector"><a href="group__format-string.html">Version: v4.0.1</a><ol><li><a href="../group__format-string.html">HEAD</a></li><li><a href="group__format-string.html">v4.0.1</a></li><li><a href="../v3.0.2/group__format-string.html">v3.0.2</a></li><li><a href="../v2.0.3/group__format-string.html">v2.0.3</a></li></ol></li>
+            <li><a class="poxy-icon theme" href="javascript:void(null);" id="poxy-theme-switch" onclick="toggle_theme(); return false;" role="button" title="Toggle dark and light themes"><svg id="poxy-theme-switch-img" version="1.1" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><circle cx="185.6708" cy="183.8122" fill="currentColor" r="65.625"></circle><path d="M185.6708,87.5622a13.1256,13.1256,0,0,0,13.125-13.125V52.5622a13.125,13.125,0,1,0-26.25,0v21.875A13.1257,13.1257,0,0,0,185.6708,87.5622Z" fill="currentColor"></path><path d="M99.051,115.7519a13.1236,13.1236,0,1,0,18.56-18.56L102.1442,81.726a13.1236,13.1236,0,0,0-18.5595,18.56Z" fill="currentColor"></path><path d="M89.4208,183.8122a13.1257,13.1257,0,0,0-13.125-13.125H54.4208a13.125,13.125,0,0,0,0,26.25h21.875A13.1256,13.1256,0,0,0,89.4208,183.8122Z" fill="currentColor"></path><path d="M99.051,251.8725,83.5847,267.3431a13.1236,13.1236,0,1,0,18.56,18.56l15.4663-15.4706a13.1236,13.1236,0,1,0-18.5595-18.56Z" fill="currentColor"></path><path d="M185.6708,280.0622a13.1258,13.1258,0,0,0-13.125,13.125v21.875a13.125,13.125,0,0,0,26.25,0v-21.875A13.1257,13.1257,0,0,0,185.6708,280.0622Z" fill="currentColor"></path><path d="M272.2907,251.8725a13.1236,13.1236,0,1,0-18.56,18.56l15.4663,15.4706a13.1236,13.1236,0,1,0,18.56-18.56Z" fill="currentColor"></path><path d="M330.0458,183.8122a13.1257,13.1257,0,0,0-13.125-13.125h-21.875a13.125,13.125,0,0,0,0,26.25h21.875A13.1256,13.1256,0,0,0,330.0458,183.8122Z" fill="currentColor"></path><path d="M263.0109,119.5971a13.0824,13.0824,0,0,0,9.28-3.8452l15.4663-15.4663a13.1236,13.1236,0,1,0-18.56-18.56L253.7312,97.1923a13.125,13.125,0,0,0,9.28,22.4048Z" fill="currentColor"></path><path d="M456.9379,401.6714a63.97,63.97,0,0,1-14.9963,7.2055c-19.6448,6.5283-41.8787,2.9566-58.1439-9.8523a68.9311,68.9311,0,0,1-10.835-10.8339c-12.8088-16.2663-16.3806-38.5-9.8523-58.1471a63.8444,63.8444,0,0,1,7.2077-14.9931,8.8036,8.8036,0,0,0-10.1172-13.3034,87.5188,87.5188,0,1,0,110.0372,110.04A8.8,8.8,0,0,0,456.9379,401.6714Z" fill="currentColor"></path></svg></a></li>
+            <li class="m-show-m"><a class="m-doc-search-icon" href="#search" onclick="return showSearch()" title="Search"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+              <use href="#m-doc-search-icon-path"></use>
+            </svg></a></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav></header>
+<main><article>
+  <div class="m-container m-container-inflatable">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <h1>
+          Format strings <span class="m-thin">module</span></h1>
+        <p>Format string description.</p>
+        <nav class="m-block m-default poxy-toc" id="poxy-toc">
+          <h3>Contents</h3>
+          <ul>
+            <li><a href="#arg-ids">Argument IDs</a></li>
+            <li><a href="#fill-and-align">Fill and align</a></li>
+            <li><a href="#width">Width</a></li>
+            <li><a href="#precision">Precision</a></li>
+            <li><a href="#localized">Localized</a></li>
+            <li>
+              <a href="#type">Type specifier</a>
+              <ul>
+                <li><a href="#type-string">Type specifier: strings</a></li>
+                <li><a href="#type-int">Type specifier: integers</a></li>
+                <li><a href="#type-char">Type specifier: characters</a></li>
+                <li><a href="#type-float">Type specifier: floating-point values</a></li>
+                <li><a href="#type-bool">Type specifier: booleans</a></li>
+              </ul>
+            </li>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#nested-classes">Classes</a></li>
+                <li><a href="#func-members">Functions</a></li>
+              </ul>
+            </li>
+          </ul>
+        </nav>
+<p>The format string syntax is heavily influenced by {fmt} and <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/format/format.html" target="_blank">std::<wbr/>format</a></code>, and is largely compatible with it. Scanning functions, such as <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> and <code><a class="m-doc" href="group__scan.html#ga3d9bf446b9f090ff62dd6bd3bf42e4a2">scn::<wbr/>input</a></code>, use the format string syntax described in this section.</p><p>Format strings consist of:</p><ul><li>Replacement fields, which are surrounded by curly braces <code>{}</code>.</li><li>Non-whitespace characters (except <code>{}</code>; for literal braces, use <code>{{</code> and <code>}}</code>), which consume exactly one identical character from the input</li><li>Whitespace characters, which consume any and all available consecutive whitespace from the input.</li></ul><p>Literal characters are matched by code point one-to-one, with no normalization being done. <code>Ä</code> (U+00C4, UTF-8 0xc3 0x84) only matches another U+00C4, and not, for example, U+00A8 (DIAERESIS) and U+0041 (LATIN CAPITAL LETTER A).</p><p>Characters (code points) are considered to be whitespace characters by the Unicode Pattern_White_Space property, as defined by UAX31-R3a. These code points are:</p><ul><li>ASCII whitespace characters ("\t\n\v\f\r ")</li><li>U+0085 (next line)</li><li>U+200E and U+200F (LEFT-TO-RIGHT MARK and RIGHT-TO-LEFT MARK)</li><li>U+2028 and U+2029 (LINE SEPARATOR and PARAGRAPH SEPARATOR)</li></ul><p>The grammar for a replacement field is as follows:</p><pre class="m-code"><span class="n">replacement</span><span class="o">-</span><span class="n">field</span>   <span class="o">::=</span> <span class="sc">'{'</span> <span class="p">[</span><span class="n">arg</span><span class="o">-</span><span class="n">id</span><span class="p">]</span> <span class="p">[</span><span class="sc">':'</span> <span class="n">format</span><span class="o">-</span><span class="n">spec</span><span class="p">]</span> <span class="sc">'}'</span>
+<span class="n">arg</span><span class="o">-</span><span class="n">id</span>              <span class="o">::=</span> <span class="n">positive</span><span class="o">-</span><span class="n">integer</span>
+
+<span class="n">format</span><span class="o">-</span><span class="n">spec</span>         <span class="o">::=</span> <span class="p">[</span><span class="n">fill</span><span class="o">-</span><span class="n">and</span><span class="o">-</span><span class="n">align</span><span class="p">]</span>
+                        <span class="p">[</span><span class="n">width</span><span class="p">]</span> <span class="p">[</span><span class="n">precision</span><span class="p">]</span>
+                        <span class="p">[</span><span class="sc">'L'</span><span class="p">]</span> <span class="p">[</span><span class="n">type</span><span class="p">]</span>
+<span class="n">fill</span><span class="o">-</span><span class="n">and</span><span class="o">-</span><span class="n">align</span>      <span class="o">::=</span> <span class="p">[</span><span class="n">fill</span><span class="p">]</span> <span class="n">align</span>
+<span class="n">fill</span>                <span class="o">::=</span> <span class="n">any</span> <span class="n">character</span> <span class="n">other</span> <span class="n">than</span>
+                        <span class="sc">'{'</span> <span class="n">or</span> <span class="sc">'}'</span>
+<span class="n">align</span>               <span class="o">::=</span> <span class="n">one</span> <span class="n">of</span> <span class="sc">'&lt;'</span> <span class="sc">'&gt;'</span> <span class="sc">'^'</span>
+<span class="n">width</span>               <span class="o">::=</span> <span class="n">positive</span><span class="o">-</span><span class="n">integer</span>
+<span class="n">precision</span>           <span class="o">::=</span> <span class="sc">'.'</span> <span class="n">nonnegative</span><span class="o">-</span><span class="n">integer</span>
+<span class="n">type</span>                <span class="o">::=</span> <span class="sc">'a'</span> <span class="o">|</span> <span class="sc">'A'</span> <span class="o">|</span> <span class="sc">'b'</span> <span class="o">|</span> <span class="sc">'B'</span> <span class="o">|</span> <span class="sc">'c'</span> <span class="o">|</span> <span class="sc">'d'</span> <span class="o">|</span>
+                        <span class="sc">'e'</span> <span class="o">|</span> <span class="sc">'E'</span> <span class="o">|</span> <span class="sc">'f'</span> <span class="o">|</span> <span class="sc">'F'</span> <span class="o">|</span> <span class="sc">'g'</span> <span class="o">|</span> <span class="sc">'G'</span> <span class="o">|</span>
+                        <span class="sc">'o'</span> <span class="o">|</span> <span class="sc">'p'</span> <span class="o">|</span> <span class="sc">'s'</span> <span class="o">|</span> <span class="sc">'x'</span> <span class="o">|</span> <span class="sc">'X'</span> <span class="o">|</span> <span class="sc">'i'</span> <span class="o">|</span> <span class="sc">'u'</span></pre><section id="arg-ids"><h2><a href="#arg-ids">Argument IDs</a></h2><p>The <code>arg-id</code> specifier can be used to index arguments manually. If manual indexing is used, all of the indices in a format string must be stated explicitly. The same <code>arg-id</code> can appear in the format string only once, and must refer to a valid argument.</p><pre class="m-code"><span class="c1">// Format string equivalent to "{0} to {1}"</span>
+<span class="k">auto</span> <span class="n">a</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="p">,</span> <span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"2 to 300"</span><span class="p">,</span> <span class="s">"{} to {}"</span><span class="p">);</span>
+<span class="c1">// a-&gt;values() == (2, 300)</span>
+
+<span class="c1">// Manual indexing</span>
+<span class="k">auto</span> <span class="n">b</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="p">,</span> <span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"2 to 300"</span><span class="p">,</span> <span class="s">"{1} to {0}"</span><span class="p">);</span>
+<span class="c1">// b-&gt;values() == (300, 2)</span>
+
+<span class="c1">// INVALID:</span>
+<span class="c1">// Automatic and manual indexing is mixed</span>
+<span class="k">auto</span> <span class="n">c</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="p">,</span> <span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"2 to 300"</span><span class="p">,</span> <span class="s">"{} to {0}"</span><span class="p">);</span>
+
+<span class="c1">// INVALID:</span>
+<span class="c1">// Same argument is referred to multiple times</span>
+<span class="k">auto</span> <span class="n">d</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="p">,</span> <span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"2 to 300"</span><span class="p">,</span> <span class="s">"{0} to {0}"</span><span class="p">);</span>
+
+<span class="c1">// INVALID:</span>
+<span class="c1">// {2} does not refer to an argument</span>
+<span class="k">auto</span> <span class="n">e</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="p">,</span> <span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"2 to 300"</span><span class="p">,</span> <span class="s">"{0} to {2}"</span><span class="p">);</span></pre></section><section id="fill-and-align"><h2><a href="#fill-and-align">Fill and align</a></h2><p>Alignment allows for skipping character before and/or after a value. There are three possible values for alignment:</p><table class="m-table"><caption>Alignment options </caption><thead><tr><th>Option</th><th><p>Meaning</p></th></tr></thead><tbody><tr><td><code>&lt;</code></td><td><p>Align the value to the left (skips fill characters after the value)</p></td></tr><tr><td><code>&gt;</code></td><td><p>Align the value to the right (skips fill characters before the value)</p></td></tr><tr><td><code>^</code></td><td>Align the value to the center (skips fill characters both before and after the value)</td></tr></tbody></table><p>The fill character can be any Unicode code point, except for <code>{</code> and <code>}</code>. The default fill is the space character ‘
+					’ '`.</p><p>For format type specifiers other than <code>c</code> (default for <code>char</code> and <code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">wchar_t</a></code>, available for <code>string</code> and <code>string_view</code>), <code>[...]</code>, and the regex <code>/.../</code>, the default alignment is <code>&gt;</code>. Otherwise, the default alignment is <code>&lt;</code>.</p><p>In addition to the skipping of fill characters, for format type specifiers with the <code>&gt;</code> default alignment, preceding whitespace is automatically skipped. This preceding whitespace isn't counted as part of the field width, as described below.</p><p>The number of fill characters consumed can be controlled with the width and precision specifiers.</p></section><section id="width"><h2><a href="#width">Width</a></h2><p>Width specifies the minimum number of characters that will be read from the source range. It can be any unsigned integer. Any fill characters skipped are included in the width</p><p>For the purposes of width calculation, the same algorithm is used that in {fmt}. Every code point has a width of one, except the following ones have a width of 2:</p><ul><li>any code point with the East_Asian_Width="W" or East_Asian_Width="F" Derived Extracted Property as described by UAX#44</li><li>U+4DC0 – U+4DFF (Yijing Hexagram Symbols)</li><li>U+1F300 – U+1F5FF (Miscellaneous Symbols and Pictographs)</li><li>U+1F900 – U+1F9FF (Supplemental Symbols and Pictographs)</li></ul></section><section id="precision"><h2><a href="#precision">Precision</a></h2><p>Precision specifies the maximum number of characters that will be read from the source range. The method for counting characters is the same as above, with the width field.</p></section><section id="localized"><h2><a href="#localized">Localized</a></h2><p>The <code>L</code> flag enables localized scanning. Its effects are different for each type it is used with:</p><ul><li>For integers, it enables locale-specific thousands separators</li><li>For floating-point numbers, it enables locale-specific thousands and radix (decimal) separators</li><li>For booleans, it enables locale-specific textual representations (for <code>true</code> and <code>false</code>)</li><li>For other types, it has no effect</li></ul></section><section id="type"><h2><a href="#type">Type specifier</a></h2><p>The type specifier determines how the data is to be scanned. The type of the argument to be scanned determines what flags are valid.</p><section id="type-string"><h3><a href="#type-string">Type specifier: strings</a></h3><table class="m-table"><caption>String types (<code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string.html" target="_blank">std::<wbr/>basic_string</a></code> and <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>basic_string_view</a></code>) </caption><thead><tr><th>Type</th><th>Meaning</th></tr></thead><tbody><tr><td>none, <code>s</code></td><td>Copies from the input until a whitespace character is encountered, or, if using the <code>&lt;</code> (left) or <code>^</code> (center) alignment, a fill character is encountered.</td></tr><tr><td><code>c</code></td><td>Copies from the input until the field width is exhausted. Doesn't skip preceding whitespace. Errors if no field precision is provided.</td></tr><tr><td><code>[...]</code></td><td>Character set matching: copies from the input until a character not specified in the set is encountered. Character ranges can be specified with <code>-</code>, and the entire selection can be inverted with a prefix <code>^</code>. Matches and supports arbitrary Unicode code points. Doesn't skip preceding whitespace.</td></tr><tr><td><code>/&lt;regex&gt;/&lt;flags&gt;</code></td><td><p>Regular expression matching: copies from the input until the input does not match the regex. Doesn't skip preceding whitespace.</p><aside class="m-note m-default"><h4>See also</h4><p><a class="m-doc" href="group__regex.html">Regular expressions</a></p></aside></td></tr></tbody></table><aside class="m-note m-info"><h4>Note</h4><p><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>basic_string_view</a></code> can only be scanned if the source is contiguous.</p></aside></section><section id="type-int"><h3><a href="#type-int">Type specifier: integers</a></h3><p>Integer values are scanned as if by using <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code>, except a positive <code>+</code> sign and a base prefix (like <code>0x</code>) are always allowed to be present.</p><table class="m-table"><caption>Integer types (<code>signed</code> and <code>unsigned</code> variants of <code>char</code>, <code>short</code>, <code>int</code>, <code>long</code>, and <code>long long</code>) </caption><thead><tr><th>Type</th><th>Meaning</th></tr></thead><tbody><tr><td><code>b</code>, <code>B</code></td><td><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code> with base <code>2</code>. The base prefix is <code>0b</code> or <code>0B</code>.</td></tr><tr><td><code>o</code>, <code>O</code></td><td><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code> with base <code>8</code>. The base prefix is <code>0o</code> or <code>0O</code>, or just <code>0</code>.</td></tr><tr><td><code>x</code>, <code>X</code></td><td><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code> with base <code>16</code>. The base prefix is <code>0x</code> or <code>0X</code>.</td></tr><tr><td><code>d</code></td><td><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code> with base <code>10</code>. No base prefix allowed.</td></tr><tr><td><code>u</code></td><td><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code> with base <code>10</code>. No base prefix or <code>-</code> sign allowed.</td></tr><tr><td><code>i</code></td><td>Detect the base from a possible prefix, defaulting to decimal (base-10).</td></tr><tr><td><code>rXX</code> (where XX = [2, 36])</td><td>Custom base, without a base prefix (r stands for radix).</td></tr><tr><td><code>c</code></td><td>Copies a character (code unit) from the input.</td></tr><tr><td>none</td><td>Same as <code>d</code>.</td></tr></tbody></table></section><section id="type-char"><h3><a href="#type-char">Type specifier: characters</a></h3><table class="m-table"><caption>Character types (<code>char</code> and <code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">wchar_t</a></code>), and code points (<code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">char32_t</a></code>) </caption><thead><tr><th>Type</th><th>Meaning</th></tr></thead><tbody><tr><td>none, <code>c</code></td><td>Copies a character (code point for <code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">char32_t</a></code>, code unit otherwise) from the input.</td></tr><tr><td><code>b</code>, <code>B</code>, <code>d</code>, <code>i</code>, <code>o</code>, <code>O</code>, <code>u</code>, <code>x</code>, <code>X</code></td><td>Same as for integers, see above <a class="m-doc" href="#type-int">Type specifier: integers</a>. Not allowed for <code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">char32_t</a></code>.</td></tr></tbody></table><aside class="m-note m-info"><h4>Note</h4><p>When scanning characters (<code>char</code> and <code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">wchar_t</a></code>), the source range is read a single code unit at a time, and encoding is not respected.</p></aside></section><section id="type-float"><h3><a href="#type-float">Type specifier: floating-point values</a></h3><p>Floating-point values are scanned as if by using <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code>, except a positive <code>+</code> sign and a base prefix (like <code>0x</code>) are always allowed to be present.</p><table class="m-table"><caption>Floating-point types (<code>float</code>, <code>double</code>, and <code>long double</code>) </caption><thead><tr><th>Type</th><th>Meaning</th></tr></thead><tbody><tr><td><code>a</code>, <code>A</code></td><td><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code> with <code>std::chars_format::hex</code>. Prefix <code>0x</code>/<code>0X</code> is allowed.</td></tr><tr><td><code>e</code>, <code>E</code></td><td><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code> with <code>std::chars_format::scientific</code>.</td></tr><tr><td><code>f</code>, <code>F</code></td><td><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code> with <code>std::chars_format::fixed</code>.</td></tr><tr><td><code>g</code>, <code>G</code></td><td><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code> with <code>std::chars_format::general</code>.</td></tr><tr><td>none</td><td><code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/from_chars.html" target="_blank">std::<wbr/>from_chars</a></code> with <code>std::chars_format::general | std::chars_format::hex</code>. Prefix <code>0x</code>/<code>0X</code> is allowed.</td></tr></tbody></table></section><section id="type-bool"><h3><a href="#type-bool">Type specifier: booleans</a></h3><table class="m-table"><caption><code>bool</code></caption><thead><tr><th>Type</th><th>Meaning</th></tr></thead><tbody><tr><td><code>s</code></td><td>Allows for the textual representation (<code>true</code> or <code>false</code>).</td></tr><tr><td><code>b</code>, <code>B</code>, <code>d</code>, <code>i</code>, <code>o</code>, <code>O</code>, <code>u</code>, <code>x</code>, <code>X</code></td><td>Allows for the integral/numeric representation (<code>0</code> or <code>1</code>).</td></tr><tr><td>none</td><td>Allows for both the textual and the integral/numeric representation.</td></tr></tbody></table></section></section>
+        <section id="nested-classes">
+          <h2><a href="#nested-classes">Classes</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename CharT</span>, <span class="m-doc-template-param">typename Source</span>, <span class="m-doc-template-param">typename... Args</span></span>&gt;</div>
+              class <a class="m-doc" href="classscn_1_1basic__scan__format__string.html">scn::basic_scan_format_string</a>
+            </dt>
+            <dd></dd>
+            <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
+              struct <a class="m-doc" href="structscn_1_1detail_1_1basic__runtime__format__string.html">scn::detail::basic_runtime_format_string</a>
+            </dt>
+            <dd></dd>
+            <dt>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span></span>&gt;</div>
+              struct <a class="m-doc" href="structscn_1_1discard.html">scn::discard</a>
+            </dt>
+            <dd></dd>
+          </dl>
+        </section>
+        <section id="func-members">
+          <h2><a href="#func-members">Functions</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a class="m-doc" href="#ga014577dcd48ad3a5658203de948a9579">runtime_format</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> s) →  detail::basic_runtime_format_string&lt;char&gt;</span>
+            </dt>
+            <dd></dd>
+          </dl>
+        </section>
+        <section>
+          <h2>Function documentation</h2>
+          <section class="m-doc-details" id="ga014577dcd48ad3a5658203de948a9579"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">detail::basic_runtime_format_string&lt;char&gt; </span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a class="m-doc-self" href="#ga014577dcd48ad3a5658203de948a9579">runtime_format</a>(</span><span class="m-doc-wrap"><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string_view.html" target="_blank">std::<wbr/>string_view</a> s)</span></span>
+            </h3>
+<p>Create a runtime format string</p><p>Can be used to avoid compile-time format string checking</p>
+          </div></section>
+        </section>
+      </div>
+    </div>
+  </div>
+</article></main>
+<div class="m-doc-search" id="search">
+  <a href="#!" onclick="return hideSearch()"></a>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-m-8 m-push-m-2">
+        <div class="m-doc-search-header m-text m-small">
+          <div><span class="m-label m-default">Tab</span> / <span class="m-label m-default">T</span> to search, <span class="m-label m-default">Esc</span> to close</div>
+          <div id="search-symbolcount">…</div>
+        </div>
+        <div class="m-doc-search-content">
+          <form>
+            <input autocomplete="off" autofocus="autofocus" disabled="disabled" id="search-input" name="q" placeholder="Loading …" spellcheck="false" type="search"/>
+          </form>
+          <noscript class="m-text m-danger m-text-center">Unlike everything else in the docs, the search functionality <em>requires</em> JavaScript.</noscript>
+          <div class="m-text m-dim m-text-center" id="search-help">
+            <p class="m-noindent">Search for symbols, directories, files, pages or
+            modules. You can omit any prefix from the symbol or file path; adding a
+            <code>:</code> or <code>/</code> suffix lists all members of given symbol or
+            directory.</p>
+            <p class="m-noindent">Use <span class="m-label m-dim">↓</span>
+            / <span class="m-label m-dim">↑</span> to navigate through the list,
+            <span class="m-label m-dim">Enter</span> to go.
+            <span class="m-label m-dim">Tab</span> autocompletes common prefix, you can
+            copy a link to the result using <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">L</span> while <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">M</span> produces a Markdown link.</p>
+          </div>
+          <div class="m-text m-warning m-text-center" id="search-notfound">Sorry, nothing was found.</div>
+          <ul id="search-results"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="search-v2.js"></script><script>install_mcss_search_shim();</script>
+<script async="async" src="searchdata-v2.js"></script>
+<footer><nav>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        
+<a class="poxy-external" href="https://github.com/eliaskosunen/scnlib" target="_blank">GitHub</a>
+• <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/issues" target="_blank">Report an issue</a>
+• <a href="../poxy_changelog.html">Changelog</a>
+• <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/blob/master/LICENSE" target="_blank">License</a>
+• <a download="" href="scnlib.tagfile.xml" target="_blank" type="text/xml">Doxygen tagfile</a>
+<br/><br/>
+Site generated using <a class="poxy-external" href="https://github.com/marzer/poxy/" target="_blank">Poxy</a>
+
+      </div>
+    </div>
+  </div>
+</nav></footer>
+
+
+</body></html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8"/>
+  <title>Guide | scnlib scanf for modern C++</title>
+  <link href="favicon-dark.png" rel="icon" type="image/png"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta content="#22272e" name="theme-color"/>
+  <link href="../poxy/poxy.css" referrerpolicy="no-referrer" rel="stylesheet"/>
+  <script src="../poxy/jquery-3.6.0.slim.min.js"></script>
+  <script src="../poxy/poxy.js"></script>
+  <script src="monospace-headers.js"></script>
+  <script>initialize_theme("dark");</script>
+  <meta content="scnlib" name="twitter:title"/>
+  <meta content="scnlib" property="og:title"/>
+  <meta content="scnlib" itemprop="name"/>
+  <meta content="Elias Kosunen" name="author"/>
+  <meta content="Elias Kosunen" property="article:author"/>
+  <meta content="scanf for modern C++" name="description"/>
+  <meta content="scanf for modern C++" name="twitter:description"/>
+  <meta content="scanf for modern C++" property="og:description"/>
+  <meta content="scanf for modern C++" itemprop="description"/>
+  <meta content="telephone=no" name="format-detection"/>
+  <meta content="Poxy v0.19.1" name="generator"/>
+  <meta content="strict-origin-when-cross-origin" name="referrer"/>
+</head>
+<body class="poxy-has-toc">
+<header><nav id="navigation">
+  <div class="m-container">
+    <div class="m-row">
+      <a class="m-col-t-8 m-col-m-none m-left-m" href="index.html" id="m-navbar-brand">scnlib <span class="m-thin">scanf for modern C++</span></a>
+      <div class="m-col-t-4 m-hide-m m-text-right m-nopadr">
+        <a class="m-doc-search-icon" href="#search" onclick="return showSearch()" title="Search"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+          <path d="m6 0c-3.31 0-6 2.69-6 6 0 3.31 2.69 6 6 6 1.49 0 2.85-0.541 3.89-1.44-0.0164 0.338 0.147 0.759 0.5 1.15l3.22 3.79c0.552 0.614 1.45 0.665 2 0.115 0.55-0.55 0.499-1.45-0.115-2l-3.79-3.22c-0.392-0.353-0.812-0.515-1.15-0.5 0.895-1.05 1.44-2.41 1.44-3.89 0-3.31-2.69-6-6-6zm0 1.56a4.44 4.44 0 0 1 4.44 4.44 4.44 4.44 0 0 1-4.44 4.44 4.44 4.44 0 0 1-4.44-4.44 4.44 4.44 0 0 1 4.44-4.44z" id="m-doc-search-icon-path"></path>
+        </svg></a>
+        <a href="#navigation" id="m-navbar-show" title="Show navigation"></a>
+        <a href="#" id="m-navbar-hide" title="Hide navigation"></a>
+      </div>
+      <div class="m-col-t-12 m-show-m m-col-m-none m-right-m" id="m-navbar-collapse">
+        <div class="m-row">
+          <ol class="m-col-t-6 m-col-m-none">
+            <li><a href="namespaces.html">Namespaces</a></li>
+            <li><a href="annotated.html">Classes</a></li>
+            <li><a href="modules.html">Modules</a></li>
+            <li><a href="pages.html">Pages</a></li>
+          </ol>
+          <ol class="m-col-t-6 m-col-m-none" start="5">
+            <li><a class="poxy-icon repo github poxy-external" href="https://github.com/eliaskosunen/scnlib" target="_blank" title="View on GitHub"><svg id="poxy-icon-repo" version="1.1" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><path d="M25,1.23a24.37,24.37,0,0,0-7.7,47.5C18.51,49,19,48.2,19,47.56s0-2.12,0-4.15c-6.78,1.47-8.21-3.27-8.21-3.27C9.61,37.33,8,36.58,8,36.58c-2.21-1.51.17-1.48.17-1.48a5.12,5.12,0,0,1,3.73,2.51c2.17,3.72,5.7,2.65,7.09,2a5.25,5.25,0,0,1,1.55-3.26c-5.41-.61-11.1-2.7-11.1-12A9.41,9.41,0,0,1,12,17.79a8.75,8.75,0,0,1,.24-6.45s2-.66,6.7,2.49a23.1,23.1,0,0,1,12.2,0c4.66-3.15,6.7-2.49,6.7-2.49A8.75,8.75,0,0,1,38,17.79a9.41,9.41,0,0,1,2.51,6.54c0,9.36-5.7,11.42-11.13,12a5.83,5.83,0,0,1,1.65,4.51c0,3.26,0,5.89,0,6.69,0,.65.44,1.41,1.68,1.17A24.38,24.38,0,0,0,25,1.23Z" fill="currentColor"></path></svg></a></li>
+            <li class="poxy-navbar-version-selector"><a href="guide.html">Version: v4.0.1</a><ol><li><a href="../guide.html">HEAD</a></li><li><a href="guide.html">v4.0.1</a></li><li><a href="../v3.0.2/guide.html">v3.0.2</a></li><li><a href="../v2.0.3/guide.html">v2.0.3</a></li></ol></li>
+            <li><a class="poxy-icon theme" href="javascript:void(null);" id="poxy-theme-switch" onclick="toggle_theme(); return false;" role="button" title="Toggle dark and light themes"><svg id="poxy-theme-switch-img" version="1.1" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><circle cx="185.6708" cy="183.8122" fill="currentColor" r="65.625"></circle><path d="M185.6708,87.5622a13.1256,13.1256,0,0,0,13.125-13.125V52.5622a13.125,13.125,0,1,0-26.25,0v21.875A13.1257,13.1257,0,0,0,185.6708,87.5622Z" fill="currentColor"></path><path d="M99.051,115.7519a13.1236,13.1236,0,1,0,18.56-18.56L102.1442,81.726a13.1236,13.1236,0,0,0-18.5595,18.56Z" fill="currentColor"></path><path d="M89.4208,183.8122a13.1257,13.1257,0,0,0-13.125-13.125H54.4208a13.125,13.125,0,0,0,0,26.25h21.875A13.1256,13.1256,0,0,0,89.4208,183.8122Z" fill="currentColor"></path><path d="M99.051,251.8725,83.5847,267.3431a13.1236,13.1236,0,1,0,18.56,18.56l15.4663-15.4706a13.1236,13.1236,0,1,0-18.5595-18.56Z" fill="currentColor"></path><path d="M185.6708,280.0622a13.1258,13.1258,0,0,0-13.125,13.125v21.875a13.125,13.125,0,0,0,26.25,0v-21.875A13.1257,13.1257,0,0,0,185.6708,280.0622Z" fill="currentColor"></path><path d="M272.2907,251.8725a13.1236,13.1236,0,1,0-18.56,18.56l15.4663,15.4706a13.1236,13.1236,0,1,0,18.56-18.56Z" fill="currentColor"></path><path d="M330.0458,183.8122a13.1257,13.1257,0,0,0-13.125-13.125h-21.875a13.125,13.125,0,0,0,0,26.25h21.875A13.1256,13.1256,0,0,0,330.0458,183.8122Z" fill="currentColor"></path><path d="M263.0109,119.5971a13.0824,13.0824,0,0,0,9.28-3.8452l15.4663-15.4663a13.1236,13.1236,0,1,0-18.56-18.56L253.7312,97.1923a13.125,13.125,0,0,0,9.28,22.4048Z" fill="currentColor"></path><path d="M456.9379,401.6714a63.97,63.97,0,0,1-14.9963,7.2055c-19.6448,6.5283-41.8787,2.9566-58.1439-9.8523a68.9311,68.9311,0,0,1-10.835-10.8339c-12.8088-16.2663-16.3806-38.5-9.8523-58.1471a63.8444,63.8444,0,0,1,7.2077-14.9931,8.8036,8.8036,0,0,0-10.1172-13.3034,87.5188,87.5188,0,1,0,110.0372,110.04A8.8,8.8,0,0,0,456.9379,401.6714Z" fill="currentColor"></path></svg></a></li>
+            <li class="m-show-m"><a class="m-doc-search-icon" href="#search" onclick="return showSearch()" title="Search"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+              <use href="#m-doc-search-icon-path"></use>
+            </svg></a></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav></header>
+<main><article>
+  <div class="m-container m-container-inflatable">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <h1>
+          Guide
+        </h1>
+        <nav class="m-block m-default poxy-toc" id="poxy-toc">
+          <h3>Contents</h3>
+          <ul>
+            <li><a href="#g-basic">Basic usage</a></li>
+            <li><a href="#g-errors">Error handling and return values</a></li>
+            <li><a href="#g-files">Files and standard streams</a></li>
+            <li><a href="#g-format">Format string</a></li>
+            <li><a href="#g-scan_value">Scanning a single value</a></li>
+            <li><a href="#g-unicode">Unicode and wide source ranges</a></li>
+            <li><a href="#g-usertypes">User types</a></li>
+            <li><a href="#g-locale">Localization</a></li>
+          </ul>
+        </nav>
+<section id="g-basic"><h2><a href="#g-basic">Basic usage</a></h2><p><code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> can be used to scan various values from a source. That source can either be a range, or a file.</p><p>First, we'll talk about ranges. A range is an object that has a beginning and an end. Examples of ranges are string literals, <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string.html" target="_blank">std::<wbr/>string</a></code> and <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/container/vector.html" target="_blank">std::<wbr/>vector</a>&lt;char&gt;</code>. Objects of these types, and more, can be passed to <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code>. To learn more about the requirements on these ranges, see the API documentation on source ranges.</p><p>After the source range, <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> is passed a format string. This is similar in nature to <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/c/fscanf.html" target="_blank">std::<wbr/>scanf</a></code>, and has virtually the same syntax as <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/format/format.html" target="_blank">std::<wbr/>format</a></code> and {fmt}. In the format string, arguments are marked with curly braces <code>{}</code>. Each <code>{}</code> means that a single value is to be scanned from the source range. Because scnlib uses templates, type information is not required in the format string, like it is with <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/c/fscanf.html" target="_blank">std::<wbr/>scanf</a></code> (e.g. <code>d</code>).</p><p>The types of the values to scan are given as template parameters to <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code>. <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> returns an object, which contains the read value. If only a single value is read, it can be accessed through the member function <code>value()</code>, otherwise all the read values can be accessed through a <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/tuple.html" target="_blank">std::<wbr/>tuple</a></code> with <code>values()</code>.</p><pre class="m-code"><span class="c1">// Scanning an int</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"123"</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">)</span><span class="o">:</span>
+<span class="k">auto</span> <span class="n">i</span> <span class="o">=</span> <span class="n">result</span><span class="o">-&gt;</span><span class="nf">value</span><span class="p">();</span>
+<span class="c1">// i == 123</span>
+
+<span class="c1">// Scanning a double</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">double</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"3.14"</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">);</span>
+<span class="k">auto</span><span class="o">&amp;</span> <span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="o">-&gt;</span><span class="nf">values</span><span class="p">();</span>
+<span class="c1">// d == 3.14</span>
+
+<span class="c1">// Scanning multiple values</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="p">,</span> <span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"0 1 2"</span><span class="p">,</span> <span class="s">"{} {}"</span><span class="p">);</span>
+<span class="k">auto</span><span class="o">&amp;</span> <span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="o">-&gt;</span><span class="nf">values</span><span class="p">();</span>
+<span class="c1">// a == 0</span>
+<span class="c1">// b == 1</span>
+<span class="c1">// Note, that " 2" was not scanned,</span>
+<span class="c1">// because only two integers were requested</span>
+
+<span class="c1">// Scanning a string means scanning a "word" --</span>
+<span class="c1">//   that is, until the next whitespace character</span>
+<span class="c1">// this is the same behavior as with iostreams</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="nn">std</span><span class="o">::</span><span class="nc">string</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"hello world"</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">);</span>
+<span class="c1">// result-&gt;value() == "hello"</span></pre><p><a class="m-doc poxy-injected poxy-external poxy-cppreference poxy-named-requirement" href="https://en.cppreference.com/w/cpp/named_req/Compare" target="_blank">Compare</a> the above example to the same implemented with <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/basic_istringstream.html" target="_blank">std::<wbr/>istringstream</a></code>:</p><pre class="m-code"><span class="k">int</span> <span class="n">i</span><span class="p">;</span>
+<span class="nn">std</span><span class="o">::</span><span class="nc">istringstream</span><span class="p">{</span><span class="s">"123"</span><span class="p">}</span> <span class="o">&gt;&gt;</span> <span class="n">i</span><span class="p">;</span>
+
+<span class="k">double</span> <span class="n">d</span><span class="p">;</span>
+<span class="nn">std</span><span class="o">::</span><span class="nc">istringstream</span><span class="p">{</span><span class="s">"3.14"</span><span class="p">}</span> <span class="o">&gt;&gt;</span> <span class="n">d</span><span class="p">;</span>
+
+<span class="k">int</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">;</span>
+<span class="nn">std</span><span class="o">::</span><span class="nc">istringstream</span><span class="p">{</span><span class="s">"0 1 2"</span><span class="p">}</span> <span class="o">&gt;&gt;</span> <span class="n">a</span> <span class="o">&gt;&gt;</span> <span class="n">b</span><span class="p">;</span>
+
+<span class="nn">std</span><span class="o">::</span><span class="nc">string</span> <span class="n">str</span><span class="p">;</span>
+<span class="nn">std</span><span class="o">::</span><span class="nc">istringstream</span><span class="p">{</span><span class="s">"hello world"</span><span class="p">}</span> <span class="o">&gt;&gt;</span> <span class="n">str</span><span class="p">;</span></pre><p>Or with <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/c/fscanf.html" target="_blank">std::<wbr/>sscanf</a></code>:</p><pre class="m-code"><span class="k">int</span> <span class="n">i</span><span class="p">;</span>
+<span class="nn">std</span><span class="o">::</span><span class="nf">sscanf</span><span class="p">(</span><span class="s">"123"</span><span class="p">,</span> <span class="s">"%d"</span><span class="p">,</span> <span class="o">&amp;i</span><span class="p">);</span>
+
+<span class="k">double</span> <span class="n">d</span><span class="p">;</span>
+<span class="nn">std</span><span class="o">::</span><span class="nf">sscanf</span><span class="p">(</span><span class="s">"3.14"</span><span class="p">,</span> <span class="s">"%lf"</span><span class="p">,</span> <span class="o">&amp;d</span><span class="p">);</span>
+
+<span class="k">int</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">;</span>
+<span class="nn">std</span><span class="o">::</span><span class="nf">sscanf</span><span class="p">(</span><span class="s">"0 1 2"</span><span class="p">,</span> <span class="s">"%d %d"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">a</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">b</span><span class="p">);</span>
+
+<span class="c1">// Not really possible with scanf!</span>
+<span class="k">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">16</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="nn">std</span><span class="o">::</span><span class="nf">sscanf</span><span class="p">(</span><span class="s">"hello world"</span><span class="p">,</span> <span class="s">"%15s"</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span>
+<span class="c1">// buf == "hello"</span></pre></section><section id="g-errors"><h2><a href="#g-errors">Error handling and return values</a></h2><p>scnlib does not use exceptions. The library compiles with <code>-fno-exceptions -fno-rtti</code> and is perfectly usable without them.</p><p>Instead, it uses return values to signal errors: <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> returns an <code><a class="m-doc" href="structscn_1_1scan__expected.html">scn::<wbr/>scan_expected</a></code>. This return value is truthy if the operation succeeded. If there was an error, the <code><a class="m-doc" href="classscn_1_1expected.html#ab4d3e2664179f1b3aed37f92645f083f">scn::<wbr/>scan_expected::<wbr/>error()</a></code> member function can be used to gather more details about the error.</p><p>The actual read values are accessed with either <code>scn::scan_expected::operator-&gt;()</code> or the member function <code><a class="m-doc" href="classscn_1_1expected.html#a9a4cf2d34c7bd3275eb2d4907fe3571e">scn::<wbr/>scan_expected::<wbr/>value()</a></code> of the returned <code><a class="m-doc" href="structscn_1_1scan__expected.html">scn::<wbr/>scan_expected</a></code>. This ensures that if an error occurred, the values are not accidentally accessed.</p><pre class="m-code"><span class="c1">// "foo" is not an integer</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"foo"</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">);</span>
+<span class="c1">// fails, result-&gt;value() would be UB, result.value().value() would throw</span>
+<span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">result</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nn">std</span><span class="o">::</span><span class="nc">cout</span> <span class="o">&lt;&lt;</span> <span class="n">result</span><span class="p">.</span><span class="nf">error</span><span class="p">().</span><span class="nf">msg</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="sc">'\n'</span><span class="p">;</span>
+<span class="p">}</span></pre><p>Unlike with <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/c/fscanf.html" target="_blank">std::<wbr/>scanf</a></code>, partial successes are not supported. Either the entire scanning operation succeeds, or a failure is returned.</p><pre class="m-code"><span class="c1">// "foo" is still not an integer</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="p">,</span> <span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"123 foo"</span><span class="p">,</span> <span class="s">"{} {}"</span><span class="p">);</span>
+<span class="c1">// fails -- result == false</span></pre><p>Oftentimes, the entire source range is not scanned, and the remainder of the range may be useful later. The unparsed input can be accessed with <code>-&gt;range()</code>, which returns a <code>subrange</code>. An iterator pointing to the first unparsed element can be retrieved with <code>-&gt;begin()</code>.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"123 456"sv</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">);</span>
+<span class="c1">// result == true</span>
+<span class="c1">// result-&gt;value() == 123</span>
+<span class="c1">// result-&gt;range() == " 456"</span>
+
+<span class="k">auto</span> <span class="p">[</span><span class="n">other_result</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">result</span><span class="o">-&gt;</span><span class="nf">range</span><span class="p">(),</span> <span class="s">"{}"</span><span class="p">);</span>
+<span class="c1">// other_result == true</span>
+<span class="c1">// i == 456</span>
+<span class="c1">// other_result-&gt; == ""</span></pre><p>The return type of <code>-&gt;range()</code> is a view into the range <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> was given. Its type may not be the same as the source range, but its iterator and sentinel types are the same. If the range given to <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> does not model <code><a class="m-doc" href="namespacescn_1_1ranges.html#a51c8a07252f2a6d5302ef64dc8a200fd">scn::<wbr/>ranges::<wbr/>borrowed_range</a></code> (essentially, the returned range would dangle), the returned range is of type <code><a class="m-doc" href="structscn_1_1ranges_1_1dangling.html">scn::<wbr/>ranges::<wbr/>dangling</a></code>.</p><p>Because the range type returned by <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> is always a <code>scn::ranges::subrange</code> over its input, it's easy to use <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> in loops, as long as the input type is a <code>subrange</code> to begin with. If it's not, consider making it one with <code>scn::ranges::subrange{your-input-range}</code>.</p><pre class="m-code"><span class="k">auto</span> <span class="n">input</span> <span class="o">=</span> <span class="nn">scn::ranges</span><span class="o">::</span><span class="n">subrange</span><span class="p">{...};</span>
+<span class="k">while</span> <span class="p">(</span><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="p">...</span><span class="o">&gt;</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="p">...))</span> <span class="p">{</span>
+    <span class="c1">// use result</span>
+    <span class="n">input</span> <span class="o">=</span> <span class="n">result</span><span class="o">-&gt;</span><span class="nf">range</span><span class="p">();</span>
+<span class="p">}</span></pre></section><section id="g-files"><h2><a href="#g-files">Files and standard streams</a></h2><p>To read from <code>stdin</code>, use <code><a class="m-doc" href="group__scan.html#ga3d9bf446b9f090ff62dd6bd3bf42e4a2">scn::<wbr/>input</a></code> or <code><a class="m-doc" href="group__scan.html#ga2860ab85b607d9cafcbf268e4f57db35">scn::<wbr/>prompt</a></code>. They work similarly to <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code>, except they do not take an input range as a parameter: <code>stdin</code> is implied.</p><pre class="m-code"><span class="k">if</span> <span class="p">(</span><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">input</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"{}"</span><span class="p">))</span> <span class="p">{</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+<span class="c1">// scn::input, std::cin, and std::scanf can be used immediately,</span>
+<span class="c1">// without explicit synchronization</span>
+<span class="k">if</span> <span class="p">(</span><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">prompt</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"Provide a number: "</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">);</span> <span class="n">result</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span></pre><p>Instead of <code><a class="m-doc" href="group__scan.html#ga3d9bf446b9f090ff62dd6bd3bf42e4a2">scn::<wbr/>input</a></code> and <code><a class="m-doc" href="group__scan.html#ga2860ab85b607d9cafcbf268e4f57db35">scn::<wbr/>prompt</a></code>, <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> can also be directly used with files (<code>FILE*</code>). It should be noted, that <code><a class="m-doc" href="group__scan.html#ga3d9bf446b9f090ff62dd6bd3bf42e4a2">scn::<wbr/>input</a></code>, <code><a class="m-doc" href="group__scan.html#ga2860ab85b607d9cafcbf268e4f57db35">scn::<wbr/>prompt</a></code> and <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> all automatically synchronize with the given <code>FILE</code>, so that they can be used seamlessly alongside both C I/O and C++ iostreams.</p><p>When used with files, <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code> doesn't return a range, but the file it was passed, which can be accessed with <code>-&gt;file()</code>. To prevent confusion, there's no member <code>-&gt;range()</code> when using files.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">input</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"{}"</span><span class="p">);</span>
+<span class="c1">// equivalent to:</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">stdin</span><span class="p">,</span> <span class="s">"{}"</span><span class="p">);</span>
+<span class="c1">// result-&gt;file() is stdin</span>
+<span class="c1">// result-&gt;range() doesn't exist</span></pre></section><section id="g-format"><h2><a href="#g-format">Format string</a></h2><p>Parsing of a given value can be customized with the format string. The format string syntax is based on the one used by {fmt} and <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/utility/format/format.html" target="_blank">std::<wbr/>format</a></code>.</p><p>In short, in the format string, <code>{}</code> represents a value to be parsed. The type of the value is determined by the list of types given to <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code>.</p><p>Any whitespace character in the format string is an instruction to skip all whitespace. Some types may do that automatically. This behavior is identical to <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/c/fscanf.html" target="_blank">std::<wbr/>scanf</a></code>.</p><pre class="m-code"><span class="c1">// scanning a char doesn't automatically skip whitespace,</span>
+<span class="c1">// int does</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">char</span><span class="p">,</span> <span class="k">char</span><span class="p">,</span> <span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"x   123"</span><span class="p">,</span> <span class="s">"{}{}{}"</span><span class="p">);</span>
+<span class="k">auto</span><span class="o">&amp;</span> <span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="o">-&gt;</span><span class="nf">values</span><span class="p">();</span>
+<span class="c1">// a == 'x'</span>
+<span class="c1">// b == ' '</span>
+<span class="c1">// i == 123</span>
+
+<span class="c1">// Whitespace in format string, skip all whitespace</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">char</span><span class="p">,</span> <span class="k">char</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"x        y"</span><span class="p">,</span> <span class="s">"{} {}"</span><span class="p">);</span>
+<span class="k">auto</span><span class="o">&amp;</span> <span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="o">-&gt;</span><span class="nf">values</span><span class="p">();</span>
+<span class="c1">// a == 'x'</span>
+<span class="c1">// b == 'y'</span></pre><p>Any other character in the format string is expected to be found in the source range, and is then discarded.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">char</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"abc"</span><span class="p">,</span> <span class="s">"ab{}"</span><span class="p">);</span>
+<span class="c1">// result-&gt;value() == 'c'</span></pre><p>Inside the curly braces <code>{}</code>, flags can be specified, that govern the way the value is parsed. The flags start with a colon <code>:</code> character. See the API Documentation for full reference on format string flags.</p><pre class="m-code"><span class="c1">// accept only hex floats</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">double</span><span class="o">&gt;</span><span class="p">(...,</span> <span class="s">"{:a}"</span><span class="p">);</span>
+
+<span class="c1">// interpret the parsed number as hex</span>
+<span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(...,</span> <span class="s">"{:x}"</span><span class="p">);</span></pre></section><section id="g-scan_value"><h2><a href="#g-scan_value">Scanning a single value</a></h2><p>For simple cases, there's <code><a class="m-doc" href="group__scan.html#gaad8ea03c53fc8eda13f7c2d1a7381b07">scn::<wbr/>scan_value</a></code>. It can be used to scan a single value from a source range, as if by using the default format string <code>"{}"</code>.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan_value</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"123"</span><span class="p">);</span>
+<span class="c1">// result-&gt;value() == 123</span>
+<span class="c1">// result-&gt;range() is empty</span></pre></section><section id="g-unicode"><h2><a href="#g-unicode">Unicode and wide source ranges</a></h2><p>scnlib expects all input given to it to be Unicode. All input with the character/value type of <code>char</code> is always assumed to be UTF-8. Encoding errors are checked for, and may cause scanning to fail.</p><p>This guide has so far only used narrow (<code>char</code>) ranges as input. scnlib also supports wide (<code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">wchar_t</a></code>) ranges to be used as source ranges, including wide string literals and <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/string/basic_string.html" target="_blank">std::<wbr/>wstring</a></code> s. Wide strings are expected to be encoded in UTF-16 (with platform endianness), or UTF-32, depending on the width of <code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">wchar_t</a></code> (2 byte <code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">wchar_t</a></code> -&gt; UTF-16, 4 byte <code><a class="m-doc poxy-injected poxy-external poxy-cppreference" href="https://en.cppreference.com/w/cpp/language/types#Character_types" target="_blank">wchar_t</a></code> -&gt; UTF-32).</p><p>Any other character types are currently not supported.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="nn">std</span><span class="o">::</span><span class="nc">wstring</span><span class="o">&gt;</span><span class="p">(</span><span class="sa">L</span><span class="s">"foo bar"</span><span class="p">,</span> <span class="sa">L</span><span class="s">"{}"</span><span class="p">);</span>
+<span class="c1">// result-&gt;value() == L"foo"</span>
+
+<span class="c1">// narrow strings can be scanned from wide sources, and vice versa</span>
+<span class="c1">// in these cases, Unicode transcoding (UTF-8 &lt;-&gt; UTF-16/32) is performed</span>
+<span class="k">auto</span> <span class="n">result2</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="o">&lt;</span><span class="nn">std</span><span class="o">::</span><span class="nc">string</span><span class="o">&gt;</span><span class="p">(</span><span class="n">result</span><span class="o">-&gt;</span><span class="nf">range</span><span class="p">(),</span> <span class="sa">L</span><span class="s">"{}"</span><span class="p">);</span>
+<span class="c1">// result2-&gt;value() == "bar"</span></pre></section><section id="g-usertypes"><h2><a href="#g-usertypes">User types</a></h2><p>To scan a value of a user-defined type, specialize <code><a class="m-doc" href="structscn_1_1scanner.html">scn::<wbr/>scanner</a></code> with two member functions, <code>parse</code> and <code>scan</code>.</p><pre class="m-code"><span class="k">struct</span> <span class="nc">mytype</span> <span class="p">{</span>
+    <span class="k">int</span> <span class="n">i</span><span class="p">;</span>
+    <span class="k">double</span> <span class="n">d</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">scanner</span><span class="o">&lt;</span><span class="n">mytype</span><span class="p">,</span> <span class="k">char</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">ParseContext</span><span class="o">&gt;</span>
+    <span class="k">constexpr</span> <span class="k">auto</span> <span class="nf">parse</span><span class="p">(</span><span class="n">ParseContext</span><span class="o">&amp;</span> <span class="n">pctx</span><span class="p">)</span>
+        <span class="o">-&gt;</span> <span class="k">typename</span> <span class="nc">ParseContext</span><span class="o">::</span><span class="n">iterator</span><span class="p">;</span>
+
+    <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Context</span><span class="o">&gt;</span>
+    <span class="k">auto</span> <span class="nf">scan</span><span class="p">(</span><span class="n">mytype</span><span class="o">&amp;</span> <span class="n">val</span><span class="p">,</span> <span class="n">Context</span><span class="o">&amp;</span> <span class="n">ctx</span><span class="p">)</span>
+        <span class="o">-&gt;</span> <span class="n">scan_expected</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Context</span><span class="o">::</span><span class="n">iterator</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="p">};</span></pre><p><code>parse</code> parses the format string, and extracts scanning options from it. The easiest ways to implement it are to inherit it from another type, or to just accept no options:</p><pre class="m-code"><span class="c1">// Inherit</span>
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">scanner</span><span class="o">&lt;</span><span class="n">mytype</span><span class="p">,</span> <span class="k">char</span><span class="o">&gt;</span> <span class="o">:</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">scanner</span><span class="o">&lt;</span><span class="nn">std</span><span class="o">::</span><span class="nc">string_view</span><span class="p">,</span> <span class="k">char</span><span class="o">&gt;</span> <span class="p">{};</span>
+
+<span class="c1">// Accept only empty</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">ParseContext</span><span class="o">&gt;</span>
+<span class="k">constexpr</span> <span class="k">auto</span> <span class="nf">parse</span><span class="p">(</span><span class="n">ParseContext</span><span class="o">&amp;</span> <span class="n">pctx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">typename</span> <span class="nc">ParseContext</span><span class="o">::</span><span class="n">iterator</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">pctx</span><span class="p">.</span><span class="nf">begin</span><span class="p">();</span>
+<span class="p">}</span></pre><p><code>parse</code> can report errors by throwing an exception of type <code>scn::scan_format_string_error</code>, or by calling the <code>on_error</code> member function on the <code>ParseContext</code>.</p><p><code>scan</code> parses the actual value, using the supplied <code>Context</code>. The context has a member function, <code>current</code>, to get an iterator pointing to the next character in the source range, and <code>range</code>, to get the entire source range that's still left to scan. These values can be then passed to <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code>. Alternatively, scanning can be delegated to another <code><a class="m-doc" href="structscn_1_1scanner.html">scn::<wbr/>scanner</a></code>.</p><pre class="m-code"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Context</span><span class="o">&gt;</span>
+<span class="k">auto</span> <span class="nf">scan</span><span class="p">(</span><span class="n">mytype</span><span class="o">&amp;</span> <span class="n">val</span><span class="p">,</span> <span class="n">Context</span><span class="o">&amp;</span> <span class="n">ctx</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">scan_expected</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">Context</span><span class="o">::</span><span class="n">iterator</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="p">(</span><span class="n">ctx</span><span class="p">.</span><span class="nf">range</span><span class="p">(),</span> <span class="s">"{} {}"</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">result</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nf">unexpected</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="nf">error</span><span class="p">());</span>
+    <span class="p">}</span>
+
+    <span class="n">val</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">,</span> <span class="n">d</span><span class="p">};</span>
+    <span class="k">return</span> <span class="n">result</span><span class="o">-&gt;</span><span class="nf">begin</span><span class="p">();</span>
+
+    <span class="c1">// or, delegate to other scanners (more advanced):</span>
+
+    <span class="k">return</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">scanner</span><span class="o">&lt;</span><span class="k">int</span><span class="o">&gt;</span><span class="p">{}.</span><span class="nf">scan</span><span class="p">(</span><span class="n">val</span><span class="p">.</span><span class="n">i</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
+        <span class="p">.</span><span class="nf">and_then</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="n">it</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">ctx</span><span class="p">.</span><span class="nf">advance_to</span><span class="p">(</span><span class="n">it</span><span class="p">);</span>
+            <span class="k">return</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">scanner</span><span class="o">&lt;</span><span class="k">double</span><span class="o">&gt;</span><span class="p">{}.</span><span class="nf">scan</span><span class="p">(</span><span class="n">val</span><span class="p">.</span><span class="n">d</span><span class="p">,</span> <span class="n">ctx</span><span class="p">);</span>
+        <span class="p">});</span>
+<span class="p">}</span></pre><p>If your type has an <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/io/basic_istream.html" target="_blank">std::<wbr/>istream</a></code> compatible <code>operator&gt;&gt;</code> overload, that can also be used for scanning. Include the header <code>&lt;scn/istream.h&gt;</code>, and specialize <code><a class="m-doc" href="structscn_1_1scanner.html">scn::<wbr/>scanner</a></code> by inheriting from <code>scn::istream_scanner</code>.</p><pre class="m-code"><span class="nn">std</span><span class="o">::</span><span class="nc">istream</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="nn">std</span><span class="o">::</span><span class="nc">istream</span><span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">mytype</span><span class="o">&amp;</span><span class="p">);</span>
+
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">scanner</span><span class="o">&lt;</span><span class="n">mytype</span><span class="p">,</span> <span class="k">char</span><span class="o">&gt;</span> <span class="o">:</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">istream_scanner</span> <span class="p">{};</span></pre></section><section id="g-locale"><h2><a href="#g-locale">Localization</a></h2><p>By default, scnlib isn't affected by changes to the global C or C++ locale. All functions behave as if the global locale were set to <code>"C"</code>.</p><p>A <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/locale/locale.html" target="_blank">std::<wbr/>locale</a></code> can be passed as the first argument to <code><a class="m-doc" href="group__scan.html#gab691a605c387f6510a9c2559b026af04">scn::<wbr/>scan</a></code>, to scan using that locale. This is mostly used with floats, to get locale-specific decimal separators.</p><p>Because of the way <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/locale/locale.html" target="_blank">std::<wbr/>locale</a></code> and the facilities around it work, parsing using a locale is significantly slower compared to not using one. This is, because the library effectively has to fall back on iostreams for parsing.</p><p>Just passing a locale isn't enough, but you'll need to opt-in to locale-specific parsing, by using the <code>L</code> flag in the format string. Not every type supports localized parsing.</p><pre class="m-code"><span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="nn">scn</span><span class="o">::</span><span class="nf">scan</span><span class="p">(</span><span class="nn">std</span><span class="o">::</span><span class="nc">locale</span><span class="p">{</span><span class="s">"fi_FI.UTF-8"</span><span class="p">},</span> <span class="s">"2,73"</span><span class="p">,</span> <span class="s">"{:L}"</span><span class="p">);</span>
+<span class="c1">// result-&gt;value() == 2.73</span></pre><p>Because localized scanning uses iostreams under the hood, the results may not be entirely the same when no locale is used, even if <code><a class="m-doc-external poxy-cppreference poxy-external" href="http://en.cppreference.com/w/cpp/locale/locale/classic.html" target="_blank">std::<wbr/>locale::<wbr/>classic()</a></code> was passed. This is due to limitations of the design of iostreams, and platform-specific differences in locales and iostreams.</p></section>
+      </div>
+    </div>
+  </div>
+</article></main>
+<div class="m-doc-search" id="search">
+  <a href="#!" onclick="return hideSearch()"></a>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-m-8 m-push-m-2">
+        <div class="m-doc-search-header m-text m-small">
+          <div><span class="m-label m-default">Tab</span> / <span class="m-label m-default">T</span> to search, <span class="m-label m-default">Esc</span> to close</div>
+          <div id="search-symbolcount">…</div>
+        </div>
+        <div class="m-doc-search-content">
+          <form>
+            <input autocomplete="off" autofocus="autofocus" disabled="disabled" id="search-input" name="q" placeholder="Loading …" spellcheck="false" type="search"/>
+          </form>
+          <noscript class="m-text m-danger m-text-center">Unlike everything else in the docs, the search functionality <em>requires</em> JavaScript.</noscript>
+          <div class="m-text m-dim m-text-center" id="search-help">
+            <p class="m-noindent">Search for symbols, directories, files, pages or
+            modules. You can omit any prefix from the symbol or file path; adding a
+            <code>:</code> or <code>/</code> suffix lists all members of given symbol or
+            directory.</p>
+            <p class="m-noindent">Use <span class="m-label m-dim">↓</span>
+            / <span class="m-label m-dim">↑</span> to navigate through the list,
+            <span class="m-label m-dim">Enter</span> to go.
+            <span class="m-label m-dim">Tab</span> autocompletes common prefix, you can
+            copy a link to the result using <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">L</span> while <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">M</span> produces a Markdown link.</p>
+          </div>
+          <div class="m-text m-warning m-text-center" id="search-notfound">Sorry, nothing was found.</div>
+          <ul id="search-results"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="search-v2.js"></script><script>install_mcss_search_shim();</script>
+<script async="async" src="searchdata-v2.js"></script>
+<footer><nav>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        
+<a class="poxy-external" href="https://github.com/eliaskosunen/scnlib" target="_blank">GitHub</a>
+• <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/issues" target="_blank">Report an issue</a>
+• <a href="../poxy_changelog.html">Changelog</a>
+• <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/blob/master/LICENSE" target="_blank">License</a>
+• <a download="" href="scnlib.tagfile.xml" target="_blank" type="text/xml">Doxygen tagfile</a>
+<br/><br/>
+Site generated using <a class="poxy-external" href="https://github.com/marzer/poxy/" target="_blank">Poxy</a>
+
+      </div>
+    </div>
+  </div>
+</nav></footer>
+
+
+</body></html>
