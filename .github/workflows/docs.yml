@@ -59,7 +59,7 @@ jobs:
       - name: Generate docs
         run: |
           cd docs
-          poxy --verbose --git-tags --min-version v2.0.0 --no-squash-patches
+          poxy --verbose --git-tags --min-version v2.0.0
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3

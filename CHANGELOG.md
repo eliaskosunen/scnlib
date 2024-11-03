@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.0.1
+
+_Released 2024-11-04_
+
+ * Fix documentation generation
+
 ## 4.0.0
 
 _Released 2024-11-03_
