@@ -2,7 +2,7 @@
 
 ## 3.0.2
 
-_Released 2024-11-xx_
+_Released 2024-11-03_
 
  * Fix formatting options of user-defined types sometimes being ignored
  * Fix unnecessary blocking in `scn::input`
