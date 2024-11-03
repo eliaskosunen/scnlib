@@ -40,14 +40,20 @@ return result;
 
 ### Changes
 
- * `visit_scan_arg` deprecated, `basic_scan_arg::visit` added
+ * Deprecate `visit_scan_arg`, add `basic_scan_arg::visit`
  * Remove thousands separator checking when scanning localized numbers
 
 ## 3.0.2
 
-_Released 2024-xx-xx_
+_Released 2024-11-03_
 
  * Fix formatting options of user-defined types sometimes being ignored
+ * Fix unnecessary blocking in `scn::input`
+ * Fix usage of `std::regex_constants::multiline` on libstdc++ v11 (#130, thanks [@jiayuehua (Jia Yue Hua)](https://github.com/jiayuehua))
+ * Fix build failures on Emscripten
+ * Update documentation to have a version-dropdown
+ * Fix typo in documentation about manual indexing (#122, thanks [@lynxlynxlynx (Jaka Kranjc)](https://github.com/lynxlynxlynx))
+ * Fix typos in README (#120, thanks [@zencatalyst (Kasra Hashemi)](https://github.com/zencatalyst))
 
 ## 3.0.1
 
