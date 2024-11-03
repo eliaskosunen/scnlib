@@ -45,7 +45,7 @@ jobs:
         run: |
           git fetch origin master:refs/remotes/origin/master --tags --force
           git remote set-head origin -a
-          git checkout ${{ github.ref_name }}
+          git checkout master
           git pull --force
 
       - name: Prepare repository (on workflow_dispatch)

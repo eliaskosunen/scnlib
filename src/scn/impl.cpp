@@ -1822,14 +1822,49 @@ scan_expected<void> vinput(std::string_view format, scan_args args)
     auto buffer = detail::make_file_scan_buffer(stdin);
     auto n = vscan_internal(buffer, format, args);
     if (n) {
-        buffer.sync(*n);
+        if (SCN_UNLIKELY(!buffer.sync(*n))) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_source_state,
+                "Failed to sync with underlying FILE");
+        }
         return {};
     }
-    buffer.sync_all();
+    if (SCN_UNLIKELY(!buffer.sync_all())) {
+        return detail::unexpected_scan_error(
+            scan_error::invalid_source_state,
+            "Failed to sync with underlying FILE");
+    }
     return unexpected(n.error());
 }
 
 namespace detail {
+
+namespace {
+
+template <typename Source>
+scan_expected<std::ptrdiff_t> sync_after_vscan(
+    Source& source,
+    scan_expected<std::ptrdiff_t> result)
+{
+    if (SCN_LIKELY(result)) {
+        if (SCN_UNLIKELY(!source.sync(*result))) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_source_state,
+                "Failed to sync with underlying source");
+        }
+    }
+    else {
+        if (SCN_UNLIKELY(!source.sync_all())) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_source_state,
+                "Failed to sync with underlying source");
+        }
+    }
+    return result;
+}
+
+}  // namespace
+
 scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
                                          std::string_view format,
                                          scan_args args)
@@ -1841,13 +1876,7 @@ scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
                                          scan_args args)
 {
     auto n = vscan_internal(source, format, args);
-    if (SCN_LIKELY(n)) {
-        source.sync(*n);
-    }
-    else {
-        source.sync_all();
-    }
-    return n;
+    return sync_after_vscan(source, n);
 }
 
 scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
@@ -1861,13 +1890,7 @@ scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
                                          wscan_args args)
 {
     auto n = vscan_internal(source, format, args);
-    if (SCN_LIKELY(n)) {
-        source.sync(*n);
-    }
-    else {
-        source.sync_all();
-    }
-    return n;
+    return sync_after_vscan(source, n);
 }
 
 #if !SCN_DISABLE_LOCALE
@@ -1886,13 +1909,7 @@ scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
                                                    scan_args args)
 {
     auto n = vscan_internal(source, format, args, detail::locale_ref{loc});
-    if (SCN_LIKELY(n)) {
-        source.sync(*n);
-    }
-    else {
-        source.sync_all();
-    }
-    return n;
+    return sync_after_vscan(source, n);
 }
 
 template <typename Locale>
@@ -1910,13 +1927,7 @@ scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
                                                    wscan_args args)
 {
     auto n = vscan_internal(source, format, args, detail::locale_ref{loc});
-    if (SCN_LIKELY(n)) {
-        source.sync(*n);
-    }
-    else {
-        source.sync_all();
-    }
-    return n;
+    return sync_after_vscan(source, n);
 }
 
 template auto vscan_localized_impl<std::locale>(const std::locale&,
@@ -1950,13 +1961,7 @@ scan_expected<std::ptrdiff_t> vscan_value_impl(scan_buffer& source,
                                                basic_scan_arg<scan_context> arg)
 {
     auto n = vscan_value_internal(source, arg);
-    if (SCN_LIKELY(n)) {
-        source.sync(*n);
-    }
-    else {
-        source.sync_all();
-    }
-    return n;
+    return sync_after_vscan(source, n);
 }
 
 scan_expected<std::ptrdiff_t> vscan_value_impl(
@@ -1970,13 +1975,7 @@ scan_expected<std::ptrdiff_t> vscan_value_impl(
     basic_scan_arg<wscan_context> arg)
 {
     auto n = vscan_value_internal(source, arg);
-    if (SCN_LIKELY(n)) {
-        source.sync(*n);
-    }
-    else {
-        source.sync_all();
-    }
-    return n;
+    return sync_after_vscan(source, n);
 }
 
 #if !SCN_DISABLE_TYPE_SCHAR

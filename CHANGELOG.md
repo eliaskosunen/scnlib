@@ -42,6 +42,8 @@ return result;
 
  * Deprecate `visit_scan_arg`, add `basic_scan_arg::visit`
  * Remove thousands separator checking when scanning localized numbers
+ * `scan_error::invalid_source_state` is now returned if syncing with the underlying source fails after `scan`
+   (like for example, `std::ungetc` fails)
 
 ## 3.0.2
 
