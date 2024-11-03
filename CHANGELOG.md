@@ -2,7 +2,7 @@
 
 ## 4.0.0
 
-_Released 2024-xx-xx_
+_Released 2024-11-03_
 
 ### Breaking changes
 

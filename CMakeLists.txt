@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(
         scn
-        VERSION 3.0.2
+        VERSION 4.0.0
         DESCRIPTION "scanf for modern C++"
         HOMEPAGE_URL "https://scnlib.dev"
         LANGUAGES CXX
@@ -70,7 +70,7 @@ target_link_libraries(scn PRIVATE
 )
 set_library_flags(scn)
 
-set_property(TARGET scn PROPERTY SOVERSION 3)
+set_property(TARGET scn PROPERTY SOVERSION 4)
 add_library(scn::scn ALIAS scn)
 
 add_library(scn_internal INTERFACE)
