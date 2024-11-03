@@ -30,6 +30,7 @@ static std::optional<T> read_scn()
     }
     return r->value();
 }
+
 template <typename T>
 static std::optional<T> read_scanf()
 {
@@ -40,7 +41,7 @@ static std::optional<T> read_scanf()
         }
         return i;
     }
-    else {
+    else if constexpr (std::is_same_v<T, std::string>) {
         std::string val{};
         val.resize(3);
         if (std::scanf(" %3c", &val[0]) != 1) {
@@ -48,7 +49,18 @@ static std::optional<T> read_scanf()
         }
         return val;
     }
+    else if constexpr (std::is_same_v<T, char>) {
+        char val{};
+        if (std::scanf("%c", &val) != 1) {
+            return std::nullopt;
+        }
+        return val;
+    }
+    else {
+        static_assert(scn::detail::dependent_false<T>::value, "");
+    }
 }
+
 template <typename T>
 static std::optional<T> read_cin()
 {
@@ -80,4 +92,9 @@ TEST(Stdin, Test)
 
     EXPECT_EQ(read_scn<int>(), std::nullopt);
     EXPECT_THAT(read_cin<std::string>(), Optional("ccc"s));
+
+    EXPECT_THAT(read_scn<char>(), Optional('\n'));
+    EXPECT_THAT(read_scn<char>(), Optional('d'));
+    EXPECT_THAT(read_scn<char>(), Optional('\n'));
+    EXPECT_THAT(read_cin<char>(), Optional('e'));
 }

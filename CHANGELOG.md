@@ -5,6 +5,7 @@
 _Released 2024-11-xx_
 
  * Fix formatting options of user-defined types sometimes being ignored
+ * Fix unnecessary blocking in `scn::input`
  * Fix usage of `std::regex_constants::multiline` on libstdc++ v11 (#130, thanks [@jiayuehua (Jia Yue Hua)](https://github.com/jiayuehua))
  * Fix build failures on Emscripten
  * Update documentation to have a version-dropdown

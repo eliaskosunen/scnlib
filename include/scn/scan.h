@@ -4074,14 +4074,15 @@ public:
 
     virtual bool fill() = 0;
 
-    virtual void sync(std::ptrdiff_t position)
+    virtual bool sync(std::ptrdiff_t position)
     {
         SCN_UNUSED(position);
+        return true;
     }
 
-    void sync_all()
+    bool sync_all()
     {
-        sync(0);
+        return sync(0);
     }
 
     SCN_NODISCARD std::ptrdiff_t chars_available() const
@@ -4450,20 +4451,325 @@ private:
 template <typename R>
 basic_scan_forward_buffer_impl(const R&) -> basic_scan_forward_buffer_impl<R>;
 
-class scan_file_buffer : public basic_scan_buffer<char> {
+struct default_file_tag {};
+struct gnu_file_tag {};
+struct bsd_file_tag {};
+struct musl_file_tag {};
+struct win32_file_tag {};
+
+// Non-pretty workaround for MSVC silliness
+template <typename F, typename = void>
+inline constexpr bool is_gnu_file = false;
+template <typename F>
+inline constexpr bool
+    is_gnu_file<F,
+                std::void_t<decltype(SCN_DECLVAL(F)._IO_read_ptr),
+                            decltype(SCN_DECLVAL(F)._IO_read_end)>> = true;
+
+template <typename F, typename = void>
+inline constexpr bool is_bsd_file = false;
+template <typename F>
+inline constexpr bool is_bsd_file<
+    F,
+    std::void_t<decltype(SCN_DECLVAL(F)._p), decltype(SCN_DECLVAL(F)._r)>> =
+    true;
+
+template <typename F, typename = void>
+inline constexpr bool is_musl_file = false;
+template <typename F>
+inline constexpr bool is_musl_file<
+    F,
+    std::void_t<decltype(SCN_DECLVAL(F).rpos), decltype(SCN_DECLVAL(F).rend)>> =
+    true;
+
+template <typename F>
+inline constexpr bool is_win32_file =
+    std::is_same_v<F, std::FILE> && SCN_WINDOWS && !SCN_MINGW;
+
+constexpr auto get_file_tag()
+{
+    if constexpr (is_gnu_file<std::FILE>) {
+        return detail::tag_type<gnu_file_tag>{};
+    }
+    else if constexpr (is_bsd_file<std::FILE>) {
+        return detail::tag_type<bsd_file_tag>{};
+    }
+    else if constexpr (is_musl_file<std::FILE>) {
+        return detail::tag_type<musl_file_tag>{};
+    }
+    else if constexpr (is_win32_file<std::FILE>) {
+        return detail::tag_type<win32_file_tag>{};
+    }
+    else {
+        return detail::tag_type<default_file_tag>{};
+    }
+}
+
+template <typename File>
+struct stdio_file_interface_base {
+    stdio_file_interface_base(File* f) : file(f) {}
+    ~stdio_file_interface_base() = default;
+
+    stdio_file_interface_base(const stdio_file_interface_base&) = delete;
+    stdio_file_interface_base& operator=(const stdio_file_interface_base&) =
+        delete;
+
+    stdio_file_interface_base(stdio_file_interface_base&& other)
+        : file(other.file)
+    {
+        other.file = nullptr;
+    }
+    stdio_file_interface_base& operator=(stdio_file_interface_base&& other)
+    {
+        file = other.file;
+        other.file = nullptr;
+        return *this;
+    }
+
+    File* file;
+};
+
+template <typename File, typename Tag>
+struct stdio_file_interface_impl;
+
+template <typename File>
+struct stdio_file_interface_impl<File, default_file_tag>
+    : stdio_file_interface_base<File> {
+    void lock() {}
+    void unlock() {}
+
+    bool has_buffering() const
+    {
+        return false;
+    }
+
+    std::string_view buffer() const
+    {
+        return {};
+    }
+    void unsafe_advance_n(std::ptrdiff_t)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    void fill_buffer()
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    std::optional<char> read_one()
+    {
+        auto res = std::fgetc(this->file);
+        if (res == EOF) {
+            return std::nullopt;
+        }
+        return static_cast<char>(res);
+    }
+
+    void prepare_putback() {}
+    void finalize_putback() {}
+
+    bool putback(char ch)
+    {
+        return std::ungetc(static_cast<unsigned char>(ch), this->file) != EOF;
+    }
+};
+
+template <typename File>
+struct posix_stdio_file_interface : stdio_file_interface_base<File> {
+    void lock()
+    {
+        flockfile(this->file);
+    }
+    void unlock()
+    {
+        funlockfile(this->file);
+    }
+
+    static bool has_buffering()
+    {
+        return true;
+    }
+
+    std::optional<char> read_one()
+    {
+        auto res = getc_unlocked(this->file);
+        if (res == EOF) {
+            return std::nullopt;
+        }
+        return static_cast<char>(res);
+    }
+
+    void prepare_putback()
+    {
+        unlock();
+    }
+    void finalize_putback()
+    {
+        lock();
+    }
+
+    bool putback(char ch)
+    {
+        return std::ungetc(static_cast<unsigned char>(ch), this->file) != EOF;
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, gnu_file_tag>
+    : posix_stdio_file_interface<File> {
+    std::string_view buffer() const
+    {
+        return make_string_view_from_pointers(this->file->_IO_read_ptr,
+                                              this->file->_IO_read_end);
+    }
+    void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_EXPECT(this->file->_IO_read_ptr != nullptr);
+        SCN_EXPECT(this->file->_IO_read_end - this->file->_IO_read_ptr >= n);
+        this->file->_IO_read_ptr += n;
+    }
+    void fill_buffer()
+    {
+        if (__uflow(this->file) != EOF) {
+            --this->file->_IO_read_ptr;
+        }
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, bsd_file_tag>
+    : posix_stdio_file_interface<File> {
+    std::string_view buffer() const
+    {
+        return {reinterpret_cast<const char*>(this->file->_p),
+                static_cast<std::size_t>(this->file->_r)};
+    }
+    void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_EXPECT(this->file->_p != nullptr);
+        SCN_EXPECT(this->file->_r >= n);
+        this->file->_p += n;
+        this->file->_r -= n;
+    }
+    void fill_buffer()
+    {
+        if (__srget(this->file) != EOF) {
+            --this->file->_p;
+            ++this->file->_r;
+        }
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, musl_file_tag>
+    : posix_stdio_file_interface<File> {
+    std::string_view buffer() const
+    {
+        return make_string_view_from_pointers(
+            reinterpret_cast<const char*>(this->file->rpos),
+            reinterpret_cast<const char*>(this->file->rend));
+    }
+    void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_EXPECT(this->file->rpos != nullptr);
+        SCN_EXPECT(this->file->rend - this->file->rpos >= n);
+        this->file->rpos += n;
+    }
+    void fill_buffer()
+    {
+        if (__uflow(this->file) != EOF) {
+            --this->file->rpos;
+        }
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, win32_file_tag>
+    : stdio_file_interface_base<File> {
+    void lock()
+    {
+        _lock_file(this->file);
+    }
+    void unlock()
+    {
+        _unlock_file(this->file);
+    }
+
+    static bool has_buffering()
+    {
+        return false;
+    }
+
+    std::string_view buffer() const
+    {
+        return {};
+    }
+    void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    void fill_buffer()
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    std::optional<char> read_one()
+    {
+        auto res = _fgetc_nolock(this->file);
+        if (res == EOF) {
+            return std::nullopt;
+        }
+        return static_cast<char>(res);
+    }
+
+    void prepare_putback() {}
+    void finalize_putback() {}
+
+    bool putback(char ch)
+    {
+        return _ungetc_nolock(static_cast<unsigned char>(ch), this->file) !=
+               EOF;
+    }
+};
+
+using stdio_file_interface =
+    stdio_file_interface_impl<std::FILE, decltype(get_file_tag())::type>;
+
+template <typename FileInterface>
+class basic_scan_file_buffer : public basic_scan_buffer<char> {
     using base = basic_scan_buffer<char>;
 
 public:
-    scan_file_buffer(std::FILE* file);
-    ~scan_file_buffer();
+    explicit basic_scan_file_buffer(FileInterface file);
+    ~basic_scan_file_buffer();
 
     bool fill() override;
-    void sync(std::ptrdiff_t position) override;
+
+    bool sync(std::ptrdiff_t position) override;
 
 private:
-    std::FILE* m_file;
+    FileInterface m_file;
     std::optional<char_type> m_latest{std::nullopt};
 };
+
+struct scan_file_buffer : public basic_scan_file_buffer<stdio_file_interface> {
+    explicit scan_file_buffer(std::FILE* file)
+        : basic_scan_file_buffer(stdio_file_interface{file})
+    {
+    }
+};
+
+extern template basic_scan_file_buffer<
+    stdio_file_interface>::basic_scan_file_buffer(stdio_file_interface);
+extern template basic_scan_file_buffer<
+    stdio_file_interface>::~basic_scan_file_buffer();
+extern template bool basic_scan_file_buffer<stdio_file_interface>::fill();
+extern template bool basic_scan_file_buffer<stdio_file_interface>::sync(
+    std::ptrdiff_t);
 
 template <typename CharT>
 class basic_scan_ref_buffer : public basic_scan_buffer<CharT> {

@@ -1122,9 +1122,118 @@ struct iterator_value_result {
     SCN_NO_UNIQUE_ADDRESS T value;
 };
 
+}  // namespace impl
+
+/////////////////////////////////////////////////////////////////
+// File support
+/////////////////////////////////////////////////////////////////
+
+namespace detail {
+
+template <typename FileInterface>
+basic_scan_file_buffer<FileInterface>::basic_scan_file_buffer(
+    FileInterface file)
+    : base(base::non_contiguous_tag{}), m_file(SCN_MOVE(file))
+{
+    m_file.lock();
+}
+
+template <typename FileInterface>
+basic_scan_file_buffer<FileInterface>::~basic_scan_file_buffer()
+{
+    m_file.unlock();
+}
+
+template <typename FileInterface>
+bool basic_scan_file_buffer<FileInterface>::fill()
+{
+    if (!this->m_current_view.empty()) {
+        this->m_putback_buffer.insert(this->m_putback_buffer.end(),
+                                      this->m_current_view.begin(),
+                                      this->m_current_view.end());
+    }
+
+    if (m_file.has_buffering()) {
+        if (!this->m_current_view.empty()) {
+            m_file.unsafe_advance_n(this->m_current_view.size());
+        }
+
+        if (m_file.buffer().empty()) {
+            m_file.fill_buffer();
+        }
+        m_current_view = m_file.buffer();
+        return !this->m_current_view.empty();
+    }
+
+    this->m_latest = m_file.read_one();
+    if (!this->m_latest) {
+        this->m_current_view = {};
+        return false;
+    }
+
+    this->m_current_view = {&*this->m_latest, 1};
+    return true;
+}
+
+template <typename FileInterface>
+bool basic_scan_file_buffer<FileInterface>::sync(std::ptrdiff_t position)
+{
+    struct putback_wrapper {
+        putback_wrapper(FileInterface& i) : i(i)
+        {
+            i.prepare_putback();
+        }
+        ~putback_wrapper()
+        {
+            i.finalize_putback();
+        }
+
+        FileInterface& i;
+    };
+
+    if (m_file.has_buffering()) {
+        if (position <
+            static_cast<std::ptrdiff_t>(this->putback_buffer().size())) {
+            putback_wrapper wrapper{m_file};
+            auto segment = this->get_segment_starting_at(position);
+            for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
+                if (!m_file.putback(*it)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        m_file.unsafe_advance_n(position - static_cast<std::ptrdiff_t>(
+                                               this->putback_buffer().size()));
+        return true;
+    }
+
+    const auto chars_avail = this->chars_available();
+    if (position == chars_avail) {
+        return true;
+    }
+
+    putback_wrapper wrapper{m_file};
+    SCN_EXPECT(m_current_view.size() == 1);
+    m_file.putback(m_current_view.front());
+
+    auto segment = std::string_view{this->putback_buffer()}.substr(position);
+    for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
+        if (!m_file.putback(*it)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+}  // namespace detail
+
 /////////////////////////////////////////////////////////////////
 // Unicode
 /////////////////////////////////////////////////////////////////
+
+namespace impl {
 
 template <typename CharT>
 constexpr bool validate_unicode(std::basic_string_view<CharT> src)
