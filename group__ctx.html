@@ -75,7 +75,7 @@
             </li>
           </ul>
         </nav>
-<section id="user-defined"><h2><a href="#user-defined">Scanning user-defined types</a></h2><p>User-defined types can be scanned by specializing the class template <code><a class="m-doc" href="structscn_1_1v3_1_1scanner.html">scn::<wbr/>scanner</a></code>.</p><pre class="m-code"><span class="k">struct</span> <span class="nc">mytype</span> <span class="p">{</span>
+<section id="user-defined"><h2><a href="#user-defined">Scanning user-defined types</a></h2><p>User-defined types can be scanned by specializing the class template <code><a class="m-doc" href="structscn_1_1scanner.html">scn::<wbr/>scanner</a></code>.</p><pre class="m-code"><span class="k">struct</span> <span class="nc">mytype</span> <span class="p">{</span>
   <span class="k">int</span> <span class="n">key</span><span class="p">;</span>
   <span class="nn">std</span><span class="o">::</span><span class="nc">string</span> <span class="n">value</span><span class="p">;</span>
 <span class="p">};</span>
@@ -84,7 +84,7 @@
 <span class="k">struct</span> <span class="nn">scn</span><span class="o">::</span><span class="nc">scanner</span><span class="o">&lt;</span><span class="n">mytype</span><span class="o">&gt;</span> <span class="p">{</span>
   <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="nc">ParseContext</span><span class="o">&gt;</span>
   <span class="k">constexpr</span> <span class="k">auto</span> <span class="nf">parse</span><span class="p">(</span><span class="n">ParseCtx</span><span class="o">&amp;</span> <span class="n">pctx</span><span class="p">)</span>
-    <span class="o">-&gt;</span> <span class="n">scan_expected</span><span class="o">&lt;</span><span class="k">typename</span> <span class="nc">ParseContext</span><span class="o">::</span><span class="n">iterator</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="o">-&gt;</span> <span class="k">typename</span> <span class="nc">ParseContext</span><span class="o">::</span><span class="n">iterator</span> <span class="p">{</span>
     <span class="c1">// parse() implementation just returning begin():</span>
     <span class="c1">// only permits empty format specifiers</span>
     <span class="k">return</span> <span class="n">pctx</span><span class="p">.</span><span class="nf">begin</span><span class="p">();</span>
@@ -104,23 +104,23 @@
           <h2><a href="#nested-classes">Classes</a></h2>
           <dl class="m-doc">
             <dt>
-              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
-              class <a class="m-doc" href="classscn_1_1v3_1_1basic__scan__context.html">scn::v3::basic_scan_context</a>
+              <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename Range</span>, <span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
+              class <a class="m-doc" href="classscn_1_1basic__scan__context.html">scn::basic_scan_context</a>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
-              class <a class="m-doc" href="classscn_1_1v3_1_1basic__scan__parse__context.html">scn::v3::basic_scan_parse_context</a>
+              class <a class="m-doc" href="classscn_1_1basic__scan__parse__context.html">scn::basic_scan_parse_context</a>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params m-doc-template-long"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param">typename CharT = char</span>, <span class="m-doc-template-param">typename Enable = void</span></span>&gt;</div>
-              struct <a class="m-doc" href="structscn_1_1v3_1_1scanner.html">scn::v3::scanner</a>
+              struct <a class="m-doc" href="structscn_1_1scanner.html">scn::scanner</a>
             </dt>
             <dd></dd>
             <dt>
               <div class="m-doc-template">template &lt;<span class="m-doc-template-params"><span class="m-doc-template-param">typename T</span>, <span class="m-doc-template-param">typename CharT</span></span>&gt;</div>
-              struct <a class="m-doc" href="structscn_1_1v3_1_1scanner_3_01_t_00_01_char_t_00_01std_1_1enable__if__t_3_01detail_1_1arg__type448fabb21483cdafd8c674c7554fe38d.html">scn::v3::scanner&lt;T, CharT, std::enable_if_t&lt;detail::arg_type_constant&lt;T, CharT&gt;::value !=detail::arg_type::custom_type &amp;&amp; !detail::is_type_disabled&lt;T&gt;&gt;&gt;</a>
+              struct <a class="m-doc" href="structscn_1_1scanner_3_01_t_00_01_char_t_00_01std_1_1enable__if__t_3_01detail_1_1arg__type__cons3aa1d3b11a8950d2c816ed76e7e2c811.html">scn::scanner&lt;T, CharT, std::enable_if_t&lt;detail::arg_type_constant&lt;T, CharT&gt;::value !=detail::arg_type::custom_type &amp;&amp; !detail::is_type_disabled&lt;T&gt;&gt;&gt;</a>
             </dt>
             <dd></dd>
           </dl>
@@ -173,7 +173,7 @@
 <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib" target="_blank">GitHub</a>
 • <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/issues" target="_blank">Report an issue</a>
 • <a href="poxy_changelog.html">Changelog</a>
-• <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/blob/dev/LICENSE" target="_blank">License</a>
+• <a class="poxy-external" href="https://github.com/eliaskosunen/scnlib/blob/master/LICENSE" target="_blank">License</a>
 • <a download="" href="scnlib.tagfile.xml" target="_blank" type="text/xml">Doxygen tagfile</a>
 <br/><br/>
 Site generated using <a class="poxy-external" href="https://github.com/marzer/poxy/" target="_blank">Poxy</a>
