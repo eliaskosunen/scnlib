@@ -28,7 +28,7 @@ int main() {
 }
 ```
 
-Try out in [Compiler Explorer](https://godbolt.org/z/djzKx6Evz).
+Try out in [Compiler Explorer](https://godbolt.org/z/oG71eorvE).
 
 ## What is this?
 

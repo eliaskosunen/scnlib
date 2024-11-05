@@ -5,6 +5,10 @@
 Think of it as a more C++-y `scanf`, or the inverse of
 <a href="https://fmt.dev">{fmt}</a> / `std::format`.
 
+This library is the reference implementation of the
+ISO C++ standards proposal
+<a href="https://wg21.link/p1729">P1729 "Text Parsing"</a>.
+
 The code lives over at GitHub, at https://github.com/eliaskosunen/scnlib.
 
 \code{.cpp}
