@@ -629,3 +629,11 @@ TEST(CustomPrecisionTest, DoubleWidthEmoji)
     EXPECT_EQ(r->value(), "😂");
     EXPECT_STREQ(r->begin(), "a");
 }
+
+TEST(CustomPrecisionTest, Fuzz1)
+{
+    auto r = scn::scan<std::string>("a😂", "{:^.2}");
+    ASSERT_TRUE(r);
+    EXPECT_EQ(r->value(), "a");
+    EXPECT_STREQ(r->begin(), "😂");
+}

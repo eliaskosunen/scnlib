@@ -2521,6 +2521,13 @@ public:
         return m_multibyte_left;
     }
 
+    bool is_current_double_wide() const
+    {
+        assert(count() != 0 || multibyte_left() != 0);
+        return _get_width_at_current_cp_start(
+                   _get_cp_length_at_current()) == 2;
+    }
+
     constexpr decltype(auto) operator*()
     {
         return *m_current;
@@ -2634,12 +2641,14 @@ public:
     friend constexpr bool operator==(const counted_width_iterator& x,
                                      ranges::default_sentinel_t)
     {
-        return x.count() == 0 && x.multibyte_left() == 0;
+        return (x.count() == 0 && x.multibyte_left() == 0) ||
+               (x.count() == 1 && x.multibyte_left() == 0 &&
+                x.is_current_double_wide());
     }
-    friend constexpr bool operator==(ranges::default_sentinel_t,
+    friend constexpr bool operator==(ranges::default_sentinel_t s,
                                      const counted_width_iterator& x)
     {
-        return x.count() == 0 && x.multibyte_left() == 0;
+        return x == s;
     }
 
     friend constexpr bool operator!=(const counted_width_iterator& a,
@@ -2868,7 +2877,9 @@ class take_width_view : public ranges::view_interface<take_width_view<View>> {
         friend constexpr bool operator==(const CWI& y, const sentinel& x)
         {
             return (y.count() == 0 && y.multibyte_left() == 0) ||
-                   y.base() == x.m_end;
+                   y.base() == x.m_end ||
+                   (y.count() == 1 && y.multibyte_left() == 0 &&
+                    y.is_current_double_wide());
         }
 
         friend constexpr bool operator==(const sentinel& x, const CWI& y)
