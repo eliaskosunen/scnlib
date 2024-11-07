@@ -9,6 +9,20 @@ RUN apt update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+RUN git clone --depth 1 --branch 20240722.0 https://github.com/abseil/abseil-cpp $SRC/abseil && \
+    cd $SRC/abseil-cpp && \
+    mkdir build && cd build && \
+    cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON .. && \
+    cmake --build . --target install && \
+    cd ../.. && rm -rf $SRC/abseil \
+
+RUN git clone --depth 1 --branch 2024-07-02 https://github.com/google/re2 $SRC/re2 && \
+    cd $SRC/re2 && \
+    mkdir build && cd build && \
+    cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON .. && \
+    cmake --build . --target install && \
+    cd ../.. && rm -rf $SRC/re2 \
+
 COPY . $SRC/scnlib
 WORKDIR $SRC/scnlib
 COPY ./.clusterfuzzlite/build.sh $SRC/

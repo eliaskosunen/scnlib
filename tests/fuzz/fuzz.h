@@ -19,6 +19,7 @@
 #include <scn/scan.h>
 #include <scn/xchar.h>
 
+#include <deque>
 #include <sstream>
 
 namespace scn::fuzz {

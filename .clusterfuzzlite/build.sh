@@ -1,4 +1,6 @@
-#!/bin/bash -eu
+#!/usr/bin/env bash
+
+set -xeu
 
 mkdir build
 cd build
@@ -6,7 +8,8 @@ cd build
 cmake .. \
   -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=17 \
   -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_FUZZING=ON \
-  -DSCN_FUZZING_LDFLAGS="$LIB_FUZZING_ENGINE"
+  -DSCN_FUZZING_LDFLAGS="$LIB_FUZZING_ENGINE" \
+  -DSCN_REGEX_BACKEND=re2
 
 cmake --build .
 
