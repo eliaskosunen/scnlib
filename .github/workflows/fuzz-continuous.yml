@@ -5,6 +5,7 @@ on:
     branches:
       - master
     paths:
+      - '.clusterfuzzlite/**'
       - '.github/workflows/fuzz-continuous.yml'
       - 'benchmark/**'
       - 'cmake/**'

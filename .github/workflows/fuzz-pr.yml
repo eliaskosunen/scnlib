@@ -3,6 +3,7 @@ name: ClusterFuzzLite PR fuzzing
 on:
   pull_request:
     paths:
+      - '.clusterfuzzlite/**'
       - '.github/workflows/fuzz-pr.yml'
       - 'cmake/**'
       - 'include/**'
