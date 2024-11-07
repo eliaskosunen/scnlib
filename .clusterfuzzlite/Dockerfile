@@ -24,7 +24,7 @@ RUN git clone --depth 1 --branch 2024-07-02 https://github.com/google/re2 $SRC/r
     mkdir build && cd build && \
     cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON .. && \
     cmake --build . --target install && \
-    cd $SRC && rm -rf $SRC/re2 \
+    cd $SRC && rm -rf $SRC/re2
 
 COPY . $SRC/scnlib
 WORKDIR $SRC/scnlib
