@@ -17,14 +17,14 @@ RUN git clone --depth 1 --branch 20240722.0 https://github.com/abseil/abseil-cpp
     mkdir build && cd build && \
     cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON .. && \
     cmake --build . --target install && \
-    cd ../.. && rm -rf $SRC/abseil-cpp
+    cd $SRC && rm -rf $SRC/abseil-cpp
 
 RUN git clone --depth 1 --branch 2024-07-02 https://github.com/google/re2 $SRC/re2 && \
     cd $SRC/re2 && \
     mkdir build && cd build && \
     cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON .. && \
     cmake --build . --target install && \
-    cd ../.. && rm -rf $SRC/re2 \
+    cd $SRC && rm -rf $SRC/re2 \
 
 COPY . $SRC/scnlib
 WORKDIR $SRC/scnlib
