@@ -7,9 +7,7 @@ on:
     paths:
       - '.clusterfuzzlite/**'
       - '.github/workflows/fuzz-continuous.yml'
-      - 'benchmark/**'
       - 'cmake/**'
-      - 'examples/**'
       - 'include/**'
       - 'src/**'
       - 'tests/**'
@@ -39,3 +37,14 @@ jobs:
           language: c++
           sanitizer: ${{ matrix.sanitizer }}
           upload-build: true
+
+      - name: Run fuzzers
+        id: run
+        uses: eliaskosunen/clusterfuzzlite/actions/run_fuzzers@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 120
+          mode: 'code-change'
+          sanitizer: ${{ matrix.sanitizer }}
+          output-sarif: true
+          storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/eliaskosunen/scnlib-fuzz-corpus.git
