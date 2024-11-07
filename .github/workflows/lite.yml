@@ -13,7 +13,7 @@ on:
       - 'examples/**'
       - 'include/**'
       - 'src/**'
-      - 'tests/**'
+      - 'tests/unittests/**'
       - '**/CMakeLists.txt'
   pull_request:
     branches-ignore:
@@ -27,7 +27,7 @@ on:
       - 'examples/**'
       - 'include/**'
       - 'src/**'
-      - 'tests/**'
+      - 'tests/unittests/**'
       - '**/CMakeLists.txt'
   workflow_dispatch:
 

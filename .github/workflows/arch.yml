@@ -11,7 +11,7 @@ on:
       - 'cmake/**'
       - 'include/**'
       - 'src/**'
-      - 'tests/**'
+      - 'tests/unittests/**'
       - '**/CMakeLists.txt'
   pull_request:
     branches:
@@ -23,7 +23,7 @@ on:
       - 'cmake/**'
       - 'include/**'
       - 'src/**'
-      - 'tests/**'
+      - 'tests/unittests/**'
       - '**/CMakeLists.txt'
   workflow_dispatch:
 
