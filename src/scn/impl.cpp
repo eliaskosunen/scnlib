@@ -721,17 +721,17 @@ scan_expected<std::ptrdiff_t> fast_float_fallback(impl_init_data<CharT> data,
 struct fast_float_impl_base : impl_base {
     fast_float::chars_format get_flags() const
     {
-        uint64_t format_flags{};
+        fast_float::chars_format format_flags{};
         if ((m_options & float_reader_base::allow_fixed) != 0) {
-            format_flags |=
-                static_cast<uint64_t>(fast_float::chars_format::fixed);
+            format_flags =
+                static_cast<fast_float::chars_format>(format_flags | fast_float::chars_format::fixed);
         }
         if ((m_options & float_reader_base::allow_scientific) != 0) {
-            format_flags |=
-                static_cast<uint64_t>(fast_float::chars_format::scientific);
+            format_flags =
+                static_cast<fast_float::chars_format>(format_flags | fast_float::chars_format::scientific);
         }
 
-        return static_cast<fast_float::chars_format>(format_flags);
+        return format_flags;
     }
 };
 
