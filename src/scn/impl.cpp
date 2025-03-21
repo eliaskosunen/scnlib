@@ -1514,7 +1514,7 @@ struct fast_float_impl_base {
 
     SCN_NODISCARD fast_float::chars_format get_flags() const
     {
-        unsigned format_flags{};
+        fast_float::chars_format format_flags{};
         if ((m_options & float_reader_base::allow_fixed) != 0) {
             format_flags |=
                 static_cast<unsigned>(fast_float::chars_format::fixed);
@@ -1524,7 +1524,7 @@ struct fast_float_impl_base {
                 static_cast<unsigned>(fast_float::chars_format::scientific);
         }
 
-        return static_cast<fast_float::chars_format>(format_flags);
+        return format_flags;
     }
 
     SCN_CLANG_POP
