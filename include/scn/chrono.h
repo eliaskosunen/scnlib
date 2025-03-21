@@ -309,7 +309,7 @@ struct datetime_components {
      * The fields `subsec` and `tz_name` are discarded.
      * `tz_offset` is set to `tm_gmtoff`, if it's available.
      */
-    [[nodiscard]] std::tm to_tm() const
+    SCN_NODISCARD std::tm to_tm() const
     {
         SCN_UNUSED(subsec);
         std::tm t{};
@@ -1471,7 +1471,7 @@ struct tm_format_checker {
         st.verify(*this);
     }
 
-    [[nodiscard]] constexpr scan_expected<void> get_error() const
+    SCN_NODISCARD constexpr scan_expected<void> get_error() const
     {
         return err;
     }

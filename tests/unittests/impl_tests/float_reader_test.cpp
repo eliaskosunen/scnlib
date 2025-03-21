@@ -37,7 +37,7 @@ std::string get_bytes_str(T val)
 }
 
 template <typename T>
-[[nodiscard]] testing::AssertionResult
+SCN_NODISCARD testing::AssertionResult
 check_floating_eq(T a, T b, bool allow_approx = false)
 {
     SCN_GCC_COMPAT_PUSH
@@ -833,7 +833,7 @@ protected:
     }
 
     template <typename Result>
-    [[nodiscard]] testing::AssertionResult check_generic_success(
+    SCN_NODISCARD testing::AssertionResult check_generic_success(
         const Result& result) const
     {
         if (!result) {
@@ -855,7 +855,7 @@ protected:
     }
 
     template <typename Result>
-    [[nodiscard]] testing::AssertionResult check_value_success(
+    SCN_NODISCARD testing::AssertionResult check_value_success(
         const Result& result,
         float_type val,
         float_type expected) const
@@ -870,7 +870,7 @@ protected:
     }
 
     template <typename Result>
-    [[nodiscard]] testing::AssertionResult check_failure_with_code(
+    SCN_NODISCARD testing::AssertionResult check_failure_with_code(
         const Result& result,
         enum scn::scan_error::code c) const
     {
@@ -948,7 +948,7 @@ protected:
     }
 
     template <typename Source>
-    [[nodiscard]] testing::AssertionResult simple_default_test(
+    SCN_NODISCARD testing::AssertionResult simple_default_test(
         Source&& source,
         float_type expected_output)
     {

@@ -3378,14 +3378,14 @@ private:
 
 public:
     template <typename R = D>
-    [[nodiscard]] constexpr auto empty()
+    SCN_NODISCARD constexpr auto empty()
         -> std::enable_if_t<forward_range<R>, bool>
     {
         return ranges::begin(derived()) == ranges::end(derived());
     }
 
     template <typename R = D>
-    [[nodiscard]] constexpr auto empty() const
+    SCN_NODISCARD constexpr auto empty() const
         -> std::enable_if_t<forward_range<const R>, bool>
     {
         return ranges::begin(derived()) == ranges::end(derived());
