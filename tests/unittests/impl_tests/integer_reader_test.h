@@ -321,7 +321,7 @@ protected:
     }
 
     template <typename Result>
-    [[nodiscard]] testing::AssertionResult check_generic_success(
+    SCN_NODISCARD testing::AssertionResult check_generic_success(
         const Result& result) const
     {
         if (!result) {
@@ -341,7 +341,7 @@ protected:
     }
 
     template <typename Result>
-    [[nodiscard]] testing::AssertionResult check_value_success(
+    SCN_NODISCARD testing::AssertionResult check_value_success(
         const Result& result,
         int_type val,
         int_type expected) const
@@ -357,7 +357,7 @@ protected:
     }
 
     template <typename Result>
-    [[nodiscard]] testing::AssertionResult check_failure_with_code(
+    SCN_NODISCARD testing::AssertionResult check_failure_with_code(
         const Result& result,
         int_type val,
         enum scn::scan_error::code c) const
@@ -379,7 +379,7 @@ protected:
     }
 
     template <typename Result>
-    [[nodiscard]] testing::AssertionResult check_failure_with_code_and_value(
+    SCN_NODISCARD testing::AssertionResult check_failure_with_code_and_value(
         const Result& result,
         int_type val,
         enum scn::scan_error::code c,
@@ -464,7 +464,7 @@ protected:
     }
 
     template <typename Source>
-    [[nodiscard]] testing::AssertionResult simple_default_test(
+    SCN_NODISCARD testing::AssertionResult simple_default_test(
         Source&& source,
         int_type expected_output)
     {
