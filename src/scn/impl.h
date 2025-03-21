@@ -1923,13 +1923,13 @@ struct localized_number_formatting_options {
 
 namespace impl {
 
-std::string_view::iterator find_classic_space_narrow_fast(
+SCN_EXPORT std::string_view::iterator find_classic_space_narrow_fast(
     std::string_view source);
 
-std::string_view::iterator find_classic_nonspace_narrow_fast(
+SCN_EXPORT std::string_view::iterator find_classic_nonspace_narrow_fast(
     std::string_view source);
 
-std::string_view::iterator find_nondecimal_digit_narrow_fast(
+SCN_EXPORT std::string_view::iterator find_nondecimal_digit_narrow_fast(
     std::string_view source);
 
 template <typename Range>
@@ -3453,21 +3453,22 @@ auto parse_integer_digits_with_thsep(
 }
 
 template <typename CharT, typename T>
-auto parse_integer_value(std::basic_string_view<CharT> source,
-                         T& value,
-                         sign_type sign,
-                         int base)
+SCN_EXPORT auto parse_integer_value(std::basic_string_view<CharT> source,
+                                    T& value,
+                                    sign_type sign,
+                                    int base)
     -> scan_expected<typename std::basic_string_view<CharT>::iterator>;
 
 template <typename T>
-void parse_integer_value_exhaustive_valid(std::string_view source, T& value);
+SCN_EXPORT void parse_integer_value_exhaustive_valid(std::string_view source,
+                                                     T& value);
 
 #define SCN_DECLARE_INTEGER_READER_TEMPLATE(CharT, IntT)                    \
-    extern template auto parse_integer_value(                               \
+    extern template SCN_EXPORT auto parse_integer_value(                    \
         std::basic_string_view<CharT> source, IntT& value, sign_type sign,  \
         int base)                                                           \
         -> scan_expected<typename std::basic_string_view<CharT>::iterator>; \
-    extern template void parse_integer_value_exhaustive_valid(              \
+    extern template SCN_EXPORT void parse_integer_value_exhaustive_valid(   \
         std::string_view, IntT&);
 
 #if !SCN_DISABLE_TYPE_SCHAR
@@ -3679,7 +3680,8 @@ protected:
 };
 
 template <typename CharT>
-class float_reader : public numeric_reader<CharT>, public float_reader_base {
+class SCN_EXPORT float_reader : public numeric_reader<CharT>,
+                                public float_reader_base {
     using numeric_base = numeric_reader<CharT>;
 
 public:

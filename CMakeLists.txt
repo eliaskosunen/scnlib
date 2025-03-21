@@ -44,6 +44,7 @@ set(SCN_PUBLIC_HEADERS
         include/scn/regex.h
         include/scn/istream.h
         include/scn/xchar.h
+        "${CMAKE_CURRENT_BINARY_DIR}/include/scn/scn_export.h"
 )
 set(SCN_PRIVATE_HEADERS
         src/scn/impl.h
@@ -60,6 +61,7 @@ add_library(scn
 target_include_directories(scn
         PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
@@ -69,6 +71,14 @@ target_link_libraries(scn PRIVATE
         ${SCN_REGEX_BACKEND_TARGET}
 )
 set_library_flags(scn)
+
+include(GenerateExportHeader)
+generate_export_header(scn
+  EXPORT_MACRO_NAME SCN_EXPORT
+  EXPORT_FILE_NAME include/scn/scn_export.h)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/scn/scn_export.h"
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn")
 
 set_property(TARGET scn PROPERTY SOVERSION 4)
 add_library(scn::scn ALIAS scn)
@@ -82,6 +92,7 @@ target_link_libraries(scn_internal INTERFACE
 target_include_directories(scn_internal
         INTERFACE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
 set_interface_flags(scn_internal)
