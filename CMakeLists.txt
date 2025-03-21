@@ -64,6 +64,7 @@ set(SCN_PUBLIC_HEADERS
         include/scn/regex.h
         include/scn/istream.h
         include/scn/xchar.h
+        "${CMAKE_CURRENT_BINARY_DIR}/include/scn/scn_export.h"
 )
 set(SCN_PRIVATE_HEADERS
         src/scn/impl.h
@@ -85,6 +86,7 @@ target_include_directories(scn
         ${SCN_SYSTEM_HEADERS_ATTRIBUTE}
         PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
@@ -120,6 +122,7 @@ target_link_libraries(scn_internal INTERFACE
 target_include_directories(scn_internal
         INTERFACE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
 set_interface_flags(scn_internal)

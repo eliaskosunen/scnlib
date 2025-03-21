@@ -3871,7 +3871,7 @@ constexpr bool operator!=(enum scan_error::code a, scan_error b) noexcept
 
 namespace detail {
 // Intentionally not constexpr, to give out a compile-time error
-SCN_COLD scan_error handle_error(scan_error e);
+SCN_EXPORT SCN_COLD scan_error handle_error(scan_error e);
 }  // namespace detail
 
 #if SCN_HAS_EXCEPTIONS
@@ -5174,7 +5174,7 @@ using stdio_file_interface =
     stdio_file_interface_impl<std::FILE, decltype(get_file_tag())::type>;
 
 template <typename FileInterface>
-class basic_scan_file_buffer : public basic_scan_buffer<char> {
+class SCN_EXPORT basic_scan_file_buffer : public basic_scan_buffer<char> {
     using base = basic_scan_buffer<char>;
 
 public:
@@ -5204,11 +5204,15 @@ SCN_CLANG_POP
 
 extern template basic_scan_file_buffer<
     stdio_file_interface>::basic_scan_file_buffer(stdio_file_interface);
-extern template basic_scan_file_buffer<
-    stdio_file_interface>::~basic_scan_file_buffer();
-extern template bool basic_scan_file_buffer<stdio_file_interface>::fill();
-extern template bool basic_scan_file_buffer<stdio_file_interface>::sync(
-    std::ptrdiff_t);
+extern template SCN_EXPORT
+    basic_scan_file_buffer<stdio_file_interface>::~basic_scan_file_buffer();
+extern template SCN_EXPORT bool
+basic_scan_file_buffer<stdio_file_interface>::fill();
+extern template SCN_EXPORT bool
+basic_scan_file_buffer<stdio_file_interface>::sync(std::ptrdiff_t);
+#else
+extern template class SCN_EXPORT basic_scan_file_buffer<stdio_file_interface>;
+#endif
 
 template <typename CharT>
 class basic_scan_ref_buffer : public basic_scan_buffer<CharT> {
@@ -8981,7 +8985,7 @@ private:
 };
 
 namespace detail {
-class locale_ref {
+class SCN_EXPORT locale_ref {
 #if !SCN_DISABLE_LOCALE
 public:
     constexpr locale_ref() = default;
@@ -9186,7 +9190,7 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
     format_specs& specs);
 
 template <typename T, typename Context>
-scan_expected<typename Context::iterator>
+SCN_EXPORT scan_expected<typename Context::iterator>
 scanner_scan_for_builtin_type(T& val, Context& ctx, const format_specs& specs);
 
 template <typename T, typename CharT>
@@ -9368,12 +9372,11 @@ struct scanner<discard<T>, CharT> : public scanner<T, CharT> {
 
 namespace detail {
 template <typename Range>
-scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
-    Range r,
-    bool allow_exhaustion);
+SCN_EXPORT scan_expected<ranges::iterator_t<Range>>
+internal_skip_classic_whitespace(Range r, bool allow_exhaustion);
 
-#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(T, Context) \
-    extern template scan_expected<Context::iterator>         \
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(T, Context)    \
+    extern template SCN_EXPORT scan_expected<Context::iterator> \
     scanner_scan_for_builtin_type(T&, Context&, const format_specs&);
 
 #if SCN_HAS_INT128
@@ -9652,55 +9655,59 @@ template <typename Source>
 using vscan_result = scan_expected<detail::scan_result_value_type<Source>>;
 
 namespace detail {
-scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
-                                         std::string_view format,
-                                         scan_args args);
-scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
-                                         std::string_view format,
-                                         scan_args args);
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
+                                                    std::string_view format,
+                                                    scan_args args);
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
+                                                    std::string_view format,
+                                                    scan_args args);
 
-scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
-                                         std::wstring_view format,
-                                         wscan_args args);
-scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
-                                         std::wstring_view format,
-                                         wscan_args args);
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
+                                                    std::wstring_view format,
+                                                    wscan_args args);
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
+                                                    std::wstring_view format,
+                                                    wscan_args args);
 
 #if !SCN_DISABLE_LOCALE
 template <typename Locale>
-scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
-                                                   std::string_view source,
-                                                   std::string_view format,
-                                                   scan_args args);
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_localized_impl(
+    const Locale& loc,
+    std::string_view source,
+    std::string_view format,
+    scan_args args);
 template <typename Locale>
-scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
-                                                   scan_buffer& source,
-                                                   std::string_view format,
-                                                   scan_args args);
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_localized_impl(
+    const Locale& loc,
+    scan_buffer& source,
+    std::string_view format,
+    scan_args args);
 
 template <typename Locale>
-scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
-                                                   std::wstring_view source,
-                                                   std::wstring_view format,
-                                                   wscan_args args);
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_localized_impl(
+    const Locale& loc,
+    std::wstring_view source,
+    std::wstring_view format,
+    wscan_args args);
 template <typename Locale>
-scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
-                                                   wscan_buffer& source,
-                                                   std::wstring_view format,
-                                                   wscan_args args);
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_localized_impl(
+    const Locale& loc,
+    wscan_buffer& source,
+    std::wstring_view format,
+    wscan_args args);
 #endif
 
-scan_expected<std::ptrdiff_t> vscan_value_impl(
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_value_impl(
     std::string_view source,
     basic_scan_arg<scan_context> arg);
-scan_expected<std::ptrdiff_t> vscan_value_impl(
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_value_impl(
     scan_buffer& source,
     basic_scan_arg<scan_context> arg);
 
-scan_expected<std::ptrdiff_t> vscan_value_impl(
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_value_impl(
     std::wstring_view source,
     basic_scan_arg<wscan_context> arg);
-scan_expected<std::ptrdiff_t> vscan_value_impl(
+SCN_EXPORT scan_expected<std::ptrdiff_t> vscan_value_impl(
     wscan_buffer& source,
     basic_scan_arg<wscan_context> arg);
 
@@ -9813,91 +9820,94 @@ auto vscan_value(Source&& source, basic_scan_arg<scan_context> arg)
  *
  * \ingroup vscan
  */
-scan_expected<void> vinput(std::string_view format, scan_args args);
+SCN_EXPORT scan_expected<void> vinput(std::string_view format, scan_args args);
 
 namespace detail {
 template <typename T>
-auto scan_int_impl(std::string_view source, T& value, int base)
+SCN_EXPORT auto scan_int_impl(std::string_view source, T& value, int base)
     -> scan_expected<std::string_view::iterator>;
 
 template <typename T>
-auto scan_int_exhaustive_valid_impl(std::string_view source) -> T;
+SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view source) -> T;
 
 #if !SCN_DISABLE_TYPE_SCHAR
-extern template auto scan_int_impl(std::string_view source,
-                                   signed char& value,
-                                   int base)
+extern template SCN_EXPORT auto scan_int_impl(std::string_view source,
+                                              signed char& value,
+                                              int base)
     -> scan_expected<std::string_view::iterator>;
-extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+extern template SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view)
     -> signed char;
 #endif
 #if !SCN_DISABLE_TYPE_SHORT
-extern template auto scan_int_impl(std::string_view source,
-                                   short& value,
-                                   int base)
+extern template SCN_EXPORT auto scan_int_impl(std::string_view source,
+                                              short& value,
+                                              int base)
     -> scan_expected<std::string_view::iterator>;
-extern template auto scan_int_exhaustive_valid_impl(std::string_view) -> short;
+extern template SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> short;
 #endif
 #if !SCN_DISABLE_TYPE_INT
-extern template auto scan_int_impl(std::string_view source,
-                                   int& value,
-                                   int base)
+extern template SCN_EXPORT auto scan_int_impl(std::string_view source,
+                                              int& value,
+                                              int base)
     -> scan_expected<std::string_view::iterator>;
-extern template auto scan_int_exhaustive_valid_impl(std::string_view) -> int;
+extern template SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> int;
 #endif
 #if !SCN_DISABLE_TYPE_LONG
-extern template auto scan_int_impl(std::string_view source,
-                                   long& value,
-                                   int base)
+extern template SCN_EXPORT auto scan_int_impl(std::string_view source,
+                                              long& value,
+                                              int base)
     -> scan_expected<std::string_view::iterator>;
-extern template auto scan_int_exhaustive_valid_impl(std::string_view) -> long;
+extern template SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> long;
 #endif
 #if !SCN_DISABLE_TYPE_LONG_LONG
-extern template auto scan_int_impl(std::string_view source,
-                                   long long& value,
-                                   int base)
+extern template SCN_EXPORT auto scan_int_impl(std::string_view source,
+                                              long long& value,
+                                              int base)
     -> scan_expected<std::string_view::iterator>;
-extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+extern template SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view)
     -> long long;
 #endif
 #if !SCN_DISABLE_TYPE_UCHAR
-extern template auto scan_int_impl(std::string_view source,
-                                   unsigned char& value,
-                                   int base)
+extern template SCN_EXPORT auto scan_int_impl(std::string_view source,
+                                              unsigned char& value,
+                                              int base)
     -> scan_expected<std::string_view::iterator>;
-extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+extern template SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view)
     -> unsigned char;
 #endif
 #if !SCN_DISABLE_TYPE_USHORT
-extern template auto scan_int_impl(std::string_view source,
-                                   unsigned short& value,
-                                   int base)
+extern template SCN_EXPORT auto scan_int_impl(std::string_view source,
+                                              unsigned short& value,
+                                              int base)
     -> scan_expected<std::string_view::iterator>;
-extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+extern template SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view)
     -> unsigned short;
 #endif
 #if !SCN_DISABLE_TYPE_UINT
-extern template auto scan_int_impl(std::string_view source,
-                                   unsigned int& value,
-                                   int base)
+extern template SCN_EXPORT auto scan_int_impl(std::string_view source,
+                                              unsigned int& value,
+                                              int base)
     -> scan_expected<std::string_view::iterator>;
-extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+extern template SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view)
     -> unsigned int;
 #endif
 #if !SCN_DISABLE_TYPE_ULONG
-extern template auto scan_int_impl(std::string_view source,
-                                   unsigned long& value,
-                                   int base)
+extern template SCN_EXPORT auto scan_int_impl(std::string_view source,
+                                              unsigned long& value,
+                                              int base)
     -> scan_expected<std::string_view::iterator>;
-extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+extern template SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view)
     -> unsigned long;
 #endif
 #if !SCN_DISABLE_TYPE_ULONG_LONG
-extern template auto scan_int_impl(std::string_view source,
-                                   unsigned long long& value,
-                                   int base)
+extern template SCN_EXPORT auto scan_int_impl(std::string_view source,
+                                              unsigned long long& value,
+                                              int base)
     -> scan_expected<std::string_view::iterator>;
-extern template auto scan_int_exhaustive_valid_impl(std::string_view)
+extern template SCN_EXPORT auto scan_int_exhaustive_valid_impl(std::string_view)
     -> unsigned long long;
 #endif
 

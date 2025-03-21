@@ -1521,7 +1521,9 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
 }
 
 template <typename CharT, typename T, typename Context>
-auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str, T& t, Context& ctx)
+SCN_EXPORT auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str,
+                                 T& t,
+                                 Context& ctx)
     -> scan_expected<typename Context::iterator>;
 
 extern template auto chrono_scan_impl(std::string_view, std::tm&, scan_context&)
