@@ -162,12 +162,14 @@ private:
     } format{};
 };
 
+#if !SCN_HAS_CONSTEVAL
 TEST(CustomTypeTest, VariantWrapperWithDefaultFormatString)
 {
     auto result = scn::scan<variant_wrapper>("123", "{}");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
 }
+#endif
 
 TEST(CustomTypeTest, VariantWrapperWithIntegerFormat)
 {

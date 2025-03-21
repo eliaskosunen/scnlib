@@ -15,6 +15,7 @@ set(buildfail_sources
         string_view_non_contiguous_source.cpp
         unterminated_argument_id.cpp
         unterminated_format_specifier.cpp
+        usertype_non_contiguous_source.cpp
 )
 if (NOT SCN_DISABLE_REGEX)
     list(APPEND buildfail_sources

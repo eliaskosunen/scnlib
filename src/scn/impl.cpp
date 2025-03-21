@@ -1590,7 +1590,7 @@ struct format_handler : format_handler_base {
                    detail::locale_ref loc,
                    std::size_t argcount)
         : format_handler_base{argcount},
-          parse_ctx{format},
+          parse_ctx{source_tag<Source&&>, format},
           ctx{SCN_FWD(source), SCN_MOVE(args), SCN_MOVE(loc)}
     {
     }

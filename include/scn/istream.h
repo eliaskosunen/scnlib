@@ -171,7 +171,7 @@ using wrange_streambuf = basic_range_streambuf<wscan_context::range_type>;
 template <typename CharT>
 struct basic_istream_scanner {
     template <typename ParseContext>
-    typename ParseContext::iterator parse(ParseContext& ctx)
+    constexpr typename ParseContext::iterator parse(ParseContext& ctx)
     {
         return ctx.begin();
     }

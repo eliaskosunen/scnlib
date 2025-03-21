@@ -5549,6 +5549,40 @@ struct custom_wrapper {
     T& val;
 };
 
+template <typename T, typename Scanner, typename ParseCtx>
+scan_expected<void> parse_custom_arg(T& arg, Scanner& s, ParseCtx& pctx)
+{
+#if SCN_HAS_EXCEPTIONS
+    auto fmt_it = pctx.begin();
+    try {
+        fmt_it = s.parse(pctx);
+    }
+    catch (const detail::scan_format_string_error_base& ex) {
+        // scan_error takes a const char*.
+        // scan_format_string_error (or, actually, std::runtime_error)
+        // stores a reference-counted string,
+        // that will go out of scope here.
+        // We need to provide a const char* that will stay in scope.
+        // If scan_format_string_error was thrown with a string literal,
+        // use that, otherwise refer to a thread_local std::string
+        if (const char* m = get_internal_literal_msg(ex)) {
+            return unexpected_scan_error(scan_error::invalid_format_string, m);
+        }
+        thread_local std::string err_msg{};
+        err_msg = ex.what();
+        return unexpected_scan_error(scan_error::invalid_format_string,
+                                     err_msg.c_str());
+    }
+#else
+    auto fmt_it = s.parse(pctx_ref);
+#endif
+    if (auto e = pctx.get_error(); SCN_UNLIKELY(!e)) {
+        return e;
+    }
+    pctx.advance_to(fmt_it);
+    return {};
+}
+
 class arg_value {
 public:
     // trivial default initialization in constexpr
@@ -5599,36 +5633,7 @@ private:
         auto& pctx_ref = *static_cast<parse_context_type*>(pctx);
         auto& ctx_ref = *static_cast<context_type*>(ctx);
 
-#if SCN_HAS_EXCEPTIONS
-        auto fmt_it = pctx_ref.begin();
-        try {
-            fmt_it = s.parse(pctx_ref);
-        }
-        catch (const detail::scan_format_string_error_base& ex) {
-            // scan_error takes a const char*.
-            // scan_format_string_error (or, actually, std::runtime_error)
-            // stores a reference-counted string,
-            // that will go out of scope here.
-            // We need to provide a const char* that will stay in scope.
-            // If scan_format_string_error was thrown with a string literal,
-            // use that, otherwise refer to a thread_local std::string
-            if (const char* m = get_internal_literal_msg(ex)) {
-                return unexpected_scan_error(scan_error::invalid_format_string,
-                                             m);
-            }
-            thread_local std::string err_msg{};
-            err_msg = ex.what();
-            return unexpected_scan_error(scan_error::invalid_format_string,
-                                         err_msg.c_str());
-        }
-#else
-        auto fmt_it = s.parse(pctx_ref);
-#endif
-        if (auto e = pctx_ref.get_error(); SCN_UNLIKELY(!e)) {
-            return e;
-        }
-        pctx_ref.advance_to(fmt_it);
-
+        SCN_TRY_DISCARD(parse_custom_arg(arg_ref, s, pctx_ref));
         SCN_TRY(it, s.scan(arg_ref, ctx_ref));
         ctx_ref.advance_to(SCN_MOVE(it));
 
@@ -6234,6 +6239,13 @@ private:
 // scan_parse_context
 /////////////////////////////////////////////////////////////////
 
+template <typename T>
+struct source_tag_type {
+    using type = T;
+};
+template <typename T>
+inline constexpr auto source_tag = source_tag_type<T>{};
+
 /**
  * Format string parsing context, wrapping the format string being parsed,
  * and a counter for argument indexing.
@@ -6250,10 +6262,27 @@ public:
     /**
      * Construct a `basic_scan_parse_context` over a format string `format`.
      */
+    [[deprecated(
+        "Use the source_tag constructor instead,"
+        "to get more compile-time checking")]] explicit constexpr
+    basic_scan_parse_context(std::basic_string_view<CharT> format,
+                             int next_arg_id = 0)
+        : m_format{format}, m_next_arg_id{next_arg_id}
+    {
+    }
+
+    template <typename Source>
     explicit constexpr basic_scan_parse_context(
+        source_tag_type<Source>,
         std::basic_string_view<CharT> format,
         int next_arg_id = 0)
-        : m_format{format}, m_next_arg_id{next_arg_id}
+        : m_format{format},
+          m_next_arg_id{next_arg_id},
+          m_is_contiguous(ranges::range<Source> &&
+                          ranges::contiguous_range<Source>),
+          m_is_borrowed(
+              (ranges::range<Source> && ranges::borrowed_range<Source>) ||
+              std::is_same_v<detail::remove_cvref_t<Source>, std::FILE*>)
     {
     }
 
@@ -6323,12 +6352,23 @@ public:
         return m_error;
     }
 
+    [[nodiscard]] constexpr bool is_source_contiguous() const
+    {
+        return m_is_contiguous;
+    }
+
+    [[nodiscard]] constexpr bool is_source_borrowed() const
+    {
+        return m_is_borrowed;
+    }
+
 protected:
     constexpr void do_check_arg_id(size_t id);
 
     std::basic_string_view<CharT> m_format;
     scan_expected<void> m_error{};
     int m_next_arg_id{0};
+    bool m_is_contiguous{false}, m_is_borrowed{false};
 };
 
 /////////////////////////////////////////////////////////////////
@@ -6703,20 +6743,15 @@ class compile_parse_context : public basic_scan_parse_context<CharT> {
 
 public:
     template <typename Source>
-    explicit constexpr compile_parse_context(
+    explicit SCN_CONSTEVAL compile_parse_context(
+        source_tag_type<Source>,
         std::basic_string_view<CharT> format_str,
         int num_args,
         const arg_type* types,
-        type_identity<Source> source_tag,
         int next_arg_id = 0)
-        : base(format_str, next_arg_id),
+        : base(source_tag<Source>, format_str, next_arg_id),
           m_num_args(num_args),
-          m_types(types),
-          m_is_contiguous(ranges::range<Source> &&
-                          ranges::contiguous_range<Source>),
-          m_is_borrowed(
-              (ranges::range<Source> && ranges::borrowed_range<Source>) ||
-              std::is_same_v<detail::remove_cvref_t<Source>, std::FILE*>)
+          m_types(types)
     {
     }
 
@@ -6750,41 +6785,9 @@ public:
     }
     using base::check_arg_id;
 
-    constexpr void check_arg_can_be_read(std::size_t id)
-    {
-        auto type = get_arg_type(id);
-
-        if ((type == arg_type::narrow_string_view_type ||
-             type == arg_type::wide_string_view_type) &&
-            !m_is_contiguous) {
-            // clang-format off
-            this->on_error("Cannot read a string_view from a non-contiguous source");
-            // clang-format on
-            return;
-        }
-        if ((type == arg_type::narrow_string_view_type ||
-             type == arg_type::wide_string_view_type) &&
-            !m_is_borrowed) {
-            // clang-format off
-            this->on_error("Cannot read a string_view from a non-borrowed source");
-            // clang-format on
-            return;
-        }
-
-        if ((type == arg_type::narrow_regex_matches_type ||
-             type == arg_type::wide_regex_matches_type) &&
-            !m_is_contiguous) {
-            // clang-format off
-            this->on_error("Cannot read a regex_matches from a non-contiguous source");
-            // clang-format on
-            return;
-        }
-    }
-
 private:
     int m_num_args;
     const arg_type* m_types;
-    bool m_is_contiguous, m_is_borrowed;
 
     SCN_GCC_POP  // -Wsign-conversion
 };
@@ -8453,13 +8456,6 @@ template <typename Str>
 inline constexpr bool is_compile_string_v =
     std::is_base_of_v<compile_string, Str>;
 
-template <typename Scanner, typename = void>
-inline constexpr bool scanner_has_format_specs_member_v = false;
-template <typename Scanner>
-inline constexpr bool scanner_has_format_specs_member_v<
-    Scanner,
-    std::void_t<decltype(SCN_DECLVAL(Scanner&)._format_specs())>> = true;
-
 template <typename Scanner, typename ParseCtx>
 using dt_scanner_parse =
     decltype(SCN_DECLVAL(Scanner&).parse(SCN_DECLVAL(ParseCtx&)));
@@ -8467,11 +8463,7 @@ template <typename Scanner, typename T, typename Ctx>
 using dt_scanner_scan = decltype(SCN_DECLVAL(const Scanner&)
                                      .scan(SCN_DECLVAL(T&), SCN_DECLVAL(Ctx&)));
 
-template <typename Scanner,
-          typename Source,
-          typename T,
-          typename Ctx,
-          typename ParseCtx>
+template <typename Scanner, typename T, typename Ctx, typename ParseCtx>
 constexpr typename ParseCtx::iterator parse_format_specs_impl(
     ParseCtx& parse_ctx)
 {
@@ -8498,22 +8490,10 @@ constexpr typename ParseCtx::iterator parse_format_specs_impl(
         "scan_expected<Context::iterator>.");
 
     auto s = Scanner{};
-    auto it = s.parse(parse_ctx);
-
-    if constexpr (scanner_has_format_specs_member_v<Scanner>) {
-        auto& specs = s._format_specs();
-        if ((specs.type == presentation_type::regex ||
-             specs.type == presentation_type::regex_escaped) &&
-            !(ranges::range<Source> && ranges::contiguous_range<Source>)) {
-            // clang-format off
-            parse_ctx.on_error("Cannot read a regex from a non-contiguous source");
-            // clang-format on
-        }
-    }
-    return it;
+    return s.parse(parse_ctx);
 }
 
-template <typename T, typename Source, typename Ctx, typename ParseCtx>
+template <typename T, typename Ctx, typename ParseCtx>
 constexpr typename ParseCtx::iterator parse_format_specs(ParseCtx& parse_ctx)
 {
     using char_type = typename Ctx::char_type;
@@ -8531,7 +8511,7 @@ constexpr typename ParseCtx::iterator parse_format_specs(ParseCtx& parse_ctx)
                                    arg_type::custom_type,
                                map_result, T>;
         using scanner_type = typename Ctx::template scanner_type<mapped_type>;
-        return parse_format_specs_impl<scanner_type, Source, T, Ctx, ParseCtx>(
+        return parse_format_specs_impl<scanner_type, T, Ctx, ParseCtx>(
             parse_ctx);
     }
 }
@@ -8544,12 +8524,8 @@ public:
 
     explicit constexpr format_string_checker(
         std::basic_string_view<CharT> format_str)
-        : m_parse_context(format_str,
-                          num_args,
-                          m_types,
-                          type_identity<Source>{}),
+        : m_parse_context(source_tag<Source>, format_str, num_args, m_types),
           m_parse_funcs{&parse_format_specs<Args,
-                                            Source,
                                             default_context<CharT>,
                                             parse_context_type>...},
           m_types{arg_type_constant<Args, CharT>::value...}
@@ -8590,16 +8566,28 @@ public:
         return id;
     }
 
-    constexpr void on_replacement_field(size_t id, const CharT*)
+    constexpr void on_replacement_field(size_t id, const CharT* begin)
     {
-        m_parse_context.check_arg_can_be_read(id);
         set_arg_as_read(id);
 
-        if (m_types[id] == arg_type::narrow_regex_matches_type ||
-            m_types[id] == arg_type::wide_regex_matches_type) {
+        auto type = m_types[id];
+        check_arg_can_be_read(type);
+
+        if (type == arg_type::narrow_regex_matches_type ||
+            type == arg_type::wide_regex_matches_type) {
             // clang-format off
             return on_error("Regular expression needs to be specified when reading regex_matches");
             // clang-format on
+        }
+        if (type == arg_type::custom_type && id < num_args) {
+            // Only call scanner::parse to check for errors,
+            // we're discarding the result.
+            // The advance_to dance is done to point the parse context to the
+            // character after the `{`; right now, it points to that
+            const auto beg = begin;
+            m_parse_context.advance_to(begin);
+            m_parse_funcs[id](m_parse_context);
+            m_parse_context.advance_to(beg);
         }
     }
 
@@ -8607,8 +8595,9 @@ public:
                                            const CharT* begin,
                                            const CharT*)
     {
-        m_parse_context.check_arg_can_be_read(id);
         set_arg_as_read(id);
+        check_arg_can_be_read(m_types[id]);
+
         m_parse_context.advance_to(begin);
         return id < num_args ? m_parse_funcs[id](m_parse_context) : begin;
     }
@@ -8649,6 +8638,32 @@ private:
             return on_error("Argument with this ID already scanned");
         }
         m_visited_args[id] = true;
+    }
+
+    constexpr void check_arg_can_be_read(arg_type type)
+    {
+        if ((type == arg_type::narrow_string_view_type ||
+             type == arg_type::wide_string_view_type) &&
+            !m_parse_context.is_source_contiguous()) {
+            // clang-format off
+            return on_error("Cannot read a string_view from a non-contiguous source");
+            // clang-format on
+        }
+        if ((type == arg_type::narrow_string_view_type ||
+             type == arg_type::wide_string_view_type) &&
+            !m_parse_context.is_source_borrowed()) {
+            // clang-format off
+            return on_error("Cannot read a string_view from a non-borrowed source");
+            // clang-format on
+        }
+
+        if ((type == arg_type::narrow_regex_matches_type ||
+             type == arg_type::wide_regex_matches_type) &&
+            !m_parse_context.is_source_contiguous()) {
+            // clang-format off
+            return on_error("Cannot read a regex_matches from a non-contiguous source");
+            // clang-format on
+        }
     }
 
     using parse_func = const CharT* (*)(parse_context_type&);
@@ -9013,11 +9028,6 @@ struct scanner<T,
         return detail::scanner_scan_for_builtin_type(val, ctx, m_specs);
     }
 
-    constexpr auto& _format_specs()
-    {
-        return m_specs;
-    }
-
 private:
     detail::format_specs m_specs;
 };
@@ -9104,6 +9114,20 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
             SCN_UNREACHABLE;
 
             SCN_CLANG_POP
+    }
+
+    if (specs.type == presentation_type::regex ||
+        specs.type == presentation_type::regex_escaped) {
+        if (!pctx.is_source_contiguous()) {
+            SCN_UNLIKELY_ATTR
+            // clang-format off
+            checker.on_error("Cannot read a regex from a non-contiguous source");
+            // clang-format on
+        }
+        if (!pctx.is_source_borrowed()) {
+            SCN_UNLIKELY_ATTR
+            checker.on_error("Cannot read a regex from a non-borrowed source");
+        }
     }
 
     return it;

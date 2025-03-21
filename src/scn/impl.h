@@ -5952,7 +5952,8 @@ struct default_arg_reader {
         typename basic_scan_arg<detail::default_context<char_type>>::handle h)
     {
         if constexpr (!detail::is_type_disabled<void>) {
-            basic_scan_parse_context<char_type> parse_ctx{{}};
+            basic_scan_parse_context<char_type> parse_ctx{
+                source_tag<range_type>, {}};
             auto ctx = make_custom_ctx();
             SCN_TRY_DISCARD(h.scan(parse_ctx, ctx));
 
