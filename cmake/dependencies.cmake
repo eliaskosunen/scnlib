@@ -37,6 +37,10 @@ if (SCN_TESTS)
             FetchContent_Populate(googletest)
         endif ()
 
+        if (NOT TARGET Threads::Threads)
+            find_package(Threads)
+        endif ()
+
         add_library(scn_gtest
                 "${googletest_SOURCE_DIR}/googletest/src/gtest-all.cc"
                 "${googletest_SOURCE_DIR}/googlemock/src/gmock-all.cc"
@@ -49,6 +53,7 @@ if (SCN_TESTS)
                 "${googletest_SOURCE_DIR}/googletest"
                 "${googletest_SOURCE_DIR}/googlemock"
         )
+        target_link_libraries(scn_gtest PRIVATE Threads::Threads)
         target_compile_features(scn_gtest PUBLIC cxx_std_17)
         target_compile_options(scn_gtest PRIVATE $<$<CXX_COMPILER_ID:GNU>: -Wno-psabi>)
         set(SCN_GTEST_LIBRARIES scn_gtest)
