@@ -6743,7 +6743,7 @@ class compile_parse_context : public basic_scan_parse_context<CharT> {
 
 public:
     template <typename Source>
-    explicit SCN_CONSTEVAL compile_parse_context(
+    explicit constexpr compile_parse_context(
         source_tag_type<Source>,
         std::basic_string_view<CharT> format_str,
         int num_args,
