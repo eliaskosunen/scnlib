@@ -3831,7 +3831,12 @@ public:
                 SCN_CLANG_PUSH
                 SCN_CLANG_IGNORE("-Wcovered-switch-default")
             default:
-                assert(false);
+#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(9, 0, 0)
+                // gcc 7 thinks we'll get here, even when we won't
+                // gcc 8 has a bug in debug mode,
+                // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
+                SCN_EXPECT(false);
+#endif
                 SCN_UNREACHABLE;
                 SCN_CLANG_POP
         }
@@ -4221,8 +4226,10 @@ inline constexpr char32_t decode_utf8_code_point_exhaustive(
         return cp;
     }
 
-#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(8, 0, 0)
+#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(9, 0, 0)
     // gcc 7 thinks we'll get here, even when we won't
+    // gcc 8 has a bug in debug mode,
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
     SCN_EXPECT(false);
 #endif
     SCN_UNREACHABLE;
@@ -4279,8 +4286,10 @@ inline constexpr char32_t decode_utf8_code_point_exhaustive_valid(
         return cp;
     }
 
-#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(8, 0, 0)
+#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(9, 0, 0)
     // gcc 7 thinks we'll get here, even when we won't
+    // gcc 8 has a bug in debug mode,
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
     SCN_EXPECT(false);
 #endif
     SCN_UNREACHABLE;
@@ -5942,7 +5951,6 @@ constexpr size_t encode_types()
                (encode_types_impl<CharT, Ts...>() << packed_arg_bits);
     }
     else {
-        SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -7179,7 +7187,12 @@ struct format_specs {
                 return 16;
 
             default:
+#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(9, 0, 0)
+                // gcc 7 thinks we'll get here, even when we won't
+                // gcc 8 has a bug in debug mode,
+                // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
                 SCN_EXPECT(false);
+#endif
                 SCN_UNREACHABLE;
         }
         SCN_GCC_COMPAT_POP
@@ -7431,7 +7444,12 @@ constexpr presentation_type parse_presentation_type(CharT type)
         case '/':
             // Should be handled by parse_presentation_set and
             // parse_presentation_regex
+#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(9, 0, 0)
+            // gcc 7 thinks we'll get here, even when we won't
+            // gcc 8 has a bug in debug mode,
+            // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
             SCN_EXPECT(false);
+#endif
             SCN_UNREACHABLE;
         default:
             return presentation_type::none;
