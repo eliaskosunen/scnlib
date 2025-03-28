@@ -5332,7 +5332,8 @@ template <typename Range,
 auto impl(const Range& r, priority_tag<2>)
 {
     if constexpr (is_valid_char_type<detail::char_t<Range>>) {
-        return std::basic_string_view{ranges::data(r), ranges::size(r)};
+        return std::basic_string_view<detail::char_t<Range>>{ranges::data(r),
+                                                             ranges::size(r)};
     }
     else {
         return invalid_char_type{};
