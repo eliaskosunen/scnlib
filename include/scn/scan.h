@@ -6044,12 +6044,12 @@ constexpr bool all_types_builtin()
 template <typename CharT, typename... Args>
 constexpr scan_arg_store_kind determine_arg_store_kind()
 {
-    if (sizeof...(Args) > max_packed_args) {
+    if constexpr (sizeof...(Args) > max_packed_args) {
         return scan_arg_store_kind::unpacked;
     }
 #if !(SCN_CLANG && SCN_APPLE)
     // This doesn't work on Apple Clang. I don't know why
-    if (all_types_builtin<CharT, Args...>()) {
+    if constexpr (all_types_builtin<CharT, Args...>()) {
         return scan_arg_store_kind::builtin;
     }
 #endif
@@ -8604,7 +8604,7 @@ public:
 
     constexpr void check_args_exhausted()
     {
-        if (num_args == 0) {
+        if constexpr (num_args == 0) {
             return;
         }
         for (auto is_set : m_visited_args) {
