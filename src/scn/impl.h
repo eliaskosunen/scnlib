@@ -6026,9 +6026,21 @@ struct default_arg_reader {
                 return impl(rd, range, value);
             }
             auto crange = get_as_contiguous(range);
-            SCN_TRY(it, impl(rd, crange, value));
-            return ranges::next(range.begin(),
-                                ranges::distance(crange.begin(), it));
+            auto&& scn_result = impl(rd, crange, value);
+            if (!scn_result) {
+                return impl(rd, range, value);
+            }
+            auto it = *SCN_FWD(scn_result);
+            auto chars_read = ranges::distance(crange.begin(), it);
+            auto result = ranges::next(range.begin(), chars_read);
+            auto chars_left = ranges::distance(it, crange.end());
+            if (!is_segment_contiguous(range) ||
+                (std::is_arithmetic_v<T> &&
+                 chars_left <= std::numeric_limits<T>::digits &&
+                 chars_left > 0 && !is_ascii_space(*it))) {
+                return impl(rd, range, value);
+            }
+            return result;
         }
         else {
             SCN_EXPECT(false);
@@ -6345,11 +6357,22 @@ struct arg_reader {
                 specs.width != 0) {
                 return impl(rd, range, value);
             }
-
             auto crange = get_as_contiguous(range);
-            SCN_TRY(it, impl(rd, crange, value));
-            return ranges::next(range.begin(),
-                                ranges::distance(crange.begin(), it));
+            auto&& scn_result = impl(rd, crange, value);
+            if (!scn_result) {
+                return impl(rd, range, value);
+            }
+            auto it = *SCN_FWD(scn_result);
+            auto chars_read = ranges::distance(crange.begin(), it);
+            auto result = ranges::next(range.begin(), chars_read);
+            auto chars_left = ranges::distance(it, crange.end());
+            if (!is_segment_contiguous(range) ||
+                (std::is_arithmetic_v<T> &&
+                 chars_left <= std::numeric_limits<T>::digits &&
+                 chars_left > 0 && !is_ascii_space(*it))) {
+                return impl(rd, range, value);
+            }
+            return result;
         }
         else {
             SCN_EXPECT(false);
