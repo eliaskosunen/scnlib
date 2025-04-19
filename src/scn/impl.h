@@ -1211,12 +1211,11 @@ bool basic_scan_file_buffer<FileInterface>::sync(std::ptrdiff_t position)
     }
 
     const auto chars_avail = this->chars_available();
-    if (position == chars_avail) {
+    if (position == chars_avail || SCN_UNLIKELY(m_current_view.empty())) {
         return true;
     }
 
     putback_wrapper wrapper{m_file};
-    SCN_EXPECT(m_current_view.size() == 1);
     m_file.putback(m_current_view.front());
 
     auto segment = std::string_view{this->putback_buffer()}.substr(position);

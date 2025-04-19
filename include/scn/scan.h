@@ -4892,7 +4892,7 @@ struct stdio_file_interface_impl<File, default_file_tag>
     void lock() {}
     void unlock() {}
 
-    bool has_buffering() const
+    static constexpr bool has_buffering()
     {
         return false;
     }
@@ -4941,7 +4941,7 @@ struct posix_stdio_file_interface : stdio_file_interface_base<File> {
         funlockfile(this->file);
     }
 
-    static bool has_buffering()
+    static constexpr bool has_buffering()
     {
         return true;
     }
@@ -5051,7 +5051,7 @@ struct stdio_file_interface_impl<File, win32_file_tag>
         _unlock_file(this->file);
     }
 
-    static bool has_buffering()
+    static constexpr bool has_buffering()
     {
         return false;
     }
