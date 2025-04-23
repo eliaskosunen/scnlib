@@ -4418,6 +4418,15 @@ public:
     SCN_NODISCARD range_type get();
     SCN_NODISCARD common_range_type get_common_range();
 
+    void set_skip_whitespace(bool skip)
+    {
+        m_skip_whitespace = skip;
+    }
+    SCN_NODISCARD bool get_skip_whitespace() const
+    {
+        return m_skip_whitespace;
+    }
+
 protected:
     friend class forward_iterator;
     friend class common_forward_iterator;
@@ -4444,6 +4453,7 @@ protected:
     std::basic_string_view<char_type> m_current_view{};
     std::basic_string<char_type> m_putback_buffer{};
     bool m_is_contiguous{false};
+    bool m_skip_whitespace{false};
 };
 
 template <typename CharT>
