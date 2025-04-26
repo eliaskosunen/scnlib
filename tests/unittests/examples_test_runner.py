@@ -82,5 +82,5 @@ check(3, "", """1
 check(4, "", "[{1: 2, 3: 4}, {5: 6}]")
 
 check(5, "123 456", "Write two integers:\nTwo integers: 123 456\n")
-check(5, "123 abc", "Write two integers:\nFirst integer: 123, rest of the line:  abc")
+check(5, "123 abc", "Write two integers:\nFirst integer: 123, rest of the line: abc")
 check(5, "abc def", "Write two integers:\nEntire line: abc def")

@@ -306,7 +306,7 @@ struct datetime_components {
      * The fields `subsec` and `tz_name` are discarded.
      * `tz_offset` is set to `tm_gmtoff`, if it's available.
      */
-    [[nodiscard]] std::tm to_tm() const
+    SCN_NODISCARD std::tm to_tm() const
     {
         SCN_UNUSED(subsec);
         std::tm t{
@@ -1462,7 +1462,7 @@ struct tm_format_checker {
         st.verify(*this);
     }
 
-    [[nodiscard]] constexpr scan_expected<void> get_error() const
+    SCN_NODISCARD constexpr scan_expected<void> get_error() const
     {
         return err;
     }
@@ -1512,8 +1512,36 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
 }
 
 template <typename CharT, typename T, typename Context>
-auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str, T& t, Context& ctx)
+SCN_EXPORT auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str,
+                                 T& t,
+                                 Context& ctx)
     -> scan_expected<typename Context::iterator>;
+
+extern template SCN_EXPORT auto chrono_scan_impl(std::string_view,
+                                                 std::tm&,
+                                                 scan_context&)
+    -> scan_expected<scan_context::iterator>;
+extern template SCN_EXPORT auto chrono_scan_impl(std::string_view,
+                                                 tm_with_tz&,
+                                                 scan_context&)
+    -> scan_expected<scan_context::iterator>;
+extern template SCN_EXPORT auto chrono_scan_impl(std::string_view,
+                                                 datetime_components&,
+                                                 scan_context&)
+    -> scan_expected<scan_context::iterator>;
+
+extern template SCN_EXPORT auto chrono_scan_impl(std::wstring_view,
+                                                 std::tm&,
+                                                 wscan_context&)
+    -> scan_expected<wscan_context::iterator>;
+extern template SCN_EXPORT auto chrono_scan_impl(std::wstring_view,
+                                                 tm_with_tz&,
+                                                 wscan_context&)
+    -> scan_expected<wscan_context::iterator>;
+extern template SCN_EXPORT auto chrono_scan_impl(std::wstring_view,
+                                                 datetime_components&,
+                                                 wscan_context&)
+    -> scan_expected<wscan_context::iterator>;
 
 template <typename CharT, typename T>
 struct chrono_datetime_scanner {
