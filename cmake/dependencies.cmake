@@ -1,6 +1,6 @@
 include(FetchContent)
 
-set(SCN_OPTIONAL_DEPENDENCIES "")
+set(SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "")
 
 set(OLD_CMAKE_FIND_PACKAGE_SORT_ORDER "${CMAKE_FIND_PACKAGE_SORT_ORDER}")
 set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
@@ -19,7 +19,26 @@ if (SCN_TESTS)
                 GTest::gtest_main
                 GTest::gmock_main
         )
+    elseif (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
+        # FetchContent_Populate(<name>) deprecated,
+        # use MakeAvailable instead
+
+        FetchContent_Declare(
+                googletest
+                GIT_REPOSITORY https://github.com/google/googletest.git
+                GIT_TAG main
+                GIT_SHALLOW TRUE
+                SYSTEM
+                EXCLUDE_FROM_ALL
+        )
+
+        set(gtest_force_shared_crt ON CACHE INTERNAL "")
+        list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "googletest")
+        set(SCN_GTEST_LIBRARIES GTest::gtest_main GTest::gmock_main)
     else ()
+        # gtest CMake does some flag overriding we don't want, and it's also quite heavy
+        # Do it manually
+
         FetchContent_Declare(
                 googletest
                 GIT_REPOSITORY https://github.com/google/googletest.git
@@ -27,10 +46,7 @@ if (SCN_TESTS)
                 GIT_SHALLOW TRUE
         )
 
-        # gtest CMake does some flag overriding we don't want, and it's also quite heavy
-        # Do it manually
-
-        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        set(gtest_force_shared_crt ON CACHE INTERNAL "")
 
         FetchContent_GetProperties(googletest)
         if (NOT googletest)
@@ -78,7 +94,7 @@ if (SCN_BENCHMARKS)
                 GIT_TAG v1.8.3
                 GIT_SHALLOW TRUE
         )
-        list(APPEND SCN_OPTIONAL_DEPENDENCIES "google-benchmark")
+        list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "google-benchmark")
     endif ()
 endif ()
 
@@ -100,12 +116,25 @@ if (SCN_DISABLE_FAST_FLOAT)
 elseif (SCN_USE_EXTERNAL_FAST_FLOAT)
     if (NOT TARGET FastFloat::fast_float)
         find_package(FastFloat CONFIG REQUIRED)
-        if (FastFloat_VERSION VERSION_LESS 5.0.0)
+        if (FastFloat_VERSION VERSION_LESS "5.0.0")
             message(FATAL_ERROR "Incompatible version of FastFloat: at least 5.0.0 required, found ${FastFloat_VERSION}")
         endif ()
     else ()
         message(STATUS "Target FastFloat::fast_float already defined, not doing find_package(FastFloat)")
     endif ()
+    set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
+elseif (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
+    FetchContent_Declare(
+            fast_float
+            GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
+            GIT_TAG v6.1.6
+            GIT_SHALLOW TRUE
+            SYSTEM
+            EXCLUDE_FROM_ALL
+    )
+
+    set(FASTFLOAT_INSTALL OFF CACHE INTERNAL "")
+    list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "fast_float")
     set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
 else ()
     FetchContent_Declare(
@@ -197,7 +226,7 @@ endif ()
 # make available
 
 FetchContent_MakeAvailable(
-        ${SCN_OPTIONAL_DEPENDENCIES}
+        ${SCN_DEPENDENCIES_TO_MAKE_AVAILABLE}
 )
 
 set(CMAKE_FIND_PACKAGE_SORT_ORDER "${OLD_CMAKE_FIND_PACKAGE_SORT_ORDER}")
