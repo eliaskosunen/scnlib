@@ -91,7 +91,7 @@ if (SCN_BENCHMARKS)
         FetchContent_Declare(
                 google-benchmark
                 GIT_REPOSITORY https://github.com/google/benchmark.git
-                GIT_TAG v1.8.3
+                GIT_TAG v1.9.4
                 GIT_SHALLOW TRUE
         )
         list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "google-benchmark")
@@ -140,7 +140,7 @@ else ()
     FetchContent_Declare(
             fast_float
             GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
-            GIT_TAG v6.1.6
+            GIT_TAG v8.0.2
             GIT_SHALLOW TRUE
     )
 
