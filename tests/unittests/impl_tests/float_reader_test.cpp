@@ -814,6 +814,7 @@ TYPED_TEST(FloatValueReaderTest, NaNWithPayload)
     EXPECT_FALSE(std::signbit(val));
     EXPECT_FALSE(
         check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
+#if SCN_POSIX
     if constexpr (std::is_same_v<decltype(val), float>) {
         EXPECT_TRUE(check_nan_eq(val, std::nanf("1234")));
     }
@@ -823,6 +824,7 @@ TYPED_TEST(FloatValueReaderTest, NaNWithPayload)
     else {
         EXPECT_TRUE(check_nan_eq(val, std::nanl("1234")));
     }
+#endif
 }
 TYPED_TEST(FloatValueReaderTest, NaNWithEmptyPayload)
 {
@@ -832,6 +834,7 @@ TYPED_TEST(FloatValueReaderTest, NaNWithEmptyPayload)
     EXPECT_FALSE(std::signbit(val));
     EXPECT_TRUE(
         check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
+#if SCN_POSIX
     if constexpr (std::is_same_v<decltype(val), float>) {
         EXPECT_TRUE(check_nan_eq(val, std::nanf("")));
     }
@@ -841,6 +844,7 @@ TYPED_TEST(FloatValueReaderTest, NaNWithEmptyPayload)
     else {
         EXPECT_TRUE(check_nan_eq(val, std::nanl("")));
     }
+#endif
 }
 TYPED_TEST(FloatValueReaderTest, NanWithNonNumericPayload)
 {
@@ -850,6 +854,7 @@ TYPED_TEST(FloatValueReaderTest, NanWithNonNumericPayload)
     EXPECT_FALSE(std::signbit(val));
     EXPECT_TRUE(
         check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
+#if SCN_POSIX
     if constexpr (std::is_same_v<decltype(val), float>) {
         EXPECT_TRUE(check_nan_eq(val, std::nanf("")));
         EXPECT_TRUE(check_nan_eq(val, std::nanf("HelloWorld")));
@@ -862,6 +867,7 @@ TYPED_TEST(FloatValueReaderTest, NanWithNonNumericPayload)
         EXPECT_TRUE(check_nan_eq(val, std::nanl("")));
         EXPECT_TRUE(check_nan_eq(val, std::nanl("HelloWorld")));
     }
+#endif
 }
 
 TYPED_TEST(FloatValueReaderTest, Overflow)
