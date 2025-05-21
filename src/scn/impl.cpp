@@ -954,7 +954,7 @@ using float_nan_traits_for_long_double = std::conditional_t<
         std::numeric_limits<long double>::digits == 64,
         // x87 long double, on non-Windows x86
         float_nan_traits_x87,
-        std::conditional_t<std::numeric_limits<long double>::digits == 112,
+        std::conditional_t<std::numeric_limits<long double>::digits == 113,
                            // binary128 long double,
                            // true on non-Apple non-Windows Arm64
                            float_nan_traits_binary128,

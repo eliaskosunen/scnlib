@@ -31,16 +31,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
 
-env:
-  CCACHE_ABSSTDERR: true
-  CCACHE_COMPRESS: true
-  CCACHE_COMPRESSLEVEL: 6
-  CCACHE_MAXSIZE: 50M
-  CCACHE_NOHASHDIR: true
-  CCACHE_SLOPPINESS: "pch_defines,time_macros"
-  CCACHE_UNIFY: true
-  CMAKE_C_COMPILER_LAUNCHER: ccache
-  CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
 jobs:
   other-archs:
@@ -55,27 +45,9 @@ jobs:
           - arch: armv6
             distro: bullseye
 
-        #exclude:
-          # FIXME: these runs take too long, and time out
-          #- arch: aarch64
-          #- arch: ppc64le
-
-    env:
-      CCACHE_DIR: "/tmp/ccache"
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Load ccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.sha }}
-          restore-keys: |
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.ref }}
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.base_ref }}
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}
 
       - uses: uraimo/run-on-arch-action@v2
         name: Build and test
@@ -92,32 +64,13 @@ jobs:
           dockerRunArgs: |
             --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
 
-          env: |
-            CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
-            CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
-            CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
-            CCACHE_DIR: ${{ env.CCACHE_DIR }}
-            CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
-            CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
-            CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
-            CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
-            CMAKE_C_COMPILER_LAUNCHER: ccache
-            CMAKE_CXX_COMPILER_LAUNCHER: ccache
-
           install: |
             apt-get update -yq
-            apt-get install -yq git wget cmake build-essential make g++ ninja-build ccache python3
+            apt-get install -yq git wget cmake build-essential make g++ ninja-build python3
 
           run: |
-            ccache --version
-            ccache --zero-stats
-            ccache --show-stats
-            ccache --show-config
-            
             cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
             cmake --build build -- -k 0
-            ccache --show-stats
-            
             ctest --output-on-failure --test-dir build
 
   vs-arm64-crosscompile:
@@ -131,6 +84,15 @@ jobs:
 
     env:
       CCACHE_DIR: D:/ccache
+      CCACHE_ABSSTDERR: true
+      CCACHE_COMPRESS: true
+      CCACHE_COMPRESSLEVEL: 6
+      CCACHE_MAXSIZE: 50M
+      CCACHE_NOHASHDIR: true
+      CCACHE_SLOPPINESS: "pch_defines,time_macros"
+      CCACHE_UNIFY: true
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
     steps:
       - name: Checkout
@@ -181,8 +143,6 @@ jobs:
     env:
       CXX: ${{ matrix.cxx }}
       OS: ${{ matrix.os }}
-      CMAKE_C_COMPILER_LAUNCHER: ccache
-      CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
     steps:
       - name: Setup CMake and Ninja
@@ -190,39 +150,10 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          mkdir ${{ runner.workspace }}/deps
           mkdir ${{ runner.workspace }}/build
-
-          sudo locale-gen en_US.UTF-8
-          sudo locale-gen fi_FI.UTF-8
-          sudo update-locale
-          sudo locale -a
-
-      - name: Install dependencies
-        working-directory: ${{ runner.workspace }}/deps
-        run: |
-          sudo apt-get --allow-unauthenticated -yq update
-          ${APT_INSTALL} ccache
 
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Load ccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-arm-${{ matrix.cxx }}-${{ github.sha }}
-          restore-keys: |
-            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-arm-${{ matrix.cxx }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-arm-${{ matrix.cxx }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-arm-${{ matrix.cxx }}
-
-      - name: Setup ccache
-        run: |
-          ccache --version
-          ccache --zero-stats
-          ccache --show-stats
-          ccache --show-config
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -233,10 +164,6 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake --build . -- -k 0
-
-      - name: Show ccache stats
-        run: |
-          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
@@ -254,35 +181,14 @@ jobs:
 
     env:
       OS: ${{ matrix.os }}
-      CCACHE_DIR: D:/ccache
-      CMAKE_C_COMPILER_LAUNCHER: ccache
-      CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Create build environment
         run: |
           cmake -E make_directory ${{ runner.workspace }}/build
-          choco install ccache
 
-      - name: Load ccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-win${{ matrix.os }}-arm-${{ matrix.type }}-${{ github.sha }}
-          restore-keys: |
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-arm-${{ matrix.type }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-arm-${{ matrix.type }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-arm-${{ matrix.type }}
-
-      - name: Setup ccache
-        run: |
-          ccache --version
-          ccache --zero-stats
-          ccache --show-stats
-          ccache --show-config
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -294,10 +200,6 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake --build . --config ${{ matrix.type }} --parallel
-
-      - name: Show ccache stats
-        run: |
-          ccache --show-stats
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
