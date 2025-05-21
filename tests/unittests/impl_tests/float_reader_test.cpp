@@ -20,6 +20,7 @@
 #include <scn/impl.h>
 
 #include <cmath>
+#include <iomanip>
 
 // Detect architecture
 #if defined(__x86_64__) || defined(_M_AMD64)
@@ -110,15 +111,17 @@
 #endif
 
 template <typename T>
-void dump_bytes(T val)
+std::string get_bytes_str(T val)
 {
     alignas(T) std::array<unsigned char, sizeof(T)> bytes{};
     std::memcpy(bytes.data(), &val, sizeof(T));
 
+    std::ostringstream os;
     for (unsigned char b : bytes) {
-        std::printf("%02x ", static_cast<unsigned>(b));
+        os << std::hex << std::setw(2) << std::setfill('0')
+           << static_cast<unsigned>(b) << ' ';
     }
-    std::puts("");
+    return os.str();
 }
 
 template <typename T>
@@ -152,6 +155,42 @@ check_floating_eq(T a, T b, bool allow_approx = false)
 
     return testing::AssertionFailure()
            << "Floats not equal: " << a << " and " << b;
+}
+
+template <typename T>
+[[nodiscard]] static testing::AssertionResult check_nan_eq(T lhs, T rhs)
+{
+    if (!std::isnan(lhs)) {
+        return testing::AssertionFailure() << "lhs not nan";
+    }
+    if (!std::isnan(rhs)) {
+        return testing::AssertionFailure() << "rhs not nan";
+    }
+
+    if constexpr (sizeof(T) <= sizeof(std::uint64_t)) {
+        std::uint64_t lhs_bits{}, rhs_bits{};
+        std::memcpy(&lhs_bits, &lhs, sizeof(T));
+        std::memcpy(&rhs_bits, &rhs, sizeof(T));
+        if (lhs_bits != rhs_bits) {
+            return testing::AssertionFailure()
+                   << "lhs bits: " << get_bytes_str(lhs_bits)
+                   << " != rhs_bits: " << get_bytes_str(rhs_bits);
+        }
+    }
+    else {
+        // Discard last six bytes (assuming 80-bit long double)
+        // TODO: check better against other long double formats
+        std::array<unsigned char, sizeof(T) - 6> lhs_bits{}, rhs_bits{};
+        std::memcpy(lhs_bits.data(), &lhs, sizeof(T) - 6);
+        std::memcpy(rhs_bits.data(), &rhs, sizeof(T) - 6);
+        if (lhs_bits != rhs_bits) {
+            return testing::AssertionFailure()
+                   << "lhs bits: " << get_bytes_str(lhs_bits)
+                   << " != rhs_bits: " << get_bytes_str(rhs_bits);
+        }
+    }
+
+    return testing::AssertionSuccess();
 }
 
 using namespace std::string_view_literals;
@@ -764,13 +803,65 @@ TYPED_TEST(FloatValueReaderTest, NaN)
     EXPECT_TRUE(a);
     EXPECT_TRUE(std::isnan(val));
     EXPECT_FALSE(std::signbit(val));
+    EXPECT_TRUE(
+        check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
 }
 TYPED_TEST(FloatValueReaderTest, NaNWithPayload)
 {
-    auto [a, _, val] = this->simple_success_test("nan(123_abc)");
+    auto [a, _, val] = this->simple_success_test("nan(1234)");
     EXPECT_TRUE(a);
     EXPECT_TRUE(std::isnan(val));
     EXPECT_FALSE(std::signbit(val));
+    EXPECT_FALSE(
+        check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
+    if constexpr (std::is_same_v<decltype(val), float>) {
+        EXPECT_TRUE(check_nan_eq(val, std::nanf("1234")));
+    }
+    else if constexpr (std::is_same_v<decltype(val), double>) {
+        EXPECT_TRUE(check_nan_eq(val, std::nan("1234")));
+    }
+    else {
+        EXPECT_TRUE(check_nan_eq(val, std::nanl("1234")));
+    }
+}
+TYPED_TEST(FloatValueReaderTest, NaNWithEmptyPayload)
+{
+    auto [a, _, val] = this->simple_success_test("nan()");
+    EXPECT_TRUE(a);
+    EXPECT_TRUE(std::isnan(val));
+    EXPECT_FALSE(std::signbit(val));
+    EXPECT_TRUE(
+        check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
+    if constexpr (std::is_same_v<decltype(val), float>) {
+        EXPECT_TRUE(check_nan_eq(val, std::nanf("")));
+    }
+    else if constexpr (std::is_same_v<decltype(val), double>) {
+        EXPECT_TRUE(check_nan_eq(val, std::nan("")));
+    }
+    else {
+        EXPECT_TRUE(check_nan_eq(val, std::nanl("")));
+    }
+}
+TYPED_TEST(FloatValueReaderTest, NanWithNonNumericPayload)
+{
+    auto [a, _, val] = this->simple_success_test("nan(HelloWorld)");
+    EXPECT_TRUE(a);
+    EXPECT_TRUE(std::isnan(val));
+    EXPECT_FALSE(std::signbit(val));
+    EXPECT_TRUE(
+        check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
+    if constexpr (std::is_same_v<decltype(val), float>) {
+        EXPECT_TRUE(check_nan_eq(val, std::nanf("")));
+        EXPECT_TRUE(check_nan_eq(val, std::nanf("HelloWorld")));
+    }
+    else if constexpr (std::is_same_v<decltype(val), double>) {
+        EXPECT_TRUE(check_nan_eq(val, std::nan("")));
+        EXPECT_TRUE(check_nan_eq(val, std::nan("HelloWorld")));
+    }
+    else {
+        EXPECT_TRUE(check_nan_eq(val, std::nanl("")));
+        EXPECT_TRUE(check_nan_eq(val, std::nanl("HelloWorld")));
+    }
 }
 
 TYPED_TEST(FloatValueReaderTest, Overflow)

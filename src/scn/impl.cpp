@@ -795,6 +795,189 @@ private:
 // Dispatch implementation
 ////////////////////////////////////////////////////////////////////
 
+template <typename F>
+struct float_nan_traits;
+
+template <>
+struct float_nan_traits<float> {
+    using type = float;
+
+    struct repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 8;
+        unsigned quiet_nan : 1;
+        unsigned mantissa : 22;
+#else
+        unsigned mantissa : 22;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 8;
+        unsigned negative : 1;
+#endif
+    };
+
+    static void apply(repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == 0xff);
+        r.mantissa = payload;
+    }
+};
+
+template <>
+struct float_nan_traits<double> {
+    using type = double;
+
+    struct repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 11;
+        unsigned quiet_nan : 1;
+        unsigned mantissa0 : 19;
+        unsigned mantissa1 : 32;
+#elif SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned mantissa0 : 19;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 11;
+        unsigned negative : 1;
+        unsigned mantissa1 : 32;
+#else
+        unsigned mantissa1 : 32;
+        unsigned mantissa0 : 19;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 11;
+        unsigned negative : 1;
+#endif
+    };
+
+    static void apply(repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 11u) - 1u);
+        r.mantissa0 = payload >> 32;
+        r.mantissa1 = payload;
+    }
+};
+
+struct float_nan_traits_x87 {
+    using type = long double;
+
+    struct repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned padding : 16;
+        unsigned negative : 1;
+        unsigned exponent : 15;
+        unsigned one : 1;
+        unsigned quiet_nan : 1;
+        unsigned mantissa0 : 30;
+        unsigned mantissa1 : 32;
+#elif SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned exponent : 15;
+        unsigned negative : 1;
+        unsigned padding : 16;
+        unsigned mantissa0 : 30;
+        unsigned quiet_nan : 1;
+        unsigned one : 1;
+        unsigned mantissa1 : 32;
+#else
+        unsigned mantissa1 : 32;
+        unsigned mantissa0 : 30;
+        unsigned quiet_nan : 1;
+        unsigned one : 1;
+        unsigned exponent : 15;
+        unsigned negative : 1;
+        unsigned padding : 16;
+#endif
+    };
+
+    static void apply(repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
+        r.mantissa0 = payload >> 32;
+        r.mantissa1 = payload;
+    }
+};
+
+struct float_nan_traits_binary128 {
+    using type = long double;
+
+    struct repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 15;
+        unsigned quiet_nan : 1;
+        unsigned mantissa0 : 15;
+        unsigned mantissa1 : 32;
+        unsigned mantissa2 : 32;
+        unsigned mantissa3 : 32;
+#elif SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned mantissa0 : 15;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 15;
+        unsigned negative : 1;
+        unsigned mantissa1 : 32;
+        unsigned mantissa2 : 32;
+        unsigned mantissa3 : 32;
+#else
+        unsigned mantissa3 : 32;
+        unsigned mantissa2 : 32;
+        unsigned mantissa1 : 32;
+        unsigned mantissa0 : 15;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 15;
+        unsigned negative : 1;
+#endif
+    };
+
+    static void apply(repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
+        r.mantissa0 = 0;
+        r.mantissa1 = 0;
+        r.mantissa2 = payload >> 32;
+        r.mantissa3 = payload;
+    }
+};
+
+struct nil_float_nan_traits {};
+
+using float_nan_traits_for_long_double = std::conditional_t<
+    sizeof(double) == sizeof(long double),
+    // long double is equivalent to a double,
+    // true on (non-mingw) Windows, Arm32, and Apple Arm64
+    float_nan_traits<double>,
+    std::conditional_t<
+        std::numeric_limits<long double>::digits == 64,
+        // x87 long double, on non-Windows x86
+        float_nan_traits_x87,
+        std::conditional_t<std::numeric_limits<long double>::digits == 112,
+                           // binary128 long double,
+                           // true on non-Apple non-Windows Arm64
+                           float_nan_traits_binary128,
+                           // Exotic long double, no payload setting support
+                           nil_float_nan_traits>>>;
+
+template <>
+struct float_nan_traits<long double> : float_nan_traits_for_long_double {
+    using type = long double;
+};
+
+template <typename F>
+void apply_nan_payload(F& value, std::uint64_t payload)
+{
+    if constexpr (!std::is_same_v<F, long double> ||
+                  !std::is_same_v<float_nan_traits_for_long_double,
+                                  nil_float_nan_traits>) {
+        using traits = float_nan_traits<F>;
+        typename traits::repr bits{};
+        std::memcpy(&bits, &value, sizeof(bits));
+        traits::apply(bits, payload);
+        std::memcpy(&value, &bits, sizeof(bits));
+    }
+}
+
 template <typename CharT, typename T>
 scan_expected<std::ptrdiff_t> dispatch_impl(
     impl_init_data<CharT> data,
@@ -816,32 +999,19 @@ scan_expected<std::ptrdiff_t> dispatch_impl(
     if (data.kind == float_reader_base::float_kind::nan_with_payload) {
         value = std::numeric_limits<T>::quiet_NaN();
 
-        // TODO: use payload
-#if 0
-                    {
-                        auto reader = integer_reader<CharT>{
-                            integer_reader_base::only_unsigned, 0};
-                        if (auto r = reader.read_source(
-                                detail::tag_type<unsigned long long>{},
-                                nan_payload.view());
-                            SCN_UNLIKELY(!r)) {
-                            return unexpected(r.error());
-                        }
-
-                        unsigned long long payload;
-                        if (auto r = reader.parse_value(payload);
-                            SCN_UNLIKELY(!r)) {
-                            return unexpected(r.error());
-                        }
-
-                        constexpr auto mantissa_payload_len =
-                            std::numeric_limits<T>::digits - 2;
-                        payload &= ((1ull << mantissa_payload_len) - 1ull);
-
-
-                    }
-#endif
-        SCN_UNUSED(nan_payload);
+        if constexpr (std::numeric_limits<T>::is_iec559) {
+            // TODO: 128-bit payloads
+            std::uint64_t payload{};
+            if (auto result = reader_impl_for_int<CharT>{}.read_default(
+                    nan_payload.view(), payload, {})) {
+                apply_nan_payload(value, payload);
+            }
+            else if (result.error().code() ==
+                     scan_error::value_positive_overflow) {
+                apply_nan_payload(value,
+                                  std::numeric_limits<std::uint64_t>::max());
+            }
+        }
 
         return static_cast<std::ptrdiff_t>(5 + nan_payload.view().size());
     }

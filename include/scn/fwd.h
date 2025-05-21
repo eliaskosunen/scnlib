@@ -786,6 +786,21 @@ SCN_GCC_POP
 
 #endif  // defined __BYTE_ORDER__ && defined __ORDER_BIG_ENDIAN__
 
+#if defined (__FLOAT_WORD_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
+
+#if __FLOAT_WORD_ORDER__ == __ORDER_BIG_ENDIAN__
+#define SCN_IS_FLOAT_BIG_ENDIAN 1
+#else
+#define SCN_IS_FLOAT_BIG_ENDIAN 0
+#endif
+
+#elif SCN_IS_BIG_ENDIAN
+#define SCN_IS_FLOAT_BIG_ENDIAN 1
+#else
+#define SCN_IS_FLOAT_BIG_ENDIAN 0
+
+#endif
+
 /////////////////////////////////////////////////////////////////
 // Helper macros
 /////////////////////////////////////////////////////////////////
