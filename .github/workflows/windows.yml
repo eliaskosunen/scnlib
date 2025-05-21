@@ -53,6 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # No os=2025, since it also has vs2022
         os: [ 2019, 2022 ]
         platform: [ Win32, x64 ]
         type: [ Debug, Release ]

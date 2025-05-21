@@ -162,3 +162,144 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --parallel
+
+  native-arm-linux:
+    runs-on: ubuntu-${{ matrix.os }}-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: 22.04
+            cxx: g++-9
+          - os: 22.04
+            cxx: clang++-13
+          - os: 24.04
+            cxx: g++-12
+          - os: 24.04
+            cxx: clang++-16
+
+    env:
+      CXX: ${{ matrix.cxx }}
+      OS: ${{ matrix.os }}
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Create Build Environment
+        run: |
+          mkdir ${{ runner.workspace }}/deps
+          mkdir ${{ runner.workspace }}/build
+
+          sudo locale-gen en_US.UTF-8
+          sudo locale-gen fi_FI.UTF-8
+          sudo update-locale
+          sudo locale -a
+
+      - name: Install dependencies
+        working-directory: ${{ runner.workspace }}/deps
+        run: |
+          sudo apt-get --allow-unauthenticated -yq update
+          ${APT_INSTALL} ccache
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-arm-${{ matrix.cxx }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-arm-${{ matrix.cxx }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-arm-${{ matrix.cxx }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-arm-${{ matrix.cxx }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake -G Ninja -DSCN_CI=ON $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake --build . -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          ctest --output-on-failure
+
+  native-arm-windows:
+    runs-on: ubuntu-${{ matrix.os }}-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: 11
+            type: Debug
+
+    env:
+      OS: ${{ matrix.os }}
+      CCACHE_DIR: D:/ccache
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create build environment
+        run: |
+          cmake -E make_directory ${{ runner.workspace }}/build
+          choco install ccache
+
+      - name: Load ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.workflow }}-win${{ matrix.os }}-arm-${{ matrix.type }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-arm-${{ matrix.type }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-arm-${{ matrix.type }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-arm-${{ matrix.type }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        shell: bash
+        run: |
+          cmake -DSCN_CI=ON $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake --build . --config ${{ matrix.type }} --parallel
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          ctest -C ${{ matrix.type }} --output-on-failure
