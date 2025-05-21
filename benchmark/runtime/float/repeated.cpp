@@ -210,4 +210,3 @@ static void scan_float_repeated_fastfloat(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scan_float_repeated_fastfloat, float);
 BENCHMARK_TEMPLATE(scan_float_repeated_fastfloat, double);
-BENCHMARK_TEMPLATE(scan_float_repeated_fastfloat, long double);

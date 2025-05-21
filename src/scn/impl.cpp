@@ -723,10 +723,12 @@ struct fast_float_impl_base : impl_base {
     {
         unsigned format_flags{};
         if ((m_options & float_reader_base::allow_fixed) != 0) {
-            format_flags |= fast_float::fixed;
+            format_flags |=
+                static_cast<unsigned>(fast_float::chars_format::fixed);
         }
         if ((m_options & float_reader_base::allow_scientific) != 0) {
-            format_flags |= fast_float::scientific;
+            format_flags |=
+                static_cast<unsigned>(fast_float::chars_format::scientific);
         }
 
         return static_cast<fast_float::chars_format>(format_flags);
