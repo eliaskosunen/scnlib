@@ -2,7 +2,10 @@ include(FetchContent)
 
 set(SCN_OPTIONAL_DEPENDENCIES "")
 
-set(OLD_CMAKE_FIND_PACKAGE_SORT_ORDER "${CMAKE_FIND_PACKAGE_SORT_ORDER}")
+if (CMAKE_FIND_PACKAGE_SORT_ORDER)
+    set(OLD_CMAKE_FIND_PACKAGE_SORT_ORDER "${CMAKE_FIND_PACKAGE_SORT_ORDER}")
+endif()
+
 set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
 
 if (SCN_TESTS)
@@ -32,6 +35,9 @@ if (SCN_TESTS)
 
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
+        if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
+            cmake_policy(SET CMP0169 OLD)
+        endif()
         FetchContent_GetProperties(googletest)
         if (NOT googletest)
             FetchContent_Populate(googletest)
@@ -118,6 +124,9 @@ else ()
     cmake_policy(SET CMP0077 NEW)
     set(FASTFLOAT_INSTALL OFF CACHE INTERNAL "")
 
+    if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
+        cmake_policy(SET CMP0169 OLD)
+    endif()
     FetchContent_GetProperties(fast_float)
     if (NOT fast_float_POPULATED)
         FetchContent_Populate(fast_float)
@@ -170,6 +179,8 @@ if (SCN_REGEX_BACKEND STREQUAL "Boost")
             )
         endif ()
     endif ()
+else()
+    set(SCN_REGEX_BACKEND_TARGET)
 endif ()
 
 # re2
@@ -200,4 +211,8 @@ FetchContent_MakeAvailable(
         ${SCN_OPTIONAL_DEPENDENCIES}
 )
 
-set(CMAKE_FIND_PACKAGE_SORT_ORDER "${OLD_CMAKE_FIND_PACKAGE_SORT_ORDER}")
+if (OLD_CMAKE_FIND_PACKAGE_SORT_ORDER)
+    set(CMAKE_FIND_PACKAGE_SORT_ORDER "${OLD_CMAKE_FIND_PACKAGE_SORT_ORDER}")
+else()
+    set(CMAKE_FIND_PACKAGE_SORT_ORDER NONE) # default value
+endif()
