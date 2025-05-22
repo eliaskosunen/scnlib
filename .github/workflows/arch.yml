@@ -55,6 +55,21 @@ jobs:
           - arch: riscv64
             distro: ubuntu22.04
 
+          - base_image_tag: armv5
+            arch: none
+            distro: none
+            base_image: --platform=linux/arm/v5 arm32v5/debian:bookworm-backports
+
+          - base_image_tag: i386
+            arch: none
+            distro: none
+            base_image: --platform=linux/i386 i386/debian:bookworm-backports
+
+          - base_image_tag: mips64le
+            arch: none
+            distro: none
+            base_image: --platform=linux/mips64le mips64le/debian:bookworm
+
     env:
       CCACHE_DIR: "/tmp/ccache"
       CMAKE_C_COMPILER_LAUNCHER: ccache
@@ -68,11 +83,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.sha }}
+          key: ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}-${{ github.sha }}
           restore-keys: |
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.ref }}
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.base_ref }}
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}-${{ github.ref }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}-${{ github.base_ref }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}
 
       - uses: uraimo/run-on-arch-action@v3
         name: Build and test
@@ -80,77 +95,7 @@ jobs:
         with:
           arch: ${{ matrix.arch }}
           distro: ${{ matrix.distro }}
-
-          githubToken: ${{ github.token }}
-
-          setup: |
-            mkdir -p ${{ env.CCACHE_DIR }}
-
-          dockerRunArgs: |
-            --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
-            
-          env: |
-            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}
-            CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
-            CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
-            CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
-            CCACHE_DIR: ${{ env.CCACHE_DIR }}
-            CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
-            CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
-            CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
-            CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
-            CMAKE_C_COMPILER_LAUNCHER: ccache
-            CMAKE_CXX_COMPILER_LAUNCHER: ccache
-
-          install: |
-            apt-get update -yq
-            apt-get install -yq git wget cmake build-essential make g++ ninja-build ccache python3
-
-          run: |
-            ccache --version
-            ccache --zero-stats
-            ccache --show-stats
-            ccache --show-config
-
-            cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
-            cmake --build build -- -k 0
-            ccache --show-stats
-
-            ctest --output-on-failure --test-dir build
-
-  # Need to separate out jobs that need a custom base_image, to utilize GitHub Docker image caching
-  # (limitation of uraimo/run-on-arch-action)
-  # Doing this for armv5, i386, and mips64le
-
-  other-archs-armv5:
-    runs-on: ubuntu-22.04
-
-    env:
-      CCACHE_DIR: "/tmp/ccache"
-      CMAKE_C_COMPILER_LAUNCHER: ccache
-      CMAKE_CXX_COMPILER_LAUNCHER: ccache
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Load ccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-arch-bookworm-armv5-${{ github.sha }}
-          restore-keys: |
-            ccache-arch-bookworm-armv5-${{ github.ref }}
-            ccache-arch-bookworm-armv5-${{ github.base_ref }}
-            ccache-arch-bookworm-armv5
-
-      - uses: uraimo/run-on-arch-action@v3
-        name: Build and test
-        id: build
-        with:
-          arch: none
-          distro: none
-          base_image: --platform=linux/arm/v5 arm32v5/debian:bookworm-backports
+          base_image: ${{ matrix.base_image }}
 
           githubToken: ${{ github.token }}
 
@@ -160,142 +105,9 @@ jobs:
           dockerRunArgs: |
             --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
 
+          # Setting GITHUB_WORKFLOW as a hack around https://github.com/uraimo/run-on-arch-action/issues/55
           env: |
-            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}
-            CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
-            CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
-            CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
-            CCACHE_DIR: ${{ env.CCACHE_DIR }}
-            CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
-            CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
-            CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
-            CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
-            CMAKE_C_COMPILER_LAUNCHER: ccache
-            CMAKE_CXX_COMPILER_LAUNCHER: ccache
-
-          install: |
-            apt-get update -yq
-            apt-get install -yq git wget cmake build-essential make g++ ninja-build ccache python3
-
-          run: |
-            ccache --version
-            ccache --zero-stats
-            ccache --show-stats
-            ccache --show-config
-
-            cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
-            cmake --build build -- -k 0
-            ccache --show-stats
-
-            ctest --output-on-failure --test-dir build
-
-  other-archs-i386:
-    runs-on: ubuntu-22.04
-
-    env:
-      CCACHE_DIR: "/tmp/ccache"
-      CMAKE_C_COMPILER_LAUNCHER: ccache
-      CMAKE_CXX_COMPILER_LAUNCHER: ccache
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Load ccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-arch-bookworm-i386-${{ github.sha }}
-          restore-keys: |
-            ccache-arch-bookworm-i386-${{ github.ref }}
-            ccache-arch-bookworm-i386-${{ github.base_ref }}
-            ccache-arch-bookworm-i386
-
-      - uses: uraimo/run-on-arch-action@v3
-        name: Build and test
-        id: build
-        with:
-          arch: none
-          distro: none
-          base_image: --platform=linux/i386 i386/debian:bookworm-backports
-
-          githubToken: ${{ github.token }}
-
-          setup: |
-            mkdir -p ${{ env.CCACHE_DIR }}
-
-          dockerRunArgs: |
-            --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
-
-          env: |
-            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}
-            CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
-            CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
-            CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
-            CCACHE_DIR: ${{ env.CCACHE_DIR }}
-            CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
-            CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
-            CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
-            CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
-            CMAKE_C_COMPILER_LAUNCHER: ccache
-            CMAKE_CXX_COMPILER_LAUNCHER: ccache
-
-          install: |
-            apt-get update -yq
-            apt-get install -yq git wget cmake build-essential make g++ ninja-build ccache python3
-
-          run: |
-            ccache --version
-            ccache --zero-stats
-            ccache --show-stats
-            ccache --show-config
-
-            cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
-            cmake --build build -- -k 0
-            ccache --show-stats
-
-            ctest --output-on-failure --test-dir build
-
-  other-archs-mips64le:
-    runs-on: ubuntu-22.04
-
-    env:
-      CCACHE_DIR: "/tmp/ccache"
-      CMAKE_C_COMPILER_LAUNCHER: ccache
-      CMAKE_CXX_COMPILER_LAUNCHER: ccache
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Load ccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-arch-bookworm-mips64le-${{ github.sha }}
-          restore-keys: |
-            ccache-arch-bookworm-mips64le-${{ github.ref }}
-            ccache-arch-bookworm-mips64le-${{ github.base_ref }}
-            ccache-arch-bookworm-mips64le
-
-      - uses: uraimo/run-on-arch-action@v3
-        name: Build and test
-        id: build
-        with:
-          arch: none
-          distro: none
-          base_image: --platform=linux/mips64le mips64le/debian:bookworm
-
-          githubToken: ${{ github.token }}
-
-          setup: |
-            mkdir -p ${{ env.CCACHE_DIR }}
-
-          dockerRunArgs: |
-            --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
-
-          env: |
-            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}
+            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}-${{ matrix.base_image_tag }}
             CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
             CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
             CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
