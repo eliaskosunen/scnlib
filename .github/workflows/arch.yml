@@ -52,18 +52,21 @@ jobs:
         include:
           - arch: riscv64
             distro: ubuntu22.04
-          - arch: none
+
+          - base_image_tag: armv5
+            arch: none
             distro: none
-            base_image: --platform=linux/arm32v5 arm32v5/debian:bookworm
-            base_image_tag: armv5
-          - arch: none
+            base_image: --platform=linux/arm32v5 arm32v5/debian:bookworm-backports
+
+          - base_image_tag: i386
+            arch: none
             distro: none
-            base_image: --platform=linux/i386 i386/debian:bookwork
-            base_image_tag: i386
-          - arch: none
+            base_image: --platform=linux/i386 i386/debian:bookworm-backports
+
+          - base_image_tag: mips64le
+            arch: none
             distro: none
             base_image: --platform=linux/mips64le mips64le/debian:bookworm
-            base_image_tag: mips64le
 
     env:
       CCACHE_DIR: "/tmp/ccache"
