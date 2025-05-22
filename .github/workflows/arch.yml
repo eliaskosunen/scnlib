@@ -90,6 +90,7 @@ jobs:
             --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
             
           env: |
+            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}
             CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
             CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
             CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
@@ -160,6 +161,7 @@ jobs:
             --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
 
           env: |
+            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}
             CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
             CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
             CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
@@ -226,6 +228,7 @@ jobs:
             --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
 
           env: |
+            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}
             CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
             CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
             CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
@@ -292,6 +295,7 @@ jobs:
             --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
 
           env: |
+            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}
             CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
             CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
             CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
