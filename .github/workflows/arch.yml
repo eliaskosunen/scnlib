@@ -58,12 +58,6 @@ jobs:
 
           githubToken: ${{ github.token }}
 
-          setup: |
-            mkdir -p ${{ env.CCACHE_DIR }}
-
-          dockerRunArgs: |
-            --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
-
           install: |
             apt-get update -yq
             apt-get install -yq git wget cmake build-essential make g++ ninja-build python3
@@ -170,38 +164,39 @@ jobs:
         run: |
           ctest --output-on-failure
 
-  native-arm-windows:
-    runs-on: ubuntu-${{ matrix.os }}-arm
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: 11
-            type: Debug
+  # TODO: Enable once runners are more readily available
+  #native-arm-windows:
+  #  runs-on: ubuntu-${{ matrix.os }}-arm
+  #  strategy:
+  #    fail-fast: false
+  #    matrix:
+  #      include:
+  #        - os: 11
+  #          type: Debug
 
-    env:
-      OS: ${{ matrix.os }}
+  #  env:
+  #    OS: ${{ matrix.os }}
 
-    steps:
-      - name: Create build environment
-        run: |
-          cmake -E make_directory ${{ runner.workspace }}/build
+  #  steps:
+  #    - name: Create build environment
+  #      run: |
+  #        cmake -E make_directory ${{ runner.workspace }}/build
 
-      - name: Checkout
-        uses: actions/checkout@v4
+  #    - name: Checkout
+  #      uses: actions/checkout@v4
 
-      - name: Run CMake
-        working-directory: ${{ runner.workspace }}/build
-        shell: bash
-        run: |
-          cmake -DSCN_CI=ON $GITHUB_WORKSPACE
+  #    - name: Run CMake
+  #      working-directory: ${{ runner.workspace }}/build
+  #      shell: bash
+  #      run: |
+  #        cmake -DSCN_CI=ON $GITHUB_WORKSPACE
 
-      - name: Build
-        working-directory: ${{ runner.workspace }}/build
-        run: |
-          cmake --build . --config ${{ matrix.type }} --parallel
+  #    - name: Build
+  #      working-directory: ${{ runner.workspace }}/build
+  #      run: |
+  #        cmake --build . --config ${{ matrix.type }} --parallel
 
-      - name: Test
-        working-directory: ${{ runner.workspace }}/build
-        run: |
-          ctest -C ${{ matrix.type }} --output-on-failure
+  #    - name: Test
+  #      working-directory: ${{ runner.workspace }}/build
+  #      run: |
+  #        ctest -C ${{ matrix.type }} --output-on-failure
