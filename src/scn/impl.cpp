@@ -987,35 +987,64 @@ scan_expected<std::ptrdiff_t> dispatch_impl(
     T& value)
 {
     if (data.kind == float_reader_base::float_kind::inf_short) {
-        value = std::numeric_limits<T>::infinity();
-        return 3;
+        if constexpr (std::numeric_limits<T>::has_infinity) {
+            value = std::numeric_limits<T>::infinity();
+            return std::strlen("inf");
+        }
+        else {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Type doesn't support infinities");
+        }
     }
     if (data.kind == float_reader_base::float_kind::inf_long) {
-        value = std::numeric_limits<T>::infinity();
-        return 8;
+        if constexpr (std::numeric_limits<T>::has_infinity) {
+            value = std::numeric_limits<T>::infinity();
+            return std::strlen("infinity");
+        }
+        else {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Type doesn't support infinities");
+        }
     }
     if (data.kind == float_reader_base::float_kind::nan_simple) {
-        value = std::numeric_limits<T>::quiet_NaN();
-        return 3;
+        if constexpr (std::numeric_limits<T>::has_quiet_NaN) {
+            value = std::numeric_limits<T>::quiet_NaN();
+            return std::strlen("nan");
+        }
+        else {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Type doesn't support quiet NaNs");
+        }
     }
     if (data.kind == float_reader_base::float_kind::nan_with_payload) {
-        value = std::numeric_limits<T>::quiet_NaN();
+        if constexpr (std::numeric_limits<T>::has_quiet_NaN) {
+            value = std::numeric_limits<T>::quiet_NaN();
 
-        if constexpr (std::numeric_limits<T>::is_iec559) {
-            // TODO: 128-bit payloads
-            std::uint64_t payload{};
-            if (auto result = reader_impl_for_int<CharT>{}.read_default(
-                    nan_payload.view(), payload, {})) {
-                apply_nan_payload(value, payload);
+            if constexpr (std::numeric_limits<T>::is_iec559) {
+                // TODO: 128-bit payloads
+                std::uint64_t payload{};
+                if (auto result = reader_impl_for_int<CharT>{}.read_default(
+                        nan_payload.view(), payload, {})) {
+                    apply_nan_payload(value, payload);
+                }
+                else if (result.error().code() ==
+                         scan_error::value_positive_overflow) {
+                    apply_nan_payload(
+                        value, std::numeric_limits<std::uint64_t>::max());
+                }
             }
-            else if (result.error().code() ==
-                     scan_error::value_positive_overflow) {
-                apply_nan_payload(value,
-                                  std::numeric_limits<std::uint64_t>::max());
-            }
+
+            return static_cast<std::ptrdiff_t>(std::strlen("nan()") +
+                                               nan_payload.view().size());
         }
-
-        return static_cast<std::ptrdiff_t>(5 + nan_payload.view().size());
+        else {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Type doesn't support quiet NaNs");
+        }
     }
 
     SCN_EXPECT(!data.input.view().empty());
