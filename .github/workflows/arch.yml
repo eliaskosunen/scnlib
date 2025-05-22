@@ -31,6 +31,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
 
+env:
+  CCACHE_ABSSTDERR: true
+  CCACHE_COMPRESS: true
+  CCACHE_COMPRESSLEVEL: 6
+  CCACHE_MAXSIZE: 50M
+  CCACHE_NOHASHDIR: true
+  CCACHE_SLOPPINESS: "pch_defines,time_macros"
+  CCACHE_UNIFY: true
 
 jobs:
   other-archs:
@@ -38,22 +46,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ armv7, aarch64, riscv64, s390x, ppc64le ]
-        distro: [ ubuntu22.04 ]
+        arch: [ armv6, armv7, aarch64, s390x, ppc64le ]
+        distro: [ bookworm ]
 
         include:
-          - arch: armv6
-            distro: bullseye
+          - arch: riscv64
+            distro: ubuntu22.04
+          - arch: none
+            distro: none
+            base_image: --platform=linux/arm32v5 arm32v5/debian:bookworm
+            base_image_tag: armv5
+          - arch: none
+            distro: none
+            base_image: --platform=linux/i386 i386/debian:bookwork
+            base_image_tag: i386
+          - arch: none
+            distro: none
+            base_image: --platform=linux/mips64le mips64le/debian:bookworm
+            base_image_tag: mips64le
 
     env:
       CCACHE_DIR: "/tmp/ccache"
-      CCACHE_ABSSTDERR: true
-      CCACHE_COMPRESS: true
-      CCACHE_COMPRESSLEVEL: 6
-      CCACHE_MAXSIZE: 50M
-      CCACHE_NOHASHDIR: true
-      CCACHE_SLOPPINESS: "pch_defines,time_macros"
-      CCACHE_UNIFY: true
       CMAKE_C_COMPILER_LAUNCHER: ccache
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
@@ -65,11 +78,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.sha }}
+          key: ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}-${{ github.sha }}
           restore-keys: |
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.ref }}
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.base_ref }}
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}-${{ github.ref }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}-${{ github.base_ref }}
+            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}
 
       - uses: uraimo/run-on-arch-action@v3
         name: Build and test
@@ -77,6 +90,7 @@ jobs:
         with:
           arch: ${{ matrix.arch }}
           distro: ${{ matrix.distro }}
+          base_image: ${{ matrix.base_image }}
 
           githubToken: ${{ github.token }}
 
@@ -85,6 +99,18 @@ jobs:
 
           dockerRunArgs: |
             --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
+            
+          env: |
+            CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
+            CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
+            CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
+            CCACHE_DIR: ${{ env.CCACHE_DIR }}
+            CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
+            CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
+            CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
+            CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
+            CMAKE_C_COMPILER_LAUNCHER: ccache
+            CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
           install: |
             apt-get update -yq
@@ -113,13 +139,6 @@ jobs:
 
     env:
       CCACHE_DIR: D:/ccache
-      CCACHE_ABSSTDERR: true
-      CCACHE_COMPRESS: true
-      CCACHE_COMPRESSLEVEL: 6
-      CCACHE_MAXSIZE: 50M
-      CCACHE_NOHASHDIR: true
-      CCACHE_SLOPPINESS: "pch_defines,time_macros"
-      CCACHE_UNIFY: true
       CMAKE_C_COMPILER_LAUNCHER: ccache
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
