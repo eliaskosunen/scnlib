@@ -51,34 +51,20 @@ env:
   DEBIAN_FRONTEND: noninteractive
 
 jobs:
+  # recent gcc versions and pre-installed clang versions on native ubuntu 22.04 and 24.04
   ubuntu:
     runs-on: ubuntu-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ 22.04, 20.04 ]
+        os: [ 22.04 ]
         cxx:
-          - g++-13
           - g++-12
           - g++-11
           - g++-10
           - g++-9
-          - g++-8
-          - g++-7
-        #  - clang++-18
-        #  - clang++-17
-        #  - clang++-16
-        #  - clang++-15
-        #  - clang++-14
-        #  - clang++-13
-        #  - clang++-12
-        #  - clang++-11
-        #  - clang++-10
-        #  - clang++-9
-        #  - clang++-8
-        #  - clang++-7
-        #  - clang++-6.0
         std: [ 17 ]
+
         include:
           # Explicitly pick out pre-installed clang + os pairs -- apt.llvm.org likes to fail on us
           - os: 24.04
@@ -101,22 +87,31 @@ jobs:
             cxx: clang++-13
             std: 17
 
-          - os: 20.04
-            cxx: clang++-12
+          # g++ 12 and 13 (both preinstalled) on 24.04
+          - os: 24.04
+            cxx: g++-13
             std: 17
-          - os: 20.04
-            cxx: clang++-11
-            std: 17
-          - os: 20.04
-            cxx: clang++-10
+          - os: 24.04
+            cxx: g++-12
             std: 17
 
-          # clang 8 from apt
-          - os: 20.04
-            cxx: clang++-8
-            std: 17
+          # newest pre-installed gcc on 22.04 with C++20 and C++23 (C++17 created by the matrix)
+          - os: 22.04
+            cxx: g++-12
+            std: 20
+          - os: 22.04
+            cxx: g++-12
+            std: 23
 
-          # newest pre-installed gcc on 24.04, including C++20 and C++23
+          # newest pre-installed clang on 22.04 with C++20 and C++23 (C++17 created by the matrix)
+          - os: 22.04
+            cxx: clang++-13
+            std: 20
+          - os: 22.04
+            cxx: clang++-13
+            std: 23
+
+          # newest pre-installed gcc on 24.04, with C++17, C++20, and C++23
           - os: 24.04
             cxx: g++-14
             std: 17
@@ -127,26 +122,13 @@ jobs:
             cxx: g++-14
             std: 23
 
-          # newest pre-installed clang on 24.04, including C++20 and C++23
-          - os: 24.04
-            cxx: clang++-18
-            std: 17
+          # newest pre-installed clang on 24.04, with C++20 and C++23 (C++17 already provided above)
           - os: 24.04
             cxx: clang++-18
             std: 20
           - os: 24.04
             cxx: clang++-18
             std: 23
-
-        exclude:
-          # gcc 8, clang 12, and before aren't available on 22.04
-          - cxx: g++-8
-            os: 22.04
-          - cxx: g++-7
-            os: 22.04
-          # gcc 12 isn't available on 20.04 (11 and 13 are in ubuntu-toolchain-r)
-          - cxx: g++-12
-            os: 20.04
 
     env:
       CXX: ${{ matrix.cxx }}
@@ -160,7 +142,6 @@ jobs:
 
       - name: Create Build Environment
         run: |
-          mkdir ${{ runner.workspace }}/deps
           mkdir ${{ runner.workspace }}/build
           
           sudo locale-gen en_US.UTF-8
@@ -169,37 +150,13 @@ jobs:
           sudo locale -a
 
       - name: Install dependencies
-        working-directory: ${{ runner.workspace }}/deps
         run: |
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test
           sudo apt-get --allow-unauthenticated -yq update
           
           ${APT_INSTALL} ccache
-          
-          if [[ "${CXX}" == "g++-13" ]]; then
-            ${APT_INSTALL} g++-13
-          fi
-          if [[ "${CXX}" == "g++-12" ]]; then
-            ${APT_INSTALL} g++-12
-          fi
-          if [[ "${CXX}" == "g++-11" ]]; then
-            ${APT_INSTALL} g++-11
-          fi
-          if [[ "${CXX}" == "g++-10" ]]; then
-            ${APT_INSTALL} g++-10
-          fi
+
           if [[ "${CXX}" == "g++-9" ]]; then
             ${APT_INSTALL} g++-9
-          fi
-          if [[ "${CXX}" == "g++-8" ]]; then
-            ${APT_INSTALL} g++-8
-          fi
-          if [[ "${CXX}" == "g++-7" ]]; then
-            ${APT_INSTALL} g++-7
-          fi
-          
-          if [[ "${CXX}" == "clang++-8" ]]; then
-            ${APT_INSTALL} clang-8
           fi
 
       - name: Checkout
@@ -241,22 +198,184 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: ctest --output-on-failure
 
+  # Get older gcc versions through Docker
+  docker-gcc:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 6 and older fail in apt-get update with 404s
+        version: [ 7, 8 ]
+        std: [ 17 ]
+
+    container:
+      image: gcc:${{ matrix.version }}
+      env:
+        CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
+        CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
+        CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
+        CCACHE_DIR: ${{ env.CCACHE_DIR }}
+        CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
+        CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
+        CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
+        CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
+        DEBIAN_FRONTEND: ${{ env.DEBIAN_FRONTEND }}
+        CXX: g++
+        CMAKE_C_COMPILER_LAUNCHER: ccache
+        CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          apt-get --allow-unauthenticated -yq update
+          apt-get install \
+            -yq --no-install-suggests --no-install-recommends \
+            --allow-unauthenticated --allow-downgrades --allow-change-held-packages \
+            ccache ninja-build curl
+
+          mkdir -p $GITHUB_WORKSPACE/deps
+          cd $GITHUB_WORKSPACE/deps
+          curl -s -L https://github.com/Kitware/CMake/releases/download/v4.0.2/cmake-4.0.2-linux-x86_64.tar.gz \
+            | tar xvz -C .
+          ln -s $GITHUB_WORKSPACE/deps/cmake-4.0.2-linux-x86_64/bin $GITHUB_WORKSPACE/bin
+
+          $GITHUB_WORKSPACE/bin/cmake --version
+
+      - name: Load ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config || true
+
+      - name: Run CMake
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/build
+          cd $GITHUB_WORKSPACE/build
+          $GITHUB_WORKSPACE/bin/cmake -G Ninja -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF \
+                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        run: |
+          cd $GITHUB_WORKSPACE/build
+          $GITHUB_WORKSPACE/bin/cmake --build . -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
+
+      - name: Test
+        run: |
+          cd $GITHUB_WORKSPACE/build
+          $GITHUB_WORKSPACE/bin/ctest --output-on-failure
+
+  # Get older clang versions through Docker
+  docker-clang:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 7 couldn't compile the tests without modification (TODO?)
+        version: [ 8, 9, 10, 11, 12 ]
+        std: [ 17 ]
+
+    container:
+      image: silkeh/clang:${{ matrix.version }}
+      env:
+        CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
+        CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
+        CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
+        CCACHE_DIR: ${{ env.CCACHE_DIR }}
+        CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
+        CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
+        CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
+        CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
+        DEBIAN_FRONTEND: ${{ env.DEBIAN_FRONTEND }}
+        CXX: clang++-${{ matrix.version }}
+        CMAKE_C_COMPILER_LAUNCHER: ccache
+        CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          apt-get --allow-unauthenticated -yq update
+          apt-get install \
+            -yq --no-install-suggests --no-install-recommends \
+            --allow-unauthenticated --allow-downgrades --allow-change-held-packages \
+            ccache ninja-build curl git
+
+          mkdir -p $GITHUB_WORKSPACE/deps
+          cd $GITHUB_WORKSPACE/deps
+          curl -s -L https://github.com/Kitware/CMake/releases/download/v4.0.2/cmake-4.0.2-linux-x86_64.tar.gz \
+            | tar xvz -C .
+          ln -s $GITHUB_WORKSPACE/deps/cmake-4.0.2-linux-x86_64/bin $GITHUB_WORKSPACE/bin
+
+          $GITHUB_WORKSPACE/bin/cmake --version
+
+      - name: Load ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config || true
+
+      - name: Run CMake
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/build
+          cd $GITHUB_WORKSPACE/build
+          $GITHUB_WORKSPACE/bin/cmake -G Ninja -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF \
+                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        run: |
+          cd $GITHUB_WORKSPACE/build
+          $GITHUB_WORKSPACE/bin/cmake --build . -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
+
+      - name: Test
+        run: |
+          cd $GITHUB_WORKSPACE/build
+          $GITHUB_WORKSPACE/bin/ctest --output-on-failure
+
   libcxx:
     runs-on: ubuntu-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         # 24.04 doesn't have libc++ (yet?)
-        os: [ 22.04, 20.04 ]
-        std: [ 17 ]
-        include:
-          - os: 22.04
-            std: 20
-          - os: 22.04
-            std: 23
-        exclude:
-          # Fails to configure (CMake) google benchmark
-          - os: 20.04
+        os: [ 22.04 ]
+        std: [ 17, 20, 23 ]
 
     env:
       CC: clang
@@ -274,10 +393,10 @@ jobs:
 
       - name: Create Build Environment
         run: |
+          mkdir -p ${{ runner.workspace }}/build
+
           ${APT_INSTALL} ccache
-          
-          mkdir ${{ runner.workspace }}/build
-          
+
           sudo locale-gen en_US.UTF-8
           sudo locale-gen fi_FI.UTF-8
           sudo update-locale
@@ -322,6 +441,10 @@ jobs:
 
   alpine:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [ 3.14, 3.21 ]
 
     steps:
       - name: Checkout
@@ -331,11 +454,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-alpine-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-alpine${{ matrix.version }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-alpine-${{ github.ref }}
-            ccache-${{ github.workflow }}-alpine-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-alpine
+            ccache-${{ github.workflow }}-alpine${{ matrix.version }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-alpine${{ matrix.version }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-alpine${{ matrix.version }}
 
       - name: Start docker
         run: |
@@ -351,7 +474,7 @@ jobs:
             -e CCACHE_UNIFY=${{ env.CCACHE_UNIFY }} \
             -e CMAKE_C_COMPILER_LAUNCHER=ccache \
             -e CMAKE_CXX_COMPILER_LAUNCHER=ccache \
-            alpine:3.18
+            alpine:${{ matrix.version }}
           echo 'docker exec alpine "$@";' > alpine-run.sh
           chmod +x alpine-run.sh
 

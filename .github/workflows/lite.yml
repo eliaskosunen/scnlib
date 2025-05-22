@@ -70,20 +70,15 @@ jobs:
             std: 23
             cxx: g++-14
 
-          # gcc 11 on 22.04 with C++17
+          # gcc 10 on 22.04 with C++17
           - os: 22.04
-            std: 17
-            cxx: g++-11
-
-          # clang 15 on 22.04 with C++17
-          - os: 22.04
-            std: 17
-            cxx: clang++-15
-
-          # gcc 10 on 20.04 with C++17
-          - os: 20.04
             std: 17
             cxx: g++-10
+
+          # clang 13 on 22.04 with C++17
+          - os: 22.04
+            std: 17
+            cxx: clang++-13
 
     env:
       CXX: ${{ matrix.cxx }}
