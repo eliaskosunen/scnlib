@@ -206,28 +206,29 @@ jobs:
       matrix:
         include:
           - cxx: g++-8
-            image: gcc:7
             std: 17
+            image: gcc:7
           - cxx: g++-7
-            image: gcc:7
             std: 17
-          # gcc 6 and older fail in apt-get update with 404s
+            image: gcc:7
+          # gcc 6 and older fail in apt-get update with 404s,
+          # and are seemingly incompatible with actions/checkout
 
           - cxx: clang++-12
+            std: 17
             image: silkeh/clang:12
-            std: 17
           - cxx: clang++-11
+            std: 17
             image: silkeh/clang:11
-            std: 17
           - cxx: clang++-10
+            std: 17
             image: silkeh/clang:10
-            std: 17
           - cxx: clang++-9
+            std: 17
             image: silkeh/clang:9
-            std: 17
           - cxx: clang++-8
-            image: silkeh/clang:8
             std: 17
+            image: silkeh/clang:8
           # clang 7 couldn't compile the tests (TODO?)
 
     container:
@@ -242,7 +243,6 @@ jobs:
         CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
         CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
         DEBIAN_FRONTEND: ${{ env.DEBIAN_FRONTEND }}
-        CXX: ${{ matrix.cxx }}
         CMAKE_C_COMPILER_LAUNCHER: ccache
         CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
@@ -287,8 +287,14 @@ jobs:
         run: |
           mkdir -p $GITHUB_WORKSPACE/build
           cd $GITHUB_WORKSPACE/build
-          $GITHUB_WORKSPACE/bin/cmake -G Ninja -DSCN_CI=ON \
-                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+          if [[ ${{ matrix.cxx }} == "g++-7" ]]; then
+            # gcc 7 image doesn't have "g++-7", but it has "g++"
+            cxx="g++"
+          else
+            cxx="${{ matrix.cxx }}"
+          fi
+          $GITHUB_WORKSPACE/bin/cmake -G Ninja -DCMAKE_CXX_COMPILER=$cxx \
+                -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
                 $GITHUB_WORKSPACE
 
       - name: Build
