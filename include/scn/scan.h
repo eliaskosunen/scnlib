@@ -9273,7 +9273,7 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
 #if SCN_HAS_INT128
             SCN_VISIT(int128)
 #else
-            SCN_VISIT(monostate_val);
+            return vis(monostate_val);
 #endif
         case detail::arg_type::uchar_type:
             SCN_VISIT(unsigned char);
@@ -9289,7 +9289,7 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
 #if SCN_HAS_INT128
             SCN_VISIT(uint128)
 #else
-            SCN_VISIT(monostate_val);
+            return vis(monostate_val);
 #endif
         case detail::arg_type::pointer_type:
             SCN_VISIT(void*);
