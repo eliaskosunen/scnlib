@@ -343,9 +343,9 @@
 #endif
 
 #ifdef __has_include
-#define SCN_HAS_INCLUDE(x) __has_include(x)
+#define SCN_HAS_HAS_INCLUDE 1
 #else
-#define SCN_HAS_INCLUDE(x) 0
+#define SCN_HAS_HAS_INCLUDE 0
 #endif
 
 /////////////////////////////////////////////////////////////////
@@ -361,7 +361,7 @@ SCN_GCC_IGNORE("-Wrestrict")
 #include <cstdint>
 #include <type_traits>
 
-#if SCN_MSVC && SCN_HAS_INCLUDE(<yvals.h>)
+#if SCN_MSVC && SCN_HAS_HAS_INCLUDE && __has_include(<yvals.h>)
 // The above headers don't define _ITERATOR_DEBUG_LEVEL,
 // so include <yvals.h> directly
 #include <yvals.h>
@@ -413,7 +413,7 @@ SCN_GCC_POP
 #ifndef SCN_ARM64
 #define SCN_ARM64 0
 #endif
-#ifndef SCN_IS_ARM32
+#ifndef SCN_ARM32
 #define SCN_ARM32 0
 #endif
 #ifndef SCN_PPC64
@@ -430,19 +430,19 @@ SCN_GCC_POP
 #define SCN_32BIT 0
 #endif
 
-#if SCN_IS_X86_64 || SCN_IS_X86_32
+#if SCN_X86_64 || SCN_X86_32
 #define SCN_X86 1
 #else
 #define SCN_X86 0
 #endif
 
-#if SCN_IS_ARM64 || SCN_IS_ARM32
+#if SCN_ARM64 || SCN_ARM32
 #define SCN_ARM 1
 #else
 #define SCN_ARM 0
 #endif
 
-#if SCN_IS_PPC64 || SCN_IS_PPC32
+#if SCN_PPC64 || SCN_PPC32
 #define SCN_PPC 1
 #else
 #define SCN_PPC 0
@@ -853,7 +853,7 @@ SCN_GCC_POP
 #include <machine/endian.h>
 #elif defined(sun) || defined(__sun)
 #include <sys/byteorder.h>
-#elif SCN_HAS_INCLUDE(<endian.h>)
+#elif SCN_HAS_HAS_INCLUDE && __has_include(<endian.h>)
 #include <endian.h>
 #endif
 
@@ -892,7 +892,7 @@ SCN_GCC_POP
 #define SCN_HAS_INT128   1
 #define SCN_INT128_TYPE  __int128
 #define SCN_UINT128_TYPE unsigned __int128
-#elif SCN_HAS_INCLUDE(<__msvc_int128.hpp>)
+#elif SCN_HAS_HAS_INCLUDE && __has_include(<__msvc_int128.hpp>)
 // MS STL has internal-ish types for (u)int128
 #include <__msvc_int128.hpp>
 #define SCN_HAS_INT128   1

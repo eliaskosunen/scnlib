@@ -73,7 +73,7 @@ SCN_GCC_POP
 #if SCN_DISABLE_LOCALE
 #define SCN_XLOCALE SCN_XLOCALE_DISABLED
 #elif (!defined(__ANDROID_API__) || __ANDROID_API__ >= 28) && \
-    !defined(__EMSCRIPTEN__) && SCN_HAS_INCLUDE(<xlocale.h>)
+    !defined(__EMSCRIPTEN__) && SCN_HAS_HAS_INCLUDE && __has_include(<xlocale.h>)
 #include <xlocale.h>
 #define SCN_XLOCALE SCN_XLOCALE_POSIX
 
