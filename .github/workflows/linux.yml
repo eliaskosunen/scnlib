@@ -198,18 +198,41 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: ctest --output-on-failure
 
-  # Get older gcc versions through Docker
-  docker-gcc:
+  # Get older gcc and clang versions through Docker
+  docker:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # 6 and older fail in apt-get update with 404s
-        version: [ 7, 8 ]
-        std: [ 17 ]
+        include:
+          - cxx: g++-8
+            std: 17
+            image: gcc:7
+          - cxx: g++-7
+            std: 17
+            image: gcc:7
+          # gcc 6 and older fail in apt-get update with 404s,
+          # and are seemingly incompatible with actions/checkout
+
+          - cxx: clang++-12
+            std: 17
+            image: silkeh/clang:12
+          - cxx: clang++-11
+            std: 17
+            image: silkeh/clang:11
+          - cxx: clang++-10
+            std: 17
+            image: silkeh/clang:10
+          - cxx: clang++-9
+            std: 17
+            image: silkeh/clang:9
+          - cxx: clang++-8
+            std: 17
+            image: silkeh/clang:8
+          # clang 7 couldn't compile the tests (TODO?)
 
     container:
-      image: gcc:${{ matrix.version }}
+      image: ${{ matrix.image }}
       env:
         CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
         CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
@@ -220,92 +243,8 @@ jobs:
         CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
         CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
         DEBIAN_FRONTEND: ${{ env.DEBIAN_FRONTEND }}
-        CXX: g++
-        CMAKE_C_COMPILER_LAUNCHER: ccache
-        CMAKE_CXX_COMPILER_LAUNCHER: ccache
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          apt-get --allow-unauthenticated -yq update
-          apt-get install \
-            -yq --no-install-suggests --no-install-recommends \
-            --allow-unauthenticated --allow-downgrades --allow-change-held-packages \
-            ccache ninja-build curl
-
-          mkdir -p $GITHUB_WORKSPACE/deps
-          cd $GITHUB_WORKSPACE/deps
-          curl -s -L https://github.com/Kitware/CMake/releases/download/v4.0.2/cmake-4.0.2-linux-x86_64.tar.gz \
-            | tar xvz -C .
-          ln -s $GITHUB_WORKSPACE/deps/cmake-4.0.2-linux-x86_64/bin $GITHUB_WORKSPACE/bin
-
-          $GITHUB_WORKSPACE/bin/cmake --version
-
-      - name: Load ccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
-          restore-keys: |
-            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}
-
-      - name: Setup ccache
-        run: |
-          ccache --version
-          ccache --zero-stats
-          ccache --show-stats
-          ccache --show-config || true
-
-      - name: Run CMake
-        run: |
-          mkdir -p $GITHUB_WORKSPACE/build
-          cd $GITHUB_WORKSPACE/build
-          $GITHUB_WORKSPACE/bin/cmake -G Ninja -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF \
-                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
-                $GITHUB_WORKSPACE
-
-      - name: Build
-        run: |
-          cd $GITHUB_WORKSPACE/build
-          $GITHUB_WORKSPACE/bin/cmake --build . -- -k 0
-
-      - name: Show ccache stats
-        run: |
-          ccache --show-stats
-
-      - name: Test
-        run: |
-          cd $GITHUB_WORKSPACE/build
-          $GITHUB_WORKSPACE/bin/ctest --output-on-failure
-
-  # Get older clang versions through Docker
-  docker-clang:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # 7 couldn't compile the tests without modification (TODO?)
-        version: [ 8, 9, 10, 11, 12 ]
-        std: [ 17 ]
-
-    container:
-      image: silkeh/clang:${{ matrix.version }}
-      env:
-        CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
-        CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
-        CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
-        CCACHE_DIR: ${{ env.CCACHE_DIR }}
-        CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
-        CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
-        CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
-        CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
-        DEBIAN_FRONTEND: ${{ env.DEBIAN_FRONTEND }}
-        CXX: clang++-${{ matrix.version }}
+        # gcc images only have "g++", no "g++-N"
+        CXX: ${{ startsWith(matrix.cxx, 'g++') && 'g++' || matrix.cxx }}
         CMAKE_C_COMPILER_LAUNCHER: ccache
         CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
@@ -350,7 +289,7 @@ jobs:
         run: |
           mkdir -p $GITHUB_WORKSPACE/build
           cd $GITHUB_WORKSPACE/build
-          $GITHUB_WORKSPACE/bin/cmake -G Ninja -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF \
+          $GITHUB_WORKSPACE/bin/cmake -G Ninja -DSCN_CI=ON \
                 -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
                 $GITHUB_WORKSPACE
 

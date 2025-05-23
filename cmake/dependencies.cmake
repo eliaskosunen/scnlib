@@ -90,6 +90,7 @@ if (SCN_BENCHMARKS)
     else ()
         set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "Turn off google benchmark tests")
         set(BENCHMARK_ENABLE_INSTALL OFF CACHE INTERNAL "Turn off google benchmark install")
+        set(BENCHMARK_ENABLE_WERROR OFF CACHE INTERNAL "Turn off -Werror inside google benchmark")
         FetchContent_Declare(
                 google-benchmark
                 GIT_REPOSITORY https://github.com/google/benchmark.git
