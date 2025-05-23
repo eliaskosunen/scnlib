@@ -6,6 +6,7 @@ on:
       - master
       - v*/dev
       - ci/*
+      - dev/*
     paths:
       - '.github/workflows/macos.yml'
       - 'benchmark/**'
@@ -20,6 +21,7 @@ on:
       - master
       - v*/dev
       - ci/*
+      - dev/*
     paths:
       - '.github/workflows/macos.yml'
       - 'benchmark/**'

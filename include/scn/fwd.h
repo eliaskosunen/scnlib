@@ -144,6 +144,9 @@
 #ifndef SCN_DISABLE_TYPE_LONG_LONG
 #define SCN_DISABLE_TYPE_LONG_LONG 0
 #endif
+#ifndef SCN_DISABLE_TYPE_INT128
+#define SCN_DISABLE_TYPE_INT128 0
+#endif
 #ifndef SCN_DISABLE_TYPE_UCHAR
 #define SCN_DISABLE_TYPE_UCHAR 0
 #endif
@@ -158,6 +161,9 @@
 #endif
 #ifndef SCN_DISABLE_TYPE_ULONG_LONG
 #define SCN_DISABLE_TYPE_ULONG_LONG 0
+#ifndef SCN_DISABLE_TYPE_UINT128
+#define SCN_DISABLE_TYPE_UINT128 0
+#endif
 #endif
 #ifndef SCN_DISABLE_TYPE_POINTER
 #define SCN_DISABLE_TYPE_POINTER 0
@@ -801,6 +807,24 @@ SCN_GCC_POP
 
 #endif
 
+// Detect int128
+#if !SCN_DISABLE_TYPE_INT128 || !SCN_DISABLE_TYPE_UINT128
+#if SCN_GCC || SCN_CLANG
+#define SCN_HAS_INT128 1
+#define SCN_INT128_TYPE __int128
+#define SCN_UINT128_TYPE unsigned __int128
+#elif SCN_MSVC
+#include <__msvc_int128.hpp>
+#define SCN_HAS_INT128 1
+#define SCN_INT128_TYPE ::std::_Signed128
+#define SCN_UINT128_TYPE ::std::_Unsigned128
+#endif
+#endif
+
+#ifndef SCN_HAS_INT128
+#define SCN_HAS_INT128 0
+#endif
+
 /////////////////////////////////////////////////////////////////
 // Helper macros
 /////////////////////////////////////////////////////////////////
@@ -1174,6 +1198,11 @@ using wregex_match = basic_regex_match<wchar_t>;
 
 using regex_matches = basic_regex_matches<char>;
 using wregex_matches = basic_regex_matches<wchar_t>;
+
+#if SCN_HAS_INT128
+using int128 = SCN_INT128_TYPE;
+using uint128 = SCN_UINT128_TYPE;
+#endif
 
 SCN_END_NAMESPACE
 }  // namespace scn

@@ -394,6 +394,36 @@ TEST(IntegerTest, HexFollowedByNonDigit_Hex)
     EXPECT_EQ(result->value(), 0xf);
 }
 
+#if SCN_HAS_INT128
+TEST(IntegerTest, Int128_Zero)
+{
+    std::string_view input = "0";
+    auto result = scn::scan<scn::int128>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end());
+    EXPECT_EQ(result->value(), 0);
+}
+TEST(IntegerTest, Int128_Large)
+{
+    std::string_view input = "99999999999999999999999999";
+    ASSERT_LT(input.size(), std::numeric_limits<scn::int128>::digits10);
+    ASSERT_GT(input.size(), std::numeric_limits<std::int64_t>::digits10);
+    auto result = scn::scan<scn::int128>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end());
+    EXPECT_NE(result->value(), 0);
+    EXPECT_NE(result->value(), std::numeric_limits<std::int64_t>::max());
+}
+TEST(IntegerTest, UInt128)
+{
+    std::string_view input = "123456789";
+    auto result = scn::scan<scn::uint128>(input, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), input.end());
+    EXPECT_EQ(result->value(), 123456789);
+}
+#endif
+
 TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Default)
 {
     std::string_view input = "fg";
