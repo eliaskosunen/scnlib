@@ -415,8 +415,8 @@ static constexpr deferred_init_tag_t deferred_init_tag{};
 template <typename T,
           typename E,
           bool IsTriviallyDestructible =
-              (std::is_void_v<T> || std::is_trivially_destructible_v<T>)&&std::
-                  is_trivially_destructible_v<E>>
+              (std::is_void_v<T> || std::is_trivially_destructible_v<T>) &&
+              std::is_trivially_destructible_v<E>>
 struct expected_storage_base;
 
 template <typename T, typename E>
@@ -849,9 +849,8 @@ template <typename T, typename E>
 struct SCN_TRIVIAL_ABI expected_operations_base<
     T,
     E,
-    std::enable_if_t<(
-        std::is_void_v<T> ||
-        std::is_trivially_copyable_v<T>)&&std::is_trivially_copyable_v<E>>>
+    std::enable_if_t<(std::is_void_v<T> || std::is_trivially_copyable_v<T>) &&
+                     std::is_trivially_copyable_v<E>>>
     : expected_storage_base<T, E> {
     using expected_storage_base<T, E>::expected_storage_base;
 };
@@ -1181,10 +1180,10 @@ private:
 template <
     typename T,
     typename E,
-    bool EnableCopy = ((std::is_copy_constructible_v<T> ||
-                        std::is_void_v<T>)&&std::is_copy_constructible_v<E>),
-    bool EnableMove = ((std::is_move_constructible_v<T> ||
-                        std::is_void_v<T>)&&std::is_move_constructible_v<E>)>
+    bool EnableCopy = ((std::is_copy_constructible_v<T> || std::is_void_v<T>) &&
+                       std::is_copy_constructible_v<E>),
+    bool EnableMove = ((std::is_move_constructible_v<T> || std::is_void_v<T>) &&
+                       std::is_move_constructible_v<E>)>
 struct expected_delete_ctor_base;
 
 // Implementation for types that are both copy and move
@@ -1241,14 +1240,14 @@ struct SCN_TRIVIAL_ABI expected_delete_ctor_base<T, E, true, false> {
 template <
     typename T,
     typename E,
-    bool EnableCopy = ((std::is_copy_constructible_v<T> ||
-                        std::is_void_v<T>)&&std::is_copy_constructible_v<E> &&
-                       (std::is_copy_assignable_v<T> ||
-                        std::is_void_v<T>)&&std::is_copy_assignable_v<E>),
-    bool EnableMove = ((std::is_move_constructible_v<T> ||
-                        std::is_void_v<T>)&&std::is_move_constructible_v<E> &&
-                       (std::is_move_assignable_v<T> ||
-                        std::is_void_v<T>)&&std::is_move_assignable_v<E>)>
+    bool EnableCopy = ((std::is_copy_constructible_v<T> || std::is_void_v<T>) &&
+                       std::is_copy_constructible_v<E> &&
+                       (std::is_copy_assignable_v<T> || std::is_void_v<T>) &&
+                       std::is_copy_assignable_v<E>),
+    bool EnableMove = ((std::is_move_constructible_v<T> || std::is_void_v<T>) &&
+                       std::is_move_constructible_v<E> &&
+                       (std::is_move_assignable_v<T> || std::is_void_v<T>) &&
+                       std::is_move_assignable_v<E>)>
 struct expected_delete_assign_base;
 
 template <typename T, typename E>
@@ -5446,11 +5445,13 @@ enum class arg_type : unsigned char {
     int_type,
     long_type,
     llong_type,
+    int128_type,
     uchar_type,
     ushort_type,
     uint_type,
     ulong_type,
     ullong_type,
+    uint128_type,
     bool_type,
     narrow_character_type,
     wide_character_type,
@@ -5516,6 +5517,11 @@ SCN_TYPE_CONSTANT(std::string, narrow_string_type, SCN_DISABLE_TYPE_STRING);
 SCN_TYPE_CONSTANT(std::wstring, wide_string_type, SCN_DISABLE_TYPE_STRING);
 SCN_TYPE_CONSTANT(regex_matches, narrow_regex_matches_type, SCN_DISABLE_REGEX);
 SCN_TYPE_CONSTANT(wregex_matches, wide_regex_matches_type, SCN_DISABLE_REGEX);
+
+#if SCN_HAS_INT128
+SCN_TYPE_CONSTANT(int128, int128_type, SCN_DISABLE_TYPE_INT128);
+SCN_TYPE_CONSTANT(uint128, uint128_type, SCN_DISABLE_TYPE_UINT128);
+#endif
 
 #undef SCN_TYPE_CONSTANT
 
@@ -5588,9 +5594,10 @@ public:
     // trivial default initialization in constexpr
 #if defined(__cpp_constexpr) && __cpp_constexpr >= 201907L && \
     SCN_STD > SCN_STD_20
-    constexpr
-#endif
+    constexpr arg_value() = default;
+#else
     arg_value() = default;
+#endif
 
     template <typename T>
     explicit constexpr arg_value(T& val) : ref_value{std::addressof(val)}
@@ -5676,6 +5683,11 @@ struct arg_mapper {
     SCN_ARG_MAPPER(std::basic_string_view<char_type>)
     SCN_ARG_MAPPER(std::string)
     SCN_ARG_MAPPER(std::wstring)
+
+#if SCN_HAS_INT128
+    SCN_ARG_MAPPER(int128)
+    SCN_ARG_MAPPER(uint128)
+#endif
 
 #undef SCN_ARG_MAPPER
 
@@ -6264,9 +6276,10 @@ public:
      */
     [[deprecated(
         "Use the source_tag constructor instead,"
-        "to get more compile-time checking")]] explicit constexpr
-    basic_scan_parse_context(std::basic_string_view<CharT> format,
-                             int next_arg_id = 0)
+        "to get more compile-time checking")]]
+    explicit constexpr basic_scan_parse_context(
+        std::basic_string_view<CharT> format,
+        int next_arg_id = 0)
         : m_format{format}, m_next_arg_id{next_arg_id}
     {
     }
@@ -7821,6 +7834,7 @@ constexpr arg_type_category get_category_for_arg_type(arg_type type)
         case arg_type::int_type:
         case arg_type::long_type:
         case arg_type::llong_type:
+        case arg_type::int128_type:
             return arg_type_category::integer;
 
         case arg_type::uchar_type:
@@ -7828,6 +7842,7 @@ constexpr arg_type_category get_category_for_arg_type(arg_type type)
         case arg_type::uint_type:
         case arg_type::ulong_type:
         case arg_type::ullong_type:
+        case arg_type::uint128_type:
             return arg_type_category::unsigned_integer;
 
         case arg_type::pointer_type:
@@ -9070,11 +9085,13 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
         case arg_type::int_type:
         case arg_type::long_type:
         case arg_type::llong_type:
+        case arg_type::int128_type:
         case arg_type::uchar_type:
         case arg_type::ushort_type:
         case arg_type::uint_type:
         case arg_type::ulong_type:
         case arg_type::ullong_type:
+        case arg_type::uint128_type:
             check_int_type_specs(specs, checker);
             break;
 
@@ -9183,6 +9200,14 @@ scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
     extern template scan_expected<Context::iterator>         \
     scanner_scan_for_builtin_type(T&, Context&, const format_specs&);
 
+#if SCN_HAS_INT128
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_INT128(Context)   \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(int128, Context) \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(uint128, Context)
+#else
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_INT128(Context) /* int128 */
+#endif
+
 #define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(Context)                   \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(char, Context)                \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(wchar_t, Context)             \
@@ -9206,6 +9231,7 @@ scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
         std::basic_string_view<Context::char_type>, Context)               \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(regex_matches, Context)       \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(wregex_matches, Context)      \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_INT128(Context)                    \
     extern template scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
@@ -9243,6 +9269,12 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
             SCN_VISIT(long);
         case detail::arg_type::llong_type:
             SCN_VISIT(long long);
+        case detail::arg_type::int128_type:
+#if SCN_HAS_INT128
+            SCN_VISIT(int128)
+#else
+            return vis(monostate_val);
+#endif
         case detail::arg_type::uchar_type:
             SCN_VISIT(unsigned char);
         case detail::arg_type::ushort_type:
@@ -9253,6 +9285,12 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
             SCN_VISIT(unsigned long);
         case detail::arg_type::ullong_type:
             SCN_VISIT(unsigned long long);
+        case detail::arg_type::uint128_type:
+#if SCN_HAS_INT128
+            SCN_VISIT(uint128)
+#else
+            return vis(monostate_val);
+#endif
         case detail::arg_type::pointer_type:
             SCN_VISIT(void*);
         case detail::arg_type::bool_type:
@@ -9610,6 +9648,24 @@ extern template auto scan_int_exhaustive_valid_impl(std::string_view)
     -> unsigned long long;
 #endif
 
+#if SCN_HAS_INT128
+
+#if !SCN_DISABLE_TYPE_INT128
+extern template auto scan_int_impl(std::string_view source,
+                                   int128& value,
+                                   int base)
+    -> scan_expected<std::string_view::iterator>;
+#endif
+
+#if !SCN_DISABLE_TYPE_UINT128
+extern template auto scan_int_impl(std::string_view source,
+                                   uint128& value,
+                                   int base)
+    -> scan_expected<std::string_view::iterator>;
+#endif
+
+#endif  // SCN_HAS_INT128
+
 }  // namespace detail
 
 SCN_GCC_POP  // -Wnoexcept
@@ -9880,10 +9936,14 @@ SCN_NODISCARD auto prompt(const char* msg,
 namespace detail {
 template <typename T>
 inline constexpr bool is_scan_int_type =
-    std::is_integral_v<T> && !std::is_same_v<T, char> &&
-    !std::is_same_v<T, wchar_t> && !std::is_same_v<T, char32_t> &&
-    !std::is_same_v<T, bool>;
-}
+    (std::is_integral_v<T> && !std::is_same_v<T, char> &&
+     !std::is_same_v<T, wchar_t> && !std::is_same_v<T, char32_t> &&
+     !std::is_same_v<T, bool>)
+#if SCN_HAS_INT128
+    || std::is_same_v<T, int128> || std::is_same_v<T, uint128>
+#endif
+    ;
+}  // namespace detail
 
 /**
  * Fast integer reading.

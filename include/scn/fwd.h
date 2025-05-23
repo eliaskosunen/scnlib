@@ -144,6 +144,9 @@
 #ifndef SCN_DISABLE_TYPE_LONG_LONG
 #define SCN_DISABLE_TYPE_LONG_LONG 0
 #endif
+#ifndef SCN_DISABLE_TYPE_INT128
+#define SCN_DISABLE_TYPE_INT128 0
+#endif
 #ifndef SCN_DISABLE_TYPE_UCHAR
 #define SCN_DISABLE_TYPE_UCHAR 0
 #endif
@@ -158,6 +161,9 @@
 #endif
 #ifndef SCN_DISABLE_TYPE_ULONG_LONG
 #define SCN_DISABLE_TYPE_ULONG_LONG 0
+#ifndef SCN_DISABLE_TYPE_UINT128
+#define SCN_DISABLE_TYPE_UINT128 0
+#endif
 #endif
 #ifndef SCN_DISABLE_TYPE_POINTER
 #define SCN_DISABLE_TYPE_POINTER 0
@@ -337,9 +343,9 @@
 #endif
 
 #ifdef __has_include
-#define SCN_HAS_INCLUDE(x) __has_include(x)
+#define SCN_HAS_HAS_INCLUDE 1
 #else
-#define SCN_HAS_INCLUDE(x) 0
+#define SCN_HAS_HAS_INCLUDE 0
 #endif
 
 /////////////////////////////////////////////////////////////////
@@ -355,7 +361,7 @@ SCN_GCC_IGNORE("-Wrestrict")
 #include <cstdint>
 #include <type_traits>
 
-#if SCN_MSVC && SCN_HAS_INCLUDE(<yvals.h>)
+#if SCN_MSVC && SCN_HAS_HAS_INCLUDE && __has_include(<yvals.h>)
 // The above headers don't define _ITERATOR_DEBUG_LEVEL,
 // so include <yvals.h> directly
 #include <yvals.h>
@@ -366,6 +372,81 @@ SCN_GCC_POP
 /////////////////////////////////////////////////////////////////
 // Environment detection (preprocessor only)
 /////////////////////////////////////////////////////////////////
+
+// Detect architecture
+#if defined(__x86_64__) || defined(_M_AMD64)
+#define SCN_X86_64 1
+#define SCN_32BIT  0
+
+#elif defined(__i386__) || defined(_M_IX86)
+#define SCN_X86_32 1
+#define SCN_32BIT  1
+
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#define SCN_ARM64 1
+#define SCN_32BIT 0
+
+#elif defined(__arm__) || defined(_M_ARM)
+#define SCN_ARM32 1
+#define SCN_32BIT 1
+
+#elif defined(__PPC64__) || defined(_M_PPC64)
+#define SCN_PPC64 1
+#define SCN_32BIT 0
+
+#elif defined(__PPC__) || defined(_M_PPC)
+#define SCN_PPC32 1
+#define SCN_32BIT 1
+
+#elif defined(__s390__)
+#define SCN_S390  1
+#define SCN_32BIT 1
+
+#endif  // defined __x86_64__ || defined _M_AMD64
+
+#ifndef SCN_X86_64
+#define SCN_X86_64 0
+#endif
+#ifndef SCN_X86_32
+#define SCN_X86_32 0
+#endif
+#ifndef SCN_ARM64
+#define SCN_ARM64 0
+#endif
+#ifndef SCN_ARM32
+#define SCN_ARM32 0
+#endif
+#ifndef SCN_PPC64
+#define SCN_PPC64 0
+#endif
+#ifndef SCN_PPC32
+#define SCN_PPC32 0
+#endif
+#ifndef SCN_S390
+#define SCN_S390 0
+#endif
+
+#ifndef SCN_32BIT
+#define SCN_32BIT 0
+#endif
+
+#if SCN_X86_64 || SCN_X86_32
+#define SCN_X86 1
+#else
+#define SCN_X86 0
+#endif
+
+#if SCN_ARM64 || SCN_ARM32
+#define SCN_ARM 1
+#else
+#define SCN_ARM 0
+#endif
+
+#if SCN_PPC64 || SCN_PPC32
+#define SCN_PPC 1
+#else
+#define SCN_PPC 0
+#endif
 
 #define SCN_STD_17 201703L
 #define SCN_STD_20 202002L
@@ -772,7 +853,7 @@ SCN_GCC_POP
 #include <machine/endian.h>
 #elif defined(sun) || defined(__sun)
 #include <sys/byteorder.h>
-#elif SCN_HAS_INCLUDE(<endian.h>)
+#elif SCN_HAS_HAS_INCLUDE && __has_include(<endian.h>)
 #include <endian.h>
 #endif
 
@@ -786,7 +867,7 @@ SCN_GCC_POP
 
 #endif  // defined __BYTE_ORDER__ && defined __ORDER_BIG_ENDIAN__
 
-#if defined (__FLOAT_WORD_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
+#if defined(__FLOAT_WORD_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
 
 #if __FLOAT_WORD_ORDER__ == __ORDER_BIG_ENDIAN__
 #define SCN_IS_FLOAT_BIG_ENDIAN 1
@@ -799,6 +880,31 @@ SCN_GCC_POP
 #else
 #define SCN_IS_FLOAT_BIG_ENDIAN 0
 
+#endif
+
+// Detect int128
+#if !SCN_DISABLE_TYPE_INT128 || !SCN_DISABLE_TYPE_UINT128
+
+#if (SCN_GCC || SCN_CLANG) && !SCN_32BIT && \
+    !SCN_STDLIB_MS_STL  // opts out of clang-cl
+// __int128 is a builtin type defined on gcc and clang,
+// as long as we have a 64-bit architecture.
+#define SCN_HAS_INT128   1
+#define SCN_INT128_TYPE  __int128
+#define SCN_UINT128_TYPE unsigned __int128
+#elif 0 && SCN_HAS_HAS_INCLUDE && __has_include(<__msvc_int128.hpp>)
+// MS STL has internal-ish types for (u)int128
+// Disabled for now, couldn't get it to work
+#include <__msvc_int128.hpp>
+#define SCN_HAS_INT128   1
+#define SCN_INT128_TYPE  ::std::_Signed128
+#define SCN_UINT128_TYPE ::std::_Unsigned128
+#endif
+
+#endif
+
+#ifndef SCN_HAS_INT128
+#define SCN_HAS_INT128 0
 #endif
 
 /////////////////////////////////////////////////////////////////
@@ -1174,6 +1280,11 @@ using wregex_match = basic_regex_match<wchar_t>;
 
 using regex_matches = basic_regex_matches<char>;
 using wregex_matches = basic_regex_matches<wchar_t>;
+
+#if SCN_HAS_INT128
+using int128 = SCN_INT128_TYPE;
+using uint128 = SCN_UINT128_TYPE;
+#endif
 
 SCN_END_NAMESPACE
 }  // namespace scn

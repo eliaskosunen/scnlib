@@ -6,6 +6,7 @@ on:
       - master
       - v*/dev
       - ci/*
+      - dev/*
     paths:
       - '.github/workflows/linux.yml'
       - 'benchmark/**'
@@ -20,6 +21,7 @@ on:
       - master
       - v*/dev
       - ci/*
+      - dev/*
     paths:
       - '.github/workflows/linux.yml'
       - 'benchmark/**'
@@ -607,14 +609,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flags:
-          - "-DSCN_DISABLE_IOSTREAM=ON"
-          - "-DSCN_DISABLE_LOCALE=ON"
-          - "-DSCN_DISABLE_REGEX=ON"
-          - "-DSCN_DISABLE_CHRONO=ON"
-          - "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON"
-          - "-DSCN_DISABLE_FROM_CHARS=ON -DSCN_DISABLE_STRTOD=ON"
-          - "-DSCN_DISABLE_FAST_FLOAT=ON"
+        include:
+          - key: iostream
+            flags: "-DSCN_DISABLE_IOSTREAM=ON"
+          - key: locale
+            flags: "-DSCN_DISABLE_LOCALE=ON"
+          - key: regex
+            flags: "-DSCN_DISABLE_REGEX=ON"
+          - key: chrono
+            flags: "-DSCN_DISABLE_CHRONO=ON"
+          - key: float
+            flags: "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON"
+          - key: int128
+            flags: "-DSCN_DISABLE_TYPE_INT128=ON -DSCN_DISABLE_TYPE_UINT128=ON"
+          - key: from-chars-and-strtod
+            flags: "-DSCN_DISABLE_FROM_CHARS=ON -DSCN_DISABLE_STRTOD=ON"
+          - key: fast-float
+            flags: "-DSCN_DISABLE_FAST_FLOAT=ON"
 
     env:
       CXX: g++-14
@@ -633,17 +644,16 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}/build
           ${APT_INSTALL} ccache
-          echo "${{ matrix.flags }}" > $GITHUB_WORKSPACE/flags.txt
 
       - name: Load ccache
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashFiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashFiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashFiles('$GITHUB_WORKSPACE/flags.txt') }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-flags${{ hashFiles('$GITHUB_WORKSPACE/flags.txt') }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}

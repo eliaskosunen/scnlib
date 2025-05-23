@@ -73,7 +73,7 @@ SCN_GCC_POP
 #if SCN_DISABLE_LOCALE
 #define SCN_XLOCALE SCN_XLOCALE_DISABLED
 #elif (!defined(__ANDROID_API__) || __ANDROID_API__ >= 28) && \
-    !defined(__EMSCRIPTEN__) && SCN_HAS_INCLUDE(<xlocale.h>)
+    !defined(__EMSCRIPTEN__) && SCN_HAS_HAS_INCLUDE && __has_include(<xlocale.h>)
 #include <xlocale.h>
 #define SCN_XLOCALE SCN_XLOCALE_POSIX
 
@@ -1273,19 +1273,19 @@ constexpr bool check_integer_overflow(uint64_t val,
     return false;
 }
 
-template <typename T>
-constexpr T store_result(uint64_t u64val, bool is_negative)
+template <typename T, typename Acc>
+constexpr T store_result(Acc acc, bool is_negative)
 {
     if (is_negative) {
         SCN_MSVC_PUSH
         SCN_MSVC_IGNORE(4146)
         return static_cast<T>(
             -std::numeric_limits<T>::max() -
-            static_cast<T>(u64val - std::numeric_limits<T>::max()));
+            static_cast<T>(acc - std::numeric_limits<T>::max()));
         SCN_MSVC_POP
     }
 
-    return static_cast<T>(u64val);
+    return static_cast<T>(acc);
 }
 
 template <typename T>
@@ -1293,6 +1293,8 @@ auto parse_decimal_integer_fast(std::string_view input,
                                 T& val,
                                 bool is_negative) -> scan_expected<const char*>
 {
+    static_assert(sizeof(T) <= sizeof(std::uint64_t));
+
     uint64_t u64val{};
     auto ptr = parse_decimal_integer_fast_impl(
         input.data(), input.data() + input.size(), u64val);
@@ -1342,6 +1344,79 @@ auto parse_regular_integer(std::basic_string_view<CharT> input,
     val = store_result<T>(u64val, is_negative);
     return begin;
 }
+
+#if SCN_HAS_INT128
+// int128 is parsed with a different algorithm,
+// going over the input char-by-char and checking for overflow on each step.
+// It's slower, but simpler,
+// and we don't have to build separate lookup tables for it.
+template <typename CharT, typename T>
+auto parse_int128(std::basic_string_view<CharT> input,
+                  T& val,
+                  int base,
+                  bool is_negative) -> scan_expected<const CharT*>
+{
+    constexpr uint128 uint_max = std::numeric_limits<uint128>::max();
+    constexpr uint128 int_max = uint_max >> 1;
+    constexpr uint128 abs_int_min = int_max + 1;
+
+    auto const [limit_val, max_digit] = [&]() -> std::pair<uint128, uint128> {
+        if constexpr (std::is_same_v<T, int128>) {
+            if (is_negative) {
+                return {abs_int_min / base, abs_int_min % base};
+            }
+            return {int_max / base, int_max % base};
+        }
+        else {
+            return {uint_max / base, uint_max % base};
+        }
+    }();
+
+    const CharT* begin = input.data();
+    const CharT* const end = input.data() + input.size();
+    uint128 acc{};
+
+    while (begin != end) {
+        const auto digit = char_to_int(*begin);
+        if (SCN_UNLIKELY(digit >= base)) {
+            break;
+        }
+        if (acc < limit_val || (acc == limit_val && digit <= max_digit)) {
+            SCN_LIKELY_ATTR
+            acc = acc * base + digit;
+        }
+        else {
+            return detail::unexpected_scan_error(
+                is_negative ? scan_error::value_negative_overflow
+                            : scan_error::value_positive_overflow,
+                "Integer overflow");
+        }
+        ++begin;
+    }
+
+    val = store_result<T>(acc, is_negative);
+    return begin;
+}
+
+template <typename CharT>
+auto parse_regular_integer(std::basic_string_view<CharT> input,
+                           int128& val,
+                           int base,
+                           bool is_negative) -> scan_expected<const CharT*>
+{
+    return parse_int128(input, val, base, is_negative);
+}
+
+template <typename CharT>
+auto parse_regular_integer(std::basic_string_view<CharT> input,
+                           uint128& val,
+                           int base,
+                           bool is_negative) -> scan_expected<const CharT*>
+{
+    SCN_EXPECT(!is_negative);
+    return parse_int128(input, val, base, is_negative);
+}
+#endif
 }  // namespace
 
 template <typename CharT, typename T>
@@ -1378,7 +1453,8 @@ auto parse_integer_value(std::basic_string_view<CharT> source,
         }
     }
 
-    if constexpr (std::is_same_v<CharT, char>) {
+    if constexpr (std::is_same_v<CharT, char> &&
+                  sizeof(T) <= sizeof(std::uint64_t)) {
         if (base == 10) {
             SCN_TRY(ptr, parse_decimal_integer_fast(
                              detail::make_string_view_from_pointers(start, end),
@@ -2230,6 +2306,20 @@ template auto scan_int_impl(std::string_view, unsigned long long&, int)
     -> scan_expected<std::string_view::iterator>;
 template auto scan_int_exhaustive_valid_impl(std::string_view)
     -> unsigned long long;
+#endif
+
+#if SCN_HAS_INT128
+
+#if !SCN_DISABLE_TYPE_INT128
+template auto scan_int_impl(std::string_view, int128&, int)
+    -> scan_expected<std::string_view::iterator>;
+#endif
+
+#if !SCN_DISABLE_TYPE_UINT128
+template auto scan_int_impl(std::string_view, uint128&, int)
+    -> scan_expected<std::string_view::iterator>;
+#endif
+
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
