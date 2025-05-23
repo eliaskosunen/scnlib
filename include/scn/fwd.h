@@ -867,7 +867,7 @@ SCN_GCC_POP
 
 #endif  // defined __BYTE_ORDER__ && defined __ORDER_BIG_ENDIAN__
 
-#if defined (__FLOAT_WORD_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
+#if defined(__FLOAT_WORD_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
 
 #if __FLOAT_WORD_ORDER__ == __ORDER_BIG_ENDIAN__
 #define SCN_IS_FLOAT_BIG_ENDIAN 1
@@ -885,17 +885,18 @@ SCN_GCC_POP
 // Detect int128
 #if !SCN_DISABLE_TYPE_INT128 || !SCN_DISABLE_TYPE_UINT128
 
-#if (SCN_GCC || SCN_CLANG) && !SCN_32BIT
+#if (SCN_GCC || SCN_CLANG) && !SCN_32BIT && \
+    !SCN_STDLIB_MS_STL  // opts out of clang-cl
 // __int128 is a builtin type defined on gcc and clang,
-// as long as we have a 64-bit architecture
-#define SCN_HAS_INT128 1
-#define SCN_INT128_TYPE __int128
+// as long as we have a 64-bit architecture.
+#define SCN_HAS_INT128   1
+#define SCN_INT128_TYPE  __int128
 #define SCN_UINT128_TYPE unsigned __int128
-#elif SCN_MSVC && SCN_STDLIB_MS_STL && SCN_WINDOWS_64BIT
+#elif SCN_HAS_INCLUDE(<__msvc_int128.hpp>)
 // MS STL has internal-ish types for (u)int128
 #include <__msvc_int128.hpp>
-#define SCN_HAS_INT128 1
-#define SCN_INT128_TYPE ::std::_Signed128
+#define SCN_HAS_INT128   1
+#define SCN_INT128_TYPE  ::std::_Signed128
 #define SCN_UINT128_TYPE ::std::_Unsigned128
 #endif
 
