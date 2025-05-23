@@ -892,8 +892,9 @@ SCN_GCC_POP
 #define SCN_HAS_INT128   1
 #define SCN_INT128_TYPE  __int128
 #define SCN_UINT128_TYPE unsigned __int128
-#elif SCN_HAS_HAS_INCLUDE && __has_include(<__msvc_int128.hpp>)
+#elif 0 && SCN_HAS_HAS_INCLUDE && __has_include(<__msvc_int128.hpp>)
 // MS STL has internal-ish types for (u)int128
+// Disabled for now, couldn't get it to work
 #include <__msvc_int128.hpp>
 #define SCN_HAS_INT128   1
 #define SCN_INT128_TYPE  ::std::_Signed128
