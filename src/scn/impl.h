@@ -4131,9 +4131,9 @@ private:
     T setsign(T value) const
     {
         if (m_sign == sign_type::minus_sign) {
-            return std::copysign(value, T{-1.0});
+            return std::copysign(value, static_cast<T>(-1.0));
         }
-        return std::copysign(value, T{1.0});
+        return std::copysign(value, static_cast<T>(1.0));
     }
 
     template <typename T>
@@ -4162,6 +4162,23 @@ SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, double)
 #if !SCN_DISABLE_TYPE_LONG_DOUBLE
 SCN_DECLARE_FLOAT_READER_TEMPLATE(char, long double)
 SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, long double)
+#endif
+
+#if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
+SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float16_t)
+SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float16_t)
+#endif
+#if SCN_HAS_STD_F32 && !SCN_DISABLE_TYPE_FLOAT32
+SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float32_t)
+SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float32_t)
+#endif
+#if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
+SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float64_t)
+SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float64_t)
+#endif
+#if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
+SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::bfloat16_t)
+SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::bfloat16_t)
 #endif
 
 #undef SCN_DECLARE_FLOAT_READER_TEMPLATE

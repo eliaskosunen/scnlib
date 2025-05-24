@@ -159,6 +159,19 @@ using mp_valid_result =
 template <template <typename...> class F, typename... T>
 using mp_valid_result_t = typename mp_valid_result<F, T...>::type;
 
+// mp_cond
+template <class C, class T, class... E>
+struct mp_cond_impl;
+
+template <class C, class T, class... E>
+using mp_cond = typename mp_cond_impl<C, T, E...>::type;
+
+template <class C, class T, class... E>
+using mp_cond_ = mp_eval_if<C, T, mp_cond, E...>;
+
+template <class C, class T, class... E>
+struct mp_cond_impl : mp_defer<mp_cond_, C, T, E...> {};
+
 /////////////////////////////////////////////////////////////////
 // pointer_traits and to_address
 /////////////////////////////////////////////////////////////////
@@ -5460,6 +5473,10 @@ enum class arg_type : unsigned char {
     float_type,
     double_type,
     ldouble_type,
+    float16_type,
+    float32_type,
+    float64_type,
+    bfloat16_type,
     narrow_string_view_type,
     wide_string_view_type,
     narrow_string_type,
@@ -5521,6 +5538,19 @@ SCN_TYPE_CONSTANT(wregex_matches, wide_regex_matches_type, SCN_DISABLE_REGEX);
 #if SCN_HAS_INT128
 SCN_TYPE_CONSTANT(int128, int128_type, SCN_DISABLE_TYPE_INT128);
 SCN_TYPE_CONSTANT(uint128, uint128_type, SCN_DISABLE_TYPE_UINT128);
+#endif
+
+#if SCN_HAS_STD_F16
+SCN_TYPE_CONSTANT(std::float16_t, float16_type, SCN_DISABLE_TYPE_FLOAT16);
+#endif
+#if SCN_HAS_STD_F32
+SCN_TYPE_CONSTANT(std::float32_t, float32_type, SCN_DISABLE_TYPE_FLOAT32);
+#endif
+#if SCN_HAS_STD_F64
+SCN_TYPE_CONSTANT(std::float64_t, float64_type, SCN_DISABLE_TYPE_FLOAT64);
+#endif
+#if SCN_HAS_STD_BF16
+SCN_TYPE_CONSTANT(std::bfloat16_t, bfloat16_type, SCN_DISABLE_TYPE_BFLOAT16);
 #endif
 
 #undef SCN_TYPE_CONSTANT
@@ -5687,6 +5717,19 @@ struct arg_mapper {
 #if SCN_HAS_INT128
     SCN_ARG_MAPPER(int128)
     SCN_ARG_MAPPER(uint128)
+#endif
+
+#if SCN_HAS_STD_F16
+    SCN_ARG_MAPPER(std::float16_t)
+#endif
+#if SCN_HAS_STD_F32
+    SCN_ARG_MAPPER(std::float32_t)
+#endif
+#if SCN_HAS_STD_F64
+    SCN_ARG_MAPPER(std::float64_t)
+#endif
+#if SCN_HAS_STD_BF16
+    SCN_ARG_MAPPER(std::bfloat16_t)
 #endif
 
 #undef SCN_ARG_MAPPER
@@ -7857,6 +7900,10 @@ constexpr arg_type_category get_category_for_arg_type(arg_type type)
         case arg_type::float_type:
         case arg_type::double_type:
         case arg_type::ldouble_type:
+        case arg_type::float16_type:
+        case arg_type::float32_type:
+        case arg_type::float64_type:
+        case arg_type::bfloat16_type:
             return arg_type_category::floating;
 
         case arg_type::narrow_string_view_type:
@@ -9104,6 +9151,10 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
         case arg_type::float_type:
         case arg_type::double_type:
         case arg_type::ldouble_type:
+        case arg_type::float16_type:
+        case arg_type::float32_type:
+        case arg_type::float64_type:
+        case arg_type::bfloat16_type:
             check_float_type_specs(specs, checker);
             break;
 
@@ -9208,6 +9259,40 @@ scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
 #define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_INT128(Context) /* int128 */
 #endif
 
+#if SCN_HAS_STD_F16
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_F16(Context) \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(std::float16_t, Context)
+#else
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_F16(Context) /* std::float16_t */
+#endif
+
+#if SCN_HAS_STD_F32
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_F32(Context) \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(std::float32_t, Context)
+#else
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_F32(Context) /* std::float32_t */
+#endif
+
+#if SCN_HAS_STD_F64
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_F64(Context) \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(std::float64_t, Context)
+#else
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_F64(Context) /* std::float64_t */
+#endif
+
+#if SCN_HAS_STD_BF16
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_BF16(Context) \
+SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(std::bfloat16_t, Context)
+#else
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_BF16(Context) /* std::bfloat16_t */
+#endif
+
+#define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_EXT_FLOAT(Context) \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_F16(Context)           \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_F32(Context)           \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_F64(Context)           \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_BF16(Context)
+
 #define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(Context)                   \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(char, Context)                \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(wchar_t, Context)             \
@@ -9232,6 +9317,7 @@ scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(regex_matches, Context)       \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(wregex_matches, Context)      \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_INT128(Context)                    \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_EXT_FLOAT(Context)                 \
     extern template scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
@@ -9307,6 +9393,30 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
             SCN_VISIT(double);
         case detail::arg_type::ldouble_type:
             SCN_VISIT(long double);
+        case detail::arg_type::float16_type:
+#if SCN_HAS_STD_F16
+            SCN_VISIT(std::float16_t)
+#else
+            return vis(monostate_val);
+#endif
+        case detail::arg_type::float32_type:
+#if SCN_HAS_STD_F32
+            SCN_VISIT(std::float32_t)
+#else
+            return vis(monostate_val);
+#endif
+        case detail::arg_type::float64_type:
+#if SCN_HAS_STD_F64
+            SCN_VISIT(std::float64_t)
+#else
+            return vis(monostate_val);
+#endif
+        case detail::arg_type::bfloat16_type:
+#if SCN_HAS_STD_BF16
+            SCN_VISIT(std::bfloat16_t)
+#else
+            return vis(monostate_val);
+#endif
         case detail::arg_type::narrow_string_view_type:
             SCN_VISIT(std::string_view);
         case detail::arg_type::narrow_string_type:

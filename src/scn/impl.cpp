@@ -339,47 +339,31 @@ namespace impl {
 namespace {
 SCN_GCC_COMPAT_PUSH
 SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
-constexpr bool is_float_zero(float f)
+template <typename F>
+constexpr bool is_float_zero(F f)
 {
-    return f == 0.0f || f == -0.0f;
-}
-constexpr bool is_float_zero(double d)
-{
-    return d == 0.0 || d == -0.0;
-}
-SCN_MAYBE_UNUSED constexpr bool is_float_zero(long double ld)
-{
-    return ld == 0.0L || ld == -0.0L;
+    return f == static_cast<F>(0.0) || f == static_cast<F>(-0.0);
 }
 SCN_GCC_COMPAT_POP
-
-struct impl_base {
-    float_reader_base::float_kind m_kind;
-    unsigned m_options;
-};
 
 template <typename CharT>
 struct impl_init_data {
     contiguous_range_factory<CharT>& input;
     float_reader_base::float_kind kind;
     unsigned options;
-
-    constexpr impl_base base() const
-    {
-        return {kind, options};
-    }
 };
 
 ////////////////////////////////////////////////////////////////////
 // strtod-based implementation
-// Fallback for all CharT and FloatT, if allowed
+// Fallback for all CharT and FloatT, except for extended floats,
+// if allowed
 ////////////////////////////////////////////////////////////////////
 
 #if !SCN_DISABLE_STRTOD
 template <typename T>
-class strtod_impl_base : impl_base {
-protected:
-    strtod_impl_base(impl_base base) : impl_base{base} {}
+struct strtod_impl_base {
+    static_assert(std::is_same_v<T, float> || std::is_same_v<T, double> ||
+                  std::is_same_v<T, long double>);
 
     template <typename CharT, typename Strtod>
     scan_expected<std::ptrdiff_t> parse(T& value,
@@ -503,6 +487,9 @@ protected:
             return std::strtold(str, str_end);
         }
 #endif
+
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
     }
 
     static T generic_wide_strtod(const wchar_t* str, wchar_t** str_end)
@@ -541,18 +528,25 @@ protected:
             return std::wcstold(str, str_end);
         }
 #endif
+
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
     }
+
+    float_reader_base::float_kind m_kind;
+    unsigned m_options;
 };
 
 template <typename CharT, typename T>
 class strtod_impl : public strtod_impl_base<T> {
 public:
-    explicit strtod_impl(impl_init_data<CharT> data)
-        : strtod_impl_base<T>(data.base()), m_input(data.input)
+    explicit strtod_impl(impl_init_data<CharT>& data)
+        : strtod_impl_base<T>{data.kind, data.options}, m_input(data.input)
     {
     }
 
-    scan_expected<std::ptrdiff_t> operator()(T& value)
+    template <typename F>
+    scan_expected<std::ptrdiff_t> operator()(T& value, F&&)
     {
         return this->parse(value, this->get_null_terminated_source(m_input),
                            generic_strtod);
@@ -571,6 +565,28 @@ private:
 
     contiguous_range_factory<CharT>& m_input;
 };
+
+struct strtod_impl_traits {
+    template <typename CharT, typename FloatT>
+    static constexpr bool enabled =
+        (std::is_same_v<CharT, char> || std::is_same_v<CharT, wchar_t>) &&
+        (std::is_same_v<FloatT, float> || std::is_same_v<FloatT, double> ||
+         std::is_same_v<FloatT, long double>);
+
+    template <typename CharT, typename FloatT>
+    using type = strtod_impl<CharT, FloatT>;
+};
+
+#else
+
+struct strtod_impl_traits {
+    template <typename, typename>
+    static constexpr bool enabled = false;
+
+    template <typename, typename>
+    using type = void;
+};
+
 #endif
 
 ////////////////////////////////////////////////////////////////////
@@ -596,9 +612,9 @@ template <>
 struct has_charconv_for<long double, void> : std::false_type {};
 #endif
 
-struct SCN_MAYBE_UNUSED from_chars_impl_base : impl_base {
-    SCN_MAYBE_UNUSED from_chars_impl_base(impl_init_data<char> data)
-        : impl_base{data.base()}, m_input(data.input)
+struct SCN_MAYBE_UNUSED from_chars_impl_base {
+    SCN_MAYBE_UNUSED from_chars_impl_base(impl_init_data<char>& data)
+        : m_input(data.input), m_kind(data.kind), m_options(data.options)
     {
     }
 
@@ -629,6 +645,8 @@ protected:
     }
 
     contiguous_range_factory<char>& m_input;
+    float_reader_base::float_kind m_kind;
+    unsigned m_options;
 
 private:
     std::chars_format map_options_to_flags() const
@@ -654,7 +672,8 @@ class from_chars_impl : public from_chars_impl_base {
 public:
     using from_chars_impl_base::from_chars_impl_base;
 
-    scan_expected<std::ptrdiff_t> operator()(T& value) const
+    template <typename F>
+    scan_expected<std::ptrdiff_t> operator()(T& value, F&& fallback) const
     {
         auto input_view = m_input.view();
         const auto flags = get_flags(input_view);
@@ -672,53 +691,45 @@ public:
                 "from_chars: invalid_argument");
         }
         if (result.ec == std::errc::result_out_of_range) {
-#if !SCN_DISABLE_STRTOD
-            // May be subnormal:
-            // at least libstdc++ gives out_of_range for subnormals
-            //  -> fall back to strtod
-            return strtod_impl<char, T>{{ m_input, m_kind, m_options }}(value);
-#else
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "from_chars: invalid_argument, fallback to strtod "
-                "disabled");
-#endif
+            // May be subnormal
+            // (at least libstdc++ gives out_of_range for subnormals)
+            //  -> fall back
+            return fallback();
         }
 
         return result.ptr - m_input.view().data();
     }
 };
+
+struct from_chars_impl_traits {
+    template <typename CharT, typename FloatT>
+    static constexpr bool enabled =
+        std::is_same_v<CharT, char> && has_charconv_for<FloatT>::value;
+
+    template <typename, typename FloatT>
+    using type = from_chars_impl<FloatT>;
+};
+
+#else
+
+struct from_chars_impl_traits {
+    template <typename, typename>
+    static constexpr bool enabled = false;
+
+    template <typename, typename>
+    using type = void;
+};
+
 #endif  // SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
 
 ////////////////////////////////////////////////////////////////////
 // fast_float-based implementation
-// Only for FloatT=(float OR double)
+// Only for FloatT=(float OR double OR extended-float)
 ////////////////////////////////////////////////////////////////////
-
-template <typename CharT, typename T>
-scan_expected<std::ptrdiff_t> fast_float_fallback(impl_init_data<CharT> data,
-                                                  T& value)
-{
-#if SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
-    if constexpr (std::is_same_v<CharT, has_charconv_for<T>>) {
-        return from_chars_impl<T>{data}(value);
-    }
-    else
-#endif
-    {
-#if !SCN_DISABLE_STRTOD
-        return strtod_impl<CharT, T>{data}(value);
-#else
-        return detail::unexpected_scan_error(
-            scan_error::invalid_scanned_value,
-            "fast_float failed, and fallbacks are disabled");
-#endif
-    }
-}
 
 #if !SCN_DISABLE_FAST_FLOAT
 
-struct fast_float_impl_base : impl_base {
+struct fast_float_impl_base {
     fast_float::chars_format get_flags() const
     {
         unsigned format_flags{};
@@ -733,22 +744,25 @@ struct fast_float_impl_base : impl_base {
 
         return static_cast<fast_float::chars_format>(format_flags);
     }
+
+    float_reader_base::float_kind m_kind;
+    unsigned m_options;
 };
 
 template <typename CharT, typename T>
 struct fast_float_impl : fast_float_impl_base {
-    fast_float_impl(impl_init_data<CharT> data)
-        : fast_float_impl_base{data.base()}, m_input(data.input)
+    fast_float_impl(impl_init_data<CharT>& data)
+        : fast_float_impl_base{data.m_kind, data.m_options}, m_input(data.input)
     {
     }
 
-    scan_expected<std::ptrdiff_t> operator()(T& value) const
+    template <typename F>
+    scan_expected<std::ptrdiff_t> operator()(T& value, F&& fallback) const
     {
         if (m_kind == float_reader_base::float_kind::hex_without_prefix ||
             m_kind == float_reader_base::float_kind::hex_with_prefix) {
             // fast_float doesn't support hexfloats
-            return fast_float_fallback<CharT>({m_input, m_kind, m_options},
-                                              value);
+            return fallback();
         }
 
         const auto flags = get_flags();
@@ -763,8 +777,7 @@ struct fast_float_impl : fast_float_impl_base {
         }
         if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
             // may just be very large: fall back
-            return fast_float_fallback<CharT>({m_input, m_kind, m_options},
-                                              value);
+            return fallback();
         }
 
         return result.ptr - view.data();
@@ -789,6 +802,26 @@ private:
     }
 
     contiguous_range_factory<CharT>& m_input;
+};
+
+struct fast_float_impl_traits {
+    template <typename CharT, typename FloatT>
+    static constexpr bool enabled =
+        fast_float::is_supported_char_type<CharT>() &&
+        fast_float::is_supported_float_type<CharT>();
+
+    template <typename CharT, typename FloatT>
+    using type = fast_float_impl<CharT, FloatT>;
+};
+
+#else
+
+struct fast_float_impl_traits {
+    template <typename, typename>
+    static constexpr bool enabled = false;
+
+    template <typename, typename>
+    using type = void;
 };
 
 #endif  // !SCN_DISABLE_FAST_FLOAT
@@ -966,6 +999,76 @@ struct float_nan_traits<long double> : float_nan_traits_for_long_double {
     using type = long double;
 };
 
+#if SCN_HAS_STD_F16
+template <>
+struct float_nan_traits<std::float16_t> {
+    using type = std::float16_t;
+
+    struct repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 5;
+        unsigned quiet_nan : 1;
+        unsigned mantissa : 9;
+#else
+        unsigned mantissa : 9;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 5;
+        unsigned negative : 1;
+#endif
+    };
+
+    static void apply(repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 5u) - 1u);
+        r.mantissa = payload;
+    }
+};
+#endif
+
+#if SCN_HAS_STD_F32
+template <>
+struct float_nan_traits<std::float32_t> : float_nan_traits<float> {
+    using type = std::float32_t;
+};
+#endif
+
+#if SCN_HAS_STD_F64
+template <>
+struct float_nan_traits<std::float64_t> : float_nan_traits<double> {
+    using type = std::float64_t;
+};
+#endif
+
+#if SCN_HAS_STD_BF16
+template <>
+struct float_nan_traits<std::bfloat16_t> {
+    using type = std::bfloat16_t;
+
+    struct repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 8;
+        unsigned quiet_nan : 1;
+        unsigned mantissa : 6;
+#else
+        unsigned mantissa : 6;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 8;
+        unsigned negative : 1;
+#endif
+    };
+
+    static void apply(repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 8u) - 1u);
+        r.mantissa = payload;
+    }
+};
+#endif
+
 template <typename F>
 void apply_nan_payload(F& value, std::uint64_t payload)
 {
@@ -980,8 +1083,88 @@ void apply_nan_payload(F& value, std::uint64_t payload)
     }
 }
 
+template <typename Traits, typename CharT, typename FloatT>
+struct float_impl {
+    using char_type = CharT;
+    using float_type = FloatT;
+    using traits = Traits;
+    using impl_type = typename Traits::template type<CharT, FloatT>;
+};
+
+struct float_null_impl {};
+
+template <typename Traits, typename CharT, typename FloatT>
+using get_float_impl_for = detail::mp_cond<
+    // Default to FloatT, if available
+    detail::mp_bool<Traits::template enabled<CharT, FloatT>>,
+    float_impl<Traits, CharT, FloatT>,
+    // If FloatT is long double, but it's an alias to double, check that
+    detail::mp_bool<std::is_same_v<FloatT, long double> &&
+                    sizeof(double) == sizeof(long double) &&
+                    Traits::template enabled<CharT, double>>,
+    float_impl<Traits, CharT, double>,
+#if SCN_HAS_STD_F32
+    // If FloatT is std::float32_t, but it's compatible with float, check that
+    detail::mp_bool<std::is_same_v<FloatT, std::float32_t> &&
+                    std::numeric_limits<float>::is_iec559 &&
+                    Traits::template enabled<CharT, float>>,
+    float_impl<Traits, CharT, float>,
+#endif
+#if SCN_HAS_STD_F64
+    // If FloatT is std::float64_t, but it's compatible with double, check that
+    detail::mp_bool<std::is_same_v<FloatT, std::float64_t> &&
+                    std::numeric_limits<double>::is_iec559 &&
+                    Traits::template enabled<CharT, double>>,
+    float_impl<Traits, CharT, double>,
+#endif
+    // Nothing found
+    std::true_type,
+    float_null_impl>;
+
+template <typename CharT, typename T, typename Impl, typename Fallback>
+scan_expected<std::ptrdiff_t> parse_float_value_using_impl(
+    impl_init_data<CharT>& data,
+    T& value,
+    Fallback&& fallback)
+{
+    auto impl = typename Impl::impl_type{data};
+
+    if constexpr (std::is_same_v<T, typename Impl::float_type>) {
+        return impl(value, fallback);
+    }
+    else {
+        return impl(*reinterpret_cast<typename Impl::float_type*>(&value),
+                    fallback);
+    }
+}
+
 template <typename CharT, typename T>
-scan_expected<std::ptrdiff_t> dispatch_impl(
+scan_expected<std::ptrdiff_t> dispatch_parse_float_value(impl_init_data<CharT>&,
+                                                         T&)
+{
+    return detail::unexpected_scan_error(
+        scan_error::invalid_scanned_value,
+        "No valid floating-point parser available for this type");
+}
+
+template <typename CharT, typename T, typename Impl, typename... Impls>
+scan_expected<std::ptrdiff_t> dispatch_parse_float_value(
+    impl_init_data<CharT>& data,
+    T& value)
+{
+    if constexpr (std::is_same_v<Impl, float_null_impl>) {
+        return dispatch_parse_float_value<CharT, T, Impls...>(data, value);
+    }
+    else {
+        auto next = [&]() {
+            return dispatch_parse_float_value<CharT, T, Impls...>(data, value);
+        };
+        return parse_float_value_using_impl<CharT, T, Impl>(data, value, next);
+    }
+}
+
+template <typename CharT, typename T>
+scan_expected<std::ptrdiff_t> parse_float_value(
     impl_init_data<CharT> data,
     contiguous_range_factory<CharT>& nan_payload,
     T& value)
@@ -1024,7 +1207,7 @@ scan_expected<std::ptrdiff_t> dispatch_impl(
             value = std::numeric_limits<T>::quiet_NaN();
 
             if constexpr (std::numeric_limits<T>::is_iec559) {
-                // TODO: 128-bit payloads
+                // TODO: 128-bit payloads?
                 std::uint64_t payload{};
                 if (auto result = reader_impl_for_int<CharT>{}.read_default(
                         nan_payload.view(), payload, {})) {
@@ -1060,32 +1243,10 @@ scan_expected<std::ptrdiff_t> dispatch_impl(
                                              "Invalid floating-point digit");
     }
 
-#if !SCN_DISABLE_FAST_FLOAT
-    if constexpr (std::is_same_v<T, long double>) {
-        if constexpr (sizeof(double) == sizeof(long double)) {
-            // If double == long double (true on Windows),
-            // use fast_float with double
-            double tmp{};
-            auto ret = fast_float_impl<CharT, double>{data}(tmp);
-            value = tmp;
-            return ret;
-        }
-        else {
-            // long doubles aren't supported by fast_float ->
-            // fall back to from_chars or strtod
-            return fast_float_fallback(data, value);
-        }
-    }
-    else {
-        // Default to fast_float
-        return fast_float_impl<CharT, T>{data}(value);
-    }
-#else
-    static_assert(SCN_HAS_FLOAT_CHARCONV,
-                  "SCN_DISABLE_FAST_FLOAT needs std::from_chars for floats");
-
-    return fast_float_fallback(data, value);
-#endif
+    return dispatch_parse_float_value<
+        CharT, T, get_float_impl_for<fast_float_impl_traits, CharT, T>,
+        get_float_impl_for<from_chars_impl_traits, CharT, T>,
+        get_float_impl_for<strtod_impl_traits, CharT, T>>(data, value);
 }
 }  // namespace
 
@@ -1093,8 +1254,8 @@ template <typename CharT>
 template <typename T>
 scan_expected<std::ptrdiff_t> float_reader<CharT>::parse_value_impl(T& value)
 {
-    auto n = dispatch_impl<CharT>({this->m_buffer, m_kind, m_options},
-                                  m_nan_payload_buffer, value);
+    auto n = parse_float_value<CharT>({this->m_buffer, m_kind, m_options},
+                                      m_nan_payload_buffer, value);
     if (SCN_LIKELY(n)) {
         value = this->setsign(value);
         return n;
@@ -1128,6 +1289,23 @@ SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, double)
 #if !SCN_DISABLE_TYPE_LONG_DOUBLE
 SCN_DEFINE_FLOAT_READER_TEMPLATE(char, long double)
 SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, long double)
+#endif
+
+#if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
+SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::float16_t)
+SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::float16_t)
+#endif
+#if SCN_HAS_STD_F32 && !SCN_DISABLE_TYPE_FLOAT32
+SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::float32_t)
+SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::float32_t)
+#endif
+#if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
+SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::float64_t)
+SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::float64_t)
+#endif
+#if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
+SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::bfloat16_t)
+SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::bfloat16_t)
 #endif
 
 #undef SCN_DEFINE_FLOAT_READER_TEMPLATE

@@ -186,6 +186,18 @@
 #ifndef SCN_DISABLE_TYPE_LONG_DOUBLE
 #define SCN_DISABLE_TYPE_LONG_DOUBLE 0
 #endif
+#ifndef SCN_DISABLE_TYPE_FLOAT16
+#define SCN_DISABLE_TYPE_FLOAT16 0
+#endif
+#ifndef SCN_DISABLE_TYPE_FLOAT32
+#define SCN_DISABLE_TYPE_FLOAT32 0
+#endif
+#ifndef SCN_DISABLE_TYPE_FLOAT64
+#define SCN_DISABLE_TYPE_FLOAT64 0
+#endif
+#ifndef SCN_DISABLE_TYPE_BFLOAT16
+#define SCN_DISABLE_TYPE_BFLOAT16 0
+#endif
 #ifndef SCN_DISABLE_TYPE_STRING
 #define SCN_DISABLE_TYPE_STRING 0
 #endif
@@ -880,6 +892,39 @@ SCN_GCC_POP
 #else
 #define SCN_IS_FLOAT_BIG_ENDIAN 0
 
+#endif
+
+// Detect standard extended float types
+#if defined(__STDCPP_FLOAT16_T__) && __STDCPP_FLOAT16_T__
+#define SCN_HAS_STD_F16 1
+#else
+#define SCN_HAS_STD_F16 0
+#endif
+
+#if defined(__STDCPP_FLOAT32_T__) && __STDCPP_FLOAT32_T__
+#define SCN_HAS_STD_F32 1
+#else
+#define SCN_HAS_STD_F32 0
+#endif
+
+#if defined(__STDCPP_FLOAT64_T__) && __STDCPP_FLOAT64_T__
+#define SCN_HAS_STD_F64 1
+#else
+#define SCN_HAS_STD_F64 0
+#endif
+
+// TODO: std::float128_t (not supported by fast_float)
+
+#if defined(__STDCPP_BFLOAT16_T__) && __STDCPP_BLOAT16_T__
+#define SCN_HAS_STD_BF16 1
+#else
+#define SCN_HAS_STD_BF16 0
+#endif
+
+// TODO: _FloatX are C standard and provided as extensions in gcc and clang
+
+#if SCN_HAS_STD_F16 || SCN_HAS_STD_F32 || SCN_HAS_STD_F64 || SCN_HAS_STD_BF16
+#include <stdfloat>
 #endif
 
 // Detect int128
