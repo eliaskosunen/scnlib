@@ -74,6 +74,21 @@ add_executable(scn_impl_tests
 )
 target_link_libraries(scn_impl_tests PRIVATE
         ${SCN_GTEST_LIBRARIES} scn_tests_base scn_internal)
+# pragma ignores seem to not always work for overflowing literals
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set_source_files_properties(
+            impl_tests/float_reader_test.cpp
+            PROPERTIES COMPILE_OPTIONS
+            -Wno-overflow
+    )
+endif()
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set_source_files_properties(
+            impl_tests/float_reader_test.cpp
+            PROPERTIES COMPILE_OPTIONS
+            -Wno-literal-range
+    )
+endif()
 add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
 
 if (SCN_TESTS_LOCALIZED)

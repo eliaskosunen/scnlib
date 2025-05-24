@@ -131,6 +131,8 @@ jobs:
             ccache --show-stats
             ccache --show-config
 
+            echo | g++ -dM -E -x c++ - | sort
+
             cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
             cmake --build build -- -k 0
             ccache --show-stats

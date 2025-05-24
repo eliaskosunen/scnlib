@@ -2050,6 +2050,25 @@ auto read_exactly_n_code_points(Range range, std::ptrdiff_t count)
 
 template <typename Range>
 auto read_until_code_unit(Range range,
+                          detail::mp_identity_t<detail::char_t<Range>> cu)
+    -> ranges::const_iterator_t<Range>
+{
+    if constexpr (ranges::common_range<Range>) {
+        return std::find(range.begin(), range.end(), cu);
+    }
+    else {
+        auto first = range.begin();
+        for (; first != range.end(); ++first) {
+            if (*first == cu) {
+                return first;
+            }
+        }
+        return first;
+    }
+}
+
+template <typename Range>
+auto read_until_code_unit(Range range,
                           function_ref<bool(detail::char_t<Range>)> pred)
     -> ranges::const_iterator_t<Range>
 {
@@ -2065,6 +2084,20 @@ auto read_until_code_unit(Range range,
         }
         return first;
     }
+}
+
+template <typename Range>
+auto read_while_code_unit(Range range,
+                          detail::mp_identity_t<detail::char_t<Range>> cu)
+    -> ranges::const_iterator_t<Range>
+{
+    auto first = range.begin();
+    for (; first != range.end(); ++first) {
+        if (*first != cu) {
+            return first;
+        }
+    }
+    return first;
 }
 
 template <typename Range>
@@ -2524,8 +2557,7 @@ public:
     bool is_current_double_wide() const
     {
         assert(count() != 0 || multibyte_left() != 0);
-        return _get_width_at_current_cp_start(
-                   _get_cp_length_at_current()) == 2;
+        return _get_width_at_current_cp_start(_get_cp_length_at_current()) == 2;
     }
 
     constexpr decltype(auto) operator*()
@@ -4131,9 +4163,9 @@ private:
     T setsign(T value) const
     {
         if (m_sign == sign_type::minus_sign) {
-            return std::copysign(value, T{-1.0});
+            return std::copysign(value, static_cast<T>(-1.0));
         }
-        return std::copysign(value, T{1.0});
+        return std::copysign(value, static_cast<T>(1.0));
     }
 
     template <typename T>
@@ -4162,6 +4194,27 @@ SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, double)
 #if !SCN_DISABLE_TYPE_LONG_DOUBLE
 SCN_DECLARE_FLOAT_READER_TEMPLATE(char, long double)
 SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, long double)
+#endif
+
+#if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
+SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float16_t)
+SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float16_t)
+#endif
+#if SCN_HAS_STD_F32 && !SCN_DISABLE_TYPE_FLOAT32
+SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float32_t)
+SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float32_t)
+#endif
+#if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
+SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float64_t)
+SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float64_t)
+#endif
+#if SCN_HAS_STD_F128 && !SCN_DISABLE_TYPE_FLOAT128
+SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float128_t)
+SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float128_t)
+#endif
+#if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
+SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::bfloat16_t)
+SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::bfloat16_t)
 #endif
 
 #undef SCN_DECLARE_FLOAT_READER_TEMPLATE
@@ -4695,8 +4748,6 @@ inline std::wstring get_unescaped_regex_pattern(std::wstring_view pattern)
     return result;
 }
 
-#endif  // !SCN_DISABLE_REGEX
-
 template <typename SourceCharT>
 struct regex_matches_reader
     : public reader_base<regex_matches_reader<SourceCharT>, SourceCharT> {
@@ -4781,6 +4832,8 @@ private:
 
 template <typename CharT>
 struct reader_impl_for_regex_matches : public regex_matches_reader<CharT> {};
+
+#endif  // !SCN_DISABLE_REGEX
 
 /////////////////////////////////////////////////////////////////
 // String reader
@@ -4883,9 +4936,7 @@ public:
             return read_string_impl(
                 range,
                 read_until_code_unit(
-                    range,
-                    [until = specs.fill.template get_code_unit<SourceCharT>()](
-                        SourceCharT ch) { return ch == until; }),
+                    range, specs.fill.template get_code_unit<SourceCharT>()),
                 value);
         }
         return read_string_impl(
@@ -4905,9 +4956,7 @@ public:
             return read_string_view_impl(
                 range,
                 read_until_code_unit(
-                    range,
-                    [until = specs.fill.template get_code_unit<SourceCharT>()](
-                        SourceCharT ch) { return ch == until; }),
+                    range, specs.fill.template get_code_unit<SourceCharT>()),
                 value);
         }
         return read_string_view_impl(
@@ -5866,10 +5915,12 @@ constexpr auto make_reader()
                        std::is_same_v<T, std::wstring>) {
         return reader_impl_for_string<CharT>{};
     }
+#if !SCN_DISABLE_REGEX
     else if constexpr (std::is_same_v<T, regex_matches> ||
                        std::is_same_v<T, wregex_matches>) {
         return reader_impl_for_regex_matches<CharT>{};
     }
+#endif
     else if constexpr (std::is_same_v<T, void*>) {
         return reader_impl_for_voidptr<CharT>{};
     }

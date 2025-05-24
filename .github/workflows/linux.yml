@@ -484,6 +484,9 @@ jobs:
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.ref }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.base_ref }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}
 
       - name: Setup ccache
         run: |
@@ -620,6 +623,8 @@ jobs:
             flags: "-DSCN_DISABLE_CHRONO=ON"
           - key: float
             flags: "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON"
+          - key: float-all
+            flags: "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON -DSCN_DISABLE_TYPE_FLOAT16=ON -DSCN_DISABLE_TYPE_FLOAT32=ON -DSCN_DISABLE_TYPE_FLOAT64=ON -DSCN_DISABLE_TYPE_FLOAT128=ON -DSCN_DISABLE_TYPE_BFLOAT16=ON"
           - key: int128
             flags: "-DSCN_DISABLE_TYPE_INT128=ON -DSCN_DISABLE_TYPE_UINT128=ON"
           - key: from-chars-and-strtod
@@ -670,6 +675,70 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -G Ninja -DSCN_CI=ON ${{ matrix.flags }} \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . --target scn -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
+
+  special-flags:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tag: fast-math
+            cxx_flags: "-ffast-math"
+          - tag: full-ieee754
+            cxx_flags: "-frounding-math -fsignaling-nans"
+
+    env:
+      CXX: g++-14
+      CMAKE_CXX_STANDARD: 17
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Build Environment
+        run: |
+          mkdir ${{ runner.workspace }}/build
+          ${APT_INSTALL} ccache
+
+      - name: Load ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake -G Ninja -DSCN_CI=ON -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" \
                 $GITHUB_WORKSPACE
 
       - name: Build

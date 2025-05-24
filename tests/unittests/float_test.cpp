@@ -28,7 +28,64 @@ TEST(FloatTest, FloatWithSuffix)
     EXPECT_TRUE(result->range().empty());
 }
 
-TEST(FloatTest, FloatWithDoubleSign) {
+TEST(FloatTest, FloatWithDoubleSign)
+{
     auto result = scn::scan<double>("--4", "{}");
     ASSERT_FALSE(result);
 }
+
+#if SCN_HAS_STD_F16
+TEST(FloatTest, Float16)
+{
+    auto result = scn::scan<std::float16_t>("3.14", "{}");
+    if (!result &&
+        result.error().code() == scn::scan_error::type_not_supported) {
+        GTEST_SKIP();
+    }
+    ASSERT_TRUE(result);
+}
+#endif
+#if SCN_HAS_STD_F32
+TEST(FloatTest, Float32)
+{
+    auto result = scn::scan<std::float32_t>("3.14", "{}");
+    if (!result &&
+        result.error().code() == scn::scan_error::type_not_supported) {
+        GTEST_SKIP();
+    }
+    ASSERT_TRUE(result);
+}
+#endif
+#if SCN_HAS_STD_F64
+TEST(FloatTest, Float64)
+{
+    auto result = scn::scan<std::float64_t>("3.14", "{}");
+    if (!result &&
+        result.error().code() == scn::scan_error::type_not_supported) {
+        GTEST_SKIP();
+    }
+    ASSERT_TRUE(result);
+}
+#endif
+#if SCN_HAS_STD_F128
+TEST(FloatTest, Float128)
+{
+    auto result = scn::scan<std::float128_t>("3.14", "{}");
+    if (!result &&
+        result.error().code() == scn::scan_error::type_not_supported) {
+        GTEST_SKIP();
+    }
+    ASSERT_TRUE(result);
+}
+#endif
+#if SCN_HAS_STD_BF16
+TEST(FloatTest, BFloat16)
+{
+    auto result = scn::scan<std::bfloat16_t>("3.14", "{}");
+    if (!result &&
+        result.error().code() == scn::scan_error::type_not_supported) {
+        GTEST_SKIP();
+    }
+    ASSERT_TRUE(result);
+}
+#endif
