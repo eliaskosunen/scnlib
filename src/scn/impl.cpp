@@ -355,16 +355,13 @@ struct impl_init_data {
 
 ////////////////////////////////////////////////////////////////////
 // strtod-based implementation
-// Fallback for all CharT and FloatT, except for extended floats,
-// if allowed
+// Fallback for all CharT and standard FloatT
+// (plus possibly float16 on glibc)
 ////////////////////////////////////////////////////////////////////
 
 #if !SCN_DISABLE_STRTOD
 template <typename T>
 struct strtod_impl_base {
-    static_assert(std::is_same_v<T, float> || std::is_same_v<T, double> ||
-                  std::is_same_v<T, long double>);
-
     template <typename CharT, typename Strtod>
     scan_expected<std::ptrdiff_t> parse(T& value,
                                         const CharT* src,
@@ -453,6 +450,13 @@ struct strtod_impl_base {
 
     static T generic_narrow_strtod(const char* str, char** str_end)
     {
+#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
+        if constexpr (std::is_same_v<T, std::float16_t>) {
+            set_clocale_classic_guard clocale_guard{LC_NUMERIC};
+            return static_cast<std::float16_t>(::strtof16(str, str_end));
+        }
+#endif
+
 #if SCN_XLOCALE == SCN_XLOCALE_POSIX
         static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", NULL);
         if constexpr (std::is_same_v<T, float>) {
@@ -494,6 +498,13 @@ struct strtod_impl_base {
 
     static T generic_wide_strtod(const wchar_t* str, wchar_t** str_end)
     {
+#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
+        if constexpr (std::is_same_v<T, std::float16_t>) {
+            set_clocale_classic_guard clocale_guard{LC_NUMERIC};
+            return static_cast<std::float16_t>(::wcstof16(str, str_end));
+        }
+#endif
+
 #if SCN_XLOCALE == SCN_XLOCALE_POSIX
         static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", NULL);
         if constexpr (std::is_same_v<T, float>) {
@@ -571,7 +582,11 @@ struct strtod_impl_traits {
     static constexpr bool enabled =
         (std::is_same_v<CharT, char> || std::is_same_v<CharT, wchar_t>) &&
         (std::is_same_v<FloatT, float> || std::is_same_v<FloatT, double> ||
-         std::is_same_v<FloatT, long double>);
+         std::is_same_v<FloatT, long double>
+#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
+         || std::is_same_v<FloatT, std::float16_t>
+#endif
+        );
 
     template <typename CharT, typename FloatT>
     using type = strtod_impl<CharT, FloatT>;
@@ -974,6 +989,18 @@ struct float_nan_traits_binary128 {
         r.mantissa2 = payload >> 32;
         r.mantissa3 = payload;
     }
+
+#if SCN_HAS_INT128
+    static void apply(repr& r, uint128 payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
+        r.mantissa0 = payload >> 96;
+        r.mantissa1 = payload >> 64;
+        r.mantissa2 = payload >> 32;
+        r.mantissa3 = payload;
+    }
+#endif
 };
 
 struct nil_float_nan_traits {};
@@ -1041,6 +1068,13 @@ struct float_nan_traits<std::float64_t> : float_nan_traits<double> {
 };
 #endif
 
+#if SCN_HAS_STD_F128
+template <>
+struct float_nan_traits<std::float128_t> : float_nan_traits_binary128 {
+    using type = std::float128_t;
+};
+#endif
+
 #if SCN_HAS_STD_BF16
 template <>
 struct float_nan_traits<std::bfloat16_t> {
@@ -1069,8 +1103,8 @@ struct float_nan_traits<std::bfloat16_t> {
 };
 #endif
 
-template <typename F>
-void apply_nan_payload(F& value, std::uint64_t payload)
+template <typename F, typename Payload>
+void apply_nan_payload(F& value, Payload payload)
 {
     if constexpr (!std::is_same_v<F, long double> ||
                   !std::is_same_v<float_nan_traits_for_long_double,
@@ -1101,12 +1135,17 @@ using get_float_impl_for = detail::mp_cond<
     // If FloatT is long double, but it's an alias to double, check that
     detail::mp_bool<std::is_same_v<FloatT, long double> &&
                     sizeof(double) == sizeof(long double) &&
+                    std::numeric_limits<double>::digits ==
+                        std::numeric_limits<long double>::digits &&
                     Traits::template enabled<CharT, double>>,
     float_impl<Traits, CharT, double>,
 #if SCN_HAS_STD_F32
     // If FloatT is std::float32_t, but it's compatible with float, check that
     detail::mp_bool<std::is_same_v<FloatT, std::float32_t> &&
                     std::numeric_limits<float>::is_iec559 &&
+                    sizeof(float) == sizeof(std::float32_t) &&
+                    std::numeric_limits<float>::digits ==
+                        std::numeric_limits<std::float32_t>::digits &&
                     Traits::template enabled<CharT, float>>,
     float_impl<Traits, CharT, float>,
 #endif
@@ -1114,8 +1153,22 @@ using get_float_impl_for = detail::mp_cond<
     // If FloatT is std::float64_t, but it's compatible with double, check that
     detail::mp_bool<std::is_same_v<FloatT, std::float64_t> &&
                     std::numeric_limits<double>::is_iec559 &&
+                    sizeof(double) == sizeof(std::float64_t) &&
+                    std::numeric_limits<double>::digits ==
+                        std::numeric_limits<std::float64_t>::digits &&
                     Traits::template enabled<CharT, double>>,
     float_impl<Traits, CharT, double>,
+#endif
+#if SCN_HAS_STD_F128
+    // If FloatT is std::float128_t,
+    // but it's compatible with long double, check that
+    detail::mp_bool<std::is_same_v<FloatT, std::float128_t> &&
+                    std::numeric_limits<long double>::is_iec559 &&
+                    sizeof(long double) == sizeof(std::float128_t) &&
+                    std::numeric_limits<long double>::digits ==
+                        std::numeric_limits<std::float128_t>::digits &&
+                    Traits::template enabled<CharT, long double>>,
+    float_impl<Traits, CharT, long double>,
 #endif
     // Nothing found
     std::true_type,
@@ -1207,16 +1260,23 @@ scan_expected<std::ptrdiff_t> parse_float_value(
             value = std::numeric_limits<T>::quiet_NaN();
 
             if constexpr (std::numeric_limits<T>::is_iec559) {
-                // TODO: 128-bit payloads?
-                std::uint64_t payload{};
+                // Use uint64, if the mantissa of T has 64 (or less) bits.
+#if SCN_HAS_INT128
+                using payload_type =
+                    std::conditional_t<std::numeric_limits<T>::digits <= 64,
+                                       std::uint64_t, uint128>;
+#else
+                using payload_type = std::uint64_t;
+#endif
+                payload_type payload{};
                 if (auto result = reader_impl_for_int<CharT>{}.read_default(
                         nan_payload.view(), payload, {})) {
                     apply_nan_payload(value, payload);
                 }
                 else if (result.error().code() ==
                          scan_error::value_positive_overflow) {
-                    apply_nan_payload(
-                        value, std::numeric_limits<std::uint64_t>::max());
+                    apply_nan_payload(value,
+                                      std::numeric_limits<payload_type>::max());
                 }
             }
 
@@ -1302,6 +1362,10 @@ SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::float32_t)
 #if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
 SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::float64_t)
 SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::float64_t)
+#endif
+#if SCN_HAS_STD_F128 && !SCN_DISABLE_TYPE_FLOAT128
+SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::float128_t)
+SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::float128_t)
 #endif
 #if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
 SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::bfloat16_t)

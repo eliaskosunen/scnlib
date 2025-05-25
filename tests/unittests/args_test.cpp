@@ -36,7 +36,7 @@ TEST(ArgsTest, ArgTypeMapping)
                   scn::detail::arg_type::narrow_string_type);
     static_assert(
         scn::detail::mapped_type_constant<std::string_view, char>::value ==
-        scn::detail::arg_type::narrow_string_view_type);
+        scn::detail::arg_type::string_view_type);
 
     // wide context, wide char -> valid
     static_assert(scn::detail::mapped_type_constant<wchar_t, wchar_t>::value ==
@@ -46,7 +46,7 @@ TEST(ArgsTest, ArgTypeMapping)
         scn::detail::arg_type::wide_string_type);
     static_assert(
         scn::detail::mapped_type_constant<std::wstring_view, wchar_t>::value ==
-        scn::detail::arg_type::wide_string_view_type);
+        scn::detail::arg_type::string_view_type);
 
     // narrow context, wide char -> valid for chars and strings, invalid for
     // string_views

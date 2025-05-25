@@ -22,22 +22,6 @@
 #include <cmath>
 #include <iomanip>
 
-// long double width
-#if (SCN_WINDOWS && !SCN_GCC_COMPAT) || SCN_ARM32 || \
-    (SCN_ARM64 && SCN_APPLE)
-#define SCN_LONG_DOUBLE_WIDTH 64
-#elif SCN_ARM64 && !SCN_APPLE && !SCN_WINDOWS
-#define SCN_LONG_DOUBLE_WIDTH 128
-#elif SCN_X86
-#define SCN_LONG_DOUBLE_WIDTH 80
-#elif SCN_PPC
-// PPC long double is wonky
-#define SCN_LONG_DOUBLE_WIDTH 0
-#else
-// don't know enough
-#define SCN_LONG_DOUBLE_WIDTH 0
-#endif
-
 template <typename T>
 std::string get_bytes_str(T val)
 {
@@ -55,15 +39,7 @@ std::string get_bytes_str(T val)
 template <typename T>
 constexpr T float_zero()
 {
-    if constexpr (std::is_same_v<T, float>) {
-        return 0.0f;
-    }
-    else if constexpr (std::is_same_v<T, double>) {
-        return 0.0;
-    }
-    else {
-        return 0.0l;
-    }
+    return static_cast<T>(0.0L);
 }
 
 template <typename T>
@@ -81,8 +57,15 @@ check_floating_eq(T a, T b, bool allow_approx = false)
         return testing::AssertionSuccess();
     }
 
-    return testing::AssertionFailure()
-           << "Floats not equal: " << a << " and " << b;
+    if constexpr (sizeof(T) <= sizeof(double)) {
+        return testing::AssertionFailure()
+               << "Floats not equal: " << a << " and " << b;
+    }
+    else {
+        return testing::AssertionFailure()
+               << "Floats not equal: " << static_cast<long double>(a) << " and "
+               << static_cast<long double>(b);
+    }
 }
 
 template <typename T>
@@ -127,6 +110,10 @@ template <bool Localized, typename CharT, typename ValueT>
 using float_reader_wrapper =
     reader_wrapper<Localized, CharT, ValueT, scn::impl::reader_impl_for_float>;
 
+using scn::detail::mp_bool;
+using scn::detail::mp_cond;
+using scn::detail::mp_value;
+
 template <typename T>
 class FloatValueReaderTest : public testing::Test {
 protected:
@@ -137,62 +124,59 @@ protected:
 
     static constexpr bool is_localized = T::is_localized;
 
-    static constexpr bool is_wide()
-    {
-        return std::is_same_v<char_type, wchar_t>;
-    }
-    static constexpr bool is_f32()
-    {
-        return sizeof(float_type) == sizeof(float);
-    }
-    static constexpr bool is_f64()
-    {
-        // double on Linux, double and long double on Windows
-        return sizeof(float_type) == sizeof(double);
-    }
-    static constexpr bool is_double()
-    {
-        return std::is_same_v<float_type, double>;
-    }
-    static constexpr bool is_long_double()
-    {
-        return std::is_same_v<float_type, long double>;
-    }
-    static constexpr bool is_double_64()
-    {
-        return is_f64() && is_double();
-    }
-    static constexpr bool is_long_double_64()
-    {
-        return is_f64() && is_long_double();
-    }
-    static constexpr bool is_f80()
-    {
-        // long double on Linux
-        return std::numeric_limits<float_type>::digits == 64;
-    }
-    static constexpr bool is_f128()
-    {
-        return !is_f80() && sizeof(float_type) == 16;
-    }
+    template <typename CharT>
+    static constexpr bool is_char = std::is_same_v<CharT, char_type>;
+
+    template <typename FloatT>
+    static constexpr bool is_type = std::is_same_v<FloatT, float_type>;
+
+    static constexpr bool is_extended =
+#if SCN_HAS_STD_F16
+        is_type<std::float16_t> ||
+#endif
+#if SCN_HAS_STD_F32
+        is_type<std::float32_t> ||
+#endif
+#if SCN_HAS_STD_F64
+        is_type<std::float64_t> ||
+#endif
+#if SCN_HAS_STD_F128
+        is_type<std::float128_t> ||
+#endif
+#if SCN_HAS_STD_BF16
+        is_type<std::bfloat16_t> ||
+#endif
+        false;
+
+    enum class float_kind {
+        f16,
+        f32,
+        f64,
+        f80,  // x87
+        f128,
+        bf16,
+    };
+
+    static constexpr float_kind kind =
+        mp_cond<mp_bool<sizeof(float_type) == 4>,
+                mp_value<float_kind::f32>,
+                mp_bool<sizeof(float_type) == 8>,
+                mp_value<float_kind::f64>,
+                mp_bool<std::numeric_limits<float_type>::digits == 64>,
+                mp_value<float_kind::f80>,
+                mp_bool<std::numeric_limits<float_type>::digits == 113>,
+                mp_value<float_kind::f128>,
+                mp_bool<std::numeric_limits<float_type>::digits == 11>,
+                mp_value<float_kind::f16>,
+                mp_bool<std::numeric_limits<float_type>::digits == 8>,
+                mp_value<float_kind::bf16>>::value;
 
     static_assert(std::numeric_limits<float_type>::is_iec559);
-    static_assert(is_f32() || is_double() || is_long_double());
-    static_assert(is_f32() || is_f64() || is_f80() || is_f128());
-    static_assert(is_f32() || is_double_64() || is_long_double_64() ||
-                  is_f80() || is_f128());
-
-#if SCN_LONG_DOUBLE_WIDTH == 64
-    static_assert(!is_long_double() || is_long_double_64());
-#elif SCN_LONG_DOUBLE_WIDTH == 80
-    static_assert(!is_long_double() || is_f80());
-#elif SCN_LONG_DOUBLE_WIDTH == 128
-    static_assert(!is_long_double() || is_f128());
-#endif
 
     static constexpr const char* get_length_flag()
     {
-        if constexpr (std::is_same_v<float_type, long double>) {
+        if constexpr (is_type<long double> ||
+                      sizeof(float_type) > sizeof(double)) {
             return "L";
         }
         else {
@@ -206,11 +190,14 @@ protected:
     {
         std::string buf(256, '\0');
         auto casted_val = [&]() {
-            if constexpr (std::is_same_v<float_type, float>) {
-                return static_cast<double>(val);
+            if constexpr (is_type<double> || is_type<long double>) {
+                return val;
+            }
+            else if constexpr (sizeof(float_type) > sizeof(double)) {
+                return static_cast<long double>(val);
             }
             else {
-                return val;
+                return static_cast<double>(val);
             }
         };
         SCN_GCC_COMPAT_PUSH
@@ -225,269 +212,326 @@ protected:
         return buf;
     }
 
-    static auto get_pi()
+#if SCN_HAS_STD_F128
+#define SCN_F_C(x) static_cast<float_type>(x##F128)
+#else
+#define SCN_F_C(x) static_cast<float_type>(x##L)
+#endif
+
+    constexpr static auto get_pi()
     {
-        if constexpr (is_f32()) {
-            return std::make_pair(3.14f, "3.14"sv);
-        }
-        else if constexpr (is_double()) {
-            return std::make_pair(3.14, "3.14"sv);
-        }
-        else if constexpr (is_long_double()) {
-            return std::make_pair(3.14l, "3.14"sv);
-        }
+        return std::pair(SCN_F_C(3.14), "3.14"sv);
     }
-    static auto get_neg()
+    constexpr static auto get_neg()
     {
-        if constexpr (is_f32()) {
-            return std::make_pair(-123.456f, "-123.456"sv);
-        }
-        else if constexpr (is_double()) {
-            return std::make_pair(-123.456, "-123.456"sv);
-        }
-        else if constexpr (is_long_double()) {
-            return std::make_pair(-123.456l, "-123.456"sv);
-        }
+        return std::pair(SCN_F_C(-123.456), "-123.456"sv);
     }
-    static auto get_leading_plus()
+    constexpr static auto get_leading_plus()
     {
-        if constexpr (is_f32()) {
-            return std::make_pair(3.14f, "+3.14"sv);
-        }
-        else if constexpr (is_double()) {
-            return std::make_pair(3.14, "+3.14"sv);
-        }
-        else if constexpr (is_long_double()) {
-            return std::make_pair(3.14l, "+3.14"sv);
-        }
+        return std::pair(SCN_F_C(3.14), "+3.14"sv);
     }
 
-    static auto get_subnormal()
+    SCN_GCC_COMPAT_PUSH
+    // 128-bit literals will overflow if long double is not 128-bit,
+    // but that's not a problem since we won't be hitting that code in that case
+    SCN_GCC_COMPAT_IGNORE("-Woverflow")
+
+    constexpr static auto get_subnormal()
+        -> std::pair<float_type, std::string_view>
     {
-        if constexpr (is_f32()) {
-            return std::make_pair(2e-40f, "2e-40"sv);
+        if constexpr (kind == float_kind::f32) {
+            return std::pair(2e-40f, "2e-40"sv);
         }
-        else if constexpr (is_double_64()) {
-            return std::make_pair(5e-320, "5e-320"sv);
+        else if constexpr (kind == float_kind::f64) {
+            return std::pair(5e-320, "5e-320"sv);
         }
-        else if constexpr (is_long_double_64()) {
-            return std::make_pair(5e-320l, "5e-320"sv);
+        else if constexpr (kind == float_kind::f80) {
+            return std::pair(3e-4940l, "3e-4940"sv);
         }
-#if SCN_LONG_DOUBLE_WIDTH > 64
-        else if constexpr (is_f80()) {
-            return std::make_pair(3e-4940l, "3e-4940"sv);
+        else if constexpr (kind == float_kind::f128) {
+            return std::pair(SCN_F_C(5e-4960), "5e-4960"sv);
         }
-#endif
-#if SCN_LONG_DOUBLE_WIDTH > 80
-        else if constexpr (is_f128()) {
-            return std::make_pair(5e-4960l, "5e-4960"sv);
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return std::pair(5e-6F16, "5e-6"sv);
         }
 #endif
+#if SCN_HAS_STD_BF16
+        if constexpr (kind == float_kind::bf16) {
+            return std::pair(2e-40BF16, "2e-40"sv);
+        }
+#endif
+        SCN_EXPECT(false);
     }
-    static auto get_subnormal_hex()
+    constexpr static auto get_subnormal_hex()
+        -> std::pair<float_type, std::string_view>
     {
-        if constexpr (is_f32()) {
-            return std::make_pair(0x1.2p-130f, "0x1.2p-130"sv);
+        if constexpr (kind == float_kind::f32) {
+            return std::pair(0x1.2p-130f, "0x1.2p-130"sv);
         }
-        else if constexpr (is_double_64()) {
-            return std::make_pair(0x1.2p-1050, "0x1.2p-1050"sv);
+        else if constexpr (kind == float_kind::f64) {
+            return std::pair(0x1.2p-1050, "0x1.2p-1050"sv);
         }
-        else if constexpr (is_long_double_64()) {
-            return std::make_pair(0x1.2p-1050l, "0x1.2p-1050"sv);
+        else if constexpr (kind == float_kind::f80) {
+            return std::pair(0x1.2p-16400l, "0x1.2p-16400"sv);
         }
-#if SCN_LONG_DOUBLE_WIDTH > 64
-        else if constexpr (is_f80()) {
-            return std::make_pair(0x1.2p-16400l, "0x1.2p-16400"sv);
+        else if constexpr (kind == float_kind::f128) {
+            return std::pair(SCN_F_C(0x1.2p-16450), "0x1.2p-16450"sv);
         }
-#endif
-#if SCN_LONG_DOUBLE_WIDTH > 80
-        else if constexpr (is_f128()) {
-            return std::make_pair(0x1.2p-16450l, "0x1.2p-16450"sv);
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return std::pair(0x1.2p-16F16, "0x1.2p-16"sv);
         }
 #endif
+#if SCN_HAS_STD_BF16
+        if constexpr (kind == float_kind::bf16) {
+            return std::pair(0x1.2p-130BF16, "0x1.2p-130"sv);
+        }
+#endif
+        SCN_EXPECT(false);
     }
 
-    static auto get_subnormal_max()
+    constexpr static auto get_subnormal_max()
+        -> std::pair<float_type, std::string_view>
     {
-        if constexpr (is_f32()) {
-            return std::make_pair(1e-38f, "1e-38"sv);
+        if constexpr (kind == float_kind::f32) {
+            return std::pair(1e-38f, "1e-38"sv);
         }
-        else if constexpr (is_double_64()) {
-            return std::make_pair(2e-308, "2e-308"sv);
+        else if constexpr (kind == float_kind::f64) {
+            return std::pair(2e-308, "2e-308"sv);
         }
-        else if constexpr (is_long_double_64()) {
-            return std::make_pair(2e-308l, "2e-308"sv);
+        else if constexpr (kind == float_kind::f80) {
+            return std::pair(3.2e-4932l, "3.2e-4932"sv);
         }
-#if SCN_LONG_DOUBLE_WIDTH > 64
-        else if constexpr (is_f80() || is_f128()) {
-            return std::make_pair(3.2e-4932l, "3.2e-4932"sv);
+        else if constexpr (kind == float_kind::f128) {
+            return std::pair(SCN_F_C(3.2e-4932), "3.2e-4932"sv);
+        }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return std::pair(6e-5F16, "6e-5"sv);
         }
 #endif
+#if SCN_HAS_STD_BF16
+        if constexpr (kind == float_kind::bf16) {
+            return std::pair(1e-38BF16, "1e-38"sv);
+        }
+#endif
+        SCN_EXPECT(false);
     }
-    static auto get_subnormal_max_hex()
+    constexpr static auto get_subnormal_max_hex()
+        -> std::pair<float_type, std::string_view>
     {
-        if constexpr (is_f32()) {
-            return std::make_pair(0x1.fp-127f, "0x1.fp-127"sv);
+        if constexpr (kind == float_kind::f32) {
+            return std::pair(0x1.fp-127f, "0x1.fp-127"sv);
         }
-        else if constexpr (is_double_64()) {
-            return std::make_pair(0x1.fp-1023, "0x1.fp-1023"sv);
+        else if constexpr (kind == float_kind::f64) {
+            return std::pair(0x1.fp-1023, "0x1.fp-1023"sv);
         }
-        else if constexpr (is_long_double_64()) {
-            return std::make_pair(0x1.fp-1023l, "0x1.fp-1023"sv);
+        else if constexpr (kind == float_kind::f80) {
+            return std::pair(0x1.fp-16383l, "0x1.fp-16383"sv);
         }
-#if SCN_LONG_DOUBLE_WIDTH > 64
-        else if constexpr (is_f80() || is_f128()) {
-            return std::make_pair(0x1.fp-16383l, "0x1.fp-16383"sv);
+        else if constexpr (kind == float_kind::f128) {
+            return std::pair(SCN_F_C(0x1.fp-16383), "0x1.fp-16383"sv);
+        }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return std::pair(0x1.fp-15F16, "0x1.fp-15"sv);
         }
 #endif
+#if SCN_HAS_STD_BF16
+        if constexpr (kind == float_kind::bf16) {
+            return std::pair(0x1.fp-127BF16, "0x1.fp-127"sv);
+        }
+#endif
+        SCN_EXPECT(false);
     }
 
-    static auto get_normal_min()
+    SCN_GCC_COMPAT_POP
+
+    static auto get_normal_min() -> std::pair<float_type, std::string>
     {
         auto val = std::numeric_limits<float_type>::min();
-        return std::make_pair(val, format_float(val, ".48", "e"));
+        return std::pair(val, format_float(val, ".48", "e"));
     }
-    static auto get_normal_min_hex()
+    static auto get_normal_min_hex() -> std::pair<float_type, std::string>
     {
         auto val = std::numeric_limits<float_type>::min();
-        return std::make_pair(val, format_float(val, ".32", "a"));
+        return std::pair(val, format_float(val, ".32", "a"));
     }
 
-    static auto get_subnormal_min()
+    static auto get_subnormal_min() -> std::pair<float_type, std::string>
     {
         auto val = std::numeric_limits<float_type>::denorm_min();
-        return std::make_pair(val, format_float(val, ".48", "e"));
+        return std::pair(val, format_float(val, ".48", "e"));
     }
-    static auto get_subnormal_min_hex()
+    static auto get_subnormal_min_hex() -> std::pair<float_type, std::string>
     {
         auto val = std::numeric_limits<float_type>::denorm_min();
-        return std::make_pair(val, format_float(val, ".32", "a"));
+        return std::pair(val, format_float(val, ".32", "a"));
     }
 
-    static auto get_underflow()
+    constexpr static std::string_view get_underflow()
     {
-        if constexpr (is_f32()) {
+        if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "1.0e-90"sv;
         }
-        else if constexpr (is_f64()) {
+        else if constexpr (kind == float_kind::f64) {
             return "5.0e-400"sv;
         }
-        else if constexpr (is_f80()) {
+        else if constexpr (kind == float_kind::f80) {
             return "4.0e-5500"sv;
         }
-        else if constexpr (is_f128()) {
+        else if constexpr (kind == float_kind::f128) {
             return "6.0e-5500"sv;
         }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return "5.0e-16"sv;
+        }
+#endif
+        SCN_EXPECT(false);
     }
-    static auto get_underflow_hex()
+    constexpr static std::string_view get_underflow_hex()
     {
-        if constexpr (is_f32()) {
+        if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "0x1p-192"sv;
         }
-        else if constexpr (is_f64()) {
+        else if constexpr (kind == float_kind::f64) {
             return "0x1p-1200"sv;
         }
-        else if constexpr (is_f80()) {
+        else if constexpr (kind == float_kind::f80) {
             return "0x1p-18000"sv;
         }
-        else if constexpr (is_f128()) {
+        else if constexpr (kind == float_kind::f128) {
             return "0x1p-18000"sv;
         }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return "0x1p-40"sv;
+        }
+#endif
+        SCN_EXPECT(false);
     }
-    static auto get_underflow_neg()
+    constexpr static std::string_view get_underflow_neg()
     {
-        if constexpr (is_f32()) {
+        if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "-1.0e-90"sv;
         }
-        else if constexpr (is_f64()) {
+        else if constexpr (kind == float_kind::f64) {
             return "-5.0e-400"sv;
         }
-        else if constexpr (is_f80()) {
+        else if constexpr (kind == float_kind::f80) {
             return "-4.0e-5500"sv;
         }
-        else if constexpr (is_f128()) {
+        else if constexpr (kind == float_kind::f128) {
             return "-6.0e-5500"sv;
         }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return "-5.0e-16"sv;
+        }
+#endif
+        SCN_EXPECT(false);
     }
 
-    static auto get_maximum()
+    static auto get_maximum() -> std::pair<float_type, std::string>
     {
         auto val = std::numeric_limits<float_type>::max();
-        return std::make_pair(val, format_float(val, ".48", "e"));
+        return std::pair(val, format_float(val, ".48", "e"));
     }
-    static auto get_maximum_hex()
+    static auto get_maximum_hex() -> std::pair<float_type, std::string>
     {
         auto val = std::numeric_limits<float_type>::max();
-        return std::make_pair(val, format_float(val, ".32", "a"));
+        return std::pair(val, format_float(val, ".32", "a"));
     }
 
-    static auto get_overflow()
+    constexpr static std::string_view get_overflow()
     {
-        if constexpr (is_f32()) {
+        if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "4.0e38"sv;
         }
-        else if constexpr (is_f64()) {
+        else if constexpr (kind == float_kind::f64) {
             return "2.0e308"sv;
         }
-        else if constexpr (is_f80() || is_f128()) {
+        else if constexpr (kind == float_kind::f80 ||
+                           kind == float_kind::f128) {
             return "2.0e4932"sv;
         }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return "7.0e4"sv;
+        }
+#endif
+        SCN_EXPECT(false);
     }
-    static auto get_overflow_hex()
+    constexpr static std::string_view get_overflow_hex()
     {
-        if constexpr (is_f32()) {
+        if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "0x1p+128"sv;
         }
-        else if constexpr (is_f64()) {
+        else if constexpr (kind == float_kind::f64) {
             return "0x1p+1024"sv;
         }
-        else if constexpr (is_f80() || is_f128()) {
+        else if constexpr (kind == float_kind::f80 ||
+                           kind == float_kind::f128) {
             return "0x1p+16384"sv;
         }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return "0x1p+16"sv;
+        }
+#endif
+        SCN_EXPECT(false);
     }
 
-    static auto get_overflow_neg()
+    constexpr static std::string_view get_overflow_neg()
     {
-        if constexpr (is_f32()) {
+        if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "-4.0e38"sv;
         }
-        else if constexpr (is_f64()) {
+        else if constexpr (kind == float_kind::f64) {
             return "-2.0e308"sv;
         }
-        else if constexpr (is_f80() || is_f128()) {
+        else if constexpr (kind == float_kind::f80 ||
+                           kind == float_kind::f128) {
             return "-2.0e4932"sv;
         }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return "-7.0e4"sv;
+        }
+#endif
+        SCN_EXPECT(false);
     }
-    static auto get_overflow_neg_hex()
+    constexpr static std::string_view get_overflow_neg_hex()
     {
-        if constexpr (is_f32()) {
+        if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "-0x1p+128"sv;
         }
-        else if constexpr (is_f64()) {
+        else if constexpr (kind == float_kind::f64) {
             return "-0x1p+1024"sv;
         }
-        else if constexpr (is_f80() || is_f128()) {
+        else if constexpr (kind == float_kind::f80 ||
+                           kind == float_kind::f128) {
             return "-0x1p+16384"sv;
         }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return "-0x1p+16"sv;
+        }
+#endif
+        SCN_EXPECT(false);
     }
 
     static auto get_thsep_number()
     {
-        if constexpr (is_f32()) {
-            return 123456.789f;
-        }
-        else if constexpr (is_double()) {
-            return 123456.789;
-        }
-        else if constexpr (is_long_double()) {
-            return 123456.789L;
-        }
+        return static_cast<float_type>(123456.789L);
     }
 
     template <typename Source>
     void set_source(Source&& s)
     {
-        if constexpr (!is_wide()) {
+        if constexpr (is_char<char>) {
             widened_source = std::string{SCN_FWD(s)};
         }
         else if constexpr (std::is_same_v<
@@ -568,7 +612,7 @@ protected:
         float_type val{};
         auto result =
             this->wrapped_reader.read_default(widened_source.value(), val);
-        return std::make_pair(result, val);
+        return std::pair(result, val);
     }
     template <typename Source>
     auto simple_specs_test(Source&& source,
@@ -586,7 +630,7 @@ protected:
         float_type val{};
         auto result = this->wrapped_reader.read_specs_with_locale(
             widened_source.value(), specs, val, loc);
-        return std::make_pair(result, val);
+        return std::pair(result, val);
     }
 
     template <typename Source>
@@ -646,24 +690,48 @@ using type_list =
     ::testing::Types<float_reader_wrapper<false, char, float>,
                      float_reader_wrapper<false, char, double>,
                      float_reader_wrapper<false, wchar_t, float>,
-                     float_reader_wrapper<false, wchar_t, double>
+                     float_reader_wrapper<false, wchar_t, double>,
+                     float_reader_wrapper<false, char, long double>,
+                     float_reader_wrapper<false, wchar_t, long double>
 #if !SCN_DISABLE_LOCALE
                      ,
                      float_reader_wrapper<true, char, float>,
                      float_reader_wrapper<true, char, double>,
                      float_reader_wrapper<true, wchar_t, float>,
-                     float_reader_wrapper<true, wchar_t, double>
-#endif
-#if SCN_LONG_DOUBLE_WIDTH != 0
-                     ,
-                     float_reader_wrapper<false, char, long double>,
-                     float_reader_wrapper<false, wchar_t, long double>
-#if !SCN_DISABLE_LOCALE
-                     ,
+                     float_reader_wrapper<true, wchar_t, double>,
                      float_reader_wrapper<true, char, long double>,
                      float_reader_wrapper<true, wchar_t, long double>
 #endif
-#endif  // has long double
+
+#if SCN_HAS_STD_F16
+                     ,
+                     float_reader_wrapper<false, char, std::float16_t>,
+                     float_reader_wrapper<false, wchar_t, std::float16_t>
+#endif
+
+#if SCN_HAS_STD_F32
+                     ,
+                     float_reader_wrapper<false, char, std::float32_t>,
+                     float_reader_wrapper<false, wchar_t, std::float32_t>
+#endif
+
+#if SCN_HAS_STD_F64
+                     ,
+                     float_reader_wrapper<false, char, std::float64_t>,
+                     float_reader_wrapper<false, wchar_t, std::float64_t>
+#endif
+
+#if SCN_HAS_STD_F128
+                     ,
+                     float_reader_wrapper<false, char, std::float128_t>,
+                     float_reader_wrapper<false, wchar_t, std::float128_t>
+#endif
+
+#if SCN_HAS_STD_BF16
+                     ,
+                     float_reader_wrapper<false, char, std::bfloat16_t>,
+                     float_reader_wrapper<false, wchar_t, std::bfloat16_t>
+#endif
                      >;
 
 SCN_CLANG_PUSH
@@ -696,16 +764,19 @@ SCN_CLANG_IGNORE("-Wdouble-promotion")
 
 TYPED_TEST(FloatValueReaderTest, Scientific)
 {
-    EXPECT_TRUE(this->simple_default_test("4.20e1", 42.0));
+    EXPECT_TRUE(this->simple_default_test(
+        "4.20e1", static_cast<typename TestFixture::float_type>(42.0)));
 }
 
 TYPED_TEST(FloatValueReaderTest, Hex)
 {
-    EXPECT_TRUE(this->simple_default_test("0x1.2ap3", 0x1.2ap3));
+    EXPECT_TRUE(this->simple_default_test(
+        "0x1.2ap3", static_cast<typename TestFixture::float_type>(0x1.2ap3)));
 }
 TYPED_TEST(FloatValueReaderTest, NegativeHex)
 {
-    EXPECT_TRUE(this->simple_default_test("-0x1.2ap3", -0x1.2ap3));
+    EXPECT_TRUE(this->simple_default_test(
+        "-0x1.2ap3", static_cast<typename TestFixture::float_type>(-0x1.2ap3)));
 }
 
 SCN_CLANG_POP  // -Wdouble-promotion
@@ -749,7 +820,7 @@ TYPED_TEST(FloatValueReaderTest, NaNWithPayload)
     else if constexpr (std::is_same_v<decltype(val), double>) {
         EXPECT_TRUE(check_nan_eq(val, std::nan("1234")));
     }
-    else {
+    else if constexpr (std::is_same_v<decltype(val), long double>) {
         EXPECT_TRUE(check_nan_eq(val, std::nanl("1234")));
     }
 #endif
@@ -769,7 +840,7 @@ TYPED_TEST(FloatValueReaderTest, NaNWithEmptyPayload)
     else if constexpr (std::is_same_v<decltype(val), double>) {
         EXPECT_TRUE(check_nan_eq(val, std::nan("")));
     }
-    else {
+    else if constexpr (std::is_same_v<decltype(val), long double>) {
         EXPECT_TRUE(check_nan_eq(val, std::nanl("")));
     }
 #endif
@@ -791,7 +862,7 @@ TYPED_TEST(FloatValueReaderTest, NanWithNonNumericPayload)
         EXPECT_TRUE(check_nan_eq(val, std::nan("")));
         EXPECT_TRUE(check_nan_eq(val, std::nan("HelloWorld")));
     }
-    else {
+    else if constexpr (std::is_same_v<decltype(val), long double>) {
         EXPECT_TRUE(check_nan_eq(val, std::nanl("")));
         EXPECT_TRUE(check_nan_eq(val, std::nanl("HelloWorld")));
     }
@@ -1022,13 +1093,18 @@ T get_hexfloat_interpreted_as_decimal(const std::string& input)
     else if constexpr (std::is_same_v<T, double>) {
         return std::strtod(input.c_str(), nullptr);
     }
-    else {
+    else if constexpr (std::is_same_v<T, long double>) {
         return std::strtold(input.c_str(), nullptr);
     }
+    SCN_EXPECT(false);
 }
 
 TYPED_TEST(FloatValueReaderTest, PresentationHexValueScientific)
 {
+    if constexpr (TestFixture::is_extended) {
+        return SUCCEED() << "This test requires a non-extended float type";
+    }
+
     auto [result, val] = this->simple_specs_test(
         "12.3e4", this->make_format_specs_with_presentation(
                       scn::detail::presentation_type::float_hex));
@@ -1042,6 +1118,10 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueScientific)
 }
 TYPED_TEST(FloatValueReaderTest, PresentationHexValueFixed)
 {
+    if constexpr (TestFixture::is_extended) {
+        return SUCCEED() << "This test requires a non-extended float type";
+    }
+
     auto [result, val] = this->simple_specs_test(
         "12.3", this->make_format_specs_with_presentation(
                     scn::detail::presentation_type::float_hex));

@@ -263,6 +263,43 @@ public:
     using base::swap;
 };
 
+template <typename CharT>
+struct scanner<basic_regex_matches<CharT>, CharT>
+    : detail::builtin_scanner<basic_regex_matches<CharT>, CharT> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx) -> typename ParseCtx::iterator
+    {
+        auto begin = pctx.begin();
+        const auto end = pctx.end();
+
+        using handler_type = detail::specs_setter;
+        auto checker = detail::specs_checker<handler_type>(
+            handler_type(this->m_specs), detail::arg_type::none_type);
+        const auto it = detail::parse_format_specs(
+            detail::to_address(begin), detail::to_address(end), checker);
+
+        detail::check_regex_type_specs(this->m_specs, checker);
+
+        if (this->m_specs.type == detail::presentation_type::regex ||
+            this->m_specs.type == detail::presentation_type::regex_escaped) {
+            if (!pctx.is_source_contiguous()) {
+                SCN_UNLIKELY_ATTR
+                // clang-format off
+                checker.on_error("Cannot read a regex from a non-contiguous source");
+                // clang-format on
+            }
+            if (!pctx.is_source_borrowed()) {
+                SCN_UNLIKELY_ATTR
+                // clang-format off
+                checker.on_error("Cannot read a regex from a non-borrowed source");
+                // clang-format on
+            }
+        }
+
+        return it;
+    }
+};
+
 SCN_END_NAMESPACE
 }  // namespace scn
 
