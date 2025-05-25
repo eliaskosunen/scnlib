@@ -2050,6 +2050,25 @@ auto read_exactly_n_code_points(Range range, std::ptrdiff_t count)
 
 template <typename Range>
 auto read_until_code_unit(Range range,
+                          detail::mp_identity_t<detail::char_t<Range>> cu)
+    -> ranges::const_iterator_t<Range>
+{
+    if constexpr (ranges::common_range<Range>) {
+        return std::find(range.begin(), range.end(), cu);
+    }
+    else {
+        auto first = range.begin();
+        for (; first != range.end(); ++first) {
+            if (*first == cu) {
+                return first;
+            }
+        }
+        return first;
+    }
+}
+
+template <typename Range>
+auto read_until_code_unit(Range range,
                           function_ref<bool(detail::char_t<Range>)> pred)
     -> ranges::const_iterator_t<Range>
 {
@@ -2065,6 +2084,20 @@ auto read_until_code_unit(Range range,
         }
         return first;
     }
+}
+
+template <typename Range>
+auto read_while_code_unit(Range range,
+                          detail::mp_identity_t<detail::char_t<Range>> cu)
+    -> ranges::const_iterator_t<Range>
+{
+    auto first = range.begin();
+    for (; first != range.end(); ++first) {
+        if (*first != cu) {
+            return first;
+        }
+    }
+    return first;
 }
 
 template <typename Range>
@@ -2524,8 +2557,7 @@ public:
     bool is_current_double_wide() const
     {
         assert(count() != 0 || multibyte_left() != 0);
-        return _get_width_at_current_cp_start(
-                   _get_cp_length_at_current()) == 2;
+        return _get_width_at_current_cp_start(_get_cp_length_at_current()) == 2;
     }
 
     constexpr decltype(auto) operator*()
@@ -4904,9 +4936,7 @@ public:
             return read_string_impl(
                 range,
                 read_until_code_unit(
-                    range,
-                    [until = specs.fill.template get_code_unit<SourceCharT>()](
-                        SourceCharT ch) { return ch == until; }),
+                    range, specs.fill.template get_code_unit<SourceCharT>()),
                 value);
         }
         return read_string_impl(
@@ -4926,9 +4956,7 @@ public:
             return read_string_view_impl(
                 range,
                 read_until_code_unit(
-                    range,
-                    [until = specs.fill.template get_code_unit<SourceCharT>()](
-                        SourceCharT ch) { return ch == until; }),
+                    range, specs.fill.template get_code_unit<SourceCharT>()),
                 value);
         }
         return read_string_view_impl(

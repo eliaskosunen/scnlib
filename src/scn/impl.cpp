@@ -422,30 +422,43 @@ struct strtod_impl_base {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
-                "Hexfloats disallowed by format string");
+                "strtod failed: Hexfloats parsed, "
+                "but they're disallowed by the format string");
         }
 
-        if (c_errno == ERANGE && is_float_zero(value)) {
+        if (c_errno == ERANGE && value == static_cast<T>(0.0)) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::value_positive_underflow,
-                "strtod failed: underflow");
+                "strtod failed: Value too small");
         }
-
-        SCN_GCC_COMPAT_PUSH
-        SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
-
-        if (m_kind != float_reader_base::float_kind::inf_short &&
-            m_kind != float_reader_base::float_kind::inf_long &&
-            std::abs(value) == std::numeric_limits<T>::infinity()) {
+        if (c_errno == ERANGE && value == static_cast<T>(-0.0)) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
-                scan_error::value_positive_overflow, "strtod failed: overflow");
+                scan_error::value_negative_underflow,
+                "strtod failed: Value too small");
         }
 
-        SCN_GCC_COMPAT_POP  // -Wfloat-equal
+        // This doesn't set ERANGE,
+        // so we need to check whether we were expecting infinity
+        if (m_kind != float_reader_base::float_kind::inf_short &&
+            m_kind != float_reader_base::float_kind::inf_long &&
+            value == std::numeric_limits<T>::infinity()) {
+            SCN_UNLIKELY_ATTR
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_overflow,
+                "strtod failed: Value too large");
+        }
+        if (m_kind != float_reader_base::float_kind::inf_short &&
+            m_kind != float_reader_base::float_kind::inf_long &&
+            value == -std::numeric_limits<T>::infinity()) {
+            SCN_UNLIKELY_ATTR
+            return detail::unexpected_scan_error(
+                scan_error::value_negative_overflow,
+                "strtod failed: Value too large");
+        }
 
-            return {};
+        return {};
     }
 
     static T generic_narrow_strtod(const char* str, char** str_end)
@@ -611,20 +624,30 @@ struct strtod_impl_traits {
 
 #if SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
 template <typename Float, typename = void>
-struct has_charconv_for : std::false_type {};
+inline constexpr bool has_charconv_for = false;
 
 template <typename Float>
-struct has_charconv_for<
+inline constexpr bool has_charconv_for<
     Float,
     std::void_t<decltype(std::from_chars(SCN_DECLVAL(const char*),
                                          SCN_DECLVAL(const char*),
-                                         SCN_DECLVAL(Float&)))>>
-    : std::true_type {};
+                                         SCN_DECLVAL(Float&)))>> = true;
 
 #if SCN_STDLIB_GLIBCXX
 // libstdc++ has buggy std::from_chars for long double
 template <>
-struct has_charconv_for<long double, void> : std::false_type {};
+inline constexpr bool has_charconv_for<long double, void> = false;
+
+// libstdc++ delegates float16_t and bfloat16_t to float,
+// which will lead to erroneous over-/underflow detection
+#if SCN_HAS_STD_F16
+template <>
+inline constexpr bool has_charconv_for<std::float16_t, void> = false;
+#endif
+#if SCN_HAS_STD_BF16
+template <>
+inline constexpr bool has_charconv_for<std::bfloat16_t, void> = false;
+#endif
 #endif
 
 struct SCN_MAYBE_UNUSED from_chars_impl_base {
@@ -652,7 +675,7 @@ protected:
             if (flags == std::chars_format{}) {
                 return detail::unexpected_scan_error(
                     scan_error::invalid_scanned_value,
-                    "from_chars: Expected a hexfloat");
+                    "std::from_chars: Expected a hexfloat");
             }
         }
 
@@ -703,13 +726,217 @@ public:
         if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
-                "from_chars: invalid_argument");
+                "std::from_chars: invalid_argument");
         }
         if (result.ec == std::errc::result_out_of_range) {
-            // May be subnormal
-            // (at least libstdc++ gives out_of_range for subnormals)
-            //  -> fall back
-            return fallback();
+            // std::from_chars doesn't give us a way to distinguish between
+            // different kinds of over-/underflow:
+            // per the standard, `value` is unmodified.
+            // Do some parsing manually to try to determine what's up.
+
+            // Get the exponent of the parsed float.
+            // This is used to grok the order of magnitude
+            // to determine whether we overflowed or underflowed.
+
+            const auto [exponent, exponent_base] =
+                [kind = m_kind,
+                 input = detail::make_string_view_from_pointers<char>(
+                     input_view.data(),
+                     result.ptr)]() mutable -> std::pair<int, int> {
+                if (kind == float_reader_base::float_kind::generic) {
+                    kind =
+                        read_until_code_unit(input,
+                                             [](char ch) {
+                                                 return ch == 'e' || ch == 'E';
+                                             }) == input.end()
+                            ? float_reader_base::float_kind::fixed
+                            : float_reader_base::float_kind::scientific;
+                }
+
+                if (kind == float_reader_base::float_kind::fixed) {
+                    // xxx.yyy
+
+                    auto decimal_point_it = read_until_code_unit(input, '.');
+                    auto whole_part =
+                        detail::make_string_view_from_iterators<char>(
+                            read_while_code_unit(input, '0'), decimal_point_it);
+
+                    if (!whole_part.empty()) {
+                        // xxx.yyy
+                        // Non-zero digits before the decimal point,
+                        // that determines the base-10 exponent
+                        return {whole_part.size(), 10};
+                    }
+
+                    auto decimal_part =
+                        detail::make_string_view_from_iterators<char>(
+                            decimal_point_it == input.end()
+                                ? decimal_point_it
+                                : decimal_point_it + 1,
+                            input.end());
+                    auto decimal_initial_zeroes_part =
+                        detail::make_string_view_from_iterators<char>(
+                            decimal_part.begin(),
+                            read_while_code_unit(decimal_part, '0'));
+
+                    // 0.000yyy
+                    // Base-10 exponent determined by number of zeroes
+                    // after the decimal point, plus one (0.y -> exponent is -1)
+                    return {-(1 + static_cast<int>(
+                                      decimal_initial_zeroes_part.size())),
+                            10};
+                }
+
+                if (kind == float_reader_base::float_kind::scientific) {
+                    // xxx.yyyEzzz
+
+                    auto exponent_it = read_until_code_unit(
+                        input, [](char ch) { return ch == 'e' || ch == 'E'; });
+                    auto significand_part =
+                        detail::make_string_view_from_iterators<char>(
+                            input.begin(), exponent_it);
+
+                    auto decimal_point_it =
+                        read_until_code_unit(significand_part, '.');
+                    auto whole_part =
+                        detail::make_string_view_from_iterators<char>(
+                            read_while_code_unit(significand_part, '0'),
+                            decimal_point_it);
+                    auto decimal_part =
+                        detail::make_string_view_from_iterators<char>(
+                            decimal_point_it == exponent_it
+                                ? decimal_point_it
+                                : decimal_point_it + 1,
+                            exponent_it);
+
+                    SCN_EXPECT(exponent_it != input.end());
+                    auto exponent_part =
+                        detail::make_string_view_from_iterators<char>(
+                            exponent_it + 1, input.end());
+                    int exponent_value{};
+                    if (auto r = reader_impl_for_int<char>{}.read_default(
+                            exponent_part, exponent_value, {});
+                        !r) {
+                        if (r.error() == scan_error::value_positive_overflow) {
+                            return {std::numeric_limits<int>::max(), 0};
+                        }
+                        if (r.error() == scan_error::value_negative_overflow) {
+                            return {std::numeric_limits<int>::min(), 0};
+                        }
+                        SCN_EXPECT(false);
+                        SCN_UNREACHABLE;
+                    }
+
+                    if (!whole_part.empty()) {
+                        return {whole_part.size() + exponent_value, 10};
+                    }
+
+                    auto decimal_initial_zeroes_part =
+                        detail::make_string_view_from_iterators<char>(
+                            decimal_part.begin(),
+                            read_while_code_unit(decimal_part, '0'));
+                    return {-(1 + static_cast<int>(
+                                      decimal_initial_zeroes_part.size())) +
+                                exponent_value,
+                            10};
+                }
+
+                if (kind == float_reader_base::float_kind::hex_with_prefix ||
+                    kind == float_reader_base::float_kind::hex_without_prefix) {
+                    // xxx.yyyPzzz
+                    // Hex prefix ("0x") has been stripped previously
+                    auto exponent_it = read_until_code_unit(
+                        input, [](char ch) { return ch == 'p' || ch == 'P'; });
+                    auto significand_part =
+                        detail::make_string_view_from_iterators<char>(
+                            input.begin(), exponent_it);
+
+                    auto radix_point_it =
+                        read_until_code_unit(significand_part, '.');
+                    auto whole_part =
+                        detail::make_string_view_from_iterators<char>(
+                            read_while_code_unit(significand_part, '0'),
+                            radix_point_it);
+                    auto fractional_part =
+                        detail::make_string_view_from_iterators<char>(
+                            radix_point_it == exponent_it ? radix_point_it
+                                                          : radix_point_it + 1,
+                            exponent_it);
+
+                    SCN_EXPECT(exponent_it != input.end());
+                    auto exponent_part =
+                        detail::make_string_view_from_iterators<char>(
+                            exponent_it + 1, input.end());
+                    int exponent_value{};
+                    if (auto r = reader_impl_for_int<char>{}.read_default(
+                            exponent_part, exponent_value, {});
+                        !r) {
+                        if (r.error() == scan_error::value_positive_overflow) {
+                            return {std::numeric_limits<int>::max(), 0};
+                        }
+                        if (r.error() == scan_error::value_negative_overflow) {
+                            return {std::numeric_limits<int>::min(), 0};
+                        }
+                        SCN_EXPECT(false);
+                        SCN_UNREACHABLE;
+                    }
+
+                    if (!whole_part.empty()) {
+                        return {whole_part.size() + exponent_value / 8, 16};
+                    }
+
+                    auto fractional_initial_zeroes_part =
+                        detail::make_string_view_from_iterators<char>(
+                            fractional_part.begin(),
+                            read_while_code_unit(fractional_part, '0'));
+                    return {-(1 + static_cast<int>(
+                                      fractional_initial_zeroes_part.size())) +
+                                exponent_value / 8,
+                            16};
+                }
+
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
+            }();
+
+            if (exponent > 0) {
+                return detail::unexpected_scan_error(
+                    scan_error::value_positive_overflow,
+                    "std::from_chars: result_out_of_range, value too large");
+            }
+
+            // Some implementations treat subnormals as underflow.
+            // We don't want that, we consider them to be valid values.
+            // Check if the exponent we got could be a subnormal,
+            // and fall back if that's the case.
+
+            if (exponent_base == 10) {
+                if (exponent >=
+                    std::log10(std::numeric_limits<T>::denorm_min())) {
+                    return fallback(detail::unexpected_scan_error(
+                        scan_error::value_positive_underflow,
+                        "std::from_chars: result_out_of_range, value too "
+                        "small, "
+                        "possibly subnormal"));
+                }
+            }
+            if (exponent_base == 16) {
+                if (exponent >=
+                    std::log2(std::numeric_limits<T>::denorm_min()) /
+                        std::log2(static_cast<T>(16.0))) {
+                    return fallback(detail::unexpected_scan_error(
+                        scan_error::value_positive_underflow,
+                        "std::from_chars: result_out_of_range, value too "
+                        "small, "
+                        "possibly subnormal"));
+                }
+            }
+
+            // Definitely smaller than the smallest subnormal,
+            // just error out.
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_underflow,
+                "std::from_chars: result_out_of_range, value too small");
         }
 
         return result.ptr - m_input.view().data();
@@ -719,7 +946,7 @@ public:
 struct from_chars_impl_traits {
     template <typename CharT, typename FloatT>
     static constexpr bool enabled =
-        std::is_same_v<CharT, char> && has_charconv_for<FloatT>::value;
+        std::is_same_v<CharT, char> && has_charconv_for<FloatT>;
 
     template <typename, typename FloatT>
     using type = from_chars_impl<FloatT>;
@@ -777,7 +1004,7 @@ struct fast_float_impl : fast_float_impl_base {
         if (m_kind == float_reader_base::float_kind::hex_without_prefix ||
             m_kind == float_reader_base::float_kind::hex_with_prefix) {
             // fast_float doesn't support hexfloats
-            return fallback();
+            return fallback({});
         }
 
         const auto flags = get_flags();
@@ -791,8 +1018,27 @@ struct fast_float_impl : fast_float_impl_base {
                 "fast_float: invalid_argument");
         }
         if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
-            // may just be very large: fall back
-            return fallback();
+            // No need to handle -inf and -0.0,
+            // the sign is stripped from the input,
+            // so the result is always positive.
+            // The sign is applied outside this call,
+            // and these errors are turned into their negative counterparts,
+            // if necessary.
+
+            if (value == std::numeric_limits<T>::infinity()) {
+                return detail::unexpected_scan_error(
+                    scan_error::value_positive_overflow,
+                    "fast_float: result_out_of_range, value too large");
+            }
+            if (value == static_cast<T>(0.0)) {
+                return detail::unexpected_scan_error(
+                    scan_error::value_positive_underflow,
+                    "fast_float: result_out_of_range, value too small");
+            }
+
+            return fallback(detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "fast_float: Unknown result_out_of_range error"));
         }
 
         return result.ptr - view.data();
@@ -1196,7 +1442,7 @@ scan_expected<std::ptrdiff_t> dispatch_parse_float_value(impl_init_data<CharT>&,
                                                          T&)
 {
     return detail::unexpected_scan_error(
-        scan_error::invalid_scanned_value,
+        scan_error::type_not_supported,
         "No valid floating-point parser available for this type");
 }
 
@@ -1209,7 +1455,16 @@ scan_expected<std::ptrdiff_t> dispatch_parse_float_value(
         return dispatch_parse_float_value<CharT, T, Impls...>(data, value);
     }
     else {
-        auto next = [&]() {
+        auto next =
+            [&](scan_expected<void> err) -> scan_expected<std::ptrdiff_t> {
+            if constexpr ((std::is_same_v<Impls, float_null_impl> && ...)) {
+                // If this is the last valid impl we have,
+                // propagate the error we got
+                if (!err.has_value()) {
+                    return unexpected(err.error());
+                }
+            }
+            // We still have valid impls to go, try those out
             return dispatch_parse_float_value<CharT, T, Impls...>(data, value);
         };
         return parse_float_value_using_impl<CharT, T, Impl>(data, value, next);

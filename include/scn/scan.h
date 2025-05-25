@@ -3705,7 +3705,7 @@ public:
         end_of_input,
 
         /// Format string was invalid.
-        /// Often a compile-time error, if supported or enabled.
+        /// Often a compile-time error, if supported and/or enabled.
         invalid_format_string,
 
         /// Scanned value was invalid for given type,
@@ -3742,6 +3742,10 @@ public:
         /// Value out of range, magnitude too small, sign -
         /// (between 0 and the smallest subnormal float)
         value_negative_underflow,
+
+        /// Value of this type can't be parsed,
+        /// either from this source or not at all.
+        type_not_supported,
 
         max_error
     };

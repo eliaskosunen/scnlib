@@ -37,12 +37,6 @@ std::string get_bytes_str(T val)
 }
 
 template <typename T>
-constexpr T float_zero()
-{
-    return static_cast<T>(0.0L);
-}
-
-template <typename T>
 [[nodiscard]] testing::AssertionResult
 check_floating_eq(T a, T b, bool allow_approx = false)
 {
@@ -173,92 +167,114 @@ protected:
 
     static_assert(std::numeric_limits<float_type>::is_iec559);
 
-    static constexpr const char* get_length_flag()
+    void SetUp() override
     {
-        if constexpr (is_type<long double> ||
-                      sizeof(float_type) > sizeof(double)) {
-            return "L";
-        }
-        else {
-            return "";
-        }
-    }
+        // Check whether this type is supported.
+        // If not, skip the test (don't fail).
+        // This is only a runtime-checkable property for now,
+        // so we can't disable the tests beforehand.
+        T tmp_reader{};
+        float_type value{};
 
-    static std::string format_float(float_type val,
-                                    const std::string& flags_before_len,
-                                    const std::string& flags_after_len)
-    {
-        std::string buf(256, '\0');
-        auto casted_val = [&]() {
-            if constexpr (is_type<double> || is_type<long double>) {
-                return val;
-            }
-            else if constexpr (sizeof(float_type) > sizeof(double)) {
-                return static_cast<long double>(val);
+        auto result = [&]() {
+            if constexpr (is_char<char>) {
+                return tmp_reader.read_default("42.0"sv, value);
             }
             else {
-                return static_cast<double>(val);
+                return tmp_reader.read_default(L"42.0"sv, value);
             }
-        };
-        SCN_GCC_COMPAT_PUSH
-        SCN_GCC_COMPAT_IGNORE("-Wformat-nonliteral")
-        const auto fmt = std::string{"%"} + flags_before_len +
-                         get_length_flag() + flags_after_len;
-        const auto ret =
-            std::snprintf(buf.data(), buf.size(), fmt.c_str(), casted_val());
-        SCN_GCC_COMPAT_POP
-        SCN_EXPECT(ret > 0);
-        buf = buf.substr(0, buf.find('\0'));
-        return buf;
+        }();
+
+        if (!result) {
+            if (result.error().code() == scn::scan_error::type_not_supported) {
+                GTEST_SKIP() << "Type not supported";
+                return;
+            }
+        }
+        ASSERT_TRUE(result);
+        ASSERT_TRUE(check_floating_eq(value, static_cast<float_type>(42.0)));
     }
 
 #if SCN_HAS_STD_F128
-#define SCN_F_C(x) static_cast<float_type>(x##F128)
+#define F_C(x) static_cast<float_type>(x##F128)
 #else
-#define SCN_F_C(x) static_cast<float_type>(x##L)
+#define F_C(x) static_cast<float_type>(x##L)
 #endif
 
     constexpr static auto get_pi()
     {
-        return std::pair(SCN_F_C(3.14), "3.14"sv);
+        return std::pair(F_C(3.14), "3.14"sv);
     }
     constexpr static auto get_neg()
     {
-        return std::pair(SCN_F_C(-123.456), "-123.456"sv);
+        return std::pair(F_C(-123.456), "-123.456"sv);
     }
     constexpr static auto get_leading_plus()
     {
-        return std::pair(SCN_F_C(3.14), "+3.14"sv);
+        return std::pair(F_C(3.14), "+3.14"sv);
     }
 
-    SCN_GCC_COMPAT_PUSH
-    // 128-bit literals will overflow if long double is not 128-bit,
-    // but that's not a problem since we won't be hitting that code in that case
-    SCN_GCC_COMPAT_IGNORE("-Woverflow")
+#define MAKE_PAIR_RETURN(Value, LiteralSuffix) \
+    std::pair{Value##LiteralSuffix, #Value};
+
+#if SCN_HAS_STD_F128
+#define MAKE_PAIR_RETURN_F128(Value) std::pair{Value##F128, #Value};
+#else
+#define MAKE_PAIR_RETURN_F128(Value) std::pair{Value##L, #Value};
+#endif
+
+#define MAKE_CHECKED_PAIR_RETURN(Value, LiteralSuffix, Check) \
+    []() {                                                    \
+        static_assert(Value##LiteralSuffix == Check);         \
+        return MAKE_PAIR_RETURN(Value, LiteralSuffix);        \
+    }();
+
+#if SCN_HAS_STD_F128
+#define MAKE_CHECKED_PAIR_RETURN_F128(Value, Check) \
+    []() {                                          \
+        static_assert(Value##F128 == Check);        \
+        return MAKE_PAIR_RETURN_F128(Value);        \
+    }();
+#else
+#define MAKE_CHECKED_PAIR_RETURN_F128(Value, Check) \
+    []() {                                          \
+        static_assert(Value##L == Check);           \
+        return MAKE_PAIR_RETURN_F128(Value);        \
+    }();
+#endif
 
     constexpr static auto get_subnormal()
         -> std::pair<float_type, std::string_view>
     {
         if constexpr (kind == float_kind::f32) {
-            return std::pair(2e-40f, "2e-40"sv);
+            return MAKE_PAIR_RETURN(2e-40, f);
         }
         else if constexpr (kind == float_kind::f64) {
-            return std::pair(5e-320, "5e-320"sv);
+            return MAKE_PAIR_RETURN(5e-320, );
         }
         else if constexpr (kind == float_kind::f80) {
-            return std::pair(3e-4940l, "3e-4940"sv);
+            return MAKE_PAIR_RETURN(3e-4940, L);
         }
         else if constexpr (kind == float_kind::f128) {
-            return std::pair(SCN_F_C(5e-4960), "5e-4960"sv);
+            // 128-bit literals will overflow if long double is not 128-bit,
+            // but that's not a problem since we won't be hitting this code
+            // in that case
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Woverflow")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wliteral-range")
+            return MAKE_PAIR_RETURN_F128(5e-4960);
+            SCN_CLANG_POP
+            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
-            return std::pair(5e-6F16, "5e-6"sv);
+            return MAKE_PAIR_RETURN(5e-6, F16);
         }
 #endif
 #if SCN_HAS_STD_BF16
         if constexpr (kind == float_kind::bf16) {
-            return std::pair(2e-40BF16, "2e-40"sv);
+            return MAKE_PAIR_RETURN(2e-40, BF16);
         }
 #endif
         SCN_EXPECT(false);
@@ -267,25 +283,31 @@ protected:
         -> std::pair<float_type, std::string_view>
     {
         if constexpr (kind == float_kind::f32) {
-            return std::pair(0x1.2p-130f, "0x1.2p-130"sv);
+            return MAKE_PAIR_RETURN(0x1.2p-130, f);
         }
         else if constexpr (kind == float_kind::f64) {
-            return std::pair(0x1.2p-1050, "0x1.2p-1050"sv);
+            return MAKE_PAIR_RETURN(0x1.2p-1050, );
         }
         else if constexpr (kind == float_kind::f80) {
-            return std::pair(0x1.2p-16400l, "0x1.2p-16400"sv);
+            return MAKE_PAIR_RETURN(0x1.2p-16400, L);
         }
         else if constexpr (kind == float_kind::f128) {
-            return std::pair(SCN_F_C(0x1.2p-16450), "0x1.2p-16450"sv);
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Woverflow")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wliteral-range")
+            return MAKE_PAIR_RETURN_F128(0x1.2p-16450);
+            SCN_CLANG_POP
+            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
-            return std::pair(0x1.2p-16F16, "0x1.2p-16"sv);
+            return MAKE_PAIR_RETURN(0x1.2p-16, F16);
         }
 #endif
 #if SCN_HAS_STD_BF16
         if constexpr (kind == float_kind::bf16) {
-            return std::pair(0x1.2p-130BF16, "0x1.2p-130"sv);
+            return MAKE_PAIR_RETURN(0x1.2p-130, BF16);
         }
 #endif
         SCN_EXPECT(false);
@@ -295,25 +317,31 @@ protected:
         -> std::pair<float_type, std::string_view>
     {
         if constexpr (kind == float_kind::f32) {
-            return std::pair(1e-38f, "1e-38"sv);
+            return MAKE_PAIR_RETURN(1e-38, f);
         }
         else if constexpr (kind == float_kind::f64) {
-            return std::pair(2e-308, "2e-308"sv);
+            return MAKE_PAIR_RETURN(2e-308, );
         }
         else if constexpr (kind == float_kind::f80) {
-            return std::pair(3.2e-4932l, "3.2e-4932"sv);
+            return MAKE_PAIR_RETURN(3.2e-4932, L);
         }
         else if constexpr (kind == float_kind::f128) {
-            return std::pair(SCN_F_C(3.2e-4932), "3.2e-4932"sv);
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Woverflow")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wliteral-range")
+            return MAKE_PAIR_RETURN_F128(3.2e-4932);
+            SCN_CLANG_POP
+            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
-            return std::pair(6e-5F16, "6e-5"sv);
+            return MAKE_PAIR_RETURN(6e-5, F16);
         }
 #endif
 #if SCN_HAS_STD_BF16
         if constexpr (kind == float_kind::bf16) {
-            return std::pair(1e-38BF16, "1e-38"sv);
+            return MAKE_PAIR_RETURN(1e-38, BF16);
         }
 #endif
         SCN_EXPECT(false);
@@ -322,52 +350,199 @@ protected:
         -> std::pair<float_type, std::string_view>
     {
         if constexpr (kind == float_kind::f32) {
-            return std::pair(0x1.fp-127f, "0x1.fp-127"sv);
+            return MAKE_PAIR_RETURN(0x1.fp-127, f);
         }
         else if constexpr (kind == float_kind::f64) {
-            return std::pair(0x1.fp-1023, "0x1.fp-1023"sv);
+            return MAKE_PAIR_RETURN(0x1.fp-1023, );
         }
         else if constexpr (kind == float_kind::f80) {
-            return std::pair(0x1.fp-16383l, "0x1.fp-16383"sv);
+            return MAKE_PAIR_RETURN(0x1.fp-16383, L);
         }
         else if constexpr (kind == float_kind::f128) {
-            return std::pair(SCN_F_C(0x1.fp-16383), "0x1.fp-16383"sv);
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Woverflow")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wliteral-range")
+            return MAKE_PAIR_RETURN_F128(0x1.fp-16383);
+            SCN_CLANG_POP
+            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
-            return std::pair(0x1.fp-15F16, "0x1.fp-15"sv);
+            return MAKE_PAIR_RETURN(0x1.fp-15, F16);
         }
 #endif
 #if SCN_HAS_STD_BF16
         if constexpr (kind == float_kind::bf16) {
-            return std::pair(0x1.fp-127BF16, "0x1.fp-127"sv);
+            return MAKE_PAIR_RETURN(0x1.fp-127, BF16);
         }
 #endif
         SCN_EXPECT(false);
     }
 
-    SCN_GCC_COMPAT_POP
-
     static auto get_normal_min() -> std::pair<float_type, std::string>
     {
-        auto val = std::numeric_limits<float_type>::min();
-        return std::pair(val, format_float(val, ".48", "e"));
+        if constexpr (kind == float_kind::f32) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                1.17549435082228750796873653722224568e-38, f,
+                std::numeric_limits<float_type>::min());
+        }
+        else if constexpr (kind == float_kind::f64) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                2.22507385850720138309023271733240406e-308, ,
+                std::numeric_limits<float_type>::min());
+        }
+        else if constexpr (kind == float_kind::f80) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                3.36210314311209350626267781732175260e-4932, L,
+                std::numeric_limits<float_type>::min());
+        }
+        else if constexpr (kind == float_kind::f128) {
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Woverflow")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wliteral-range")
+            return MAKE_CHECKED_PAIR_RETURN_F128(
+                3.36210314311209350626267781732175260e-4932,
+                std::numeric_limits<float_type>::min());
+            SCN_CLANG_POP
+            SCN_GCC_POP
+        }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                6.103515625e-5, F16, std::numeric_limits<float_type>::min());
+        }
+#endif
+#if SCN_HAS_STD_BF16
+        if constexpr (kind == float_kind::bf16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                1.17549435082228750796873653722224568e-38, BF16,
+                std::numeric_limits<float_type>::min());
+        }
+#endif
+        SCN_EXPECT(false);
     }
     static auto get_normal_min_hex() -> std::pair<float_type, std::string>
     {
-        auto val = std::numeric_limits<float_type>::min();
-        return std::pair(val, format_float(val, ".32", "a"));
+        if constexpr (kind == float_kind::f32) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-126, f, std::numeric_limits<float_type>::min());
+        }
+        else if constexpr (kind == float_kind::f64) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-1022, , std::numeric_limits<float_type>::min());
+        }
+        else if constexpr (kind == float_kind::f80) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-16382, L, std::numeric_limits<float_type>::min());
+        }
+        else if constexpr (kind == float_kind::f128) {
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Woverflow")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wliteral-range")
+            return MAKE_CHECKED_PAIR_RETURN_F128(
+                0x1p-16382, std::numeric_limits<float_type>::min());
+            SCN_CLANG_POP
+            SCN_GCC_POP
+        }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-14, F16, std::numeric_limits<float_type>::min());
+        }
+#endif
+#if SCN_HAS_STD_BF16
+        if constexpr (kind == float_kind::bf16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-126, BF16, std::numeric_limits<float_type>::min());
+        }
+#endif
+        SCN_EXPECT(false);
     }
 
     static auto get_subnormal_min() -> std::pair<float_type, std::string>
     {
-        auto val = std::numeric_limits<float_type>::denorm_min();
-        return std::pair(val, format_float(val, ".48", "e"));
+        if constexpr (kind == float_kind::f32) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                1.40129846432481707092372958328991613e-45, f,
+                std::numeric_limits<float_type>::denorm_min());
+        }
+        else if constexpr (kind == float_kind::f64) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                4.94065645841246544176568792868221372e-324, ,
+                std::numeric_limits<float_type>::denorm_min());
+        }
+        else if constexpr (kind == float_kind::f80) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                3.64519953188247460252840593361941982e-4951, L,
+                std::numeric_limits<float_type>::denorm_min());
+        }
+        else if constexpr (kind == float_kind::f128) {
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Woverflow")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wliteral-range")
+            return MAKE_CHECKED_PAIR_RETURN_F128(
+                6.47517511943802511092443895822764655e-4966,
+                std::numeric_limits<float_type>::denorm_min());
+            SCN_CLANG_POP
+            SCN_GCC_POP
+        }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                5.9604644775390625e-8, F16,
+                std::numeric_limits<float_type>::denorm_min());
+        }
+#endif
+#if SCN_HAS_STD_BF16
+        if constexpr (kind == float_kind::bf16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                9.18354961579912115600575419704879436e-41, BF16,
+                std::numeric_limits<float_type>::denorm_min());
+        }
+#endif
+        SCN_EXPECT(false);
     }
     static auto get_subnormal_min_hex() -> std::pair<float_type, std::string>
     {
-        auto val = std::numeric_limits<float_type>::denorm_min();
-        return std::pair(val, format_float(val, ".32", "a"));
+        if constexpr (kind == float_kind::f32) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-149, f, std::numeric_limits<float_type>::denorm_min());
+        }
+        else if constexpr (kind == float_kind::f64) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-1074, , std::numeric_limits<float_type>::denorm_min());
+        }
+        else if constexpr (kind == float_kind::f80) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-16445, L, std::numeric_limits<float_type>::denorm_min());
+        }
+        else if constexpr (kind == float_kind::f128) {
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Woverflow")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wliteral-range")
+            return MAKE_CHECKED_PAIR_RETURN_F128(
+                0x1p-16494, std::numeric_limits<float_type>::denorm_min());
+            SCN_CLANG_POP
+            SCN_GCC_POP
+        }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-24, F16, std::numeric_limits<float_type>::denorm_min());
+        }
+#endif
+#if SCN_HAS_STD_BF16
+        if constexpr (kind == float_kind::bf16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-149, BF16, std::numeric_limits<float_type>::denorm_min());
+        }
+#endif
+        SCN_EXPECT(false);
     }
 
     constexpr static std::string_view get_underflow()
@@ -384,11 +559,9 @@ protected:
         else if constexpr (kind == float_kind::f128) {
             return "6.0e-5500"sv;
         }
-#if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
             return "5.0e-16"sv;
         }
-#endif
         SCN_EXPECT(false);
     }
     constexpr static std::string_view get_underflow_hex()
@@ -405,11 +578,9 @@ protected:
         else if constexpr (kind == float_kind::f128) {
             return "0x1p-18000"sv;
         }
-#if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
             return "0x1p-40"sv;
         }
-#endif
         SCN_EXPECT(false);
     }
     constexpr static std::string_view get_underflow_neg()
@@ -426,23 +597,95 @@ protected:
         else if constexpr (kind == float_kind::f128) {
             return "-6.0e-5500"sv;
         }
-#if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
             return "-5.0e-16"sv;
         }
-#endif
         SCN_EXPECT(false);
     }
 
     static auto get_maximum() -> std::pair<float_type, std::string>
     {
-        auto val = std::numeric_limits<float_type>::max();
-        return std::pair(val, format_float(val, ".48", "e"));
+        if constexpr (kind == float_kind::f32) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                3.40282346638528859811704183484516925e+38, f,
+                std::numeric_limits<float_type>::max());
+        }
+        else if constexpr (kind == float_kind::f64) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                1.79769313486231570814527423731704357e+308, ,
+                std::numeric_limits<float_type>::max());
+        }
+        else if constexpr (kind == float_kind::f80) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                1.18973149535723176502126385303097021e+4932, L,
+                std::numeric_limits<float_type>::max());
+        }
+        else if constexpr (kind == float_kind::f128) {
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Woverflow")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wliteral-range")
+            return MAKE_CHECKED_PAIR_RETURN_F128(
+                1.18973149535723176508575932662800702e+4932,
+                std::numeric_limits<float_type>::max());
+            SCN_CLANG_POP
+            SCN_GCC_POP
+        }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                6.5504e+4, F16, std::numeric_limits<float_type>::max());
+        }
+#endif
+#if SCN_HAS_STD_BF16
+        if constexpr (kind == float_kind::bf16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                3.38953138925153547590470800371487867e+38, BF16,
+                std::numeric_limits<float_type>::max());
+        }
+#endif
+        SCN_EXPECT(false);
     }
     static auto get_maximum_hex() -> std::pair<float_type, std::string>
     {
-        auto val = std::numeric_limits<float_type>::max();
-        return std::pair(val, format_float(val, ".32", "a"));
+        if constexpr (kind == float_kind::f32) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1.fffffep+127, f, std::numeric_limits<float_type>::max());
+        }
+        else if constexpr (kind == float_kind::f64) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1.fffffffffffffp+1023, ,
+                std::numeric_limits<float_type>::max());
+        }
+        else if constexpr (kind == float_kind::f80) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0xf.fffffffffffffffp+16380, L,
+                std::numeric_limits<float_type>::max());
+        }
+        else if constexpr (kind == float_kind::f128) {
+            SCN_GCC_PUSH
+            SCN_GCC_IGNORE("-Woverflow")
+            SCN_CLANG_PUSH
+            SCN_CLANG_IGNORE("-Wliteral-range")
+            return MAKE_CHECKED_PAIR_RETURN_F128(
+                0x1.ffffffffffffffffffffffffffffp+16383,
+                std::numeric_limits<float_type>::max());
+            SCN_CLANG_POP
+            SCN_GCC_POP
+        }
+#if SCN_HAS_STD_F16
+        if constexpr (kind == float_kind::f16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1.ffcp+15, F16, std::numeric_limits<float_type>::max());
+        }
+#endif
+#if SCN_HAS_STD_BF16
+        if constexpr (kind == float_kind::bf16) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1.7ep+127, BF16, std::numeric_limits<float_type>::max());
+        }
+#endif
+        SCN_EXPECT(false);
     }
 
     constexpr static std::string_view get_overflow()
@@ -457,11 +700,9 @@ protected:
                            kind == float_kind::f128) {
             return "2.0e4932"sv;
         }
-#if SCN_HAS_STD_F16
-        if constexpr (kind == float_kind::f16) {
+        else if constexpr (kind == float_kind::f16) {
             return "7.0e4"sv;
         }
-#endif
         SCN_EXPECT(false);
     }
     constexpr static std::string_view get_overflow_hex()
@@ -476,11 +717,9 @@ protected:
                            kind == float_kind::f128) {
             return "0x1p+16384"sv;
         }
-#if SCN_HAS_STD_F16
-        if constexpr (kind == float_kind::f16) {
+        else if constexpr (kind == float_kind::f16) {
             return "0x1p+16"sv;
         }
-#endif
         SCN_EXPECT(false);
     }
 
@@ -496,11 +735,9 @@ protected:
                            kind == float_kind::f128) {
             return "-2.0e4932"sv;
         }
-#if SCN_HAS_STD_F16
-        if constexpr (kind == float_kind::f16) {
+        else if constexpr (kind == float_kind::f16) {
             return "-7.0e4"sv;
         }
-#endif
         SCN_EXPECT(false);
     }
     constexpr static std::string_view get_overflow_neg_hex()
@@ -515,11 +752,9 @@ protected:
                            kind == float_kind::f128) {
             return "-0x1p+16384"sv;
         }
-#if SCN_HAS_STD_F16
-        if constexpr (kind == float_kind::f16) {
+        else if constexpr (kind == float_kind::f16) {
             return "-0x1p+16"sv;
         }
-#endif
         SCN_EXPECT(false);
     }
 
@@ -733,6 +968,13 @@ using type_list =
                      float_reader_wrapper<false, wchar_t, std::bfloat16_t>
 #endif
                      >;
+
+#undef F_C
+#if SCN_HAS_STD_F128
+#define F_C(x) static_cast<typename TestFixture::float_type>(x##F128)
+#else
+#define F_C(x) static_cast<typename TestFixture::float_type>(x##L)
+#endif
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")
@@ -1013,7 +1255,7 @@ TYPED_TEST(FloatValueReaderTest, PresentationScientificValueScientific)
                       scn::detail::presentation_type::float_scientific));
     EXPECT_TRUE(a);
     EXPECT_TRUE(check_floating_eq(
-        val, static_cast<typename TestFixture::float_type>(12.3e4)));
+        val, static_cast<typename TestFixture::float_type>(F_C(12.3e4))));
 }
 TYPED_TEST(FloatValueReaderTest, PresentationScientificValueFixed)
 {
@@ -1049,7 +1291,7 @@ TYPED_TEST(FloatValueReaderTest, PresentationFixedValueScientific)
     EXPECT_EQ(scn::detail::to_address(result.value()),
               this->widened_source->data() + 4);
     EXPECT_TRUE(check_floating_eq(
-        val, static_cast<typename TestFixture::float_type>(12.3l)));
+        val, static_cast<typename TestFixture::float_type>(F_C(12.3))));
 }
 TYPED_TEST(FloatValueReaderTest, PresentationFixedValueFixed)
 {
@@ -1081,7 +1323,7 @@ TYPED_TEST(FloatValueReaderTest, PresentationFixedValueHexWithoutPrefix)
     EXPECT_EQ(scn::detail::to_address(result.value()),
               this->widened_source->data() + 2);
     EXPECT_TRUE(check_floating_eq(
-        val, static_cast<typename TestFixture::float_type>(1.0)));
+        val, static_cast<typename TestFixture::float_type>(F_C(1.0))));
 }
 
 template <typename T>
@@ -1140,7 +1382,7 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueHexWithPrefix)
                        scn::detail::presentation_type::float_hex));
     EXPECT_TRUE(a);
     EXPECT_TRUE(check_floating_eq(
-        val, static_cast<typename TestFixture::float_type>(0x1.fp3)));
+        val, static_cast<typename TestFixture::float_type>(F_C(0x1.fp3))));
 }
 TYPED_TEST(FloatValueReaderTest, PresentationHexValueHexWithoutPrefix)
 {
@@ -1149,7 +1391,7 @@ TYPED_TEST(FloatValueReaderTest, PresentationHexValueHexWithoutPrefix)
                      scn::detail::presentation_type::float_hex));
     EXPECT_TRUE(a);
     EXPECT_TRUE(check_floating_eq(
-        val, static_cast<typename TestFixture::float_type>(0x1.fp3)));
+        val, static_cast<typename TestFixture::float_type>(F_C(0x1.fp3))));
 }
 
 #if !SCN_DISABLE_LOCALE
