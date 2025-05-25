@@ -173,6 +173,11 @@ protected:
         // If not, skip the test (don't fail).
         // This is only a runtime-checkable property for now,
         // so we can't disable the tests beforehand.
+        // This can only fail for extended float types,
+        // so if we have none of them, we don't need to run this check.
+
+#if SCN_HAS_STD_F16 || SCN_HAS_STD_F32 || SCN_HAS_STD_F64 || \
+    SCN_HAS_STD_F128 || SCN_HAS_STD_BF16
         T tmp_reader{};
         float_type value{};
 
@@ -188,11 +193,11 @@ protected:
         if (!result) {
             if (result.error().code() == scn::scan_error::type_not_supported) {
                 GTEST_SKIP() << "Type not supported";
-                return;
             }
         }
         ASSERT_TRUE(result);
         ASSERT_TRUE(check_floating_eq(value, static_cast<float_type>(42.0)));
+#endif
     }
 
 #if SCN_HAS_STD_F128
@@ -256,16 +261,7 @@ protected:
             return MAKE_PAIR_RETURN(3e-4940, L);
         }
         else if constexpr (kind == float_kind::f128) {
-            // 128-bit literals will overflow if long double is not 128-bit,
-            // but that's not a problem since we won't be hitting this code
-            // in that case
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Woverflow")
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
             return MAKE_PAIR_RETURN_F128(5e-4960);
-            SCN_CLANG_POP
-            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -292,13 +288,7 @@ protected:
             return MAKE_PAIR_RETURN(0x1.2p-16400, L);
         }
         else if constexpr (kind == float_kind::f128) {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Woverflow")
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
             return MAKE_PAIR_RETURN_F128(0x1.2p-16450);
-            SCN_CLANG_POP
-            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -326,13 +316,7 @@ protected:
             return MAKE_PAIR_RETURN(3.2e-4932, L);
         }
         else if constexpr (kind == float_kind::f128) {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Woverflow")
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
             return MAKE_PAIR_RETURN_F128(3.2e-4932);
-            SCN_CLANG_POP
-            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -359,13 +343,7 @@ protected:
             return MAKE_PAIR_RETURN(0x1.fp-16383, L);
         }
         else if constexpr (kind == float_kind::f128) {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Woverflow")
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
             return MAKE_PAIR_RETURN_F128(0x1.fp-16383);
-            SCN_CLANG_POP
-            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -398,15 +376,9 @@ protected:
                 std::numeric_limits<float_type>::min());
         }
         else if constexpr (kind == float_kind::f128) {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Woverflow")
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 3.36210314311209350626267781732175260e-4932,
                 std::numeric_limits<float_type>::min());
-            SCN_CLANG_POP
-            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -438,14 +410,8 @@ protected:
                 0x1p-16382, L, std::numeric_limits<float_type>::min());
         }
         else if constexpr (kind == float_kind::f128) {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Woverflow")
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 0x1p-16382, std::numeric_limits<float_type>::min());
-            SCN_CLANG_POP
-            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -480,15 +446,9 @@ protected:
                 std::numeric_limits<float_type>::denorm_min());
         }
         else if constexpr (kind == float_kind::f128) {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Woverflow")
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 6.47517511943802511092443895822764655e-4966,
                 std::numeric_limits<float_type>::denorm_min());
-            SCN_CLANG_POP
-            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -521,14 +481,8 @@ protected:
                 0x1p-16445, L, std::numeric_limits<float_type>::denorm_min());
         }
         else if constexpr (kind == float_kind::f128) {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Woverflow")
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 0x1p-16494, std::numeric_limits<float_type>::denorm_min());
-            SCN_CLANG_POP
-            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -621,15 +575,9 @@ protected:
                 std::numeric_limits<float_type>::max());
         }
         else if constexpr (kind == float_kind::f128) {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Woverflow")
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 1.18973149535723176508575932662800702e+4932,
                 std::numeric_limits<float_type>::max());
-            SCN_CLANG_POP
-            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -663,15 +611,9 @@ protected:
                 std::numeric_limits<float_type>::max());
         }
         else if constexpr (kind == float_kind::f128) {
-            SCN_GCC_PUSH
-            SCN_GCC_IGNORE("-Woverflow")
-            SCN_CLANG_PUSH
-            SCN_CLANG_IGNORE("-Wliteral-range")
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 0x1.ffffffffffffffffffffffffffffp+16383,
                 std::numeric_limits<float_type>::max());
-            SCN_CLANG_POP
-            SCN_GCC_POP
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {

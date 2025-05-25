@@ -4748,8 +4748,6 @@ inline std::wstring get_unescaped_regex_pattern(std::wstring_view pattern)
     return result;
 }
 
-#endif  // !SCN_DISABLE_REGEX
-
 template <typename SourceCharT>
 struct regex_matches_reader
     : public reader_base<regex_matches_reader<SourceCharT>, SourceCharT> {
@@ -4834,6 +4832,8 @@ private:
 
 template <typename CharT>
 struct reader_impl_for_regex_matches : public regex_matches_reader<CharT> {};
+
+#endif  // !SCN_DISABLE_REGEX
 
 /////////////////////////////////////////////////////////////////
 // String reader
@@ -5915,10 +5915,12 @@ constexpr auto make_reader()
                        std::is_same_v<T, std::wstring>) {
         return reader_impl_for_string<CharT>{};
     }
+#if !SCN_DISABLE_REGEX
     else if constexpr (std::is_same_v<T, regex_matches> ||
                        std::is_same_v<T, wregex_matches>) {
         return reader_impl_for_regex_matches<CharT>{};
     }
+#endif
     else if constexpr (std::is_same_v<T, void*>) {
         return reader_impl_for_voidptr<CharT>{};
     }

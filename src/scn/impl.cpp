@@ -765,7 +765,7 @@ public:
                         // xxx.yyy
                         // Non-zero digits before the decimal point,
                         // that determines the base-10 exponent
-                        return {whole_part.size(), 10};
+                        return {static_cast<int>(whole_part.size()), 10};
                     }
 
                     auto decimal_part =
@@ -828,7 +828,9 @@ public:
                     }
 
                     if (!whole_part.empty()) {
-                        return {whole_part.size() + exponent_value, 10};
+                        return {static_cast<int>(whole_part.size()) +
+                                    exponent_value,
+                                10};
                     }
 
                     auto decimal_initial_zeroes_part =
@@ -882,7 +884,9 @@ public:
                     }
 
                     if (!whole_part.empty()) {
-                        return {whole_part.size() + exponent_value / 8, 16};
+                        return {static_cast<int>(whole_part.size()) +
+                                    exponent_value / 8,
+                                16};
                     }
 
                     auto fractional_initial_zeroes_part =

@@ -38,6 +38,10 @@ TEST(FloatTest, FloatWithDoubleSign)
 TEST(FloatTest, Float16)
 {
     auto result = scn::scan<std::float16_t>("3.14", "{}");
+    if (!result &&
+        result.error().code() == scn::scan_error::type_not_supported) {
+        GTEST_SKIP();
+    }
     ASSERT_TRUE(result);
 }
 #endif
@@ -45,6 +49,10 @@ TEST(FloatTest, Float16)
 TEST(FloatTest, Float32)
 {
     auto result = scn::scan<std::float32_t>("3.14", "{}");
+    if (!result &&
+        result.error().code() == scn::scan_error::type_not_supported) {
+        GTEST_SKIP();
+    }
     ASSERT_TRUE(result);
 }
 #endif
@@ -52,6 +60,10 @@ TEST(FloatTest, Float32)
 TEST(FloatTest, Float64)
 {
     auto result = scn::scan<std::float64_t>("3.14", "{}");
+    if (!result &&
+        result.error().code() == scn::scan_error::type_not_supported) {
+        GTEST_SKIP();
+    }
     ASSERT_TRUE(result);
 }
 #endif
@@ -59,6 +71,10 @@ TEST(FloatTest, Float64)
 TEST(FloatTest, Float128)
 {
     auto result = scn::scan<std::float128_t>("3.14", "{}");
+    if (!result &&
+        result.error().code() == scn::scan_error::type_not_supported) {
+        GTEST_SKIP();
+    }
     ASSERT_TRUE(result);
 }
 #endif
@@ -66,6 +82,10 @@ TEST(FloatTest, Float128)
 TEST(FloatTest, BFloat16)
 {
     auto result = scn::scan<std::bfloat16_t>("3.14", "{}");
+    if (!result &&
+        result.error().code() == scn::scan_error::type_not_supported) {
+        GTEST_SKIP();
+    }
     ASSERT_TRUE(result);
 }
 #endif

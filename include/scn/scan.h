@@ -5497,6 +5497,10 @@ enum class arg_type : unsigned char {
 template <typename>
 inline constexpr bool is_type_disabled = SCN_DISABLE_TYPE_CUSTOM;
 
+template <typename CharT>
+inline constexpr bool is_type_disabled<basic_regex_matches<CharT>> =
+    SCN_DISABLE_REGEX;
+
 template <typename T, typename CharT>
 struct arg_type_constant
     : std::integral_constant<arg_type, arg_type::custom_type> {
@@ -5760,6 +5764,7 @@ struct arg_mapper {
         }
     }
 
+#if !SCN_DISABLE_REGEX
     // regex_matches treated as a custom type, not packed,
     // to save bits in the packed value,
     // and since regex reading isn't fast anyway
@@ -5773,12 +5778,13 @@ struct arg_mapper {
             return custom_wrapper<T, Context>{val};
         }
     }
-
-    static unscannable_char map(std::basic_string_view<other_char_type>&)
+    static unscannable_char map(basic_regex_matches<other_char_type>&)
     {
         return {};
     }
-    static unscannable_char map(basic_regex_matches<other_char_type>&)
+#endif
+
+    static unscannable_char map(std::basic_string_view<other_char_type>&)
     {
         return {};
     }
