@@ -228,17 +228,20 @@ protected:
 #define MAKE_PAIR_RETURN_F128(Value) std::pair{Value##L, #Value};
 #endif
 
-#define MAKE_CHECKED_PAIR_RETURN(Value, LiteralSuffix, Check) \
-    []() {                                                    \
-        static_assert(Value##LiteralSuffix == Check);         \
-        return MAKE_PAIR_RETURN(Value, LiteralSuffix);        \
+    template <auto F>
+    static constexpr auto make_dependent = F;
+
+#define MAKE_CHECKED_PAIR_RETURN(Value, LiteralSuffix, Check)         \
+    []() {                                                            \
+        static_assert(Value##LiteralSuffix == make_dependent<Check>); \
+        return MAKE_PAIR_RETURN(Value, LiteralSuffix);                \
     }();
 
 #if SCN_HAS_STD_F128
-#define MAKE_CHECKED_PAIR_RETURN_F128(Value, Check) \
-    []() {                                          \
-        static_assert(Value##F128 == Check);        \
-        return MAKE_PAIR_RETURN_F128(Value);        \
+#define MAKE_CHECKED_PAIR_RETURN_F128(Value, Check)          \
+    []() {                                                   \
+        static_assert(Value##F128 == make_dependent<Check>); \
+        return MAKE_PAIR_RETURN_F128(Value);                 \
     }();
 #else
 #define MAKE_CHECKED_PAIR_RETURN_F128(Value, Check) \

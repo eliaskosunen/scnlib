@@ -86,7 +86,14 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set_source_files_properties(
             impl_tests/float_reader_test.cpp
             PROPERTIES COMPILE_OPTIONS
-            $<$<CXX_COMPILER_ID:Clang>:-Wno-literal-range>
+            -Wno-literal-range
+    )
+endif()
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set_source_files_properties(
+            impl_tests/float_reader_test.cpp
+            PROPERTIES COMPILE_OPTIONS
+            /wd2177 # C2177: constant too big
     )
 endif()
 add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
