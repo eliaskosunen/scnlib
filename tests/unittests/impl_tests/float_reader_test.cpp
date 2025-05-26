@@ -118,8 +118,8 @@ protected:
 
     static constexpr bool is_localized = T::is_localized;
 
-    template <typename CharT>
-    static constexpr bool is_char = std::is_same_v<CharT, char_type>;
+    static constexpr bool is_char = std::is_same_v<char, char_type>;
+    static constexpr bool is_wchar = std::is_same_v<wchar_t, char_type>;
 
     template <typename FloatT>
     static constexpr bool is_type = std::is_same_v<FloatT, float_type>;
@@ -182,7 +182,7 @@ protected:
         float_type value{};
 
         auto result = [&]() {
-            if constexpr (is_char<char>) {
+            if constexpr (is_char) {
                 return tmp_reader.read_default("42.0"sv, value);
             }
             else {
@@ -228,20 +228,17 @@ protected:
 #define MAKE_PAIR_RETURN_F128(Value) std::pair{Value##L, #Value};
 #endif
 
-    template <auto F>
-    static constexpr auto make_dependent = F;
-
-#define MAKE_CHECKED_PAIR_RETURN(Value, LiteralSuffix, Check)         \
-    []() {                                                            \
-        static_assert(Value##LiteralSuffix == make_dependent<Check>); \
-        return MAKE_PAIR_RETURN(Value, LiteralSuffix);                \
+#define MAKE_CHECKED_PAIR_RETURN(Value, LiteralSuffix, Check) \
+    []() {                                                    \
+        static_assert(Value##LiteralSuffix == Check);         \
+        return MAKE_PAIR_RETURN(Value, LiteralSuffix);        \
     }();
 
 #if SCN_HAS_STD_F128
-#define MAKE_CHECKED_PAIR_RETURN_F128(Value, Check)          \
-    []() {                                                   \
-        static_assert(Value##F128 == make_dependent<Check>); \
-        return MAKE_PAIR_RETURN_F128(Value);                 \
+#define MAKE_CHECKED_PAIR_RETURN_F128(Value, Check) \
+    []() {                                          \
+        static_assert(Value##F128 == Check);        \
+        return MAKE_PAIR_RETURN_F128(Value);        \
     }();
 #else
 #define MAKE_CHECKED_PAIR_RETURN_F128(Value, Check) \
@@ -711,7 +708,7 @@ protected:
     template <typename Source>
     void set_source(Source&& s)
     {
-        if constexpr (is_char<char>) {
+        if constexpr (is_char) {
             widened_source = std::string{SCN_FWD(s)};
         }
         else if constexpr (std::is_same_v<
