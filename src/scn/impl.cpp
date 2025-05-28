@@ -804,7 +804,8 @@ public:
                             decimal_point_it);
                     auto decimal_part =
                         detail::make_string_view_from_iterators<char>(
-                            decimal_point_it == exponent_it
+                            detail::to_address(decimal_point_it) ==
+                                    detail::to_address(exponent_it)
                                 ? decimal_point_it
                                 : decimal_point_it + 1,
                             exponent_it);
@@ -861,8 +862,10 @@ public:
                             radix_point_it);
                     auto fractional_part =
                         detail::make_string_view_from_iterators<char>(
-                            radix_point_it == exponent_it ? radix_point_it
-                                                          : radix_point_it + 1,
+                            detail::to_address(radix_point_it) ==
+                                    detail::to_address(exponent_it)
+                                ? radix_point_it
+                                : radix_point_it + 1,
                             exponent_it);
 
                     SCN_EXPECT(exponent_it != input.end());

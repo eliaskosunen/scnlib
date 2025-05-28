@@ -81,6 +81,9 @@ template <typename T>
                    << "lhs bits: " << get_bytes_str(lhs_bits)
                    << " != rhs_bits: " << get_bytes_str(rhs_bits);
         }
+        return testing::AssertionSuccess()
+               << "lhs bits: " << get_bytes_str(lhs_bits)
+               << " != rhs_bits: " << get_bytes_str(rhs_bits);
     }
     else {
         // Discard last six bytes (assuming 80-bit long double)
@@ -93,9 +96,10 @@ template <typename T>
                    << "lhs bits: " << get_bytes_str(lhs_bits)
                    << " != rhs_bits: " << get_bytes_str(rhs_bits);
         }
+        return testing::AssertionSuccess()
+               << "lhs bits: " << get_bytes_str(lhs_bits)
+               << " == rhs_bits: " << get_bytes_str(rhs_bits);
     }
-
-    return testing::AssertionSuccess();
 }
 
 using namespace std::string_view_literals;
@@ -569,6 +573,9 @@ protected:
                 1.79769313486231570814527423731704357e+308, ,
                 std::numeric_limits<float_type>::max());
         }
+        // MSVC hard-errors with these float constants (C2177),
+        // even though we're never hitting this code there
+#if !SCN_MSVC
         else if constexpr (kind == float_kind::f80) {
             return MAKE_CHECKED_PAIR_RETURN(
                 1.18973149535723176502126385303097021e+4932, L,
@@ -579,6 +586,7 @@ protected:
                 1.18973149535723176508575932662800702e+4932,
                 std::numeric_limits<float_type>::max());
         }
+#endif
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
             return MAKE_CHECKED_PAIR_RETURN(
@@ -605,6 +613,7 @@ protected:
                 0x1.fffffffffffffp+1023, ,
                 std::numeric_limits<float_type>::max());
         }
+#if !SCN_MSVC
         else if constexpr (kind == float_kind::f80) {
             return MAKE_CHECKED_PAIR_RETURN(
                 0xf.fffffffffffffffp+16380, L,
@@ -615,6 +624,7 @@ protected:
                 0x1.ffffffffffffffffffffffffffffp+16383,
                 std::numeric_limits<float_type>::max());
         }
+#endif
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
             return MAKE_CHECKED_PAIR_RETURN(
