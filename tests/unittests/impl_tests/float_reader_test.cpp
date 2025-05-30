@@ -112,6 +112,12 @@ using scn::detail::mp_bool;
 using scn::detail::mp_cond;
 using scn::detail::mp_value;
 
+#if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
+inline constexpr bool finite_math_only = true;
+#else
+inline constexpr bool finite_math_only = false;
+#endif
+
 template <typename T>
 class FloatValueReaderTest : public testing::Test {
 protected:
@@ -150,9 +156,10 @@ protected:
         f16,
         f32,
         f64,
-        f80,  // x87
-        f128,
-        bf16,
+        f80,    // x87
+        f128,   // 128-bit ieee float
+        bf16,   // bfloat16
+        f2x64,  // double-double
     };
 
     static constexpr float_kind kind =
@@ -167,7 +174,9 @@ protected:
                 mp_bool<std::numeric_limits<float_type>::digits == 11>,
                 mp_value<float_kind::f16>,
                 mp_bool<std::numeric_limits<float_type>::digits == 8>,
-                mp_value<float_kind::bf16>>::value;
+                mp_value<float_kind::bf16>,
+                mp_bool<std::numeric_limits<float_type>::digits == 106>,
+                mp_value<float_kind::f2x64>>::value;
 
     static_assert(std::numeric_limits<float_type>::is_iec559);
 
@@ -252,7 +261,7 @@ protected:
     }();
 #endif
 
-    constexpr static auto get_subnormal()
+    constexpr static auto get_subnormal_()
         -> std::pair<float_type, std::string_view>
     {
         if constexpr (kind == float_kind::f32) {
@@ -267,6 +276,9 @@ protected:
         else if constexpr (kind == float_kind::f128) {
             return MAKE_PAIR_RETURN_F128(5e-4960);
         }
+        else if constexpr (kind == float_kind::f2x64) {
+            return MAKE_PAIR_RETURN(5e-320, L);
+        }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
             return MAKE_PAIR_RETURN(5e-6, F16);
@@ -279,7 +291,7 @@ protected:
 #endif
         SCN_EXPECT(false);
     }
-    constexpr static auto get_subnormal_hex()
+    constexpr static auto get_subnormal_hex_()
         -> std::pair<float_type, std::string_view>
     {
         if constexpr (kind == float_kind::f32) {
@@ -294,6 +306,9 @@ protected:
         else if constexpr (kind == float_kind::f128) {
             return MAKE_PAIR_RETURN_F128(0x1.2p-16450);
         }
+        else if constexpr (kind == float_kind::f2x64) {
+            return MAKE_PAIR_RETURN(0x1.2p-1050, L);
+        }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
             return MAKE_PAIR_RETURN(0x1.2p-16, F16);
@@ -307,59 +322,106 @@ protected:
         SCN_EXPECT(false);
     }
 
-    constexpr static auto get_subnormal_max()
+    static auto get_subnormal() -> std::pair<float_type, std::string_view>
+    {
+        auto r = get_subnormal_();
+        EXPECT_FALSE(std::isnormal(r.first));
+        return r;
+    }
+    static auto get_subnormal_hex() -> std::pair<float_type, std::string_view>
+    {
+        auto r = get_subnormal_hex_();
+        EXPECT_FALSE(std::isnormal(r.first));
+        return r;
+    }
+
+    constexpr static auto get_subnormal_max_()
         -> std::pair<float_type, std::string_view>
     {
         if constexpr (kind == float_kind::f32) {
-            return MAKE_PAIR_RETURN(1e-38, f);
+            return MAKE_PAIR_RETURN(1.1754942106924410754870294448492873e-38,
+                                    f);
         }
         else if constexpr (kind == float_kind::f64) {
-            return MAKE_PAIR_RETURN(2e-308, );
+            return MAKE_PAIR_RETURN(
+                2.2250738585072008890245868760858599e-308, );
         }
         else if constexpr (kind == float_kind::f80) {
-            return MAKE_PAIR_RETURN(3.2e-4932, L);
+            return MAKE_PAIR_RETURN(3.3621031431120935058981578641335051e-4932,
+                                    L);
         }
         else if constexpr (kind == float_kind::f128) {
-            return MAKE_PAIR_RETURN_F128(3.2e-4932);
+            return MAKE_PAIR_RETURN_F128(
+                3.3621031431120935062626778173217519551e-4932);
+        }
+        else if constexpr (kind == float_kind::f2x64) {
+            return MAKE_PAIR_RETURN(2.2250738585072008890245868760858599e-308,
+                                    L);
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
-            return MAKE_PAIR_RETURN(6e-5, F16);
+            return MAKE_PAIR_RETURN(1.219511032104492e-4, F16);
         }
 #endif
 #if SCN_HAS_STD_BF16
         if constexpr (kind == float_kind::bf16) {
-            return MAKE_PAIR_RETURN(1e-38, BF16);
+            return MAKE_PAIR_RETURN(1.166310801206488e-38, BF16);
         }
 #endif
         SCN_EXPECT(false);
     }
-    constexpr static auto get_subnormal_max_hex()
+    constexpr static auto get_subnormal_max_hex_()
         -> std::pair<float_type, std::string_view>
     {
         if constexpr (kind == float_kind::f32) {
-            return MAKE_PAIR_RETURN(0x1.fp-127, f);
+            return MAKE_PAIR_RETURN(0x1.fffffcp-127, f);
         }
         else if constexpr (kind == float_kind::f64) {
-            return MAKE_PAIR_RETURN(0x1.fp-1023, );
+            return MAKE_PAIR_RETURN(0x1.ffffffffffffep-1023, );
         }
         else if constexpr (kind == float_kind::f80) {
-            return MAKE_PAIR_RETURN(0x1.fp-16383, L);
+            return MAKE_PAIR_RETURN(0x7.fffffffffffffffp-16385, L);
         }
         else if constexpr (kind == float_kind::f128) {
-            return MAKE_PAIR_RETURN_F128(0x1.fp-16383);
+            return MAKE_PAIR_RETURN_F128(
+                0x1.fffffffffffffffffffffffffffep-16383);
+        }
+        else if constexpr (kind == float_kind::f2x64) {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
-            return MAKE_PAIR_RETURN(0x1.fp-15, F16);
+            return MAKE_PAIR_RETURN(0x1.ff8p-15, F16);
         }
 #endif
 #if SCN_HAS_STD_BF16
         if constexpr (kind == float_kind::bf16) {
-            return MAKE_PAIR_RETURN(0x1.fp-127, BF16);
+            return MAKE_PAIR_RETURN(0x1.7cp-127, BF16);
         }
 #endif
         SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    static auto get_subnormal_max() -> std::pair<float_type, std::string_view>
+    {
+        auto r = get_subnormal_max_();
+        EXPECT_FALSE(std::isnormal(r.first));
+        EXPECT_TRUE(check_floating_eq(
+            std::nextafter(r.first, std::numeric_limits<float_type>::max()),
+            std::numeric_limits<float_type>::min()));
+        return r;
+    }
+    static auto get_subnormal_max_hex()
+        -> std::pair<float_type, std::string_view>
+    {
+        auto r = get_subnormal_max_hex_();
+        EXPECT_FALSE(std::isnormal(r.first));
+        EXPECT_TRUE(check_floating_eq(
+            std::nextafter(r.first, std::numeric_limits<float_type>::max()),
+            std::numeric_limits<float_type>::min()));
+        return r;
     }
 
     static auto get_normal_min() -> std::pair<float_type, std::string>
@@ -382,6 +444,11 @@ protected:
         else if constexpr (kind == float_kind::f128) {
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 3.36210314311209350626267781732175260e-4932,
+                std::numeric_limits<float_type>::min());
+        }
+        else if constexpr (kind == float_kind::f2x64) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                2.00416836000897277799610805135016205e-292, L,
                 std::numeric_limits<float_type>::min());
         }
 #if SCN_HAS_STD_F16
@@ -417,6 +484,10 @@ protected:
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 0x1p-16382, std::numeric_limits<float_type>::min());
         }
+        else if constexpr (kind == float_kind::f2x64) {
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
+        }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
             return MAKE_CHECKED_PAIR_RETURN(
@@ -430,6 +501,7 @@ protected:
         }
 #endif
         SCN_EXPECT(false);
+        SCN_UNREACHABLE;
     }
 
     static auto get_subnormal_min() -> std::pair<float_type, std::string>
@@ -452,6 +524,11 @@ protected:
         else if constexpr (kind == float_kind::f128) {
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 6.47517511943802511092443895822764655e-4966,
+                std::numeric_limits<float_type>::denorm_min());
+        }
+        else if constexpr (kind == float_kind::f2x64) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                4.94065645841246544176568792868221372e-324, L,
                 std::numeric_limits<float_type>::denorm_min());
         }
 #if SCN_HAS_STD_F16
@@ -488,6 +565,10 @@ protected:
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 0x1p-16494, std::numeric_limits<float_type>::denorm_min());
         }
+        else if constexpr (kind == float_kind::f2x64) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-1074, L, std::numeric_limits<float_type>::denorm_min());
+        }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
             return MAKE_CHECKED_PAIR_RETURN(
@@ -508,16 +589,15 @@ protected:
         if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "1.0e-90"sv;
         }
-        else if constexpr (kind == float_kind::f64) {
+        else if constexpr (kind == float_kind::f64 ||
+                           kind == float_kind::f2x64) {
             return "5.0e-400"sv;
         }
-        else if constexpr (kind == float_kind::f80) {
+        else if constexpr (kind == float_kind::f80 ||
+                           kind == float_kind::f128) {
             return "4.0e-5500"sv;
         }
-        else if constexpr (kind == float_kind::f128) {
-            return "6.0e-5500"sv;
-        }
-        if constexpr (kind == float_kind::f16) {
+        else if constexpr (kind == float_kind::f16) {
             return "5.0e-16"sv;
         }
         SCN_EXPECT(false);
@@ -527,16 +607,15 @@ protected:
         if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "0x1p-192"sv;
         }
-        else if constexpr (kind == float_kind::f64) {
+        else if constexpr (kind == float_kind::f64 ||
+                           kind == float_kind::f2x64) {
             return "0x1p-1200"sv;
         }
-        else if constexpr (kind == float_kind::f80) {
+        else if constexpr (kind == float_kind::f80 ||
+                           kind == float_kind::f128) {
             return "0x1p-18000"sv;
         }
-        else if constexpr (kind == float_kind::f128) {
-            return "0x1p-18000"sv;
-        }
-        if constexpr (kind == float_kind::f16) {
+        else if constexpr (kind == float_kind::f16) {
             return "0x1p-40"sv;
         }
         SCN_EXPECT(false);
@@ -546,16 +625,15 @@ protected:
         if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "-1.0e-90"sv;
         }
-        else if constexpr (kind == float_kind::f64) {
+        else if constexpr (kind == float_kind::f64 ||
+                           kind == float_kind::f2x64) {
             return "-5.0e-400"sv;
         }
-        else if constexpr (kind == float_kind::f80) {
+        else if constexpr (kind == float_kind::f80 ||
+                           kind == float_kind::f128) {
             return "-4.0e-5500"sv;
         }
-        else if constexpr (kind == float_kind::f128) {
-            return "-6.0e-5500"sv;
-        }
-        if constexpr (kind == float_kind::f16) {
+        else if constexpr (kind == float_kind::f16) {
             return "-5.0e-16"sv;
         }
         SCN_EXPECT(false);
@@ -584,6 +662,11 @@ protected:
         else if constexpr (kind == float_kind::f128) {
             return MAKE_CHECKED_PAIR_RETURN_F128(
                 1.18973149535723176508575932662800702e+4932,
+                std::numeric_limits<float_type>::max());
+        }
+        else if constexpr (kind == float_kind::f2x64) {
+            return MAKE_CHECKED_PAIR_RETURN(
+                1.79769313486231580793728971405301199e+308, L,
                 std::numeric_limits<float_type>::max());
         }
 #endif
@@ -624,6 +707,11 @@ protected:
                 0x1.ffffffffffffffffffffffffffffp+16383,
                 std::numeric_limits<float_type>::max());
         }
+        else if constexpr (kind == float_kind::f2x64) {
+            // I couldn't figure out how to formulate a hexfloat for this
+            SCN_EXPECT(false);
+            SCN_UNREACHABLE;
+        }
 #endif
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -638,6 +726,7 @@ protected:
         }
 #endif
         SCN_EXPECT(false);
+        SCN_UNREACHABLE;
     }
 
     constexpr static std::string_view get_overflow()
@@ -645,7 +734,8 @@ protected:
         if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "4.0e38"sv;
         }
-        else if constexpr (kind == float_kind::f64) {
+        else if constexpr (kind == float_kind::f64 ||
+                           kind == float_kind::f2x64) {
             return "2.0e308"sv;
         }
         else if constexpr (kind == float_kind::f80 ||
@@ -662,7 +752,8 @@ protected:
         if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "0x1p+128"sv;
         }
-        else if constexpr (kind == float_kind::f64) {
+        else if constexpr (kind == float_kind::f64 ||
+                           kind == float_kind::f2x64) {
             return "0x1p+1024"sv;
         }
         else if constexpr (kind == float_kind::f80 ||
@@ -680,7 +771,8 @@ protected:
         if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "-4.0e38"sv;
         }
-        else if constexpr (kind == float_kind::f64) {
+        else if constexpr (kind == float_kind::f64 ||
+                           kind == float_kind::f2x64) {
             return "-2.0e308"sv;
         }
         else if constexpr (kind == float_kind::f80 ||
@@ -697,7 +789,8 @@ protected:
         if constexpr (kind == float_kind::f32 || kind == float_kind::bf16) {
             return "-0x1p+128"sv;
         }
-        else if constexpr (kind == float_kind::f64) {
+        else if constexpr (kind == float_kind::f64 ||
+                           kind == float_kind::f2x64) {
             return "-0x1p+1024"sv;
         }
         else if constexpr (kind == float_kind::f80 ||
@@ -979,14 +1072,22 @@ TYPED_TEST(FloatValueReaderTest, InfinityWithInf)
 {
     auto [a, _, val] = this->simple_success_test("inf");
     EXPECT_TRUE(a);
-    EXPECT_TRUE(std::isinf(val));
+    if constexpr (std::numeric_limits<
+                      typename TestFixture::float_type>::has_infinity &&
+                  !finite_math_only) {
+        EXPECT_TRUE(std::isinf(val));
+    }
     EXPECT_FALSE(std::signbit(val));
 }
 TYPED_TEST(FloatValueReaderTest, InfinityWithNegInfinity)
 {
     auto [a, _, val] = this->simple_success_test("-infinity");
     EXPECT_TRUE(a);
-    EXPECT_TRUE(std::isinf(val));
+    if constexpr (std::numeric_limits<
+                      typename TestFixture::float_type>::has_infinity &&
+                  !finite_math_only) {
+        EXPECT_TRUE(std::isinf(val));
+    }
     EXPECT_TRUE(std::signbit(val));
 }
 
@@ -994,73 +1095,91 @@ TYPED_TEST(FloatValueReaderTest, NaN)
 {
     auto [a, _, val] = this->simple_success_test("nan");
     EXPECT_TRUE(a);
-    EXPECT_TRUE(std::isnan(val));
     EXPECT_FALSE(std::signbit(val));
-    EXPECT_TRUE(
-        check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
+    if constexpr (std::numeric_limits<
+                      typename TestFixture::float_type>::has_quiet_NaN &&
+                  !finite_math_only) {
+        EXPECT_TRUE(std::isnan(val));
+        EXPECT_TRUE(
+            check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
+    }
 }
 TYPED_TEST(FloatValueReaderTest, NaNWithPayload)
 {
     auto [a, _, val] = this->simple_success_test("nan(1234)");
     EXPECT_TRUE(a);
-    EXPECT_TRUE(std::isnan(val));
     EXPECT_FALSE(std::signbit(val));
-    EXPECT_FALSE(
-        check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
-#if SCN_POSIX
-    if constexpr (std::is_same_v<decltype(val), float>) {
-        EXPECT_TRUE(check_nan_eq(val, std::nanf("1234")));
-    }
-    else if constexpr (std::is_same_v<decltype(val), double>) {
-        EXPECT_TRUE(check_nan_eq(val, std::nan("1234")));
-    }
-    else if constexpr (std::is_same_v<decltype(val), long double>) {
-        EXPECT_TRUE(check_nan_eq(val, std::nanl("1234")));
-    }
+    if constexpr (std::numeric_limits<
+                      typename TestFixture::float_type>::has_quiet_NaN &&
+                  !finite_math_only) {
+        EXPECT_TRUE(std::isnan(val));
+#if !SCN_S390  // s390x discards NaN payloads on function return
+        EXPECT_FALSE(
+            check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
 #endif
+#if SCN_POSIX
+        if constexpr (std::is_same_v<decltype(val), float>) {
+            EXPECT_TRUE(check_nan_eq(val, std::nanf("1234")));
+        }
+        else if constexpr (std::is_same_v<decltype(val), double>) {
+            EXPECT_TRUE(check_nan_eq(val, std::nan("1234")));
+        }
+        else if constexpr (std::is_same_v<decltype(val), long double>) {
+            EXPECT_TRUE(check_nan_eq(val, std::nanl("1234")));
+        }
+#endif
+    }
 }
 TYPED_TEST(FloatValueReaderTest, NaNWithEmptyPayload)
 {
     auto [a, _, val] = this->simple_success_test("nan()");
     EXPECT_TRUE(a);
-    EXPECT_TRUE(std::isnan(val));
     EXPECT_FALSE(std::signbit(val));
-    EXPECT_TRUE(
-        check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
+    if constexpr (std::numeric_limits<
+                      typename TestFixture::float_type>::has_quiet_NaN &&
+                  !finite_math_only) {
+        EXPECT_TRUE(std::isnan(val));
+        EXPECT_TRUE(
+            check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
 #if SCN_POSIX
-    if constexpr (std::is_same_v<decltype(val), float>) {
-        EXPECT_TRUE(check_nan_eq(val, std::nanf("")));
-    }
-    else if constexpr (std::is_same_v<decltype(val), double>) {
-        EXPECT_TRUE(check_nan_eq(val, std::nan("")));
-    }
-    else if constexpr (std::is_same_v<decltype(val), long double>) {
-        EXPECT_TRUE(check_nan_eq(val, std::nanl("")));
-    }
+        if constexpr (std::is_same_v<decltype(val), float>) {
+            EXPECT_TRUE(check_nan_eq(val, std::nanf("")));
+        }
+        else if constexpr (std::is_same_v<decltype(val), double>) {
+            EXPECT_TRUE(check_nan_eq(val, std::nan("")));
+        }
+        else if constexpr (std::is_same_v<decltype(val), long double>) {
+            EXPECT_TRUE(check_nan_eq(val, std::nanl("")));
+        }
 #endif
+    }
 }
 TYPED_TEST(FloatValueReaderTest, NanWithNonNumericPayload)
 {
     auto [a, _, val] = this->simple_success_test("nan(HelloWorld)");
     EXPECT_TRUE(a);
-    EXPECT_TRUE(std::isnan(val));
     EXPECT_FALSE(std::signbit(val));
-    EXPECT_TRUE(
-        check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
+    if constexpr (std::numeric_limits<
+                      typename TestFixture::float_type>::has_quiet_NaN &&
+                  !finite_math_only) {
+        EXPECT_TRUE(std::isnan(val));
+        EXPECT_TRUE(
+            check_nan_eq(val, std::numeric_limits<decltype(val)>::quiet_NaN()));
 #if SCN_POSIX
-    if constexpr (std::is_same_v<decltype(val), float>) {
-        EXPECT_TRUE(check_nan_eq(val, std::nanf("")));
-        EXPECT_TRUE(check_nan_eq(val, std::nanf("HelloWorld")));
-    }
-    else if constexpr (std::is_same_v<decltype(val), double>) {
-        EXPECT_TRUE(check_nan_eq(val, std::nan("")));
-        EXPECT_TRUE(check_nan_eq(val, std::nan("HelloWorld")));
-    }
-    else if constexpr (std::is_same_v<decltype(val), long double>) {
-        EXPECT_TRUE(check_nan_eq(val, std::nanl("")));
-        EXPECT_TRUE(check_nan_eq(val, std::nanl("HelloWorld")));
-    }
+        if constexpr (std::is_same_v<decltype(val), float>) {
+            EXPECT_TRUE(check_nan_eq(val, std::nanf("")));
+            EXPECT_TRUE(check_nan_eq(val, std::nanf("HelloWorld")));
+        }
+        else if constexpr (std::is_same_v<decltype(val), double>) {
+            EXPECT_TRUE(check_nan_eq(val, std::nan("")));
+            EXPECT_TRUE(check_nan_eq(val, std::nan("HelloWorld")));
+        }
+        else if constexpr (std::is_same_v<decltype(val), long double>) {
+            EXPECT_TRUE(check_nan_eq(val, std::nanl("")));
+            EXPECT_TRUE(check_nan_eq(val, std::nanl("HelloWorld")));
+        }
 #endif
+    }
 }
 
 TYPED_TEST(FloatValueReaderTest, Overflow)
@@ -1087,7 +1206,7 @@ TYPED_TEST(FloatValueReaderTest, SubnormalFromHex)
     EXPECT_TRUE(check_floating_eq(val, orig_val));
 }
 
-TYPED_TEST(FloatValueReaderTest, LargeSubnormal)
+TYPED_TEST(FloatValueReaderTest, MaximumSubnormal)
 {
     const auto [orig_val, source] = this->get_subnormal_max();
     auto [a, _, val] = this->simple_success_test(source);
@@ -1095,8 +1214,12 @@ TYPED_TEST(FloatValueReaderTest, LargeSubnormal)
     EXPECT_FALSE(std::isnormal(val));
     EXPECT_TRUE(check_floating_eq(val, orig_val));
 }
-TYPED_TEST(FloatValueReaderTest, LargeSubnormalFromHex)
+TYPED_TEST(FloatValueReaderTest, MaximumSubnormalFromHex)
 {
+    if constexpr (TestFixture::kind == TestFixture::float_kind::f2x64) {
+        GTEST_SKIP()
+            << "MaximumSubnormalFromHex not supported for double-double";
+    }
     const auto [orig_val, source] = this->get_subnormal_max_hex();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
@@ -1114,6 +1237,9 @@ TYPED_TEST(FloatValueReaderTest, MinimumNormal)
 }
 TYPED_TEST(FloatValueReaderTest, MinimumNormalFromHex)
 {
+    if constexpr (TestFixture::kind == TestFixture::float_kind::f2x64) {
+        GTEST_SKIP() << "MinimumNormalFromHex not supported for double-double";
+    }
     const auto [orig_val, source] = this->get_normal_min_hex();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
@@ -1167,6 +1293,9 @@ TYPED_TEST(FloatValueReaderTest, Maximum)
 }
 TYPED_TEST(FloatValueReaderTest, MaximumFromHex)
 {
+    if constexpr (TestFixture::kind == TestFixture::float_kind::f2x64) {
+        GTEST_SKIP() << "MaximumFromHex not supported for double-double";
+    }
     const auto [orig_val, source] = this->get_maximum_hex();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);

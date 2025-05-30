@@ -336,15 +336,512 @@ scan_error handle_error(scan_error e)
 /////////////////////////////////////////////////////////////////
 
 namespace impl {
+
 namespace {
+
+template <typename F>
+struct float_traits;
+
+template <>
+struct float_traits<float> {
+    using type = float;
+
+    struct value_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 8;
+        unsigned mantissa : 23;
+#else
+        unsigned mantissa : 23;
+        unsigned exponent : 8;
+        unsigned negative : 1;
+#endif
+    };
+
+    struct nan_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 8;
+        unsigned quiet_nan : 1;
+        unsigned mantissa : 22;
+#else
+        unsigned mantissa : 22;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 8;
+        unsigned negative : 1;
+#endif
+    };
+
+    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == 0xff);
+        r.mantissa = payload;
+    }
+};
+
+template <>
+struct float_traits<double> {
+    using type = double;
+
+    struct value_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 11;
+        unsigned mantissa0 : 20;
+        unsigned mantissa1 : 32;
+#elif SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned mantissa0 : 20;
+        unsigned exponent : 11;
+        unsigned negative : 1;
+        unsigned mantissa1 : 32;
+#else
+        unsigned mantissa1 : 32;
+        unsigned mantissa0 : 20;
+        unsigned exponent : 11;
+        unsigned negative : 1;
+#endif
+    };
+
+    struct nan_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 11;
+        unsigned quiet_nan : 1;
+        unsigned mantissa0 : 19;
+        unsigned mantissa1 : 32;
+#elif SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned mantissa0 : 19;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 11;
+        unsigned negative : 1;
+        unsigned mantissa1 : 32;
+#else
+        unsigned mantissa1 : 32;
+        unsigned mantissa0 : 19;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 11;
+        unsigned negative : 1;
+#endif
+    };
+
+    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 11u) - 1u);
+        r.mantissa0 = payload >> 32;
+        r.mantissa1 = payload;
+    }
+};
+
+struct float_traits_x87 {
+    using type = long double;
+
+    struct value_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned padding : 16;
+        unsigned negative : 1;
+        unsigned exponent : 15;
+        unsigned one : 1;
+        unsigned mantissa0 : 31;
+        unsigned mantissa1 : 32;
+#elif SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned exponent : 15;
+        unsigned negative : 1;
+        unsigned padding : 16;
+        unsigned mantissa0 : 31;
+        unsigned one : 1;
+        unsigned mantissa1 : 32;
+#else
+        unsigned mantissa1 : 32;
+        unsigned mantissa0 : 31;
+        unsigned one : 1;
+        unsigned exponent : 15;
+        unsigned negative : 1;
+        unsigned padding : 16;
+#endif
+    };
+
+    struct nan_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned padding : 16;
+        unsigned negative : 1;
+        unsigned exponent : 15;
+        unsigned one : 1;
+        unsigned quiet_nan : 1;
+        unsigned mantissa0 : 30;
+        unsigned mantissa1 : 32;
+#elif SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned exponent : 15;
+        unsigned negative : 1;
+        unsigned padding : 16;
+        unsigned mantissa0 : 30;
+        unsigned quiet_nan : 1;
+        unsigned one : 1;
+        unsigned mantissa1 : 32;
+#else
+        unsigned mantissa1 : 32;
+        unsigned mantissa0 : 30;
+        unsigned quiet_nan : 1;
+        unsigned one : 1;
+        unsigned exponent : 15;
+        unsigned negative : 1;
+        unsigned padding : 16;
+#endif
+    };
+
+    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
+        r.mantissa0 = payload >> 32;
+        r.mantissa1 = payload;
+    }
+};
+
+struct float_traits_binary128 {
+    using type = long double;
+
+    struct value_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 15;
+        unsigned mantissa0 : 16;
+        unsigned mantissa1 : 32;
+        unsigned mantissa2 : 32;
+        unsigned mantissa3 : 32;
+#elif SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned mantissa0 : 16;
+        unsigned exponent : 15;
+        unsigned negative : 1;
+        unsigned mantissa1 : 32;
+        unsigned mantissa2 : 32;
+        unsigned mantissa3 : 32;
+#else
+        unsigned mantissa3 : 32;
+        unsigned mantissa2 : 32;
+        unsigned mantissa1 : 32;
+        unsigned mantissa0 : 16;
+        unsigned exponent : 15;
+        unsigned negative : 1;
+#endif
+    };
+
+    struct nan_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 15;
+        unsigned quiet_nan : 1;
+        unsigned mantissa0 : 15;
+        unsigned mantissa1 : 32;
+        unsigned mantissa2 : 32;
+        unsigned mantissa3 : 32;
+#elif SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned mantissa0 : 15;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 15;
+        unsigned negative : 1;
+        unsigned mantissa1 : 32;
+        unsigned mantissa2 : 32;
+        unsigned mantissa3 : 32;
+#else
+        unsigned mantissa3 : 32;
+        unsigned mantissa2 : 32;
+        unsigned mantissa1 : 32;
+        unsigned mantissa0 : 15;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 15;
+        unsigned negative : 1;
+#endif
+    };
+
+    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
+        r.mantissa0 = 0;
+        r.mantissa1 = 0;
+        r.mantissa2 = payload >> 32;
+        r.mantissa3 = payload;
+    }
+
+#if SCN_HAS_INT128
+    static void apply_nan_payload(nan_repr& r, uint128 payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
+        r.mantissa0 = payload >> 96;
+        r.mantissa1 = payload >> 64;
+        r.mantissa2 = payload >> 32;
+        r.mantissa3 = payload;
+    }
+#endif
+};
+
+struct float_traits_doubledouble {
+    using type = long double;
+
+    struct value_repr {
+        float_traits<double>::nan_repr high;
+        float_traits<double>::nan_repr low;
+    };
+
+    using nan_repr = value_repr;
+
+    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    {
+        // -2, because of the implicit +1,
+        // and the bit for signaling/quiet NaN
+        static constexpr auto high_bits =
+            std::numeric_limits<double>::digits - 2;
+        float_traits<double>::apply_nan_payload(r.high, payload);
+        float_traits<double>::apply_nan_payload(r.low, payload >> high_bits);
+    }
+
+#if SCN_HAS_INT128
+    static void apply_nan_payload(nan_repr& r, uint128 payload)
+    {
+        // -2, because of the implicit +1,
+        // and the bit for signaling/quiet NaN
+        static constexpr auto high_bits =
+            std::numeric_limits<double>::digits - 2;
+        float_traits<double>::apply_nan_payload(r.high, payload);
+        r.low.quiet_nan = 1;
+        r.low.exponent = (1u << 11u) - 1u;
+        float_traits<double>::apply_nan_payload(r.low, payload >> high_bits);
+    }
+#endif
+};
+
+struct nil_float_traits {};
+
+using detail::mp_bool;
+using detail::mp_cond;
+using float_traits_for_long_double = mp_cond<
+    // long double is equivalent to a double,
+    // true on (non-mingw) Windows, Arm32, and Apple Arm64
+    mp_bool<sizeof(double) == sizeof(long double)>,
+    float_traits<double>,
+    // x87 long double, on non-Windows x86
+    mp_bool<std::numeric_limits<long double>::digits == 64>,
+    float_traits_x87,
+    // binary128 long double,
+    // true on non-Apple non-Windows Arm64
+    mp_bool<std::numeric_limits<long double>::digits == 113>,
+    float_traits_binary128,
+    // double-double (two regular doubles next to each other),
+    // true on PowerPC
+    mp_bool<std::numeric_limits<long double>::digits == 106>,
+    float_traits_doubledouble,
+    // Exotic long double, no payload setting support
+    mp_bool<true>,
+    nil_float_traits>;
+
+template <>
+struct float_traits<long double> : float_traits_for_long_double {
+    using type = long double;
+};
+
+#if SCN_HAS_STD_F16
+template <>
+struct float_traits<std::float16_t> {
+    using type = std::float16_t;
+
+    struct value_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 5;
+        unsigned mantissa : 10;
+#else
+        unsigned mantissa : 10;
+        unsigned exponent : 5;
+        unsigned negative : 1;
+#endif
+    };
+
+    struct nan_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 5;
+        unsigned quiet_nan : 1;
+        unsigned mantissa : 9;
+#else
+        unsigned mantissa : 9;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 5;
+        unsigned negative : 1;
+#endif
+    };
+
+    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 5u) - 1u);
+        r.mantissa = payload;
+    }
+};
+#endif
+
+#if SCN_HAS_STD_F32
+template <>
+struct float_traits<std::float32_t> : float_traits<float> {
+    using type = std::float32_t;
+};
+#endif
+
+#if SCN_HAS_STD_F64
+template <>
+struct float_traits<std::float64_t> : float_traits<double> {
+    using type = std::float64_t;
+};
+#endif
+
+#if SCN_HAS_STD_F128
+template <>
+struct float_traits<std::float128_t> : float_traits_binary128 {
+    using type = std::float128_t;
+};
+#endif
+
+#if SCN_HAS_STD_BF16
+template <>
+struct float_traits<std::bfloat16_t> {
+    using type = std::bfloat16_t;
+
+    struct value_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 8;
+        unsigned mantissa : 7;
+#else
+        unsigned mantissa : 7;
+        unsigned exponent : 8;
+        unsigned negative : 1;
+#endif
+    };
+
+    struct nan_repr {
+#if SCN_IS_BIG_ENDIAN
+        unsigned negative : 1;
+        unsigned exponent : 8;
+        unsigned quiet_nan : 1;
+        unsigned mantissa : 6;
+#else
+        unsigned mantissa : 6;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 8;
+        unsigned negative : 1;
+#endif
+    };
+
+    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    {
+        SCN_EXPECT(r.quiet_nan == 1);
+        SCN_EXPECT(r.exponent == (1u << 8u) - 1u);
+        r.mantissa = payload;
+    }
+};
+#endif
+
+// Detect +0.0, -0.0, +inf, and -inf, despite stuff like -ffast-math
+
 SCN_GCC_COMPAT_PUSH
 SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
-template <typename F>
-constexpr bool is_float_zero(F f)
+
+template <typename T>
+[[nodiscard]]
+bool is_float_any_zero(T value)
 {
-    return f == static_cast<F>(0.0) || f == static_cast<F>(-0.0);
+    return value == static_cast<T>(0.0) || value == static_cast<T>(-0.0);
 }
-SCN_GCC_COMPAT_POP
+
+template <typename T>
+[[nodiscard]]
+bool is_float_positive_zero(T value)
+{
+#if defined(__NO_SIGNED_ZEROS__) && __NO_SIGNED_ZEROS__
+    using repr = typename float_traits<T>::value_repr;
+    repr expected{};
+    repr received{};
+    std::memcpy(&received, &value, sizeof(repr));
+    if constexpr (std::is_base_of_v<float_traits_x87, float_traits<T>>) {
+        received.padding = 0;
+    }
+    return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+#else
+    return value == static_cast<T>(0.0);
+#endif
+}
+template <typename T>
+[[nodiscard]]
+bool is_float_negative_zero(T value)
+{
+#if defined(__NO_SIGNED_ZEROS__) && __NO_SIGNED_ZEROS__
+    using repr = typename float_traits<T>::value_repr;
+    repr expected{};
+    expected.negative = 1;
+    repr received{};
+    std::memcpy(&received, &value, sizeof(repr));
+    if constexpr (std::is_base_of_v<float_traits_x87, float_traits<T>>) {
+        received.padding = 0;
+    }
+    return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+#else
+    return value == static_cast<T>(-0.0);
+#endif
+}
+
+template <typename T>
+[[nodiscard]]
+bool is_float_positive_infinity(T value)
+{
+    if constexpr (std::numeric_limits<T>::has_infinity) {
+#if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
+        using repr = typename float_traits<T>::value_repr;
+        repr expected{};
+        expected.exponent = std::numeric_limits<unsigned>::max();
+        repr received{};
+        std::memcpy(&received, &value, sizeof(repr));
+        if constexpr (std::is_base_of_v<float_traits_x87, float_traits<T>>) {
+            expected.one = 1;
+            received.padding = 0;
+        }
+        return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+#else
+        return value == std::numeric_limits<T>::infinity();
+#endif
+    }
+    else {
+        return false;
+    }
+}
+template <typename T>
+[[nodiscard]]
+bool is_float_negative_infinity(T value)
+{
+    if constexpr (std::numeric_limits<T>::has_infinity) {
+#if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
+        using repr = typename float_traits<T>::value_repr;
+        repr expected{};
+        expected.exponent = std::numeric_limits<unsigned>::max();
+        expected.negative = 1;
+        repr received{};
+        std::memcpy(&received, &value, sizeof(repr));
+        if constexpr (std::is_base_of_v<float_traits_x87, float_traits<T>>) {
+            expected.one = 1;
+            received.padding = 0;
+        }
+        return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+#else
+        return value == -std::numeric_limits<T>::infinity();
+#endif
+    }
+    else {
+        return false;
+    }
+}
+
+SCN_GCC_COMPAT_POP // -Wfloat-equal
 
 template <typename CharT>
 struct impl_init_data {
@@ -410,7 +907,7 @@ struct strtod_impl_base {
                                                   int c_errno,
                                                   T value) const
     {
-        if (is_float_zero(value) && chars_read == 0) {
+        if (is_float_any_zero(value) && chars_read == 0) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
@@ -426,24 +923,24 @@ struct strtod_impl_base {
                 "but they're disallowed by the format string");
         }
 
-        if (c_errno == ERANGE && value == static_cast<T>(0.0)) {
+        if (c_errno == ERANGE && is_float_positive_zero(value)) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::value_positive_underflow,
                 "strtod failed: Value too small");
         }
-        if (c_errno == ERANGE && value == static_cast<T>(-0.0)) {
+        if (c_errno == ERANGE && is_float_negative_zero(value)) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::value_negative_underflow,
                 "strtod failed: Value too small");
         }
 
-        // This doesn't set ERANGE,
-        // so we need to check whether we were expecting infinity
+        // This doesn't set ERANGE on all C standard library implementations,
+        // so we need to check whether we were actually expecting infinity
         if (m_kind != float_reader_base::float_kind::inf_short &&
             m_kind != float_reader_base::float_kind::inf_long &&
-            value == std::numeric_limits<T>::infinity()) {
+            is_float_positive_infinity(value)) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::value_positive_overflow,
@@ -451,7 +948,7 @@ struct strtod_impl_base {
         }
         if (m_kind != float_reader_base::float_kind::inf_short &&
             m_kind != float_reader_base::float_kind::inf_long &&
-            value == -std::numeric_limits<T>::infinity()) {
+            is_float_negative_infinity(value)) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::value_negative_overflow,
@@ -1032,12 +1529,12 @@ struct fast_float_impl : fast_float_impl_base {
             // and these errors are turned into their negative counterparts,
             // if necessary.
 
-            if (value == std::numeric_limits<T>::infinity()) {
+            if (is_float_positive_infinity(value)) {
                 return detail::unexpected_scan_error(
                     scan_error::value_positive_overflow,
                     "fast_float: result_out_of_range, value too large");
             }
-            if (value == static_cast<T>(0.0)) {
+            if (is_float_any_zero(value)) {
                 return detail::unexpected_scan_error(
                     scan_error::value_positive_underflow,
                     "fast_float: result_out_of_range, value too small");
@@ -1098,275 +1595,22 @@ struct fast_float_impl_traits {
 // Dispatch implementation
 ////////////////////////////////////////////////////////////////////
 
-template <typename F>
-struct float_nan_traits;
-
-template <>
-struct float_nan_traits<float> {
-    using type = float;
-
-    struct repr {
-#if SCN_IS_BIG_ENDIAN
-        unsigned negative : 1;
-        unsigned exponent : 8;
-        unsigned quiet_nan : 1;
-        unsigned mantissa : 22;
-#else
-        unsigned mantissa : 22;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 8;
-        unsigned negative : 1;
-#endif
-    };
-
-    static void apply(repr& r, std::uint64_t payload)
-    {
-        SCN_EXPECT(r.quiet_nan == 1);
-        SCN_EXPECT(r.exponent == 0xff);
-        r.mantissa = payload;
-    }
-};
-
-template <>
-struct float_nan_traits<double> {
-    using type = double;
-
-    struct repr {
-#if SCN_IS_BIG_ENDIAN
-        unsigned negative : 1;
-        unsigned exponent : 11;
-        unsigned quiet_nan : 1;
-        unsigned mantissa0 : 19;
-        unsigned mantissa1 : 32;
-#elif SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned mantissa0 : 19;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 11;
-        unsigned negative : 1;
-        unsigned mantissa1 : 32;
-#else
-        unsigned mantissa1 : 32;
-        unsigned mantissa0 : 19;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 11;
-        unsigned negative : 1;
-#endif
-    };
-
-    static void apply(repr& r, std::uint64_t payload)
-    {
-        SCN_EXPECT(r.quiet_nan == 1);
-        SCN_EXPECT(r.exponent == (1u << 11u) - 1u);
-        r.mantissa0 = payload >> 32;
-        r.mantissa1 = payload;
-    }
-};
-
-struct float_nan_traits_x87 {
-    using type = long double;
-
-    struct repr {
-#if SCN_IS_BIG_ENDIAN
-        unsigned padding : 16;
-        unsigned negative : 1;
-        unsigned exponent : 15;
-        unsigned one : 1;
-        unsigned quiet_nan : 1;
-        unsigned mantissa0 : 30;
-        unsigned mantissa1 : 32;
-#elif SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned exponent : 15;
-        unsigned negative : 1;
-        unsigned padding : 16;
-        unsigned mantissa0 : 30;
-        unsigned quiet_nan : 1;
-        unsigned one : 1;
-        unsigned mantissa1 : 32;
-#else
-        unsigned mantissa1 : 32;
-        unsigned mantissa0 : 30;
-        unsigned quiet_nan : 1;
-        unsigned one : 1;
-        unsigned exponent : 15;
-        unsigned negative : 1;
-        unsigned padding : 16;
-#endif
-    };
-
-    static void apply(repr& r, std::uint64_t payload)
-    {
-        SCN_EXPECT(r.quiet_nan == 1);
-        SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
-        r.mantissa0 = payload >> 32;
-        r.mantissa1 = payload;
-    }
-};
-
-struct float_nan_traits_binary128 {
-    using type = long double;
-
-    struct repr {
-#if SCN_IS_BIG_ENDIAN
-        unsigned negative : 1;
-        unsigned exponent : 15;
-        unsigned quiet_nan : 1;
-        unsigned mantissa0 : 15;
-        unsigned mantissa1 : 32;
-        unsigned mantissa2 : 32;
-        unsigned mantissa3 : 32;
-#elif SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned mantissa0 : 15;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 15;
-        unsigned negative : 1;
-        unsigned mantissa1 : 32;
-        unsigned mantissa2 : 32;
-        unsigned mantissa3 : 32;
-#else
-        unsigned mantissa3 : 32;
-        unsigned mantissa2 : 32;
-        unsigned mantissa1 : 32;
-        unsigned mantissa0 : 15;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 15;
-        unsigned negative : 1;
-#endif
-    };
-
-    static void apply(repr& r, std::uint64_t payload)
-    {
-        SCN_EXPECT(r.quiet_nan == 1);
-        SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
-        r.mantissa0 = 0;
-        r.mantissa1 = 0;
-        r.mantissa2 = payload >> 32;
-        r.mantissa3 = payload;
-    }
-
-#if SCN_HAS_INT128
-    static void apply(repr& r, uint128 payload)
-    {
-        SCN_EXPECT(r.quiet_nan == 1);
-        SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
-        r.mantissa0 = payload >> 96;
-        r.mantissa1 = payload >> 64;
-        r.mantissa2 = payload >> 32;
-        r.mantissa3 = payload;
-    }
-#endif
-};
-
-struct nil_float_nan_traits {};
-
-using float_nan_traits_for_long_double = std::conditional_t<
-    sizeof(double) == sizeof(long double),
-    // long double is equivalent to a double,
-    // true on (non-mingw) Windows, Arm32, and Apple Arm64
-    float_nan_traits<double>,
-    std::conditional_t<
-        std::numeric_limits<long double>::digits == 64,
-        // x87 long double, on non-Windows x86
-        float_nan_traits_x87,
-        std::conditional_t<std::numeric_limits<long double>::digits == 113,
-                           // binary128 long double,
-                           // true on non-Apple non-Windows Arm64
-                           float_nan_traits_binary128,
-                           // Exotic long double, no payload setting support
-                           nil_float_nan_traits>>>;
-
-template <>
-struct float_nan_traits<long double> : float_nan_traits_for_long_double {
-    using type = long double;
-};
-
-#if SCN_HAS_STD_F16
-template <>
-struct float_nan_traits<std::float16_t> {
-    using type = std::float16_t;
-
-    struct repr {
-#if SCN_IS_BIG_ENDIAN
-        unsigned negative : 1;
-        unsigned exponent : 5;
-        unsigned quiet_nan : 1;
-        unsigned mantissa : 9;
-#else
-        unsigned mantissa : 9;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 5;
-        unsigned negative : 1;
-#endif
-    };
-
-    static void apply(repr& r, std::uint64_t payload)
-    {
-        SCN_EXPECT(r.quiet_nan == 1);
-        SCN_EXPECT(r.exponent == (1u << 5u) - 1u);
-        r.mantissa = payload;
-    }
-};
-#endif
-
-#if SCN_HAS_STD_F32
-template <>
-struct float_nan_traits<std::float32_t> : float_nan_traits<float> {
-    using type = std::float32_t;
-};
-#endif
-
-#if SCN_HAS_STD_F64
-template <>
-struct float_nan_traits<std::float64_t> : float_nan_traits<double> {
-    using type = std::float64_t;
-};
-#endif
-
-#if SCN_HAS_STD_F128
-template <>
-struct float_nan_traits<std::float128_t> : float_nan_traits_binary128 {
-    using type = std::float128_t;
-};
-#endif
-
-#if SCN_HAS_STD_BF16
-template <>
-struct float_nan_traits<std::bfloat16_t> {
-    using type = std::bfloat16_t;
-
-    struct repr {
-#if SCN_IS_BIG_ENDIAN
-        unsigned negative : 1;
-        unsigned exponent : 8;
-        unsigned quiet_nan : 1;
-        unsigned mantissa : 6;
-#else
-        unsigned mantissa : 6;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 8;
-        unsigned negative : 1;
-#endif
-    };
-
-    static void apply(repr& r, std::uint64_t payload)
-    {
-        SCN_EXPECT(r.quiet_nan == 1);
-        SCN_EXPECT(r.exponent == (1u << 8u) - 1u);
-        r.mantissa = payload;
-    }
-};
-#endif
-
 template <typename F, typename Payload>
 void apply_nan_payload(F& value, Payload payload)
 {
     if constexpr (!std::is_same_v<F, long double> ||
-                  !std::is_same_v<float_nan_traits_for_long_double,
-                                  nil_float_nan_traits>) {
-        using traits = float_nan_traits<F>;
-        typename traits::repr bits{};
+                  !std::is_same_v<float_traits_for_long_double,
+                                  nil_float_traits>) {
+        using traits = float_traits<F>;
+        typename traits::nan_repr bits{};
         std::memcpy(&bits, &value, sizeof(bits));
-        traits::apply(bits, payload);
+        traits::apply_nan_payload(bits, payload);
         std::memcpy(&value, &bits, sizeof(bits));
+    }
+    else {
+        static_assert(detail::dependent_false<F, float_traits_for_long_double,
+                                              Payload>::value,
+                      "");
     }
 }
 

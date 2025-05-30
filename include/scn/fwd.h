@@ -1295,7 +1295,7 @@ struct tag_type {
     using type = T;
 };
 
-template <typename>
+template <typename...>
 struct dependent_false : std::false_type {};
 
 template <typename T>
