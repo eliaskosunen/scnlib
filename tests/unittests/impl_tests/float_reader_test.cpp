@@ -355,7 +355,7 @@ protected:
                 3.3621031431120935062626778173217519551e-4932);
         }
         else if constexpr (kind == float_kind::f2x64) {
-            return MAKE_PAIR_RETURN(2.2250738585072008890245868760858599e-308,
+            return MAKE_PAIR_RETURN(2.004168360008972777996108051350113e-292,
                                     L);
         }
 #if SCN_HAS_STD_F16
@@ -387,8 +387,7 @@ protected:
                 0x1.fffffffffffffffffffffffffffep-16383);
         }
         else if constexpr (kind == float_kind::f2x64) {
-            SCN_EXPECT(false);
-            SCN_UNREACHABLE;
+            return MAKE_PAIR_RETURN(0x1.ffffffffffffffffffffffffffp-970, L);
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -485,8 +484,8 @@ protected:
                 0x1p-16382, std::numeric_limits<float_type>::min());
         }
         else if constexpr (kind == float_kind::f2x64) {
-            SCN_EXPECT(false);
-            SCN_UNREACHABLE;
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1p-969, L, std::numeric_limits<float_type>::min());
         }
 #if SCN_HAS_STD_F16
         if constexpr (kind == float_kind::f16) {
@@ -528,7 +527,7 @@ protected:
         }
         else if constexpr (kind == float_kind::f2x64) {
             return MAKE_CHECKED_PAIR_RETURN(
-                4.94065645841246544176568792868221372e-324, L,
+                4.940656458412465441765687928682214e-324, L,
                 std::numeric_limits<float_type>::denorm_min());
         }
 #if SCN_HAS_STD_F16
@@ -666,7 +665,7 @@ protected:
         }
         else if constexpr (kind == float_kind::f2x64) {
             return MAKE_CHECKED_PAIR_RETURN(
-                1.79769313486231580793728971405301199e+308, L,
+                1.797693134862315807937289714053012e+308, L,
                 std::numeric_limits<float_type>::max());
         }
 #endif
@@ -708,9 +707,9 @@ protected:
                 std::numeric_limits<float_type>::max());
         }
         else if constexpr (kind == float_kind::f2x64) {
-            // I couldn't figure out how to formulate a hexfloat for this
-            SCN_EXPECT(false);
-            SCN_UNREACHABLE;
+            return MAKE_CHECKED_PAIR_RETURN(
+                0x1.fffffffffffff7ffffffffffff8p+1023, L,
+                std::numeric_limits<float_type>::max());
         }
 #endif
 #if SCN_HAS_STD_F16
@@ -1216,10 +1215,6 @@ TYPED_TEST(FloatValueReaderTest, MaximumSubnormal)
 }
 TYPED_TEST(FloatValueReaderTest, MaximumSubnormalFromHex)
 {
-    if constexpr (TestFixture::kind == TestFixture::float_kind::f2x64) {
-        GTEST_SKIP()
-            << "MaximumSubnormalFromHex not supported for double-double";
-    }
     const auto [orig_val, source] = this->get_subnormal_max_hex();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
@@ -1237,9 +1232,6 @@ TYPED_TEST(FloatValueReaderTest, MinimumNormal)
 }
 TYPED_TEST(FloatValueReaderTest, MinimumNormalFromHex)
 {
-    if constexpr (TestFixture::kind == TestFixture::float_kind::f2x64) {
-        GTEST_SKIP() << "MinimumNormalFromHex not supported for double-double";
-    }
     const auto [orig_val, source] = this->get_normal_min_hex();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
@@ -1293,9 +1285,6 @@ TYPED_TEST(FloatValueReaderTest, Maximum)
 }
 TYPED_TEST(FloatValueReaderTest, MaximumFromHex)
 {
-    if constexpr (TestFixture::kind == TestFixture::float_kind::f2x64) {
-        GTEST_SKIP() << "MaximumFromHex not supported for double-double";
-    }
     const auto [orig_val, source] = this->get_maximum_hex();
     auto [a, _, val] = this->simple_success_test(source);
     EXPECT_TRUE(a);
