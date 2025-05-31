@@ -799,7 +799,10 @@ bool is_float_positive_infinity(T value)
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
         using repr = typename float_traits<T>::value_repr;
         repr expected{};
-        expected.exponent = -1;
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Woverflow")
+        expected.exponent = std::numeric_limits<unsigned>::max();
+        SCN_GCC_POP
         repr received{};
         std::memcpy(&received, &value, sizeof(repr));
         if constexpr (std::is_base_of_v<float_traits_x87, float_traits<T>>) {
@@ -823,7 +826,10 @@ bool is_float_negative_infinity(T value)
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
         using repr = typename float_traits<T>::value_repr;
         repr expected{};
-        expected.exponent = -1;
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Woverflow")
+        expected.exponent = std::numeric_limits<unsigned>::max();
+        SCN_GCC_POP
         expected.negative = 1;
         repr received{};
         std::memcpy(&received, &value, sizeof(repr));
@@ -841,7 +847,7 @@ bool is_float_negative_infinity(T value)
     }
 }
 
-SCN_GCC_COMPAT_POP // -Wfloat-equal
+SCN_GCC_COMPAT_POP;  // -Wfloat-equal
 
 template <typename CharT>
 struct impl_init_data {
