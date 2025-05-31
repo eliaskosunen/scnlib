@@ -799,7 +799,7 @@ bool is_float_positive_infinity(T value)
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
         using repr = typename float_traits<T>::value_repr;
         repr expected{};
-        expected.exponent = std::numeric_limits<unsigned>::max();
+        expected.exponent = -1;
         repr received{};
         std::memcpy(&received, &value, sizeof(repr));
         if constexpr (std::is_base_of_v<float_traits_x87, float_traits<T>>) {
@@ -823,7 +823,7 @@ bool is_float_negative_infinity(T value)
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
         using repr = typename float_traits<T>::value_repr;
         repr expected{};
-        expected.exponent = std::numeric_limits<unsigned>::max();
+        expected.exponent = -1;
         expected.negative = 1;
         repr received{};
         std::memcpy(&received, &value, sizeof(repr));
@@ -1856,6 +1856,8 @@ SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, double)
 SCN_DEFINE_FLOAT_READER_TEMPLATE(char, long double)
 SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, long double)
 #endif
+
+// C++23 extended float types:
 
 #if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
 SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::float16_t)
