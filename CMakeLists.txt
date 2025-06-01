@@ -86,6 +86,19 @@ target_include_directories(scn_internal
 )
 set_interface_flags(scn_internal)
 
+option(SCNLIB_BUILD_MODULES "Build C++ modules support" OFF)
+
+if(SCNLIB_BUILD_MODULES)
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.28)
+        message(STATUS "Building scnlib C++ modules (CMake ${CMAKE_VERSION} supports modules)")
+        add_subdirectory(src/modules)
+    else()
+        message(WARNING "Skipping scnlib C++ modules (requires CMake 3.28+, found ${CMAKE_VERSION})")
+    endif()
+else()
+    message(STATUS "scnlib C++ modules support is disabled. Enable with -DSCNLIB_BUILD_MODULES=ON")
+endif()
+
 add_subdirectory(scripts)
 
 add_subdirectory(benchmark)
