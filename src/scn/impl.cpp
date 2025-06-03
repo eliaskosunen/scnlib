@@ -2335,6 +2335,22 @@ template void parse_integer_value_exhaustive_valid(std::string_view,
                                                    unsigned long long&);
 #endif
 
+#if SCN_HAS_INT128
+
+#if !SCN_DISABLE_TYPE_INT128
+SCN_DEFINE_INTEGER_READER_TEMPLATE(char, SCN_INT128_TYPE)
+SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, SCN_INT128_TYPE)
+// no parse_integer_value_exhaustive_valid
+#endif
+
+#if !SCN_DISABLE_TYPE_UINT128
+SCN_DEFINE_INTEGER_READER_TEMPLATE(char, SCN_UINT128_TYPE)
+SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, SCN_UINT128_TYPE)
+// no parse_integer_value_exhaustive_valid
+#endif
+
+#endif // SCN_HAS_INT128
+
 #undef SCN_DEFINE_INTEGER_READER_TEMPLATE
 }  // namespace impl
 

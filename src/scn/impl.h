@@ -3533,6 +3533,10 @@ SCN_DECLARE_INTEGER_READER_TEMPLATE(wchar_t, long)
 SCN_DECLARE_INTEGER_READER_TEMPLATE(char, long long)
 SCN_DECLARE_INTEGER_READER_TEMPLATE(wchar_t, long long)
 #endif
+#if SCN_HAS_INT128 && !SCN_DISABLE_TYPE_INT128
+SCN_DECLARE_INTEGER_READER_TEMPLATE(char, int128)
+SCN_DECLARE_INTEGER_READER_TEMPLATE(wchar_t, int128)
+#endif
 #if !SCN_DISABLE_TYPE_UCHAR
 SCN_DECLARE_INTEGER_READER_TEMPLATE(char, unsigned char)
 SCN_DECLARE_INTEGER_READER_TEMPLATE(wchar_t, unsigned char)
@@ -3552,6 +3556,10 @@ SCN_DECLARE_INTEGER_READER_TEMPLATE(wchar_t, unsigned long)
 #if !SCN_DISABLE_TYPE_ULONG_LONG
 SCN_DECLARE_INTEGER_READER_TEMPLATE(char, unsigned long long)
 SCN_DECLARE_INTEGER_READER_TEMPLATE(wchar_t, unsigned long long)
+#endif
+#if SCN_HAS_INT128 && !SCN_DISABLE_TYPE_UINT128
+SCN_DECLARE_INTEGER_READER_TEMPLATE(char, uint128)
+SCN_DECLARE_INTEGER_READER_TEMPLATE(wchar_t, uint128)
 #endif
 
 #undef SCN_DECLARE_INTEGER_READER_TEMPLATE
@@ -5927,10 +5935,20 @@ constexpr auto make_reader()
     else if constexpr (std::is_floating_point_v<T>) {
         return reader_impl_for_float<CharT>{};
     }
-    else if constexpr (std::is_integral_v<T> && !std::is_same_v<T, char> &&
-                       !std::is_same_v<T, wchar_t> &&
-                       !std::is_same_v<T, char32_t> &&
-                       !std::is_same_v<T, bool>) {
+    else if constexpr (std::is_same_v<T, signed char> ||
+                       std::is_same_v<T, short> || std::is_same_v<T, int> ||
+                       std::is_same_v<T, long> ||
+                       std::is_same_v<T, long long> ||
+                       std::is_same_v<T, unsigned char> ||
+                       std::is_same_v<T, unsigned short> ||
+                       std::is_same_v<T, unsigned int> ||
+                       std::is_same_v<T, unsigned long> ||
+                       std::is_same_v<T, unsigned long long>
+#if SCN_HAS_INT128
+                       || std::is_same_v<T, int128> ||
+                       std::is_same_v<T, uint128>
+#endif
+    ) {
         return reader_impl_for_int<CharT>{};
     }
     else {

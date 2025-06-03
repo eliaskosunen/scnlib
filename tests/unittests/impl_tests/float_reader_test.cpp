@@ -577,7 +577,7 @@ protected:
 #if SCN_HAS_STD_BF16
         if constexpr (kind == float_kind::bf16) {
             return MAKE_CHECKED_PAIR_RETURN(
-                0x1p-149, BF16, std::numeric_limits<float_type>::denorm_min());
+                0x1p-133, BF16, std::numeric_limits<float_type>::denorm_min());
         }
 #endif
         SCN_EXPECT(false);
@@ -721,7 +721,7 @@ protected:
 #if SCN_HAS_STD_BF16
         if constexpr (kind == float_kind::bf16) {
             return MAKE_CHECKED_PAIR_RETURN(
-                0x1.7ep+127, BF16, std::numeric_limits<float_type>::max());
+                0x1.fep+127, BF16, std::numeric_limits<float_type>::max());
         }
 #endif
         SCN_EXPECT(false);

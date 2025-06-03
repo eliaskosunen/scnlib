@@ -10072,7 +10072,7 @@ inline constexpr bool is_scan_int_type =
      !std::is_same_v<T, wchar_t> && !std::is_same_v<T, char32_t> &&
      !std::is_same_v<T, bool>)
 #if SCN_HAS_INT128
-    || std::is_same_v<T, int128> || std::is_same_v<T, uint128>
+    || std::is_same_v<T, SCN_INT128_TYPE> || std::is_same_v<T, SCN_UINT128_TYPE>
 #endif
     ;
 }  // namespace detail
