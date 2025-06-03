@@ -19,12 +19,14 @@
 
 #include <scn/scan.h>
 
+#if defined(SCN_MODULE) && defined(SCN_IMPORT_STD)
+import std;
+#else
 #include <chrono>
 #include <ctime>
-
-#if SCN_DISABLE_CHRONO
-#error "scn/chrono.h included, but SCN_DISABLE_CHRONO is true"
 #endif
+
+#if !SCN_DISABLE_CHRONO
 
 namespace scn {
 SCN_BEGIN_NAMESPACE
@@ -1725,3 +1727,5 @@ struct scanner<std::chrono::time_point<std::chrono::system_clock, Duration>,
 
 SCN_END_NAMESPACE
 }  // namespace scn
+
+#endif  // !SCN_DISABLE_CHRONO

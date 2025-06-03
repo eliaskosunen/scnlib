@@ -8,13 +8,23 @@ set(targets "scn")
 if (NOT SCN_DISABLE_FAST_FLOAT AND NOT SCN_USE_EXTERNAL_FAST_FLOAT)
     list(APPEND targets fast_float)
 endif ()
+if (SCN_MODULES)
+    list(APPEND targets scn_module)
+endif ()
+
+set(install_file_set)
+if (SCN_MODULES)
+    set(install_file_set FILE_SET scn DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn")
+endif ()
 
 install(TARGETS ${targets}
         EXPORT scn-targets
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn"
         COMPONENT scnlib_Development
+        ${install_file_set}
 )
 
 install(DIRECTORY

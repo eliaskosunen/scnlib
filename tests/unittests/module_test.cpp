@@ -15,15 +15,21 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-module;
+import scn;
 
-#define SCNLIB_MODULES
-#include <scn/ranges.h>
+#include <stdexcept>
+#include <string>
 
-export module scn.ranges;
+int main()
+{
+    auto result = scn::scan<int>("42", "{}");
 
-export namespace scn {
-    using scn::range_scanner;
-    using scn::range_format;
-    using scn::range_format_kind;
+    if (!result) {
+        throw std::runtime_error("Failed to scan: " +
+                                 std::string{result.error().msg()});
+    }
+    if (result->value() != 42) {
+        throw std::runtime_error("Invalid value: " +
+                                 std::to_string(result->value()));
+    }
 }

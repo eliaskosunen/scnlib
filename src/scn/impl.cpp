@@ -2349,7 +2349,7 @@ SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, SCN_UINT128_TYPE)
 // no parse_integer_value_exhaustive_valid
 #endif
 
-#endif // SCN_HAS_INT128
+#endif  // SCN_HAS_INT128
 
 #undef SCN_DEFINE_INTEGER_READER_TEMPLATE
 }  // namespace impl

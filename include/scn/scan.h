@@ -17,27 +17,29 @@
 
 #pragma once
 
-#ifdef SCNLIB_MODULES
-#define SCNLIB_MODULE_LINKAGE inline
-#define SCNLIB_MODULE_CONSTS_LINKAGE inline
-#else
-#define SCNLIB_MODULE_LINKAGE static
-#define SCNLIB_MODULE_CONSTS_LINKAGE 
-#endif
-
 // Includes <cassert>, <cstddef>, <cstdint>, and <type_traits>
 #include <scn/fwd.h>
 
+#if defined(SCN_MODULE) && defined(SCN_IMPORT_STD)
+import std;
+#else
 #include <array>
 #include <cstdio>
 #include <cstring>
 #include <iterator>
 #include <limits>
+#include <new>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include <tuple>
+
+#if SCN_HAS_STD_F16 || SCN_HAS_STD_F32 || SCN_HAS_STD_F64 || \
+    SCN_HAS_STD_F128 || SCN_HAS_STD_BF16
+#include <stdfloat>
+#endif
+#endif
 
 namespace scn {
 SCN_BEGIN_NAMESPACE
@@ -433,7 +435,7 @@ void destroy_at(T* p) noexcept
 }
 
 struct deferred_init_tag_t {};
-SCNLIB_MODULE_LINKAGE constexpr deferred_init_tag_t deferred_init_tag{};
+inline constexpr deferred_init_tag_t deferred_init_tag{};
 
 template <typename T,
           typename E,
@@ -5830,17 +5832,20 @@ using is_scannable = std::integral_constant<
         unscannable,
         remove_cvref_t<decltype(arg_mapper<CharT>().map(SCN_DECLVAL(T&)))>>>;
 
-SCNLIB_MODULE_CONSTS_LINKAGE constexpr std::size_t packed_arg_bits = 5;
+inline constexpr std::size_t packed_arg_bits = 5;
 static_assert((1 << packed_arg_bits) > static_cast<int>(arg_type::last_type),
               "If this fails, there are more `arg_type` values than values "
               "that can fit in `packed_arg_bits`. Either something needs to be "
               "removed from `arg_type` (spilling them to the stack), or "
               "`packed_arg_bits` must be increased (causing the number of "
               "arguments that can be packed to decrease)");
-SCNLIB_MODULE_CONSTS_LINKAGE constexpr std::size_t bits_in_sz = sizeof(std::size_t) * 8;
-SCNLIB_MODULE_CONSTS_LINKAGE constexpr std::size_t max_packed_args = (bits_in_sz - 2) / packed_arg_bits - 1;
-SCNLIB_MODULE_CONSTS_LINKAGE constexpr std::size_t is_unpacked_bit = std::size_t{1} << (bits_in_sz - 1);
-SCNLIB_MODULE_CONSTS_LINKAGE constexpr std::size_t has_custom_types_bit = std::size_t{1} << (bits_in_sz - 2);
+inline constexpr std::size_t bits_in_sz = sizeof(std::size_t) * 8;
+inline constexpr std::size_t max_packed_args =
+    (bits_in_sz - 2) / packed_arg_bits - 1;
+inline constexpr std::size_t is_unpacked_bit = std::size_t{1}
+                                               << (bits_in_sz - 1);
+inline constexpr std::size_t has_custom_types_bit = std::size_t{1}
+                                                    << (bits_in_sz - 2);
 
 template <typename>
 constexpr size_t encode_types_impl()

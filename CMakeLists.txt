@@ -22,9 +22,21 @@ else ()
     set(SCN_IS_TOP_PROJECT OFF)
 endif ()
 
-if (SCN_IS_TOP_PROJECT AND NOT CMAKE_BUILD_TYPE)
-    message(WARNING "No CMAKE_BUILD_TYPE set, defaulting to Release")
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "")
+if (SCN_IS_TOP_PROJECT)
+    if (NOT DEFINED CMAKE_BUILD_TYPE)
+        message(WARNING "No CMAKE_BUILD_TYPE set, defaulting to Release")
+        set(CMAKE_BUILD_TYPE Release CACHE STRING "")
+    endif ()
+    if (NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
+        message(STATUS "No CMAKE_CXX_VISIBILITY_PRESET set, defaulting to hidden")
+        set(CMAKE_CXX_VISIBILITY_PRESET hidden CACHE STRING "Preset for the export of private symbols")
+        set_property(CACHE CMAKE_CXX_VISIBILITY_PRESET PROPERTY STRINGS hidden default)
+    endif ()
+    if (NOT DEFINED CMAKE_VISIBILITY_INLINES_HIDDEN)
+        message(STATUS "No CMAKE_VISIBILITY_INLINES_HIDDEN set, defaulting to ON")
+        set(CMAKE_VISIBILITY_INLINES_HIDDEN ON CACHE BOOL
+                "Whether to add a compiler flag to hide symbols of inline functions")
+    endif ()
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -37,8 +49,14 @@ include(cmake/buildflags.cmake)
 include(cmake/dependencies.cmake)
 include(cmake/sanitizers.cmake)
 
+set(SCN_SYSTEM_HEADERS_ATTRIBUTE "")
+if (SCN_HEADERS_AS_SYSTEM)
+    set(SCN_SYSTEM_HEADERS_ATTRIBUTE "SYSTEM")
+endif ()
+
 set(SCN_PUBLIC_HEADERS
         include/scn/fwd.h
+        include/scn/macros.h
         include/scn/scan.h
         include/scn/ranges.h
         include/scn/regex.h
@@ -51,13 +69,18 @@ set(SCN_PRIVATE_HEADERS
 set(SCN_PRIVATE_SOURCES
         src/scn/impl.cpp
 )
+set(SCN_MODULE_SOURCES
+        src/scn/scn.cppm
+)
 
-add_library(scn
-        "${SCN_PUBLIC_HEADERS}"
-        "${SCN_PRIVATE_HEADERS}"
-        "${SCN_PRIVATE_SOURCES}"
+add_library(
+        scn
+        ${SCN_PUBLIC_HEADERS}
+        ${SCN_PRIVATE_HEADERS}
+        ${SCN_PRIVATE_SOURCES}
 )
 target_include_directories(scn
+        ${SCN_SYSTEM_HEADERS_ATTRIBUTE}
         PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -70,8 +93,22 @@ target_link_libraries(scn PRIVATE
 )
 set_library_flags(scn)
 
-set_property(TARGET scn PROPERTY SOVERSION 4)
+set_property(TARGET scn PROPERTY SOVERSION 4.0.1)
 add_library(scn::scn ALIAS scn)
+
+if (SCN_MODULES)
+    if (CMAKE_VERSION VERSION_LESS 3.28 OR NOT (CMAKE_GENERATOR STREQUAL "Ninja"))
+        message(FATAL_ERROR "SCN_MODULES requires CMake >= 3.28 and Ninja (for target_sources(CXX_MODULES) )")
+    endif ()
+
+    add_library(scn_module)
+    target_sources(scn_module PUBLIC FILE_SET scn TYPE CXX_MODULES FILES ${SCN_MODULE_SOURCES})
+    target_link_libraries(scn_module PUBLIC scn::scn)
+    target_compile_features(scn_module PUBLIC cxx_std_20)
+    set_target_properties(scn_module PROPERTIES CXX_SCAN_FOR_MODULES ON)
+
+    add_library(scn::module ALIAS scn_module)
+endif (SCN_MODULES)
 
 add_library(scn_internal INTERFACE)
 target_link_libraries(scn_internal INTERFACE
@@ -85,19 +122,6 @@ target_include_directories(scn_internal
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
 set_interface_flags(scn_internal)
-
-option(SCNLIB_BUILD_MODULES "Build C++ modules support" OFF)
-
-if(SCNLIB_BUILD_MODULES)
-    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.28)
-        message(STATUS "Building scnlib C++ modules (CMake ${CMAKE_VERSION} supports modules)")
-        add_subdirectory(src/modules)
-    else()
-        message(WARNING "Skipping scnlib C++ modules (requires CMake 3.28+, found ${CMAKE_VERSION})")
-    endif()
-else()
-    message(STATUS "scnlib C++ modules support is disabled. Enable with -DSCNLIB_BUILD_MODULES=ON")
-endif()
 
 add_subdirectory(scripts)
 

@@ -18,6 +18,8 @@ option(SCN_TESTS "Enable tests" ${SCN_ENABLE_TESTS})
 option(SCN_DOCS "Enable docs target" ${SCN_ENABLE_EXTRAS})
 option(SCN_EXAMPLES "Enable examples target" ${SCN_ENABLE_EXTRAS})
 option(SCN_INSTALL "Enable install target" ${SCN_ENABLE_EXTRAS})
+option(SCN_HEADERS_AS_SYSTEM "Expose scn headers by marking them as SYSTEM" OFF)
+option(SCN_MODULES "Enable C++20 module target (scn::module), requires CMake 3.28 and Ninja" OFF)
 
 option(SCN_BENCHMARKS "Enable runtime benchmarks" ${SCN_ENABLE_EXTRAS})
 option(SCN_BENCHMARKS_BUILDTIME "Enable buildtime benchmarks" ${SCN_ENABLE_EXTRAS})

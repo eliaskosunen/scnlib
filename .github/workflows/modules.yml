@@ -1,0 +1,126 @@
+name: Modules
+
+on:
+  push:
+    branches:
+      - master
+      - v*/dev
+      - ci/*
+      - dev/*
+    paths:
+      - '.github/workflows/modules.yml'
+      - 'benchmark/**'
+      - 'cmake/**'
+      - 'examples/**'
+      - 'include/**'
+      - 'src/**'
+      - 'tests/**'
+      - '**/CMakeLists.txt'
+  pull_request:
+    branches:
+      - master
+      - v*/dev
+      - ci/*
+      - dev/*
+    paths:
+      - '.github/workflows/modules.yml'
+      - 'benchmark/**'
+      - 'cmake/**'
+      - 'examples/**'
+      - 'include/**'
+      - 'src/**'
+      - 'tests/**'
+      - '**/CMakeLists.txt'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
+  cancel-in-progress: true
+
+env:
+  APT_INSTALL: |
+    sudo apt-get install
+      -yq --no-install-suggests --no-install-recommends
+      --allow-unauthenticated --allow-downgrades --allow-change-held-packages
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cmake:
+          # 3.28 has native modules support
+          - "~3.28.0"
+        generator:
+          - Ninja
+        cxx:
+          #- g++-14 # ICEs in compilation
+          - clang++-18
+        external_deps: [ 0, 1 ]
+
+    env:
+      CXX: ${{ matrix.cxx }}
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: ${{ matrix.cmake }}
+
+      # No ccache, don't want to add additional variables to already finicky modules stuff
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build fast_float
+        if: matrix.external_deps == 1
+        run: |
+          git clone https://github.com/fastfloat/fast_float -b v6.1.1 --depth=1
+          cd fast_float
+          mkdir build
+          cd build
+          cmake -G ${{ matrix.generator }} ..
+          cmake --build .
+          sudo cmake --build . --target install
+
+      - name: Run CMake
+        run: |
+          mkdir ${{ runner.workspace }}/lib-build
+          cd ${{ runner.workspace }}/lib-build
+          if [[ ${{ matrix.external_deps }} -eq 1 ]]; then
+            cmake -G ${{ matrix.generator }} -DSCN_INSTALL=ON \
+                  -DSCN_USE_EXTERNAL_FAST_FLOAT=ON -DSCN_MODULES=ON \
+                  $GITHUB_WORKSPACE
+          else
+            cmake -G ${{ matrix.generator }} -DSCN_INSTALL=ON \
+                  -DSCN_MODULES=ON $GITHUB_WORKSPACE
+          fi
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/lib-build
+        run: |
+          cmake --build .
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/lib-build
+        run: |
+          ctest --output-on-failure
+
+      - name: Install
+        working-directory: ${{ runner.workspace }}/lib-build
+        run: |
+          sudo cmake --build . --target install
+
+      - name: Build consumer
+        run: |
+          mkdir ${{ runner.workspace }}/consumer-build
+          cd ${{ runner.workspace }}/consumer-build
+          cmake -G ${{ matrix.generator }} $GITHUB_WORKSPACE/tests/consumer-test/module
+          cmake --build .
+
+      - name: Test consumer
+        working-directory: ${{ runner.workspace }}/consumer-build
+        run: |
+          output="$(echo '42' | ./scn-consumer-module)"
+          test "$output" -eq 42

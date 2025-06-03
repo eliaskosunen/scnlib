@@ -21,7 +21,11 @@
 
 #if !SCN_DISABLE_REGEX
 
+#if defined(SCN_MODULE) && defined(SCN_IMPORT_STD)
+import std;
+#else
 #include <vector>
+#endif
 
 namespace scn {
 SCN_BEGIN_NAMESPACE

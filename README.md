@@ -144,7 +144,7 @@ int main() {
       string)
     * convenience (ranges)
     * ergonomics (values returned from `scn::scan`, no output parameters)
-    * support for modules (enable `SCNLIB_BUILD_MODULES` and `import scn;`)
+    * support for modules (enable target `scn::module` with `SCN_MODULES` in CMake)
 * `"{python}"`-like format string syntax
     * Including compile-time format string checking
 * Minimal code size increase (in user code, see Benchmarks)

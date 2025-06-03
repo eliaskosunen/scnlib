@@ -21,8 +21,12 @@
 
 #if !SCN_DISABLE_IOSTREAM
 
+#if defined(SCN_MODULE) && defined(SCN_IMPORT_STD)
+import std;
+#else
 #include <ios>
 #include <streambuf>
+#endif
 
 namespace scn {
 SCN_BEGIN_NAMESPACE

@@ -130,18 +130,29 @@ function(icm_add_build_failure_test)
                 @ONLY
         )
 
+        get_property(add_cfg_flag GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+        if (add_cfg_flag)
+            set(test_command ${CMAKE_COMMAND} -DCFG=${CMAKE_BUILD_TYPE} -P ${ARG_TARGET}.cmake)
+        else ()
+            set(test_command ${CMAKE_COMMAND} -P ${ARG_TARGET}.cmake)
+        endif ()
         add_test(
                 NAME ${ARG_NAME}
                 # provide the config as a command line arg here
                 # we cannot configure the file with a generator expression
-                COMMAND ${CMAKE_COMMAND} -DCFG=$<CONFIG> -P ${ARG_TARGET}.cmake
+                COMMAND ${test_command}
                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         )
     else()
         # we look for error matches in arguments
+        get_property(add_cfg_flag GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+        set(test_command ${CMAKE_COMMAND} --build . --target ${ARG_TARGET})
+        if (add_cfg_flag)
+            set(test_command ${test_command} --config ${CMAKE_BUILD_TYPE})
+        endif ()
         add_test(
                 NAME ${ARG_NAME}
-                COMMAND ${CMAKE_COMMAND} --build . --target ${ARG_TARGET} --config $<CONFIG>
+                COMMAND ${test_command}
                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         )
         if(DEFINED ARG_ERROR_MATCHES)

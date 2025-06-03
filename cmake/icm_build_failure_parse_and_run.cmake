@@ -13,7 +13,7 @@ if(DEFINED CFG)
 endif()
 
 execute_process(
-        COMMAND ${CMAKE_COMMAND} --build . --target @ARG_TARGET@ ${cfgArg}
+        COMMAND ${CMAKE_COMMAND} --build . --target @ARG_TARGET@ ${cfgArg} --verbose
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
         RESULT_VARIABLE res
         ERROR_VARIABLE out
@@ -41,11 +41,12 @@ foreach(possibleError ${matchErrors})
         return()
     endif()
 
-    # prepare an output-firendly string in case the test fails
-    set(outErrors "${outErrors}\n${possibleError}")
+    # prepare an output-friendly string in case the test fails
+    set(outErrors "${outErrors}\n - ${possibleError}")
 endforeach()
 
 # print execute_process output for debugging purposes
+message("Build command output: ")
 message("${out}")
 # print error
 message(FATAL_ERROR "Error: Building '@ARG_TARGET@' failed, but output doesn't contain any of the expected errors:${outErrors}")

@@ -16,7 +16,6 @@ target_compile_options(scn_tests_base INTERFACE
         -Wno-weak-vtables
         >)
 
-
 add_executable(scn_tests
         main.cpp
 
@@ -81,15 +80,22 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             PROPERTIES COMPILE_OPTIONS
             -Wno-overflow
     )
-endif()
+endif ()
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set_source_files_properties(
             impl_tests/float_reader_test.cpp
             PROPERTIES COMPILE_OPTIONS
             -Wno-literal-range
     )
-endif()
+endif ()
 add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
+
+if (SCN_MODULES)
+    add_executable(scn_module_tests module_test.cpp)
+    target_link_libraries(scn_module_tests PRIVATE scn_module INTERFACE scn_sanitizers)
+    set_target_properties(scn_module_tests PROPERTIES CXX_SCAN_FOR_MODULES ON)
+    add_test(NAME scn_module_tests COMMAND scn_module_tests)
+endif ()
 
 if (SCN_TESTS_LOCALIZED)
     add_executable(scn_localized_tests
