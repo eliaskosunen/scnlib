@@ -20,6 +20,7 @@
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wnoexcept")
 SCN_GCC_IGNORE("-Wrestrict")
+SCN_GCC_IGNORE("-Wmaybe-uninitialized")
 
 #include <gmock/gmock.h>
 

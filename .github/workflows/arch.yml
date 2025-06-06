@@ -134,7 +134,7 @@ jobs:
             echo | g++ -dM -E -x c++ - | sort
 
             cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
-            cmake --build build -- -k 0
+            cmake --build build --verbose -- -k 0
             ccache --show-stats
 
             ctest --output-on-failure --test-dir build
@@ -185,7 +185,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --parallel
+        run: cmake --build . --parallel --verbose
 
   # Build and run test on native arm64 Ubuntu
 
@@ -227,7 +227,7 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake --build . -- -k 0
+          cmake --build . --verbose -- -k 0
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build

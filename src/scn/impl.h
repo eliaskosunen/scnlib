@@ -528,15 +528,17 @@ constexpr uint64_t has_byte_between(uint64_t word, uint8_t a, uint8_t b)
 {
     const auto m = static_cast<uint64_t>(a) - 1,
                n = static_cast<uint64_t>(b) + 1;
-    return (((~0ull / 255 * (127 + (n)) - ((word) & ~0ull / 255 * 127)) &
-             ~(word) &
-             (((word) & ~0ull / 255 * 127) + ~0ull / 255 * (127 - (m)))) &
+    return (((~0ull / 255 * (127 + n) - (word & ~0ull / 255 * 127)) & ~word &
+             ((word & ~0ull / 255 * 127) + ~0ull / 255 * (127 - m))) &
             (~0ull / 255 * 128));
 }
 
 constexpr uint64_t has_byte_greater(uint64_t word, uint8_t n)
 {
-    return (word + ~0ull / 255 * (127 - n) | word) & ~0ull / 255 * 128;
+    SCN_GCC_PUSH
+    SCN_GCC_IGNORE("-Wsign-conversion")
+    return ((word + ~0ull / 255 * (127 - n)) | word) & ~0ull / 255 * 128;
+    SCN_GCC_POP
 }
 
 inline size_t get_index_of_first_nonmatching_byte(uint64_t word)
@@ -652,6 +654,10 @@ struct qual_fn_sig<R(Args...) const noexcept>
     using cv = T const;
 };
 
+#if SCN_CLANG >= SCN_COMPILER(16, 0, 0)
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wcast-function-type-strict")
+#endif
 struct base {
     union storage {
         constexpr storage() = default;
@@ -692,6 +698,10 @@ struct base {
         }
     }
 };
+#if SCN_CLANG >= SCN_COMPILER(16, 0, 0)
+SCN_CLANG_POP  // -Wcast-function-type-strict
+#endif
+
 }  // namespace fnref_detail
 
 template <typename Sig,
@@ -957,6 +967,7 @@ SCN_NODISCARD constexpr eof_error eof_check(Range range)
 template <typename Range>
 bool is_entire_source_contiguous(Range r)
 {
+    SCN_UNUSED(r);
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
         return true;
@@ -979,6 +990,8 @@ bool is_entire_source_contiguous(Range r)
 template <typename Range>
 bool is_segment_contiguous(Range r)
 {
+    SCN_UNUSED(r);
+
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
         return true;
@@ -1011,6 +1024,8 @@ bool is_segment_contiguous(Range r)
 template <typename Range>
 std::size_t contiguous_beginning_size(Range r)
 {
+    SCN_UNUSED(r);
+
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
         return r.size();
@@ -1037,6 +1052,8 @@ std::size_t contiguous_beginning_size(Range r)
 template <typename Range>
 auto get_contiguous_beginning(Range r)
 {
+    SCN_UNUSED(r);
+
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
         return r;
@@ -1085,6 +1102,7 @@ auto get_as_contiguous(Range r)
     else {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
+        SCN_UNUSED(r);
         // for return type deduction
         return std::basic_string_view<detail::char_t<Range>>{};
     }
@@ -1113,6 +1131,7 @@ std::size_t guaranteed_minimum_size(Range r)
         }
     }
     else {
+        SCN_UNUSED(r);
         return 0;
     }
 }
@@ -1156,7 +1175,8 @@ bool basic_scan_file_buffer<FileInterface>::fill()
 
     if (m_file.has_buffering()) {
         if (!this->m_current_view.empty()) {
-            m_file.unsafe_advance_n(this->m_current_view.size());
+            m_file.unsafe_advance_n(
+                static_cast<std::ptrdiff_t>(this->m_current_view.size()));
         }
 
         if (m_file.buffer().empty()) {
@@ -1180,7 +1200,7 @@ template <typename FileInterface>
 bool basic_scan_file_buffer<FileInterface>::sync(std::ptrdiff_t position)
 {
     struct putback_wrapper {
-        putback_wrapper(FileInterface& i) : i(i)
+        putback_wrapper(FileInterface& interface) : i(interface)
         {
             i.prepare_putback();
         }
@@ -1217,9 +1237,11 @@ bool basic_scan_file_buffer<FileInterface>::sync(std::ptrdiff_t position)
 
     putback_wrapper wrapper{m_file};
     SCN_EXPECT(m_current_view.size() == 1);
-    m_file.putback(m_current_view.front());
+    (void)m_file.putback(m_current_view.front());
 
-    auto segment = std::string_view{this->putback_buffer()}.substr(position);
+    auto segment = std::string_view{this->putback_buffer().data(),
+                                    this->putback_buffer().size()}
+                       .substr(static_cast<std::size_t>(position));
     for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
         if (!m_file.putback(*it)) {
             return false;
@@ -1241,11 +1263,13 @@ constexpr bool validate_unicode(std::basic_string_view<CharT> src)
 {
     auto it = src.begin();
     while (it != src.end()) {
-        const auto len = detail::code_point_length_by_starting_code_unit(*it);
+        const auto len = static_cast<std::ptrdiff_t>(
+            detail::code_point_length_by_starting_code_unit(*it));
+        SCN_EXPECT(len >= 0);
         if (len == 0) {
             return false;
         }
-        if (src.end() - it < len) {
+        if (std::distance(it, src.end()) < len) {
             return false;
         }
         const auto cp = detail::decode_code_point_exhaustive(
@@ -1301,7 +1325,7 @@ constexpr auto get_next_code_point_valid(std::basic_string_view<CharT> input)
     const auto len = detail::code_point_length_by_starting_code_unit(input[0]);
     SCN_EXPECT(len <= input.size());
 
-    return {input.begin() + len,
+    return {input.begin() + static_cast<std::ptrdiff_t>(len),
             detail::decode_code_point_exhaustive_valid(input.substr(0, len))};
 }
 
@@ -1363,7 +1387,7 @@ void transcode_to_string_impl_to32(std::basic_string_view<SourceCharT> src,
             dest.push_back(DestCharT{0xfffd});
         }
         else {
-            dest.push_back(res.value);
+            dest.push_back(static_cast<DestCharT>(res.value));
         }
         it = detail::make_string_view_iterator(src, res.iterator);
     }
@@ -1381,7 +1405,7 @@ void transcode_valid_to_string_impl_to32(
             detail::make_string_view_from_iterators<SourceCharT>(it,
                                                                  src.end()));
         SCN_EXPECT(res.value < detail::invalid_code_point);
-        dest.push_back(res.value);
+        dest.push_back(static_cast<DestCharT>(res.value));
         it = detail::make_string_view_iterator(src, res.iterator);
     }
 }
@@ -1395,7 +1419,8 @@ void transcode_to_string_impl_32to8(std::basic_string_view<SourceCharT> src,
 
     for (auto cp : src) {
         const auto u32cp = static_cast<uint32_t>(cp);
-        if (SCN_UNLIKELY(!VerifiedValid && cp >= detail::invalid_code_point)) {
+        if (SCN_UNLIKELY(!VerifiedValid && static_cast<char32_t>(cp) >=
+                                               detail::invalid_code_point)) {
             // Replacement character
             dest.push_back(static_cast<char>(0xef));
             dest.push_back(static_cast<char>(0xbf));
@@ -1728,7 +1753,7 @@ private:
         else if constexpr (std::is_same_v<detail::remove_cvref_t<Range>,
                                           std::basic_string<CharT>>) {
             m_storage.emplace(SCN_FWD(range));
-            m_view = string_view_type{*m_storage};
+            m_view = string_view_type{m_storage->data(), m_storage->size()};
         }
         else if constexpr (std::is_same_v<ranges::iterator_t<Range>,
                                           typename detail::basic_scan_buffer<
@@ -1739,9 +1764,10 @@ private:
             if (SCN_UNLIKELY(detail::to_address(beg_seg.end()) !=
                              detail::to_address(end_seg.end()))) {
                 auto& str = m_storage.emplace();
-                str.reserve(range.end().position() - range.begin().position());
+                str.reserve(static_cast<std::size_t>(range.end().position() -
+                                                     range.begin().position()));
                 std::copy(range.begin(), range.end(), std::back_inserter(str));
-                m_view = string_view_type{str};
+                m_view = string_view_type{str.data(), str.size()};
                 return;
             }
 
@@ -1764,7 +1790,7 @@ private:
                     str.push_back(*it);
                 }
             }
-            m_view = string_view_type{str};
+            m_view = string_view_type{str.data(), str.size()};
         }
     }
 
@@ -1965,7 +1991,7 @@ auto read_exactly_n_code_units(Range range, std::ptrdiff_t count)
     }
     else {
         auto it = range.begin();
-        if (guaranteed_minimum_size(range) >= count) {
+        if (guaranteed_minimum_size(range) >= static_cast<std::size_t>(count)) {
             return ranges::next(it, count);
         }
 
@@ -2170,8 +2196,9 @@ auto read_while_code_units(Range range, const CodeUnits& needle)
 
     auto it = range.begin();
     while (it != range.end()) {
-        auto r = read_exactly_n_code_units(ranges::subrange{it, range.end()},
-                                           needle.size());
+        auto r = read_exactly_n_code_units(
+            ranges::subrange{it, range.end()},
+            static_cast<std::ptrdiff_t>(needle.size()));
         if (!r) {
             return it;
         }
@@ -2196,7 +2223,8 @@ auto read_until_code_point(Range range, function_ref<bool(char32_t)> pred)
             read_code_point_into(ranges::subrange{it, range.end()});
         if (SCN_LIKELY(val.is_valid())) {
             const auto cp = detail::decode_code_point_exhaustive(
-                std::basic_string_view<detail::char_t<Range>>{val.codepoint});
+                std::basic_string_view<detail::char_t<Range>>{
+                    val.codepoint.data(), val.codepoint.size()});
             if (pred(cp)) {
                 return it;
             }
@@ -2234,7 +2262,7 @@ auto read_until_classic_space(Range range) -> ranges::const_iterator_t<Range>
                 seg_it != seg.end()) {
                 return ranges::next(it, ranges::distance(seg.begin(), seg_it));
             }
-            ranges::advance(it, seg.size());
+            ranges::advance(it, static_cast<std::ptrdiff_t>(seg.size()));
         }
 
         return read_until_code_point(
@@ -2263,9 +2291,10 @@ auto read_while_classic_space(Range range) -> ranges::const_iterator_t<Range>
                 seg_it != seg.end()) {
                 return ranges::next(it, ranges::distance(seg.begin(), seg_it));
             }
-            ranges::advance(it, seg.size());
+            ranges::advance(it, static_cast<std::ptrdiff_t>(seg.size()));
         }
 
+        SCN_UNUSED(it);
         return read_while_code_point(range, [](char32_t cp) noexcept {
             return detail::is_cp_space(cp);
         });
@@ -2371,7 +2400,8 @@ auto read_matching_string_classic_nocase(Range range, std::string_view str)
         if (!fast_streq_nocase(range.data(), str.data(), str.size())) {
             return unexpected(parse_error::error);
         }
-        return ranges::next(range.begin(), str.size());
+        return ranges::next(range.begin(),
+                            static_cast<std::ptrdiff_t>(str.size()));
     }
     else {
         auto ascii_tolower = [](char_type ch) -> char_type {
@@ -2800,8 +2830,8 @@ private:
         }
 
         auto cp_str = std::basic_string<value_type>{m_current, *r};
-        return static_cast<difference_type>(
-            calculate_text_width(std::basic_string_view<value_type>{cp_str}));
+        return static_cast<difference_type>(calculate_text_width(
+            std::basic_string_view<value_type>{cp_str.data(), cp_str.size()}));
     }
 
     void _increment_current()
@@ -3053,7 +3083,8 @@ public:
 
     void advance_to(const typename parent_context_type::iterator& it)
     {
-        SCN_EXPECT(it.position() <= m_range.size());
+        SCN_EXPECT(it.position() <=
+                   static_cast<std::ptrdiff_t>(m_range.size()));
         m_current = m_range.begin() + it.position();
     }
 
@@ -3440,6 +3471,7 @@ template <typename Range>
 auto parse_integer_digits_without_thsep(Range range, int base)
     -> scan_expected<ranges::const_iterator_t<Range>>
 {
+    SCN_UNUSED(base);
     using char_type = detail::char_t<Range>;
 
     if constexpr (ranges::contiguous_range<Range>) {
@@ -3672,6 +3704,7 @@ public:
         auto locale_options =
 #if SCN_DISABLE_LOCALE
             localized_number_formatting_options<CharT>{};
+        SCN_UNUSED(loc);
 #else
             localized_number_formatting_options<CharT>{loc};
 #endif
@@ -3682,9 +3715,10 @@ public:
                     prefix_result.parsed_base, locale_options));
         const auto& [after_digits_it, nothsep_source, thsep_indices] =
             parse_digits_result;
+        SCN_UNUSED(after_digits_it);
 
-        auto nothsep_source_view =
-            std::basic_string_view<CharT>{nothsep_source};
+        auto nothsep_source_view = std::basic_string_view<CharT>{
+            nothsep_source.data(), nothsep_source.size()};
         SCN_TRY(
             nothsep_source_it,
             parse_integer_value(nothsep_source_view, value, prefix_result.sign,
@@ -4272,6 +4306,8 @@ public:
                 },
                 value, loc);
         }
+#else
+        SCN_UNUSED(loc);
 #endif
 
         return read_impl<Range>(
@@ -4347,14 +4383,6 @@ private:
 /////////////////////////////////////////////////////////////////
 // Regex reader
 /////////////////////////////////////////////////////////////////
-
-// Forward declaration for C++17 compatibility with regex disabled
-template <typename CharT, typename Input>
-auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
-                             detail::regex_flags flags,
-                             Input input,
-                             basic_regex_matches<CharT>& value)
-    -> scan_expected<ranges::iterator_t<Input>>;
 
 #if !SCN_DISABLE_REGEX
 
@@ -4448,7 +4476,7 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
         re = std::basic_regex<CharT>{pattern.data(), pattern.size(),
                                      re_flags | std::regex_constants::nosubs};
     }
-    catch (const std::regex_error& err) {
+    catch (const std::regex_error&) {
         return detail::unexpected_scan_error(scan_error::invalid_format_string,
                                              "Invalid regex");
     }
@@ -4464,7 +4492,7 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                 "Regular expression didn't match");
         }
     }
-    catch (const std::regex_error& err) {
+    catch (const std::regex_error&) {
         return detail::unexpected_scan_error(
             scan_error::invalid_format_string,
             "Regex matching failed with an error");
@@ -4507,7 +4535,7 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                 "Regular expression didn't match");
         }
     }
-    catch (const std::runtime_error& err) {
+    catch (const std::runtime_error&) {
         return detail::unexpected_scan_error(
             scan_error::invalid_format_string,
             "Regex matching failed with an error");
@@ -4562,7 +4590,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
         SCN_TRY(re_flags, make_regex_flags(flags));
         re = std::basic_regex<CharT>{pattern.data(), pattern.size(), re_flags};
     }
-    catch (const std::regex_error& err) {
+    catch (const std::regex_error&) {
         return detail::unexpected_scan_error(scan_error::invalid_format_string,
                                              "Invalid regex");
     }
@@ -4578,7 +4606,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                 "Regular expression didn't match");
         }
     }
-    catch (const std::regex_error& err) {
+    catch (const std::regex_error&) {
         return detail::unexpected_scan_error(
             scan_error::invalid_format_string,
             "Regex matching failed with an error");
@@ -4654,7 +4682,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                 "Regular expression didn't match");
         }
     }
-    catch (const std::runtime_error& err) {
+    catch (const std::runtime_error&) {
         return detail::unexpected_scan_error(
             scan_error::invalid_format_string,
             "Regex matching failed with an error");
@@ -4785,6 +4813,7 @@ struct regex_matches_reader
                     detail::locale_ref = {})
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
+        SCN_UNUSED(range);
         if constexpr (!std::is_same_v<SourceCharT, DestCharT>) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_format_string,
@@ -5335,6 +5364,7 @@ public:
                 m_type = reader_type::character_set;
                 break;
 
+#if !SCN_DISABLE_REGEX
             case detail::presentation_type::regex:
                 m_type = reader_type::regex;
                 break;
@@ -5342,6 +5372,24 @@ public:
             case detail::presentation_type::regex_escaped:
                 m_type = reader_type::regex_escaped;
                 break;
+#endif
+
+            case detail::presentation_type::int_binary:
+            case detail::presentation_type::int_decimal:
+            case detail::presentation_type::int_generic:
+            case detail::presentation_type::int_unsigned_decimal:
+            case detail::presentation_type::int_octal:
+            case detail::presentation_type::int_hex:
+            case detail::presentation_type::int_arbitrary_base:
+            case detail::presentation_type::float_hex:
+            case detail::presentation_type::float_scientific:
+            case detail::presentation_type::float_fixed:
+            case detail::presentation_type::float_general:
+            case detail::presentation_type::escaped_character:
+            case detail::presentation_type::pointer:
+            default:
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
         }
 
         SCN_CLANG_POP    // -Wswitch-enum, -Wcovered-switch-default
@@ -5378,8 +5426,10 @@ protected:
         custom_word,
         character,
         character_set,
+#if !SCN_DISABLE_REGEX
         regex,
         regex_escaped,
+#endif
     };
 
     template <typename Range, typename Value>
@@ -5614,6 +5664,8 @@ public:
         if (specs.localized) {
             return rd.read_localized(range, loc, value);
         }
+#else
+        SCN_UNUSED(loc);
 #endif
 
         return rd.read_classic(range, value);
@@ -5679,7 +5731,7 @@ public:
         }
         cp = detail::decode_code_point_exhaustive_valid(
             std::basic_string_view<detail::char_t<SourceRange>>{
-                result.codepoint});
+                result.codepoint.data(), result.codepoint.size()});
         return result.iterator;
     }
 };
@@ -5764,7 +5816,7 @@ public:
         reader_impl_for_int<CharT> reader{};
         signed char tmp_value{};
         auto ret = reader.read_specs(range, specs, tmp_value, loc);
-        value = static_cast<signed char>(value);
+        value = static_cast<char>(tmp_value);
         return ret;
     }
 };
@@ -5802,7 +5854,7 @@ public:
             std::conditional_t<sizeof(wchar_t) == 2, int16_t, int32_t>;
         integer_type tmp_value{};
         auto ret = reader.read_specs(range, specs, tmp_value, loc);
-        value = static_cast<integer_type>(value);
+        value = static_cast<wchar_t>(tmp_value);
         return ret;
     }
 };
@@ -6269,9 +6321,9 @@ struct arg_reader {
                                              specs, value, loc));
 
             if (need_skipped_width) {
-                value_width = calculate_text_width(
+                value_width = static_cast<std::ptrdiff_t>(calculate_text_width(
                     make_contiguous_buffer(ranges::subrange{prefix_end_it, it})
-                        .view());
+                        .view()));
             }
         }
 

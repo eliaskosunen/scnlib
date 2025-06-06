@@ -36,7 +36,8 @@ std::basic_string<CharT> make_benchmark_string(const std::string& sourcefile)
     }
     else {
         std::basic_string<CharT> str;
-        scn::impl::transcode_to_string(std::string_view{ss.str()}, str);
+        scn::impl::transcode_to_string(
+            std::string_view{ss.str().data(), ss.str().size()}, str);
         return str;
     }
 }

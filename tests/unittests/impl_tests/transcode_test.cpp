@@ -23,13 +23,13 @@
 #include <sstream>
 
 namespace {
-    std::string get_file_contents(const std::string& sourcefile)
-    {
-        std::ifstream fstr{sourcefile};
-        std::stringstream ss;
-        ss << fstr.rdbuf();
-        return ss.str();
-    }
+std::string get_file_contents(const std::string& sourcefile)
+{
+    std::ifstream fstr{sourcefile};
+    std::stringstream ss;
+    ss << fstr.rdbuf();
+    return ss.str();
+}
 }  // namespace
 
 using namespace std::string_view_literals;
@@ -43,7 +43,8 @@ TEST(TranscodeTest, HelloWorld)
     EXPECT_EQ(widened, L"Hello world");
 
     std::string narrowed{};
-    scn::impl::transcode_to_string(std::wstring_view{widened}, narrowed);
+    scn::impl::transcode_to_string(
+        std::wstring_view{widened.data(), widened.size()}, narrowed);
     EXPECT_EQ(narrowed, "Hello world");
 
     widened.clear();
@@ -51,7 +52,8 @@ TEST(TranscodeTest, HelloWorld)
     EXPECT_EQ(widened, L"Hello world");
 
     narrowed.clear();
-    scn::impl::transcode_valid_to_string(std::wstring_view{widened}, narrowed);
+    scn::impl::transcode_valid_to_string(
+        std::wstring_view{widened.data(), widened.size()}, narrowed);
     EXPECT_EQ(narrowed, "Hello world");
 }
 
@@ -60,18 +62,22 @@ TEST(TranscodeTest, Lipsum)
     auto in = get_file_contents("lipsum.txt");
 
     std::wstring widened{};
-    scn::impl::transcode_to_string(std::string_view{in}, widened);
+    scn::impl::transcode_to_string(std::string_view{in.data(), in.size()},
+                                   widened);
 
     std::string narrowed{};
-    scn::impl::transcode_to_string(std::wstring_view{widened}, narrowed);
+    scn::impl::transcode_to_string(
+        std::wstring_view{widened.data(), widened.size()}, narrowed);
 
     EXPECT_EQ(narrowed, in);
 
     widened.clear();
-    scn::impl::transcode_valid_to_string(std::string_view{in}, widened);
+    scn::impl::transcode_valid_to_string(std::string_view{in.data(), in.size()},
+                                         widened);
 
     narrowed.clear();
-    scn::impl::transcode_valid_to_string(std::wstring_view{widened}, narrowed);
+    scn::impl::transcode_valid_to_string(
+        std::wstring_view{widened.data(), widened.size()}, narrowed);
 
     EXPECT_EQ(narrowed, in);
 }
@@ -81,18 +87,22 @@ TEST(TranscodeTest, Unicode)
     auto in = get_file_contents("unicode.txt");
 
     std::wstring widened{};
-    scn::impl::transcode_to_string(std::string_view{in}, widened);
+    scn::impl::transcode_to_string(std::string_view{in.data(), in.size()},
+                                   widened);
 
     std::string narrowed{};
-    scn::impl::transcode_to_string(std::wstring_view{widened}, narrowed);
+    scn::impl::transcode_to_string(
+        std::wstring_view{widened.data(), widened.size()}, narrowed);
 
     EXPECT_EQ(narrowed, in);
 
     widened.clear();
-    scn::impl::transcode_valid_to_string(std::string_view{in}, widened);
+    scn::impl::transcode_valid_to_string(std::string_view{in.data(), in.size()},
+                                         widened);
 
     narrowed.clear();
-    scn::impl::transcode_valid_to_string(std::wstring_view{widened}, narrowed);
+    scn::impl::transcode_valid_to_string(
+        std::wstring_view{widened.data(), widened.size()}, narrowed);
 
     EXPECT_EQ(narrowed, in);
 }

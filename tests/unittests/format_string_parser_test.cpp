@@ -61,7 +61,7 @@ SCN_END_NAMESPACE
 }  // namespace scn
 
 struct mock_specs_setter : public scn::detail::specs_setter {
-    constexpr mock_specs_setter(scn::detail::format_specs& specs)
+    constexpr mock_specs_setter(scn::detail::format_specs& specs) noexcept
         : scn::detail::specs_setter(specs)
     {
     }

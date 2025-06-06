@@ -130,7 +130,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . -- -k 0
+        run: cmake --build . --verbose -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -188,7 +188,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config ${{ matrix.type }} --parallel
+        run: cmake --build . --config ${{ matrix.type }} --parallel --verbose
 
       - name: Show ccache stats
         run: |
@@ -244,7 +244,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --parallel -- -k
+        run: cmake --build . --parallel --verbose -- -k
 
       - name: Show ccache stats
         run: |

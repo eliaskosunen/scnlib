@@ -66,6 +66,7 @@ struct is_tuple_scannable_impl : std::false_type {};
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wctor-dtor-privacy")
+SCN_GCC_IGNORE("-Wtautological-compare")
 template <typename T, typename CharT>
 struct is_tuple_scannable_impl<T, CharT, true> {
 private:

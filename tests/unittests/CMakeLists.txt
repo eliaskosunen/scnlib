@@ -93,7 +93,14 @@ add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
 if (SCN_MODULES)
     add_executable(scn_module_tests module_test.cpp)
     target_link_libraries(scn_module_tests PRIVATE scn_module INTERFACE scn_sanitizers)
-    set_target_properties(scn_module_tests PROPERTIES CXX_SCAN_FOR_MODULES ON)
+
+    target_uses_extensions(scn_module use_stdext)
+    set_target_properties(
+            scn_module_tests PROPERTIES
+            CXX_SCAN_FOR_MODULES ON
+            CXX_EXTENSIONS ${use_stdext}
+    )
+
     add_test(NAME scn_module_tests COMMAND scn_module_tests)
 endif ()
 

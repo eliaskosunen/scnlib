@@ -50,7 +50,7 @@ jobs:
       fail-fast: false
       matrix:
         cmake:
-          # 3.28 has native modules support
+          # CMake 3.28 has native modules support
           - "~3.28.0"
         generator:
           - Ninja
@@ -80,7 +80,7 @@ jobs:
           cd fast_float
           mkdir build
           cd build
-          cmake -G ${{ matrix.generator }} ..
+          cmake -G "${{ matrix.generator }}" ..
           cmake --build .
           sudo cmake --build . --target install
 
@@ -89,18 +89,18 @@ jobs:
           mkdir ${{ runner.workspace }}/lib-build
           cd ${{ runner.workspace }}/lib-build
           if [[ ${{ matrix.external_deps }} -eq 1 ]]; then
-            cmake -G ${{ matrix.generator }} -DSCN_INSTALL=ON \
+            cmake -G "${{ matrix.generator }}" -DSCN_INSTALL=ON \
                   -DSCN_USE_EXTERNAL_FAST_FLOAT=ON -DSCN_MODULES=ON \
                   $GITHUB_WORKSPACE
           else
-            cmake -G ${{ matrix.generator }} -DSCN_INSTALL=ON \
+            cmake -G "${{ matrix.generator }}" -DSCN_INSTALL=ON \
                   -DSCN_MODULES=ON $GITHUB_WORKSPACE
           fi
 
       - name: Build
         working-directory: ${{ runner.workspace }}/lib-build
         run: |
-          cmake --build .
+          cmake --build . --verbose
 
       - name: Test
         working-directory: ${{ runner.workspace }}/lib-build
@@ -116,8 +116,8 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}/consumer-build
           cd ${{ runner.workspace }}/consumer-build
-          cmake -G ${{ matrix.generator }} $GITHUB_WORKSPACE/tests/consumer-test/module
-          cmake --build .
+          cmake -G "${{ matrix.generator }}" $GITHUB_WORKSPACE/tests/consumer-test/module
+          cmake --build . --verbose
 
       - name: Test consumer
         working-directory: ${{ runner.workspace }}/consumer-build

@@ -23,8 +23,6 @@
 #include <charconv>
 #endif
 
-#include <fast_float/fast_float.h>
-
 template <typename Float>
 static void scan_float_repeated_scn(benchmark::State& state)
 {

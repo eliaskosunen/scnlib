@@ -42,12 +42,12 @@ SCN_CLANG_IGNORE("-Wcomma")
 SCN_CLANG_IGNORE("-Wundef")
 SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
 
-#if SCN_CLANG >= SCN_COMPILER(16, 0, 0)
-SCN_CLANG_IGNORE("-Wunsafe-buffer-usage")
-#endif
-
 #if SCN_CLANG >= SCN_COMPILER(8, 0, 0)
 SCN_CLANG_IGNORE("-Wextra-semi-stmt")
+#endif
+
+#if SCN_CLANG >= SCN_COMPILER(16, 0, 0)
+SCN_CLANG_IGNORE("-Wunsafe-buffer-usage")
 #endif
 
 #if SCN_CLANG >= SCN_COMPILER(13, 0, 0)
@@ -65,15 +65,14 @@ SCN_GCC_POP
 #include <charconv>
 #endif
 
-#define SCN_XLOCALE_POSIX    0
-#define SCN_XLOCALE_MSVC     1
-#define SCN_XLOCALE_OTHER    2
-#define SCN_XLOCALE_DISABLED 3
+#define SCN_XLOCALE_POSIX 0
+#define SCN_XLOCALE_MSVC  1
+#define SCN_XLOCALE_OTHER 2
 
 #if SCN_DISABLE_LOCALE
-#define SCN_XLOCALE SCN_XLOCALE_DISABLED
+#define SCN_XLOCALE SCN_XLOCALE_OTHER
 #elif (!defined(__ANDROID_API__) || __ANDROID_API__ >= 28) && \
-    !defined(__EMSCRIPTEN__) && SCN_HAS_HAS_INCLUDE && __has_include(<xlocale.h>)
+    !defined(__EMSCRIPTEN__) && defined(__has_include) && __has_include(<xlocale.h>)
 #include <xlocale.h>
 #define SCN_XLOCALE SCN_XLOCALE_POSIX
 
@@ -144,14 +143,15 @@ std::string_view::iterator find_classic_impl(std::string_view source,
             continue;
         }
 
-        for (size_t i = 0; i < sv.size(); ++i) {
+        for (std::size_t i = 0; i < sv.size(); ++i) {
             auto tmp =
                 detail::make_string_view_from_iterators<char>(it, source.end());
             auto res = get_next_code_point(tmp);
             if (cp_cb(res.value)) {
                 return it;
             }
-            i += ranges::distance(tmp.data(), detail::to_address(res.iterator));
+            i += static_cast<std::size_t>(
+                ranges::distance(tmp.data(), detail::to_address(res.iterator)));
             it = detail::make_string_view_iterator(source, res.iterator);
             SCN_ENSURE(it <= source.end());
         }
@@ -339,6 +339,9 @@ namespace impl {
 
 namespace {
 
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wconversion")
+
 template <typename F>
 struct float_traits;
 
@@ -372,11 +375,12 @@ struct float_traits<float> {
 #endif
     };
 
-    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    SCN_MAYBE_UNUSED static void apply_nan_payload(nan_repr& r,
+                                                   std::uint64_t payload)
     {
         SCN_EXPECT(r.quiet_nan == 1);
         SCN_EXPECT(r.exponent == 0xff);
-        r.mantissa = payload;
+        r.mantissa = static_cast<unsigned>(payload);
     }
 };
 
@@ -425,12 +429,13 @@ struct float_traits<double> {
 #endif
     };
 
-    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    SCN_MAYBE_UNUSED static void apply_nan_payload(nan_repr& r,
+                                                   std::uint64_t payload)
     {
         SCN_EXPECT(r.quiet_nan == 1);
         SCN_EXPECT(r.exponent == (1u << 11u) - 1u);
-        r.mantissa0 = payload >> 32;
-        r.mantissa1 = payload;
+        r.mantissa0 = static_cast<unsigned>(payload >> 32);
+        r.mantissa1 = static_cast<unsigned>(payload);
     }
 };
 
@@ -490,12 +495,13 @@ struct float_traits_x87 {
 #endif
     };
 
-    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    SCN_MAYBE_UNUSED static void apply_nan_payload(nan_repr& r,
+                                                   std::uint64_t payload)
     {
         SCN_EXPECT(r.quiet_nan == 1);
         SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
-        r.mantissa0 = payload >> 32;
-        r.mantissa1 = payload;
+        r.mantissa0 = static_cast<unsigned>(payload >> 32);
+        r.mantissa1 = static_cast<unsigned>(payload);
     }
 };
 
@@ -555,25 +561,26 @@ struct float_traits_binary128 {
 #endif
     };
 
-    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    SCN_MAYBE_UNUSED static void apply_nan_payload(nan_repr& r,
+                                                   std::uint64_t payload)
     {
         SCN_EXPECT(r.quiet_nan == 1);
         SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
         r.mantissa0 = 0;
         r.mantissa1 = 0;
-        r.mantissa2 = payload >> 32;
-        r.mantissa3 = payload;
+        r.mantissa2 = static_cast<unsigned>(payload >> 32);
+        r.mantissa3 = static_cast<unsigned>(payload);
     }
 
 #if SCN_HAS_INT128
-    static void apply_nan_payload(nan_repr& r, uint128 payload)
+    SCN_MAYBE_UNUSED static void apply_nan_payload(nan_repr& r, uint128 payload)
     {
         SCN_EXPECT(r.quiet_nan == 1);
         SCN_EXPECT(r.exponent == (1u << 15u) - 1u);
-        r.mantissa0 = payload >> 96;
-        r.mantissa1 = payload >> 64;
-        r.mantissa2 = payload >> 32;
-        r.mantissa3 = payload;
+        r.mantissa0 = static_cast<unsigned>(payload >> 96);
+        r.mantissa1 = static_cast<unsigned>(payload >> 64);
+        r.mantissa2 = static_cast<unsigned>(payload >> 32);
+        r.mantissa3 = static_cast<unsigned>(payload);
     }
 #endif
 };
@@ -588,7 +595,8 @@ struct float_traits_doubledouble {
 
     using nan_repr = value_repr;
 
-    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    SCN_MAYBE_UNUSED static void apply_nan_payload(nan_repr& r,
+                                                   std::uint64_t payload)
     {
         // -2, because of the implicit +1,
         // and the bit for signaling/quiet NaN
@@ -599,16 +607,18 @@ struct float_traits_doubledouble {
     }
 
 #if SCN_HAS_INT128
-    static void apply_nan_payload(nan_repr& r, uint128 payload)
+    SCN_MAYBE_UNUSED static void apply_nan_payload(nan_repr& r, uint128 payload)
     {
         // -2, because of the implicit +1,
         // and the bit for signaling/quiet NaN
         static constexpr auto high_bits =
             std::numeric_limits<double>::digits - 2;
-        float_traits<double>::apply_nan_payload(r.high, payload);
+        float_traits<double>::apply_nan_payload(
+            r.high, static_cast<std::uint64_t>(payload));
         r.low.quiet_nan = 1;
         r.low.exponent = (1u << 11u) - 1u;
-        float_traits<double>::apply_nan_payload(r.low, payload >> high_bits);
+        float_traits<double>::apply_nan_payload(
+            r.low, static_cast<std::uint64_t>(payload >> high_bits));
     }
 #endif
 };
@@ -673,11 +683,12 @@ struct float_traits<std::float16_t> {
 #endif
     };
 
-    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    SCN_MAYBE_UNUSED static void apply_nan_payload(nan_repr& r,
+                                                   std::uint64_t payload)
     {
         SCN_EXPECT(r.quiet_nan == 1);
         SCN_EXPECT(r.exponent == (1u << 5u) - 1u);
-        r.mantissa = payload;
+        r.mantissa = static_cast<unsigned>(payload);
     }
 };
 #endif
@@ -734,14 +745,21 @@ struct float_traits<std::bfloat16_t> {
 #endif
     };
 
-    static void apply_nan_payload(nan_repr& r, std::uint64_t payload)
+    SCN_MAYBE_UNUSED static void apply_nan_payload(nan_repr& r,
+                                                   std::uint64_t payload)
     {
         SCN_EXPECT(r.quiet_nan == 1);
         SCN_EXPECT(r.exponent == (1u << 8u) - 1u);
-        r.mantissa = payload;
+        r.mantissa = static_cast<unsigned>(payload);
     }
 };
 #endif
+
+SCN_GCC_POP  // -Wconversion
+
+    namespace
+{
+}
 
 // Detect +0.0, -0.0, +inf, and -inf, despite stuff like -ffast-math
 
@@ -847,7 +865,11 @@ bool is_float_negative_infinity(T value)
     }
 }
 
-SCN_GCC_COMPAT_POP;  // -Wfloat-equal
+SCN_GCC_COMPAT_POP  // -Wfloat-equal
+
+    namespace
+{
+}
 
 template <typename CharT>
 struct impl_init_data {
@@ -1421,24 +1443,23 @@ public:
             // and fall back if that's the case.
 
             if (exponent_base == 10) {
-                if (exponent >=
-                    std::log10(std::numeric_limits<T>::denorm_min())) {
+                if (exponent >= static_cast<int>(std::log10(
+                                    std::numeric_limits<T>::denorm_min()))) {
                     return fallback(detail::unexpected_scan_error(
                         scan_error::value_positive_underflow,
-                        "std::from_chars: result_out_of_range, value too "
-                        "small, "
-                        "possibly subnormal"));
+                        "std::from_chars: result_out_of_range, "
+                        "value too small, possibly subnormal"));
                 }
             }
             if (exponent_base == 16) {
                 if (exponent >=
-                    std::log2(std::numeric_limits<T>::denorm_min()) /
-                        std::log2(static_cast<T>(16.0))) {
+                    static_cast<int>(
+                        std::log2(std::numeric_limits<T>::denorm_min()) /
+                        std::log2(static_cast<T>(16.0)))) {
                     return fallback(detail::unexpected_scan_error(
                         scan_error::value_positive_underflow,
-                        "std::from_chars: result_out_of_range, value too "
-                        "small, "
-                        "possibly subnormal"));
+                        "std::from_chars: result_out_of_range, "
+                        "value too small, possibly subnormal"));
                 }
             }
 
@@ -1482,7 +1503,11 @@ struct from_chars_impl_traits {
 #if !SCN_DISABLE_FAST_FLOAT
 
 struct fast_float_impl_base {
-    fast_float::chars_format get_flags() const
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wunneeded-member-function")
+    // false positive
+
+    SCN_NODISCARD fast_float::chars_format get_flags() const
     {
         unsigned format_flags{};
         if ((m_options & float_reader_base::allow_fixed) != 0) {
@@ -1496,6 +1521,8 @@ struct fast_float_impl_base {
 
         return static_cast<fast_float::chars_format>(format_flags);
     }
+
+    SCN_CLANG_POP
 
     float_reader_base::float_kind m_kind;
     unsigned m_options;
@@ -1737,7 +1764,7 @@ scan_expected<std::ptrdiff_t> parse_float_value(
     if (data.kind == float_reader_base::float_kind::inf_short) {
         if constexpr (std::numeric_limits<T>::has_infinity) {
             value = std::numeric_limits<T>::infinity();
-            return std::strlen("inf");
+            return static_cast<std::ptrdiff_t>(std::strlen("inf"));
         }
         else {
             return detail::unexpected_scan_error(
@@ -1748,7 +1775,7 @@ scan_expected<std::ptrdiff_t> parse_float_value(
     if (data.kind == float_reader_base::float_kind::inf_long) {
         if constexpr (std::numeric_limits<T>::has_infinity) {
             value = std::numeric_limits<T>::infinity();
-            return std::strlen("infinity");
+            return static_cast<std::ptrdiff_t>(std::strlen("infinity"));
         }
         else {
             return detail::unexpected_scan_error(
@@ -1759,7 +1786,7 @@ scan_expected<std::ptrdiff_t> parse_float_value(
     if (data.kind == float_reader_base::float_kind::nan_simple) {
         if constexpr (std::numeric_limits<T>::has_quiet_NaN) {
             value = std::numeric_limits<T>::quiet_NaN();
-            return std::strlen("nan");
+            return static_cast<std::ptrdiff_t>(std::strlen("nan"));
         }
         else {
             return detail::unexpected_scan_error(
@@ -1999,7 +2026,7 @@ constexpr uint64_t min_safe_u64_table[] = {0,
                                            3379220508056640625,
                                            4738381338321616896};
 
-SCN_FORCE_INLINE constexpr size_t min_safe_u64(int base)
+SCN_FORCE_INLINE constexpr uint64_t min_safe_u64(int base)
 {
     SCN_EXPECT(base >= 2 && base <= 36);
     return min_safe_u64_table[static_cast<size_t>(base)];
@@ -2011,6 +2038,8 @@ constexpr bool check_integer_overflow(uint64_t val,
                                       int base,
                                       bool is_negative)
 {
+    SCN_UNUSED(is_negative);  // not really
+
     auto max_digits = maxdigits_u64(base);
     if (digits_count > max_digits) {
         return true;
@@ -2116,15 +2145,17 @@ auto parse_int128(std::basic_string_view<CharT> input,
     constexpr uint128 int_max = uint_max >> 1;
     constexpr uint128 abs_int_min = int_max + 1;
 
+    SCN_GCC_COMPAT_PUSH
+    SCN_GCC_COMPAT_IGNORE("-Wsign-conversion")
     auto const [limit_val, max_digit] = [&]() -> std::pair<uint128, uint128> {
         if constexpr (std::is_same_v<T, int128>) {
             if (is_negative) {
-                return {abs_int_min / base, abs_int_min % base};
+                return {abs_int_min / base, abs_int_min % static_cast<T>(base)};
             }
-            return {int_max / base, int_max % base};
+            return {int_max / base, int_max % static_cast<T>(base)};
         }
         else {
-            return {uint_max / base, uint_max % base};
+            return {uint_max / base, uint_max % static_cast<T>(base)};
         }
     }();
 
@@ -2139,7 +2170,7 @@ auto parse_int128(std::basic_string_view<CharT> input,
         }
         if (acc < limit_val || (acc == limit_val && digit <= max_digit)) {
             SCN_LIKELY_ATTR
-            acc = acc * base + digit;
+            acc = acc * static_cast<T>(base) + static_cast<T>(digit);
         }
         else {
             return detail::unexpected_scan_error(
@@ -2149,6 +2180,7 @@ auto parse_int128(std::basic_string_view<CharT> input,
         }
         ++begin;
     }
+    SCN_GCC_COMPAT_POP
 
     val = store_result<T>(acc, is_negative);
     return begin;
@@ -2338,14 +2370,14 @@ template void parse_integer_value_exhaustive_valid(std::string_view,
 #if SCN_HAS_INT128
 
 #if !SCN_DISABLE_TYPE_INT128
-SCN_DEFINE_INTEGER_READER_TEMPLATE(char, SCN_INT128_TYPE)
-SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, SCN_INT128_TYPE)
+SCN_DEFINE_INTEGER_READER_TEMPLATE(char, int128)
+SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, int128)
 // no parse_integer_value_exhaustive_valid
 #endif
 
 #if !SCN_DISABLE_TYPE_UINT128
-SCN_DEFINE_INTEGER_READER_TEMPLATE(char, SCN_UINT128_TYPE)
-SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, SCN_UINT128_TYPE)
+SCN_DEFINE_INTEGER_READER_TEMPLATE(char, uint128)
+SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, uint128)
 // no parse_integer_value_exhaustive_valid
 #endif
 
@@ -2543,13 +2575,13 @@ struct format_handler_base {
                       "Argument with this ID has already been scanned"});
         }
 
-        if (SCN_LIKELY(id < 64)) {
+        if (SCN_LIKELY(id < 64u)) {
             visited_args_lower64 |= (1ull << id);
             return;
         }
 
-        id -= 64;
-        visited_args_upper[id / 8] |= (1ull << (id % 8));
+        id -= 64u;
+        visited_args_upper[id / 8u] |= static_cast<uint8_t>(1u << (id % 8u));
     }
 
     std::size_t args_count;
@@ -3289,7 +3321,7 @@ struct datetime_setter<std::tm> {
     static void set_century(Handler& h, std::tm&, setter_state& st, int c)
     {
         // TODO: range check
-        st.century_value = c;
+        st.century_value = static_cast<unsigned char>(c);
         st.set_century(h);
     }
     template <typename Handler>
@@ -3299,7 +3331,7 @@ struct datetime_setter<std::tm> {
             return h.set_error({scan_error::invalid_scanned_value,
                                 "Invalid value for tm_year"});
         }
-        st.short_year_value = y;
+        st.short_year_value = static_cast<unsigned char>(y);
         st.set_short_year(h);
     }
     template <typename Handler>
@@ -3326,7 +3358,7 @@ struct datetime_setter<std::tm> {
     template <typename Handler>
     static void set_tz_offset(Handler& h,
                               std::tm& t,
-                              setter_state& st,
+                              setter_state&,
                               std::chrono::minutes o)
     {
         if constexpr (mp_valid<has_tm_gmtoff_predicate, std::tm>::value) {
@@ -3812,6 +3844,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int yr = read_classic_unsigned_integer(4, 4);
@@ -3827,6 +3861,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int yr = read_classic_unsigned_integer(2, 2);
@@ -3842,6 +3878,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int c = read_classic_unsigned_integer(2, 2);
@@ -3915,13 +3953,15 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int mon = read_classic_unsigned_integer(1, 2);
         setter::set_mon(*this, m_tm, m_st, mon);
     }
 
-    void on_dec0_week_of_year(numeric_system sys = numeric_system::standard)
+    void on_dec0_week_of_year(numeric_system = numeric_system::standard)
     {
         unimplemented();
     }
@@ -3947,6 +3987,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int mday = read_classic_unsigned_integer(1, 2);
@@ -4000,6 +4042,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int wday = read_classic_unsigned_integer(1, 1);
@@ -4021,6 +4065,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int wday = read_classic_unsigned_integer(1, 1);
@@ -4036,6 +4082,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int hr = read_classic_unsigned_integer(1, 2);
@@ -4050,6 +4098,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int hr = read_classic_unsigned_integer(1, 2);
@@ -4064,6 +4114,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int min = read_classic_unsigned_integer(1, 2);
@@ -4078,6 +4130,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         int sec = read_classic_unsigned_integer(1, 2);
@@ -4099,7 +4153,7 @@ public:
         else {
             auto& state = get_localized_read_state();
             CharT sep = state.numpunct_facet->decimal_point();
-            if (!consume_ch(sep)) {
+            if (!consume_code_unit(sep)) {
                 return set_error(
                     {scan_error::invalid_scanned_value,
                      "Expected decimal separator in subsecond value"});
@@ -4244,6 +4298,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
         // %c == %a %b %d %H:%M:%S %Y
         constexpr CharT colon = ':';
@@ -4279,6 +4335,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
 
         // %x == %m/%d/%Y
@@ -4307,6 +4365,8 @@ public:
             }
             return;
         }
+#else
+        SCN_UNUSED(sys);
 #endif
         // %X == %H:%M:%S
         on_iso_time();
@@ -4475,6 +4535,18 @@ private:
         return false;
     }
 
+    bool consume_code_unit(CharT ch)
+    {
+        if (m_begin == m_range.end()) {
+            return false;
+        }
+        if (*m_begin == ch) {
+            ++m_begin;
+            return true;
+        }
+        return false;
+    }
+
     template <typename OptT, std::size_t N>
     std::optional<OptT> try_one_of_str_nocase(
         std::array<std::pair<std::string_view, OptT>, N>& options)
@@ -4496,8 +4568,10 @@ private:
                     ch ^ options[i].first[chars_consumed]);
                 if (options[i].first.size() <= chars_consumed ||
                     (cmp != 0 && cmp != 32)) {
-                    std::rotate(options.begin() + i, options.begin() + i + 1,
-                                options.end());
+                    std::rotate(
+                        options.begin() + static_cast<std::ptrdiff_t>(i),
+                        options.begin() + static_cast<std::ptrdiff_t>(i) + 1,
+                        options.end());
                     --options_available;
                     continue;
                 }
@@ -4590,6 +4664,8 @@ private:
     std::optional<std::tm> read_localized(std::string_view fmt,
                                           std::wstring_view wfmt)
     {
+        SCN_UNUSED(fmt);
+        SCN_UNUSED(wfmt);
         if constexpr (std::is_same_v<CharT, char>) {
             return do_read_localized(fmt);
         }

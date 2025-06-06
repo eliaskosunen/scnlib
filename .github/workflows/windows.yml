@@ -115,7 +115,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config ${{ matrix.type }} --parallel
+        run: cmake --build . --config ${{ matrix.type }} --parallel --verbose
 
       - name: Show ccache stats
         run: |
@@ -169,7 +169,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config Debug --parallel
+        run: cmake --build . --config Debug --parallel --verbose
 
       - name: Show ccache stats
         run: |
@@ -247,7 +247,7 @@ jobs:
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
             -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_TESTS=ON -DSCN_EXAMPLES=ON ..
-          cmake --build . --parallel -- -k 0
+          cmake --build . --parallel --verbose -- -k 0
           ctest --output-on-failure
 
       - name: Show ccache stats

@@ -23,8 +23,6 @@
 #include <charconv>
 #endif
 
-#include <fast_float/fast_float.h>
-
 template <typename Int>
 static void scan_int_single_scn(benchmark::State& state)
 {

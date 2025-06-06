@@ -30,8 +30,8 @@
 #define SCN_STD_20 202002L
 #define SCN_STD_23 202302L
 
-#if SCN_MSVC
-#define SCN_STD SCN_MSVC_LANG
+#ifdef _MSVC_LANG
+#define SCN_STD _MSVC_LANG
 #else
 #define SCN_STD __cplusplus
 #endif
@@ -927,8 +927,6 @@
 // __int128 is a builtin type defined on gcc and clang,
 // as long as we have a 64-bit architecture.
 #define SCN_HAS_INT128   1
-#define SCN_INT128_TYPE  __int128
-#define SCN_UINT128_TYPE unsigned __int128
 #endif
 
 #endif

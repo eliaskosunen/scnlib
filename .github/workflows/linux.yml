@@ -190,7 +190,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . -- -k 0
+        run: cmake --build . --verbose -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -298,7 +298,7 @@ jobs:
       - name: Build
         run: |
           cd $GITHUB_WORKSPACE/build
-          $GITHUB_WORKSPACE/bin/cmake --build . -- -k 0
+          $GITHUB_WORKSPACE/bin/cmake --build . --verbose -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -370,7 +370,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . -- -k 0
+        run: cmake --build . --verbose -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -437,7 +437,7 @@ jobs:
 
       - name: Build
         run: |
-          ./alpine-run.sh cmake --build build -- -k 0
+          ./alpine-run.sh cmake --build build --verbose -- -k 0
           ./alpine-run.sh ccache --show-stats
 
       - name: Test
@@ -507,7 +507,7 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake --build . -- -k 0
+          cmake --build . --verbose -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -587,7 +587,7 @@ jobs:
           else
             cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF $GITHUB_WORKSPACE
           fi
-          cmake --build . --target scn
+          cmake --build . --verbose --target scn
           sudo cmake --build . --target install
 
       - name: Build consumer
@@ -595,7 +595,7 @@ jobs:
           mkdir ${{ runner.workspace }}/consumer-build
           cd ${{ runner.workspace }}/consumer-build
           cmake $GITHUB_WORKSPACE/tests/consumer-test/library
-          cmake --build .
+          cmake --build . --verbose
 
       - name: Show ccache stats
         run: |
@@ -679,7 +679,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --target scn -- -k 0
+        run: cmake --build . --target scn --verbose -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -743,7 +743,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --target scn -- -k 0
+        run: cmake --build . --target scn --verbose -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -846,7 +846,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . -- -k 0
+        run: cmake --build . --verbose -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -901,9 +901,9 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}/build
           cd ${{ runner.workspace }}/build
-          emcmake cmake -DSCN_CI=ON -DSCN_BENCHMARKS=OFF $GITHUB_WORKSPACE
+          emcmake cmake -DSCN_CI=ON -DSCN_WERROR=OFF -DSCN_BENCHMARKS=OFF $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: |
-          emmake cmake --build . --parallel
+          emmake cmake --build . --parallel --verbose

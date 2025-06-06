@@ -29,8 +29,39 @@ SCN_CLANG_IGNORE("-Wweak-vtables")
 SCN_CLANG_IGNORE("-Wglobal-constructors")
 SCN_CLANG_IGNORE("-Wzero-as-null-pointer-constant")
 SCN_CLANG_IGNORE("-Wshift-sign-overflow")
+SCN_CLANG_IGNORE("-Wswitch-default")
 
 #include <benchmark/benchmark.h>
+
+SCN_CLANG_POP
+SCN_GCC_POP
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wold-style-cast")
+SCN_GCC_IGNORE("-Wnoexcept")
+SCN_GCC_IGNORE("-Wundef")
+SCN_GCC_IGNORE("-Wsign-conversion")
+
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wold-style-cast")
+SCN_CLANG_IGNORE("-Wdeprecated")
+SCN_CLANG_IGNORE("-Wcomma")
+SCN_CLANG_IGNORE("-Wundef")
+SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
+
+#if SCN_CLANG >= SCN_COMPILER(8, 0, 0)
+SCN_CLANG_IGNORE("-Wextra-semi-stmt")
+#endif
+
+#if SCN_CLANG >= SCN_COMPILER(16, 0, 0)
+SCN_CLANG_IGNORE("-Wunsafe-buffer-usage")
+#endif
+
+#if SCN_CLANG >= SCN_COMPILER(13, 0, 0)
+SCN_CLANG_IGNORE("-Wreserved-identifier")
+#endif
+
+#include <fast_float/fast_float.h>
 
 SCN_CLANG_POP
 SCN_GCC_POP

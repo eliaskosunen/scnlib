@@ -23,10 +23,12 @@ else ()
 endif ()
 
 if (SCN_IS_TOP_PROJECT)
-    if (NOT DEFINED CMAKE_BUILD_TYPE)
-        message(WARNING "No CMAKE_BUILD_TYPE set, defaulting to Release")
+    get_property(is_multi_cfg GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+    if (NOT DEFINED CMAKE_BUILD_TYPE AND NOT is_multi_cfg)
+        message(WARNING "No CMAKE_BUILD_TYPE set, generator is not multi-config, defaulting to Release")
         set(CMAKE_BUILD_TYPE Release CACHE STRING "")
     endif ()
+
     if (NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
         message(STATUS "No CMAKE_CXX_VISIBILITY_PRESET set, defaulting to hidden")
         set(CMAKE_CXX_VISIBILITY_PRESET hidden CACHE STRING "Preset for the export of private symbols")
@@ -93,7 +95,12 @@ target_link_libraries(scn PRIVATE
 )
 set_library_flags(scn)
 
-set_property(TARGET scn PROPERTY SOVERSION 4.0.1)
+set_target_properties(
+        scn PROPERTIES
+        VERSION 4.0.1
+        SOVERSION 4.0.1
+        PUBLIC_HEADER "${SCN_PUBLIC_HEADERS}"
+)
 add_library(scn::scn ALIAS scn)
 
 if (SCN_MODULES)

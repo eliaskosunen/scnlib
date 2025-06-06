@@ -179,7 +179,7 @@ protected:
     {
         widened_source = T::make_widened_source(SCN_FWD(s));
         return std::basic_string_view<typename T::source_char_type>{
-            *widened_source};
+            widened_source->data(), widened_source->size()};
     }
 
     auto read()
@@ -187,7 +187,7 @@ protected:
         typename T::dest_string_type val{};
         auto ret = make_reader().read(
             std::basic_string_view<typename T::source_char_type>{
-                *widened_source},
+                widened_source->data(), widened_source->size()},
             val);
         return std::make_pair(ret, val);
     }
@@ -351,7 +351,7 @@ protected:
     {
         widened_source = T::make_widened_source(SCN_FWD(s));
         return std::basic_string_view<typename T::source_char_type>{
-            *widened_source};
+            widened_source->data(), widened_source->size()};
     }
 
     auto read(const specs_type& specs)
@@ -359,7 +359,7 @@ protected:
         typename T::dest_string_type val{};
         auto ret = make_reader().read(
             std::basic_string_view<typename T::source_char_type>{
-                *widened_source},
+                widened_source->data(), widened_source->size()},
             specs, val);
         return std::make_pair(ret, val);
     }

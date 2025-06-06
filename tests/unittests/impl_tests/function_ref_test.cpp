@@ -19,7 +19,7 @@
 
 #include <scn/impl.h>
 
-int identity_fn(int a)
+static int identity_fn(int a)
 {
     return a;
 }

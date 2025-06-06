@@ -118,6 +118,9 @@ inline constexpr bool finite_math_only = true;
 inline constexpr bool finite_math_only = false;
 #endif
 
+SCN_GCC_COMPAT_PUSH
+SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
+
 template <typename T>
 class FloatValueReaderTest : public testing::Test {
 protected:
@@ -233,32 +236,32 @@ protected:
     }
 
 #define MAKE_PAIR_RETURN(Value, LiteralSuffix) \
-    std::pair{Value##LiteralSuffix, #Value};
+    std::pair{Value##LiteralSuffix, #Value}
 
 #if SCN_HAS_STD_F128
-#define MAKE_PAIR_RETURN_F128(Value) std::pair{Value##F128, #Value};
+#define MAKE_PAIR_RETURN_F128(Value) std::pair{Value##F128, #Value}
 #else
-#define MAKE_PAIR_RETURN_F128(Value) std::pair{Value##L, #Value};
+#define MAKE_PAIR_RETURN_F128(Value) std::pair{Value##L, #Value}
 #endif
 
 #define MAKE_CHECKED_PAIR_RETURN(Value, LiteralSuffix, Check) \
     []() {                                                    \
         static_assert(Value##LiteralSuffix == Check);         \
         return MAKE_PAIR_RETURN(Value, LiteralSuffix);        \
-    }();
+    }()
 
 #if SCN_HAS_STD_F128
 #define MAKE_CHECKED_PAIR_RETURN_F128(Value, Check) \
     []() {                                          \
         static_assert(Value##F128 == Check);        \
         return MAKE_PAIR_RETURN_F128(Value);        \
-    }();
+    }()
 #else
 #define MAKE_CHECKED_PAIR_RETURN_F128(Value, Check) \
     []() {                                          \
         static_assert(Value##L == Check);           \
         return MAKE_PAIR_RETURN_F128(Value);        \
-    }();
+    }()
 #endif
 
     constexpr static auto get_subnormal_()
@@ -1013,6 +1016,8 @@ using type_list =
 #endif
                      >;
 
+SCN_GCC_COMPAT_POP  // -Wfloat-equal
+
 #undef F_C
 #if SCN_HAS_STD_F128
 #define F_C(x) static_cast<typename TestFixture::float_type>(x##F128)
@@ -1020,10 +1025,9 @@ using type_list =
 #define F_C(x) static_cast<typename TestFixture::float_type>(x##L)
 #endif
 
-SCN_CLANG_PUSH
-SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")
+    SCN_CLANG_PUSH SCN_CLANG_IGNORE("-Wgnu-zero-variadic-macro-arguments")
 
-TYPED_TEST_SUITE(FloatValueReaderTest, type_list);
+        TYPED_TEST_SUITE(FloatValueReaderTest, type_list);
 
 SCN_CLANG_POP
 

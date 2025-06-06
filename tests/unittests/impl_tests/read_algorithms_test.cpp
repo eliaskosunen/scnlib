@@ -25,7 +25,7 @@ using namespace std::string_view_literals;
 
 // read_all
 
-auto make_non_contiguous_buffer_range(std::string_view in)
+static auto make_non_contiguous_buffer_range(std::string_view in)
 {
     static std::deque<char> mem;
     mem.clear();
@@ -33,8 +33,8 @@ auto make_non_contiguous_buffer_range(std::string_view in)
 
     static std::optional<
         scn::detail::basic_scan_forward_buffer_impl<std::deque<char>>>
-        buffer;
-    buffer = std::nullopt;
+        buffer{};
+    buffer.reset();
     buffer.emplace(mem);
 
     return scn::ranges::subrange{

@@ -94,7 +94,7 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake --build . -- -k 0
+          cmake --build . --verbose -- -k 0
 
       - name: Show ccache stats
         run: |

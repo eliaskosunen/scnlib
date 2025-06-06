@@ -250,8 +250,15 @@ using regex_matches = basic_regex_matches<char>;
 using wregex_matches = basic_regex_matches<wchar_t>;
 
 #if SCN_HAS_INT128
-using int128 = SCN_INT128_TYPE;
-using uint128 = SCN_UINT128_TYPE;
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wpedantic")
+
+using int128 = __int128;
+using uint128 = unsigned __int128;
+
+SCN_GCC_POP
+
 #endif
 
 SCN_END_NAMESPACE

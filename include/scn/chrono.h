@@ -311,17 +311,17 @@ struct datetime_components {
     [[nodiscard]] std::tm to_tm() const
     {
         SCN_UNUSED(subsec);
-        std::tm t{
-            static_cast<int>(sec.value_or(0)),
-            static_cast<int>(min.value_or(0)),
-            static_cast<int>(hour.value_or(0)),
-            static_cast<int>(mday.value_or(0)),
-            static_cast<int>(static_cast<unsigned>(mon.value_or(January)) - 1),
-            static_cast<int>(year.value_or(1900) - 1900),
-            static_cast<int>(wday.value_or(Sunday).c_encoding()),
-            static_cast<int>(yday.value_or(0)),
-            -1,
-        };
+        std::tm t{};
+        t.tm_sec = static_cast<int>(sec.value_or(0));
+        t.tm_min = static_cast<int>(min.value_or(0));
+        t.tm_hour = static_cast<int>(hour.value_or(0));
+        t.tm_mday = static_cast<int>(mday.value_or(0));
+        t.tm_mon =
+            static_cast<int>(static_cast<unsigned>(mon.value_or(January)) - 1);
+        t.tm_year = static_cast<int>(year.value_or(1900) - 1900);
+        t.tm_wday = static_cast<int>(wday.value_or(Sunday).c_encoding());
+        t.tm_yday = static_cast<int>(yday.value_or(0));
+        t.tm_isdst = -1;
         if constexpr (detail::mp_valid<detail::has_tm_gmtoff_predicate,
                                        std::tm>::value) {
             detail::assign_gmtoff(
@@ -848,14 +848,14 @@ struct setter_state {
                 // 12:xx PM -> 12:xx, no-op
             }
             else {
-                hour += 12;
+                hour = static_cast<Hour>(hour + Hour{12});
             }
         }
         else {
             // AM
             if (hour == 12) {
                 // 12:xx AM -> 00:xx
-                hour = 0;
+                hour = Hour{0};
             }
             else {
                 // no-op
@@ -1516,6 +1516,30 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
 template <typename CharT, typename T, typename Context>
 auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str, T& t, Context& ctx)
     -> scan_expected<typename Context::iterator>;
+
+extern template auto chrono_scan_impl(std::string_view, std::tm&, scan_context&)
+    -> scan_expected<scan_context::iterator>;
+extern template auto chrono_scan_impl(std::string_view,
+                                      tm_with_tz&,
+                                      scan_context&)
+    -> scan_expected<scan_context::iterator>;
+extern template auto chrono_scan_impl(std::string_view,
+                                      datetime_components&,
+                                      scan_context&)
+    -> scan_expected<scan_context::iterator>;
+
+extern template auto chrono_scan_impl(std::wstring_view,
+                                      std::tm&,
+                                      wscan_context&)
+    -> scan_expected<wscan_context::iterator>;
+extern template auto chrono_scan_impl(std::wstring_view,
+                                      tm_with_tz&,
+                                      wscan_context&)
+    -> scan_expected<wscan_context::iterator>;
+extern template auto chrono_scan_impl(std::wstring_view,
+                                      datetime_components&,
+                                      wscan_context&)
+    -> scan_expected<wscan_context::iterator>;
 
 template <typename CharT, typename T>
 struct chrono_datetime_scanner {

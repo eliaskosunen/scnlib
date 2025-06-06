@@ -300,9 +300,19 @@ TEST(ChronoScanTest, ChronoTimePoint)
     auto result = scn::scan<std::chrono::system_clock::time_point>(
         "2024-09-10 23:11:10", "{:%Y-%m-%d %H:%M:%S}");
     ASSERT_TRUE(result);
-    auto val = result->value().time_since_epoch();
+    auto val = std::chrono::duration_cast<std::chrono::seconds>(
+        result->value().time_since_epoch());
 
-    std::tm expected_tm{10, 11, 23, 10, 8, 2024 - 1900, 0, 0, -1};
+    std::tm expected_tm{};
+    expected_tm.tm_sec = 10;
+    expected_tm.tm_min = 11;
+    expected_tm.tm_hour = 23;
+    expected_tm.tm_mday = 10;
+    expected_tm.tm_mon = 8;
+    expected_tm.tm_year = 2024 - 1900;
+    expected_tm.tm_wday = 0;
+    expected_tm.tm_yday = 0;
+    expected_tm.tm_isdst = -1;
     auto expected_val = std::chrono::seconds{std::mktime(&expected_tm)};
 
     EXPECT_EQ(val, expected_val);

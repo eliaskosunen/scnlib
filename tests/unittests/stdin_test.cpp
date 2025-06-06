@@ -47,14 +47,14 @@ static std::optional<T> read_scanf()
         if (std::scanf(" %3c", &val[0]) != 1) {
             return std::nullopt;
         }
-        return val;
+        return SCN_MOVE(val);
     }
     else if constexpr (std::is_same_v<T, char>) {
         char val{};
         if (std::scanf("%c", &val) != 1) {
             return std::nullopt;
         }
-        return val;
+        return SCN_MOVE(val);
     }
     else {
         static_assert(scn::detail::dependent_false<T>::value, "");
@@ -68,7 +68,7 @@ static std::optional<T> read_cin()
     if (!(std::cin >> i)) {
         return std::nullopt;
     }
-    return i;
+    return SCN_MOVE(i);
 }
 
 using testing::Optional;

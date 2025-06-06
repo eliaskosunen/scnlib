@@ -347,6 +347,9 @@ SCN_FORCE_INLINE constexpr auto to_address(Ptr&& p) noexcept
 // <expected> implementation
 /////////////////////////////////////////////////////////////////
 
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wnoexcept")
+
 // The following implementation of expected is based on TartanLlama/expected,
 // but is heavily modified.
 //
@@ -364,6 +367,9 @@ class SCN_TRIVIAL_ABI unexpected {
 public:
     unexpected() = delete;
 
+    SCN_GCC_PUSH
+    SCN_GCC_IGNORE("-Wmaybe-uninitialized")
+
     template <
         typename Err = E,
         typename = std::enable_if_t<!std::is_same_v<Err, unexpected> &&
@@ -375,6 +381,8 @@ public:
     {
         SCN_UNLIKELY_ATTR SCN_UNUSED(m_unexpected);
     }
+
+    SCN_GCC_POP
 
     template <typename... Args,
               typename = std::enable_if_t<std::is_constructible_v<E, Args...>>>
@@ -3499,23 +3507,25 @@ public:
     {
     }
 
-    constexpr I begin() const
+    SCN_NODISCARD constexpr I begin() const
+        noexcept(std::is_nothrow_copy_constructible_v<I>)
     {
         return m_iterator;
     }
-    constexpr S end() const
+    SCN_NODISCARD constexpr S end() const
+        noexcept(std::is_nothrow_copy_constructible_v<S>)
     {
         return m_sentinel;
     }
 
-    SCN_NODISCARD constexpr bool empty() const
+    SCN_NODISCARD constexpr bool empty() const noexcept
     {
         return m_iterator == m_sentinel;
     }
 
     template <typename I_ = I,
               std::enable_if_t<sized_sentinel_for<S, I_>>* = nullptr>
-    constexpr std::size_t size() const
+    SCN_NODISCARD constexpr std::size_t size() const noexcept
     {
         return static_cast<size_t>(m_sentinel - m_iterator);
     }
@@ -3635,6 +3645,13 @@ namespace ranges {
 template <typename CharT, typename Traits>
 inline constexpr bool
     enable_borrowed_range<std::basic_string_view<CharT, Traits>> = true;
+}
+
+SCN_GCC_POP  // -Wnoexcept (for the entirety of the expected and ranges impls)
+
+    // reset formatting
+    namespace detail
+{
 }
 
 /////////////////////////////////////////////////////////////////
@@ -3796,6 +3813,7 @@ public:
             case invalid_literal:
             case invalid_fill:
             case length_too_short:
+            case type_not_supported:
                 return std::errc::invalid_argument;
             case invalid_source_state:
                 return std::errc::io_error;
@@ -3805,9 +3823,12 @@ public:
             case value_negative_underflow:
                 return std::errc::result_out_of_range;
             case max_error:
+                SCN_CLANG_PUSH
+                SCN_CLANG_IGNORE("-Wcovered-switch-default")
             default:
                 assert(false);
                 SCN_UNREACHABLE;
+                SCN_CLANG_POP
         }
     }
 
@@ -3851,6 +3872,9 @@ SCN_COLD scan_error handle_error(scan_error e);
 #if SCN_HAS_EXCEPTIONS
 
 namespace detail {
+
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wweak-vtables")
 
 class scan_format_string_error_base : public std::runtime_error {
 public:
@@ -3917,17 +3941,19 @@ public:
     {
     }
 };
+
+SCN_CLANG_POP  // -Wweak-vtables
 #endif
 
-/**
- * An `expected<T, scan_error>`.
- *
- * Not a type alias to shorten template names.
- *
- * \ingroup result
- */
-template <typename T>
-struct scan_expected : public expected<T, scan_error> {
+    /**
+     * An `expected<T, scan_error>`.
+     *
+     * Not a type alias to shorten template names.
+     *
+     * \ingroup result
+     */
+    template <typename T>
+    struct scan_expected : public expected<T, scan_error> {
     using expected<T, scan_error>::expected;
 
     scan_expected(const expected<T, scan_error>& other)
@@ -3954,17 +3980,19 @@ struct is_expected_impl<scan_expected<T>> : std::true_type {};
 #define SCN_TRY_IMPL_CONCAT2(a, b) SCN_TRY_IMPL_CONCAT(a, b)
 #define SCN_TRY_TMP                SCN_TRY_IMPL_CONCAT2(_scn_try_tmp_, __LINE__)
 
-#define SCN_TRY_DISCARD(x)                                      \
-    if (auto&& SCN_TRY_TMP = (x); SCN_UNLIKELY(!SCN_TRY_TMP)) { \
-        return ::scn::unexpected(SCN_TRY_TMP.error());          \
-    }
+#define SCN_TRY_DISCARD(x)                                          \
+    do {                                                            \
+        if (auto&& SCN_TRY_TMP = (x); SCN_UNLIKELY(!SCN_TRY_TMP)) { \
+            return ::scn::unexpected(SCN_TRY_TMP.error());          \
+        }                                                           \
+    } while (false)
 
 #define SCN_TRY_ASSIGN(init, x)                        \
     auto&& SCN_TRY_TMP = (x);                          \
     if (SCN_UNLIKELY(!SCN_TRY_TMP)) {                  \
         return ::scn::unexpected(SCN_TRY_TMP.error()); \
     }                                                  \
-    init = *SCN_FWD(SCN_TRY_TMP);
+    init = *SCN_FWD(SCN_TRY_TMP)
 #define SCN_TRY(name, x) SCN_TRY_ASSIGN(auto name, x)
 
 /////////////////////////////////////////////////////////////////
@@ -4382,7 +4410,8 @@ public:
 
     SCN_NODISCARD std::ptrdiff_t chars_available() const
     {
-        return m_putback_buffer.size() + m_current_view.size();
+        return static_cast<std::ptrdiff_t>(m_putback_buffer.size() +
+                                           m_current_view.size());
     }
 
     SCN_NODISCARD std::basic_string_view<CharT> current_view() const
@@ -4399,28 +4428,35 @@ public:
         return m_putback_buffer;
     }
 
+    SCN_GCC_PUSH
+    SCN_GCC_IGNORE("-Warray-bounds")
+
     SCN_NODISCARD std::basic_string_view<CharT> get_segment_starting_at(
         std::ptrdiff_t pos) const
     {
-        if (SCN_UNLIKELY(
-                pos < static_cast<std::ptrdiff_t>(m_putback_buffer.size()))) {
-            return std::basic_string_view<CharT>(m_putback_buffer).substr(pos);
+        SCN_EXPECT(pos >= 0);
+        const auto upos = static_cast<std::size_t>(pos);
+        if (SCN_UNLIKELY(upos < m_putback_buffer.size())) {
+            return std::basic_string_view<CharT>(m_putback_buffer).substr(upos);
         }
-        const auto start = pos - m_putback_buffer.size();
+        const auto start = upos - m_putback_buffer.size();
         SCN_EXPECT(start <= m_current_view.size());
         return m_current_view.substr(start);
     }
 
     SCN_NODISCARD CharT get_character_at(std::ptrdiff_t pos) const
     {
-        if (SCN_UNLIKELY(
-                pos < static_cast<std::ptrdiff_t>(m_putback_buffer.size()))) {
-            return m_putback_buffer[pos];
+        SCN_EXPECT(pos >= 0);
+        const auto upos = static_cast<std::size_t>(pos);
+        if (SCN_UNLIKELY(upos < m_putback_buffer.size())) {
+            return m_putback_buffer[upos];
         }
-        const auto start = pos - m_putback_buffer.size();
+        const auto start = upos - m_putback_buffer.size();
         SCN_EXPECT(start < m_current_view.size());
         return m_current_view[start];
     }
+
+    SCN_GCC_POP
 
     SCN_NODISCARD bool is_contiguous() const
     {
@@ -4881,19 +4917,21 @@ constexpr auto get_file_tag()
 
 template <typename File>
 struct stdio_file_interface_base {
-    stdio_file_interface_base(File* f) : file(f) {}
+    explicit constexpr stdio_file_interface_base(File* f) noexcept : file(f) {}
     ~stdio_file_interface_base() = default;
 
     stdio_file_interface_base(const stdio_file_interface_base&) = delete;
     stdio_file_interface_base& operator=(const stdio_file_interface_base&) =
         delete;
 
-    stdio_file_interface_base(stdio_file_interface_base&& other)
+    constexpr stdio_file_interface_base(
+        stdio_file_interface_base&& other) noexcept
         : file(other.file)
     {
         other.file = nullptr;
     }
-    stdio_file_interface_base& operator=(stdio_file_interface_base&& other)
+    constexpr stdio_file_interface_base& operator=(
+        stdio_file_interface_base&& other) noexcept
     {
         file = other.file;
         other.file = nullptr;
@@ -4909,15 +4947,17 @@ struct stdio_file_interface_impl;
 template <typename File>
 struct stdio_file_interface_impl<File, default_file_tag>
     : stdio_file_interface_base<File> {
-    void lock() {}
-    void unlock() {}
+    using stdio_file_interface_base<File>::stdio_file_interface_base;
 
-    bool has_buffering() const
+    static constexpr void lock() {}
+    static constexpr void unlock() {}
+
+    SCN_NODISCARD static constexpr bool has_buffering()
     {
         return false;
     }
 
-    std::string_view buffer() const
+    SCN_NODISCARD std::string_view buffer() const
     {
         return {};
     }
@@ -4932,7 +4972,7 @@ struct stdio_file_interface_impl<File, default_file_tag>
         SCN_UNREACHABLE;
     }
 
-    std::optional<char> read_one()
+    SCN_NODISCARD std::optional<char> read_one()
     {
         auto res = std::fgetc(this->file);
         if (res == EOF) {
@@ -4944,7 +4984,7 @@ struct stdio_file_interface_impl<File, default_file_tag>
     void prepare_putback() {}
     void finalize_putback() {}
 
-    bool putback(char ch)
+    SCN_NODISCARD bool putback(char ch)
     {
         return std::ungetc(static_cast<unsigned char>(ch), this->file) != EOF;
     }
@@ -4952,6 +4992,8 @@ struct stdio_file_interface_impl<File, default_file_tag>
 
 template <typename File>
 struct posix_stdio_file_interface : stdio_file_interface_base<File> {
+    using stdio_file_interface_base<File>::stdio_file_interface_base;
+
     void lock()
     {
         flockfile(this->file);
@@ -4961,12 +5003,12 @@ struct posix_stdio_file_interface : stdio_file_interface_base<File> {
         funlockfile(this->file);
     }
 
-    static bool has_buffering()
+    SCN_NODISCARD static constexpr bool has_buffering()
     {
         return true;
     }
 
-    std::optional<char> read_one()
+    SCN_NODISCARD std::optional<char> read_one()
     {
         auto res = getc_unlocked(this->file);
         if (res == EOF) {
@@ -4984,7 +5026,7 @@ struct posix_stdio_file_interface : stdio_file_interface_base<File> {
         lock();
     }
 
-    bool putback(char ch)
+    SCN_NODISCARD bool putback(char ch)
     {
         return std::ungetc(static_cast<unsigned char>(ch), this->file) != EOF;
     }
@@ -4993,7 +5035,9 @@ struct posix_stdio_file_interface : stdio_file_interface_base<File> {
 template <typename File>
 struct stdio_file_interface_impl<File, gnu_file_tag>
     : posix_stdio_file_interface<File> {
-    std::string_view buffer() const
+    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD std::string_view buffer() const
     {
         return make_string_view_from_pointers(this->file->_IO_read_ptr,
                                               this->file->_IO_read_end);
@@ -5015,7 +5059,9 @@ struct stdio_file_interface_impl<File, gnu_file_tag>
 template <typename File>
 struct stdio_file_interface_impl<File, bsd_file_tag>
     : posix_stdio_file_interface<File> {
-    std::string_view buffer() const
+    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD std::string_view buffer() const
     {
         return {reinterpret_cast<const char*>(this->file->_p),
                 static_cast<std::size_t>(this->file->_r)};
@@ -5025,7 +5071,7 @@ struct stdio_file_interface_impl<File, bsd_file_tag>
         SCN_EXPECT(this->file->_p != nullptr);
         SCN_EXPECT(this->file->_r >= n);
         this->file->_p += n;
-        this->file->_r -= n;
+        this->file->_r -= static_cast<int>(n);
     }
     void fill_buffer()
     {
@@ -5039,7 +5085,9 @@ struct stdio_file_interface_impl<File, bsd_file_tag>
 template <typename File>
 struct stdio_file_interface_impl<File, musl_file_tag>
     : posix_stdio_file_interface<File> {
-    std::string_view buffer() const
+    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD std::string_view buffer() const
     {
         return make_string_view_from_pointers(
             reinterpret_cast<const char*>(this->file->rpos),
@@ -5062,6 +5110,8 @@ struct stdio_file_interface_impl<File, musl_file_tag>
 template <typename File>
 struct stdio_file_interface_impl<File, win32_file_tag>
     : stdio_file_interface_base<File> {
+    using stdio_file_interface_base<File>::stdio_file_interface_base;
+
     void lock()
     {
         _lock_file(this->file);
@@ -5071,17 +5121,18 @@ struct stdio_file_interface_impl<File, win32_file_tag>
         _unlock_file(this->file);
     }
 
-    static bool has_buffering()
+    SCN_NODISCARD static constexpr bool has_buffering()
     {
         return false;
     }
 
-    std::string_view buffer() const
+    SCN_NODISCARD std::string_view buffer() const
     {
         return {};
     }
     void unsafe_advance_n(std::ptrdiff_t n)
     {
+        SCN_UNUSED(n);
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
@@ -5091,7 +5142,7 @@ struct stdio_file_interface_impl<File, win32_file_tag>
         SCN_UNREACHABLE;
     }
 
-    std::optional<char> read_one()
+    SCN_NODISCARD std::optional<char> read_one()
     {
         auto res = _fgetc_nolock(this->file);
         if (res == EOF) {
@@ -5100,10 +5151,10 @@ struct stdio_file_interface_impl<File, win32_file_tag>
         return static_cast<char>(res);
     }
 
-    void prepare_putback() {}
-    void finalize_putback() {}
+    static void prepare_putback() {}
+    static void finalize_putback() {}
 
-    bool putback(char ch)
+    SCN_NODISCARD bool putback(char ch)
     {
         return _ungetc_nolock(static_cast<unsigned char>(ch), this->file) !=
                EOF;
@@ -5119,7 +5170,7 @@ class basic_scan_file_buffer : public basic_scan_buffer<char> {
 
 public:
     explicit basic_scan_file_buffer(FileInterface file);
-    ~basic_scan_file_buffer();
+    ~basic_scan_file_buffer() override;
 
     bool fill() override;
 
@@ -5130,12 +5181,17 @@ private:
     std::optional<char_type> m_latest{std::nullopt};
 };
 
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wweak-vtables")
+
 struct scan_file_buffer : public basic_scan_file_buffer<stdio_file_interface> {
     explicit scan_file_buffer(std::FILE* file)
         : basic_scan_file_buffer(stdio_file_interface{file})
     {
     }
 };
+
+SCN_CLANG_POP
 
 extern template basic_scan_file_buffer<
     stdio_file_interface>::basic_scan_file_buffer(stdio_file_interface);
@@ -5175,8 +5231,8 @@ public:
         if (m_fill_needs_to_propagate) {
             auto ret = m_other->fill();
             this->m_current_view = m_other->current_view();
-            this->m_putback_buffer =
-                m_other->putback_buffer().substr(m_starting_pos);
+            this->m_putback_buffer = m_other->putback_buffer().substr(
+                static_cast<std::size_t>(m_starting_pos));
             return ret;
         }
 
@@ -5203,8 +5259,8 @@ basic_scan_ref_buffer(std::basic_string_view<CharT>)
 template <typename Range>
 auto make_string_scan_buffer(const Range& range)
 {
-    return basic_scan_string_buffer(
-        std::basic_string_view{ranges::data(range), ranges::size(range)});
+    return basic_scan_string_buffer(std::basic_string_view<char_t<Range>>{
+        ranges::data(range), ranges::size(range)});
 }
 
 template <typename Range>
@@ -5319,7 +5375,7 @@ auto impl(const std::basic_string<CharT, Traits, Allocator>& r,
         return custom_char_traits{};
     }
     else {
-        return std::basic_string_view<CharT>{r};
+        return std::basic_string_view<CharT>{r.data(), r.size()};
     }
 }
 
@@ -5346,7 +5402,8 @@ template <typename Range,
 auto impl(const Range& r, priority_tag<2>)
 {
     if constexpr (is_valid_char_type<detail::char_t<Range>>) {
-        return std::basic_string_view{ranges::data(r), ranges::size(r)};
+        return std::basic_string_view<detail::char_t<Range>>{ranges::data(r),
+                                                             ranges::size(r)};
     }
     else {
         return invalid_char_type{};
@@ -5608,7 +5665,7 @@ struct custom_wrapper {
 };
 
 template <typename T, typename Scanner, typename ParseCtx>
-scan_expected<void> parse_custom_arg(T& arg, Scanner& s, ParseCtx& pctx)
+scan_expected<void> parse_custom_arg(T&, Scanner& s, ParseCtx& pctx)
 {
 #if SCN_HAS_EXCEPTIONS
     auto fmt_it = pctx.begin();
@@ -5616,6 +5673,8 @@ scan_expected<void> parse_custom_arg(T& arg, Scanner& s, ParseCtx& pctx)
         fmt_it = s.parse(pctx);
     }
     catch (const detail::scan_format_string_error_base& ex) {
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wexit-time-destructors")
         // scan_error takes a const char*.
         // scan_format_string_error (or, actually, std::runtime_error)
         // stores a reference-counted string,
@@ -5630,6 +5689,7 @@ scan_expected<void> parse_custom_arg(T& arg, Scanner& s, ParseCtx& pctx)
         err_msg = ex.what();
         return unexpected_scan_error(scan_error::invalid_format_string,
                                      err_msg.c_str());
+        SCN_CLANG_POP
     }
 #else
     auto fmt_it = s.parse(pctx_ref);
@@ -5800,7 +5860,8 @@ struct arg_mapper {
     }
 
     template <typename T,
-              std::void_t<decltype(scanner<T, char_type>{})>* = nullptr>
+              std::enable_if_t<std::is_default_constructible_v<
+                  scanner<T, char_type>>>* = nullptr>
     static needs_context_tag map(T&)
     {
         return {};
@@ -5808,7 +5869,8 @@ struct arg_mapper {
 
     template <typename T,
               typename Context,
-              std::void_t<decltype(scanner<T, char_type>{})>* = nullptr>
+              std::enable_if_t<std::is_default_constructible_v<
+                  scanner<T, char_type>>>* = nullptr>
     static custom_wrapper<T, Context> map(T& val, context_tag<Context>)
     {
         return {val};
@@ -5954,7 +6016,7 @@ enum class scan_arg_store_kind {
 };
 
 template <typename Context, typename T>
-constexpr basic_scan_arg<Context> make_arg(T& value)
+constexpr basic_scan_arg<Context> make_arg(T& value) noexcept
 {
     check_scan_arg_types<T>();
 
@@ -5969,7 +6031,7 @@ template <scan_arg_store_kind Kind,
           arg_type,
           typename T,
           typename = std::enable_if_t<Kind == scan_arg_store_kind::builtin>>
-constexpr void* make_arg(T& value)
+constexpr void* make_arg(T& value) noexcept
 {
     return make_value<Context>(value).ref_value;
 }
@@ -5978,7 +6040,7 @@ template <scan_arg_store_kind Kind,
           arg_type,
           typename T,
           typename = std::enable_if_t<Kind == scan_arg_store_kind::packed>>
-constexpr arg_value make_arg(T& value)
+constexpr arg_value make_arg(T& value) noexcept
 {
     return make_value<Context>(value);
 }
@@ -5987,20 +6049,20 @@ template <scan_arg_store_kind Kind,
           arg_type,
           typename T,
           typename = std::enable_if_t<Kind == scan_arg_store_kind::unpacked>>
-constexpr basic_scan_arg<Context> make_arg(T&& value)
+constexpr basic_scan_arg<Context> make_arg(T&& value) noexcept
 {
     return make_arg<Context>(SCN_FWD(value));
 }
 
 template <typename Context>
-constexpr arg_value& get_arg_value(basic_scan_arg<Context>& arg);
+constexpr arg_value& get_arg_value(basic_scan_arg<Context>& arg) noexcept;
 template <typename Context>
-constexpr arg_value get_arg_value(const basic_scan_arg<Context>& arg);
+constexpr arg_value get_arg_value(const basic_scan_arg<Context>& arg) noexcept;
 
 template <typename Context>
-constexpr arg_type& get_arg_type(basic_scan_arg<Context>& arg);
+constexpr arg_type& get_arg_type(basic_scan_arg<Context>& arg) noexcept;
 template <typename Context>
-constexpr arg_type get_arg_type(const basic_scan_arg<Context>& arg);
+constexpr arg_type get_arg_type(const basic_scan_arg<Context>& arg) noexcept;
 
 template <typename Visitor, typename Context>
 constexpr decltype(auto) visit_impl(Visitor&& vis,
@@ -6039,7 +6101,10 @@ public:
         }
 
     private:
-        explicit handle(detail::custom_value_type custom) : m_custom(custom) {}
+        explicit handle(detail::custom_value_type custom) noexcept
+            : m_custom(custom)
+        {
+        }
 
         template <typename Visitor, typename C>
         friend constexpr decltype(auto) detail::visit_impl(
@@ -6076,21 +6141,22 @@ public:
 
 private:
     template <typename ContextType, typename T>
-    friend constexpr basic_scan_arg<ContextType> detail::make_arg(T& value);
+    friend constexpr basic_scan_arg<ContextType> detail::make_arg(
+        T& value) noexcept;
 
     template <typename C>
     friend constexpr detail::arg_type& detail::get_arg_type(
-        basic_scan_arg<C>& arg);
+        basic_scan_arg<C>& arg) noexcept;
     template <typename C>
     friend constexpr detail::arg_type detail::get_arg_type(
-        const basic_scan_arg<C>& arg);
+        const basic_scan_arg<C>& arg) noexcept;
 
     template <typename C>
     friend constexpr detail::arg_value& detail::get_arg_value(
-        basic_scan_arg<C>& arg);
+        basic_scan_arg<C>& arg) noexcept;
     template <typename C>
     friend constexpr detail::arg_value detail::get_arg_value(
-        const basic_scan_arg<C>& arg);
+        const basic_scan_arg<C>& arg) noexcept;
 
     friend class basic_scan_args<Context>;
 
@@ -6100,43 +6166,43 @@ private:
 
 namespace detail {
 template <typename Context>
-constexpr arg_type& get_arg_type(basic_scan_arg<Context>& arg)
+constexpr arg_type& get_arg_type(basic_scan_arg<Context>& arg) noexcept
 {
     return arg.m_type;
 }
 
 template <typename Context>
-constexpr arg_type get_arg_type(const basic_scan_arg<Context>& arg)
+constexpr arg_type get_arg_type(const basic_scan_arg<Context>& arg) noexcept
 {
     return arg.m_type;
 }
 
 template <typename Context>
-constexpr arg_value& get_arg_value(basic_scan_arg<Context>& arg)
+constexpr arg_value& get_arg_value(basic_scan_arg<Context>& arg) noexcept
 {
     return arg.m_value;
 }
 
 template <typename Context>
-constexpr arg_value get_arg_value(const basic_scan_arg<Context>& arg)
+constexpr arg_value get_arg_value(const basic_scan_arg<Context>& arg) noexcept
 {
     return arg.m_value;
 }
 
 template <typename CharT>
-constexpr bool all_types_builtin()
+constexpr bool all_types_builtin() noexcept
 {
     return true;
 }
 template <typename CharT, typename T, typename... Args>
-constexpr bool all_types_builtin()
+constexpr bool all_types_builtin() noexcept
 {
     return mapped_type_constant<T, CharT>::value != arg_type::custom_type &&
            all_types_builtin<CharT, Args...>();
 }
 
 template <typename CharT, typename... Args>
-constexpr scan_arg_store_kind determine_arg_store_kind()
+constexpr scan_arg_store_kind determine_arg_store_kind() noexcept
 {
     if constexpr (sizeof...(Args) > max_packed_args) {
         return scan_arg_store_kind::unpacked;
@@ -6151,7 +6217,7 @@ constexpr scan_arg_store_kind determine_arg_store_kind()
 }
 
 template <scan_arg_store_kind Kind, typename CharT, typename... Args>
-constexpr size_t compute_arg_store_desc()
+constexpr size_t compute_arg_store_desc() noexcept
 {
     if constexpr (Kind == scan_arg_store_kind::builtin) {
         return encode_types<CharT, Args...>();
@@ -6180,8 +6246,8 @@ public:
                            basic_scan_arg<Context>>>;
     using argptrs_type = std::array<argptr_type, sizeof...(Args)>;
 
-    constexpr explicit scan_arg_store(std::tuple<Args...>& args)
-        : args(std::apply(make_argptrs<Args...>, args))
+    constexpr explicit scan_arg_store(std::tuple<Args...>& a) noexcept
+        : args(std::apply(make_argptrs<Args...>, a))
     {
     }
 
@@ -6189,7 +6255,7 @@ public:
 
 private:
     template <typename... A>
-    static constexpr argptrs_type make_argptrs(A&... args)
+    static constexpr argptrs_type make_argptrs(A&... args) noexcept
     {
         return {detail::make_arg<
             kind, Context,
@@ -6230,7 +6296,7 @@ public:
 
     template <typename... Args>
     SCN_IMPLICIT constexpr basic_scan_args(
-        const detail::scan_arg_store<Context, Args...>& store)
+        const detail::scan_arg_store<Context, Args...>& store) noexcept
         : basic_scan_args(store.desc, store.args.data())
     {
     }
@@ -6328,6 +6394,10 @@ private:
         const basic_scan_arg<Context>* m_args{nullptr};
     };
 };
+
+template <typename Context, typename... Args>
+basic_scan_args(const detail::scan_arg_store<Context, Args...>&)
+    -> basic_scan_args<Context>;
 
 /////////////////////////////////////////////////////////////////
 // scan_parse_context
@@ -6936,13 +7006,16 @@ enum class presentation_type {
     float_general,         // 'g', 'G'
     string,                // 's'
     string_set,            // '[...]'
-    regex,                 // '/.../.'
-    regex_escaped,         // '/..\/../.'
-    character,             // 'c'
-    escaped_character,     // '?'
-    pointer,               // 'p'
+#if !SCN_DISABLE_REGEX
+    regex,          // '/.../.'
+    regex_escaped,  // '/..\/../.'
+#endif
+    character,          // 'c'
+    escaped_character,  // '?'
+    pointer,            // 'p'
 };
 
+#if !SCN_DISABLE_REGEX
 enum class regex_flags {
     none = 0,
     multiline = 1,   // /m
@@ -6984,6 +7057,7 @@ constexpr regex_flags& operator^=(regex_flags& a, regex_flags b)
 {
     return a = a ^ b;
 }
+#endif
 
 class fill_type {
 public:
@@ -7060,7 +7134,9 @@ struct format_specs {
     bool charset_has_nonascii{false}, charset_is_inverted{false};
     const void* charset_string_data{nullptr};
     size_t charset_string_size{0};
+#if !SCN_DISABLE_REGEX
     regex_flags regexp_flags{regex_flags::none};
+#endif
     unsigned char arbitrary_base{0};
     align_type align{align_type::none};
     bool localized{false};
@@ -7199,6 +7275,7 @@ public:
         on_type(presentation_type::string_set);
     }
 
+#if !SCN_DISABLE_REGEX
     template <typename CharT>
     constexpr void on_regex_pattern(std::basic_string_view<CharT> pattern)
     {
@@ -7209,6 +7286,7 @@ public:
     {
         m_specs.regexp_flags = flags;
     }
+#endif
 
     // Intentionally not constexpr to get a compiler-time error when called
     /*not-constexpr*/ void on_error(const char* msg)
@@ -7276,7 +7354,7 @@ constexpr const CharT* do_parse_arg_id(const CharT* begin,
         handler.on_error("Invalid argument ID");
         return begin;
     }
-    handler(idx);
+    handler(static_cast<std::size_t>(idx));
 
     return begin;
 }
@@ -7691,6 +7769,8 @@ constexpr const CharT* parse_presentation_regex(const CharT*& begin,
 
     return begin;
 #else
+    SCN_UNUSED(begin);
+    SCN_UNUSED(end);
     handler.on_error("Regular expression support is disabled");
     return {};
 #endif
@@ -8057,9 +8137,12 @@ constexpr void check_string_type_specs(const format_specs& specs,
 {
     if (specs.type == presentation_type::none ||
         specs.type == presentation_type::string ||
-        specs.type == presentation_type::string_set ||
-        specs.type == presentation_type::regex ||
-        specs.type == presentation_type::regex_escaped) {
+        specs.type == presentation_type::string_set
+#if !SCN_DISABLE_REGEX
+        || specs.type == presentation_type::regex ||
+        specs.type == presentation_type::regex_escaped
+#endif
+    ) {
         return;
     }
     if (specs.type == presentation_type::character) {
@@ -8102,6 +8185,7 @@ constexpr void check_bool_type_specs(const format_specs& specs,
     }
 }
 
+#if !SCN_DISABLE_REGEX
 template <typename Handler>
 constexpr void check_regex_type_specs(const format_specs& specs,
                                       Handler&& handler)
@@ -8119,7 +8203,12 @@ constexpr void check_regex_type_specs(const format_specs& specs,
     SCN_UNLIKELY_ATTR
     handler.on_error("Invalid type specifier for regex_matches");
 }
+#endif
+
 }  // namespace detail
+
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
 
 /**
  * \defgroup format-string Format strings
@@ -8509,6 +8598,12 @@ constexpr void check_regex_type_specs(const format_specs& specs,
  * </tr>
  * </table>
  */
+
+SCN_CLANG_POP  // -Wdocumentation-unknown-command
+
+    namespace detail
+{
+}
 
 namespace detail {
 /**
@@ -8943,7 +9038,7 @@ public:
     }
 
 protected:
-    scan_context_base(Args args, locale_ref loc)
+    scan_context_base(Args args, locale_ref loc) noexcept
         : m_args(SCN_MOVE(args)), m_locale(SCN_MOVE(loc))
     {
     }
@@ -9028,7 +9123,7 @@ public:
 
     constexpr basic_scan_context(iterator curr,
                                  args_type a,
-                                 detail::locale_ref loc = {})
+                                 detail::locale_ref loc = {}) noexcept
         : base(SCN_MOVE(a), loc), m_current(curr)
     {
     }
@@ -9203,6 +9298,7 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
             SCN_CLANG_POP
     }
 
+#if !SCN_DISABLE_REGEX
     if (specs.type == presentation_type::regex ||
         specs.type == presentation_type::regex_escaped) {
         if (!pctx.is_source_contiguous()) {
@@ -9216,6 +9312,7 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
             checker.on_error("Cannot read a regex from a non-borrowed source");
         }
     }
+#endif
 
     return it;
 }
@@ -9363,13 +9460,15 @@ namespace detail {
 template <typename Visitor, typename Ctx>
 constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
 {
-#define SCN_VISIT(Type)                                                \
-    if constexpr (!detail::is_type_disabled<Type>) {                   \
-        return vis(*static_cast<Type*>(get_arg_value(arg).ref_value)); \
-    }                                                                  \
-    else {                                                             \
-        return vis(monostate_val);                                     \
-    }
+#define SCN_VISIT(Type)                                                    \
+    do {                                                                   \
+        if constexpr (!detail::is_type_disabled<Type>) {                   \
+            return vis(*static_cast<Type*>(get_arg_value(arg).ref_value)); \
+        }                                                                  \
+        else {                                                             \
+            return vis(monostate_val);                                     \
+        }                                                                  \
+    } while (false)
 
     monostate monostate_val{};
 
@@ -9386,7 +9485,7 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
             SCN_VISIT(long long);
         case detail::arg_type::int128_type:
 #if SCN_HAS_INT128
-            SCN_VISIT(int128)
+            SCN_VISIT(int128);
 #else
             return vis(monostate_val);
 #endif
@@ -9402,7 +9501,7 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
             SCN_VISIT(unsigned long long);
         case detail::arg_type::uint128_type:
 #if SCN_HAS_INT128
-            SCN_VISIT(uint128)
+            SCN_VISIT(uint128);
 #else
             return vis(monostate_val);
 #endif
@@ -9424,31 +9523,31 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
             SCN_VISIT(long double);
         case detail::arg_type::float16_type:
 #if SCN_HAS_STD_F16
-            SCN_VISIT(std::float16_t)
+            SCN_VISIT(std::float16_t);
 #else
             return vis(monostate_val);
 #endif
         case detail::arg_type::float32_type:
 #if SCN_HAS_STD_F32
-            SCN_VISIT(std::float32_t)
+            SCN_VISIT(std::float32_t);
 #else
             return vis(monostate_val);
 #endif
         case detail::arg_type::float64_type:
 #if SCN_HAS_STD_F64
-            SCN_VISIT(std::float64_t)
+            SCN_VISIT(std::float64_t);
 #else
             return vis(monostate_val);
 #endif
         case detail::arg_type::float128_type:
 #if SCN_HAS_STD_F64
-            SCN_VISIT(std::float128_t)
+            SCN_VISIT(std::float128_t);
 #else
             return vis(monostate_val);
 #endif
         case detail::arg_type::bfloat16_type:
 #if SCN_HAS_STD_BF16
-            SCN_VISIT(std::bfloat16_t)
+            SCN_VISIT(std::bfloat16_t);
 #else
             return vis(monostate_val);
 #endif
@@ -10085,7 +10184,7 @@ inline constexpr bool is_scan_int_type =
      !std::is_same_v<T, wchar_t> && !std::is_same_v<T, char32_t> &&
      !std::is_same_v<T, bool>)
 #if SCN_HAS_INT128
-    || std::is_same_v<T, SCN_INT128_TYPE> || std::is_same_v<T, SCN_UINT128_TYPE>
+    || std::is_same_v<T, int128> || std::is_same_v<T, uint128>
 #endif
     ;
 }  // namespace detail

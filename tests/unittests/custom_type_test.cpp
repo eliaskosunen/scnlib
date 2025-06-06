@@ -37,7 +37,7 @@ struct scn::scanner<char_wrapper, char> {
         -> scn::scan_expected<typename Context::iterator>
     {
         return scn::scan<char>(ctx.range(), "{}")
-            .transform([&val](const auto& result) {
+            .transform([&val](const auto& result) noexcept {
                 val.value = result.value();
                 return result.begin();
             });
@@ -148,9 +148,14 @@ struct scn::scanner<variant_wrapper, char> {
             case format_string:
                 return scn::scanner<std::string, char>{}.scan(
                     val.value.emplace<std::string>(), ctx);
-        }
 
-        SCN_UNREACHABLE;
+                SCN_CLANG_PUSH
+                SCN_CLANG_IGNORE("-Wcovered-switch-default")
+            default:
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
+                SCN_CLANG_POP
+        }
     }
 
 private:
