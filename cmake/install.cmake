@@ -13,7 +13,7 @@ if (SCN_MODULES)
 endif ()
 
 set(install_file_set)
-if (SCN_MODULES)
+if (SCN_MODULES AND SCN_USE_CMAKE_MODULES)
     set(install_file_set FILE_SET scn DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn")
 endif ()
 

@@ -52,12 +52,20 @@ jobs:
         cmake:
           # CMake 3.28 has native modules support
           - "~3.28.0"
+          # 3.27 doesn't, so we need to emulate it in other ways
+          - "~3.27.0"
         generator:
           - Ninja
+          - Unix Makefiles
         cxx:
           #- g++-14 # ICEs in compilation
           - clang++-18
         external_deps: [ 0, 1 ]
+
+        exclude:
+          # CMake native modules are incompatible with makefiles
+          - cmake: "~3.28.0"
+            generator: Unix Makefiles
 
     env:
       CXX: ${{ matrix.cxx }}
@@ -123,4 +131,71 @@ jobs:
         working-directory: ${{ runner.workspace }}/consumer-build
         run: |
           output="$(echo '42' | ./scn-consumer-module)"
+          test "$output" -eq 42
+
+  windows:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        cmake:
+          - "~3.28.0"
+          # Can't find .ifc files, possibly the fault of our CMake
+          # - "~3.27.0"
+        generator:
+          # Can't find the stdlib headers, don't want to figure out why
+          # - Ninja Multi-Config
+          - Visual Studio 17 2022
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: ${{ matrix.cmake }}
+
+      # No ccache, don't want to add additional variables to already finicky modules stuff
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        run: |
+          cmake -E make_directory ${{ runner.workspace }}/lib-build
+          cmake -E make_directory ${{ runner.workspace }}/consumer-build
+
+      - name: Run CMake
+        shell: cmd
+        working-directory: ${{ runner.workspace }}/lib-build
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cmake -G "${{ matrix.generator }}" -DSCN_INSTALL=ON -DSCN_MODULES=ON ${{ github.workspace }}
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/lib-build
+        run: |
+          cmake --build . --config Debug --parallel --verbose
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/lib-build
+        run: |
+          ctest --output-on-failure -C Debug
+
+      - name: Install
+        working-directory: ${{ runner.workspace }}/lib-build
+        run: |
+          cmake --build . --target install
+
+      - name: Build consumer
+        shell: cmd
+        working-directory: ${{ runner.workspace }}/consumer-build
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cmake -G "${{ matrix.generator }}" ${{ github.workspace }}/tests/consumer-test/module
+          cmake --build . --config Debug --parallel --verbose
+
+      - name: Test consumer
+        working-directory: ${{ runner.workspace }}/consumer-build
+        shell: bash
+        run: |
+          output="$(echo '42' | ./Debug/scn-consumer-module.exe)"
           test "$output" -eq 42

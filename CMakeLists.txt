@@ -103,19 +103,13 @@ set_target_properties(
 )
 add_library(scn::scn ALIAS scn)
 
+include(cmake/modules.cmake)
+
 if (SCN_MODULES)
-    if (CMAKE_VERSION VERSION_LESS 3.28 OR NOT (CMAKE_GENERATOR STREQUAL "Ninja"))
-        message(FATAL_ERROR "SCN_MODULES requires CMake >= 3.28 and Ninja (for target_sources(CXX_MODULES) )")
-    endif ()
-
-    add_library(scn_module)
-    target_sources(scn_module PUBLIC FILE_SET scn TYPE CXX_MODULES FILES ${SCN_MODULE_SOURCES})
+    add_module_library(scn_module ${SCN_MODULE_SOURCES})
     target_link_libraries(scn_module PUBLIC scn::scn)
-    target_compile_features(scn_module PUBLIC cxx_std_20)
-    set_target_properties(scn_module PROPERTIES CXX_SCAN_FOR_MODULES ON)
-
-    add_library(scn::module ALIAS scn_module)
-endif (SCN_MODULES)
+    add_library(scn::scn_module ALIAS scn_module)
+endif ()
 
 add_library(scn_internal INTERFACE)
 target_link_libraries(scn_internal INTERFACE

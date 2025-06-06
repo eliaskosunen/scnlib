@@ -21,6 +21,7 @@
 
 #if defined(SCN_MODULE) && defined(SCN_IMPORT_STD)
 import std;
+#include <time.h>
 #else
 #include <chrono>
 #include <ctime>
@@ -356,7 +357,13 @@ std::optional<Duration> time_since_unix_epoch(const datetime_components& dt)
 
     auto tm = dt.to_tm();
     // TODO: overflow checks
+#if SCN_MSVC && defined(SCN_MODULE)
+    // Workaround for https://github.com/llvm/llvm-project/issues/64812
+    // (can't use <ctime> std:: functions in modules)
+    auto time = std::chrono::seconds{::mktime(&tm)};
+#else
     auto time = std::chrono::seconds{std::mktime(&tm)};
+#endif
     if constexpr (Duration::period::type::den > std::intmax_t{1}) {
         // Duration more precise than seconds (seconds is std::ratio<1, 1>)
         if (dt.subsec) {

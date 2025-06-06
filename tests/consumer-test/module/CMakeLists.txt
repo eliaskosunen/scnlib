@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16)
 
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 project(scn-consumer-module CXX)

@@ -13,8 +13,8 @@ target_compile_options(scn_tests_base INTERFACE
         -Wno-gnu-zero-variadic-macro-arguments
         -Wno-global-constructors
         -Wno-exit-time-destructors
-        -Wno-weak-vtables
-        >)
+        -Wno-weak-vtables>
+)
 
 add_executable(scn_tests
         main.cpp
