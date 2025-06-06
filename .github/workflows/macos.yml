@@ -53,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 14 ]
+        os: [ 13, 14 ]
         cxx: [ brew-clang++, clang++, g++-14, g++-13, g++-12 ]
         std: [ 17 ]
 
@@ -72,6 +72,12 @@ jobs:
             std: 17
           - os: 15
             cxx: brew-clang++
+            std: 17
+
+        exclude:
+          # Fails in CMake for google benchmark
+          - os: 13
+            cxx: g++-13
             std: 17
 
     env:

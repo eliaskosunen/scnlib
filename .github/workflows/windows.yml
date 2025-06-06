@@ -55,31 +55,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # No os=2025, since it also has vs2022
-        os: [ 2019, 2022 ]
+        os:
+          # Deleted in June 2025, where we also lost VS2019 :(
+          # - 2019
+          - 2022
+          # Not necessary, both 2022 and 2025 have VS2022
+          # - 2025
         platform: [ Win32, x64 ]
         type: [ Debug, Release ]
         std: [ 17 ]
         include:
-          - os: 2019
-            platform: x64
-            type: Debug
-            std: 20
           - os: 2022
             platform: x64
             type: Debug
             std: 20
-
-        exclude:
-          # Segfaulting in the tests, not locally reproducible
-          - os: 2022
-            platform: Win32
-            type: Release
-            std: 17
-          - os: 2022
-            platform: x64
-            type: Release
-            std: 17
 
     steps:
       - name: Checkout
@@ -130,7 +119,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 2019, 2022 ]
+        os:
+          # - 2019
+          - 2022
         std: [ 17, 20 ]
         platform: [ x64 ]
 
@@ -195,15 +186,17 @@ jobs:
           - mingw32
           - mingw64
           # llvm, ucrt, libc++
-          - clang32
           - clang64
+          # llvm, ucrt, libc++ on arm64
+          - clangarm64
           # gcc, cygwin, libstdc++ (64-bit)
           - msys
 
         exclude:
-          # Buggy float parsing
-          - sys: clang32
-          - sys: clang64
+          # Doesn't have ccache
+          - sys: clangarm64
+          # Doesn't have the `toolchain` pacboy package
+          # (which contains the compiler)
           - sys: msys
 
     steps:

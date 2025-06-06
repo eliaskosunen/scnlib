@@ -145,7 +145,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 2019, 2022 ]
+        os: [ 2022 ]
         platform: [ x64 ]
         std: [ 17 ]
         type: [ Debug ]

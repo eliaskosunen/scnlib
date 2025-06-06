@@ -444,6 +444,88 @@ jobs:
         run: |
           ./alpine-run.sh bash -c "cd build && ctest --output-on-failure"
 
+  cmake:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cmake:
+          - latest
+
+        generator:
+          - Ninja
+          - "Ninja Multi-Config"
+          - "Unix Makefiles"
+
+        include:
+          # 3.16 the stated version in cmake_minimum_required()
+          - cmake: "^3.16.0"
+            generator: Ninja
+
+    env:
+      CXX: g++-13
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+      IS_MULTI_CONFIG: ${{ endsWith(matrix.generator, 'Multi-Config') }}
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: ${{ matrix.cmake }}
+
+      - name: Install dependencies
+        run: |
+          mkdir ${{ runner.workspace }}/build
+          sudo apt-get --allow-unauthenticated -yq update
+          ${APT_INSTALL} ccache
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.workflow }}-ubuntu24.04-g++-13-std17-cmake-${{ matrix.cmake }}-${{ matrix.generator }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ github.workflow }}-ubuntu24.04-g++-13-std17-cmake-${{ matrix.cmake }}-${{ matrix.generator }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-g++-13-std17-cmake-${{ matrix.cmake }}-${{ matrix.generator }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-g++-13-std17-cmake-${{ matrix.cmake }}-${{ matrix.generator }}
+            ccache-${{ github.workflow }}-ubuntu24.04-g++-13-std17-${{ github.sha }}
+            ccache-${{ github.workflow }}-ubuntu24.04-g++-13-std17-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-g++-13-std17-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-g++-13-std17
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
+
+      - name: Run CMake, Build, Test (single-config)
+        if: env.IS_MULTI_CONFIG != 'true'
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake -G "${{ matrix.generator }}" -DSCN_CI=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=17 \
+            $GITHUB_WORKSPACE
+          cmake --build . --parallel --verbose
+          ctest --output-on-failure
+
+      - name: Run CMake, Build, Test (multi-config)
+        if: env.IS_MULTI_CONFIG == 'true'
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake -G "${{ matrix.generator }}" -DSCN_CI=ON -DCMAKE_CXX_STANDARD=17 \
+            $GITHUB_WORKSPACE
+          cmake --build . --config Debug --parallel --verbose
+          ctest -C Debug --output-on-failure
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
+
   asan-and-ubsan:
     runs-on: ubuntu-24.04
     strategy:
