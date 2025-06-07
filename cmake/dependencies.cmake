@@ -14,9 +14,15 @@ if (SCN_TESTS)
         if ((NOT TARGET GTest::gtest_main) OR (NOT TARGET GTest::gmock_main))
             find_package(GTest CONFIG REQUIRED)
         else ()
-            message(STATUS "GTest targets already defined, not doing find_package(GTest)")
+            message(STATUS "GTest targets already defined, not doing find_package(GTest) (SCN_USE_EXTERNAL_GTEST is ON)")
         endif ()
 
+        set(SCN_GTEST_LIBRARIES
+                GTest::gtest_main
+                GTest::gmock_main
+        )
+    elseif (TARGET GTest::gtest_main AND TARGET GTest::gmock_main)
+        message(WARNING "GTest targets already defined, not doing FetchContent(googletest), even though SCN_USE_EXTERNAL_GTEST is OFF")
         set(SCN_GTEST_LIBRARIES
                 GTest::gtest_main
                 GTest::gmock_main
@@ -35,8 +41,12 @@ if (SCN_TESTS)
         )
 
         set(gtest_force_shared_crt ON CACHE INTERNAL "")
+        set(INSTALL_GTEST OFF CACHE INTERNAL "")
         list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "googletest")
-        set(SCN_GTEST_LIBRARIES GTest::gtest_main GTest::gmock_main)
+        set(SCN_GTEST_LIBRARIES
+                GTest::gtest_main
+                GTest::gmock_main
+        )
     else ()
         # gtest CMake does some flag overriding we don't want, and it's also quite heavy
         # Do it manually
@@ -49,6 +59,7 @@ if (SCN_TESTS)
         )
 
         set(gtest_force_shared_crt ON CACHE INTERNAL "")
+        set(INSTALL_GTEST OFF CACHE INTERNAL "")
 
         FetchContent_GetProperties(googletest)
         if (NOT googletest)
@@ -85,8 +96,10 @@ if (SCN_BENCHMARKS)
         if (NOT TARGET benchmark::benchmark)
             find_package(benchmark CONFIG REQUIRED)
         else ()
-            message(STATUS "Target benchmark::benchmark already defined, not doing find_package(benchmark)")
+            message(STATUS "Target benchmark::benchmark already defined, not doing find_package(benchmark) (SCN_USE_EXTERNAL_BENCHMARK is ON)")
         endif ()
+    elseif (TARGET benchmark::benchmark)
+        message(WARNING "Target benchmark::benchmark already defined, not doing FetchContent(benchmark), even though SCN_USE_EXTERNAL_BENCHMARK is OFF")
     else ()
         set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "Turn off google benchmark tests")
         set(BENCHMARK_ENABLE_INSTALL OFF CACHE INTERNAL "Turn off google benchmark install")
@@ -123,14 +136,16 @@ elseif (SCN_USE_EXTERNAL_FAST_FLOAT)
             message(FATAL_ERROR "Incompatible version of FastFloat: at least 5.0.0 required, found ${FastFloat_VERSION}")
         endif ()
     else ()
-        message(STATUS "Target FastFloat::fast_float already defined, not doing find_package(FastFloat)")
+        message(STATUS "Target FastFloat::fast_float already defined, not doing find_package(FastFloat) (SCN_USE_EXTERNAL_FAST_FLOAT is ON)")
     endif ()
     set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
+elseif (TARGET FastFloat::fast_float)
+    message(WARNING "Target FastFloat::fast_float already defined, not doing FetchContent(fast_float), even though SCN_USE_EXTERNAL_FAST_FLOAT is OFF")
 elseif (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
     FetchContent_Declare(
             fast_float
             GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
-            GIT_TAG v7.0.0
+            GIT_TAG v8.0.2
             GIT_SHALLOW TRUE
             SYSTEM
             EXCLUDE_FROM_ALL

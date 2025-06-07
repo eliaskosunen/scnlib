@@ -1145,109 +1145,6 @@ struct iterator_value_result {
 }  // namespace impl
 
 /////////////////////////////////////////////////////////////////
-// File support
-/////////////////////////////////////////////////////////////////
-
-namespace detail {
-
-template <typename FileInterface>
-basic_scan_file_buffer<FileInterface>::basic_scan_file_buffer(
-    FileInterface file)
-    : base(base::non_contiguous_tag{}), m_file(SCN_MOVE(file))
-{
-    m_file.lock();
-}
-
-template <typename FileInterface>
-basic_scan_file_buffer<FileInterface>::~basic_scan_file_buffer()
-{
-    m_file.unlock();
-}
-
-template <typename FileInterface>
-bool basic_scan_file_buffer<FileInterface>::fill()
-{
-    if (!this->m_current_view.empty()) {
-        this->m_putback_buffer.insert(this->m_putback_buffer.end(),
-                                      this->m_current_view.begin(),
-                                      this->m_current_view.end());
-    }
-
-    if (m_file.has_buffering()) {
-        if (!this->m_current_view.empty()) {
-            m_file.unsafe_advance_n(
-                static_cast<std::ptrdiff_t>(this->m_current_view.size()));
-        }
-
-        if (m_file.buffer().empty()) {
-            m_file.fill_buffer();
-        }
-        m_current_view = m_file.buffer();
-        return !this->m_current_view.empty();
-    }
-
-    this->m_latest = m_file.read_one();
-    if (!this->m_latest) {
-        this->m_current_view = {};
-        return false;
-    }
-
-    this->m_current_view = {&*this->m_latest, 1};
-    return true;
-}
-
-template <typename FileInterface>
-bool basic_scan_file_buffer<FileInterface>::sync(std::ptrdiff_t position)
-{
-    struct putback_wrapper {
-        putback_wrapper(FileInterface& interface) : i(interface)
-        {
-            i.prepare_putback();
-        }
-        ~putback_wrapper()
-        {
-            i.finalize_putback();
-        }
-
-        FileInterface& i;
-    };
-
-    if (m_file.has_buffering()) {
-        if (position <
-            static_cast<std::ptrdiff_t>(this->putback_buffer().size())) {
-            putback_wrapper wrapper{m_file};
-            auto segment = this->get_segment_starting_at(position);
-            return segment.empty();
-        }
-
-        m_file.unsafe_advance_n(position - static_cast<std::ptrdiff_t>(
-                                               this->putback_buffer().size()));
-        return true;
-    }
-
-    const auto chars_avail = this->chars_available();
-    if (position == chars_avail || SCN_UNLIKELY(m_current_view.empty())) {
-        return true;
-    }
-
-    putback_wrapper wrapper{m_file};
-    SCN_EXPECT(m_current_view.size() == 1);
-    (void)m_file.putback(m_current_view.front());
-
-    auto segment = std::string_view{this->putback_buffer().data(),
-                                    this->putback_buffer().size()}
-                       .substr(static_cast<std::size_t>(position));
-    for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
-        if (!m_file.putback(*it)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-}  // namespace detail
-
-/////////////////////////////////////////////////////////////////
 // Unicode
 /////////////////////////////////////////////////////////////////
 
@@ -1944,13 +1841,13 @@ struct localized_number_formatting_options {
 
 namespace impl {
 
-SCN_EXPORT std::string_view::iterator find_classic_space_narrow_fast(
+SCN_PUBLIC std::string_view::iterator find_classic_space_narrow_fast(
     std::string_view source);
 
-SCN_EXPORT std::string_view::iterator find_classic_nonspace_narrow_fast(
+SCN_PUBLIC std::string_view::iterator find_classic_nonspace_narrow_fast(
     std::string_view source);
 
-SCN_EXPORT std::string_view::iterator find_nondecimal_digit_narrow_fast(
+SCN_PUBLIC std::string_view::iterator find_nondecimal_digit_narrow_fast(
     std::string_view source);
 
 template <typename Range>
@@ -3521,22 +3418,22 @@ auto parse_integer_digits_with_thsep(
 }
 
 template <typename CharT, typename T>
-SCN_EXPORT auto parse_integer_value(std::basic_string_view<CharT> source,
+SCN_PUBLIC auto parse_integer_value(std::basic_string_view<CharT> source,
                                     T& value,
                                     sign_type sign,
                                     int base)
     -> scan_expected<typename std::basic_string_view<CharT>::iterator>;
 
 template <typename T>
-SCN_EXPORT void parse_integer_value_exhaustive_valid(std::string_view source,
+SCN_PUBLIC void parse_integer_value_exhaustive_valid(std::string_view source,
                                                      T& value);
 
 #define SCN_DECLARE_INTEGER_READER_TEMPLATE(CharT, IntT)                    \
-    extern template SCN_EXPORT auto parse_integer_value(                    \
+    extern template SCN_PUBLIC auto parse_integer_value(                    \
         std::basic_string_view<CharT> source, IntT& value, sign_type sign,  \
         int base)                                                           \
         -> scan_expected<typename std::basic_string_view<CharT>::iterator>; \
-    extern template SCN_EXPORT void parse_integer_value_exhaustive_valid(   \
+    extern template SCN_PUBLIC void parse_integer_value_exhaustive_valid(   \
         std::string_view, IntT&);
 
 #if !SCN_DISABLE_TYPE_SCHAR
@@ -4215,9 +4112,9 @@ private:
     float_kind m_kind{float_kind::tbd};
 };
 
-#define SCN_DECLARE_FLOAT_READER_TEMPLATE(CharT, FloatT)                \
-    extern template auto float_reader<CharT>::parse_value_impl(FloatT&) \
-        -> scan_expected<std::ptrdiff_t>;
+#define SCN_DECLARE_FLOAT_READER_TEMPLATE(CharT, FloatT)                   \
+    extern template SCN_PUBLIC auto float_reader<CharT>::parse_value_impl( \
+        FloatT&) -> scan_expected<std::ptrdiff_t>;
 
 #if !SCN_DISABLE_TYPE_FLOAT
 SCN_DECLARE_FLOAT_READER_TEMPLATE(char, float)

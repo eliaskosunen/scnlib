@@ -2,9 +2,16 @@ if (NOT SCN_TESTS)
     return()
 endif ()
 
-add_library(scn_tests_base INTERFACE)
-target_link_libraries(scn_tests_base INTERFACE scn_sanitizers scn_internal)
-target_compile_options(scn_tests_base INTERFACE
+add_library(scn_tests_base
+        test_stub.cpp
+        test_common.h
+        wrapped_gtest.h
+)
+target_link_libraries(scn_tests_base PUBLIC
+        ${SCN_GTEST_LIBRARIES}
+        scn_sanitizers
+        scn_internal)
+target_compile_options(scn_tests_base PUBLIC
         $<$<CXX_COMPILER_ID:GNU>:
         -Wno-unused>
         $<$<CXX_COMPILER_ID:Clang>:
@@ -15,6 +22,24 @@ target_compile_options(scn_tests_base INTERFACE
         -Wno-exit-time-destructors
         -Wno-weak-vtables>
 )
+
+if (WIN32 AND BUILD_SHARED_LIBS)
+    if (SCN_GTEST_LIBRARIES STREQUAL "scn_gtest")
+        add_custom_command(
+                TARGET scn_tests_base
+                POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:scn_gtest> ${CMAKE_CURRENT_BINARY_DIR}
+        )
+    elseif (SCN_GTEST_LIBRARIES STREQUAL "GTest::gtest_main;GTest::gmock_main")
+        add_custom_command(
+                TARGET scn_tests_base
+                POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:GTest::gtest_main> $<TARGET_FILE:GTest::gmock_main> ${CMAKE_CURRENT_BINARY_DIR}
+        )
+    else ()
+        message(WARNING "Failed to copy gtest shared libraries, running tests may fail")
+    endif ()
+endif ()
 
 add_executable(scn_tests
         main.cpp
@@ -45,7 +70,7 @@ add_executable(scn_tests
         string_view_test.cpp
         unicode_test.cpp
 )
-target_link_libraries(scn_tests ${SCN_GTEST_LIBRARIES} scn_tests_base)
+target_link_libraries(scn_tests scn_tests_base)
 add_test(NAME scn_tests COMMAND scn_tests)
 
 add_executable(scn_impl_tests
@@ -72,7 +97,7 @@ add_executable(scn_impl_tests
         impl_tests/integer_reader_test.impl_wide_localized.cpp
 )
 target_link_libraries(scn_impl_tests PRIVATE
-        ${SCN_GTEST_LIBRARIES} scn_tests_base scn_internal)
+        scn_tests_base scn_internal)
 # pragma ignores seem to not always work for overflowing literals
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set_source_files_properties(
@@ -110,7 +135,7 @@ if (SCN_TESTS_LOCALIZED)
 
             localized_tests/localized_chrono_test.cpp
     )
-    target_link_libraries(scn_localized_tests ${SCN_GTEST_LIBRARIES} scn_tests_base)
+    target_link_libraries(scn_localized_tests scn_tests_base)
     add_test(NAME scn_localized_tests COMMAND scn_localized_tests)
 endif ()
 
@@ -119,7 +144,7 @@ add_executable(scn_stdin_test
 
         stdin_test.cpp
 )
-target_link_libraries(scn_stdin_test ${SCN_GTEST_LIBRARIES} scn_tests_base)
+target_link_libraries(scn_stdin_test scn_tests_base)
 
 add_custom_target(scn_stdin_test_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy

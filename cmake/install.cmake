@@ -33,6 +33,12 @@ install(DIRECTORY
         COMPONENT scnlib_Development
 )
 
+install(FILES
+            "${SCN_EXPORT_HEADER}"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn"
+        COMPONENT scnlib_Development
+)
+
 install(EXPORT scn-targets
         FILE
             scn-targets.cmake

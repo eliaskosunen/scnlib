@@ -1,52 +1,52 @@
-function(get_config_flags flags)
+function(get_config_definitions defs)
     if (SCN_DISABLE_REGEX)
-        set(regex_flag -DSCN_DISABLE_REGEX=1)
+        set(regex_flag SCN_DISABLE_REGEX=1)
     else ()
         if (SCN_REGEX_BACKEND STREQUAL "std")
-            set(regex_flag -DSCN_REGEX_BACKEND=0)
+            set(regex_flag SCN_REGEX_BACKEND=0)
         elseif (SCN_REGEX_BACKEND STREQUAL "Boost")
             set(regex_flag
-                    -DSCN_REGEX_BACKEND=1
-                    $<$<BOOL:${SCN_REGEX_BOOST_USE_ICU}>: -DSCN_REGEX_BOOST_USE_ICU=1>
+                    SCN_REGEX_BACKEND=1
+                    $<$<BOOL:${SCN_REGEX_BOOST_USE_ICU}>: SCN_REGEX_BOOST_USE_ICU=1>
             )
         elseif (SCN_REGEX_BACKEND STREQUAL "re2")
-            set(regex_flag -DSCN_REGEX_BACKEND=2)
+            set(regex_flag SCN_REGEX_BACKEND=2)
         endif ()
     endif ()
-    set(${flags}
-            $<$<BOOL:${SCN_DISABLE_TYPE_SCHAR}>: -DSCN_DISABLE_TYPE_SCHAR=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_SHORT}>: -DSCN_DISABLE_TYPE_SHORT=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_INT}>: -DSCN_DISABLE_TYPE_INT=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_LONG}>: -DSCN_DISABLE_TYPE_LONG=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_LONG_LONG}>: -DSCN_DISABLE_TYPE_LONG_LONG=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_INT128}>: -DSCN_DISABLE_TYPE_INT128=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_UCHAR}>: -DSCN_DISABLE_TYPE_UCHAR=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_USHORT}>: -DSCN_DISABLE_TYPE_USHORT=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_UINT}>: -DSCN_DISABLE_TYPE_UINT=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_ULONG}>: -DSCN_DISABLE_TYPE_ULONG=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_ULONG_LONG}>: -DSCN_DISABLE_TYPE_ULONG_LONG=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_UINT128}>: -DSCN_DISABLE_TYPE_UINT128=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_POINTER}>: -DSCN_DISABLE_TYPE_POINTER=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_BOOL}>: -DSCN_DISABLE_TYPE_BOOL=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_CHAR}>: -DSCN_DISABLE_TYPE_CHAR=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_CHAR32}>: -DSCN_DISABLE_TYPE_CHAR32=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT}>: -DSCN_DISABLE_TYPE_FLOAT=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_DOUBLE}>: -DSCN_DISABLE_TYPE_DOUBLE=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_LONG_DOUBLE}>:-DSCN_DISABLE_TYPE_LONG_DOUBLE=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT16}>:-DSCN_DISABLE_TYPE_FLOAT16=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT32}>:-DSCN_DISABLE_TYPE_FLOAT32=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT64}>:-DSCN_DISABLE_TYPE_FLOAT64=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT128}>:-DSCN_DISABLE_TYPE_FLOAT128=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_BFLOAT16}>:-DSCN_DISABLE_TYPE_BFLOAT16=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_STRING}>: -DSCN_DISABLE_TYPE_STRING=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_STRING_VIEW}>:-DSCN_DISABLE_TYPE_STRING_VIEW=1>
-            $<$<BOOL:${SCN_DISABLE_TYPE_CUSTOM}>: -DSCN_DISABLE_TYPE_CUSTOM=1>
+    set(${defs}
+            $<$<BOOL:${SCN_DISABLE_TYPE_SCHAR}>: SCN_DISABLE_TYPE_SCHAR=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_SHORT}>: SCN_DISABLE_TYPE_SHORT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_INT}>: SCN_DISABLE_TYPE_INT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_LONG}>: SCN_DISABLE_TYPE_LONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_LONG_LONG}>: SCN_DISABLE_TYPE_LONG_LONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_INT128}>: SCN_DISABLE_TYPE_INT128=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_UCHAR}>: SCN_DISABLE_TYPE_UCHAR=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_USHORT}>: SCN_DISABLE_TYPE_USHORT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_UINT}>: SCN_DISABLE_TYPE_UINT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_ULONG}>: SCN_DISABLE_TYPE_ULONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_ULONG_LONG}>: SCN_DISABLE_TYPE_ULONG_LONG=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_UINT128}>: SCN_DISABLE_TYPE_UINT128=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_POINTER}>: SCN_DISABLE_TYPE_POINTER=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_BOOL}>: SCN_DISABLE_TYPE_BOOL=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_CHAR}>: SCN_DISABLE_TYPE_CHAR=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_CHAR32}>: SCN_DISABLE_TYPE_CHAR32=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT}>: SCN_DISABLE_TYPE_FLOAT=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_DOUBLE}>: SCN_DISABLE_TYPE_DOUBLE=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_LONG_DOUBLE}>: SCN_DISABLE_TYPE_LONG_DOUBLE=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT16}>: SCN_DISABLE_TYPE_FLOAT16=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT32}>: SCN_DISABLE_TYPE_FLOAT32=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT64}>: SCN_DISABLE_TYPE_FLOAT64=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_FLOAT128}>: SCN_DISABLE_TYPE_FLOAT128=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_BFLOAT16}>: SCN_DISABLE_TYPE_BFLOAT16=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_STRING}>: SCN_DISABLE_TYPE_STRING=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_STRING_VIEW}>: SCN_DISABLE_TYPE_STRING_VIEW=1>
+            $<$<BOOL:${SCN_DISABLE_TYPE_CUSTOM}>: SCN_DISABLE_TYPE_CUSTOM=1>
 
-            $<$<BOOL:${SCN_DISABLE_FROM_CHARS}>: -DSCN_DISABLE_FROM_CHARS=1>
-            $<$<BOOL:${SCN_DISABLE_STRTOD}>: -DSCN_DISABLE_STRTOD=1>
+            $<$<BOOL:${SCN_DISABLE_FROM_CHARS}>: SCN_DISABLE_FROM_CHARS=1>
+            $<$<BOOL:${SCN_DISABLE_STRTOD}>: SCN_DISABLE_STRTOD=1>
 
-            $<$<BOOL:${SCN_DISABLE_IOSTREAM}>: -DSCN_DISABLE_IOSTREAM=1>
-            $<$<BOOL:${SCN_DISABLE_LOCALE}>: -DSCN_DISABLE_LOCALE=1>
+            $<$<BOOL:${SCN_DISABLE_IOSTREAM}>: SCN_DISABLE_IOSTREAM=1>
+            $<$<BOOL:${SCN_DISABLE_LOCALE}>: SCN_DISABLE_LOCALE=1>
 
             ${regex_flag}
             PARENT_SCOPE
@@ -229,12 +229,12 @@ function(get_interface_flags prefix)
         set(flags_list ${flags_list} ${werror_flags})
     endif ()
 
-    get_config_flags(config_flags)
     get_bigobj_flags(bigobj_flags)
-    set(flags_list ${flags_list} ${config_flags} ${bigobj_flags})
+    set(flags_list ${flags_list} ${bigobj_flags})
 
+    get_config_definitions(config_defs)
     get_disable_msvc_secure_definitions(msvc_sec_defs)
-    set(definitions_list ${definitions_list} ${msvc_sec_defs})
+    set(definitions_list ${definitions_list} ${config_defs} ${msvc_sec_defs})
 
     set(${prefix}_flags ${flags_list} PARENT_SCOPE)
     set(${prefix}_definitions ${definitions_list} PARENT_SCOPE)
@@ -291,8 +291,8 @@ function(get_library_flags prefix)
         set(list_public_definitions ${list_public_definitions} -DSCN_DISABLE_FAST_FLOAT=1)
     endif ()
 
-    get_config_flags(config_flags)
-    set(list_public_definitions ${list_public_definitions} ${config_flags})
+    get_config_definitions(config_defs)
+    set(list_public_definitions ${list_public_definitions} ${config_defs})
 
     get_disable_msvc_secure_definitions(msvc_sec_defs)
     set(list_private_definitions ${list_private_definitions} ${msvc_sec_defs})

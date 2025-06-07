@@ -1521,33 +1521,35 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
 }
 
 template <typename CharT, typename T, typename Context>
-SCN_EXPORT auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str,
+SCN_PUBLIC auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str,
                                  T& t,
                                  Context& ctx)
     -> scan_expected<typename Context::iterator>;
 
-extern template auto chrono_scan_impl(std::string_view, std::tm&, scan_context&)
+extern template SCN_PUBLIC auto chrono_scan_impl(std::string_view,
+                                                 std::tm&,
+                                                 scan_context&)
     -> scan_expected<scan_context::iterator>;
-extern template auto chrono_scan_impl(std::string_view,
-                                      tm_with_tz&,
-                                      scan_context&)
+extern template SCN_PUBLIC auto chrono_scan_impl(std::string_view,
+                                                 tm_with_tz&,
+                                                 scan_context&)
     -> scan_expected<scan_context::iterator>;
-extern template auto chrono_scan_impl(std::string_view,
-                                      datetime_components&,
-                                      scan_context&)
+extern template SCN_PUBLIC auto chrono_scan_impl(std::string_view,
+                                                 datetime_components&,
+                                                 scan_context&)
     -> scan_expected<scan_context::iterator>;
 
-extern template auto chrono_scan_impl(std::wstring_view,
-                                      std::tm&,
-                                      wscan_context&)
+extern template SCN_PUBLIC auto chrono_scan_impl(std::wstring_view,
+                                                 std::tm&,
+                                                 wscan_context&)
     -> scan_expected<wscan_context::iterator>;
-extern template auto chrono_scan_impl(std::wstring_view,
-                                      tm_with_tz&,
-                                      wscan_context&)
+extern template SCN_PUBLIC auto chrono_scan_impl(std::wstring_view,
+                                                 tm_with_tz&,
+                                                 wscan_context&)
     -> scan_expected<wscan_context::iterator>;
-extern template auto chrono_scan_impl(std::wstring_view,
-                                      datetime_components&,
-                                      wscan_context&)
+extern template SCN_PUBLIC auto chrono_scan_impl(std::wstring_view,
+                                                 datetime_components&,
+                                                 wscan_context&)
     -> scan_expected<wscan_context::iterator>;
 
 template <typename CharT, typename T>

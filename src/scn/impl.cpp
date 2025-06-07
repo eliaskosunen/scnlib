@@ -201,7 +201,7 @@ std::string_view::iterator find_nondecimal_digit_simple_impl(
 }
 }  // namespace
 
-std::string_view::iterator find_classic_space_narrow_fast(
+SCN_PUBLIC std::string_view::iterator find_classic_space_narrow_fast(
     std::string_view source)
 {
     return find_classic_impl(
@@ -209,7 +209,7 @@ std::string_view::iterator find_classic_space_narrow_fast(
         [](char32_t cp) { return detail::is_cp_space(cp); });
 }
 
-std::string_view::iterator find_classic_nonspace_narrow_fast(
+SCN_PUBLIC std::string_view::iterator find_classic_nonspace_narrow_fast(
     std::string_view source)
 {
     return find_classic_impl(
@@ -217,7 +217,7 @@ std::string_view::iterator find_classic_nonspace_narrow_fast(
         [](char32_t cp) { return !detail::is_cp_space(cp); });
 }
 
-std::string_view::iterator find_nondecimal_digit_narrow_fast(
+SCN_PUBLIC std::string_view::iterator find_nondecimal_digit_narrow_fast(
     std::string_view source)
 {
     return find_nondecimal_digit_simple_impl(source);
@@ -251,53 +251,450 @@ scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
         .transform_error(impl::make_eof_scan_error);
 }
 
-#define SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(T, Context)                         \
-    template scan_expected<Context::iterator> scanner_scan_for_builtin_type( \
-        T&, Context&, const format_specs&);
+#define SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(T, Context)     \
+    template SCN_PUBLIC scan_expected<Context::iterator> \
+    scanner_scan_for_builtin_type(T&, Context&, const format_specs&);
 
-#define SCN_DEFINE_SCANNER_SCAN_FOR_CTX(Context)                    \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(Context::char_type, Context)   \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(signed char, Context)          \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(short, Context)                \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(int, Context)                  \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long, Context)                 \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long long, Context)            \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned char, Context)        \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned short, Context)       \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned int, Context)         \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned long, Context)        \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned long long, Context)   \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(float, Context)                \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(double, Context)               \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long double, Context)          \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::string, Context)          \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::wstring, Context)         \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::string_view, Context)     \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::wstring_view, Context)    \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(regex_matches, Context)        \
-    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(wregex_matches, Context)       \
-    template scan_expected<ranges::iterator_t<Context::range_type>> \
+#define SCN_DEFINE_SCANNER_SCAN_FOR_CTX(Context)                               \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(Context::char_type, Context)              \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(signed char, Context)                     \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(short, Context)                           \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(int, Context)                             \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long, Context)                            \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long long, Context)                       \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned char, Context)                   \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned short, Context)                  \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned int, Context)                    \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned long, Context)                   \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(unsigned long long, Context)              \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(float, Context)                           \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(double, Context)                          \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(long double, Context)                     \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::string, Context)                     \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::wstring, Context)                    \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::string_view, Context)                \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::wstring_view, Context)               \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(regex_matches, Context)                   \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(wregex_matches, Context)                  \
+    template SCN_PUBLIC scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
 SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scan_context)
 SCN_DEFINE_SCANNER_SCAN_FOR_CTX(wscan_context)
 
 /////////////////////////////////////////////////////////////////
-// scan_buffer implementations
+// File support
 /////////////////////////////////////////////////////////////////
 
-#if SCN_GCC
-// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=92914
-template basic_scan_file_buffer<stdio_file_interface>::basic_scan_file_buffer(
-    stdio_file_interface);
-template basic_scan_file_buffer<
-    stdio_file_interface>::~basic_scan_file_buffer();
-template bool basic_scan_file_buffer<stdio_file_interface>::fill();
-template bool basic_scan_file_buffer<stdio_file_interface>::sync(
-    std::ptrdiff_t);
-#else
-template class basic_scan_file_buffer<stdio_file_interface>;
-#endif
+namespace {
+
+struct default_file_tag {};
+struct gnu_file_tag {};
+struct bsd_file_tag {};
+struct musl_file_tag {};
+struct win32_file_tag {};
+
+// Non-pretty workaround for MSVC silliness
+template <typename F, typename = void>
+inline constexpr bool is_gnu_file = false;
+template <typename F>
+inline constexpr bool
+    is_gnu_file<F,
+                std::void_t<decltype(SCN_DECLVAL(F)._IO_read_ptr),
+                            decltype(SCN_DECLVAL(F)._IO_read_end)>> = true;
+
+template <typename F, typename = void>
+inline constexpr bool is_bsd_file = false;
+template <typename F>
+inline constexpr bool is_bsd_file<
+    F,
+    std::void_t<decltype(SCN_DECLVAL(F)._p), decltype(SCN_DECLVAL(F)._r)>> =
+    true;
+
+template <typename F, typename = void>
+inline constexpr bool is_musl_file = false;
+template <typename F>
+inline constexpr bool is_musl_file<
+    F,
+    std::void_t<decltype(SCN_DECLVAL(F).rpos), decltype(SCN_DECLVAL(F).rend)>> =
+    true;
+
+template <typename F>
+inline constexpr bool is_win32_file =
+    std::is_same_v<F, std::FILE> && SCN_WINDOWS && !SCN_MINGW;
+
+SCN_MAYBE_UNUSED constexpr auto get_file_tag()
+{
+    if constexpr (is_gnu_file<std::FILE>) {
+        return detail::tag_type<gnu_file_tag>{};
+    }
+    else if constexpr (is_bsd_file<std::FILE>) {
+        return detail::tag_type<bsd_file_tag>{};
+    }
+    else if constexpr (is_musl_file<std::FILE>) {
+        return detail::tag_type<musl_file_tag>{};
+    }
+    else if constexpr (is_win32_file<std::FILE>) {
+        return detail::tag_type<win32_file_tag>{};
+    }
+    else {
+        return detail::tag_type<default_file_tag>{};
+    }
+}
+
+template <typename File>
+struct stdio_file_interface_base {
+    explicit constexpr stdio_file_interface_base(File* f) noexcept : file(f) {}
+    ~stdio_file_interface_base() = default;
+
+    stdio_file_interface_base(const stdio_file_interface_base&) = delete;
+    stdio_file_interface_base& operator=(const stdio_file_interface_base&) =
+        delete;
+
+    constexpr stdio_file_interface_base(
+        stdio_file_interface_base&& other) noexcept
+        : file(other.file)
+    {
+        other.file = nullptr;
+    }
+    constexpr stdio_file_interface_base& operator=(
+        stdio_file_interface_base&& other) noexcept
+    {
+        file = other.file;
+        other.file = nullptr;
+        return *this;
+    }
+
+    File* file;
+};
+
+template <typename File, typename Tag>
+struct stdio_file_interface_impl;
+
+template <typename File>
+struct stdio_file_interface_impl<File, default_file_tag>
+    : stdio_file_interface_base<File> {
+    using stdio_file_interface_base<File>::stdio_file_interface_base;
+
+    static constexpr void lock() {}
+    static constexpr void unlock() {}
+
+    SCN_NODISCARD static constexpr bool has_buffering()
+    {
+        return false;
+    }
+
+    SCN_NODISCARD static std::string_view buffer()
+    {
+        return {};
+    }
+    static void unsafe_advance_n(std::ptrdiff_t)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    static void fill_buffer()
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    SCN_NODISCARD std::optional<char> read_one()
+    {
+        auto res = std::fgetc(this->file);
+        if (res == EOF) {
+            return std::nullopt;
+        }
+        return static_cast<char>(res);
+    }
+
+    static void prepare_putback() {}
+    static void finalize_putback() {}
+
+    SCN_NODISCARD bool putback(char ch)
+    {
+        return std::ungetc(static_cast<unsigned char>(ch), this->file) != EOF;
+    }
+};
+
+template <typename File>
+struct posix_stdio_file_interface : stdio_file_interface_base<File> {
+    using stdio_file_interface_base<File>::stdio_file_interface_base;
+
+    void lock()
+    {
+        flockfile(this->file);
+    }
+    void unlock()
+    {
+        funlockfile(this->file);
+    }
+
+    SCN_NODISCARD static constexpr bool has_buffering()
+    {
+        return true;
+    }
+
+    SCN_NODISCARD std::optional<char> read_one()
+    {
+        auto res = getc_unlocked(this->file);
+        if (res == EOF) {
+            return std::nullopt;
+        }
+        return static_cast<char>(res);
+    }
+
+    void prepare_putback()
+    {
+        unlock();
+    }
+    void finalize_putback()
+    {
+        lock();
+    }
+
+    SCN_NODISCARD bool putback(char ch)
+    {
+        return std::ungetc(static_cast<unsigned char>(ch), this->file) != EOF;
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, gnu_file_tag>
+    : posix_stdio_file_interface<File> {
+    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD std::string_view buffer() const
+    {
+        return make_string_view_from_pointers(this->file->_IO_read_ptr,
+                                              this->file->_IO_read_end);
+    }
+    void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_EXPECT(this->file->_IO_read_ptr != nullptr);
+        SCN_EXPECT(this->file->_IO_read_end - this->file->_IO_read_ptr >= n);
+        this->file->_IO_read_ptr += n;
+    }
+    void fill_buffer()
+    {
+        if (__uflow(this->file) != EOF) {
+            --this->file->_IO_read_ptr;
+        }
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, bsd_file_tag>
+    : posix_stdio_file_interface<File> {
+    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD std::string_view buffer() const
+    {
+        return {reinterpret_cast<const char*>(this->file->_p),
+                static_cast<std::size_t>(this->file->_r)};
+    }
+    void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_EXPECT(this->file->_p != nullptr);
+        SCN_EXPECT(this->file->_r >= n);
+        this->file->_p += n;
+        this->file->_r -= static_cast<int>(n);
+    }
+    void fill_buffer()
+    {
+        if (__srget(this->file) != EOF) {
+            --this->file->_p;
+            ++this->file->_r;
+        }
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, musl_file_tag>
+    : posix_stdio_file_interface<File> {
+    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD std::string_view buffer() const
+    {
+        return make_string_view_from_pointers(
+            reinterpret_cast<const char*>(this->file->rpos),
+            reinterpret_cast<const char*>(this->file->rend));
+    }
+    void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_EXPECT(this->file->rpos != nullptr);
+        SCN_EXPECT(this->file->rend - this->file->rpos >= n);
+        this->file->rpos += n;
+    }
+    void fill_buffer()
+    {
+        if (__uflow(this->file) != EOF) {
+            --this->file->rpos;
+        }
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, win32_file_tag>
+    : stdio_file_interface_base<File> {
+    using stdio_file_interface_base<File>::stdio_file_interface_base;
+
+    void lock()
+    {
+        _lock_file(this->file);
+    }
+    void unlock()
+    {
+        _unlock_file(this->file);
+    }
+
+    SCN_NODISCARD static constexpr bool has_buffering()
+    {
+        return false;
+    }
+
+    SCN_NODISCARD static std::string_view buffer()
+    {
+        return {};
+    }
+    static void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_UNUSED(n);
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    static void fill_buffer()
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    SCN_NODISCARD std::optional<char> read_one()
+    {
+        auto res = _fgetc_nolock(this->file);
+        if (res == EOF) {
+            return std::nullopt;
+        }
+        return static_cast<char>(res);
+    }
+
+    static void prepare_putback() {}
+    static void finalize_putback() {}
+
+    SCN_NODISCARD bool putback(char ch)
+    {
+        return _ungetc_nolock(static_cast<unsigned char>(ch), this->file) !=
+               EOF;
+    }
+};
+
+using stdio_file_interface =
+    stdio_file_interface_impl<std::FILE, decltype(get_file_tag())::type>;
+
+stdio_file_interface make_file_interface(std::FILE* file)
+{
+    return stdio_file_interface{file};
+}
+
+}  // namespace
+
+SCN_PUBLIC scan_file_buffer::scan_file_buffer(std::FILE* file)
+    : base(base::non_contiguous_tag{}), m_file(SCN_MOVE(file))
+{
+    make_file_interface(m_file).lock();
+}
+
+SCN_PUBLIC scan_file_buffer::~scan_file_buffer()
+{
+    make_file_interface(m_file).unlock();
+}
+
+SCN_PUBLIC bool scan_file_buffer::fill()
+{
+    if (!this->m_current_view.empty()) {
+        this->m_putback_buffer.insert(this->m_putback_buffer.end(),
+                                      this->m_current_view.begin(),
+                                      this->m_current_view.end());
+    }
+
+    auto file = make_file_interface(this->m_file);
+    if (file.has_buffering()) {
+        if (!this->m_current_view.empty()) {
+            file.unsafe_advance_n(
+                static_cast<std::ptrdiff_t>(this->m_current_view.size()));
+        }
+
+        if (file.buffer().empty()) {
+            file.fill_buffer();
+        }
+        m_current_view = file.buffer();
+        return !this->m_current_view.empty();
+    }
+
+    this->m_latest = file.read_one();
+    if (!this->m_latest) {
+        this->m_current_view = {};
+        return false;
+    }
+
+    this->m_current_view = {&*this->m_latest, 1};
+    return true;
+}
+
+SCN_PUBLIC bool scan_file_buffer::sync(std::ptrdiff_t position)
+{
+    struct putback_wrapper {
+        putback_wrapper(std::FILE* file) : m_file(file)
+        {
+            make_file_interface(m_file).prepare_putback();
+        }
+        ~putback_wrapper()
+        {
+            make_file_interface(m_file).finalize_putback();
+        }
+
+    private:
+        std::FILE* m_file;
+    };
+
+    auto file = make_file_interface(m_file);
+    if (file.has_buffering()) {
+        if (position <
+            static_cast<std::ptrdiff_t>(this->putback_buffer().size())) {
+            putback_wrapper wrapper{m_file};
+            auto segment = this->get_segment_starting_at(position);
+            for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
+                if (!file.putback(*it)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        file.unsafe_advance_n(position - static_cast<std::ptrdiff_t>(
+                                             this->putback_buffer().size()));
+        return true;
+    }
+
+    const auto chars_avail = this->chars_available();
+    if (position == chars_avail) {
+        return true;
+    }
+
+    putback_wrapper wrapper{m_file};
+    SCN_EXPECT(m_current_view.size() == 1);
+    (void)file.putback(m_current_view.front());
+
+    auto segment = std::string_view{this->putback_buffer().data(),
+                                    this->putback_buffer().size()}
+                       .substr(static_cast<std::size_t>(position));
+    for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
+        if (!file.putback(*it)) {
+            return false;
+        }
+    }
+    return true;
+}
 
 }  // namespace detail
 
@@ -322,14 +719,14 @@ Locale locale_ref::get() const
                     : std::locale{};
 }
 
-template locale_ref::locale_ref(const std::locale&);
-template auto locale_ref::get() const -> std::locale;
+template SCN_PUBLIC locale_ref::locale_ref(const std::locale&);
+template SCN_PUBLIC auto locale_ref::get() const -> std::locale;
 }  // namespace detail
 
 #endif
 
 namespace detail {
-scan_error handle_error(scan_error e)
+SCN_PUBLIC scan_error handle_error(scan_error e)
 {
     SCN_UNLIKELY_ATTR
     return e;
@@ -772,15 +1169,13 @@ SCN_GCC_COMPAT_PUSH
 SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
 
 template <typename T>
-[[nodiscard]]
-bool is_float_any_zero(T value)
+SCN_NODISCARD bool is_float_any_zero(T value)
 {
     return value == static_cast<T>(0.0) || value == static_cast<T>(-0.0);
 }
 
 template <typename T>
-[[nodiscard]]
-bool is_float_positive_zero(T value)
+SCN_NODISCARD bool is_float_positive_zero(T value)
 {
 #if defined(__NO_SIGNED_ZEROS__) && __NO_SIGNED_ZEROS__
     using repr = typename float_traits<T>::value_repr;
@@ -796,8 +1191,7 @@ bool is_float_positive_zero(T value)
 #endif
 }
 template <typename T>
-[[nodiscard]]
-bool is_float_negative_zero(T value)
+SCN_NODISCARD bool is_float_negative_zero(T value)
 {
 #if defined(__NO_SIGNED_ZEROS__) && __NO_SIGNED_ZEROS__
     using repr = typename float_traits<T>::value_repr;
@@ -815,8 +1209,7 @@ bool is_float_negative_zero(T value)
 }
 
 template <typename T>
-[[nodiscard]]
-bool is_float_positive_infinity(T value)
+SCN_NODISCARD bool is_float_positive_infinity(T value)
 {
     if constexpr (std::numeric_limits<T>::has_infinity) {
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
@@ -842,8 +1235,7 @@ bool is_float_positive_infinity(T value)
     }
 }
 template <typename T>
-[[nodiscard]]
-bool is_float_negative_infinity(T value)
+SCN_NODISCARD bool is_float_negative_infinity(T value)
 {
     if constexpr (std::numeric_limits<T>::has_infinity) {
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
@@ -1878,8 +2270,8 @@ scan_expected<std::ptrdiff_t> float_reader<CharT>::parse_value_impl(T& value)
     return n;
 }
 
-#define SCN_DEFINE_FLOAT_READER_TEMPLATE(CharT, FloatT)          \
-    template auto float_reader<CharT>::parse_value_impl(FloatT&) \
+#define SCN_DEFINE_FLOAT_READER_TEMPLATE(CharT, FloatT)                     \
+    template SCN_PUBLIC auto float_reader<CharT>::parse_value_impl(FloatT&) \
         -> scan_expected<std::ptrdiff_t>;
 
 #if !SCN_DISABLE_TYPE_FLOAT
@@ -2309,67 +2701,72 @@ void parse_integer_value_exhaustive_valid(std::string_view source, T& value)
     value = store_result<T>(u64val, negative_sign);
 }
 
-#define SCN_DEFINE_INTEGER_READER_TEMPLATE(CharT, IntT)                      \
-    template auto parse_integer_value(std::basic_string_view<CharT> source,  \
-                                      IntT& value, sign_type sign, int base) \
+#define SCN_DEFINE_INTEGER_READER_TEMPLATE(CharT, IntT)                    \
+    template SCN_PUBLIC auto parse_integer_value(                          \
+        std::basic_string_view<CharT> source, IntT& value, sign_type sign, \
+        int base)                                                          \
         -> scan_expected<typename std::basic_string_view<CharT>::iterator>;
 
 #if !SCN_DISABLE_TYPE_SCHAR
 SCN_DEFINE_INTEGER_READER_TEMPLATE(char, signed char)
 SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, signed char)
-template void parse_integer_value_exhaustive_valid(std::string_view,
-                                                   signed char&);
+template SCN_PUBLIC void parse_integer_value_exhaustive_valid(std::string_view,
+                                                              signed char&);
 #endif
 #if !SCN_DISABLE_TYPE_SHORT
 SCN_DEFINE_INTEGER_READER_TEMPLATE(char, short)
 SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, short)
-template void parse_integer_value_exhaustive_valid(std::string_view, short&);
+template SCN_PUBLIC void parse_integer_value_exhaustive_valid(std::string_view,
+                                                              short&);
 #endif
 #if !SCN_DISABLE_TYPE_INT
 SCN_DEFINE_INTEGER_READER_TEMPLATE(char, int)
 SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, int)
-template void parse_integer_value_exhaustive_valid(std::string_view, int&);
+template SCN_PUBLIC void parse_integer_value_exhaustive_valid(std::string_view,
+                                                              int&);
 #endif
 #if !SCN_DISABLE_TYPE_LONG
 SCN_DEFINE_INTEGER_READER_TEMPLATE(char, long)
 SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, long)
-template void parse_integer_value_exhaustive_valid(std::string_view, long&);
+template SCN_PUBLIC void parse_integer_value_exhaustive_valid(std::string_view,
+                                                              long&);
 #endif
 #if !SCN_DISABLE_TYPE_LONG_LONG
 SCN_DEFINE_INTEGER_READER_TEMPLATE(char, long long)
 SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, long long)
-template void parse_integer_value_exhaustive_valid(std::string_view,
-                                                   long long&);
+template SCN_PUBLIC void parse_integer_value_exhaustive_valid(std::string_view,
+                                                              long long&);
 #endif
 #if !SCN_DISABLE_TYPE_UCHAR
 SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned char)
 SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned char)
-template void parse_integer_value_exhaustive_valid(std::string_view,
-                                                   unsigned char&);
+template SCN_PUBLIC void parse_integer_value_exhaustive_valid(std::string_view,
+                                                              unsigned char&);
 #endif
 #if !SCN_DISABLE_TYPE_USHORT
 SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned short)
 SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned short)
-template void parse_integer_value_exhaustive_valid(std::string_view,
-                                                   unsigned short&);
+template SCN_PUBLIC void parse_integer_value_exhaustive_valid(std::string_view,
+                                                              unsigned short&);
 #endif
 #if !SCN_DISABLE_TYPE_UINT
 SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned int)
 SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned int)
-template void parse_integer_value_exhaustive_valid(std::string_view,
-                                                   unsigned int&);
+template SCN_PUBLIC void parse_integer_value_exhaustive_valid(std::string_view,
+                                                              unsigned int&);
 #endif
 #if !SCN_DISABLE_TYPE_ULONG
 SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned long)
 SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned long)
-template void parse_integer_value_exhaustive_valid(std::string_view,
-                                                   unsigned long&);
+template SCN_PUBLIC void parse_integer_value_exhaustive_valid(std::string_view,
+                                                              unsigned long&);
 #endif
 #if !SCN_DISABLE_TYPE_ULONG_LONG
 SCN_DEFINE_INTEGER_READER_TEMPLATE(char, unsigned long long)
 SCN_DEFINE_INTEGER_READER_TEMPLATE(wchar_t, unsigned long long)
-template void parse_integer_value_exhaustive_valid(std::string_view,
-                                                   unsigned long long&);
+template SCN_PUBLIC void parse_integer_value_exhaustive_valid(
+    std::string_view,
+    unsigned long long&);
 #endif
 
 #if SCN_HAS_INT128
@@ -2904,7 +3301,7 @@ auto scan_int_exhaustive_valid_impl(std::string_view source) -> T
 
 }  // namespace detail
 
-scan_expected<void> vinput(std::string_view format, scan_args args)
+SCN_PUBLIC scan_expected<void> vinput(std::string_view format, scan_args args)
 {
     auto buffer = detail::make_file_scan_buffer(stdin);
     auto n = vscan_internal(buffer, format, args);
@@ -2953,29 +3350,29 @@ scan_expected<std::ptrdiff_t> sync_after_vscan(
 
 }  // namespace
 
-scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
-                                         std::string_view format,
-                                         scan_args args)
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
+                                                    std::string_view format,
+                                                    scan_args args)
 {
     return vscan_internal(source, format, args);
 }
-scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
-                                         std::string_view format,
-                                         scan_args args)
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
+                                                    std::string_view format,
+                                                    scan_args args)
 {
     auto n = vscan_internal(source, format, args);
     return sync_after_vscan(source, n);
 }
 
-scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
-                                         std::wstring_view format,
-                                         wscan_args args)
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
+                                                    std::wstring_view format,
+                                                    wscan_args args)
 {
     return vscan_internal(source, format, args);
 }
-scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
-                                         std::wstring_view format,
-                                         wscan_args args)
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
+                                                    std::wstring_view format,
+                                                    wscan_args args)
 {
     auto n = vscan_internal(source, format, args);
     return sync_after_vscan(source, n);
@@ -3018,47 +3415,49 @@ scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
     return sync_after_vscan(source, n);
 }
 
-template auto vscan_localized_impl<std::locale>(const std::locale&,
-                                                std::string_view,
-                                                std::string_view,
-                                                scan_args)
+template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
+                                                           std::string_view,
+                                                           std::string_view,
+                                                           scan_args)
     -> scan_expected<std::ptrdiff_t>;
-template auto vscan_localized_impl<std::locale>(const std::locale&,
-                                                scan_buffer&,
-                                                std::string_view,
-                                                scan_args)
+template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
+                                                           scan_buffer&,
+                                                           std::string_view,
+                                                           scan_args)
     -> scan_expected<std::ptrdiff_t>;
-template auto vscan_localized_impl<std::locale>(const std::locale&,
-                                                std::wstring_view,
-                                                std::wstring_view,
-                                                wscan_args)
+template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
+                                                           std::wstring_view,
+                                                           std::wstring_view,
+                                                           wscan_args)
     -> scan_expected<std::ptrdiff_t>;
-template auto vscan_localized_impl<std::locale>(const std::locale&,
-                                                wscan_buffer&,
-                                                std::wstring_view,
-                                                wscan_args)
+template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
+                                                           wscan_buffer&,
+                                                           std::wstring_view,
+                                                           wscan_args)
     -> scan_expected<std::ptrdiff_t>;
 #endif
 
-scan_expected<std::ptrdiff_t> vscan_value_impl(std::string_view source,
-                                               basic_scan_arg<scan_context> arg)
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
+    std::string_view source,
+    basic_scan_arg<scan_context> arg)
 {
     return vscan_value_internal(source, arg);
 }
-scan_expected<std::ptrdiff_t> vscan_value_impl(scan_buffer& source,
-                                               basic_scan_arg<scan_context> arg)
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
+    scan_buffer& source,
+    basic_scan_arg<scan_context> arg)
 {
     auto n = vscan_value_internal(source, arg);
     return sync_after_vscan(source, n);
 }
 
-scan_expected<std::ptrdiff_t> vscan_value_impl(
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     std::wstring_view source,
     basic_scan_arg<wscan_context> arg)
 {
     return vscan_value_internal(source, arg);
 }
-scan_expected<std::ptrdiff_t> vscan_value_impl(
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     wscan_buffer& source,
     basic_scan_arg<wscan_context> arg)
 {
@@ -3067,67 +3466,77 @@ scan_expected<std::ptrdiff_t> vscan_value_impl(
 }
 
 #if !SCN_DISABLE_TYPE_SCHAR
-template auto scan_int_impl(std::string_view, signed char&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, signed char&, int)
     -> scan_expected<std::string_view::iterator>;
-template auto scan_int_exhaustive_valid_impl(std::string_view) -> signed char;
+template SCN_PUBLIC auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> signed char;
 #endif
 #if !SCN_DISABLE_TYPE_SHORT
-template auto scan_int_impl(std::string_view, short&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, short&, int)
     -> scan_expected<std::string_view::iterator>;
-template auto scan_int_exhaustive_valid_impl(std::string_view) -> short;
+template SCN_PUBLIC auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> short;
 #endif
 #if !SCN_DISABLE_TYPE_INT
-template auto scan_int_impl(std::string_view, int&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, int&, int)
     -> scan_expected<std::string_view::iterator>;
-template auto scan_int_exhaustive_valid_impl(std::string_view) -> int;
+template SCN_PUBLIC auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> int;
 #endif
 #if !SCN_DISABLE_TYPE_LONG
-template auto scan_int_impl(std::string_view, long&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, long&, int)
     -> scan_expected<std::string_view::iterator>;
-template auto scan_int_exhaustive_valid_impl(std::string_view) -> long;
+template SCN_PUBLIC auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> long;
 #endif
 #if !SCN_DISABLE_TYPE_LONG_LONG
-template auto scan_int_impl(std::string_view, long long&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, long long&, int)
     -> scan_expected<std::string_view::iterator>;
-template auto scan_int_exhaustive_valid_impl(std::string_view) -> long long;
+template SCN_PUBLIC auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> long long;
 #endif
 #if !SCN_DISABLE_TYPE_UCHAR
-template auto scan_int_impl(std::string_view, unsigned char&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, unsigned char&, int)
     -> scan_expected<std::string_view::iterator>;
-template auto scan_int_exhaustive_valid_impl(std::string_view) -> unsigned char;
+template SCN_PUBLIC auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> unsigned char;
 #endif
 #if !SCN_DISABLE_TYPE_USHORT
-template auto scan_int_impl(std::string_view, unsigned short&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, unsigned short&, int)
     -> scan_expected<std::string_view::iterator>;
-template auto scan_int_exhaustive_valid_impl(std::string_view)
+template SCN_PUBLIC auto scan_int_exhaustive_valid_impl(std::string_view)
     -> unsigned short;
 #endif
 #if !SCN_DISABLE_TYPE_UINT
-template auto scan_int_impl(std::string_view, unsigned int&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, unsigned int&, int)
     -> scan_expected<std::string_view::iterator>;
-template auto scan_int_exhaustive_valid_impl(std::string_view) -> unsigned int;
+template SCN_PUBLIC auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> unsigned int;
 #endif
 #if !SCN_DISABLE_TYPE_ULONG
-template auto scan_int_impl(std::string_view, unsigned long&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, unsigned long&, int)
     -> scan_expected<std::string_view::iterator>;
-template auto scan_int_exhaustive_valid_impl(std::string_view) -> unsigned long;
+template SCN_PUBLIC auto scan_int_exhaustive_valid_impl(std::string_view)
+    -> unsigned long;
 #endif
 #if !SCN_DISABLE_TYPE_ULONG_LONG
-template auto scan_int_impl(std::string_view, unsigned long long&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view,
+                                       unsigned long long&,
+                                       int)
     -> scan_expected<std::string_view::iterator>;
-template auto scan_int_exhaustive_valid_impl(std::string_view)
+template SCN_PUBLIC auto scan_int_exhaustive_valid_impl(std::string_view)
     -> unsigned long long;
 #endif
 
 #if SCN_HAS_INT128
 
 #if !SCN_DISABLE_TYPE_INT128
-template auto scan_int_impl(std::string_view, int128&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, int128&, int)
     -> scan_expected<std::string_view::iterator>;
 #endif
 
 #if !SCN_DISABLE_TYPE_UINT128
-template auto scan_int_impl(std::string_view, uint128&, int)
+template SCN_PUBLIC auto scan_int_impl(std::string_view, uint128&, int)
     -> scan_expected<std::string_view::iterator>;
 #endif
 

@@ -63,7 +63,7 @@ check_floating_eq(T a, T b, bool allow_approx = false)
 }
 
 template <typename T>
-[[nodiscard]] static testing::AssertionResult check_nan_eq(T lhs, T rhs)
+SCN_NODISCARD static testing::AssertionResult check_nan_eq(T lhs, T rhs)
 {
     if (!std::isnan(lhs)) {
         return testing::AssertionFailure() << "lhs not nan";
