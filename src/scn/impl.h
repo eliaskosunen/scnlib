@@ -5332,9 +5332,12 @@ public:
     {
         detail::check_string_type_specs(specs, eh);
 
-        SCN_GCC_COMPAT_PUSH
-        SCN_GCC_COMPAT_IGNORE("-Wswitch")
-        SCN_GCC_COMPAT_IGNORE("-Wswitch-default")
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Wswitch")
+        SCN_GCC_IGNORE("-Wswitch-default")
+        SCN_CLANG_PUSH
+        SCN_CLANG_IGNORE("-Wswitch")
+        SCN_CLANG_IGNORE("-Wswitch-default")
 
         switch (specs.type) {
             case detail::presentation_type::none:
@@ -5371,7 +5374,8 @@ public:
 #endif
         }
 
-        SCN_GCC_COMPAT_POP
+        SCN_CLANG_POP
+        SCN_GCC_POP
     }
 
     bool skip_ws_before_read() const
