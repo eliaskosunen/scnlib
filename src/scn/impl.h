@@ -5332,13 +5332,9 @@ public:
     {
         detail::check_string_type_specs(specs, eh);
 
-        SCN_GCC_PUSH
-        SCN_GCC_IGNORE("-Wswitch")
-        SCN_GCC_IGNORE("-Wswitch-default")
-
-        SCN_CLANG_PUSH
-        SCN_CLANG_IGNORE("-Wswitch")
-        SCN_CLANG_IGNORE("-Wcovered-switch-default")
+        SCN_GCC_COMPAT_PUSH
+        SCN_GCC_COMPAT_IGNORE("-Wswitch")
+        SCN_GCC_COMPAT_IGNORE("-Wswitch-default")
 
         switch (specs.type) {
             case detail::presentation_type::none:
@@ -5373,27 +5369,9 @@ public:
                 m_type = reader_type::regex_escaped;
                 break;
 #endif
-
-            case detail::presentation_type::int_binary:
-            case detail::presentation_type::int_decimal:
-            case detail::presentation_type::int_generic:
-            case detail::presentation_type::int_unsigned_decimal:
-            case detail::presentation_type::int_octal:
-            case detail::presentation_type::int_hex:
-            case detail::presentation_type::int_arbitrary_base:
-            case detail::presentation_type::float_hex:
-            case detail::presentation_type::float_scientific:
-            case detail::presentation_type::float_fixed:
-            case detail::presentation_type::float_general:
-            case detail::presentation_type::escaped_character:
-            case detail::presentation_type::pointer:
-            default:
-                SCN_EXPECT(false);
-                SCN_UNREACHABLE;
         }
 
-        SCN_CLANG_POP    // -Wswitch-enum, -Wcovered-switch-default
-            SCN_GCC_POP  // -Wswitch-enum, -Wswitch-default
+        SCN_GCC_COMPAT_POP
     }
 
     bool skip_ws_before_read() const

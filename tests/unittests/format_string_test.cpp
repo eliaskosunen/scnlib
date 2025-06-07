@@ -280,3 +280,9 @@ TEST(FormatStringTest, FuzzingError2)
     auto result = scn::scan<wchar_t>(ws, scn::runtime_format(ws));
     ASSERT_FALSE(result);
 }
+
+TEST(FormatStringTest, FuzzingError3)
+{
+    auto result = scn::scan<std::string>("{:G}", scn::runtime_format("{:G}"));
+    ASSERT_FALSE(result);
+}
