@@ -56,6 +56,9 @@ if (SCN_HEADERS_AS_SYSTEM)
     set(SCN_SYSTEM_HEADERS_ATTRIBUTE "SYSTEM")
 endif ()
 
+set(SCN_EXPORT_HEADER
+        "${CMAKE_CURRENT_BINARY_DIR}/include/scn/export.h"
+)
 set(SCN_PUBLIC_HEADERS
         include/scn/fwd.h
         include/scn/macros.h
@@ -78,6 +81,7 @@ set(SCN_MODULE_SOURCES
 add_library(
         scn
         ${SCN_PUBLIC_HEADERS}
+        ${SCN_EXPORT_HEADER}
         ${SCN_PRIVATE_HEADERS}
         ${SCN_PRIVATE_SOURCES}
 )
@@ -85,6 +89,7 @@ target_include_directories(scn
         ${SCN_SYSTEM_HEADERS_ATTRIBUTE}
         PUBLIC
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE
             $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
@@ -94,6 +99,13 @@ target_link_libraries(scn PRIVATE
         ${SCN_REGEX_BACKEND_TARGET}
 )
 set_library_flags(scn)
+
+include(GenerateExportHeader)
+generate_export_header(
+        scn
+        BASE_NAME SCN_EXPORT_HEADER
+        EXPORT_FILE_NAME "${SCN_EXPORT_HEADER}"
+)
 
 set_target_properties(
         scn PROPERTIES
@@ -117,9 +129,9 @@ target_link_libraries(scn_internal INTERFACE
         ${SCN_FAST_FLOAT_TARGET}
         ${SCN_REGEX_BACKEND_TARGET}
 )
-target_include_directories(scn_internal
-        INTERFACE
+target_include_directories(scn_internal INTERFACE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
 set_interface_flags(scn_internal)

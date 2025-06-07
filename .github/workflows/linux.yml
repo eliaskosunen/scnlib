@@ -606,11 +606,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        cxx:
+         - g++-11
         external_deps: [ 0, 1 ]
+        shared_libs: [ "OFF", "ON" ]
+
+        include:
+          - cxx: clang++-15
+            external_deps: 0
+            shared_libs: "OFF"
+          - cxx: clang++-15
+            external_deps: 0
+            shared_libs: "ON"
 
     env:
-      CC: gcc-11
-      CXX: g++-11
+      CXX: ${{ matrix.cxx }}
       CMAKE_CXX_STANDARD: 17
       CMAKE_C_COMPILER_LAUNCHER: ccache
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
@@ -627,11 +637,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
             ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
@@ -654,7 +664,7 @@ jobs:
           cd fast_float
           mkdir build
           cd build
-          cmake -G Ninja ..
+          cmake -G Ninja -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} ..
           cmake --build .
           sudo cmake --build . --target install
 
@@ -664,10 +674,11 @@ jobs:
           cd ${{ runner.workspace }}/lib-build
           if [[ ${{ matrix.external_deps }} -eq 1 ]]; then
             cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF \
-                  -DSCN_USE_EXTERNAL_FAST_FLOAT=ON \
+                  -DSCN_USE_EXTERNAL_FAST_FLOAT=ON -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} \
                   $GITHUB_WORKSPACE
           else
-            cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF $GITHUB_WORKSPACE
+            cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} \
+              $GITHUB_WORKSPACE
           fi
           cmake --build . --verbose --target scn
           sudo cmake --build . --target install
@@ -676,7 +687,7 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}/consumer-build
           cd ${{ runner.workspace }}/consumer-build
-          cmake $GITHUB_WORKSPACE/tests/consumer-test/library
+          cmake -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} $GITHUB_WORKSPACE/tests/consumer-test/library
           cmake --build . --verbose
 
       - name: Show ccache stats
