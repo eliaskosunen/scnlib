@@ -134,8 +134,7 @@ TEST(ReadCodePointIntoTest, SingleCodeUnitCodePointFromContiguous)
     auto src = "ab"sv;
     auto [it, cp] = scn::impl::read_code_point_into(src);
     EXPECT_EQ(it, src.begin() + 1);
-    EXPECT_EQ(len, 1);
-    EXPECT_EQ(cp, "a");
+    EXPECT_EQ(cp, "a"sv);
 }
 TEST(ReadCodePointIntoTest, SingleCodeUnitCodePointFromNonContiguous)
 {

@@ -23,7 +23,7 @@ int main()
 
     if (auto result = scn::scan<int>(stdin, "{}")) {
         if (auto second_result = scn::scan<int>(result->file(), "{}")) {
-            std::printf("Two integers: %d %d\n", result->value(),
+            std::printf("Two integers: `%d` `%d`\n", result->value(),
                         second_result->value());
             return 0;
         }
@@ -32,8 +32,8 @@ int main()
         buf.resize(256);
         std::ignore = std::fgets(buf.data(), 255, stdin);
 
-        std::printf("First integer: %d, rest of the line: %s", result->value(),
-                    buf.c_str());
+        std::printf("First integer: `%d`, rest of the line: `%s`",
+                    result->value(), buf.c_str());
         return 0;
     }
 
@@ -41,5 +41,5 @@ int main()
     buf.resize(256);
     std::ignore = std::fgets(buf.data(), 255, stdin);
 
-    std::printf("Entire line: %s", buf.c_str());
+    std::printf("Entire line: `%s`", buf.c_str());
 }
