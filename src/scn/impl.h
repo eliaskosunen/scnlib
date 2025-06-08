@@ -1897,12 +1897,103 @@ auto read_exactly_n_code_units(Range range, std::ptrdiff_t count)
     }
 }
 
+template <typename CharT>
+class codepoint_string {
+public:
+    using value_type = CharT;
+
+    static constexpr std::integral_constant<std::size_t, 4 / sizeof(CharT)>
+        max_size{};
+
+    constexpr codepoint_string() = default;
+
+    template <std::size_t N, std::enable_if_t<N <= max_size + 1>>
+    /*implicit*/ constexpr codepoint_string(const CharT (&d)[N])
+        : codepoint_string(d, N - 1)
+    {
+    }
+
+    /*implicit*/ constexpr codepoint_string(std::basic_string_view<CharT> s)
+        : codepoint_string(s.data(), s.size())
+    {
+    }
+
+    template <typename Iterator,
+              std::enable_if_t<ranges::input_iterator<Iterator>>* = nullptr>
+    constexpr codepoint_string(Iterator d, std::size_t n)
+        : m_size(static_cast<unsigned char>(n))
+    {
+        SCN_EXPECT(n <= 4);
+        std::copy_n(d, n, m_data);
+    }
+
+    template <typename Iterator,
+              std::enable_if_t<ranges::forward_iterator<Iterator>>* = nullptr>
+    constexpr codepoint_string(Iterator b, Iterator e)
+        : m_size(static_cast<unsigned char>(std::distance(b, e)))
+    {
+        SCN_EXPECT(m_size <= 4);
+        std::copy(b, e, m_data);
+    }
+
+    constexpr CharT* data()
+    {
+        return m_data;
+    }
+    constexpr const CharT* data() const
+    {
+        return m_data;
+    }
+
+    SCN_NODISCARD constexpr std::size_t size() const
+    {
+        return m_size;
+    }
+
+    SCN_NODISCARD constexpr bool empty() const
+    {
+        return size() == 0;
+    }
+
+    constexpr CharT* begin()
+    {
+        return data();
+    }
+    constexpr const CharT* begin() const
+    {
+        return data();
+    }
+
+    constexpr CharT* end()
+    {
+        return data() + size();
+    }
+    constexpr const CharT* end() const
+    {
+        return data() + size();
+    }
+
+    constexpr bool operator==(const codepoint_string& other) const
+    {
+        return size() == other.size() &&
+               std::equal(begin(), end(), other.begin());
+    }
+    constexpr bool operator!=(const codepoint_string& other) const
+    {
+        return !(*this == other);
+    }
+
+private:
+    CharT m_data[max_size]{};
+    unsigned char m_size{};
+};
+
 template <typename Iterator, typename CharT>
 struct read_code_point_into_result {
     Iterator iterator;
-    std::basic_string<CharT> codepoint;
+    codepoint_string<CharT> codepoint;
 
-    bool is_valid() const
+    SCN_NODISCARD bool is_valid() const
     {
         return !codepoint.empty();
     }
@@ -1914,7 +2005,7 @@ auto read_code_point_into(Range range)
                                    detail::char_t<Range>>
 {
     SCN_EXPECT(!is_range_eof(range));
-    using string_type = std::basic_string<detail::char_t<Range>>;
+    using string_type = codepoint_string<detail::char_t<Range>>;
 
     auto it = range.begin();
     const auto len = detail::code_point_length_by_starting_code_unit(*it);
@@ -1927,7 +2018,7 @@ auto read_code_point_into(Range range)
 
     if (len == 1) {
         ++it;
-        return {it, string_type(1, *range.begin())};
+        return {it, string_type(range.begin(), 1)};
     }
 
     ranges::advance(it, static_cast<std::ptrdiff_t>(len), range.end());
@@ -2197,9 +2288,8 @@ template <typename Range>
 auto read_matching_code_unit(Range range, detail::char_t<Range> ch)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
-    auto it = read_code_unit(range);
-    if (SCN_UNLIKELY(!it)) {
-        return unexpected(make_eof_parse_error(it.error()));
+    if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+        return unexpected(make_eof_parse_error(e));
     }
 
     if (SCN_UNLIKELY(*range.begin() !=
@@ -2207,7 +2297,7 @@ auto read_matching_code_unit(Range range, detail::char_t<Range> ch)
         return unexpected(parse_error::error);
     }
 
-    return *it;
+    return ranges::next(range.begin());
 }
 
 template <typename Range>
