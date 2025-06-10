@@ -24,8 +24,7 @@
 #if defined(SCN_MODULE) && defined(SCN_IMPORT_STD)
 import std;
 #else
-#include <ios>
-#include <streambuf>
+#include <istream>
 #endif
 
 namespace scn {
@@ -211,6 +210,264 @@ struct basic_istream_scanner {
         return streambuf.begin_prev();
     }
 };
+
+namespace ranges {
+
+// scnlib ranges extension:
+// istreambuf_view
+
+template <typename CharT, typename Traits = std::char_traits<CharT>>
+class basic_istreambuf_view
+    : public view_interface<basic_istreambuf_view<CharT, Traits>> {
+    using streambuf_type = std::basic_streambuf<CharT, Traits>;
+
+public:
+    class iterator {
+    public:
+        using iterator_concept = input_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = CharT;
+
+        // Needed because of our ranges implementation,
+        // not strictly true
+        // (This is a C++20 input_iterator, not a Cpp17InputIterator)
+        using iterator_category = input_iterator_tag;
+
+        explicit iterator(basic_istreambuf_view& parent) noexcept
+            : m_parent(&parent)
+        {
+        }
+
+        iterator(const iterator&) = delete;
+        iterator& operator=(const iterator&) = delete;
+
+        iterator(iterator&&) = default;
+        iterator& operator=(iterator&&) = default;
+
+        ~iterator() = default;
+
+        iterator& operator++()
+        {
+            SCN_EXPECT(m_parent);
+            m_parent->_read();
+            return *this;
+        }
+        void operator++(int)
+        {
+            ++*this;
+        }
+
+        SCN_NODISCARD CharT& operator*() const
+        {
+            SCN_EXPECT(m_parent);
+            SCN_EXPECT(m_parent->m_current);
+            return *m_parent->m_current;
+        }
+
+        friend bool operator==(const iterator& x, default_sentinel_t)
+        {
+            SCN_EXPECT(x.m_parent);
+            return !x.m_parent->m_current.has_value();
+        }
+        friend bool operator!=(const iterator& x, default_sentinel_t)
+        {
+            return !(x == default_sentinel);
+        }
+
+    private:
+        basic_istreambuf_view* m_parent{nullptr};
+    };
+
+    explicit basic_istreambuf_view(streambuf_type& buf) : m_buf(&buf) {}
+
+    SCN_NODISCARD iterator begin() const noexcept
+    {
+        _read();
+        return iterator{*this};
+    }
+
+    SCN_NODISCARD default_sentinel_t end() const noexcept
+    {
+        return default_sentinel;
+    }
+
+private:
+    friend class iterator;
+
+    void _read()
+    {
+        SCN_EXPECT(m_buf);
+        auto val = m_buf->sbumpc();
+        if (Traits::eq_int_type(val, Traits::eof())) {
+            m_current.reset();
+        }
+        else {
+            m_current = Traits::to_char_type(val);
+        }
+    }
+
+    streambuf_type* m_buf{nullptr};
+    std::optional<CharT> m_current{};
+};
+
+using istreambuf_view = basic_istreambuf_view<char>;
+using wistreambuf_view = basic_istreambuf_view<wchar_t>;
+
+static_assert(input_range<istreambuf_view>);
+
+namespace views {
+
+namespace istreambuf_ {
+
+struct fn {
+    template <typename CharT, typename Traits>
+    auto operator()(std::basic_istream<CharT, Traits>& in) const
+        -> basic_istreambuf_view<CharT, Traits>
+    {
+        return basic_istreambuf_view<CharT, Traits>{*in.rdbuf()};
+    }
+    template <typename CharT, typename Traits>
+    auto operator()(std::basic_streambuf<CharT, Traits>& in) const
+        -> basic_istreambuf_view<CharT, Traits>
+    {
+        return basic_istreambuf_view<CharT, Traits>{in};
+    }
+};
+
+}  // namespace istreambuf_
+
+inline constexpr auto istreambuf = istreambuf_::fn{};
+
+}  // namespace views
+
+}  // namespace ranges
+
+namespace detail {
+
+/**
+ * basic_scan_buffer implementation for std::basic_istream
+ */
+template <typename CharT>
+class basic_scan_istream_buffer : public basic_scan_buffer<CharT> {
+    using base = basic_scan_buffer<CharT>;
+    using traits = typename std::basic_istream<CharT>::traits_type;
+
+public:
+    SCN_PUBLIC explicit basic_scan_istream_buffer(
+        std::basic_istream<CharT>& strm);
+    SCN_PUBLIC ~basic_scan_istream_buffer() override;
+
+    SCN_PUBLIC bool fill() override;
+
+    SCN_PUBLIC bool sync(std::ptrdiff_t position) override;
+
+private:
+    std::basic_istream<CharT>* m_stream;
+    std::basic_string<CharT> m_buf;
+};
+
+using scan_istream_buffer = basic_scan_istream_buffer<char>;
+using wscan_istream_buffer = basic_scan_istream_buffer<wchar_t>;
+
+extern template basic_scan_istream_buffer<char>::basic_scan_istream_buffer(
+    std::istream&);
+extern template basic_scan_istream_buffer<wchar_t>::basic_scan_istream_buffer(
+    std::wistream&);
+
+extern template basic_scan_istream_buffer<char>::~basic_scan_istream_buffer();
+extern template basic_scan_istream_buffer<
+    wchar_t>::~basic_scan_istream_buffer();
+
+inline scan_istream_buffer make_scan_buffer(std::istream& stream,
+                                            make_scan_buffer_tag)
+{
+    return scan_istream_buffer{stream};
+}
+inline wscan_istream_buffer make_scan_buffer(std::wistream& stream,
+                                             make_scan_buffer_tag)
+{
+    return wscan_istream_buffer{stream};
+}
+
+template <typename T>
+using dt_char_type = typename T::char_type;
+
+template <typename T>
+inline constexpr bool is_derived_from_istream = std::is_base_of_v<
+    std::basic_istream<mp_eval_or<char, dt_char_type, remove_cvref_t<T>>>,
+    remove_cvref_t<T>>;
+
+template <typename T>
+struct custom_scan_result<T, std::enable_if_t<is_derived_from_istream<T>>> {
+    using type = remove_cvref_t<T>*;
+};
+
+template <typename Stream>
+class scan_result_istream_storage {
+    friend struct scan_result_source_access;
+
+public:
+    using source_type = Stream;
+
+    scan_result_istream_storage() = default;
+
+    explicit scan_result_istream_storage(source_type& s) : m_stream(&s) {}
+    explicit scan_result_istream_storage(source_type* s) : m_stream(s)
+    {
+        SCN_EXPECT(s);
+    }
+
+    SCN_NODISCARD source_type& stream()
+    {
+        SCN_EXPECT(m_stream);
+        return *m_stream;
+    }
+
+private:
+    void set(source_type& s)
+    {
+        m_stream = &s;
+    }
+    void set(source_type* s)
+    {
+        SCN_EXPECT(s);
+        m_stream = s;
+    }
+
+    source_type* m_stream{nullptr};
+};
+
+template <typename T>
+struct custom_scan_result_source_storage<
+    T,
+    std::enable_if_t<is_derived_from_istream<T>>> {
+    using type = scan_result_istream_storage<remove_cvref_t<T>>;
+};
+template <typename T>
+struct custom_scan_result_source_storage<
+    T*,
+    std::enable_if_t<is_derived_from_istream<T>>> {
+    using type = scan_result_istream_storage<remove_cvref_t<T>>;
+};
+
+template <typename T,
+          typename CharT,
+          std::enable_if_t<is_derived_from_istream<T>>* = nullptr>
+auto make_vscan_result(T& source,
+                       const basic_scan_istream_buffer<CharT>&,
+                       std::ptrdiff_t)
+{
+    return &source;
+}
+template <typename T,
+          typename CharT,
+          std::enable_if_t<!std::is_reference_v<T> &&
+                           is_derived_from_istream<T>>* = nullptr>
+auto make_vscan_result(T&& source,
+                       const basic_scan_istream_buffer<CharT>&,
+                       std::ptrdiff_t) = delete;
+
+}  // namespace detail
 
 SCN_END_NAMESPACE
 }  // namespace scn

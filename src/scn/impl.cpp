@@ -17,6 +17,9 @@
 
 #include <scn/chrono.h>
 #include <scn/impl.h>
+#include <scn/istream.h>
+
+#include <mutex>
 
 #if !SCN_DISABLE_LOCALE
 #include <locale>
@@ -286,412 +289,64 @@ SCN_DEFINE_SCANNER_SCAN_FOR_CTX(wscan_context)
 // File support
 /////////////////////////////////////////////////////////////////
 
-namespace {
+using stdio_file_buffer_interface =
+    impl::file_buffer_interface<char, impl::stdio_file_interface>;
 
-struct default_file_tag {};
-struct gnu_file_tag {};
-struct bsd_file_tag {};
-struct musl_file_tag {};
-struct win32_file_tag {};
-
-// Non-pretty workaround for MSVC silliness
-template <typename F, typename = void>
-inline constexpr bool is_gnu_file = false;
-template <typename F>
-inline constexpr bool
-    is_gnu_file<F,
-                std::void_t<decltype(SCN_DECLVAL(F)._IO_read_ptr),
-                            decltype(SCN_DECLVAL(F)._IO_read_end)>> = true;
-
-template <typename F, typename = void>
-inline constexpr bool is_bsd_file = false;
-template <typename F>
-inline constexpr bool is_bsd_file<
-    F,
-    std::void_t<decltype(SCN_DECLVAL(F)._p), decltype(SCN_DECLVAL(F)._r)>> =
-    true;
-
-template <typename F, typename = void>
-inline constexpr bool is_musl_file = false;
-template <typename F>
-inline constexpr bool is_musl_file<
-    F,
-    std::void_t<decltype(SCN_DECLVAL(F).rpos), decltype(SCN_DECLVAL(F).rend)>> =
-    true;
-
-template <typename F>
-inline constexpr bool is_win32_file =
-    std::is_same_v<F, std::FILE> && SCN_WINDOWS && !SCN_MINGW;
-
-SCN_MAYBE_UNUSED constexpr auto get_file_tag()
+SCN_PUBLIC scan_cfile_buffer::scan_cfile_buffer(std::FILE* file)
+    : base(base::non_contiguous_tag{}), m_file(file)
 {
-    if constexpr (is_gnu_file<std::FILE>) {
-        return detail::tag_type<gnu_file_tag>{};
-    }
-    else if constexpr (is_bsd_file<std::FILE>) {
-        return detail::tag_type<bsd_file_tag>{};
-    }
-    else if constexpr (is_musl_file<std::FILE>) {
-        return detail::tag_type<musl_file_tag>{};
-    }
-    else if constexpr (is_win32_file<std::FILE>) {
-        return detail::tag_type<win32_file_tag>{};
-    }
-    else {
-        return detail::tag_type<default_file_tag>{};
-    }
+    auto f = impl::stdio_file_interface{m_file};
+    stdio_file_buffer_interface::construct(f, this->m_source_error);
 }
 
-template <typename File>
-struct stdio_file_interface_base {
-    explicit constexpr stdio_file_interface_base(File* f) noexcept : file(f) {}
-    ~stdio_file_interface_base() = default;
-
-    stdio_file_interface_base(const stdio_file_interface_base&) = delete;
-    stdio_file_interface_base& operator=(const stdio_file_interface_base&) =
-        delete;
-
-    constexpr stdio_file_interface_base(
-        stdio_file_interface_base&& other) noexcept
-        : file(other.file)
-    {
-        other.file = nullptr;
-    }
-    constexpr stdio_file_interface_base& operator=(
-        stdio_file_interface_base&& other) noexcept
-    {
-        file = other.file;
-        other.file = nullptr;
-        return *this;
-    }
-
-    File* file;
-};
-
-template <typename File, typename Tag>
-struct stdio_file_interface_impl;
-
-template <typename File>
-struct stdio_file_interface_impl<File, default_file_tag>
-    : stdio_file_interface_base<File> {
-    using stdio_file_interface_base<File>::stdio_file_interface_base;
-
-    static constexpr void lock() {}
-    static constexpr void unlock() {}
-
-    SCN_NODISCARD static constexpr bool has_buffering()
-    {
-        return false;
-    }
-
-    SCN_NODISCARD static std::string_view buffer()
-    {
-        return {};
-    }
-    static void unsafe_advance_n(std::ptrdiff_t)
-    {
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
-    }
-    static void fill_buffer()
-    {
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
-    }
-
-    SCN_NODISCARD std::optional<char> read_one()
-    {
-        auto res = std::fgetc(this->file);
-        if (res == EOF) {
-            return std::nullopt;
-        }
-        return static_cast<char>(res);
-    }
-
-    static void prepare_putback() {}
-    static void finalize_putback() {}
-
-    SCN_NODISCARD bool putback(char ch)
-    {
-        return std::ungetc(static_cast<unsigned char>(ch), this->file) != EOF;
-    }
-};
-
-template <typename File>
-struct posix_stdio_file_interface : stdio_file_interface_base<File> {
-    using stdio_file_interface_base<File>::stdio_file_interface_base;
-
-    void lock()
-    {
-        flockfile(this->file);
-    }
-    void unlock()
-    {
-        funlockfile(this->file);
-    }
-
-    SCN_NODISCARD static constexpr bool has_buffering()
-    {
-        return true;
-    }
-
-    SCN_NODISCARD std::optional<char> read_one()
-    {
-        auto res = getc_unlocked(this->file);
-        if (res == EOF) {
-            return std::nullopt;
-        }
-        return static_cast<char>(res);
-    }
-
-    void prepare_putback()
-    {
-        unlock();
-    }
-    void finalize_putback()
-    {
-        lock();
-    }
-
-    SCN_NODISCARD bool putback(char ch)
-    {
-        return std::ungetc(static_cast<unsigned char>(ch), this->file) != EOF;
-    }
-};
-
-template <typename File>
-struct stdio_file_interface_impl<File, gnu_file_tag>
-    : posix_stdio_file_interface<File> {
-    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
-
-    SCN_NODISCARD std::string_view buffer() const
-    {
-        return make_string_view_from_pointers(this->file->_IO_read_ptr,
-                                              this->file->_IO_read_end);
-    }
-    void unsafe_advance_n(std::ptrdiff_t n)
-    {
-        SCN_EXPECT(this->file->_IO_read_ptr != nullptr);
-        SCN_EXPECT(this->file->_IO_read_end - this->file->_IO_read_ptr >= n);
-        this->file->_IO_read_ptr += n;
-    }
-    void fill_buffer()
-    {
-        if (__uflow(this->file) != EOF) {
-            --this->file->_IO_read_ptr;
-        }
-    }
-};
-
-template <typename File>
-struct stdio_file_interface_impl<File, bsd_file_tag>
-    : posix_stdio_file_interface<File> {
-    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
-
-    SCN_NODISCARD std::string_view buffer() const
-    {
-        return {reinterpret_cast<const char*>(this->file->_p),
-                static_cast<std::size_t>(this->file->_r)};
-    }
-    void unsafe_advance_n(std::ptrdiff_t n)
-    {
-        SCN_EXPECT(this->file->_p != nullptr);
-        SCN_EXPECT(this->file->_r >= n);
-        this->file->_p += n;
-        this->file->_r -= static_cast<int>(n);
-    }
-    void fill_buffer()
-    {
-        if (__srget(this->file) != EOF) {
-            --this->file->_p;
-            ++this->file->_r;
-        }
-    }
-};
-
-template <typename File>
-struct stdio_file_interface_impl<File, musl_file_tag>
-    : posix_stdio_file_interface<File> {
-    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
-
-    SCN_NODISCARD std::string_view buffer() const
-    {
-        return make_string_view_from_pointers(
-            reinterpret_cast<const char*>(this->file->rpos),
-            reinterpret_cast<const char*>(this->file->rend));
-    }
-    void unsafe_advance_n(std::ptrdiff_t n)
-    {
-        SCN_EXPECT(this->file->rpos != nullptr);
-        SCN_EXPECT(this->file->rend - this->file->rpos >= n);
-        this->file->rpos += n;
-    }
-    void fill_buffer()
-    {
-        if (__uflow(this->file) != EOF) {
-            --this->file->rpos;
-        }
-    }
-};
-
-template <typename File>
-struct stdio_file_interface_impl<File, win32_file_tag>
-    : stdio_file_interface_base<File> {
-    using stdio_file_interface_base<File>::stdio_file_interface_base;
-
-    void lock()
-    {
-        _lock_file(this->file);
-    }
-    void unlock()
-    {
-        _unlock_file(this->file);
-    }
-
-    SCN_NODISCARD static constexpr bool has_buffering()
-    {
-        return false;
-    }
-
-    SCN_NODISCARD static std::string_view buffer()
-    {
-        return {};
-    }
-    static void unsafe_advance_n(std::ptrdiff_t n)
-    {
-        SCN_UNUSED(n);
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
-    }
-    static void fill_buffer()
-    {
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
-    }
-
-    SCN_NODISCARD std::optional<char> read_one()
-    {
-        auto res = _fgetc_nolock(this->file);
-        if (res == EOF) {
-            return std::nullopt;
-        }
-        return static_cast<char>(res);
-    }
-
-    static void prepare_putback() {}
-    static void finalize_putback() {}
-
-    SCN_NODISCARD bool putback(char ch)
-    {
-        return _ungetc_nolock(static_cast<unsigned char>(ch), this->file) !=
-               EOF;
-    }
-};
-
-using stdio_file_interface =
-    stdio_file_interface_impl<std::FILE, decltype(get_file_tag())::type>;
-
-stdio_file_interface make_file_interface(std::FILE* file)
+SCN_PUBLIC scan_cfile_buffer::~scan_cfile_buffer()
 {
-    return stdio_file_interface{file};
+    auto f = impl::stdio_file_interface{m_file};
+    stdio_file_buffer_interface::destruct(f);
 }
 
-}  // namespace
-
-SCN_PUBLIC scan_file_buffer::scan_file_buffer(std::FILE* file)
-    : base(base::non_contiguous_tag{}), m_file(SCN_MOVE(file))
+SCN_PUBLIC bool scan_cfile_buffer::fill()
 {
-    make_file_interface(m_file).lock();
+    auto f = impl::stdio_file_interface{m_file};
+    return stdio_file_buffer_interface::fill(
+        f, m_current_view, m_putback_buffer, m_source_error, m_latest);
 }
 
-SCN_PUBLIC scan_file_buffer::~scan_file_buffer()
+SCN_PUBLIC bool scan_cfile_buffer::sync(std::ptrdiff_t position)
 {
-    make_file_interface(m_file).unlock();
+    auto f = impl::stdio_file_interface{m_file};
+    return stdio_file_buffer_interface::sync(f, position, *this, m_current_view,
+                                             m_putback_buffer,
+                                             true) == position;
 }
+
+SCN_PUBLIC scan_file_buffer::scan_file_buffer(scan_file& file)
+    : base(scan_file_access::get_handle(file)),
+      m_prelude(scan_file_access::get_prelude(file))
+{
+    this->m_current_view = std::string_view{m_prelude.data(), m_prelude.size()};
+}
+
+SCN_PUBLIC scan_file_buffer::~scan_file_buffer() = default;
 
 SCN_PUBLIC bool scan_file_buffer::fill()
 {
-    if (!this->m_current_view.empty()) {
-        this->m_putback_buffer.insert(this->m_putback_buffer.end(),
-                                      this->m_current_view.begin(),
-                                      this->m_current_view.end());
+    if (scan_cfile_buffer::fill()) {
+        m_prelude.clear();
+        return true;
     }
-
-    auto file = make_file_interface(this->m_file);
-    if (file.has_buffering()) {
-        if (!this->m_current_view.empty()) {
-            file.unsafe_advance_n(
-                static_cast<std::ptrdiff_t>(this->m_current_view.size()));
-        }
-
-        if (file.buffer().empty()) {
-            file.fill_buffer();
-        }
-        m_current_view = file.buffer();
-        return !this->m_current_view.empty();
-    }
-
-    this->m_latest = file.read_one();
-    if (!this->m_latest) {
-        this->m_current_view = {};
-        return false;
-    }
-
-    this->m_current_view = {&*this->m_latest, 1};
-    return true;
+    return false;
 }
 
 SCN_PUBLIC bool scan_file_buffer::sync(std::ptrdiff_t position)
 {
-    struct putback_wrapper {
-        putback_wrapper(std::FILE* file) : m_file(file)
-        {
-            make_file_interface(m_file).prepare_putback();
-        }
-        ~putback_wrapper()
-        {
-            make_file_interface(m_file).finalize_putback();
-        }
-
-    private:
-        std::FILE* m_file;
-    };
-
-    auto file = make_file_interface(m_file);
-    if (file.has_buffering()) {
-        if (position <
-            static_cast<std::ptrdiff_t>(this->putback_buffer().size())) {
-            putback_wrapper wrapper{m_file};
-            auto segment = this->get_segment_starting_at(position);
-            for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
-                if (!file.putback(*it)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        file.unsafe_advance_n(position - static_cast<std::ptrdiff_t>(
-                                             this->putback_buffer().size()));
-        return true;
-    }
-
-    const auto chars_avail = this->chars_available();
-    if (position == chars_avail) {
-        return true;
-    }
-
-    putback_wrapper wrapper{m_file};
-    SCN_EXPECT(m_current_view.size() == 1);
-    (void)file.putback(m_current_view.front());
-
-    auto segment = std::string_view{this->putback_buffer().data(),
-                                    this->putback_buffer().size()}
-                       .substr(static_cast<std::size_t>(position));
-    for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
-        if (!file.putback(*it)) {
-            return false;
-        }
+    auto f = impl::stdio_file_interface{m_file};
+    if (auto i = stdio_file_buffer_interface::sync(
+            f, position, *this, m_current_view, m_putback_buffer,
+            m_prelude.empty());
+        i != position) {
+        detail::set_prelude_after_sync(m_prelude, position, i, m_current_view,
+                                       m_putback_buffer);
     }
     return true;
 }
@@ -2823,9 +2478,11 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
     return ranges::distance(source.data(), it);
 }
+
 template <typename CharT>
 scan_expected<std::ptrdiff_t> scan_simple_single_argument(
-    detail::basic_scan_buffer<CharT>& source,
+    typename detail::basic_scan_buffer<
+        detail::type_identity_t<CharT>>::range_type source,
     basic_scan_args<detail::default_context<CharT>> args,
     basic_scan_arg<detail::default_context<CharT>> arg,
     detail::locale_ref loc = {})
@@ -2835,16 +2492,9 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
                                              "Argument #0 not found");
     }
 
-    if (SCN_LIKELY(source.is_contiguous())) {
-        auto reader = impl::default_arg_reader<
-            impl::basic_contiguous_scan_context<CharT>>{source.get_contiguous(),
-                                                        SCN_MOVE(args), loc};
-        SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
-        return ranges::distance(source.get_contiguous().begin(), it);
-    }
-
+    SCN_EXPECT(source.begin().stores_parent());
     auto reader = impl::default_arg_reader<detail::default_context<CharT>>{
-        source.get(), SCN_MOVE(args), loc};
+        source, SCN_MOVE(args), loc};
     SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
     return it.position();
 }
@@ -2996,10 +2646,11 @@ template <typename CharT>
 struct simple_context_wrapper {
     using context_type = detail::default_context<CharT>;
 
-    simple_context_wrapper(detail::basic_scan_buffer<CharT>& source,
-                           basic_scan_args<detail::default_context<CharT>> args,
-                           detail::locale_ref loc)
-        : ctx(source.get().begin(), SCN_MOVE(args), loc)
+    simple_context_wrapper(
+        typename detail::basic_scan_buffer<CharT>::range_type& source,
+        basic_scan_args<detail::default_context<CharT>> args,
+        detail::locale_ref loc)
+        : ctx(source, SCN_MOVE(args), loc)
     {
     }
 
@@ -3027,26 +2678,28 @@ struct contiguous_context_wrapper {
     {
     }
 
-    impl::basic_contiguous_scan_context<CharT>& get()
+    context_type& get()
     {
         return contiguous_ctx;
     }
     detail::default_context<CharT>& get_custom()
     {
-        if (!buffer) {
-            buffer.emplace(detail::make_string_view_from_pointers(
-                ranges::data(contiguous_ctx.underlying_range()),
-                ranges::data(contiguous_ctx.underlying_range()) +
-                    ranges::size(contiguous_ctx.underlying_range())));
+        using iterator =
+            typename detail::basic_scan_buffer<CharT>::forward_iterator;
+        auto begin = iterator{contiguous_ctx.original_begin(),
+                              std::distance(contiguous_ctx.original_begin(),
+                                            contiguous_ctx.begin())};
+        if (!custom_ctx) {
+            custom_ctx.emplace(begin, ranges::default_sentinel,
+                               contiguous_ctx.args(), contiguous_ctx.locale());
         }
-        auto it = buffer->get().begin();
-        it.batch_advance_to(contiguous_ctx.begin_position());
-        custom_ctx.emplace(it, contiguous_ctx.args(), contiguous_ctx.locale());
+        else {
+            custom_ctx->advance_to(begin);
+        }
         return *custom_ctx;
     }
 
-    impl::basic_contiguous_scan_context<CharT> contiguous_ctx;
-    std::optional<detail::basic_scan_string_buffer<CharT>> buffer{std::nullopt};
+    context_type contiguous_ctx;
     std::optional<detail::default_context<CharT>> custom_ctx{std::nullopt};
 };
 
@@ -3244,30 +2897,55 @@ scan_expected<std::ptrdiff_t> vscan_internal(
 
 template <typename CharT>
 scan_expected<std::ptrdiff_t> vscan_internal(
-    detail::basic_scan_buffer<CharT>& buffer,
+    typename detail::basic_scan_buffer<
+        detail::type_identity_t<CharT>>::range_type source,
     std::basic_string_view<CharT> format,
     basic_scan_args<detail::default_context<CharT>> args,
     detail::locale_ref loc = {})
 {
-    const auto argcount = args.size();
-    if (is_simple_single_argument_format_string(format) && argcount == 1) {
-        auto arg = args.get(0);
-        return scan_simple_single_argument(buffer, SCN_MOVE(args), arg);
+    if (!source.begin().stores_parent()) {
+        return vscan_internal(source.begin().contiguous_segment(), format, args,
+                              loc);
     }
 
-    if (buffer.is_contiguous()) {
-        auto handler = format_handler<true, CharT>{buffer.get_contiguous(),
-                                                   format, SCN_MOVE(args),
-                                                   SCN_MOVE(loc), argcount};
-        return vscan_parse_format_string(format, handler);
+    auto& buffer = *source.begin().parent();
+    if (auto e = buffer.get_source_error(); SCN_UNLIKELY(!e)) {
+        return unexpected(e.error());
     }
 
-    SCN_UNLIKELY_ATTR
-    {
+    const auto begin_position = source.begin().position();
+    const auto end_position = [&]() {
+        const auto argcount = args.size();
+        if (is_simple_single_argument_format_string(format) && argcount == 1) {
+            auto arg = args.get(0);
+            return scan_simple_single_argument(source, SCN_MOVE(args), arg);
+        }
+
         auto handler = format_handler<false, CharT>{
-            buffer, format, SCN_MOVE(args), SCN_MOVE(loc), argcount};
+            source, format, SCN_MOVE(args), loc, argcount};
         return vscan_parse_format_string(format, handler);
+    }();
+
+    if (SCN_LIKELY(end_position)) {
+        if (SCN_UNLIKELY(!buffer.sync(*end_position))) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_source_state,
+                "Failed to sync with underlying source");
+        }
     }
+    else {
+        if (SCN_UNLIKELY(!buffer.sync(begin_position))) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_source_state,
+                "Failed to sync with underlying source");
+        }
+    }
+
+    if (auto e = buffer.get_source_error(); SCN_UNLIKELY(!e)) {
+        return unexpected(e.error());
+    }
+
+    return end_position;
 }
 
 template <typename Source, typename CharT>
@@ -3303,52 +2981,14 @@ auto scan_int_exhaustive_valid_impl(std::string_view source) -> T
 
 SCN_PUBLIC scan_expected<void> vinput(std::string_view format, scan_args args)
 {
-    auto buffer = detail::make_file_scan_buffer(stdin);
-    auto n = vscan_internal(buffer, format, args);
-    if (n) {
-        if (SCN_UNLIKELY(!buffer.sync(*n))) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_source_state,
-                "Failed to sync with underlying FILE");
-        }
-        return {};
+    auto buffer = detail::scan_cfile_buffer{stdin};
+    if (auto e = vscan_internal(buffer.get(), format, args); SCN_UNLIKELY(!e)) {
+        return unexpected(e.error());
     }
-    if (SCN_UNLIKELY(!buffer.sync(detail::get_failed_sync_position(buffer)))) {
-        return detail::unexpected_scan_error(
-            scan_error::invalid_source_state,
-            "Failed to sync with underlying FILE");
-    }
-    return unexpected(n.error());
+    return {};
 }
 
 namespace detail {
-
-namespace {
-
-template <typename Source>
-scan_expected<std::ptrdiff_t> sync_after_vscan(
-    Source& source,
-    scan_expected<std::ptrdiff_t> result)
-{
-    if (SCN_LIKELY(result)) {
-        if (SCN_UNLIKELY(!source.sync(*result))) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_source_state,
-                "Failed to sync with underlying source");
-        }
-    }
-    else {
-        if (SCN_UNLIKELY(
-                !source.sync(detail::get_failed_sync_position(source)))) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_source_state,
-                "Failed to sync with underlying source");
-        }
-    }
-    return result;
-}
-
-}  // namespace
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
                                                     std::string_view format,
@@ -3356,12 +2996,12 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
 {
     return vscan_internal(source, format, args);
 }
-SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
-                                                    std::string_view format,
-                                                    scan_args args)
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(
+    scan_buffer::range_type source,
+    std::string_view format,
+    scan_args args)
 {
-    auto n = vscan_internal(source, format, args);
-    return sync_after_vscan(source, n);
+    return vscan_internal(source, format, args);
 }
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
@@ -3370,12 +3010,12 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
 {
     return vscan_internal(source, format, args);
 }
-SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
-                                                    std::wstring_view format,
-                                                    wscan_args args)
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(
+    wscan_buffer::range_type source,
+    std::wstring_view format,
+    wscan_args args)
 {
-    auto n = vscan_internal(source, format, args);
-    return sync_after_vscan(source, n);
+    return vscan_internal(source, format, args);
 }
 
 #if !SCN_DISABLE_LOCALE
@@ -3388,13 +3028,13 @@ scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
     return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
 template <typename Locale>
-scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
-                                                   scan_buffer& source,
-                                                   std::string_view format,
-                                                   scan_args args)
+scan_expected<std::ptrdiff_t> vscan_localized_impl(
+    const Locale& loc,
+    scan_buffer::range_type source,
+    std::string_view format,
+    scan_args args)
 {
-    auto n = vscan_internal(source, format, args, detail::locale_ref{loc});
-    return sync_after_vscan(source, n);
+    return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
 
 template <typename Locale>
@@ -3406,13 +3046,13 @@ scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
     return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
 template <typename Locale>
-scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
-                                                   wscan_buffer& source,
-                                                   std::wstring_view format,
-                                                   wscan_args args)
+scan_expected<std::ptrdiff_t> vscan_localized_impl(
+    const Locale& loc,
+    wscan_buffer::range_type source,
+    std::wstring_view format,
+    wscan_args args)
 {
-    auto n = vscan_internal(source, format, args, detail::locale_ref{loc});
-    return sync_after_vscan(source, n);
+    return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
 
 template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
@@ -3420,21 +3060,21 @@ template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
                                                            std::string_view,
                                                            scan_args)
     -> scan_expected<std::ptrdiff_t>;
-template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
-                                                           scan_buffer&,
-                                                           std::string_view,
-                                                           scan_args)
-    -> scan_expected<std::ptrdiff_t>;
+template SCN_PUBLIC auto vscan_localized_impl<std::locale>(
+    const std::locale&,
+    scan_buffer::range_type,
+    std::string_view,
+    scan_args) -> scan_expected<std::ptrdiff_t>;
 template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
                                                            std::wstring_view,
                                                            std::wstring_view,
                                                            wscan_args)
     -> scan_expected<std::ptrdiff_t>;
-template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
-                                                           wscan_buffer&,
-                                                           std::wstring_view,
-                                                           wscan_args)
-    -> scan_expected<std::ptrdiff_t>;
+template SCN_PUBLIC auto vscan_localized_impl<std::locale>(
+    const std::locale&,
+    wscan_buffer::range_type,
+    std::wstring_view,
+    wscan_args) -> scan_expected<std::ptrdiff_t>;
 #endif
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
@@ -3444,11 +3084,10 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     return vscan_value_internal(source, arg);
 }
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
-    scan_buffer& source,
+    scan_buffer::range_type source,
     basic_scan_arg<scan_context> arg)
 {
-    auto n = vscan_value_internal(source, arg);
-    return sync_after_vscan(source, n);
+    return vscan_value_internal(source, arg);
 }
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
@@ -3458,11 +3097,10 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     return vscan_value_internal(source, arg);
 }
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
-    wscan_buffer& source,
+    wscan_buffer::range_type source,
     basic_scan_arg<wscan_context> arg)
 {
-    auto n = vscan_value_internal(source, arg);
-    return sync_after_vscan(source, n);
+    return vscan_value_internal(source, arg);
 }
 
 #if !SCN_DISABLE_TYPE_SCHAR
@@ -4072,7 +3710,7 @@ struct datetime_setter<year> : unreachable_datetime_setter<year> {
     template <typename Handler>
     static void set_full_year(Handler& h, year& t, setter_state& st, int y)
     {
-        t = year{static_cast<int>(y)};
+        t = year{y};
         st.set_full_year(h);
     }
     template <typename Handler>
@@ -4122,7 +3760,7 @@ struct datetime_setter<year_month> : unreachable_datetime_setter<year_month> {
                               setter_state& st,
                               int y)
     {
-        t = year_month{year{static_cast<int>(y)}, t.month()};
+        t = year_month{year{y}, t.month()};
         st.set_full_year(h);
     }
     template <typename Handler>
@@ -4161,7 +3799,7 @@ struct datetime_setter<year_month_day>
                               setter_state& st,
                               int y)
     {
-        t = year_month_day{year{static_cast<int>(y)}, t.month(), t.day()};
+        t = year_month_day{year{y}, t.month(), t.day()};
         st.set_full_year(h);
     }
     template <typename Handler>
@@ -5004,7 +4642,10 @@ private:
 
 #if !SCN_DISABLE_LOCALE
     struct localized_read_state {
-        using time_facet_type = std::time_get<CharT, iterator>;
+        using facet_iterator_type =
+            ranges::iterator_t<decltype(ranges::views::common(
+                SCN_DECLVAL(Range&)))>;
+        using time_facet_type = std::time_get<CharT, facet_iterator_type>;
         using numpunct_facet_type = std::numpunct<CharT>;
 
         std::locale locale;
@@ -5053,27 +4694,22 @@ private:
         const auto& facet = *get_localized_read_state().time_facet;
         std::ios_base::iostate err{std::ios_base::goodbit};
         std::tm tm{};
-        auto [begin, end] = [&]() {
-            if constexpr (std::is_same_v<
-                              iterator,
-                              remove_cvref_t<decltype(m_range.end())>>) {
-                return std::pair{m_range.begin(), m_range.end()};
-            }
-            else {
-                using common_iterator_type =
-                    typename basic_scan_buffer<CharT>::common_forward_iterator;
-                return std::pair{common_iterator_type{m_range.begin()},
-                                 common_iterator_type{m_range.end()}};
-            }
-        }();
-        auto iter = facet.get(begin, end, m_loc_state->dummy_stream, err, &tm,
-                              fmt.data(), fmt.data() + fmt.size());
+        auto&& common_range = ranges::views::common(m_range);
+        auto iter =
+            facet.get(ranges::begin(common_range), ranges::end(common_range),
+                      m_loc_state->dummy_stream, err, &tm, fmt.data(),
+                      fmt.data() + fmt.size());
         if ((err & std::ios_base::failbit) != 0) {
             set_error({scan_error::invalid_scanned_value,
                        "Failed to scan localized datetime"});
             return std::nullopt;
         }
-        m_begin = SCN_MOVE(iter);
+        if constexpr (ranges::common_range<Range>) {
+            m_begin = SCN_MOVE(iter);
+        }
+        else {
+            m_begin = SCN_MOVE(iter.base());
+        }
         return tm;
     }
 
@@ -5134,13 +4770,16 @@ template <typename CharT, typename T, typename Context>
 auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str, T& t, Context& ctx)
     -> scan_expected<typename Context::iterator>
 {
-    if (ctx.begin().stores_parent()) {
+    if (!impl::is_entire_source_contiguous(ctx.range())) {
         // ctx.begin() stores parent (buffer) -> not contiguous
         return chrono_scan_inner_impl(fmt_str, t, ctx);
     }
 
+    auto crange = impl::get_as_contiguous(ctx.range());
     auto contiguous_ctx = impl::basic_contiguous_scan_context<CharT>(
-        ctx.begin().contiguous_segment(), ctx.args(), ctx.locale());
+        ranges::subrange<const CharT*>(crange.data(),
+                                       crange.data() + crange.size()),
+        ctx.args(), ctx.locale());
     auto begin = contiguous_ctx.begin();
     SCN_TRY(it, chrono_scan_inner_impl(fmt_str, t, contiguous_ctx));
     return ctx.begin().batch_advance(std::distance(begin, it));
@@ -5167,6 +4806,76 @@ template auto chrono_scan_impl(std::wstring_view,
 }  // namespace detail
 
 #endif  // !SCN_DISABLE_CHRONO
+
+#if !SCN_DISABLE_IOSTREAM
+
+namespace detail {
+
+template <typename CharT>
+SCN_PUBLIC basic_scan_istream_buffer<CharT>::basic_scan_istream_buffer(
+    std::basic_istream<CharT>& strm)
+    : base(typename base::non_contiguous_tag{}), m_stream(&strm)
+{
+}
+
+template <typename CharT>
+SCN_PUBLIC basic_scan_istream_buffer<CharT>::~basic_scan_istream_buffer() =
+    default;
+
+template <typename CharT>
+SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::fill()
+{
+    SCN_EXPECT(m_stream);
+
+    if (!this->m_current_view.empty()) {
+        this->m_putback_buffer.append(this->m_current_view.begin(),
+                                      this->m_current_view.end());
+    }
+    this->m_current_view = {};
+
+    auto& streambuf = *m_stream->rdbuf();
+    if (traits::eq_int_type(streambuf.sgetc(), traits::eof())) {
+        return false;
+    }
+
+    const auto n_avail = streambuf.in_avail();
+    if (n_avail <= 0) {
+        return false;
+    }
+    const auto n_avail_u = static_cast<std::size_t>(n_avail);
+    if (n_avail_u > m_buf.size()) {
+        m_buf.resize(n_avail_u);
+    }
+
+    const auto n_read =
+        static_cast<std::size_t>(streambuf.sgetn(m_buf.data(), n_avail));
+    SCN_EXPECT(n_read == n_avail_u);
+    this->m_current_view = std::basic_string_view<CharT>{m_buf.data(), n_read};
+    return true;
+}
+
+template <typename CharT>
+SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::sync(std::ptrdiff_t position)
+{
+    SCN_EXPECT(m_stream);
+    auto& streambuf = *m_stream->rdbuf();
+    return impl::buffer_sync_helper(
+        position, this->m_current_view, this->m_putback_buffer, [&](CharT ch) {
+            return !traits::eq_int_type(streambuf.sputbackc(ch), traits::eof());
+        });
+}
+
+template basic_scan_istream_buffer<char>::basic_scan_istream_buffer(
+    std::istream&);
+template basic_scan_istream_buffer<wchar_t>::basic_scan_istream_buffer(
+    std::wistream&);
+
+template basic_scan_istream_buffer<char>::~basic_scan_istream_buffer();
+template basic_scan_istream_buffer<wchar_t>::~basic_scan_istream_buffer();
+
+}  // namespace detail
+
+#endif  // !SCN_DISABLE_IOSTREAM
 
 SCN_END_NAMESPACE
 }  // namespace scn

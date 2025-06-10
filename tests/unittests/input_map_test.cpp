@@ -41,15 +41,6 @@ std::string collect(Range r)
 }
 }  // namespace
 
-TEST(InputMapTest, RefBuffer)
-{
-    auto first = scn::detail::make_string_scan_buffer("foobar"sv);
-    auto second = scn::detail::make_scan_buffer(first.get());
-    static_assert(std::is_same_v<decltype(second),
-                                 scn::detail::basic_scan_ref_buffer<char>>);
-    EXPECT_EQ(collect(second.get()), "foobar");
-}
-
 #if 0
 TEST(InputMapTest, StringView)
 {
@@ -105,7 +96,7 @@ TEST(InputMapTest, Deque)
     static_assert(
         std::is_same_v<
             decltype(buf),
-            scn::detail::basic_scan_forward_buffer_impl<std::deque<char>>>);
+            scn::detail::basic_scan_forward_range_buffer<std::deque<char>>>);
     EXPECT_EQ(collect(buf.get()), "foobar");
 }
 
@@ -116,13 +107,14 @@ TEST(InputMapTest, DequeSubrange)
     auto buf = scn::detail::make_scan_buffer(subr);
     static_assert(
         std::is_same_v<decltype(buf),
-                       scn::detail::basic_scan_forward_buffer_impl<
+                       scn::detail::basic_scan_forward_range_buffer<
                            scn::ranges::subrange<std::deque<char>::iterator>>>);
     EXPECT_EQ(collect(buf.get()), "foobar");
 }
 
 TEST(InputMapTest, File)
 {
-    auto buf = scn::detail::make_scan_buffer(stdin);
+    scn::scan_file file{stdin};
+    auto buf = scn::detail::make_scan_buffer(file);
     static_assert(std::is_same_v<decltype(buf), scn::detail::scan_file_buffer>);
 }

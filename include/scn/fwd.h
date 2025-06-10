@@ -50,6 +50,8 @@ class basic_scan_args;
 template <typename Range, typename CharT>
 class basic_scan_context;
 
+class scan_file;
+
 namespace detail {
 struct buffer_range_tag {};
 
@@ -126,14 +128,6 @@ class compile_parse_context;
 
 template <typename Iterator, typename... Args>
 class scan_result;
-
-struct file_marker {
-    constexpr file_marker() noexcept = default;
-    template <typename... Args>
-    constexpr file_marker(Args&&...) noexcept
-    {
-    }
-};
 
 namespace detail {
 template <typename CharT>
@@ -212,6 +206,8 @@ struct tag_type {
 
 template <typename...>
 struct dependent_false : std::false_type {};
+template <typename...>
+struct dependent_true : std::true_type {};
 
 template <typename T>
 struct remove_reference {

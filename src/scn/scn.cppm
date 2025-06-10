@@ -117,7 +117,6 @@ using scn::operator!=;
 using scn::scan_expected;
 using scn::scan_format_string_error;
 
-using scn::file_marker_found;
 using scn::insufficient_range;
 using scn::invalid_char_type;
 using scn::invalid_input_range;
@@ -128,6 +127,9 @@ using scn::make_scan_args;
 using scn::make_wscan_args;
 
 using scn::basic_scan_parse_context;
+
+using scn::scan_file;
+using scn::scan_file_ref;
 
 using scn::scan_result;
 

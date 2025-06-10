@@ -23,24 +23,6 @@ target_compile_options(scn_tests_base PUBLIC
         -Wno-weak-vtables>
 )
 
-if (WIN32 AND BUILD_SHARED_LIBS)
-    if (SCN_GTEST_LIBRARIES STREQUAL "scn_gtest")
-        add_custom_command(
-                TARGET scn_tests_base
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:scn_gtest> ${CMAKE_CURRENT_BINARY_DIR}
-        )
-    elseif (SCN_GTEST_LIBRARIES STREQUAL "GTest::gtest_main;GTest::gmock_main")
-        add_custom_command(
-                TARGET scn_tests_base
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:GTest::gtest_main> $<TARGET_FILE:GTest::gmock_main> ${CMAKE_CURRENT_BINARY_DIR}
-        )
-    else ()
-        message(WARNING "Failed to copy gtest shared libraries, running tests may fail")
-    endif ()
-endif ()
-
 add_executable(scn_tests
         main.cpp
 
@@ -58,6 +40,7 @@ add_executable(scn_tests
         integer_test.cpp
         input_map_test.cpp
         istream_scanner_test.cpp
+        istream_source_test.cpp
         memory_test.cpp
         ranges_test.cpp
         regex_test.cpp
@@ -78,6 +61,7 @@ add_executable(scn_impl_tests
 
         impl_tests/bits_test.cpp
         impl_tests/contiguous_range_factory_test.cpp
+        impl_tests/file_test.cpp
         impl_tests/find_fast_test.cpp
         impl_tests/function_ref_test.cpp
         impl_tests/read_algorithms_test.cpp
@@ -146,12 +130,23 @@ add_executable(scn_stdin_test
 )
 target_link_libraries(scn_stdin_test scn_tests_base)
 
+add_executable(scn_stdin_parameterized_test
+        stdin_parameterized_test.cpp
+)
+target_link_libraries(scn_stdin_parameterized_test scn_tests_base)
+
 add_custom_target(scn_stdin_test_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy
         "${CMAKE_CURRENT_LIST_DIR}/stdin_test_runner.py"
         "${CMAKE_CURRENT_LIST_DIR}/stdin_test_input.txt"
         "${CMAKE_CURRENT_BINARY_DIR}"
         COMMENT "Copying stdin test runner"
+)
+add_custom_target(scn_stdin_parameterized_test_prepare ALL
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_LIST_DIR}/stdin_parameterized_test_runner.py"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Copying stdin_parameterized test runner"
 )
 add_custom_target(scn_examples_test_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy
@@ -164,6 +159,9 @@ find_package(Python3 COMPONENTS Interpreter)
 if (Python3_FOUND)
     add_test(NAME scn_stdin_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/stdin_test_runner.py")
     set_tests_properties(scn_stdin_test PROPERTIES DEPENDS scn_stdin_test_prepare)
+
+    add_test(NAME scn_stdin_parameterized_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/stdin_parameterized_test_runner.py")
+    set_tests_properties(scn_stdin_parameterized_test PROPERTIES DEPENDS scn_stdin_parameterized_test_prepare)
 
     if (SCN_EXAMPLES)
         get_target_property(examples_bin_dir scn_example_1 BINARY_DIR)

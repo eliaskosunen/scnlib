@@ -32,7 +32,7 @@ static auto make_non_contiguous_buffer_range(std::string_view in)
     std::copy(in.begin(), in.end(), std::back_inserter(mem));
 
     static std::optional<
-        scn::detail::basic_scan_forward_buffer_impl<std::deque<char>>>
+        scn::detail::basic_scan_forward_range_buffer<std::deque<char>>>
         buffer{};
     buffer.reset();
     buffer.emplace(mem);
@@ -53,35 +53,6 @@ TEST(ReadAllTest, NonContiguous)
     auto src = make_non_contiguous_buffer_range("foo");
     auto it = scn::impl::read_all(src);
     EXPECT_EQ(it, src.end());
-}
-
-// read_code_unit
-
-TEST(ReadCodeUnitTest, Contiguous)
-{
-    auto src = "foo"sv;
-    auto it = scn::impl::read_code_unit(src);
-    ASSERT_TRUE(it);
-    EXPECT_EQ(*it, src.begin() + 1);
-}
-TEST(ReadCodeUnitTest, NonContiguous)
-{
-    auto src = make_non_contiguous_buffer_range("foo");
-    auto it = scn::impl::read_code_unit(src);
-    ASSERT_TRUE(it);
-    EXPECT_EQ(*it, scn::ranges::next(src.begin()));
-}
-TEST(ReadCodeUnitTest, ContiguousEnd)
-{
-    auto src = ""sv;
-    auto it = scn::impl::read_code_unit(src);
-    ASSERT_FALSE(it);
-}
-TEST(ReadCodeUnitTest, NonContiguousEnd)
-{
-    auto src = make_non_contiguous_buffer_range("");
-    auto it = scn::impl::read_code_unit(src);
-    ASSERT_FALSE(it);
 }
 
 // read_exactly_n_code_units

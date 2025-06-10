@@ -6,16 +6,16 @@ add_library(scn_examples_base INTERFACE)
 target_link_libraries(scn_examples_base INTERFACE scn_sanitizers)
 
 add_executable(scn_example_1 example_1.cpp)
-target_link_libraries(scn_example_1 scn::scn scn_examples_base)
+target_link_libraries(scn_example_1 scn_internal scn_examples_base)
 
 add_executable(scn_example_2 example_2.cpp)
-target_link_libraries(scn_example_2 scn::scn scn_examples_base)
+target_link_libraries(scn_example_2 scn_internal scn_examples_base)
 
 add_executable(scn_example_3 example_3.cpp)
-target_link_libraries(scn_example_3 scn::scn scn_examples_base)
+target_link_libraries(scn_example_3 scn_internal scn_examples_base)
 
 add_executable(scn_example_4 example_4.cpp)
-target_link_libraries(scn_example_4 scn::scn scn_examples_base)
+target_link_libraries(scn_example_4 scn_internal scn_examples_base)
 
 add_executable(scn_example_5 example_5.cpp)
-target_link_libraries(scn_example_5 scn::scn scn_examples_base)
+target_link_libraries(scn_example_5 scn_internal scn_examples_base)

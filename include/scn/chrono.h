@@ -319,7 +319,7 @@ struct datetime_components {
         t.tm_mday = static_cast<int>(mday.value_or(0));
         t.tm_mon =
             static_cast<int>(static_cast<unsigned>(mon.value_or(January)) - 1);
-        t.tm_year = static_cast<int>(year.value_or(1900) - 1900);
+        t.tm_year = year.value_or(1900) - 1900;
         t.tm_wday = static_cast<int>(wday.value_or(Sunday).c_encoding());
         t.tm_yday = static_cast<int>(yday.value_or(0));
         t.tm_isdst = -1;
@@ -1667,7 +1667,7 @@ struct scanner<year, CharT> : public detail::chrono_component_scanner<CharT> {
             return unexpected(r.error());
         }
         assert(dt.year);
-        y = year{static_cast<int>(*dt.year)};
+        y = year{*dt.year};
         return *r;
     }
 };
@@ -1706,8 +1706,7 @@ struct scanner<year_month, CharT>
         }
         assert(dt.year);
         assert(dt.mon);
-        ym = year_month{year{static_cast<int>(*dt.year)},
-                        month{static_cast<unsigned>(*dt.mon)}};
+        ym = year_month{year{*dt.year}, month{static_cast<unsigned>(*dt.mon)}};
         return *r;
     }
 };
@@ -1727,7 +1726,7 @@ struct scanner<year_month_day, CharT>
         assert(dt.year);
         assert(dt.mon);
         assert(dt.mday);
-        ymd = year_month_day{year{static_cast<int>(*dt.year)},
+        ymd = year_month_day{year{*dt.year},
                              month{static_cast<unsigned>(*dt.mon)},
                              day{static_cast<unsigned>(*dt.mday)}};
         return *r;

@@ -21,25 +21,31 @@ int main()
 {
     std::puts("Write two integers:");
 
-    if (auto result = scn::scan<int>(stdin, "{}")) {
+    scn::scan_file in{stdin};
+    if (auto result = scn::scan<int>(in, "{}")) {
         if (auto second_result = scn::scan<int>(result->file(), "{}")) {
             std::printf("Two integers: `%d` `%d`\n", result->value(),
                         second_result->value());
             return 0;
         }
 
-        std::string buf{};
-        buf.resize(256);
-        std::ignore = std::fgets(buf.data(), 255, stdin);
+        auto buf_result = scn::scan<std::string>(result->file(), "{:[^\n]}");
+        if (!buf_result) {
+            std::printf("First integer: `%d`, failed to get rest of the line",
+                        result->value());
+            return 1;
+        }
 
         std::printf("First integer: `%d`, rest of the line: `%s`",
-                    result->value(), buf.c_str());
+                    result->value(), buf_result->value().c_str());
         return 0;
     }
 
-    std::string buf{};
-    buf.resize(256);
-    std::ignore = std::fgets(buf.data(), 255, stdin);
+    auto buf = scn::scan<std::string>(in, "{:[^\n]}");
+    if (!buf) {
+        std::puts("Failed to get rest of the line");
+        return 1;
+    }
 
-    std::printf("Entire line: `%s`", buf.c_str());
+    std::printf("Entire line: `%s`", buf->value().c_str());
 }
