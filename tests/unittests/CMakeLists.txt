@@ -23,24 +23,6 @@ target_compile_options(scn_tests_base PUBLIC
         -Wno-weak-vtables>
 )
 
-if (WIN32 AND BUILD_SHARED_LIBS)
-    if (SCN_GTEST_LIBRARIES STREQUAL "scn_gtest")
-        add_custom_command(
-                TARGET scn_tests_base
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:scn_gtest> ${CMAKE_CURRENT_BINARY_DIR}
-        )
-    elseif (SCN_GTEST_LIBRARIES STREQUAL "GTest::gtest_main;GTest::gmock_main")
-        add_custom_command(
-                TARGET scn_tests_base
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:GTest::gtest_main> $<TARGET_FILE:GTest::gmock_main> ${CMAKE_CURRENT_BINARY_DIR}
-        )
-    else ()
-        message(WARNING "Failed to copy gtest shared libraries, running tests may fail")
-    endif ()
-endif ()
-
 add_executable(scn_tests
         main.cpp
 
@@ -78,6 +60,7 @@ add_executable(scn_impl_tests
 
         impl_tests/bits_test.cpp
         impl_tests/contiguous_range_factory_test.cpp
+        impl_tests/file_test.cpp
         impl_tests/find_fast_test.cpp
         impl_tests/function_ref_test.cpp
         impl_tests/read_algorithms_test.cpp

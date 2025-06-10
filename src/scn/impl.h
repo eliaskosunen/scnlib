@@ -888,6 +888,414 @@ struct is_expected_impl<scn::impl::parse_expected<T>> : std::true_type {};
 }  // namespace detail
 
 /////////////////////////////////////////////////////////////////
+// File buffers
+/////////////////////////////////////////////////////////////////
+
+namespace impl {
+
+struct default_file_tag {};
+struct gnu_file_tag {};
+struct bsd_file_tag {};
+struct musl_file_tag {};
+struct win32_file_tag {};
+
+// Non-pretty workaround for MSVC silliness
+template <typename F, typename = void>
+inline constexpr bool is_gnu_file = false;
+template <typename F>
+inline constexpr bool
+    is_gnu_file<F,
+                std::void_t<decltype(SCN_DECLVAL(F)._IO_read_ptr),
+                            decltype(SCN_DECLVAL(F)._IO_read_end)>> = true;
+
+template <typename F, typename = void>
+inline constexpr bool is_bsd_file = false;
+template <typename F>
+inline constexpr bool is_bsd_file<
+    F,
+    std::void_t<decltype(SCN_DECLVAL(F)._p), decltype(SCN_DECLVAL(F)._r)>> =
+    true;
+
+template <typename F, typename = void>
+inline constexpr bool is_musl_file = false;
+template <typename F>
+inline constexpr bool is_musl_file<
+    F,
+    std::void_t<decltype(SCN_DECLVAL(F).rpos), decltype(SCN_DECLVAL(F).rend)>> =
+    true;
+
+template <typename F>
+inline constexpr bool is_win32_file =
+    std::is_same_v<F, std::FILE> && SCN_WINDOWS && !SCN_MINGW;
+
+SCN_MAYBE_UNUSED constexpr auto get_file_tag()
+{
+    if constexpr (is_gnu_file<std::FILE>) {
+        return detail::tag_type<gnu_file_tag>{};
+    }
+    else if constexpr (is_bsd_file<std::FILE>) {
+        return detail::tag_type<bsd_file_tag>{};
+    }
+    else if constexpr (is_musl_file<std::FILE>) {
+        return detail::tag_type<musl_file_tag>{};
+    }
+    else if constexpr (is_win32_file<std::FILE>) {
+        return detail::tag_type<win32_file_tag>{};
+    }
+    else {
+        return detail::tag_type<default_file_tag>{};
+    }
+}
+
+template <typename File>
+struct stdio_file_interface_base {
+    explicit constexpr stdio_file_interface_base(File* f) noexcept : file(f) {}
+    ~stdio_file_interface_base() = default;
+
+    stdio_file_interface_base(const stdio_file_interface_base&) = delete;
+    stdio_file_interface_base& operator=(const stdio_file_interface_base&) =
+        delete;
+
+    constexpr stdio_file_interface_base(
+        stdio_file_interface_base&& other) noexcept = delete;
+    constexpr stdio_file_interface_base& operator=(
+        stdio_file_interface_base&& other) noexcept = delete;
+
+    File* file;
+};
+
+template <typename File, typename Tag>
+struct stdio_file_interface_impl;
+
+template <typename File>
+struct stdio_file_interface_impl<File, default_file_tag>
+    : stdio_file_interface_base<File> {
+    using stdio_file_interface_base<File>::stdio_file_interface_base;
+
+    static constexpr void lock() {}
+    static constexpr void unlock() {}
+
+    SCN_NODISCARD static constexpr bool has_buffering()
+    {
+        return false;
+    }
+
+    SCN_NODISCARD static std::string_view buffer()
+    {
+        return {};
+    }
+    static void unsafe_advance_n(std::ptrdiff_t)
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    static void fill_buffer()
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    SCN_NODISCARD std::optional<char> read_one()
+    {
+        auto res = std::fgetc(this->file);
+        if (res == EOF) {
+            return std::nullopt;
+        }
+        return static_cast<char>(res);
+    }
+
+    static void prepare_putback() {}
+    static void finalize_putback() {}
+
+    SCN_NODISCARD bool putback(char ch)
+    {
+        return std::ungetc(static_cast<unsigned char>(ch), this->file) != EOF;
+    }
+};
+
+template <typename File>
+struct posix_stdio_file_interface : stdio_file_interface_base<File> {
+    using stdio_file_interface_base<File>::stdio_file_interface_base;
+
+    void lock()
+    {
+        flockfile(this->file);
+    }
+    void unlock()
+    {
+        funlockfile(this->file);
+    }
+
+    SCN_NODISCARD static constexpr bool has_buffering()
+    {
+        return true;
+    }
+
+    SCN_NODISCARD std::optional<char> read_one()
+    {
+        auto res = getc_unlocked(this->file);
+        if (res == EOF) {
+            return std::nullopt;
+        }
+        return static_cast<char>(res);
+    }
+
+    void prepare_putback()
+    {
+        unlock();
+    }
+    void finalize_putback()
+    {
+        lock();
+    }
+
+    SCN_NODISCARD bool putback(char ch)
+    {
+        return std::ungetc(static_cast<unsigned char>(ch), this->file) != EOF;
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, gnu_file_tag>
+    : posix_stdio_file_interface<File> {
+    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD std::string_view buffer() const
+    {
+        return detail::make_string_view_from_pointers(this->file->_IO_read_ptr,
+                                                      this->file->_IO_read_end);
+    }
+    void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_EXPECT(this->file->_IO_read_ptr != nullptr);
+        SCN_EXPECT(this->file->_IO_read_end - this->file->_IO_read_ptr >= n);
+        this->file->_IO_read_ptr += n;
+    }
+    void fill_buffer()
+    {
+        if (__uflow(this->file) != EOF) {
+            --this->file->_IO_read_ptr;
+        }
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, bsd_file_tag>
+    : posix_stdio_file_interface<File> {
+    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD std::string_view buffer() const
+    {
+        return {reinterpret_cast<const char*>(this->file->_p),
+                static_cast<std::size_t>(this->file->_r)};
+    }
+    void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_EXPECT(this->file->_p != nullptr);
+        SCN_EXPECT(this->file->_r >= n);
+        this->file->_p += n;
+        this->file->_r -= static_cast<int>(n);
+    }
+    void fill_buffer()
+    {
+        if (__srget(this->file) != EOF) {
+            --this->file->_p;
+            ++this->file->_r;
+        }
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, musl_file_tag>
+    : posix_stdio_file_interface<File> {
+    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD std::string_view buffer() const
+    {
+        return detail::make_string_view_from_pointers(
+            reinterpret_cast<const char*>(this->file->rpos),
+            reinterpret_cast<const char*>(this->file->rend));
+    }
+    void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_EXPECT(this->file->rpos != nullptr);
+        SCN_EXPECT(this->file->rend - this->file->rpos >= n);
+        this->file->rpos += n;
+    }
+    void fill_buffer()
+    {
+        if (__uflow(this->file) != EOF) {
+            --this->file->rpos;
+        }
+    }
+};
+
+template <typename File>
+struct stdio_file_interface_impl<File, win32_file_tag>
+    : stdio_file_interface_base<File> {
+    using stdio_file_interface_base<File>::stdio_file_interface_base;
+
+    void lock()
+    {
+        _lock_file(this->file);
+    }
+    void unlock()
+    {
+        _unlock_file(this->file);
+    }
+
+    SCN_NODISCARD static constexpr bool has_buffering()
+    {
+        return false;
+    }
+
+    SCN_NODISCARD static std::string_view buffer()
+    {
+        return {};
+    }
+    static void unsafe_advance_n(std::ptrdiff_t n)
+    {
+        SCN_UNUSED(n);
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+    static void fill_buffer()
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    SCN_NODISCARD std::optional<char> read_one()
+    {
+        auto res = _fgetc_nolock(this->file);
+        if (res == EOF) {
+            return std::nullopt;
+        }
+        return static_cast<char>(res);
+    }
+
+    static void prepare_putback() {}
+    static void finalize_putback() {}
+
+    SCN_NODISCARD bool putback(char ch)
+    {
+        return _ungetc_nolock(static_cast<unsigned char>(ch), this->file) !=
+               EOF;
+    }
+};
+
+using stdio_file_interface =
+    stdio_file_interface_impl<std::FILE, decltype(get_file_tag())::type>;
+
+template <typename CharT, typename FileInterface>
+struct file_buffer_interface {
+    using char_type = CharT;
+
+    static void construct(FileInterface& file)
+    {
+        file.lock();
+    }
+
+    static void destruct(FileInterface& file)
+    {
+        file.unlock();
+    }
+
+    static bool fill(FileInterface& file,
+                     std::basic_string_view<char_type>& current_view,
+                     std::basic_string<char_type>& putback_buffer,
+                     std::optional<char_type>& latest)
+    {
+        if (!current_view.empty()) {
+            putback_buffer.insert(putback_buffer.end(), current_view.begin(),
+                                  current_view.end());
+        }
+
+        if (file.has_buffering()) {
+            if (!current_view.empty()) {
+                file.unsafe_advance_n(
+                    static_cast<std::ptrdiff_t>(current_view.size()));
+            }
+
+            if (file.buffer().empty()) {
+                file.fill_buffer();
+            }
+            current_view = file.buffer();
+            return !current_view.empty();
+        }
+
+        latest = file.read_one();
+        if (!latest) {
+            current_view = {};
+            return false;
+        }
+
+        current_view = {&*latest, 1};
+        return true;
+    }
+
+    static bool sync(FileInterface& file,
+                     std::ptrdiff_t position,
+                     const detail::basic_scan_buffer<char_type>& buffer,
+                     std::basic_string_view<char_type>& current_view)
+    {
+        struct putback_wrapper {
+            putback_wrapper(FileInterface& file) : m_file(file)
+            {
+                m_file.prepare_putback();
+            }
+            ~putback_wrapper()
+            {
+                m_file.finalize_putback();
+            }
+
+        private:
+            FileInterface& m_file;
+        };
+
+        if (file.has_buffering()) {
+            if (position <
+                static_cast<std::ptrdiff_t>(buffer.putback_buffer().size())) {
+                putback_wrapper wrapper{file};
+                auto segment = buffer.get_segment_starting_at(position);
+                for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
+                    if (!file.putback(*it)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            file.unsafe_advance_n(
+                position -
+                static_cast<std::ptrdiff_t>(buffer.putback_buffer().size()));
+            return true;
+        }
+
+        const auto chars_avail = buffer.chars_available();
+        if (position == chars_avail) {
+            return true;
+        }
+
+        putback_wrapper wrapper{file};
+        SCN_EXPECT(current_view.size() == 1);
+        (void)file.putback(current_view.front());
+
+        auto segment = std::string_view{buffer.putback_buffer().data(),
+                                        buffer.putback_buffer().size()}
+                           .substr(static_cast<std::size_t>(position));
+        for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
+            if (!file.putback(*it)) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+}  // namespace impl
+
+/////////////////////////////////////////////////////////////////
 // Range reading support
 /////////////////////////////////////////////////////////////////
 
@@ -1006,12 +1414,18 @@ bool is_segment_contiguous(Range r)
         }
         if constexpr (ranges::common_range<Range>) {
             return beg.contiguous_segment().end() ==
-                   ranges::end(r).contiguous_segment().end();
+                       ranges::end(r).contiguous_segment().end() &&
+                   std::next(beg, static_cast<std::ptrdiff_t>(
+                                      beg.contiguous_segment().size())) ==
+                       ranges::end(r);
         }
         else {
             if (beg.stores_parent()) {
                 return beg.contiguous_segment().end() ==
-                       beg.parent()->current_view().end();
+                           beg.parent()->current_view().end() &&
+                       std::next(beg, static_cast<std::ptrdiff_t>(
+                                          beg.contiguous_segment().size())) ==
+                           ranges::end(r);
             }
             return true;
         }
@@ -1857,17 +2271,6 @@ auto read_all(Range range) -> ranges::const_iterator_t<Range>
 }
 
 template <typename Range>
-auto read_code_unit(Range range)
-    -> eof_expected<ranges::const_iterator_t<Range>>
-{
-    if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
-        return unexpected(e);
-    }
-
-    return ranges::next(range.begin());
-}
-
-template <typename Range>
 auto read_exactly_n_code_units(Range range, std::ptrdiff_t count)
     -> eof_expected<ranges::const_iterator_t<Range>>
 {
@@ -2414,14 +2817,13 @@ template <typename Range>
 auto read_one_of_code_unit(Range range, std::string_view str)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
-    auto it = read_code_unit(range);
-    if (SCN_UNLIKELY(!it)) {
-        return unexpected(make_eof_parse_error(it.error()));
+    if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+        return unexpected(make_eof_parse_error(e));
     }
 
     for (auto ch : str) {
         if (*range.begin() == static_cast<detail::char_t<Range>>(ch)) {
-            return *it;
+            return std::next(range.begin());
         }
     }
 
@@ -5673,9 +6075,11 @@ public:
     auto read(const SourceRange& range, CharT& ch)
         -> scan_expected<ranges::const_iterator_t<SourceRange>>
     {
-        SCN_TRY(it, read_code_unit(range).transform_error(make_eof_scan_error));
+        if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+            return unexpected(make_eof_scan_error(e));
+        }
         ch = *range.begin();
-        return it;
+        return std::next(range.begin());
     }
 };
 

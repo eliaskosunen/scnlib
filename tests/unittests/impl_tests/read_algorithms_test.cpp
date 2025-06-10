@@ -55,35 +55,6 @@ TEST(ReadAllTest, NonContiguous)
     EXPECT_EQ(it, src.end());
 }
 
-// read_code_unit
-
-TEST(ReadCodeUnitTest, Contiguous)
-{
-    auto src = "foo"sv;
-    auto it = scn::impl::read_code_unit(src);
-    ASSERT_TRUE(it);
-    EXPECT_EQ(*it, src.begin() + 1);
-}
-TEST(ReadCodeUnitTest, NonContiguous)
-{
-    auto src = make_non_contiguous_buffer_range("foo");
-    auto it = scn::impl::read_code_unit(src);
-    ASSERT_TRUE(it);
-    EXPECT_EQ(*it, scn::ranges::next(src.begin()));
-}
-TEST(ReadCodeUnitTest, ContiguousEnd)
-{
-    auto src = ""sv;
-    auto it = scn::impl::read_code_unit(src);
-    ASSERT_FALSE(it);
-}
-TEST(ReadCodeUnitTest, NonContiguousEnd)
-{
-    auto src = make_non_contiguous_buffer_range("");
-    auto it = scn::impl::read_code_unit(src);
-    ASSERT_FALSE(it);
-}
-
 // read_exactly_n_code_units
 
 TEST(ReadExactlyNCodeUnitsTest, ReadAllContiguous)

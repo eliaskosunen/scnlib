@@ -4584,7 +4584,6 @@ public:
     forward_iterator& operator++()
     {
         ++m_position;
-        (void)read_at_position();
         return *this;
     }
 
@@ -4627,6 +4626,8 @@ public:
     friend bool operator==(const forward_iterator& lhs,
                            const forward_iterator& rhs)
     {
+        (void)lhs.read_at_position();
+        (void)rhs.read_at_position();
         return lhs.m_begin == rhs.m_begin && lhs.m_position == rhs.m_position;
     }
     friend bool operator!=(const forward_iterator& lhs,
@@ -5007,6 +5008,33 @@ inline auto make_file_scan_buffer(std::FILE* file)
  * \endcode
  */
 
+class scan_file_result {
+public:
+    scan_file_result() = default;
+
+    scan_file_result(std::string&& first, std::FILE* second)
+        : m_first(SCN_MOVE(first)), m_second(second)
+    {
+    }
+
+    SCN_NODISCARD std::optional<std::FILE*> file() const
+    {
+        if (m_first.empty()) {
+            return m_second;
+        }
+        return std::nullopt;
+    }
+
+    SCN_NODISCARD std::pair<std::string_view, std::FILE*> contents() const
+    {
+        return {std::string_view{m_first.data(), m_first.size()}, m_second};
+    }
+
+protected:
+    std::string m_first{};
+    std::FILE* m_second{nullptr};
+};
+
 /**
  * Tag type to indicate an invalid range given to `scn::scan`
  *
@@ -5196,7 +5224,8 @@ auto make_scan_buffer(const Range& range)
                   "Unsupported range type given as input to a scanning "
                   "function.\n"
                   "A range needs to model forward_range and have a valid "
-                  "character type (char or wchar_t) to be scannable.\n"
+                  "character type (char or wchar_t) to be scannable,"
+                  "or be a FILE*.\n"
                   "Examples of scannable ranges are std::string, "
                   "std::string_view, "
                   "std::vector<char>, and scn::istreambuf_view.\n"
@@ -6235,6 +6264,7 @@ protected:
 /////////////////////////////////////////////////////////////////
 
 namespace detail {
+
 template <typename... Args>
 struct scan_result_value_storage {
 public:
@@ -6299,6 +6329,29 @@ private:
 
 struct scan_result_convert_tag {};
 
+template <class T, class U>
+constexpr auto&& forward_like(U&& x) noexcept
+{
+    constexpr bool is_adding_const =
+        std::is_const_v<std::remove_reference_t<T>>;
+    if constexpr (std::is_lvalue_reference_v<T&&>) {
+        if constexpr (is_adding_const) {
+            return static_cast<std::add_const_t<U>&>(x);
+        }
+        else {
+            return static_cast<U&>(x);
+        }
+    }
+    else {
+        if constexpr (is_adding_const) {
+            return std::move(static_cast<std::add_const_t<U>&>(x));
+        }
+        else {
+            return std::move(x);
+        }
+    }
+}
+
 template <typename Range>
 struct scan_result_range_storage {
     static_assert(is_specialization_of_v<Range, ranges::subrange>,
@@ -6348,7 +6401,7 @@ protected:
     template <typename Other>
     void assign_range(Other&& r)
     {
-        m_range = r.m_range;
+        m_range = detail::forward_like<Other>(r.m_range);
     }
 
 private:
@@ -9347,6 +9400,7 @@ template <typename Source>
 using vscan_result = scan_expected<detail::scan_result_value_type<Source>>;
 
 namespace detail {
+
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
                                                     std::string_view format,
                                                     scan_args args);

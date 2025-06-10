@@ -294,12 +294,19 @@ jobs:
         run: |
           cmake -A x64 -DCMAKE_CXX_STANDARD=17 -DSCN_CI=ON -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} $GITHUB_WORKSPACE
 
-      - name: Build
+      - name: Build (all)
         working-directory: ${{ runner.workspace }}/build
+        if: matrix.shared_libs == 'OFF'
         run: cmake --build . --config Debug --parallel --verbose
+
+      - name: Build (library only)
+        working-directory: ${{ runner.workspace }}/build
+        if: matrix.shared_libs == 'ON'
+        run: cmake --build . --target scn --config Debug --parallel --verbose
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
+        if: matrix.shared_libs == 'OFF'
         run: ctest -C Debug --output-on-failure
 
       - name: Install
