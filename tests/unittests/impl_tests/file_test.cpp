@@ -169,7 +169,7 @@ struct unbuffered_mock_file {
 };
 
 template <typename MockFile>
-struct mock_file_buffer : public scn::detail::basic_scan_buffer<char> {
+class mock_file_buffer : public scn::detail::basic_scan_buffer<char> {
     using base = scn::detail::basic_scan_buffer<char>;
     using interface = scn::impl::file_buffer_interface<char, MockFile>;
 
@@ -431,4 +431,20 @@ TYPED_TEST(FileTestP, LeftoverString)
     EXPECT_EQ(result->value(), "foo");
     EXPECT_EQ(this->get_reached(), "foo\n");
     EXPECT_EQ(this->get_remainder(*result), "\nbar");
+}
+
+TYPED_TEST(FileTestP, PutbackAll1)
+{
+    auto& range = this->get("foo");
+    auto result = scn::scan<int>(range, "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(this->get_reached(), "f");
+}
+
+TYPED_TEST(FileTestP, PutbackAll2)
+{
+    auto& range = this->get("123 foo");
+    auto result = scn::scan<int, int>(range, "{} {}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(this->get_reached(), "123 f");
 }

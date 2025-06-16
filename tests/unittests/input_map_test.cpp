@@ -124,5 +124,5 @@ TEST(InputMapTest, DequeSubrange)
 TEST(InputMapTest, File)
 {
     auto buf = scn::detail::make_scan_buffer(stdin);
-    static_assert(std::is_same_v<decltype(buf), scn::detail::scan_file_buffer>);
+    static_assert(std::is_same_v<decltype(buf), scn::detail::scan_cfile_buffer>);
 }

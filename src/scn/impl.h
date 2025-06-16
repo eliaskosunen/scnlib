@@ -1234,10 +1234,11 @@ struct file_buffer_interface {
         return true;
     }
 
-    static bool sync(FileInterface& file,
-                     std::ptrdiff_t position,
-                     const detail::basic_scan_buffer<char_type>& buffer,
-                     std::basic_string_view<char_type>& current_view)
+    static std::ptrdiff_t sync(
+        FileInterface& file,
+        std::ptrdiff_t position,
+        const detail::basic_scan_buffer<char_type>& buffer,
+        std::basic_string_view<char_type>& current_view)
     {
         struct putback_wrapper {
             putback_wrapper(FileInterface& file) : m_file(file)
@@ -1260,36 +1261,38 @@ struct file_buffer_interface {
                 auto segment = buffer.get_segment_starting_at(position);
                 for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
                     if (!file.putback(*it)) {
-                        return false;
+                        return position + std::distance(it, segment.rend());
                     }
                 }
-                return true;
+                return position;
             }
 
             file.unsafe_advance_n(
                 position -
                 static_cast<std::ptrdiff_t>(buffer.putback_buffer().size()));
-            return true;
+            return position;
         }
 
         const auto chars_avail = buffer.chars_available();
         if (position == chars_avail) {
-            return true;
+            return position;
         }
 
         putback_wrapper wrapper{file};
         SCN_EXPECT(current_view.size() == 1);
-        (void)file.putback(current_view.front());
+        if (!file.putback(current_view.front())) {
+            return buffer.chars_available();
+        }
 
         auto segment = std::string_view{buffer.putback_buffer().data(),
                                         buffer.putback_buffer().size()}
                            .substr(static_cast<std::size_t>(position));
         for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
             if (!file.putback(*it)) {
-                return false;
+                return position + std::distance(it, segment.rend());
             }
         }
-        return true;
+        return position;
     }
 };
 

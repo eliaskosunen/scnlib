@@ -129,12 +129,23 @@ add_executable(scn_stdin_test
 )
 target_link_libraries(scn_stdin_test scn_tests_base)
 
+add_executable(scn_stdin_parameterized_test
+        stdin_parameterized_test.cpp
+)
+target_link_libraries(scn_stdin_parameterized_test scn_tests_base)
+
 add_custom_target(scn_stdin_test_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy
         "${CMAKE_CURRENT_LIST_DIR}/stdin_test_runner.py"
         "${CMAKE_CURRENT_LIST_DIR}/stdin_test_input.txt"
         "${CMAKE_CURRENT_BINARY_DIR}"
         COMMENT "Copying stdin test runner"
+)
+add_custom_target(scn_stdin_parameterized_test_prepare ALL
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_LIST_DIR}/stdin_parameterized_test_runner.py"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Copying stdin_parameterized test runner"
 )
 add_custom_target(scn_examples_test_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy
@@ -147,6 +158,9 @@ find_package(Python3 COMPONENTS Interpreter)
 if (Python3_FOUND)
     add_test(NAME scn_stdin_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/stdin_test_runner.py")
     set_tests_properties(scn_stdin_test PROPERTIES DEPENDS scn_stdin_test_prepare)
+
+    add_test(NAME scn_stdin_parameterized_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/stdin_parameterized_test_runner.py")
+    set_tests_properties(scn_stdin_parameterized_test PROPERTIES DEPENDS scn_stdin_parameterized_test_prepare)
 
     if (SCN_EXAMPLES)
         get_target_property(examples_bin_dir scn_example_1 BINARY_DIR)

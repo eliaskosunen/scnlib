@@ -28,6 +28,7 @@ import std;
 #include <cstring>
 #include <iterator>
 #include <limits>
+#include <mutex>
 #include <new>
 #include <optional>
 #include <string>
@@ -4395,7 +4396,121 @@ inline constexpr bool is_cp_space(char32_t cp) noexcept
 // scan_buffer
 /////////////////////////////////////////////////////////////////
 
+class scan_file_ref;
 namespace detail {
+struct scan_file_access;
+}
+
+class scan_file {
+    friend class scan_file_ref;
+    friend struct detail::scan_file_access;
+
+public:
+    explicit scan_file(std::FILE* file) noexcept : m_file(file) {}
+    explicit scan_file(const scan_file_ref& file);
+
+    ~scan_file() = default;
+
+    scan_file(const scan_file&) = delete;
+    scan_file& operator=(const scan_file&) = delete;
+
+    scan_file(scan_file&& other) noexcept
+        : m_prelude(std::move(other.m_prelude)), m_file(other.m_file)
+    {
+        other.m_prelude = {};
+        other.m_file = nullptr;
+    }
+    scan_file& operator=(scan_file&& other) noexcept
+    {
+        m_prelude = std::move(other.m_prelude);
+        m_file = other.m_file;
+        other.m_prelude = {};
+        other.m_file = nullptr;
+        return *this;
+    }
+
+    SCN_NODISCARD std::optional<std::FILE*> handle() const
+    {
+        if (m_prelude.empty()) {
+            SCN_EXPECT(m_file);
+            return m_file;
+        }
+        return std::nullopt;
+    }
+
+    SCN_NODISCARD std::string_view prelude() const
+    {
+        return m_prelude;
+    }
+
+    SCN_NODISCARD std::pair<std::string_view, std::FILE*> contents() const
+    {
+        return {m_prelude, m_file};
+    }
+
+private:
+    std::string m_prelude{};
+    std::FILE* m_file{nullptr};
+};
+
+class scan_file_ref {
+    friend scan_file;
+    friend struct detail::scan_file_access;
+
+public:
+    scan_file_ref(scan_file& file) : m_ref(&file) {}
+
+    SCN_NODISCARD std::optional<std::FILE*> handle() const
+    {
+        SCN_EXPECT(m_ref);
+        return m_ref->handle();
+    }
+
+    SCN_NODISCARD std::string_view prelude() const
+    {
+        SCN_EXPECT(m_ref);
+        return m_ref->prelude();
+    }
+
+    SCN_NODISCARD std::pair<std::string_view, std::FILE*> contents() const
+    {
+        SCN_EXPECT(m_ref);
+        return m_ref->contents();
+    }
+
+    const scan_file& underlying() const
+    {
+        SCN_EXPECT(m_ref);
+        return *m_ref;
+    }
+
+private:
+    scan_file* m_ref{nullptr};
+};
+
+inline scan_file::scan_file(const scan_file_ref& file)
+{
+    SCN_EXPECT(file.m_ref);
+    SCN_EXPECT(file.m_ref->m_file);
+    m_prelude = std::string{file.m_ref->m_prelude};
+    m_file = file.m_ref->m_file;
+}
+
+namespace detail {
+
+struct scan_file_access {
+    static std::string& get_prelude(scan_file& f)
+    {
+        return f.m_prelude;
+    }
+
+    static scan_file& get_underlying_file(scan_file_ref& f)
+    {
+        SCN_EXPECT(f.m_ref);
+        return *f.m_ref;
+    }
+};
+
 template <typename CharT>
 class basic_scan_buffer {
 public:
@@ -4419,11 +4534,6 @@ public:
     {
         SCN_UNUSED(position);
         return true;
-    }
-
-    bool sync_all()
-    {
-        return sync(0);
     }
 
     SCN_NODISCARD std::ptrdiff_t chars_available() const
@@ -4880,20 +4990,32 @@ private:
 template <typename R>
 basic_scan_forward_buffer_impl(const R&) -> basic_scan_forward_buffer_impl<R>;
 
-class scan_file_buffer : public basic_scan_buffer<char> {
+class scan_cfile_buffer : public basic_scan_buffer<char> {
     using base = basic_scan_buffer<char>;
 
 public:
-    SCN_PUBLIC explicit scan_file_buffer(std::FILE* file);
-    SCN_PUBLIC ~scan_file_buffer() override;
+    SCN_PUBLIC explicit scan_cfile_buffer(std::FILE* file);
+    SCN_PUBLIC ~scan_cfile_buffer() override;
 
     SCN_PUBLIC bool fill() override;
 
     SCN_PUBLIC bool sync(std::ptrdiff_t position) override;
 
-private:
+protected:
     std::FILE* m_file;
     std::optional<char> m_latest{std::nullopt};
+};
+
+class scan_file2_buffer : public scan_cfile_buffer {
+    using base = scan_cfile_buffer;
+
+public:
+    SCN_PUBLIC explicit scan_file2_buffer(scan_file& file);
+
+    SCN_PUBLIC bool sync(std::ptrdiff_t position) override;
+
+private:
+    std::string& m_prelude;
 };
 
 template <typename CharT>
@@ -4937,6 +5059,15 @@ public:
         return true;
     }
 
+    bool sync(std::ptrdiff_t pos) override
+    {
+        if (!m_other) {
+            // Contiguous source, nothing to sync with
+            return true;
+        }
+        return m_other->sync(pos);
+    }
+
 private:
     base* m_other;
     std::ptrdiff_t m_starting_pos{-1};
@@ -4964,10 +5095,6 @@ auto make_forward_scan_buffer(const Range& range)
     return basic_scan_forward_buffer_impl(range);
 }
 
-inline auto make_file_scan_buffer(std::FILE* file)
-{
-    return scan_file_buffer(file);
-}
 }  // namespace detail
 
 /////////////////////////////////////////////////////////////////
@@ -5008,33 +5135,6 @@ inline auto make_file_scan_buffer(std::FILE* file)
  * \endcode
  */
 
-class scan_file_result {
-public:
-    scan_file_result() = default;
-
-    scan_file_result(std::string&& first, std::FILE* second)
-        : m_first(SCN_MOVE(first)), m_second(second)
-    {
-    }
-
-    SCN_NODISCARD std::optional<std::FILE*> file() const
-    {
-        if (m_first.empty()) {
-            return m_second;
-        }
-        return std::nullopt;
-    }
-
-    SCN_NODISCARD std::pair<std::string_view, std::FILE*> contents() const
-    {
-        return {std::string_view{m_first.data(), m_first.size()}, m_second};
-    }
-
-protected:
-    std::string m_first{};
-    std::FILE* m_second{nullptr};
-};
-
 /**
  * Tag type to indicate an invalid range given to `scn::scan`
  *
@@ -5044,7 +5144,6 @@ struct invalid_input_range {};
 
 struct invalid_char_type : invalid_input_range {};
 struct custom_char_traits : invalid_input_range {};
-struct file_marker_found : invalid_input_range {};
 struct insufficient_range : invalid_input_range {};
 
 namespace detail {
@@ -5053,9 +5152,12 @@ inline constexpr bool is_valid_char_type =
     std::is_same_v<std::remove_const_t<CharT>, char> ||
     std::is_same_v<std::remove_const_t<CharT>, wchar_t>;
 
+struct make_scan_buffer_tag {};
+
 namespace _make_scan_buffer {
+
 // buffer -> ref_buffer
-inline auto impl(scan_buffer::range_type r, priority_tag<4>) noexcept
+inline auto impl(scan_buffer::range_type r, priority_tag<5>) noexcept
     -> basic_scan_ref_buffer<char>
 {
     if (!r.begin().stores_parent()) {
@@ -5063,13 +5165,21 @@ inline auto impl(scan_buffer::range_type r, priority_tag<4>) noexcept
     }
     return basic_scan_ref_buffer{*r.begin().parent(), r.begin().position()};
 }
-inline auto impl(wscan_buffer::range_type r, priority_tag<4>) noexcept
+inline auto impl(wscan_buffer::range_type r, priority_tag<5>) noexcept
     -> basic_scan_ref_buffer<wchar_t>
 {
     if (!r.begin().stores_parent()) {
         return basic_scan_ref_buffer{r.begin().contiguous_segment()};
     }
     return basic_scan_ref_buffer{*r.begin().parent(), r.begin().position()};
+}
+
+template <typename Source>
+auto impl(Source&& s, priority_tag<4>) noexcept(
+    noexcept(make_scan_buffer(SCN_FWD(s), make_scan_buffer_tag{})))
+    -> decltype(make_scan_buffer(SCN_FWD(s), make_scan_buffer_tag{}))
+{
+    return make_scan_buffer(SCN_FWD(s), make_scan_buffer_tag{});
 }
 
 // string_view -> string_buffer
@@ -5112,9 +5222,23 @@ auto impl(const CharT (&r)[N], priority_tag<3>) noexcept
 }
 
 // FILE* -> file_buffer
+[[deprecated(
+    "Prefer using scn::scan_file over a C FILE*, "
+    "as the latter lead to problems if the putback buffer gets full.")]]
 inline auto impl(std::FILE* file, priority_tag<3>)
 {
-    return make_file_scan_buffer(file);
+    return scan_cfile_buffer{file};
+}
+
+inline auto impl(scan_file& file, priority_tag<3>)
+{
+    return scan_file2_buffer{file};
+}
+auto impl(scan_file&&, priority_tag<3>) = delete;
+
+inline auto impl(scan_file_ref file, priority_tag<3>)
+{
+    return scan_file2_buffer{scan_file_access::get_underlying_file(file)};
 }
 
 // contiguous + sized -> string_buffer
@@ -5155,10 +5279,7 @@ auto impl(const Range& r, priority_tag<1>)
 template <typename Range>
 auto impl(const Range& r, priority_tag<0>)
 {
-    if constexpr (std::is_same_v<Range, file_marker>) {
-        return file_marker_found{};
-    }
-    else if constexpr (!ranges::forward_range<Range>) {
+    if constexpr (!ranges::forward_range<Range>) {
         if constexpr (ranges::range<Range>) {
             return insufficient_range{};
         }
@@ -5183,9 +5304,16 @@ inline constexpr bool is_scannable_range =
                                 priority_tag<4>{})>;
 
 template <typename Range>
-auto make_scan_buffer(const Range& range)
+auto make_scan_buffer(Range&& range)
 {
-    using T = decltype(_make_scan_buffer::impl(range, priority_tag<4>{}));
+    SCN_GCC_COMPAT_PUSH
+    SCN_GCC_COMPAT_IGNORE("-Wdeprecated-declarations")
+    // Get -Wdeprecated-declarations warnings when impl() is called below,
+    // not here
+
+    using T = decltype(_make_scan_buffer::impl(range, priority_tag<5>{}));
+
+    SCN_GCC_COMPAT_POP
 
     static_assert(!std::is_same_v<T, invalid_char_type>,
                   "\n"
@@ -5204,15 +5332,6 @@ auto make_scan_buffer(const Range& range)
         "String types (std::basic_string, and std::basic_string_view) "
         "need to use std::char_traits. Strings with custom Traits are "
         "not supported.");
-    static_assert(!std::is_same_v<T, file_marker_found>,
-                  "\n"
-                  "Unsupported range type given as input to a scanning "
-                  "function.\n"
-                  "file_marker_found cannot be used as an "
-                  "source range type to scn::scan.\n"
-                  "To read from stdin, use scn::input or scn::prompt, "
-                  "and do not provide an explicit source range, "
-                  "or use scn::scan with a FILE* directly.");
     static_assert(!std::is_same_v<T, insufficient_range>,
                   "\n"
                   "Unsupported range type given as input to a scanning "
@@ -5224,22 +5343,23 @@ auto make_scan_buffer(const Range& range)
                   "Unsupported range type given as input to a scanning "
                   "function.\n"
                   "A range needs to model forward_range and have a valid "
-                  "character type (char or wchar_t) to be scannable,"
-                  "or be a FILE*.\n"
+                  "character type (char or wchar_t) to be scannable.\n"
+                  "If the input is not a range, it must be a scn::scan_file "
+                  "(or a C FILE*, but that's deprecated).\n"
                   "Examples of scannable ranges are std::string, "
-                  "std::string_view, "
-                  "std::vector<char>, and scn::istreambuf_view.\n"
+                  "std::string_view, std::list<char>, "
+                  "or a large set of C++20 ranges, "
+                  "as long as their value type is char or wchar_t.\n"
                   "See the scnlib documentation for more details.");
 
-    return _make_scan_buffer::impl(range, priority_tag<4>{});
+    return _make_scan_buffer::impl(range, priority_tag<5>{});
 }
 
-template <
-    typename Range,
-    std::enable_if_t<
-        !std::is_reference_v<Range> && !ranges::borrowed_range<Range> &&
-        !std::is_same_v<std::FILE*, std::remove_reference_t<Range>>>* = nullptr>
+template <typename Range,
+          std::enable_if_t<!std::is_reference_v<Range> &&
+                           !ranges::borrowed_range<Range>>* = nullptr>
 auto make_scan_buffer(Range&&) = delete;
+
 }  // namespace detail
 
 /////////////////////////////////////////////////////////////////
@@ -6364,7 +6484,8 @@ public:
 
     constexpr scan_result_range_storage() = default;
 
-    constexpr scan_result_range_storage(range_type&& r) : m_range(SCN_MOVE(r))
+    explicit constexpr scan_result_range_storage(range_type&& r)
+        : m_range(SCN_MOVE(r))
     {
     }
 
@@ -6375,18 +6496,18 @@ public:
     }
 
     /// Access the ununsed source range
-    range_type range() const
+    SCN_NODISCARD range_type range() const
     {
         return m_range;
     }
 
     /// The beginning of the unused source range
-    auto begin() const
+    SCN_NODISCARD auto begin() const
     {
         return ranges::begin(m_range);
     }
     /// The end of the unused source range
-    auto end() const
+    SCN_NODISCARD auto end() const
     {
         return ranges::end(m_range);
     }
@@ -6408,16 +6529,16 @@ private:
     SCN_NO_UNIQUE_ADDRESS range_type m_range{};
 };
 
-struct scan_result_file_storage {
+struct scan_result_cfile_storage {
 public:
     using range_type = std::FILE*;
 
-    constexpr scan_result_file_storage() = default;
+    constexpr scan_result_cfile_storage() = default;
 
-    constexpr scan_result_file_storage(std::FILE* f) : m_file(f) {}
+    explicit constexpr scan_result_cfile_storage(std::FILE* f) : m_file(f) {}
 
     /// File used for scanning
-    std::FILE* file() const
+    SCN_NODISCARD std::FILE* file() const
     {
         return m_file;
     }
@@ -6428,13 +6549,47 @@ public:
     }
 
 protected:
-    void assign_range(const scan_result_file_storage& f)
+    void assign_range(const scan_result_cfile_storage& f)
     {
         m_file = f.m_file;
     }
 
 private:
     std::FILE* m_file{nullptr};
+};
+
+struct scan_result_fileref_storage {
+public:
+    using range_type = scan_file_ref;
+
+    explicit constexpr scan_result_fileref_storage(scan_file_ref f) : m_file(f)
+    {
+    }
+    explicit constexpr scan_result_fileref_storage(scan_result_convert_tag,
+                                                   scan_file& f)
+        : m_file(f)
+    {
+    }
+
+    /// File used for scanning
+    SCN_NODISCARD scan_file_ref file() const
+    {
+        return m_file;
+    }
+
+    void set_range(scan_file_ref f)
+    {
+        m_file = f;
+    }
+
+protected:
+    void assign_range(const scan_result_fileref_storage& f)
+    {
+        m_file = f.m_file;
+    }
+
+private:
+    scan_file_ref m_file;
 };
 
 struct scan_result_dangling {
@@ -6447,16 +6602,16 @@ struct scan_result_dangling {
     {
     }
 
-    range_type range() const
+    SCN_NODISCARD range_type range() const
     {
         return {};
     }
 
-    ranges::dangling begin() const
+    SCN_NODISCARD ranges::dangling begin() const
     {
         return {};
     }
-    ranges::dangling end() const
+    SCN_NODISCARD ranges::dangling end() const
     {
         return {};
     }
@@ -6474,26 +6629,15 @@ protected:
 };
 
 template <typename Range>
-constexpr auto get_scan_result_base()
-{
-    if constexpr (std::is_same_v<remove_cvref_t<Range>, ranges::dangling>) {
-        return type_identity<scan_result_dangling>{};
-    }
-    else if constexpr (std::is_same_v<remove_cvref_t<Range>, std::FILE*>) {
-        return type_identity<scan_result_file_storage>{};
-    }
-    else {
-        return type_identity<scan_result_range_storage<Range>>{};
-    }
-}
-
-#if !SCN_DOXYGEN
-template <typename Range>
-using scan_result_base = typename decltype(get_scan_result_base<Range>())::type;
-#else
-template <typename Range>
-using scan_result_base = scan_result_range_storage<Range>;
-#endif
+using scan_result_base =
+    mp_cond<std::is_same<remove_cvref_t<Range>, ranges::dangling>,
+            scan_result_dangling,
+            std::is_same<remove_cvref_t<Range>, std::FILE*>,
+            scan_result_cfile_storage,
+            std::is_same<remove_cvref_t<Range>, scan_file_ref>,
+            scan_result_fileref_storage,
+            std::true_type,
+            scan_result_range_storage<Range>>;
 }  // namespace detail
 
 /**
@@ -6609,24 +6753,24 @@ scan_result(R, detail::scan_arg_store<Ctx, Args...>&)
 
 namespace detail {
 template <typename SourceRange>
-auto make_vscan_result_range_end(SourceRange& source)
+auto make_vscan_result_end(SourceRange& source)
 {
     return ranges::end(source);
 }
 template <typename CharT, size_t N>
-auto make_vscan_result_range_end(CharT (&source)[N])
+auto make_vscan_result_end(CharT (&source)[N])
     -> ranges::sentinel_t<CharT (&)[N]>
 {
     return source + N - 1;
 }
 
 template <typename SourceRange>
-auto make_vscan_result_range(SourceRange&& source, std::ptrdiff_t n)
+auto make_vscan_result(SourceRange&& source, std::ptrdiff_t n)
     -> borrowed_tail_subrange_t<SourceRange>
 {
     if constexpr (ranges::random_access_iterator<
                       ranges::iterator_t<SourceRange>>) {
-        return {ranges::begin(source) + n, make_vscan_result_range_end(source)};
+        return {ranges::begin(source) + n, make_vscan_result_end(source)};
     }
     else {
         auto it = ranges::begin(source);
@@ -6634,13 +6778,22 @@ auto make_vscan_result_range(SourceRange&& source, std::ptrdiff_t n)
             --n;
             ++it;
         }
-        return {SCN_MOVE(it), make_vscan_result_range_end(source)};
+        return {SCN_MOVE(it), make_vscan_result_end(source)};
     }
 }
-inline auto make_vscan_result_range(std::FILE* source, std::ptrdiff_t)
+inline auto make_vscan_result(std::FILE* source, std::ptrdiff_t)
 {
     return source;
 }
+inline auto make_vscan_result(scan_file& source, std::ptrdiff_t)
+{
+    return scan_file_ref{source};
+}
+inline auto make_vscan_result(const scan_file_ref& source, std::ptrdiff_t)
+{
+    return source;
+}
+
 }  // namespace detail
 
 /////////////////////////////////////////////////////////////////
@@ -9383,9 +9536,14 @@ constexpr R basic_scan_arg<Context>::visit(Visitor&& vis)
 namespace detail {
 template <typename Source>
 using scan_result_value_type =
-    std::conditional_t<std::is_same_v<remove_cvref_t<Source>, std::FILE*>,
-                       std::FILE*,
-                       borrowed_tail_subrange_t<Source>>;
+    mp_cond<std::is_same<remove_cvref_t<Source>, std::FILE*>,
+            std::FILE*,
+            std::is_same<remove_cvref_t<Source>, scan_file>,
+            scan_file_ref,
+            std::is_same<remove_cvref_t<Source>, scan_file_ref>,
+            scan_file_ref,
+            std::true_type,
+            borrowed_tail_subrange_t<Source>>;
 }
 
 /**
@@ -9469,7 +9627,7 @@ auto vscan_generic(Range&& range,
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
-    return make_vscan_result_range(SCN_FWD(range), *result);
+    return make_vscan_result(SCN_FWD(range), *result);
 }
 
 template <typename Locale, typename Range, typename CharT>
@@ -9489,7 +9647,7 @@ auto vscan_localized_generic(
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
-    return detail::make_vscan_result_range(SCN_FWD(range), *result);
+    return detail::make_vscan_result(SCN_FWD(range), *result);
 #else
     static_assert(dependent_false<Locale>::value,
                   "Can't use scan(locale, ...) with SCN_DISABLE_LOCALE on");
@@ -9509,7 +9667,7 @@ auto vscan_value_generic(Range&& range,
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
-    return detail::make_vscan_result_range(SCN_FWD(range), *result);
+    return detail::make_vscan_result(SCN_FWD(range), *result);
 }
 }  // namespace detail
 
@@ -9566,6 +9724,9 @@ auto vscan_value(Source&& source, basic_scan_arg<scan_context> arg)
  *
  * \ingroup vscan
  */
+[[deprecated(
+    "Use scn::vscan with an explicit source parameter, "
+    "or scn::input")]]
 SCN_PUBLIC scan_expected<void> vinput(std::string_view format, scan_args args);
 
 namespace detail {
@@ -9906,7 +10067,9 @@ SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
 /**
  * Scan from `stdin`.
  *
- * Equivalent to `scn::scan<...>(stdin, ...)`.
+ * Equivalent to `scn::scan<...>(stdin, ...)`,
+ * except it's thread safe, and it maintains a separate putback buffer
+ * in case a putback into `stdin` fails.
  *
  * \code{.cpp}
  * auto result = scn::input<int>("{}");
@@ -9915,12 +10078,16 @@ SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
  * \ingroup scan
  */
 template <typename... Args>
-SCN_NODISCARD auto input(scan_format_string<std::FILE*, Args...> format)
-    -> scan_result_type<std::FILE*, Args...>
+SCN_NODISCARD auto input(scan_format_string<scan_file&, Args...> format)
+    -> scan_result_type<scan_file&, Args...>
 {
-    auto result = scan_result_type<std::FILE*, Args...>(std::in_place, stdin,
-                                                        std::tuple<Args...>{});
-    auto err = vinput(format, make_scan_args(result->values()));
+    static std::mutex stdin_mutex{};
+    static scan_file stdin_file{stdin};
+    std::lock_guard<std::mutex> lock(stdin_mutex);
+
+    auto result = scan_result_type<scan_file_ref, Args...>(
+        std::in_place, stdin_file, std::tuple<Args...>{});
+    auto err = vscan(stdin_file, format, make_scan_args(result->values()));
     if (SCN_UNLIKELY(!err)) {
         result = unexpected(err.error());
     }
@@ -9934,8 +10101,8 @@ SCN_NODISCARD auto input(scan_format_string<std::FILE*, Args...> format)
  */
 template <typename... Args>
 SCN_NODISCARD auto prompt(const char* msg,
-                          scan_format_string<std::FILE*, Args...> format)
-    -> scan_result_type<std::FILE*, Args...>
+                          scan_format_string<scan_file&, Args...> format)
+    -> scan_result_type<scan_file&, Args...>
 {
     std::printf("%s", msg);
     std::fflush(stdout);

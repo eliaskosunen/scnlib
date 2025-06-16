@@ -127,14 +127,6 @@ class compile_parse_context;
 template <typename Iterator, typename... Args>
 class scan_result;
 
-struct file_marker {
-    constexpr file_marker() noexcept = default;
-    template <typename... Args>
-    constexpr file_marker(Args&&...) noexcept
-    {
-    }
-};
-
 namespace detail {
 template <typename CharT>
 class basic_scan_buffer;

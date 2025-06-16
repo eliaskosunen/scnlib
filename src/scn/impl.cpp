@@ -18,6 +18,8 @@
 #include <scn/chrono.h>
 #include <scn/impl.h>
 
+#include <mutex>
+
 #if !SCN_DISABLE_LOCALE
 #include <locale>
 #include <sstream>
@@ -289,31 +291,50 @@ SCN_DEFINE_SCANNER_SCAN_FOR_CTX(wscan_context)
 using stdio_file_buffer_interface =
     impl::file_buffer_interface<char, impl::stdio_file_interface>;
 
-SCN_PUBLIC scan_file_buffer::scan_file_buffer(std::FILE* file)
+SCN_PUBLIC scan_cfile_buffer::scan_cfile_buffer(std::FILE* file)
     : base(base::non_contiguous_tag{}), m_file(file)
 {
     auto f = impl::stdio_file_interface{m_file};
     stdio_file_buffer_interface::construct(f);
 }
 
-SCN_PUBLIC scan_file_buffer::~scan_file_buffer()
+SCN_PUBLIC scan_cfile_buffer::~scan_cfile_buffer()
 {
     auto f = impl::stdio_file_interface{m_file};
     stdio_file_buffer_interface::destruct(f);
 }
 
-SCN_PUBLIC bool scan_file_buffer::fill()
+SCN_PUBLIC bool scan_cfile_buffer::fill()
 {
     auto f = impl::stdio_file_interface{m_file};
     return stdio_file_buffer_interface::fill(f, this->m_current_view,
                                              this->m_putback_buffer, m_latest);
 }
 
-SCN_PUBLIC bool scan_file_buffer::sync(std::ptrdiff_t position)
+SCN_PUBLIC bool scan_cfile_buffer::sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
     return stdio_file_buffer_interface::sync(f, position, *this,
-                                             this->m_current_view);
+                                             this->m_current_view) == position;
+}
+
+SCN_PUBLIC scan_file2_buffer::scan_file2_buffer(scan_file& file)
+    : base(*file.handle()), m_prelude(scan_file_access::get_prelude(file))
+{
+    this->m_current_view = std::string_view{m_prelude.data(), m_prelude.size()};
+}
+
+SCN_PUBLIC bool scan_file2_buffer::sync(std::ptrdiff_t position)
+{
+    auto f = impl::stdio_file_interface{m_file};
+    if (auto i = stdio_file_buffer_interface::sync(f, position, *this,
+                                                   this->m_current_view);
+        i != position) {
+        const auto n = i - position;
+        m_prelude = SCN_MOVE(this->m_putback_buffer);
+        m_prelude.resize(static_cast<std::size_t>(n));
+    }
+    return true;
 }
 
 }  // namespace detail
@@ -2922,7 +2943,7 @@ auto scan_int_exhaustive_valid_impl(std::string_view source) -> T
 
 SCN_PUBLIC scan_expected<void> vinput(std::string_view format, scan_args args)
 {
-    auto buffer = detail::make_file_scan_buffer(stdin);
+    auto buffer = detail::scan_cfile_buffer{stdin};
     auto n = vscan_internal(buffer, format, args);
     if (n) {
         if (SCN_UNLIKELY(!buffer.sync(*n))) {
@@ -2932,7 +2953,7 @@ SCN_PUBLIC scan_expected<void> vinput(std::string_view format, scan_args args)
         }
         return {};
     }
-    if (SCN_UNLIKELY(!buffer.sync_all())) {
+    if (SCN_UNLIKELY(!buffer.sync(0))) {
         return detail::unexpected_scan_error(
             scan_error::invalid_source_state,
             "Failed to sync with underlying FILE");
@@ -2957,7 +2978,7 @@ scan_expected<std::ptrdiff_t> sync_after_vscan(
         }
     }
     else {
-        if (SCN_UNLIKELY(!source.sync_all())) {
+        if (SCN_UNLIKELY(!source.sync(0))) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_source_state,
                 "Failed to sync with underlying source");
