@@ -1403,46 +1403,6 @@ bool is_entire_source_contiguous(Range r)
 }
 
 template <typename Range>
-bool is_segment_contiguous(Range r)
-{
-    SCN_UNUSED(r);
-
-    if constexpr (ranges::contiguous_range<Range> &&
-                  ranges::sized_range<Range>) {
-        return true;
-    }
-    else if constexpr (std::is_same_v<
-                           ranges::const_iterator_t<Range>,
-                           typename detail::basic_scan_buffer<
-                               detail::char_t<Range>>::forward_iterator>) {
-        auto beg = r.begin();
-        if (beg.contiguous_segment().empty()) {
-            return false;
-        }
-        if constexpr (ranges::common_range<Range>) {
-            return beg.contiguous_segment().end() ==
-                       ranges::end(r).contiguous_segment().end() &&
-                   std::next(beg, static_cast<std::ptrdiff_t>(
-                                      beg.contiguous_segment().size())) ==
-                       ranges::end(r);
-        }
-        else {
-            if (beg.stores_parent()) {
-                return beg.contiguous_segment().end() ==
-                           beg.parent()->current_view().end() &&
-                       std::next(beg, static_cast<std::ptrdiff_t>(
-                                          beg.contiguous_segment().size())) ==
-                           ranges::end(r);
-            }
-            return true;
-        }
-    }
-    else {
-        return false;
-    }
-}
-
-template <typename Range>
 std::size_t contiguous_beginning_size(Range r)
 {
     SCN_UNUSED(r);
@@ -1501,7 +1461,7 @@ auto get_contiguous_beginning(Range r)
 template <typename Range>
 auto get_as_contiguous(Range r)
 {
-    SCN_EXPECT(is_segment_contiguous(r));
+    SCN_EXPECT(is_entire_source_contiguous(r));
 
     if constexpr (ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
@@ -6409,7 +6369,7 @@ struct default_arg_reader {
         }
         else if constexpr (!detail::is_type_disabled<T>) {
             auto rd = make_reader<T, char_type>();
-            if (!is_segment_contiguous(range)) {
+            if (!is_entire_source_contiguous(range)) {
                 return impl(rd, range, value);
             }
             auto crange = get_as_contiguous(range);
@@ -6722,7 +6682,7 @@ struct arg_reader {
             auto rd = make_reader<T, char_type>();
             SCN_TRY_DISCARD(rd.check_specs(specs));
 
-            if (!is_segment_contiguous(range) || specs.precision != 0 ||
+            if (!is_entire_source_contiguous(range) || specs.precision != 0 ||
                 specs.width != 0) {
                 return impl(rd, range, value);
             }

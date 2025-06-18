@@ -319,7 +319,7 @@ struct datetime_components {
         t.tm_mday = static_cast<int>(mday.value_or(0));
         t.tm_mon =
             static_cast<int>(static_cast<unsigned>(mon.value_or(January)) - 1);
-        t.tm_year = static_cast<int>(year.value_or(1900) - 1900);
+        t.tm_year = year.value_or(1900) - 1900;
         t.tm_wday = static_cast<int>(wday.value_or(Sunday).c_encoding());
         t.tm_yday = static_cast<int>(yday.value_or(0));
         t.tm_isdst = -1;

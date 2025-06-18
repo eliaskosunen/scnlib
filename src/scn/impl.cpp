@@ -4749,17 +4749,16 @@ template <typename CharT, typename T, typename Context>
 auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str, T& t, Context& ctx)
     -> scan_expected<typename Context::iterator>
 {
-    if (ctx.begin().stores_parent()) {
+    if (!impl::is_entire_source_contiguous(ctx.range())) {
         // ctx.begin() stores parent (buffer) -> not contiguous
         return chrono_scan_inner_impl(fmt_str, t, ctx);
     }
 
-    auto contiguous_subrange = ranges::subrange<const CharT*>{
-        ctx.begin().contiguous_segment().data(),
-        ctx.begin().contiguous_segment().data() +
-            ctx.begin().contiguous_segment().size()};
+    auto crange = impl::get_as_contiguous(ctx.range());
     auto contiguous_ctx = impl::basic_contiguous_scan_context<CharT>(
-        contiguous_subrange, ctx.args(), ctx.locale());
+        ranges::subrange<const CharT*>(crange.data(),
+                                       crange.data() + crange.size()),
+        ctx.args(), ctx.locale());
     auto begin = contiguous_ctx.begin();
     SCN_TRY(it, chrono_scan_inner_impl(fmt_str, t, contiguous_ctx));
     return ctx.begin().batch_advance(std::distance(begin, it));

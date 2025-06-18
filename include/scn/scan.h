@@ -3608,6 +3608,10 @@ template <typename Range, typename = void>
 inline constexpr bool is_file_or_narrow_range_impl = false;
 template <>
 inline constexpr bool is_file_or_narrow_range_impl<std::FILE*, void> = true;
+template <>
+inline constexpr bool is_file_or_narrow_range_impl<scan_file, void> = true;
+template <>
+inline constexpr bool is_file_or_narrow_range_impl<scan_file_ref, void> = true;
 template <typename Range>
 inline constexpr bool
     is_file_or_narrow_range_impl<Range,
@@ -4458,6 +4462,7 @@ class scan_file_ref {
     friend struct detail::scan_file_access;
 
 public:
+    scan_file_ref() = default;
     scan_file_ref(scan_file& file) : m_ref(&file) {}
 
     SCN_NODISCARD std::optional<std::FILE*> handle() const
@@ -4642,7 +4647,7 @@ public:
     forward_iterator() = default;
 
     forward_iterator(basic_scan_buffer<CharT>* parent, std::ptrdiff_t pos)
-        : m_begin(parent), m_end(nullptr), m_position(pos)
+        : m_parent(parent), m_end(nullptr), m_position(pos)
     {
         SCN_EXPECT(parent);
         SCN_EXPECT(!parent->is_contiguous());
@@ -4662,27 +4667,26 @@ public:
 
     bool stores_parent() const
     {
-        assert(m_begin);
         return m_end == nullptr;
     }
 
     basic_scan_buffer<CharT>* parent()
     {
         SCN_EXPECT(stores_parent());
-        return static_cast<basic_scan_buffer<CharT>*>(m_begin);
+        SCN_EXPECT(m_parent);
+        return m_parent;
     }
     const basic_scan_buffer<CharT>* parent() const
     {
         SCN_EXPECT(stores_parent());
-        return static_cast<const basic_scan_buffer<CharT>*>(m_begin);
+        SCN_EXPECT(m_parent);
+        return m_parent;
     }
 
     std::basic_string_view<CharT> contiguous_segment() const
     {
         if (!stores_parent()) {
-            return make_string_view_from_pointers(
-                static_cast<const CharT*>(m_begin) + position(),
-                static_cast<const CharT*>(m_end));
+            return make_string_view_from_pointers(m_begin + position(), m_end);
         }
         return parent()->get_segment_starting_at(position());
     }
@@ -4706,14 +4710,14 @@ public:
 
     CharT operator*() const
     {
-        SCN_EXPECT(m_begin);
-
         if (!stores_parent()) {
-            auto ptr = static_cast<const CharT*>(m_begin) + position();
+            SCN_EXPECT(m_begin);
+            auto ptr = m_begin + position();
             SCN_EXPECT(ptr != m_end);
             return *ptr;
         }
 
+        SCN_EXPECT(m_parent);
         auto res = read_at_position();
         SCN_EXPECT(res);
         return parent()->get_character_at(m_position);
@@ -4738,7 +4742,8 @@ public:
     {
         (void)lhs.read_at_position();
         (void)rhs.read_at_position();
-        return lhs.m_begin == rhs.m_begin && lhs.m_position == rhs.m_position;
+        return lhs.erased_data_ptr() == rhs.erased_data_ptr() &&
+               lhs.m_position == rhs.m_position;
     }
     friend bool operator!=(const forward_iterator& lhs,
                            const forward_iterator& rhs)
@@ -4773,12 +4778,12 @@ private:
 
     SCN_NODISCARD bool read_at_position() const
     {
-        SCN_EXPECT(m_begin);
-
         if (!stores_parent()) {
+            SCN_EXPECT(m_begin);
             return true;
         }
 
+        SCN_EXPECT(m_parent);
         if (SCN_LIKELY(m_position < parent()->chars_available())) {
             return true;
         }
@@ -4794,19 +4799,31 @@ private:
     SCN_NODISCARD bool is_at_end() const
     {
         if (m_end) {
-            return (static_cast<const CharT*>(m_begin) + position()) == m_end;
+            SCN_EXPECT(m_begin);
+            return (m_begin + position()) == m_end;
         }
-        if (!m_begin) {
+        if (!m_parent) {
             return true;
         }
         return !read_at_position();
     }
 
-    // If m_end is null, m_begin points to the parent scan_buffer
+    const void* erased_data_ptr() const
+    {
+        if (m_end) {
+            return m_begin;
+        }
+        return m_parent;
+    }
+
+    // If m_end is null, m_parent points to the parent scan_buffer
     // Otherwise, [m_begin, m_end) is the range of this iterator (and of
     // the entire range)
-    mutable void* m_begin{nullptr};
-    mutable void* m_end{nullptr};
+    union {
+        mutable CharT* m_begin;
+        mutable basic_scan_buffer<CharT>* m_parent{nullptr};
+    };
+    mutable CharT* m_end{nullptr};
     std::ptrdiff_t m_position{0};
 };
 
@@ -6116,8 +6133,7 @@ public:
             return max_size();
         }
 
-        return static_cast<std::size_t>(m_desc &
-                                        ((1 << detail::packed_arg_bits) - 1));
+        return m_desc & ((1ull << detail::packed_arg_bits) - 1ull);
     }
 
 private:
@@ -6465,9 +6481,9 @@ struct scan_result_cfile_storage {
 public:
     using range_type = std::FILE*;
 
-    constexpr scan_result_cfile_storage() = default;
+    scan_result_cfile_storage() = default;
 
-    explicit constexpr scan_result_cfile_storage(std::FILE* f) : m_file(f) {}
+    explicit scan_result_cfile_storage(std::FILE* f) : m_file(f) {}
 
     /// File used for scanning
     SCN_NODISCARD std::FILE* file() const
@@ -6494,10 +6510,12 @@ struct scan_result_fileref_storage {
 public:
     using range_type = scan_file_ref;
 
-    explicit constexpr scan_result_fileref_storage(scan_file_ref f) : m_file(f)
+    scan_result_fileref_storage() = default;
+
+    explicit scan_result_fileref_storage(scan_file_ref f) : m_file(f)
     {
     }
-    explicit constexpr scan_result_fileref_storage(scan_result_convert_tag,
+    explicit scan_result_fileref_storage(scan_result_convert_tag,
                                                    scan_file& f)
         : m_file(f)
     {
@@ -6722,7 +6740,8 @@ inline auto make_vscan_result(scan_file& source, std::ptrdiff_t)
 {
     return scan_file_ref{source};
 }
-inline auto make_vscan_result(const scan_file_ref& source, std::ptrdiff_t)
+inline auto make_vscan_result(scan_file&& source, std::ptrdiff_t) = delete;
+inline auto make_vscan_result(scan_file_ref source, std::ptrdiff_t)
 {
     return source;
 }
@@ -6950,12 +6969,14 @@ public:
     template <typename CharT>
     std::basic_string_view<CharT> get_code_units() const
     {
-        return {reinterpret_cast<const CharT*>(m_data), m_size};
+        return {reinterpret_cast<const CharT*>(
+                    SCN_ASSUME_ALIGNED(m_data, alignof(CharT))),
+                m_size};
     }
 
 private:
     static constexpr size_t max_size = 4;
-    char m_data[max_size] = {' '};
+    alignas(char32_t) char m_data[max_size] = {' '};
     unsigned char m_size{1};
 };
 
@@ -10047,6 +10068,9 @@ template <typename... Args>
 SCN_NODISCARD auto input(scan_format_string<scan_file&, Args...> format)
     -> scan_result_type<scan_file&, Args...>
 {
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wexit-time-destructors")
+
     static std::mutex stdin_mutex{};
     static scan_file stdin_file{stdin};
     std::lock_guard<std::mutex> lock(stdin_mutex);
@@ -10058,6 +10082,8 @@ SCN_NODISCARD auto input(scan_format_string<scan_file&, Args...> format)
         result = unexpected(err.error());
     }
     return result;
+
+    SCN_CLANG_POP
 }
 
 /**
