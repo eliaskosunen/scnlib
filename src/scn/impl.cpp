@@ -2464,9 +2464,11 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
     return ranges::distance(source.data(), it);
 }
+
 template <typename CharT>
 scan_expected<std::ptrdiff_t> scan_simple_single_argument(
-    detail::basic_scan_buffer<CharT>& source,
+    typename detail::basic_scan_buffer<
+        detail::type_identity_t<CharT>>::range_type source,
     basic_scan_args<detail::default_context<CharT>> args,
     basic_scan_arg<detail::default_context<CharT>> arg,
     detail::locale_ref loc = {})
@@ -2476,16 +2478,9 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
                                              "Argument #0 not found");
     }
 
-    if (SCN_LIKELY(source.is_contiguous())) {
-        auto reader = impl::default_arg_reader<
-            impl::basic_contiguous_scan_context<CharT>>{source.get_contiguous(),
-                                                        SCN_MOVE(args), loc};
-        SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
-        return ranges::distance(source.get_contiguous().begin(), it);
-    }
-
+    SCN_EXPECT(source.begin().stores_parent());
     auto reader = impl::default_arg_reader<detail::default_context<CharT>>{
-        source.get(), SCN_MOVE(args), loc};
+        source, SCN_MOVE(args), loc};
     SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
     return it.position();
 }
@@ -2637,10 +2632,11 @@ template <typename CharT>
 struct simple_context_wrapper {
     using context_type = detail::default_context<CharT>;
 
-    simple_context_wrapper(detail::basic_scan_buffer<CharT>& source,
-                           basic_scan_args<detail::default_context<CharT>> args,
-                           detail::locale_ref loc)
-        : ctx(source.get().begin(), SCN_MOVE(args), loc)
+    simple_context_wrapper(
+        typename detail::basic_scan_buffer<CharT>::range_type& source,
+        basic_scan_args<detail::default_context<CharT>> args,
+        detail::locale_ref loc)
+        : ctx(source, SCN_MOVE(args), loc)
     {
     }
 
@@ -2668,26 +2664,28 @@ struct contiguous_context_wrapper {
     {
     }
 
-    impl::basic_contiguous_scan_context<CharT>& get()
+    context_type& get()
     {
         return contiguous_ctx;
     }
     detail::default_context<CharT>& get_custom()
     {
-        if (!buffer) {
-            buffer.emplace(detail::make_string_view_from_pointers(
-                ranges::data(contiguous_ctx.underlying_range()),
-                ranges::data(contiguous_ctx.underlying_range()) +
-                    ranges::size(contiguous_ctx.underlying_range())));
+        using iterator =
+            typename detail::basic_scan_buffer<CharT>::forward_iterator;
+        auto begin = iterator{contiguous_ctx.original_begin(),
+                              std::distance(contiguous_ctx.original_begin(),
+                                            contiguous_ctx.begin())};
+        if (!custom_ctx) {
+            custom_ctx.emplace(begin, ranges::default_sentinel,
+                               contiguous_ctx.args(), contiguous_ctx.locale());
         }
-        auto it = buffer->get().begin();
-        it.batch_advance_to(contiguous_ctx.begin_position());
-        custom_ctx.emplace(it, contiguous_ctx.args(), contiguous_ctx.locale());
+        else {
+            custom_ctx->advance_to(begin);
+        }
         return *custom_ctx;
     }
 
-    impl::basic_contiguous_scan_context<CharT> contiguous_ctx;
-    std::optional<detail::basic_scan_string_buffer<CharT>> buffer{std::nullopt};
+    context_type contiguous_ctx;
     std::optional<detail::default_context<CharT>> custom_ctx{std::nullopt};
 };
 
@@ -2885,30 +2883,47 @@ scan_expected<std::ptrdiff_t> vscan_internal(
 
 template <typename CharT>
 scan_expected<std::ptrdiff_t> vscan_internal(
-    detail::basic_scan_buffer<CharT>& buffer,
+    typename detail::basic_scan_buffer<
+        detail::type_identity_t<CharT>>::range_type source,
     std::basic_string_view<CharT> format,
     basic_scan_args<detail::default_context<CharT>> args,
     detail::locale_ref loc = {})
 {
-    const auto argcount = args.size();
-    if (is_simple_single_argument_format_string(format) && argcount == 1) {
-        auto arg = args.get(0);
-        return scan_simple_single_argument(buffer, SCN_MOVE(args), arg);
+    if (!source.begin().stores_parent()) {
+        return vscan_internal(source.begin().contiguous_segment(), format, args,
+                              loc);
     }
 
-    if (buffer.is_contiguous()) {
-        auto handler = format_handler<true, CharT>{buffer.get_contiguous(),
-                                                   format, SCN_MOVE(args),
-                                                   SCN_MOVE(loc), argcount};
-        return vscan_parse_format_string(format, handler);
-    }
+    auto& buffer = *source.begin().parent();
+    const auto begin_position = source.begin().position();
+    const auto end_position = [&]() {
+        const auto argcount = args.size();
+        if (is_simple_single_argument_format_string(format) && argcount == 1) {
+            auto arg = args.get(0);
+            return scan_simple_single_argument(source, SCN_MOVE(args), arg);
+        }
 
-    SCN_UNLIKELY_ATTR
-    {
         auto handler = format_handler<false, CharT>{
-            buffer, format, SCN_MOVE(args), SCN_MOVE(loc), argcount};
+            source, format, SCN_MOVE(args), loc, argcount};
         return vscan_parse_format_string(format, handler);
+    }();
+
+    if (SCN_LIKELY(end_position)) {
+        if (SCN_UNLIKELY(!buffer.sync(*end_position))) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_source_state,
+                "Failed to sync with underlying source");
+        }
     }
+    else {
+        if (SCN_UNLIKELY(!buffer.sync(begin_position))) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_source_state,
+                "Failed to sync with underlying source");
+        }
+    }
+
+    return end_position;
 }
 
 template <typename Source, typename CharT>
@@ -2944,50 +2959,13 @@ auto scan_int_exhaustive_valid_impl(std::string_view source) -> T
 SCN_PUBLIC scan_expected<void> vinput(std::string_view format, scan_args args)
 {
     auto buffer = detail::scan_cfile_buffer{stdin};
-    auto n = vscan_internal(buffer, format, args);
-    if (n) {
-        if (SCN_UNLIKELY(!buffer.sync(*n))) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_source_state,
-                "Failed to sync with underlying FILE");
-        }
-        return {};
+    if (auto e = vscan_internal(buffer.get(), format, args); SCN_UNLIKELY(!e)) {
+        return unexpected(e.error());
     }
-    if (SCN_UNLIKELY(!buffer.sync(0))) {
-        return detail::unexpected_scan_error(
-            scan_error::invalid_source_state,
-            "Failed to sync with underlying FILE");
-    }
-    return unexpected(n.error());
+    return {};
 }
 
 namespace detail {
-
-namespace {
-
-template <typename Source>
-scan_expected<std::ptrdiff_t> sync_after_vscan(
-    Source& source,
-    scan_expected<std::ptrdiff_t> result)
-{
-    if (SCN_LIKELY(result)) {
-        if (SCN_UNLIKELY(!source.sync(*result))) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_source_state,
-                "Failed to sync with underlying source");
-        }
-    }
-    else {
-        if (SCN_UNLIKELY(!source.sync(0))) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_source_state,
-                "Failed to sync with underlying source");
-        }
-    }
-    return result;
-}
-
-}  // namespace
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
                                                     std::string_view format,
@@ -2995,12 +2973,12 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
 {
     return vscan_internal(source, format, args);
 }
-SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
-                                                    std::string_view format,
-                                                    scan_args args)
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(
+    scan_buffer::range_type source,
+    std::string_view format,
+    scan_args args)
 {
-    auto n = vscan_internal(source, format, args);
-    return sync_after_vscan(source, n);
+    return vscan_internal(source, format, args);
 }
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
@@ -3009,12 +2987,12 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
 {
     return vscan_internal(source, format, args);
 }
-SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
-                                                    std::wstring_view format,
-                                                    wscan_args args)
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(
+    wscan_buffer::range_type source,
+    std::wstring_view format,
+    wscan_args args)
 {
-    auto n = vscan_internal(source, format, args);
-    return sync_after_vscan(source, n);
+    return vscan_internal(source, format, args);
 }
 
 #if !SCN_DISABLE_LOCALE
@@ -3027,13 +3005,13 @@ scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
     return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
 template <typename Locale>
-scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
-                                                   scan_buffer& source,
-                                                   std::string_view format,
-                                                   scan_args args)
+scan_expected<std::ptrdiff_t> vscan_localized_impl(
+    const Locale& loc,
+    scan_buffer::range_type source,
+    std::string_view format,
+    scan_args args)
 {
-    auto n = vscan_internal(source, format, args, detail::locale_ref{loc});
-    return sync_after_vscan(source, n);
+    return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
 
 template <typename Locale>
@@ -3045,13 +3023,13 @@ scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
     return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
 template <typename Locale>
-scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
-                                                   wscan_buffer& source,
-                                                   std::wstring_view format,
-                                                   wscan_args args)
+scan_expected<std::ptrdiff_t> vscan_localized_impl(
+    const Locale& loc,
+    wscan_buffer::range_type source,
+    std::wstring_view format,
+    wscan_args args)
 {
-    auto n = vscan_internal(source, format, args, detail::locale_ref{loc});
-    return sync_after_vscan(source, n);
+    return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
 
 template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
@@ -3059,21 +3037,21 @@ template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
                                                            std::string_view,
                                                            scan_args)
     -> scan_expected<std::ptrdiff_t>;
-template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
-                                                           scan_buffer&,
-                                                           std::string_view,
-                                                           scan_args)
-    -> scan_expected<std::ptrdiff_t>;
+template SCN_PUBLIC auto vscan_localized_impl<std::locale>(
+    const std::locale&,
+    scan_buffer::range_type,
+    std::string_view,
+    scan_args) -> scan_expected<std::ptrdiff_t>;
 template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
                                                            std::wstring_view,
                                                            std::wstring_view,
                                                            wscan_args)
     -> scan_expected<std::ptrdiff_t>;
-template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
-                                                           wscan_buffer&,
-                                                           std::wstring_view,
-                                                           wscan_args)
-    -> scan_expected<std::ptrdiff_t>;
+template SCN_PUBLIC auto vscan_localized_impl<std::locale>(
+    const std::locale&,
+    wscan_buffer::range_type,
+    std::wstring_view,
+    wscan_args) -> scan_expected<std::ptrdiff_t>;
 #endif
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
@@ -3083,11 +3061,10 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     return vscan_value_internal(source, arg);
 }
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
-    scan_buffer& source,
+    scan_buffer::range_type source,
     basic_scan_arg<scan_context> arg)
 {
-    auto n = vscan_value_internal(source, arg);
-    return sync_after_vscan(source, n);
+    return vscan_value_internal(source, arg);
 }
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
@@ -3097,11 +3074,10 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     return vscan_value_internal(source, arg);
 }
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
-    wscan_buffer& source,
+    wscan_buffer::range_type source,
     basic_scan_arg<wscan_context> arg)
 {
-    auto n = vscan_value_internal(source, arg);
-    return sync_after_vscan(source, n);
+    return vscan_value_internal(source, arg);
 }
 
 #if !SCN_DISABLE_TYPE_SCHAR
@@ -4778,8 +4754,12 @@ auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str, T& t, Context& ctx)
         return chrono_scan_inner_impl(fmt_str, t, ctx);
     }
 
+    auto contiguous_subrange = ranges::subrange<const CharT*>{
+        ctx.begin().contiguous_segment().data(),
+        ctx.begin().contiguous_segment().data() +
+            ctx.begin().contiguous_segment().size()};
     auto contiguous_ctx = impl::basic_contiguous_scan_context<CharT>(
-        ctx.begin().contiguous_segment(), ctx.args(), ctx.locale());
+        contiguous_subrange, ctx.args(), ctx.locale());
     auto begin = contiguous_ctx.begin();
     SCN_TRY(it, chrono_scan_inner_impl(fmt_str, t, contiguous_ctx));
     return ctx.begin().batch_advance(std::distance(begin, it));

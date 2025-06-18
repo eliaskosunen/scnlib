@@ -425,26 +425,26 @@ TYPED_TEST(FileTestP, ThreeIntegers)
 
 TYPED_TEST(FileTestP, LeftoverString)
 {
-    auto& range = this->get("foo\nbar");
+    auto& range = this->get("abc\ndef");
     auto result = scn::scan<std::string>(range, "{}");
     ASSERT_TRUE(result);
-    EXPECT_EQ(result->value(), "foo");
-    EXPECT_EQ(this->get_reached(), "foo\n");
-    EXPECT_EQ(this->get_remainder(*result), "\nbar");
+    EXPECT_EQ(result->value(), "abc");
+    EXPECT_EQ(this->get_reached(), "abc\n");
+    EXPECT_EQ(this->get_remainder(*result), "\ndef");
 }
 
 TYPED_TEST(FileTestP, PutbackAll1)
 {
-    auto& range = this->get("foo");
+    auto& range = this->get("abc");
     auto result = scn::scan<int>(range, "{}");
     ASSERT_FALSE(result);
-    EXPECT_EQ(this->get_reached(), "f");
+    EXPECT_EQ(this->get_reached(), "a");
 }
 
 TYPED_TEST(FileTestP, PutbackAll2)
 {
-    auto& range = this->get("123 foo");
+    auto& range = this->get("123 abc");
     auto result = scn::scan<int, int>(range, "{} {}");
     ASSERT_FALSE(result);
-    EXPECT_EQ(this->get_reached(), "123 f");
+    EXPECT_EQ(this->get_reached(), "123 a");
 }

@@ -4551,7 +4551,7 @@ public:
     {
         return m_putback_buffer;
     }
-    SCN_NODISCARD const std::basic_string<CharT>& putback_buffer() const
+    SCN_NODISCARD std::basic_string_view<CharT> putback_buffer() const
     {
         return m_putback_buffer;
     }
@@ -5018,70 +5018,6 @@ private:
     std::string& m_prelude;
 };
 
-template <typename CharT>
-class basic_scan_ref_buffer : public basic_scan_buffer<CharT> {
-    using base = basic_scan_buffer<CharT>;
-
-public:
-    basic_scan_ref_buffer(base& other, std::ptrdiff_t starting_pos)
-        : base(other.is_contiguous(), std::basic_string_view<CharT>{}),
-          m_other(&other),
-          m_starting_pos(starting_pos)
-    {
-        this->m_current_view = other.get_segment_starting_at(starting_pos);
-        m_fill_needs_to_propagate = other.get_segment_starting_at(0).end() ==
-                                    this->m_current_view.end();
-    }
-
-    basic_scan_ref_buffer(std::basic_string_view<CharT> view)
-        : base(true, view), m_other(nullptr)
-    {
-    }
-
-    bool fill() override
-    {
-        if (!m_other) {
-            return false;
-        }
-        SCN_EXPECT(m_starting_pos >= 0);
-
-        if (m_fill_needs_to_propagate) {
-            auto ret = m_other->fill();
-            this->m_current_view = m_other->current_view();
-            this->m_putback_buffer = m_other->putback_buffer().substr(
-                static_cast<std::size_t>(m_starting_pos));
-            return ret;
-        }
-
-        m_fill_needs_to_propagate = true;
-        this->m_putback_buffer = std::basic_string<CharT>{this->m_current_view};
-        this->m_current_view = m_other->current_view();
-        return true;
-    }
-
-    bool sync(std::ptrdiff_t pos) override
-    {
-        if (!m_other) {
-            // Contiguous source, nothing to sync with
-            return true;
-        }
-        return m_other->sync(pos);
-    }
-
-private:
-    base* m_other;
-    std::ptrdiff_t m_starting_pos{-1};
-    bool m_fill_needs_to_propagate{false};
-};
-
-template <typename CharT>
-basic_scan_ref_buffer(basic_scan_buffer<CharT>&, std::ptrdiff_t)
-    -> basic_scan_ref_buffer<CharT>;
-
-template <typename CharT>
-basic_scan_ref_buffer(std::basic_string_view<CharT>)
-    -> basic_scan_ref_buffer<CharT>;
-
 template <typename Range>
 auto make_string_scan_buffer(const Range& range)
 {
@@ -5156,22 +5092,15 @@ struct make_scan_buffer_tag {};
 
 namespace _make_scan_buffer {
 
-// buffer -> ref_buffer
-inline auto impl(scan_buffer::range_type r, priority_tag<5>) noexcept
-    -> basic_scan_ref_buffer<char>
+// buffer range -> self
+inline decltype(auto) impl(scan_buffer::range_type& r, priority_tag<5>) noexcept
 {
-    if (!r.begin().stores_parent()) {
-        return basic_scan_ref_buffer{r.begin().contiguous_segment()};
-    }
-    return basic_scan_ref_buffer{*r.begin().parent(), r.begin().position()};
+    return r;
 }
-inline auto impl(wscan_buffer::range_type r, priority_tag<5>) noexcept
-    -> basic_scan_ref_buffer<wchar_t>
+inline decltype(auto) impl(wscan_buffer::range_type& r,
+                           priority_tag<5>) noexcept
 {
-    if (!r.begin().stores_parent()) {
-        return basic_scan_ref_buffer{r.begin().contiguous_segment()};
-    }
-    return basic_scan_ref_buffer{*r.begin().parent(), r.begin().position()};
+    return r;
 }
 
 template <typename Source>
@@ -5224,7 +5153,8 @@ auto impl(const CharT (&r)[N], priority_tag<3>) noexcept
 // FILE* -> file_buffer
 [[deprecated(
     "Prefer using scn::scan_file over a C FILE*, "
-    "as the latter lead to problems if the putback buffer gets full.")]]
+    "as using the latter will lead to problems, "
+    "if the putback buffer in the FILE gets full.")]]
 inline auto impl(std::FILE* file, priority_tag<3>)
 {
     return scan_cfile_buffer{file};
@@ -5304,7 +5234,7 @@ inline constexpr bool is_scannable_range =
                                 priority_tag<4>{})>;
 
 template <typename Range>
-auto make_scan_buffer(Range&& range)
+decltype(auto) make_scan_buffer(Range&& range)
 {
     SCN_GCC_COMPAT_PUSH
     SCN_GCC_COMPAT_IGNORE("-Wdeprecated-declarations")
@@ -6290,7 +6220,9 @@ public:
                           ranges::contiguous_range<Source>),
           m_is_borrowed(
               (ranges::range<Source> && ranges::borrowed_range<Source>) ||
-              std::is_same_v<detail::remove_cvref_t<Source>, std::FILE*>)
+              std::is_same_v<detail::remove_cvref_t<Source>, std::FILE*> ||
+              std::is_same_v<detail::remove_cvref_t<Source>, scan_file> ||
+              std::is_same_v<detail::remove_cvref_t<Source>, scan_file_ref>)
     {
     }
 
@@ -6774,11 +6706,12 @@ auto make_vscan_result(SourceRange&& source, std::ptrdiff_t n)
     }
     else {
         auto it = ranges::begin(source);
-        while (n > 0) {
+        auto end = ranges::end(source);
+        while (n > 0 && it != end) {
             --n;
             ++it;
         }
-        return {SCN_MOVE(it), make_vscan_result_end(source)};
+        return {SCN_MOVE(it), SCN_MOVE(end)};
     }
 }
 inline auto make_vscan_result(std::FILE* source, std::ptrdiff_t)
@@ -9014,6 +8947,9 @@ class basic_scan_context
     using args_type = basic_scan_args<basic_scan_context>;
     using arg_type = basic_scan_arg<basic_scan_context>;
 
+    static_assert(std::is_same_v<Range, detail::buffer_range_tag> ||
+                  ranges::borrowed_range<Range>);
+
 public:
     /// Character type of the input
     using char_type = CharT;
@@ -9031,10 +8967,27 @@ public:
     template <typename T>
     using scanner_type = scanner<T, char_type>;
 
+    [[deprecated(
+        "Use a constructor that provides a range or the sentinel explicitly.")]]
     constexpr basic_scan_context(iterator curr,
                                  args_type a,
                                  detail::locale_ref loc = {}) noexcept
-        : base(SCN_MOVE(a), loc), m_current(curr)
+        : basic_scan_context(SCN_MOVE(curr), sentinel{}, SCN_MOVE(a), loc)
+    {
+    }
+
+    constexpr basic_scan_context(range_type r,
+                                 args_type a,
+                                 detail::locale_ref loc = {}) noexcept
+        : basic_scan_context(ranges::begin(r), ranges::end(r), SCN_MOVE(a), loc)
+    {
+    }
+
+    constexpr basic_scan_context(iterator curr,
+                                 sentinel end,
+                                 args_type a,
+                                 detail::locale_ref loc = {}) noexcept
+        : base(SCN_MOVE(a), loc), m_current(curr), m_end(end)
     {
     }
 
@@ -9059,7 +9012,7 @@ public:
      */
     constexpr sentinel end() const
     {
-        return ranges::default_sentinel;
+        return m_end;
     }
 
     /**
@@ -9078,6 +9031,7 @@ public:
 
 private:
     iterator m_current;
+    SCN_NO_UNIQUE_ADDRESS sentinel m_end{};
 };
 
 namespace detail {
@@ -9562,16 +9516,18 @@ namespace detail {
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
                                                     std::string_view format,
                                                     scan_args args);
-SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(scan_buffer& source,
-                                                    std::string_view format,
-                                                    scan_args args);
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(
+    scan_buffer::range_type source,
+    std::string_view format,
+    scan_args args);
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
                                                     std::wstring_view format,
                                                     wscan_args args);
-SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(wscan_buffer& source,
-                                                    std::wstring_view format,
-                                                    wscan_args args);
+SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(
+    wscan_buffer::range_type source,
+    std::wstring_view format,
+    wscan_args args);
 
 #if !SCN_DISABLE_LOCALE
 template <typename Locale>
@@ -9583,7 +9539,7 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_localized_impl(
 template <typename Locale>
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_localized_impl(
     const Locale& loc,
-    scan_buffer& source,
+    scan_buffer::range_type source,
     std::string_view format,
     scan_args args);
 
@@ -9596,7 +9552,7 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_localized_impl(
 template <typename Locale>
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_localized_impl(
     const Locale& loc,
-    wscan_buffer& source,
+    wscan_buffer::range_type source,
     std::wstring_view format,
     wscan_args args);
 #endif
@@ -9605,15 +9561,26 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     std::string_view source,
     basic_scan_arg<scan_context> arg);
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
-    scan_buffer& source,
+    scan_buffer::range_type source,
     basic_scan_arg<scan_context> arg);
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     std::wstring_view source,
     basic_scan_arg<wscan_context> arg);
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
-    wscan_buffer& source,
+    wscan_buffer::range_type source,
     basic_scan_arg<wscan_context> arg);
+
+template <typename CharT>
+auto vscan_range_type(basic_scan_buffer<CharT>& buffer)
+{
+    return buffer.get();
+}
+template <typename T, std::enable_if_t<ranges::forward_range<T>>* = nullptr>
+auto vscan_range_type(T x)
+{
+    return x;
+}
 
 template <typename Range, typename CharT>
 auto vscan_generic(Range&& range,
@@ -9621,9 +9588,8 @@ auto vscan_generic(Range&& range,
                    basic_scan_args<detail::default_context<CharT>> args)
     -> vscan_result<Range>
 {
-    auto buffer = make_scan_buffer(range);
-
-    auto result = vscan_impl(buffer, format, args);
+    auto&& buffer = make_scan_buffer(range);
+    auto result = vscan_impl(vscan_range_type(buffer), format, args);
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
@@ -9638,10 +9604,11 @@ auto vscan_localized_generic(
     basic_scan_args<detail::default_context<CharT>> args) -> vscan_result<Range>
 {
 #if !SCN_DISABLE_LOCALE
-    auto buffer = detail::make_scan_buffer(range);
+    auto&& buffer = detail::make_scan_buffer(range);
 
     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-    auto result = detail::vscan_localized_impl(loc, buffer, format, args);
+    auto result = detail::vscan_localized_impl(loc, vscan_range_type(buffer),
+                                               format, args);
     SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
     if (SCN_UNLIKELY(!result)) {
@@ -9661,9 +9628,8 @@ auto vscan_value_generic(Range&& range,
                          basic_scan_arg<detail::default_context<CharT>> arg)
     -> vscan_result<Range>
 {
-    auto buffer = detail::make_scan_buffer(range);
-
-    auto result = detail::vscan_value_impl(buffer, arg);
+    auto&& buffer = detail::make_scan_buffer(range);
+    auto result = detail::vscan_value_impl(vscan_range_type(buffer), arg);
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }

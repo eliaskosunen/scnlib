@@ -19,6 +19,8 @@
 
 #include <scn/scan.h>
 
+#include <deque>
+
 // Simple wrapper over a `char`, doesn't allow a custom format string
 struct char_wrapper {
     char value{};
@@ -49,6 +51,15 @@ TEST(CustomTypeTest, CharWrapperWithDefaultFormatString)
     auto result = scn::scan<char_wrapper>("c", "{}");
     ASSERT_TRUE(result);
     EXPECT_EQ(*result->begin(), '\0');
+    EXPECT_EQ(result->value().value, 'c');
+}
+
+TEST(CustomTypeTest, CharWrapperWithDefaultFormatStringFromNonContiguousSource)
+{
+    auto src = std::deque<char>{'c'};
+    auto result = scn::scan<char_wrapper>(src, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), src.end());
     EXPECT_EQ(result->value().value, 'c');
 }
 
@@ -83,11 +94,35 @@ TEST(CustomTypeTest, IntegerWrapperWithDefaultFormatString)
     EXPECT_EQ(val, 123);
 }
 
+TEST(CustomTypeTest,
+     IntegerWrapperWithDefaultFormatStringFromNonContiguousSource)
+{
+    auto src = std::deque<char>{'1', '2', '3'};
+    auto result = scn::scan<integer_wrapper>(src, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), src.end());
+
+    const auto val = result->value().value;
+    EXPECT_EQ(val, 123);
+}
+
 TEST(CustomTypeTest, IntegerWrapperWithCustomFormatString)
 {
     auto result = scn::scan<integer_wrapper>("123", "{:x}");
     ASSERT_TRUE(result);
     EXPECT_EQ(*result->begin(), '\0');
+
+    const auto val = result->value().value;
+    EXPECT_EQ(val, 0x123);
+}
+
+TEST(CustomTypeTest,
+     IntegerWrapperWithCustomFormatStringFromNonContiguousSource)
+{
+    auto src = std::deque<char>{'1', '2', '3'};
+    auto result = scn::scan<integer_wrapper>(src, "{:x}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), src.end());
 
     const auto val = result->value().value;
     EXPECT_EQ(val, 0x123);
@@ -230,6 +265,18 @@ TEST(CustomTypeTest, VariantWrapperInvalidFormat)
     ASSERT_FALSE(result);
 }
 
+TEST(CustomTypeTest, VariantWrapperFromNonContiguousSource)
+{
+    auto src = std::deque<char>{'1', '2', '3'};
+    auto result = scn::scan<variant_wrapper>(src, "{:i}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->begin(), src.end());
+
+    const auto& val = result->value().value;
+    ASSERT_TRUE(std::holds_alternative<int>(val));
+    EXPECT_EQ(std::get<int>(val), 123);
+}
+
 struct type_without_default_constructor {
     type_without_default_constructor() = delete;
     explicit type_without_default_constructor(int v) : val(v) {}
@@ -294,6 +341,14 @@ struct scn::scanner<non_copyable_type> : scn::scanner<int> {
 TEST(CustomTypeTest, NonCopyableType)
 {
     auto result = scn::scan<non_copyable_type>("123", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().val, 123);
+}
+
+TEST(CustomTypeTest, NonCopyableTypeFromNonContiguousSource)
+{
+    auto result =
+        scn::scan<non_copyable_type>(std::deque<char>{'1', '2', '3'}, "{}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().val, 123);
 }

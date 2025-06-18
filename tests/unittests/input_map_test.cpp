@@ -41,15 +41,6 @@ std::string collect(Range r)
 }
 }  // namespace
 
-TEST(InputMapTest, RefBuffer)
-{
-    auto first = scn::detail::make_string_scan_buffer("foobar"sv);
-    auto second = scn::detail::make_scan_buffer(first.get());
-    static_assert(std::is_same_v<decltype(second),
-                                 scn::detail::basic_scan_ref_buffer<char>>);
-    EXPECT_EQ(collect(second.get()), "foobar");
-}
-
 #if 0
 TEST(InputMapTest, StringView)
 {

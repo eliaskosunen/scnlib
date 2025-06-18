@@ -1255,6 +1255,8 @@ struct file_buffer_interface {
         };
 
         if (file.has_buffering()) {
+            current_view = {};
+
             if (position <
                 static_cast<std::ptrdiff_t>(buffer.putback_buffer().size())) {
                 putback_wrapper wrapper{file};
@@ -1280,7 +1282,9 @@ struct file_buffer_interface {
 
         putback_wrapper wrapper{file};
         SCN_EXPECT(current_view.size() == 1);
-        if (!file.putback(current_view.front())) {
+        const auto current_view_ch = current_view.front();
+        current_view = {};
+        if (!file.putback(current_view_ch)) {
             return buffer.chars_available();
         }
 
@@ -3406,8 +3410,10 @@ inline constexpr bool enable_borrowed_range<::scn::impl::take_width_view<R>> =
 // contiguous_scan_context
 /////////////////////////////////////////////////////////////////
 
+namespace impl {
+
 template <typename CharT>
-class basic_scan_context<ranges::subrange<const CharT*, const CharT*>, CharT>
+class basic_contiguous_scan_context
     : public detail::scan_context_base<basic_scan_args<
           basic_scan_context<detail::buffer_range_tag, CharT>>> {
     using base = detail::scan_context_base<
@@ -3428,12 +3434,13 @@ public:
     template <typename Range,
               std::enable_if_t<ranges::contiguous_range<Range> &&
                                ranges::borrowed_range<Range>>* = nullptr>
-    constexpr basic_scan_context(Range&& r,
-                                 args_type a,
-                                 detail::locale_ref loc = {})
+    constexpr basic_contiguous_scan_context(Range&& r,
+                                            args_type a,
+                                            detail::locale_ref loc = {})
         : base(SCN_MOVE(a), loc),
-          m_range(ranges::data(r), ranges::data(r) + ranges::size(r)),
-          m_current(m_range.begin())
+          m_original_begin(ranges::begin(r)),
+          m_current(ranges::begin(r)),
+          m_end(ranges::end(r))
     {
     }
 
@@ -3444,17 +3451,17 @@ public:
 
     constexpr sentinel end() const
     {
-        return m_range.end();
+        return m_end;
+    }
+
+    constexpr iterator original_begin() const
+    {
+        return m_original_begin;
     }
 
     constexpr auto range() const
     {
         return ranges::subrange{begin(), end()};
-    }
-
-    constexpr auto underlying_range() const
-    {
-        return m_range;
     }
 
     void advance_to(iterator it)
@@ -3470,25 +3477,15 @@ public:
 
     void advance_to(const typename parent_context_type::iterator& it)
     {
-        SCN_EXPECT(it.position() <=
-                   static_cast<std::ptrdiff_t>(m_range.size()));
-        m_current = m_range.begin() + it.position();
-    }
-
-    std::ptrdiff_t begin_position()
-    {
-        return ranges::distance(m_range.begin(), begin());
+        SCN_EXPECT(it.position() <= std::distance(m_original_begin, m_end));
+        m_current = m_original_begin + it.position();
     }
 
 private:
-    range_type m_range;
+    iterator m_original_begin;
     iterator m_current;
+    SCN_NO_UNIQUE_ADDRESS sentinel m_end{};
 };
-
-namespace impl {
-template <typename CharT>
-using basic_contiguous_scan_context =
-    basic_scan_context<ranges::subrange<const CharT*, const CharT*>, CharT>;
 
 struct reader_error_handler {
     constexpr void on_error(const char* msg)
@@ -6380,6 +6377,10 @@ constexpr auto make_reader()
     }
 }
 
+template <typename Ctx>
+inline constexpr bool is_contiguous_context =
+    ranges::contiguous_range<typename Ctx::range_type>;
+
 template <typename Context>
 struct default_arg_reader {
     using context_type = Context;
@@ -6402,9 +6403,7 @@ struct default_arg_reader {
     scan_expected<iterator> operator()(T& value)
     {
         if constexpr (!detail::is_type_disabled<T> &&
-                      std::is_same_v<
-                          context_type,
-                          basic_contiguous_scan_context<char_type>>) {
+                      is_contiguous_context<Context>) {
             auto rd = make_reader<T, char_type>();
             return impl(rd, range, value);
         }
@@ -6426,18 +6425,16 @@ struct default_arg_reader {
 
     detail::default_context<char_type> make_custom_ctx()
     {
-        if constexpr (std::is_same_v<
-                          context_type,
-                          basic_contiguous_scan_context<char_type>>) {
+        if constexpr (is_contiguous_context<Context>) {
             auto it =
                 typename detail::basic_scan_buffer<char_type>::forward_iterator{
                     std::basic_string_view<char_type>(range.data(),
                                                       range.size()),
                     0};
-            return {it, args, loc};
+            return {it, ranges::default_sentinel, args, loc};
         }
         else {
-            return {range.begin(), args, loc};
+            return {range, args, loc};
         }
     }
 
@@ -6450,9 +6447,7 @@ struct default_arg_reader {
             auto ctx = make_custom_ctx();
             SCN_TRY_DISCARD(h.scan(parse_ctx, ctx));
 
-            if constexpr (std::is_same_v<
-                              context_type,
-                              basic_contiguous_scan_context<char_type>>) {
+            if constexpr (is_contiguous_context<Context>) {
                 return range.begin() + ctx.begin().position();
             }
             else {
@@ -6718,9 +6713,7 @@ struct arg_reader {
     scan_expected<iterator> operator()(T& value)
     {
         if constexpr (!detail::is_type_disabled<T> &&
-                      std::is_same_v<
-                          context_type,
-                          basic_contiguous_scan_context<char_type>>) {
+                      is_contiguous_context<Context>) {
             auto rd = make_reader<T, char_type>();
             SCN_TRY_DISCARD(rd.check_specs(specs));
             return impl(rd, range, value);
