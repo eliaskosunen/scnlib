@@ -80,6 +80,11 @@ struct unbuffered_mock_file {
     static void lock() {}
     static void unlock() {}
 
+    SCN_NODISCARD static bool is_never_readable()
+    {
+        return false;
+    }
+
     SCN_NODISCARD static bool has_buffering()
     {
         return false;
@@ -94,13 +99,13 @@ struct unbuffered_mock_file {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
-    [[noreturn]] static void fill_buffer()
+    [[noreturn]] static bool fill_buffer()
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
 
-    SCN_NODISCARD std::optional<char> read_one()
+    SCN_NODISCARD scn::expected<char, scn::impl::stdio_file_error> read_one()
     {
         auto* chunk = &m_source.get_active_chunk();
 
@@ -111,14 +116,14 @@ struct unbuffered_mock_file {
         }
 
         if (m_source.active_char_index.value() == chunk->size()) {
-            return std::nullopt;
+            return scn::unexpected(scn::impl::stdio_file_error::eof);
         }
 
         m_source.active_char_index.value() += 1;
 
         if (m_source.active_char_index.value() == chunk->size()) {
             if (!m_source.load_chunk(m_source.active_chunk_index.value() + 1)) {
-                return std::nullopt;
+                return scn::unexpected(scn::impl::stdio_file_error::eof);
             }
             m_source.active_char_index = 0;
             chunk = &m_source.get_active_chunk();
@@ -177,7 +182,7 @@ public:
     mock_file_buffer(MockFile& file)
         : base(base::non_contiguous_tag{}), m_file(file)
     {
-        interface::construct(m_file);
+        interface::construct(m_file, m_source_error);
     }
 
     ~mock_file_buffer() override
@@ -188,12 +193,13 @@ public:
     bool fill() override
     {
         return interface::fill(m_file, this->m_current_view,
-                               this->m_putback_buffer, m_latest);
+                               this->m_putback_buffer, this->m_source_error,
+                               m_latest);
     }
 
     bool sync(std::ptrdiff_t pos) override
     {
-        return interface::sync(m_file, pos, *this, this->m_current_view);
+        return interface::sync(m_file, pos, *this, this->m_current_view, true);
     }
 
 private:
@@ -277,10 +283,36 @@ std::vector<std::string> chunk_up(const std::string& input,
     SCN_UNREACHABLE;
 }
 
+struct custom_type {
+    int a{}, b{};
+};
+
 }  // namespace
+
+template <>
+struct scn::scanner<custom_type> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx) -> decltype(pctx.begin())
+    {
+        return pctx.begin();
+    }
+
+    template <typename Ctx>
+    auto scan(custom_type& val, Ctx& ctx) const
+        -> scn::scan_expected<typename Ctx::iterator>
+    {
+        auto res = scn::scan<int, int>(ctx.range(), "{} {}");
+        if (!res) {
+            return scn::unexpected(res.error());
+        }
+        std::tie(val.a, val.b) = res->values();
+        return res->begin();
+    }
+};
 
 using namespace std::string_literals;
 using testing::ElementsAre;
+using testing::FieldsAre;
 
 TEST(FileTest, ChunkUp)
 {
@@ -312,6 +344,43 @@ TEST(FileTest, Simple)
     auto [a, b] = result->values();
     EXPECT_EQ(a, 123);
     EXPECT_EQ(b, 456);
+}
+
+TEST(FileTest, CustomType)
+{
+    unbuffered_mock_file file{{"123 456"}};
+    mock_file_buffer buffer{file};
+    auto range = buffer.get();
+    auto result = scn::scan<custom_type>(range, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_THAT(result->value(), FieldsAre(123, 456));
+}
+
+TEST(FileTest, NonReadableFile)
+{
+    scn::scan_file file{stderr};
+    auto result = scn::scan<int>(file, "{}");
+    ASSERT_FALSE(result);
+}
+
+TEST(FileTest, Prelude)
+{
+    struct file_handle_guard {
+        file_handle_guard() = default;
+
+        FILE* handle{std::fopen("./scn_file_test_prelude_temp.txt", "wb+")};
+
+        ~file_handle_guard()
+        {
+            std::fclose(handle);
+        }
+    };
+    file_handle_guard handle{};
+    scn::scan_file file{handle.handle};
+    scn::detail::scan_file_access::get_prelude(file) = "123 456\n";
+    auto result = scn::scan<int>(file, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 123);
 }
 
 template <typename File, chunking_method Method>
@@ -447,4 +516,30 @@ TYPED_TEST(FileTestP, PutbackAll2)
     auto result = scn::scan<int, int>(range, "{} {}");
     ASSERT_FALSE(result);
     EXPECT_EQ(this->get_reached(), "123 a");
+}
+
+TYPED_TEST(FileTestP, CustomType)
+{
+    auto& range = this->get("123 456");
+    auto result = scn::scan<custom_type>(range, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_THAT(result->value(), FieldsAre(123, 456));
+    EXPECT_EQ(this->get_reached(), "123 456");
+    EXPECT_EQ(result->begin(), result->end());
+}
+
+TYPED_TEST(FileTestP, CustomTypeFail1)
+{
+    auto& range = this->get("123 abc");
+    auto result = scn::scan<custom_type>(range, "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(this->get_reached(), "123 a");
+}
+
+TYPED_TEST(FileTestP, CustomTypeFail2)
+{
+    auto& range = this->get("abc def");
+    auto result = scn::scan<custom_type>(range, "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(this->get_reached(), "a");
 }

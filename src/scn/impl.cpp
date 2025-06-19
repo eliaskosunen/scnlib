@@ -295,7 +295,7 @@ SCN_PUBLIC scan_cfile_buffer::scan_cfile_buffer(std::FILE* file)
     : base(base::non_contiguous_tag{}), m_file(file)
 {
     auto f = impl::stdio_file_interface{m_file};
-    stdio_file_buffer_interface::construct(f);
+    stdio_file_buffer_interface::construct(f, this->m_source_error);
 }
 
 SCN_PUBLIC scan_cfile_buffer::~scan_cfile_buffer()
@@ -308,29 +308,40 @@ SCN_PUBLIC bool scan_cfile_buffer::fill()
 {
     auto f = impl::stdio_file_interface{m_file};
     return stdio_file_buffer_interface::fill(f, this->m_current_view,
-                                             this->m_putback_buffer, m_latest);
+                                             this->m_putback_buffer,
+                                             this->m_source_error, m_latest);
 }
 
 SCN_PUBLIC bool scan_cfile_buffer::sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
-    return stdio_file_buffer_interface::sync(f, position, *this,
-                                             this->m_current_view) == position;
+    return stdio_file_buffer_interface::sync(
+               f, position, *this, this->m_current_view, true) == position;
 }
 
 SCN_PUBLIC scan_file2_buffer::scan_file2_buffer(scan_file& file)
-    : base(*file.handle()), m_prelude(scan_file_access::get_prelude(file))
+    : base(scan_file_access::get_handle(file)),
+      m_prelude(scan_file_access::get_prelude(file))
 {
     this->m_current_view = std::string_view{m_prelude.data(), m_prelude.size()};
 }
 
 SCN_PUBLIC scan_file2_buffer::~scan_file2_buffer() = default;
 
+SCN_PUBLIC bool scan_file2_buffer::fill()
+{
+    if (scan_cfile_buffer::fill()) {
+        m_prelude.clear();
+        return true;
+    }
+    return false;
+}
+
 SCN_PUBLIC bool scan_file2_buffer::sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
-    if (auto i = stdio_file_buffer_interface::sync(f, position, *this,
-                                                   this->m_current_view);
+    if (auto i = stdio_file_buffer_interface::sync(
+            f, position, *this, this->m_current_view, m_prelude.empty());
         i != position) {
         const auto n = i - position;
         m_prelude = SCN_MOVE(this->m_putback_buffer);
@@ -2897,6 +2908,10 @@ scan_expected<std::ptrdiff_t> vscan_internal(
     }
 
     auto& buffer = *source.begin().parent();
+    if (auto e = buffer.get_source_error(); SCN_UNLIKELY(!e)) {
+        return unexpected(e.error());
+    }
+
     const auto begin_position = source.begin().position();
     const auto end_position = [&]() {
         const auto argcount = args.size();
@@ -2923,6 +2938,10 @@ scan_expected<std::ptrdiff_t> vscan_internal(
                 scan_error::invalid_source_state,
                 "Failed to sync with underlying source");
         }
+    }
+
+    if (auto e = buffer.get_source_error(); SCN_UNLIKELY(!e)) {
+        return unexpected(e.error());
     }
 
     return end_position;

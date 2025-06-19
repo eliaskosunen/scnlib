@@ -57,6 +57,10 @@ SCN_CLANG_POP
 #include <re2/re2.h>
 #endif
 
+#if SCN_POSIX
+#include <fcntl.h>
+#endif
+
 namespace scn {
 SCN_BEGIN_NAMESPACE
 
@@ -967,6 +971,11 @@ struct stdio_file_interface_base {
 template <typename File, typename Tag>
 struct stdio_file_interface_impl;
 
+enum class stdio_file_error {
+    eof,
+    error,
+};
+
 template <typename File>
 struct stdio_file_interface_impl<File, default_file_tag>
     : stdio_file_interface_base<File> {
@@ -974,6 +983,11 @@ struct stdio_file_interface_impl<File, default_file_tag>
 
     static constexpr void lock() {}
     static constexpr void unlock() {}
+
+    SCN_NODISCARD static constexpr bool is_never_readable()
+    {
+        return false;
+    }
 
     SCN_NODISCARD static constexpr bool has_buffering()
     {
@@ -984,22 +998,32 @@ struct stdio_file_interface_impl<File, default_file_tag>
     {
         return {};
     }
+    static bool is_buffer_readable()
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
     static void unsafe_advance_n(std::ptrdiff_t)
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
-    static void fill_buffer()
+    static bool fill_buffer()
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
 
-    SCN_NODISCARD std::optional<char> read_one()
+    SCN_NODISCARD expected<char, stdio_file_error> read_one()
     {
+        SCN_EXPECT(!is_never_readable());
+        std::clearerr(this->file);
         auto res = std::fgetc(this->file);
-        if (res == EOF) {
-            return std::nullopt;
+        if (SCN_UNLIKELY(res == EOF)) {
+            if (std::ferror(this->file)) {
+                return unexpected(stdio_file_error::error);
+            }
+            return unexpected(stdio_file_error::eof);
         }
         return static_cast<char>(res);
     }
@@ -1019,23 +1043,30 @@ struct posix_stdio_file_interface : stdio_file_interface_base<File> {
 
     void lock()
     {
-        flockfile(this->file);
+        ::flockfile(this->file);
     }
     void unlock()
     {
-        funlockfile(this->file);
+        ::funlockfile(this->file);
     }
 
-    SCN_NODISCARD static constexpr bool has_buffering()
+    SCN_NODISCARD bool is_never_readable() const
     {
-        return true;
+        errno = 0;
+        int fd = ::fileno_unlocked(this->file);
+        int accmode = ::fcntl(fd, F_GETFL) & O_ACCMODE;
+        return accmode == O_WRONLY;
     }
 
-    SCN_NODISCARD std::optional<char> read_one()
+    SCN_NODISCARD expected<char, stdio_file_error> read_one()
     {
-        auto res = getc_unlocked(this->file);
+        ::clearerr_unlocked(this->file);
+        auto res = ::getc_unlocked(this->file);
         if (res == EOF) {
-            return std::nullopt;
+            if (::ferror_unlocked(this->file)) {
+                return unexpected(stdio_file_error::error);
+            }
+            return unexpected(stdio_file_error::eof);
         }
         return static_cast<char>(res);
     }
@@ -1060,6 +1091,11 @@ struct stdio_file_interface_impl<File, gnu_file_tag>
     : posix_stdio_file_interface<File> {
     using posix_stdio_file_interface<File>::posix_stdio_file_interface;
 
+    SCN_NODISCARD static constexpr bool has_buffering()
+    {
+        return true;
+    }
+
     SCN_NODISCARD std::string_view buffer() const
     {
         return detail::make_string_view_from_pointers(this->file->_IO_read_ptr,
@@ -1071,11 +1107,13 @@ struct stdio_file_interface_impl<File, gnu_file_tag>
         SCN_EXPECT(this->file->_IO_read_end - this->file->_IO_read_ptr >= n);
         this->file->_IO_read_ptr += n;
     }
-    void fill_buffer()
+    SCN_NODISCARD bool fill_buffer()
     {
         if (__uflow(this->file) != EOF) {
             --this->file->_IO_read_ptr;
+            return true;
         }
+        return false;
     }
 };
 
@@ -1083,6 +1121,11 @@ template <typename File>
 struct stdio_file_interface_impl<File, bsd_file_tag>
     : posix_stdio_file_interface<File> {
     using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD static constexpr bool has_buffering()
+    {
+        return true;
+    }
 
     SCN_NODISCARD std::string_view buffer() const
     {
@@ -1096,12 +1139,14 @@ struct stdio_file_interface_impl<File, bsd_file_tag>
         this->file->_p += n;
         this->file->_r -= static_cast<int>(n);
     }
-    void fill_buffer()
+    SCN_NODISCARD bool fill_buffer()
     {
         if (__srget(this->file) != EOF) {
             --this->file->_p;
             ++this->file->_r;
+            return true;
         }
+        return false;
     }
 };
 
@@ -1109,6 +1154,11 @@ template <typename File>
 struct stdio_file_interface_impl<File, musl_file_tag>
     : posix_stdio_file_interface<File> {
     using posix_stdio_file_interface<File>::posix_stdio_file_interface;
+
+    SCN_NODISCARD static constexpr bool has_buffering()
+    {
+        return true;
+    }
 
     SCN_NODISCARD std::string_view buffer() const
     {
@@ -1122,11 +1172,13 @@ struct stdio_file_interface_impl<File, musl_file_tag>
         SCN_EXPECT(this->file->rend - this->file->rpos >= n);
         this->file->rpos += n;
     }
-    void fill_buffer()
+    SCN_NODISCARD bool fill_buffer()
     {
         if (__uflow(this->file) != EOF) {
             --this->file->rpos;
+            return true;
         }
+        return false;
     }
 };
 
@@ -1159,7 +1211,7 @@ struct stdio_file_interface_impl<File, win32_file_tag>
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
-    static void fill_buffer()
+    SCN_NODISCARD static bool fill_buffer()
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
@@ -1191,9 +1243,15 @@ template <typename CharT, typename FileInterface>
 struct file_buffer_interface {
     using char_type = CharT;
 
-    static void construct(FileInterface& file)
+    static void construct(FileInterface& file,
+                          scan_expected<void>& source_error)
     {
         file.lock();
+        if (file.is_never_readable()) {
+            source_error = detail::unexpected_scan_error(
+                scan_error::invalid_source_state,
+                "Failed to read FILE, not opened for reading");
+        }
     }
 
     static void destruct(FileInterface& file)
@@ -1201,10 +1259,12 @@ struct file_buffer_interface {
         file.unlock();
     }
 
-    static bool fill(FileInterface& file,
-                     std::basic_string_view<char_type>& current_view,
-                     std::basic_string<char_type>& putback_buffer,
-                     std::optional<char_type>& latest)
+    SCN_NODISCARD static bool fill(
+        FileInterface& file,
+        std::basic_string_view<char_type>& current_view,
+        std::basic_string<char_type>& putback_buffer,
+        scan_expected<void>& source_error,
+        std::optional<char_type>& latest)
     {
         if (!current_view.empty()) {
             putback_buffer.insert(putback_buffer.end(), current_view.begin(),
@@ -1217,28 +1277,35 @@ struct file_buffer_interface {
                     static_cast<std::ptrdiff_t>(current_view.size()));
             }
 
-            if (file.buffer().empty()) {
-                file.fill_buffer();
+            if (!file.buffer().empty() || file.fill_buffer()) {
+                current_view = file.buffer();
+                return !current_view.empty();
             }
-            current_view = file.buffer();
-            return !current_view.empty();
         }
 
-        latest = file.read_one();
-        if (!latest) {
+        auto res = file.read_one();
+        if (!res) {
+            if (res.error() == stdio_file_error::error) {
+                source_error = detail::unexpected_scan_error(
+                    scan_error::invalid_source_state,
+                    "Failed to read FILE, ferror true");
+            }
+            latest.reset();
             current_view = {};
             return false;
         }
 
+        latest = *res;
         current_view = {&*latest, 1};
         return true;
     }
 
-    static std::ptrdiff_t sync(
+    SCN_NODISCARD static std::ptrdiff_t sync(
         FileInterface& file,
         std::ptrdiff_t position,
         const detail::basic_scan_buffer<char_type>& buffer,
-        std::basic_string_view<char_type>& current_view)
+        std::basic_string_view<char_type>& current_view,
+        bool is_prelude_empty)
     {
         struct putback_wrapper {
             putback_wrapper(FileInterface& file) : m_file(file)
@@ -1255,8 +1322,6 @@ struct file_buffer_interface {
         };
 
         if (file.has_buffering()) {
-            current_view = {};
-
             if (position <
                 static_cast<std::ptrdiff_t>(buffer.putback_buffer().size())) {
                 putback_wrapper wrapper{file};
@@ -1269,9 +1334,12 @@ struct file_buffer_interface {
                 return position;
             }
 
-            file.unsafe_advance_n(
-                position -
-                static_cast<std::ptrdiff_t>(buffer.putback_buffer().size()));
+            if (is_prelude_empty) {
+                file.unsafe_advance_n(position -
+                                      static_cast<std::ptrdiff_t>(
+                                          buffer.putback_buffer().size()));
+            }
+            current_view = {};
             return position;
         }
 
@@ -1281,11 +1349,13 @@ struct file_buffer_interface {
         }
 
         putback_wrapper wrapper{file};
-        SCN_EXPECT(current_view.size() == 1);
-        const auto current_view_ch = current_view.front();
-        current_view = {};
-        if (!file.putback(current_view_ch)) {
-            return buffer.chars_available();
+        if (!current_view.empty()) {
+            SCN_EXPECT(current_view.size() == 1);
+            const auto current_view_ch = current_view.front();
+            current_view = {};
+            if (!file.putback(current_view_ch)) {
+                return buffer.chars_available();
+            }
         }
 
         auto segment = std::string_view{buffer.putback_buffer().data(),

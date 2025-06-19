@@ -4504,6 +4504,19 @@ inline scan_file::scan_file(const scan_file_ref& file)
 namespace detail {
 
 struct scan_file_access {
+    static std::FILE* get_handle(scan_file& f)
+    {
+        SCN_EXPECT(f.m_file != nullptr);
+        return f.m_file;
+    }
+
+    static std::FILE* get_handle(scan_file_ref& f)
+    {
+        SCN_EXPECT(f.m_ref);
+        SCN_EXPECT(f.m_ref->m_file != nullptr);
+        return f.m_ref->m_file;
+    }
+
     static std::string& get_prelude(scan_file& f)
     {
         return f.m_prelude;
@@ -4531,6 +4544,7 @@ public:
     basic_scan_buffer& operator=(const basic_scan_buffer&) = delete;
     basic_scan_buffer(basic_scan_buffer&&) = delete;
     basic_scan_buffer& operator=(basic_scan_buffer&&) = delete;
+
     virtual ~basic_scan_buffer() = default;
 
     virtual bool fill() = 0;
@@ -4607,6 +4621,11 @@ public:
     SCN_NODISCARD range_type get();
     SCN_NODISCARD common_range_type get_common_range();
 
+    SCN_NODISCARD scan_expected<void> get_source_error() const
+    {
+        return m_source_error;
+    }
+
 protected:
     friend class forward_iterator;
     friend class common_forward_iterator;
@@ -4632,6 +4651,7 @@ protected:
 
     std::basic_string_view<char_type> m_current_view{};
     std::basic_string<char_type> m_putback_buffer{};
+    scan_expected<void> m_source_error{};
     bool m_is_contiguous{false};
 };
 
@@ -5030,6 +5050,8 @@ public:
     SCN_PUBLIC explicit scan_file2_buffer(scan_file& file);
     SCN_PUBLIC ~scan_file2_buffer() override;
 
+    SCN_PUBLIC bool fill() override;
+
     SCN_PUBLIC bool sync(std::ptrdiff_t position) override;
 
 private:
@@ -5180,12 +5202,14 @@ inline auto impl(std::FILE* file, priority_tag<3>)
 
 inline auto impl(scan_file& file, priority_tag<3>)
 {
+    SCN_EXPECT(scan_file_access::get_handle(file) != nullptr);
     return scan_file2_buffer{file};
 }
 auto impl(scan_file&&, priority_tag<3>) = delete;
 
 inline auto impl(scan_file_ref file, priority_tag<3>)
 {
+    SCN_EXPECT(scan_file_access::get_handle(file) != nullptr);
     return scan_file2_buffer{scan_file_access::get_underlying_file(file)};
 }
 
@@ -6513,11 +6537,8 @@ public:
 
     scan_result_fileref_storage() = default;
 
-    explicit scan_result_fileref_storage(scan_file_ref f) : m_file(f)
-    {
-    }
-    explicit scan_result_fileref_storage(scan_result_convert_tag,
-                                                   scan_file& f)
+    explicit scan_result_fileref_storage(scan_file_ref f) : m_file(f) {}
+    explicit scan_result_fileref_storage(scan_result_convert_tag, scan_file& f)
         : m_file(f)
     {
     }
@@ -8547,8 +8568,8 @@ constexpr typename ParseCtx::iterator parse_format_specs_impl(
     static_assert(
         std::is_same_v<mp_eval_or<void, dt_scanner_scan, Scanner, T, Ctx>,
                        scan_expected<typename Ctx::iterator>>,
-        "scn::scanner::scan(T&, Context&) must return "
-        "scan_expected<Context::iterator>.");
+        "scn::scanner::scan(T&, Context&) must be a const member function,"
+        "that returns scan_expected<Context::iterator>.");
 
     auto s = Scanner{};
     return s.parse(parse_ctx);
