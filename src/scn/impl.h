@@ -5110,6 +5110,9 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
 #endif  // SCN_REGEX_BACKEND == ...
 }
 
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wrestrict")
+
 inline std::string get_unescaped_regex_pattern(std::string_view pattern)
 {
     std::string result{pattern};
@@ -5128,6 +5131,8 @@ inline std::wstring get_unescaped_regex_pattern(std::wstring_view pattern)
     }
     return result;
 }
+
+SCN_GCC_POP
 
 template <typename SourceCharT>
 struct regex_matches_reader

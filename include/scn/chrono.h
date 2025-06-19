@@ -1667,7 +1667,7 @@ struct scanner<year, CharT> : public detail::chrono_component_scanner<CharT> {
             return unexpected(r.error());
         }
         assert(dt.year);
-        y = year{static_cast<int>(*dt.year)};
+        y = year{*dt.year};
         return *r;
     }
 };
@@ -1706,8 +1706,7 @@ struct scanner<year_month, CharT>
         }
         assert(dt.year);
         assert(dt.mon);
-        ym = year_month{year{static_cast<int>(*dt.year)},
-                        month{static_cast<unsigned>(*dt.mon)}};
+        ym = year_month{year{*dt.year}, month{static_cast<unsigned>(*dt.mon)}};
         return *r;
     }
 };
@@ -1727,7 +1726,7 @@ struct scanner<year_month_day, CharT>
         assert(dt.year);
         assert(dt.mon);
         assert(dt.mday);
-        ymd = year_month_day{year{static_cast<int>(*dt.year)},
+        ymd = year_month_day{year{*dt.year},
                              month{static_cast<unsigned>(*dt.mon)},
                              day{static_cast<unsigned>(*dt.mday)}};
         return *r;

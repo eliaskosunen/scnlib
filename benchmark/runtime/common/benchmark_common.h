@@ -19,6 +19,8 @@
 
 #include "scn/fwd.h"
 
+// benchmark.h
+
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wsign-conversion")
 SCN_GCC_IGNORE("-Wswitch-default")
@@ -36,11 +38,14 @@ SCN_CLANG_IGNORE("-Wswitch-default")
 SCN_CLANG_POP
 SCN_GCC_POP
 
+// fast_float.h
+
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
 SCN_GCC_IGNORE("-Wnoexcept")
 SCN_GCC_IGNORE("-Wundef")
 SCN_GCC_IGNORE("-Wsign-conversion")
+SCN_GCC_IGNORE("-Wuseless-cast")
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wold-style-cast")

@@ -225,9 +225,10 @@ jobs:
           - cxx: clang++-10
             std: 17
             image: silkeh/clang:10
-          - cxx: clang++-9
-            std: 17
-            image: silkeh/clang:9
+          # No clang 9: ICEs
+          #- cxx: clang++-9
+          #  std: 17
+          #  image: silkeh/clang:9
           - cxx: clang++-8
             std: 17
             image: silkeh/clang:8

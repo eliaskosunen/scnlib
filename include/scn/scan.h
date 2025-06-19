@@ -5028,6 +5028,7 @@ class scan_file2_buffer : public scan_cfile_buffer {
 
 public:
     SCN_PUBLIC explicit scan_file2_buffer(scan_file& file);
+    SCN_PUBLIC ~scan_file2_buffer() override;
 
     SCN_PUBLIC bool sync(std::ptrdiff_t position) override;
 

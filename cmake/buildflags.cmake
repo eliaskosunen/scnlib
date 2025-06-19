@@ -148,7 +148,7 @@ function(get_gcc_warning_flags flags)
     endif ()
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 7.0)
         list(APPEND tmp
-                -Walloc-zero -Walloca
+                -Walloca
                 -Wduplicated-branches
         )
     endif ()
@@ -157,14 +157,10 @@ function(get_gcc_warning_flags flags)
                 -Wcast-align=strict
         )
     endif ()
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 9.0)
-        list(APPEND tmp
-                -Wmismatched-tags -Wredundant-tags
-        )
-    endif ()
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0)
         list(APPEND tmp
                 -fconcepts-diagnostics-depth=99
+                -Wmismatched-tags -Wredundant-tags
         )
     endif ()
     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)

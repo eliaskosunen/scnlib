@@ -324,6 +324,8 @@ SCN_PUBLIC scan_file2_buffer::scan_file2_buffer(scan_file& file)
     this->m_current_view = std::string_view{m_prelude.data(), m_prelude.size()};
 }
 
+SCN_PUBLIC scan_file2_buffer::~scan_file2_buffer() = default;
+
 SCN_PUBLIC bool scan_file2_buffer::sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
@@ -3687,7 +3689,7 @@ struct datetime_setter<year> : unreachable_datetime_setter<year> {
     template <typename Handler>
     static void set_full_year(Handler& h, year& t, setter_state& st, int y)
     {
-        t = year{static_cast<int>(y)};
+        t = year{y};
         st.set_full_year(h);
     }
     template <typename Handler>
@@ -3737,7 +3739,7 @@ struct datetime_setter<year_month> : unreachable_datetime_setter<year_month> {
                               setter_state& st,
                               int y)
     {
-        t = year_month{year{static_cast<int>(y)}, t.month()};
+        t = year_month{year{y}, t.month()};
         st.set_full_year(h);
     }
     template <typename Handler>
@@ -3776,7 +3778,7 @@ struct datetime_setter<year_month_day>
                               setter_state& st,
                               int y)
     {
-        t = year_month_day{year{static_cast<int>(y)}, t.month(), t.day()};
+        t = year_month_day{year{y}, t.month(), t.day()};
         st.set_full_year(h);
     }
     template <typename Handler>
