@@ -24,8 +24,7 @@
 #if defined(SCN_MODULE) && defined(SCN_IMPORT_STD)
 import std;
 #else
-#include <ios>
-#include <streambuf>
+#include <istream>
 #endif
 
 namespace scn {
@@ -211,6 +210,43 @@ struct basic_istream_scanner {
         return streambuf.begin_prev();
     }
 };
+
+namespace detail {
+
+template <typename CharT>
+class basic_scan_istream_buffer : public basic_scan_buffer<CharT> {
+    using base = basic_scan_buffer<CharT>;
+    using traits = typename std::basic_istream<CharT>::traits_type;
+
+public:
+    SCN_PUBLIC explicit basic_scan_istream_buffer(
+        std::basic_istream<CharT>& strm);
+    SCN_PUBLIC ~basic_scan_istream_buffer() override;
+
+    SCN_PUBLIC bool fill() override;
+
+    SCN_PUBLIC bool sync(std::ptrdiff_t position) override;
+
+private:
+    std::basic_istream<CharT>* m_stream;
+    std::basic_string<CharT> m_buf;
+};
+
+using scan_istream_buffer = basic_scan_istream_buffer<char>;
+using wscan_istream_buffer = basic_scan_istream_buffer<wchar_t>;
+
+inline scan_istream_buffer make_scan_buffer(std::istream& stream,
+                                            make_scan_buffer_tag)
+{
+    return scan_istream_buffer{stream};
+}
+inline wscan_istream_buffer make_scan_buffer(std::wistream& stream,
+                                             make_scan_buffer_tag)
+{
+    return wscan_istream_buffer{stream};
+}
+
+}  // namespace detail
 
 SCN_END_NAMESPACE
 }  // namespace scn

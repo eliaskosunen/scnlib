@@ -81,7 +81,7 @@ auto vscan_value(Range&& range, basic_scan_arg<wscan_context> arg)
  */
 template <typename... Args,
           typename Source,
-          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
+          std::enable_if_t<detail::is_wide_source<Source>>* = nullptr>
 SCN_NODISCARD auto scan(Source&& source,
                         wscan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
@@ -100,7 +100,7 @@ SCN_NODISCARD auto scan(Source&& source,
  */
 template <typename... Args,
           typename Source,
-          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
+          std::enable_if_t<detail::is_wide_source<Source>>* = nullptr>
 SCN_NODISCARD auto scan(Source&& source,
                         wscan_format_string<Source, Args...> format,
                         std::tuple<Args...>&& initial_args)
@@ -121,7 +121,7 @@ SCN_NODISCARD auto scan(Source&& source,
 template <typename... Args,
           typename Locale,
           typename Source,
-          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr,
+          std::enable_if_t<detail::is_wide_source<Source>>* = nullptr,
           std::void_t<decltype(Locale::classic())>* = nullptr>
 SCN_NODISCARD auto scan(const Locale& loc,
                         Source&& source,
@@ -143,7 +143,7 @@ SCN_NODISCARD auto scan(const Locale& loc,
 template <typename... Args,
           typename Locale,
           typename Source,
-          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr,
+          std::enable_if_t<detail::is_wide_source<Source>>* = nullptr,
           std::void_t<decltype(Locale::classic())>* = nullptr>
 SCN_NODISCARD auto scan(const Locale& loc,
                         Source&& source,
@@ -165,7 +165,7 @@ SCN_NODISCARD auto scan(const Locale& loc,
  */
 template <typename T,
           typename Source,
-          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
+          std::enable_if_t<detail::is_wide_source<Source>>* = nullptr>
 SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
 {
     auto result = make_scan_result<Source, T>();
@@ -182,7 +182,7 @@ SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
  */
 template <typename T,
           typename Source,
-          std::enable_if_t<detail::is_wide_range<Source>>* = nullptr>
+          std::enable_if_t<detail::is_wide_source<Source>>* = nullptr>
 SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
     -> scan_result_type<Source, T>
 {

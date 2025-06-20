@@ -897,6 +897,69 @@ struct is_expected_impl<scn::impl::parse_expected<T>> : std::true_type {};
 
 namespace impl {
 
+template <typename CharT, typename Putback>
+SCN_NODISCARD std::ptrdiff_t buffer_sync_helper(
+    std::ptrdiff_t position,
+    std::basic_string_view<CharT>& current_view,
+    std::basic_string<CharT>& putback_buffer,
+    Putback&& putback)
+{
+    const auto total_chars_avail = static_cast<std::ptrdiff_t>(
+        current_view.size() + putback_buffer.size());
+    SCN_EXPECT(total_chars_avail >= position);
+    if (total_chars_avail == position) {
+        return position;
+    }
+
+    const auto n_to_put_back = total_chars_avail - position;
+    std::ptrdiff_t n_put_back = 0;
+
+    {
+        const auto n_to_put_back_from_current_view =
+            std::min(current_view.size(),
+                     static_cast<std::size_t>(total_chars_avail - position));
+        const auto current_view_segment = current_view.substr(
+            current_view.size() -
+            static_cast<std::size_t>(n_to_put_back_from_current_view));
+        for (auto it = current_view_segment.rbegin();
+             it != current_view_segment.rend(); ++it, (void)++n_put_back) {
+            if (!putback(*it)) {
+                current_view = current_view.substr(
+                    0,
+                    current_view.size() - static_cast<std::size_t>(n_put_back));
+                return total_chars_avail - n_put_back;
+            }
+        }
+
+        if (n_to_put_back == n_put_back) {
+            current_view = current_view.substr(
+                0, current_view.size() - static_cast<std::size_t>(n_put_back));
+            return position;
+        }
+        current_view = {};
+    }
+
+    {
+        const auto n_to_put_back_from_putback_buffer =
+            n_to_put_back - n_put_back;
+        const auto putback_buffer_segment =
+            std::basic_string_view<CharT>{putback_buffer}.substr(
+                putback_buffer.size() -
+                static_cast<std::size_t>(n_to_put_back_from_putback_buffer));
+        for (auto it = putback_buffer_segment.rbegin();
+             it != putback_buffer_segment.rend(); ++it, (void)++n_put_back) {
+            if (!putback(*it)) {
+                putback_buffer.resize(
+                    static_cast<std::size_t>(total_chars_avail - n_put_back));
+                return total_chars_avail - n_put_back;
+            }
+        }
+
+        putback_buffer.resize(static_cast<std::size_t>(position));
+        return position;
+    }
+}
+
 struct default_file_tag {};
 struct gnu_file_tag {};
 struct bsd_file_tag {};
@@ -1267,8 +1330,7 @@ struct file_buffer_interface {
         std::optional<char_type>& latest)
     {
         if (!current_view.empty()) {
-            putback_buffer.insert(putback_buffer.end(), current_view.begin(),
-                                  current_view.end());
+            putback_buffer.append(current_view.begin(), current_view.end());
         }
 
         if (file.has_buffering()) {
@@ -1305,14 +1367,15 @@ struct file_buffer_interface {
         std::ptrdiff_t position,
         const detail::basic_scan_buffer<char_type>& buffer,
         std::basic_string_view<char_type>& current_view,
+        std::basic_string<char_type>& putback_buffer,
         bool is_prelude_empty)
     {
-        struct putback_wrapper {
-            putback_wrapper(FileInterface& file) : m_file(file)
+        struct putback_guard {
+            putback_guard(FileInterface& file) : m_file(file)
             {
                 m_file.prepare_putback();
             }
-            ~putback_wrapper()
+            ~putback_guard()
             {
                 m_file.finalize_putback();
             }
@@ -1322,51 +1385,29 @@ struct file_buffer_interface {
         };
 
         if (file.has_buffering()) {
-            if (position <
-                static_cast<std::ptrdiff_t>(buffer.putback_buffer().size())) {
-                putback_wrapper wrapper{file};
+            if (position < static_cast<std::ptrdiff_t>(putback_buffer.size())) {
+                putback_guard wrapper{file};
                 auto segment = buffer.get_segment_starting_at(position);
                 for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
                     if (!file.putback(*it)) {
-                        return position + std::distance(it, segment.rend());
+                        return std::distance(it, segment.rend());
                     }
                 }
                 return position;
             }
 
             if (is_prelude_empty) {
-                file.unsafe_advance_n(position -
-                                      static_cast<std::ptrdiff_t>(
-                                          buffer.putback_buffer().size()));
+                file.unsafe_advance_n(position - static_cast<std::ptrdiff_t>(
+                                                     putback_buffer.size()));
             }
             current_view = {};
             return position;
         }
 
-        const auto chars_avail = buffer.chars_available();
-        if (position == chars_avail) {
-            return position;
-        }
-
-        putback_wrapper wrapper{file};
-        if (!current_view.empty()) {
-            SCN_EXPECT(current_view.size() == 1);
-            const auto current_view_ch = current_view.front();
-            current_view = {};
-            if (!file.putback(current_view_ch)) {
-                return buffer.chars_available();
-            }
-        }
-
-        auto segment = std::string_view{buffer.putback_buffer().data(),
-                                        buffer.putback_buffer().size()}
-                           .substr(static_cast<std::size_t>(position));
-        for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
-            if (!file.putback(*it)) {
-                return position + std::distance(it, segment.rend());
-            }
-        }
-        return position;
+        putback_guard guard{file};
+        return impl::buffer_sync_helper(
+            position, current_view, putback_buffer,
+            [&](char ch) { return file.putback(ch); });
     }
 };
 

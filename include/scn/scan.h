@@ -3604,32 +3604,6 @@ using result = decltype(impl<Range>());
 template <typename Range>
 using char_t = typename char_t_fn::result<Range>::type;
 
-template <typename Range, typename = void>
-inline constexpr bool is_file_or_narrow_range_impl = false;
-template <>
-inline constexpr bool is_file_or_narrow_range_impl<std::FILE*, void> = true;
-template <>
-inline constexpr bool is_file_or_narrow_range_impl<scan_file, void> = true;
-template <>
-inline constexpr bool is_file_or_narrow_range_impl<scan_file_ref, void> = true;
-template <typename Range>
-inline constexpr bool
-    is_file_or_narrow_range_impl<Range,
-                                 std::enable_if_t<ranges::range<Range>>> =
-        std::is_same_v<char_t<Range>, char>;
-
-template <typename Range>
-inline constexpr bool is_file_or_narrow_range =
-    is_file_or_narrow_range_impl<remove_cvref_t<Range>>;
-
-template <typename Range, typename = void>
-inline constexpr bool is_wide_range = false;
-template <typename Range>
-inline constexpr bool
-    is_wide_range<Range,
-                  std::enable_if_t<ranges::range<remove_cvref_t<Range>>>> =
-        std::is_same_v<char_t<Range>, wchar_t>;
-
 template <typename R, bool Borrowed = ranges::borrowed_range<R>>
 struct borrowed_tail_subrange {
     using type = ranges::subrange<ranges::iterator_t<R>, ranges::sentinel_t<R>>;
@@ -5143,6 +5117,7 @@ inline decltype(auto) impl(wscan_buffer::range_type& r,
     return r;
 }
 
+// customization point
 template <typename Source>
 auto impl(Source&& s, priority_tag<4>) noexcept(
     noexcept(make_scan_buffer(SCN_FWD(s), make_scan_buffer_tag{})))
@@ -5331,6 +5306,32 @@ template <typename Range,
           std::enable_if_t<!std::is_reference_v<Range> &&
                            !ranges::borrowed_range<Range>>* = nullptr>
 auto make_scan_buffer(Range&&) = delete;
+
+template <typename Source>
+using dt_make_scan_buffer =
+    decltype(_make_scan_buffer::impl(SCN_DECLVAL(Source), priority_tag<5>{}));
+template <typename Source>
+using scan_buffer_char_t =
+    typename remove_cvref_t<dt_make_scan_buffer<Source>>::char_type;
+
+template <typename CharT, typename Source, typename = void>
+inline constexpr bool is_source_impl = false;
+template <typename CharT, typename Source>
+inline constexpr bool
+    is_source_impl<CharT, Source, std::enable_if_t<ranges::range<Source>>> =
+        std::is_same_v<char_t<Source>, CharT>;
+template <typename CharT, typename Source>
+inline constexpr bool is_source_impl<
+    CharT,
+    Source,
+    std::enable_if_t<!ranges::range<Source> &&
+                     mp_valid<scan_buffer_char_t, Source>::value>> =
+    std::is_same_v<scan_buffer_char_t<Source>, CharT>;
+
+template <typename Source>
+inline constexpr bool is_narrow_source = is_source_impl<char, Source>;
+template <typename Source>
+inline constexpr bool is_wide_source = is_source_impl<wchar_t, Source>;
 
 }  // namespace detail
 
@@ -9932,7 +9933,7 @@ auto make_scan_result(std::tuple<Args...>&& initial_values)
  */
 template <typename... Args,
           typename Source,
-          typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
+          typename = std::enable_if_t<detail::is_narrow_source<Source>>>
 SCN_NODISCARD auto scan(Source&& source,
                         scan_format_string<Source, Args...> format)
     -> scan_result_type<Source, Args...>
@@ -9963,7 +9964,7 @@ SCN_NODISCARD auto scan(Source&& source,
  */
 template <typename... Args,
           typename Source,
-          typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
+          typename = std::enable_if_t<detail::is_narrow_source<Source>>>
 SCN_NODISCARD auto scan(Source&& source,
                         scan_format_string<Source, Args...> format,
                         std::tuple<Args...>&& initial_args)
@@ -9999,7 +10000,7 @@ SCN_NODISCARD auto scan(Source&& source,
 template <typename... Args,
           typename Locale,
           typename Source,
-          typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>,
+          typename = std::enable_if_t<detail::is_narrow_source<Source>>,
           typename = std::void_t<decltype(Locale::classic())>>
 SCN_NODISCARD auto scan(const Locale& loc,
                         Source&& source,
@@ -10020,7 +10021,7 @@ SCN_NODISCARD auto scan(const Locale& loc,
 template <typename... Args,
           typename Locale,
           typename Source,
-          typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>,
+          typename = std::enable_if_t<detail::is_narrow_source<Source>>,
           typename = std::void_t<decltype(Locale::classic())>>
 SCN_NODISCARD auto scan(const Locale& loc,
                         Source&& source,
@@ -10044,7 +10045,7 @@ SCN_NODISCARD auto scan(const Locale& loc,
  */
 template <typename T,
           typename Source,
-          typename = std::enable_if_t<detail::is_file_or_narrow_range<Source>>>
+          typename = std::enable_if_t<detail::is_narrow_source<Source>>>
 SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
 {
     auto result = make_scan_result<Source, T>();
@@ -10061,7 +10062,7 @@ SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
  */
 template <typename T,
           typename Source,
-          std::enable_if_t<detail::is_file_or_narrow_range<Source>>* = nullptr>
+          std::enable_if_t<detail::is_narrow_source<Source>>* = nullptr>
 SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
     -> scan_result_type<Source, T>
 {

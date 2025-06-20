@@ -17,6 +17,7 @@
 
 #include <scn/chrono.h>
 #include <scn/impl.h>
+#include <scn/istream.h>
 
 #include <mutex>
 
@@ -316,7 +317,8 @@ SCN_PUBLIC bool scan_cfile_buffer::sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
     return stdio_file_buffer_interface::sync(
-               f, position, *this, this->m_current_view, true) == position;
+               f, position, *this, this->m_current_view, this->m_putback_buffer,
+               true) == position;
 }
 
 SCN_PUBLIC scan_file2_buffer::scan_file2_buffer(scan_file& file)
@@ -341,11 +343,26 @@ SCN_PUBLIC bool scan_file2_buffer::sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
     if (auto i = stdio_file_buffer_interface::sync(
-            f, position, *this, this->m_current_view, m_prelude.empty());
+            f, position, *this, this->m_current_view, this->m_putback_buffer,
+            m_prelude.empty());
         i != position) {
-        const auto n = i - position;
-        m_prelude = SCN_MOVE(this->m_putback_buffer);
-        m_prelude.resize(static_cast<std::size_t>(n));
+        SCN_EXPECT(i > position);
+        const auto n_needed = i - position;
+
+        m_prelude.clear();
+        m_prelude.reserve(static_cast<std::size_t>(n_needed));
+
+        const auto n_from_current_view = std::min(
+            n_needed, static_cast<std::ptrdiff_t>(this->m_current_view.size()));
+        const auto n_from_putback_buffer = std::min(
+            n_needed - n_from_current_view,
+            static_cast<std::ptrdiff_t>(this->m_putback_buffer.size()));
+        SCN_EXPECT(n_from_putback_buffer + n_from_current_view == n_needed);
+
+        m_prelude.append(this->m_putback_buffer.end() - n_from_putback_buffer,
+                         this->m_putback_buffer.end());
+        m_prelude.append(this->m_current_view.end() - n_from_current_view,
+                         this->m_current_view.end());
     }
     return true;
 }
@@ -4806,6 +4823,68 @@ template auto chrono_scan_impl(std::wstring_view,
 }  // namespace detail
 
 #endif  // !SCN_DISABLE_CHRONO
+
+#if !SCN_DISABLE_IOSTREAM
+
+namespace detail {
+
+template <typename CharT>
+SCN_PUBLIC basic_scan_istream_buffer<CharT>::basic_scan_istream_buffer(
+    std::basic_istream<CharT>& strm)
+    : base(typename base::non_contiguous_tag{}), m_stream(&strm)
+{
+}
+
+template <typename CharT>
+SCN_PUBLIC basic_scan_istream_buffer<CharT>::~basic_scan_istream_buffer() =
+    default;
+
+template <typename CharT>
+SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::fill()
+{
+    SCN_EXPECT(m_stream);
+
+    if (!this->m_current_view.empty()) {
+        this->m_putback_buffer.append(this->m_current_view.begin(),
+                                      this->m_current_view.end());
+    }
+    this->m_current_view = {};
+
+    auto& streambuf = *m_stream->rdbuf();
+    if (traits::eq_int_type(streambuf.sgetc(), traits::eof())) {
+        return false;
+    }
+
+    const auto n_avail = streambuf.in_avail();
+    if (n_avail <= 0) {
+        return false;
+    }
+    const auto n_avail_u = static_cast<std::size_t>(n_avail_u);
+    if (n_avail_u > m_buf.size()) {
+        m_buf.resize(n_avail_u);
+    }
+
+    const auto n_read =
+        static_cast<std::size_t>(streambuf.sgetn(m_buf.data(), n_avail));
+    SCN_EXPECT(n_read == n_avail_u);
+    this->m_current_view = std::basic_string_view<CharT>{m_buf.data(), n_read};
+    return true;
+}
+
+template <typename CharT>
+SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::sync(std::ptrdiff_t position)
+{
+    SCN_EXPECT(m_stream);
+    auto& streambuf = *m_stream->rdbuf();
+    return impl::buffer_sync_helper(
+        position, this->m_current_view, this->m_putback_buffer, [&](CharT ch) {
+            return !traits::eq_int_type(streambuf.sputbackc(ch), traits::eof());
+        });
+}
+
+}  // namespace detail
+
+#endif  // !SCN_DISABLE_IOSTREAM
 
 SCN_END_NAMESPACE
 }  // namespace scn

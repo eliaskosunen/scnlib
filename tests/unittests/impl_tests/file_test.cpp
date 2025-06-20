@@ -199,7 +199,8 @@ public:
 
     bool sync(std::ptrdiff_t pos) override
     {
-        return interface::sync(m_file, pos, *this, this->m_current_view, true);
+        return interface::sync(m_file, pos, *this, this->m_current_view,
+                               this->m_putback_buffer, true);
     }
 
 private:
