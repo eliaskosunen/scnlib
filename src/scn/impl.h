@@ -960,6 +960,31 @@ SCN_NODISCARD std::ptrdiff_t buffer_sync_helper(
     }
 }
 
+inline void set_prelude_after_sync(std::string& prelude,
+                                   std::ptrdiff_t expected_position,
+                                   std::ptrdiff_t synced_position,
+                                   std::string_view& current_view,
+                                   std::string& putback_buffer)
+{
+    SCN_EXPECT(synced_position > expected_position);
+    const auto n_needed = synced_position - expected_position;
+
+    prelude.clear();
+    prelude.reserve(static_cast<std::size_t>(n_needed));
+
+    const auto n_from_current_view =
+        std::min(n_needed, static_cast<std::ptrdiff_t>(current_view.size()));
+    const auto n_from_putback_buffer =
+        std::min(n_needed - n_from_current_view,
+                 static_cast<std::ptrdiff_t>(putback_buffer.size()));
+    SCN_EXPECT(n_from_putback_buffer + n_from_current_view == n_needed);
+
+    prelude.append(putback_buffer.end() - n_from_putback_buffer,
+                   putback_buffer.end());
+    prelude.append(current_view.end() - n_from_current_view,
+                   current_view.end());
+}
+
 struct default_file_tag {};
 struct gnu_file_tag {};
 struct bsd_file_tag {};

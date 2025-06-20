@@ -308,17 +308,16 @@ SCN_PUBLIC scan_cfile_buffer::~scan_cfile_buffer()
 SCN_PUBLIC bool scan_cfile_buffer::fill()
 {
     auto f = impl::stdio_file_interface{m_file};
-    return stdio_file_buffer_interface::fill(f, this->m_current_view,
-                                             this->m_putback_buffer,
-                                             this->m_source_error, m_latest);
+    return stdio_file_buffer_interface::fill(
+        f, m_current_view, m_putback_buffer, m_source_error, m_latest);
 }
 
 SCN_PUBLIC bool scan_cfile_buffer::sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
-    return stdio_file_buffer_interface::sync(
-               f, position, *this, this->m_current_view, this->m_putback_buffer,
-               true) == position;
+    return stdio_file_buffer_interface::sync(f, position, *this, m_current_view,
+                                             m_putback_buffer,
+                                             true) == position;
 }
 
 SCN_PUBLIC scan_file2_buffer::scan_file2_buffer(scan_file& file)
@@ -343,26 +342,11 @@ SCN_PUBLIC bool scan_file2_buffer::sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
     if (auto i = stdio_file_buffer_interface::sync(
-            f, position, *this, this->m_current_view, this->m_putback_buffer,
+            f, position, *this, m_current_view, m_putback_buffer,
             m_prelude.empty());
         i != position) {
-        SCN_EXPECT(i > position);
-        const auto n_needed = i - position;
-
-        m_prelude.clear();
-        m_prelude.reserve(static_cast<std::size_t>(n_needed));
-
-        const auto n_from_current_view = std::min(
-            n_needed, static_cast<std::ptrdiff_t>(this->m_current_view.size()));
-        const auto n_from_putback_buffer = std::min(
-            n_needed - n_from_current_view,
-            static_cast<std::ptrdiff_t>(this->m_putback_buffer.size()));
-        SCN_EXPECT(n_from_putback_buffer + n_from_current_view == n_needed);
-
-        m_prelude.append(this->m_putback_buffer.end() - n_from_putback_buffer,
-                         this->m_putback_buffer.end());
-        m_prelude.append(this->m_current_view.end() - n_from_current_view,
-                         this->m_current_view.end());
+        impl::set_prelude_after_sync(m_prelude, position, i, m_current_view,
+                                     m_putback_buffer);
     }
     return true;
 }

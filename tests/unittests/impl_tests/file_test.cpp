@@ -143,6 +143,14 @@ struct unbuffered_mock_file {
 
     SCN_NODISCARD bool putback(char ch)
     {
+        if (fail_all_putbacks) {
+            return false;
+        }
+        if (fail_next_putback) {
+            fail_next_putback = false;
+            return false;
+        }
+
         if (!m_source.active_chunk_index) {
             return false;
         }
@@ -171,6 +179,7 @@ struct unbuffered_mock_file {
 
     chunked_source m_source;
     std::size_t chars_read{0}, chars_put_back{0};
+    bool fail_next_putback{false}, fail_all_putbacks{false};
 };
 
 template <typename MockFile>
@@ -199,12 +208,23 @@ public:
 
     bool sync(std::ptrdiff_t pos) override
     {
-        return interface::sync(m_file, pos, *this, this->m_current_view,
-                               this->m_putback_buffer, true);
+        if (auto i = interface::sync(m_file, pos, *this, this->m_current_view,
+                                     this->m_putback_buffer, m_prelude.empty());
+            i != pos) {
+            scn::impl::set_prelude_after_sync(m_prelude, pos, i, m_current_view,
+                                              m_putback_buffer);
+        }
+        return true;
+    }
+
+    std::string& prelude()
+    {
+        return m_prelude;
     }
 
 private:
     MockFile& m_file;
+    std::string m_prelude{};
     std::optional<char> m_latest{std::nullopt};
 };
 
@@ -416,9 +436,9 @@ protected:
     template <typename Res>
     std::string get_remainder(const Res& res)
     {
-        std::string out;
-        for (auto it = res.begin(); it != res.end(); ++it) {
-            out.push_back(*it);
+        std::string out{};
+        for (char ch : res) {
+            out.push_back(ch);
         }
         return out;
     }
@@ -543,4 +563,87 @@ TYPED_TEST(FileTestP, CustomTypeFail2)
     auto result = scn::scan<custom_type>(range, "{}");
     ASSERT_FALSE(result);
     EXPECT_EQ(this->get_reached(), "a");
+}
+
+TYPED_TEST(FileTestP, PutbackFail1)
+{
+    auto& range = this->get("123");
+    this->m_file->fail_all_putbacks = true;
+
+    auto result = scn::scan<int>(range, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 123);
+    EXPECT_EQ(this->get_reached(), "123");
+    EXPECT_EQ(this->m_buffer->prelude(), "");
+    EXPECT_EQ(this->get_remainder(*result), "");
+}
+
+TYPED_TEST(FileTestP, PutbackFail2)
+{
+    auto& range = this->get("123\n456");
+    this->m_file->fail_all_putbacks = true;
+
+    auto result = scn::scan<int, int>(range, "{} {}");
+    ASSERT_TRUE(result);
+    EXPECT_THAT(result->values(), FieldsAre(123, 456));
+    EXPECT_EQ(this->get_reached(), "123\n456");
+    EXPECT_EQ(this->m_buffer->prelude(), "");
+    EXPECT_EQ(this->get_remainder(*result), "");
+}
+
+TYPED_TEST(FileTestP, PutbackFailWithError1)
+{
+    auto& range = this->get("abc");
+    this->m_file->fail_all_putbacks = true;
+
+    auto result = scn::scan<int>(range, "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(this->get_reached(), "a");
+    EXPECT_EQ(this->m_buffer->prelude(), "a");
+}
+
+TYPED_TEST(FileTestP, PutbackFailWithError2)
+{
+    auto& range = this->get("123\nabc");
+    this->m_file->fail_all_putbacks = true;
+
+    auto result = scn::scan<int, int>(range, "{} {}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(this->get_reached(), "123\na");
+    EXPECT_EQ(this->m_buffer->prelude(), "123\na");
+}
+
+TYPED_TEST(FileTestP, PutbackFailWithCustomType)
+{
+    auto& range = this->get("123 456");
+    this->m_file->fail_all_putbacks = true;
+
+    auto result = scn::scan<custom_type>(range, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_THAT(result->value(), FieldsAre(123, 456));
+    EXPECT_EQ(this->get_reached(), "123 456");
+    EXPECT_EQ(this->m_buffer->prelude(), "");
+    EXPECT_EQ(this->get_remainder(*result), "");
+}
+
+TYPED_TEST(FileTestP, PutbackFailWithCustomTypeFail1)
+{
+    auto& range = this->get("123 abc");
+    this->m_file->fail_all_putbacks = true;
+
+    auto result = scn::scan<custom_type>(range, "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(this->get_reached(), "123 a");
+    EXPECT_EQ(this->m_buffer->prelude(), "123 a");
+}
+
+TYPED_TEST(FileTestP, PutbackFailWithCustomTypeFail2)
+{
+    auto& range = this->get("abc def");
+    this->m_file->fail_all_putbacks = true;
+
+    auto result = scn::scan<custom_type>(range, "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(this->get_reached(), "a");
+    EXPECT_EQ(this->m_buffer->prelude(), "a");
 }
