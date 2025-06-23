@@ -19,6 +19,8 @@
 
 #include <scn/scan.h>
 
+#include <deque>
+
 using ::testing::Test;
 
 template <bool, typename>
@@ -101,4 +103,37 @@ TEST(SourceTest, SourceIsStringRvalue)
     static_assert(
         std::is_same_v<decltype(result),
                        scan_result_helper<scn::ranges::dangling, int, double>>);
+}
+
+TEST(SourceTest, SourceIsRandomAccessRange)
+{
+    auto source = std::deque<char>{'1', '2', '3', ' ', '3', '.', '1', '4'};
+    auto result = scn::scan<int, double>(source, "{} {}");
+    static_assert(std::is_same_v<
+                  decltype(result),
+                  scan_result_helper<std::deque<char>::iterator, int, double>>);
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(result->range().empty());
+    auto [i, d] = result->values();
+    EXPECT_EQ(i, 123);
+    EXPECT_DOUBLE_EQ(d, 3.14);
+}
+
+TEST(SourceTest, SourceIsInputRange)
+{
+    auto source = std::deque<char>{'1', '2', '3', ' ', '3', '.', '1', '4'};
+    auto input = scn::ranges::views::to_input(source);
+    static_assert(std::is_same_v<decltype(input),
+                                 scn::ranges::to_input_view<
+                                     scn::ranges::ref_view<std::deque<char>>>>);
+
+    // auto result = scn::scan<int, double>(input, "{} {}");
+    // static_assert(std::is_same_v<
+    //               decltype(result),
+    //               scan_result_helper<scn::ranges::iterator_t<decltype(input)>,
+    //                                  int, double>>);
+    // ASSERT_TRUE(result);
+    // auto [i, d] = result->values();
+    // EXPECT_EQ(i, 123);
+    // EXPECT_DOUBLE_EQ(d, 3.14);
 }

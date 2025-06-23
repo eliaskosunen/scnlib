@@ -207,6 +207,8 @@ struct tag_type {
 
 template <typename...>
 struct dependent_false : std::false_type {};
+template <typename...>
+struct dependent_true : std::true_type {};
 
 template <typename T>
 struct remove_reference {

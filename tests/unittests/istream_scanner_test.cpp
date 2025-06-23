@@ -19,8 +19,6 @@
 
 #include "wrapped_gtest.h"
 
-#include <istream>
-
 struct has_istream_operator {
     int i{};
 

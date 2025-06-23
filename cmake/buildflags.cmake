@@ -180,6 +180,7 @@ endfunction()
 
 function(get_clang_warning_flags flags)
     set(tmp
+            -ftemplate-backtrace-limit=0
             -Weverything
             -Wno-padded
             -Wno-c++98-compat

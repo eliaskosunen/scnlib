@@ -2121,7 +2121,6 @@ private:
  * Copyright (c) 2018 Tristan Brindle (tcbrindle at gmail dot com)
  */
 namespace ranges {
-
 namespace detail {
 using namespace scn::detail;
 
@@ -2638,8 +2637,8 @@ struct weakly_incrementable_concept {
 
 template <typename I>
 inline constexpr bool weakly_incrementable =
-    std::is_default_constructible_v<I> && movable<I> &&
-    detail::requires_<detail::weakly_incrementable_concept, I>;
+    /* std::is_default_constructible_v<I> && */
+    movable<I> && detail::requires_<detail::weakly_incrementable_concept, I>;
 
 namespace detail {
 
@@ -2880,22 +2879,24 @@ private:
 
     template <typename T>
     static constexpr auto impl(T&& t, priority_tag<1>) noexcept(
-        noexcept(decay_copy(SCN_FWD(t).begin())))
+        noexcept(detail::decay_copy(SCN_FWD(t).begin())))
         -> std::enable_if_t<
-            input_or_output_iterator<decltype(decay_copy(SCN_FWD(t).begin()))>,
-            decltype(decay_copy(SCN_FWD(t).begin()))>
+            input_or_output_iterator<
+                decltype(detail::decay_copy(SCN_FWD(t).begin()))>,
+            decltype(detail::decay_copy(SCN_FWD(t).begin()))>
     {
-        return decay_copy(t.begin());
+        return detail::decay_copy(t.begin());
     }
 
     template <typename T>
     static constexpr auto impl(T&& t, priority_tag<0>) noexcept(
-        noexcept(decay_copy(begin(SCN_FWD(t)))))
+        noexcept(detail::decay_copy(begin(SCN_FWD(t)))))
         -> std::enable_if_t<
-            input_or_output_iterator<decltype(decay_copy(begin(SCN_FWD(t))))>,
-            decltype(decay_copy(begin(SCN_FWD(t))))>
+            input_or_output_iterator<
+                decltype(detail::decay_copy(begin(SCN_FWD(t))))>,
+            decltype(detail::decay_copy(begin(SCN_FWD(t))))>
     {
-        return decay_copy(begin(SCN_FWD(t)));
+        return detail::decay_copy(begin(SCN_FWD(t)));
     }
 
 public:
@@ -2936,23 +2937,24 @@ private:
     }
 
     template <typename T,
-              typename S = decltype(decay_copy(SCN_DECLVAL(T).end())),
+              typename S = decltype(detail::decay_copy(SCN_DECLVAL(T).end())),
               typename I = decltype(::scn::ranges::begin(SCN_DECLVAL(T)))>
     static constexpr auto impl(T&& t, priority_tag<1>) noexcept(
-        noexcept(decay_copy(SCN_FWD(t).end())))
+        noexcept(detail::decay_copy(SCN_FWD(t).end())))
         -> std::enable_if_t<sentinel_for<S, I>,
-                            decltype(decay_copy(SCN_FWD(t).end()))>
+                            decltype(detail::decay_copy(SCN_FWD(t).end()))>
     {
-        return decay_copy(SCN_FWD(t).end());
+        return detail::decay_copy(SCN_FWD(t).end());
     }
 
     template <typename T,
-              typename S = decltype(decay_copy(end(SCN_DECLVAL(T)))),
+              typename S = decltype(detail::decay_copy(end(SCN_DECLVAL(T)))),
               typename I = decltype(::scn::ranges::begin(SCN_DECLVAL(T)))>
-    static constexpr auto impl(T&& t, priority_tag<0>) noexcept(noexcept(
-        decay_copy(end(SCN_FWD(t))))) -> std::enable_if_t<sentinel_for<S, I>, S>
+    static constexpr auto impl(T&& t, priority_tag<0>) noexcept(
+        noexcept(detail::decay_copy(end(SCN_FWD(t)))))
+        -> std::enable_if_t<sentinel_for<S, I>, S>
     {
-        return decay_copy(end(SCN_FWD(t)));
+        return detail::decay_copy(end(SCN_FWD(t)));
     }
 
 public:
@@ -3012,11 +3014,12 @@ namespace data_ {
 struct fn {
 private:
     template <typename T,
-              typename D = decltype(decay_copy(SCN_DECLVAL(T&).data()))>
-    static constexpr auto impl(T& t, priority_tag<1>) noexcept(noexcept(
-        decay_copy(t.data()))) -> std::enable_if_t<is_object_pointer_v<D>, D>
+              typename D = decltype(detail::decay_copy(SCN_DECLVAL(T&).data()))>
+    static constexpr auto impl(T& t, priority_tag<1>) noexcept(
+        noexcept(detail::decay_copy(t.data())))
+        -> std::enable_if_t<is_object_pointer_v<D>, D>
     {
-        return t.data();
+        return detail::decay_copy(t.data());
     }
 
     template <typename T>
@@ -3068,26 +3071,28 @@ private:
         return N;
     }
 
-    template <typename T,
-              typename I = decltype(decay_copy(std::declval<T>().size()))>
+    template <
+        typename T,
+        typename I = decltype(detail::decay_copy(std::declval<T>().size()))>
     static constexpr auto impl(T&& t, priority_tag<2>) noexcept(
-        noexcept(decay_copy(SCN_FWD(t).size())))
+        noexcept(detail::decay_copy(SCN_FWD(t).size())))
         -> std::enable_if_t<std::is_integral_v<I> &&
                                 !disable_sized_range<remove_cvref_t<T>>,
                             I>
     {
-        return decay_copy(SCN_FWD(t).size());
+        return detail::decay_copy(SCN_FWD(t).size());
     }
 
-    template <typename T,
-              typename I = decltype(decay_copy(size(std::declval<T>())))>
+    template <
+        typename T,
+        typename I = decltype(detail::decay_copy(size(std::declval<T>())))>
     static constexpr auto impl(T&& t, priority_tag<1>) noexcept(
-        noexcept(decay_copy(size(SCN_FWD(t)))))
+        noexcept(detail::decay_copy(size(SCN_FWD(t)))))
         -> std::enable_if_t<std::is_integral_v<I> &&
                                 !disable_sized_range<remove_cvref_t<T>>,
                             I>
     {
-        return decay_copy(size(SCN_FWD(t)));
+        return detail::decay_copy(size(SCN_FWD(t)));
     }
 
     template <typename T,
@@ -3361,8 +3366,10 @@ template <typename R>
 using borrowed_iterator_t =
     std::conditional_t<borrowed_range<R>, iterator_t<R>, dangling>;
 
+struct view_base {};
+
 template <typename D>
-class view_interface {
+class view_interface : public view_base {
     static_assert(std::is_class<D>::value, "");
     static_assert(std::is_same_v<D, std::remove_cv_t<D>>, "");
 
@@ -3513,11 +3520,18 @@ public:
     {
     }
 
+    template <typename II = I, std::enable_if_t<copyable<II>>* = nullptr>
     SCN_NODISCARD constexpr I begin() const
         noexcept(std::is_nothrow_copy_constructible_v<I>)
     {
         return m_iterator;
     }
+    template <typename II = I, std::enable_if_t<!copyable<II>>* = nullptr>
+    SCN_NODISCARD constexpr I begin() noexcept
+    {
+        return SCN_MOVE(m_iterator);
+    }
+
     SCN_NODISCARD constexpr S end() const
         noexcept(std::is_nothrow_copy_constructible_v<S>)
     {
@@ -3562,6 +3576,1500 @@ inline constexpr bool enable_borrowed_range<subrange<I, S>> = true;
 
 struct default_sentinel_t {};
 inline constexpr default_sentinel_t default_sentinel{};
+
+// viewable_range (C++20)
+
+namespace detail {
+
+template <typename T>
+inline constexpr bool is_basic_view =
+    range<T> && std::is_base_of_v<view_base, T>;
+template <typename CharT, typename Traits>
+inline constexpr bool is_basic_view<std::basic_string_view<CharT, Traits>> =
+    true;
+template <typename I, typename S>
+inline constexpr bool is_basic_view<subrange<I, S>> = true;
+
+template <typename R>
+inline constexpr bool is_initializer_list_impl = false;
+template <typename T>
+inline constexpr bool is_initializer_list_impl<std::initializer_list<T>> = true;
+template <typename R>
+inline constexpr bool is_initializer_list =
+    is_initializer_list_impl<remove_cvref_t<R>>;
+
+}  // namespace detail
+
+template <typename T>
+inline constexpr bool viewable_range =
+    range<T> &&
+    ((detail::is_basic_view<detail::remove_cvref_t<T>> &&
+      std::is_constructible_v<detail::remove_cvref_t<T>, T>) ||
+     (!detail::is_basic_view<detail::remove_cvref_t<T>> &&
+      (std::is_lvalue_reference_v<T> || (movable<std::remove_reference_t<T>> &&
+                                         !detail::is_initializer_list<T>))));
+
+// ref_view (C++20)
+
+namespace detail {
+
+template <typename T, typename U>
+inline constexpr bool different_from =
+    !std::is_same_v<remove_cvref_t<T>, remove_cvref_t<U>>;
+
+}
+
+template <typename R>
+class ref_view : view_interface<ref_view<R>> {
+    static_assert(std::is_object_v<R>);
+    static_assert(range<R>);
+
+    struct constructor_req {
+        static void fun(R&);
+        static void fun(R&&) = delete;
+
+        template <typename T>
+        auto requires_() -> decltype(fun(SCN_DECLVAL(T)));
+    };
+
+public:
+    template <typename T,
+              std::enable_if_t<detail::different_from<T, ref_view> &&
+                               detail::requires_<constructor_req, T> &&
+                               std::is_convertible_v<T, R&>>* = nullptr>
+    constexpr ref_view(T&& t) : m_range(&static_cast<R&>(SCN_FWD(t)))
+    {
+    }
+
+    constexpr R& base() const
+    {
+        return *m_range;
+    }
+
+    constexpr iterator_t<R> begin() const
+    {
+        return ranges::begin(*m_range);
+    }
+    constexpr sentinel_t<R> end() const
+    {
+        return ranges::end(*m_range);
+    }
+
+    template <typename T = R,
+              typename = decltype(ranges::empty(SCN_DECLVAL(const T&)))>
+    constexpr bool empty() const
+    {
+        return ranges::empty(*m_range);
+    }
+
+    template <typename T = R, std::enable_if_t<sized_range<T>>* = nullptr>
+    constexpr auto size() const
+    {
+        return ranges::size(*m_range);
+    }
+
+    template <typename T = R, std::enable_if_t<contiguous_range<T>>* = nullptr>
+    constexpr auto data() const
+    {
+        return ranges::data(*m_range);
+    }
+
+private:
+    R* m_range{};
+};
+
+template <typename R>
+ref_view(R&) -> ref_view<R>;
+
+template <typename T>
+inline constexpr bool enable_borrowed_range<ref_view<T>> = true;
+
+// owning_view (C++20)
+
+namespace detail {
+
+template <typename R,
+          bool DefaultConstructible = std::is_default_constructible_v<R>>
+struct owning_view_base;
+
+template <typename R>
+struct owning_view_base<R, true> {
+    owning_view_base() = default;
+    owning_view_base(R&& r) : m_range(SCN_MOVE(r)) {}
+
+    R m_range{};
+};
+
+template <typename R>
+struct owning_view_base<R, false> {
+    owning_view_base(R&& r) : m_range(SCN_MOVE(r)) {}
+
+    R m_range;
+};
+
+}  // namespace detail
+
+template <typename R>
+class owning_view : private detail::owning_view_base<R>,
+                    public view_interface<owning_view<R>> {
+    static_assert(range<R>);
+    static_assert(movable<R>);
+    static_assert(!detail::is_initializer_list<R>);
+
+    using base_type = detail::owning_view_base<R>;
+
+public:
+    owning_view() = default;
+
+    constexpr owning_view(R&& r) : base_type(SCN_MOVE(r)) {}
+
+    constexpr R& base() & noexcept
+    {
+        return base_type::m_range;
+    }
+    constexpr const R& base() const& noexcept
+    {
+        return base_type::m_range;
+    }
+    constexpr R&& base() && noexcept
+    {
+        return SCN_MOVE(base_type::m_range);
+    }
+    constexpr const R&& base() const&& noexcept
+    {
+        return SCN_MOVE(base_type::m_range);
+    }
+
+    template <typename T = R>
+    constexpr iterator_t<T> begin()
+    {
+        return ranges::begin(base_type::m_range);
+    }
+    template <typename T = R, std::enable_if_t<range<const T>>* = nullptr>
+    constexpr iterator_t<const T> begin() const
+    {
+        return ranges::begin(base_type::m_range);
+    }
+
+    template <typename T = R>
+    constexpr sentinel_t<T> end()
+    {
+        return ranges::end(base_type::m_range);
+    }
+    template <typename T = R, std::enable_if_t<range<const T>>* = nullptr>
+    constexpr sentinel_t<const T> end() const
+    {
+        return ranges::end(base_type::m_range);
+    }
+
+    template <typename T = R,
+              typename = decltype(ranges::empty(SCN_DECLVAL(T&)))>
+    constexpr bool empty()
+    {
+        return ranges::empty(base_type::m_range);
+    }
+    template <typename T = R,
+              typename = decltype(ranges::empty(SCN_DECLVAL(const T&)))>
+    constexpr bool empty() const
+    {
+        return ranges::empty(base_type::m_range);
+    }
+
+    template <typename T = R, std::enable_if_t<sized_range<T>>* = nullptr>
+    constexpr auto size()
+    {
+        return ranges::size(base_type::m_range);
+    }
+    template <typename T = R, std::enable_if_t<sized_range<const T>>* = nullptr>
+    constexpr auto size() const
+    {
+        return ranges::size(base_type::m_range);
+    }
+
+    template <typename T = R, std::enable_if_t<contiguous_range<T>>* = nullptr>
+    constexpr auto data()
+    {
+        return ranges::data(base_type::m_range);
+    }
+    template <typename T = R,
+              std::enable_if_t<contiguous_range<const T>>* = nullptr>
+    constexpr auto data() const
+    {
+        return ranges::data(base_type::m_range);
+    }
+};
+
+template <typename T>
+inline constexpr bool enable_borrowed_range<owning_view<T>> =
+    enable_borrowed_range<T>;
+
+// all (C++20)
+
+namespace views {
+
+namespace all_ {
+
+struct fn {
+private:
+    template <typename T>
+    static constexpr auto impl(T&& t, detail::priority_tag<2>) noexcept(
+        noexcept(detail::decay_copy(SCN_FWD(t))))
+        -> std::enable_if_t<movable<std::decay_t<T>> &&
+                                detail::is_basic_view<std::decay_t<T>>,
+                            decltype(detail::decay_copy(SCN_FWD(t)))>
+    {
+        return detail::decay_copy(SCN_FWD(t));
+    }
+
+    template <typename T>
+    static constexpr auto impl(T&& t, detail::priority_tag<1>) noexcept
+        -> decltype(scn::ranges::ref_view(SCN_FWD(t)))
+    {
+        return scn::ranges::ref_view(SCN_FWD(t));
+    }
+
+    template <typename T>
+    static constexpr auto impl(T&& t, detail::priority_tag<0>) noexcept(
+        noexcept(scn::ranges::owning_view(SCN_FWD(t))))
+        -> decltype(scn::ranges::owning_view(SCN_FWD(t)))
+    {
+        return scn::ranges::owning_view(SCN_FWD(t));
+    }
+
+public:
+    template <typename T, std::enable_if_t<viewable_range<T>>* = nullptr>
+    auto operator()(T&& t) const
+        noexcept(noexcept(fn::impl(SCN_FWD(t), detail::priority_tag<2>{})))
+            -> decltype(fn::impl(SCN_FWD(t), detail::priority_tag<2>{}))
+    {
+        return fn::impl(SCN_FWD(t), detail::priority_tag<2>{});
+    }
+};
+
+}  // namespace all_
+
+inline constexpr auto all = all_::fn{};
+
+template <typename R, std::enable_if_t<viewable_range<R>>* = nullptr>
+using all_t = decltype(all(SCN_DECLVAL(R)));
+
+}  // namespace views
+
+// common_iterator (C++20)
+
+namespace detail {
+template <typename I,
+          typename S,
+          bool Trivial = std::is_trivially_copyable_v<I> &&
+                         std::is_trivially_copyable_v<S>>
+class common_iterator_storage;
+
+template <typename I, typename S>
+class common_iterator_storage<I, S, true> {
+public:
+    template <typename II = I,
+              std::enable_if_t<std::is_default_constructible_v<II>>* = nullptr>
+    constexpr common_iterator_storage() : m_iterator{}, m_is_iterator{true}
+    {
+    }
+
+    constexpr common_iterator_storage(I iter)
+        : m_iterator{SCN_MOVE(iter)}, m_is_iterator{true}
+    {
+    }
+    constexpr common_iterator_storage(S sent)
+        : m_sentinel{SCN_MOVE(sent)}, m_is_iterator{false}
+    {
+    }
+
+    // TODO? converting constructors
+
+protected:
+    bool _is_iterator() const
+    {
+        return m_is_iterator;
+    }
+
+    template <typename T>
+    T& _get_as()
+    {
+        if constexpr (std::is_same_v<T, I>) {
+            return m_iterator;
+        }
+        else if constexpr (std::is_same_v<T, S>) {
+            return m_sentinel;
+        }
+    }
+
+    template <typename T>
+    const T& _get_as() const
+    {
+        if constexpr (std::is_same_v<T, I>) {
+            return m_iterator;
+        }
+        else if constexpr (std::is_same_v<T, S>) {
+            return m_sentinel;
+        }
+    }
+
+    void _destroy() {}
+
+    template <typename... Args>
+    void _make_iterator(Args&&... args)
+    {
+        ::new (&m_iterator) I(SCN_FWD(args)...);
+        m_is_iterator = true;
+    }
+    template <typename... Args>
+    void _make_sentinel(Args&&... args)
+    {
+        ::new (&m_sentinel) S(SCN_FWD(args)...);
+        m_is_iterator = false;
+    }
+
+private:
+    union {
+        I m_iterator;
+        S m_sentinel;
+    };
+    bool m_is_iterator{true};
+};
+
+template <typename I, typename S>
+class common_iterator_storage<I, S, false> {
+public:
+    template <typename II = I,
+              std::enable_if_t<std::is_default_constructible_v<II>>* = nullptr>
+    common_iterator_storage() : m_is_iterator{true}
+    {
+        _make_iterator();
+    }
+
+    common_iterator_storage(I iter) : m_is_iterator{true}
+    {
+        _make_iterator(SCN_MOVE(iter));
+    }
+    common_iterator_storage(S sent) : m_is_iterator{false}
+    {
+        _make_sentinel(SCN_MOVE(sent));
+    }
+
+    // Not exception safe,
+    // but let's just assume these never throw and leave it at that.
+
+    template <typename II = I,
+              typename SS = S,
+              std::enable_if_t<std::is_copy_constructible_v<II> &&
+                               std::is_copy_constructible_v<SS>>* = nullptr>
+    common_iterator_storage(const common_iterator_storage& other)
+    {
+        if (other.m_is_iterator) {
+            _make_iterator(other._get_as<I>());
+        }
+        else {
+            _make_sentinel(other._get_as<S>());
+        }
+    }
+
+    template <typename II = I,
+              typename SS = S,
+              std::enable_if_t<std::is_copy_constructible_v<II> &&
+                               std::is_copy_constructible_v<SS>>* = nullptr>
+    common_iterator_storage& operator=(const common_iterator_storage& other)
+    {
+        _destroy();
+        if (other.m_is_iterator) {
+            _make_iterator(other._get_as<I>());
+        }
+        else {
+            _make_sentinel(other._get_as<S>());
+        }
+        return *this;
+    }
+
+    template <typename II = I,
+              typename SS = S,
+              std::enable_if_t<std::is_move_constructible_v<II> &&
+                               std::is_move_constructible_v<SS>>* = nullptr>
+    common_iterator_storage(common_iterator_storage&& other)
+    {
+        if (other.m_is_iterator) {
+            _make_iterator(SCN_MOVE(other._get_as<I>()));
+        }
+        else {
+            _make_sentinel(SCN_MOVE(other._get_as<S>()));
+        }
+    }
+
+    template <typename II = I,
+              typename SS = S,
+              std::enable_if_t<std::is_move_constructible_v<II> &&
+                               std::is_move_constructible_v<SS>>* = nullptr>
+    common_iterator_storage& operator=(common_iterator_storage&& other)
+    {
+        _destroy();
+        if (other.m_is_iterator) {
+            _make_iterator(SCN_MOVE(other._get_as<I>()));
+        }
+        else {
+            _make_sentinel(SCN_MOVE(other._get_as<S>()));
+        }
+        return *this;
+    }
+
+    ~common_iterator_storage()
+    {
+        _destroy();
+    }
+
+protected:
+    bool _is_iterator() const
+    {
+        return m_is_iterator;
+    }
+
+    template <typename T>
+    T& _get_as()
+    {
+        static_assert(std::is_object_v<T>);
+        return *reinterpret_cast<T*>(m_storage);
+    }
+    template <typename T>
+    const T& _get_as() const
+    {
+        static_assert(std::is_object_v<T>);
+        return *reinterpret_cast<const T*>(m_storage);
+    }
+
+    void _destroy()
+    {
+        if (m_is_iterator) {
+            _get_as<I>().~I();
+        }
+        else {
+            _get_as<S>().~S();
+        }
+    }
+
+    template <typename... Args>
+    void _make_iterator(Args&&... args)
+    {
+        ::new (m_storage) I(SCN_FWD(args)...);
+        m_is_iterator = true;
+    }
+    template <typename... Args>
+    void _make_sentinel(Args&&... args)
+    {
+        ::new (m_storage) S(SCN_FWD(args)...);
+        m_is_iterator = false;
+    }
+
+private:
+    static constexpr auto storage_size = detail::max(sizeof(I), sizeof(S));
+    static constexpr auto storage_alignment =
+        detail::max(alignof(I), alignof(S));
+
+    alignas(storage_alignment) unsigned char m_storage[storage_size];
+    bool m_is_iterator{true};
+};
+
+}  // namespace detail
+
+template <typename I, typename S>
+class common_iterator : private detail::common_iterator_storage<I, S> {
+    static_assert(input_or_output_iterator<I>);
+    static_assert(sentinel_for<S, I>);
+    static_assert(!std::is_same_v<I, S>);
+    static_assert(copyable<I>);
+
+    using base_type = detail::common_iterator_storage<I, S>;
+
+public:
+    constexpr common_iterator() = default;
+
+    constexpr common_iterator(I i) : base_type(SCN_MOVE(i)) {}
+    constexpr common_iterator(S s) : base_type(SCN_MOVE(s)) {}
+
+    // base() is an extension
+    constexpr I base() const&
+    {
+        SCN_EXPECT(base_type::_is_iterator());
+        return base_type::template _get_as<I>();
+    }
+    constexpr I&& base() &&
+    {
+        SCN_EXPECT(base_type::_is_iterator());
+        return SCN_MOVE(base_type::template _get_as<I>());
+    }
+
+    template <typename = I>
+    constexpr decltype(auto) operator*()
+    {
+        SCN_EXPECT(base_type::_is_iterator());
+        return *base_type::template _get_as<I>();
+    }
+    template <typename II = I,
+              std::enable_if_t<detail::dereferenceable<const II>>* = nullptr>
+    constexpr decltype(auto) operator*() const
+    {
+        SCN_EXPECT(base_type::_is_iterator());
+        return *base_type::template _get_as<I>();
+    }
+
+    // TODO: operator->
+
+    constexpr common_iterator& operator++()
+    {
+        SCN_EXPECT(base_type::_is_iterator());
+        ++base_type::template _get_as<I>();
+        return *this;
+    }
+    template <typename II = I,
+              typename = std::void_t<decltype(SCN_DECLVAL(I&)++)>>
+    constexpr decltype(auto) operator++(int)
+    {
+        // This is a non-conforming implementation
+        SCN_EXPECT(base_type::_is_iterator());
+        if constexpr (forward_iterator<I>) {
+            auto tmp = *this;
+            ++*this;
+            return tmp;
+        }
+        else {
+            return base_type::template _get_as<I>()++;
+        }
+    }
+
+    // TODO: compare with convertible common_iterators
+
+    friend constexpr bool operator==(const common_iterator& x,
+                                     const common_iterator& y)
+    {
+        if (!x._is_iterator() && !y._is_iterator()) {
+            return true;
+        }
+        if (x._is_iterator() && y._is_iterator()) {
+            return x.template _get_as<I>() == y.template _get_as<I>();
+        }
+        if (x._is_iterator() && !y._is_iterator()) {
+            return x.template _get_as<I>() == y.template _get_as<S>();
+        }
+        if (!x._is_iterator() && y._is_iterator()) {
+            return x.template _get_as<S>() == y.template _get_as<I>();
+        }
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    friend constexpr bool operator!=(const common_iterator& x,
+                                     const common_iterator& y)
+    {
+        return !(x == y);
+    }
+
+    template <typename II = I,
+              typename SS = S,
+              std::enable_if_t<sized_sentinel_for<SS, II>>* = nullptr>
+    friend constexpr iter_difference_t<II> operator-(const common_iterator& x,
+                                                     const common_iterator& y)
+    {
+        if (!x._is_iterator() && !y._is_iterator()) {
+            return 0;
+        }
+        if (x._is_iterator() && y._is_iterator()) {
+            return x.template _get_as<I>() - y.template _get_as<I>();
+        }
+        if (x._is_iterator() && !y._is_iterator()) {
+            return x.template _get_as<I>() - y.template _get_as<S>();
+        }
+        if (!x._is_iterator() && y._is_iterator()) {
+            return x.template _get_as<S>() - y.template _get_as<I>();
+        }
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    // TODO: iter_move, iter_swap
+};
+
+template <typename I, typename S>
+struct incrementable_traits<common_iterator<I, S>> {
+    using difference_type = iter_difference_t<I>;
+};
+
+}  // namespace ranges
+SCN_END_NAMESPACE
+}  // namespace scn
+
+namespace std {
+
+template <typename I, typename S>
+struct iterator_traits<scn::ranges::common_iterator<I, S>> {
+    using difference_type =
+        scn::ranges::iter_difference_t<scn::ranges::common_iterator<I, S>>;
+    using value_type =
+        scn::ranges::iter_value_t<scn::ranges::common_iterator<I, S>>;
+    using pointer = std::add_pointer_t<
+        scn::ranges::iter_reference_t<scn::ranges::common_iterator<I, S>>>;
+    using reference =
+        scn::ranges::iter_reference_t<scn::ranges::common_iterator<I, S>>;
+    using iterator_category =
+        std::conditional_t<scn::ranges::forward_iterator<I>,
+                           std::forward_iterator_tag,
+                           std::input_iterator_tag>;
+    using iterator_concept = iterator_category;
+};
+
+}  // namespace std
+
+namespace scn {
+SCN_BEGIN_NAMESPACE
+
+namespace ranges {
+
+// common_view (C++20)
+
+namespace detail {
+
+template <typename R>
+inline constexpr bool simple_view =
+    range<const R> && std::is_same_v<iterator_t<R>, iterator_t<const R>> &&
+    std::is_same_v<sentinel_t<R>, sentinel_t<const R>>;
+
+}
+
+template <typename V,
+          std::enable_if_t<detail::is_basic_view<V> && !common_range<V>>* =
+              nullptr>
+class common_view : public view_interface<common_view<V>> {
+    static_assert(copyable<iterator_t<V>>);
+
+public:
+    template <typename T = V,
+              std::enable_if_t<std::is_default_constructible_v<T>>* = nullptr>
+    common_view() : m_base()
+    {
+    }
+
+    constexpr explicit common_view(V r) : m_base(SCN_MOVE(r)) {}
+
+    template <typename T = V,
+              std::enable_if_t<std::is_copy_constructible_v<T>>* = nullptr>
+    constexpr V base() const&
+    {
+        return m_base;
+    }
+    template <typename T = V>
+    constexpr V base() &&
+    {
+        return SCN_MOVE(m_base);
+    }
+
+    template <typename T = V,
+              std::enable_if_t<!detail::simple_view<T>>* = nullptr>
+    constexpr auto begin()
+    {
+        if constexpr (random_access_range<V> && sized_range<V>) {
+            return ranges::begin(m_base);
+        }
+        else {
+            return common_iterator<iterator_t<V>, sentinel_t<V>>(
+                ranges::begin(m_base));
+        }
+    }
+
+    template <typename T = V, std::enable_if_t<range<const T>>* = nullptr>
+    constexpr auto begin() const
+    {
+        if constexpr (random_access_range<const V> && sized_range<const V>) {
+            return ranges::begin(m_base);
+        }
+        else {
+            return common_iterator<iterator_t<const V>, sentinel_t<const V>>(
+                ranges::begin(m_base));
+        }
+    }
+
+    template <typename T = V,
+              std::enable_if_t<!detail::simple_view<T>>* = nullptr>
+    constexpr auto end()
+    {
+        if constexpr (random_access_range<V> && sized_range<V>) {
+            return ranges::begin(m_base) +
+                   static_cast<range_difference_t<V>>(ranges::size(m_base));
+        }
+        else {
+            return common_iterator<iterator_t<V>, sentinel_t<V>>(
+                ranges::end(m_base));
+        }
+    }
+
+    template <typename T = V, std::enable_if_t<range<const T>>* = nullptr>
+    constexpr auto end() const
+    {
+        if constexpr (random_access_range<const V> && sized_range<const V>) {
+            return ranges::begin(m_base) +
+                   static_cast<range_difference_t<V>>(ranges::size(m_base));
+        }
+        else {
+            return common_iterator<iterator_t<const V>, sentinel_t<const V>>(
+                ranges::end(m_base));
+        }
+    }
+
+    template <typename T = V, std::enable_if_t<sized_range<T>>* = nullptr>
+    constexpr auto size()
+    {
+        return ranges::size(m_base);
+    }
+    template <typename T = V, std::enable_if_t<sized_range<const T>>* = nullptr>
+    constexpr auto size() const
+    {
+        return ranges::size(m_base);
+    }
+
+private:
+    V m_base;
+};
+
+template <typename R>
+common_view(R&&) -> common_view<views::all_t<R>>;
+
+template <typename R>
+inline constexpr bool enable_borrowed_range<common_view<R>> =
+    enable_borrowed_range<R>;
+
+namespace views {
+
+namespace common_ {
+
+struct fn {
+private:
+    template <typename T, std::enable_if_t<common_range<T>>* = nullptr>
+    static constexpr auto impl(T&& t, detail::priority_tag<1>) noexcept(
+        noexcept(views::all(SCN_FWD(t)))) -> decltype(views::all(SCN_FWD(t)))
+    {
+        return views::all(SCN_FWD(t));
+    }
+    template <typename T>
+    static constexpr auto impl(T&& t, detail::priority_tag<0>) noexcept(
+        noexcept(common_view(SCN_FWD(t)))) -> decltype(common_view(SCN_FWD(t)))
+    {
+        return common_view(SCN_FWD(t));
+    }
+
+public:
+    template <typename T, std::enable_if_t<viewable_range<T>>* = nullptr>
+    constexpr auto operator()(T&& t) const
+        noexcept(noexcept(fn::impl(SCN_FWD(t), detail::priority_tag<1>{})))
+            -> decltype(fn::impl(SCN_FWD(t), detail::priority_tag<1>{}))
+    {
+        return fn::impl(SCN_FWD(t), detail::priority_tag<1>{});
+    }
+};
+
+}  // namespace common_
+
+inline constexpr auto common = common_::fn{};
+
+}  // namespace views
+
+// to_input_view (C++26)
+
+namespace detail {
+
+template <bool Const, typename T>
+using maybe_const = conditional_t<Const, const T, T>;
+
+template <typename V,
+          bool DefaultConstructible = std::is_default_constructible_v<V>>
+struct to_input_view_base;
+
+template <typename V>
+struct to_input_view_base<V, true> {
+    to_input_view_base() = default;
+    explicit constexpr to_input_view_base(V b) : m_base(SCN_MOVE(b)) {}
+
+    V m_base{};
+};
+
+template <typename V>
+struct to_input_view_base<V, false> {
+    explicit constexpr to_input_view_base(V b) : m_base(SCN_MOVE(b)) {}
+
+    V m_base;
+};
+
+template <typename BaseIterator,
+          bool DefaultConstructible =
+              std::is_default_constructible_v<BaseIterator>>
+struct to_input_view_iterator_base;
+
+template <typename BaseIterator>
+struct to_input_view_iterator_base<BaseIterator, true> {
+    to_input_view_iterator_base() = default;
+    explicit constexpr to_input_view_iterator_base(BaseIterator current)
+        : m_current(SCN_MOVE(current))
+    {
+    }
+
+    BaseIterator m_current{};
+};
+
+template <typename BaseIterator>
+struct to_input_view_iterator_base<BaseIterator, false> {
+    explicit constexpr to_input_view_iterator_base(BaseIterator current)
+        : m_current(SCN_MOVE(current))
+    {
+    }
+
+    BaseIterator m_current;
+};
+
+}  // namespace detail
+
+template <typename V>
+class to_input_view : private detail::to_input_view_base<V>,
+                      public view_interface<to_input_view<V>> {
+    static_assert(input_range<V>);
+    static_assert(detail::is_basic_view<V>);
+
+    using base_type = detail::to_input_view_base<V>;
+
+    template <bool Const>
+    class iterator : private detail::to_input_view_iterator_base<
+                         iterator_t<detail::maybe_const<Const, V>>> {
+        friend class iterator<!Const>;
+        friend class to_input_view;
+
+        using parent_type = detail::maybe_const<Const, V>;
+        using base_type =
+            detail::to_input_view_iterator_base<iterator_t<parent_type>>;
+
+        constexpr explicit iterator(iterator_t<parent_type> current)
+            : base_type(SCN_MOVE(current))
+        {
+        }
+
+    public:
+        using difference_type = range_difference_t<parent_type>;
+        using value_type = range_value_t<parent_type>;
+        using iterator_concept = input_iterator_tag;
+
+        // non-conforming
+        using iterator_category = input_iterator_tag;
+
+        iterator() = default;
+
+        iterator(iterator&&) = default;
+        iterator& operator=(iterator&&) = default;
+
+        template <
+            bool C = Const,
+            std::enable_if_t<
+                C && std::is_convertible_v<iterator_t<V>,
+                                           iterator_t<parent_type>>>* = nullptr>
+        constexpr iterator(iterator<!C> other)
+            : base_type(SCN_MOVE(other.m_current))
+        {
+        }
+
+        constexpr iterator_t<parent_type> base() &&
+        {
+            return SCN_MOVE(base_type::m_current);
+        }
+        constexpr const iterator_t<parent_type>& base() const& noexcept
+        {
+            return base_type::m_current;
+        }
+
+        constexpr decltype(auto) operator*() const
+        {
+            return *base_type::m_current;
+        }
+
+        constexpr iterator& operator++()
+        {
+            ++base_type::m_current;
+            return *this;
+        }
+        constexpr void operator++(int)
+        {
+            ++*this;
+        }
+
+        friend constexpr bool operator==(const iterator& x,
+                                         const sentinel_t<parent_type>& y)
+        {
+            return x.m_current == y;
+        }
+        friend constexpr bool operator!=(const iterator& x,
+                                         const sentinel_t<parent_type>& y)
+        {
+            return !(x == y);
+        }
+
+        template <bool = Const,
+                  std::enable_if_t<
+                      sized_sentinel_for<sentinel_t<parent_type>,
+                                         iterator_t<parent_type>>>* = nullptr>
+        friend constexpr difference_type operator-(
+            const sentinel_t<parent_type>& y,
+            const iterator& x)
+        {
+            return y - x.m_current;
+        }
+        template <bool = Const,
+                  std::enable_if_t<
+                      sized_sentinel_for<sentinel_t<parent_type>,
+                                         iterator_t<parent_type>>>* = nullptr>
+        friend constexpr difference_type operator-(
+            const iterator& x,
+            const sentinel_t<parent_type>& y)
+        {
+            return x.m_current - y;
+        }
+
+        // TODO: iter_move and iter_swap, with range_rvalue_reference_t
+    };
+
+public:
+    to_input_view() = default;
+    explicit constexpr to_input_view(V b) : base_type(SCN_MOVE(b)) {}
+
+    template <typename U = V,
+              std::enable_if_t<std::is_copy_constructible_v<U>>* = nullptr>
+    constexpr V base() const&
+    {
+        return base_type::m_base;
+    }
+    template <typename U = V>
+    constexpr U base() &&
+    {
+        return SCN_MOVE(base_type::m_base);
+    }
+
+    template <typename U = V,
+              std::enable_if_t<!detail::simple_view<U>>* = nullptr>
+    constexpr auto begin()
+    {
+        return iterator<false>{ranges::begin(base_type::m_base)};
+    }
+    template <typename U = V, std::enable_if_t<range<const U>>* = nullptr>
+    constexpr auto begin() const
+    {
+        return iterator<true>{ranges::begin(base_type::m_base)};
+    }
+
+    template <typename U = V,
+              std::enable_if_t<!detail::simple_view<U>>* = nullptr>
+    constexpr auto end()
+    {
+        return ranges::end(base_type::m_base);
+    }
+    template <typename U = V, std::enable_if_t<range<const U>>* = nullptr>
+    constexpr auto end() const
+    {
+        return ranges::end(base_type::m_base);
+    }
+
+    template <typename U = V, std::enable_if_t<sized_range<U>>* = nullptr>
+    constexpr auto size()
+    {
+        return ranges::size(base_type::m_base);
+    }
+    template <typename U = V, std::enable_if_t<sized_range<const U>>* = nullptr>
+    constexpr auto size() const
+    {
+        return ranges::size(base_type::m_base);
+    }
+};
+
+template <typename V>
+inline constexpr bool enable_borrowed_range<to_input_view<V>> =
+    enable_borrowed_range<V>;
+
+template <typename R>
+to_input_view(R&&) -> to_input_view<views::all_t<R>>;
+
+static_assert(input_range<to_input_view<std::string_view>>);
+static_assert(!forward_range<to_input_view<std::string_view>>);
+
+namespace views {
+
+namespace to_input_ {
+
+struct fn {
+private:
+    template <typename T>
+    static auto impl(T&& t, detail::priority_tag<1>) noexcept(
+        noexcept(views::all(SCN_FWD(t))))
+        -> std::enable_if_t<input_range<T> && !forward_range<T> &&
+                                !common_range<T>,
+                            decltype(views::all(SCN_FWD(t)))>
+    {
+        return views::all(SCN_FWD(t));
+    }
+
+    template <typename T>
+    static auto impl(T&& t, detail::priority_tag<0>) noexcept(
+        noexcept(ranges::to_input_view(SCN_FWD(t))))
+        -> decltype(ranges::to_input_view(SCN_FWD(t)))
+    {
+        return ranges::to_input_view(SCN_FWD(t));
+    }
+
+public:
+    template <typename T, std::enable_if_t<viewable_range<T>>* = nullptr>
+    auto operator()(T&& t) const
+        noexcept(noexcept(fn::impl(SCN_FWD(t), detail::priority_tag<1>{})))
+            -> decltype(fn::impl(SCN_FWD(t), detail::priority_tag<1>{}))
+    {
+        return fn::impl(SCN_FWD(t), detail::priority_tag<1>{});
+    }
+};
+
+}  // namespace to_input_
+
+inline constexpr auto to_input = to_input_::fn{};
+
+}  // namespace views
+
+// scnlib extension:
+// pair_concat_view
+// based on concat_view from C++26, but heavily stripped down
+// (always two ranges, must share a value type, only ever an input_range)
+
+namespace detail {
+struct pair_concat_first_tag {};
+struct pair_concat_second_tag {};
+
+template <typename FirstIt, typename SecondIt>
+struct pair_concat_iterator_storage {
+protected:
+    using first_iterator = FirstIt;
+    using second_iterator = SecondIt;
+
+    pair_concat_iterator_storage() = default;
+
+    pair_concat_iterator_storage(pair_concat_first_tag, FirstIt f)
+        : m_is_first(true)
+    {
+        _make_first(SCN_MOVE(f));
+    }
+    pair_concat_iterator_storage(pair_concat_second_tag, SecondIt s)
+        : m_is_first(false)
+    {
+        _make_second(SCN_MOVE(s));
+    }
+
+    // Not exception safe, but I don't care enough (yet)
+
+    template <typename F = FirstIt,
+              typename S = SecondIt,
+              std::enable_if_t<std::is_copy_constructible_v<F> &&
+                               std::is_copy_constructible_v<S>>* = nullptr>
+    pair_concat_iterator_storage(const pair_concat_iterator_storage& other)
+    {
+        if (other.m_is_first) {
+            _make_first(other._get_first());
+        }
+        else {
+            _make_second(other._get_second());
+        }
+    }
+
+    template <typename F = FirstIt,
+              typename S = SecondIt,
+              std::enable_if_t<std::is_copy_constructible_v<F> &&
+                               std::is_copy_constructible_v<S>>* = nullptr>
+    pair_concat_iterator_storage& operator=(
+        const pair_concat_iterator_storage& other)
+    {
+        _destroy();
+        if (other.m_is_first) {
+            _make_first(other._get_first());
+        }
+        else {
+            _make_second(other._get_second());
+        }
+        return *this;
+    }
+
+    template <typename F = FirstIt,
+              typename S = SecondIt,
+              std::enable_if_t<std::is_move_constructible_v<F> &&
+                               std::is_move_constructible_v<S>>* = nullptr>
+    pair_concat_iterator_storage(pair_concat_iterator_storage&& other)
+    {
+        if (other.m_is_first) {
+            _make_first(SCN_MOVE(other._get_first()));
+        }
+        else {
+            _make_second(SCN_MOVE(other._get_second()));
+        }
+    }
+
+    template <typename F = FirstIt,
+              typename S = SecondIt,
+              std::enable_if_t<std::is_move_constructible_v<F> &&
+                               std::is_move_constructible_v<S>>* = nullptr>
+    pair_concat_iterator_storage& operator=(
+        pair_concat_iterator_storage&& other)
+    {
+        _destroy();
+        if (other.m_is_first) {
+            _make_first(SCN_MOVE(other._get_first()));
+        }
+        else {
+            _make_second(SCN_MOVE(other._get_second()));
+        }
+        return *this;
+    }
+
+    ~pair_concat_iterator_storage()
+    {
+        _destroy();
+    }
+
+private:
+    bool _is_first() const
+    {
+        return m_is_first;
+    }
+
+    FirstIt& _get_first()
+    {
+        SCN_EXPECT(m_is_first);
+        return *reinterpret_cast<FirstIt*>(m_storage);
+    }
+    const FirstIt& _get_first() const
+    {
+        SCN_EXPECT(m_is_first);
+        return *reinterpret_cast<const FirstIt*>(m_storage);
+    }
+
+    SecondIt& _get_second()
+    {
+        SCN_EXPECT(!m_is_first);
+        return *reinterpret_cast<SecondIt*>(m_storage);
+    }
+    const SecondIt& _get_second() const
+    {
+        SCN_EXPECT(!m_is_first);
+        return *reinterpret_cast<const SecondIt*>(m_storage);
+    }
+
+    void _destroy()
+    {
+        if (m_is_first) {
+            _get_first().~FirstIt();
+        }
+        else {
+            _get_second().~SecondIt();
+        }
+    }
+
+    template <typename... Args>
+    void _make_first(Args&&... args)
+    {
+        ::new (m_storage) FirstIt(SCN_FWD(args)...);
+        m_is_first = true;
+    }
+    template <typename... Args>
+    void _make_second(Args&&... args)
+    {
+        ::new (m_storage) SecondIt(SCN_FWD(args)...);
+        m_is_first = false;
+    }
+
+    static constexpr auto storage_size =
+        detail::max(sizeof(FirstIt), sizeof(SecondIt));
+    static constexpr auto storage_alignment =
+        detail::max(alignof(FirstIt), alignof(SecondIt));
+
+    alignas(storage_alignment) unsigned char m_storage[storage_size];
+    bool m_is_first{true};
+};
+
+}  // namespace detail
+
+template <typename First, typename Second>
+class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
+    static_assert(input_range<First>);
+    static_assert(input_range<Second>);
+    static_assert(detail::is_basic_view<First>);
+    static_assert(detail::is_basic_view<Second>);
+    static_assert(std::is_same_v<range_value_t<First>, range_value_t<Second>>);
+    static_assert(
+        std::is_same_v<range_difference_t<First>, range_difference_t<Second>>);
+
+    template <bool Const>
+    class iterator : private detail::pair_concat_iterator_storage<
+                         iterator_t<detail::maybe_const<Const, First>>,
+                         iterator_t<detail::maybe_const<Const, Second>>> {
+        using base = detail::pair_concat_iterator_storage<
+            iterator_t<detail::maybe_const<Const, First>>,
+            iterator_t<detail::maybe_const<Const, Second>>>;
+
+        using first_iterator = typename base::first_iterator;
+        using second_iterator = typename base::second_iterator;
+
+        static_assert(std::is_same_v<iter_value_t<first_iterator>,
+                                     iter_value_t<second_iterator>>);
+        static_assert(std::is_same_v<iter_difference_t<first_iterator>,
+                                     iter_difference_t<second_iterator>>);
+
+        template <std::size_t N>
+        void _satisfy()
+        {
+            if constexpr (N == 0) {
+                if (base::_get_first() == ranges::end(m_parent->m_first)) {
+                    base::_destroy();
+                    base::_make_second(ranges::begin(m_parent->m_second));
+                    _satisfy<N + 1>();
+                }
+            }
+        }
+
+    public:
+        using iterator_category = std::input_iterator_tag;
+        using iterator_concept = std::input_iterator_tag;
+        using value_type = iter_value_t<first_iterator>;
+        using difference_type = iter_difference_t<first_iterator>;
+
+        template <
+            bool Other,
+            std::enable_if_t<Const && !Other &&
+                             std::is_convertible_v<iterator_t<First>,
+                                                   iterator_t<const First>> &&
+                             std::is_convertible_v<iterator_t<Second>,
+                                                   iterator_t<const Second>>>* =
+                nullptr>
+        iterator(iterator<Other> other) : base(), m_parent(other.m_parent)
+        {
+            if (other._is_first()) {
+                base::_make_first(SCN_MOVE(other._get_first()));
+            }
+            else {
+                base::_make_second(SCN_MOVE(other._get_second()));
+            }
+        }
+
+        value_type operator*() const
+        {
+            if (base::_is_first()) {
+                return *base::_get_first();
+            }
+            else {
+                return *base::_get_second();
+            }
+        }
+
+        iterator& operator++()
+        {
+            if (base::_is_first()) {
+                ++base::_get_first();
+                _satisfy<0>();
+            }
+            else {
+                ++base::_get_second();
+                _satisfy<1>();
+            }
+            return *this;
+        }
+
+        void operator++(int)
+        {
+            ++*this;
+        }
+
+        template <
+            typename F = First,
+            typename S = Second,
+            std::enable_if_t<equality_comparable<
+                                 iterator_t<detail::maybe_const<Const, F>>> &&
+                             equality_comparable<iterator_t<
+                                 detail::maybe_const<Const, S>>>>* = nullptr>
+        friend bool operator==(const iterator& x, const iterator& y)
+        {
+            if (x._is_first() != y._is_first()) {
+                return false;
+            }
+            if (x._is_first()) {
+                return x._get_first() == y._get_first();
+            }
+            return x._get_second() == y._get_second();
+        }
+        template <
+            typename F = First,
+            typename S = Second,
+            std::enable_if_t<equality_comparable<
+                                 iterator_t<detail::maybe_const<Const, F>>> &&
+                             equality_comparable<iterator_t<
+                                 detail::maybe_const<Const, S>>>>* = nullptr>
+        friend bool operator!=(const iterator& x, const iterator& y)
+        {
+            return !(x == y);
+        }
+
+        friend bool operator==(const iterator& x, default_sentinel_t)
+        {
+            return !x._is_first() &&
+                   x._get_second() == ranges::end(x.m_parent->m_second);
+        }
+        friend bool operator!=(const iterator& x, default_sentinel_t)
+        {
+            return !(x == default_sentinel);
+        }
+
+        // TODO: iter_move, iter_swap
+
+    private:
+        friend class pair_concat_view;
+        friend class iterator<!Const>;
+
+        using parent_type = detail::maybe_const<Const, pair_concat_view>;
+
+        explicit iterator(detail::pair_concat_first_tag,
+                          parent_type* p,
+                          first_iterator f)
+            : base(SCN_MOVE(f)), m_parent(p)
+        {
+        }
+        explicit iterator(detail::pair_concat_second_tag,
+                          parent_type* p,
+                          second_iterator s)
+            : base(SCN_MOVE(s)), m_parent(p)
+        {
+        }
+
+        parent_type* m_parent{};
+    };
+
+    template <bool Const>
+    friend class iterator;
+
+public:
+    constexpr pair_concat_view() = default;
+
+    constexpr explicit pair_concat_view(First first, Second second)
+        : m_first(SCN_MOVE(first)), m_second(SCN_MOVE(second))
+    {
+    }
+
+    template <typename F = First,
+              typename S = Second,
+              std::enable_if_t<!detail::simple_view<F> &&
+                               !detail::simple_view<S>>* = nullptr>
+    iterator<false> begin()
+    {
+        auto it = iterator<false>{detail::pair_concat_first_tag{}, this,
+                                  ranges::begin(m_first)};
+        it.template _satisfy<0>();
+        return it;
+    }
+
+    template <
+        typename F = First,
+        typename S = Second,
+        std::enable_if_t<range<const F> && range<const S> &&
+                         std::is_same_v<range_value_t<const F>,
+                                        range_value_t<const S>>>* = nullptr>
+    iterator<true> begin() const
+    {
+        auto it = iterator<true>{detail::pair_concat_first_tag{}, this,
+                                 ranges::begin(m_first)};
+        it.template _satisfy<0>();
+        return it;
+    }
+
+    template <typename F = First,
+              typename S = Second,
+              std::enable_if_t<!detail::simple_view<F> &&
+                               !detail::simple_view<S>>* = nullptr>
+    auto end()
+    {
+        if constexpr (common_range<Second>) {
+            return iterator<false>{detail::pair_concat_second_tag{}, this,
+                                   ranges::end(m_second)};
+        }
+        else {
+            return default_sentinel;
+        }
+    }
+
+    template <
+        typename F = First,
+        typename S = Second,
+        std::enable_if_t<range<const F> && range<const S> &&
+                         std::is_same_v<range_value_t<const F>,
+                                        range_value_t<const S>>>* = nullptr>
+    auto end() const
+    {
+        if constexpr (common_range<Second>) {
+            return iterator<true>{detail::pair_concat_second_tag{}, this,
+                                  ranges::end(m_second)};
+        }
+        else {
+            return default_sentinel;
+        }
+    }
+
+    template <typename F = First,
+              typename S = Second,
+              std::enable_if_t<sized_range<F> && sized_range<S>>* = nullptr>
+    auto size()
+    {
+        return ranges::size(m_first) + ranges::size(m_second);
+    }
+
+    template <typename F = First,
+              typename S = Second,
+              std::enable_if_t<sized_range<const F> && sized_range<const S>>* =
+                  nullptr>
+    auto size() const
+    {
+        return ranges::size(m_first) + ranges::size(m_second);
+    }
+
+private:
+    First m_first;
+    Second m_second;
+};
+
+template <typename First, typename Second>
+pair_concat_view(First&&, Second&&)
+    -> pair_concat_view<views::all_t<First>, views::all_t<Second>>;
+
+namespace views {
+
+namespace pair_concat_ {
+struct fn {
+    template <typename T,
+              std::enable_if_t<input_range<T> && viewable_range<T>>* = nullptr>
+    auto operator()(T&& t) const noexcept(noexcept(views::all(SCN_FWD(t))))
+        -> decltype(views::all(SCN_FWD(t)))
+    {
+        return views::all(SCN_FWD(t));
+    }
+
+    template <
+        typename F,
+        typename S,
+        std::enable_if_t<viewable_range<F> && viewable_range<S>>* = nullptr>
+    auto operator()(F&& f, S&& s) const
+        noexcept(noexcept(pair_concat_view(SCN_FWD(f), SCN_FWD(s))))
+            -> decltype(pair_concat_view(SCN_FWD(f), SCN_FWD(s)))
+    {
+        return pair_concat_view(SCN_FWD(f), SCN_FWD(s));
+    }
+};
+}  // namespace pair_concat_
+
+inline constexpr auto pair_concat = pair_concat_::fn{};
+
+}  // namespace views
 
 }  // namespace ranges
 
@@ -4507,12 +6015,10 @@ template <typename CharT>
 class basic_scan_buffer {
 public:
     class forward_iterator;
-    class common_forward_iterator;
 
     using char_type = CharT;
     using range_type =
         ranges::subrange<forward_iterator, ranges::default_sentinel_t>;
-    using common_range_type = ranges::subrange<common_forward_iterator>;
 
     basic_scan_buffer(const basic_scan_buffer&) = delete;
     basic_scan_buffer& operator=(const basic_scan_buffer&) = delete;
@@ -4593,7 +6099,6 @@ public:
     }
 
     SCN_NODISCARD range_type get();
-    SCN_NODISCARD common_range_type get_common_range();
 
     SCN_NODISCARD scan_expected<void> get_source_error() const
     {
@@ -4602,7 +6107,6 @@ public:
 
 protected:
     friend class forward_iterator;
-    friend class common_forward_iterator;
 
     struct contiguous_tag {};
     struct non_contiguous_tag {};
@@ -4822,74 +6326,6 @@ private:
 };
 
 template <typename CharT>
-class basic_scan_buffer<CharT>::common_forward_iterator
-    : public basic_scan_buffer<CharT>::forward_iterator {
-    using base = basic_scan_buffer<CharT>::forward_iterator;
-
-public:
-    common_forward_iterator() = default;
-
-    explicit common_forward_iterator(forward_iterator it)
-        : base(it), m_is_end(it.is_at_end())
-    {
-    }
-    explicit common_forward_iterator(ranges::default_sentinel_t)
-        : base(), m_is_end(true)
-    {
-    }
-
-    common_forward_iterator& operator++()
-    {
-        base::operator++();
-        m_is_end = base::is_at_end();
-        return *this;
-    }
-
-    common_forward_iterator operator++(int)
-    {
-        auto copy = *this;
-        operator++();
-        return copy;
-    }
-
-    common_forward_iterator& batch_advance(std::ptrdiff_t n)
-    {
-        base::batch_advance(n);
-        m_is_end = base::is_at_end();
-        return *this;
-    }
-
-    common_forward_iterator& batch_advance_to(std::ptrdiff_t i)
-    {
-        base::batch_advance_to(i);
-        m_is_end = base::is_at_end();
-        return *this;
-    }
-
-    friend bool operator==(const common_forward_iterator& lhs,
-                           const common_forward_iterator& rhs)
-    {
-        if (lhs.m_is_end && rhs.m_is_end) {
-            return true;
-        }
-        if (lhs.m_is_end != rhs.m_is_end) {
-            return false;
-        }
-        return static_cast<const forward_iterator&>(lhs) ==
-               static_cast<const forward_iterator&>(rhs);
-    }
-
-    friend bool operator!=(const common_forward_iterator& lhs,
-                           const common_forward_iterator& rhs)
-    {
-        return !(lhs == rhs);
-    }
-
-private:
-    bool m_is_end{};
-};
-
-template <typename CharT>
 SCN_NODISCARD auto basic_scan_buffer<CharT>::get() -> range_type
 {
     if (is_contiguous()) {
@@ -4898,15 +6334,6 @@ SCN_NODISCARD auto basic_scan_buffer<CharT>::get() -> range_type
     }
     return ranges::subrange{forward_iterator{this, 0},
                             ranges::default_sentinel};
-}
-
-template <typename CharT>
-SCN_NODISCARD auto basic_scan_buffer<CharT>::get_common_range()
-    -> common_range_type
-{
-    auto r = get();
-    return ranges::subrange{common_forward_iterator{r.begin()},
-                            common_forward_iterator{r.end()}};
 }
 
 static_assert(ranges::forward_range<scan_buffer::range_type>);
@@ -5042,6 +6469,13 @@ auto make_string_scan_buffer(const Range& range)
 template <typename Range>
 auto make_forward_scan_buffer(const Range& range)
 {
+    return basic_scan_forward_buffer_impl(range);
+}
+
+template <typename Range>
+auto make_input_scan_buffer(const Range& range)
+{
+    // TODO
     return basic_scan_forward_buffer_impl(range);
 }
 
@@ -5222,23 +6656,31 @@ auto impl(const Range& r, priority_tag<1>)
     }
 }
 
-// forward -> forward_buffer<R>
-template <typename Range>
-auto impl(const Range& r, priority_tag<0>)
+// forward -> forward_buffer<R>,
+// input -> input_buffer<R>
+template <typename Range,
+          std::enable_if_t<ranges::input_range<Range>>* = nullptr>
+auto impl(const Range& r, priority_tag<1>)
 {
-    if constexpr (!ranges::forward_range<Range>) {
-        if constexpr (ranges::range<Range>) {
-            return insufficient_range{};
-        }
-        else {
-            return invalid_input_range{};
-        }
-    }
-    else if constexpr (!is_valid_char_type<detail::char_t<Range>>) {
+    if constexpr (!is_valid_char_type<char_t<Range>>) {
         return invalid_char_type{};
     }
-    else {
+    else if constexpr (ranges::forward_range<Range>) {
         return make_forward_scan_buffer(r);
+    }
+    else {
+        return make_input_scan_buffer(r);
+    }
+}
+
+template <typename Range>
+auto impl(const Range&, priority_tag<0>)
+{
+    if constexpr (ranges::range<Range>) {
+        return insufficient_range{};
+    }
+    else {
+        return invalid_input_range{};
     }
 }
 }  // namespace _make_scan_buffer
@@ -5293,6 +6735,8 @@ decltype(auto) make_scan_buffer(Range&& range)
                   "character type (char or wchar_t) to be scannable.\n"
                   "If the input is not a range, it must be a scn::scan_file "
                   "(or a C FILE*, but that's deprecated).\n"
+                  "In addition, to scan from a std::istream, "
+                  "the header <scn/istream.h> needs to be included.\n"
                   "Examples of scannable ranges are std::string, "
                   "std::string_view, std::list<char>, "
                   "or a large set of C++20 ranges, "
@@ -6476,12 +7920,13 @@ public:
     }
 
     /// The beginning of the unused source range
-    SCN_NODISCARD auto begin() const
+    SCN_NODISCARD iterator begin() const
     {
         return ranges::begin(m_range);
     }
+
     /// The end of the unused source range
-    SCN_NODISCARD auto end() const
+    SCN_NODISCARD sentinel end() const
     {
         return ranges::end(m_range);
     }

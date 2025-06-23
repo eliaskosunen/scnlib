@@ -4641,7 +4641,10 @@ private:
 
 #if !SCN_DISABLE_LOCALE
     struct localized_read_state {
-        using time_facet_type = std::time_get<CharT, iterator>;
+        using facet_iterator_type =
+            ranges::iterator_t<decltype(ranges::views::common(
+                SCN_DECLVAL(Range&)))>;
+        using time_facet_type = std::time_get<CharT, facet_iterator_type>;
         using numpunct_facet_type = std::numpunct<CharT>;
 
         std::locale locale;
@@ -4690,27 +4693,22 @@ private:
         const auto& facet = *get_localized_read_state().time_facet;
         std::ios_base::iostate err{std::ios_base::goodbit};
         std::tm tm{};
-        auto [begin, end] = [&]() {
-            if constexpr (std::is_same_v<
-                              iterator,
-                              remove_cvref_t<decltype(m_range.end())>>) {
-                return std::pair{m_range.begin(), m_range.end()};
-            }
-            else {
-                using common_iterator_type =
-                    typename basic_scan_buffer<CharT>::common_forward_iterator;
-                return std::pair{common_iterator_type{m_range.begin()},
-                                 common_iterator_type{m_range.end()}};
-            }
-        }();
-        auto iter = facet.get(begin, end, m_loc_state->dummy_stream, err, &tm,
-                              fmt.data(), fmt.data() + fmt.size());
+        auto&& common_range = ranges::views::common(m_range);
+        auto iter =
+            facet.get(ranges::begin(common_range), ranges::end(common_range),
+                      m_loc_state->dummy_stream, err, &tm, fmt.data(),
+                      fmt.data() + fmt.size());
         if ((err & std::ios_base::failbit) != 0) {
             set_error({scan_error::invalid_scanned_value,
                        "Failed to scan localized datetime"});
             return std::nullopt;
         }
-        m_begin = SCN_MOVE(iter);
+        if constexpr (ranges::common_range<Range>) {
+            m_begin = SCN_MOVE(iter);
+        }
+        else {
+            m_begin = SCN_MOVE(iter.base());
+        }
         return tm;
     }
 
@@ -4843,7 +4841,7 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::fill()
     if (n_avail <= 0) {
         return false;
     }
-    const auto n_avail_u = static_cast<std::size_t>(n_avail_u);
+    const auto n_avail_u = static_cast<std::size_t>(n_avail);
     if (n_avail_u > m_buf.size()) {
         m_buf.resize(n_avail_u);
     }

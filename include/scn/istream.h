@@ -211,6 +211,137 @@ struct basic_istream_scanner {
     }
 };
 
+namespace ranges {
+
+// scnlib ranges extension:
+// istreambuf_view
+
+template <typename CharT, typename Traits = std::char_traits<CharT>>
+class basic_istreambuf_view
+    : public view_interface<basic_istreambuf_view<CharT, Traits>> {
+    using streambuf_type = std::basic_streambuf<CharT, Traits>;
+
+public:
+    class iterator {
+    public:
+        using iterator_concept = input_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = CharT;
+
+        // Needed because of our ranges implementation,
+        // not strictly true
+        // (This is a C++20 input_iterator, not a Cpp17InputIterator)
+        using iterator_category = input_iterator_tag;
+
+        explicit iterator(basic_istreambuf_view& parent) noexcept
+            : m_parent(&parent)
+        {
+        }
+
+        iterator(const iterator&) = delete;
+        iterator& operator=(const iterator&) = delete;
+
+        iterator(iterator&&) = default;
+        iterator& operator=(iterator&&) = default;
+
+        ~iterator() = default;
+
+        iterator& operator++()
+        {
+            SCN_EXPECT(m_parent);
+            m_parent->_read();
+            return *this;
+        }
+        void operator++(int)
+        {
+            ++*this;
+        }
+
+        SCN_NODISCARD CharT& operator*() const
+        {
+            SCN_EXPECT(m_parent);
+            SCN_EXPECT(m_parent->m_current);
+            return *m_parent->m_current;
+        }
+
+        friend bool operator==(const iterator& x, default_sentinel_t)
+        {
+            SCN_EXPECT(x.m_parent);
+            return !x.m_parent->m_current.has_value();
+        }
+        friend bool operator!=(const iterator& x, default_sentinel_t)
+        {
+            return !(x == default_sentinel);
+        }
+
+    private:
+        basic_istreambuf_view* m_parent{nullptr};
+    };
+
+    explicit basic_istreambuf_view(streambuf_type& buf) : m_buf(&buf) {}
+
+    SCN_NODISCARD iterator begin() const noexcept
+    {
+        _read();
+        return iterator{*this};
+    }
+
+    SCN_NODISCARD default_sentinel_t end() const noexcept
+    {
+        return default_sentinel;
+    }
+
+private:
+    friend class iterator;
+
+    void _read()
+    {
+        SCN_EXPECT(m_buf);
+        auto val = m_buf->sbumpc();
+        if (Traits::eq_int_type(val, Traits::eof())) {
+            m_current.reset();
+        }
+        else {
+            m_current = Traits::to_char_type(val);
+        }
+    }
+
+    streambuf_type* m_buf{nullptr};
+    std::optional<CharT> m_current{};
+};
+
+using istreambuf_view = basic_istreambuf_view<char>;
+using wistreambuf_view = basic_istreambuf_view<wchar_t>;
+
+static_assert(input_range<istreambuf_view>);
+
+namespace views {
+
+namespace istreambuf_ {
+
+struct fn {
+    template <typename CharT, typename Traits>
+    auto operator()(std::basic_istream<CharT, Traits>& in) const
+        -> basic_istreambuf_view<CharT, Traits>
+    {
+        return basic_istreambuf_view<CharT, Traits>{*in.rdbuf()};
+    }
+    template <typename CharT, typename Traits>
+    auto operator()(std::basic_streambuf<CharT, Traits>& in) const
+        -> basic_istreambuf_view<CharT, Traits>
+    {
+        return basic_istreambuf_view<CharT, Traits>{in};
+    }
+};
+
+}  // namespace istreambuf_
+
+inline constexpr auto istreambuf = istreambuf_::fn{};
+
+}  // namespace views
+
+}  // namespace ranges
+
 namespace detail {
 
 template <typename CharT>
@@ -234,6 +365,15 @@ private:
 
 using scan_istream_buffer = basic_scan_istream_buffer<char>;
 using wscan_istream_buffer = basic_scan_istream_buffer<wchar_t>;
+
+extern template basic_scan_istream_buffer<char>::basic_scan_istream_buffer(
+    std::istream&);
+extern template basic_scan_istream_buffer<wchar_t>::basic_scan_istream_buffer(
+    std::wistream&);
+
+extern template basic_scan_istream_buffer<char>::~basic_scan_istream_buffer();
+extern template basic_scan_istream_buffer<
+    wchar_t>::~basic_scan_istream_buffer();
 
 inline scan_istream_buffer make_scan_buffer(std::istream& stream,
                                             make_scan_buffer_tag)
