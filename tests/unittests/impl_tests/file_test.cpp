@@ -211,8 +211,8 @@ public:
         if (auto i = interface::sync(m_file, pos, *this, this->m_current_view,
                                      this->m_putback_buffer, m_prelude.empty());
             i != pos) {
-            scn::impl::set_prelude_after_sync(m_prelude, pos, i, m_current_view,
-                                              m_putback_buffer);
+            scn::detail::set_prelude_after_sync(
+                m_prelude, pos, i, m_current_view, m_putback_buffer);
         }
         return true;
     }

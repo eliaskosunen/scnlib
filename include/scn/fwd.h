@@ -51,7 +51,6 @@ template <typename Range, typename CharT>
 class basic_scan_context;
 
 class scan_file;
-class scan_file_ref;
 
 namespace detail {
 struct buffer_range_tag {};

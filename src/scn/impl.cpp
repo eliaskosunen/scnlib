@@ -320,16 +320,16 @@ SCN_PUBLIC bool scan_cfile_buffer::sync(std::ptrdiff_t position)
                                              true) == position;
 }
 
-SCN_PUBLIC scan_file2_buffer::scan_file2_buffer(scan_file& file)
+SCN_PUBLIC scan_file_buffer::scan_file_buffer(scan_file& file)
     : base(scan_file_access::get_handle(file)),
       m_prelude(scan_file_access::get_prelude(file))
 {
     this->m_current_view = std::string_view{m_prelude.data(), m_prelude.size()};
 }
 
-SCN_PUBLIC scan_file2_buffer::~scan_file2_buffer() = default;
+SCN_PUBLIC scan_file_buffer::~scan_file_buffer() = default;
 
-SCN_PUBLIC bool scan_file2_buffer::fill()
+SCN_PUBLIC bool scan_file_buffer::fill()
 {
     if (scan_cfile_buffer::fill()) {
         m_prelude.clear();
@@ -338,15 +338,15 @@ SCN_PUBLIC bool scan_file2_buffer::fill()
     return false;
 }
 
-SCN_PUBLIC bool scan_file2_buffer::sync(std::ptrdiff_t position)
+SCN_PUBLIC bool scan_file_buffer::sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
     if (auto i = stdio_file_buffer_interface::sync(
             f, position, *this, m_current_view, m_putback_buffer,
             m_prelude.empty());
         i != position) {
-        impl::set_prelude_after_sync(m_prelude, position, i, m_current_view,
-                                     m_putback_buffer);
+        detail::set_prelude_after_sync(m_prelude, position, i, m_current_view,
+                                       m_putback_buffer);
     }
     return true;
 }

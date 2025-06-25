@@ -119,6 +119,9 @@ TEST(SourceTest, SourceIsRandomAccessRange)
     EXPECT_DOUBLE_EQ(d, 3.14);
 }
 
+template <typename>
+struct debug;
+
 TEST(SourceTest, SourceIsInputRange)
 {
     auto source = std::deque<char>{'1', '2', '3', ' ', '3', '.', '1', '4'};
@@ -127,13 +130,40 @@ TEST(SourceTest, SourceIsInputRange)
                                  scn::ranges::to_input_view<
                                      scn::ranges::ref_view<std::deque<char>>>>);
 
-    // auto result = scn::scan<int, double>(input, "{} {}");
-    // static_assert(std::is_same_v<
-    //               decltype(result),
-    //               scan_result_helper<scn::ranges::iterator_t<decltype(input)>,
-    //                                  int, double>>);
-    // ASSERT_TRUE(result);
-    // auto [i, d] = result->values();
-    // EXPECT_EQ(i, 123);
-    // EXPECT_DOUBLE_EQ(d, 3.14);
+    auto result = scn::scan<int>(input, "{}");
+    using expected_result = scn::scan_expected<scn::scan_result<
+        scn::ranges::pair_concat_view<
+            scn::ranges::owning_view<std::string>,
+            scn::detail::borrowed_tail_subrange_t<decltype(input)&>>,
+        int>>;
+    static_assert(std::is_same_v<decltype(result), expected_result>);
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 123);
+
+    auto result2 = scn::scan<double>(result->range(), "{}");
+    //using expected_result2 = scn::scan_expected<scn::scan_result<
+    //    scn::ranges::pair_concat_view<
+    //        scn::ranges::owning_view<std::string>,
+    //        scn::detail::borrowed_tail_subrange_t<decltype(input)&>>,
+    //    double>>;
+    //debug<decltype(result2)>{};
+    //debug<expected_result2>{};
+    //static_assert(std::is_same_v<decltype(result2), expected_result2>);
+    ASSERT_TRUE(result2);
+    EXPECT_DOUBLE_EQ(result2->value(), 3.14);
+}
+
+TEST(SourceTest, SourceIsInputRangeRvalue)
+{
+    auto source = std::string{"123 3.14"};
+    auto input = scn::ranges::views::to_input(std::move(source));
+    static_assert(!scn::ranges::borrowed_range<decltype(input)>);
+    auto result = scn::scan<int, double>(std::move(input), "{} {}");
+    static_assert(
+        std::is_same_v<decltype(result),
+                       scan_result_helper<scn::ranges::dangling, int, double>>);
+    ASSERT_TRUE(result);
+    auto [i, d] = result->values();
+    EXPECT_EQ(i, 123);
+    EXPECT_DOUBLE_EQ(d, 3.14);
 }

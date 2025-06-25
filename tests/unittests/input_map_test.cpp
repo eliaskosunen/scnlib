@@ -96,7 +96,7 @@ TEST(InputMapTest, Deque)
     static_assert(
         std::is_same_v<
             decltype(buf),
-            scn::detail::basic_scan_forward_buffer_impl<std::deque<char>>>);
+            scn::detail::basic_scan_forward_range_buffer<std::deque<char>>>);
     EXPECT_EQ(collect(buf.get()), "foobar");
 }
 
@@ -107,7 +107,7 @@ TEST(InputMapTest, DequeSubrange)
     auto buf = scn::detail::make_scan_buffer(subr);
     static_assert(
         std::is_same_v<decltype(buf),
-                       scn::detail::basic_scan_forward_buffer_impl<
+                       scn::detail::basic_scan_forward_range_buffer<
                            scn::ranges::subrange<std::deque<char>::iterator>>>);
     EXPECT_EQ(collect(buf.get()), "foobar");
 }
@@ -116,6 +116,5 @@ TEST(InputMapTest, File)
 {
     scn::scan_file file{stdin};
     auto buf = scn::detail::make_scan_buffer(file);
-    static_assert(
-        std::is_same_v<decltype(buf), scn::detail::scan_file2_buffer>);
+    static_assert(std::is_same_v<decltype(buf), scn::detail::scan_file_buffer>);
 }

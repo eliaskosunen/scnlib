@@ -55,7 +55,7 @@ TEST(ScanBufferTest, Deque)
     auto deque = std::deque<char>{};
     std::copy(src.begin(), src.end(), std::back_inserter(deque));
 
-    auto buf = scn::detail::make_forward_scan_buffer(deque);
+    auto buf = scn::detail::make_range_scan_buffer(deque);
 
     auto it = buf.get().begin();
     EXPECT_NE(it, buf.get().end());
@@ -83,7 +83,7 @@ TEST(ScanBufferTest, Deque2)
     auto deque = std::deque<char>{};
     std::copy(src.begin(), src.end(), std::back_inserter(deque));
 
-    auto buf = scn::detail::make_forward_scan_buffer(deque);
+    auto buf = scn::detail::make_range_scan_buffer(deque);
 
     auto it = buf.get().begin();
     EXPECT_NE(it, buf.get().end());

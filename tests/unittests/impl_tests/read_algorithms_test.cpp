@@ -32,7 +32,7 @@ static auto make_non_contiguous_buffer_range(std::string_view in)
     std::copy(in.begin(), in.end(), std::back_inserter(mem));
 
     static std::optional<
-        scn::detail::basic_scan_forward_buffer_impl<std::deque<char>>>
+        scn::detail::basic_scan_forward_range_buffer<std::deque<char>>>
         buffer{};
     buffer.reset();
     buffer.emplace(mem);

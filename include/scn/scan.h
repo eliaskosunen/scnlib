@@ -20,6 +20,8 @@
 // Includes <cassert>, <cstddef>, <cstdint>, and <type_traits>
 #include <scn/fwd.h>
 
+#include "scan.h"
+
 #if defined(SCN_MODULE) && defined(SCN_IMPORT_STD)
 import std;
 #else
@@ -3495,18 +3497,54 @@ public:
 
 namespace detail::subrange_ {
 
+template <typename I,
+          typename S,
+          bool DefaultConstruct = std::is_default_constructible_v<I>>
+class subrange_base;
+
+template <typename I, typename S>
+class subrange_base<I, S, true> {
+public:
+    constexpr subrange_base() = default;
+
+    constexpr subrange_base(I i, S s)
+        : m_iterator(SCN_MOVE(i)), m_sentinel(SCN_MOVE(s))
+    {
+    }
+
+protected:
+    SCN_NO_UNIQUE_ADDRESS I m_iterator{};
+    SCN_NO_UNIQUE_ADDRESS S m_sentinel{};
+};
+
+template <typename I, typename S>
+class subrange_base<I, S, false> {
+public:
+    constexpr subrange_base() = delete;
+
+    constexpr subrange_base(I i, S s)
+        : m_iterator(SCN_MOVE(i)), m_sentinel(SCN_MOVE(s))
+    {
+    }
+
+protected:
+    SCN_NO_UNIQUE_ADDRESS I m_iterator{};
+    SCN_NO_UNIQUE_ADDRESS S m_sentinel{};
+};
+
 template <typename I, typename S = I>
-class subrange : public view_interface<subrange<I, S>> {
+class subrange : public view_interface<subrange<I, S>>,
+                 private subrange_base<I, S> {
     static_assert(input_or_output_iterator<I>);
     static_assert(sentinel_for<S, I>);
 
 public:
-    subrange() = default;
+    constexpr subrange() = default;
 
     template <typename I_,
               std::enable_if_t<std::is_convertible_v<I_, I>>* = nullptr>
     constexpr subrange(I_ i, S s)
-        : m_iterator(SCN_MOVE(i)), m_sentinel(SCN_MOVE(s))
+        : subrange_base<I, S>(SCN_MOVE(i), SCN_MOVE(s))
     {
     }
 
@@ -3516,7 +3554,7 @@ public:
                          std::is_convertible_v<iterator_t<R>, I> &&
                          std::is_convertible_v<sentinel_t<R>, S>>* = nullptr>
     constexpr subrange(R&& r)
-        : m_iterator(scn::ranges::begin(r)), m_sentinel(scn::ranges::end(r))
+        : subrange_base<I, S>(scn::ranges::begin(r), scn::ranges::end(r))
     {
     }
 
@@ -3524,35 +3562,31 @@ public:
     SCN_NODISCARD constexpr I begin() const
         noexcept(std::is_nothrow_copy_constructible_v<I>)
     {
-        return m_iterator;
+        return this->m_iterator;
     }
     template <typename II = I, std::enable_if_t<!copyable<II>>* = nullptr>
     SCN_NODISCARD constexpr I begin() noexcept
     {
-        return SCN_MOVE(m_iterator);
+        return SCN_MOVE(this->m_iterator);
     }
 
     SCN_NODISCARD constexpr S end() const
         noexcept(std::is_nothrow_copy_constructible_v<S>)
     {
-        return m_sentinel;
+        return this->m_sentinel;
     }
 
     SCN_NODISCARD constexpr bool empty() const noexcept
     {
-        return m_iterator == m_sentinel;
+        return this->m_iterator == this->m_sentinel;
     }
 
     template <typename I_ = I,
               std::enable_if_t<sized_sentinel_for<S, I_>>* = nullptr>
     SCN_NODISCARD constexpr std::size_t size() const noexcept
     {
-        return static_cast<size_t>(m_sentinel - m_iterator);
+        return static_cast<size_t>(this->m_sentinel - this->m_iterator);
     }
-
-private:
-    SCN_NO_UNIQUE_ADDRESS I m_iterator{};
-    SCN_NO_UNIQUE_ADDRESS S m_sentinel{};
 };
 
 template <typename I,
@@ -4231,12 +4265,14 @@ namespace ranges {
 
 namespace detail {
 
+template <typename R, typename = void>
+inline constexpr bool simple_view = false;
 template <typename R>
-inline constexpr bool simple_view =
-    range<const R> && std::is_same_v<iterator_t<R>, iterator_t<const R>> &&
+inline constexpr bool simple_view<R, std::enable_if_t<range<const R>>> =
+    std::is_same_v<iterator_t<R>, iterator_t<const R>> &&
     std::is_same_v<sentinel_t<R>, sentinel_t<const R>>;
 
-}
+}  // namespace detail
 
 template <typename V,
           std::enable_if_t<detail::is_basic_view<V> && !common_range<V>>* =
@@ -4741,23 +4777,27 @@ private:
     FirstIt& _get_first()
     {
         SCN_EXPECT(m_is_first);
-        return *reinterpret_cast<FirstIt*>(m_storage);
+        return *reinterpret_cast<FirstIt*>(
+            SCN_ASSUME_ALIGNED(m_storage, alignof(FirstIt)));
     }
     const FirstIt& _get_first() const
     {
         SCN_EXPECT(m_is_first);
-        return *reinterpret_cast<const FirstIt*>(m_storage);
+        return *reinterpret_cast<const FirstIt*>(
+            SCN_ASSUME_ALIGNED(m_storage, alignof(FirstIt)));
     }
 
     SecondIt& _get_second()
     {
         SCN_EXPECT(!m_is_first);
-        return *reinterpret_cast<SecondIt*>(m_storage);
+        return *reinterpret_cast<SecondIt*>(
+            SCN_ASSUME_ALIGNED(m_storage, alignof(SecondIt)));
     }
     const SecondIt& _get_second() const
     {
         SCN_EXPECT(!m_is_first);
-        return *reinterpret_cast<const SecondIt*>(m_storage);
+        return *reinterpret_cast<const SecondIt*>(
+            SCN_ASSUME_ALIGNED(m_storage, alignof(SecondIt)));
     }
 
     void _destroy()
@@ -4792,6 +4832,8 @@ private:
     bool m_is_first{true};
 };
 
+struct pair_concat_access;
+
 }  // namespace detail
 
 template <typename First, typename Second>
@@ -4803,6 +4845,14 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
     static_assert(std::is_same_v<range_value_t<First>, range_value_t<Second>>);
     static_assert(
         std::is_same_v<range_difference_t<First>, range_difference_t<Second>>);
+
+    friend struct pair_concat_access;
+
+    template <typename R>
+    using const_iterator_t =
+        typename detail::mp_if_c<range<const R>,
+                                 detail::mp_defer<iterator_t, const R>,
+                                 detail::mp_identity<void>>::type;
 
     template <bool Const>
     class iterator : private detail::pair_concat_iterator_storage<
@@ -4819,6 +4869,8 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
                                      iter_value_t<second_iterator>>);
         static_assert(std::is_same_v<iter_difference_t<first_iterator>,
                                      iter_difference_t<second_iterator>>);
+
+        friend struct pair_concat_access;
 
         template <std::size_t N>
         void _satisfy()
@@ -4842,9 +4894,9 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
             bool Other,
             std::enable_if_t<Const && !Other &&
                              std::is_convertible_v<iterator_t<First>,
-                                                   iterator_t<const First>> &&
+                                                   const_iterator_t<First>> &&
                              std::is_convertible_v<iterator_t<Second>,
-                                                   iterator_t<const Second>>>* =
+                                                   const_iterator_t<Second>>>* =
                 nullptr>
         iterator(iterator<Other> other) : base(), m_parent(other.m_parent)
         {
@@ -4951,6 +5003,9 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
     friend class iterator;
 
 public:
+    using first_range_type = First;
+    using second_range_type = Second;
+
     constexpr pair_concat_view() = default;
 
     constexpr explicit pair_concat_view(First first, Second second)
@@ -5041,6 +5096,28 @@ private:
 template <typename First, typename Second>
 pair_concat_view(First&&, Second&&)
     -> pair_concat_view<views::all_t<First>, views::all_t<Second>>;
+
+namespace detail {
+struct pair_concat_access {
+    template <typename First, typename Second>
+    static First& get_first(pair_concat_view<First, Second>& v)
+    {
+        return v.m_first;
+    }
+
+    template <typename Iterator>
+    static bool is_iterator_first(const Iterator& it)
+    {
+        return it._is_first();
+    }
+
+    template <typename Iterator>
+    static decltype(auto) get_iterator_first(Iterator& it)
+    {
+        return it._get_first();
+    }
+};
+}  // namespace detail
 
 namespace views {
 
@@ -5882,18 +5959,15 @@ inline constexpr bool is_cp_space(char32_t cp) noexcept
 // scan_buffer
 /////////////////////////////////////////////////////////////////
 
-class scan_file_ref;
 namespace detail {
 struct scan_file_access;
 }
 
 class scan_file {
-    friend class scan_file_ref;
     friend struct detail::scan_file_access;
 
 public:
     explicit scan_file(std::FILE* file) noexcept : m_file(file) {}
-    explicit scan_file(const scan_file_ref& file);
 
     ~scan_file() = default;
 
@@ -5939,50 +6013,6 @@ private:
     std::FILE* m_file{nullptr};
 };
 
-class scan_file_ref {
-    friend scan_file;
-    friend struct detail::scan_file_access;
-
-public:
-    scan_file_ref() = default;
-    scan_file_ref(scan_file& file) : m_ref(&file) {}
-
-    SCN_NODISCARD std::optional<std::FILE*> handle() const
-    {
-        SCN_EXPECT(m_ref);
-        return m_ref->handle();
-    }
-
-    SCN_NODISCARD std::string_view prelude() const
-    {
-        SCN_EXPECT(m_ref);
-        return m_ref->prelude();
-    }
-
-    SCN_NODISCARD std::pair<std::string_view, std::FILE*> contents() const
-    {
-        SCN_EXPECT(m_ref);
-        return m_ref->contents();
-    }
-
-    const scan_file& underlying() const
-    {
-        SCN_EXPECT(m_ref);
-        return *m_ref;
-    }
-
-private:
-    scan_file* m_ref{nullptr};
-};
-
-inline scan_file::scan_file(const scan_file_ref& file)
-{
-    SCN_EXPECT(file.m_ref);
-    SCN_EXPECT(file.m_ref->m_file);
-    m_prelude = std::string{file.m_ref->m_prelude};
-    m_file = file.m_ref->m_file;
-}
-
 namespace detail {
 
 struct scan_file_access {
@@ -5992,22 +6022,9 @@ struct scan_file_access {
         return f.m_file;
     }
 
-    static std::FILE* get_handle(scan_file_ref& f)
-    {
-        SCN_EXPECT(f.m_ref);
-        SCN_EXPECT(f.m_ref->m_file != nullptr);
-        return f.m_ref->m_file;
-    }
-
     static std::string& get_prelude(scan_file& f)
     {
         return f.m_prelude;
-    }
-
-    static scan_file& get_underlying_file(scan_file_ref& f)
-    {
-        SCN_EXPECT(f.m_ref);
-        return *f.m_ref;
     }
 };
 
@@ -6359,27 +6376,18 @@ template <typename CharT>
 basic_scan_string_buffer(std::basic_string_view<CharT>)
     -> basic_scan_string_buffer<CharT>;
 
-template <typename CharT>
-class basic_scan_forward_buffer_base : public basic_scan_buffer<CharT> {
-    using base = basic_scan_buffer<CharT>;
-
-protected:
-    basic_scan_forward_buffer_base() : base(typename base::non_contiguous_tag{})
-    {
-    }
-};
-
 template <typename I, typename S>
 using less_than_compare =
     decltype(SCN_DECLVAL(const I&) < SCN_DECLVAL(const S&));
 
 template <typename Range>
-class basic_scan_forward_buffer_impl
-    : public basic_scan_forward_buffer_base<detail::char_t<Range>> {
-    static_assert(ranges::range<const Range> && std::is_object_v<Range>);
+class basic_scan_forward_range_buffer
+    : public basic_scan_buffer<detail::char_t<Range>> {
+    static_assert(ranges::forward_range<const Range> &&
+                  std::is_object_v<Range>);
 
     using _char_type = detail::char_t<Range>;
-    using base = basic_scan_forward_buffer_base<_char_type>;
+    using base = basic_scan_buffer<_char_type>;
 
 public:
     using char_type = _char_type;
@@ -6387,12 +6395,9 @@ public:
     using iterator = ranges::iterator_t<const Range>;
     using sentinel = ranges::sentinel_t<const Range>;
 
-    template <
-        typename R,
-        std::enable_if_t<is_not_self<R, basic_scan_forward_buffer_impl> &&
-                         std::is_convertible_v<R, const Range&>>* = nullptr>
-    basic_scan_forward_buffer_impl(R&& r)
-        : m_range(std::addressof(static_cast<const Range&>(SCN_FWD(r)))),
+    basic_scan_forward_range_buffer(const Range& r)
+        : base(typename base::non_contiguous_tag{}),
+          m_range(&r),
           m_cursor(ranges::begin(*m_range))
     {
     }
@@ -6426,7 +6431,138 @@ private:
 };
 
 template <typename R>
-basic_scan_forward_buffer_impl(const R&) -> basic_scan_forward_buffer_impl<R>;
+basic_scan_forward_range_buffer(const R&) -> basic_scan_forward_range_buffer<R>;
+
+template <typename T>
+struct move_only_wrapper {
+    explicit move_only_wrapper(T&& val) : value(SCN_MOVE(val)) {}
+
+    move_only_wrapper(const move_only_wrapper&) = delete;
+    move_only_wrapper& operator=(const move_only_wrapper&) = delete;
+
+    move_only_wrapper(move_only_wrapper&&) = default;
+    move_only_wrapper& operator=(move_only_wrapper&&) = default;
+
+    ~move_only_wrapper() = default;
+
+    T value;
+};
+
+template <typename CharT>
+inline void set_prelude_after_sync(std::basic_string<CharT>& prelude,
+                                   std::ptrdiff_t expected_position,
+                                   std::ptrdiff_t synced_position,
+                                   std::basic_string_view<CharT>& current_view,
+                                   std::basic_string<CharT>& putback_buffer)
+{
+    SCN_EXPECT(synced_position > expected_position);
+    const auto n_needed = synced_position - expected_position;
+
+    prelude.clear();
+    prelude.reserve(static_cast<std::size_t>(n_needed));
+
+    const auto n_from_current_view =
+        std::min(n_needed, static_cast<std::ptrdiff_t>(current_view.size()));
+    const auto n_from_putback_buffer =
+        std::min(n_needed - n_from_current_view,
+                 static_cast<std::ptrdiff_t>(putback_buffer.size()));
+    SCN_EXPECT(n_from_putback_buffer + n_from_current_view == n_needed);
+
+    prelude.append(putback_buffer.end() - n_from_putback_buffer,
+                   putback_buffer.end());
+    prelude.append(current_view.end() - n_from_current_view,
+                   current_view.end());
+}
+
+template <typename Range>
+class basic_scan_input_range_buffer
+    : public basic_scan_buffer<detail::char_t<Range>> {
+    static_assert(ranges::input_range<Range> && !ranges::forward_range<Range>);
+
+    using _char_type = detail::char_t<Range>;
+    using base = basic_scan_buffer<_char_type>;
+
+public:
+    using char_type = _char_type;
+    using range_type = Range;
+    using iterator = ranges::iterator_t<Range>;
+    using sentinel = ranges::sentinel_t<Range>;
+
+    template <typename R,
+              std::enable_if_t<is_not_self<R, basic_scan_input_range_buffer>>* =
+                  nullptr>
+    basic_scan_input_range_buffer(R&& r)
+        : base(typename base::non_contiguous_tag{}),
+          m_range(SCN_FWD(r)),
+          m_cursor(ranges::begin(m_range))
+    {
+    }
+
+    iterator& get_iterator()
+    {
+        return m_cursor.value;
+    }
+
+    std::basic_string<char_type>& get_prelude()
+    {
+        return m_prelude;
+    }
+
+    bool fill() override
+    {
+        if (m_cursor.value == ranges::end(m_range)) {
+            return false;
+        }
+        if constexpr (mp_valid_v<less_than_compare, iterator, sentinel>) {
+            SCN_EXPECT(m_cursor.value < ranges::end(m_range));
+        }
+        if (!this->m_current_view.empty()) {
+            this->m_putback_buffer.insert(this->m_putback_buffer.end(),
+                                          this->m_current_view.begin(),
+                                          this->m_current_view.end());
+        }
+        m_latest = *m_cursor.value;
+        ++m_cursor.value;
+        this->m_current_view = std::basic_string_view<char_type>{&m_latest, 1};
+        if constexpr (mp_valid_v<less_than_compare, iterator, sentinel>) {
+            SCN_EXPECT(m_cursor.value <= ranges::end(m_range));
+        }
+        return true;
+    }
+
+    bool sync(std::ptrdiff_t position) override
+    {
+        if (position != this->chars_available()) {
+            detail::set_prelude_after_sync(
+                m_prelude, position, this->chars_available(),
+                this->m_current_view, this->m_putback_buffer);
+        }
+        return true;
+    }
+
+protected:
+    template <typename R,
+              std::enable_if_t<is_not_self<R, basic_scan_input_range_buffer>>* =
+                  nullptr>
+    basic_scan_input_range_buffer(R&& r,
+                                  std::basic_string_view<char_type> prelude)
+        : base(typename base::non_contiguous_tag{}, prelude),
+          m_range(SCN_FWD(r)),
+          m_cursor(ranges::begin(m_range))
+    {
+    }
+
+private:
+    std::basic_string<char_type> m_prelude{};
+    Range m_range;
+    move_only_wrapper<iterator> m_cursor;
+    char_type m_latest{};
+};
+
+template <typename R>
+basic_scan_input_range_buffer(R&) -> basic_scan_input_range_buffer<R&>;
+template <typename R, std::enable_if_t<!std::is_reference_v<R>>* = nullptr>
+basic_scan_input_range_buffer(R&&) -> basic_scan_input_range_buffer<R>;
 
 class scan_cfile_buffer : public basic_scan_buffer<char> {
     using base = basic_scan_buffer<char>;
@@ -6444,12 +6580,12 @@ protected:
     std::optional<char> m_latest{std::nullopt};
 };
 
-class scan_file2_buffer : public scan_cfile_buffer {
+class scan_file_buffer : public scan_cfile_buffer {
     using base = scan_cfile_buffer;
 
 public:
-    SCN_PUBLIC explicit scan_file2_buffer(scan_file& file);
-    SCN_PUBLIC ~scan_file2_buffer() override;
+    SCN_PUBLIC explicit scan_file_buffer(scan_file& file);
+    SCN_PUBLIC ~scan_file_buffer() override;
 
     SCN_PUBLIC bool fill() override;
 
@@ -6467,16 +6603,14 @@ auto make_string_scan_buffer(const Range& range)
 }
 
 template <typename Range>
-auto make_forward_scan_buffer(const Range& range)
+auto make_range_scan_buffer(Range&& range)
 {
-    return basic_scan_forward_buffer_impl(range);
-}
-
-template <typename Range>
-auto make_input_scan_buffer(const Range& range)
-{
-    // TODO
-    return basic_scan_forward_buffer_impl(range);
+    if constexpr (ranges::forward_range<Range>) {
+        return basic_scan_forward_range_buffer(range);
+    }
+    else {
+        return basic_scan_input_range_buffer(SCN_FWD(range));
+    }
 }
 
 }  // namespace detail
@@ -6612,71 +6746,58 @@ inline auto impl(std::FILE* file, priority_tag<3>)
 inline auto impl(scan_file& file, priority_tag<3>)
 {
     SCN_EXPECT(scan_file_access::get_handle(file) != nullptr);
-    return scan_file2_buffer{file};
+    return scan_file_buffer{file};
 }
 auto impl(scan_file&&, priority_tag<3>) = delete;
 
-inline auto impl(scan_file_ref file, priority_tag<3>)
-{
-    SCN_EXPECT(scan_file_access::get_handle(file) != nullptr);
-    return scan_file2_buffer{scan_file_access::get_underlying_file(file)};
-}
-
-// contiguous + sized -> string_buffer
+// (at least) forward_range -> appropriate range buffer
 template <typename Range,
-          std::enable_if_t<ranges::contiguous_range<Range> &&
-                           ranges::sized_range<Range>>* = nullptr>
+          std::enable_if_t<ranges::forward_range<Range>>* = nullptr>
 auto impl(const Range& r, priority_tag<2>)
-{
-    if constexpr (is_valid_char_type<detail::char_t<Range>>) {
-        return std::basic_string_view<detail::char_t<Range>>{ranges::data(r),
-                                                             ranges::size(r)};
-    }
-    else {
-        return invalid_char_type{};
-    }
-}
-
-// !contiguous + random-access + iterator can be made into a ptr
-// for MSVC debug iterators
-//   -> string_buffer
-template <typename Range,
-          std::enable_if_t<!ranges::contiguous_range<Range> &&
-                           ranges::random_access_range<Range> &&
-                           can_make_address_from_iterator<
-                               ranges::iterator_t<Range>>>* = nullptr>
-auto impl(const Range& r, priority_tag<1>)
-{
-    if constexpr (is_valid_char_type<detail::char_t<Range>>) {
-        return make_string_view_from_pointers(to_address(ranges::begin(r)),
-                                              to_address(ranges::end(r)));
-    }
-    else {
-        return invalid_char_type{};
-    }
-}
-
-// forward -> forward_buffer<R>,
-// input -> input_buffer<R>
-template <typename Range,
-          std::enable_if_t<ranges::input_range<Range>>* = nullptr>
-auto impl(const Range& r, priority_tag<1>)
 {
     if constexpr (!is_valid_char_type<char_t<Range>>) {
         return invalid_char_type{};
     }
-    else if constexpr (ranges::forward_range<Range>) {
-        return make_forward_scan_buffer(r);
+    else if constexpr (ranges::contiguous_range<Range> &&
+                       ranges::sized_range<Range>) {
+        // contiguous + sized -> treat as string
+        return std::basic_string_view<detail::char_t<Range>>{ranges::data(r),
+                                                             ranges::size(r)};
+    }
+    else if constexpr (ranges::random_access_range<Range> &&
+                       can_make_address_from_iterator<
+                           ranges::iterator_t<Range>>) {
+        // random-access + iterator can be converted to a pointer
+        // looks like a debug iterator for a contiguous source
+        //  -> treat as string
+        return detail::make_string_view_from_pointers(
+            to_address(ranges::begin(r)), to_address(ranges::end(r)));
     }
     else {
-        return make_input_scan_buffer(r);
+        // regular forward_range -> forward_buffer
+        return detail::make_range_scan_buffer(r);
     }
 }
 
-template <typename Range>
-auto impl(const Range&, priority_tag<0>)
+// input_range -> input_range_buffer
+template <typename Range,
+          std::enable_if_t<ranges::input_range<Range> &&
+                           !ranges::forward_range<Range>>* = nullptr>
+auto impl(Range&& r, priority_tag<1>)
 {
-    if constexpr (ranges::range<Range>) {
+    if constexpr (!is_valid_char_type<char_t<Range>>) {
+        return invalid_char_type{};
+    }
+    else {
+        return detail::make_range_scan_buffer(SCN_FWD(r));
+    }
+}
+
+template <typename Source,
+          std::enable_if_t<!ranges::input_range<Source>>* = nullptr>
+auto impl(Source&&, priority_tag<0>)
+{
+    if constexpr (ranges::range<Source>) {
         return insufficient_range{};
     }
     else {
@@ -6685,22 +6806,22 @@ auto impl(const Range&, priority_tag<0>)
 }
 }  // namespace _make_scan_buffer
 
-template <typename Range>
-inline constexpr bool is_scannable_range =
+template <typename Source>
+inline constexpr bool is_scannable_source =
     !std::is_base_of_v<invalid_input_range,
-                       decltype(_make_scan_buffer::impl(
-                                    SCN_DECLVAL(const Range&)),
+                       decltype(_make_scan_buffer::impl(SCN_DECLVAL(Source&)),
                                 priority_tag<4>{})>;
 
-template <typename Range>
-decltype(auto) make_scan_buffer(Range&& range)
+template <typename Source>
+decltype(auto) make_scan_buffer(Source&& source)
 {
     SCN_GCC_COMPAT_PUSH
     SCN_GCC_COMPAT_IGNORE("-Wdeprecated-declarations")
     // Get -Wdeprecated-declarations warnings when impl() is called below,
     // not here
 
-    using T = decltype(_make_scan_buffer::impl(range, priority_tag<5>{}));
+    using T =
+        decltype(_make_scan_buffer::impl(SCN_FWD(source), priority_tag<5>{}));
 
     SCN_GCC_COMPAT_POP
 
@@ -6743,13 +6864,8 @@ decltype(auto) make_scan_buffer(Range&& range)
                   "as long as their value type is char or wchar_t.\n"
                   "See the scnlib documentation for more details.");
 
-    return _make_scan_buffer::impl(range, priority_tag<5>{});
+    return _make_scan_buffer::impl(SCN_FWD(source), priority_tag<5>{});
 }
-
-template <typename Range,
-          std::enable_if_t<!std::is_reference_v<Range> &&
-                           !ranges::borrowed_range<Range>>* = nullptr>
-auto make_scan_buffer(Range&&) = delete;
 
 template <typename Source>
 using dt_make_scan_buffer =
@@ -7707,8 +7823,7 @@ public:
           m_is_borrowed(
               (ranges::range<Source> && ranges::borrowed_range<Source>) ||
               std::is_same_v<detail::remove_cvref_t<Source>, std::FILE*> ||
-              std::is_same_v<detail::remove_cvref_t<Source>, scan_file> ||
-              std::is_same_v<detail::remove_cvref_t<Source>, scan_file_ref>)
+              std::is_same_v<detail::remove_cvref_t<Source>, scan_file>)
     {
     }
 
@@ -7865,8 +7980,6 @@ private:
     SCN_NO_UNIQUE_ADDRESS tuple_type m_values{};
 };
 
-struct scan_result_convert_tag {};
-
 template <class T, class U>
 constexpr auto&& forward_like(U&& x) noexcept
 {
@@ -7890,26 +8003,36 @@ constexpr auto&& forward_like(U&& x) noexcept
     }
 }
 
+struct scan_result_source_access;
+
 template <typename Range>
-struct scan_result_range_storage {
-    static_assert(is_specialization_of_v<Range, ranges::subrange>,
-                  "scan_result<Range> accepts only subranges as Ranges");
+class scan_result_subrange_storage {
+    static_assert(
+        is_specialization_of_v<Range, ranges::subrange>,
+        "scan_result_subrange_storage accepts only subranges as Ranges");
+    static_assert(ranges::forward_range<Range>);
+    static_assert(ranges::copyable<Range>);
+
+    friend struct scan_result_source_access;
 
 public:
+    using source_type = Range;
     using range_type = Range;
     using iterator = ranges::iterator_t<Range>;
     using sentinel = ranges::sentinel_t<Range>;
 
-    constexpr scan_result_range_storage() = default;
+    constexpr scan_result_subrange_storage() = default;
 
-    explicit constexpr scan_result_range_storage(range_type&& r)
+    explicit constexpr scan_result_subrange_storage(range_type&& r)
         : m_range(SCN_MOVE(r))
     {
     }
 
-    template <typename R>
-    explicit constexpr scan_result_range_storage(scan_result_convert_tag, R&& r)
-        : m_range(SCN_MOVE(r))
+    template <
+        typename R,
+        std::enable_if_t<is_not_self<R, scan_result_subrange_storage> &&
+                         std::is_constructible_v<range_type, R&&>>* = nullptr>
+    explicit constexpr scan_result_subrange_storage(R&& r) : m_range(SCN_FWD(r))
     {
     }
 
@@ -7931,26 +8054,87 @@ public:
         return ranges::end(m_range);
     }
 
-    template <typename Other>
-    void set_range(Other&& r)
-    {
-        m_range = std::forward<Other>(r);
-    }
-
-protected:
-    template <typename Other>
-    void assign_range(Other&& r)
-    {
-        m_range = detail::forward_like<Other>(r.m_range);
-    }
-
 private:
+    template <
+        typename Other,
+        std::enable_if_t<std::is_assignable_v<range_type&, Other&&>>* = nullptr>
+    void set(Other&& r)
+    {
+        m_range = SCN_FWD(r);
+    }
+
     SCN_NO_UNIQUE_ADDRESS range_type m_range{};
 };
 
-struct scan_result_cfile_storage {
+template <typename Range>
+class scan_result_pair_concat_storage {
+    static_assert(is_specialization_of_v<Range, ranges::pair_concat_view>,
+                  "scan_result_subrange_storage accepts only pair_concat_views "
+                  "as Ranges");
+    static_assert(ranges::input_range<Range> && !ranges::forward_range<Range>);
+
+    using char_type = detail::char_t<Range>;
+
+    friend struct scan_result_source_access;
+
 public:
-    using range_type = std::FILE*;
+    using source_type = Range;
+    using range_type = source_type;
+    using iterator = ranges::iterator_t<range_type>;
+    using sentinel = ranges::sentinel_t<range_type>;
+
+    scan_result_pair_concat_storage() = default;
+
+    explicit scan_result_pair_concat_storage(range_type&& r)
+        : m_range(SCN_MOVE(r))
+    {
+    }
+
+    SCN_NODISCARD range_type& range() &
+    {
+        SCN_EXPECT(m_range.has_value());
+        return *m_range;
+    }
+    SCN_NODISCARD range_type range() &&
+    {
+        SCN_EXPECT(m_range.has_value());
+        return SCN_MOVE(*m_range);
+    }
+
+    SCN_NODISCARD iterator& begin() &
+    {
+        SCN_EXPECT(m_range.has_value());
+        return ranges::begin(*m_range);
+    }
+    SCN_NODISCARD iterator begin() &&
+    {
+        SCN_EXPECT(m_range.has_value());
+        return SCN_MOVE(ranges::begin(*m_range));
+    }
+
+    SCN_NODISCARD sentinel end()
+    {
+        SCN_EXPECT(m_range.has_value());
+        return ranges::end(*m_range);
+    }
+
+private:
+    template <typename Other,
+              std::enable_if_t<std::is_constructible_v<range_type, Other&&>>* =
+                  nullptr>
+    void set(Other&& r)
+    {
+        m_range.emplace(SCN_FWD(r));
+    }
+
+    std::optional<range_type> m_range{};
+};
+
+class scan_result_cfile_storage {
+    friend struct scan_result_source_access;
+
+public:
+    using source_type = std::FILE*;
 
     scan_result_cfile_storage() = default;
 
@@ -7962,56 +8146,57 @@ public:
         return m_file;
     }
 
-    void set_range(std::FILE* f)
+private:
+    void set(std::FILE* f)
     {
         m_file = f;
     }
 
-protected:
-    void assign_range(const scan_result_cfile_storage& f)
-    {
-        m_file = f.m_file;
-    }
-
-private:
     std::FILE* m_file{nullptr};
 };
 
-struct scan_result_fileref_storage {
+class scan_result_file_storage {
+    friend struct scan_result_source_access;
+
 public:
-    using range_type = scan_file_ref;
+    using source_type = scan_file;
 
-    scan_result_fileref_storage() = default;
+    scan_result_file_storage() = default;
 
-    explicit scan_result_fileref_storage(scan_file_ref f) : m_file(f) {}
-    explicit scan_result_fileref_storage(scan_result_convert_tag, scan_file& f)
-        : m_file(f)
+    explicit scan_result_file_storage(scan_file& f) : m_file(&f) {}
+    explicit scan_result_file_storage(scan_file* f) : m_file(f)
     {
+        SCN_EXPECT(f);
     }
 
     /// File used for scanning
-    SCN_NODISCARD scan_file_ref file() const
+    SCN_NODISCARD scan_file& file()
     {
-        return m_file;
-    }
-
-    void set_range(scan_file_ref f)
-    {
-        m_file = f;
-    }
-
-protected:
-    void assign_range(const scan_result_fileref_storage& f)
-    {
-        m_file = f.m_file;
+        SCN_EXPECT(m_file);
+        return *m_file;
     }
 
 private:
-    scan_file_ref m_file;
+    void set(scan_file& f)
+    {
+        m_file = &f;
+    }
+    void set(scan_file* f)
+    {
+        SCN_EXPECT(f);
+        m_file = f;
+    }
+
+    scan_file* m_file{nullptr};
 };
 
 struct scan_result_dangling {
+    friend struct scan_result_source_access;
+
+    using source_type = ranges::dangling;
     using range_type = ranges::dangling;
+    using iterator = ranges::dangling;
+    using sentinel = ranges::dangling;
 
     constexpr scan_result_dangling() = default;
 
@@ -8034,28 +8219,54 @@ struct scan_result_dangling {
         return {};
     }
 
+private:
     template <typename... Args>
-    void set_range(Args&&...)
-    {
-    }
-
-protected:
-    template <typename... Args>
-    void assign_range(Args&&...)
+    void set(Args&&...)
     {
     }
 };
 
-template <typename Range>
-using scan_result_base =
-    mp_cond<std::is_same<remove_cvref_t<Range>, ranges::dangling>,
-            scan_result_dangling,
-            std::is_same<remove_cvref_t<Range>, std::FILE*>,
-            scan_result_cfile_storage,
-            std::is_same<remove_cvref_t<Range>, scan_file_ref>,
-            scan_result_fileref_storage,
-            std::true_type,
-            scan_result_range_storage<Range>>;
+template <typename Source>
+struct invalid_scan_result_source {
+    static_assert(detail::dependent_false<Source>::value,
+                  "No scan_result implementation found for this Source type");
+};
+
+template <typename Source>
+using scan_result_base = typename mp_cond<
+    std::is_same<remove_cvref_t<Source>, ranges::dangling>,
+    mp_identity<scan_result_dangling>,
+    std::is_same<remove_cvref_t<Source>, std::FILE*>,
+    mp_identity<scan_result_cfile_storage>,
+    std::is_same<std::remove_pointer_t<remove_cvref_t<Source>>, scan_file>,
+    mp_identity<scan_result_file_storage>,
+    mp_bool<ranges::forward_range<Source>>,
+    mp_defer<scan_result_subrange_storage, Source>,
+    mp_bool<ranges::input_range<Source>>,
+    mp_defer<scan_result_pair_concat_storage, Source>,
+    std::true_type,
+    mp_defer<invalid_scan_result_source, Source>>::type;
+
+struct scan_result_source_access {
+    template <typename R, typename... Args>
+    static auto set(R& result, Args&&... args)
+        -> decltype(result.set(SCN_FWD(args)...))
+    {
+        return result.set(SCN_FWD(args)...);
+    }
+
+    template <typename R>
+    static auto get(R& result) -> decltype(result.range())
+    {
+        return result.range();
+    }
+    template <typename R>
+    static auto get(R& result) -> decltype(result.file())
+    {
+        return result.file();
+    }
+};
+
 }  // namespace detail
 
 /**
@@ -8071,14 +8282,14 @@ using scan_result_base =
  * Type returned by `scan`, contains the unused input as a subrange, and the
  * scanned values in a tuple.
  */
-template <typename Range, typename... Args>
-class scan_result : public detail::scan_result_base<Range>,
+template <typename Source, typename... Args>
+class scan_result : public detail::scan_result_base<Source>,
                     public detail::scan_result_value_storage<Args...> {
-    using range_base = detail::scan_result_base<Range>;
+    using source_base = detail::scan_result_base<Source>;
     using value_base = detail::scan_result_value_storage<Args...>;
 
 public:
-    using range_type = typename range_base::range_type;
+    using source_type = typename source_base::source_type;
     using tuple_type = typename value_base::tuple_type;
 
     constexpr scan_result() = default;
@@ -8090,74 +8301,74 @@ public:
 
     ~scan_result() = default;
 
-    scan_result(range_type r, tuple_type&& values)
-        : range_base(SCN_MOVE(r)), value_base(SCN_MOVE(values))
-    {
-    }
-
-    template <typename OtherR,
-              std::enable_if_t<std::is_constructible_v<range_type, OtherR>>* =
+    template <typename Src,
+              std::enable_if_t<std::is_constructible_v<source_base, Src&&>>* =
                   nullptr>
-    scan_result(OtherR&& r, tuple_type&& values)
-        : range_base(detail::scan_result_convert_tag{}, SCN_FWD(r)),
-          value_base(SCN_MOVE(values))
+    scan_result(Src&& src, tuple_type&& values)
+        : source_base(SCN_FWD(src)), value_base(SCN_MOVE(values))
     {
     }
 
-    template <typename OtherR,
-              std::enable_if_t<
-                  std::is_constructible_v<range_type, OtherR> &&
-                  std::is_convertible_v<const OtherR&, range_type>>* = nullptr>
-    SCN_IMPLICIT scan_result(const scan_result<OtherR, Args...>& o)
-        : range_base(detail::scan_result_convert_tag{}, o.range()),
+    template <typename OtherSrc,
+              typename ThisSrc = Source,
+              std::enable_if_t<std::is_constructible_v<source_type, OtherSrc> &&
+                               std::is_convertible_v<const OtherSrc&,
+                                                     source_type>>* = nullptr>
+    SCN_IMPLICIT scan_result(const scan_result<OtherSrc, Args...>& o)
+        : source_base(detail::scan_result_source_access::get(o)),
           value_base(o.values())
     {
     }
-    template <typename OtherR,
-              std::enable_if_t<
-                  std::is_constructible_v<range_type, OtherR> &&
-                  !std::is_convertible_v<const OtherR&, range_type>>* = nullptr>
-    explicit scan_result(const scan_result<OtherR, Args...>& o)
-        : range_base(detail::scan_result_convert_tag{}, o.range()),
+    template <typename OtherSrc,
+              typename ThisSrc = Source,
+              std::enable_if_t<std::is_constructible_v<source_type, OtherSrc> &&
+                               !std::is_convertible_v<const OtherSrc&,
+                                                      source_type>>* = nullptr>
+    explicit scan_result(const scan_result<OtherSrc, Args...>& o)
+        : source_base(detail::scan_result_source_access::get(o)),
           value_base(o.values())
     {
     }
 
-    template <typename OtherR,
-              std::enable_if_t<std::is_constructible_v<range_type, OtherR> &&
-                               std::is_convertible_v<OtherR&&, range_type>>* =
-                  nullptr>
-    SCN_IMPLICIT scan_result(scan_result<OtherR, Args...>&& o)
-        : range_base(detail::scan_result_convert_tag{}, SCN_MOVE(o.range())),
+    template <typename OtherSrc,
+              typename ThisSrc = Source,
+              std::enable_if_t<
+                  std::is_constructible_v<source_type, OtherSrc> &&
+                  std::is_convertible_v<OtherSrc&&, source_type>>* = nullptr>
+    SCN_IMPLICIT scan_result(scan_result<OtherSrc, Args...>&& o)
+        : source_base(SCN_MOVE(detail::scan_result_source_access::get(o))),
           value_base(SCN_MOVE(o.values()))
     {
     }
-    template <typename OtherR,
-              std::enable_if_t<std::is_constructible_v<range_type, OtherR> &&
-                               !std::is_convertible_v<OtherR&&, range_type>>* =
-                  nullptr>
-    explicit scan_result(scan_result<OtherR, Args...>&& o)
-        : range_base(detail::scan_result_convert_tag{}, SCN_MOVE(o.range())),
+    template <typename OtherSrc,
+              typename ThisSrc = Source,
+              std::enable_if_t<
+                  std::is_constructible_v<source_type, OtherSrc> &&
+                  !std::is_convertible_v<OtherSrc&&, source_type>>* = nullptr>
+    explicit scan_result(scan_result<OtherSrc, Args...>&& o)
+        : source_base(SCN_MOVE(detail::scan_result_source_access::get(o))),
           value_base(SCN_MOVE(o.values()))
     {
     }
 
-    template <typename OtherR,
-              typename =
-                  std::enable_if_t<std::is_constructible_v<range_type, OtherR>>>
-    scan_result& operator=(const scan_result<OtherR, Args...>& o)
+    template <typename OtherSrc,
+              typename = std::enable_if_t<
+                  std::is_assignable_v<source_type&, const OtherSrc&>>>
+    scan_result& operator=(const scan_result<OtherSrc, Args...>& o)
     {
-        this->assign_range(o);
+        detail::scan_result_source_access::set(
+            *this, detail::scan_result_source_access::get(o));
         this->values() = o.values();
         return *this;
     }
 
-    template <typename OtherR,
-              typename =
-                  std::enable_if_t<std::is_constructible_v<range_type, OtherR>>>
-    scan_result& operator=(scan_result<OtherR, Args...>&& o)
+    template <typename OtherSrc,
+              typename = std::enable_if_t<
+                  std::is_constructible_v<source_type, OtherSrc>>>
+    scan_result& operator=(scan_result<OtherSrc, Args...>&& o)
     {
-        this->assign_range(o);
+        detail::scan_result_source_access::set(
+            *this, SCN_MOVE(detail::scan_result_source_access::get(o)));
         this->values() = SCN_MOVE(o.values());
         return *this;
     }
@@ -8170,6 +8381,24 @@ scan_result(R, detail::scan_arg_store<Ctx, Args...>&)
     -> scan_result<R, Args...>;
 
 namespace detail {
+template <typename Range>
+using borrowed_input_range_tail_subrange_t = std::conditional_t<
+    ranges::borrowed_range<Range>,
+    ranges::pair_concat_view<
+        ranges::owning_view<std::basic_string<detail::char_t<Range>>>,
+        ranges::subrange<ranges::iterator_t<Range>, ranges::sentinel_t<Range>>>,
+    ranges::dangling>;
+
+template <typename Range>
+using borrowed_flattened_concat_tail_subrange_t = std::conditional_t<
+    ranges::borrowed_range<Range>,
+    ranges::pair_concat_view<
+        ranges::owning_view<std::basic_string<detail::char_t<Range>>>,
+        ranges::subrange<
+            ranges::iterator_t<typename Range::second_range_type>,
+            ranges::sentinel_t<typename Range::second_range_type>>>,
+    ranges::dangling>;
+
 template <typename SourceRange>
 auto make_vscan_result_end(SourceRange& source)
 {
@@ -8182,8 +8411,10 @@ auto make_vscan_result_end(CharT (&source)[N])
     return source + N - 1;
 }
 
-template <typename SourceRange>
-auto make_vscan_result(SourceRange&& source, std::ptrdiff_t n)
+template <typename SourceRange,
+          typename Buffer,
+          std::enable_if_t<ranges::forward_range<SourceRange>>* = nullptr>
+auto make_vscan_result(SourceRange&& source, Buffer&, std::ptrdiff_t n)
     -> borrowed_tail_subrange_t<SourceRange>
 {
     if constexpr (ranges::random_access_iterator<
@@ -8200,19 +8431,33 @@ auto make_vscan_result(SourceRange&& source, std::ptrdiff_t n)
         return {SCN_MOVE(it), SCN_MOVE(end)};
     }
 }
-inline auto make_vscan_result(std::FILE* source, std::ptrdiff_t)
+template <typename SourceRange,
+          typename Buffer,
+          std::enable_if_t<ranges::input_range<SourceRange> &&
+                           !ranges::forward_range<SourceRange>>* = nullptr>
+auto make_vscan_result(SourceRange&& source, Buffer& buffer, std::ptrdiff_t)
+    -> borrowed_input_range_tail_subrange_t<SourceRange>
+{
+    return ranges::pair_concat_view{
+        ranges::owning_view{std::basic_string<detail::char_t<SourceRange>>(
+            SCN_MOVE(buffer.get_prelude()))},
+        ranges::subrange{SCN_MOVE(buffer.get_iterator()), ranges::end(source)}};
+}
+inline auto make_vscan_result(std::FILE* source,
+                              const scan_cfile_buffer&,
+                              std::ptrdiff_t)
 {
     return source;
 }
-inline auto make_vscan_result(scan_file& source, std::ptrdiff_t)
+inline auto make_vscan_result(scan_file& source,
+                              const scan_file_buffer&,
+                              std::ptrdiff_t)
 {
-    return scan_file_ref{source};
+    return &source;
 }
-inline auto make_vscan_result(scan_file&& source, std::ptrdiff_t) = delete;
-inline auto make_vscan_result(scan_file_ref source, std::ptrdiff_t)
-{
-    return source;
-}
+inline auto make_vscan_result(scan_file&& source,
+                              const scan_file_buffer&,
+                              std::ptrdiff_t) = delete;
 
 }  // namespace detail
 
@@ -10977,17 +11222,30 @@ constexpr R basic_scan_arg<Context>::visit(Visitor&& vis)
  */
 
 namespace detail {
+
 template <typename Source>
-using scan_result_value_type =
-    mp_cond<std::is_same<remove_cvref_t<Source>, std::FILE*>,
-            std::FILE*,
-            std::is_same<remove_cvref_t<Source>, scan_file>,
-            scan_file_ref,
-            std::is_same<remove_cvref_t<Source>, scan_file_ref>,
-            scan_file_ref,
-            std::true_type,
-            borrowed_tail_subrange_t<Source>>;
-}
+struct invalid_scan_result_type {
+    static_assert(
+        detail::dependent_false<Source>::value,
+        "Invalid source type given to scn::scan, can't construct result type");
+    using type = void;
+};
+
+template <typename Source>
+using scan_result_value_type = typename mp_cond<
+    std::is_same<remove_cvref_t<Source>, std::FILE*>,
+    mp_identity<std::FILE*>,
+    std::is_same<Source, scan_file&>,
+    mp_identity<scan_file*>,
+    mp_bool<ranges::forward_range<Source>>,
+    mp_defer<borrowed_tail_subrange_t, Source>,
+    //is_specialization_of<Source, ranges::pair_concat_view>,
+    //mp_defer<borrowed_flattened_concat_tail_subrange_t, Source>,
+    mp_bool<ranges::input_range<Source>>,
+    mp_defer<borrowed_input_range_tail_subrange_t, Source>,
+    std::true_type,
+    mp_defer<invalid_scan_result_type, Source>>::type;
+}  // namespace detail
 
 /**
  * Result type returned by `vscan`.
@@ -11082,7 +11340,7 @@ auto vscan_generic(Range&& range,
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
-    return make_vscan_result(SCN_FWD(range), *result);
+    return detail::make_vscan_result(SCN_FWD(range), buffer, *result);
 }
 
 template <typename Locale, typename Range, typename CharT>
@@ -11103,7 +11361,7 @@ auto vscan_localized_generic(
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
-    return detail::make_vscan_result(SCN_FWD(range), *result);
+    return detail::make_vscan_result(SCN_FWD(range), buffer, *result);
 #else
     static_assert(dependent_false<Locale>::value,
                   "Can't use scan(locale, ...) with SCN_DISABLE_LOCALE on");
@@ -11122,7 +11380,7 @@ auto vscan_value_generic(Range&& range,
     if (SCN_UNLIKELY(!result)) {
         return unexpected(result.error());
     }
-    return detail::make_vscan_result(SCN_FWD(range), *result);
+    return detail::make_vscan_result(SCN_FWD(range), buffer, *result);
 }
 }  // namespace detail
 
@@ -11317,18 +11575,18 @@ using scan_result_type =
  * the range contained in `out` is set to `*in`.
  * Otherwise, `unexpected(in.error())` is stored in `out`.
  */
-template <typename Result,
-          typename Range,
-          std::enable_if_t<std::conjunction_v<
-              detail::is_specialization_of<Result, scan_result>,
-              std::is_same<typename Result::range_type, Range>>>* = nullptr>
-void fill_scan_result(scan_expected<Result>& out, scan_expected<Range>&& in)
+template <typename Result, typename Source>
+auto fill_scan_result(scan_expected<Result>& out, scan_expected<Source>&& in)
+    -> std::enable_if_t<
+        detail::is_specialization_of<Result, scan_result>::value,
+        std::void_t<decltype(detail::scan_result_source_access::
+                                 set(*out, SCN_MOVE(*in)))>>
 {
     if (SCN_UNLIKELY(!in)) {
         out = unexpected(in.error());
     }
     else {
-        out->set_range(SCN_MOVE(*in));
+        detail::scan_result_source_access::set(*out, SCN_MOVE(*in));
     }
 }
 
@@ -11543,7 +11801,7 @@ SCN_NODISCARD auto input(scan_format_string<scan_file&, Args...> format)
     static scan_file stdin_file{stdin};
     std::lock_guard<std::mutex> lock(stdin_mutex);
 
-    auto result = scan_result_type<scan_file_ref, Args...>(
+    auto result = scan_result_type<scan_file&, Args...>(
         std::in_place, stdin_file, std::tuple<Args...>{});
     auto err = vscan(stdin_file, format, make_scan_args(result->values()));
     if (SCN_UNLIKELY(!err)) {
@@ -11600,7 +11858,8 @@ SCN_NODISCARD auto scan_int(std::string_view source, int base = 10)
     auto result = scan_result_type<std::string_view, T>();
     if (auto r = detail::scan_int_impl(source, result->value(), base);
         SCN_LIKELY(r)) {
-        result->set_range(ranges::subrange{*r, source.end()});
+        detail::scan_result_source_access::set(
+            *result, ranges::subrange{*r, source.end()});
     }
     else {
         result = unexpected(r.error());
