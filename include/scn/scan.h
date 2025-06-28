@@ -3746,6 +3746,7 @@ struct owning_view_base<R, false> {
 template <typename R>
 class owning_view : private detail::owning_view_base<R>,
                     public view_interface<owning_view<R>> {
+    static_assert(std::is_object_v<R>);
     static_assert(range<R>);
     static_assert(movable<R>);
     static_assert(!detail::is_initializer_list<R>);
@@ -3832,6 +3833,11 @@ public:
         return ranges::data(base_type::m_range);
     }
 };
+
+// No-op deduction guide,
+// silences a clang warning about possibly unintentional CTAD
+template <typename R, std::enable_if_t<!std::is_reference_v<R>>* = nullptr>
+owning_view(R&&) -> owning_view<detail::remove_cvref_t<R>>;
 
 template <typename T>
 inline constexpr bool enable_borrowed_range<owning_view<T>> =
@@ -4768,7 +4774,6 @@ protected:
         _destroy();
     }
 
-private:
     bool _is_first() const
     {
         return m_is_first;
@@ -4823,6 +4828,7 @@ private:
         m_is_first = false;
     }
 
+private:
     static constexpr auto storage_size =
         detail::max(sizeof(FirstIt), sizeof(SecondIt));
     static constexpr auto storage_alignment =
@@ -4986,13 +4992,13 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
         explicit iterator(detail::pair_concat_first_tag,
                           parent_type* p,
                           first_iterator f)
-            : base(SCN_MOVE(f)), m_parent(p)
+            : base(detail::pair_concat_first_tag{}, SCN_MOVE(f)), m_parent(p)
         {
         }
         explicit iterator(detail::pair_concat_second_tag,
                           parent_type* p,
                           second_iterator s)
-            : base(SCN_MOVE(s)), m_parent(p)
+            : base(detail::pair_concat_second_tag{}, SCN_MOVE(s)), m_parent(p)
         {
         }
 
@@ -6498,6 +6504,17 @@ public:
     {
     }
 
+    template <typename R,
+              std::enable_if_t<is_not_self<R, basic_scan_input_range_buffer>>* =
+                  nullptr>
+    basic_scan_input_range_buffer(R&& r,
+                                  std::basic_string_view<char_type> prelude)
+        : base(typename base::non_contiguous_tag{}, prelude),
+          m_range(SCN_FWD(r)),
+          m_cursor(ranges::begin(m_range))
+    {
+    }
+
     iterator& get_iterator()
     {
         return m_cursor.value;
@@ -6538,18 +6555,6 @@ public:
                 this->m_current_view, this->m_putback_buffer);
         }
         return true;
-    }
-
-protected:
-    template <typename R,
-              std::enable_if_t<is_not_self<R, basic_scan_input_range_buffer>>* =
-                  nullptr>
-    basic_scan_input_range_buffer(R&& r,
-                                  std::basic_string_view<char_type> prelude)
-        : base(typename base::non_contiguous_tag{}, prelude),
-          m_range(SCN_FWD(r)),
-          m_cursor(ranges::begin(m_range))
-    {
     }
 
 private:
@@ -8127,6 +8132,17 @@ private:
         m_range.emplace(SCN_FWD(r));
     }
 
+    template <typename>
+    struct debug;
+
+    template <typename Other,
+              std::enable_if_t<!std::is_constructible_v<range_type, Other&&>>* =
+                  nullptr>
+    void set(Other&&)
+    {
+        debug<Other&&>{};
+    }
+
     std::optional<range_type> m_range{};
 };
 
@@ -8393,10 +8409,12 @@ template <typename Range>
 using borrowed_flattened_concat_tail_subrange_t = std::conditional_t<
     ranges::borrowed_range<Range>,
     ranges::pair_concat_view<
-        ranges::owning_view<std::basic_string<detail::char_t<Range>>>,
-        ranges::subrange<
-            ranges::iterator_t<typename Range::second_range_type>,
-            ranges::sentinel_t<typename Range::second_range_type>>>,
+        ranges::owning_view<
+            std::basic_string<detail::char_t<remove_cvref_t<Range>>>>,
+        ranges::subrange<ranges::iterator_t<
+                             typename remove_cvref_t<Range>::second_range_type>,
+                         ranges::sentinel_t<typename remove_cvref_t<
+                             Range>::second_range_type>>>,
     ranges::dangling>;
 
 template <typename SourceRange>
@@ -8438,10 +8456,17 @@ template <typename SourceRange,
 auto make_vscan_result(SourceRange&& source, Buffer& buffer, std::ptrdiff_t)
     -> borrowed_input_range_tail_subrange_t<SourceRange>
 {
-    return ranges::pair_concat_view{
-        ranges::owning_view{std::basic_string<detail::char_t<SourceRange>>(
-            SCN_MOVE(buffer.get_prelude()))},
-        ranges::subrange{SCN_MOVE(buffer.get_iterator()), ranges::end(source)}};
+    if constexpr (is_specialization_of_v<remove_cvref_t<SourceRange>,
+                                       ranges::pair_concat_view>) {
+        return ranges::pair_concat_view{};
+    }
+    else {
+        return ranges::pair_concat_view{
+            ranges::owning_view{std::basic_string<detail::char_t<SourceRange>>(
+                SCN_MOVE(buffer.get_prelude()))},
+            ranges::subrange{SCN_MOVE(buffer.get_iterator()),
+                             ranges::end(source)}};
+    }
 }
 inline auto make_vscan_result(std::FILE* source,
                               const scan_cfile_buffer&,
@@ -11231,16 +11256,39 @@ struct invalid_scan_result_type {
     using type = void;
 };
 
+template <typename Source, typename = void>
+struct custom_scan_result_unqual;
+
+template <typename Source>
+using custom_scan_result_unqual_t =
+    typename custom_scan_result_unqual<Source>::type;
+
+template <typename Source, typename = void>
+struct custom_scan_result_qual;
+
+template <typename Source>
+using custom_scan_result_qual_t =
+    typename custom_scan_result_qual<Source>::type;
+
+template <>
+struct custom_scan_result_unqual<std::FILE*> {
+    using type = mp_identity<std::FILE*>;
+};
+template <>
+struct custom_scan_result_unqual<scan_file> {
+    using type = mp_identity<scan_file*>;
+};
+
 template <typename Source>
 using scan_result_value_type = typename mp_cond<
-    std::is_same<remove_cvref_t<Source>, std::FILE*>,
-    mp_identity<std::FILE*>,
-    std::is_same<Source, scan_file&>,
-    mp_identity<scan_file*>,
+    mp_valid<custom_scan_result_qual_t, Source>,
+    mp_defer<custom_scan_result_qual_t, Source>,
+    mp_valid<custom_scan_result_unqual_t, remove_cvref_t<Source>>,
+    mp_defer<custom_scan_result_unqual_t, remove_cvref_t<Source>>,
     mp_bool<ranges::forward_range<Source>>,
     mp_defer<borrowed_tail_subrange_t, Source>,
-    //is_specialization_of<Source, ranges::pair_concat_view>,
-    //mp_defer<borrowed_flattened_concat_tail_subrange_t, Source>,
+    is_specialization_of<remove_cvref_t<Source>, ranges::pair_concat_view>,
+    mp_defer<borrowed_flattened_concat_tail_subrange_t, Source>,
     mp_bool<ranges::input_range<Source>>,
     mp_defer<borrowed_input_range_tail_subrange_t, Source>,
     std::true_type,

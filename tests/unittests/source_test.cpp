@@ -140,6 +140,11 @@ TEST(SourceTest, SourceIsInputRange)
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value(), 123);
 
+    //using Source = decltype(result)::value_type::source_type;
+    //static_assert(scn::detail::is_specialization_of_v<Source, scn::ranges::pair_concat_view>);
+    //debug<scn::detail::borrowed_flattened_concat_tail_subrange_t<Source&>>{};
+    //static_assert(scn::detail::mp_valid<scn::detail::borrowed_flattened_concat_tail_subrange_t, Source&>);
+
     auto result2 = scn::scan<double>(result->range(), "{}");
     //using expected_result2 = scn::scan_expected<scn::scan_result<
     //    scn::ranges::pair_concat_view<
