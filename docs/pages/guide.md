@@ -4,10 +4,11 @@
 \section g-basic Basic usage
 
 `scn::scan` can be used to scan various values from a source.
-That source can either be a range, or a file.
+That source is commonly a range, but other sources are supported, too.
 
 First, we'll talk about ranges.
-A range is an object that has a beginning and an end.
+A range is an object that has a beginning and an end,
+the notion of which has been codified in the C++20 standard.
 Examples of ranges are string literals, `std::string` and `std::vector<char>`.
 Objects of these types, and more, can be passed to `scn::scan`.
 To learn more about the requirements on these ranges, see the API documentation on source ranges.
@@ -78,7 +79,9 @@ std::sscanf("3.14", "%lf", &d);
 int a, b;
 std::sscanf("0 1 2", "%d %d", &a, &b);
 
-// Not really possible with scanf!
+// Not really possible with scanf
+// (it can't read an arbitrary-length string,
+//  as it doesn't allocate)
 char buf[16] = {0};
 std::sscanf("hello world", "%15s", buf);
 // buf == "hello"
@@ -90,8 +93,10 @@ scnlib does not use exceptions.
 The library compiles with `-fno-exceptions -fno-rtti` and is perfectly usable without them.
 
 Instead, it uses return values to signal errors:
-`scn::scan` returns an `scn::scan_expected`.
-This return value is truthy if the operation succeeded.
+`scn::scan` returns an `scn::scan_expected`,
+which is an (opaque) alias to `scn::expected<T, scn::scan_error>`,
+where `T` is a specialization of `scn::scan_result`,
+which is a type containing the result of a successful scanning operation.
 If there was an error,
 the `scn::scan_expected::error()` member function can be used
 to gather more details about the error.
@@ -121,8 +126,8 @@ auto result = scn::scan<int, int>("123 foo", "{} {}");
 \endcode
 
 Oftentimes, the entire source range is not scanned, and the remainder of the range may be useful later.
-The unparsed input can be accessed with `->range()`, which returns a `subrange`.
-An iterator pointing to the first unparsed element can be retrieved with `->begin()`.
+The unparsed input can be accessed with `scn::scan_result::range()`, which returns a `scn::ranges::subrange`.
+An iterator pointing to the first unparsed element can be retrieved with `scn::scan_result::begin()`.
 
 \code{.cpp}
 auto result = scn::scan<int>("123 456"sv, "{}");
@@ -133,16 +138,16 @@ auto result = scn::scan<int>("123 456"sv, "{}");
 auto [other_result, i] = scn::scan<int>(result->range(), "{}");
 // other_result == true
 // i == 456
-// other_result-> == ""
+// other_result->range() == ""
 \endcode
 
-The return type of `->range()` is a view into the range `scn::scan` was given.
+The return type of `scn::scan_result::range()` is a view into the range `scn::scan` was given.
 Its type may not be the same as the source range, but its iterator and sentinel types are the same.
 If the range given to `scn::scan` does not model `scn::ranges::borrowed_range`
 (essentially, the returned range would dangle), the returned range is of type `scn::ranges::dangling`.
 
 Because the range type returned by `scn::scan` is always a `scn::ranges::subrange` over its input,
-it's easy to use `scn::scan` in loops, as long as the input type is a `subrange` to begin with.
+it's easy to use `scn::scan` in loops, as long as the input type is a `scn::ranges::subrange` to begin with.
 If it's not, consider making it one with `scn::ranges::subrange{your-input-range}`.
 
 \code{.cpp}
@@ -162,12 +167,13 @@ They work similarly to `scn::scan`, except they do not take an input range as a 
 if (auto result = scn::input<int>("{}")) {
     // ...
 }
-// scn::input, std::cin, and std::scanf can be used immediately,
-// without explicit synchronization
-if (auto result = scn::prompt<int>("Provide a number: ", "{}"); result) {
-    // ...
-}
 \endcode
+
+`scn::input` uses the C standard output handle (`stdout`) internally,
+and not the C++ output stream (`std::cout`).
+It should be noted, that the C standard only guarantees that a single character can be put back into `stdout`,
+and in fact, that is the case on Windows.
+This means, that 
 
 Instead of `scn::input` and `scn::prompt`,
 `scn::scan` can also be directly used with files (`FILE*`).

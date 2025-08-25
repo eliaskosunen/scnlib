@@ -351,6 +351,20 @@ SCN_PUBLIC bool scan_file_buffer::sync(std::ptrdiff_t position)
     return true;
 }
 
+static std::mutex stdin_mutex{};
+
+SCN_PUBLIC scan_file& stdin_acquire()
+{
+    static scan_file stdin_file{stdin};
+    stdin_mutex.lock();
+    return stdin_file;
+}
+
+SCN_PUBLIC void stdin_release([[maybe_unused]] scan_file& file)
+{
+    stdin_mutex.unlock();
+}
+
 }  // namespace detail
 
 /////////////////////////////////////////////////////////////////

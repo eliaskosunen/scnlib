@@ -30,7 +30,6 @@ import std;
 #include <cstring>
 #include <iterator>
 #include <limits>
-#include <mutex>
 #include <new>
 #include <optional>
 #include <string>
@@ -6017,6 +6016,12 @@ public:
         return *this;
     }
 
+    /**
+     * Returns the C file handle associated with `*this`.
+     * If `*this` is not completely synced with the underlying file
+     * (i.e., its putback buffer is full), returns `std::nullopt`.
+     * The unsynced parts can be retrieved with `prelude()`.
+     */
     SCN_NODISCARD std::optional<std::FILE*> handle() const
     {
         if (m_prelude.empty()) {
@@ -6026,11 +6031,17 @@ public:
         return std::nullopt;
     }
 
+    /**
+     * Returns the bytes not synced with the underlying C file, if any.
+     */
     SCN_NODISCARD std::string_view prelude() const
     {
         return m_prelude;
     }
 
+    /**
+     * Returns the unsynced parts, and the underlying file handle.
+     */
     SCN_NODISCARD std::pair<std::string_view, std::FILE*> contents() const
     {
         return {m_prelude, m_file};
@@ -6695,11 +6706,11 @@ auto make_range_scan_buffer(Range&& range)
  *
  * \ingroup scannable
  */
-struct invalid_input_range {};
+struct invalid_source {};
 
-struct invalid_char_type : invalid_input_range {};
-struct custom_char_traits : invalid_input_range {};
-struct insufficient_range : invalid_input_range {};
+struct invalid_char_type : invalid_source {};
+struct custom_char_traits : invalid_source {};
+struct insufficient_range : invalid_source {};
 
 namespace detail {
 template <typename CharT>
@@ -6838,14 +6849,14 @@ auto impl(Source&&, priority_tag<0>)
         return insufficient_range{};
     }
     else {
-        return invalid_input_range{};
+        return invalid_source{};
     }
 }
 }  // namespace _make_scan_buffer
 
 template <typename Source>
 inline constexpr bool is_scannable_source =
-    !std::is_base_of_v<invalid_input_range,
+    !std::is_base_of_v<invalid_source,
                        decltype(_make_scan_buffer::impl(SCN_DECLVAL(Source&)),
                                 priority_tag<4>{})>;
 
@@ -6884,16 +6895,16 @@ decltype(auto) make_scan_buffer(Source&& source)
                   "Unsupported range type given as input to a scanning "
                   "function.\n"
                   "In order to be scannable, a range needs to satisfy "
-                  "`forward_range`. `input_range` is not sufficient.");
-    static_assert(!std::is_same_v<T, invalid_input_range>,
+                  "`input_range`. Just `range` is not sufficient.");
+    static_assert(!std::is_same_v<T, invalid_source>,
                   "\n"
-                  "Unsupported range type given as input to a scanning "
+                  "Unsupported source type given as input to a scanning "
                   "function.\n"
-                  "A range needs to model forward_range and have a valid "
+                  "A range needs to model `input_range` and have a valid "
                   "character type (char or wchar_t) to be scannable.\n"
                   "If the input is not a range, it must be a scn::scan_file "
                   "(or a C FILE*, but that's deprecated).\n"
-                  "In addition, to scan from a std::istream, "
+                  "In addition to the above, to scan from a std::istream, "
                   "the header <scn/istream.h> needs to be included.\n"
                   "Examples of scannable ranges are std::string, "
                   "std::string_view, std::list<char>, "
@@ -7952,68 +7963,6 @@ protected:
 
 namespace detail {
 
-template <typename... Args>
-struct scan_result_value_storage {
-public:
-    using tuple_type = std::tuple<Args...>;
-
-    constexpr scan_result_value_storage() = default;
-
-    constexpr scan_result_value_storage(tuple_type&& values)
-        : m_values(SCN_MOVE(values))
-    {
-    }
-
-    /// Access the scanned values
-    tuple_type& values() &
-    {
-        return m_values;
-    }
-    /// Access the scanned values
-    const tuple_type& values() const&
-    {
-        return m_values;
-    }
-    /// Access the scanned values
-    tuple_type&& values() &&
-    {
-        return SCN_MOVE(m_values);
-    }
-    /// Access the scanned values
-    const tuple_type&& values() const&&
-    {
-        return SCN_MOVE(m_values);
-    }
-
-    /// Access the single scanned value
-    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
-    decltype(auto) value() &
-    {
-        return std::get<0>(m_values);
-    }
-    /// Access the single scanned value
-    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
-    decltype(auto) value() const&
-    {
-        return std::get<0>(m_values);
-    }
-    /// Access the single scanned value
-    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
-    decltype(auto) value() &&
-    {
-        return SCN_MOVE(std::get<0>(m_values));
-    }
-    /// Access the single scanned value
-    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
-    decltype(auto) value() const&&
-    {
-        return SCN_MOVE(std::get<0>(m_values));
-    }
-
-private:
-    SCN_NO_UNIQUE_ADDRESS tuple_type m_values{};
-};
-
 template <class T, class U>
 constexpr auto&& forward_like(U&& x) noexcept
 {
@@ -8088,7 +8037,6 @@ public:
         return ranges::end(m_range);
     }
 
-private:
     template <
         typename Other,
         std::enable_if_t<std::is_assignable_v<range_type&, Other&&>>* = nullptr>
@@ -8097,6 +8045,7 @@ private:
         m_range = SCN_FWD(r);
     }
 
+private:
     SCN_NO_UNIQUE_ADDRESS range_type m_range{};
 };
 
@@ -8152,7 +8101,6 @@ public:
         return ranges::end(*m_range);
     }
 
-private:
     template <typename Other,
               std::enable_if_t<std::is_constructible_v<range_type, Other&&>>* =
                   nullptr>
@@ -8161,17 +8109,7 @@ private:
         m_range.emplace(SCN_FWD(r));
     }
 
-    template <typename>
-    struct debug;
-
-    template <typename Other,
-              std::enable_if_t<!std::is_constructible_v<range_type, Other&&>>* =
-                  nullptr>
-    void set(Other&&)
-    {
-        debug<Other&&>{};
-    }
-
+private:
     std::optional<range_type> m_range{};
 };
 
@@ -8191,12 +8129,12 @@ public:
         return m_file;
     }
 
-private:
     void set(std::FILE* f)
     {
         m_file = f;
     }
 
+private:
     std::FILE* m_file{nullptr};
 };
 
@@ -8215,13 +8153,12 @@ public:
     }
 
     /// File used for scanning
-    SCN_NODISCARD scan_file& file()
+    SCN_NODISCARD scan_file& file() const
     {
         SCN_EXPECT(m_file);
         return *m_file;
     }
 
-private:
     void set(scan_file& f)
     {
         m_file = &f;
@@ -8232,6 +8169,7 @@ private:
         m_file = f;
     }
 
+private:
     scan_file* m_file{nullptr};
 };
 
@@ -8264,7 +8202,6 @@ struct scan_result_dangling {
         return {};
     }
 
-private:
     template <typename... Args>
     void set(Args&&...)
     {
@@ -8304,9 +8241,9 @@ using scan_result_source_storage = typename mp_cond<
 struct scan_result_source_access {
     template <typename R, typename... Args>
     static auto set(R& result, Args&&... args)
-        -> decltype(result.set(SCN_FWD(args)...))
+        -> decltype(result.set_source(SCN_FWD(args)...))
     {
-        return result.set(SCN_FWD(args)...);
+        return result.set_source(SCN_FWD(args)...);
     }
 
     template <typename R>
@@ -8326,6 +8263,23 @@ struct scan_result_source_access {
     }
 };
 
+template <typename S, typename = void>
+struct scan_result_alias_base {};
+
+template <>
+struct scan_result_alias_base<ranges::dangling> {
+    using range_type = ranges::dangling;
+    using iterator = ranges::dangling;
+    using sentinel = ranges::dangling;
+};
+
+template <typename S>
+struct scan_result_alias_base<S, std::enable_if_t<ranges::range<S>>> {
+    using range_type = S;
+    using iterator = ranges::iterator_t<S>;
+    using sentinel = ranges::sentinel_t<S>;
+};
+
 }  // namespace detail
 
 /**
@@ -8338,18 +8292,58 @@ struct scan_result_source_access {
  */
 
 /**
- * Type returned by `scan`, contains the unused input as a subrange, and the
- * scanned values in a tuple.
+ * Value type of the `scan_expected` returned by `scn::scan`.
+ * Contains the scanned values in a tuple.
+ * Additionally, contains a view over the unparsed portion of
+ * the source given to `scan`.
+ *
+ * Let `S` be the source type given to `scan` (cvref-qualified, if any)
+ *  1. If `ranges::range<S> && !ranges::borrowed_range<S>` is true,
+ *     contains a `ranges::dangling`,
+ *     accessible with the `range()` member function.
+ *  2. If `ranges::forward_range<S>` is true,
+ *     contains a
+ *     `ranges::subrange<ranges::iterator_t<S>, ranges::sentinel_t<S>>`,
+ *     accessible with the `range()` member function.
+ *  3. If `ranges::input_range<S> && !ranges::forward_range<S>` is true,
+ *     contains a `ranges::pair_concat_view`,
+ *     where the first range type is a `std::basic_string`
+ *     with the appropriate character type,
+ *     and the second range type is a `ranges::subrange<ITER_T<S>, SENT_T<S>>`,
+ *     accessible with the `range()` member function.
+ *     If `S` itself is a specialization of `ranges::pair_concat_view`,
+ *     `ITER_T` and `SENT_T` are the iterator and sentinel types of
+ *     the second range in `S`, respectively;
+ *     otherwise `ITER_T` and `SENT_T` are
+ *     `ranges::iterator_t<S>` and `ranges::sentinel_t<S>`, respectively.
+ *  4. If `S` is (cvref-qualified) `scn::scan_file`, or a pointer to one,
+ *     contains a reference to a `scn::scan_file`,
+ *     accessible with the `file()` member function.
+ *  5. If `S` is a pointer to `std::FILE`,
+ *     contains a pointer to `std::FILE`,
+ *     accessible with the `file()` member function.
+ *  6. If `S` is derived from a specialization of `std::basic_istream`,
+ *     and `scn/istream.h` has been included,
+ *     contains a reference to the stream,
+ *     accessible with the `stream()` member function.
+ *
+ * For 1., `begin()` and `end()` member functions are available,
+ * returning `ranges::dangling`.
+ * For 2. and 3., `begin()` and `end()` member functions are available,
+ * returning `ranges::begin(range())` and `ranges::end(range())`, respectively.
+ * Handling of C-style `FILE`s (5.) is deprecated.
+ *
+ * \ingroup result
  */
 template <typename Source, typename... Args>
-class scan_result : public detail::scan_result_source_storage<Source>,
-                    public detail::scan_result_value_storage<Args...> {
-    using source_base = detail::scan_result_source_storage<Source>;
-    using value_base = detail::scan_result_value_storage<Args...>;
+class scan_result : public detail::scan_result_alias_base<Source> {
+    using source_storage = detail::scan_result_source_storage<Source>;
+
+    friend struct detail::scan_result_source_access;
 
 public:
-    using source_type = typename source_base::source_type;
-    using tuple_type = typename value_base::tuple_type;
+    using source_type = typename source_storage::source_type;
+    using tuple_type = std::tuple<Args...>;
 
     constexpr scan_result() = default;
 
@@ -8361,10 +8355,10 @@ public:
     ~scan_result() = default;
 
     template <typename Src,
-              std::enable_if_t<std::is_constructible_v<source_base, Src&&>>* =
-                  nullptr>
+              std::enable_if_t<
+                  std::is_constructible_v<source_storage, Src&&>>* = nullptr>
     scan_result(Src&& src, tuple_type&& values)
-        : source_base(SCN_FWD(src)), value_base(SCN_MOVE(values))
+        : m_source(SCN_FWD(src)), m_values(SCN_MOVE(values))
     {
     }
 
@@ -8374,8 +8368,8 @@ public:
                                std::is_convertible_v<const OtherSrc&,
                                                      source_type>>* = nullptr>
     SCN_IMPLICIT scan_result(const scan_result<OtherSrc, Args...>& o)
-        : source_base(detail::scan_result_source_access::get(o)),
-          value_base(o.values())
+        : m_source(detail::scan_result_source_access::get(o)),
+          m_values(o.values())
     {
     }
     template <typename OtherSrc,
@@ -8384,8 +8378,8 @@ public:
                                !std::is_convertible_v<const OtherSrc&,
                                                       source_type>>* = nullptr>
     explicit scan_result(const scan_result<OtherSrc, Args...>& o)
-        : source_base(detail::scan_result_source_access::get(o)),
-          value_base(o.values())
+        : m_source(detail::scan_result_source_access::get(o)),
+          m_values(o.values())
     {
     }
 
@@ -8395,8 +8389,8 @@ public:
                   std::is_constructible_v<source_type, OtherSrc> &&
                   std::is_convertible_v<OtherSrc&&, source_type>>* = nullptr>
     SCN_IMPLICIT scan_result(scan_result<OtherSrc, Args...>&& o)
-        : source_base(SCN_MOVE(detail::scan_result_source_access::get(o))),
-          value_base(SCN_MOVE(o.values()))
+        : m_source(SCN_MOVE(detail::scan_result_source_access::get(o))),
+          m_values(SCN_MOVE(o.values()))
     {
     }
     template <typename OtherSrc,
@@ -8405,8 +8399,8 @@ public:
                   std::is_constructible_v<source_type, OtherSrc> &&
                   !std::is_convertible_v<OtherSrc&&, source_type>>* = nullptr>
     explicit scan_result(scan_result<OtherSrc, Args...>&& o)
-        : source_base(SCN_MOVE(detail::scan_result_source_access::get(o))),
-          value_base(SCN_MOVE(o.values()))
+        : m_source(SCN_MOVE(detail::scan_result_source_access::get(o))),
+          m_values(SCN_MOVE(o.values()))
     {
     }
 
@@ -8417,7 +8411,7 @@ public:
     {
         detail::scan_result_source_access::set(
             *this, detail::scan_result_source_access::get(o));
-        this->values() = o.values();
+        m_values = o.values();
         return *this;
     }
 
@@ -8428,9 +8422,171 @@ public:
     {
         detail::scan_result_source_access::set(
             *this, SCN_MOVE(detail::scan_result_source_access::get(o)));
-        this->values() = SCN_MOVE(o.values());
+        m_values = SCN_MOVE(o.values());
         return *this;
     }
+
+    /// Access the scanned values
+    tuple_type& values() &
+    {
+        return m_values;
+    }
+    /// Access the scanned values
+    const tuple_type& values() const&
+    {
+        return m_values;
+    }
+    /// Access the scanned values
+    tuple_type&& values() &&
+    {
+        return SCN_MOVE(m_values);
+    }
+    /// Access the scanned values
+    const tuple_type&& values() const&&
+    {
+        return SCN_MOVE(m_values);
+    }
+
+    /// Access the single scanned value
+    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
+    decltype(auto) value() &
+    {
+        return std::get<0>(m_values);
+    }
+    /// Access the single scanned value
+    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
+    decltype(auto) value() const&
+    {
+        return std::get<0>(m_values);
+    }
+    /// Access the single scanned value
+    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
+    decltype(auto) value() &&
+    {
+        return SCN_MOVE(std::get<0>(m_values));
+    }
+    /// Access the single scanned value
+    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
+    decltype(auto) value() const&&
+    {
+        return SCN_MOVE(std::get<0>(m_values));
+    }
+
+    /// Return the unparsed portion of the source range
+    template <typename S = Source>
+    auto range() & -> decltype(SCN_DECLVAL(
+                                   detail::scan_result_source_storage<S>&)
+                                   .range())
+    {
+        return m_source.range();
+    }
+    /// Return the unparsed portion of the source range
+    template <typename S = Source>
+    auto range()
+        const& -> decltype(SCN_DECLVAL(
+                               const detail::scan_result_source_storage<S>&)
+                               .range())
+    {
+        return m_source.range();
+    }
+    /// Return the unparsed portion of the source range
+    template <typename S = Source>
+    auto range() && -> decltype(SCN_DECLVAL(
+                                    detail::scan_result_source_storage<S>&&)
+                                    .range())
+    {
+        return m_source.range();
+    }
+    /// Return the unparsed portion of the source range
+    template <typename S = Source>
+    auto range()
+        const&& -> decltype(SCN_DECLVAL(
+                                const detail::scan_result_source_storage<S>&&)
+                                .range())
+    {
+        return m_source.range();
+    }
+
+    /// Return the begin of the unparsed portion of the source range
+    template <typename S = Source>
+    auto begin() & -> decltype(SCN_DECLVAL(
+                                   detail::scan_result_source_storage<S>&)
+                                   .begin())
+    {
+        return m_source.begin();
+    }
+    /// Return the begin of the unparsed portion of the source range
+    template <typename S = Source>
+    auto begin()
+        const& -> decltype(SCN_DECLVAL(
+                               const detail::scan_result_source_storage<S>&)
+                               .begin())
+    {
+        return m_source.begin();
+    }
+    /// Return the begin of the unparsed portion of the source range
+    template <typename S = Source>
+    auto begin() && -> decltype(SCN_DECLVAL(
+                                    detail::scan_result_source_storage<S>&&)
+                                    .begin())
+    {
+        return m_source.begin();
+    }
+    /// Return the begin of the unparsed portion of the source range
+    template <typename S = Source>
+    auto begin()
+        const&& -> decltype(SCN_DECLVAL(
+                                const detail::scan_result_source_storage<S>&&)
+                                .begin())
+    {
+        return m_source.range();
+    }
+
+    /// Return the end of the unparsed portion of the source range
+    template <typename S = Source>
+    auto end()
+        -> decltype(SCN_DECLVAL(detail::scan_result_source_storage<S>&).end())
+    {
+        return m_source.end();
+    }
+    /// Return the end of the unparsed portion of the source range
+    template <typename S = Source>
+    auto end() const
+        -> decltype(SCN_DECLVAL(const detail::scan_result_source_storage<S>&)
+                        .end())
+    {
+        return m_source.end();
+    }
+
+    /// Return the file used as the source
+    template <typename S = Source>
+    auto file() const
+        -> decltype(SCN_DECLVAL(const detail::scan_result_source_storage<S>&)
+                        .file())
+    {
+        return m_source.file();
+    }
+
+    /// Return the stream used as the source
+    template <typename S = Source>
+    auto stream() const
+        -> decltype(SCN_DECLVAL(const detail::scan_result_source_storage<S>&)
+                        .stream())
+    {
+        return m_source.stream();
+    }
+
+private:
+    template <typename S = Source, typename... A>
+    auto set_source(A&&... args)
+        -> decltype(SCN_DECLVAL(detail::scan_result_source_storage<S>&)
+                        .set(SCN_FWD(args)...))
+    {
+        return m_source.set(SCN_FWD(args)...);
+    }
+
+    SCN_NO_UNIQUE_ADDRESS source_storage m_source{};
+    SCN_NO_UNIQUE_ADDRESS tuple_type m_values{};
 };
 
 template <typename R, typename... Args>
@@ -11873,6 +12029,13 @@ SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
     return result;
 }
 
+namespace detail {
+
+SCN_PUBLIC scan_file& stdin_acquire();
+SCN_PUBLIC void stdin_release(scan_file&);
+
+}  // namespace detail
+
 /**
  * Scan from `stdin`.
  *
@@ -11893,13 +12056,21 @@ SCN_NODISCARD auto input(scan_format_string<scan_file&, Args...> format)
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wexit-time-destructors")
 
-    static std::mutex stdin_mutex{};
-    static scan_file stdin_file{stdin};
-    std::lock_guard<std::mutex> lock(stdin_mutex);
+    struct stdin_wrapper {
+        explicit stdin_wrapper(scan_file& f) : file(f) {}
+        ~stdin_wrapper()
+        {
+            detail::stdin_release(file);
+        }
+
+        scan_file& file;
+    };
+
+    stdin_wrapper file{detail::stdin_acquire()};
 
     auto result = scan_result_type<scan_file&, Args...>(
-        std::in_place, stdin_file, std::tuple<Args...>{});
-    auto err = vscan(stdin_file, format, make_scan_args(result->values()));
+        std::in_place, file.file, std::tuple<Args...>{});
+    auto err = vscan(file.file, format, make_scan_args(result->values()));
     if (SCN_UNLIKELY(!err)) {
         result = unexpected(err.error());
     }

@@ -423,7 +423,6 @@ public:
         return *m_stream;
     }
 
-private:
     void set(source_type& s)
     {
         m_stream = &s;
@@ -434,6 +433,7 @@ private:
         m_stream = s;
     }
 
+private:
     source_type* m_stream{nullptr};
 };
 

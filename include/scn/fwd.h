@@ -100,7 +100,7 @@ using wscan_format_string =
                              detail::type_identity_t<Source>,
                              detail::type_identity_t<Args>...>;
 
-struct invalid_input_range;
+struct invalid_source;
 
 #if !SCN_DISABLE_IOSTREAM
 

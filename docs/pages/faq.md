@@ -1,7 +1,7 @@
 \page faq FAQ
 \tableofcontents
 
-\section faq-1 Why doesn't `scn::scan(input, "{},{}")` work like I expected it to work?
+\section faq-1 Why doesn't scn::scan(input, "{},{}") work like I expected it to work?
 
 The format string given to `scn::scan` is not a pattern, or a regular expression.
 Instead, not unlike `std::scanf`, the format string is evaluated left-to-right,
@@ -22,6 +22,8 @@ To reiterate,
 the way values are scanned is only influenced by the type of the value to be scanned,
 and the options given in the replacement field (inside the `{}`).
 The context around the replacement field in the format string is not considered.
+It's a deliberate design choice that the format strings are not regular expressions,
+or can't be used to formulate a regular grammar.
 
 To scan until a <code>','</code>, one can do:
 `scn::scan<std::string, std::string>("{:[^,]},{}")`.
