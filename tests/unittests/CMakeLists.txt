@@ -2,28 +2,31 @@ if (NOT SCN_TESTS)
     return()
 endif ()
 
-add_library(scn_tests_base
-        test_stub.cpp
-        test_common.h
-        wrapped_gtest.h
-)
-target_link_libraries(scn_tests_base PUBLIC
-        ${SCN_GTEST_LIBRARIES}
-        scn_sanitizers
-        scn_internal)
-target_compile_options(scn_tests_base PUBLIC
-        $<$<CXX_COMPILER_ID:GNU>:
-        -Wno-unused>
-        $<$<CXX_COMPILER_ID:Clang>:
-        -Wno-unused-variable
-        -Wno-used-but-marked-unused
-        -Wno-gnu-zero-variadic-macro-arguments
-        -Wno-global-constructors
-        -Wno-exit-time-destructors
-        -Wno-weak-vtables>
-)
+function(make_scn_test_flags target)
+    target_compile_options(${target} PRIVATE
+            $<$<CXX_COMPILER_ID:GNU>:
+                -Wno-unused>
+            $<$<CXX_COMPILER_ID:Clang>:
+                -Wno-unused-variable
+                -Wno-used-but-marked-unused
+                -Wno-gnu-zero-variadic-macro-arguments
+                -Wno-global-constructors
+                -Wno-exit-time-destructors
+                -Wno-weak-vtables>
+    )
+endfunction()
 
-add_executable(scn_tests
+function(make_scn_test target)
+    add_executable(${target} ${ARGN})
+
+    target_link_libraries(${target} PRIVATE
+            ${SCN_GTEST_LIBRARIES}
+            scn_sanitizers
+            scn_internal)
+    make_scn_test_flags(${target})
+endfunction()
+
+make_scn_test(scn_tests
         main.cpp
 
         align_and_fill_test.cpp
@@ -53,10 +56,9 @@ add_executable(scn_tests
         string_view_test.cpp
         unicode_test.cpp
 )
-target_link_libraries(scn_tests scn_tests_base)
 add_test(NAME scn_tests COMMAND scn_tests)
 
-add_executable(scn_impl_tests
+make_scn_test(scn_impl_tests
         main.cpp
 
         impl_tests/bits_test.cpp
@@ -80,8 +82,8 @@ add_executable(scn_impl_tests
         impl_tests/integer_reader_test.impl_wide_classic.cpp
         impl_tests/integer_reader_test.impl_wide_localized.cpp
 )
-target_link_libraries(scn_impl_tests PRIVATE
-        scn_tests_base scn_internal)
+add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
+
 # pragma ignores seem to not always work for overflowing literals
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set_source_files_properties(
@@ -97,7 +99,6 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
             -Wno-literal-range
     )
 endif ()
-add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
 
 if (SCN_MODULES)
     add_executable(scn_module_tests module_test.cpp)
@@ -110,30 +111,29 @@ if (SCN_MODULES)
             CXX_EXTENSIONS ${use_stdext}
     )
 
+    make_scn_test_flags(scn_module)
+
     add_test(NAME scn_module_tests COMMAND scn_module_tests)
 endif ()
 
 if (SCN_TESTS_LOCALIZED)
-    add_executable(scn_localized_tests
+    make_scn_test(scn_localized_tests
             main.cpp
 
             localized_tests/localized_chrono_test.cpp
     )
-    target_link_libraries(scn_localized_tests scn_tests_base)
     add_test(NAME scn_localized_tests COMMAND scn_localized_tests)
 endif ()
 
-add_executable(scn_stdin_test
+make_scn_test(scn_stdin_test
         main.cpp
 
         stdin_test.cpp
 )
-target_link_libraries(scn_stdin_test scn_tests_base)
 
-add_executable(scn_stdin_parameterized_test
+make_scn_test(scn_stdin_parameterized_test
         stdin_parameterized_test.cpp
 )
-target_link_libraries(scn_stdin_parameterized_test scn_tests_base)
 
 add_custom_target(scn_stdin_test_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy

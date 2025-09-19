@@ -198,11 +198,11 @@ jobs:
           - os: 22.04
             cxx: g++-9
           - os: 22.04
-            cxx: clang++-13
+            cxx: clang++-14
           - os: 24.04
-            cxx: g++-12
+            cxx: g++-14
           - os: 24.04
-            cxx: clang++-16
+            cxx: clang++-18
 
     env:
       CXX: ${{ matrix.cxx }}

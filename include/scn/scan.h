@@ -4236,6 +4236,11 @@ struct incrementable_traits<common_iterator<I, S>> {
     using difference_type = iter_difference_t<I>;
 };
 
+template <typename I, typename S>
+struct readable_traits<common_iterator<I, S>> {
+    using value_type = iter_value_t<I>;
+};
+
 }  // namespace ranges
 SCN_END_NAMESPACE
 }  // namespace scn
@@ -4548,6 +4553,17 @@ class to_input_view : private detail::to_input_view_base<V>,
                                          const sentinel_t<parent_type>& y)
         {
             return !(x == y);
+        }
+
+        friend constexpr bool operator==(const sentinel_t<parent_type>& x,
+                                         const iterator& y)
+        {
+            return y == x;
+        }
+        friend constexpr bool operator!=(const sentinel_t<parent_type>& x,
+                                         const iterator& y)
+        {
+            return y != x;
         }
 
         template <bool = Const,
@@ -4880,6 +4896,7 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
         template <std::size_t N>
         void _satisfy()
         {
+            SCN_EXPECT(m_parent);
             if constexpr (N == 0) {
                 if (base::_get_first() == ranges::end(m_parent->m_first)) {
                     base::_destroy();
@@ -4894,6 +4911,8 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
         using iterator_concept = std::input_iterator_tag;
         using value_type = iter_value_t<first_iterator>;
         using difference_type = iter_difference_t<first_iterator>;
+
+        iterator() = default;
 
         template <
             bool Other,
@@ -4985,11 +5004,20 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
         friend bool operator==(const iterator& x, default_sentinel_t)
         {
             return !x._is_first() &&
-                   x._get_second() == ranges::end(x.m_parent->m_second);
+                   x._get_second() == ranges::end(x.m_parent->_get_second());
         }
         friend bool operator!=(const iterator& x, default_sentinel_t)
         {
             return !(x == default_sentinel);
+        }
+
+        friend bool operator==(default_sentinel_t, const iterator& x)
+        {
+            return x == default_sentinel;
+        }
+        friend bool operator!=(default_sentinel_t, const iterator& x)
+        {
+            return x != default_sentinel;
         }
 
         // TODO: iter_move, iter_swap
@@ -5015,9 +5043,6 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
 
         parent_type* m_parent{};
     };
-
-    template <bool Const>
-    friend class iterator;
 
 public:
     using first_range_type = First;
@@ -5109,8 +5134,16 @@ public:
     {
         return m_first;
     }
+    const First& _get_first() const
+    {
+        return m_first;
+    }
 
     Second& _get_second()
+    {
+        return m_second;
+    }
+    const Second& _get_second() const
     {
         return m_second;
     }
@@ -5119,6 +5152,9 @@ private:
     First m_first;
     Second m_second;
 };
+
+static_assert(
+    input_range<pair_concat_view<std::string_view, std::string_view>>);
 
 template <typename First, typename Second>
 pair_concat_view(First&&, Second&&)
@@ -6083,12 +6119,20 @@ public:
 
     virtual ~basic_scan_buffer() = default;
 
-    virtual bool fill() = 0;
-
-    virtual bool sync(std::ptrdiff_t position)
+    bool fill()
     {
-        SCN_UNUSED(position);
+        SCN_EXPECT(!m_end_reached);
+        if (!do_fill()) {
+            m_end_reached = true;
+            return false;
+        }
         return true;
+    }
+
+    bool sync(std::ptrdiff_t position)
+    {
+        m_end_reached = false;
+        return do_sync(position);
     }
 
     SCN_NODISCARD std::ptrdiff_t chars_available() const
@@ -6161,13 +6205,9 @@ public:
         return m_source_error;
     }
 
-    void set_skip_whitespace(bool skip)
+    SCN_NODISCARD bool has_reached_end() const
     {
-        m_skip_whitespace = skip;
-    }
-    SCN_NODISCARD bool get_skip_whitespace() const
-    {
-        return m_skip_whitespace;
+        return m_end_reached;
     }
 
 protected:
@@ -6176,27 +6216,36 @@ protected:
     struct contiguous_tag {};
     struct non_contiguous_tag {};
 
-    basic_scan_buffer(contiguous_tag, std::basic_string_view<char_type> sv)
+    basic_scan_buffer(contiguous_tag,
+                      std::basic_string_view<char_type> sv) noexcept
         : m_current_view(sv), m_is_contiguous(true)
     {
     }
 
     basic_scan_buffer(non_contiguous_tag,
-                      std::basic_string_view<char_type> sv = {})
+                      std::basic_string_view<char_type> sv = {}) noexcept
         : m_current_view(sv), m_is_contiguous(false)
     {
     }
 
-    basic_scan_buffer(bool is_contiguous, std::basic_string_view<char_type> sv)
+    basic_scan_buffer(bool is_contiguous,
+                      std::basic_string_view<char_type> sv) noexcept
         : m_current_view(sv), m_is_contiguous(is_contiguous)
     {
+    }
+
+    virtual bool do_fill() = 0;
+
+    virtual bool do_sync(std::ptrdiff_t position)
+    {
+        SCN_UNUSED(position);
+        return true;
     }
 
     std::basic_string_view<char_type> m_current_view{};
     std::basic_string<char_type> m_putback_buffer{};
     scan_expected<void> m_source_error{};
-    bool m_is_contiguous{false};
-    bool m_skip_whitespace{false};
+    bool m_is_contiguous{false}, m_end_reached{false};
 };
 
 template <typename CharT>
@@ -6348,11 +6397,10 @@ private:
         }
 
         SCN_EXPECT(m_parent);
-        if (SCN_LIKELY(m_position < parent()->chars_available())) {
-            return true;
-        }
-
         while (m_position >= parent()->chars_available()) {
+            if (parent()->has_reached_end()) {
+                return false;
+            }
             if (!const_cast<basic_scan_buffer<CharT>*>(parent())->fill()) {
                 return false;
             }
@@ -6414,7 +6462,8 @@ public:
     {
     }
 
-    bool fill() override
+private:
+    bool do_fill() override
     {
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
@@ -6451,7 +6500,8 @@ public:
     {
     }
 
-    bool fill() override
+private:
+    bool do_fill() override
     {
         if (m_cursor == ranges::end(*m_range)) {
             return false;
@@ -6473,7 +6523,6 @@ public:
         return true;
     }
 
-private:
     const Range* m_range;
     iterator m_cursor;
     char_type m_latest{};
@@ -6568,7 +6617,8 @@ public:
         return m_prelude;
     }
 
-    bool fill() override
+private:
+    bool do_fill() override
     {
         if (m_cursor.value == ranges::end(m_range)) {
             return false;
@@ -6590,7 +6640,7 @@ public:
         return true;
     }
 
-    bool sync(std::ptrdiff_t position) override
+    bool do_sync(std::ptrdiff_t position) override
     {
         if (position != this->chars_available()) {
             detail::set_prelude_after_sync(
@@ -6600,7 +6650,6 @@ public:
         return true;
     }
 
-private:
     std::basic_string<char_type> m_prelude{};
     Range m_range;
     move_only_wrapper<iterator> m_cursor;
@@ -6619,11 +6668,11 @@ public:
     SCN_PUBLIC explicit scan_cfile_buffer(std::FILE* file);
     SCN_PUBLIC ~scan_cfile_buffer() override;
 
-    SCN_PUBLIC bool fill() override;
-
-    SCN_PUBLIC bool sync(std::ptrdiff_t position) override;
-
 protected:
+    SCN_PUBLIC bool do_fill() override;
+
+    SCN_PUBLIC bool do_sync(std::ptrdiff_t position) override;
+
     std::FILE* m_file;
     std::optional<char> m_latest{std::nullopt};
 };
@@ -6635,11 +6684,11 @@ public:
     SCN_PUBLIC explicit scan_file_buffer(scan_file& file);
     SCN_PUBLIC ~scan_file_buffer() override;
 
-    SCN_PUBLIC bool fill() override;
-
-    SCN_PUBLIC bool sync(std::ptrdiff_t position) override;
-
 private:
+    SCN_PUBLIC bool do_fill() override;
+
+    SCN_PUBLIC bool do_sync(std::ptrdiff_t position) override;
+
     std::string& m_prelude;
 };
 
@@ -6863,15 +6912,21 @@ inline constexpr bool is_scannable_source =
 template <typename Source>
 decltype(auto) make_scan_buffer(Source&& source)
 {
-    SCN_GCC_COMPAT_PUSH
-    SCN_GCC_COMPAT_IGNORE("-Wdeprecated-declarations")
+    SCN_GCC_PUSH
+    SCN_GCC_IGNORE("-Wdeprecated-declarations")
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wdeprecated-declarations")
+    SCN_MSVC_PUSH
+    SCN_MSVC_IGNORE(4996) // [[deprecated]]
     // Get -Wdeprecated-declarations warnings when impl() is called below,
     // not here
 
     using T =
         decltype(_make_scan_buffer::impl(SCN_FWD(source), priority_tag<5>{}));
 
-    SCN_GCC_COMPAT_POP
+    SCN_MSVC_POP
+    SCN_CLANG_POP
+    SCN_GCC_POP
 
     static_assert(!std::is_same_v<T, invalid_char_type>,
                   "\n"
@@ -6915,9 +6970,19 @@ decltype(auto) make_scan_buffer(Source&& source)
     return _make_scan_buffer::impl(SCN_FWD(source), priority_tag<5>{});
 }
 
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wdeprecated-declarations")
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wdeprecated-declarations")
+SCN_MSVC_PUSH
+SCN_MSVC_IGNORE(4996) // [[deprecated]]
 template <typename Source>
 using dt_make_scan_buffer =
     decltype(_make_scan_buffer::impl(SCN_DECLVAL(Source), priority_tag<5>{}));
+SCN_MSVC_POP
+SCN_CLANG_POP
+SCN_GCC_POP
+
 template <typename Source>
 using scan_buffer_char_t =
     typename remove_cvref_t<dt_make_scan_buffer<Source>>::char_type;
@@ -8027,12 +8092,14 @@ public:
 
     /// The beginning of the unused source range
     SCN_NODISCARD iterator begin() const
+        noexcept(std::is_nothrow_copy_constructible_v<iterator>)
     {
         return ranges::begin(m_range);
     }
 
     /// The end of the unused source range
     SCN_NODISCARD sentinel end() const
+        noexcept(std::is_nothrow_copy_constructible_v<sentinel>)
     {
         return ranges::end(m_range);
     }
@@ -8173,6 +8240,18 @@ private:
     scan_file* m_file{nullptr};
 };
 
+struct scan_result_stdin {
+    friend struct scan_result_source_access;
+
+    using source_type = stdin_tag;
+
+    constexpr scan_result_stdin() = default;
+
+    explicit constexpr scan_result_stdin(stdin_tag) {}
+
+    void set(stdin_tag) {}
+};
+
 struct scan_result_dangling {
     friend struct scan_result_source_access;
 
@@ -8223,6 +8302,8 @@ using custom_scan_result_storage_t =
 
 template <typename Source>
 using scan_result_source_storage = typename mp_cond<
+    std::is_same<remove_cvref_t<Source>, stdin_tag>,
+    mp_identity<scan_result_stdin>,
     std::is_same<remove_cvref_t<Source>, ranges::dangling>,
     mp_identity<scan_result_dangling>,
     std::is_same<remove_cvref_t<Source>, std::FILE*>,
@@ -8366,7 +8447,9 @@ public:
               typename ThisSrc = Source,
               std::enable_if_t<std::is_constructible_v<source_type, OtherSrc> &&
                                std::is_convertible_v<const OtherSrc&,
-                                                     source_type>>* = nullptr>
+                                                     source_type>>* = nullptr,
+              typename = decltype(detail::scan_result_source_access::get(
+                  SCN_DECLVAL(const scan_result<OtherSrc, Args...>&)))>
     SCN_IMPLICIT scan_result(const scan_result<OtherSrc, Args...>& o)
         : m_source(detail::scan_result_source_access::get(o)),
           m_values(o.values())
@@ -8376,7 +8459,9 @@ public:
               typename ThisSrc = Source,
               std::enable_if_t<std::is_constructible_v<source_type, OtherSrc> &&
                                !std::is_convertible_v<const OtherSrc&,
-                                                      source_type>>* = nullptr>
+                                                      source_type>>* = nullptr,
+              typename = decltype(detail::scan_result_source_access::get(
+                  SCN_DECLVAL(const scan_result<OtherSrc, Args...>&)))>
     explicit scan_result(const scan_result<OtherSrc, Args...>& o)
         : m_source(detail::scan_result_source_access::get(o)),
           m_values(o.values())
@@ -8387,7 +8472,9 @@ public:
               typename ThisSrc = Source,
               std::enable_if_t<
                   std::is_constructible_v<source_type, OtherSrc> &&
-                  std::is_convertible_v<OtherSrc&&, source_type>>* = nullptr>
+                  std::is_convertible_v<OtherSrc&&, source_type>>* = nullptr,
+              typename = decltype(detail::scan_result_source_access::get(
+                  SCN_DECLVAL(scan_result<OtherSrc, Args...>&&)))>
     SCN_IMPLICIT scan_result(scan_result<OtherSrc, Args...>&& o)
         : m_source(SCN_MOVE(detail::scan_result_source_access::get(o))),
           m_values(SCN_MOVE(o.values()))
@@ -8397,7 +8484,9 @@ public:
               typename ThisSrc = Source,
               std::enable_if_t<
                   std::is_constructible_v<source_type, OtherSrc> &&
-                  !std::is_convertible_v<OtherSrc&&, source_type>>* = nullptr>
+                  !std::is_convertible_v<OtherSrc&&, source_type>>* = nullptr,
+              typename = decltype(detail::scan_result_source_access::get(
+                  SCN_DECLVAL(scan_result<OtherSrc, Args...>&&)))>
     explicit scan_result(scan_result<OtherSrc, Args...>&& o)
         : m_source(SCN_MOVE(detail::scan_result_source_access::get(o))),
           m_values(SCN_MOVE(o.values()))
@@ -8406,7 +8495,9 @@ public:
 
     template <typename OtherSrc,
               typename = std::enable_if_t<
-                  std::is_assignable_v<source_type&, const OtherSrc&>>>
+                  std::is_assignable_v<source_type&, const OtherSrc&>>,
+              typename = decltype(detail::scan_result_source_access::get(
+                  SCN_DECLVAL(const scan_result<OtherSrc, Args...>&)))>
     scan_result& operator=(const scan_result<OtherSrc, Args...>& o)
     {
         detail::scan_result_source_access::set(
@@ -8417,7 +8508,9 @@ public:
 
     template <typename OtherSrc,
               typename = std::enable_if_t<
-                  std::is_constructible_v<source_type, OtherSrc>>>
+                  std::is_constructible_v<source_type, OtherSrc>>,
+              typename = decltype(detail::scan_result_source_access::get(
+                  SCN_DECLVAL(scan_result<OtherSrc, Args...>&&)))>
     scan_result& operator=(scan_result<OtherSrc, Args...>&& o)
     {
         detail::scan_result_source_access::set(
@@ -8648,6 +8741,7 @@ auto make_vscan_result(SourceRange&& source, Buffer&, std::ptrdiff_t n)
         return {SCN_MOVE(it), SCN_MOVE(end)};
     }
 }
+
 template <typename SourceRange,
           typename Buffer,
           std::enable_if_t<ranges::input_range<SourceRange> &&
@@ -8663,6 +8757,7 @@ auto make_vscan_result(SourceRange&& source, Buffer& buffer, std::ptrdiff_t)
             SCN_MOVE(buffer.get_prelude()))},
         ranges::subrange{SCN_MOVE(buffer.get_iterator()), ranges::end(source)}};
 }
+
 template <typename SourceRange,
           typename Buffer,
           std::enable_if_t<ranges::input_range<SourceRange> &&
@@ -8687,6 +8782,7 @@ auto make_vscan_result(SourceRange&& source, Buffer& buffer, std::ptrdiff_t)
         ranges::subrange{SCN_MOVE(buffer.get_iterator()._get_second()),
                          ranges::end(source._get_second())}};
 }
+
 inline auto make_vscan_result(std::FILE* source,
                               const scan_cfile_buffer&,
                               std::ptrdiff_t)
@@ -8702,6 +8798,11 @@ inline auto make_vscan_result(scan_file& source,
 inline auto make_vscan_result(scan_file&& source,
                               const scan_file_buffer&,
                               std::ptrdiff_t) = delete;
+
+inline auto make_vscan_result(stdin_tag, const scan_buffer&, std::ptrdiff_t)
+{
+    return stdin_tag{};
+}
 
 }  // namespace detail
 
@@ -11483,6 +11584,8 @@ using custom_scan_result_t = typename custom_scan_result<Source>::type;
 
 template <typename Source>
 using scan_result_value_type = typename mp_cond<
+    std::is_same<remove_cvref_t<Source>, stdin_tag>,
+    mp_identity<stdin_tag>,
     std::is_same<remove_cvref_t<Source>, std::FILE*>,
     mp_identity<std::FILE*>,
     std::is_same<remove_cvref_t<Source>, scan_file>,
@@ -12031,8 +12134,10 @@ SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
 
 namespace detail {
 
-SCN_PUBLIC scan_file& stdin_acquire();
-SCN_PUBLIC void stdin_release(scan_file&);
+SCN_PUBLIC void stdin_acquire();
+SCN_PUBLIC void stdin_release();
+
+SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag, make_scan_buffer_tag);
 
 }  // namespace detail
 
@@ -12050,27 +12155,27 @@ SCN_PUBLIC void stdin_release(scan_file&);
  * \ingroup scan
  */
 template <typename... Args>
-SCN_NODISCARD auto input(scan_format_string<scan_file&, Args...> format)
-    -> scan_result_type<scan_file&, Args...>
+SCN_NODISCARD auto input(scan_format_string<detail::stdin_tag, Args...> format)
+    -> scan_result_type<detail::stdin_tag, Args...>
 {
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wexit-time-destructors")
 
-    struct stdin_wrapper {
-        explicit stdin_wrapper(scan_file& f) : file(f) {}
-        ~stdin_wrapper()
+    struct stdin_guard {
+        stdin_guard() = default;
+        ~stdin_guard()
         {
-            detail::stdin_release(file);
+            detail::stdin_release();
         }
-
-        scan_file& file;
     };
 
-    stdin_wrapper file{detail::stdin_acquire()};
+    detail::stdin_acquire();
+    stdin_guard guard{};
 
-    auto result = scan_result_type<scan_file&, Args...>(
-        std::in_place, file.file, std::tuple<Args...>{});
-    auto err = vscan(file.file, format, make_scan_args(result->values()));
+    auto result = scan_result_type<detail::stdin_tag, Args...>(
+        std::in_place, detail::stdin_tag{}, std::tuple<Args...>{});
+    auto err =
+        vscan(detail::stdin_tag{}, format, make_scan_args(result->values()));
     if (SCN_UNLIKELY(!err)) {
         result = unexpected(err.error());
     }
@@ -12086,8 +12191,8 @@ SCN_NODISCARD auto input(scan_format_string<scan_file&, Args...> format)
  */
 template <typename... Args>
 SCN_NODISCARD auto prompt(const char* msg,
-                          scan_format_string<scan_file&, Args...> format)
-    -> scan_result_type<scan_file&, Args...>
+                          scan_format_string<detail::stdin_tag, Args...> format)
+    -> scan_result_type<detail::stdin_tag, Args...>
 {
     std::printf("%s", msg);
     std::fflush(stdout);

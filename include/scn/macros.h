@@ -36,10 +36,21 @@
 #define SCN_STD __cplusplus
 #endif
 
+// Including <ciso646> will warn on later versions of libc++,
+// even in C++17 mode, when <version> isn't yet available.
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcpp"
+#endif
+
 #if defined(__has_include) && __has_include(<version>) && SCN_STD >= SCN_STD_20
 #include <version>
 #else
 #include <ciso646>
+#endif
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
 #endif
 
 #if defined(_MSC_VER) && defined(__has_include) && __has_include(<yvals.h>)

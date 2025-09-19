@@ -199,14 +199,14 @@ public:
         interface::destruct(m_file);
     }
 
-    bool fill() override
+    bool do_fill() override
     {
         return interface::fill(m_file, this->m_current_view,
                                this->m_putback_buffer, this->m_source_error,
                                m_latest);
     }
 
-    bool sync(std::ptrdiff_t pos) override
+    bool do_sync(std::ptrdiff_t pos) override
     {
         if (auto i = interface::sync(m_file, pos, *this, this->m_current_view,
                                      this->m_putback_buffer, m_prelude.empty());
@@ -276,6 +276,9 @@ std::vector<std::string> chunk_up(const std::string& input,
                 auto [line, breaks] = r->values();
                 result.emplace_back(std::string{line} + std::string{breaks});
                 input_view = r->range();
+                if (input_view.empty()) {
+                    break;
+                }
             }
             return result;
         }
@@ -387,14 +390,17 @@ TEST(FileTest, NonReadableFile)
 TEST(FileTest, Prelude)
 {
     struct file_handle_guard {
-        file_handle_guard() = default;
-
-        FILE* handle{std::fopen("./scn_file_test_prelude_temp.txt", "wb+")};
+        file_handle_guard()
+            : handle(std::fopen("./scn_file_test_prelude_temp.txt", "wb+"))
+        {
+        }
 
         ~file_handle_guard()
         {
             std::fclose(handle);
         }
+
+        FILE* handle{};
     };
     file_handle_guard handle{};
     scn::scan_file file{handle.handle};

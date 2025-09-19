@@ -14,8 +14,6 @@ else()
     set(SCN_ENABLE_TESTS OFF)
 endif()
 
-option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-
 option(SCN_TESTS "Enable tests" ${SCN_ENABLE_TESTS})
 option(SCN_DOCS "Enable docs target" ${SCN_ENABLE_EXTRAS})
 option(SCN_EXAMPLES "Enable examples target" ${SCN_ENABLE_EXTRAS})

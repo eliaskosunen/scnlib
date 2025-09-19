@@ -383,11 +383,12 @@ SCN_CLANG_POP
 
 TYPED_TEST(StringCharacterSetReaderTest, MatchEmpty)
 {
-    auto src = this->set_source("123"sv);
+    auto src = this->set_source(""sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[a-z]"));
 
-    ASSERT_FALSE(ret);
-    SCN_UNUSED(src);
+    ASSERT_TRUE(ret);
+    EXPECT_EQ(*ret, src.begin());
+    EXPECT_TRUE(this->check_value(val, ""));
 }
 
 TYPED_TEST(StringCharacterSetReaderTest, LiteralAbc)

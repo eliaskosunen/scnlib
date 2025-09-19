@@ -60,12 +60,15 @@ TEST(ScanBufferTest, Deque)
     auto it = buf.get().begin();
     EXPECT_NE(it, buf.get().end());
     ++it;
+    EXPECT_NE(it, buf.get().end());
     EXPECT_EQ(*it, 'o');
     ++it;
     EXPECT_NE(it, buf.get().end());
     EXPECT_EQ(*it, 'o');
     ++it;
+    EXPECT_NE(it, buf.get().end());
     ++it;
+    EXPECT_NE(it, buf.get().end());
     EXPECT_EQ(*it, 'a');
 
     auto last_it = it;

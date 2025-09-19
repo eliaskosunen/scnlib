@@ -26,6 +26,10 @@
 #include <sstream>
 #endif
 
+#if !SCN_DISABLE_IOSTREAM
+#include <iostream>
+#endif
+
 #ifndef SCN_DISABLE_FAST_FLOAT
 #define SCN_DISABLE_FAST_FLOAT 0
 #endif
@@ -37,6 +41,7 @@ SCN_GCC_IGNORE("-Wold-style-cast")
 SCN_GCC_IGNORE("-Wnoexcept")
 SCN_GCC_IGNORE("-Wundef")
 SCN_GCC_IGNORE("-Wsign-conversion")
+SCN_GCC_IGNORE("-Wuseless-cast")
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wold-style-cast")
@@ -305,14 +310,14 @@ SCN_PUBLIC scan_cfile_buffer::~scan_cfile_buffer()
     stdio_file_buffer_interface::destruct(f);
 }
 
-SCN_PUBLIC bool scan_cfile_buffer::fill()
+SCN_PUBLIC bool scan_cfile_buffer::do_fill()
 {
     auto f = impl::stdio_file_interface{m_file};
     return stdio_file_buffer_interface::fill(
         f, m_current_view, m_putback_buffer, m_source_error, m_latest);
 }
 
-SCN_PUBLIC bool scan_cfile_buffer::sync(std::ptrdiff_t position)
+SCN_PUBLIC bool scan_cfile_buffer::do_sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
     return stdio_file_buffer_interface::sync(f, position, *this, m_current_view,
@@ -329,16 +334,16 @@ SCN_PUBLIC scan_file_buffer::scan_file_buffer(scan_file& file)
 
 SCN_PUBLIC scan_file_buffer::~scan_file_buffer() = default;
 
-SCN_PUBLIC bool scan_file_buffer::fill()
+SCN_PUBLIC bool scan_file_buffer::do_fill()
 {
-    if (scan_cfile_buffer::fill()) {
+    if (scan_cfile_buffer::do_fill()) {
         m_prelude.clear();
         return true;
     }
     return false;
 }
 
-SCN_PUBLIC bool scan_file_buffer::sync(std::ptrdiff_t position)
+SCN_PUBLIC bool scan_file_buffer::do_sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
     if (auto i = stdio_file_buffer_interface::sync(
@@ -351,18 +356,47 @@ SCN_PUBLIC bool scan_file_buffer::sync(std::ptrdiff_t position)
     return true;
 }
 
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wexit-time-destructors")
+
 static std::mutex stdin_mutex{};
 
-SCN_PUBLIC scan_file& stdin_acquire()
+#if !SCN_DISABLE_IOSTREAM
+static auto& get_stdin_buffer()
 {
-    static scan_file stdin_file{stdin};
+    static std::optional<scan_istream_buffer> buf{};
+    return buf;
+}
+#else
+static auto& get_stdin_buffer()
+{
+    static std::optional<scan_cfile_buffer> buf{};
+    return buf;
+}
+#endif
+
+SCN_CLANG_POP
+
+SCN_PUBLIC void stdin_acquire()
+{
     stdin_mutex.lock();
-    return stdin_file;
+#if !SCN_DISABLE_IOSTREAM
+    get_stdin_buffer().emplace(std::cin);
+#else
+    get_stdin_buffer().emplace(stdin);
+#endif
 }
 
-SCN_PUBLIC void stdin_release([[maybe_unused]] scan_file& file)
+SCN_PUBLIC void stdin_release()
 {
+    get_stdin_buffer().reset();
     stdin_mutex.unlock();
+}
+
+SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag, make_scan_buffer_tag)
+{
+    SCN_ASSERT(get_stdin_buffer(), "stdin not locked, stdin_buffer not created");
+    return *get_stdin_buffer();
 }
 
 }  // namespace detail
@@ -4827,7 +4861,7 @@ namespace detail {
 
 template <typename CharT>
 SCN_PUBLIC basic_scan_istream_buffer<CharT>::basic_scan_istream_buffer(
-    std::basic_istream<CharT>& strm)
+    std::basic_istream<CharT>& strm) noexcept
     : base(typename base::non_contiguous_tag{}), m_stream(&strm)
 {
 }
@@ -4837,7 +4871,7 @@ SCN_PUBLIC basic_scan_istream_buffer<CharT>::~basic_scan_istream_buffer() =
     default;
 
 template <typename CharT>
-SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::fill()
+SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_fill()
 {
     SCN_EXPECT(m_stream);
 
@@ -4848,18 +4882,28 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::fill()
     this->m_current_view = {};
 
     auto& streambuf = *m_stream->rdbuf();
-    if (traits::eq_int_type(streambuf.sgetc(), traits::eof())) {
+    const auto peek_result = streambuf.sgetc();
+    if (traits::eq_int_type(peek_result, traits::eof())) {
         return false;
     }
 
     const auto n_avail = streambuf.in_avail();
-    if (n_avail <= 0) {
+    if (n_avail == 0) {
+        // Zero characters available, but we got one with `sgetc`.
+        // Use that, and advance the sequence.
+        const auto bump_result = streambuf.sbumpc();
+        SCN_ENSURE(bump_result == peek_result);
+        m_buf.resize(1);
+        m_buf[0] = traits::to_char_type(peek_result);
+        this->m_current_view = std::basic_string_view<CharT>{m_buf.data(), 1};
+        return true;
+    }
+    if (n_avail < 0) {
+        // EOF or error
         return false;
     }
     const auto n_avail_u = static_cast<std::size_t>(n_avail);
-    if (n_avail_u > m_buf.size()) {
-        m_buf.resize(n_avail_u);
-    }
+    m_buf.resize(n_avail_u);
 
     const auto n_read =
         static_cast<std::size_t>(streambuf.sgetn(m_buf.data(), n_avail));
@@ -4869,20 +4913,20 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::fill()
 }
 
 template <typename CharT>
-SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::sync(std::ptrdiff_t position)
+SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_sync(std::ptrdiff_t position)
 {
     SCN_EXPECT(m_stream);
     auto& streambuf = *m_stream->rdbuf();
     return impl::buffer_sync_helper(
         position, this->m_current_view, this->m_putback_buffer, [&](CharT ch) {
             return !traits::eq_int_type(streambuf.sputbackc(ch), traits::eof());
-        });
+        }) == position;
 }
 
 template basic_scan_istream_buffer<char>::basic_scan_istream_buffer(
-    std::istream&);
+    std::istream&) noexcept;
 template basic_scan_istream_buffer<wchar_t>::basic_scan_istream_buffer(
-    std::wistream&);
+    std::wistream&) noexcept;
 
 template basic_scan_istream_buffer<char>::~basic_scan_istream_buffer();
 template basic_scan_istream_buffer<wchar_t>::~basic_scan_istream_buffer();

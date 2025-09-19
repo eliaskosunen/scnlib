@@ -53,31 +53,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 13, 14 ]
-        cxx: [ brew-clang++, clang++, g++-14, g++-13, g++-12 ]
+        os:
+          - 15 # Arm64
+          - 15-intel # Intel
+          - 14 # Arm64
+        cxx: [ brew-clang++, clang++ ]
         std: [ 17 ]
 
         include:
-          # brew-clang++ with later standards on macos 14
-          - os: 14
+          # brew-clang++ with later standards on macos 15
+          - os: 15
             cxx: brew-clang++
             std: 20
-          - os: 14
+          - os: 15
             cxx: brew-clang++
             std: 23
 
-          # macos 15 with built-in clang++ and brew-clang++
+          # gcc on macos 15 (arm64)
+          # 14 has the same gcc versions
           - os: 15
-            cxx: clang++
+            cxx: g++-15
             std: 17
           - os: 15
-            cxx: brew-clang++
+            cxx: g++-14
             std: 17
-
-        exclude:
-          # Fails in CMake for google benchmark
-          - os: 13
+          - os: 15
             cxx: g++-13
+            std: 17
+          - os: 15
+            cxx: g++-12
             std: 17
 
     env:

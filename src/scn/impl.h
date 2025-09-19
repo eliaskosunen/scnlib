@@ -943,9 +943,11 @@ SCN_NODISCARD std::ptrdiff_t buffer_sync_helper(
         const auto n_to_put_back_from_putback_buffer =
             n_to_put_back - n_put_back;
         const auto putback_buffer_segment =
-            std::basic_string_view<CharT>{putback_buffer}.substr(
-                putback_buffer.size() -
-                static_cast<std::size_t>(n_to_put_back_from_putback_buffer));
+            std::basic_string_view<CharT>{putback_buffer.data(),
+                                          putback_buffer.size()}
+                .substr(putback_buffer.size() -
+                        static_cast<std::size_t>(
+                            n_to_put_back_from_putback_buffer));
         for (auto it = putback_buffer_segment.rbegin();
              it != putback_buffer_segment.rend(); ++it, (void)++n_put_back) {
             if (!putback(*it)) {
@@ -959,7 +961,6 @@ SCN_NODISCARD std::ptrdiff_t buffer_sync_helper(
         return position;
     }
 }
-
 
 struct default_file_tag {};
 struct gnu_file_tag {};
@@ -1107,27 +1108,34 @@ struct posix_stdio_file_interface : stdio_file_interface_base<File> {
 
     void lock()
     {
-        ::flockfile(this->file);
+        flockfile(this->file);
     }
     void unlock()
     {
-        ::funlockfile(this->file);
+        funlockfile(this->file);
     }
 
+#if SCN_POSIX
     SCN_NODISCARD bool is_never_readable() const
     {
         errno = 0;
-        int fd = ::fileno_unlocked(this->file);
-        int accmode = ::fcntl(fd, F_GETFL) & O_ACCMODE;
+        int fd = fileno_unlocked(this->file);
+        int accmode = fcntl(fd, F_GETFL) & O_ACCMODE;
         return accmode == O_WRONLY;
     }
+#else
+    SCN_NODISCARD bool is_never_readable()
+    {
+        return false;
+    }
+#endif
 
     SCN_NODISCARD expected<char, stdio_file_error> read_one()
     {
-        ::clearerr_unlocked(this->file);
-        auto res = ::getc_unlocked(this->file);
+        clearerr_unlocked(this->file);
+        auto res = getc_unlocked(this->file);
         if (res == EOF) {
-            if (::ferror_unlocked(this->file)) {
+            if (ferror_unlocked(this->file)) {
                 return unexpected(stdio_file_error::error);
             }
             return unexpected(stdio_file_error::eof);
@@ -1168,8 +1176,10 @@ struct stdio_file_interface_impl<File, gnu_file_tag>
     void unsafe_advance_n(std::ptrdiff_t n)
     {
         SCN_EXPECT(this->file->_IO_read_ptr != nullptr);
+        SCN_EXPECT(n >= 0);
         SCN_EXPECT(this->file->_IO_read_end - this->file->_IO_read_ptr >= n);
         this->file->_IO_read_ptr += n;
+        clearerr_unlocked(this->file);
     }
     SCN_NODISCARD bool fill_buffer()
     {
@@ -1199,9 +1209,11 @@ struct stdio_file_interface_impl<File, bsd_file_tag>
     void unsafe_advance_n(std::ptrdiff_t n)
     {
         SCN_EXPECT(this->file->_p != nullptr);
+        SCN_EXPECT(n >= 0);
         SCN_EXPECT(this->file->_r >= n);
         this->file->_p += n;
         this->file->_r -= static_cast<int>(n);
+        clearerr_unlocked(this->file);
     }
     SCN_NODISCARD bool fill_buffer()
     {
@@ -1233,8 +1245,10 @@ struct stdio_file_interface_impl<File, musl_file_tag>
     void unsafe_advance_n(std::ptrdiff_t n)
     {
         SCN_EXPECT(this->file->rpos != nullptr);
+        SCN_EXPECT(n >= 0);
         SCN_EXPECT(this->file->rend - this->file->rpos >= n);
         this->file->rpos += n;
+        clearerr_unlocked(this->file);
     }
     SCN_NODISCARD bool fill_buffer()
     {
@@ -1260,6 +1274,10 @@ struct stdio_file_interface_impl<File, win32_file_tag>
         _unlock_file(this->file);
     }
 
+    SCN_NODISCARD static constexpr bool is_never_readable()
+    {
+        return false;
+    }
     SCN_NODISCARD static constexpr bool has_buffering()
     {
         return false;
@@ -1281,11 +1299,15 @@ struct stdio_file_interface_impl<File, win32_file_tag>
         SCN_UNREACHABLE;
     }
 
-    SCN_NODISCARD std::optional<char> read_one()
+    SCN_NODISCARD expected<char, stdio_file_error> read_one()
     {
         auto res = _fgetc_nolock(this->file);
         if (res == EOF) {
-            return std::nullopt;
+            unlock();
+            const bool is_eof = feof(this->file);
+            lock();
+            return unexpected(is_eof ? stdio_file_error::eof
+                                     : stdio_file_error::error);
         }
         return static_cast<char>(res);
     }
@@ -1330,9 +1352,7 @@ struct file_buffer_interface {
         scan_expected<void>& source_error,
         std::optional<char_type>& latest)
     {
-        if (!current_view.empty()) {
-            putback_buffer.append(current_view.begin(), current_view.end());
-        }
+        std::basic_string<char_type> previous_view{current_view};
 
         if (file.has_buffering()) {
             if (!current_view.empty()) {
@@ -1340,9 +1360,15 @@ struct file_buffer_interface {
                     static_cast<std::ptrdiff_t>(current_view.size()));
             }
 
-            if (!file.buffer().empty() || file.fill_buffer()) {
+            if (!file.buffer().empty()) {
                 current_view = file.buffer();
-                return !current_view.empty();
+                return true;
+            }
+            if (file.fill_buffer()) {
+                current_view = file.buffer();
+                putback_buffer.append(previous_view.begin(),
+                                      previous_view.end());
+                return true;
             }
         }
 
@@ -1353,12 +1379,13 @@ struct file_buffer_interface {
                     scan_error::invalid_source_state,
                     "Failed to read FILE, ferror true");
             }
-            latest.reset();
+            putback_buffer.append(previous_view.begin(), previous_view.end());
             current_view = {};
             return false;
         }
 
         latest = *res;
+        putback_buffer.append(previous_view.begin(), previous_view.end());
         current_view = {&*latest, 1};
         return true;
     }
@@ -1366,13 +1393,13 @@ struct file_buffer_interface {
     SCN_NODISCARD static std::ptrdiff_t sync(
         FileInterface& file,
         std::ptrdiff_t position,
-        const detail::basic_scan_buffer<char_type>& buffer,
+        [[maybe_unused]] const detail::basic_scan_buffer<char_type>& buffer,
         std::basic_string_view<char_type>& current_view,
         std::basic_string<char_type>& putback_buffer,
-        bool is_prelude_empty)
+        [[maybe_unused]] bool is_prelude_empty)
     {
         struct putback_guard {
-            putback_guard(FileInterface& file) : m_file(file)
+            explicit putback_guard(FileInterface& file) : m_file(file)
             {
                 m_file.prepare_putback();
             }
@@ -1386,23 +1413,18 @@ struct file_buffer_interface {
         };
 
         if (file.has_buffering()) {
-            if (position < static_cast<std::ptrdiff_t>(putback_buffer.size())) {
-                putback_guard wrapper{file};
-                auto segment = buffer.get_segment_starting_at(position);
-                for (auto it = segment.rbegin(); it != segment.rend(); ++it) {
-                    if (!file.putback(*it)) {
-                        return std::distance(it, segment.rend());
-                    }
-                }
+            const auto pbb_size =
+                static_cast<std::ptrdiff_t>(putback_buffer.size());
+            if (position == pbb_size) {
                 return position;
             }
-
-            if (is_prelude_empty) {
-                file.unsafe_advance_n(position - static_cast<std::ptrdiff_t>(
-                                                     putback_buffer.size()));
+            const auto pos_without_putback_buffer = position - pbb_size;
+            if (pos_without_putback_buffer > 0 &&
+                pos_without_putback_buffer <=
+                    static_cast<std::ptrdiff_t>(file.buffer().size())) {
+                file.unsafe_advance_n(pos_without_putback_buffer);
+                return position;
             }
-            current_view = {};
-            return position;
         }
 
         putback_guard guard{file};
@@ -5750,11 +5772,9 @@ private:
             };
 
             if (is_inverted) {
-                auto it = read_until_code_point(range, cb);
-                return check_nonempty(it, range);
+                return read_until_code_point(range, cb);
             }
-            auto it = read_while_code_point(range, cb);
-            return check_nonempty(it, range);
+            return read_while_code_point(range, cb);
         }
 
         const auto cb = [&](SourceCharT ch) {
@@ -5762,24 +5782,9 @@ private:
         };
 
         if (is_inverted) {
-            auto it = read_until_code_unit(range, cb);
-            return check_nonempty(it, range);
+            return read_until_code_unit(range, cb);
         }
-        auto it = read_while_code_unit(range, cb);
-        return check_nonempty(it, range);
-    }
-
-    template <typename Iterator, typename Range>
-    static scan_expected<Iterator> check_nonempty(const Iterator& it,
-                                                  Range range)
-    {
-        if (it == range.begin()) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "No characters matched in [character set]");
-        }
-
-        return it;
+        return read_while_code_unit(range, cb);
     }
 };
 

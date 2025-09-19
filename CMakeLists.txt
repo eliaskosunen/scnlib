@@ -43,6 +43,8 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+
 include(GNUInstallDirs)
 
 include(cmake/util.cmake)

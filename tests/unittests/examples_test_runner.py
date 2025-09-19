@@ -14,22 +14,18 @@ def find_file(pattern, path):
     raise RuntimeError(f"Couldn't find pattern '{pattern}' in {path}")
 
 
-if os.name == 'nt':
-    examples_file_extension = '.exe'
-else:
-    examples_file_extension = ''
-
+exe_suffix = '.exe' if os.name == 'nt' else ''
 cmd_args = sys.argv[1:]
 if len(cmd_args) != 1:
     raise RuntimeError(
         f"Expected a single command-line argument, containing path to example binaries, got {cmd_args} instead")
 examples_root_dir = os.path.normpath(cmd_args[0])
-examples_bin = find_file(f"scn_example*{examples_file_extension}", examples_root_dir)
+examples_bin = find_file(f"scn_example*{exe_suffix}", examples_root_dir)
 examples_dir = os.path.dirname(examples_bin)
 
 
-def check(i, input, expected_output):
-    path = os.path.join(examples_dir, f"scn_example_{i}{examples_file_extension}")
+def do_check(i, input, expected_output):
+    path = os.path.join(examples_dir, f"scn_example_{i}{exe_suffix}")
     print(f"Invoking {path}")
     result = subprocess.run([path],
                             shell=True,
@@ -43,6 +39,10 @@ def check(i, input, expected_output):
         raise RuntimeError(
             f"scn_example_{i} failed with incorrect output:\n{result.stdout}\nExpected:\n{expected_output}")
     print(f"scn_example_{i} successful")
+
+def check(i, input, expected_output):
+    do_check(i, input, expected_output)
+    do_check(i, input + "\n", expected_output)
 
 
 check(1, "42", "What's your favorite number? 42, interesting\n")

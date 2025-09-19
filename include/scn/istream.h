@@ -233,11 +233,6 @@ public:
         // (This is a C++20 input_iterator, not a Cpp17InputIterator)
         using iterator_category = input_iterator_tag;
 
-        explicit iterator(basic_istreambuf_view& parent) noexcept
-            : m_parent(&parent)
-        {
-        }
-
         iterator(const iterator&) = delete;
         iterator& operator=(const iterator&) = delete;
 
@@ -274,13 +269,29 @@ public:
             return !(x == default_sentinel);
         }
 
+        friend bool operator==(default_sentinel_t, const iterator& x)
+        {
+            return x == default_sentinel;
+        }
+        friend bool operator!=(default_sentinel_t, const iterator& x)
+        {
+            return x != default_sentinel;
+        }
+
     private:
-        basic_istreambuf_view* m_parent{nullptr};
+        friend basic_istreambuf_view;
+
+        explicit iterator(const basic_istreambuf_view& parent) noexcept
+            : m_parent(&parent)
+        {
+        }
+
+        const basic_istreambuf_view* m_parent{nullptr};
     };
 
     explicit basic_istreambuf_view(streambuf_type& buf) : m_buf(&buf) {}
 
-    SCN_NODISCARD iterator begin() const noexcept
+    SCN_NODISCARD iterator begin() const
     {
         _read();
         return iterator{*this};
@@ -294,7 +305,7 @@ public:
 private:
     friend class iterator;
 
-    void _read()
+    void _read() const
     {
         SCN_EXPECT(m_buf);
         auto val = m_buf->sbumpc();
@@ -307,7 +318,7 @@ private:
     }
 
     streambuf_type* m_buf{nullptr};
-    std::optional<CharT> m_current{};
+    mutable std::optional<CharT> m_current{};
 };
 
 using istreambuf_view = basic_istreambuf_view<char>;
@@ -354,37 +365,35 @@ class basic_scan_istream_buffer : public basic_scan_buffer<CharT> {
 
 public:
     SCN_PUBLIC explicit basic_scan_istream_buffer(
-        std::basic_istream<CharT>& strm);
+        std::basic_istream<CharT>& strm) noexcept;
     SCN_PUBLIC ~basic_scan_istream_buffer() override;
 
-    SCN_PUBLIC bool fill() override;
-
-    SCN_PUBLIC bool sync(std::ptrdiff_t position) override;
-
 private:
+    SCN_PUBLIC bool do_fill() override;
+
+    SCN_PUBLIC bool do_sync(std::ptrdiff_t position) override;
+
     std::basic_istream<CharT>* m_stream;
     std::basic_string<CharT> m_buf;
 };
 
-using scan_istream_buffer = basic_scan_istream_buffer<char>;
-using wscan_istream_buffer = basic_scan_istream_buffer<wchar_t>;
+extern template SCN_PUBLIC basic_scan_istream_buffer<
+    char>::basic_scan_istream_buffer(std::istream&) noexcept;
+extern template SCN_PUBLIC  basic_scan_istream_buffer<
+    wchar_t>::basic_scan_istream_buffer(std::wistream&) noexcept;
 
-extern template basic_scan_istream_buffer<char>::basic_scan_istream_buffer(
-    std::istream&);
-extern template basic_scan_istream_buffer<wchar_t>::basic_scan_istream_buffer(
-    std::wistream&);
-
-extern template basic_scan_istream_buffer<char>::~basic_scan_istream_buffer();
-extern template basic_scan_istream_buffer<
+extern template SCN_PUBLIC basic_scan_istream_buffer<
+    char>::~basic_scan_istream_buffer();
+extern template SCN_PUBLIC basic_scan_istream_buffer<
     wchar_t>::~basic_scan_istream_buffer();
 
 inline scan_istream_buffer make_scan_buffer(std::istream& stream,
-                                            make_scan_buffer_tag)
+                                            make_scan_buffer_tag) noexcept
 {
     return scan_istream_buffer{stream};
 }
 inline wscan_istream_buffer make_scan_buffer(std::wistream& stream,
-                                             make_scan_buffer_tag)
+                                             make_scan_buffer_tag) noexcept
 {
     return wscan_istream_buffer{stream};
 }

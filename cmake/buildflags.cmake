@@ -207,21 +207,6 @@ function(get_msvc_warning_flags flags)
             PARENT_SCOPE)
 endfunction()
 
-function(get_warning_flags flags)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        get_gcc_warning_flags(flag_list)
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-            get_msvc_warning_flags(flag_list)
-        else ()
-            get_clang_warning_flags(flag_list)
-        endif ()
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        get_msvc_warning_flags(flag_list)
-    endif ()
-    set(${flags} ${flag_list} PARENT_SCOPE)
-endfunction()
-
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(SCN_CXX_FRONTEND "GNU")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -235,6 +220,17 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 else ()
     set(SCN_CXX_FRONTEND "Other")
 endif ()
+
+function(get_warning_flags flags)
+    if (SCN_CXX_FRONTEND STREQUAL "MSVC")
+        get_msvc_warning_flags(flag_list)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        get_gcc_warning_flags(flag_list)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        get_clang_warning_flags(flag_list)
+    endif ()
+    set(${flags} ${flag_list} PARENT_SCOPE)
+endfunction()
 
 function(get_werror_flags flags)
     if (SCN_CXX_FRONTEND STREQUAL "GNU")
@@ -284,7 +280,7 @@ function(get_coverage_flags flags)
     endif ()
 endfunction()
 
-function(get_disable_msvc_secure_definitions defs)
+function(get_disable_msvc_secure_definitions flags)
     if (SCN_CXX_FRONTEND STREQUAL "MSVC")
         set(${flags}
                 _CRT_SECURE_NO_WARNINGS
@@ -305,6 +301,19 @@ function(get_bigobj_flags flags)
     endif ()
 endfunction()
 
+function(get_ci_flags flags)
+    # In CI, disable warnings about deprecated stuff on MSVC,
+    # because seemingly the pragmas can't disable it all
+    # (we still want to test deprecated features)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
+            CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        # clang-cl
+        set(${flags} -Wno-error=deprecated-declarations PARENT_SCOPE)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        set(${flags} /wd4996 PARENT_SCOPE)
+    endif ()
+endfunction()
+
 function(get_interface_flags prefix)
     set(flags_list)
     set(definitions_list)
@@ -320,6 +329,11 @@ function(get_interface_flags prefix)
 
     get_bigobj_flags(bigobj_flags)
     list(APPEND flags_list ${bigobj_flags})
+
+    if (SCN_CI)
+        get_ci_flags(ci_flags)
+        list(APPEND flags_list ${ci_flags})
+    endif ()
 
     get_config_definitions(config_defs)
     get_disable_msvc_secure_definitions(msvc_sec_defs)
@@ -388,6 +402,11 @@ function(get_library_flags prefix)
 
     get_bigobj_flags(bigobj_flags)
     list(APPEND list_private_flags ${bigobj_flags})
+
+    if (SCN_CI)
+        get_ci_flags(ci_flags)
+        list(APPEND list_public_flags ${ci_flags})
+    endif ()
 
     set(${prefix}_public_flags ${list_public_flags} PARENT_SCOPE)
     set(${prefix}_private_flags ${list_private_flags} PARENT_SCOPE)

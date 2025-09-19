@@ -13,8 +13,9 @@ def find_file(pattern, path):
     return None
 
 
+exe_suffix = '.exe' if os.name == 'nt' else ''
 script_dir = os.path.abspath(os.path.dirname(__file__))
-stdin_test = find_file('scn_stdin_test*', script_dir)
+stdin_test = find_file(f'scn_stdin_test*{exe_suffix}', script_dir)
 
 with open(os.path.join(script_dir, 'stdin_test_input.txt'), 'r') as input_file:
     result = subprocess.run([stdin_test], shell=True, stdin=input_file, text=True, capture_output=True)

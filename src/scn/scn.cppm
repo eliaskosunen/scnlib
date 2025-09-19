@@ -111,15 +111,28 @@ using scn::ranges::weakly_incrementable;
 using scn::ranges::writable;
 }  // namespace ranges
 
+namespace detail {
+using scn::detail::is_scannable_source;
+using scn::detail::make_scan_buffer;
+using scn::detail::make_scan_buffer_tag;
+using scn::detail::priority_tag;
+using scn::detail::stdin_tag;
+
+namespace _make_scan_buffer {
+using scn::detail::_make_scan_buffer::impl;
+}
+}  // namespace detail
+
 using scn::scan_error;
 using scn::operator==;
 using scn::operator!=;
 using scn::scan_expected;
 using scn::scan_format_string_error;
 
+using scn::custom_char_traits;
 using scn::insufficient_range;
 using scn::invalid_char_type;
-using scn::invalid_input_range;
+using scn::invalid_source;
 
 using scn::basic_scan_arg;
 using scn::basic_scan_args;
@@ -129,7 +142,6 @@ using scn::make_wscan_args;
 using scn::basic_scan_parse_context;
 
 using scn::scan_file;
-using scn::scan_file_ref;
 
 using scn::scan_result;
 

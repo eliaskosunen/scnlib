@@ -3,6 +3,8 @@
 fuzzer=$1
 if [ "$fuzzer" = "string_impl" ]; then
   data="string"
+elif [ "$fuzzer" = "file" ]; then
+  data="string"
 else
   data=$fuzzer
 fi

@@ -201,38 +201,20 @@ jobs:
         run: ctest --output-on-failure
 
   # Get older gcc and clang versions through Docker
+  # These are the images that still have a working `apt` on them
+  # (i.e., they are running Debian Bullseye/11)
   docker:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - cxx: g++-8
-            std: 17
-            image: gcc:7
-          - cxx: g++-7
-            std: 17
-            image: gcc:7
-          # gcc 6 and older fail in apt-get update with 404s,
-          # and are seemingly incompatible with actions/checkout
-
           - cxx: clang++-12
             std: 17
             image: silkeh/clang:12
           - cxx: clang++-11
             std: 17
             image: silkeh/clang:11
-          - cxx: clang++-10
-            std: 17
-            image: silkeh/clang:10
-          # No clang 9: ICEs
-          #- cxx: clang++-9
-          #  std: 17
-          #  image: silkeh/clang:9
-          - cxx: clang++-8
-            std: 17
-            image: silkeh/clang:8
-          # clang 7 couldn't compile the tests (TODO?)
 
     container:
       image: ${{ matrix.image }}
@@ -309,6 +291,123 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/build
           $GITHUB_WORKSPACE/bin/ctest --output-on-failure
+
+  # Get older gcc and clang versions through Docker
+  # These are the images that _don't_ have a working `apt` on them,
+  # but using it will 404 when trying to look up the repos
+  # (i.e., they are running Debian Buster/10)
+  docker-old:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cxx: g++-8
+            std: 17
+            image: gcc:8
+          - cxx: g++-7
+            std: 17
+            image: gcc:7
+          # gcc 6 image is broken when run in GitHub actions
+
+          - cxx: clang++-10
+            std: 17
+            image: eliaskosunen/old-clang:10
+          # No clang 9: ICEs
+          - cxx: clang++-8
+            std: 17
+            image: eliaskosunen/old-clang:8
+          # clang 7 couldn't compile the tests (TODO?)
+
+    container:
+      image: ${{ matrix.image }}
+      env:
+        CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
+        CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
+        CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
+        CCACHE_DIR: ${{ env.CCACHE_DIR }}
+        CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
+        CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
+        CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
+        CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
+        DEBIAN_FRONTEND: ${{ env.DEBIAN_FRONTEND }}
+        # gcc images only have "g++", no "g++-N"
+        CXX: ${{ startsWith(matrix.cxx, 'g++') && 'g++' || matrix.cxx }}
+        CMAKE_C_COMPILER_LAUNCHER: ccache
+        CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+        # clang images already come with everything we need (they are custom-built)
+        # gcc images need cmake, ccache, and ninja
+      - name: Install dependencies
+        if: startsWith(matrix.cxx, 'g++')
+        run: |
+          echo /usr/local/bin >> $GITHUB_PATH
+          mkdir -p /tmp/deps
+
+          cd /tmp/deps
+          curl -s -L https://github.com/Kitware/CMake/releases/download/v4.0.2/cmake-4.0.2-linux-x86_64.tar.gz \
+          | tar xz -C .
+          cd cmake-4.0.2-linux-x86_64
+          cp ./bin/* /usr/local/bin
+          cp -r ./share/* /usr/local/share
+          cmake --version
+
+          cd /tmp/deps
+          curl -s -L https://github.com/ccache/ccache/releases/download/v4.12/ccache-4.12-linux-x86_64.tar.xz \
+          | tar xJ -C .
+          cp ./ccache-4.12-linux-x86_64/ccache /usr/local/bin
+          ccache --version
+
+          cd /tmp/deps
+          curl -s -L https://github.com/ninja-build/ninja/archive/refs/tags/v1.13.1.tar.gz \
+          | tar xz -C .
+          cd ninja-1.13.1
+          ./configure.py --bootstrap
+          cp ./ninja /usr/local/bin
+          ninja --version
+
+      - name: Load ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config || true
+
+      - name: Run CMake
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/build
+          cd $GITHUB_WORKSPACE/build
+          cmake -G Ninja -DSCN_CI=ON \
+                -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
+                $GITHUB_WORKSPACE
+
+      - name: Build
+        run: |
+          cd $GITHUB_WORKSPACE/build
+          cmake --build . --verbose -- -k 0
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
+
+      - name: Test
+        run: |
+          cd $GITHUB_WORKSPACE/build
+          ctest --output-on-failure
 
   libcxx:
     runs-on: ubuntu-${{ matrix.os }}
@@ -533,7 +632,7 @@ jobs:
       fail-fast: false
       matrix:
         std: [ 17, 20 ]
-        cxx: [ clang++-16 ]
+        cxx: [ clang++-18 ]
 
     env:
       CXX: ${{ matrix.cxx }}
@@ -551,7 +650,7 @@ jobs:
           sudo update-locale
           sudo locale -a
           
-          ${APT_INSTALL} ccache
+          ${APT_INSTALL} ccache llvm-18 llvm-18-tools llvm-18-dev
           
           mkdir ${{ runner.workspace }}/build
 
@@ -599,6 +698,9 @@ jobs:
       - name: Test
         working-directory: ${{ runner.workspace }}/build
         run: |
+          ASAN_OPTIONS=suppressions=$GITHUB_WORKSPACE/cmake/asan.supp,print_stacktrace=1 \
+          LSAN_OPTIONS=suppressions=$GITHUB_WORKSPACE/cmake/lsan.supp,print_stacktrace=1 \
+          UBSAN_OPTIONS=suppressions=$GITHUB_WORKSPACE/cmake/ubsan.supp,print_stacktrace=1 \
           ctest --output-on-failure
 
   install-and-consume:

@@ -57,6 +57,8 @@ struct buffer_range_tag {};
 
 template <typename CharT>
 using default_context = basic_scan_context<buffer_range_tag, CharT>;
+
+struct stdin_tag {};
 }  // namespace detail
 
 using scan_context = basic_scan_context<detail::buffer_range_tag, char>;
@@ -103,6 +105,16 @@ using wscan_format_string =
 struct invalid_source;
 
 #if !SCN_DISABLE_IOSTREAM
+
+namespace detail {
+
+template <typename CharT>
+class basic_scan_istream_buffer;
+
+using scan_istream_buffer = basic_scan_istream_buffer<char>;
+using wscan_istream_buffer = basic_scan_istream_buffer<wchar_t>;
+
+}  // namespace detail
 
 template <typename CharT>
 struct basic_istream_scanner;

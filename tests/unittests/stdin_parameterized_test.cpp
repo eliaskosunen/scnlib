@@ -15,7 +15,12 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include <scn/scan.h>
+#include <scn/fwd.h>
+
+SCN_GCC_COMPAT_PUSH
+SCN_GCC_COMPAT_IGNORE("-Wdeprecated-declarations")
+#include <scn/istream.h>
+SCN_GCC_COMPAT_POP
 
 #include <iomanip>
 #include <iostream>
@@ -43,12 +48,13 @@ std::string to_hex(int val)
 }
 
 template <typename T>
-int do_scan(std::string_view format)
+int do_scan_with_input(std::string_view format)
 {
     auto result = scn::input<T>(scn::runtime_format(format));
     if (result) {
         std::cout << to_hex(result->value());
-    } else {
+    }
+    else {
         std::cerr << "Error: " << result.error().msg() << std::endl;
     }
     std::cout << std::endl;
@@ -60,12 +66,95 @@ int do_scan(std::string_view format)
 
     return result ? 0 : 1;
 }
+
+template <typename T>
+int do_scan_with_file(std::string_view format)
+{
+    auto file = scn::scan_file{stdin};
+    auto result = scn::scan<T>(file, scn::runtime_format(format));
+    if (result) {
+        std::cout << to_hex(result->value());
+    }
+    else {
+        std::cerr << "Error: " << result.error().msg() << std::endl;
+    }
+    std::cout << std::endl;
+
+    if (auto leftovers = scn::scan<std::string>(file, "{:[^\n]}"); leftovers) {
+        std::cout << to_hex(leftovers->value());
+    }
+    std::cout << std::endl;
+
+    return result ? 0 : 1;
+}
+
+template <typename T>
+int do_scan_with_cfile(std::string_view format)
+{
+    auto result = scn::scan<T>(stdin, scn::runtime_format(format));
+    if (result) {
+        std::cout << to_hex(result->value());
+    }
+    else {
+        std::cerr << "Error: " << result.error().msg() << std::endl;
+    }
+    std::cout << std::endl;
+
+    if (auto leftovers = scn::scan<std::string>(stdin, "{:[^\n]}"); leftovers) {
+        std::cout << to_hex(leftovers->value());
+    }
+    std::cout << std::endl;
+
+    return result ? 0 : 1;
+}
+
+template <typename T>
+int do_scan_with_stream(std::string_view format)
+{
+    auto result = scn::scan<T>(std::cin, scn::runtime_format(format));
+    if (result) {
+        std::cout << to_hex(result->value());
+    }
+    else {
+        std::cerr << "Error: " << result.error().msg() << std::endl;
+    }
+    std::cout << std::endl;
+
+    if (auto leftovers = scn::scan<std::string>(std::cin, "{:[^\n]}");
+        leftovers) {
+        std::cout << to_hex(leftovers->value());
+    }
+    std::cout << std::endl;
+
+    return result ? 0 : 1;
+}
+
+template <typename T>
+int do_scan(int method, std::string_view format)
+{
+    if (method == 0) {
+        return do_scan_with_input<T>(format);
+    }
+    if (method == 1) {
+        return do_scan_with_file<T>(format);
+    }
+    if (method == 2) {
+        return do_scan_with_cfile<T>(format);
+    }
+    if (method == 3) {
+        return do_scan_with_stream<T>(format);
+    }
+    std::fprintf(stderr, "Invalid value for the method parameter (got %d)",
+                 method);
+    return -1;
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
 {
-    if (argc != 3) {
-        std::fprintf(stderr, "argc must be 3, got %d", argc);
+    if (argc != 4) {
+        std::fprintf(stderr, "argc must be 4, got %d", argc);
         return -1;
     }
 
@@ -75,11 +164,17 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    auto method = scn::scan_int<int>(argv[2]);
+    if (!method) {
+        std::fputs("Invalid method parameter", stderr);
+        return -1;
+    }
+
     if (type->value() == 0) {
-        return do_scan<std::string>(argv[2]);
+        return do_scan<std::string>(method->value(), argv[3]);
     }
     if (type->value() == 1) {
-        return do_scan<int>(argv[2]);
+        return do_scan<int>(method->value(), argv[3]);
     }
     std::fprintf(stderr, "Invalid value for the type parameter (got %d)",
                  type->value());
