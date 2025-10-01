@@ -116,7 +116,6 @@ using scn::detail::is_scannable_source;
 using scn::detail::make_scan_buffer;
 using scn::detail::make_scan_buffer_tag;
 using scn::detail::priority_tag;
-using scn::detail::stdin_tag;
 
 namespace _make_scan_buffer {
 using scn::detail::_make_scan_buffer::impl;
@@ -145,6 +144,8 @@ using scn::scan_file;
 
 using scn::scan_result;
 
+using scn::stdin_tag;
+
 using scn::basic_scan_format_string;
 using scn::runtime_format;
 
@@ -157,6 +158,7 @@ using scn::visit_scan_arg;
 using scn::vscan;
 using scn::vscan_result;
 using scn::vscan_value;
+using scn::vinput;
 
 using scn::fill_scan_result;
 using scn::input;

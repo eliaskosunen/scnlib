@@ -393,9 +393,11 @@ SCN_PUBLIC void stdin_release()
     stdin_mutex.unlock();
 }
 
-SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag, make_scan_buffer_tag)
+SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag,
+                                         make_scan_buffer_tag) noexcept
 {
-    SCN_ASSERT(get_stdin_buffer(), "stdin not locked, stdin_buffer not created");
+    SCN_ASSERT(get_stdin_buffer(),
+               "stdin not locked, stdin_buffer not created");
     return *get_stdin_buffer();
 }
 
@@ -3027,13 +3029,19 @@ auto scan_int_exhaustive_valid_impl(std::string_view source) -> T
 
 }  // namespace detail
 
-SCN_PUBLIC scan_expected<void> vinput(std::string_view format, scan_args args)
+SCN_PUBLIC vscan_result<stdin_tag> vinput(std::string_view format,
+                                          scan_args args)
 {
-    auto buffer = detail::scan_cfile_buffer{stdin};
-    if (auto e = vscan_internal(buffer.get(), format, args); SCN_UNLIKELY(!e)) {
-        return unexpected(e.error());
-    }
-    return {};
+    return detail::vscan_generic(stdin_tag{}, format, SCN_MOVE(args));
+}
+
+template <typename Locale, typename>
+SCN_PUBLIC vscan_result<stdin_tag> vinput(const Locale& loc,
+                                          std::string_view format,
+                                          scan_args args)
+{
+    return detail::vscan_localized_generic(loc, stdin_tag{}, format,
+                                           SCN_MOVE(args));
 }
 
 namespace detail {
@@ -4913,14 +4921,17 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_fill()
 }
 
 template <typename CharT>
-SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_sync(std::ptrdiff_t position)
+SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_sync(
+    std::ptrdiff_t position)
 {
     SCN_EXPECT(m_stream);
     auto& streambuf = *m_stream->rdbuf();
-    return impl::buffer_sync_helper(
-        position, this->m_current_view, this->m_putback_buffer, [&](CharT ch) {
-            return !traits::eq_int_type(streambuf.sputbackc(ch), traits::eof());
-        }) == position;
+    return impl::buffer_sync_helper(position, this->m_current_view,
+                                    this->m_putback_buffer, [&](CharT ch) {
+                                        return !traits::eq_int_type(
+                                            streambuf.sputbackc(ch),
+                                            traits::eof());
+                                    }) == position;
 }
 
 template basic_scan_istream_buffer<char>::basic_scan_istream_buffer(

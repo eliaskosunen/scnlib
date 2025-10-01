@@ -5367,11 +5367,12 @@ public:
         /// Often a compile-time error, if supported and/or enabled.
         invalid_format_string,
 
-        /// Scanned value was invalid for given type,
+        /// Scanned value was invalid for the given type,
         /// or a value of the given couldn't be scanned.
         invalid_scanned_value,
 
-        /// Literal character specified in format string not found in source.
+        /// Literal character specified in format string was not found
+        /// in the source.
         invalid_literal,
 
         /// Too many fill characters scanned,
@@ -6026,6 +6027,14 @@ namespace detail {
 struct scan_file_access;
 }
 
+/**
+ * Non-owning view into a `std::FILE`,
+ * representing a file handle for scanning.
+ * Stores an additional "prelude" buffer,
+ * which allows for a failure to sync with the underlying file
+ * to not be fatal
+ * (C `FILE` only guarantees a single character's worth of putback).
+ */
 class scan_file {
     friend struct detail::scan_file_access;
 
@@ -6479,6 +6488,64 @@ using less_than_compare =
     decltype(SCN_DECLVAL(const I&) < SCN_DECLVAL(const S&));
 
 template <typename Range>
+class basic_scan_sized_range_buffer
+    : public basic_scan_buffer<detail::char_t<Range>> {
+    static_assert(ranges::sized_range<const Range>);
+    static_assert(ranges::bidirectional_range<const Range>);
+    static_assert(std::is_object_v<Range>);
+
+    using _char_type = detail::char_t<Range>;
+    using base = basic_scan_buffer<_char_type>;
+
+    static constexpr std::size_t chunk_size = 16;
+
+public:
+    using char_type = _char_type;
+    using range_type = Range;
+    using iterator = ranges::iterator_t<const Range>;
+    using sentinel = ranges::sentinel_t<const Range>;
+
+    basic_scan_sized_range_buffer(const Range& r)
+        : base(typename base::non_contiguous_tag{}),
+          m_range(&r),
+          m_cursor(ranges::begin(*m_range))
+    {
+        m_current_buffer.reserve(chunk_size);
+    }
+
+private:
+    bool do_fill() override
+    {
+        if (m_cursor == ranges::end(*m_range)) {
+            return false;
+        }
+        SCN_EXPECT(m_cursor < ranges::end(*m_range));
+        if (!this->m_current_buffer.empty()) {
+            this->m_putback_buffer.append(m_current_buffer);
+            m_current_buffer.clear();
+        }
+        auto const n =
+            std::min(chunk_size, static_cast<std::size_t>(std::distance(
+                                     m_cursor, ranges::end(*m_range))));
+        for (std::size_t i = 0; i < n; ++i) {
+            m_current_buffer.push_back(*m_cursor);
+            ++m_cursor;
+        }
+        this->m_current_view =
+            std::basic_string_view<char_type>(m_current_buffer);
+        SCN_EXPECT(m_cursor <= ranges::end(*m_range));
+        return true;
+    }
+
+    const Range* m_range;
+    iterator m_cursor;
+    std::basic_string<char_type> m_current_buffer;
+};
+
+template <typename R>
+basic_scan_sized_range_buffer(const R&) -> basic_scan_sized_range_buffer<R>;
+
+template <typename Range>
 class basic_scan_forward_range_buffer
     : public basic_scan_buffer<detail::char_t<Range>> {
     static_assert(ranges::forward_range<const Range> &&
@@ -6702,7 +6769,11 @@ auto make_string_scan_buffer(const Range& range)
 template <typename Range>
 auto make_range_scan_buffer(Range&& range)
 {
-    if constexpr (ranges::forward_range<Range>) {
+    if constexpr (ranges::bidirectional_range<Range> &&
+                  ranges::sized_range<Range>) {
+        return basic_scan_sized_range_buffer(range);
+    }
+    else if constexpr (ranges::forward_range<Range>) {
         return basic_scan_forward_range_buffer(range);
     }
     else {
@@ -6722,21 +6793,23 @@ auto make_range_scan_buffer(Range&& range)
  * \brief Description of the `scannable_range` and `scannable_source`
  * concepts.
  *
- * A range is considered scannable, if it models at least `forward_range`,
+ * A range is considered scannable, if it models at least `input_range`,
  * and its character type is correct (its value type is the same as the one
- * of the format string).
- * If the range additionally models `contiguous_range` and `sized_range`,
- * additional optimizations are enabled.
+ * of the format string, and is either `char` or `wchar_t`).
+ * Additional optimizations are enabled for "stronger" range concepts.
  *
  * \code{.cpp}
  * // Exposition only
  * template <typename Range, typename CharT>
  * concept scannable_range =
- *     ranges::forward_range<Range> &&
- *     std::same_as<ranges::range_value_t<Range>, CharT>;
+ *     ranges::input_range<Range> &&
+ *     std::same_as<ranges::range_value_t<Range>, CharT> &&
+ *     (std::same_as<CharT, char> || std::same_as<CharT, wchar_t>);
  * \endcode
  *
- * Additionally, files (`std::FILE*`) can be scanned from.
+ * Additionally, files (`scn::scan_file`) can be scanned from,
+ * and if `<scn/istream.h>` is included, `std::basic_istream`s, too.
+ * The support for reading from C `FILE` is deprecated.
  * Files are always considered to be narrow (`char`-oriented).
  * Thus, the entire concept is:
  *
@@ -6744,8 +6817,15 @@ auto make_range_scan_buffer(Range&& range)
  * // Exposition only
  * template <typename Source, typename CharT>
  * concept scannable_source =
+ *   (std::same_as<std::remove_cvref_t<Source>, scan_file> &&
+ *    std::same_as<CharT, char>) ||
+ *   // FILE support is deprecated
  *   (std::same_as<std::remove_cvref_t<Source>, std::FILE*> &&
  *    std::same_as<CharT, char>) ||
+ *   // only if <scn/istream.h> has been included
+ *   std::convertible_to<
+ *       std::remove_cvref_t<Source>&,
+ *       std::basic_istream<CharT>> ||
  *   scannable_range<Source, CharT>;
  * \endcode
  */
@@ -6797,7 +6877,6 @@ auto impl(std::basic_string_view<CharT> r, priority_tag<3>) noexcept
 {
     if constexpr (is_valid_char_type<CharT>) {
         return r;
-        // return make_string_scan_buffer(r);
     }
     else {
         return invalid_char_type{};
@@ -6847,7 +6926,7 @@ inline auto impl(scan_file& file, priority_tag<3>)
 }
 auto impl(scan_file&&, priority_tag<3>) = delete;
 
-// (at least) forward_range -> appropriate range buffer
+// (at least) forward_range -> the appropriate range buffer
 template <typename Range,
           std::enable_if_t<ranges::forward_range<Range>>* = nullptr>
 auto impl(const Range& r, priority_tag<2>)
@@ -6917,7 +6996,7 @@ decltype(auto) make_scan_buffer(Source&& source)
     SCN_CLANG_PUSH
     SCN_CLANG_IGNORE("-Wdeprecated-declarations")
     SCN_MSVC_PUSH
-    SCN_MSVC_IGNORE(4996) // [[deprecated]]
+    SCN_MSVC_IGNORE(4996)  // [[deprecated]]
     // Get -Wdeprecated-declarations warnings when impl() is called below,
     // not here
 
@@ -6975,7 +7054,7 @@ SCN_GCC_IGNORE("-Wdeprecated-declarations")
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wdeprecated-declarations")
 SCN_MSVC_PUSH
-SCN_MSVC_IGNORE(4996) // [[deprecated]]
+SCN_MSVC_IGNORE(4996)  // [[deprecated]]
 template <typename Source>
 using dt_make_scan_buffer =
     decltype(_make_scan_buffer::impl(SCN_DECLVAL(Source), priority_tag<5>{}));
@@ -7924,6 +8003,12 @@ public:
     {
     }
 
+    /**
+     * Construct a `basic_scan_parse_context` over a format string `format`,
+     * using `Source` as the source type.
+     * The type `Source` is used for compile-time checking of whether certain
+     * types can be scanned (e.g., `string_view` requires a contiguous source).
+     */
     template <typename Source>
     explicit constexpr basic_scan_parse_context(
         source_tag_type<Source>,
@@ -8003,11 +8088,13 @@ public:
         return m_error;
     }
 
+    /// Returns `true`, if the source is a `contiguous_range`
     SCN_NODISCARD constexpr bool is_source_contiguous() const
     {
         return m_is_contiguous;
     }
 
+    /// Returns `true`, if the source is a `borrowed_range`
     SCN_NODISCARD constexpr bool is_source_borrowed() const
     {
         return m_is_borrowed;
@@ -8412,7 +8499,10 @@ struct scan_result_alias_base<S, std::enable_if_t<ranges::range<S>>> {
  * returning `ranges::dangling`.
  * For 2. and 3., `begin()` and `end()` member functions are available,
  * returning `ranges::begin(range())` and `ranges::end(range())`, respectively.
- * Handling of C-style `FILE`s (5.) is deprecated.
+ *
+ * Support for direct handling of C-style `FILE`s (5.) is deprecated.
+ * Prefer using `scn::scan_file`s, `std::basic_istream`s,
+ * or `scn::input` if reading from `stdin`.
  *
  * \ingroup result
  */
@@ -11615,6 +11705,12 @@ using vscan_result = scan_expected<detail::scan_result_value_type<Source>>;
 
 namespace detail {
 
+SCN_PUBLIC void stdin_acquire();
+SCN_PUBLIC void stdin_release();
+
+SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag,
+                                         make_scan_buffer_tag) noexcept;
+
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
                                                     std::string_view format,
                                                     scan_args args);
@@ -11684,12 +11780,35 @@ auto vscan_range_type(T x)
     return x;
 }
 
+template <typename Range>
+struct vscan_guard {};
+
+template <>
+struct vscan_guard<stdin_tag> {
+    vscan_guard()
+    {
+        stdin_acquire();
+    }
+    ~vscan_guard()
+    {
+        stdin_release();
+    }
+
+    vscan_guard(const vscan_guard&) = delete;
+    vscan_guard(vscan_guard&&) = delete;
+    vscan_guard& operator=(const vscan_guard&) = delete;
+    vscan_guard& operator=(vscan_guard&&) = delete;
+};
+
 template <typename Range, typename CharT>
 auto vscan_generic(Range&& range,
                    std::basic_string_view<CharT> format,
                    basic_scan_args<detail::default_context<CharT>> args)
     -> vscan_result<Range>
 {
+    vscan_guard<remove_cvref_t<Range>> guard{};
+    SCN_UNUSED(guard);
+
     auto&& buffer = make_scan_buffer(range);
     auto result = vscan_impl(vscan_range_type(buffer), format, args);
     if (SCN_UNLIKELY(!result)) {
@@ -11706,6 +11825,9 @@ auto vscan_localized_generic(
     basic_scan_args<detail::default_context<CharT>> args) -> vscan_result<Range>
 {
 #if !SCN_DISABLE_LOCALE
+    vscan_guard<remove_cvref_t<Range>> guard{};
+    SCN_UNUSED(guard);
+
     auto&& buffer = detail::make_scan_buffer(range);
 
     SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
@@ -11730,6 +11852,9 @@ auto vscan_value_generic(Range&& range,
                          basic_scan_arg<detail::default_context<CharT>> arg)
     -> vscan_result<Range>
 {
+    vscan_guard<remove_cvref_t<Range>> guard{};
+    SCN_UNUSED(guard);
+
     auto&& buffer = detail::make_scan_buffer(range);
     auto result = detail::vscan_value_impl(vscan_range_type(buffer), arg);
     if (SCN_UNLIKELY(!result)) {
@@ -11792,10 +11917,13 @@ auto vscan_value(Source&& source, basic_scan_arg<scan_context> arg)
  *
  * \ingroup vscan
  */
-[[deprecated(
-    "Use scn::vscan with an explicit source parameter, "
-    "or scn::input")]]
-SCN_PUBLIC scan_expected<void> vinput(std::string_view format, scan_args args);
+SCN_PUBLIC vscan_result<stdin_tag> vinput(std::string_view format,
+                                          scan_args args);
+
+template <typename Locale, typename = std::void_t<decltype(Locale::classic())>>
+SCN_PUBLIC vscan_result<stdin_tag> vinput(const Locale& loc,
+                                          std::string_view format,
+                                          scan_args args);
 
 namespace detail {
 template <typename T>
@@ -12132,15 +12260,6 @@ SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
     return result;
 }
 
-namespace detail {
-
-SCN_PUBLIC void stdin_acquire();
-SCN_PUBLIC void stdin_release();
-
-SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag, make_scan_buffer_tag);
-
-}  // namespace detail
-
 /**
  * Scan from `stdin`.
  *
@@ -12155,33 +12274,25 @@ SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag, make_scan_buffer_tag);
  * \ingroup scan
  */
 template <typename... Args>
-SCN_NODISCARD auto input(scan_format_string<detail::stdin_tag, Args...> format)
-    -> scan_result_type<detail::stdin_tag, Args...>
+SCN_NODISCARD auto input(scan_format_string<stdin_tag, Args...> format)
+    -> scan_result_type<stdin_tag, Args...>
 {
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wexit-time-destructors")
-
-    struct stdin_guard {
-        stdin_guard() = default;
-        ~stdin_guard()
-        {
-            detail::stdin_release();
-        }
-    };
-
-    detail::stdin_acquire();
-    stdin_guard guard{};
-
-    auto result = scan_result_type<detail::stdin_tag, Args...>(
-        std::in_place, detail::stdin_tag{}, std::tuple<Args...>{});
-    auto err =
-        vscan(detail::stdin_tag{}, format, make_scan_args(result->values()));
-    if (SCN_UNLIKELY(!err)) {
-        result = unexpected(err.error());
-    }
+    auto result = make_scan_result<stdin_tag, Args...>();
+    fill_scan_result(result, vinput(format, make_scan_args(result->values())));
     return result;
+}
 
-    SCN_CLANG_POP
+template <typename... Args,
+          typename Locale,
+          typename = std::void_t<decltype(Locale::classic())>>
+SCN_NODISCARD auto input(const Locale& loc,
+                         scan_format_string<stdin_tag, Args...> format)
+    -> scan_result_type<stdin_tag, Args...>
+{
+    auto result = make_scan_result<stdin_tag, Args...>();
+    fill_scan_result(result,
+                     vinput(loc, format, make_scan_args(result->values())));
+    return result;
 }
 
 /**
@@ -12191,8 +12302,8 @@ SCN_NODISCARD auto input(scan_format_string<detail::stdin_tag, Args...> format)
  */
 template <typename... Args>
 SCN_NODISCARD auto prompt(const char* msg,
-                          scan_format_string<detail::stdin_tag, Args...> format)
-    -> scan_result_type<detail::stdin_tag, Args...>
+                          scan_format_string<stdin_tag, Args...> format)
+    -> scan_result_type<stdin_tag, Args...>
 {
     std::printf("%s", msg);
     std::fflush(stdout);

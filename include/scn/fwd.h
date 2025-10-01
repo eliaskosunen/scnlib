@@ -57,9 +57,9 @@ struct buffer_range_tag {};
 
 template <typename CharT>
 using default_context = basic_scan_context<buffer_range_tag, CharT>;
+}  // namespace detail
 
 struct stdin_tag {};
-}  // namespace detail
 
 using scan_context = basic_scan_context<detail::buffer_range_tag, char>;
 using wscan_context = basic_scan_context<detail::buffer_range_tag, wchar_t>;
