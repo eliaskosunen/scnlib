@@ -19,6 +19,8 @@
 
 #include "wrapped_gtest.h"
 
+#if !SCN_DISABLE_IOSTREAM
+
 #include <sstream>
 
 using testing::FieldsAre;
@@ -30,3 +32,5 @@ TEST(IstreamSourceTest, Stringstream)
     ASSERT_TRUE(res);
     EXPECT_THAT(res->values(), FieldsAre(123, "abc"));
 }
+
+#endif

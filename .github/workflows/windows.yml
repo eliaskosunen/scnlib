@@ -337,3 +337,53 @@ jobs:
           echo "Output: '$output'"
           test $exit_code -eq 0
           test "$output" -eq 42
+
+  disabled-iostreams:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Build Environment
+        run: |
+          cmake -E make_directory ${{ runner.workspace }}/build
+          choco install ccache
+
+      - name: Load ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-no_iostreams-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-no_iostreams-${{ github.ref }}
+            ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-no_iostreams-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-win2022-msvc$x6-std17-Debug-no_iostreams
+            ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-${{ github.ref }}
+            ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-win2022-msvc$x6-std17-Debug
+
+      - name: Setup ccache
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
+
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        shell: bash
+        run: |
+          cmake -A x64 -DCMAKE_CXX_STANDARD=17 -DSCN_CI=ON -DSCN_DISABLE_IOSTREAM=ON $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: cmake --build . --config Debug --parallel --verbose
+
+      - name: Show ccache stats
+        run: |
+          ccache --show-stats
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: ctest -C Debug --output-on-failure

@@ -19,6 +19,8 @@
 
 #include "wrapped_gtest.h"
 
+#if !SCN_DISABLE_IOSTREAM
+
 struct has_istream_operator {
     int i{};
 
@@ -48,3 +50,5 @@ TEST(IstreamScannerTest, OtherValues)
     EXPECT_EQ(b.i, 456);
     EXPECT_EQ(c.i, 789);
 }
+
+#endif

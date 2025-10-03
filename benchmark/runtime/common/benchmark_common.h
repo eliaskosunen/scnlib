@@ -40,6 +40,8 @@ SCN_GCC_POP
 
 // fast_float.h
 
+#if !defined(SCN_DISABLE_FAST_FLOAT) || !SCN_DISABLE_FAST_FLOAT
+
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
 SCN_GCC_IGNORE("-Wnoexcept")
@@ -70,3 +72,5 @@ SCN_CLANG_IGNORE("-Wreserved-identifier")
 
 SCN_CLANG_POP
 SCN_GCC_POP
+
+#endif

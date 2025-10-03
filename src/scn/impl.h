@@ -5216,7 +5216,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     auto new_input = detail::make_string_view_from_pointers(
         detail::to_address(input.begin()), detail::to_address(input.end()));
     bool found = re2::RE2::ConsumeN(&new_input, re, match_argptrs.data(),
-                                    match_argptrs.size());
+                                    static_cast<int>(match_argptrs.size()));
     if (!found) {
         return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Regular expression didn't match");

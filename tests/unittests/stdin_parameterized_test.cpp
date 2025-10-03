@@ -108,6 +108,7 @@ int do_scan_with_cfile(std::string_view format)
     return result ? 0 : 1;
 }
 
+#if !SCN_DISABLE_IOSTREAM
 template <typename T>
 int do_scan_with_stream(std::string_view format)
 {
@@ -128,6 +129,7 @@ int do_scan_with_stream(std::string_view format)
 
     return result ? 0 : 1;
 }
+#endif
 
 template <typename T>
 int do_scan(int method, std::string_view format)
@@ -142,7 +144,13 @@ int do_scan(int method, std::string_view format)
         return do_scan_with_cfile<T>(format);
     }
     if (method == 3) {
+#if !SCN_DISABLE_IOSTREAM
         return do_scan_with_stream<T>(format);
+#else
+        std::fputs("SCN_DISABLE_IOSTREAM is true, skipping stream test",
+                   stderr);
+        return do_scan_with_file<T>(format);
+#endif
     }
     std::fprintf(stderr, "Invalid value for the method parameter (got %d)",
                  method);

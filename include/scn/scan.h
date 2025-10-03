@@ -7527,8 +7527,12 @@ constexpr auto make_value_impl(Arg&& arg)
     constexpr bool scannable = !std::is_same_v<arg_nocvref_t, unscannable>;
     static_assert(
         scannable,
-        "Cannot scan an argument. To make a type T scannable, provide "
-        "a scn::scanner<T, CharT> specialization.");
+        "Cannot scan an argument. "
+        "To make a type T scannable, "
+        "provide a `scn::scanner<T, CharT>` specialization. "
+        "If a type is readable by `operator>>`, "
+        "a specialization can be created by inheriting from "
+        "`scn::basic_istream_scanner<CharT>` (defined in <scn/istream.h>).");
 
     return arg_value{arg};
 }
@@ -8330,13 +8334,13 @@ private:
 struct scan_result_stdin {
     friend struct scan_result_source_access;
 
-    using source_type = stdin_tag;
+    using source_type = stdin_tag_t;
 
     constexpr scan_result_stdin() = default;
 
-    explicit constexpr scan_result_stdin(stdin_tag) {}
+    explicit constexpr scan_result_stdin(stdin_tag_t) {}
 
-    void set(stdin_tag) {}
+    void set(stdin_tag_t) {}
 };
 
 struct scan_result_dangling {
@@ -8389,7 +8393,7 @@ using custom_scan_result_storage_t =
 
 template <typename Source>
 using scan_result_source_storage = typename mp_cond<
-    std::is_same<remove_cvref_t<Source>, stdin_tag>,
+    std::is_same<remove_cvref_t<Source>, stdin_tag_t>,
     mp_identity<scan_result_stdin>,
     std::is_same<remove_cvref_t<Source>, ranges::dangling>,
     mp_identity<scan_result_dangling>,
@@ -8889,9 +8893,9 @@ inline auto make_vscan_result(scan_file&& source,
                               const scan_file_buffer&,
                               std::ptrdiff_t) = delete;
 
-inline auto make_vscan_result(stdin_tag, const scan_buffer&, std::ptrdiff_t)
+inline auto make_vscan_result(stdin_tag_t, const scan_buffer&, std::ptrdiff_t)
 {
-    return stdin_tag{};
+    return stdin_tag;
 }
 
 }  // namespace detail
@@ -11674,8 +11678,8 @@ using custom_scan_result_t = typename custom_scan_result<Source>::type;
 
 template <typename Source>
 using scan_result_value_type = typename mp_cond<
-    std::is_same<remove_cvref_t<Source>, stdin_tag>,
-    mp_identity<stdin_tag>,
+    std::is_same<remove_cvref_t<Source>, stdin_tag_t>,
+    mp_identity<stdin_tag_t>,
     std::is_same<remove_cvref_t<Source>, std::FILE*>,
     mp_identity<std::FILE*>,
     std::is_same<remove_cvref_t<Source>, scan_file>,
@@ -11708,7 +11712,7 @@ namespace detail {
 SCN_PUBLIC void stdin_acquire();
 SCN_PUBLIC void stdin_release();
 
-SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag,
+SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
                                          make_scan_buffer_tag) noexcept;
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
@@ -11784,7 +11788,7 @@ template <typename Range>
 struct vscan_guard {};
 
 template <>
-struct vscan_guard<stdin_tag> {
+struct vscan_guard<stdin_tag_t> {
     vscan_guard()
     {
         stdin_acquire();
@@ -11917,13 +11921,13 @@ auto vscan_value(Source&& source, basic_scan_arg<scan_context> arg)
  *
  * \ingroup vscan
  */
-SCN_PUBLIC vscan_result<stdin_tag> vinput(std::string_view format,
-                                          scan_args args);
+SCN_PUBLIC vscan_result<stdin_tag_t> vinput(std::string_view format,
+                                            scan_args args);
 
 template <typename Locale, typename = std::void_t<decltype(Locale::classic())>>
-SCN_PUBLIC vscan_result<stdin_tag> vinput(const Locale& loc,
-                                          std::string_view format,
-                                          scan_args args);
+SCN_PUBLIC vscan_result<stdin_tag_t> vinput(const Locale& loc,
+                                            std::string_view format,
+                                            scan_args args);
 
 namespace detail {
 template <typename T>
@@ -12274,10 +12278,10 @@ SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
  * \ingroup scan
  */
 template <typename... Args>
-SCN_NODISCARD auto input(scan_format_string<stdin_tag, Args...> format)
-    -> scan_result_type<stdin_tag, Args...>
+SCN_NODISCARD auto input(scan_format_string<stdin_tag_t, Args...> format)
+    -> scan_result_type<stdin_tag_t, Args...>
 {
-    auto result = make_scan_result<stdin_tag, Args...>();
+    auto result = make_scan_result<stdin_tag_t, Args...>();
     fill_scan_result(result, vinput(format, make_scan_args(result->values())));
     return result;
 }
@@ -12286,10 +12290,10 @@ template <typename... Args,
           typename Locale,
           typename = std::void_t<decltype(Locale::classic())>>
 SCN_NODISCARD auto input(const Locale& loc,
-                         scan_format_string<stdin_tag, Args...> format)
-    -> scan_result_type<stdin_tag, Args...>
+                         scan_format_string<stdin_tag_t, Args...> format)
+    -> scan_result_type<stdin_tag_t, Args...>
 {
-    auto result = make_scan_result<stdin_tag, Args...>();
+    auto result = make_scan_result<stdin_tag_t, Args...>();
     fill_scan_result(result,
                      vinput(loc, format, make_scan_args(result->values())));
     return result;
@@ -12302,8 +12306,8 @@ SCN_NODISCARD auto input(const Locale& loc,
  */
 template <typename... Args>
 SCN_NODISCARD auto prompt(const char* msg,
-                          scan_format_string<stdin_tag, Args...> format)
-    -> scan_result_type<stdin_tag, Args...>
+                          scan_format_string<stdin_tag_t, Args...> format)
+    -> scan_result_type<stdin_tag_t, Args...>
 {
     std::printf("%s", msg);
     std::fflush(stdout);

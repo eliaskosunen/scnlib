@@ -811,22 +811,31 @@ jobs:
         include:
           - key: iostream
             flags: "-DSCN_DISABLE_IOSTREAM=ON"
+            enable_tests: 1
           - key: locale
             flags: "-DSCN_DISABLE_LOCALE=ON"
+            enable_tests: 1
           - key: regex
             flags: "-DSCN_DISABLE_REGEX=ON"
+            enable_tests: 0 # todo
           - key: chrono
             flags: "-DSCN_DISABLE_CHRONO=ON"
+            enable_tests: 1
           - key: float
             flags: "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON"
+            enable_tests: 1
           - key: float-all
             flags: "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON -DSCN_DISABLE_TYPE_FLOAT16=ON -DSCN_DISABLE_TYPE_FLOAT32=ON -DSCN_DISABLE_TYPE_FLOAT64=ON -DSCN_DISABLE_TYPE_FLOAT128=ON -DSCN_DISABLE_TYPE_BFLOAT16=ON"
+            enable_tests: 1
           - key: int128
             flags: "-DSCN_DISABLE_TYPE_INT128=ON -DSCN_DISABLE_TYPE_UINT128=ON"
+            enable_tests: 1
           - key: from-chars-and-strtod
             flags: "-DSCN_DISABLE_FROM_CHARS=ON -DSCN_DISABLE_STRTOD=ON"
+            enable_tests: 0 # alters the behavior in float tests
           - key: fast-float
             flags: "-DSCN_DISABLE_FAST_FLOAT=ON"
+            enable_tests: 0
 
     env:
       CXX: g++-14
@@ -871,15 +880,26 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -G Ninja -DSCN_CI=ON ${{ matrix.flags }} \
+                -DSCN_BENCHMARKS=OFF -DSCN_BENCHMARKS_BUILDTIME=OFF -DSCN_BENCHMARKS_BINARYSIZE=OFF \
                 $GITHUB_WORKSPACE
 
-      - name: Build
+      - name: Build library
         working-directory: ${{ runner.workspace }}/build
         run: cmake --build . --target scn --verbose -- -k 0
+
+      - name: Build tests
+        working-directory: ${{ runner.workspace }}/build
+        if: matrix.enable_tests == 1
+        run: cmake --build . --verbose -- -k 0
 
       - name: Show ccache stats
         run: |
           ccache --show-stats
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        if: matrix.enable_tests == 1
+        run: ctest --output-on-failure
 
   special-flags:
     runs-on: ubuntu-24.04
@@ -946,23 +966,23 @@ jobs:
           ccache --show-stats
 
   regex-backends:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         include:
+          # No-op, tested above
           #- engine: std
           - engine: Boost
             icu: OFF
           - engine: Boost
             icu: ON
-          # Disabled due to re2 building trouble
-          #- engine: re2
+          - engine: re2
 
     env:
-      CC: gcc-11
-      CXX: g++-11
-      CMAKE_CXX_STANDARD: 17
+      CC: gcc-13
+      CXX: g++-13
+      CMAKE_CXX_STANDARD: 20
       CMAKE_C_COMPILER_LAUNCHER: ccache
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
@@ -989,7 +1009,7 @@ jobs:
         run: |
           sudo apt-get remove -y libre2-dev
           
-          git clone https://github.com/abseil/abseil-cpp -b 20240116.1 --depth=1
+          git clone https://github.com/abseil/abseil-cpp -b 20250814.1 --depth=1
           cd abseil-cpp
           mkdir build
           cd build
@@ -997,7 +1017,7 @@ jobs:
           sudo cmake --build . --target install
           cd ../..
           
-          git clone https://github.com/google/re2 -b 2024-04-01 --depth=1
+          git clone https://github.com/google/re2 -b 2025-08-12 --depth=1
           cd re2
           mkdir build
           cd build

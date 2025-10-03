@@ -393,7 +393,7 @@ SCN_PUBLIC void stdin_release()
     stdin_mutex.unlock();
 }
 
-SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag,
+SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
                                          make_scan_buffer_tag) noexcept
 {
     SCN_ASSERT(get_stdin_buffer(),
@@ -3029,18 +3029,18 @@ auto scan_int_exhaustive_valid_impl(std::string_view source) -> T
 
 }  // namespace detail
 
-SCN_PUBLIC vscan_result<stdin_tag> vinput(std::string_view format,
-                                          scan_args args)
+SCN_PUBLIC vscan_result<stdin_tag_t> vinput(std::string_view format,
+                                            scan_args args)
 {
-    return detail::vscan_generic(stdin_tag{}, format, SCN_MOVE(args));
+    return detail::vscan_generic(stdin_tag, format, SCN_MOVE(args));
 }
 
 template <typename Locale, typename>
-SCN_PUBLIC vscan_result<stdin_tag> vinput(const Locale& loc,
-                                          std::string_view format,
-                                          scan_args args)
+SCN_PUBLIC vscan_result<stdin_tag_t> vinput(const Locale& loc,
+                                            std::string_view format,
+                                            scan_args args)
 {
-    return detail::vscan_localized_generic(loc, stdin_tag{}, format,
+    return detail::vscan_localized_generic(loc, stdin_tag, format,
                                            SCN_MOVE(args));
 }
 
