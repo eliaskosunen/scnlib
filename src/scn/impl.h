@@ -5275,8 +5275,7 @@ struct regex_matches_reader
                           reader_error_handler& eh)
     {
         detail::check_regex_type_specs(specs, eh);
-        SCN_EXPECT(specs.charset_string_data != nullptr);
-        SCN_EXPECT(specs.charset_string_size > 0);
+        (void)specs.get_charset_string<SourceCharT>();
     }
 
     template <typename Range, typename DestCharT>
@@ -5321,7 +5320,7 @@ struct regex_matches_reader
             SCN_TRY(it,
                     impl(input,
                          specs.type == detail::presentation_type::regex_escaped,
-                         specs.charset_string<SourceCharT>(),
+                         specs.get_charset_string<SourceCharT>(),
                          specs.regexp_flags, value));
             return ranges::next(range.begin(),
                                 ranges::distance(input.begin(), it));
@@ -5715,7 +5714,7 @@ private:
                 return {};
             }
 
-            auto charset_string = specs.charset_string<SourceCharT>();
+            auto charset_string = specs.get_charset_string<SourceCharT>();
             auto it = detail::to_address(charset_string.begin());
             auto set = detail::parse_presentation_set(
                 it, detail::to_address(charset_string.end()), nonascii);
@@ -5906,14 +5905,14 @@ protected:
 #if !SCN_DISABLE_REGEX
             case reader_type::regex:
                 return regex_string_reader_impl<SourceCharT>{}.read(
-                    range, specs.charset_string<SourceCharT>(),
+                    range, specs.get_charset_string<SourceCharT>(),
                     specs.regexp_flags, value);
 
             case reader_type::regex_escaped:
                 return regex_string_reader_impl<SourceCharT>{}.read(
                     range,
                     get_unescaped_regex_pattern(
-                        specs.charset_string<SourceCharT>()),
+                        specs.get_charset_string<SourceCharT>()),
                     specs.regexp_flags, value);
 #endif
 

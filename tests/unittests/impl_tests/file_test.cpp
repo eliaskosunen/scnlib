@@ -261,7 +261,7 @@ std::vector<std::string> chunk_up(const std::string& input,
             std::vector<std::string> result;
             auto input_view = scn::ranges::subrange{input.begin(), input.end()};
             while (auto r = scn::scan<std::string_view, std::string_view>(
-                       input_view, "{}{:/\\s*/}")) {
+                       input_view, "{}{:[ \n]}")) {
                 auto [word, spaces] = r->values();
                 result.emplace_back(std::string{word} + std::string{spaces});
                 input_view = r->range();
@@ -272,7 +272,7 @@ std::vector<std::string> chunk_up(const std::string& input,
             std::vector<std::string> result;
             auto input_view = scn::ranges::subrange{input.begin(), input.end()};
             while (auto r = scn::scan<std::string_view, std::string_view>(
-                       input_view, "{:[^\n]}{:/\n*/}")) {
+                       input_view, "{:[^\n]}{:[\n]}")) {
                 auto [line, breaks] = r->values();
                 result.emplace_back(std::string{line} + std::string{breaks});
                 input_view = r->range();

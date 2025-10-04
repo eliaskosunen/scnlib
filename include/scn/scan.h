@@ -8995,7 +8995,7 @@ enum class align_type : unsigned char {
     center = 3  // '^'
 };
 
-enum class presentation_type {
+enum class presentation_type : unsigned char {
     none,
     int_binary,            // 'b', 'B'
     int_decimal,           // 'd'
@@ -9020,7 +9020,7 @@ enum class presentation_type {
 };
 
 #if !SCN_DISABLE_REGEX
-enum class regex_flags {
+enum class regex_flags : unsigned char {
     none = 0,
     multiline = 1,   // /m
     singleline = 2,  // /s
@@ -9133,19 +9133,32 @@ private:
 };
 
 struct format_specs {
-    int width{0}, precision{0};
+    // ordered to minimize padding
+
+    int width{0};
+    int precision{0};
     fill_type fill{};
+
     presentation_type type{presentation_type::none};
-    std::array<uint8_t, 128 / 8> charset_literals{0};
-    bool charset_has_nonascii{false}, charset_is_inverted{false};
-    const void* charset_string_data{nullptr};
-    size_t charset_string_size{0};
+    align_type align{align_type::none};
+    unsigned char arbitrary_base{0};
+    bool localized{false};
+
+    bool charset_has_nonascii{false};
+    bool charset_is_inverted{false};
+
 #if !SCN_DISABLE_REGEX
     regex_flags regexp_flags{regex_flags::none};
 #endif
-    unsigned char arbitrary_base{0};
-    align_type align{align_type::none};
-    bool localized{false};
+
+    // 1 byte of padding here (2 bytes if regex disabled)
+
+    union {
+        const char* charset_string{nullptr};
+        const wchar_t* charset_wstring;
+    };
+    size_t charset_string_size{0};
+    std::array<uint8_t, 128 / 8> charset_literals{0};
 
     constexpr format_specs() = default;
 
@@ -9184,10 +9197,28 @@ struct format_specs {
     }
 
     template <typename CharT>
-    std::basic_string_view<CharT> charset_string() const
+    constexpr void set_charset_string(const CharT* str)
     {
-        return {reinterpret_cast<const CharT*>(charset_string_data),
-                charset_string_size};
+        if constexpr (std::is_same_v<CharT, char>) {
+            charset_string = str;
+        }
+        else if constexpr (std::is_same_v<CharT, wchar_t>) {
+            charset_wstring = str;
+        }
+    }
+
+    template <typename CharT>
+    constexpr std::basic_string_view<CharT> get_charset_string() const
+    {
+        SCN_EXPECT(charset_string_size != 0u);
+        if constexpr (std::is_same_v<CharT, char>) {
+            SCN_EXPECT(charset_string != nullptr);
+            return {charset_string, charset_string_size};
+        }
+        else if constexpr (std::is_same_v<CharT, wchar_t>) {
+            SCN_EXPECT(charset_wstring != nullptr);
+            return {charset_wstring, charset_string_size};
+        }
     }
 };
 
@@ -9281,7 +9312,7 @@ public:
     template <typename CharT>
     constexpr void on_character_set_string(std::basic_string_view<CharT> fmt)
     {
-        m_specs.charset_string_data = fmt.data();
+        m_specs.set_charset_string(fmt.data());
         m_specs.charset_string_size = fmt.size();
         on_type(presentation_type::string_set);
     }
@@ -9290,7 +9321,7 @@ public:
     template <typename CharT>
     constexpr void on_regex_pattern(std::basic_string_view<CharT> pattern)
     {
-        m_specs.charset_string_data = pattern.data();
+        m_specs.set_charset_string(pattern.data());
         m_specs.charset_string_size = pattern.size();
     }
     constexpr void on_regex_flags(regex_flags flags)
