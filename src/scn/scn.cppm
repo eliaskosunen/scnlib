@@ -153,7 +153,6 @@ using scn::basic_scan_context;
 
 using scn::discard;
 using scn::scanner;
-using scn::visit_scan_arg;
 
 using scn::vscan;
 using scn::vscan_result;

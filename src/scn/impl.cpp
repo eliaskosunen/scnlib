@@ -367,11 +367,22 @@ static auto& get_stdin_buffer()
     static std::optional<scan_istream_buffer> buf{};
     return buf;
 }
+
+void prompt_print(const char* msg)
+{
+    std::cout << msg << std::flush;
+}
 #else
 static auto& get_stdin_buffer()
 {
     static std::optional<scan_cfile_buffer> buf{};
     return buf;
+}
+
+void prompt_print(const char* msg)
+{
+    std::printf("%s", msg);
+    std::fflush(stdout);
 }
 #endif
 

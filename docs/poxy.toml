@@ -37,6 +37,7 @@ strip_paths = ['../include', 'pages']
 'SCN_FWD(x)' = 'std::forward<decltype(x)>(x)'
 'SCN_DECLVAL(x)' = 'std::declval<x>()'
 'SCN_PUBLIC' = ''
+'SCN_EXPORT_HEADER_EXPORT' = ''
 'SCN_BEGIN_NAMESPACE' = ''
 'SCN_END_NAMESPACE' = ''
 'SCN_GCC_PUSH' = ''

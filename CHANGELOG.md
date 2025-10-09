@@ -1,5 +1,74 @@
 # Changelog
 
+## 5.0.0
+
+_Release 2025-xx-xx_
+
+### Breaking changes
+
+ * `scn::input` and `scn::prompt` now internally use `std::cin` (if iostreams haven't been disabled)
+   instead of `stdin`.
+ * The return type of `scn::input` and `scn::prompt` now use `scn::stdin_tag_t` as the source type,
+   instead of giving access to a `FILE*` directly.
+ * The return type of `scn::vinput` is now `scn::vscan_result<scn::stdin_tag_t>`, instead of `scn::scan_expected<void>`.
+
+ * C `FILE`s as sources deprecated. Use `scn::scan_file`s or `std::istream`s instead.
+   This is to prevent problems with failures to sync with the underlying `FILE`,
+   since `FILE`s are only guaranteed to support a single character's worth of putback.
+
+```cpp
+FILE* f = ...;
+// Before (deprecated)
+scn::scan<...>(f, ...);
+// After (scan_file)
+scn::scan_file file{f};
+scn::scan<...>(file, ...);
+// After (std::istream)
+std::ifstream strm{...};
+scn::scan<...>(strm, ...);
+```
+
+ * (TODO:) Fill and alignment character handling has been removed.
+
+ * Previously deprecated `scn::visit_scan_arg` is now removed. Use `scn::basic_scan_arg::visit` instead.
+ * The `basic_scan_context` constructor only taking an iterator is now deprecated.
+   Instead, use the new constructors that take a range, or both an interator and a sentinel.
+ * `scn::invalid_input_range` renamed as `scn::input_source`.
+ * `file_marker` removed as a return type of `scan`
+
+### Changes
+
+ * Charset scanning (`{:[...]}` with strings) now accepts an empty string as a valid result.
+   Previously, at least a single character must've matched for scanning to succeed.
+ * Textual boolean representations are now case-insensitive, so both `true` and `True` (and so on) are accepted.
+
+### Features
+
+ * `ranges::input_range`s can now be used as sources for `scn::scan`
+   (previous requirement was `ranges::forward_range`)
+   * When the source range is an `input_range`, the range type returned from `scn::scan` isn't a `subrange` anymore,
+     but another `input_range`.
+ * Reading from stdin with any scanning function is now thread-safe.
+ * More resilient parsing of files with `scn::scan_file`
+ * `std::istream`s can now be used as sources for `scn::scan`, if `"scn/istream.h"` is included.
+   * Instead of `.range()`, the member function to access the stream from a `scn::scan` result object is `.stream()`.
+ * `scn::vinput` has been added to read from stdin directly with the type-erased API.
+ * Locale-enabled overloads for `scn::input` have been added.
+ * Extended standard floating point types can now be scanned, if they're supported by the implementation
+   (`std::float16_t`, `std::float32_t`, `std::float64_t`, `std::float128_t`, `std::bfloat16_t`)
+ * `__int128` and `unsigned __int128` can now be scanned, if they're supported by the implementation.
+   Aliases for these types are provided and used, with `scn::int128` and `scn::uint128`.
+ * The payload of a NaN in floating-point values is now parsed and stored in the scanned floating-point value.
+ * C++20 modules support
+ * Shared library support
+ * More optimized reading for source ranges that are both `bidirectional_range`s and `sized_range`s.
+
+### Fixes
+
+ * Tons of compiler warning fixes
+ * Fix compiler errors occurring from accidental use of ADL when calling `decay_copy` unqualified
+ * Files are no longer considered "borrowed" by `scn::basic_scan_parse_context`
+
 ## 4.0.1
 
 _Released 2024-11-04_
@@ -12,9 +81,9 @@ _Released 2024-11-03_
 
 ### Breaking changes
 
- * `scanner::parse` now returns `Iterator`, not `scan_expected<Iterator>`
-   * Errors are reported by throwing a `scan_format_string_error`, or by calling `ParseContext::on_error`.
- * Optimize the way `scan` calls `vscan` to remove extra copies/moves
+ * `scn::scanner::parse` now returns `Iterator`, not `scn::scan_expected<Iterator>`
+   * Errors are reported by throwing a `scn::scan_format_string_error`, or by calling `ParseContext::on_error`.
+ * Optimize the way `scn::scan` calls `scn::vscan` to remove extra copies/moves
 ```cpp
 // Dummy-implementation of `scan`
 // Before (v3):
@@ -28,13 +97,13 @@ fill_scan_result(result, vscan(std::forward<Source>(source), format,
                                make_scan_args(result->values())));
 return result;
 ```
- * Changes to `scan_error`
-   * Success state removed: use `expected<void, scan_error>` instead.
-   * `scan_error::value_out_of_range` split into `value_positive_overflow`, `value_negative_overflow`,
+ * Changes to `scn::scan_error`
+   * Success state removed: use `scn::expected<void, scan_error>` instead.
+   * `scn::scan_error::value_out_of_range` split into `value_positive_overflow`, `value_negative_overflow`,
      `value_positive_underflow`, and `value_negative_overflow`.
    * `end_of_range` renamed to `end_of_input`.
    * `invalid_literal`, `invalid_fill`, `length_too_short`, and `invalid_source_state` added.
- * `basic_scan_context` is now templated on the range type
+ * `scn::basic_scan_context` is now templated on the range type
 
 ### Features
 
@@ -46,9 +115,9 @@ return result;
 
 ### Changes
 
- * Deprecate `visit_scan_arg`, add `basic_scan_arg::visit`
+ * Deprecate `scn::visit_scan_arg`, add `scn::basic_scan_arg::visit`
  * Remove thousands separator checking when scanning localized numbers
- * `scan_error::invalid_source_state` is now returned if syncing with the underlying source fails after `scan`
+ * `scn::scan_error::invalid_source_state` is now returned if syncing with the underlying source fails after `scn::scan`
    (like for example, `std::ungetc` fails)
 
 ## 3.0.2
@@ -123,7 +192,7 @@ auto result = scn::scan<...>(std::span{...}, ...);
  * `scan_arg_store` and `borrowed_subrange_with_sentinel` are removed from the public interface
  * `scan_arg_store` is changed to be non-copyable and non-movable, for correctness reasons
    (it holds references to itself, copying and moving would be needlessly expensive)
- * The interface of `make_scan_result` is changed to take a `tuple` instead of the now unmovable `scan_arg_store`.
+ * The interface of `make_scan_result` is changed to take a `std::tuple` instead of the now unmovable `scan_arg_store`.
 
 ```cpp
 // v3
@@ -138,7 +207,7 @@ return make_scan_result(std::move(result), std::move(args));
 ```
 
  * The meaning of the "width" field in format specifiers is changed to mean the _minimum_ field width
-   (like in `std::format`), instead of the _maximum_ (sort of like in `scanf`)
+   (like in `std::format`), instead of the _maximum_ (sort of like in `std::scanf`)
 
 ```cpp
 // v3

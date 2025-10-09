@@ -1208,12 +1208,17 @@ struct stdio_file_interface_impl<File, bsd_file_tag>
     }
     void unsafe_advance_n(std::ptrdiff_t n)
     {
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Wuseless-cast")
+
         SCN_EXPECT(this->file->_p != nullptr);
         SCN_EXPECT(n >= 0);
         SCN_EXPECT(this->file->_r >= n);
         this->file->_p += n;
         this->file->_r -= static_cast<int>(n);
         clearerr_unlocked(this->file);
+
+        SCN_GCC_POP
     }
     SCN_NODISCARD bool fill_buffer()
     {

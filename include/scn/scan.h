@@ -20,8 +20,6 @@
 // Includes <cassert>, <cstddef>, <cstdint>, and <type_traits>
 #include <scn/fwd.h>
 
-#include "scan.h"
-
 #if defined(SCN_MODULE) && defined(SCN_IMPORT_STD)
 import std;
 #else
@@ -7655,7 +7653,7 @@ public:
      * Contains a pointer to the value contained in a `scan_arg_store`, and
      * a callback for parsing the format string, and scanning the value.
      *
-     * \see scn::visit_scan_arg
+     * \see scn::basic_scan_arg::visit
      */
     class handle {
     public:
@@ -11520,7 +11518,7 @@ SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(scan_context)
 }  // namespace detail
 
 /////////////////////////////////////////////////////////////////
-// visit_scan_arg
+// scan_arg::visit
 /////////////////////////////////////////////////////////////////
 
 namespace detail {
@@ -11659,13 +11657,6 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
 }
 
 }  // namespace detail
-
-template <typename Visitor, typename Ctx>
-[[deprecated("Use basic_scan_arg::visit instead")]] constexpr decltype(auto)
-visit_scan_arg(Visitor&& vis, basic_scan_arg<Ctx>& arg)
-{
-    return detail::visit_impl(SCN_FWD(vis), arg);
-}
 
 template <typename Context>
 template <typename Visitor>
@@ -12298,9 +12289,13 @@ SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
 /**
  * Scan from `stdin`.
  *
- * Equivalent to `scn::scan<...>(stdin, ...)`,
+ * Equivalent to `scn::scan<...>(std::cin, ...)`,
  * except it maintains a separate thread-safe putback buffer
  * in case a putback into `stdin` fails.
+ * Doesn't require inclusion of `"scn/istream.h"`.
+ *
+ * If iostreams are disabled (`SCN_DISABLE_IOSTREAMS` is `1`),
+ * uses `stdin` instead of `std::cin`.
  *
  * \code{.cpp}
  * auto result = scn::input<int>("{}");
@@ -12330,8 +12325,18 @@ SCN_NODISCARD auto input(const Locale& loc,
     return result;
 }
 
+namespace detail {
+
+SCN_PUBLIC void prompt_print(const char* msg);
+
+}
+
 /**
- * Write msg to stdout, and call `input<Args...>(format)`
+ * Write `msg` to `stdout`, and call `input<Args...>(format)`
+ *
+ * Uses `std::cout` to write the message, or if iostreams are disabled
+ * (`SCN_DISABLE_IOSTREAMS` is `1`), `stdout`.
+ * Flushes the output stream after writing.
  *
  * \ingroup scan
  */
@@ -12340,8 +12345,7 @@ SCN_NODISCARD auto prompt(const char* msg,
                           scan_format_string<stdin_tag_t, Args...> format)
     -> scan_result_type<stdin_tag_t, Args...>
 {
-    std::printf("%s", msg);
-    std::fflush(stdout);
+    detail::prompt_print(msg);
     return input<Args...>(format);
 }
 

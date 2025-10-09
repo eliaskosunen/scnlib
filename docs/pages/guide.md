@@ -161,7 +161,7 @@ while (auto result = scn::scan<...>(input, ...)) {
 \section g-files Files and standard streams
 
 To read from `stdin`, use `scn::input` or `scn::prompt`.
-They work similarly to `scn::scan`, except they do not take an input range as a parameter: `stdin` is implied.
+They work similarly to `scn::scan`, except they do not take a source range as a parameter: `stdin` is implied.
 
 \code{.cpp}
 if (auto result = scn::input<int>("{}")) {
@@ -169,17 +169,26 @@ if (auto result = scn::input<int>("{}")) {
 }
 \endcode
 
-`scn::input` uses the C standard output handle (`stdout`) internally,
-and not the C++ output stream (`std::cout`).
-It should be noted, that the C standard only guarantees that a single character can be put back into `stdout`,
-and in fact, that is the case on Windows.
-This means, that 
+`scn::input` uses the C++ standard output stream (`std::cout`) internally,
+and it's synchronized with `std::cout` automatically.
+If iostreams are disabled, the C standard output handle (`stdout`) is used, instead.
 
-Instead of `scn::input` and `scn::prompt`,
-`scn::scan` can also be directly used with files (`FILE*`).
-It should be noted, that `scn::input`, `scn::prompt` and `scn::scan` all
-automatically synchronize with the given `FILE`,
-so that they can be used seamlessly alongside both C I/O and C++ iostreams.
+`scn::prompt` is similar to `scn::input`,
+but it also prints the prompt given to it as an argument to `stdout` through `std::cout`.
+
+In addition to `scn::input` and `scn::prompt`,
+`scn::scan` can also be directly used with files.
+This can be done by passing a `scn::scan_file` as the source argument.
+A `scn::scan_file` is conceptually a non-owning reference to a file,
+and it wraps a C `FILE*`, in addition to a buffer,
+which will be used if synchronization with the underlying `FILE*` fails
+(a C `FILE` is only guaranteed to have a putback buffer a single character long).
+If the synchronization succeeds, the same `FILE` contained in the `scn::scan_file`
+can be used elsewhere transparently.
+
+If `<scn/istream.h>` is included, `scn::scan` can also be used with `std::istream`s.
+Plain C `FILE`s can also be used, but the support for them is deprecated,
+for the aforementioned reasons about the possibility for a synchronization failure.
 
 When used with files, `scn::scan` doesn't return a range, but the file it was passed,
 which can be accessed with `->file()`. To prevent confusion,
@@ -187,7 +196,7 @@ there's no member `->range()` when using files.
 
 \code{.cpp}
 auto result = scn::input<int>("{}");
-// equivalent to:
+// equivalent to (deprecated):
 auto result = scn::scan<int>(stdin, "{}");
 // result->file() is stdin
 // result->range() doesn't exist

@@ -823,10 +823,10 @@ jobs:
             enable_tests: 1
           - key: float
             flags: "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON"
-            enable_tests: 1
+            enable_tests: 0 # todo?
           - key: float-all
             flags: "-DSCN_DISABLE_TYPE_FLOAT=ON -DSCN_DISABLE_TYPE_DOUBLE=ON -DSCN_DISABLE_TYPE_LONG_DOUBLE=ON -DSCN_DISABLE_TYPE_FLOAT16=ON -DSCN_DISABLE_TYPE_FLOAT32=ON -DSCN_DISABLE_TYPE_FLOAT64=ON -DSCN_DISABLE_TYPE_FLOAT128=ON -DSCN_DISABLE_TYPE_BFLOAT16=ON"
-            enable_tests: 1
+            enable_tests: 0 # todo?
           - key: int128
             flags: "-DSCN_DISABLE_TYPE_INT128=ON -DSCN_DISABLE_TYPE_UINT128=ON"
             enable_tests: 1

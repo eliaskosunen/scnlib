@@ -22,6 +22,7 @@ int main()
     std::puts("Write two integers:");
 
     scn::scan_file in{stdin};
+    // Alternatively, `scn::input<int>("{}")`
     if (auto result = scn::scan<int>(in, "{}")) {
         if (auto second_result = scn::scan<int>(result->file(), "{}")) {
             std::printf("Two integers: `%d` `%d`\n", result->value(),
