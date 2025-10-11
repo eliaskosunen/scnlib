@@ -2013,7 +2013,7 @@ struct read_code_point_into_result {
 };
 
 template <typename Range>
-auto extract_code_point_into(Range range)
+auto read_code_point_into(Range range)
     -> read_code_point_into_result<ranges::const_iterator_t<Range>,
                                    detail::char_t<Range>>
 {
@@ -2024,72 +2024,23 @@ auto extract_code_point_into(Range range)
     const auto len = detail::code_point_length_by_starting_code_unit(*it);
 
     if (SCN_UNLIKELY(len == 0)) {
-        return {it, len, {}};
+        ++it;
+        it = get_start_for_next_code_point(ranges::subrange{it, range.end()});
+        return {it, {}};
     }
+
     if (len == 1) {
         return {it, len, string_type(1, *it)};
     }
-    ranges::advance(it, static_cast<std::ptrdiff_t>(len - 1), range.end());
-    const auto real_len = ranges::distance(range.begin(), it) + 1;;
-    SCN_EXPECT(real_len <= 4);
-    if (SCN_LIKELY(real_len == len && it != range.end())) {
-        auto it2 = range.begin();
-        string_type result(len, *it2);
-        for (std::size_t i = 1; i < len; ++i) {
-            result[i] = *(++it2);
-        }
-        return {it, len, std::move(result)};
-    }
-    return {it, len, string_type(range.begin(), it)};
-}
 
-template <typename Range>
-auto advance_code_point_into(
-    Range range,
-    const read_code_point_into_result<ranges::const_iterator_t<Range>,
-                                      detail::char_t<Range>>& result)
-    -> ranges::const_iterator_t<Range>
-{
-    auto it = result.iterator;
-    const auto& len = result.codepoint_length;
-
-    if (SCN_UNLIKELY(len == 0)) {
-        ++it;
-        return get_start_for_next_code_point(ranges::subrange{it, range.end()});
-    }
-    if (it != range.end()) {
-        ++it;
-    }
-    return it;
-}
-
-template <typename Range>
-auto read_code_point_into(Range range)
-    -> read_code_point_into_result<ranges::const_iterator_t<Range>,
-                                   detail::char_t<Range>>
-{
-    auto result = extract_code_point_into(range);
-    result.iterator = advance_code_point_into(range, result);
-    return result;
+    ranges::advance(it, static_cast<std::ptrdiff_t>(len), range.end());
+    return {it, string_type{range.begin(), it}};
 }
 
 template <typename Range>
 auto read_code_point(Range range) -> ranges::const_iterator_t<Range>
 {
-    SCN_EXPECT(!is_range_eof(range));
-
-    auto it = range.begin();
-    const auto len = detail::code_point_length_by_starting_code_unit(*it);
-
-    if (SCN_UNLIKELY(len == 0)) {
-        ++it;
-        return get_start_for_next_code_point(ranges::subrange{it, range.end()});
-    }
-    if (len == 1) {
-        return ++it;
-    }
-    ranges::advance(it, static_cast<std::ptrdiff_t>(len), range.end());
-    return it;
+    return read_code_point_into(range).iterator;
 }
 
 template <typename Range>
@@ -2263,8 +2214,8 @@ auto read_until_code_point(Range range, function_ref<bool(char32_t)> pred)
 {
     auto it = range.begin();
     while (it != range.end()) {
-        auto subrange = ranges::subrange{it, range.end()};
-        const auto val = extract_code_point_into(subrange);
+        const auto val =
+            read_code_point_into(ranges::subrange{it, range.end()});
         if (SCN_LIKELY(val.is_valid())) {
             const auto cp = detail::decode_code_point_exhaustive(
                 std::basic_string_view<detail::char_t<Range>>{
@@ -2273,7 +2224,7 @@ auto read_until_code_point(Range range, function_ref<bool(char32_t)> pred)
                 return it;
             }
         }
-        it = advance_code_point_into(subrange, val);
+        it = val.iterator;
     }
 
     return it;
@@ -2365,7 +2316,7 @@ template <typename Range>
 auto read_matching_code_point(Range range, char32_t cp)
     -> parse_expected<ranges::const_iterator_t<Range>>
 {
-    auto val = extract_code_point_into(range);
+    auto val = read_code_point_into(range);
     if (!val.is_valid()) {
         return unexpected(parse_error::error);
     }
@@ -2373,7 +2324,7 @@ auto read_matching_code_point(Range range, char32_t cp)
     if (SCN_UNLIKELY(cp != decoded_cp)) {
         return unexpected(parse_error::error);
     }
-    return advance_code_point_into(range, val);
+    return val.iterator;
 }
 
 template <typename Range>
@@ -2390,6 +2341,33 @@ auto read_matching_string(Range range,
         return unexpected(parse_error::error);
     }
     return it;
+}
+
+template <typename Range>
+auto read_matching_string_classic(Range range, std::string_view str)
+    -> parse_expected<ranges::const_iterator_t<Range>>
+{
+    SCN_TRY(it, read_exactly_n_code_units(
+                    range, static_cast<std::ptrdiff_t>(str.size()))
+                    .transform_error(make_eof_parse_error));
+
+    if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
+        auto sv = make_contiguous_buffer(ranges::subrange{range.begin(), it});
+        if (SCN_UNLIKELY(sv.view() != str)) {
+            return unexpected(parse_error::error);
+        }
+        return it;
+    }
+    else {
+        auto range_it = range.begin();
+        for (size_t i = 0; i < str.size(); ++i, (void)++range_it) {
+            if (SCN_UNLIKELY(*range_it !=
+                             static_cast<detail::char_t<Range>>(str[i]))) {
+                return unexpected(parse_error::error);
+            }
+        }
+        return it;
+    }
 }
 
 // Ripped from fast_float
@@ -2428,15 +2406,16 @@ auto read_matching_string_classic_nocase(Range range, std::string_view str)
                                           static_cast<char_type>('a' - 'A'));
         };
 
-        auto it = range.begin();
-        for (std::size_t i = 0; i < str.size(); ++i, (void)++it) {
-            if (it == range.end()) {
-                return unexpected(make_eof_parse_error(eof_error::eof));
-            }
-            if (SCN_UNLIKELY(ascii_tolower(*it) !=
-                             static_cast<detail::char_t<Range>>(str[i]))) {
-                return unexpected(parse_error::error);
-            }
+        SCN_TRY(it, read_exactly_n_code_units(
+                        range, static_cast<std::ptrdiff_t>(str.size()))
+                        .transform_error(make_eof_parse_error));
+
+        if (SCN_UNLIKELY(!std::equal(
+                range.begin(), it, str.begin(), [&](auto a, auto b) {
+                    return ascii_tolower(a) ==
+                           static_cast<detail::char_t<Range>>(b);
+                }))) {
+            return unexpected(parse_error::error);
         }
 
         return it;
@@ -3779,8 +3758,7 @@ protected:
 };
 
 template <typename CharT>
-class SCN_EXPORT float_reader : public numeric_reader<CharT>,
-                                public float_reader_base {
+class float_reader : public numeric_reader<CharT>, public float_reader_base {
     using numeric_base = numeric_reader<CharT>;
 
 public:
@@ -5722,7 +5700,7 @@ public:
     auto read(const SourceRange& range, char32_t& cp)
         -> scan_expected<ranges::const_iterator_t<SourceRange>>
     {
-        auto result = extract_code_point_into(range);
+        auto result = read_code_point_into(range);
         if (SCN_UNLIKELY(!result.is_valid())) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value, "Invalid code point");
@@ -5943,16 +5921,6 @@ auto skip_ws_before_if_required(bool is_required, Range range)
         return unexpected(e);
     }
 
-    if constexpr (std::is_same_v<
-                      ranges::const_iterator_t<Range>,
-                      typename detail::basic_scan_buffer<
-                          detail::char_t<Range>>::forward_iterator>) {
-        auto beg = range.begin();
-        if (beg.stores_parent()) {
-            beg.parent()->set_skip_whitespace(is_required);
-        }
-    }
-
     if (!is_required) {
         return range.begin();
     }
@@ -6050,21 +6018,9 @@ struct default_arg_reader {
                 return impl(rd, range, value);
             }
             auto crange = get_as_contiguous(range);
-            auto&& scn_result = impl(rd, crange, value);
-            if (!scn_result) {
-                return impl(rd, range, value);
-            }
-            auto it = *SCN_FWD(scn_result);
-            auto chars_read = ranges::distance(crange.begin(), it);
-            auto result = ranges::next(range.begin(), chars_read);
-            auto chars_left = ranges::distance(it, crange.end());
-            if (!is_segment_contiguous(range) ||
-                (std::is_arithmetic_v<T> &&
-                 chars_left <= std::numeric_limits<T>::digits &&
-                 chars_left > 0 && !is_ascii_space(*it))) {
-                return impl(rd, range, value);
-            }
-            return result;
+            SCN_TRY(it, impl(rd, crange, value));
+            return ranges::next(range.begin(),
+                                ranges::distance(crange.begin(), it));
         }
         else {
             SCN_EXPECT(false);
@@ -6382,21 +6338,9 @@ struct arg_reader {
                 return impl(rd, range, value);
             }
             auto crange = get_as_contiguous(range);
-            auto&& scn_result = impl(rd, crange, value);
-            if (!scn_result) {
-                return impl(rd, range, value);
-            }
-            auto it = *SCN_FWD(scn_result);
-            auto chars_read = ranges::distance(crange.begin(), it);
-            auto result = ranges::next(range.begin(), chars_read);
-            auto chars_left = ranges::distance(it, crange.end());
-            if (!is_segment_contiguous(range) ||
-                (std::is_arithmetic_v<T> &&
-                 chars_left <= std::numeric_limits<T>::digits &&
-                 chars_left > 0 && !is_ascii_space(*it))) {
-                return impl(rd, range, value);
-            }
-            return result;
+            SCN_TRY(it, impl(rd, crange, value));
+            return ranges::next(range.begin(),
+                                ranges::distance(crange.begin(), it));
         }
         else {
             SCN_EXPECT(false);

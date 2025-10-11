@@ -71,12 +71,6 @@ install(FILES
         COMPONENT scnlib_Development
 )
 
-install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/include/scn/scn_export.h"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn"
-        COMPONENT scnlib_Development
-)
-
 export(EXPORT scn-targets
         FILE "${CMAKE_CURRENT_BINARY_DIR}/scn-targets.cmake"
         NAMESPACE scn::

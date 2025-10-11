@@ -64,7 +64,6 @@ set(SCN_PUBLIC_HEADERS
         include/scn/regex.h
         include/scn/istream.h
         include/scn/xchar.h
-        "${CMAKE_CURRENT_BINARY_DIR}/include/scn/scn_export.h"
 )
 set(SCN_PRIVATE_HEADERS
         src/scn/impl.h

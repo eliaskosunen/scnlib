@@ -1514,7 +1514,7 @@ struct fast_float_impl_base {
 
     SCN_NODISCARD fast_float::chars_format get_flags() const
     {
-        fast_float::chars_format format_flags{};
+        std::underlying_type_t<fast_float::chars_format> format_flags{};
         if ((m_options & float_reader_base::allow_fixed) != 0) {
             format_flags |=
                 static_cast<unsigned>(fast_float::chars_format::fixed);
@@ -1524,7 +1524,7 @@ struct fast_float_impl_base {
                 static_cast<unsigned>(fast_float::chars_format::scientific);
         }
 
-        return format_flags;
+        return static_cast<fast_float::chars_format>(format_flags);
     }
 
     SCN_CLANG_POP
@@ -2902,18 +2902,6 @@ auto scan_int_exhaustive_valid_impl(std::string_view source) -> T
     return value;
 }
 
-template <typename Source>
-auto get_failed_sync_position(Source& source) -> std::ptrdiff_t
-{
-    const auto& buffer = source.get_segment_starting_at(0);
-    if (source.get_skip_whitespace() && !buffer.empty()) {
-        auto it = std::find_if(buffer.begin(), buffer.end(), [](auto ch) {
-            return !impl::is_ascii_space(ch);
-        });
-        return std::distance(buffer.begin(), it);
-    }
-    return 0;
-}
 }  // namespace detail
 
 scan_expected<void> vinput(std::string_view format, scan_args args)

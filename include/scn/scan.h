@@ -5961,6 +5961,7 @@ constexpr size_t encode_types()
                (encode_types_impl<CharT, Ts...>() << packed_arg_bits);
     }
     else {
+        SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -9013,7 +9014,7 @@ private:
 };
 
 namespace detail {
-class SCN_EXPORT locale_ref {
+class locale_ref {
 #if !SCN_DISABLE_LOCALE
 public:
     constexpr locale_ref() = default;

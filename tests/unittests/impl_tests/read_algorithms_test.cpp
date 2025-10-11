@@ -132,7 +132,7 @@ TEST(ReadExactlyNCodeUnitsTest, ReadMoreNonContiguous)
 TEST(ReadCodePointIntoTest, SingleCodeUnitCodePointFromContiguous)
 {
     auto src = "ab"sv;
-    auto [it, len, cp] = scn::impl::read_code_point_into(src);
+    auto [it, cp] = scn::impl::read_code_point_into(src);
     EXPECT_EQ(it, src.begin() + 1);
     EXPECT_EQ(len, 1);
     EXPECT_EQ(cp, "a");
@@ -140,25 +140,22 @@ TEST(ReadCodePointIntoTest, SingleCodeUnitCodePointFromContiguous)
 TEST(ReadCodePointIntoTest, SingleCodeUnitCodePointFromNonContiguous)
 {
     auto src = make_non_contiguous_buffer_range("ab");
-    auto [it, len, cp] = scn::impl::read_code_point_into(src);
+    auto [it, cp] = scn::impl::read_code_point_into(src);
     EXPECT_EQ(it, scn::ranges::next(src.begin()));
-    EXPECT_EQ(len, 1);
     EXPECT_EQ(cp, "a"sv);
 }
 TEST(ReadCodePointIntoTest, MultipleCodeUnitCodePointFromContiguous)
 {
     auto src = "äö"sv;
-    auto [it, len, cp] = scn::impl::read_code_point_into(src);
+    auto [it, cp] = scn::impl::read_code_point_into(src);
     EXPECT_EQ(it, src.begin() + 2);
-    EXPECT_EQ(len, 2);
     EXPECT_EQ(cp, "ä"sv);
 }
 TEST(ReadCodePointIntoTest, MultipleCodeUnitCodePointFromNonContiguous)
 {
     auto src = make_non_contiguous_buffer_range("äö");
-    auto [it, len, cp] = scn::impl::read_code_point_into(src);
+    auto [it, cp] = scn::impl::read_code_point_into(src);
     EXPECT_EQ(it, scn::ranges::next(src.begin(), 2));
-    EXPECT_EQ(len, 2);
     EXPECT_EQ(cp, "ä"sv);
 }
 
