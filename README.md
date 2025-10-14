@@ -8,7 +8,7 @@
 
 [![Latest Release](https://img.shields.io/github/v/release/eliaskosunen/scnlib?sort=semver&display_name=tag)](https://github.com/eliaskosunen/scnlib/releases)
 [![License](https://img.shields.io/github/license/eliaskosunen/scnlib.svg)](https://github.com/eliaskosunen/scnlib/blob/master/LICENSE)
-[![C++ Standard](https://img.shields.io/badge/C%2B%2B-17%2F20%2F23-blue.svg)](https://img.shields.io/badge/C%2B%2B-17%2F20%2F23-blue.svg)
+[![C++ Standard](https://img.shields.io/badge/C%2B%2B-17%2F20%2F23%2F2c-blue.svg)](https://img.shields.io/badge/C%2B%2B-17%2F20%2F23%2F2c-blue.svg)
 [![Documentation](https://img.shields.io/badge/Documentation-scnlib.dev-blue)](https://scnlib.dev)
 
 ```cpp

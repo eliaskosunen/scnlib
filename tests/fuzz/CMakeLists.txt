@@ -15,6 +15,10 @@ function(add_fuzzer name)
     else ()
         target_link_libraries(scn_fuzz_${name} PRIVATE scn_fuzzer)
     endif ()
+
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(scn_fuzz_${name} PRIVATE -Wno-missing-prototypes)
+    endif ()
 endfunction()
 
 add_fuzzer(int)

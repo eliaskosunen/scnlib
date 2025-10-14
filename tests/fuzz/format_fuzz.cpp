@@ -26,8 +26,8 @@ void run_for_type(Source& source)
         auto _ = scn::scan<T>(source, scn::runtime_format(source));
     }
     {
-        auto _ =
-            scn::scan<T>(global_locale, source, scn::runtime_format(source));
+        auto _ = scn::scan<T>(std::locale::classic(), source,
+                              scn::runtime_format(source));
     }
 }
 
@@ -53,12 +53,13 @@ void run(const uint8_t* data, size_t size)
         return;
     }
 
-    auto [sv, wsv_reinterpret, wsv_transcode] = make_input_views(data, size);
+    auto inputs = make_input_views(data, size);
 
-    run_for_source(sv);
-    run_for_source(wsv_reinterpret);
-    if (!wsv_transcode.empty()) {
-        run_for_source(wsv_transcode);
+    run_for_source(inputs.narrow);
+    run_for_source(inputs.wide_copied);
+    run_for_source(inputs.wide_reinterpreted);
+    if (!inputs.wide_transcoded.empty()) {
+        run_for_source(inputs.wide_transcoded);
     }
 }
 }  // namespace

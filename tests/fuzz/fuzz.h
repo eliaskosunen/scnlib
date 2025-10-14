@@ -15,6 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#pragma once
+
 #include <scn/impl.h>
 #include <scn/scan.h>
 #include <scn/xchar.h>
@@ -23,6 +25,7 @@
 #include <sstream>
 
 namespace scn::fuzz {
+
 inline constexpr const char* default_narrow_format_string = "{}";
 inline constexpr const wchar_t* default_wide_format_string = L"{}";
 
@@ -39,96 +42,54 @@ constexpr auto get_default_format_string()
 
 inline constexpr const size_t max_input_bytes = 4096;
 
-inline std::locale global_locale{};
+struct input_views {
+    std::string narrow;
+    // Byte-by-byte widened
+    std::wstring wide_copied;
+    // Bitwise reinterpreted
+    std::wstring wide_reinterpreted;
+    // Transcoded to utf16/utf32, may be empty if `narrow` is invalid utf8
+    std::wstring wide_transcoded;
+};
 
-inline std::string string_buffer(max_input_bytes, '\0');
-// reinterpreted
-inline std::wstring wstring_buffer_reinterpreted(max_input_bytes /
-                                                     sizeof(wchar_t),
-                                                 L'\0');
-inline std::wstring wstring_buffer_transcoded_wide(max_input_bytes, L'\0');
-
-inline auto make_input_views(const uint8_t* data, size_t size)
+inline input_views make_input_views(const uint8_t* data, size_t size)
 {
     SCN_EXPECT(size <= max_input_bytes);
 
-    // narrow
-    string_buffer.resize(size);
-    std::copy(data, data + size, reinterpret_cast<uint8_t*>(&string_buffer[0]));
-    auto sv = std::string_view{string_buffer};
+    std::string narrow(size, '\0');
+    std::memcpy(&narrow[0], data, size);
 
-    // wide, bitwise reinterpret
-    const auto wsv_reinterpret_size =
+    std::wstring wcopied{};
+    wcopied.reserve(size);
+    for (char ch : narrow) {
+        wcopied.push_back(static_cast<wchar_t>(ch));
+    }
+
+    const auto wreinterpret_size =
         size < sizeof(wchar_t) ? 1 : (size / sizeof(wchar_t));
-    wstring_buffer_reinterpreted.resize(wsv_reinterpret_size);
-    std::memcpy(wstring_buffer_reinterpreted.data(), data, size);
-    auto wsv_reintepreted = std::wstring_view{wstring_buffer_reinterpreted};
+    std::wstring wreinterpreted(wreinterpret_size, L'\0');
+    std::memcpy(wreinterpreted.data(), data, size);
 
-    // wide, transcode to correct encoding (utf16 or utf32)
-    scn::impl::transcode_to_string(sv, wstring_buffer_transcoded_wide);
-    std::wstring_view wsv_transcoded{wstring_buffer_transcoded_wide};
+    std::wstring wtranscoded{};
+    scn::impl::transcode_to_string(std::string_view{narrow}, wtranscoded);
 
-    return std::make_tuple(sv, wsv_reintepreted, wsv_transcoded);
+    return {std::move(narrow), std::move(wcopied), std::move(wreinterpreted),
+            std::move(wtranscoded)};
 }
 
-inline std::deque<char> noncontiguous_buffer{};
-inline std::deque<wchar_t> wnoncontiguous_buffer{};
-
-template <typename CharT>
-auto& get_noncontiguous_buffer()
+template <typename CharT, typename Source>
+void populate_random_access(std::deque<CharT>& deque, Source&& source)
 {
-    if constexpr (std::is_same_v<CharT, char>) {
-        return noncontiguous_buffer;
-    }
-    else {
-        return wnoncontiguous_buffer;
-    }
-}
-
-template <typename Source>
-const auto& populate_noncontiguous(Source& source)
-{
-    using char_type = ranges::range_value_t<Source>;
-    auto& deque = get_noncontiguous_buffer<char_type>();
     deque.clear();
     std::copy(ranges::begin(source), ranges::end(source),
               std::back_inserter(deque));
-    return deque;
-}
-
-inline std::vector<std::string_view> format_string_view_buffer(
-    16,
-    std::string_view{});
-inline std::vector<std::wstring_view> wformat_string_view_buffer(
-    16,
-    std::wstring_view{});
-
-template <typename CharT>
-auto& get_format_string_view_buffer()
-{
-    if constexpr (std::is_same_v<CharT, char>) {
-        return format_string_view_buffer;
-    }
-    else {
-        return wformat_string_view_buffer;
-    }
 }
 
 template <typename CharT>
 using format_strings_type = std::vector<std::basic_string_view<CharT>>;
 
-template <typename CharT, typename... Args>
-const format_strings_type<CharT>& get_format_strings(Args... strings)
-{
-    std::array<const CharT*, sizeof...(Args)> tmp = {{strings...}};
-    auto& buf = get_format_string_view_buffer<CharT>();
-    buf.resize(sizeof...(Args));
-    std::copy(tmp.begin(), tmp.end(), buf.begin());
-    return buf;
-}
-
 template <typename CharT, typename T, typename Source>
-void do_basic_run_for_type(Source& source,
+void do_basic_run_for_type(Source&& source,
                            const format_strings_type<CharT>& format_strings)
 {
     // Regular scan
@@ -142,6 +103,14 @@ void do_basic_run_for_type(Source& source,
             if (!result) {
                 break;
             }
+            if constexpr (std::is_same_v<detail::remove_cvref_t<T>,
+                                         std::basic_string<CharT>> ||
+                          std::is_same_v<detail::remove_cvref_t<T>,
+                                         std::basic_string_view<CharT>>) {
+                if (result->value().empty()) {
+                    break;
+                }
+            }
             it = result->begin();
         }
     }
@@ -152,11 +121,19 @@ void do_basic_run_for_type(Source& source,
         while (true) {
             SCN_EXPECT(it <= scn::ranges::end(source));
             auto result = scn::scan<T>(
-                global_locale,
+                std::locale::classic(),
                 scn::ranges::subrange{it, scn::ranges::end(source)},
                 scn::runtime_format(f));
             if (!result) {
                 break;
+            }
+            if constexpr (std::is_same_v<detail::remove_cvref_t<T>,
+                                         std::basic_string<CharT>> ||
+                          std::is_same_v<detail::remove_cvref_t<T>,
+                                         std::basic_string_view<CharT>>) {
+                if (result->value().empty()) {
+                    break;
+                }
             }
             it = result->begin();
         }
@@ -172,19 +149,35 @@ void do_basic_run_for_type(Source& source,
             if (!result) {
                 break;
             }
+            if constexpr (std::is_same_v<detail::remove_cvref_t<T>,
+                                         std::basic_string<CharT>> ||
+                          std::is_same_v<detail::remove_cvref_t<T>,
+                                         std::basic_string_view<CharT>>) {
+                if (result->value().empty()) {
+                    break;
+                }
+            }
             it = result->begin();
         }
     }
 }
 
 template <typename CharT, typename Source>
-void do_basic_run_for_source(Source&, const format_strings_type<CharT>&);
+void do_basic_run_for_source(Source&&, const format_strings_type<CharT>&);
 
-template <typename CharT, typename Source>
-void do_basic_run(Source data, const format_strings_type<CharT>& format_strings)
+template <typename CharT>
+void do_basic_run(const std::basic_string<CharT>& data,
+                  const format_strings_type<CharT>& format_strings)
 {
     do_basic_run_for_source<CharT>(data, format_strings);
-    do_basic_run_for_source<CharT>(populate_noncontiguous(data),
-                                   format_strings);
+
+    std::deque<CharT> deque{};
+    populate_random_access(deque, data);
+    do_basic_run_for_source<CharT>(deque, format_strings);
+
+    // TODO: Other sources, like input_ranges, files, and streams
+    //
+    // auto input = scn::ranges::views::to_input(data);
+    //  do_basic_run_for_source<CharT>(input, format_strings);
 }
 }  // namespace scn::fuzz

@@ -2747,9 +2747,11 @@ struct contiguous_context_wrapper {
     {
         using iterator =
             typename detail::basic_scan_buffer<CharT>::forward_iterator;
-        auto begin = iterator{contiguous_ctx.original_begin(),
-                              std::distance(contiguous_ctx.original_begin(),
-                                            contiguous_ctx.begin())};
+        auto begin =
+            iterator{detail::make_string_view_from_pointers<CharT>(
+                         contiguous_ctx.original_begin(), contiguous_ctx.end()),
+                     std::distance(contiguous_ctx.original_begin(),
+                                   contiguous_ctx.begin())};
         if (!custom_ctx) {
             custom_ctx.emplace(begin, ranges::default_sentinel,
                                contiguous_ctx.args(), contiguous_ctx.locale());

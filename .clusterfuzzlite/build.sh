@@ -24,8 +24,10 @@ copy_data() {
 
   zip "$OUT/scn_fuzz_$2_seed_corpus.zip" "$fuzz_src_dir"/seed-corpora/"$1"/*
 }
+copy_data chrono chrono
 copy_data float float
 copy_data format format
 copy_data int int
 copy_data string string
 copy_data string string_impl
+copy_data string file

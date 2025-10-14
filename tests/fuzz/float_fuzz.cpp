@@ -19,7 +19,7 @@
 
 namespace scn::fuzz {
 template <typename CharT, typename Source>
-void do_basic_run_for_source(Source& source,
+void do_basic_run_for_source(Source&& source,
                              const format_strings_type<CharT>& format_strings)
 {
     do_basic_run_for_type<CharT, float>(source, format_strings);
@@ -34,17 +34,18 @@ void run(const uint8_t* data, size_t size)
         return;
     }
 
-    auto [sv, wsv_reinterpret, wsv_transcode] = make_input_views(data, size);
+    const auto inputs = make_input_views(data, size);
 
-    const auto& f =
-        get_format_strings<char>("{}", "{:a}", "{:e}", "{:f}", "{:g}", "{:L}");
-    do_basic_run(sv, f);
+    const auto f =
+        format_strings_type<char>{"{}", "{:a}", "{:e}", "{:f}", "{:g}", "{:L}"};
+    do_basic_run(inputs.narrow, f);
 
-    const auto& wf = get_format_strings<wchar_t>(L"{}", L"{:a}", L"{:e}",
-                                                 L"{:f}", L"{:g}", L"{:L}");
-    do_basic_run(wsv_reinterpret, wf);
-    if (!wsv_transcode.empty()) {
-        do_basic_run(wsv_transcode, wf);
+    const auto wf = format_strings_type<wchar_t>{L"{}",   L"{:a}", L"{:e}",
+                                                 L"{:f}", L"{:g}", L"{:L}"};
+    do_basic_run(inputs.wide_copied, wf);
+    do_basic_run(inputs.wide_reinterpreted, wf);
+    if (!inputs.wide_transcoded.empty()) {
+        do_basic_run(inputs.wide_transcoded, wf);
     }
 }
 }  // namespace
